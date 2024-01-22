@@ -135,7 +135,7 @@ def create_dataset_model(db: Session, dataset_name: str, model_name: str):
     create_groundtruth(
         db=db,
         groundtruth=schemas.GroundTruth(
-            datum=schemas.Datum(uid="123", dataset=dataset_name),
+            datum=schemas.Datum(uid="123", dataset_name=dataset_name),
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.CLASSIFICATION,
@@ -151,8 +151,8 @@ def create_dataset_model(db: Session, dataset_name: str, model_name: str):
     create_prediction(
         db=db,
         prediction=schemas.Prediction(
-            model=model_name,
-            datum=schemas.Datum(uid="123", dataset=dataset_name),
+            model_name=model_name,
+            datum=schemas.Datum(uid="123", dataset_name=dataset_name),
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.CLASSIFICATION,
@@ -358,11 +358,16 @@ def test_get_joint_labels(
 ):
     labels = get_joint_labels(
         db=db,
-        dataset_name=dataset_name,
-        model_name=model_name,
-        task_types=[enums.TaskType.CLASSIFICATION],
-        groundtruth_type=enums.AnnotationType.NONE,
-        prediction_type=enums.AnnotationType.NONE,
+        lhs=schemas.Filter(
+            dataset_names=[dataset_name],
+            task_types=[enums.TaskType.CLASSIFICATION],
+            annotation_types=[enums.AnnotationType.NONE],
+        ),
+        rhs=schemas.Filter(
+            model_names=[model_name],
+            task_types=[enums.TaskType.CLASSIFICATION],
+            annotation_types=[enums.AnnotationType.NONE],
+        ),
     )
     assert len(labels) == 1
     assert labels[0] == schemas.Label(
@@ -379,9 +384,14 @@ def test_get_joint_keys(
 ):
     keys = get_joint_keys(
         db=db,
-        dataset_name=dataset_name,
-        model_name=model_name,
-        task_type=enums.TaskType.CLASSIFICATION,
+        lhs=schemas.Filter(
+            dataset_names=[dataset_name],
+            task_types=[enums.TaskType.CLASSIFICATION],
+        ),
+        rhs=schemas.Filter(
+            model_names=[model_name],
+            task_types=[enums.TaskType.CLASSIFICATION],
+        ),
     )
     assert len(keys) == 1
     assert set(keys) == {"k1"}
@@ -395,11 +405,16 @@ def test_get_disjoint_labels(
 ):
     ds_unique, md_unique = get_disjoint_labels(
         db=db,
-        dataset_name=dataset_name,
-        model_name=model_name,
-        task_types=[enums.TaskType.CLASSIFICATION],
-        groundtruth_type=enums.AnnotationType.NONE,
-        prediction_type=enums.AnnotationType.NONE,
+        lhs=schemas.Filter(
+            dataset_names=[dataset_name],
+            task_types=[enums.TaskType.CLASSIFICATION],
+            annotation_types=[enums.AnnotationType.NONE],
+        ),
+        rhs=schemas.Filter(
+            model_names=[model_name],
+            task_types=[enums.TaskType.CLASSIFICATION],
+            annotation_types=[enums.AnnotationType.NONE],
+        ),
     )
     assert len(ds_unique) == 2
     assert set(ds_unique) == {
@@ -422,9 +437,14 @@ def test_get_disjoint_keys(
 ):
     ds_unique, md_unique = get_disjoint_keys(
         db=db,
-        dataset_name=dataset_name,
-        model_name=model_name,
-        task_type=enums.TaskType.CLASSIFICATION,
+        lhs=schemas.Filter(
+            dataset_names=[dataset_name],
+            task_types=[enums.TaskType.CLASSIFICATION],
+        ),
+        rhs=schemas.Filter(
+            model_names=[model_name],
+            task_types=[enums.TaskType.CLASSIFICATION],
+        ),
     )
     assert len(ds_unique) == 1
     assert set(ds_unique) == {"k2"}
@@ -471,14 +491,14 @@ def test_label_functions(
     ]
     pds = [
         schemas.Prediction(
-            model=model_name,
+            model_name=model_name,
             datum=datum1,
             annotations=[
                 semantic_seg_pred_anns1,
             ],
         ),
         schemas.Prediction(
-            model=model_name,
+            model_name=model_name,
             datum=datum2,
             annotations=[
                 semantic_seg_pred_anns2,
@@ -530,7 +550,7 @@ def test_label_functions(
     assert get_label_keys(
         db,
         schemas.Filter(
-            models_names=[model_name],
+            model_names=[model_name],
             dataset_names=[dataset_name],
             task_types=[enums.TaskType.SEGMENTATION],
         ),
@@ -540,7 +560,7 @@ def test_label_functions(
     assert get_labels(
         db,
         schemas.Filter(
-            models_names=[model_name],
+            model_names=[model_name],
             dataset_names=[dataset_name],
             annotation_types=[enums.AnnotationType.RASTER],
             task_types=[enums.TaskType.SEGMENTATION],
@@ -556,7 +576,7 @@ def test_label_functions(
         get_labels(
             db,
             schemas.Filter(
-                models_names=[model_name],
+                model_names=[model_name],
                 dataset_names=[dataset_name],
                 annotation_types=[enums.AnnotationType.POLYGON],
                 task_types=[enums.TaskType.SEGMENTATION],
@@ -581,7 +601,7 @@ def test_label_functions(
         get_labels(
             db,
             schemas.Filter(
-                models_names=[model_name],
+                model_names=[model_name],
                 dataset_names=[dataset_name],
                 task_types=[enums.TaskType.CLASSIFICATION],
             ),
@@ -644,7 +664,7 @@ def test_label_functions(
     assert get_label_keys(
         db,
         schemas.Filter(
-            models_names=[model_name],
+            model_names=[model_name],
             dataset_names=[dataset_name],
             task_types=[enums.TaskType.SEGMENTATION],
         ),
@@ -655,7 +675,7 @@ def test_label_functions(
         get_labels(
             db,
             schemas.Filter(
-                models_names=[model_name],
+                model_names=[model_name],
                 dataset_names=[dataset_name],
                 task_types=[enums.TaskType.DETECTION],
             ),
@@ -667,7 +687,7 @@ def test_label_functions(
     assert get_labels(
         db,
         schemas.Filter(
-            models_names=[model_name],
+            model_names=[model_name],
             dataset_names=[dataset_name],
             annotation_types=[enums.AnnotationType.RASTER],
             task_types=[
@@ -685,7 +705,7 @@ def test_label_functions(
         get_labels(
             db,
             schemas.Filter(
-                models_names=[model_name],
+                model_names=[model_name],
                 dataset_names=[dataset_name],
                 annotation_types=[enums.AnnotationType.RASTER],
                 task_types=[enums.TaskType.DETECTION],

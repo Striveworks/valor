@@ -125,29 +125,29 @@ def test_datum(metadata):
     # valid
     valid_datum = schemas.Datum(
         uid="123",
-        dataset="name",
+        dataset_name="name",
     )
 
     # test property `uid`
     with pytest.raises(ValidationError):
         schemas.Datum(
             uid=("uid",),
-            dataset="name",
+            dataset_name="name",
         )
     with pytest.raises(ValidationError):
         schemas.Datum(
             uid="uid@",
-            dataset="name",
+            dataset_name="name",
         )
     with pytest.raises(ValidationError):
         schemas.Datum(
             uid=123,
-            dataset="name",
+            dataset_name="name",
         )
     with pytest.raises(ValidationError):
         schemas.Datum(
             uid=None,
-            dataset="name",
+            dataset_name="name",
         )
 
     # test property `dataset`
@@ -165,19 +165,19 @@ def test_datum(metadata):
     with pytest.raises(ValidationError):
         schemas.Datum(
             uid="123",
-            dataset="name",
+            dataset_name="name",
             metadata={123: 123},
         )
 
     # test `__eq__`
     other_datum = schemas.Datum(
         uid="123",
-        dataset="name",
+        dataset_name="name",
     )
     assert valid_datum == other_datum
 
     other_datum = schemas.Datum(
-        uid="123", dataset="name", metadata={"fake": "metadata"}
+        uid="123", dataset_name="name", metadata={"fake": "metadata"}
     )
     assert not valid_datum == other_datum
 
@@ -361,7 +361,7 @@ def test_groundtruth(metadata, groundtruth_annotations):
     gt = schemas.GroundTruth(
         datum=schemas.Datum(
             uid="uid",
-            dataset="name",
+            dataset_name="name",
         ),
         annotations=groundtruth_annotations,
     )
@@ -369,7 +369,7 @@ def test_groundtruth(metadata, groundtruth_annotations):
     # test property `datum`
     assert gt.datum == schemas.Datum(
         uid="uid",
-        dataset="name",
+        dataset_name="name",
     )
     with pytest.raises(ValidationError):
         schemas.GroundTruth(
@@ -384,7 +384,7 @@ def test_groundtruth(metadata, groundtruth_annotations):
     schemas.GroundTruth(
         datum=schemas.Datum(
             uid="uid",
-            dataset="name",
+            dataset_name="name",
         ),
         annotations=[],
     )
@@ -392,7 +392,7 @@ def test_groundtruth(metadata, groundtruth_annotations):
         schemas.GroundTruth(
             datum=schemas.Datum(
                 uid="uid",
-                dataset="name",
+                dataset_name="name",
             ),
             annotations="annotation",
         )
@@ -400,7 +400,7 @@ def test_groundtruth(metadata, groundtruth_annotations):
         schemas.GroundTruth(
             datum=schemas.Datum(
                 uid="uid",
-                dataset="name",
+                dataset_name="name",
             ),
             annotations=[groundtruth_annotations[0], 1234],
         )
@@ -409,22 +409,22 @@ def test_groundtruth(metadata, groundtruth_annotations):
 def test_prediction(metadata, predicted_annotations, labels, scored_labels):
     # valid
     md = schemas.Prediction(
-        model="name1",
-        datum=schemas.Datum(uid="uid", dataset="name"),
+        model_name="name1",
+        datum=schemas.Datum(uid="uid", dataset_name="name"),
         annotations=predicted_annotations,
     )
 
     # test property `model`
-    assert md.model == "name1"
+    assert md.model_name == "name1"
     with pytest.raises(ValidationError):
         schemas.Prediction(
-            model=("name",),
+            model_name=("name",),
             datum=schemas.Datum(uid="uid"),
             annotations=predicted_annotations,
         )
     with pytest.raises(ValidationError):
         schemas.Prediction(
-            model="name@#$#@",
+            model_name="name@#$#@",
             datum=schemas.Datum(uid="uid"),
             annotations=predicted_annotations,
         )
@@ -432,11 +432,11 @@ def test_prediction(metadata, predicted_annotations, labels, scored_labels):
     # test property `datum`
     assert md.datum == schemas.Datum(
         uid="uid",
-        dataset="name",
+        dataset_name="name",
     )
     with pytest.raises(ValidationError):
         schemas.Prediction(
-            model="name",
+            model_name="name",
             datum="datum_uid",
             annotations=predicted_annotations,
         )
@@ -444,28 +444,28 @@ def test_prediction(metadata, predicted_annotations, labels, scored_labels):
     # test property `annotations`
     assert md.annotations == predicted_annotations
     schemas.Prediction(
-        model="name",
+        model_name="name",
         datum=schemas.Datum(
             uid="uid",
-            dataset="name",
+            dataset_name="name",
         ),
         annotations=[],
     )
     with pytest.raises(ValidationError):
         schemas.Prediction(
-            model="name",
+            model_name="name",
             datum=schemas.Datum(
                 uid="uid",
-                dataset="name",
+                dataset_name="name",
             ),
             annotations="annotation",
         )
     with pytest.raises(ValidationError):
         schemas.Prediction(
-            model="name",
+            model_name="name",
             datum=schemas.Datum(
                 uid="uid",
-                dataset="name",
+                dataset_name="name",
             ),
             annotations=[predicted_annotations[0], 1234],
         )
@@ -473,10 +473,10 @@ def test_prediction(metadata, predicted_annotations, labels, scored_labels):
     # check sum to 1
     with pytest.raises(ValidationError) as e:
         schemas.Prediction(
-            model="name",
+            model_name="name",
             datum=schemas.Datum(
                 uid="uid",
-                dataset="name",
+                dataset_name="name",
             ),
             annotations=[
                 schemas.Annotation(
@@ -494,10 +494,10 @@ def test_prediction(metadata, predicted_annotations, labels, scored_labels):
     ]:
         with pytest.raises(ValueError) as e:
             schemas.Prediction(
-                model="name",
+                model_name="name",
                 datum=schemas.Datum(
                     uid="uid",
-                    dataset="name",
+                    dataset_name="name",
                 ),
                 annotations=[
                     schemas.Annotation(labels=labels, task_type=task_type)
@@ -507,10 +507,10 @@ def test_prediction(metadata, predicted_annotations, labels, scored_labels):
 
     with pytest.raises(ValueError) as e:
         schemas.Prediction(
-            model="name",
+            model_name="name",
             datum=schemas.Datum(
                 uid="uid",
-                dataset="name",
+                dataset_name="name",
             ),
             annotations=[
                 schemas.Annotation(
@@ -527,7 +527,7 @@ def test_semantic_segmentation_validation():
     gt = schemas.GroundTruth(
         datum=schemas.Datum(
             uid="uid",
-            dataset="name",
+            dataset_name="name",
         ),
         annotations=[
             schemas.Annotation(
@@ -550,7 +550,7 @@ def test_semantic_segmentation_validation():
         schemas.GroundTruth(
             datum=schemas.Datum(
                 uid="uid",
-                dataset="name",
+                dataset_name="name",
             ),
             annotations=[
                 schemas.Annotation(
@@ -572,7 +572,7 @@ def test_semantic_segmentation_validation():
         schemas.GroundTruth(
             datum=schemas.Datum(
                 uid="uid",
-                dataset="name",
+                dataset_name="name",
             ),
             annotations=[
                 schemas.Annotation(
@@ -593,10 +593,10 @@ def test_semantic_segmentation_validation():
 
     # this is valid
     schemas.Prediction(
-        model="model",
+        model_name="model",
         datum=schemas.Datum(
             uid="uid",
-            dataset="name",
+            dataset_name="name",
         ),
         annotations=[
             schemas.Annotation(
@@ -615,10 +615,10 @@ def test_semantic_segmentation_validation():
 
     with pytest.raises(ValueError) as e:
         schemas.Prediction(
-            model="model",
+            model_name_name="model",
             datum=schemas.Datum(
                 uid="uid",
-                dataset="name",
+                dataset_name="name",
             ),
             annotations=[
                 schemas.Annotation(

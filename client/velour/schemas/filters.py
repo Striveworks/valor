@@ -5,6 +5,17 @@ from typing import Dict, List, Union
 
 from velour.enums import AnnotationType, TaskType
 
+ValueType = Union[int, float, str, bool, Dict[str, str]]
+
+GeoJSONPointType = Dict[str, Union[str, List[Union[float, int]]]]
+GeoJSONPolygonType = Dict[str, Union[str, List[List[List[Union[float, int]]]]]]
+GeoJSONMultiPolygonType = Dict[
+    str, Union[str, List[List[List[List[Union[float, int]]]]]]
+]
+GeoJSONType = Union[
+    GeoJSONPointType, GeoJSONPolygonType, GeoJSONMultiPolygonType
+]
+
 
 @dataclass
 class ValueFilter:
@@ -26,7 +37,7 @@ class ValueFilter:
         If the `operator` doesn't match one of the allowed patterns.
     """
 
-    value: Union[int, float, str, bool, Dict[str, str]]
+    value: ValueType
     operator: str = "=="
 
     def __post_init__(self):
@@ -89,15 +100,7 @@ class GeospatialFilter:
 
     """
 
-    value: Dict[
-        str,
-        Union[
-            List[List[List[List[Union[float, int]]]]],
-            List[List[List[Union[float, int]]]],
-            List[Union[float, int]],
-            str,
-        ],
-    ]
+    value: GeoJSONType
     operator: str = "intersect"
 
     def __post_init__(self):
@@ -122,7 +125,7 @@ class DeclarativeMapper:
         self.key = key
         self.object_type = object_type
 
-    def _validate_equality(self, value: any, opstring: str):
+    def _validate_equality_operator(self, value: any, opstring: str):
         """Validate that the inputs to ac operator filter are of the correct type."""
         if isinstance(value, dict):
             raise TypeError(
@@ -146,7 +149,7 @@ class DeclarativeMapper:
             and not isinstance(value, datetime.timedelta)
         ):
             raise TypeError(f"{opstring} does not support type {type(value)}")
-        self._validate_equality(value, opstring)
+        self._validate_equality_operator(value, opstring)
 
     def _validate_geospatial_operator(self, value):
         """Validate the inputs to a geospatial filter."""
@@ -167,7 +170,7 @@ class DeclarativeMapper:
         )
 
     def __eq__(self, __value: object) -> BinaryExpression:
-        self._validate_equality(__value, "==")
+        self._validate_equality_operator(__value, "==")
         return BinaryExpression(
             name=self.name,
             key=self.key,
@@ -176,7 +179,7 @@ class DeclarativeMapper:
         )
 
     def __ne__(self, __value: object) -> BinaryExpression:
-        self._validate_equality(__value, "!=")
+        self._validate_equality_operator(__value, "!=")
         return BinaryExpression(
             name=self.name,
             key=self.key,
@@ -266,11 +269,11 @@ class Filter:
         A dictionary of `Dataset` metadata to filter on.
     dataset_geospatial: List[GeospatialFilter].
         A list of `Dataset` geospatial filters to filter on.
-    models_names: List[str]
+    model_names: List[str]
         A list of `Model` names to filter on.
-    models_metadata: Dict[str, List[ValueFilter]]
+    model_metadata: Dict[str, List[ValueFilter]]
         A dictionary of `Model` metadata to filter on.
-    models_geospatial: List[GeospatialFilter]
+    model_geospatial: List[GeospatialFilter]
         A list of `Model` geospatial filters to filter on.
     datum_uids: List[str]
         A list of `Datum` UIDs to filter on.
@@ -312,9 +315,9 @@ class Filter:
     dataset_geospatial: List[GeospatialFilter] = None
 
     # models
-    models_names: List[str] = None
-    models_metadata: Dict[str, List[ValueFilter]] = None
-    models_geospatial: List[GeospatialFilter] = None
+    model_names: List[str] = None
+    model_metadata: Dict[str, List[ValueFilter]] = None
+    model_geospatial: List[GeospatialFilter] = None
 
     # datums
     datum_uids: List[str] = None
@@ -337,7 +340,7 @@ class Filter:
     label_keys: List[str] = None
 
     @classmethod
-    def create(cls, expressions: List[BinaryExpression]) -> "Filter":
+    def create(cls, expressions: List[BinaryExpression]):
         """
         Parses a list of `BinaryExpression` to create a `schemas.Filter` object.
 
@@ -394,17 +397,17 @@ class Filter:
                 for expr in expression_dict["dataset_geospatial"]
             ]
         # models
-        if "models_names" in expression_dict:
-            filter_request.models_names = [
-                expr.value for expr in expression_dict["models_names"]
+        if "model_names" in expression_dict:
+            filter_request.model_names = [
+                expr.value for expr in expression_dict["model_names"]
             ]
-        if "models_metadata" in expression_dict:
-            for expr in expression_dict["models_metadata"]:
-                if not filter_request.models_metadata:
-                    filter_request.models_metadata = {}
-                if expr.key not in filter_request.models_metadata:
-                    filter_request.models_metadata[expr.key] = []
-                filter_request.models_metadata[expr.key].append(
+        if "model_metadata" in expression_dict:
+            for expr in expression_dict["model_metadata"]:
+                if not filter_request.model_metadata:
+                    filter_request.model_metadata = {}
+                if expr.key not in filter_request.model_metadata:
+                    filter_request.model_metadata[expr.key] = []
+                filter_request.model_metadata[expr.key].append(
                     ValueFilter(
                         value=expr.value,
                         operator=expr.operator,

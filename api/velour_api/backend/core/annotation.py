@@ -5,7 +5,7 @@ from base64 import b64encode
 from geoalchemy2 import RasterElement
 from geoalchemy2.functions import ST_AsGeoJSON, ST_AsPNG, ST_Envelope
 from PIL import Image
-from sqlalchemy import and_, distinct, select, text
+from sqlalchemy import and_, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -66,7 +66,11 @@ def _wkt_multipolygon_to_raster(wkt: str):
         A scalar subquery from psql.
     """
     return select(
-        text(f"ST_AsRaster(ST_GeomFromText('{wkt}'), {1.0}, {1.0})")
+        func.ST_AsRaster(
+            func.ST_GeomFromText(wkt),
+            1.0,
+            1.0,
+        ),
     ).scalar_subquery()
 
 
@@ -405,56 +409,3 @@ def get_annotations(
             .all()
         )
     ]
-
-
-def get_annotation_type(
-    db: Session,
-    dataset: models.Dataset,
-    model: models.Model | None = None,
-    task_type: enums.TaskType = enums.TaskType.DETECTION,
-) -> enums.AnnotationType:
-    """
-    Fetch annotation type from psql.
-
-    Parameters
-    ----------
-    db : Session
-        The database Session you want to query against.
-    dataset : models.Dataset
-        The dataset associated with the annotation.
-    model : models.Model
-        The model associated with the annotation.
-
-    Returns
-    ----------
-    enums.AnnotationType
-        The type of the annotation.
-    """
-    model_expr = (
-        models.Annotation.model_id == model.id
-        if model
-        else models.Annotation.model_id.is_(None)
-    )
-    hierarchy = [
-        (enums.AnnotationType.RASTER, models.Annotation.raster),
-        (enums.AnnotationType.MULTIPOLYGON, models.Annotation.multipolygon),
-        (enums.AnnotationType.POLYGON, models.Annotation.polygon),
-        (enums.AnnotationType.BOX, models.Annotation.box),
-    ]
-    for atype, col in hierarchy:
-        search = (
-            db.query(distinct(models.Dataset.id))
-            .select_from(models.Annotation)
-            .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
-            .join(models.Dataset, models.Dataset.id == models.Datum.dataset_id)
-            .where(
-                models.Datum.dataset_id == dataset.id,
-                models.Annotation.task_type == task_type.value,
-                model_expr,
-                col.isnot(None),
-            )
-            .one_or_none()
-        )
-        if search is not None:
-            return atype
-    return enums.AnnotationType.NONE

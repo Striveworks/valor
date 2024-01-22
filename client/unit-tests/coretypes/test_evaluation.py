@@ -1,38 +1,15 @@
 import pytest
 
+from velour import Evaluation, enums, schemas
+
 try:
     import pandas as pd  # noqa: F401
 except ModuleNotFoundError:
     pd = None
 
-from velour import enums, schemas
-
-
-def test_evaluation_evaluation_job():
-    params = {
-        "model": "md",
-        "dataset": "ds",
-        "task_type": "object-detection",
-        "settings": {
-            "filters": {
-                "annotation_types": [enums.AnnotationType.BOX],
-            }
-        },
-        "id": None,
-    }
-    schemas.EvaluationJob(**params)
-
-    params["id"] = 123
-    schemas.EvaluationJob(**params)
-
 
 @pytest.mark.skipif(pd is None, reason="pandas package is not installed")
 def test_to_dataframe():
-    try:
-        import pandas as pd  # noqa: F401
-    except ModuleNotFoundError:
-        return
-
     def _generate_metric(
         type: str,
         parameters: dict = None,
@@ -41,12 +18,16 @@ def test_to_dataframe():
     ):
         return dict(type=type, parameters=parameters, value=value, label=label)
 
-    df = schemas.EvaluationResult(
-        dataset="dataset1",
-        model="model1",
-        task_type=enums.TaskType.CLASSIFICATION,
-        settings=schemas.EvaluationSettings(),
-        evaluation_id=1,
+    df = Evaluation(
+        client=None,
+        id=1,
+        model_name="model1",
+        datum_filter=schemas.Filter(
+            dataset_names=["dataset1"],
+        ),
+        parameters=schemas.EvaluationParameters(
+            task_type=enums.TaskType.CLASSIFICATION,
+        ),
         status=enums.EvaluationStatus.DONE,
         metrics=[
             _generate_metric(
@@ -71,7 +52,7 @@ def test_to_dataframe():
     ).to_dataframe()
 
     df_str = """                                        value
-    dataset                              dataset1
+    evaluation                              1
     type parameters               label
     a    "n/a"                    n/a        0.99
     b    "n/a"                    n/a        0.30

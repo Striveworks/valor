@@ -1,18 +1,145 @@
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import ColumnElement, and_, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from velour_api import enums, exceptions, schemas
 from velour_api.backend import core, models
+from velour_api.backend.ops import Query
 
 
-def _db_metric_to_pydantic_metric(metric: models.Metric) -> schemas.Metric:
+def _create_dataset_expr_from_list(
+    dataset_names: list[str],
+) -> ColumnElement[bool]:
+    """
+    Creates a sqlalchemy or_ expression from a list of str.
+
+    Note that this is for accessing models.Evaluation with a list of dataset names.
+
+    Parameters
+    ----------
+    dataset_names : list[str]
+        List of dataset names.
+
+    Returns
+    -------
+    ColumnElement[bool]
+        The sqlalchemy expression.
+    """
+    if not dataset_names:
+        return None
+    elif len(dataset_names) == 1:
+        return models.Evaluation.datum_filter["dataset_names"].op("?")(
+            dataset_names[0]
+        )
+    else:
+        return or_(
+            *[
+                models.Evaluation.datum_filter["dataset_names"].op("?")(name)
+                for name in dataset_names
+                if isinstance(name, str)
+            ]
+        )
+
+
+def _create_model_expr_from_list(
+    model_names: list[str],
+) -> ColumnElement[bool]:
+    """
+    Creates a sqlalchemy or_ expression from a list of str.
+
+    Note that this is for accessing models.Evaluation with a list of model names.
+
+    Parameters
+    ----------
+    model_names : list[str]
+        List of model names.
+
+    Returns
+    -------
+    ColumnElement[bool]
+        The sqlalchemy expression.
+    """
+    if not model_names:
+        return None
+    elif len(model_names) == 1:
+        return models.Evaluation.model_name == model_names[0]
+    else:
+        return or_(
+            *[
+                models.Evaluation.model_name == name
+                for name in model_names
+                if isinstance(name, str)
+            ]
+        )
+
+
+def _create_eval_expr_from_list(ids: list[int]) -> ColumnElement[bool]:
+    """
+    Creates a sqlalchemy or_ expression from a list of int.
+
+    Note that this is for accessing models.Evaluation with a list of ids.
+
+    Parameters
+    ----------
+    ids : list[int]
+        List of evaluations ids.
+
+    Returns
+    -------
+    ColumnElement[bool]
+        The sqlalchemy expression.
+    """
+    if not ids:
+        return None
+    elif len(ids) == 1:
+        return models.Evaluation.id == ids[0]
+    else:
+        return or_(
+            *[
+                models.Evaluation.id == id_
+                for id_ in ids
+                if isinstance(id_, int)
+            ]
+        )
+
+
+def _create_bulk_expression(
+    evaluation_ids: list[int] | None = None,
+    dataset_names: list[str] | None = None,
+    model_names: list[str] | None = None,
+) -> ColumnElement[bool]:
+    """Creates an expression used to query evaluations by id, dataset and model."""
+    expr = []
+    if dataset_names:
+        expr.append(_create_dataset_expr_from_list(dataset_names))
+    if model_names:
+        expr.append(_create_model_expr_from_list(model_names))
+    if evaluation_ids:
+        expr.append(_create_eval_expr_from_list(evaluation_ids))
+    return expr
+
+
+def _convert_db_metric_to_pydantic_metric(
+    db: Session,
+    metric: models.Metric,
+) -> schemas.Metric:
     """Apply schemas.Metric to a metric from the database"""
-    label = (
-        schemas.Label(key=metric.label.key, value=metric.label.value)
-        if metric.label
+
+    label_row = (
+        db.query(
+            select(models.Label)
+            .where(models.Label.id == metric.label_id)
+            .subquery()
+        ).one_or_none()
+        if metric.label_id
         else None
     )
+    label = (
+        schemas.Label(key=label_row.key, value=label_row.value)
+        if label_row
+        else None
+    )
+
     return schemas.Metric(
         type=metric.type,
         value=metric.value,
@@ -22,187 +149,249 @@ def _db_metric_to_pydantic_metric(metric: models.Metric) -> schemas.Metric:
     )
 
 
-def _validate_filters(job_request: schemas.EvaluationJob):
-    """Validates that the filter object is properly configured for evaluation."""
-    if (
-        job_request.settings.filters.dataset_names is not None
-        or job_request.settings.filters.dataset_metadata is not None
-        or job_request.settings.filters.dataset_geospatial is not None
-        or job_request.settings.filters.models_names is not None
-        or job_request.settings.filters.models_metadata is not None
-        or job_request.settings.filters.models_geospatial is not None
-        or job_request.settings.filters.prediction_scores is not None
-        or job_request.settings.filters.task_types is not None
-    ):
-        raise ValueError(
-            "Evaluation filter objects should not include any dataset, model, prediction score or task type filters."
-        )
-    elif (
-        job_request.task_type == enums.TaskType.SEGMENTATION
-        and job_request.settings.filters.annotation_types is not None
-    ):
-        raise ValueError(
-            "Segmentation evaluation should not include any annotation type filters."
-        )
-
-
-def _validate_request(
+def _verify_ready_to_evaluate(
     db: Session,
-    job_request: schemas.EvaluationJob,
-    dataset: models.Dataset,
-    model: models.Model,
+    dataset_list: list[models.Dataset],
+    model_list: list[models.Model],
 ):
-    """Validates that the requested dependencies exist and are valid for evaluation."""
+    """Verifies that the requested datasets and models exist and are ready for evaluation."""
 
-    # validate type
-    if not isinstance(job_request, schemas.EvaluationJob):
-        raise TypeError(
-            f"Expected `schemas.EvaluationJob`, received `{type(job_request)}`"
+    for model in model_list:
+        for dataset in dataset_list:
+
+            # verify dataset status
+            match enums.TableStatus(dataset.status):
+                case enums.TableStatus.CREATING:
+                    raise exceptions.DatasetNotFinalizedError(dataset.name)
+                case enums.TableStatus.DELETING | None:
+                    raise exceptions.DatasetDoesNotExistError(dataset.name)
+                case enums.TableStatus.FINALIZED:
+                    pass
+                case _:
+                    raise RuntimeError
+
+            # verify model status
+            match core.get_model_status(
+                db=db,
+                dataset_name=dataset.name,
+                model_name=model.name,
+            ):
+                case enums.TableStatus.CREATING:
+                    raise exceptions.ModelNotFinalizedError(
+                        dataset_name=dataset.name,
+                        model_name=model.name,
+                    )
+                case enums.TableStatus.DELETING | None:
+                    raise exceptions.ModelDoesNotExistError(model.name)
+                case enums.TableStatus.FINALIZED:
+                    pass
+                case _:
+                    raise RuntimeError
+
+
+def _split_request(
+    db: Session,
+    job_request: schemas.EvaluationRequest,
+) -> list[schemas.EvaluationRequest]:
+    """
+    Splits a job request into component requests.
+
+    1. Fetch all datasets and models that conform to their respective filters.
+    2. Verify all datasets and models are ready to be evaluated.
+    3. For auditability, replace ambiguous dataset queries with explicit lists of names.
+    4. Create a response per model..
+    """
+
+    # 1.a - get all datasets, note this uses the unmodified filter
+    datasets_to_evaluate = (
+        db.query(Query(models.Dataset).filter(job_request.datum_filter).any())
+        .distinct()
+        .all()
+    )
+    if not datasets_to_evaluate:
+        raise exceptions.EvaluationRequestError(
+            "No datasets meet the requirements of this request."
         )
-    if job_request.dataset != dataset.name or job_request.model != model.name:
-        raise ValueError("Name mismatch.")
 
-    # get statuses
-    dataset_status = enums.TableStatus(dataset.status)
-    model_status = core.get_model_status(
-        db=db, dataset_name=dataset.name, model_name=model.name
+    # 1.b - get all models, note this uses the unmodified filter
+    model_filter = schemas.Filter(model_names=job_request.model_names)
+    model_to_evaluate = (
+        db.query(Query(models.Model).filter(model_filter).any())
+        .distinct()
+        .all()
+    )
+    if not model_to_evaluate:
+        raise exceptions.EvaluationRequestError(
+            "No models meet the requirements of this request."
+        )
+
+    # 2 - verify all models and datasets are ready for evaluation
+    _verify_ready_to_evaluate(
+        db=db,
+        dataset_list=datasets_to_evaluate,
+        model_list=model_to_evaluate,
     )
 
-    # verify dataset status
-    match dataset_status:
-        case enums.TableStatus.CREATING:
-            raise exceptions.DatasetNotFinalizedError(job_request.dataset)
-        case enums.TableStatus.DELETING | None:
-            raise exceptions.DatasetDoesNotExistError(job_request.dataset)
-        case enums.TableStatus.FINALIZED:
-            pass
-        case _:
-            raise RuntimeError
+    # 3 - create explicit filter with dataset names
+    job_request.datum_filter.dataset_names = [
+        dataset.name for dataset in datasets_to_evaluate
+    ]
+    job_request.datum_filter.dataset_metadata = None
+    job_request.datum_filter.dataset_geospatial = None
+    job_request.datum_filter.model_names = None
+    job_request.datum_filter.model_metadata = None
+    job_request.datum_filter.model_geospatial = None
 
-    # verify model status
-    match model_status:
-        case enums.TableStatus.CREATING:
-            raise exceptions.ModelNotFinalizedError(
-                dataset_name=job_request.dataset, model_name=job_request.model
-            )
-        case enums.TableStatus.DELETING | None:
-            raise exceptions.ModelDoesNotExistError(job_request.model)
-        case enums.TableStatus.FINALIZED:
-            pass
-        case _:
-            raise RuntimeError
-
-    # validate parameters
-    match job_request.task_type:
-        case enums.TaskType.DETECTION:
-            if not job_request.settings.parameters:
-                job_request.settings.parameters = schemas.DetectionParameters()
-        case _:
-            if job_request.settings.parameters:
-                raise ValueError(
-                    f"Evaluations with task type `{job_request.task_type}` do not take parametric input."
-                )
-
-    # validate filters
-    if job_request.settings.filters:
-        _validate_filters(job_request=job_request)
+    # 4. - create requests
+    return [
+        schemas.EvaluationRequest(
+            model_names=model.name,
+            datum_filter=job_request.datum_filter,
+            parameters=job_request.parameters,
+        )
+        for model in model_to_evaluate
+    ]
 
 
-def create_evaluation(
+def _create_response(
     db: Session,
-    job_request: schemas.EvaluationJob,
-) -> int:
+    evaluation: models.Evaluation,
+    **kwargs,
+) -> schemas.EvaluationResponse:
+    """Converts a evaluation row into a response schema."""
+    metrics = db.query(
+        select(models.Metric)
+        .where(models.Metric.evaluation_id == evaluation.id)
+        .subquery()
+    ).all()
+    confusion_matrices = db.query(
+        select(models.ConfusionMatrix)
+        .where(models.ConfusionMatrix.evaluation_id == evaluation.id)
+        .subquery()
+    ).all()
+    return schemas.EvaluationResponse(
+        id=evaluation.id,
+        model_name=evaluation.model_name,
+        datum_filter=evaluation.datum_filter,
+        parameters=evaluation.parameters,
+        status=evaluation.status,
+        metrics=[
+            _convert_db_metric_to_pydantic_metric(db, metric)
+            for metric in metrics
+        ],
+        confusion_matrices=[
+            schemas.ConfusionMatrixResponse(
+                label_key=matrix.label_key,
+                entries=[
+                    schemas.ConfusionMatrixEntry(**entry)
+                    for entry in matrix.value
+                ],
+            )
+            for matrix in confusion_matrices
+        ],
+        **kwargs,
+    )
+
+
+def _create_responses(
+    db: Session,
+    evaluations: list[models.Evaluation],
+) -> list[schemas.EvaluationResponse]:
     """
-    Creates an evaluation.
+    Takes a list of evaluation rows and returns a matching list of evaluation creation responses.
 
     Parameters
     ----------
     db : Session
-        The database Session to query against.
-    job_request : schemas.EvaluationJob
-        The evaluation job to create.
+        The database session.
+    evaluations : list[models.Evaluation]
+        A list of evaluation rows to generate responses for.
 
     Returns
     -------
-    int
-        The id of the new evaluation.
+    list[schemas.EvaluationResponse]
+        A list of evaluations in response format.
     """
-    if fetch_evaluation_from_job_request(db, job_request) is not None:
-        raise exceptions.EvaluationAlreadyExistsError()
+    results = []
+    for evaluation in evaluations:
+        if evaluation.id is None:
+            raise exceptions.EvaluationDoesNotExistError()
 
-    dataset = core.fetch_dataset(db, job_request.dataset)
-    model = core.fetch_model(db, job_request.model)
+        datum_filter = schemas.Filter(**evaluation.datum_filter)
+        model_filter = datum_filter.model_copy()
+        model_filter.dataset_names = None
+        model_filter.model_names = [evaluation.model_name]
+        parameters = schemas.EvaluationParameters(**evaluation.parameters)
 
-    _validate_request(
-        db=db, job_request=job_request, dataset=dataset, model=model
-    )
+        match parameters.task_type:
+            case enums.TaskType.CLASSIFICATION:
+                missing_pred_keys, ignored_pred_keys = core.get_disjoint_keys(
+                    db, datum_filter, model_filter
+                )
+                kwargs = {
+                    "missing_pred_keys": missing_pred_keys,
+                    "ignored_pred_keys": ignored_pred_keys,
+                }
+            case (enums.TaskType.DETECTION | enums.TaskType.SEGMENTATION):
+                (
+                    missing_pred_labels,
+                    ignored_pred_labels,
+                ) = core.get_disjoint_labels(db, datum_filter, model_filter)
+                kwargs = {
+                    "missing_pred_labels": missing_pred_labels,
+                    "ignored_pred_labels": ignored_pred_labels,
+                }
+            case _:
+                raise NotImplementedError
 
-    try:
-        evaluation = models.Evaluation(
-            dataset_id=dataset.id,
-            model_id=model.id,
-            task_type=job_request.task_type,
-            settings=job_request.settings.model_dump(),
-            status=enums.EvaluationStatus.PENDING,
+        results.append(
+            _create_response(
+                db=db,
+                evaluation=evaluation,
+                **kwargs,
+            )
         )
-        db.add(evaluation)
-        db.commit()
-        return evaluation.id
-    except IntegrityError:
-        db.rollback()
-        raise exceptions.EvaluationAlreadyExistsError()
+    return results
 
 
-def fetch_evaluation_from_id(
+def _fetch_evaluation_from_subrequest(
     db: Session,
-    evaluation_id: int,
+    subrequest: schemas.EvaluationRequest,
 ) -> models.Evaluation:
     """
-    Fetch evaluation from database.
-    """
-    evaluation = db.scalar(
-        select(models.Evaluation).where(models.Evaluation.id == evaluation_id)
-    )
-    if evaluation is None:
-        raise exceptions.EvaluationDoesNotExistError
-    return evaluation
-
-
-def fetch_evaluation_from_job_request(
-    db: Session,
-    job_request: schemas.EvaluationJob,
-):
-    """
-    Get the row model for an evaluation that matches the provided `EvaluationJob`.
+    Fetch the row for an evaluation that matches the provided `EvaluationRequest` attributes.
 
     Parameters
     ----------
     db : Session
         The database Session to query against.
-    job_request : schemas.EvaluationJob
-        The evaluation job to create.
+    subrequest : schemas.EvaluationRequest
+        Evaluation subrequest. Should only have one model name defined.
 
     Returns
     -------
     models.Evaluation
         The evaluation row.
-    """
-    dataset = core.fetch_dataset(db, job_request.dataset)
-    model = core.fetch_model(db, job_request.model)
 
-    _validate_request(
-        db=db, job_request=job_request, dataset=dataset, model=model
-    )
+    Raises
+    ------
+    RuntimeError
+        If subrequest defines no model names or more than one.
+    """
+    if len(subrequest.model_names) != 1:
+        raise RuntimeError(
+            "Subrequests should only reference a single model name."
+        )
 
     evaluation = (
         db.query(models.Evaluation)
         .where(
             and_(
-                models.Evaluation.dataset_id == dataset.id,
-                models.Evaluation.model_id == model.id,
-                models.Evaluation.task_type == job_request.task_type,
-                models.Evaluation.settings
-                == job_request.settings.model_dump(),
+                models.Evaluation.model_name == subrequest.model_names[0],
+                models.Evaluation.datum_filter
+                == subrequest.datum_filter.model_dump(),
+                models.Evaluation.parameters
+                == subrequest.parameters.model_dump(),
             )
         )
         .one_or_none()
@@ -210,27 +399,135 @@ def fetch_evaluation_from_job_request(
     return evaluation
 
 
-def get_evaluation_id_from_job_request(
+def create_or_get_evaluations(
     db: Session,
-    job_request: schemas.EvaluationJob,
-) -> int | None:
+    job_request: schemas.EvaluationRequest,
+) -> tuple[
+    list[schemas.EvaluationResponse],
+    list[schemas.EvaluationResponse],
+]:
     """
-    Get the id for an evaluation that matches the provided `EvaluationJob`.
+    Creates evaluations from evaluation request.
+
+    If an evaluation already exists, it will be returned as running.
 
     Parameters
     ----------
     db : Session
         The database Session to query against.
-    job_request : schemas.EvaluationJob
-        The evaluation job to create.
+    job_request : schemas.EvaluationRequest
+        The evaluations to create.
 
     Returns
     -------
-    int | None
-        The id of the matching evaluation. Returns None if one does not exist.
+    tuple[list[schemas.EvaluationResponse], list[schemas.EvaluationResponse]]
+        A tuple of evaluation response lists following the pattern (list[created_evaluations], list[existing_evaluations])
     """
-    evaluation = fetch_evaluation_from_job_request(db, job_request)
-    return evaluation.id if evaluation else None
+
+    created_rows = []
+    existing_rows = []
+    for subrequest in _split_request(db, job_request):
+
+        if len(subrequest.model_names) != 1:
+            raise RuntimeError(
+                "Subrequests should only reference a single model name."
+            )
+
+        # check if evaluation exists
+        if evaluation := _fetch_evaluation_from_subrequest(
+            db=db,
+            subrequest=subrequest,
+        ):
+            existing_rows.append(evaluation)
+
+        # create evaluation row
+        else:
+            evaluation = models.Evaluation(
+                model_name=subrequest.model_names[0],
+                datum_filter=subrequest.datum_filter.model_dump(),
+                parameters=subrequest.parameters.model_dump(),
+                status=enums.EvaluationStatus.PENDING,
+            )
+            created_rows.append(evaluation)
+
+    try:
+        db.add_all(created_rows)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise exceptions.EvaluationAlreadyExistsError()
+
+    return (
+        _create_responses(db, created_rows),
+        _create_responses(db, existing_rows),
+    )
+
+
+def fetch_evaluations(
+    db: Session,
+    evaluation_ids: list[int] | None = None,
+    dataset_names: list[str] | None = None,
+    model_names: list[str] | None = None,
+) -> list[models.Evaluation]:
+    """
+    Returns all evaluations that conform to user-supplied constraints.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    evaluation_ids : list[int], optional
+        A list of evaluation job id constraints.
+    dataset_names : list[str], optional
+        A list of dataset names to constrain by.
+    model_names : list[str], optional
+        A list of model names to constrain by.
+
+    Returns
+    ----------
+    list[models.Evaluation]
+        A list of evaluations.
+    """
+    expr = _create_bulk_expression(
+        evaluation_ids=evaluation_ids,
+        dataset_names=dataset_names,
+        model_names=model_names,
+    )
+    return db.query(models.Evaluation).where(*expr).all()
+
+
+def fetch_evaluation_from_id(
+    db: Session,
+    evaluation_id: int,
+) -> models.Evaluation:
+    """
+    Fetches an evaluation row from the database.
+
+    Parameters
+    ----------
+    db : Session
+        The database session.
+    evaluation_id : int
+        The id of the evaluation.
+
+    Returns
+    -------
+    models.Evaluation
+        The evaluation row with matching id.
+
+    Raises
+    ------
+    exceptions.EvaluationDoesNotExistError
+        If the evaluation id has no corresponding row in the database.
+    """
+    evaluation = (
+        db.query(models.Evaluation)
+        .where(models.Evaluation.id == evaluation_id)
+        .one_or_none()
+    )
+    if evaluation is None:
+        raise exceptions.EvaluationDoesNotExistError
+    return evaluation
 
 
 def get_evaluations(
@@ -238,103 +535,33 @@ def get_evaluations(
     evaluation_ids: list[int] | None = None,
     dataset_names: list[str] | None = None,
     model_names: list[str] | None = None,
-    settings: list[schemas.EvaluationSettings] | None = None,
-) -> list[schemas.Evaluation]:
+) -> list[schemas.EvaluationResponse]:
     """
-    Get evaluations that conform to input arguments.
+    Returns all evaluations that conform to user-supplied constraints.
 
     Parameters
     ----------
-    evaluation_ids: list[int] | None
-        A list of job ids to get evaluations for.
-    dataset_names: list[str] | None
-        A list of dataset names to get evaluations for.
-    model_names: list[str] | None
-        A list of model names to get evaluations for.
-    settings: list[schemas.EvaluationSettings] | None
-        A list of evaluation settings to get evaluations for.
+    db : Session
+        The database Session to query against.
+    evaluation_ids : list[int], optional
+        A list of evaluation job id constraints.
+    dataset_names : list[str], optional
+        A list of dataset names to constrain by.
+    model_names : list[str], optional
+        A list of model names to constrain by.
 
     Returns
     ----------
-    List[schemas.Evaluation]
+    list[schemas.EvaluationResponse]
         A list of evaluations.
     """
-
-    # argument expressions
-    expr_evaluation_ids = (
-        models.Evaluation.id.in_(evaluation_ids) if evaluation_ids else None
+    expr = _create_bulk_expression(
+        evaluation_ids=evaluation_ids,
+        dataset_names=dataset_names,
+        model_names=model_names,
     )
-    expr_datasets = (
-        models.Dataset.name.in_(dataset_names) if dataset_names else None
-    )
-    expr_models = models.Model.name.in_(model_names) if model_names else None
-    expr_settings = (
-        models.Evaluation.settings.in_(
-            [setting.model_dump() for setting in settings]
-        )
-        if settings
-        else None
-    )
-
-    # aggregate valid expressions
-    expressions = [
-        expr
-        for expr in [
-            expr_evaluation_ids,
-            expr_datasets,
-            expr_models,
-            expr_settings,
-        ]
-        if expr is not None
-    ]
-
-    # query evaluations
-    evaluation_rows = db.scalars(
-        select(models.Evaluation)
-        .join(
-            models.Dataset,
-            models.Dataset.id == models.Evaluation.dataset_id,
-        )
-        .join(
-            models.Model,
-            models.Model.id == models.Evaluation.model_id,
-        )
-        .where(*expressions)
-    ).all()
-
-    return [
-        schemas.Evaluation(
-            dataset=db.scalar(
-                select(models.Dataset.name).where(
-                    models.Dataset.id == evaluation.dataset_id
-                )
-            ),
-            model=db.scalar(
-                select(models.Model.name).where(
-                    models.Model.id == evaluation.model_id
-                )
-            ),
-            settings=evaluation.settings,
-            evaluation_id=evaluation.id,
-            status=evaluation.status,
-            metrics=[
-                _db_metric_to_pydantic_metric(metric)
-                for metric in evaluation.metrics
-            ],
-            confusion_matrices=[
-                schemas.ConfusionMatrixResponse(
-                    label_key=matrix.label_key,
-                    entries=[
-                        schemas.ConfusionMatrixEntry(**entry)
-                        for entry in matrix.value
-                    ],
-                )
-                for matrix in evaluation.confusion_matrices
-            ],
-            task_type=evaluation.task_type,
-        )
-        for evaluation in evaluation_rows
-    ]
+    evaluations = db.query(models.Evaluation).where(*expr).all()
+    return _create_responses(db, evaluations)
 
 
 def get_evaluation_status(
@@ -347,7 +574,14 @@ def get_evaluation_status(
     Parameters
     ----------
     db : Session
+        The database session.
+    evaluation_id : int
+        The id of the evaluation.
 
+    Returns
+    -------
+    enums.EvaluationStatus
+        The status of the evaluation.
     """
     evaluation = fetch_evaluation_from_id(db, evaluation_id)
     return enums.EvaluationStatus(evaluation.status)
@@ -360,6 +594,20 @@ def set_evaluation_status(
 ):
     """
     Set the status of an evaluation.
+
+    Parameters
+    ----------
+    db : Session
+        The database session.
+    evaluation_id : int
+        The id of the evaluation.
+    status : enums.EvaluationStatus
+        The desired state of the evaluation.
+
+    Raises
+    ------
+    exceptions.EvaluationStateError
+        If the requested state leads to an illegal transition.
     """
     evaluation = fetch_evaluation_from_id(db, evaluation_id)
 
@@ -374,139 +622,44 @@ def set_evaluation_status(
         db.commit()
     except IntegrityError:
         db.rollback()
-        raise exceptions.EvaluationDoesNotExistError
-
-
-def _get_annotation_types_for_computation(
-    db: Session,
-    dataset: models.Dataset,
-    model: models.Model,
-    job_filter: schemas.Filter | None = None,
-) -> enums.AnnotationType:
-    """Fetch the groundtruth and prediction annotation types for a given dataset / model combination."""
-    # get dominant type
-    groundtruth_type = core.get_annotation_type(db, dataset, None)
-    prediction_type = core.get_annotation_type(db, dataset, model)
-    greatest_common_type = (
-        groundtruth_type
-        if groundtruth_type < prediction_type
-        else prediction_type
-    )
-    if job_filter.annotation_types:
-        if greatest_common_type not in job_filter.annotation_types:
-            sorted_types = sorted(
-                job_filter.annotation_types,
-                key=lambda x: x,
-                reverse=True,
-            )
-            for annotation_type in sorted_types:
-                if greatest_common_type >= annotation_type:
-                    return annotation_type, annotation_type
-            raise RuntimeError(
-                f"Annotation type filter is too restrictive. Attempted filter `{greatest_common_type}` over `{groundtruth_type, prediction_type}`."
-            )
-    return groundtruth_type, prediction_type
-
-
-def get_disjoint_labels_from_evaluation(
-    db: Session,
-    job_request: schemas.EvaluationJob,
-) -> tuple[list[schemas.Label], list[schemas.Label]]:
-    """
-    Return a tuple containing the unique labels associated with the groundtruths and predictions stored in a database.
-
-    Parameters
-    ----------
-    db : Session
-        The database session.
-    job_request : schemas.EvaluationJob
-
-    Returns
-    -------
-    tuple[list[schemas.Label], list[schemas.Label]]
-        A tuple of the disjoint label sets. The tuple follows the form (GroundTruth, Prediction).
-    """
-
-    # load sql objects
-    dataset = core.fetch_dataset(db, job_request.dataset)
-    model = core.fetch_model(db, job_request.model)
-
-    # get filter object
-    if not job_request.settings.filters:
-        filters = schemas.Filter()
-    else:
-        _validate_request(
-            db=db,
-            job_request=job_request,
-            dataset=dataset,
-            model=model,
+        raise exceptions.EvaluationStateError(
+            evaluation_id, current_status, status
         )
-        filters = job_request.settings.filters.model_copy()
-
-    # determine annotation types
-    (
-        groundtruth_type,
-        prediction_type,
-    ) = _get_annotation_types_for_computation(db, dataset, model, filters)
-
-    # create groundtruth label filter
-    groundtruth_label_filter = filters.model_copy()
-    groundtruth_label_filter.dataset_names = [job_request.dataset]
-    groundtruth_label_filter.annotation_types = [groundtruth_type]
-
-    # create prediction label filter
-    prediction_label_filter = filters.model_copy()
-    prediction_label_filter.dataset_names = [job_request.dataset]
-    prediction_label_filter.models_names = [model.name]
-    prediction_label_filter.annotation_types = [prediction_type]
-
-    groundtruth_labels = core.get_labels(
-        db, groundtruth_label_filter, ignore_predictions=True
-    )
-    prediction_labels = core.get_labels(
-        db, prediction_label_filter, ignore_groundtruths=True
-    )
-    groundtruth_unique = list(groundtruth_labels - prediction_labels)
-    prediction_unique = list(prediction_labels - groundtruth_labels)
-
-    return groundtruth_unique, prediction_unique
 
 
-def check_for_active_evaluations(
+def count_active_evaluations(
     db: Session,
-    dataset_name: str | None = None,
-    model_name: str | None = None,
+    evaluation_ids: list[int] | None = None,
+    dataset_names: list[str] | None = None,
+    model_names: list[str] | None = None,
 ) -> int:
     """
-    Get the number of active evaluations.
+    Count the number of active evaluations.
 
     Parameters
     ----------
     db : Session
-        Database session instance.
-    dataset_name : str, default=None
-        Name of a dataset.
-    model_name : str, default=None
-        Name of a model.
+        The database Session to query against.
+    evaluation_ids : list[int], optional
+        A list of evaluation job id constraints.
+    dataset_names : list[str], optional
+        A list of dataset names to constrain by.
+    model_names : list[str], optional
+        A list of model names to constrain by.
 
     Returns
     -------
     int
         Number of active evaluations.
     """
-    expr = []
-    if dataset_name:
-        expr.append(models.Dataset.name == dataset_name)
-    if model_name:
-        expr.append(models.Model.name == model_name)
-
+    expr = _create_bulk_expression(
+        evaluation_ids=evaluation_ids,
+        dataset_names=dataset_names,
+        model_names=model_names,
+    )
     return db.scalar(
         select(func.count())
         .select_from(models.Evaluation)
-        .join(
-            models.Dataset, models.Dataset.id == models.Evaluation.dataset_id
-        )
-        .join(models.Model, models.Model.id == models.Evaluation.model_id)
         .where(
             or_(
                 models.Evaluation.status == enums.EvaluationStatus.PENDING,
@@ -515,3 +668,46 @@ def check_for_active_evaluations(
             *expr,
         )
     )
+
+
+def delete_evaluations(
+    db: Session,
+    evaluation_ids: list[int] | None = None,
+    dataset_names: list[str] | None = None,
+    model_names: list[str] | None = None,
+):
+    """
+    Deletes all evaluations that match the input args.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    evaluation_ids : list[int], optional
+        A list of evaluation job id constraints.
+    dataset_names : list[str], optional
+        A list of dataset names to constrain by.
+    model_names : list[str], optional
+        A list of model names to constrain by.
+    """
+    if count_active_evaluations(
+        db=db,
+        evaluation_ids=evaluation_ids,
+        dataset_names=dataset_names,
+        model_names=model_names,
+    ):
+        raise exceptions.EvaluationRunningError
+
+    evaluations = fetch_evaluations(
+        db=db,
+        evaluation_ids=evaluation_ids,
+        dataset_names=dataset_names,
+        model_names=model_names,
+    )
+    try:
+        for evaluation in evaluations:
+            db.delete(evaluation)
+            db.commit()
+    except IntegrityError as e:
+        db.rollback()
+        raise e

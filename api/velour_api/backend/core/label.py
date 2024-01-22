@@ -2,7 +2,7 @@ from sqlalchemy import Subquery, and_, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from velour_api import enums, schemas
+from velour_api import schemas
 from velour_api.backend import models, ops
 
 
@@ -224,156 +224,91 @@ def get_label_keys(
 
 def get_joint_labels(
     db: Session,
-    dataset_name: str,
-    model_name: str,
-    task_types: list[enums.TaskType],
-    groundtruth_type: enums.AnnotationType,
-    prediction_type: enums.AnnotationType,
+    lhs: schemas.Filter,
+    rhs: schemas.Filter,
 ) -> list[schemas.Label]:
     """
-    Returns all unique labels that are shared between both predictions and groundtruths.
+    Returns all unique labels that are shared between both filters.
 
     Parameters
     ----------
     db : Session
         The database Session to query against.
-    dataset_name: str
-        The name of a dataset.
-    model_name: str
-        The name of a model.
-    task_types: list[enums.TaskType]
-        The task types to filter on.
-    groundtruth_type: enums.AnnotationType
-        The groundtruth type to filter on.
-    prediction_type: enums.AnnotationType
-        The prediction type to filter on
+    lhs : list[schemas.Filter]
+        Filter defining first label set.
+    rhs : list[schemas.Filter]
+        Filter defining second label set.
 
     Returns
     ----------
     list[schemas.Label]
         A list of labels.
     """
-    gt_filter = schemas.Filter(
-        dataset_names=[dataset_name],
-        task_types=task_types,
-        annotation_types=[groundtruth_type],
-    )
-    pd_filter = schemas.Filter(
-        dataset_names=[dataset_name],
-        models_names=[model_name],
-        task_types=task_types,
-        annotation_types=[prediction_type],
-    )
-
-    ds_labels = get_labels(db, gt_filter, ignore_predictions=True)
-    md_labels = get_labels(db, pd_filter, ignore_groundtruths=True)
-
-    return list(ds_labels.intersection(md_labels))
+    lhs_labels = get_labels(db, lhs, ignore_predictions=True)
+    rhs_labels = get_labels(db, rhs, ignore_groundtruths=True)
+    return list(lhs_labels.intersection(rhs_labels))
 
 
 def get_joint_keys(
     db: Session,
-    dataset_name: str,
-    model_name: str,
-    task_type: enums.TaskType,
+    lhs: schemas.Filter,
+    rhs: schemas.Filter,
 ) -> list[schemas.Label]:
     """
-    Returns all unique label keys that are shared between both predictions and groundtruths.
+    Returns all unique label keys that are shared between both filters.
 
     Parameters
     ----------
     db : Session
         The database Session to query against.
-    dataset_name: str
-        The name of a dataset.
-    model_name: str
-        The name of a model.
-    task_type: enums.TaskType
-        The task types to filter on.
+    lhs : list[schemas.Filter]
+        Filter defining first label set.
+    rhs : list[schemas.Filter]
+        Filter defining second label set.
 
     Returns
     ----------
     set[schemas.Label]
         A list of labels.
     """
-    gt_filter = schemas.Filter(
-        dataset_names=[dataset_name],
-        task_types=[task_type],
-    )
-    pd_filter = schemas.Filter(
-        dataset_names=[dataset_name],
-        models_names=[model_name],
-        task_types=[task_type],
-    )
-
-    ds_keys = get_label_keys(db, gt_filter, ignore_predictions=True)
-    md_keys = get_label_keys(db, pd_filter, ignore_groundtruths=True)
-
-    return list(ds_keys.intersection(md_keys))
+    lhs_keys = get_label_keys(db, lhs, ignore_predictions=True)
+    rhs_keys = get_label_keys(db, rhs, ignore_groundtruths=True)
+    return list(lhs_keys.intersection(rhs_keys))
 
 
 def get_disjoint_labels(
     db: Session,
-    dataset_name: str,
-    model_name: str,
-    task_types: list[enums.TaskType],
-    groundtruth_type: enums.AnnotationType,
-    prediction_type: enums.AnnotationType,
+    lhs: schemas.Filter,
+    rhs: schemas.Filter,
 ) -> tuple[list[schemas.Label], list[schemas.Label]]:
     """
-    Returns all unique labels that are not shared between both predictions and groundtruths.
+    Returns all unique labels that are not shared between both filters.
 
     Parameters
     ----------
     db : Session
         The database Session to query against.
-    dataset_name: str
-        The name of a dataset.
-    model_name: str
-        The name of a model.
-    task_types: list[enums.TaskType]
-        The task types to filter on.
-    groundtruth_type: enums.AnnotationType
-        The groundtruth type to filter on.
-    prediction_type: enums.AnnotationType
-        The prediction type to filter on
+    lhs : list[schemas.Filter]
+        Filter defining first label set.
+    rhs : list[schemas.Filter]
+        Filter defining second label set.
 
     Returns
     ----------
     Tuple[list[schemas.Label], list[schemas.Label]]
-        A tuple of disjoint labels, where the first element is those labels which are present in groundtruths but absent in predictions.
+        A tuple of disjoint labels, where the first element is those labels which are present in lhs label set but absent in rhs label set.
     """
-
-    # create filters
-    gt_filter = schemas.Filter(
-        dataset_names=[dataset_name],
-        task_types=task_types,
-        annotation_types=[groundtruth_type],
-    )
-    pd_filter = schemas.Filter(
-        dataset_names=[dataset_name],
-        models_names=[model_name],
-        task_types=task_types,
-        annotation_types=[prediction_type],
-    )
-
-    # get labels
-    ds_labels = get_labels(db, gt_filter, ignore_predictions=True)
-    md_labels = get_labels(db, pd_filter, ignore_groundtruths=True)
-
-    # set operation to get disjoint sets wrt the lhs operand
-    ds_unique = list(ds_labels - md_labels)
-    md_unique = list(md_labels - ds_labels)
-
-    # returns tuple of label lists
-    return (ds_unique, md_unique)
+    lhs_labels = get_labels(db, lhs, ignore_predictions=True)
+    rhs_labels = get_labels(db, rhs, ignore_groundtruths=True)
+    lhs_unique = list(lhs_labels - rhs_labels)
+    rhs_unique = list(rhs_labels - lhs_labels)
+    return (lhs_unique, rhs_unique)
 
 
 def get_disjoint_keys(
     db: Session,
-    dataset_name: str,
-    model_name: str,
-    task_type: enums.TaskType,
+    lhs: schemas.Filter,
+    rhs: schemas.Filter,
 ) -> tuple[list[schemas.Label], list[schemas.Label]]:
     """
     Returns all unique label keys that are not shared between both predictions and groundtruths.
@@ -382,36 +317,18 @@ def get_disjoint_keys(
     ----------
     db : Session
         The database Session to query against.
-    dataset_name: str
-        The name of a dataset.
-    model_name: str
-        The name of a model.
-    task_type: task_type: enums.TaskType
-        The task type to filter on.
+    lhs : list[schemas.Filter]
+        Filter defining first label set.
+    rhs : list[schemas.Filter]
+        Filter defining second label set.
 
     Returns
     ----------
     Tuple[list[schemas.Label], list[schemas.Label]]
-        A tuple of disjoint label key, where the first element is those labels which are present in groundtruths but absent in predictions.
+        A tuple of disjoint label key, where the first element is those labels which are present in lhs but absent in rhs.
     """
-    # create filters
-    gt_filter = schemas.Filter(
-        dataset_names=[dataset_name],
-        task_types=[task_type],
-    )
-    pd_filter = schemas.Filter(
-        dataset_names=[dataset_name],
-        models_names=[model_name],
-        task_types=[task_type],
-    )
-
-    # get keys
-    ds_keys = get_label_keys(db, gt_filter, ignore_predictions=True)
-    md_keys = get_label_keys(db, pd_filter, ignore_groundtruths=True)
-
-    # set operation to get disjoint sets wrt the lhs operand
-    ds_unique = list(ds_keys - md_keys)
-    md_unique = list(md_keys - ds_keys)
-
-    # returns tuple of label lists
-    return (ds_unique, md_unique)
+    lhs_keys = get_label_keys(db, lhs, ignore_predictions=True)
+    rhs_keys = get_label_keys(db, rhs, ignore_groundtruths=True)
+    lhs_unique = list(lhs_keys - rhs_keys)
+    rhs_unique = list(rhs_keys - lhs_keys)
+    return (lhs_unique, rhs_unique)
