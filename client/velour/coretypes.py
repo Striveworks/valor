@@ -694,10 +694,10 @@ class Evaluation:
         ----------
         id : int
             The id of the evaluation.
-        model_filter : schemas.Filter
-            The filter used to select the predictions for evaluation.
-        evalutation_filter : schemas.Filter
-            The filter used to select the groundtruths for evaluation.
+        model_name : str
+            The name of the evaluated model.
+        datum_filter : schemas.Filter
+            The filter used to select the datums for evaluation.
         status : EvaluationStatus
             The status of the evaluation.
         metrics : List[dict]

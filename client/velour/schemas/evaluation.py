@@ -8,7 +8,7 @@ from velour.schemas.filters import Filter
 @dataclass
 class EvaluationParameters:
     """
-    Defines paramaters for evaluation methods.
+    Defines parameters for evaluation methods.
 
     Attributes
     ----------
