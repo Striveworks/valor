@@ -1045,14 +1045,8 @@ def test_create_detection_metrics(
             )
 
         job_request = schemas.EvaluationRequest(
-            model_filter=schemas.Filter(
-                model_names=["test_model"],
-                annotation_geometric_area=geometric_filters
-                if geometric_filters
-                else None,
-                label_keys=[label_key],
-            ),
-            dataset_filter=schemas.Filter(
+            model_names=["test_model"],
+            datum_filter=schemas.Filter(
                 dataset_names=["test_dataset"],
                 annotation_geometric_area=geometric_filters
                 if geometric_filters
@@ -1182,11 +1176,8 @@ def test_create_detection_metrics(
     model_evals[0].metrics = []
     model_evals[1].metrics = []
     assert model_evals[0] == schemas.EvaluationResponse(
-        model_filter=schemas.Filter(
-            model_names=[model_name],
-            label_keys=["class"],
-        ),
-        dataset_filter=schemas.Filter(
+        model_name=model_name,
+        datum_filter=schemas.Filter(
             dataset_names=[dataset_name],
             label_keys=["class"],
         ),
@@ -1206,21 +1197,8 @@ def test_create_detection_metrics(
         ],
     )
     assert model_evals[1] == schemas.EvaluationResponse(
-        model_filter=schemas.Filter(
-            model_names=[model_name],
-            annotation_geometric_area=[
-                schemas.NumericFilter(
-                    value=min_area,
-                    operator=">=",
-                ),
-                schemas.NumericFilter(
-                    value=max_area,
-                    operator="<=",
-                ),
-            ],
-            label_keys=["class"],
-        ),
-        dataset_filter=schemas.Filter(
+        model_name=model_name,
+        datum_filter=schemas.Filter(
             dataset_names=[dataset_name],
             annotation_geometric_area=[
                 schemas.NumericFilter(
@@ -1272,8 +1250,8 @@ def test_create_clf_metrics(
     crud.finalize(db=db, model_name=model_name, dataset_name=dataset_name)
 
     job_request = schemas.EvaluationRequest(
-        model_filter=schemas.Filter(model_names=[model_name]),
-        dataset_filter=schemas.Filter(dataset_names=[dataset_name]),
+        model_names=[model_name],
+        datum_filter=schemas.Filter(dataset_names=[dataset_name]),
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.CLASSIFICATION
         ),

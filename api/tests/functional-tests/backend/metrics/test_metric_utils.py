@@ -115,8 +115,8 @@ def test_validate_computation(
     created, _ = core.create_or_get_evaluations(
         db,
         schemas.EvaluationRequest(
-            model_filter=schemas.Filter(model_names=[created_model]),
-            dataset_filter=schemas.Filter(dataset_names=[created_dataset]),
+            model_names=[created_model],
+            datum_filter=schemas.Filter(dataset_names=[created_dataset]),
             parameters=schemas.EvaluationParameters(
                 task_type=enums.TaskType.CLASSIFICATION,
             ),

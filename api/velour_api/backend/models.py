@@ -189,19 +189,19 @@ class Evaluation(Base):
     __tablename__ = "evaluation"
     __table_args__ = (
         UniqueConstraint(
-            "model_filter",
-            "dataset_filter",
+            "model_name",
+            "datum_filter",
             "parameters",
         ),
     )
 
     # columns
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    model_filter = mapped_column(JSONB, nullable=False)
-    dataset_filter = mapped_column(JSONB, nullable=False)
-    parameters = mapped_column(JSONB, nullable=True)
-    geo = mapped_column(Geography(), nullable=True)
+    model_name: Mapped[str] = mapped_column(nullable=False)
+    datum_filter = mapped_column(JSONB, nullable=False)
+    parameters = mapped_column(JSONB, nullable=False)
     status: Mapped[str] = mapped_column(nullable=False)
+    geo = mapped_column(Geography(), nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
 
     # relationships

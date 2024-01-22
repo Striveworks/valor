@@ -37,14 +37,14 @@ class EvaluationRequest:
     ----------
     model_filter : schemas.Filter
         The filter used to enumerate all the models we want to evaluate.
-    dataset_filter : schemas.Filter
+    datum_filter : schemas.Filter
         The filter object used to define what the model(s) is evaluating against.
     parameters : EvaluationParameters
         Any parameters that are used to modify an evaluation method.
     """
 
     model_filter: Filter
-    dataset_filter: Filter
+    datum_filter: Filter
     parameters: EvaluationParameters = field(
         default_factory=EvaluationParameters
     )
@@ -52,7 +52,7 @@ class EvaluationRequest:
     def __post_init__(self):
         if isinstance(self.model_filter, dict):
             self.model_filter = Filter(**self.model_filter)
-        if isinstance(self.dataset_filter, dict):
-            self.dataset_filter = Filter(**self.dataset_filter)
+        if isinstance(self.datum_filter, dict):
+            self.datum_filter = Filter(**self.datum_filter)
         if isinstance(self.parameters, dict):
             self.parameters = EvaluationParameters(**self.parameters)

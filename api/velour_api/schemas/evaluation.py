@@ -69,20 +69,18 @@ class EvaluationRequest(BaseModel):
     """
     Request for evaluation.
 
-    A `model_filter` that returns multiple models will lead to the creation of multiple evaluations.
-
     Attributes
     ----------
-    model_filter : schemas.Filter
-        The filter used to enumerate all the models we want to evaluate.
-    dataset_filter : schemas.Filter
-        The filter object used to define what the model is evaluating against.
+    model_names : str | list[str]
+        The model(s) to evaluate.
+    datum_filter : schemas.Filter
+        The filter object used to define what datums the model is evaluating over.
     parameters : DetectionParameters, optional
         Any parameters that are used to modify an evaluation method.
     """
 
-    model_filter: Filter
-    dataset_filter: Filter
+    model_names: str | list[str]
+    datum_filter: Filter
     parameters: EvaluationParameters
 
     # pydantic setting
@@ -93,16 +91,24 @@ class EvaluationRequest(BaseModel):
 
     @model_validator(mode="after")
     @classmethod
-    def _validate_no_task_type(cls, values):
-        """Validate filters do not contain task type."""
-        if values.dataset_filter.task_types is not None:
+    def _validate_request(cls, values):
+        """Validate the request."""
+
+        # verify filters do not contain task type.
+        if values.datum_filter.task_types is not None:
             raise ValueError(
-                "`dataset_filter` should not define the task_types constraint. Please set this in `parameters`."
+                "`datum_filter` should not define the task_types constraint. Please set this in evaluation `parameters`."
             )
-        if values.model_filter.task_types is not None:
-            raise ValueError(
-                "`model_filter` should not define the task_types constraint. Please set this in `parameters`."
-            )
+
+        # verify `model_names` is of type list[str]
+        if isinstance(values.model_names, list):
+            if len(values.model_names) == 0:
+                raise ValueError(
+                    "`model_names` should specify at least one model."
+                )
+        elif isinstance(values.model_names, str):
+            values.model_names = [values.model_names]
+
         return values
 
 
@@ -114,9 +120,9 @@ class EvaluationResponse(BaseModel):
     ----------
     id : int
         The id of the evaluation.
-    model_filter : schemas.Filter
-        The model filter used in the evaluation.
-    dataset_filter : schemas.Filter
+    model_name : str
+        The name of the evaluated model.
+    datum_filter : schemas.Filter
         The evaluation filter used in the evaluation.
     parameters : schemas.EvaluationParameters
         Any parameters used by the evaluation method.
@@ -129,8 +135,8 @@ class EvaluationResponse(BaseModel):
     """
 
     id: int
-    model_filter: Filter
-    dataset_filter: Filter
+    model_name: str
+    datum_filter: Filter
     parameters: EvaluationParameters
     status: EvaluationStatus
     metrics: list[Metric]

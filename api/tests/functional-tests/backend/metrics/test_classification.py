@@ -125,7 +125,7 @@ def test_compute_confusion_matrix_at_label_key(
         model_names=[model_name],
         task_types=[enums.TaskType.CLASSIFICATION],
     )
-    dataset_filter = schemas.Filter(
+    datum_filter = schemas.Filter(
         dataset_names=[dataset_name],
         task_types=[enums.TaskType.CLASSIFICATION],
     )
@@ -133,7 +133,7 @@ def test_compute_confusion_matrix_at_label_key(
     cm = _compute_confusion_matrix_at_label_key(
         db=db,
         model_filter=model_filter,
-        dataset_filter=dataset_filter,
+        datum_filter=datum_filter,
         label_key="animal",
     )
     expected_entries = [
@@ -163,7 +163,7 @@ def test_compute_confusion_matrix_at_label_key(
     cm = _compute_confusion_matrix_at_label_key(
         db=db,
         model_filter=model_filter,
-        dataset_filter=dataset_filter,
+        datum_filter=datum_filter,
         label_key="color",
     )
     expected_entries = [
@@ -205,7 +205,7 @@ def test_compute_confusion_matrix_at_label_key_and_filter(
         dataset_names=[dataset_name],
         model_names=[model_name],
     )
-    dataset_filters = schemas.Filter(
+    datum_filters = schemas.Filter(
         dataset_names=[dataset_name],
         model_names=[model_name],
         task_types=[enums.TaskType.CLASSIFICATION],
@@ -215,7 +215,7 @@ def test_compute_confusion_matrix_at_label_key_and_filter(
     cm = _compute_confusion_matrix_at_label_key(
         db,
         model_filter=model_filter,
-        dataset_filter=dataset_filters,
+        datum_filter=datum_filters,
         label_key="animal",
     )
 
@@ -289,7 +289,7 @@ def test_compute_roc_auc(
         model_names=[model_name],
         task_types=[enums.TaskType.CLASSIFICATION],
     )
-    dataset_filter = schemas.Filter(
+    datum_filter = schemas.Filter(
         dataset_names=[dataset_name],
         task_types=[enums.TaskType.CLASSIFICATION],
     )
@@ -298,7 +298,7 @@ def test_compute_roc_auc(
         _compute_roc_auc(
             db=db,
             model_filter=model_filter,
-            dataset_filter=dataset_filter,
+            datum_filter=datum_filter,
             label_key="animal",
         )
         == 0.8009259259259259
@@ -307,7 +307,7 @@ def test_compute_roc_auc(
         _compute_roc_auc(
             db=db,
             model_filter=model_filter,
-            dataset_filter=dataset_filter,
+            datum_filter=datum_filter,
             label_key="color",
         )
         == 0.43125
@@ -317,7 +317,7 @@ def test_compute_roc_auc(
         _compute_roc_auc(
             db=db,
             model_filter=model_filter,
-            dataset_filter=dataset_filter,
+            datum_filter=datum_filter,
             label_key="not a key",
         )
         is None
@@ -357,7 +357,7 @@ def test_compute_roc_auc_groupby_metadata(
     model_filter = schemas.Filter(
         model_names=[model_name],
     )
-    dataset_filter = schemas.Filter(
+    datum_filter = schemas.Filter(
         dataset_names=[dataset_name],
         task_types=[enums.TaskType.CLASSIFICATION],
         datum_metadata={"md1": [schemas.StringFilter(value="md1-val0")]},
@@ -367,7 +367,7 @@ def test_compute_roc_auc_groupby_metadata(
         _compute_roc_auc(
             db,
             model_filter=model_filter,
-            dataset_filter=dataset_filter,
+            datum_filter=datum_filter,
             label_key="animal",
         )
         == (0.5 + 2 / 3) / 2
@@ -386,13 +386,13 @@ def test_compute_classification(
     model_filter = schemas.Filter(
         dataset_names=[dataset_name], model_names=[model_name]
     )
-    dataset_filter = schemas.Filter(
+    datum_filter = schemas.Filter(
         dataset_names=[dataset_name],
         model_names=[model_name],
         task_types=[enums.TaskType.CLASSIFICATION],
     )
 
-    confusion, metrics = _compute_clf_metrics(db, model_filter, dataset_filter)
+    confusion, metrics = _compute_clf_metrics(db, model_filter, datum_filter)
 
     # Make matrices accessible by label_key
     confusion = {matrix.label_key: matrix for matrix in confusion}
@@ -458,8 +458,8 @@ def test_classification(
 ):
     # default request
     job_request = schemas.EvaluationRequest(
-        model_filter=schemas.Filter(model_names=[model_name]),
-        dataset_filter=schemas.Filter(dataset_names=[dataset_name]),
+        model_names=[model_name],
+        datum_filter=schemas.Filter(dataset_names=[dataset_name]),
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.CLASSIFICATION,
         ),

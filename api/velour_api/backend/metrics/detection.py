@@ -102,7 +102,7 @@ def _compute_detection_metrics(
     db: Session,
     parameters: schemas.EvaluationParameters,
     model_filter: schemas.Filter,
-    dataset_filter: schemas.Filter,
+    datum_filter: schemas.Filter,
     target_type: enums.AnnotationType,
 ) -> list[
     schemas.APMetric
@@ -142,7 +142,7 @@ def _compute_detection_metrics(
             models.GroundTruth.label_id.label("label_id"),
             models.Annotation.datum_id.label("datum_id"),
         )
-        .filter(dataset_filter)
+        .filter(datum_filter)
         .groundtruths("groundtruths")
     )
 
@@ -286,10 +286,10 @@ def _compute_detection_metrics(
     # Get the number of ground truths per label id
     number_of_ground_truths = {}
     for id in labels:
-        dataset_filter.label_ids = [id]
+        datum_filter.label_ids = [id]
         number_of_ground_truths[id] = db.query(
             Query(func.count(models.GroundTruth.id))
-            .filter(dataset_filter)
+            .filter(datum_filter)
             .groundtruths()
         ).scalar()
 
@@ -494,17 +494,19 @@ def compute_detection_metrics(
     evaluation = core.fetch_evaluation_from_id(db, evaluation_id)
 
     # unpack filters and params
-    model_filter = schemas.Filter(**evaluation.model_filter)
-    dataset_filter = schemas.Filter(**evaluation.dataset_filter)
+    datum_filter = schemas.Filter(**evaluation.datum_filter)
+    model_filter = datum_filter.model_copy()
+    model_filter.dataset_names = None
+    model_filter.model_names = [evaluation.model_name]
     parameters = schemas.EvaluationParameters(**evaluation.parameters)
 
     # load task type into filters
-    dataset_filter.task_types = [parameters.task_type]
+    datum_filter.task_types = [parameters.task_type]
     model_filter.task_types = [parameters.task_type]
 
     # fetch model and datasets
     datasets = (
-        db.query(Query(models.Dataset).filter(dataset_filter).any())
+        db.query(Query(models.Dataset).filter(datum_filter).any())
         .distinct()
         .all()
     )
@@ -521,14 +523,14 @@ def compute_detection_metrics(
         model=model,
         target_type=parameters.convert_annotations_to_type,
     )
-    dataset_filter.annotation_types = [target_type]
+    datum_filter.annotation_types = [target_type]
     model_filter.annotation_types = [target_type]
 
     metrics = _compute_detection_metrics(
         db=db,
         parameters=parameters,
         model_filter=model_filter,
-        dataset_filter=dataset_filter,
+        datum_filter=datum_filter,
         target_type=target_type,
     )
 

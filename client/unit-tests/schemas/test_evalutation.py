@@ -6,7 +6,7 @@ def test_evaluation_evaluation_job():
         "model_filter": {
             "model_names": ["md"],
         },
-        "dataset_filter": {
+        "datum_filter": {
             "dataset_names": ["ds"],
         },
         "parameters": {

@@ -405,14 +405,14 @@ def test_compute_segmentation_metrics(
         model_names=[model_name],
         dataset_names=[dataset_name],
     )
-    dataset_filter = schemas.Filter(
+    datum_filter = schemas.Filter(
         model_names=[model_name],
         dataset_names=[dataset_name],
         task_types=[enums.TaskType.SEGMENTATION],
         annotation_types=[enums.AnnotationType.RASTER],
     )
 
-    metrics = _compute_segmentation_metrics(db, model_filter, dataset_filter)
+    metrics = _compute_segmentation_metrics(db, model_filter, datum_filter)
     # should have five metrics (one IOU for each of the four labels, and one mIOU)
     assert len(metrics) == 5
     for metric in metrics[:-1]:

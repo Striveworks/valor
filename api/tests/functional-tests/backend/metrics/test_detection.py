@@ -34,7 +34,7 @@ def test__compute_detection_metrics(
             model_names=["test_model"],
             label_keys=["class"],
         ),
-        dataset_filter=schemas.Filter(
+        datum_filter=schemas.Filter(
             dataset_names=["test_dataset"],
             label_keys=["class"],
         ),

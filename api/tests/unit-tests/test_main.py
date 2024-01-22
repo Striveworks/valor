@@ -935,8 +935,8 @@ def test_delete_model(crud, client: TestClient):
 def test_post_detection_metrics(client: TestClient):
     response = schemas.EvaluationResponse(
         id=1,
-        model_filter=schemas.Filter(model_names=["modelname"]),
-        dataset_filter=schemas.Filter(dataset_names=["dsetname"]),
+        model_name="modelname",
+        datum_filter=schemas.Filter(dataset_names=["dsetname"]),
         parameters=schemas.EvaluationParameters(task_type=TaskType.DETECTION),
         status=EvaluationStatus.PENDING,
         metrics=[],
@@ -946,8 +946,8 @@ def test_post_detection_metrics(client: TestClient):
     ).model_dump()
 
     example_json = schemas.EvaluationRequest(
-        model_filter=schemas.Filter(model_names=["modelname"]),
-        dataset_filter=schemas.Filter(
+        model_names=["modelname"],
+        datum_filter=schemas.Filter(
             dataset_names=["dsetname"],
         ),
         parameters=schemas.EvaluationParameters(task_type=TaskType.DETECTION),
@@ -965,8 +965,8 @@ def test_post_detection_metrics(client: TestClient):
 def test_post_clf_metrics(client: TestClient):
     response = schemas.EvaluationResponse(
         id=1,
-        model_filter=schemas.Filter(model_names=["modelname"]),
-        dataset_filter=schemas.Filter(dataset_names=["dsetname"]),
+        model_name="modelname",
+        datum_filter=schemas.Filter(dataset_names=["dsetname"]),
         parameters=schemas.EvaluationParameters(
             task_type=TaskType.CLASSIFICATION
         ),
@@ -978,8 +978,8 @@ def test_post_clf_metrics(client: TestClient):
     ).model_dump()
 
     example_json = schemas.EvaluationRequest(
-        model_filter=schemas.Filter(model_names=["modelname"]),
-        dataset_filter=schemas.Filter(dataset_names=["dsetname"]),
+        model_names=["modelname"],
+        datum_filter=schemas.Filter(dataset_names=["dsetname"]),
         parameters=schemas.EvaluationParameters(
             task_type=TaskType.CLASSIFICATION
         ),
@@ -997,8 +997,8 @@ def test_post_clf_metrics(client: TestClient):
 def test_post_semenatic_segmentation_metrics(client: TestClient):
     response = schemas.EvaluationResponse(
         id=1,
-        model_filter=schemas.Filter(model_names=["modelname"]),
-        dataset_filter=schemas.Filter(dataset_names=["dsetname"]),
+        model_name="modelname",
+        datum_filter=schemas.Filter(dataset_names=["dsetname"]),
         parameters=schemas.EvaluationParameters(
             task_type=TaskType.SEGMENTATION
         ),
@@ -1010,8 +1010,8 @@ def test_post_semenatic_segmentation_metrics(client: TestClient):
     ).model_dump()
 
     example_json = schemas.EvaluationRequest(
-        model_filter=schemas.Filter(model_names=["modelname"]),
-        dataset_filter=schemas.Filter(dataset_names=["dsetname"]),
+        model_names=["modelname"],
+        datum_filter=schemas.Filter(dataset_names=["dsetname"]),
         parameters=schemas.EvaluationParameters(
             task_type=TaskType.SEGMENTATION
         ),

@@ -121,7 +121,7 @@ def test_generate_prediction_data(client: Client):
             "model_names": [model_name],
             "label_keys": ["k1"],
         },
-        "dataset_filter": {
+        "datum_filter": {
             **asdict(
                 Filter()
             ),  # default filter properties with overrides below

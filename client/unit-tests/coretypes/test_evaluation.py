@@ -24,7 +24,7 @@ def test_to_dataframe():
         model_filter=schemas.Filter(
             model_names=["model1"],
         ),
-        dataset_filter=schemas.Filter(
+        datum_filter=schemas.Filter(
             dataset_names=["dataset1"],
         ),
         parameters=schemas.EvaluationParameters(

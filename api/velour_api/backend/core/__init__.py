@@ -29,11 +29,8 @@ from .evaluation import (
     create_or_get_evaluations,
     fetch_evaluation_from_id,
     fetch_evaluations,
-    get_disjoint_labels_from_evaluation_id,
-    get_evaluation_ids,
     get_evaluation_status,
     get_evaluations,
-    get_evaluations_from_request,
     set_evaluation_status,
 )
 from .geometry import convert_geometry, get_annotation_type
@@ -113,10 +110,7 @@ __all__ = [
     "fetch_evaluations",
     "fetch_evaluation_from_id",
     "get_evaluations",
-    "get_evaluations_from_request",
-    "get_evaluation_ids",
     "get_evaluation_status",
-    "get_disjoint_labels_from_evaluation_id",
     "set_evaluation_status",
     "count_active_evaluations",
 ]

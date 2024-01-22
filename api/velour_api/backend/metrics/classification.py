@@ -16,7 +16,7 @@ from velour_api.backend.ops import Query
 def _compute_binary_roc_auc(
     db: Session,
     model_filter: schemas.Filter,
-    dataset_filter: schemas.Filter,
+    datum_filter: schemas.Filter,
     label: schemas.Label,
 ) -> float:
     """
@@ -37,7 +37,7 @@ def _compute_binary_roc_auc(
         The binary ROC AUC score.
     """
     # query to get the datum_ids and label values of groundtruths that have the given label key
-    gts_filter = dataset_filter.model_copy()
+    gts_filter = datum_filter.model_copy()
     gts_filter.label_keys = [label.key]
     gts_query = (
         Query(
@@ -122,7 +122,7 @@ def _compute_binary_roc_auc(
 def _compute_roc_auc(
     db: Session,
     model_filter: schemas.Filter,
-    dataset_filter: schemas.Filter,
+    datum_filter: schemas.Filter,
     label_key: str,
 ) -> float | None:
     """
@@ -145,7 +145,7 @@ def _compute_roc_auc(
         The ROC AUC. Returns None if no labels exist for that label_key.
     """
 
-    label_filter = dataset_filter.model_copy()
+    label_filter = datum_filter.model_copy()
     label_filter.label_keys = [label_key]
     labels = core.get_labels(
         db=db,
@@ -161,7 +161,7 @@ def _compute_roc_auc(
         bin_roc = _compute_binary_roc_auc(
             db=db,
             model_filter=model_filter,
-            dataset_filter=dataset_filter,
+            datum_filter=datum_filter,
             label=label,
         )
 
@@ -175,7 +175,7 @@ def _compute_roc_auc(
 def _compute_confusion_matrix_at_label_key(
     db: Session,
     model_filter: schemas.Filter,
-    dataset_filter: schemas.Filter,
+    datum_filter: schemas.Filter,
     label_key: str,
 ) -> schemas.ConfusionMatrix | None:
     """
@@ -198,7 +198,7 @@ def _compute_confusion_matrix_at_label_key(
         returns the confusion matrix.
     """
     # groundtruths filter
-    gFilter = dataset_filter.model_copy()
+    gFilter = datum_filter.model_copy()
     gFilter.label_keys = [label_key]
 
     # predictions filter
@@ -377,7 +377,7 @@ def _compute_precision_and_recall_f1_from_confusion_matrix(
 def _compute_confusion_matrix_and_metrics_at_label_key(
     db: Session,
     model_filter: schemas.Filter,
-    dataset_filter: schemas.Filter,
+    datum_filter: schemas.Filter,
     label_key: str,
     labels: list[models.Label],
 ) -> (
@@ -426,7 +426,7 @@ def _compute_confusion_matrix_and_metrics_at_label_key(
     confusion_matrix = _compute_confusion_matrix_at_label_key(
         db=db,
         model_filter=model_filter,
-        dataset_filter=dataset_filter,
+        datum_filter=datum_filter,
         label_key=label_key,
     )
 
@@ -444,7 +444,7 @@ def _compute_confusion_matrix_and_metrics_at_label_key(
             value=_compute_roc_auc(
                 db=db,
                 model_filter=model_filter,
-                dataset_filter=dataset_filter,
+                datum_filter=datum_filter,
                 label_key=label_key,
             ),
         ),
@@ -486,7 +486,7 @@ def _compute_confusion_matrix_and_metrics_at_label_key(
 def _compute_clf_metrics(
     db: Session,
     model_filter: schemas.Filter,
-    dataset_filter: schemas.Filter,
+    datum_filter: schemas.Filter,
 ) -> tuple[
     list[schemas.ConfusionMatrix],
     list[
@@ -517,7 +517,7 @@ def _compute_clf_metrics(
     dataset_labels = {
         schemas.Label(key=label.key, value=label.value)
         for label in db.query(
-            Query(models.Label).filter(dataset_filter).groundtruths()
+            Query(models.Label).filter(datum_filter).groundtruths()
         ).all()
     }
 
@@ -539,7 +539,7 @@ def _compute_clf_metrics(
         cm_and_metrics = _compute_confusion_matrix_and_metrics_at_label_key(
             db=db,
             model_filter=model_filter,
-            dataset_filter=dataset_filter,
+            datum_filter=datum_filter,
             label_key=label_key,
             labels=[label for label in labels if label.key == label_key],
         )
@@ -576,18 +576,20 @@ def compute_clf_metrics(
     evaluation = core.fetch_evaluation_from_id(db, evaluation_id)
 
     # unpack filters and params
-    model_filter = schemas.Filter(**evaluation.model_filter)
-    dataset_filter = schemas.Filter(**evaluation.dataset_filter)
+    datum_filter = schemas.Filter(**evaluation.datum_filter)
+    model_filter = datum_filter.model_copy()
+    model_filter.dataset_names = None
+    model_filter.model_names = [evaluation.model_name]
     parameters = schemas.EvaluationParameters(**evaluation.parameters)
 
     # load task type into filters
-    dataset_filter.task_types = [parameters.task_type]
+    datum_filter.task_types = [parameters.task_type]
     model_filter.task_types = [parameters.task_type]
 
     confusion_matrices, metrics = _compute_clf_metrics(
         db=db,
         model_filter=model_filter,
-        dataset_filter=dataset_filter,
+        datum_filter=datum_filter,
     )
 
     confusion_matrices_mappings = create_metric_mappings(

@@ -57,8 +57,22 @@ def test_EvaluationParameters():
 
 def test_EvaluationRequest():
     schemas.EvaluationRequest(
-        model_filter=schemas.Filter(),
-        dataset_filter=schemas.Filter(),
+        model_names="name",
+        datum_filter=schemas.Filter(),
+        parameters=schemas.EvaluationParameters(
+            task_type=enums.TaskType.CLASSIFICATION
+        ),
+    )
+    schemas.EvaluationRequest(
+        model_names=["name"],
+        datum_filter=schemas.Filter(),
+        parameters=schemas.EvaluationParameters(
+            task_type=enums.TaskType.CLASSIFICATION
+        ),
+    )
+    schemas.EvaluationRequest(
+        model_names=["name", "other"],
+        datum_filter=schemas.Filter(),
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.CLASSIFICATION
         ),
@@ -68,43 +82,41 @@ def test_EvaluationRequest():
     with pytest.raises(ValidationError):
         schemas.EvaluationRequest(
             model_filter=None,
-            dataset_filter=schemas.Filter(),
+            datum_filter=schemas.Filter(),
             parameters=schemas.EvaluationParameters(
                 task_type=enums.TaskType.CLASSIFICATION
             ),
         )
     with pytest.raises(ValidationError):
         schemas.EvaluationRequest(
-            model_filter=schemas.Filter(),
-            dataset_filter=None,
+            model_names=["name"],
+            datum_filter=None,
             parameters=schemas.EvaluationParameters(
                 task_type=enums.TaskType.CLASSIFICATION
             ),
         )
     with pytest.raises(ValidationError):
         schemas.EvaluationRequest(
-            model_filter=schemas.Filter(),
-            dataset_filter=schemas.Filter(),
+            model_names=["name"],
+            datum_filter=schemas.Filter(),
             parameters=None,
         )
 
-    # test `model_filter` validator
+    # test `model_names` validator
     with pytest.raises(ValidationError):
         schemas.EvaluationRequest(
-            model_filter=schemas.Filter(
-                task_types=[enums.TaskType.CLASSIFICATION]
-            ),
-            dataset_filter=schemas.Filter(),
+            model_names=[],
+            datum_filter=schemas.Filter(),
             parameters=schemas.EvaluationParameters(
                 task_type=enums.TaskType.CLASSIFICATION
             ),
         )
 
-    # test `dataset_filter` validator
+    # test `datum_filter` validator
     with pytest.raises(ValidationError):
         schemas.EvaluationRequest(
             model_filter=schemas.Filter(),
-            dataset_filter=schemas.Filter(
+            datum_filter=schemas.Filter(
                 task_types=[enums.TaskType.CLASSIFICATION]
             ),
             parameters=schemas.EvaluationParameters(
@@ -116,19 +128,8 @@ def test_EvaluationRequest():
 def test_EvaluationResponse():
     schemas.EvaluationResponse(
         id=1,
-        model_filter=schemas.Filter(),
-        dataset_filter=schemas.Filter(),
-        parameters=schemas.EvaluationParameters(
-            task_type=enums.TaskType.CLASSIFICATION
-        ),
-        status=enums.EvaluationStatus.DONE,
-        metrics=[],
-        confusion_matrices=[],
-    )
-    schemas.EvaluationResponse(
-        id=1,
-        model_filter=schemas.Filter(),
-        dataset_filter=schemas.Filter(),
+        model_name="test",
+        datum_filter=schemas.Filter(),
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.CLASSIFICATION
         ),
@@ -141,8 +142,8 @@ def test_EvaluationResponse():
     with pytest.raises(ValidationError):
         schemas.EvaluationResponse(
             id=None,
-            model_filter=schemas.Filter,
-            dataset_filter=schemas.Filter(),
+            model_name="test",
+            datum_filter=schemas.Filter(),
             parameters=schemas.EvaluationParameters(
                 task_type=enums.TaskType.CLASSIFICATION
             ),
@@ -155,34 +156,8 @@ def test_EvaluationResponse():
     with pytest.raises(ValidationError):
         schemas.EvaluationResponse(
             id=1,
-            model_filter=schemas.Filter,
-            dataset_filter=schemas.Filter(),
-            parameters=schemas.EvaluationParameters(
-                task_type=enums.TaskType.CLASSIFICATION
-            ),
-            status=enums.EvaluationStatus.DONE,
-            metrics=[],
-            confusion_matrices=[],
-        )
-
-    # test missing model_filters
-    with pytest.raises(ValidationError):
-        schemas.EvaluationResponse(
-            id=1,
-            model_filter=None,
-            dataset_filter=schemas.Filter(),
-            parameters=schemas.EvaluationParameters(
-                task_type=enums.TaskType.CLASSIFICATION
-            ),
-            status=enums.EvaluationStatus.DONE,
-            metrics=[],
-            confusion_matrices=[],
-        )
-    with pytest.raises(ValidationError):
-        schemas.EvaluationResponse(
-            id=1,
-            model_filter=schemas.Filter(),
-            dataset_filter=None,
+            model_name=None,
+            datum_filter=schemas.Filter(),
             parameters=schemas.EvaluationParameters(
                 task_type=enums.TaskType.CLASSIFICATION
             ),
@@ -195,8 +170,8 @@ def test_EvaluationResponse():
     with pytest.raises(ValidationError):
         schemas.EvaluationResponse(
             id=1,
-            model_filter=schemas.Filter(),
-            dataset_filter=schemas.Filter(),
+            model_name="name",
+            datum_filter=schemas.Filter(),
             parameters=None,
             status=enums.EvaluationStatus.DONE,
             metrics=[],
@@ -207,8 +182,8 @@ def test_EvaluationResponse():
     with pytest.raises(ValidationError):
         schemas.EvaluationResponse(
             id=1,
-            model_filter=schemas.Filter(),
-            dataset_filter=schemas.Filter(),
+            model_name="name",
+            datum_filter=schemas.Filter(),
             parameters=schemas.EvaluationParameters(
                 task_type=enums.TaskType.CLASSIFICATION
             ),

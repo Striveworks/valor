@@ -98,7 +98,7 @@ def test_evaluate_detection(
             "model_names": [model_name],
             "label_keys": ["k1"],
         },
-        "dataset_filter": {
+        "datum_filter": {
             **default_filter_properties,
             "dataset_names": ["test_dataset"],
             "label_keys": ["k1"],
@@ -197,7 +197,7 @@ def test_evaluate_detection(
             "model_names": [model_name],
             "label_keys": ["k1"],
         },
-        "dataset_filter": {
+        "datum_filter": {
             **default_filter_properties,
             "dataset_names": ["test_dataset"],
             "annotation_geometric_area": [
@@ -250,7 +250,7 @@ def test_evaluate_detection(
             "model_names": [model_name],
             "label_keys": ["k1"],
         },
-        "dataset_filter": {
+        "datum_filter": {
             **default_filter_properties,
             "dataset_names": ["test_dataset"],
             "annotation_geometric_area": [
@@ -299,7 +299,7 @@ def test_evaluate_detection(
             "model_names": [model_name],
             "label_keys": ["k1"],
         },
-        "dataset_filter": {
+        "datum_filter": {
             **default_filter_properties,
             "dataset_names": ["test_dataset"],
             "annotation_geometric_area": [
@@ -350,7 +350,7 @@ def test_evaluate_detection(
             "model_names": [model_name],
             "label_keys": ["k1"],
         },
-        "dataset_filter": {
+        "datum_filter": {
             **default_filter_properties,
             "dataset_names": ["test_dataset"],
             "annotation_geometric_area": [
@@ -512,7 +512,7 @@ def test_evaluate_detection_with_json_filters(
             "model_names": [model_name],
             "label_keys": ["k1"],
         },
-        "dataset_filter": {
+        "datum_filter": {
             **default_filter_properties,
             "dataset_names": ["test_dataset"],
             "annotation_geometric_area": [
