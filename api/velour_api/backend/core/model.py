@@ -7,12 +7,16 @@ from sqlalchemy.orm import Session
 
 from velour_api import exceptions, schemas
 from velour_api.backend import models
-from velour_api.backend.core.annotation import create_skipped_annotations
+from velour_api.backend.core.annotation import (
+    create_skipped_annotations,
+    delete_model_annotations,
+)
 from velour_api.backend.core.dataset import fetch_dataset, get_dataset_status
 from velour_api.backend.core.evaluation import (
     count_active_evaluations,
     delete_evaluations,
 )
+from velour_api.backend.core.prediction import delete_model_predictions
 from velour_api.enums import ModelStatus, TableStatus
 
 
@@ -322,14 +326,19 @@ def delete_model(
     name : str
         The name of the model.
     """
-    delete_evaluations(db=db, model_names=[name])
     model = fetch_model(db, name=name)
+
+    # set status
     try:
         model.status = ModelStatus.DELETING
         db.commit()
     except Exception as e:
         db.rollback()
         raise e
+
+    delete_evaluations(db=db, model_names=[name])
+    delete_model_predictions(db=db, model=model)
+    delete_model_annotations(db=db, model=model)
 
     try:
         db.delete(model)

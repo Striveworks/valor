@@ -7,11 +7,14 @@ from sqlalchemy.orm import Session
 
 from velour_api import enums, exceptions, schemas
 from velour_api.backend import models
+from velour_api.backend.core.annotation import delete_dataset_annotations
 from velour_api.backend.core.evaluation import (
     count_active_evaluations,
     delete_evaluations,
 )
+from velour_api.backend.core.groundtruth import delete_groundtruths
 from velour_api.backend.core.label import get_labels
+from velour_api.backend.core.prediction import delete_dataset_predictions
 
 
 def create_dataset(
@@ -377,9 +380,14 @@ def delete_dataset(
     name : str
         The name of the dataset.
     """
-    delete_evaluations(db=db, dataset_names=[name])
     set_dataset_status(db, name, enums.TableStatus.DELETING)
     dataset = fetch_dataset(db, name=name)
+
+    delete_evaluations(db=db, dataset_names=[name])
+    delete_dataset_predictions(db, dataset)
+    delete_groundtruths(db, dataset)
+    delete_dataset_annotations(db, dataset)
+
     try:
         db.delete(dataset)
         db.commit()
