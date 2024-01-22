@@ -26,8 +26,10 @@ def _compute_binary_roc_auc(
     ----------
     db : Session
         The database Session to query against.
-    job_request : schemas.EvaluationRequest
-        The job request to compute the score for.
+    prediction_filter : schemas.Filter
+        The filter to be used to query predictions.
+    groundtruth_filter : schemas.Filter
+        The filter to be used to query groundtruths.
     label : schemas.Label
         The label to compute the score for.
 
@@ -134,8 +136,10 @@ def _compute_roc_auc(
     ----------
     db : Session
         The database Session to query against.
-    job_request : schemas.EvaluationRequest
-        The job request to compute the score for.
+    prediction_filter : schemas.Filter
+        The filter to be used to query predictions.
+    groundtruth_filter : schemas.Filter
+        The filter to be used to query groundtruths.
     label_key : str
         The label key to compute the score for.
 
@@ -185,8 +189,10 @@ def _compute_confusion_matrix_at_label_key(
     ----------
     db : Session
         The database Session to query against.
-    job_request : schemas.EvaluationRequest
-        The job request to compute the matrix for.
+    prediction_filter : schemas.Filter
+        The filter to be used to query predictions.
+    groundtruth_filter : schemas.Filter
+        The filter to be used to query groundtruths.
     label_key : str
         The label key to compute the matrix for.
 
@@ -400,8 +406,10 @@ def _compute_confusion_matrix_and_metrics_at_label_key(
     ----------
     db : Session
         The database Session to query against.
-    job_request : schemas.EvaluationRequest
-        The job request to compute the matrix for.
+    prediction_filter : schemas.Filter
+        The filter to be used to query predictions.
+    groundtruth_filter : schemas.Filter
+        The filter to be used to query groundtruths.
     label_key : str
         The label key to compute the matrix for.
     labels
@@ -505,8 +513,10 @@ def _compute_clf_metrics(
     ----------
     db : Session
         The database Session to query against.
-    job_request : schemas.EvaluationRequest
-        The job request to compute metrics for.
+    prediction_filter : schemas.Filter
+        The filter to be used to query predictions.
+    groundtruth_filter : schemas.Filter
+        The filter to be used to query groundtruths.
 
     Returns
     ----------

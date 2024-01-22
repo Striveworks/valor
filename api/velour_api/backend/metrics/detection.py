@@ -117,12 +117,12 @@ def _compute_detection_metrics(
     ----------
     db : Session
         The database Session to query against.
-    dataset: models.Dataset
-        The dataset to compute metrics for.
-    model: models.Model
-        The model to compute metrics for.
-    settings: schemas.EvaluationSettings
-        The settings for the evaluation.
+    parameters : schemas.EvaluationParameters
+        Any user-defined parameters.
+    prediction_filter : schemas.Filter
+        The filter to be used to query predictions.
+    groundtruth_filter : schemas.Filter
+        The filter to be used to query groundtruths.
     target_type: enums.AnnotationType
         The annotation type to compute metrics for.
 
