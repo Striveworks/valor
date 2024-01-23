@@ -239,7 +239,7 @@ class Datum:
             raise TypeError(f"Expected type `{type(Datum)}`, got `{other}`")
         return self.dict() == other.dict()
 
-    def _set_dataset_name(self, dataset: Union["Dataset", str]) -> None:
+    def _set_dataset_name(self, dataset: Union["Dataset", str, None]) -> None:
         """Sets the dataset the datum belongs to. This should never be called by the user."""
         self._dataset_name = (
             dataset._name if isinstance(dataset, Dataset) else dataset
