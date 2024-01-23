@@ -1,6 +1,7 @@
-from sqlalchemy import ColumnElement, and_, func, or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+from sqlalchemy.sql.elements import BinaryExpression
 
 from velour_api import enums, exceptions, schemas
 from velour_api.backend import core, models
@@ -9,7 +10,7 @@ from velour_api.backend.ops import Query
 
 def _create_dataset_expr_from_list(
     dataset_names: list[str],
-) -> ColumnElement[bool]:
+) -> BinaryExpression:
     """
     Creates a sqlalchemy or_ expression from a list of str.
 
@@ -22,7 +23,7 @@ def _create_dataset_expr_from_list(
 
     Returns
     -------
-    ColumnElement[bool]
+    BinaryExpression
         The sqlalchemy expression.
     """
     if not dataset_names:
@@ -36,14 +37,13 @@ def _create_dataset_expr_from_list(
             *[
                 models.Evaluation.datum_filter["dataset_names"].op("?")(name)
                 for name in dataset_names
-                if isinstance(name, str)
             ]
         )
 
 
 def _create_model_expr_from_list(
     model_names: list[str],
-) -> ColumnElement[bool]:
+) -> BinaryExpression:
     """
     Creates a sqlalchemy or_ expression from a list of str.
 
@@ -56,7 +56,7 @@ def _create_model_expr_from_list(
 
     Returns
     -------
-    ColumnElement[bool]
+    BinaryExpression
         The sqlalchemy expression.
     """
     if not model_names:
@@ -65,15 +65,11 @@ def _create_model_expr_from_list(
         return models.Evaluation.model_name == model_names[0]
     else:
         return or_(
-            *[
-                models.Evaluation.model_name == name
-                for name in model_names
-                if isinstance(name, str)
-            ]
+            *[models.Evaluation.model_name == name for name in model_names]
         )
 
 
-def _create_eval_expr_from_list(ids: list[int]) -> ColumnElement[bool]:
+def _create_eval_expr_from_list(ids: list[int]) -> BinaryExpression:
     """
     Creates a sqlalchemy or_ expression from a list of int.
 
@@ -86,7 +82,7 @@ def _create_eval_expr_from_list(ids: list[int]) -> ColumnElement[bool]:
 
     Returns
     -------
-    ColumnElement[bool]
+    BinaryExpression
         The sqlalchemy expression.
     """
     if not ids:
@@ -94,20 +90,14 @@ def _create_eval_expr_from_list(ids: list[int]) -> ColumnElement[bool]:
     elif len(ids) == 1:
         return models.Evaluation.id == ids[0]
     else:
-        return or_(
-            *[
-                models.Evaluation.id == id_
-                for id_ in ids
-                if isinstance(id_, int)
-            ]
-        )
+        return or_(*[models.Evaluation.id == id_ for id_ in ids])
 
 
 def _create_bulk_expression(
     evaluation_ids: list[int] | None = None,
     dataset_names: list[str] | None = None,
     model_names: list[str] | None = None,
-) -> ColumnElement[bool]:
+) -> list[BinaryExpression]:
     """Creates an expression used to query evaluations by id, dataset and model."""
     expr = []
     if dataset_names:
