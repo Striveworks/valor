@@ -21,7 +21,7 @@ def test_to_dataframe():
         return dict(type=type, parameters=parameters, value=value, label=label)
 
     df = Evaluation(
-        client=None,
+        client=None,  # type: ignore
         id=1,
         model_name="model1",
         datum_filter=schemas.Filter(

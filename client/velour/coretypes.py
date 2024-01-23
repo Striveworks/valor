@@ -802,7 +802,7 @@ class Evaluation:
     def wait_for_completion(
         self,
         *,
-        timeout: int = None,
+        timeout: Optional[int] = None,
         interval: float = 1.0,
     ) -> EvaluationStatus:
         """
@@ -827,7 +827,7 @@ class Evaluation:
 
     def to_dataframe(
         self,
-        stratify_by: Tuple[str, str] = None,
+        stratify_by: Optional[Tuple[str, str]] = None,
     ):
         """
         Get all metrics associated with a Model and return them in a `pd.DataFrame`.
