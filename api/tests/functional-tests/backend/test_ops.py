@@ -167,7 +167,7 @@ def geospatial_coordinates() -> (
 def datum_1(metadata_1, geospatial_coordinates) -> schemas.Datum:
     return schemas.Datum(
         uid=datum_uid1,
-        dataset=dset_name,
+        dataset_name=dset_name,
         metadata=metadata_1,
         geospatial=geospatial_coordinates["polygon1"],
     )
@@ -177,7 +177,7 @@ def datum_1(metadata_1, geospatial_coordinates) -> schemas.Datum:
 def datum_2(metadata_2, geospatial_coordinates) -> schemas.Datum:
     return schemas.Datum(
         uid=datum_uid2,
-        dataset=dset_name,
+        dataset_name=dset_name,
         metadata=metadata_2,
         geospatial=geospatial_coordinates["multipolygon"],
     )
@@ -187,7 +187,7 @@ def datum_2(metadata_2, geospatial_coordinates) -> schemas.Datum:
 def datum_3(metadata_3, geospatial_coordinates) -> schemas.Datum:
     return schemas.Datum(
         uid=datum_uid3,
-        dataset=dset_name,
+        dataset_name=dset_name,
         metadata=metadata_3,
         geospatial=geospatial_coordinates["polygon2"],
     )
@@ -197,7 +197,7 @@ def datum_3(metadata_3, geospatial_coordinates) -> schemas.Datum:
 def datum_4(metadata_4, geospatial_coordinates) -> schemas.Datum:
     return schemas.Datum(
         uid=datum_uid4,
-        dataset=dset_name,
+        dataset_name=dset_name,
         metadata=metadata_4,
         geospatial=geospatial_coordinates["polygon3"],
     )
@@ -441,7 +441,7 @@ def prediction_cat_datum1_model1(
     prediction_annotations_cat,
 ) -> schemas.Prediction:
     return schemas.Prediction(
-        model=model_name1,
+        model_name=model_name1,
         datum=datum_1,
         annotations=prediction_annotations_cat,
     )
@@ -453,7 +453,7 @@ def prediction_cat_datum2_model1(
     prediction_annotations_cat,
 ) -> schemas.Prediction:
     return schemas.Prediction(
-        model=model_name1,
+        model_name=model_name1,
         datum=datum_2,
         annotations=prediction_annotations_cat,
     )
@@ -465,7 +465,7 @@ def prediction_dog_datum3_model1(
     prediction_annotations_dog,
 ) -> schemas.Prediction:
     return schemas.Prediction(
-        model=model_name1,
+        model_name=model_name1,
         datum=datum_3,
         annotations=prediction_annotations_dog,
     )
@@ -477,7 +477,7 @@ def prediction_dog_datum4_model1(
     prediction_annotations_dog,
 ) -> schemas.Prediction:
     return schemas.Prediction(
-        model=model_name1,
+        model_name=model_name1,
         datum=datum_4,
         annotations=prediction_annotations_dog,
     )
@@ -489,7 +489,7 @@ def prediction_dog_datum1_model2(
     prediction_annotations_dog,
 ) -> schemas.Prediction:
     return schemas.Prediction(
-        model=model_name2,
+        model_name=model_name2,
         datum=datum_1,
         annotations=prediction_annotations_dog,
     )
@@ -501,7 +501,7 @@ def prediction_dog_datum2_model2(
     prediction_annotations_dog,
 ) -> schemas.Prediction:
     return schemas.Prediction(
-        model=model_name2,
+        model_name=model_name2,
         datum=datum_2,
         annotations=prediction_annotations_dog,
     )
@@ -513,7 +513,7 @@ def prediction_cat_datum3_model2(
     prediction_annotations_cat,
 ) -> schemas.Prediction:
     return schemas.Prediction(
-        model=model_name2,
+        model_name=model_name2,
         datum=datum_3,
         annotations=prediction_annotations_cat,
     )
@@ -525,7 +525,7 @@ def prediction_cat_datum4_model2(
     prediction_annotations_cat,
 ) -> schemas.Prediction:
     return schemas.Prediction(
-        model=model_name2,
+        model_name=model_name2,
         datum=datum_4,
         annotations=prediction_annotations_cat,
     )
@@ -669,7 +669,7 @@ def test_query_models(
 
     # Q: Get models with metadatum with `numeric` > 0.5.
     f = schemas.Filter(
-        models_metadata={
+        model_metadata={
             "some_numeric_attribute": [
                 schemas.NumericFilter(
                     value=0.5,
@@ -685,7 +685,7 @@ def test_query_models(
 
     # Q: Get models with metadatum with `numeric` < 0.5.
     f = schemas.Filter(
-        models_metadata={
+        model_metadata={
             "some_numeric_attribute": [
                 schemas.NumericFilter(
                     value=0.5,
@@ -864,7 +864,7 @@ def test_complex_queries(
 ):
     # Q: Get datums that `model1` has annotations for with label `dog` and prediction score > 0.9.
     f = schemas.Filter(
-        models_names=[model_name1],
+        model_names=[model_name1],
         labels=[{"class": "dog"}],
         prediction_scores=[
             schemas.NumericFilter(
@@ -881,7 +881,7 @@ def test_complex_queries(
 
     # Q: Get datums that `model1` has `bounding_box` annotations for with label `dog` and prediction score > 0.75.
     f = schemas.Filter(
-        models_names=[model_name1],
+        model_names=[model_name1],
         labels=[{"class": "dog"}],
         prediction_scores=[
             schemas.NumericFilter(
@@ -917,7 +917,7 @@ def test_query_by_annotation_geometry(
     assert len(annotations) == 12
 
     # Q: Get `bounding_box` annotations from `model1` that have an area > 75.
-    f.models_names = [model_name1]
+    f.model_names = [model_name1]
     q = Query(models.Annotation).filter(f).any()
     annotations = db.query(q).all()
     assert len(annotations) == 4
@@ -1301,7 +1301,7 @@ def test_model_geospatial_filters(
     db: Session,
     model_sim,
     model_object=models.Model.name,
-    arg_name: str = "models_geospatial",
+    arg_name: str = "model_geospatial",
 ):
     def _get_geospatial_names_from_filter(
         db: Session,
@@ -1734,7 +1734,7 @@ def _test_model_datetime_query(
         Query(models.Model)
         .filter(
             schemas.Filter(
-                models_metadata={
+                model_metadata={
                     key: [
                         schemas.DateTimeFilter(
                             value=metadata_[idx], operator=op

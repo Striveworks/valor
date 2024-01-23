@@ -10,13 +10,88 @@ from velour_api.backend import core, models
 def created_dataset(db: Session, dataset_name: str) -> str:
     dataset = schemas.Dataset(name=dataset_name)
     core.create_dataset(db, dataset=dataset)
+    core.create_groundtruth(
+        db=db,
+        groundtruth=schemas.GroundTruth(
+            datum=schemas.Datum(uid="uid1", dataset_name=dataset_name),
+            annotations=[
+                schemas.Annotation(
+                    task_type=enums.TaskType.CLASSIFICATION,
+                    labels=[schemas.Label(key="k1", value="v1")],
+                )
+            ],
+        ),
+    )
+    core.create_groundtruth(
+        db=db,
+        groundtruth=schemas.GroundTruth(
+            datum=schemas.Datum(uid="uid2", dataset_name=dataset_name),
+            annotations=[
+                schemas.Annotation(
+                    task_type=enums.TaskType.DETECTION,
+                    labels=[schemas.Label(key="k1", value="v1")],
+                )
+            ],
+        ),
+    )
+    core.create_groundtruth(
+        db=db,
+        groundtruth=schemas.GroundTruth(
+            datum=schemas.Datum(uid="uid3", dataset_name=dataset_name),
+            annotations=[
+                schemas.Annotation(
+                    task_type=enums.TaskType.SEGMENTATION,
+                    labels=[schemas.Label(key="k1", value="v1")],
+                )
+            ],
+        ),
+    )
     return dataset_name
 
 
 @pytest.fixture
-def created_model(db: Session, model_name: str) -> str:
+def created_model(db: Session, model_name: str, created_dataset: str) -> str:
     model = schemas.Model(name=model_name)
     core.create_model(db, model=model)
+    core.create_prediction(
+        db=db,
+        prediction=schemas.Prediction(
+            model_name=model_name,
+            datum=schemas.Datum(uid="uid1", dataset_name=created_dataset),
+            annotations=[
+                schemas.Annotation(
+                    task_type=enums.TaskType.CLASSIFICATION,
+                    labels=[schemas.Label(key="k1", value="v1", score=1.0)],
+                )
+            ],
+        ),
+    )
+    core.create_prediction(
+        db=db,
+        prediction=schemas.Prediction(
+            model_name=model_name,
+            datum=schemas.Datum(uid="uid2", dataset_name=created_dataset),
+            annotations=[
+                schemas.Annotation(
+                    task_type=enums.TaskType.DETECTION,
+                    labels=[schemas.Label(key="k1", value="v1", score=1.0)],
+                )
+            ],
+        ),
+    )
+    core.create_prediction(
+        db=db,
+        prediction=schemas.Prediction(
+            model_name=model_name,
+            datum=schemas.Datum(uid="uid3", dataset_name=created_dataset),
+            annotations=[
+                schemas.Annotation(
+                    task_type=enums.TaskType.SEGMENTATION,
+                    labels=[schemas.Label(key="k1", value="v1")],
+                )
+            ],
+        ),
+    )
     return model_name
 
 
@@ -163,14 +238,18 @@ def test_model_status_with_evaluations(
 ):
     # create an evaluation
     core.set_dataset_status(db, created_dataset, enums.TableStatus.FINALIZED)
-    evaluation_id = core.create_evaluation(
+    created, _ = core.create_or_get_evaluations(
         db,
-        schemas.EvaluationJob(
-            dataset=created_dataset,
-            model=created_model,
-            task_type=enums.TaskType.CLASSIFICATION,
+        schemas.EvaluationRequest(
+            model_names=[created_model],
+            datum_filter=schemas.Filter(dataset_names=[created_dataset]),
+            parameters=schemas.EvaluationParameters(
+                task_type=enums.TaskType.CLASSIFICATION,
+            ),
         ),
     )
+    assert len(created) == 1
+    evaluation_id = created[0].id
 
     # set the evaluation to the running state
     core.set_evaluation_status(

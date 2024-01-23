@@ -45,6 +45,12 @@ class GDALRaster(Raster):
 
 class GroundTruth(Base):
     __tablename__ = "groundtruth"
+    __table_args__ = (
+        UniqueConstraint(
+            "annotation_id",
+            "label_id",
+        ),
+    )
 
     # columns
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
@@ -65,6 +71,12 @@ class GroundTruth(Base):
 
 class Prediction(Base):
     __tablename__ = "prediction"
+    __table_args__ = (
+        UniqueConstraint(
+            "annotation_id",
+            "label_id",
+        ),
+    )
 
     # columns
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
@@ -156,9 +168,6 @@ class Model(Base):
     annotations: Mapped[list[Annotation]] = relationship(
         cascade="all, delete-orphan"
     )
-    evaluation: Mapped[list["Evaluation"]] = relationship(
-        cascade="all, delete"
-    )
 
 
 class Dataset(Base):
@@ -174,35 +183,28 @@ class Dataset(Base):
 
     # relationships
     datums: Mapped[list[Datum]] = relationship(cascade="all, delete")
-    evaluation: Mapped[list["Evaluation"]] = relationship(
-        cascade="all, delete"
-    )
 
 
 class Evaluation(Base):
     __tablename__ = "evaluation"
     __table_args__ = (
         UniqueConstraint(
-            "dataset_id",
-            "model_id",
-            "task_type",
-            "settings",
+            "model_name",
+            "datum_filter",
+            "parameters",
         ),
     )
 
     # columns
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    dataset_id: Mapped[int] = mapped_column(ForeignKey("dataset.id"))
-    model_id: Mapped[int] = mapped_column(ForeignKey("model.id"))
-    task_type: Mapped[str] = mapped_column(nullable=False)
-    settings = mapped_column(JSONB, nullable=True)
-    geo = mapped_column(Geography(), nullable=True)
+    model_name: Mapped[str] = mapped_column(nullable=False)
+    datum_filter = mapped_column(JSONB, nullable=False)
+    parameters = mapped_column(JSONB, nullable=False)
     status: Mapped[str] = mapped_column(nullable=False)
+    geo = mapped_column(Geography(), nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
 
     # relationships
-    dataset = relationship(Dataset, back_populates="evaluation")
-    model = relationship(Model, back_populates="evaluation")
     metrics: Mapped[list["Metric"]] = relationship(
         "Metric", cascade="all, delete"
     )
@@ -222,14 +224,12 @@ class Metric(Base):
     )
     type: Mapped[str] = mapped_column()
     value: Mapped[float] = mapped_column(nullable=True)
-    parameters = mapped_column(JSONB)
+    parameters = mapped_column(JSONB, nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
 
     # relationships
     label = relationship(Label)
-    settings: Mapped[Evaluation] = relationship(
-        "Evaluation", back_populates="metrics"
-    )
+    settings: Mapped[Evaluation] = relationship(back_populates="metrics")
 
 
 class ConfusionMatrix(Base):

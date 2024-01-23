@@ -1,4 +1,19 @@
-from velour_api import enums
+import json
+from datetime import datetime
+
+from fastapi import HTTPException
+
+from velour_api import enums, logger
+
+
+class ServiceUnavailable(Exception):
+    """
+    Raises an exception if the Velour service is unavailble.
+    """
+
+    def __init__(self, message: str):
+        super().__init__(message)
+
 
 """ Dataset """
 
@@ -189,18 +204,18 @@ class ModelNotFinalizedError(Exception):
 
 
 class ModelInferencesDoNotExist(Exception):
+    """
+    Raises an exception if the user tries to manipulate an inference that doesn't exist.
+
+    Parameters
+    -------
+    dataset_name : str
+        The name of the dataset.
+    model_name : str
+        The name of the model.
+    """
+
     def __init__(self, *, dataset_name: str, model_name: str):
-        """
-        Raises an exception if the user tries to manipulate an inference that doesn't exist.
-
-        Parameters
-        -------
-        dataset_name : str
-            The name of the dataset.
-        model_name : str
-            The name of the model.
-        """
-
         super().__init__(
             f"inferences for model `{model_name}` over dataset `{dataset_name}` do not exist."
         )
@@ -302,6 +317,28 @@ class AnnotationAlreadyExistsError(Exception):
         )
 
 
+class GroundTruthAlreadyExistsError(Exception):
+    """
+    Raises an exception if a groundtruth is duplicated.
+    """
+
+    def __init__(self, annotation_id: int, label_id: int):
+        super().__init__(
+            f"A groundtruth already exists mapping label `{label_id}` to annotation `{annotation_id}`."
+        )
+
+
+class PredictionAlreadyExistsError(Exception):
+    """
+    Raises an exception if a prediction is duplicated.
+    """
+
+    def __init__(self):
+        super().__init__(
+            "A prediction with the same label already exists for this datum."
+        )
+
+
 """ Evaluation """
 
 
@@ -342,6 +379,15 @@ class EvaluationRunningError(Exception):
         super().__init__(msg)
 
 
+class EvaluationRequestError(Exception):
+    """
+    Raises an exception if the user request fails.
+    """
+
+    def __init__(self, msg: str):
+        super().__init__(msg)
+
+
 class EvaluationStateError(Exception):
     """
     Raises an exception if a requested state transition is illegal.
@@ -368,3 +414,74 @@ class EvaluationStateError(Exception):
         super().__init__(
             f"Evaluation `{evaluation_id}` attempted an illegal transition from `{current_state}` to `{requested_state}`."
         )
+
+
+error_to_status_code = {
+    # 400
+    ModelIsEmptyError: 400,
+    ValueError: 400,
+    AttributeError: 400,
+    # 404
+    DatasetDoesNotExistError: 404,
+    DatumDoesNotExistError: 404,
+    ModelDoesNotExistError: 404,
+    ModelInferencesDoNotExist: 404,
+    EvaluationDoesNotExistError: 404,
+    # 409
+    DatasetAlreadyExistsError: 409,
+    DatasetIsEmptyError: 409,
+    DatasetFinalizedError: 409,
+    DatasetNotFinalizedError: 409,
+    DatasetStateError: 409,
+    ModelAlreadyExistsError: 409,
+    ModelFinalizedError: 409,
+    ModelNotFinalizedError: 409,
+    ModelStateError: 409,
+    DatumAlreadyExistsError: 409,
+    DatumDoesNotBelongToDatasetError: 409,
+    AnnotationAlreadyExistsError: 409,
+    GroundTruthAlreadyExistsError: 409,
+    PredictionAlreadyExistsError: 409,
+    EvaluationAlreadyExistsError: 409,
+    EvaluationRunningError: 409,
+    EvaluationStateError: 409,
+    # 500
+    NotImplementedError: 500,
+    # 503
+    ServiceUnavailable: 503,
+}
+
+
+def create_http_error(error: Exception) -> HTTPException:
+    """
+    Creates a HTTP execption using a caught exception.
+
+    The HTTPException is populated with the name and details of the caught exception.
+
+    Parameters
+    ----------
+    error : Exception
+        The exception that was caught and needs conversion.
+
+    Returns
+    -------
+    fastapi.HTTPException
+    """
+    if type(error) in error_to_status_code:
+        status_code = error_to_status_code[type(error)]
+    else:
+        status_code = 500
+        logger.debug(
+            f"`{type(error).__name__}` does not have a status_code assigned to it."
+        )
+
+    return HTTPException(
+        status_code=status_code,
+        detail=json.dumps(
+            {
+                "name": str(type(error).__name__),
+                "detail": str(error),
+                "timestamp": datetime.utcnow().timestamp(),
+            }
+        ),
+    )

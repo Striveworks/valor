@@ -28,7 +28,7 @@ def generate_mot_data(num_frames: int):
 
     create_img = lambda frame: schemas.Datum(  # noqa: E731
         uid="test",
-        dataset="name",
+        dataset_name="name",
         metadata={
             "type": "image",
             "height": 500,
@@ -98,7 +98,7 @@ def generate_mot_data(num_frames: int):
         groundtruths.append(gts)
 
         pds = schemas.Prediction(
-            model="test",
+            model_name="test",
             datum=image,
             annotations=[
                 schemas.Annotation(

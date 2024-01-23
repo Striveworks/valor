@@ -161,21 +161,25 @@ def img9() -> ImageMetadata:
 
 @pytest.fixture
 def rect1():
+    """Box with area = 1500."""
     return BoundingBox.from_extrema(xmin=10, ymin=10, xmax=60, ymax=40)
 
 
 @pytest.fixture
 def rect2():
+    """Box with area = 1100."""
     return BoundingBox.from_extrema(xmin=15, ymin=0, xmax=70, ymax=20)
 
 
 @pytest.fixture
 def rect3():
+    """Box with area = 57,510."""
     return BoundingBox.from_extrema(xmin=87, ymin=10, xmax=158, ymax=820)
 
 
 @pytest.fixture
 def rect4():
+    """Box with area = 90."""
     return BoundingBox.from_extrema(xmin=1, ymin=10, xmax=10, ymax=20)
 
 

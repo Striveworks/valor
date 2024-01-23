@@ -24,10 +24,10 @@ def create_groundtruth(
     """
     # check dataset status
     if (
-        core.get_dataset_status(db=db, name=groundtruth.datum.dataset)
+        core.get_dataset_status(db=db, name=groundtruth.datum.dataset_name)
         != enums.TableStatus.CREATING
     ):
-        raise exceptions.DatasetFinalizedError(groundtruth.datum.dataset)
+        raise exceptions.DatasetFinalizedError(groundtruth.datum.dataset_name)
 
     # create datum
     datum = core.create_datum(db, groundtruth.datum)
@@ -109,7 +109,7 @@ def get_groundtruth(
     return schemas.GroundTruth(
         datum=schemas.Datum(
             uid=datum.uid,
-            dataset=dataset_name,
+            dataset_name=dataset_name,
             metadata=datum.meta,
             geospatial=geo_dict,
         ),

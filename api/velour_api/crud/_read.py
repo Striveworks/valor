@@ -141,124 +141,6 @@ def get_model_labels(
     )
 
 
-def get_joint_labels(
-    *,
-    db: Session,
-    dataset_name: str,
-    model_name: str,
-    task_types: list[enums.TaskType],
-    groundtruth_type: enums.AnnotationType,
-    prediction_type: enums.AnnotationType,
-) -> list[schemas.Label]:
-    """
-    Returns all unique labels that are shared between both predictions and groundtruths.
-
-    Parameters
-    ----------
-    db : Session
-        The database Session to query against.
-    dataset_name: str
-        The name of a dataset.
-    model_name: str
-        The name of a model.
-    task_types: list[enums.TaskType]
-        The task types to filter on.
-    groundtruth_type: enums.AnnotationType
-        The groundtruth type to filter on.
-    prediction_type: enums.AnnotationType
-        The prediction type to filter on
-
-    Returns
-    ----------
-    list[schemas.Label]
-        A list of labels.
-    """
-    return backend.get_joint_labels(
-        db,
-        dataset_name=dataset_name,
-        model_name=model_name,
-        task_types=task_types,
-        groundtruth_type=groundtruth_type,
-        prediction_type=prediction_type,
-    )
-
-
-def get_disjoint_labels(
-    *,
-    db: Session,
-    dataset_name: str,
-    model_name: str,
-    task_types: list[enums.TaskType],
-    groundtruth_type: enums.AnnotationType,
-    prediction_type: enums.AnnotationType,
-) -> tuple[list[schemas.Label], list[schemas.Label]]:
-    """
-    Returns all unique labels that are not shared between both predictions and groundtruths.
-
-    Parameters
-    ----------
-    db : Session
-        The database Session to query against.
-    dataset_name: str
-        The name of a dataset.
-    model_name: str
-        The name of a model.
-    task_types: list[enums.TaskType]
-        The task types to filter on.
-    groundtruth_type: enums.AnnotationType
-        The groundtruth type to filter on.
-    prediction_type: enums.AnnotationType
-        The prediction type to filter on
-
-    Returns
-    ----------
-    Tuple[list[schemas.Label], list[schemas.Label]]
-        A tuple of disjoint labels, where the first element is those labels which are present in groundtruths but absent in predictions.
-    """
-    return backend.get_disjoint_labels(
-        db,
-        dataset_name=dataset_name,
-        model_name=model_name,
-        task_types=task_types,
-        groundtruth_type=groundtruth_type,
-        prediction_type=prediction_type,
-    )
-
-
-def get_disjoint_keys(
-    *,
-    db: Session,
-    dataset_name: str,
-    model_name: str,
-    task_type: enums.TaskType,
-) -> tuple[list[str], list[str]]:
-    """
-    Returns all unique label keys that are not shared between both predictions and groundtruths.
-
-    Parameters
-    ----------
-    db : Session
-        The database Session to query against.
-    dataset_name: str
-        The name of a dataset.
-    model_name: str
-        The name of a model.
-    task_types: list[enums.TaskType]
-        The task types to filter on.
-
-    Returns
-    ----------
-    Tuple[list[schemas.Label], list[schemas.Label]]
-        A tuple of disjoint label key, where the first element is those labels which are present in groundtruths but absent in predictions.
-    """
-    return backend.get_disjoint_keys(
-        db,
-        dataset_name=dataset_name,
-        model_name=model_name,
-        task_type=task_type,
-    )
-
-
 """ Datum """
 
 
@@ -288,7 +170,11 @@ def get_datums(
 """ Datasets """
 
 
-def get_dataset(*, db: Session, dataset_name: str) -> schemas.Dataset:
+def get_dataset(
+    *,
+    db: Session,
+    dataset_name: str,
+) -> schemas.Dataset:
     """
     Fetch a dataset.
 
@@ -324,10 +210,10 @@ def get_datasets(
     List[schemas.Dataset]
         A list of all datasets.
     """
-    return backend.get_datasets(db)
+    return backend.get_all_datasets(db)
 
 
-def get_dataset_summary(db: Session, name: str) -> schemas.DatasetSummary:
+def get_dataset_summary(*, db: Session, name: str) -> schemas.DatasetSummary:
     return backend.get_dataset_summary(db, name)
 
 
@@ -405,7 +291,11 @@ def get_models(
 
 
 def get_prediction(
-    *, db: Session, model_name: str, dataset_name: str, datum_uid: str
+    *,
+    db: Session,
+    dataset_name: str,
+    model_name: str,
+    datum_uid: str,
 ) -> schemas.Prediction:
     """
     Fetch a prediction.
@@ -434,68 +324,7 @@ def get_prediction(
     )
 
 
-""" Evaluation """
-
-
-def get_model_metrics(
-    *, db: Session, model_name: str, evaluation_id: int
-) -> list[schemas.Metric]:
-    """
-    Fetch all metrics for a given model.
-
-    Parameters
-    ----------
-    db : Session
-        The database Session to query against.
-    model_name : str
-        The name of the model.
-    evaluation_id : id
-        The evaluation ID.
-
-    Returns
-    ----------
-    list[schemas.Metric]
-        A list of metrics.
-    """
-    return backend.get_model_metrics(db, model_name, evaluation_id)
-
-
-def get_evaluation_jobs(
-    *,
-    db: Session,
-    evaluation_ids: list[int] | None = None,
-    dataset_names: list[str] | None = None,
-    model_names: list[str] | None = None,
-    settings: list[schemas.EvaluationSettings] | None = None,
-) -> list[schemas.EvaluationJob]:
-    """
-    Returns all evaluation jobs that conform to user-supplied args.
-
-    Parameters
-    ----------
-    db : Session
-        The database Session to query against.
-    evaluation_ids : list[int]
-        A list of evaluation job id constraints.
-    dataset_names | list[str]
-        A list of dataset names to constrain by.
-    model_names | list[str]
-        A list of model names to constrain by.
-    settings : list[schemas.EvaluationSettings]
-        A list of `schemas.EvaluationSettings` to constrain by.
-
-    Returns
-    ----------
-    list[schemas.EvaluationJob]
-        A list of evaluation jobs.
-    """
-    return backend.get_evaluation_jobs(
-        db=db,
-        evaluation_ids=evaluation_ids,
-        dataset_names=dataset_names,
-        model_names=model_names,
-        settings=settings,
-    )
+""" Evaluations """
 
 
 def get_evaluations(
@@ -504,8 +333,7 @@ def get_evaluations(
     evaluation_ids: list[int] | None = None,
     dataset_names: list[str] | None = None,
     model_names: list[str] | None = None,
-    settings: list[schemas.EvaluationSettings] | None = None,
-) -> list[schemas.Evaluation]:
+) -> list[schemas.EvaluationResponse]:
     """
     Returns all evaluations that conform to user-supplied constraints.
 
@@ -519,12 +347,10 @@ def get_evaluations(
         A list of dataset names to constrain by.
     model_names
         A list of model names to constrain by.
-    settings:
-        A list of `schemas.EvaluationSettings` to constrain by.
 
     Returns
     ----------
-    list[schemas.Evaluations]
+    list[schemas.EvaluationResponse]
         A list of evaluations.
     """
     # get evaluations that conform to input args
@@ -533,5 +359,4 @@ def get_evaluations(
         evaluation_ids=evaluation_ids,
         dataset_names=dataset_names,
         model_names=model_names,
-        settings=settings,
     )

@@ -184,15 +184,13 @@ def _generate_prediction(
 
     # ensure that some labels are common
     n_label_ids = n_annotations * n_labels
-    unique_label_ids = list(range(2, (n_label_ids)))
-    common_label_ids = [1 for _ in range(n_label_ids // 2)]
-    label_ids = unique_label_ids + common_label_ids
+    unique_label_ids = list(range(n_label_ids))
 
     annotations = [
         _generate_prediction_annotation(
             height=height,
             width=width,
-            unique_label_ids=label_ids,
+            unique_label_ids=unique_label_ids,
             n_labels=n_labels,
         )
         for _ in range(n_annotations)
