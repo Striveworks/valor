@@ -23,7 +23,7 @@ type logger struct {
 func (l logger) Verbose() bool {
 	return true
 }
-func (l logger) Printf(format string, v ...interface{}) {
+func (l logger) Printf(format string, v ...any) {
 	l.Info(format, v)
 }
 
@@ -66,7 +66,6 @@ func (d *Database) MigrateUp(sqlPath string) error {
 	if err != nil {
 		return fmt.Errorf("error creating new db migration instance: %w", err)
 	}
-	// TODO validate logging
 	migrateInstance.Log = logger{slogger}
 	// Close the migration connection and wrap existing error
 	defer func() {

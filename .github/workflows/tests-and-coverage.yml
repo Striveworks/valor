@@ -53,6 +53,7 @@ jobs:
           POSTGRES_PASSWORD: password
           POSTGRES_DB: velour
     steps:
+#      - TODO run migration before this
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
         with:
