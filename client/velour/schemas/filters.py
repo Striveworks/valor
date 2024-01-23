@@ -1,7 +1,17 @@
 import datetime
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, Iterable, List, Optional, Type, Union
+from typing import (
+    Any,
+    Dict,
+    Iterable,
+    Iterator,
+    List,
+    Optional,
+    Sequence,
+    Type,
+    Union,
+)
 
 from velour.enums import AnnotationType, TaskType
 
@@ -258,6 +268,12 @@ class DeclarativeMapper:
         )
 
 
+# Type of expressions passed to Filter.create
+FilterExpressionsType = Sequence[
+    Union[BinaryExpression, Sequence[BinaryExpression]]
+]
+
+
 @dataclass
 class Filter:
     """
@@ -342,35 +358,29 @@ class Filter:
     label_keys: Optional[List[str]] = None
 
     @classmethod
-    def create(
-        cls,
-        expressions: Iterable[
-            Union[BinaryExpression, Iterable[BinaryExpression]]
-        ],
-    ) -> "Filter":
+    def create(cls, expressions: FilterExpressionsType) -> "Filter":
         """
         Parses a list of `BinaryExpression` to create a `schemas.Filter` object.
 
         Parameters
         ----------
-        expressions: Iterable[Union[BinaryExpression, Iterable[BinaryExpression]]]
+        expressions: Sequence[Union[BinaryExpression, Sequence[BinaryExpression]]]
             A list of (lists of) `BinaryExpressions' to parse into a `Filter` object.
         """
 
-        # expand nested expressions
-        expression_list = [
-            expr for expr in expressions if isinstance(expr, BinaryExpression)
-        ] + [
-            expr_
-            for expr in expressions
-            if isinstance(expr, list)
-            for expr_ in expr
-            if isinstance(expr_, BinaryExpression)
-        ]
+        def flatten(
+            t: Iterable[Union[BinaryExpression, Iterable[BinaryExpression]]]
+        ) -> Iterator[BinaryExpression]:
+            """Flatten a nested iterable of BinaryExpressions."""
+            for item in t:
+                if isinstance(item, BinaryExpression):
+                    yield item
+                else:
+                    yield from flatten(item)
 
         # create dict using expr names as keys
         expression_dict = {}
-        for expr in expression_list:
+        for expr in flatten(expressions):
             if expr.name not in expression_dict:
                 expression_dict[expr.name] = []
             expression_dict[expr.name].append(expr)

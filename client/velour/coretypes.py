@@ -4,22 +4,17 @@ import math
 import time
 import warnings
 from dataclasses import asdict, dataclass
-from typing import (
-    Dict,
-    Iterable,
-    List,
-    Mapping,
-    Optional,
-    Sequence,
-    Tuple,
-    Union,
-)
+from typing import Dict, List, Mapping, Optional, Sequence, Tuple, Union
 
 from velour.client import Client, ClientException
 from velour.enums import AnnotationType, EvaluationStatus, TaskType
 from velour.exceptions import SchemaTypeError
 from velour.schemas.evaluation import EvaluationParameters, EvaluationRequest
-from velour.schemas.filters import BinaryExpression, DeclarativeMapper, Filter
+from velour.schemas.filters import (
+    DeclarativeMapper,
+    Filter,
+    FilterExpressionsType,
+)
 from velour.schemas.geometry import BoundingBox, MultiPolygon, Polygon, Raster
 from velour.schemas.metadata import (
     MetadataType,
@@ -1303,32 +1298,33 @@ class Model:
 
     def _format_filters(
         self,
-        datasets: Union[Dataset, List[Dataset]],
-        filters: Union[Dict, List[BinaryExpression]],
-    ) -> Union[dict, Filter]:
+        datasets: Optional[Union[Dataset, List[Dataset]]],
+        filters: Optional[Union[Dict, FilterExpressionsType]],
+    ) -> Filter:
         """Formats evaluation request's `datum_filter` input."""
 
         # get list of dataset names
         dataset_names_from_obj = []
         if isinstance(datasets, list):
-            dataset_names_from_obj = [dataset.name for dataset in datasets]
+            dataset_names_from_obj = [dataset._name for dataset in datasets]
         elif isinstance(datasets, Dataset):
-            dataset_names_from_obj = [datasets.name]
+            dataset_names_from_obj = [datasets._name]
 
         # format filtering object
-        if isinstance(filters, list) or filters is None:
+        if isinstance(filters, Sequence) or filters is None:
             filters = filters if filters else []
-            filters = Filter.create(filters)
+            filter_obj = Filter.create(filters)
 
             # reset model name
-            filters.model_names = None
-            filters.model_geospatial = None
-            filters.model_metadata = None
+            filter_obj.model_names = None
+            filter_obj.model_geospatial = None
+            filter_obj.model_metadata = None
 
             # set dataset names
-            if not filters.dataset_names:
-                filters.dataset_names = []
-            filters.dataset_names.extend(dataset_names_from_obj)
+            if not filter_obj.dataset_names:
+                filter_obj.dataset_names = []
+            filter_obj.dataset_names.extend(dataset_names_from_obj)
+            return filter_obj
 
         elif isinstance(filters, dict):
             # reset model name
@@ -1344,17 +1340,12 @@ class Model:
                 filters["dataset_names"] = []
             filters["dataset_names"].extend(dataset_names_from_obj)
 
-        return filters
+        return Filter(**filters)
 
     def evaluate_classification(
         self,
         datasets: Optional[Union[Dataset, List[Dataset]]] = None,
-        filters: Optional[
-            Union[
-                Dict,
-                Iterable[Union[BinaryExpression, Iterable[BinaryExpression]]],
-            ]
-        ] = None,
+        filters: Optional[Union[Dict, FilterExpressionsType]] = None,
     ) -> Evaluation:
         """
         Start a classification evaluation job.
@@ -1401,7 +1392,7 @@ class Model:
     def evaluate_detection(
         self,
         datasets: Optional[Union[Dataset, List[Dataset]]] = None,
-        filters: Optional[Union[Dict, List[BinaryExpression]]] = None,
+        filters: Optional[Union[Dict, FilterExpressionsType]] = None,
         convert_annotations_to_type: Optional[AnnotationType] = None,
         iou_thresholds_to_compute: Optional[List[float]] = None,
         iou_thresholds_to_return: Optional[List[float]] = None,
@@ -1466,12 +1457,7 @@ class Model:
     def evaluate_segmentation(
         self,
         datasets: Optional[Union[Dataset, List[Dataset]]] = None,
-        filters: Optional[
-            Union[
-                Dict,
-                Iterable[Union[BinaryExpression, Iterable[BinaryExpression]]],
-            ]
-        ] = None,
+        filters: Optional[Union[Dict, FilterExpressionsType]] = None,
     ) -> Evaluation:
         """
         Start a semantic-segmentation evaluation job.
