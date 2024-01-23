@@ -117,6 +117,7 @@ def test_generate_prediction_data(client: Client):
                 "iou_thresholds_to_compute": [0.0, 1.0],
                 "iou_thresholds_to_keep": [0.0, 1.0],
             },
+            "label_map": None,
             "filters": {
                 **asdict(
                     Filter()

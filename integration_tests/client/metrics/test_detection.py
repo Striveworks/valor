@@ -101,6 +101,7 @@ def test_evaluate_detection(
                 "iou_thresholds_to_compute": [0.1, 0.6],
                 "iou_thresholds_to_keep": [0.1, 0.6],
             },
+            "label_map": None,
             "filters": {
                 **default_filter_properties,
                 "annotation_types": ["box"],
@@ -203,6 +204,7 @@ def test_evaluate_detection(
                 ],
                 "label_keys": ["k1"],
             },
+            "label_map": None,
             "parameters": {
                 "iou_thresholds_to_compute": [0.1, 0.6],
                 "iou_thresholds_to_keep": [0.1, 0.6],
@@ -244,6 +246,7 @@ def test_evaluate_detection(
                 ],
                 "label_keys": ["k1"],
             },
+            "label_map": None,
             "parameters": {
                 "iou_thresholds_to_compute": [0.1, 0.6],
                 "iou_thresholds_to_keep": [0.1, 0.6],
@@ -285,6 +288,7 @@ def test_evaluate_detection(
                 ],
                 "label_keys": ["k1"],
             },
+            "label_map": None,
             "parameters": {
                 "iou_thresholds_to_compute": [0.1, 0.6],
                 "iou_thresholds_to_keep": [0.1, 0.6],
@@ -334,6 +338,7 @@ def test_evaluate_detection(
                 ],
                 "label_keys": ["k1"],
             },
+            "label_map": None,
             "parameters": {
                 "iou_thresholds_to_compute": [0.1, 0.6],
                 "iou_thresholds_to_keep": [0.1, 0.6],
@@ -482,6 +487,7 @@ def test_evaluate_detection_with_json_filters(
                 ],
                 "label_keys": ["k1"],
             },
+            "label_map": None,
             "parameters": {
                 "iou_thresholds_to_compute": [0.1, 0.6],
                 "iou_thresholds_to_keep": [0.1, 0.6],
