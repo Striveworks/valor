@@ -5,7 +5,7 @@ from base64 import b64encode
 from geoalchemy2 import RasterElement
 from geoalchemy2.functions import ST_AsGeoJSON, ST_AsPNG, ST_Envelope
 from PIL import Image
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, delete, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -409,3 +409,88 @@ def get_annotations(
             .all()
         )
     ]
+
+
+def delete_dataset_annotations(
+    db: Session,
+    dataset: models.Dataset,
+):
+    """
+    Delete all annotations from a dataset.
+
+    Parameters
+    ----------
+    db : Session
+        The database session.
+    dataset : models.Dataset
+        The dataset row that is being deleted.
+
+    Raises
+    ------
+    RuntimeError
+        If dataset is not in deletion state.
+    """
+
+    if dataset.status != enums.TableStatus.DELETING:
+        raise RuntimeError(
+            f"Attempted to delete annotations from dataset `{dataset.name}` which has status `{dataset.status}`"
+        )
+
+    subquery = (
+        select(models.Annotation.id.label("id"))
+        .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
+        .where(models.Datum.dataset_id == dataset.id)
+        .subquery()
+    )
+    delete_stmt = delete(models.Annotation).where(
+        models.Annotation.id == subquery.c.id
+    )
+
+    try:
+        db.execute(delete_stmt)
+        db.commit()
+    except IntegrityError as e:
+        db.rollback()
+        raise e
+
+
+def delete_model_annotations(
+    db: Session,
+    model: models.Model,
+):
+    """
+    Delete all annotations from a model.
+
+    Parameters
+    ----------
+    db : Session
+        The database session.
+    model : models.Model
+        The model row that is being deleted.
+
+    Raises
+    ------
+    RuntimeError
+        If dataset is not in deletion state.
+    """
+
+    if model.status != enums.ModelStatus.DELETING:
+        raise RuntimeError(
+            f"Attempted to delete annotations from dataset `{model.name}` which is not being deleted."
+        )
+
+    subquery = (
+        select(models.Annotation.id.label("id"))
+        .where(models.Annotation.model_id == model.id)
+        .subquery()
+    )
+    delete_stmt = delete(models.Annotation).where(
+        models.Annotation.id == subquery.c.id
+    )
+
+    try:
+        db.execute(delete_stmt)
+        db.commit()
+    except IntegrityError as e:
+        db.rollback()
+        raise e
