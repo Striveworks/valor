@@ -1,7 +1,6 @@
 """ These integration tests should be run with a backend at http://localhost:8000
 that is no auth
 """
-import time
 from datetime import date, datetime
 
 import pytest
@@ -294,10 +293,7 @@ def test_evaluate_tabular_clf(
     for entry in expected_confusion_matrix["entries"]:
         assert entry in confusion_matrix["entries"]
 
-    job = model.delete()
-    while not job.completed():
-        time.sleep(0.5)
-
+    model.delete()
     assert len(client.get_models()) == 0
 
 

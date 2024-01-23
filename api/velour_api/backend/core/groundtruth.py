@@ -1,6 +1,7 @@
 import json
 
 from geoalchemy2.functions import ST_AsGeoJSON
+from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -115,3 +116,50 @@ def get_groundtruth(
         ),
         annotations=core.get_annotations(db, datum),
     )
+
+
+def delete_groundtruths(
+    db: Session,
+    dataset: models.Dataset,
+):
+    """
+    Delete all groundtruths from a dataset.
+
+    Parameters
+    ----------
+    db : Session
+        The database session.
+    dataset : models.Dataset
+        The dataset row that is being deleted.
+
+    Raises
+    ------
+    RuntimeError
+        If dataset is not in deletion state.
+    """
+
+    if dataset.status != enums.TableStatus.DELETING:
+        raise RuntimeError(
+            f"Attempted to delete groundtruths from dataset `{dataset.name}` which has status `{dataset.status}`"
+        )
+
+    subquery = (
+        select(models.GroundTruth.id.label("id"))
+        .join(
+            models.Annotation,
+            models.Annotation.id == models.GroundTruth.annotation_id,
+        )
+        .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
+        .where(models.Datum.dataset_id == dataset.id)
+        .subquery()
+    )
+    delete_stmt = delete(models.GroundTruth).where(
+        models.GroundTruth.id == subquery.c.id
+    )
+
+    try:
+        db.execute(delete_stmt)
+        db.commit()
+    except IntegrityError as e:
+        db.rollback()
+        raise e

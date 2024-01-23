@@ -6,7 +6,7 @@ import warnings
 from dataclasses import asdict, dataclass
 from typing import Dict, List, Tuple, Union
 
-from velour.client import Client, ClientException, DeletionJob
+from velour.client import Client, ClientException
 from velour.enums import AnnotationType, EvaluationStatus, TaskType
 from velour.exceptions import SchemaTypeError
 from velour.schemas.evaluation import EvaluationParameters, EvaluationRequest
@@ -1101,9 +1101,7 @@ class Dataset:
         """
         Delete the `Dataset` object from the backend.
         """
-        job = DeletionJob(self.client, dataset_name=self.name)
         self.client._requests_delete_rel_host(f"datasets/{self.name}").json()
-        return job
 
 
 class Model:
@@ -1467,9 +1465,7 @@ class Model:
         """
         Delete the `Model` object from the backend.
         """
-        job = DeletionJob(self.client, model_name=self.name)
         self.client._requests_delete_rel_host(f"models/{self.name}").json()
-        return job
 
     def get_prediction(self, dataset: Dataset, datum: Datum) -> Prediction:
         """
