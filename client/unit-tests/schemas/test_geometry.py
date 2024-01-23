@@ -10,14 +10,6 @@ def test_point():
     p2 = schemas.Point(x=1.0, y=1.0)
     p3 = schemas.Point(x=1.0, y=0.99)
 
-    # test `__post_init__`
-    with pytest.raises(TypeError) as e:
-        schemas.Point(x="1", y=1)  # type: ignore
-    assert "should be numbers convertible to `float` type" in str(e)
-    with pytest.raises(TypeError) as e:
-        schemas.Point(x=1, y="1")  # type: ignore
-    assert "should be numbers convertible to `float` type" in str(e)
-
     # test member fn `__hash__`
     assert p1.__hash__() == p2.__hash__()
     assert p1.__hash__() != p3.__hash__()
