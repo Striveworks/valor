@@ -1575,43 +1575,44 @@ class Model:
             for resp in self.client.get_evaluations(models=self._name)
         ]
 
-    def get_metric_dataframes(
-        self,
-    ) -> List[Dict]:
-        """
-        Get all metrics associated with a Model and return them in a `pd.DataFrame`.
+    # TODO: Evaluation has no members "dataset" or "settings"
+    # def get_metric_dataframes(
+    #     self,
+    # ) -> List[Dict]:
+    #     """
+    #     Get all metrics associated with a Model and return them in a `pd.DataFrame`.
 
-        Returns
-        ----------
-        dict
-            A dictionary of the `Model's` metrics and settings, with the metrics being displayed in a `pd.DataFrame`.
-        """
-        try:
-            import pandas as pd
-        except ModuleNotFoundError:
-            raise ModuleNotFoundError(
-                "Must have pandas installed to use `get_metric_dataframes`."
-            )
+    #     Returns
+    #     ----------
+    #     dict
+    #         A dictionary of the `Model's` metrics and settings, with the metrics being displayed in a `pd.DataFrame`.
+    #     """
+    #     try:
+    #         import pandas as pd
+    #     except ModuleNotFoundError:
+    #         raise ModuleNotFoundError(
+    #             "Must have pandas installed to use `get_metric_dataframes`."
+    #         )
 
-        ret = []
-        for evaluation in self.get_evaluations():
-            metrics = [
-                {**metric, "dataset": evaluation.dataset}
-                for metric in evaluation.metrics
-            ]
-            df = pd.DataFrame(metrics)
-            for k in ["label", "parameters"]:
-                df[k] = df[k].fillna("n/a")
-            df["parameters"] = df["parameters"].apply(json.dumps)
-            df["label"] = df["label"].apply(
-                lambda x: f"{x['key']}: {x['value']}" if x != "n/a" else x
-            )
-            df = df.pivot(
-                index=["type", "parameters", "label"], columns=["dataset"]
-            )
-            ret.append({"settings": evaluation.settings, "df": df})
+    #     ret = []
+    #     for evaluation in self.get_evaluations():
+    #         metrics = [
+    #             {**metric, "dataset": evaluation.dataset}
+    #             for metric in evaluation.metrics
+    #         ]
+    #         df = pd.DataFrame(metrics)
+    #         for k in ["label", "parameters"]:
+    #             df[k] = df[k].fillna("n/a")
+    #         df["parameters"] = df["parameters"].apply(json.dumps)
+    #         df["label"] = df["label"].apply(
+    #             lambda x: f"{x['key']}: {x['value']}" if x != "n/a" else x
+    #         )
+    #         df = df.pivot(
+    #             index=["type", "parameters", "label"], columns=["dataset"]
+    #         )
+    #         ret.append({"settings": evaluation.settings, "df": df})
 
-        return ret
+    #     return ret
 
 
 # Assign all DeclarativeMappers such that these coretypes can be used as filters.
