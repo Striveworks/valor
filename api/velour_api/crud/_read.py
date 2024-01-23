@@ -60,43 +60,28 @@ def get_evaluation_status(
 """ Labels """
 
 
-def get_all_labels(
+def get_labels(
     *,
     db: Session,
     filters: schemas.Filter | None = None,
+    ignore_prediction_labels = False,
+    ignore_groundtruth_labels = False,
 ) -> list[schemas.Label]:
     """
-    Fetch all labels from the database.
+    Fetch a list of labels from the database.
+
+    The default behavior is return a list of all existing labels.
 
     Parameters
     ----------
     db : Session
         The database Session to query against.
-    filters : schemas.Filter
+    filters : schemas.Filter, optional
         An optional filter to apply.
-
-    Returns
-    ----------
-    list[schemas.Label]
-        A list of labels.
-    """
-    return list(backend.get_labels(db, filters))
-
-
-def get_dataset_labels(
-    *,
-    db: Session,
-    filters: schemas.Filter | None = None,
-) -> list[schemas.Label]:
-    """
-    Fetch all labels associated with dataset groundtruths from the database.
-
-    Parameters
-    ----------
-    db : Session
-        The database Session to query against.
-    filters : schemas.Filter
-        An optional filter to apply.
+    ignore_prediction_labels : bool, default=False
+        Option to ignore prediction labels in the result.
+    ignore_groundtruths : bool, default=False
+        Option to ignore groundtruth labels in the result.
 
     Returns
     ----------
@@ -105,39 +90,11 @@ def get_dataset_labels(
     """
     return list(
         backend.get_labels(
-            db=db,
+            db=db, 
             filters=filters,
-            ignore_predictions=True,
-        )
-    )
-
-
-def get_model_labels(
-    *,
-    db: Session,
-    filters: schemas.Filter | None = None,
-) -> list[schemas.Label]:
-    """
-    Fetch all labels associated with dataset predictions from the database.
-
-    Parameters
-    ----------
-    db : Session
-        The database Session to query against.
-    filters : schemas.Filter
-        An optional filter to apply.
-
-    Returns
-    ----------
-    list[schemas.Label]
-        A list of labels.
-    """
-    return list(
-        backend.get_labels(
-            db=db,
-            filters=filters,
-            ignore_groundtruths=True,
-        )
+            ignore_predictions=ignore_prediction_labels,
+            ignore_groundtruths=ignore_groundtruth_labels,
+        )    
     )
 
 
@@ -147,7 +104,7 @@ def get_model_labels(
 def get_datums(
     *,
     db: Session,
-    request: schemas.Filter = None,
+    filters: schemas.Filter = None,
 ) -> list[schemas.Datum]:
     """
     Return all datums in the database.
@@ -156,7 +113,7 @@ def get_datums(
     ----------
     db : Session
         The database Session to query against.
-    request : schemas.Filter
+    filters : schemas.Filter, optional
         An optional filter to apply.
 
     Returns
@@ -164,7 +121,7 @@ def get_datums(
     List[schemas.Datum]
         A list of datums.
     """
-    return backend.get_datums(db, request)
+    return backend.get_datums(db=db, filters=filters)
 
 
 """ Datasets """
@@ -196,6 +153,7 @@ def get_dataset(
 def get_datasets(
     *,
     db: Session,
+    filters: schemas.Filter | None = None,
 ) -> list[schemas.Dataset]:
     """
     Fetch all datasets.
@@ -204,24 +162,25 @@ def get_datasets(
     ----------
     db : Session
         The database Session to query against.
-
+    filters : schemas.Filter, optional
+        An optional filter to apply.
+        
     Returns
     ----------
     List[schemas.Dataset]
         A list of all datasets.
     """
-    return backend.get_all_datasets(db)
+    return backend.get_all_datasets(db=db, filters=filters)
 
 
 def get_dataset_summary(*, db: Session, name: str) -> schemas.DatasetSummary:
     return backend.get_dataset_summary(db, name)
 
 
-def get_groundtruth(
+def get_groundtruths(
     *,
     db: Session,
-    dataset_name: str,
-    datum_uid: str,
+    filters: schemas.Filter,
 ) -> schemas.GroundTruth:
     """
     Fetch a groundtruth.
@@ -243,8 +202,7 @@ def get_groundtruth(
     """
     return backend.get_groundtruth(
         db,
-        dataset_name=dataset_name,
-        datum_uid=datum_uid,
+        filters=filters,
     )
 
 
