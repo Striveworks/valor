@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, SupportsInt, Union
+from typing import Dict, List, Optional, Union
 
 import PIL.Image
 
@@ -94,8 +94,8 @@ class ImageMetadata:
         metadata = dict(datum._metadata)
         width = metadata.pop("width")
         height = metadata.pop("height")
-        assert isinstance(width, SupportsInt)
-        assert isinstance(height, SupportsInt)
+        assert isinstance(width, (int, float))
+        assert isinstance(height, (int, float))
         img = cls(
             uid=datum._uid,
             height=int(height),
@@ -195,7 +195,7 @@ class VideoFrameMetadata:
             )
         image = ImageMetadata.from_datum(datum)
         frame = image.metadata.pop("frame")
-        assert isinstance(frame, SupportsInt)
+        assert isinstance(frame, (int, float))
         return cls(
             image=image,
             frame=int(frame),

@@ -1,5 +1,4 @@
 import random
-from typing import SupportsFloat
 
 import numpy as np
 from numpy.typing import NDArray
@@ -271,8 +270,8 @@ def generate_prediction_data(
 
     for datum in datums:
         height, width = (datum._metadata["height"], datum._metadata["width"])
-        assert isinstance(height, SupportsFloat)
-        assert isinstance(width, SupportsFloat)
+        assert isinstance(height, (int, float))
+        assert isinstance(width, (int, float))
         prediction = _generate_prediction(
             datum=datum,
             height=int(height),
