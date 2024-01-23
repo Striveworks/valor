@@ -1,5 +1,5 @@
 import datetime
-from typing import Dict, Mapping, TypedDict, Union
+from typing import Dict, Mapping, Union
 
 from velour.exceptions import SchemaTypeError
 
@@ -19,10 +19,7 @@ ConvertibleMetadataType = Mapping[
     str,
     Union[
         MetadataValueType,
-        TypedDict("DatetimeMetadata", {"datetime": str}),
-        TypedDict("DateMetadata", {"date": str}),
-        TypedDict("TimeMetadata", {"time": str}),
-        TypedDict("DurationMetadata", {"duration": str}),
+        Dict[str, str],
     ],
 ]
 
