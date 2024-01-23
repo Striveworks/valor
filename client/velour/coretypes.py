@@ -5,7 +5,6 @@ import time
 import warnings
 from dataclasses import asdict, dataclass
 from typing import (
-    Any,
     Dict,
     Iterable,
     List,
@@ -14,7 +13,6 @@ from typing import (
     Sequence,
     Tuple,
     Union,
-    cast,
 )
 
 from velour.client import Client, ClientException
@@ -1684,7 +1682,7 @@ Model.metadata = DeclarativeMapper(
     Union[int, float, str, datetime.datetime, datetime.date, datetime.time],
 )
 Model.geospatial = DeclarativeMapper(
-    "models_geospatial",
+    "model_geospatial",
     Union[
         List[List[List[List[Union[float, int]]]]],
         List[List[List[Union[float, int]]]],
