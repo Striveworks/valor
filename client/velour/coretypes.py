@@ -4,7 +4,16 @@ import math
 import time
 import warnings
 from dataclasses import asdict, dataclass
-from typing import Dict, List, Mapping, Optional, Sequence, Tuple, Union
+from typing import (
+    ClassVar,
+    Dict,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
+)
 
 from velour.client import Client, ClientException
 from velour.enums import AnnotationType, EvaluationStatus, TaskType
@@ -43,9 +52,9 @@ class Label:
         A unique ID for the `Label`.
     """
 
-    id: DeclarativeMapper
-    key: DeclarativeMapper
-    label: DeclarativeMapper
+    id: ClassVar[DeclarativeMapper]
+    key: ClassVar[DeclarativeMapper]
+    label: ClassVar[DeclarativeMapper]
 
     def __init__(self, key: str, value: str, score: Union[float, None] = None):
         self._key = key
@@ -161,9 +170,9 @@ class Datum:
         A GeoJSON-style dictionary describing the geospatial coordinates of the `Datum`.
     """
 
-    uid: DeclarativeMapper
-    metadata: DeclarativeMapper
-    geospatial: DeclarativeMapper
+    uid: ClassVar[DeclarativeMapper]
+    metadata: ClassVar[DeclarativeMapper]
+    geospatial: ClassVar[DeclarativeMapper]
 
     def __init__(
         self,
@@ -327,11 +336,11 @@ class Annotation:
     ... )
     """
 
-    task: DeclarativeMapper
-    type: DeclarativeMapper
-    metadata: DeclarativeMapper
-    geometric_area: DeclarativeMapper
-    geospatial: DeclarativeMapper
+    task: ClassVar[DeclarativeMapper]
+    type: ClassVar[DeclarativeMapper]
+    metadata: ClassVar[DeclarativeMapper]
+    geometric_area: ClassVar[DeclarativeMapper]
+    geospatial: ClassVar[DeclarativeMapper]
 
     def __init__(
         self,
@@ -582,7 +591,7 @@ class Prediction:
         The score assigned to the `Prediction`.
     """
 
-    score: DeclarativeMapper
+    score: ClassVar[DeclarativeMapper]
 
     def __init__(
         self, datum: Datum, annotations: Optional[List[Annotation]] = None
@@ -895,9 +904,9 @@ class Dataset:
         A GeoJSON-style dictionary describing the geospatial coordinates of the dataset.
     """
 
-    name: DeclarativeMapper
-    metadata: DeclarativeMapper
-    geospatial: DeclarativeMapper
+    name: ClassVar[DeclarativeMapper]
+    metadata: ClassVar[DeclarativeMapper]
+    geospatial: ClassVar[DeclarativeMapper]
 
     def __init__(
         self,
@@ -1159,9 +1168,9 @@ class Model:
         A GeoJSON-style dictionary describing the geospatial coordinates of the model.
     """
 
-    name: DeclarativeMapper
-    metadata: DeclarativeMapper
-    geospatial: DeclarativeMapper
+    name: ClassVar[DeclarativeMapper]
+    metadata: ClassVar[DeclarativeMapper]
+    geospatial: ClassVar[DeclarativeMapper]
 
     def __init__(
         self,
