@@ -20,7 +20,7 @@ from velour_api.backend.core.prediction import delete_dataset_predictions
 def create_dataset(
     db: Session,
     dataset: schemas.Dataset,
-):
+) -> models.Dataset:
     """
     Creates a dataset.
 
@@ -30,6 +30,16 @@ def create_dataset(
         The database Session to query against.
     dataset : schemas.Dataset
         The dataset to create.
+
+    Returns
+    -------
+    models.Dataset
+        The created dataset row.
+
+    Raises
+    ------
+    exceptions.DatasetAlreadyExistsError
+        If a dataset with the provided name already exists.
     """
     try:
         row = models.Dataset(
@@ -65,6 +75,10 @@ def fetch_dataset(
     models.Dataset
         The requested dataset.
 
+    Raises
+    ------
+    exceptions.DatasetDoesNotExistError
+        If a dataset with the provided name does not exist.
     """
     dataset = (
         db.query(models.Dataset)

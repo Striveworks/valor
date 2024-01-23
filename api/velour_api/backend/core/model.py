@@ -62,7 +62,7 @@ def _fetch_disjoint_datums(
 def create_model(
     db: Session,
     model: schemas.Model,
-):
+) -> models.Model:
     """
     Creates a model.
 
@@ -72,6 +72,16 @@ def create_model(
         The database Session to query against.
     model : schemas.Model
         The model to create.
+
+    Returns
+    -------
+    models.Model
+        The created model row.
+
+    Raises
+    ------
+    exceptions.ModelAlreadyExistsError
+        If a model with the provided name already exists.
     """
     try:
         row = models.Model(
@@ -107,6 +117,10 @@ def fetch_model(
     models.Model
         The requested model.
 
+    Raises
+    ------
+    exceptions.ModelDoesNotExistError
+        If a model with the provided name does not exist.
     """
     model = (
         db.query(models.Model).where(models.Model.name == name).one_or_none()

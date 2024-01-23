@@ -145,6 +145,10 @@ def _verify_ready_to_evaluate(
     model_list: list[models.Model],
 ):
     """Verifies that the requested datasets and models exist and are ready for evaluation."""
+    if not dataset_list:
+        raise RuntimeError("Received an empty list of datasets to verify.")
+    elif not model_list:
+        raise RuntimeError("Received an empty list of models to verify.")
 
     for model in model_list:
         for dataset in dataset_list:
@@ -158,14 +162,17 @@ def _verify_ready_to_evaluate(
                 case enums.TableStatus.FINALIZED:
                     pass
                 case _:
-                    raise RuntimeError
+                    raise NotImplementedError(
+                        f"A case for `{dataset.status}` has not been implemented."
+                    )
 
             # verify model status
-            match core.get_model_status(
+            model_status = core.get_model_status(
                 db=db,
                 dataset_name=dataset.name,
                 model_name=model.name,
-            ):
+            )
+            match model_status:
                 case enums.TableStatus.CREATING:
                     raise exceptions.ModelNotFinalizedError(
                         dataset_name=dataset.name,
@@ -176,7 +183,9 @@ def _verify_ready_to_evaluate(
                 case enums.TableStatus.FINALIZED:
                     pass
                 case _:
-                    raise RuntimeError
+                    raise NotImplementedError(
+                        f"A case for `{model_status}` has not been implemented."
+                    )
 
 
 def _split_request(
