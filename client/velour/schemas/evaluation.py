@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import List, Optional, Union
 
 from velour.enums import AnnotationType, TaskType
@@ -45,9 +45,7 @@ class EvaluationRequest:
 
     model_names: Union[str, List[str]]
     datum_filter: Filter
-    parameters: EvaluationParameters = field(
-        default_factory=EvaluationParameters
-    )
+    parameters: EvaluationParameters
 
     def __post_init__(self):
         if isinstance(self.datum_filter, dict):
