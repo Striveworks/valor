@@ -87,9 +87,18 @@ def create_metric_mappings(
                 db=db,
                 label=metric.label,
             )
+
+            # create the label in the database if it doesn't exist
+            # this is useful if the user maps existing labels to a non-existant grouping label
+            if not label:
+                label = core.create_labels(db=db, labels=[metric.label])
+                label_id = label[0].id
+            else:
+                label_id = label.id
+
             ret.append(
                 metric.db_mapping(
-                    label_id=label.id if label else None,
+                    label_id=label_id,
                     evaluation_id=evaluation_id,
                 )
             )

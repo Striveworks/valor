@@ -1,9 +1,10 @@
 import heapq
+from collections import defaultdict
 from dataclasses import dataclass
 from typing import Dict, List
 
 from geoalchemy2 import functions as gfunc
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, case, func, select
 from sqlalchemy.orm import Session, aliased
 
 from velour_api import enums, schemas
@@ -28,7 +29,7 @@ class RankedPair:
 def _ap(
     sorted_ranked_pairs: Dict[int, List[RankedPair]],
     number_of_ground_truths: Dict[int, int],
-    labels: Dict[int, schemas.Label],
+    label_map: Dict[int, schemas.Label],
     iou_thresholds: list[float],
 ) -> list[schemas.APMetric]:
     """
@@ -40,18 +41,18 @@ def _ap(
 
     detection_metrics = []
     for iou_threshold in iou_thresholds:
-        for label_id in sorted_ranked_pairs:
+        for grouper_id in sorted_ranked_pairs:
             precisions = []
             recalls = []
             cnt_tp = 0
             cnt_fp = 0
 
-            for row in sorted_ranked_pairs[label_id]:
+            for row in sorted_ranked_pairs[grouper_id]:
                 if row.score > 0 and row.iou >= iou_threshold:
                     cnt_tp += 1
                 else:
                     cnt_fp += 1
-                cnt_fn = number_of_ground_truths[label_id] - cnt_tp
+                cnt_fn = number_of_ground_truths[grouper_id] - cnt_tp
 
                 precisions.append(
                     cnt_tp / (cnt_tp + cnt_fp) if (cnt_tp + cnt_fp) else 0
@@ -66,7 +67,7 @@ def _ap(
                     value=_calculate_101_pt_interp(
                         precisions=precisions, recalls=recalls
                     ),
-                    label=labels[label_id],
+                    label=label_map[grouper_id],
                 )
             )
     return detection_metrics
@@ -133,71 +134,6 @@ def _compute_detection_metrics(
         A list of average precision metrics.
 
     """
-    # Create groundtruth filter
-    gt_filter = settings.filters.model_copy()
-    gt_filter.dataset_names = [dataset.name]
-    gt_filter.models_names = None
-    gt_filter.models_metadata = None
-    gt_filter.models_geospatial = None
-    gt_filter.prediction_scores = None
-
-    # Create prediction filter
-    pd_filter = settings.filters.model_copy()
-    pd_filter.dataset_names = [dataset.name]
-    pd_filter.models_names = [model.name]
-
-    # Join gt, datum, annotation, label
-    gt = (
-        Query(
-            models.GroundTruth.id.label("id"),
-            models.GroundTruth.annotation_id.label("annotation_id"),
-            models.GroundTruth.label_id.label("label_id"),
-            models.Annotation.datum_id.label("datum_id"),
-        )
-        .filter(gt_filter)
-        .groundtruths("groundtruths")
-    )
-
-    # Join pd, datum, annotation, label
-    pd = (
-        Query(
-            models.Prediction.id.label("id"),
-            models.Prediction.annotation_id.label("annotation_id"),
-            models.Prediction.label_id.label("label_id"),
-            models.Prediction.score.label("score"),
-            models.Annotation.datum_id.label("datum_id"),
-        )
-        .filter(pd_filter)
-        .predictions("predictions")
-    )
-
-    # Create joint table
-    joint = (
-        select(
-            func.coalesce(gt.c.datum_id, pd.c.datum_id).label("datum_id"),
-            gt.c.id.label("gt_id"),
-            pd.c.id.label("pd_id"),
-            gt.c.label_id.label("gt_label_id"),
-            pd.c.label_id.label("pd_label_id"),
-            gt.c.annotation_id.label("gt_ann_id"),
-            pd.c.annotation_id.label("pd_ann_id"),
-            pd.c.score.label("score"),
-        )
-        .select_from(gt)
-        .join(
-            pd,
-            and_(
-                pd.c.datum_id == gt.c.datum_id,
-                pd.c.label_id == gt.c.label_id,
-            ),
-            full=True,
-        )
-        .subquery()
-    )
-
-    # Alias the annotation table (required for joining twice)
-    gt_annotation = aliased(models.Annotation)
-    pd_annotation = aliased(models.Annotation)
 
     def _annotation_type_to_column(
         annotation_type: AnnotationType,
@@ -212,6 +148,120 @@ def _compute_detection_metrics(
                 return table.multipolygon
             case _:
                 raise RuntimeError
+
+    # Create groundtruth filter
+    gt_filter = settings.filters.model_copy()
+    gt_filter.dataset_names = [dataset.name]
+    gt_filter.models_names = None
+    gt_filter.models_metadata = None
+    gt_filter.models_geospatial = None
+    gt_filter.prediction_scores = None
+
+    # Create prediction filter
+    pd_filter = settings.filters.model_copy()
+    pd_filter.dataset_names = [dataset.name]
+    pd_filter.models_names = [model.name]
+
+    # create a map of labels to groupers; will be empty if the user didn't pass a label_map
+    mapping_dict = (
+        {
+            tuple(label): tuple(grouper_id)
+            for label, grouper_id in settings.label_map
+        }
+        if settings.label_map
+        else {}
+    )
+
+    # Fetch all labels and map them to the appropriate grouper_id
+    labels = db.scalars(select(models.Label))
+
+    label_id_to_grouper_mapping = {}
+    grouper_id_to_label_mapping = {}
+    grouper_id_to_label_ids_mapping = defaultdict(list)
+
+    for label in labels:
+        # create an integer to track each group by
+        grouper_id = hash(
+            mapping_dict.get(
+                (label.key, label.value), (label.key, label.value)
+            )
+        )
+
+        label_id_to_grouper_mapping[label.id] = grouper_id
+        grouper_id_to_label_ids_mapping[grouper_id].append(label.id)
+
+        # map the grouper_id to a label object
+        if (label.key, label.value) not in mapping_dict:
+            grouper_id_to_label_mapping[grouper_id] = schemas.Label(
+                key=label.key, value=label.value
+            )
+        else:
+            grouper_key, grouper_value = mapping_dict[(label.key, label.value)]
+            grouper_id_to_label_mapping[grouper_id] = schemas.Label(
+                key=grouper_key, value=grouper_value
+            )
+
+    # Join gt, datum, annotation, label
+    gt = (
+        Query(
+            models.GroundTruth.id.label("id"),
+            models.GroundTruth.annotation_id.label("annotation_id"),
+            models.GroundTruth.label_id.label("label_id"),
+            models.Annotation.datum_id.label("datum_id"),
+            case(
+                label_id_to_grouper_mapping,
+                value=models.GroundTruth.label_id,
+            ).label("label_id_grouper"),
+        )
+        .filter(gt_filter)
+        .groundtruths("groundtruths")
+    )
+
+    # Join pd, datum, annotation, label
+    pd = (
+        Query(
+            models.Prediction.id.label("id"),
+            models.Prediction.annotation_id.label("annotation_id"),
+            models.Prediction.label_id.label("label_id"),
+            models.Prediction.score.label("score"),
+            models.Annotation.datum_id.label("datum_id"),
+            case(
+                label_id_to_grouper_mapping,
+                value=models.Prediction.label_id,
+            ).label("label_id_grouper"),
+        )
+        .filter(pd_filter)
+        .predictions("predictions")
+    )
+
+    # Create joint table
+    joint = (
+        select(
+            func.coalesce(gt.c.datum_id, pd.c.datum_id).label("datum_id"),
+            gt.c.id.label("gt_id"),
+            pd.c.id.label("pd_id"),
+            gt.c.label_id.label("gt_label_id"),
+            pd.c.label_id.label("pd_label_id"),
+            gt.c.label_id_grouper.label("gt_label_id_grouper"),
+            pd.c.label_id_grouper.label("pd_label_id_grouper"),
+            gt.c.annotation_id.label("gt_ann_id"),
+            pd.c.annotation_id.label("pd_ann_id"),
+            pd.c.score.label("score"),
+        )
+        .select_from(gt)
+        .join(
+            pd,
+            and_(
+                pd.c.datum_id == gt.c.datum_id,
+                pd.c.label_id_grouper == gt.c.label_id_grouper,
+            ),
+        )
+        .subquery()
+    )
+
+    # Alias the annotation table (required for joining twice)
+    gt_annotation = aliased(models.Annotation)
+    pd_annotation = aliased(models.Annotation)
 
     # IOU Computation Block
     if target_type == AnnotationType.RASTER:
@@ -237,6 +287,8 @@ def _compute_detection_metrics(
             joint.c.pd_id.label("pd_id"),
             joint.c.gt_label_id.label("gt_label_id"),
             joint.c.pd_label_id.label("pd_label_id"),
+            joint.c.gt_label_id_grouper.label("gt_label_id_grouper"),
+            joint.c.pd_label_id_grouper.label("pd_label_id_grouper"),
             joint.c.score.label("score"),
             func.coalesce(iou_computation, 0).label("iou"),
         )
@@ -263,20 +315,22 @@ def _compute_detection_metrics(
         # datum_id = row[0]
         gt_id = row[1]
         pd_id = row[2]
-        gt_label_id = row[3]
+        # gt_label_id = row[3]
         # pd_label_id = row[4]
-        score = row[5]
-        iou = row[6]
+        gt_label_id_grouper = row[5]
+        # pd_label_id_grouper = row[6]
+        score = row[7]
+        iou = row[8]
 
         # Check if gt or pd already found
         if gt_id not in gt_set and pd_id not in pd_set:
             gt_set.add(gt_id)
             pd_set.add(pd_id)
 
-            if gt_label_id not in ranking:
-                ranking[gt_label_id] = []
+            if gt_label_id_grouper not in ranking:
+                ranking[gt_label_id_grouper] = []
 
-            ranking[gt_label_id].append(
+            ranking[gt_label_id_grouper].append(
                 RankedPair(
                     gt_id=gt_id,
                     pd_id=pd_id,
@@ -285,19 +339,13 @@ def _compute_detection_metrics(
                 )
             )
 
-    # Get groundtruth labels
-    labels = {
-        label.id: schemas.Label(key=label.key, value=label.value)
-        for label in db.scalars(
-            select(models.Label).where(models.Label.id.in_(ranking.keys()))
-        )
-    }
+    # Get the number of ground truths per grouper_id
+    number_of_ground_truths_per_grouper = {}
 
-    # Get the number of ground truths per label id
-    number_of_ground_truths = {}
-    for id in labels:
-        gt_filter.label_ids = [id]
-        number_of_ground_truths[id] = db.query(
+    for grouper_id in ranking.keys():
+        label_ids = grouper_id_to_label_ids_mapping[grouper_id]
+        gt_filter.label_ids = label_ids
+        number_of_ground_truths_per_grouper[grouper_id] = db.query(
             Query(func.count(models.GroundTruth.id))
             .filter(gt_filter)
             .groundtruths()
@@ -306,8 +354,8 @@ def _compute_detection_metrics(
     # Compute AP
     detection_metrics = _ap(
         sorted_ranked_pairs=ranking,
-        number_of_ground_truths=number_of_ground_truths,
-        labels=labels,
+        number_of_ground_truths=number_of_ground_truths_per_grouper,
+        label_map=grouper_id_to_label_mapping,
         iou_thresholds=settings.parameters.iou_thresholds_to_compute,
     )
 

@@ -466,8 +466,22 @@ def get_disjoint_labels_from_evaluation(
     prediction_labels = core.get_labels(
         db, prediction_label_filter, ignore_groundtruths=True
     )
-    groundtruth_unique = list(groundtruth_labels - prediction_labels)
-    prediction_unique = list(prediction_labels - groundtruth_labels)
+
+    # don't count user-mapped labels as disjoint
+    mapped_labels = set()
+    if job_request.settings.label_map:
+        for map_from, map_to in job_request.settings.label_map:
+            mapped_labels.add(
+                schemas.Label(key=map_from[0], value=map_from[1])
+            )
+            mapped_labels.add(schemas.Label(key=map_to[0], value=map_to[1]))
+
+    groundtruth_unique = list(
+        groundtruth_labels - prediction_labels - mapped_labels
+    )
+    prediction_unique = list(
+        prediction_labels - groundtruth_labels - mapped_labels
+    )
 
     return groundtruth_unique, prediction_unique
 

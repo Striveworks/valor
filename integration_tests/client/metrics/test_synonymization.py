@@ -109,9 +109,31 @@ def preds(
     ]
 
 
-@pytest.fixture
-def expected_metrics():
-    return [
+def test_detection_synonymization(
+    db: Session,
+    dataset_name: str,
+    model_name: str,
+    client: Client,
+    gts: list[GroundTruth],
+    preds: list[Prediction],
+):
+    dataset = Dataset(client, dataset_name)
+
+    for gt in gts:
+        dataset.add_groundtruth(gt)
+
+    dataset.finalize()
+
+    model = Model(client, model_name)
+
+    for pd in preds:
+        model.add_prediction(dataset, pd)
+
+    model.finalize_inferences(dataset)
+
+    # for the first evaluation, don't do anything about the mismatched labels
+    # we expect the evaluation to return the same expected metrics as for our standard detection tests
+    baseline_expected_metrics = [
         {
             "type": "AP",
             "value": 0.504950495049505,
@@ -151,31 +173,6 @@ def expected_metrics():
         },
     ]
 
-
-def test_detection_synonymization(
-    db: Session,
-    dataset_name: str,
-    model_name: str,
-    client: Client,
-    gts: list[GroundTruth],
-    preds: list[Prediction],
-    expected_metrics: dict,
-):
-    dataset = Dataset(client, dataset_name)
-
-    for gt in gts:
-        dataset.add_groundtruth(gt)
-
-    dataset.finalize()
-
-    model = Model(client, model_name)
-
-    for pd in preds:
-        model.add_prediction(dataset, pd)
-
-    model.finalize_inferences(dataset)
-
-    # for the first evaluation, don't do anything about the mismatched labels
     eval_job = model.evaluate_detection(
         dataset=dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
@@ -193,9 +190,63 @@ def test_detection_synonymization(
     eval_results = eval_job.wait_for_completion()
 
     result = asdict(eval_results)
-    assert result["metrics"] == expected_metrics
+    assert result["metrics"] == baseline_expected_metrics
 
-    # now, we correct the mismatched labels with a label map
+    # now, we correct most of the mismatched labels with a label map
+    cat_expected_metrics = [
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.1},
+            "value": 0.33663366336633666,
+            "label": {"key": "class", "value": "cat"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.1},
+            "value": 0.504950495049505,
+            "label": {"key": "k1", "value": "v1"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.6},
+            "value": 0.33663366336633666,
+            "label": {"key": "class", "value": "cat"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.6},
+            "value": 0.504950495049505,
+            "label": {"key": "k1", "value": "v1"},
+        },
+        {
+            "type": "mAP",
+            "parameters": {"iou": 0.1},
+            "value": 0.42079207920792083,
+        },
+        {
+            "type": "mAP",
+            "parameters": {"iou": 0.6},
+            "value": 0.42079207920792083,
+        },
+        {
+            "type": "APAveragedOverIOUs",
+            "parameters": {"ious": [0.1, 0.6]},
+            "value": 0.33663366336633666,
+            "label": {"key": "class", "value": "cat"},
+        },
+        {
+            "type": "APAveragedOverIOUs",
+            "parameters": {"ious": [0.1, 0.6]},
+            "value": 0.504950495049505,
+            "label": {"key": "k1", "value": "v1"},
+        },
+        {
+            "type": "mAPAveragedOverIOUs",
+            "parameters": {"ious": [0.1, 0.6]},
+            "value": 0.42079207920792083,
+        },
+    ]
+
     label_mapping = {
         Label(key="class_name", value="maine coon cat"): Label(
             key="class", value="cat"
@@ -216,11 +267,116 @@ def test_detection_synonymization(
     )
 
     assert isinstance(eval_job.evaluation_id, int)
+    assert (
+        len(eval_job.ignored_pred_labels) == 1
+    )  # Label(key='class_name', value='cat', score=None) is still never used
+    assert len(eval_job.missing_pred_labels) == 0
+    eval_results = eval_job.wait_for_completion()
+
+    result = asdict(eval_results)
+
+    assert result["metrics"] == cat_expected_metrics
+
+    assert result["settings"]["label_map"] == [
+        [["class_name", "maine coon cat"], ["class", "cat"]],
+        [["class", "siamese cat"], ["class", "cat"]],
+        [["class", "british shorthair"], ["class", "cat"]],
+    ]
+
+    # finally, we check that the label mapping works when the label is completely foreign
+    # to both groundtruths and predictions
+    foo_expected_metrics = [
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.1},
+            "value": 0.6633663366336634,
+            "label": {"key": "foo", "value": "bar"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.1},
+            "value": 0.504950495049505,
+            "label": {"key": "k1", "value": "v1"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.6},
+            "value": 0.6633663366336634,
+            "label": {"key": "foo", "value": "bar"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.6},
+            "value": 0.504950495049505,
+            "label": {"key": "k1", "value": "v1"},
+        },
+        {
+            "type": "mAP",
+            "parameters": {"iou": 0.1},
+            "value": 0.5841584158415842,
+        },
+        {
+            "type": "mAP",
+            "parameters": {"iou": 0.6},
+            "value": 0.5841584158415842,
+        },
+        {
+            "type": "APAveragedOverIOUs",
+            "parameters": {"ious": [0.1, 0.6]},
+            "value": 0.6633663366336634,
+            "label": {"key": "foo", "value": "bar"},
+        },
+        {
+            "type": "APAveragedOverIOUs",
+            "parameters": {"ious": [0.1, 0.6]},
+            "value": 0.504950495049505,
+            "label": {"key": "k1", "value": "v1"},
+        },
+        {
+            "type": "mAPAveragedOverIOUs",
+            "parameters": {"ious": [0.1, 0.6]},
+            "value": 0.5841584158415842,
+        },
+    ]
+
+    label_mapping = {
+        # map the groundtruths
+        Label(key="class_name", value="maine coon cat"): Label(
+            key="foo", value="bar"
+        ),
+        Label(key="class", value="siamese cat"): Label(key="foo", value="bar"),
+        Label(key="class", value="british shorthair"): Label(
+            key="foo", value="bar"
+        ),
+        # map the predictions
+        Label(key="class", value="cat"): Label(key="foo", value="bar"),
+        Label(key="class_name", value="cat"): Label(key="foo", value="bar"),
+    }
+
+    eval_job = model.evaluate_detection(
+        dataset=dataset,
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_keep=[0.1, 0.6],
+        label_map=label_mapping,
+    )
+
+    assert isinstance(eval_job.evaluation_id, int)
     assert len(eval_job.ignored_pred_labels) == 0
     assert len(eval_job.missing_pred_labels) == 0
     eval_results = eval_job.wait_for_completion()
 
     result = asdict(eval_results)
 
-    # TODO expected metrics should be updated here
-    assert result["metrics"] == expected_metrics
+    assert result["metrics"] == foo_expected_metrics
+
+    # TODO should this be a tuple?
+    assert result["settings"]["label_map"] == [
+        [["class_name", "maine coon cat"], ["foo", "bar"]],
+        [["class", "siamese cat"], ["foo", "bar"]],
+        [["class", "british shorthair"], ["foo", "bar"]],
+        [["class", "cat"], ["foo", "bar"]],
+        [["class_name", "cat"], ["foo", "bar"]],
+    ]
+
+
+# TODO add schema tests

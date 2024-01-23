@@ -49,7 +49,7 @@ class EvaluationSettings:
             self.filters = Filter(**self.filters)
         if isinstance(self.label_map, dict):
             self.label_map = tuple(
-                (key.dict(), value.dict())
+                ((key.key, key.value), (value.key, value.value))
                 for key, value in self.label_map.items()
             )
 
