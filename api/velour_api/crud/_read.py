@@ -64,8 +64,8 @@ def get_labels(
     *,
     db: Session,
     filters: schemas.Filter | None = None,
-    ignore_prediction_labels = False,
-    ignore_groundtruth_labels = False,
+    ignore_prediction_labels=False,
+    ignore_groundtruth_labels=False,
 ) -> list[schemas.Label]:
     """
     Fetch a list of labels from the database.
@@ -90,11 +90,11 @@ def get_labels(
     """
     return list(
         backend.get_labels(
-            db=db, 
+            db=db,
             filters=filters,
             ignore_predictions=ignore_prediction_labels,
             ignore_groundtruths=ignore_groundtruth_labels,
-        )    
+        )
     )
 
 
@@ -107,7 +107,9 @@ def get_datums(
     filters: schemas.Filter = None,
 ) -> list[schemas.Datum]:
     """
-    Return all datums in the database.
+    Get datums with optional filter.
+
+    Default behavior is to return all existing datums.
 
     Parameters
     ----------
@@ -118,7 +120,7 @@ def get_datums(
 
     Returns
     ----------
-    List[schemas.Datum]
+    list[schemas.Datum]
         A list of datums.
     """
     return backend.get_datums(db=db, filters=filters)
@@ -156,7 +158,9 @@ def get_datasets(
     filters: schemas.Filter | None = None,
 ) -> list[schemas.Dataset]:
     """
-    Fetch all datasets.
+    Get datasets with optional filter.
+
+    Default behavior is to return all existing datasets.
 
     Parameters
     ----------
@@ -164,23 +168,24 @@ def get_datasets(
         The database Session to query against.
     filters : schemas.Filter, optional
         An optional filter to apply.
-        
+
     Returns
     ----------
-    List[schemas.Dataset]
+    list[schemas.Dataset]
         A list of all datasets.
     """
-    return backend.get_all_datasets(db=db, filters=filters)
+    return backend.get_datasets(db=db, filters=filters)
 
 
 def get_dataset_summary(*, db: Session, name: str) -> schemas.DatasetSummary:
     return backend.get_dataset_summary(db, name)
 
 
-def get_groundtruths(
+def get_groundtruth(
     *,
     db: Session,
-    filters: schemas.Filter,
+    dataset_name: str,
+    datum_uid: str,
 ) -> schemas.GroundTruth:
     """
     Fetch a groundtruth.
@@ -202,7 +207,8 @@ def get_groundtruths(
     """
     return backend.get_groundtruth(
         db,
-        filters=filters,
+        dataset_name=dataset_name,
+        datum_uid=datum_uid,
     )
 
 
@@ -231,9 +237,12 @@ def get_model(*, db: Session, model_name: str) -> schemas.Model:
 def get_models(
     *,
     db: Session,
+    filters: schemas.Filter | None = None,
 ) -> list[schemas.Model]:
     """
-    Fetch all models.
+    Get models with optional filter.
+
+    Default behavior is to return all existing models.
 
     Parameters
     ----------
@@ -242,10 +251,10 @@ def get_models(
 
     Returns
     ----------
-    List[schemas.Model]
+    list[schemas.Model]
         A list of all models.
     """
-    return backend.get_models(db)
+    return backend.get_models(db=db, filters=filters)
 
 
 def get_prediction(

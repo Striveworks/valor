@@ -232,7 +232,10 @@ def get_prediction(
     dependencies=[Depends(token_auth_scheme)],
     tags=["Labels"],
 )
-def get_all_labels(db: Session = Depends(get_db)) -> list[schemas.Label]:
+def get_labels(
+    filters: schemas.Filter | None = None,
+    db: Session = Depends(get_db),
+) -> list[schemas.Label]:
     """
     Fetch all labels in the database.
 
@@ -240,16 +243,18 @@ def get_all_labels(db: Session = Depends(get_db)) -> list[schemas.Label]:
 
     Parameters
     ----------
+    filters : schemas.Filter, optional
+        An optional filter to constrain results by.
     db : Session
         The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
 
     Returns
     -------
-    List[schemas.Label]
+    list[schemas.Label]
         A list of all labels in the database.
     """
     try:
-        return crud.get_all_labels(db=db)
+        return crud.get_labels(db=db, filters=filters)
     except Exception as e:
         raise exceptions.create_http_error(e)
 
@@ -277,7 +282,7 @@ def get_labels_from_dataset(
 
     Returns
     -------
-    List[schemas.Label]
+    list[schemas.Label]
         A list of all labels associated with the dataset in the database.
 
     Raises
@@ -286,11 +291,12 @@ def get_labels_from_dataset(
         If the dataset doesn't exist.
     """
     try:
-        return crud.get_dataset_labels(
+        return crud.get_labels(
             db=db,
             filters=schemas.Filter(
                 dataset_names=[dataset_name],
             ),
+            ignore_prediction_labels=True,
         )
     except Exception as e:
         raise exceptions.create_http_error(e)
@@ -319,7 +325,7 @@ def get_labels_from_model(
 
     Returns
     -------
-    List[schemas.Label]
+    list[schemas.Label]
         A list of all labels associated with the model in the database.
 
     Raises
@@ -328,11 +334,12 @@ def get_labels_from_model(
         If the model doesn't exist.
     """
     try:
-        return crud.get_model_labels(
+        return crud.get_labels(
             db=db,
             filters=schemas.Filter(
                 model_names=[model_name],
             ),
+            ignore_groundtruth_labels=True,
         )
     except Exception as e:
         raise exceptions.create_http_error(e)
@@ -377,7 +384,9 @@ def create_dataset(dataset: schemas.Dataset, db: Session = Depends(get_db)):
     dependencies=[Depends(token_auth_scheme)],
     tags=["Datasets"],
 )
-def get_datasets(db: Session = Depends(get_db)) -> list[schemas.Dataset]:
+def get_datasets(
+    filters: schemas.Filter | None = None, db: Session = Depends(get_db)
+) -> list[schemas.Dataset]:
     """
     Fetch all datasets from the database.
 
@@ -385,16 +394,18 @@ def get_datasets(db: Session = Depends(get_db)) -> list[schemas.Dataset]:
 
     Parameters
     ----------
+    filters : schemas.Filter, optional
+        An optional filter to constrain results by.
     db : Session
         The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
 
     Returns
     -------
-    List[schemas.Dataset]
+    list[schemas.Dataset]
         A list of all datasets stored in the database.
     """
     try:
-        return crud.get_datasets(db=db)
+        return crud.get_datasets(db=db, filters=filters)
     except Exception as e:
         raise exceptions.create_http_error(e)
 
@@ -584,29 +595,29 @@ def delete_dataset(
 
 
 @router.get(
-    "/data/dataset/{dataset_name}",
+    "/data",
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
     tags=["Datums"],
 )
 def get_datums(
-    dataset_name: str, db: Session = Depends(get_db)
+    filters: schemas.Filter | None = None, db: Session = Depends(get_db)
 ) -> list[schemas.Datum]:
     """
     Fetch all datums for a particular dataset.
 
-    GET Endpoint: `/data/dataset/{dataset_name}`
+    GET Endpoint: `/data`
 
     Parameters
     ----------
-    dataset_name : str
-        The name of the dataset.
+    filters : schemas.Filter, optional
+        An optional filter to constrain results by.
     db : Session
         The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
 
     Returns
     -------
-    List[schemas.Datum]
+    list[schemas.Datum]
         A list of datums.
 
     Raises
@@ -617,9 +628,7 @@ def get_datums(
     try:
         return crud.get_datums(
             db=db,
-            request=schemas.Filter(
-                dataset_names=[dataset_name],
-            ),
+            filters=filters,
         )
     except Exception as e:
         raise exceptions.create_http_error(e)
@@ -709,7 +718,9 @@ def create_model(model: schemas.Model, db: Session = Depends(get_db)):
     dependencies=[Depends(token_auth_scheme)],
     tags=["Models"],
 )
-def get_models(db: Session = Depends(get_db)) -> list[schemas.Model]:
+def get_models(
+    filters: schemas.Filter | None = None, db: Session = Depends(get_db)
+) -> list[schemas.Model]:
     """
     Fetch all models in the database.
 
@@ -717,15 +728,17 @@ def get_models(db: Session = Depends(get_db)) -> list[schemas.Model]:
 
     Parameters
     ----------
+    filters : schemas.Filter, optional
+        An optional filter to constrain results by.
     db : Session
         The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
 
     Returns
     -------
-    List[schemas.Model]
+    list[schemas.Model]
         A list of models.
     """
-    return crud.get_models(db=db)
+    return crud.get_models(db=db, filters=filters)
 
 
 @router.get(
@@ -966,7 +979,7 @@ def get_evaluations(
 
     Returns
     -------
-    List[schemas.Evaluation]
+    list[schemas.Evaluation]
         A list of evaluations.
 
     Raises

@@ -1031,13 +1031,13 @@ def test_post_semenatic_segmentation_metrics(client: TestClient):
 
 @patch("velour_api.main.crud")
 def test_get_dataset_labels(crud, client: TestClient):
-    crud.get_dataset_labels.return_value = []
+    crud.get_labels.return_value = []
     resp = client.get("/labels/dataset/dsetname")
     assert resp.status_code == 200
-    crud.get_dataset_labels.assert_called_once()
+    crud.get_labels.assert_called_once()
 
     with patch(
-        "velour_api.main.crud.get_dataset_labels",
+        "velour_api.main.crud.get_labels",
         side_effect=exceptions.DatasetDoesNotExistError(""),
     ):
         resp = client.get("/labels/dataset/dsetname")
@@ -1052,13 +1052,13 @@ def test_get_dataset_labels(crud, client: TestClient):
 
 @patch("velour_api.main.crud")
 def test_get_model_labels(crud, client: TestClient):
-    crud.get_labels_from_model.return_value = []
+    crud.get_labels.return_value = []
     resp = client.get("/labels/model/modelname")
     assert resp.status_code == 200
-    crud.get_model_labels.assert_called_once()
+    crud.get_labels.assert_called_once()
 
     with patch(
-        "velour_api.main.crud.get_model_labels",
+        "velour_api.main.crud.get_labels",
         side_effect=exceptions.ModelDoesNotExistError(""),
     ):
         resp = client.get("/labels/model/modelname")
@@ -1069,9 +1069,9 @@ def test_get_model_labels(crud, client: TestClient):
 
 
 @patch("velour_api.main.crud")
-def test_get_dataset_datums(crud, client: TestClient):
+def test_get_datums(crud, client: TestClient):
     crud.get_datums.return_value = []
-    resp = client.get("/data/dataset/dsetname")
+    resp = client.get("/data")
     assert resp.status_code == 200
     crud.get_datums.assert_called_once()
 
@@ -1079,10 +1079,10 @@ def test_get_dataset_datums(crud, client: TestClient):
         "velour_api.main.crud.get_datums",
         side_effect=exceptions.DatasetDoesNotExistError(""),
     ):
-        resp = client.get("/data/dataset/dsetname")
+        resp = client.get("/data")
         assert resp.status_code == 404
 
-    resp = client.post("/data/dataset/dsetname")
+    resp = client.post("/data")
     assert resp.status_code == 405
 
 
@@ -1111,11 +1111,11 @@ def test_get_dataset_datum(crud, client: TestClient):
 
 
 @patch("velour_api.main.crud")
-def test_get_all_labels(crud, client: TestClient):
-    crud.get_all_labels.return_value = []
+def test_get_labels(crud, client: TestClient):
+    crud.get_labels.return_value = []
     resp = client.get("/labels")
     assert resp.status_code == 200
-    crud.get_all_labels.assert_called_once()
+    crud.get_labels.assert_called_once()
 
     resp = client.post("/labels")
     assert resp.status_code == 405

@@ -2,9 +2,82 @@
 that is no auth
 """
 
+from typing import List
+
 import pytest
 
-from velour.client import Client, ClientException, _validate_version
+from velour import (
+    Annotation,
+    Client,
+    ClientException,
+    Dataset,
+    Datum,
+    GroundTruth,
+    Label,
+    Model,
+    Prediction,
+)
+from velour.client import _validate_version
+from velour.enums import TaskType
+from velour.schemas import Filter, ValueFilter
+
+
+@pytest.fixture
+def dataset_labels() -> List[Label]:
+    return [Label(key=f"class{i//2}", value=str(i)) for i in range(10)]
+
+
+@pytest.fixture
+def model_labels() -> List[Label]:
+    return [
+        Label(key=f"class{i//2}", value=str(i), score=0.9 if i % 2 else 0.1)
+        for i in range(10)
+    ]
+
+
+@pytest.fixture
+def created_dataset(
+    client: Client,
+    dataset_name: str,
+    dataset_labels: List[Label],
+) -> Dataset:
+    dataset = Dataset(client=client, name=dataset_name)
+    dataset.add_groundtruth(
+        groundtruth=GroundTruth(
+            datum=Datum(uid="1"),
+            annotations=[
+                Annotation(
+                    task_type=TaskType.CLASSIFICATION,
+                    labels=dataset_labels,
+                )
+            ],
+        )
+    )
+    dataset.finalize()
+    return dataset
+
+
+@pytest.fixture
+def created_model(
+    client: Client,
+    model_name: str,
+    model_labels: List[Label],
+    created_dataset: Dataset,
+) -> Model:
+    model = Model(client=client, name=model_name)
+    model.add_prediction(
+        dataset=created_dataset,
+        prediction=Prediction(
+            datum=Datum(uid="1"),
+            annotations=[
+                Annotation(
+                    task_type=TaskType.CLASSIFICATION,
+                    labels=model_labels,
+                )
+            ],
+        ),
+    )
+    return model
 
 
 def test_client():
@@ -95,3 +168,95 @@ def test__requests_wrapper(client: Client):
 
     with pytest.raises(ClientException):
         client._requests_wrapper("get", "not_an_endpoint")
+
+
+def test_get_labels(
+    client: Client,
+    created_dataset: Dataset,
+    created_model: Model,
+    dataset_labels: List[Label],
+    model_labels: List[Label],
+):
+    all_labels = client.get_labels()
+    assert len(all_labels) == 10
+
+    high_score_labels = client.get_labels(
+        filters=Filter(
+            prediction_scores=[ValueFilter(value=0.5, operator=">")]
+        )
+    )
+    assert len(high_score_labels) == 5
+    for label in high_score_labels:
+        assert int(label["value"]) % 2 == 1
+
+    low_score_labels = client.get_labels(
+        filters=Filter(
+            prediction_scores=[ValueFilter(value=0.5, operator="<")]
+        )
+    )
+    assert len(low_score_labels) == 5
+    for label in low_score_labels:
+        assert int(label["value"]) % 2 == 0
+
+
+def test_get_datasets(
+    client: Client,
+    created_dataset: Dataset,
+    created_model: Model,
+    dataset_labels: List[Label],
+    model_labels: List[Label],
+):
+    all_datasets = client.get_datasets()
+    assert len(all_datasets) == 1
+    assert all_datasets[0]["name"] == created_dataset.name
+
+    pos_query = client.get_datasets(filters=Filter(labels=[{"class0": "1"}]))
+    assert len(pos_query) == 1
+    assert pos_query[0]["name"] == created_dataset.name
+
+    neg_query = client.get_datasets(
+        filters=Filter(labels=[{"some_other_class": "1"}])
+    )
+    assert len(neg_query) == 0
+
+
+def test_get_models(
+    client: Client,
+    created_dataset: Dataset,
+    created_model: Model,
+    dataset_labels: List[Label],
+    model_labels: List[Label],
+):
+    all_models = client.get_models()
+    assert len(all_models) == 1
+    assert all_models[0]["name"] == created_model.name
+
+    pos_query = client.get_models(filters=Filter(labels=[{"class0": "1"}]))
+    assert len(pos_query) == 1
+    assert pos_query[0]["name"] == created_model.name
+
+    neg_query = client.get_models(
+        filters=Filter(labels=[{"some_other_class": "1"}])
+    )
+    assert len(neg_query) == 0
+
+
+def test_get_datums(
+    client: Client,
+    created_dataset: Dataset,
+    created_model: Model,
+    dataset_labels: List[Label],
+    model_labels: List[Label],
+):
+    all_datums = client.get_datums()
+    assert len(all_datums) == 1
+    assert all_datums[0]["uid"] == "1"
+
+    pos_query = client.get_datums(filters=Filter(labels=[{"class0": "1"}]))
+    assert len(pos_query) == 1
+    assert pos_query[0]["uid"] == "1"
+
+    neg_query = client.get_datums(
+        filters=Filter(labels=[{"some_other_class": "1"}])
+    )
+    assert len(neg_query) == 0

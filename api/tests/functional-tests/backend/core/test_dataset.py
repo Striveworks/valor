@@ -136,8 +136,8 @@ def test_get_dataset(db: Session, created_dataset):
         core.get_dataset(db, "some_nonexistent_dataset")
 
 
-def test_get_all_datasets(db: Session, created_datasets):
-    datasets = core.get_all_datasets(db)
+def test_get_datasets(db: Session, created_datasets):
+    datasets = core.get_datasets(db)
     for dataset in datasets:
         assert dataset.name in created_datasets
 
