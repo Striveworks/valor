@@ -91,7 +91,7 @@ def test__ap():
     detection_metrics = _ap(
         sorted_ranked_pairs=pairs,
         number_of_ground_truths=number_of_ground_truths,
-        labels=labels,
+        label_map=labels,
         iou_thresholds=iou_thresholds,
     )
 
