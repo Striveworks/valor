@@ -1367,7 +1367,7 @@ class Model:
         ----------
         datasets : Union[Dataset, List[Dataset]], optional
             The dataset or list of datasets to evaluate against.
-        filters : Union[Dict, Iterable[Union[BinaryExpression, Iterable[BinaryExpression]]]]
+        filters : Union[Dict, FilterExpressionsType = Sequence[Union[BinaryExpression, Sequence[BinaryExpression]]]], optional
             Optional set of filters to constrain evaluation by.
 
         Returns
@@ -1417,7 +1417,7 @@ class Model:
         ----------
         datasets : Union[Dataset, List[Dataset]], optional
             The dataset or list of datasets to evaluate against.
-        filters : Union[Dict, List[BinaryExpression]], optional
+        filters : Union[Dict, FilterExpressionsType = Sequence[Union[BinaryExpression, Sequence[BinaryExpression]]]], optional
             Optional set of filters to constrain evaluation by.
         convert_annotations_to_type : enums.AnnotationType, optional
             Forces the object detection evaluation to compute over this type.
@@ -1479,7 +1479,7 @@ class Model:
         ----------
         datasets : Union[Dataset, List[Dataset]], optional
             The dataset or list of datasets to evaluate against.
-        filters : Union[Dict, Iterable[Union[BinaryExpression, Iterable[BinaryExpression]]]]
+        filters : Union[Dict, FilterExpressionsType = Sequence[Union[BinaryExpression, Sequence[BinaryExpression]]]], optional
             Optional set of filters to constrain evaluation by.
 
         Returns
