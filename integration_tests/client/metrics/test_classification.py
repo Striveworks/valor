@@ -38,6 +38,8 @@ def test_evaluate_image_clf(
     eval_job = model.evaluate_classification(dataset)
 
     assert eval_job.id
+    assert eval_job.ignored_pred_keys is not None
+    assert eval_job.missing_pred_keys is not None
     assert set(eval_job.ignored_pred_keys) == {"k12", "k13"}
     assert set(eval_job.missing_pred_keys) == {"k3", "k5"}
 
@@ -265,6 +267,8 @@ def test_evaluate_tabular_clf(
     # check evaluation
     results = model.get_evaluations()
     assert len(results) == 1
+    assert results[0].datum_filter.dataset_names is not None
+    assert len(results[0].datum_filter.dataset_names) == 1
     assert results[0].datum_filter.dataset_names[0] == dataset_name
     assert results[0].model_name == model_name
 

@@ -773,6 +773,10 @@ class Evaluation:
         self.metrics = metrics
         self.confusion_matrices = confusion_matrices
         self.kwargs = kwargs
+        self.ignored_pred_labels: Optional[List[Label]] = None
+        self.missing_pred_labels: Optional[List[Label]] = None
+        self.ignored_pred_keys: Optional[List[str]] = None
+        self.missing_pred_keys: Optional[List[str]] = None
 
         for k, v in kwargs.items():
             setattr(self, k, v)
