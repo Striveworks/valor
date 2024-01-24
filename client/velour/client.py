@@ -212,7 +212,7 @@ class Client:
 
     def get_labels(
         self,
-        filters: Filter = None,
+        filters: Optional[Filter] = None,
     ) -> List[dict]:
         """
         Get labels associated with `Client`.
@@ -272,7 +272,7 @@ class Client:
 
     def get_datasets(
         self,
-        filters: Filter = None,
+        filters: Optional[Filter] = None,
     ) -> List[dict]:
         """
         Get datasets associated with `Client`.
@@ -294,7 +294,7 @@ class Client:
 
     def get_datums(
         self,
-        filters: Filter = None,
+        filters: Optional[Filter] = None,
     ) -> List[dict]:
         """
         Get datums associated with `Client`.
@@ -409,7 +409,7 @@ class Client:
 
     def get_models(
         self,
-        filters: Filter = None,
+        filters: Optional[Filter] = None,
     ) -> List[dict]:
         """
         Get models associated with `Client`.
