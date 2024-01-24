@@ -280,6 +280,7 @@ def get_disjoint_labels(
     db: Session,
     lhs: schemas.Filter,
     rhs: schemas.Filter,
+    label_map: tuple = None,
 ) -> tuple[list[schemas.Label], list[schemas.Label]]:
     """
     Returns all unique labels that are not shared between both filters.
@@ -292,6 +293,8 @@ def get_disjoint_labels(
         Filter defining first label set.
     rhs : list[schemas.Filter]
         Filter defining second label set.
+    label_map: Tuple[Tuple[Label, Label]]
+        Optional mapping of individual Labels to a grouper Label. Useful when you need to evaluate performance using Labels that differ across datasets and models.
 
     Returns
     ----------
@@ -300,8 +303,18 @@ def get_disjoint_labels(
     """
     lhs_labels = get_labels(db, lhs, ignore_predictions=True)
     rhs_labels = get_labels(db, rhs, ignore_groundtruths=True)
-    lhs_unique = list(lhs_labels - rhs_labels)
-    rhs_unique = list(rhs_labels - lhs_labels)
+
+    # don't count user-mapped labels as disjoint
+    mapped_labels = set()
+    if label_map:
+        for map_from, map_to in label_map:
+            mapped_labels.add(
+                schemas.Label(key=map_from[0], value=map_from[1])
+            )
+            mapped_labels.add(schemas.Label(key=map_to[0], value=map_to[1]))
+
+    lhs_unique = list(lhs_labels - rhs_labels - mapped_labels)
+    rhs_unique = list(rhs_labels - lhs_labels - mapped_labels)
     return (lhs_unique, rhs_unique)
 
 

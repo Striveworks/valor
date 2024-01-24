@@ -1393,6 +1393,12 @@ class Model:
             convert_annotations_to_type=convert_annotations_to_type,
             iou_thresholds_to_compute=iou_thresholds_to_compute,
             iou_thresholds_to_return=iou_thresholds_to_return,
+            label_map=[
+                ((key.key, key.value), (value.key, value.value))
+                for key, value in label_map.items()
+            ]
+            if label_map
+            else None,
         )
 
         datum_filter = self._format_filters(datasets, filters)
@@ -1401,7 +1407,6 @@ class Model:
             model_names=self.name,
             datum_filter=datum_filter,
             parameters=parameters,
-            label_map=label_map 
         )
         resp = self.client.evaluate(evaluation)
         if len(resp) != 1:

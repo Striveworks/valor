@@ -135,13 +135,27 @@ def _compute_detection_metrics(
 
     """
 
+    def _annotation_type_to_column(
+        annotation_type: AnnotationType,
+        table,
+    ):
+        match annotation_type:
+            case AnnotationType.BOX:
+                return table.box
+            case AnnotationType.POLYGON:
+                return table.polygon
+            case AnnotationType.MULTIPOLYGON:
+                return table.multipolygon
+            case _:
+                raise RuntimeError
+
     # create a map of labels to groupers; will be empty if the user didn't pass a label_map
     mapping_dict = (
         {
             tuple(label): tuple(grouper_id)
-            for label, grouper_id in settings.label_map
+            for label, grouper_id in parameters.label_map
         }
-        if settings.label_map
+        if parameters.label_map
         else {}
     )
 
@@ -236,7 +250,6 @@ def _compute_detection_metrics(
     gt_annotation = aliased(models.Annotation)
     pd_annotation = aliased(models.Annotation)
 
-
     # IOU Computation Block
     if target_type == AnnotationType.RASTER:
         gintersection = gfunc.ST_Count(
@@ -318,7 +331,7 @@ def _compute_detection_metrics(
 
     for grouper_id in ranking.keys():
         label_ids = grouper_id_to_label_ids_mapping[grouper_id]
-        gt_filter.label_ids = label_ids
+        groundtruth_filter.label_ids = label_ids
         number_of_ground_truths_per_grouper[grouper_id] = db.query(
             Query(func.count(models.GroundTruth.id))
             .filter(groundtruth_filter)
@@ -330,8 +343,7 @@ def _compute_detection_metrics(
         sorted_ranked_pairs=ranking,
         number_of_ground_truths=number_of_ground_truths_per_grouper,
         label_map=grouper_id_to_label_mapping,
-        iou_thresholds=settings.parameters.iou_thresholds_to_compute,
-
+        iou_thresholds=parameters.iou_thresholds_to_compute,
     )
 
     # now extend to the averaged AP metrics and mAP metric

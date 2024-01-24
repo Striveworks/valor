@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from velour import Annotation, Dataset, GroundTruth, Label, Model, Prediction
 from velour.client import Client
-from velour.enums import TaskType
+from velour.enums import EvaluationStatus, TaskType
 from velour.metatypes import ImageMetadata
 from velour.schemas import BoundingBox
 from velour.schemas.filters import Filter
@@ -174,12 +174,11 @@ def test_detection_synonymization(
     ]
 
     eval_job = model.evaluate_detection(
-        dataset=dataset,
+        dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
-        iou_thresholds_to_keep=[0.1, 0.6],
+        iou_thresholds_to_return=[0.1, 0.6],
     )
 
-    assert isinstance(eval_job.evaluation_id, int)
     assert (
         len(eval_job.ignored_pred_labels) == 2
     )  # we're ignoring the two "cat" model predictions
@@ -187,10 +186,10 @@ def test_detection_synonymization(
         len(eval_job.missing_pred_labels) == 3
     )  # we're missing three gts representing different breeds of cats
 
-    eval_results = eval_job.wait_for_completion()
+    assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
 
-    result = asdict(eval_results)
-    assert result["metrics"] == baseline_expected_metrics
+    metrics = eval_job.metrics
+    assert metrics == baseline_expected_metrics
 
     # now, we correct most of the mismatched labels with a label map
     cat_expected_metrics = [
@@ -260,24 +259,23 @@ def test_detection_synonymization(
     }
 
     eval_job = model.evaluate_detection(
-        dataset=dataset,
+        dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
-        iou_thresholds_to_keep=[0.1, 0.6],
+        iou_thresholds_to_return=[0.1, 0.6],
         label_map=label_mapping,
     )
 
-    assert isinstance(eval_job.evaluation_id, int)
     assert (
         len(eval_job.ignored_pred_labels) == 1
     )  # Label(key='class_name', value='cat', score=None) is still never used
     assert len(eval_job.missing_pred_labels) == 0
-    eval_results = eval_job.wait_for_completion()
 
-    result = asdict(eval_results)
+    assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
 
-    assert result["metrics"] == cat_expected_metrics
+    metrics = eval_job.metrics
+    assert metrics == cat_expected_metrics
 
-    assert result["settings"]["label_map"] == [
+    assert eval_job.parameters.label_map == [
         [["class_name", "maine coon cat"], ["class", "cat"]],
         [["class", "siamese cat"], ["class", "cat"]],
         [["class", "british shorthair"], ["class", "cat"]],
@@ -354,23 +352,20 @@ def test_detection_synonymization(
     }
 
     eval_job = model.evaluate_detection(
-        dataset=dataset,
+        dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
-        iou_thresholds_to_keep=[0.1, 0.6],
+        iou_thresholds_to_return=[0.1, 0.6],
         label_map=label_mapping,
     )
 
-    assert isinstance(eval_job.evaluation_id, int)
     assert len(eval_job.ignored_pred_labels) == 0
     assert len(eval_job.missing_pred_labels) == 0
-    eval_results = eval_job.wait_for_completion()
+    assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
 
-    result = asdict(eval_results)
+    metrics = eval_job.metrics
+    assert metrics == foo_expected_metrics
 
-    assert result["metrics"] == foo_expected_metrics
-
-    # TODO should this be a tuple?
-    assert result["settings"]["label_map"] == [
+    assert eval_job.parameters.label_map == [
         [["class_name", "maine coon cat"], ["foo", "bar"]],
         [["class", "siamese cat"], ["foo", "bar"]],
         [["class", "british shorthair"], ["foo", "bar"]],

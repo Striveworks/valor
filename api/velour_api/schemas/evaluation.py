@@ -11,11 +11,14 @@ class EvaluationParameters(BaseModel):
 
     Attributes
     ----------
-
+    convert_annotations_to_type: AnnotationType | None = None
+        The type to convert all annotations to.
     iou_thresholds_to_compute : List[float], optional
         A list of floats describing which Intersection over Unions (IoUs) to use when calculating metrics (i.e., mAP).
     iou_thresholds_to_return: List[float], optional
         A list of floats describing which Intersection over Union (IoUs) thresholds to calculate a metric for. Must be a subset of `iou_thresholds_to_compute`.
+    label_map : list[list[list[str]]]
+        Optional mapping of individual Labels to a grouper Label. Useful when you need to evaluate performance using Labels that differ across datasets and models.
     """
 
     task_type: TaskType
@@ -24,6 +27,7 @@ class EvaluationParameters(BaseModel):
     convert_annotations_to_type: AnnotationType | None = None
     iou_thresholds_to_compute: list[float] | None = None
     iou_thresholds_to_return: list[float] | None = None
+    label_map: list[list[list[str]]] | None = None
 
     # pydantic setting
     model_config = ConfigDict(extra="forbid")

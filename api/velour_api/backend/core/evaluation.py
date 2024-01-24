@@ -152,7 +152,6 @@ def _verify_ready_to_evaluate(
 
     for model in model_list:
         for dataset in dataset_list:
-
             # verify dataset status
             match enums.TableStatus(dataset.status):
                 case enums.TableStatus.CREATING:
@@ -335,7 +334,12 @@ def _create_responses(
                 (
                     missing_pred_labels,
                     ignored_pred_labels,
-                ) = core.get_disjoint_labels(db, datum_filter, model_filter)
+                ) = core.get_disjoint_labels(
+                    db,
+                    datum_filter,
+                    model_filter,
+                    label_map=parameters.label_map,
+                )
                 kwargs = {
                     "missing_pred_labels": missing_pred_labels,
                     "ignored_pred_labels": ignored_pred_labels,
@@ -426,7 +430,6 @@ def create_or_get_evaluations(
     created_rows = []
     existing_rows = []
     for subrequest in _split_request(db, job_request):
-
         if len(subrequest.model_names) != 1:
             raise RuntimeError(
                 "Subrequests should only reference a single model name."
