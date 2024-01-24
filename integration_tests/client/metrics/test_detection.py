@@ -111,7 +111,6 @@ def test_evaluate_detection(
     assert result == {
         "id": eval_job.id,
         "model_name": model_name,
-        "label_map": None,
         "datum_filter": {
             **default_filter_properties,
             "dataset_names": ["test_dataset"],
@@ -223,7 +222,6 @@ def test_evaluate_detection(
             ],
             "label_keys": ["k1"],
         },
-        "label_map": None,
         "parameters": {
             "task_type": TaskType.DETECTION.value,
             "convert_annotations_to_type": AnnotationType.BOX.value,
@@ -270,7 +268,6 @@ def test_evaluate_detection(
             ],
             "label_keys": ["k1"],
         },
-        "label_map": None,
         "parameters": {
             "task_type": TaskType.DETECTION.value,
             "convert_annotations_to_type": AnnotationType.BOX.value,
@@ -317,7 +314,6 @@ def test_evaluate_detection(
             ],
             "label_keys": ["k1"],
         },
-        "label_map": None,
         "parameters": {
             "task_type": TaskType.DETECTION.value,
             "convert_annotations_to_type": AnnotationType.BOX.value,
@@ -370,7 +366,6 @@ def test_evaluate_detection(
             ],
             "label_keys": ["k1"],
         },
-        "label_map": None,
         "parameters": {
             "task_type": TaskType.DETECTION.value,
             "convert_annotations_to_type": AnnotationType.BOX.value,
@@ -530,7 +525,6 @@ def test_evaluate_detection_with_json_filters(
             ],
             "label_keys": ["k1"],
         },
-        "label_map": None,
         "parameters": {
             "task_type": TaskType.DETECTION.value,
             "convert_annotations_to_type": AnnotationType.BOX.value,

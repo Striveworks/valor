@@ -122,7 +122,6 @@ def test_generate_prediction_data(client: Client):
             "dataset_names": [dataset_name],
             "label_keys": ["k1"],
         },
-        "label_map": None,
         "parameters": {
             "task_type": TaskType.DETECTION.value,
             "convert_annotations_to_type": AnnotationType.BOX.value,

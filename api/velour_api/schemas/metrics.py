@@ -1,5 +1,4 @@
 import numpy as np
-
 from pydantic import BaseModel, ConfigDict, field_validator
 
 from velour_api.schemas.label import Label
