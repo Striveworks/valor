@@ -27,7 +27,7 @@ class EvaluationParameters(BaseModel):
     convert_annotations_to_type: AnnotationType | None = None
     iou_thresholds_to_compute: list[float] | None = None
     iou_thresholds_to_return: list[float] | None = None
-    label_map: list | None = None
+    label_map: list[list[list[str]]] | None = None
 
     # pydantic setting
     model_config = ConfigDict(extra="forbid")

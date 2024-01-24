@@ -122,6 +122,7 @@ def test_evaluate_detection(
             "convert_annotations_to_type": AnnotationType.BOX.value,
             "iou_thresholds_to_compute": [0.1, 0.6],
             "iou_thresholds_to_return": [0.1, 0.6],
+            "label_map": None,
         },
         "status": EvaluationStatus.DONE.value,
         "metrics": expected_metrics,
@@ -228,6 +229,7 @@ def test_evaluate_detection(
             "convert_annotations_to_type": AnnotationType.BOX.value,
             "iou_thresholds_to_compute": [0.1, 0.6],
             "iou_thresholds_to_return": [0.1, 0.6],
+            "label_map": None,
         },
         "status": EvaluationStatus.DONE.value,
         "metrics": expected_metrics,
@@ -274,6 +276,7 @@ def test_evaluate_detection(
             "convert_annotations_to_type": AnnotationType.BOX.value,
             "iou_thresholds_to_compute": [0.1, 0.6],
             "iou_thresholds_to_return": [0.1, 0.6],
+            "label_map": None,
         },
         # check metrics below
         "status": EvaluationStatus.DONE.value,
@@ -320,6 +323,7 @@ def test_evaluate_detection(
             "convert_annotations_to_type": AnnotationType.BOX.value,
             "iou_thresholds_to_compute": [0.1, 0.6],
             "iou_thresholds_to_return": [0.1, 0.6],
+            "label_map": None,
         },
         # check metrics below
         "status": EvaluationStatus.DONE.value,
@@ -372,6 +376,7 @@ def test_evaluate_detection(
             "convert_annotations_to_type": AnnotationType.BOX.value,
             "iou_thresholds_to_compute": [0.1, 0.6],
             "iou_thresholds_to_return": [0.1, 0.6],
+            "label_map": None,
         },
         # check metrics below
         "status": EvaluationStatus.DONE.value,
@@ -531,6 +536,7 @@ def test_evaluate_detection_with_json_filters(
             "convert_annotations_to_type": AnnotationType.BOX.value,
             "iou_thresholds_to_compute": [0.1, 0.6],
             "iou_thresholds_to_return": [0.1, 0.6],
+            "label_map": None,
         },
         # check metrics below
         "status": EvaluationStatus.DONE.value,
