@@ -7,14 +7,20 @@ from sqlalchemy.orm import Session
 
 from velour_api import enums, exceptions, schemas
 from velour_api.backend import models
-from velour_api.backend.core.evaluation import check_for_active_evaluations
+from velour_api.backend.core.annotation import delete_dataset_annotations
+from velour_api.backend.core.evaluation import (
+    count_active_evaluations,
+    delete_evaluations,
+)
+from velour_api.backend.core.groundtruth import delete_groundtruths
 from velour_api.backend.core.label import get_labels
+from velour_api.backend.core.prediction import delete_dataset_predictions
 
 
 def create_dataset(
     db: Session,
     dataset: schemas.Dataset,
-):
+) -> models.Dataset:
     """
     Creates a dataset.
 
@@ -24,6 +30,16 @@ def create_dataset(
         The database Session to query against.
     dataset : schemas.Dataset
         The dataset to create.
+
+    Returns
+    -------
+    models.Dataset
+        The created dataset row.
+
+    Raises
+    ------
+    exceptions.DatasetAlreadyExistsError
+        If a dataset with the provided name already exists.
     """
     try:
         row = models.Dataset(
@@ -59,6 +75,10 @@ def fetch_dataset(
     models.Dataset
         The requested dataset.
 
+    Raises
+    ------
+    exceptions.DatasetDoesNotExistError
+        If a dataset with the provided name does not exist.
     """
     dataset = (
         db.query(models.Dataset)
@@ -73,6 +93,134 @@ def fetch_dataset(
     if dataset is None:
         raise exceptions.DatasetDoesNotExistError(name)
     return dataset
+
+
+def get_dataset(
+    db: Session,
+    name: str,
+) -> schemas.Dataset:
+    """
+    Gets a dataset by name.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    name : str
+        The name of the dataset.
+
+    Returns
+    ----------
+    schemas.Dataset
+        The requested dataset.
+    """
+    dataset = fetch_dataset(db, name=name)
+    geo_dict = (
+        schemas.geojson.from_dict(
+            json.loads(db.scalar(ST_AsGeoJSON(dataset.geo)))
+        )
+        if dataset.geo
+        else None
+    )
+    return schemas.Dataset(
+        id=dataset.id,
+        name=dataset.name,
+        metadata=dataset.meta,
+        geospatial=geo_dict,
+    )
+
+
+def get_all_datasets(
+    db: Session,
+) -> list[schemas.Dataset]:
+    """
+    Get all datasets.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+
+    Returns
+    ----------
+    List[schemas.Dataset]
+        A list of all datasets.
+    """
+    return [
+        get_dataset(db, name)
+        for name in db.scalars(select(models.Dataset.name)).all()
+    ]
+
+
+def get_dataset_status(
+    db: Session,
+    name: str,
+) -> enums.TableStatus:
+    """
+    Get the status of a dataset.
+
+    Parameters
+    ----------
+    db : Session
+        The database session.
+    name : str
+        The name of the dataset.
+
+    Returns
+    -------
+    enums.TableStatus
+        The status of the dataset.
+    """
+    dataset = fetch_dataset(db, name)
+    return enums.TableStatus(dataset.status)
+
+
+def set_dataset_status(
+    db: Session,
+    name: str,
+    status: enums.TableStatus,
+):
+    """
+    Sets the status of a dataset.
+
+    Parameters
+    ----------
+    db : Session
+        The database session.
+    name : str
+        The name of the dataset.
+    status : enums.TableStatus
+        The desired dataset state.
+
+    Raises
+    ------
+    exceptions.DatasetStateError
+        If an illegal transition is requested.
+    exceptions.EvaluationRunningError
+        If the requested state is DELETING while an evaluation is running.
+    """
+    dataset = fetch_dataset(db, name)
+    active_status = enums.TableStatus(dataset.status)
+
+    if status == active_status:
+        return
+
+    if status not in active_status.next():
+        raise exceptions.DatasetStateError(name, active_status, status)
+
+    if status == enums.TableStatus.DELETING:
+        if count_active_evaluations(
+            db=db,
+            dataset_names=[name],
+        ):
+            raise exceptions.EvaluationRunningError(dataset_name=name)
+
+    try:
+        dataset.status = status
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise e
 
 
 def get_n_datums_in_dataset(db: Session, name: str) -> int:
@@ -232,131 +380,6 @@ def get_dataset_summary(db: Session, name: str) -> schemas.DatasetSummary:
     )
 
 
-def get_dataset(
-    db: Session,
-    name: str,
-) -> schemas.Dataset:
-    """
-    Fetch a dataset.
-
-    Parameters
-    ----------
-    db : Session
-        The database Session to query against.
-    name : str
-        The name of the dataset.
-
-    Returns
-    ----------
-    schemas.Dataset
-        The requested dataset.
-    """
-    dataset = fetch_dataset(db, name=name)
-    geo_dict = (
-        schemas.geojson.from_dict(
-            json.loads(db.scalar(ST_AsGeoJSON(dataset.geo)))
-        )
-        if dataset.geo
-        else None
-    )
-    return schemas.Dataset(
-        id=dataset.id,
-        name=dataset.name,
-        metadata=dataset.meta,
-        geospatial=geo_dict,
-    )
-
-
-def get_datasets(
-    db: Session,
-) -> list[schemas.Dataset]:
-    """
-    Fetch all datasets.
-
-    Parameters
-    ----------
-    db : Session
-        The database Session to query against.
-
-    Returns
-    ----------
-    List[schemas.Dataset]
-        A list of all datasets.
-    """
-    return [
-        get_dataset(db, name)
-        for name in db.scalars(select(models.Dataset.name)).all()
-    ]
-
-
-def get_dataset_status(
-    db: Session,
-    name: str,
-) -> enums.TableStatus:
-    """
-    Get the status of a dataset.
-
-    Parameters
-    ----------
-    db : Session
-        The database session.
-    name : str
-        The name of the dataset.
-
-    Returns
-    -------
-    enums.TableStatus
-        The status of the dataset.
-    """
-    dataset = fetch_dataset(db, name)
-    return enums.TableStatus(dataset.status)
-
-
-def set_dataset_status(
-    db: Session,
-    name: str,
-    status: enums.TableStatus,
-):
-    """
-    Sets the status of a dataset.
-
-    Parameters
-    ----------
-    db : Session
-        The database session.
-    name : str
-        The name of the dataset.
-    status : enums.TableStatus
-        The desired dataset state.
-
-    Raises
-    ------
-    exceptions.DatasetStateError
-        If an illegal transition is requested.
-    exceptions.EvaluationRunningError
-        If the requested state is DELETING while an evaluation is running.
-    """
-    dataset = fetch_dataset(db, name)
-    active_status = enums.TableStatus(dataset.status)
-
-    if status == active_status:
-        return
-
-    if status not in active_status.next():
-        raise exceptions.DatasetStateError(name, active_status, status)
-
-    if status == enums.TableStatus.DELETING:
-        if check_for_active_evaluations(db=db, dataset_name=name):
-            raise exceptions.EvaluationRunningError(dataset_name=name)
-
-    try:
-        dataset.status = status
-        db.commit()
-    except Exception as e:
-        db.rollback()
-        raise e
-
-
 def delete_dataset(
     db: Session,
     name: str,
@@ -371,10 +394,13 @@ def delete_dataset(
     name : str
         The name of the dataset.
     """
-    if check_for_active_evaluations(db=db, model_name=name):
-        raise exceptions.EvaluationRunningError(name)
     set_dataset_status(db, name, enums.TableStatus.DELETING)
     dataset = fetch_dataset(db, name=name)
+
+    delete_evaluations(db=db, dataset_names=[name])
+    delete_dataset_predictions(db, dataset)
+    delete_groundtruths(db, dataset)
+    delete_dataset_annotations(db, dataset)
 
     try:
         db.delete(dataset)

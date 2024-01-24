@@ -24,7 +24,7 @@ def test_create_datum(
         db=db,
         datum=schemas.Datum(
             uid="uid1",
-            dataset=created_dataset,
+            dataset_name=created_dataset,
         ),
     )
 
@@ -36,7 +36,7 @@ def test_create_datum(
             db=db,
             datum=schemas.Datum(
                 uid="uid2",
-                dataset="dataset_that_doesnt_exist",
+                dataset_name="dataset_that_doesnt_exist",
             ),
         )
 
@@ -46,7 +46,7 @@ def test_create_datum(
             db=db,
             datum=schemas.Datum(
                 uid="uid1",
-                dataset=created_dataset,
+                dataset_name=created_dataset,
             ),
         )
 
@@ -57,7 +57,7 @@ def test_create_datum(
         db=db,
         datum=schemas.Datum(
             uid="uid2",
-            dataset=created_dataset,
+            dataset_name=created_dataset,
         ),
     )
 
@@ -72,21 +72,21 @@ def test_get_datums(
         db=db,
         datum=schemas.Datum(
             uid="uid1",
-            dataset=created_dataset,
+            dataset_name=created_dataset,
         ),
     )
     core.create_datum(
         db=db,
         datum=schemas.Datum(
             uid="uid2",
-            dataset=created_dataset,
+            dataset_name=created_dataset,
         ),
     )
     core.create_datum(
         db=db,
         datum=schemas.Datum(
             uid="uid3",
-            dataset=created_dataset,
+            dataset_name=created_dataset,
         ),
     )
 

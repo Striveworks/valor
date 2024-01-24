@@ -72,7 +72,7 @@ def random_mask_bytes(size: tuple[int, int]) -> bytes:
 @pytest.fixture
 def img1() -> schemas.Datum:
     return schemas.Datum(
-        dataset="test_dataset",
+        dataset_name="test_dataset",
         uid="uid1",
         metadata={
             "height": img1_size[0],
@@ -84,7 +84,7 @@ def img1() -> schemas.Datum:
 @pytest.fixture
 def img2() -> schemas.Datum:
     return schemas.Datum(
-        dataset="test_dataset",
+        dataset_name="test_dataset",
         uid="uid2",
         metadata={
             "height": img2_size[0],
@@ -150,7 +150,7 @@ def dset(db: Session) -> models.Dataset:
 def images() -> list[schemas.Datum]:
     return [
         schemas.Datum(
-            dataset="test_dataset",
+            dataset_name="test_dataset",
             uid=f"{i}",
             metadata={
                 "height": 1000,
@@ -334,7 +334,7 @@ def predictions(
 
     db_preds_per_img = [
         schemas.Prediction(
-            model=model_name,
+            model_name=model_name,
             datum=image,
             annotations=[
                 schemas.Annotation(
@@ -381,7 +381,7 @@ def pred_semantic_segs_img1_create(
     b64_mask2 = b64encode(img1_pred_mask_bytes2).decode()
     b64_mask3 = b64encode(img1_pred_mask_bytes3).decode()
     return schemas.Prediction(
-        model=model_name,
+        model_name=model_name,
         datum=img1,
         annotations=[
             schemas.Annotation(
@@ -413,7 +413,7 @@ def pred_semantic_segs_img2_create(
     b64_mask1 = b64encode(img2_pred_mask_bytes1).decode()
     b64_mask2 = b64encode(img2_pred_mask_bytes2).decode()
     return schemas.Prediction(
-        model=model_name,
+        model_name=model_name,
         datum=img2,
         annotations=[
             schemas.Annotation(
@@ -579,7 +579,7 @@ def prediction_detections(
 ) -> list[schemas.Prediction]:
     return [
         schemas.Prediction(
-            model=model_name,
+            model_name=model_name,
             datum=img1,
             annotations=[
                 schemas.Annotation(
@@ -637,7 +637,7 @@ def dataset_model_create(
         dataset=schemas.Dataset(name=dataset_name),
     )
     for gt in groundtruth_detections:
-        gt.datum.dataset = dataset_name
+        gt.datum.dataset_name = dataset_name
         crud.create_groundtruth(db=db, groundtruth=gt)
     crud.finalize(db=db, dataset_name=dataset_name)
 
@@ -646,8 +646,8 @@ def dataset_model_create(
 
     # Link model1 to dataset1
     for pd in prediction_detections:
-        pd.model = model_name
-        pd.datum.dataset = dataset_name
+        pd.model_name = model_name
+        pd.datum.dataset_name = dataset_name
         crud.create_prediction(db=db, prediction=pd)
 
     # Finalize model1 over dataset1

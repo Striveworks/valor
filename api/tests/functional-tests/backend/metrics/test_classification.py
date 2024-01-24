@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from velour_api import crud, enums, schemas
 from velour_api.backend import models
-from velour_api.backend.core import create_evaluation, get_evaluations
+from velour_api.backend.core import create_or_get_evaluations
 from velour_api.backend.metrics.classification import (
     _compute_accuracy_from_cm,
     _compute_clf_metrics,
@@ -37,7 +37,7 @@ def classification_test_data(db: Session, dataset_name: str, model_name: str):
 
     imgs = [
         schemas.Datum(
-            dataset=dataset_name,
+            dataset_name=dataset_name,
             uid=f"uid{i}",
             metadata={
                 "height": 128,
@@ -67,7 +67,7 @@ def classification_test_data(db: Session, dataset_name: str, model_name: str):
 
     preds = [
         schemas.Prediction(
-            model=model_name,
+            model_name=model_name,
             datum=imgs[i],
             annotations=[
                 schemas.Annotation(
@@ -121,15 +121,21 @@ def test_compute_confusion_matrix_at_label_key(
     model_name: str,
     classification_test_data,
 ):
-    label_key = "animal"
-    job_request = schemas.EvaluationJob(
-        dataset=dataset_name,
-        model=model_name,
-        task_type=enums.TaskType.CLASSIFICATION,
-        settings=schemas.EvaluationSettings(),
+    prediction_filter = schemas.Filter(
+        model_names=[model_name],
+        task_types=[enums.TaskType.CLASSIFICATION],
+    )
+    groundtruth_filter = schemas.Filter(
+        dataset_names=[dataset_name],
+        task_types=[enums.TaskType.CLASSIFICATION],
     )
 
-    cm = _compute_confusion_matrix_at_label_key(db, job_request, label_key)
+    cm = _compute_confusion_matrix_at_label_key(
+        db=db,
+        prediction_filter=prediction_filter,
+        groundtruth_filter=groundtruth_filter,
+        label_key="animal",
+    )
     expected_entries = [
         schemas.ConfusionMatrixEntry(
             prediction="bird", groundtruth="bird", count=1
@@ -154,8 +160,12 @@ def test_compute_confusion_matrix_at_label_key(
         assert entry in cm.entries
     assert _compute_accuracy_from_cm(cm) == 2 / 6
 
-    label_key = "color"
-    cm = _compute_confusion_matrix_at_label_key(db, job_request, label_key)
+    cm = _compute_confusion_matrix_at_label_key(
+        db=db,
+        prediction_filter=prediction_filter,
+        groundtruth_filter=groundtruth_filter,
+        label_key="color",
+    )
     expected_entries = [
         schemas.ConfusionMatrixEntry(
             prediction="white", groundtruth="white", count=1
@@ -190,23 +200,22 @@ def test_compute_confusion_matrix_at_label_key_and_filter(
     """
     Test filtering by metadata (md1: md1-val0).
     """
-    job_request = schemas.EvaluationJob(
-        dataset=dataset_name,
-        model=model_name,
-        task_type=enums.TaskType.CLASSIFICATION,
-        settings=schemas.EvaluationSettings(
-            filters=schemas.Filter(
-                task_types=[enums.TaskType.CLASSIFICATION],
-                datum_metadata={
-                    "md1": [schemas.StringFilter(value="md1-val0")]
-                },
-            )
-        ),
+
+    prediction_filter = schemas.Filter(
+        dataset_names=[dataset_name],
+        model_names=[model_name],
+    )
+    groundtruth_filter = schemas.Filter(
+        dataset_names=[dataset_name],
+        model_names=[model_name],
+        task_types=[enums.TaskType.CLASSIFICATION],
+        datum_metadata={"md1": [schemas.StringFilter(value="md1-val0")]},
     )
 
     cm = _compute_confusion_matrix_at_label_key(
         db,
-        job_request=job_request,
+        prediction_filter=prediction_filter,
+        groundtruth_filter=groundtruth_filter,
         label_key="animal",
     )
 
@@ -276,24 +285,43 @@ def test_compute_roc_auc(
     0.43125
     ```
     """
-    job_request = schemas.EvaluationJob(
-        dataset=dataset_name,
-        model=model_name,
-        task_type=enums.TaskType.CLASSIFICATION,
-        settings=schemas.EvaluationSettings(
-            filters=schemas.Filter(task_types=[enums.TaskType.CLASSIFICATION])
-        ),
+    prediction_filter = schemas.Filter(
+        model_names=[model_name],
+        task_types=[enums.TaskType.CLASSIFICATION],
+    )
+    groundtruth_filter = schemas.Filter(
+        dataset_names=[dataset_name],
+        task_types=[enums.TaskType.CLASSIFICATION],
     )
 
     assert (
-        _compute_roc_auc(db, job_request, label_key="animal")
+        _compute_roc_auc(
+            db=db,
+            prediction_filter=prediction_filter,
+            groundtruth_filter=groundtruth_filter,
+            label_key="animal",
+        )
         == 0.8009259259259259
     )
-    assert _compute_roc_auc(db, job_request, label_key="color") == 0.43125
+    assert (
+        _compute_roc_auc(
+            db=db,
+            prediction_filter=prediction_filter,
+            groundtruth_filter=groundtruth_filter,
+            label_key="color",
+        )
+        == 0.43125
+    )
 
-    with pytest.raises(RuntimeError) as exc_info:
-        _compute_roc_auc(db, job_request, label_key="not a key")
-    assert "is not a classification label" in str(exc_info)
+    assert (
+        _compute_roc_auc(
+            db=db,
+            prediction_filter=prediction_filter,
+            groundtruth_filter=groundtruth_filter,
+            label_key="not a key",
+        )
+        is None
+    )
 
 
 def test_compute_roc_auc_groupby_metadata(
@@ -326,24 +354,20 @@ def test_compute_roc_auc_groupby_metadata(
 
     which gives 2/3. So we expect our implementation to give the average of 0.5 and 2/3
     """
-    job_request = schemas.EvaluationJob(
-        dataset=dataset_name,
-        model=model_name,
-        task_type=enums.TaskType.CLASSIFICATION,
-        settings=schemas.EvaluationSettings(
-            filters=schemas.Filter(
-                task_types=[enums.TaskType.CLASSIFICATION],
-                datum_metadata={
-                    "md1": [schemas.StringFilter(value="md1-val0")]
-                },
-            )
-        ),
+    model_filter = schemas.Filter(
+        model_names=[model_name],
+    )
+    datum_filter = schemas.Filter(
+        dataset_names=[dataset_name],
+        task_types=[enums.TaskType.CLASSIFICATION],
+        datum_metadata={"md1": [schemas.StringFilter(value="md1-val0")]},
     )
 
     assert (
         _compute_roc_auc(
             db,
-            job_request=job_request,
+            prediction_filter=model_filter,
+            groundtruth_filter=datum_filter,
             label_key="animal",
         )
         == (0.5 + 2 / 3) / 2
@@ -359,18 +383,16 @@ def test_compute_classification(
     """
     Tests the _compute_classification function.
     """
-    job_request = schemas.EvaluationJob(
-        dataset=dataset_name,
-        model=model_name,
-        task_type=enums.TaskType.CLASSIFICATION,
-        settings=schemas.EvaluationSettings(
-            filters=schemas.Filter(
-                task_types=[enums.TaskType.CLASSIFICATION],
-            )
-        ),
+    model_filter = schemas.Filter(
+        dataset_names=[dataset_name], model_names=[model_name]
+    )
+    datum_filter = schemas.Filter(
+        dataset_names=[dataset_name],
+        model_names=[model_name],
+        task_types=[enums.TaskType.CLASSIFICATION],
     )
 
-    confusion, metrics = _compute_clf_metrics(db, job_request)
+    confusion, metrics = _compute_clf_metrics(db, model_filter, datum_filter)
 
     # Make matrices accessible by label_key
     confusion = {matrix.label_key: matrix for matrix in confusion}
@@ -435,27 +457,36 @@ def test_classification(
     classification_test_data,
 ):
     # default request
-    job_request = schemas.EvaluationJob(
-        dataset=dataset_name,
-        model=model_name,
-        task_type=enums.TaskType.CLASSIFICATION,
-        settings=schemas.EvaluationSettings(),
+    job_request = schemas.EvaluationRequest(
+        model_names=[model_name],
+        datum_filter=schemas.Filter(dataset_names=[dataset_name]),
+        parameters=schemas.EvaluationParameters(
+            task_type=enums.TaskType.CLASSIFICATION,
+        ),
     )
 
     # creates evaluation job
-    evaluation_id = create_evaluation(db, job_request)
+    created_evaluations, existing_evaluations = create_or_get_evaluations(
+        db=db, job_request=job_request
+    )
+    assert len(created_evaluations) == 1
+    assert len(existing_evaluations) == 0
 
     # computation, normally run as background task
     _ = compute_clf_metrics(
-        db=db, evaluation_id=evaluation_id
-    )  # returns job_ud
+        db=db,
+        evaluation_id=created_evaluations[0].id,
+    )
 
     # get evaluations
-    evaluations = get_evaluations(db, evaluation_ids=[evaluation_id])
+    created_evaluations, existing_evaluations = create_or_get_evaluations(
+        db=db, job_request=job_request
+    )
+    assert len(created_evaluations) == 0
+    assert len(existing_evaluations) == 1
 
-    assert len(evaluations) == 1
-    metrics = evaluations[0].metrics
-    confusion = evaluations[0].confusion_matrices
+    metrics = existing_evaluations[0].metrics
+    confusion = existing_evaluations[0].confusion_matrices
 
     # Make matrices accessible by label_key
     confusion = {matrix.label_key: matrix for matrix in confusion}

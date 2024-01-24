@@ -4,7 +4,7 @@ from dataclasses import asdict
 
 import PIL
 
-from velour import Annotation, Label
+from velour import Label
 from velour.client import Client
 from velour.data_generation import (
     generate_prediction_data,
@@ -93,38 +93,41 @@ def test_generate_prediction_data(client: Client):
     )
 
     eval_job = model.evaluate_detection(
-        dataset=dataset,
-        iou_thresholds_to_compute=[0, 1],
-        iou_thresholds_to_keep=[0, 1],
+        dataset,
+        iou_thresholds_to_compute=[0.1, 0.9],
+        iou_thresholds_to_return=[0.1, 0.9],
         filters=[
             Label.key == "k1",
-            Annotation.type == AnnotationType.BOX,
         ],
+        convert_annotations_to_type=AnnotationType.BOX,
     )
-    eval_results = eval_job.wait_for_completion(timeout=30)
-    assert eval_results.status == EvaluationStatus.DONE
+    assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
 
-    eval_dict = asdict(eval_results)
-    eval_dict.pop("metrics")
-    for key in ["evaluation_id", "confusion_matrices", "status"]:
+    eval_dict = eval_job.dict()
+    for key in [
+        "id",
+        "confusion_matrices",
+        "metrics",
+        "status",
+        "ignored_pred_labels",
+        "missing_pred_labels",
+    ]:
         eval_dict.pop(key)
     assert eval_dict == {
-        "model": model_name,
-        "dataset": dataset_name,
-        "task_type": TaskType.DETECTION.value,
-        "settings": {
-            "parameters": {
-                "iou_thresholds_to_compute": [0.0, 1.0],
-                "iou_thresholds_to_keep": [0.0, 1.0],
-            },
-            "label_map": None,
-            "filters": {
-                **asdict(
-                    Filter()
-                ),  # default filter properties with overrides below
-                "annotation_types": ["box"],
-                "label_keys": ["k1"],
-            },
+        "model_name": model_name,
+        "datum_filter": {
+            **asdict(
+                Filter()
+            ),  # default filter properties with overrides below
+            "dataset_names": [dataset_name],
+            "label_keys": ["k1"],
+        },
+        "label_map": None,
+        "parameters": {
+            "task_type": TaskType.DETECTION.value,
+            "convert_annotations_to_type": AnnotationType.BOX.value,
+            "iou_thresholds_to_compute": [0.1, 0.9],
+            "iou_thresholds_to_return": [0.1, 0.9],
         },
     }
-    assert len(eval_job.get_result().metrics) > 0
+    assert len(eval_job.metrics) > 0

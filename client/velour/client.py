@@ -1,6 +1,7 @@
 import logging
 import os
 import time
+from dataclasses import asdict
 from typing import Callable, List, Optional, TypeVar, Union
 from urllib.parse import urlencode, urljoin
 
@@ -9,7 +10,7 @@ from packaging import version
 
 from velour import __version__ as client_version
 from velour.enums import TableStatus
-from velour.schemas.evaluation import EvaluationResult
+from velour.schemas.evaluation import EvaluationRequest
 
 T = TypeVar("T")
 
@@ -451,13 +452,13 @@ class Client:
                     "Model wasn't deleted within timeout interval"
                 )
 
-    def get_bulk_evaluations(
+    def get_evaluations(
         self,
         *,
         evaluation_ids: Union[int, List[int], None] = None,
         models: Union[str, List[str], None] = None,
         datasets: Union[str, List[str], None] = None,
-    ) -> List[EvaluationResult]:
+    ) -> List[dict]:
         """
         Returns all metrics associated with user-supplied dataset and/or model names.
 
@@ -499,62 +500,23 @@ class Client:
         query_str = urlencode(params)
         endpoint = f"evaluations?{query_str}"
 
-        evals = self._requests_get_rel_host(endpoint).json()
-        return [EvaluationResult(**eval) for eval in evals]
+        return self._requests_get_rel_host(endpoint).json()
 
-
-class DeletionJob:
-    def __init__(
-        self,
-        client: Client,
-        *,
-        dataset_name: str = None,
-        model_name: str = None,
-        **kwargs,
-    ):
-        self.client = client
-        self.dataset_name = dataset_name
-        self.model_name = model_name
-
-        if dataset_name and not model_name:
-            self.func = self.client.get_dataset
-            self.args = self.dataset_name
-        elif model_name and not dataset_name:
-            self.func = self.client.get_model
-            self.args = self.model_name
-        else:
-            raise ValueError
-
-        for k, v in kwargs.items():
-            setattr(self, k, v)
-
-    def completed(self) -> bool:
-        return self.func(self.args) is None
-
-    def wait_for_completion(
-        self,
-        *,
-        timeout: int = None,
-        interval: float = 1.0,
-    ):
+    def evaluate(self, req: EvaluationRequest) -> List[dict]:
         """
-        Runs timeout logic to check when an job is completed.
+        Creates as many evaluations as necessary to fulfill the request.
 
         Parameters
         ----------
-        timeout : int
-            The total number of seconds to wait for the job to finish.
-        interval : float
-            The polling interval.
+        req : schemas.EvaluationRequest
+            The requested evaluation parameters.
 
-        Raises
-        ----------
-        TimeoutError
-            If the job's status doesn't change to True the timeout expires
+        Returns
+        -------
+        List[schemas.EvaluationResponse]
+            A list of evaluations that meet the parameters.
         """
-        wait_for_predicate(
-            lambda: self.completed(),
-            lambda status: status is True,
-            timeout,
-            interval,
-        )
+        resp = self._requests_post_rel_host(
+            "evaluations", json=asdict(req)
+        ).json()
+        return resp

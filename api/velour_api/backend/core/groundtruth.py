@@ -1,6 +1,7 @@
 import json
 
 from geoalchemy2.functions import ST_AsGeoJSON
+from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -24,10 +25,10 @@ def create_groundtruth(
     """
     # check dataset status
     if (
-        core.get_dataset_status(db=db, name=groundtruth.datum.dataset)
+        core.get_dataset_status(db=db, name=groundtruth.datum.dataset_name)
         != enums.TableStatus.CREATING
     ):
-        raise exceptions.DatasetFinalizedError(groundtruth.datum.dataset)
+        raise exceptions.DatasetFinalizedError(groundtruth.datum.dataset_name)
 
     # create datum
     datum = core.create_datum(db, groundtruth.datum)
@@ -109,9 +110,56 @@ def get_groundtruth(
     return schemas.GroundTruth(
         datum=schemas.Datum(
             uid=datum.uid,
-            dataset=dataset_name,
+            dataset_name=dataset_name,
             metadata=datum.meta,
             geospatial=geo_dict,
         ),
         annotations=core.get_annotations(db, datum),
     )
+
+
+def delete_groundtruths(
+    db: Session,
+    dataset: models.Dataset,
+):
+    """
+    Delete all groundtruths from a dataset.
+
+    Parameters
+    ----------
+    db : Session
+        The database session.
+    dataset : models.Dataset
+        The dataset row that is being deleted.
+
+    Raises
+    ------
+    RuntimeError
+        If dataset is not in deletion state.
+    """
+
+    if dataset.status != enums.TableStatus.DELETING:
+        raise RuntimeError(
+            f"Attempted to delete groundtruths from dataset `{dataset.name}` which has status `{dataset.status}`"
+        )
+
+    subquery = (
+        select(models.GroundTruth.id.label("id"))
+        .join(
+            models.Annotation,
+            models.Annotation.id == models.GroundTruth.annotation_id,
+        )
+        .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
+        .where(models.Datum.dataset_id == dataset.id)
+        .subquery()
+    )
+    delete_stmt = delete(models.GroundTruth).where(
+        models.GroundTruth.id == subquery.c.id
+    )
+
+    try:
+        db.execute(delete_stmt)
+        db.commit()
+    except IntegrityError as e:
+        db.rollback()
+        raise e

@@ -12,7 +12,7 @@ import requests
 from tqdm import tqdm
 
 from velour import Annotation, Client, Dataset, Datum, GroundTruth, Label
-from velour.enums import JobStatus, TaskType
+from velour.enums import TaskType
 from velour.metatypes import ImageMetadata
 from velour.schemas import Raster
 
@@ -313,10 +313,10 @@ def create_dataset_from_coco_panoptic(
         data["annotations"] = data["annotations"][:limit]
 
     # if reset, delete the dataset if it exists
-    if delete_if_exists and client.get_dataset_status(name) != JobStatus.NONE:
+    if delete_if_exists and client.get_dataset(name) is not None:
         client.delete_dataset(name, timeout=5)
 
-    if client.get_dataset_status(name) != JobStatus.NONE:
+    if client.get_dataset(name) is not None:
         dataset = Dataset(client, name)
     else:
         # create groundtruths

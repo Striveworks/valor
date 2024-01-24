@@ -2,15 +2,15 @@ from geoalchemy2.functions import ST_Count, ST_MapAlgebra
 from sqlalchemy.orm import Session, aliased
 from sqlalchemy.sql import Select, func, select
 
-from velour_api import enums, schemas
-from velour_api.backend import models
+from velour_api import schemas
+from velour_api.backend import core, models
 from velour_api.backend.metrics.metric_utils import (
     create_metric_mappings,
     get_or_create_row,
     validate_computation,
 )
 from velour_api.backend.ops import Query
-from velour_api.schemas.metrics import EvaluationJob, IOUMetric, mIOUMetric
+from velour_api.schemas.metrics import IOUMetric, mIOUMetric
 
 
 def _generate_groundtruth_query(groundtruth_filter: schemas.Filter) -> Select:
@@ -80,7 +80,6 @@ def _count_true_positives(
 def _count_groundtruths(
     db: Session,
     groundtruth_subquery: schemas.Filter,
-    dataset_name: str,
     label_id: int,
 ) -> int:
     """Total number of groundtruth pixels for the given dataset and label"""
@@ -93,9 +92,7 @@ def _count_groundtruths(
         )
     )
     if ret is None:
-        raise RuntimeError(
-            f"No groundtruth pixels for label id '{label_id}' found in dataset '{dataset_name}'"
-        )
+        raise RuntimeError(f"No groundtruth pixels for label id '{label_id}'.")
     return int(ret)
 
 
@@ -121,7 +118,6 @@ def _compute_iou(
     db: Session,
     groundtruth_filter: schemas.Filter,
     prediction_filter: schemas.Filter,
-    dataset_name: str,
     label_id: int,
 ) -> float:
     """Computes the pixelwise intersection over union for the given dataset, model, and label"""
@@ -130,7 +126,7 @@ def _compute_iou(
     prediction_subquery = _generate_prediction_query(prediction_filter)
 
     tp = _count_true_positives(db, groundtruth_subquery, prediction_subquery)
-    gt = _count_groundtruths(db, groundtruth_subquery, dataset_name, label_id)
+    gt = _count_groundtruths(db, groundtruth_subquery, label_id)
     pred = _count_predictions(db, prediction_subquery)
 
     return tp / (gt + pred - tp)
@@ -150,17 +146,13 @@ def _get_groundtruth_labels(
 
 def _compute_segmentation_metrics(
     db: Session,
-    job_request: schemas.EvaluationJob,
+    prediction_filter: schemas.Filter,
+    groundtruth_filter: schemas.Filter,
 ) -> list[IOUMetric | mIOUMetric]:
     """
     Computes the _compute_IOU metrics. The return is one `IOUMetric` for each label in groundtruth
     and one `mIOUMetric` for the mean _compute_IOU over all labels.
     """
-
-    # create groundtruth + prediction filters
-    groundtruth_filter = job_request.settings.filters.model_copy()
-    prediction_filter = job_request.settings.filters.model_copy()
-    prediction_filter.models_names = [job_request.model]
 
     labels = _get_groundtruth_labels(db, groundtruth_filter)
 
@@ -174,7 +166,6 @@ def _compute_segmentation_metrics(
             db,
             groundtruth_filter,
             prediction_filter,
-            job_request.dataset,
             label.id,
         )
 
@@ -203,7 +194,6 @@ def compute_semantic_segmentation_metrics(
     *,
     db: Session,
     evaluation_id: int,
-    job_request: EvaluationJob,
 ) -> int:
     """
     Create semantic segmentation metrics. This function is intended to be run using FastAPI's `BackgroundTasks`.
@@ -214,40 +204,25 @@ def compute_semantic_segmentation_metrics(
         The database Session to query against.
     evaluation_id : int
         The job ID to create metrics for.
-    job_request : EvaluationJob
-        The evaluation job.
     """
-    evaluation = db.scalar(
-        select(models.Evaluation).where(models.Evaluation.id == evaluation_id)
-    )
 
-    # unpack job request
-    job_request = schemas.EvaluationJob(
-        dataset=evaluation.dataset.name,
-        model=evaluation.model.name,
-        task_type=evaluation.task_type,
-        settings=schemas.EvaluationSettings(**evaluation.settings),
-        id=evaluation.id,
-    )
+    # fetch evaluation
+    evaluation = core.fetch_evaluation_from_id(db, evaluation_id)
 
-    # check evaluation type
-    if job_request.task_type != enums.TaskType.SEGMENTATION:
-        raise ValueError(
-            f"Cannot run segmentation evaluation on task with type `{job_request.task_type}`."
-        )
+    # unpack filters and params
+    groundtruth_filter = schemas.Filter(**evaluation.datum_filter)
+    prediction_filter = groundtruth_filter.model_copy()
+    prediction_filter.model_names = [evaluation.model_name]
+    parameters = schemas.EvaluationParameters(**evaluation.parameters)
 
-    # configure filters
-    if not job_request.settings.filters:
-        job_request.settings.filters = schemas.Filter()
-    job_request.settings.filters.task_types = [enums.TaskType.SEGMENTATION]
-    job_request.settings.filters.dataset_names = [job_request.dataset]
-    job_request.settings.filters.annotation_types = [
-        enums.AnnotationType.RASTER
-    ]
+    # load task type into filters
+    groundtruth_filter.task_types = [parameters.task_type]
+    prediction_filter.task_types = [parameters.task_type]
 
     metrics = _compute_segmentation_metrics(
-        db,
-        job_request,
+        db=db,
+        prediction_filter=prediction_filter,
+        groundtruth_filter=groundtruth_filter,
     )
     metric_mappings = create_metric_mappings(db, metrics, evaluation_id)
     for mapping in metric_mappings:

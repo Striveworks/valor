@@ -5,7 +5,7 @@ from base64 import b64encode
 from geoalchemy2 import RasterElement
 from geoalchemy2.functions import ST_AsGeoJSON, ST_AsPNG, ST_Envelope
 from PIL import Image
-from sqlalchemy import and_, distinct, select, text
+from sqlalchemy import and_, delete, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -66,7 +66,11 @@ def _wkt_multipolygon_to_raster(wkt: str):
         A scalar subquery from psql.
     """
     return select(
-        text(f"ST_AsRaster(ST_GeomFromText('{wkt}'), {1.0}, {1.0})")
+        func.ST_AsRaster(
+            func.ST_GeomFromText(wkt),
+            1.0,
+            1.0,
+        ),
     ).scalar_subquery()
 
 
@@ -407,54 +411,86 @@ def get_annotations(
     ]
 
 
-def get_annotation_type(
+def delete_dataset_annotations(
     db: Session,
     dataset: models.Dataset,
-    model: models.Model | None = None,
-    task_type: enums.TaskType = enums.TaskType.DETECTION,
-) -> enums.AnnotationType:
+):
     """
-    Fetch annotation type from psql.
+    Delete all annotations from a dataset.
 
     Parameters
     ----------
     db : Session
-        The database Session you want to query against.
+        The database session.
     dataset : models.Dataset
-        The dataset associated with the annotation.
-    model : models.Model
-        The model associated with the annotation.
+        The dataset row that is being deleted.
 
-    Returns
-    ----------
-    enums.AnnotationType
-        The type of the annotation.
+    Raises
+    ------
+    RuntimeError
+        If dataset is not in deletion state.
     """
-    model_expr = (
-        models.Annotation.model_id == model.id
-        if model
-        else models.Annotation.model_id.is_(None)
-    )
-    hierarchy = [
-        (enums.AnnotationType.RASTER, models.Annotation.raster),
-        (enums.AnnotationType.MULTIPOLYGON, models.Annotation.multipolygon),
-        (enums.AnnotationType.POLYGON, models.Annotation.polygon),
-        (enums.AnnotationType.BOX, models.Annotation.box),
-    ]
-    for atype, col in hierarchy:
-        search = (
-            db.query(distinct(models.Dataset.id))
-            .select_from(models.Annotation)
-            .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
-            .join(models.Dataset, models.Dataset.id == models.Datum.dataset_id)
-            .where(
-                models.Datum.dataset_id == dataset.id,
-                models.Annotation.task_type == task_type.value,
-                model_expr,
-                col.isnot(None),
-            )
-            .one_or_none()
+
+    if dataset.status != enums.TableStatus.DELETING:
+        raise RuntimeError(
+            f"Attempted to delete annotations from dataset `{dataset.name}` which has status `{dataset.status}`"
         )
-        if search is not None:
-            return atype
-    return enums.AnnotationType.NONE
+
+    subquery = (
+        select(models.Annotation.id.label("id"))
+        .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
+        .where(models.Datum.dataset_id == dataset.id)
+        .subquery()
+    )
+    delete_stmt = delete(models.Annotation).where(
+        models.Annotation.id == subquery.c.id
+    )
+
+    try:
+        db.execute(delete_stmt)
+        db.commit()
+    except IntegrityError as e:
+        db.rollback()
+        raise e
+
+
+def delete_model_annotations(
+    db: Session,
+    model: models.Model,
+):
+    """
+    Delete all annotations from a model.
+
+    Parameters
+    ----------
+    db : Session
+        The database session.
+    model : models.Model
+        The model row that is being deleted.
+
+    Raises
+    ------
+    RuntimeError
+        If dataset is not in deletion state.
+    """
+
+    if model.status != enums.ModelStatus.DELETING:
+        raise RuntimeError(
+            f"Attempted to delete annotations from dataset `{model.name}` which is not being deleted."
+        )
+
+    subquery = (
+        select(models.Annotation.id.label("id"))
+        .where(models.Annotation.model_id == model.id)
+        .subquery()
+    )
+    delete_stmt = delete(models.Annotation).where(
+        models.Annotation.id == subquery.c.id
+    )
+
+    try:
+        db.execute(delete_stmt)
+        db.commit()
+    except IntegrityError as e:
+        db.rollback()
+        raise e
