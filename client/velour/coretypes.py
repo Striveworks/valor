@@ -1029,7 +1029,9 @@ class Dataset:
         List[Datum]
             A list of `Datums` associated with the dataset.
         """
-        datums = self.client.get_datums(self.name)
+        datums = self.client.get_datums(
+            filters=Filter(dataset_names=[self.name])
+        )
         return [Datum._from_dict(datum) for datum in datums]
 
     def get_evaluations(

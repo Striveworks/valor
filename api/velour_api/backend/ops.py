@@ -99,7 +99,7 @@ class Query:
         elif hasattr(attr, "__visit_name__"):
             table_name = attr.__visit_name__
         else:
-            return None
+            table_name = None
 
         match table_name:
             case models.Dataset.__tablename__:
@@ -734,7 +734,7 @@ class Query:
                         models.Label.value == value,
                     )
                     for label in filters.labels
-                    if isinstance(label, dict) and len(label) == 1
+                    if (isinstance(label, dict) and len(label) == 1)
                     for key, value in label.items()
                 ],
             )
