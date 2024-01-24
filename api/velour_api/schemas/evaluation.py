@@ -17,7 +17,7 @@ class EvaluationParameters(BaseModel):
         A list of floats describing which Intersection over Unions (IoUs) to use when calculating metrics (i.e., mAP).
     iou_thresholds_to_return: List[float], optional
         A list of floats describing which Intersection over Union (IoUs) thresholds to calculate a metric for. Must be a subset of `iou_thresholds_to_compute`.
-    label_map : list[list[list[str]]]
+    label_map : list
         Optional mapping of individual Labels to a grouper Label. Useful when you need to evaluate performance using Labels that differ across datasets and models.
     """
 
@@ -27,7 +27,7 @@ class EvaluationParameters(BaseModel):
     convert_annotations_to_type: AnnotationType | None = None
     iou_thresholds_to_compute: list[float] | None = None
     iou_thresholds_to_return: list[float] | None = None
-    label_map: list[list[list[str]]] | None = None
+    label_map: list | None = None
 
     # pydantic setting
     model_config = ConfigDict(extra="forbid")
