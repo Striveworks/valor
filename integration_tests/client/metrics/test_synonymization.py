@@ -372,6 +372,3 @@ def test_detection_synonymization(
         [["class", "cat"], ["foo", "bar"]],
         [["class_name", "cat"], ["foo", "bar"]],
     ]
-
-
-# TODO add schema tests
