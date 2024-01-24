@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, cast
 
 import PIL.Image
 
@@ -92,10 +92,8 @@ class ImageMetadata:
                 f"`datum` does not contain height and/or width in metadata `{datum._metadata}`"
             )
         metadata = dict(datum._metadata)
-        width = metadata.pop("width")
-        height = metadata.pop("height")
-        assert isinstance(width, (int, float))
-        assert isinstance(height, (int, float))
+        width = cast(int, metadata.pop("width"))
+        height = cast(int, metadata.pop("height"))
         img = cls(
             uid=datum._uid,
             height=int(height),
@@ -194,8 +192,7 @@ class VideoFrameMetadata:
                 f"`datum` does not contain height, width and/or frame in metadata `{datum._metadata}`"
             )
         image = ImageMetadata.from_datum(datum)
-        frame = image.metadata.pop("frame")
-        assert isinstance(frame, (int, float))
+        frame = cast(int, image.metadata.pop("frame"))
         return cls(
             image=image,
             frame=int(frame),
