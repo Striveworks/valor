@@ -15,6 +15,27 @@ from velour_api.backend.core.evaluation import (
 from velour_api.backend.core.groundtruth import delete_groundtruths
 from velour_api.backend.core.label import get_labels
 from velour_api.backend.core.prediction import delete_dataset_predictions
+from velour_api.backend.ops import Query
+
+
+def _load_dataset_schema(
+    db: Session,
+    dataset: models.Dataset,
+) -> schemas.Dataset:
+    """Convert database row to schema."""
+    geo_dict = (
+        schemas.geojson.from_dict(
+            json.loads(db.scalar(ST_AsGeoJSON(dataset.geo)))
+        )
+        if dataset.geo
+        else None
+    )
+    return schemas.Dataset(
+        id=dataset.id,
+        name=dataset.name,
+        metadata=dataset.meta,
+        geospatial=geo_dict,
+    )
 
 
 def create_dataset(
@@ -114,41 +135,39 @@ def get_dataset(
     schemas.Dataset
         The requested dataset.
     """
-    dataset = fetch_dataset(db, name=name)
-    geo_dict = (
-        schemas.geojson.from_dict(
-            json.loads(db.scalar(ST_AsGeoJSON(dataset.geo)))
-        )
-        if dataset.geo
-        else None
-    )
-    return schemas.Dataset(
-        id=dataset.id,
-        name=dataset.name,
-        metadata=dataset.meta,
-        geospatial=geo_dict,
-    )
+    dataset = fetch_dataset(db=db, name=name)
+    return _load_dataset_schema(db=db, dataset=dataset)
 
 
-def get_all_datasets(
+def get_datasets(
     db: Session,
+    filters: schemas.Filter | None = None,
 ) -> list[schemas.Dataset]:
     """
-    Get all datasets.
+    Get datasets with optional filter constraint.
 
     Parameters
     ----------
     db : Session
         The database Session to query against.
+    filters : schemas.Filter, optional
+        Optional filter to constrain against.
 
     Returns
     ----------
-    List[schemas.Dataset]
+    list[schemas.Dataset]
         A list of all datasets.
     """
+    datasets_subquery = (
+        Query(models.Dataset.id.label("id")).filter(filters).any()
+    )
+    datasets = (
+        db.query(models.Dataset)
+        .where(models.Dataset.id == datasets_subquery.c.id)
+        .all()
+    )
     return [
-        get_dataset(db, name)
-        for name in db.scalars(select(models.Dataset.name)).all()
+        _load_dataset_schema(db=db, dataset=dataset) for dataset in datasets
     ]
 
 
