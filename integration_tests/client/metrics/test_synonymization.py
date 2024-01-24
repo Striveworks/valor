@@ -17,7 +17,7 @@ default_filter_properties = asdict(Filter())
 
 
 @pytest.fixture
-def gts(
+def gts_det_syn(
     rect1: BoundingBox,
     rect2: BoundingBox,
     rect3: BoundingBox,
@@ -69,7 +69,7 @@ def gts(
 
 
 @pytest.fixture
-def preds(
+def preds_det_syn(
     rect1: BoundingBox,
     rect2: BoundingBox,
     img1: ImageMetadata,
@@ -114,19 +114,19 @@ def test_detection_synonymization(
     dataset_name: str,
     model_name: str,
     client: Client,
-    gts: list[GroundTruth],
-    preds: list[Prediction],
+    gts_det_syn: list[GroundTruth],
+    preds_det_syn: list[Prediction],
 ):
     dataset = Dataset(client, dataset_name)
 
-    for gt in gts:
+    for gt in gts_det_syn:
         dataset.add_groundtruth(gt)
 
     dataset.finalize()
 
     model = Model(client, model_name)
 
-    for pd in preds:
+    for pd in preds_det_syn:
         model.add_prediction(dataset, pd)
 
     model.finalize_inferences(dataset)
@@ -184,7 +184,7 @@ def test_detection_synonymization(
     )  # we're ignoring the two "cat" model predictions
     assert (
         len(eval_job.missing_pred_labels) == 3
-    )  # we're missing three gts representing different breeds of cats
+    )  # we're missing three gts_det_syn representing different breeds of cats
 
     assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
 
@@ -372,3 +372,277 @@ def test_detection_synonymization(
         [["class", "cat"], ["foo", "bar"]],
         [["class_name", "cat"], ["foo", "bar"]],
     ]
+
+
+@pytest.fixture
+def gt_clfs_syn(
+    img5: ImageMetadata,
+    img6: ImageMetadata,
+    img8: ImageMetadata,
+) -> list[GroundTruth]:
+    return [
+        GroundTruth(
+            datum=img5.to_datum(),
+            annotations=[
+                Annotation(
+                    task_type=TaskType.CLASSIFICATION,
+                    labels=[
+                        Label(key="k4", value="v4"),
+                        Label(key="k5", value="v5"),
+                        Label(key="class", value="siamese cat"),
+                    ],
+                ),
+            ],
+        ),
+        GroundTruth(
+            datum=img6.to_datum(),
+            annotations=[
+                Annotation(
+                    task_type=TaskType.CLASSIFICATION,
+                    labels=[
+                        Label(key="k4", value="v4"),
+                        Label(key="class", value="british shorthair"),
+                    ],
+                )
+            ],
+        ),
+        GroundTruth(
+            datum=img8.to_datum(),
+            annotations=[
+                Annotation(
+                    task_type=TaskType.CLASSIFICATION,
+                    labels=[
+                        Label(key="k3", value="v3"),
+                        Label(key="class", value="tabby cat"),
+                    ],
+                )
+            ],
+        ),
+    ]
+
+
+@pytest.fixture
+def pred_clfs_syn(
+    model_name: str, img5: ImageMetadata, img6: ImageMetadata
+) -> list[Prediction]:
+    return [
+        Prediction(
+            datum=img5.to_datum(),
+            annotations=[
+                Annotation(
+                    task_type=TaskType.CLASSIFICATION,
+                    labels=[
+                        Label(key="k12", value="v12", score=0.47),
+                        Label(key="k12", value="v16", score=0.53),
+                        Label(key="k13", value="v13", score=1.0),
+                        Label(key="class", value="cat", score=1),
+                    ],
+                )
+            ],
+        ),
+        Prediction(
+            datum=img6.to_datum(),
+            annotations=[
+                Annotation(
+                    task_type=TaskType.CLASSIFICATION,
+                    labels=[
+                        Label(key="k4", value="v4", score=0.71),
+                        Label(key="k4", value="v5", score=0.29),
+                        Label(key="class_name", value="cat", score=1),
+                    ],
+                )
+            ],
+        ),
+    ]
+
+
+def test_classification_synonymization(
+    client: Client,
+    gt_clfs_syn: list[GroundTruth],
+    pred_clfs_syn: list[Prediction],
+    dataset_name: str,
+    model_name: str,
+):
+    dataset = Dataset(client, dataset_name)
+    for gt in gt_clfs_syn:
+        dataset.add_groundtruth(gt)
+    dataset.finalize()
+
+    model = Model(client, model_name)
+    for pd in pred_clfs_syn:
+        model.add_prediction(dataset, pd)
+    model.finalize_inferences(dataset)
+
+    # check baseline case
+
+    baseline_expected_metrics = [
+        {
+            "type": "Accuracy",
+            "parameters": {"label_key": "class"},
+            "value": 0.0,
+        },
+        {
+            "type": "ROCAUC",
+            "parameters": {"label_key": "class"},
+            "value": -1.0,
+        },
+        {
+            "type": "Precision",
+            "value": -1.0,
+            "label": {"key": "class", "value": "tabby cat"},
+        },
+        {
+            "type": "Recall",
+            "value": -1.0,
+            "label": {"key": "class", "value": "tabby cat"},
+        },
+        {
+            "type": "F1",
+            "value": -1.0,
+            "label": {"key": "class", "value": "tabby cat"},
+        },
+        {
+            "type": "Precision",
+            "value": 0.0,
+            "label": {"key": "class", "value": "cat"},
+        },
+        {
+            "type": "Recall",
+            "value": 0.0,
+            "label": {"key": "class", "value": "cat"},
+        },
+        {
+            "type": "F1",
+            "value": 0.0,
+            "label": {"key": "class", "value": "cat"},
+        },
+        {
+            "type": "Precision",
+            "value": -1.0,
+            "label": {"key": "class", "value": "british shorthair"},
+        },
+        {
+            "type": "Recall",
+            "value": -1.0,
+            "label": {"key": "class", "value": "british shorthair"},
+        },
+        {
+            "type": "F1",
+            "value": -1.0,
+            "label": {"key": "class", "value": "british shorthair"},
+        },
+        {
+            "type": "Precision",
+            "value": 0.0,
+            "label": {"key": "class", "value": "siamese cat"},
+        },
+        {
+            "type": "Recall",
+            "value": 0.0,
+            "label": {"key": "class", "value": "siamese cat"},
+        },
+        {
+            "type": "F1",
+            "value": 0.0,
+            "label": {"key": "class", "value": "siamese cat"},
+        },
+        {"type": "Accuracy", "parameters": {"label_key": "k4"}, "value": 1.0},
+        {"type": "ROCAUC", "parameters": {"label_key": "k4"}, "value": 1.0},
+        {
+            "type": "Precision",
+            "value": 1.0,
+            "label": {"key": "k4", "value": "v4"},
+        },
+        {
+            "type": "Recall",
+            "value": 1.0,
+            "label": {"key": "k4", "value": "v4"},
+        },
+        {"type": "F1", "value": 1.0, "label": {"key": "k4", "value": "v4"}},
+        {
+            "type": "Precision",
+            "value": -1.0,
+            "label": {"key": "k4", "value": "v5"},
+        },
+        {
+            "type": "Recall",
+            "value": -1.0,
+            "label": {"key": "k4", "value": "v5"},
+        },
+        {"type": "F1", "value": -1.0, "label": {"key": "k4", "value": "v5"}},
+    ]
+
+    baseline_cm = [
+        {
+            "label_key": "k4",
+            "entries": [{"prediction": "v4", "groundtruth": "v4", "count": 1}],
+        },
+        {
+            "label_key": "class",
+            "entries": [
+                {"prediction": "cat", "groundtruth": "siamese cat", "count": 1}
+            ],
+        },
+    ]
+
+    eval_job = model.evaluate_classification(dataset)
+
+    assert eval_job.id
+    assert set(eval_job.ignored_pred_keys) == {"class_name", "k12", "k13"}
+    assert set(eval_job.missing_pred_keys) == {"k3", "k5"}
+
+    assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
+
+    metrics = eval_job.metrics
+
+    for m in metrics:
+        assert m in baseline_expected_metrics
+    for m in baseline_expected_metrics:
+        assert m in metrics
+
+    confusion_matrices = eval_job.confusion_matrices
+    assert all([entry in baseline_cm for entry in confusion_matrices])
+
+    # now try using a label map to connect all the cats
+    # label_mapping = {
+    #     # map the groundtruths
+    #     Label(key="class", value="tabby cat"): Label(
+    #         key="special_class", value="cat"
+    #     ),
+    #     Label(key="class", value="siamese cat"): Label(
+    #         key="special_class", value="cat"
+    #     ),
+    #     Label(key="class", value="british shorthair"): Label(
+    #         key="special_class", value="cat"
+    #     ),
+    #     # map the predictions
+    #     Label(key="class", value="cat"): Label(
+    #         key="special_class", value="cat"
+    #     ),
+    #     Label(key="class_name", value="cat"): Label(
+    #         key="special_class", value="cat"
+    #     ),
+    # }
+
+    # eval_job = model.evaluate_classification(dataset, label_map=label_mapping)
+
+    # assert eval_job.id
+    # assert set(eval_job.ignored_pred_keys) == {"k12", "k13"}
+    # assert set(eval_job.missing_pred_keys) == {"k3", "k5"}
+
+    # assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
+
+    # metrics = eval_job.metrics
+
+    # for m in metrics:
+    #     assert m in baseline_expected_metrics
+    # for m in baseline_expected_metrics:
+    #     assert m in metrics
+
+    # confusion_matrices = eval_job.confusion_matrices
+    # assert confusion_matrices == [
+    #     {
+    #         "label_key": "k4",
+    #         "entries": [{"prediction": "v4", "groundtruth": "v4", "count": 1}],
+    #     }
+    # ]
