@@ -17,6 +17,9 @@ jobs:
   # backend functional test
   login-to-amazon-ecr:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     steps:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
