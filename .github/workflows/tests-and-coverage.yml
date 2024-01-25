@@ -44,7 +44,9 @@ jobs:
           DOCKERFILE_PATH="migrations/Dockerfile"
           docker build -t $IMAGE_NAME -f $DOCKERFILE_PATH migrations
   backend-functional-tests:
-    needs: login-to-amazon-ecr
+    needs:
+      - login-to-amazon-ecr
+      - build-migrations-image
     env:
       COVERAGE_FILE: .coverage.backend-functional-tests
     runs-on: ubuntu-latest
