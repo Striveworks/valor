@@ -46,9 +46,10 @@ def db():
     create_db()
     yield db
 
-    # clear postgres
-    db.execute(text(f"DROP TABLE {', '.join(tablenames)} CASCADE;"))
-    db.commit()
+    # Clear table after test
+    for table in tablenames:
+        db.execute(text(f"TRUNCATE ${table} CASCADE;"))
+        db.commit()
 
 
 @pytest.fixture
