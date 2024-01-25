@@ -27,4 +27,4 @@ wait_for_postgres() {
 
 wait_for_postgres
 
-migrate -path migrations/sql -database postgres://$POSTGRES_USERNAME:$POSTGRES_PASSWORD@$POSTGRES_HOST:$POSTGRES_PORT/$POSTGRES_DB?sslmode=disable "$@"
+migrate -path /migrations/sql -database postgres://$POSTGRES_USERNAME:$POSTGRES_PASSWORD@$POSTGRES_HOST:$POSTGRES_PORT/$POSTGRES_DB?sslmode=disable "$@"

@@ -54,14 +54,36 @@ create table dataset
 alter table dataset
     owner to postgres;
 
-create unique index ix_dataset_name
-    on dataset (name);
-
 create index ix_dataset_id
     on dataset (id);
 
+create unique index ix_dataset_name
+    on dataset (name);
+
 create index idx_dataset_geo
     on dataset using gist (geo);
+
+create table evaluation
+(
+    id           serial
+        primary key,
+    model_name   varchar   not null,
+    datum_filter jsonb     not null,
+    parameters   jsonb     not null,
+    status       varchar   not null,
+    geo          geography(Geometry, 4326),
+    created_at   timestamp not null,
+    unique (model_name, datum_filter, parameters)
+);
+
+alter table evaluation
+    owner to postgres;
+
+create index ix_evaluation_id
+    on evaluation (id);
+
+create index idx_evaluation_geo
+    on evaluation using gist (geo);
 
 create table datum
 (
@@ -84,70 +106,6 @@ create index ix_datum_id
 
 create index idx_datum_geo
     on datum using gist (geo);
-
-create table evaluation
-(
-    id         serial
-        primary key,
-    dataset_id integer   not null
-        references dataset,
-    model_id   integer   not null
-        references model,
-    task_type  varchar   not null,
-    settings   jsonb,
-    geo        geography(Geometry, 4326),
-    status     varchar   not null,
-    created_at timestamp not null,
-    unique (dataset_id, model_id, task_type, settings)
-);
-
-alter table evaluation
-    owner to postgres;
-
-create index idx_evaluation_geo
-    on evaluation using gist (geo);
-
-create index ix_evaluation_id
-    on evaluation (id);
-
-create table annotation
-(
-    id           serial
-        primary key,
-    datum_id     integer   not null
-        references datum,
-    model_id     integer
-        references model,
-    task_type    varchar   not null,
-    meta         jsonb,
-    geo          geography(Geometry, 4326),
-    created_at   timestamp not null,
-    box          geometry(Polygon),
-    polygon      geometry(Polygon),
-    multipolygon geometry(MultiPolygon),
-    raster       raster
-);
-
-alter table annotation
-    owner to postgres;
-
-create index ix_annotation_id
-    on annotation (id);
-
-create index idx_annotation_multipolygon
-    on annotation using gist (multipolygon);
-
-create index idx_annotation_polygon
-    on annotation using gist (polygon);
-
-create index idx_annotation_raster
-    on annotation using gist (st_convexhull(raster));
-
-create index idx_annotation_box
-    on annotation using gist (box);
-
-create index idx_annotation_geo
-    on annotation using gist (geo);
 
 create table metric
 (
@@ -186,6 +144,45 @@ alter table confusion_matrix
 create index ix_confusion_matrix_id
     on confusion_matrix (id);
 
+create table annotation
+(
+    id           serial
+        primary key,
+    datum_id     integer   not null
+        references datum,
+    model_id     integer
+        references model,
+    task_type    varchar   not null,
+    meta         jsonb,
+    geo          geography(Geometry, 4326),
+    created_at   timestamp not null,
+    box          geometry(Polygon),
+    polygon      geometry(Polygon),
+    multipolygon geometry(MultiPolygon),
+    raster       raster
+);
+
+alter table annotation
+    owner to postgres;
+
+create index idx_annotation_raster
+    on annotation using gist (st_convexhull(raster));
+
+create index idx_annotation_box
+    on annotation using gist (box);
+
+create index idx_annotation_multipolygon
+    on annotation using gist (multipolygon);
+
+create index ix_annotation_id
+    on annotation (id);
+
+create index idx_annotation_polygon
+    on annotation using gist (polygon);
+
+create index idx_annotation_geo
+    on annotation using gist (geo);
+
 create table groundtruth
 (
     id            serial
@@ -194,7 +191,8 @@ create table groundtruth
         references annotation,
     label_id      integer   not null
         references label,
-    created_at    timestamp not null
+    created_at    timestamp not null,
+    unique (annotation_id, label_id)
 );
 
 alter table groundtruth
@@ -212,7 +210,8 @@ create table prediction
     label_id      integer   not null
         references label,
     score         double precision,
-    created_at    timestamp not null
+    created_at    timestamp not null,
+    unique (annotation_id, label_id)
 );
 
 alter table prediction
@@ -220,3 +219,4 @@ alter table prediction
 
 create index ix_prediction_id
     on prediction (id);
+
