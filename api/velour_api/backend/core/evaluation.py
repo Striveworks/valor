@@ -152,7 +152,6 @@ def _verify_ready_to_evaluate(
 
     for model in model_list:
         for dataset in dataset_list:
-
             # verify dataset status
             match enums.TableStatus(dataset.status):
                 case enums.TableStatus.CREATING:
@@ -426,7 +425,6 @@ def create_or_get_evaluations(
     created_rows = []
     existing_rows = []
     for subrequest in _split_request(db, job_request):
-
         if len(subrequest.model_names) != 1:
             raise RuntimeError(
                 "Subrequests should only reference a single model name."
@@ -561,6 +559,42 @@ def get_evaluations(
     )
     evaluations = db.query(models.Evaluation).where(*expr).all()
     return _create_responses(db, evaluations)
+
+
+def get_evaluation_requests_from_model(
+    db: Session, model_name: str
+) -> list[schemas.EvaluationRequestResponse]:
+    """
+    Returns all evaluation settings for a given model.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    model_name : str
+        The model name to find evaluations of
+
+    Returns
+    ----------
+    list[schemas.EvaluationRequestResponse]
+        A list of evaluations.
+    """
+    evaluations = (
+        db.query(models.Evaluation)
+        .where(models.Evaluation.model_name == model_name)
+        .all()
+    )
+    return [
+        schemas.EvaluationRequestResponse(
+            id=eval_.id,
+            evaluation_request=schemas.EvaluationRequest(
+                model_names=[model_name],
+                datum_filter=eval_.datum_filter,
+                parameters=eval_.parameters,
+            ),
+        )
+        for eval_ in evaluations
+    ]
 
 
 def get_evaluation_status(

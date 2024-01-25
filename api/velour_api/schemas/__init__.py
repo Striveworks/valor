@@ -11,6 +11,7 @@ from .core import (
 from .evaluation import (
     EvaluationParameters,
     EvaluationRequest,
+    EvaluationRequestResponse,
     EvaluationResponse,
 )
 from .filters import (
@@ -94,6 +95,7 @@ __all__ = [
     "EvaluationRequest",
     "EvaluationResponse",
     "EvaluationParameters",
+    "EvaluationRequestResponse",
     "StringFilter",
     "NumericFilter",
     "GeospatialFilter",

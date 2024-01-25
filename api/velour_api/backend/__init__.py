@@ -13,6 +13,7 @@ from .core import (
     get_datums,
     get_disjoint_keys,
     get_disjoint_labels,
+    get_evaluation_requests_from_model,
     get_evaluation_status,
     get_evaluations,
     get_groundtruth,
@@ -68,4 +69,5 @@ __all__ = [
     "set_evaluation_status",
     "get_dataset_status",
     "get_model_status",
+    "get_evaluation_requests_from_model",
 ]

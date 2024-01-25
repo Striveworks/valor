@@ -112,6 +112,11 @@ class EvaluationRequest(BaseModel):
         return values
 
 
+class EvaluationRequestResponse(BaseModel):
+    id: int
+    evaluation_request: EvaluationRequest
+
+
 class EvaluationResponse(BaseModel):
     """
     An object for storing the returned results of a model evaluation (where groundtruths are compared with predictions to measure performance).
