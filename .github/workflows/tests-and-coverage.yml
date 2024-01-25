@@ -41,10 +41,11 @@ jobs:
                 IMAGE_NAME="ghcr.io/striveworks/velour/migrations:latest"
                 DOCKERFILE_PATH="migrations/Dockerfile"
                 # Try to pull the Docker image
-                docker pull $IMAGE_NAME || {
-                  echo "Docker image not found. Building the image..."
-                  docker build -t $IMAGE_NAME -f $DOCKERFILE_PATH migrations
-                }
+                docker build -t $IMAGE_NAME -f $DOCKERFILE_PATH migrations
+#                docker pull $IMAGE_NAME || {
+#                  echo "Docker image not found. Building the image..."
+#                  docker build -t $IMAGE_NAME -f $DOCKERFILE_PATH migrations
+#                }
     outputs:
       docker_username: ${{ steps.login-ecr.outputs.docker_username_724664234782_dkr_ecr_us_east_1_amazonaws_com }}
       docker_password: ${{ steps.login-ecr.outputs.docker_password_724664234782_dkr_ecr_us_east_1_amazonaws_com }}
