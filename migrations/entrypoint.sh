@@ -7,11 +7,13 @@ export POSTGRES_PORT="$POSTGRES_PORT"
 export POSTGRES_DB="$POSTGRES_DB"
 
 MAX_RETRIES=10
+WAIT_SECONDS=3
+
 wait_for_postgres() {
   retries=0
   until nc -z -w 1 $POSTGRES_HOST $POSTGRES_PORT || [ $retries -eq $MAX_RETRIES ]; do
     echo "Waiting for PostgreSQL to be ready... (Retry $((retries+1)) of $MAX_RETRIES)"
-    sleep 1
+    sleep $WAIT_SECONDS
     retries=$((retries+1))
   done
 
@@ -22,4 +24,7 @@ wait_for_postgres() {
 
   echo "PostgreSQL is ready!"
 }
+
+wait_for_postgres
+
 migrate -path /migrations/sql -database postgres://$POSTGRES_USERNAME:$POSTGRES_PASSWORD@$POSTGRES_HOST:$POSTGRES_PORT/$POSTGRES_DB?sslmode=disable "$@"
