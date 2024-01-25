@@ -6,7 +6,7 @@ import warnings
 from dataclasses import asdict, dataclass
 from typing import Dict, List, Tuple, Union
 
-from velour.client import Client, ClientException, DeletionJob
+from velour.client import Client, ClientException
 from velour.enums import AnnotationType, EvaluationStatus, TaskType
 from velour.exceptions import SchemaTypeError
 from velour.schemas.evaluation import EvaluationParameters, EvaluationRequest
@@ -1029,7 +1029,9 @@ class Dataset:
         List[Datum]
             A list of `Datums` associated with the dataset.
         """
-        datums = self.client.get_datums(self.name)
+        datums = self.client.get_datums(
+            filters=Filter(dataset_names=[self.name])
+        )
         return [Datum._from_dict(datum) for datum in datums]
 
     def get_evaluations(
@@ -1101,9 +1103,7 @@ class Dataset:
         """
         Delete the `Dataset` object from the backend.
         """
-        job = DeletionJob(self.client, dataset_name=self.name)
         self.client._requests_delete_rel_host(f"datasets/{self.name}").json()
-        return job
 
 
 class Model:
@@ -1467,9 +1467,7 @@ class Model:
         """
         Delete the `Model` object from the backend.
         """
-        job = DeletionJob(self.client, model_name=self.name)
         self.client._requests_delete_rel_host(f"models/{self.name}").json()
-        return job
 
     def get_prediction(self, dataset: Dataset, datum: Datum) -> Prediction:
         """

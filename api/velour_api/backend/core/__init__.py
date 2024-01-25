@@ -1,6 +1,8 @@
 from .annotation import (
     create_annotations,
     create_skipped_annotations,
+    delete_dataset_annotations,
+    delete_model_annotations,
     get_annotation,
     get_annotations,
 )
@@ -8,10 +10,10 @@ from .dataset import (
     create_dataset,
     delete_dataset,
     fetch_dataset,
-    get_all_datasets,
     get_dataset,
     get_dataset_status,
     get_dataset_summary,
+    get_datasets,
     get_n_datums_in_dataset,
     get_n_groundtruth_annotations,
     get_n_groundtruth_bounding_boxes_in_dataset,
@@ -29,12 +31,17 @@ from .evaluation import (
     create_or_get_evaluations,
     fetch_evaluation_from_id,
     fetch_evaluations,
+    get_evaluation_requests_from_model,
     get_evaluation_status,
     get_evaluations,
     set_evaluation_status,
 )
 from .geometry import convert_geometry, get_annotation_type
-from .groundtruth import create_groundtruth, get_groundtruth
+from .groundtruth import (
+    create_groundtruth,
+    delete_groundtruths,
+    get_groundtruth,
+)
 from .label import (
     create_labels,
     fetch_label,
@@ -55,7 +62,12 @@ from .model import (
     get_models,
     set_model_status,
 )
-from .prediction import create_prediction, get_prediction
+from .prediction import (
+    create_prediction,
+    delete_dataset_predictions,
+    delete_model_predictions,
+    get_prediction,
+)
 
 __all__ = [
     "create_annotations",
@@ -67,7 +79,7 @@ __all__ = [
     "delete_dataset",
     "fetch_dataset",
     "get_dataset",
-    "get_all_datasets",
+    "get_datasets",
     "get_dataset_status",
     "set_dataset_status",
     "get_n_datums_in_dataset",
@@ -112,5 +124,11 @@ __all__ = [
     "get_evaluations",
     "get_evaluation_status",
     "set_evaluation_status",
+    "get_evaluation_requests_from_model",
     "count_active_evaluations",
+    "delete_dataset_annotations",
+    "delete_groundtruths",
+    "delete_dataset_predictions",
+    "delete_model_annotations",
+    "delete_model_predictions",
 ]

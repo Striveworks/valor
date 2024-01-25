@@ -11,6 +11,7 @@ from packaging import version
 from velour import __version__ as client_version
 from velour.enums import TableStatus
 from velour.schemas.evaluation import EvaluationRequest
+from velour.schemas.filters import Filter
 
 T = TypeVar("T")
 
@@ -209,16 +210,25 @@ class Client:
 
     def get_labels(
         self,
+        filters: Filter = None,
     ) -> List[dict]:
         """
-        Get all of the labels associated with `Client`.
+        Get labels associated with `Client`.
+
+        Parameters
+        ----------
+        filters : Filter, optional
+            Optional filter to constrain by.
 
         Returns
         ------
         List[Label]
             A list of `Label` objects attributed to `Client`.
         """
-        return self._requests_get_rel_host("labels").json()
+        kwargs = {}
+        if filters:
+            kwargs["json"] = asdict(filters)
+        return self._requests_get_rel_host("labels", **kwargs).json()
 
     def create_dataset(
         self,
@@ -260,37 +270,47 @@ class Client:
 
     def get_datasets(
         self,
+        filters: Filter = None,
     ) -> List[dict]:
         """
-        Get all of the datasets associated with `Client`.
+        Get datasets associated with `Client`.
+
+        Parameters
+        ----------
+        filters : Filter, optional
+            Optional filter to constrain by.
 
         Returns
         ------
         List[dict]
             A list of dictionaries describing all the datasets attributed to the `Client` object.
         """
-        return self._requests_get_rel_host("datasets").json()
+        kwargs = {}
+        if filters:
+            kwargs["json"] = asdict(filters)
+        return self._requests_get_rel_host("datasets", **kwargs).json()
 
     def get_datums(
         self,
-        dataset_name: str,
+        filters: Filter = None,
     ) -> List[dict]:
         """
-        Get all datums associated with a dataset.
+        Get datums associated with `Client`.
 
         Parameters
         ----------
-        dataset_name : str
-            The name of the dataset to search over.
+        filters : Filter, optional
+            Optional filter to constrain by.
 
         Returns
         -------
         List[dict]
             A list of dictionaries describing all the datums of the specified dataset.
         """
-        return self._requests_get_rel_host(
-            f"data/dataset/{dataset_name}"
-        ).json()
+        kwargs = {}
+        if filters:
+            kwargs["json"] = asdict(filters)
+        return self._requests_get_rel_host("data", **kwargs).json()
 
     def get_dataset_status(
         self,
@@ -387,16 +407,25 @@ class Client:
 
     def get_models(
         self,
+        filters: Filter = None,
     ) -> List[dict]:
         """
-        Get all of the models associated with `Client`.
+        Get models associated with `Client`.
+
+        Parameters
+        ----------
+        filters : Filter, optional
+            Optional filter to constrain by.
 
         Returns
         ------
         List[dict]
             A list of dictionaries describing all the models attributed to the `Client` object.
         """
-        return self._requests_get_rel_host("models").json()
+        kwargs = {}
+        if filters:
+            kwargs["json"] = asdict(filters)
+        return self._requests_get_rel_host("models", **kwargs).json()
 
     def get_model_status(
         self,
@@ -520,60 +549,3 @@ class Client:
             "evaluations", json=asdict(req)
         ).json()
         return resp
-
-
-class DeletionJob:
-    def __init__(
-        self,
-        client: Client,
-        *,
-        dataset_name: str = None,
-        model_name: str = None,
-        **kwargs,
-    ):
-        self.client = client
-        self.dataset_name = dataset_name
-        self.model_name = model_name
-
-        if dataset_name and not model_name:
-            self.func = self.client.get_dataset
-            self.args = self.dataset_name
-        elif model_name and not dataset_name:
-            self.func = self.client.get_model
-            self.args = self.model_name
-        else:
-            raise ValueError
-
-        for k, v in kwargs.items():
-            setattr(self, k, v)
-
-    def completed(self) -> bool:
-        return self.func(self.args) is None
-
-    def wait_for_completion(
-        self,
-        *,
-        timeout: int = None,
-        interval: float = 1.0,
-    ):
-        """
-        Runs timeout logic to check when an job is completed.
-
-        Parameters
-        ----------
-        timeout : int
-            The total number of seconds to wait for the job to finish.
-        interval : float
-            The polling interval.
-
-        Raises
-        ----------
-        TimeoutError
-            If the job's status doesn't change to True the timeout expires
-        """
-        wait_for_predicate(
-            lambda: self.completed(),
-            lambda status: status is True,
-            timeout,
-            interval,
-        )

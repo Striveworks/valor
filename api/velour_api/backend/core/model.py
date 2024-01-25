@@ -7,13 +7,38 @@ from sqlalchemy.orm import Session
 
 from velour_api import exceptions, schemas
 from velour_api.backend import models
-from velour_api.backend.core.annotation import create_skipped_annotations
+from velour_api.backend.core.annotation import (
+    create_skipped_annotations,
+    delete_model_annotations,
+)
 from velour_api.backend.core.dataset import fetch_dataset, get_dataset_status
 from velour_api.backend.core.evaluation import (
     count_active_evaluations,
     delete_evaluations,
 )
+from velour_api.backend.core.prediction import delete_model_predictions
+from velour_api.backend.ops import Query
 from velour_api.enums import ModelStatus, TableStatus
+
+
+def _load_model_schema(
+    db: Session,
+    model: models.Model,
+) -> schemas.Model:
+    """Convert database row to schema."""
+    geodict = (
+        schemas.geojson.from_dict(
+            json.loads(db.scalar(ST_AsGeoJSON(model.geo)))
+        )
+        if model.geo
+        else None
+    )
+    return schemas.Model(
+        id=model.id,
+        name=model.name,
+        metadata=model.meta,
+        geospatial=geodict,
+    )
 
 
 def _fetch_disjoint_datums(
@@ -58,7 +83,7 @@ def _fetch_disjoint_datums(
 def create_model(
     db: Session,
     model: schemas.Model,
-):
+) -> models.Model:
     """
     Creates a model.
 
@@ -68,6 +93,16 @@ def create_model(
         The database Session to query against.
     model : schemas.Model
         The model to create.
+
+    Returns
+    -------
+    models.Model
+        The created model row.
+
+    Raises
+    ------
+    exceptions.ModelAlreadyExistsError
+        If a model with the provided name already exists.
     """
     try:
         row = models.Model(
@@ -103,6 +138,10 @@ def fetch_model(
     models.Model
         The requested model.
 
+    Raises
+    ------
+    exceptions.ModelDoesNotExistError
+        If a model with the provided name does not exist.
     """
     model = (
         db.query(models.Model).where(models.Model.name == name).one_or_none()
@@ -131,41 +170,34 @@ def get_model(
     schemas.Model
         The requested model.
     """
-    model = fetch_model(db, name=name)
-    geodict = (
-        schemas.geojson.from_dict(
-            json.loads(db.scalar(ST_AsGeoJSON(model.geo)))
-        )
-        if model.geo
-        else None
-    )
-    return schemas.Model(
-        id=model.id,
-        name=model.name,
-        metadata=model.meta,
-        geospatial=geodict,
-    )
+    model = fetch_model(db=db, name=name)
+    return _load_model_schema(db=db, model=model)
 
 
 def get_models(
     db: Session,
-) -> list[schemas.Model]:
+    filters: schemas.Filter | None = None,
+) -> list[schemas.Dataset]:
     """
-    Fetch all models.
+    Get models with optional filter constraint.
 
     Parameters
     ----------
     db : Session
-        The database session.
+        The database Session to query against.
+    filters : schemas.Filter, optional
+        Optional filter to constrain against.
 
     Returns
     ----------
-    List[schemas.Model]
+    list[schemas.Model]
         A list of all models.
     """
-    return [
-        get_model(db, name) for name in db.scalars(select(models.Model.name))
-    ]
+    subquery = Query(models.Model.id.label("id")).filter(filters).any()
+    models_ = (
+        db.query(models.Model).where(models.Model.id == subquery.c.id).all()
+    )
+    return [_load_model_schema(db=db, model=model) for model in models_]
 
 
 def get_model_status(
@@ -185,7 +217,7 @@ def get_model_status(
 
     Returns
     -------
-    TableStatus
+    enums.TableStatus
         The status of the model.
     """
     dataset = fetch_dataset(db, dataset_name)
@@ -245,7 +277,7 @@ def set_model_status(
         The name of the dataset.
     model_name : str
         The name of the model.
-    status : TableStatus
+    status : enums.TableStatus
         The desired dataset state.
 
     Raises
@@ -322,14 +354,19 @@ def delete_model(
     name : str
         The name of the model.
     """
-    delete_evaluations(db=db, model_names=[name])
     model = fetch_model(db, name=name)
+
+    # set status
     try:
         model.status = ModelStatus.DELETING
         db.commit()
     except Exception as e:
         db.rollback()
         raise e
+
+    delete_evaluations(db=db, model_names=[name])
+    delete_model_predictions(db=db, model=model)
+    delete_model_annotations(db=db, model=model)
 
     try:
         db.delete(model)

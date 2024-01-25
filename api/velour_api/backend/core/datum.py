@@ -6,8 +6,9 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from velour_api import exceptions, schemas
-from velour_api.backend import models, ops
+from velour_api.backend import models
 from velour_api.backend.core.dataset import fetch_dataset
+from velour_api.backend.ops import Query
 
 
 def create_datum(
@@ -106,11 +107,12 @@ def get_datums(
     List[schemas.Datum]
         A list of all datums.
     """
-    q = ops.Query(models.Datum).filter(filters).any()
-    datums = db.query(q).all()
+    subquery = Query(models.Datum.id).filter(filters).any()
+    datums = (
+        db.query(models.Datum).where(models.Datum.id == subquery.c.id).all()
+    )
 
     output = []
-
     for datum in datums:
         geo_dict = (
             schemas.geojson.from_dict(
@@ -119,7 +121,6 @@ def get_datums(
             if datum.geo
             else None
         )
-
         output.append(
             schemas.Datum(
                 dataset_name=db.scalar(

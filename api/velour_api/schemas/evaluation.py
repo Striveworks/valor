@@ -139,8 +139,8 @@ class EvaluationResponse(BaseModel):
     datum_filter: Filter
     parameters: EvaluationParameters
     status: EvaluationStatus
-    metrics: list[Metric]
-    confusion_matrices: list[ConfusionMatrixResponse]
+    metrics: list[Metric] | None = None
+    confusion_matrices: list[ConfusionMatrixResponse] | None = None
 
     # pydantic setting
     model_config = ConfigDict(

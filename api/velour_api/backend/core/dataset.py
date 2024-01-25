@@ -7,17 +7,41 @@ from sqlalchemy.orm import Session
 
 from velour_api import enums, exceptions, schemas
 from velour_api.backend import models
+from velour_api.backend.core.annotation import delete_dataset_annotations
 from velour_api.backend.core.evaluation import (
     count_active_evaluations,
     delete_evaluations,
 )
+from velour_api.backend.core.groundtruth import delete_groundtruths
 from velour_api.backend.core.label import get_labels
+from velour_api.backend.core.prediction import delete_dataset_predictions
+from velour_api.backend.ops import Query
+
+
+def _load_dataset_schema(
+    db: Session,
+    dataset: models.Dataset,
+) -> schemas.Dataset:
+    """Convert database row to schema."""
+    geo_dict = (
+        schemas.geojson.from_dict(
+            json.loads(db.scalar(ST_AsGeoJSON(dataset.geo)))
+        )
+        if dataset.geo
+        else None
+    )
+    return schemas.Dataset(
+        id=dataset.id,
+        name=dataset.name,
+        metadata=dataset.meta,
+        geospatial=geo_dict,
+    )
 
 
 def create_dataset(
     db: Session,
     dataset: schemas.Dataset,
-):
+) -> models.Dataset:
     """
     Creates a dataset.
 
@@ -27,6 +51,16 @@ def create_dataset(
         The database Session to query against.
     dataset : schemas.Dataset
         The dataset to create.
+
+    Returns
+    -------
+    models.Dataset
+        The created dataset row.
+
+    Raises
+    ------
+    exceptions.DatasetAlreadyExistsError
+        If a dataset with the provided name already exists.
     """
     try:
         row = models.Dataset(
@@ -62,6 +96,10 @@ def fetch_dataset(
     models.Dataset
         The requested dataset.
 
+    Raises
+    ------
+    exceptions.DatasetDoesNotExistError
+        If a dataset with the provided name does not exist.
     """
     dataset = (
         db.query(models.Dataset)
@@ -97,41 +135,39 @@ def get_dataset(
     schemas.Dataset
         The requested dataset.
     """
-    dataset = fetch_dataset(db, name=name)
-    geo_dict = (
-        schemas.geojson.from_dict(
-            json.loads(db.scalar(ST_AsGeoJSON(dataset.geo)))
-        )
-        if dataset.geo
-        else None
-    )
-    return schemas.Dataset(
-        id=dataset.id,
-        name=dataset.name,
-        metadata=dataset.meta,
-        geospatial=geo_dict,
-    )
+    dataset = fetch_dataset(db=db, name=name)
+    return _load_dataset_schema(db=db, dataset=dataset)
 
 
-def get_all_datasets(
+def get_datasets(
     db: Session,
+    filters: schemas.Filter | None = None,
 ) -> list[schemas.Dataset]:
     """
-    Get all datasets.
+    Get datasets with optional filter constraint.
 
     Parameters
     ----------
     db : Session
         The database Session to query against.
+    filters : schemas.Filter, optional
+        Optional filter to constrain against.
 
     Returns
     ----------
-    List[schemas.Dataset]
+    list[schemas.Dataset]
         A list of all datasets.
     """
+    datasets_subquery = (
+        Query(models.Dataset.id.label("id")).filter(filters).any()
+    )
+    datasets = (
+        db.query(models.Dataset)
+        .where(models.Dataset.id == datasets_subquery.c.id)
+        .all()
+    )
     return [
-        get_dataset(db, name)
-        for name in db.scalars(select(models.Dataset.name)).all()
+        _load_dataset_schema(db=db, dataset=dataset) for dataset in datasets
     ]
 
 
@@ -377,9 +413,14 @@ def delete_dataset(
     name : str
         The name of the dataset.
     """
-    delete_evaluations(db=db, dataset_names=[name])
     set_dataset_status(db, name, enums.TableStatus.DELETING)
     dataset = fetch_dataset(db, name=name)
+
+    delete_evaluations(db=db, dataset_names=[name])
+    delete_dataset_predictions(db, dataset)
+    delete_groundtruths(db, dataset)
+    delete_dataset_annotations(db, dataset)
+
     try:
         db.delete(dataset)
         db.commit()
