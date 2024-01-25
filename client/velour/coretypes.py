@@ -6,6 +6,8 @@ import warnings
 from dataclasses import asdict, dataclass
 from typing import Dict, List, Tuple, Union
 
+import numpy as np
+
 from velour.client import Client, ClientException
 from velour.enums import AnnotationType, EvaluationStatus, TaskType
 from velour.exceptions import SchemaTypeError
@@ -45,7 +47,12 @@ class Label:
         A unique ID for the `Label`.
     """
 
-    def __init__(self, key: str, value: str, score: Union[float, None] = None):
+    def __init__(
+        self,
+        key: str,
+        value: str,
+        score: Union[float, np.floating, None] = None,
+    ):
         self.key = key
         self.value = value
         self.score = score
