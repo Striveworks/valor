@@ -24,10 +24,10 @@ services:
     command: "uvicorn velour_api.main:app --reload --host 0.0.0.0"
     depends_on:
       - 'db'
-      - 'migration'
-  migration:
+      - 'migrations'
+  migrations:
     build:
-      context: ./migration
+      context: ./migrations
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_HOST: ${POSTGRES_HOST}
