@@ -1,5 +1,0 @@
-FROM golang:1.21.4-alpine
-RUN apk update && apk add --no-cache
-COPY . /migrations
-WORKDIR /migrations
-CMD ["go", "run", "main.go"]
