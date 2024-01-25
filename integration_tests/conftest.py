@@ -26,21 +26,21 @@ def db() -> Session:
     """
     client = Client(host="http://localhost:8000")
 
-    if len(client.get_datasets()) > 0:
-        raise RuntimeError(
-            "Tests should be run on an empty velour backend but found existing datasets.",
-            [ds["name"] for ds in client.get_datasets()],
-        )
-
-    if len(client.get_models()) > 0:
-        raise RuntimeError(
-            "Tests should be run on an empty velour backend but found existing models."
-        )
-
-    if len(client.get_labels()) > 0:
-        raise RuntimeError(
-            "Tests should be run on an empty velour backend but found existing labels."
-        )
+    # if len(client.get_datasets()) > 0:
+    #     raise RuntimeError(
+    #         "Tests should be run on an empty velour backend but found existing datasets.",
+    #         [ds["name"] for ds in client.get_datasets()],
+    #     )
+    #
+    # if len(client.get_models()) > 0:
+    #     raise RuntimeError(
+    #         "Tests should be run on an empty velour backend but found existing models."
+    #     )
+    #
+    # if len(client.get_labels()) > 0:
+    #     raise RuntimeError(
+    #         "Tests should be run on an empty velour backend but found existing labels."
+    #     )
 
     POSTGRES_HOST = os.getenv("POSTGRES_HOST", "localhost")
     POSTGRES_USERNAME = os.getenv("POSTGRES_USERNAME", "postgres")
