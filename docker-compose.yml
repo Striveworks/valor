@@ -6,14 +6,6 @@ services:
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
-  migration:
-    build: ./migrations
-    environment:
-      POSTGRES_HOST: ${POSTGRES_HOST}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
-    depends_on:
-      - 'db'
   service:
     image: ghcr.io/striveworks/velour/velour-service
     build: ./api
@@ -34,3 +26,13 @@ services:
       - 'db'
       - 'migration'
 
+  migration:
+    build: ./migration
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_PORT: "5432"
+    depends_on:
+      - 'db'
