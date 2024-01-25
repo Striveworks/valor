@@ -331,7 +331,7 @@ def get_evaluations(
 
 def get_evaluation_requests_from_model(
     db: Session, model_name: str
-) -> list[schemas.EvaluationRequestResponse]:
+) -> list[schemas.EvaluationResponse]:
     """
     Returns all evaluation settings for a given model.
 
@@ -344,7 +344,7 @@ def get_evaluation_requests_from_model(
 
     Returns
     ----------
-    list[schemas.EvaluationRequestResponse]
+    list[schemas.EvaluationResponse]
         A list of evaluations.
     """
     return backend.get_evaluation_requests_from_model(db, model_name)

@@ -563,7 +563,7 @@ def get_evaluations(
 
 def get_evaluation_requests_from_model(
     db: Session, model_name: str
-) -> list[schemas.EvaluationRequestResponse]:
+) -> list[schemas.EvaluationResponse]:
     """
     Returns all evaluation settings for a given model.
 
@@ -576,7 +576,7 @@ def get_evaluation_requests_from_model(
 
     Returns
     ----------
-    list[schemas.EvaluationRequestResponse]
+    list[schemas.EvaluationResponse]
         A list of evaluations.
     """
     evaluations = (
@@ -585,13 +585,12 @@ def get_evaluation_requests_from_model(
         .all()
     )
     return [
-        schemas.EvaluationRequestResponse(
+        schemas.EvaluationResponse(
             id=eval_.id,
-            evaluation_request=schemas.EvaluationRequest(
-                model_names=[model_name],
-                datum_filter=eval_.datum_filter,
-                parameters=eval_.parameters,
-            ),
+            model_name=model_name,
+            datum_filter=eval_.datum_filter,
+            parameters=eval_.parameters,
+            status=eval_.status,
         )
         for eval_ in evaluations
     ]

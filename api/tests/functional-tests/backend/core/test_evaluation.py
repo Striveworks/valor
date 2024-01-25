@@ -522,18 +522,12 @@ def test_get_evaluation_requests_from_model(
     assert len(eval_requests) == 2
 
     for eval_request in eval_requests:
-        assert eval_request.evaluation_request.model_names == [created_model]
-        assert eval_request.evaluation_request.datum_filter.dataset_names == [
-            created_dataset
-        ]
+        assert eval_request.model_name == created_model
+        assert eval_request.datum_filter.dataset_names == [created_dataset]
 
     assert {
-        eval_request.evaluation_request.parameters.task_type
-        for eval_request in eval_requests
-    } == {
-        enums.TaskType.CLASSIFICATION,
-        enums.TaskType.SEGMENTATION,
-    }
+        eval_request.parameters.task_type for eval_request in eval_requests
+    } == {enums.TaskType.CLASSIFICATION, enums.TaskType.SEGMENTATION}
 
     assert {eval_request.id for eval_request in eval_requests} == {1, 2}
 
