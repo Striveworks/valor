@@ -18,6 +18,7 @@ img1_size = (100, 200)
 img2_size = (80, 32)
 
 
+# replace this to using migrate down when its all done. just have it truncate instead of rebuilding tables
 @pytest.fixture
 def db():
     """This fixture provides a db session. a `RuntimeError` is raised if

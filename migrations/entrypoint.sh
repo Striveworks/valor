@@ -1,6 +1,6 @@
 #!/bin/sh
 
-export POSTGRES_USER="$POSTGRES_USER"
+export POSTGRES_USERNAME="$POSTGRES_USERNAME"
 export POSTGRES_PASSWORD="$POSTGRES_PASSWORD"
 export POSTGRES_HOST="$POSTGRES_HOST"
 export POSTGRES_PORT="$POSTGRES_PORT"
@@ -22,4 +22,4 @@ wait_for_postgres() {
 
   echo "PostgreSQL is ready!"
 }
-migrate -path /migrations/sql -database postgres://$POSTGRES_USER:$POSTGRES_PASSWORD@$POSTGRES_HOST:$POSTGRES_PORT/$POSTGRES_DB?sslmode=disable "$@"
+migrate -path /migrations/sql -database postgres://$POSTGRES_USERNAME:$POSTGRES_PASSWORD@$POSTGRES_HOST:$POSTGRES_PORT/$POSTGRES_DB?sslmode=disable "$@"

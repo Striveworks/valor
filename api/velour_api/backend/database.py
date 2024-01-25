@@ -62,20 +62,8 @@ def make_session() -> Session:
 Base = declarative_base()
 
 
+# probably going to remove this altogether.
 @retry_connection(30)
 def create_db():
     db = make_session()
-    # create postgis and raster extensions if they don't exist
-    # for extension in ["postgis", "postgis_raster"]:
-    #     if (
-    #         db.execute(
-    #             text(
-    #                 f"SELECT * FROM pg_extension WHERE extname='{extension}';"
-    #             )
-    #         ).scalar()
-    #         is None
-    #     ):
-    #         db.execute(text(f"CREATE EXTENSION {extension};"))
-    #         db.commit()
-
     db.close()
