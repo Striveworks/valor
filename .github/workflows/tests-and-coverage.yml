@@ -35,7 +35,7 @@ jobs:
         run: |
           set -e
           docker login ghcr.io -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }}
-          IMAGE_NAME="ghcr.io/striveworks/velour/migrations:"
+          IMAGE_NAME="ghcr.io/striveworks/velour/migrations"
           DOCKERFILE_PATH="migrations/Dockerfile"
           docker build -t $IMAGE_NAME -f $DOCKERFILE_PATH migrations
           IMAGE_NAME_WITH_COMMIT_HASH=${IMAGE_NAME}:${{ github.sha }}
