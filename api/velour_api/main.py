@@ -782,7 +782,7 @@ def get_model(model_name: str, db: Session = Depends(get_db)) -> schemas.Model:
 )
 def get_model_eval_requests(
     model_name: str, db: Session = Depends(get_db)
-) -> list[schemas.EvaluationRequestResponse]:
+) -> list[schemas.EvaluationResponse]:
     """
     Fetch a particular model.
 
@@ -797,7 +797,7 @@ def get_model_eval_requests(
 
     Returns
     -------
-    list[EvaluationRequestResponse]
+    list[EvaluationResponse]
         The evaluation requessts associated to the model
 
     Raises
