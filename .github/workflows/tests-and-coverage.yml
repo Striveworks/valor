@@ -17,9 +17,6 @@ jobs:
   # backend functional test
   login-to-amazon-ecr:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
     steps:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -32,23 +29,19 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v2
         with:
           mask-password: "false"
-      - name: Checkout repository
-        uses: actions/checkout@v2
-      - name: Build and Push Docker Image for Migrations
-        run: |
-          set -e
-          docker login ghcr.io -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }}
-          IMAGE_NAME="ghcr.io/striveworks/velour/migrations"
-          DOCKERFILE_PATH="migrations/Dockerfile"
-          docker build -t $IMAGE_NAME -f $DOCKERFILE_PATH migrations
-          IMAGE_NAME_WITH_COMMIT_HASH=${IMAGE_NAME}:${{ github.sha }}
-          docker tag ${IMAGE_NAME} ${IMAGE_NAME_WITH_COMMIT_HASH}
-          docker push ${IMAGE_NAME_WITH_COMMIT_HASH}
 
     outputs:
       docker_username: ${{ steps.login-ecr.outputs.docker_username_724664234782_dkr_ecr_us_east_1_amazonaws_com }}
       docker_password: ${{ steps.login-ecr.outputs.docker_password_724664234782_dkr_ecr_us_east_1_amazonaws_com }}
-
+  build-migrations-image:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build Docker image for migrations
+        run: |
+          set -e
+          IMAGE_NAME="ghcr.io/striveworks/velour/migrations:latest"
+          DOCKERFILE_PATH="migrations/Dockerfile"
+          docker build -t $IMAGE_NAME -f $DOCKERFILE_PATH migrations
   backend-functional-tests:
     needs: login-to-amazon-ecr
     env:
