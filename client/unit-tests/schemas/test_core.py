@@ -3,7 +3,7 @@ import copy
 import pytest
 
 from velour import enums
-from velour.coretypes import Annotation, Datum, GroundTruth, Label, Prediction
+from velour.schemas.core import Annotation, Datum, GroundTruth, Label, Prediction
 from velour.exceptions import SchemaTypeError
 
 

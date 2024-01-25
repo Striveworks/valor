@@ -4,7 +4,7 @@ import pytest
 
 from velour import Annotation, GroundTruth, Label
 from velour.enums import TaskType
-from velour.metatypes import ImageMetadata
+from velour.meta_types import ImageMetadata
 from velour.schemas import BasicPolygon, MultiPolygon, Point, Polygon, Raster
 from velour.viz import (
     _polygons_to_binary_mask,

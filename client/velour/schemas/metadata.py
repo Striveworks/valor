@@ -3,6 +3,7 @@ from copy import deepcopy
 from typing import Dict, Union
 
 from velour.exceptions import SchemaTypeError
+from velour.types import MetadataType
 
 
 def _validate_href(value: str):
@@ -16,7 +17,7 @@ def validate_metadata(metadata: dict):
     """Validates metadata dictionary."""
     if not isinstance(metadata, dict):
         raise SchemaTypeError(
-            "metadata", Dict[str, Union[float, int, str]], metadata
+            "metadata", MetadataType, metadata
         )
     for key, value in metadata.items():
         if not isinstance(key, str):

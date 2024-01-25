@@ -1,10 +1,14 @@
+from .core import (
+    Label,
+    Annotation,
+    Datum,
+    GroundTruth,
+    Prediction,
+)
+from .info import DatasetSummary
 from .evaluation import EvaluationParameters, EvaluationRequest
 from .filters import (
-    BinaryExpression,
-    DeclarativeMapper,
     Filter,
-    GeospatialFilter,
-    ValueFilter,
 )
 from .geometry import (
     BasicPolygon,
@@ -14,9 +18,21 @@ from .geometry import (
     Polygon,
     Raster,
 )
-from .metadata import dump_metadata, load_metadata, validate_metadata
+from .metadata import (
+    dump_metadata, 
+    load_metadata, 
+    validate_metadata,
+)
 
 __all__ = [
+    "Dataset",
+    "Model",
+    "Datum",
+    "Annotation",
+    "Label",
+    "GroundTruth",
+    "Prediction",
+    "DatasetSummary",
     "BasicPolygon",
     "Point",
     "BoundingBox",
@@ -25,11 +41,7 @@ __all__ = [
     "Raster",
     "EvaluationRequest",
     "EvaluationParameters",
-    "BinaryExpression",
-    "DeclarativeMapper",
     "Filter",
-    "ValueFilter",
-    "GeospatialFilter",
     "validate_metadata",
     "dump_metadata",
     "load_metadata",

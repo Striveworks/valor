@@ -2,7 +2,7 @@ from typing import Dict, List, Union
 
 import PIL.Image
 
-from velour.coretypes import Datum, MetadataType
+from velour.client import Datum, MetadataType
 from velour.exceptions import SchemaTypeError
 from velour.schemas import validate_metadata
 
