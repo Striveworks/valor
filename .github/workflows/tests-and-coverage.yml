@@ -29,23 +29,16 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v2
         with:
           mask-password: "false"
-      - name: Set up Docker
-        uses: actions/setup-node@v4
-        with:
-          run: |
-            sudo apt-get update
-            sudo apt-get -y install docker.io
-            - name: Pull Docker image or build if not available
-              run: |
-                set -e
-                IMAGE_NAME="ghcr.io/striveworks/velour/migrations:latest"
-                DOCKERFILE_PATH="migrations/Dockerfile"
-                # Try to pull the Docker image
-                docker build -t $IMAGE_NAME -f $DOCKERFILE_PATH migrations
-#                docker pull $IMAGE_NAME || {
-#                  echo "Docker image not found. Building the image..."
-#                  docker build -t $IMAGE_NAME -f $DOCKERFILE_PATH migrations
-#                }
+      - name: Checkout repository
+        uses: actions/checkout@v2
+      - name: Pull Docker image or build if not available
+        run: |
+          sudo apt-get update
+          sudo apt-get -y install docker.io
+          set -e
+          IMAGE_NAME="ghcr.io/striveworks/velour/migrations:latest"
+          DOCKERFILE_PATH="migrations/Dockerfile"
+          docker build -t $IMAGE_NAME -f $DOCKERFILE_PATH migrations
     outputs:
       docker_username: ${{ steps.login-ecr.outputs.docker_username_724664234782_dkr_ecr_us_east_1_amazonaws_com }}
       docker_password: ${{ steps.login-ecr.outputs.docker_password_724664234782_dkr_ecr_us_east_1_amazonaws_com }}
