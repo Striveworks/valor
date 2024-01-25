@@ -494,6 +494,44 @@ def test_get_evaluations(
     assert len(evaluations_by_dataset_model_eval_id) == 2
 
 
+def test_get_evaluation_requests_from_model(
+    db: Session, created_dataset: str, created_model: str
+):
+    # create evaluation 1
+    job_request_1 = schemas.EvaluationRequest(
+        model_names=[created_model],
+        datum_filter=schemas.Filter(dataset_names=[created_dataset]),
+        parameters=schemas.EvaluationParameters(
+            task_type=enums.TaskType.CLASSIFICATION,
+        ),
+    )
+    core.create_or_get_evaluations(db, job_request_1)
+
+    # create evaluation 2
+    job_request_2 = schemas.EvaluationRequest(
+        model_names=[created_model],
+        datum_filter=schemas.Filter(dataset_names=[created_dataset]),
+        parameters=schemas.EvaluationParameters(
+            task_type=enums.TaskType.SEGMENTATION,
+        ),
+    )
+    core.create_or_get_evaluations(db, job_request_2)
+
+    eval_requests = core.get_evaluation_requests_from_model(db, created_model)
+
+    assert len(eval_requests) == 2
+
+    for eval_request in eval_requests:
+        assert eval_request.model_name == created_model
+        assert eval_request.datum_filter.dataset_names == [created_dataset]
+
+    assert {
+        eval_request.parameters.task_type for eval_request in eval_requests
+    } == {enums.TaskType.CLASSIFICATION, enums.TaskType.SEGMENTATION}
+
+    assert {eval_request.id for eval_request in eval_requests} == {1, 2}
+
+
 def test_evaluation_status(
     db: Session,
     created_dataset: str,
