@@ -59,10 +59,11 @@ class Label:
             raise TypeError("key should be of type `str`")
         if not isinstance(self.value, str):
             raise TypeError("value should be of type `str`")
-        if isinstance(self.score, int):
-            self.score = float(self.score)
-        if not isinstance(self.score, (float, type(None))):
-            raise TypeError("score should be of type `float`")
+        if self.score is not None:
+            try:
+                self.score = float(self.score)
+            except ValueError:
+                raise TypeError("score should be convertible to `float`")
 
     def __str__(self):
         return str(self.dict())
