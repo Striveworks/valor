@@ -1306,6 +1306,7 @@ class Model:
         self,
         datasets: Union[Dataset, List[Dataset]] = None,
         filters: Union[Dict, List[BinaryExpression]] = None,
+        label_map: Dict[Label, Label] = None,
     ) -> Evaluation:
         """
         Start a classification evaluation job.
@@ -1316,6 +1317,8 @@ class Model:
             The dataset or list of datasets to evaluate against.
         filters : Union[Dict, List[BinaryExpression]]
             Optional set of filters to constrain evaluation by.
+        label_map : Dict[Label, Label]
+            Optional mapping of individual Labels to a grouper Label. Useful when you need to evaluate performance using Labels that differ across datasets and models.
 
         Returns
         -------
@@ -1332,7 +1335,15 @@ class Model:
         evaluation = EvaluationRequest(
             model_names=self.name,
             datum_filter=datum_filter,
-            parameters=EvaluationParameters(task_type=TaskType.CLASSIFICATION),
+            parameters=EvaluationParameters(
+                task_type=TaskType.CLASSIFICATION,
+                label_map=[
+                    [[key.key, key.value], [value.key, value.value]]
+                    for key, value in label_map.items()
+                ]
+                if label_map
+                else None,
+            ),
         )
         resp = self.client.evaluate(evaluation)
         if len(resp) != 1:
@@ -1394,7 +1405,7 @@ class Model:
             iou_thresholds_to_compute=iou_thresholds_to_compute,
             iou_thresholds_to_return=iou_thresholds_to_return,
             label_map=[
-                ((key.key, key.value), (value.key, value.value))
+                [[key.key, key.value], [value.key, value.value]]
                 for key, value in label_map.items()
             ]
             if label_map

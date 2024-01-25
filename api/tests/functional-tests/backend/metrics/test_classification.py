@@ -7,7 +7,7 @@ from velour_api.backend.core import create_or_get_evaluations
 from velour_api.backend.metrics.classification import (
     _compute_accuracy_from_cm,
     _compute_clf_metrics,
-    _compute_confusion_matrix_at_label_key,
+    _compute_confusion_matrix_at_grouper_key,
     _compute_roc_auc,
     compute_clf_metrics,
 )
@@ -115,7 +115,7 @@ def classification_test_data(db: Session, dataset_name: str, model_name: str):
     assert len(db.query(models.Prediction).all()) == 6 * 7
 
 
-def test_compute_confusion_matrix_at_label_key(
+def test_compute_confusion_matrix_at_grouper_key(
     db: Session,
     dataset_name: str,
     model_name: str,
@@ -130,7 +130,7 @@ def test_compute_confusion_matrix_at_label_key(
         task_types=[enums.TaskType.CLASSIFICATION],
     )
 
-    cm = _compute_confusion_matrix_at_label_key(
+    cm = _compute_confusion_matrix_at_grouper_key(
         db=db,
         prediction_filter=prediction_filter,
         groundtruth_filter=groundtruth_filter,
@@ -160,7 +160,7 @@ def test_compute_confusion_matrix_at_label_key(
         assert entry in cm.entries
     assert _compute_accuracy_from_cm(cm) == 2 / 6
 
-    cm = _compute_confusion_matrix_at_label_key(
+    cm = _compute_confusion_matrix_at_grouper_key(
         db=db,
         prediction_filter=prediction_filter,
         groundtruth_filter=groundtruth_filter,
@@ -191,7 +191,7 @@ def test_compute_confusion_matrix_at_label_key(
     assert _compute_accuracy_from_cm(cm) == 3 / 6
 
 
-def test_compute_confusion_matrix_at_label_key_and_filter(
+def test_compute_confusion_matrix_at_grouper_key_and_filter(
     db: Session,
     dataset_name: str,
     model_name: str,
@@ -212,7 +212,7 @@ def test_compute_confusion_matrix_at_label_key_and_filter(
         datum_metadata={"md1": [schemas.StringFilter(value="md1-val0")]},
     )
 
-    cm = _compute_confusion_matrix_at_label_key(
+    cm = _compute_confusion_matrix_at_grouper_key(
         db,
         prediction_filter=prediction_filter,
         groundtruth_filter=groundtruth_filter,
