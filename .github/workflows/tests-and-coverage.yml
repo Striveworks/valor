@@ -33,7 +33,6 @@ jobs:
         uses: actions/checkout@v2
       - name: Pull Docker image or build if not available
         run: |
-          sudo apt-get update
           sudo apt-get -y install docker.io
           set -e
           IMAGE_NAME="ghcr.io/striveworks/velour/migrations:latest"
