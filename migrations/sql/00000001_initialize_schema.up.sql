@@ -1,5 +1,5 @@
 create extension if not exists "postgis";
-CREATE extension if not exists "postgis_raster";
+create extension if not exists "postgis_raster";
 
 create table label
 (
