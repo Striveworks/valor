@@ -108,7 +108,10 @@ jobs:
           docker ps
           docker run -e POSTGRES_PASSWORD=password -e POSTGRES_HOST=localhost -e POSTGRES_DB=velour -e POSTGRES_USERNAME=postgres -e POSTGRES_PORT=5432  --network "host" migrations
       - run: cd api && pip install ".[test]"
-      - run: coverage run --source=velour_api -m pytest -v tests/functional-tests
+      - run: pwd
+      - run: ls
+      - run: which coverage
+      - run: cd api && coverage run --source=velour_api -m pytest -v tests/functional-tests
         env: #should env go before docker?
           POSTGRES_PASSWORD: password
           POSTGRES_HOST: localhost
