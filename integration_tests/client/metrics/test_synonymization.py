@@ -604,31 +604,28 @@ def test_classification_synonymization(
     assert all([entry in baseline_cm for entry in confusion_matrices])
 
     # now try using a label map to connect all the cats
+
+    label_mapping = {
+        # map the groundtruths
+        Label(key="class", value="tabby cat"): Label(
+            key="special_class", value="cat_type1"
+        ),
+        Label(key="class", value="siamese cat"): Label(
+            key="special_class", value="cat_type1"
+        ),
+        Label(key="class", value="british shorthair"): Label(
+            key="special_class", value="cat_type2"
+        ),
+        # map the predictions
+        Label(key="class", value="cat"): Label(
+            key="special_class", value="cat_type1"
+        ),
+        Label(key="class_name", value="cat"): Label(
+            key="special_class", value="cat_type1"
+        ),
+    }
+
     cat_expected_metrics = [
-        {"type": "Accuracy", "parameters": {"label_key": "k4"}, "value": 1.0},
-        {"type": "ROCAUC", "parameters": {"label_key": "k4"}, "value": 1.0},
-        {
-            "type": "Precision",
-            "value": 1.0,
-            "label": {"key": "k4", "value": "v4"},
-        },
-        {
-            "type": "Recall",
-            "value": 1.0,
-            "label": {"key": "k4", "value": "v4"},
-        },
-        {"type": "F1", "value": 1.0, "label": {"key": "k4", "value": "v4"}},
-        {
-            "type": "Precision",
-            "value": -1.0,
-            "label": {"key": "k4", "value": "v5"},
-        },
-        {
-            "type": "Recall",
-            "value": -1.0,
-            "label": {"key": "k4", "value": "v5"},
-        },
-        {"type": "F1", "value": -1.0, "label": {"key": "k4", "value": "v5"}},
         {
             "type": "Accuracy",
             "parameters": {"label_key": "special_class"},
@@ -637,22 +634,7 @@ def test_classification_synonymization(
         {
             "type": "ROCAUC",
             "parameters": {"label_key": "special_class"},
-            "value": 1.0,
-        },
-        {
-            "type": "Precision",
-            "value": 0.0,
-            "label": {"key": "special_class", "value": "cat_type2"},
-        },
-        {
-            "type": "Recall",
-            "value": 0.0,
-            "label": {"key": "special_class", "value": "cat_type2"},
-        },
-        {
-            "type": "F1",
-            "value": 0.0,
-            "label": {"key": "special_class", "value": "cat_type2"},
+            "value": -1.0,
         },
         {
             "type": "Precision",
@@ -669,6 +651,45 @@ def test_classification_synonymization(
             "value": 0.6666666666666666,
             "label": {"key": "special_class", "value": "cat_type1"},
         },
+        {
+            "type": "Precision",
+            "value": 0.0,
+            "label": {"key": "special_class", "value": "cat_type2"},
+        },
+        {
+            "type": "Recall",
+            "value": 0.0,
+            "label": {"key": "special_class", "value": "cat_type2"},
+        },
+        {
+            "type": "F1",
+            "value": 0.0,
+            "label": {"key": "special_class", "value": "cat_type2"},
+        },
+        {"type": "Accuracy", "parameters": {"label_key": "k4"}, "value": 1.0},
+        {"type": "ROCAUC", "parameters": {"label_key": "k4"}, "value": 1.0},
+        {
+            "type": "Precision",
+            "value": -1.0,
+            "label": {"key": "k4", "value": "v5"},
+        },
+        {
+            "type": "Recall",
+            "value": -1.0,
+            "label": {"key": "k4", "value": "v5"},
+        },
+        {"type": "F1", "value": -1.0, "label": {"key": "k4", "value": "v5"}},
+        {
+            "type": "Precision",
+            "value": 1.0,
+            "label": {"key": "k4", "value": "v4"},
+        },
+        {
+            "type": "Recall",
+            "value": 1.0,
+            "label": {"key": "k4", "value": "v4"},
+        },
+        {"type": "F1", "value": 1.0, "label": {"key": "k4", "value": "v4"}},
     ]
 
     cat_expected_cm = [
@@ -692,26 +713,6 @@ def test_classification_synonymization(
             "entries": [{"prediction": "v4", "groundtruth": "v4", "count": 1}],
         },
     ]
-
-    label_mapping = {
-        # map the groundtruths
-        Label(key="class", value="tabby cat"): Label(
-            key="special_class", value="cat_type1"
-        ),
-        Label(key="class", value="siamese cat"): Label(
-            key="special_class", value="cat_type1"
-        ),
-        Label(key="class", value="british shorthair"): Label(
-            key="special_class", value="cat_type2"
-        ),
-        # map the predictions
-        Label(key="class", value="cat"): Label(
-            key="special_class", value="cat_type1"
-        ),
-        Label(key="class_name", value="cat"): Label(
-            key="special_class", value="cat_type1"
-        ),
-    }
 
     eval_job = model.evaluate_classification(dataset, label_map=label_mapping)
 

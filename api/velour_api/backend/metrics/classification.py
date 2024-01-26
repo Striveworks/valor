@@ -73,6 +73,9 @@ def _compute_binary_roc_auc(
     # total number of groundtruths
     n = db.scalar(select(func.count(gts_query.c.label_value)))
 
+    if n_pos == 0:
+        return 0
+
     if n - n_pos == 0:
         return 1.0
 
