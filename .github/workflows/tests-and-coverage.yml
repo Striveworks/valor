@@ -97,6 +97,7 @@ jobs:
         with:
           python-version: "3.10"
       - run: |
+          aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login -u AWS --password-stdin 724664234782.dkr.ecr.us-east-1.amazonaws.com
           docker pull 724664234782.dkr.ecr.us-east-1.amazonaws.com/library/hardened/bitnami/postgresql:15.3.0-debian-12
           POSTGRES_PASSWORD=password POSTGRES_DB=velour docker run --expose "5432:5432" --network "host" 724664234782.dkr.ecr.us-east-1.amazonaws.com/library/hardened/bitnami/postgresql:15.3.0-debian-12
           docker build -f=migrations/Dockerfile ./migrations -t migrations
