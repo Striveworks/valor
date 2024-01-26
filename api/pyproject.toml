@@ -39,6 +39,3 @@ ensure_newline_before_comments = true
 
 [tool.setuptools_scm]
 root = ".."
-
-[tool.setuptools]
-py-modules = ["velour_api"]
