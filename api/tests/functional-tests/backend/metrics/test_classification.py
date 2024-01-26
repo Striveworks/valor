@@ -554,7 +554,6 @@ def test_compute_roc_auc_with_label_map(
                 "grouper_key_to_labels_mapping"
             ],
         )
-        # TODO this is incorrect
         == 0.7777777777777779
     )
 
