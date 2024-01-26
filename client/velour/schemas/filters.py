@@ -126,7 +126,7 @@ class Filter:
         # export full constraints
         for attr in [
             "annotation_geometric_area",
-            "prediction_scores"
+            "prediction_scores",
             "dataset_geospatial",
             "model_geospatial",
             "datum_geospatial",
@@ -148,7 +148,6 @@ class Filter:
             "model_names",
             "datum_uids",
             "task_types",
-            "annotation_types",
             "labels",
             "label_keys",
         ]:
@@ -176,7 +175,37 @@ class Filter:
                     __value = getattr(filter_request, attr)
                     if expr.key not in __value:
                         __value[expr.key] = []
-                    __value[expr.key].append(expr.contstraint)
-                    setattr(filter_request, attr, __value)       
+                    __value[expr.key].append(expr.constraint)
+                    setattr(filter_request, attr, __value)
+
+        # edge cases
+        for attr, atype in [
+            ("annotation_bounding_box", AnnotationType.BOX),
+            ("annotation_polygon", AnnotationType.POLYGON),
+            ("annotation_multipolygon", AnnotationType.MULTIPOLYGON),
+            ("annotation_raster", AnnotationType.RASTER),
+        ]:
+            if attr in expression_dict:
+                for expr in expression_dict[attr]:
+                    if expr.constraint.operator == "exists":
+                        if not filter_request.annotation_types:
+                            filter_request.annotation_types = []
+                        filter_request.annotation_types.append(atype)
+
+        for attr in [
+            "annotation_bounding_box_area",
+            "annotation_polygon_area",
+            "annotation_multipolygon_area",
+            "annotation_raster_area",
+        ]:
+            if attr in expression_dict:
+                setattr(
+                    filter_request,
+                    "annotation_geometric_area",
+                    [
+                        expr.constraint
+                        for expr in expression_dict[attr]
+                    ]
+                )
 
         return filter_request

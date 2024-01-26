@@ -225,7 +225,7 @@ class GeometryMapper(_SpatialMapper):
             Raster,
         ]:
             raise TypeError(f"GeometryMapper does not support objects of type `{type(value)}`.")
-        
+
         raise NotImplementedError(f"Geometric types only support 'is_none' and 'exists'. Support for other spatial operators is planned.")
 
 
