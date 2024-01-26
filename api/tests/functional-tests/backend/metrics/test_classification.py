@@ -15,6 +15,14 @@ from velour_api.backend.metrics.metric_utils import create_grouper_mappings
 
 
 @pytest.fixture
+def label_map():
+    return [
+        [["animal", "dog"], ["class", "mammal"]],
+        [["animal", "cat"], ["class", "mammal"]],
+    ]
+
+
+@pytest.fixture
 def classification_test_data(db: Session, dataset_name: str, model_name: str):
     animal_gts = ["bird", "dog", "bird", "bird", "cat", "dog"]
     animal_preds = [
@@ -131,11 +139,23 @@ def test_compute_confusion_matrix_at_grouper_key(
         task_types=[enums.TaskType.CLASSIFICATION],
     )
 
+    mappings = create_grouper_mappings(
+        db=db,
+        label_map=None,
+        evaluation_type="classification",
+        groundtruth_filter=groundtruth_filter,
+        prediction_filter=prediction_filter,
+    )
+
     cm = _compute_confusion_matrix_at_grouper_key(
         db=db,
         prediction_filter=prediction_filter,
         groundtruth_filter=groundtruth_filter,
-        label_key="animal",
+        grouper_key="animal",
+        grouper_key_to_label_keys_mapping=mappings[
+            "grouper_key_to_label_keys_mapping"
+        ],
+        label_value_to_grouper_value=mappings["label_value_to_grouper_value"],
     )
     expected_entries = [
         schemas.ConfusionMatrixEntry(
@@ -165,7 +185,11 @@ def test_compute_confusion_matrix_at_grouper_key(
         db=db,
         prediction_filter=prediction_filter,
         groundtruth_filter=groundtruth_filter,
-        label_key="color",
+        grouper_key="color",
+        grouper_key_to_label_keys_mapping=mappings[
+            "grouper_key_to_label_keys_mapping"
+        ],
+        label_value_to_grouper_value=mappings["label_value_to_grouper_value"],
     )
     expected_entries = [
         schemas.ConfusionMatrixEntry(
@@ -213,11 +237,23 @@ def test_compute_confusion_matrix_at_grouper_key_and_filter(
         datum_metadata={"md1": [schemas.StringFilter(value="md1-val0")]},
     )
 
+    mappings = create_grouper_mappings(
+        db=db,
+        label_map=None,
+        evaluation_type="classification",
+        groundtruth_filter=groundtruth_filter,
+        prediction_filter=prediction_filter,
+    )
+
     cm = _compute_confusion_matrix_at_grouper_key(
         db,
         prediction_filter=prediction_filter,
         groundtruth_filter=groundtruth_filter,
-        label_key="animal",
+        grouper_key="animal",
+        grouper_key_to_label_keys_mapping=mappings[
+            "grouper_key_to_label_keys_mapping"
+        ],
+        label_value_to_grouper_value=mappings["label_value_to_grouper_value"],
     )
 
     # for this metadatum and label id we have the gts
@@ -237,6 +273,64 @@ def test_compute_confusion_matrix_at_grouper_key_and_filter(
             groundtruth="bird", prediction="dog", count=1
         ),
     ]
+    assert len(cm.entries) == len(expected_entries)
+    for e in expected_entries:
+        assert e in cm.entries
+
+
+def test_compute_confusion_matrix_at_grouper_key_and_label_map(
+    db: Session,
+    dataset_name: str,
+    model_name: str,
+    label_map,
+    classification_test_data,
+):
+    """
+    Test grouping using the label_map
+    """
+
+    prediction_filter = schemas.Filter(
+        dataset_names=[dataset_name],
+        model_names=[model_name],
+    )
+    groundtruth_filter = schemas.Filter(
+        dataset_names=[dataset_name],
+        model_names=[model_name],
+        task_types=[enums.TaskType.CLASSIFICATION],
+        datum_metadata={"md1": [schemas.StringFilter(value="md1-val0")]},
+    )
+
+    mappings = create_grouper_mappings(
+        db=db,
+        label_map=label_map,
+        evaluation_type="classification",
+        groundtruth_filter=groundtruth_filter,
+        prediction_filter=prediction_filter,
+    )
+
+    cm = _compute_confusion_matrix_at_grouper_key(
+        db,
+        prediction_filter=prediction_filter,
+        groundtruth_filter=groundtruth_filter,
+        grouper_key="animal",
+        grouper_key_to_label_keys_mapping=mappings[
+            "grouper_key_to_label_keys_mapping"
+        ],
+        label_value_to_grouper_value=mappings["label_value_to_grouper_value"],
+    )
+
+    expected_entries = [
+        schemas.ConfusionMatrixEntry(
+            groundtruth="bird", prediction="bird", count=1
+        ),
+        schemas.ConfusionMatrixEntry(
+            groundtruth="mammal", prediction="mammal", count=2
+        ),
+        schemas.ConfusionMatrixEntry(
+            groundtruth="mammal", prediction="mammal", count=2
+        ),
+    ]
+
     assert len(cm.entries) == len(expected_entries)
     for e in expected_entries:
         assert e in cm.entries
@@ -404,7 +498,11 @@ def test_compute_roc_auc_groupby_metadata(
 
 
 def test_compute_roc_auc_with_label_map(
-    db: Session, dataset_name: str, model_name: str, classification_test_data
+    db: Session,
+    dataset_name: str,
+    model_name: str,
+    classification_test_data,
+    label_map,
 ):
     """Test ROC auc computation using a label_map to group labels together. Matches the following output from sklearn:
 
@@ -428,11 +526,6 @@ def test_compute_roc_auc_with_label_map(
     assert score == 0.7777777777777778
 
     """
-
-    label_map = [
-        [["animal", "dog"], ["class", "mammal"]],
-        [["animal", "cat"], ["class", "mammal"]],
-    ]
 
     prediction_filter = schemas.Filter(
         model_names=[model_name],
