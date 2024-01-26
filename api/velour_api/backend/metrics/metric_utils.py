@@ -10,23 +10,27 @@ from velour_api.backend import core
 def _create_detection_grouper_mappings(mapping_dict, labels):
     """Create grouper mappings for use when evaluating detections."""
 
-    label_id_to_grouper_mapping = {}
+    label_id_to_grouper_id_mapping = {}
+    grouper_id_to_grouper_label_mapping = {}
     grouper_id_to_label_ids_mapping = defaultdict(list)
 
     for label in labels:
-        # create an integer to track each group by
-        grouper_id = hash(
-            mapping_dict.get(
-                (label.key, label.value), (label.key, label.value)
-            )
+        mapped_key, mapped_value = mapping_dict.get(
+            (label.key, label.value), (label.key, label.value)
         )
+        # create an integer to track each group by
+        grouper_id = hash((mapped_key, mapped_value))
 
-        label_id_to_grouper_mapping[label.id] = grouper_id
+        label_id_to_grouper_id_mapping[label.id] = grouper_id
+        grouper_id_to_grouper_label_mapping[grouper_id] = schemas.Label(
+            key=mapped_key, value=mapped_value
+        )
         grouper_id_to_label_ids_mapping[grouper_id].append(label.id)
 
     return {
-        "label_id_to_grouper_mapping": label_id_to_grouper_mapping,
+        "label_id_to_grouper_id_mapping": label_id_to_grouper_id_mapping,
         "grouper_id_to_label_ids_mapping": grouper_id_to_label_ids_mapping,
+        "grouper_id_to_grouper_label_mapping": grouper_id_to_grouper_label_mapping,
     }
 
 

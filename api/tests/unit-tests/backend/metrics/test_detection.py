@@ -88,13 +88,10 @@ def test__ap():
         ),
     ]
 
-    label_id_to_grouper_mapping = {key: key for key in labels.keys()}
-
     detection_metrics = _ap(
         sorted_ranked_pairs=pairs,
         number_of_ground_truths=number_of_ground_truths,
-        labels=labels,
-        label_id_to_grouper_mapping=label_id_to_grouper_mapping,
+        grouper_id_to_grouper_label_mapping=labels,
         iou_thresholds=iou_thresholds,
     )
 

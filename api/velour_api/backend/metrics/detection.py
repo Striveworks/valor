@@ -55,8 +55,7 @@ def _calculate_101_pt_interp(precisions, recalls) -> float:
 def _ap(
     sorted_ranked_pairs: Dict[int, List[RankedPair]],
     number_of_ground_truths: Dict[int, int],
-    labels: Dict[int, schemas.Label],
-    label_id_to_grouper_mapping: Dict[int, int],
+    grouper_id_to_grouper_label_mapping: Dict[int, schemas.Label],
     iou_thresholds: list[float],
 ) -> list[schemas.APMetric]:
     """
@@ -68,14 +67,13 @@ def _ap(
 
     detection_metrics = []
     for iou_threshold in iou_thresholds:
-        for label_id, label in labels.items():
+        for grouper_id in grouper_id_to_grouper_label_mapping.keys():
             precisions = []
             recalls = []
             cnt_tp = 0
             cnt_fp = 0
 
-            if label_id_to_grouper_mapping[label_id] in sorted_ranked_pairs:
-                grouper_id = label_id_to_grouper_mapping[label_id]
+            if grouper_id in sorted_ranked_pairs:
                 for row in sorted_ranked_pairs[grouper_id]:
                     if row.score > 0 and row.iou >= iou_threshold:
                         cnt_tp += 1
@@ -99,7 +97,7 @@ def _ap(
                     value=_calculate_101_pt_interp(
                         precisions=precisions, recalls=recalls
                     ),
-                    label=label,
+                    label=grouper_id_to_grouper_label_mapping[grouper_id],
                 )
             )
     return detection_metrics
@@ -175,7 +173,7 @@ def _compute_detection_metrics(
             models.GroundTruth.label_id.label("label_id"),
             models.Annotation.datum_id.label("datum_id"),
             case(
-                mappings["label_id_to_grouper_mapping"],
+                mappings["label_id_to_grouper_id_mapping"],
                 value=models.GroundTruth.label_id,
             ).label("label_id_grouper"),
         )
@@ -192,7 +190,7 @@ def _compute_detection_metrics(
             models.Prediction.score.label("score"),
             models.Annotation.datum_id.label("datum_id"),
             case(
-                mappings["label_id_to_grouper_mapping"],
+                mappings["label_id_to_grouper_id_mapping"],
                 value=models.Prediction.label_id,
             ).label("label_id_grouper"),
         )
@@ -305,16 +303,6 @@ def _compute_detection_metrics(
                 )
             )
 
-    # Get groundtruth labels
-    groundtruth_labels = {
-        label.id: schemas.Label(key=label.key, value=label.value)
-        for label in db.scalars(
-            Query(models.Label)
-            .filter(groundtruth_filter)
-            .groundtruths(as_subquery=False)
-        )
-    }
-
     # Get the number of ground truths per grouper_id
     number_of_ground_truths_per_grouper = {}
 
@@ -331,15 +319,18 @@ def _compute_detection_metrics(
     detection_metrics = _ap(
         sorted_ranked_pairs=ranking,
         number_of_ground_truths=number_of_ground_truths_per_grouper,
-        labels=groundtruth_labels,
         iou_thresholds=parameters.iou_thresholds_to_compute,
-        label_id_to_grouper_mapping=mappings["label_id_to_grouper_mapping"],
+        grouper_id_to_grouper_label_mapping=mappings[
+            "grouper_id_to_grouper_label_mapping"
+        ],
     )
 
     # now extend to the averaged AP metrics and mAP metric
     mean_detection_metrics = _compute_mean_detection_metrics_from_aps(
         detection_metrics
     )
+
+    # TODO double check this one and whether we need a label_map test
     detection_metrics_ave_over_ious = (
         _compute_detection_metrics_averaged_over_ious_from_aps(
             detection_metrics
