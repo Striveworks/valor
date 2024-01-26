@@ -86,6 +86,25 @@ def _ap(
                 recalls.append(
                     cnt_tp / (cnt_tp + cnt_fn) if (cnt_tp + cnt_fn) else 0
                 )
+# =======
+#             if label_id in sorted_ranked_pairs:
+#                 for row in sorted_ranked_pairs[label_id]:
+#                     if row.score > 0 and row.iou >= iou_threshold:
+#                         cnt_tp += 1
+#                     else:
+#                         cnt_fp += 1
+#                     cnt_fn = number_of_ground_truths[label_id] - cnt_tp
+
+#                     precisions.append(
+#                         cnt_tp / (cnt_tp + cnt_fp) if (cnt_tp + cnt_fp) else 0
+#                     )
+#                     recalls.append(
+#                         cnt_tp / (cnt_tp + cnt_fn) if (cnt_tp + cnt_fn) else 0
+#                     )
+#             else:
+#                 precisions = [0]
+#                 recalls = [0]
+# >>>>>>> main
 
             detection_metrics.append(
                 schemas.APMetric(
@@ -296,6 +315,7 @@ def _compute_detection_metrics(
                 )
             )
 
+# <<<<<<< enable_label_maps
     # Get the number of ground truths per grouper_id
     number_of_ground_truths_per_grouper = {}
 
@@ -303,6 +323,23 @@ def _compute_detection_metrics(
         label_ids = mappings["grouper_id_to_label_ids_mapping"][grouper_id]
         groundtruth_filter.label_ids = label_ids
         number_of_ground_truths_per_grouper[grouper_id] = db.query(
+# =======
+#     # Get groundtruth labels
+#     groundtruth_labels = {
+#         label.id: schemas.Label(key=label.key, value=label.value)
+#         for label in db.scalars(
+#             Query(models.Label)
+#             .filter(groundtruth_filter)
+#             .groundtruths(as_subquery=False)
+#         )
+#     }
+
+#     # Get the number of ground truths per label id
+#     number_of_ground_truths = {}
+#     for id in groundtruth_labels:
+#         groundtruth_filter.label_ids = [id]
+#         number_of_ground_truths[id] = db.query(
+# >>>>>>> main
             Query(func.count(models.GroundTruth.id))
             .filter(groundtruth_filter)
             .groundtruths()
@@ -313,6 +350,10 @@ def _compute_detection_metrics(
         sorted_ranked_pairs=ranking,
         number_of_ground_truths=number_of_ground_truths_per_grouper,
         label_map=mappings["grouper_id_to_label_mapping"],
+# =======
+#         number_of_ground_truths=number_of_ground_truths,
+#         labels=groundtruth_labels,
+# >>>>>>> main
         iou_thresholds=parameters.iou_thresholds_to_compute,
     )
 

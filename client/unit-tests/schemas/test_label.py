@@ -1,3 +1,4 @@
+import numpy as np
 import pytest
 
 from velour import Label
@@ -35,12 +36,13 @@ def test_scored_label():
     s3 = Label(key="test", value="value", score=0.1)
     s4 = Label(key="test", value="other", score=0.5)
     s5 = Label(key="other", value="value", score=0.5)
+    s6 = Label(key="test", value="value", score=np.float32(0.5))
 
     # test `__post_init__`
 
     with pytest.raises(TypeError) as e:
-        Label(key="k", value="v", score="0.5")
-    assert "score should be of type `float`" in str(e)
+        Label(key="k", value="v", score="boo")  # type: ignore
+    assert "score should be convertible to `float`" in str(e)
 
     # test property `key`
     assert l1.key == "test"
@@ -50,6 +52,7 @@ def test_scored_label():
 
     # test member fn `__eq__`
     assert s1 == s2
+    assert s1 == s6
     assert not s1 == s3
     assert not s1 == s4
     assert not s1 == s5

@@ -620,7 +620,7 @@ def test_query_datasets(
 
     # Q: Get names for datasets where label=tree exists in groundtruths
     f = schemas.Filter(labels=[{"class": "tree"}])
-    q = Query(models.Dataset.name).filter(f).any()
+    q = Query(models.Dataset.name).filter(f).groundtruths()
     dataset_names = db.query(q).distinct().all()
     assert len(dataset_names) == 0
 
@@ -641,7 +641,7 @@ def test_query_models(
 
     # Q: Get names for models where label=cat exists in predictions
     f = schemas.Filter(labels=[{"class": "cat"}])
-    q = Query(models.Model.name).filter(f).any()
+    q = Query(models.Model.name).filter(f).predictions()
     model_names = db.query(q).distinct().all()
     assert len(model_names) == 2
     assert (model_name1,) in model_names
@@ -649,7 +649,7 @@ def test_query_models(
 
     # Q: Get names for models where label=tree exists in predictions
     f = schemas.Filter(labels=[{"class": "tree"}])
-    q = Query(models.Model.name).filter(f).any()
+    q = Query(models.Model.name).filter(f).predictions()
     model_names = db.query(q).distinct().all()
     assert len(model_names) == 0
 

@@ -60,43 +60,28 @@ def get_evaluation_status(
 """ Labels """
 
 
-def get_all_labels(
+def get_labels(
     *,
     db: Session,
     filters: schemas.Filter | None = None,
+    ignore_prediction_labels=False,
+    ignore_groundtruth_labels=False,
 ) -> list[schemas.Label]:
     """
-    Fetch all labels from the database.
+    Fetch a list of labels from the database.
+
+    The default behavior is return a list of all existing labels.
 
     Parameters
     ----------
     db : Session
         The database Session to query against.
-    filters : schemas.Filter
+    filters : schemas.Filter, optional
         An optional filter to apply.
-
-    Returns
-    ----------
-    list[schemas.Label]
-        A list of labels.
-    """
-    return list(backend.get_labels(db, filters))
-
-
-def get_dataset_labels(
-    *,
-    db: Session,
-    filters: schemas.Filter | None = None,
-) -> list[schemas.Label]:
-    """
-    Fetch all labels associated with dataset groundtruths from the database.
-
-    Parameters
-    ----------
-    db : Session
-        The database Session to query against.
-    filters : schemas.Filter
-        An optional filter to apply.
+    ignore_prediction_labels : bool, default=False
+        Option to ignore prediction labels in the result.
+    ignore_groundtruths : bool, default=False
+        Option to ignore groundtruth labels in the result.
 
     Returns
     ----------
@@ -107,36 +92,8 @@ def get_dataset_labels(
         backend.get_labels(
             db=db,
             filters=filters,
-            ignore_predictions=True,
-        )
-    )
-
-
-def get_model_labels(
-    *,
-    db: Session,
-    filters: schemas.Filter | None = None,
-) -> list[schemas.Label]:
-    """
-    Fetch all labels associated with dataset predictions from the database.
-
-    Parameters
-    ----------
-    db : Session
-        The database Session to query against.
-    filters : schemas.Filter
-        An optional filter to apply.
-
-    Returns
-    ----------
-    list[schemas.Label]
-        A list of labels.
-    """
-    return list(
-        backend.get_labels(
-            db=db,
-            filters=filters,
-            ignore_groundtruths=True,
+            ignore_predictions=ignore_prediction_labels,
+            ignore_groundtruths=ignore_groundtruth_labels,
         )
     )
 
@@ -147,24 +104,26 @@ def get_model_labels(
 def get_datums(
     *,
     db: Session,
-    request: schemas.Filter = None,
+    filters: schemas.Filter = None,
 ) -> list[schemas.Datum]:
     """
-    Return all datums in the database.
+    Get datums with optional filter.
+
+    Default behavior is to return all existing datums.
 
     Parameters
     ----------
     db : Session
         The database Session to query against.
-    request : schemas.Filter
+    filters : schemas.Filter, optional
         An optional filter to apply.
 
     Returns
     ----------
-    List[schemas.Datum]
+    list[schemas.Datum]
         A list of datums.
     """
-    return backend.get_datums(db, request)
+    return backend.get_datums(db=db, filters=filters)
 
 
 """ Datasets """
@@ -196,21 +155,26 @@ def get_dataset(
 def get_datasets(
     *,
     db: Session,
+    filters: schemas.Filter | None = None,
 ) -> list[schemas.Dataset]:
     """
-    Fetch all datasets.
+    Get datasets with optional filter.
+
+    Default behavior is to return all existing datasets.
 
     Parameters
     ----------
     db : Session
         The database Session to query against.
+    filters : schemas.Filter, optional
+        An optional filter to apply.
 
     Returns
     ----------
-    List[schemas.Dataset]
+    list[schemas.Dataset]
         A list of all datasets.
     """
-    return backend.get_all_datasets(db)
+    return backend.get_datasets(db=db, filters=filters)
 
 
 def get_dataset_summary(*, db: Session, name: str) -> schemas.DatasetSummary:
@@ -273,9 +237,12 @@ def get_model(*, db: Session, model_name: str) -> schemas.Model:
 def get_models(
     *,
     db: Session,
+    filters: schemas.Filter | None = None,
 ) -> list[schemas.Model]:
     """
-    Fetch all models.
+    Get models with optional filter.
+
+    Default behavior is to return all existing models.
 
     Parameters
     ----------
@@ -284,10 +251,10 @@ def get_models(
 
     Returns
     ----------
-    List[schemas.Model]
+    list[schemas.Model]
         A list of all models.
     """
-    return backend.get_models(db)
+    return backend.get_models(db=db, filters=filters)
 
 
 def get_prediction(
@@ -360,3 +327,24 @@ def get_evaluations(
         dataset_names=dataset_names,
         model_names=model_names,
     )
+
+
+def get_evaluation_requests_from_model(
+    db: Session, model_name: str
+) -> list[schemas.EvaluationResponse]:
+    """
+    Returns all evaluation settings for a given model.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    model_name : str
+        The model name to find evaluations of
+
+    Returns
+    ----------
+    list[schemas.EvaluationResponse]
+        A list of evaluations.
+    """
+    return backend.get_evaluation_requests_from_model(db, model_name)

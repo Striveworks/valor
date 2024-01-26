@@ -569,6 +569,41 @@ def get_evaluations(
     return _create_responses(db, evaluations)
 
 
+def get_evaluation_requests_from_model(
+    db: Session, model_name: str
+) -> list[schemas.EvaluationResponse]:
+    """
+    Returns all evaluation settings for a given model.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    model_name : str
+        The model name to find evaluations of
+
+    Returns
+    ----------
+    list[schemas.EvaluationResponse]
+        A list of evaluations.
+    """
+    evaluations = (
+        db.query(models.Evaluation)
+        .where(models.Evaluation.model_name == model_name)
+        .all()
+    )
+    return [
+        schemas.EvaluationResponse(
+            id=eval_.id,
+            model_name=model_name,
+            datum_filter=eval_.datum_filter,
+            parameters=eval_.parameters,
+            status=eval_.status,
+        )
+        for eval_ in evaluations
+    ]
+
+
 def get_evaluation_status(
     db: Session,
     evaluation_id: int,
