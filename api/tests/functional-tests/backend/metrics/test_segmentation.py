@@ -10,7 +10,6 @@ from velour_api.backend.metrics.segmentation import (
     _count_true_positives,
     _generate_groundtruth_query,
     _generate_prediction_query,
-    _get_groundtruth_labels,
 )
 from velour_api.backend.models import Label
 
@@ -351,37 +350,6 @@ def test_count_predictions(
         _count_predictions(db, _generate_prediction_query(prediction_filter))
         == 0
     )
-
-
-def test_get_groundtruth_labels(
-    db: Session,
-    dataset_name: str,
-    gt_semantic_segs_create: list[schemas.GroundTruth],
-):
-    _create_gt_data(
-        db=db,
-        dataset_name=dataset_name,
-        gt_semantic_segs_create=gt_semantic_segs_create,
-    )
-
-    groundtruth_filter = schemas.Filter(
-        dataset_names=[dataset_name],
-        task_types=[enums.TaskType.SEGMENTATION],
-        annotation_types=[enums.AnnotationType.RASTER],
-    )
-
-    labels = _get_groundtruth_labels(db, groundtruth_filter)
-
-    assert len(labels) == 4
-
-    assert set([(label.key, label.value) for label in labels]) == {
-        ("k1", "v1"),
-        ("k1", "v2"),
-        ("k2", "v2"),
-        ("k3", "v3"),
-    }
-
-    assert len(set([label.id for label in labels])) == 4
 
 
 def test_compute_segmentation_metrics(
