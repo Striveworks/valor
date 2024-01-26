@@ -108,7 +108,7 @@ jobs:
           POSTGRESQL_PASSWORD=password POSTGRES_DB=velour docker run --expose 5432 --network "host" -d 724664234782.dkr.ecr.us-east-1.amazonaws.com/library/hardened/bitnami/postgresql:15.3.0-debian-12
           docker build -f=migrations/Dockerfile ./migrations -t migrations
           docker ps
-          POSTGRES_PASSWORD=password POSTGRES_HOST=0.0.0.0 POSTGRES_DB=velour POSTGRES_USERNAME=postgres POSTGRES_PORT=5432 docker run --network "host" migrations
+          docker run -e POSTGRES_PASSWORD=password -e POSTGRES_HOST=localhost -e POSTGRES_DB=velour -e POSTGRES_USERNAME=postgres -e POSTGRES_PORT=5432  --network "host" migrations
           cd ./api
           pip install ".[test]"
           coverage run --source=velour_api -m pytest -v tests/functional-tests
