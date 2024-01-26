@@ -30,17 +30,16 @@ jobs:
         with:
           role-to-assume: ${{ secrets.AWS_ROLE }}
           aws-region: ${{ secrets.AWS_ECR_REGION }}
-#      - name: build
-#        run: |
-#          docker build . -t ${IMAGE_NAME}
-#      - name: push
-#        run: |
-#          docker login ghcr.io -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }}
-#          docker push ${IMAGE_NAME}
-#          IMAGE_NAME_WITH_COMMIT_HASH=${IMAGE_NAME}:${{ github.sha }}
-#          docker tag ${IMAGE_NAME} ${IMAGE_NAME_WITH_COMMIT_HASH}
-#          docker push ${IMAGE_NAME_WITH_COMMIT_HASH}
-      # if there's a git tag then add another tag to the image with the git tag and push it
+      - name: build
+        run: |
+          docker build . -t ${IMAGE_NAME}
+      - name: push
+        run: |
+          docker login ghcr.io -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }}
+          docker push ${IMAGE_NAME}
+          IMAGE_NAME_WITH_COMMIT_HASH=${IMAGE_NAME}:${{ github.sha }}
+          docker tag ${IMAGE_NAME} ${IMAGE_NAME_WITH_COMMIT_HASH}
+          docker push ${IMAGE_NAME_WITH_COMMIT_HASH}
       - name: push git tag
         if: startsWith(github.ref, 'refs/tags/')
         run: |

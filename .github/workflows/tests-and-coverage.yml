@@ -29,10 +29,18 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v2
         with:
           mask-password: "false"
-
     outputs:
       docker_username: ${{ steps.login-ecr.outputs.docker_username_724664234782_dkr_ecr_us_east_1_amazonaws_com }}
       docker_password: ${{ steps.login-ecr.outputs.docker_password_724664234782_dkr_ecr_us_east_1_amazonaws_com }}
+  login-to-ghcr:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Login to ghcr
+        id: login-ghcr
+        run: docker login ghcr.io -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }}
+    outputs:
+      docker_username: ${{ steps.login-ghcr.outputs.docker_username_724664234782_dkr_ecr_us_east_1_amazonaws_com }}
+
   backend-functional-tests:
     permissions:
       packages: read
@@ -57,6 +65,9 @@ jobs:
           POSTGRES_DB: velour
       migrations:
         image: ghcr.io/striveworks/velour/migrations
+        credentials:
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
         env: #TODO DRY
           POSTGRES_PASSWORD: password
           POSTGRES_HOST: localhost
