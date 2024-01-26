@@ -293,7 +293,7 @@ def get_disjoint_labels(
         Filter defining first label set.
     rhs : list[schemas.Filter]
         Filter defining second label set.
-    label_map: Tuple[Tuple[Label, Label]]
+    label_map: List[List[Label, Label]]
         Optional mapping of individual Labels to a grouper Label. Useful when you need to evaluate performance using Labels that differ across datasets and models.
 
     Returns

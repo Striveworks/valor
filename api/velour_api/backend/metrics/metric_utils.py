@@ -1,8 +1,140 @@
+from collections import defaultdict
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from velour_api import enums, schemas
-from velour_api.backend import core
+from velour_api.backend import core, models
+from velour_api.backend.ops import Query
+
+
+def _create_detection_grouper_mappings(mapping_dict, labels):
+    """Create grouper mappings for use when evaluating detections."""
+
+    label_id_to_grouper_mapping = {}
+    grouper_id_to_label_mapping = {}
+    grouper_id_to_label_ids_mapping = defaultdict(list)
+
+    for label in labels:
+        # create an integer to track each group by
+        grouper_id = hash(
+            mapping_dict.get(
+                (label.key, label.value), (label.key, label.value)
+            )
+        )
+
+        label_id_to_grouper_mapping[label.id] = grouper_id
+        grouper_id_to_label_ids_mapping[grouper_id].append(label.id)
+
+        # map the grouper_id to a label object
+        if (label.key, label.value) not in mapping_dict:
+            grouper_id_to_label_mapping[grouper_id] = schemas.Label(
+                key=label.key, value=label.value
+            )
+        else:
+            grouper_key, grouper_value = mapping_dict[(label.key, label.value)]
+            grouper_id_to_label_mapping[grouper_id] = schemas.Label(
+                key=grouper_key, value=grouper_value
+            )
+
+    return {
+        "label_id_to_grouper_mapping": label_id_to_grouper_mapping,
+        "grouper_id_to_label_mapping": grouper_id_to_label_mapping,
+        "grouper_id_to_label_ids_mapping": grouper_id_to_label_ids_mapping,
+    }
+
+
+def _create_segmentation_grouper_mappings(mapping_dict, labels):
+    """Create grouper mappings for use when evaluating segmentations."""
+
+    pass
+
+
+def _create_classification_grouper_mappings(mapping_dict, labels):
+    """Create grouper mappings for use when evaluating classifications."""
+
+    # define mappers to connect groupers with labels
+    label_value_to_grouper_value = {}
+    grouper_key_to_labels_mapping = defaultdict(lambda: defaultdict(set))
+    grouper_key_to_label_keys_mapping = defaultdict(set)
+
+    for label in labels:
+        # the grouper should equal the (label.key, label.value) if it wasn't mapped by the user
+        grouper_key, grouper_value = mapping_dict.get(
+            (label.key, label.value), (label.key, label.value)
+        )
+
+        label_value_to_grouper_value[label.value] = grouper_value
+        grouper_key_to_label_keys_mapping[grouper_key].add(label.key)
+        grouper_key_to_labels_mapping[grouper_key][grouper_value].add(label)
+
+    return {
+        "label_value_to_grouper_value": label_value_to_grouper_value,
+        "grouper_key_to_labels_mapping": grouper_key_to_labels_mapping,
+        "grouper_key_to_label_keys_mapping": grouper_key_to_label_keys_mapping,
+    }
+
+
+def create_grouper_mappings(
+    db: Session,
+    label_map: list | None,
+    evaluation_type: str,
+    groundtruth_filter: schemas.Filter,
+    prediction_filter: schemas.Filter,
+):
+    """
+    Creates a dictionary of grouper mappings that are used throughout our evaluation functions. These mappings enable Velour to group multiple labels together using a label_map.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    label_map : list
+        An optional label map to use when grouping labels. If None is passed, this function will still create the appropriate mappings using individual labels.
+    evaluation_type : str
+        The type of evaluation to create mappings for.
+    prediction_filter : schemas.Filter
+        The filter to be used to query predictions.
+    groundtruth_filter : schemas.Filter
+        The filter to be used to query groundtruths.
+
+    Returns
+    ----------
+    dict
+        A dictionary of mappings.
+    """
+
+    # retrieve dataset labels
+    dataset_labels = set(
+        db.query(
+            Query(models.Label).filter(groundtruth_filter).groundtruths()
+        ).all()
+    )
+
+    # retrieve all model labels
+    model_labels = set(
+        db.query(
+            Query(models.Label).filter(prediction_filter).predictions()
+        ).all()
+    )
+
+    # find all unique labels
+    labels = list(dataset_labels.union(model_labels))
+
+    mapping_function = {
+        "classification": _create_classification_grouper_mappings,
+        "detection": _create_detection_grouper_mappings,
+        "segmentation": _create_segmentation_grouper_mappings,
+    }
+
+    # create a map of labels to groupers; will be empty if the user didn't pass a label_map
+    mapping_dict = (
+        {tuple(label): tuple(grouper_key) for label, grouper_key in label_map}
+        if label_map
+        else {}
+    )
+
+    return mapping_function[evaluation_type](mapping_dict, labels)
 
 
 def get_or_create_row(

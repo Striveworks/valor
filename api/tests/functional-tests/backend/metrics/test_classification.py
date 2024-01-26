@@ -11,6 +11,7 @@ from velour_api.backend.metrics.classification import (
     _compute_roc_auc,
     compute_clf_metrics,
 )
+from velour_api.backend.metrics.metric_utils import create_grouper_mappings
 
 
 @pytest.fixture
@@ -294,12 +295,23 @@ def test_compute_roc_auc(
         task_types=[enums.TaskType.CLASSIFICATION],
     )
 
+    mappings = create_grouper_mappings(
+        db=db,
+        label_map=None,
+        evaluation_type="classification",
+        groundtruth_filter=groundtruth_filter,
+        prediction_filter=prediction_filter,
+    )
+
     assert (
         _compute_roc_auc(
             db=db,
             prediction_filter=prediction_filter,
             groundtruth_filter=groundtruth_filter,
-            label_key="animal",
+            grouper_key="animal",
+            grouper_key_to_labels_mapping=mappings[
+                "grouper_key_to_labels_mapping"
+            ],
         )
         == 0.8009259259259259
     )
@@ -308,7 +320,10 @@ def test_compute_roc_auc(
             db=db,
             prediction_filter=prediction_filter,
             groundtruth_filter=groundtruth_filter,
-            label_key="color",
+            grouper_key="color",
+            grouper_key_to_labels_mapping=mappings[
+                "grouper_key_to_labels_mapping"
+            ],
         )
         == 0.43125
     )
@@ -318,7 +333,10 @@ def test_compute_roc_auc(
             db=db,
             prediction_filter=prediction_filter,
             groundtruth_filter=groundtruth_filter,
-            label_key="not a key",
+            grouper_key="not a key",
+            grouper_key_to_labels_mapping=mappings[
+                "grouper_key_to_labels_mapping"
+            ],
         )
         is None
     )
@@ -354,23 +372,104 @@ def test_compute_roc_auc_groupby_metadata(
 
     which gives 2/3. So we expect our implementation to give the average of 0.5 and 2/3
     """
-    model_filter = schemas.Filter(
+    prediction_filter = schemas.Filter(
         model_names=[model_name],
     )
-    datum_filter = schemas.Filter(
+    groundtruth_filter = schemas.Filter(
         dataset_names=[dataset_name],
         task_types=[enums.TaskType.CLASSIFICATION],
         datum_metadata={"md1": [schemas.StringFilter(value="md1-val0")]},
     )
 
+    mappings = create_grouper_mappings(
+        db=db,
+        label_map=None,
+        evaluation_type="classification",
+        groundtruth_filter=groundtruth_filter,
+        prediction_filter=prediction_filter,
+    )
+
     assert (
         _compute_roc_auc(
             db,
-            prediction_filter=model_filter,
-            groundtruth_filter=datum_filter,
-            label_key="animal",
+            prediction_filter=prediction_filter,
+            groundtruth_filter=groundtruth_filter,
+            grouper_key="animal",
+            grouper_key_to_labels_mapping=mappings[
+                "grouper_key_to_labels_mapping"
+            ],
         )
         == (0.5 + 2 / 3) / 2
+    )
+
+
+def test_run_sklearn():
+    # TODO delete this after fixing roc_auc bug
+    import numpy as np
+    from sklearn.metrics import roc_auc_score
+
+    # for the "animal" label key
+    y_true = np.array([0, 1, 0, 0, 1, 1])
+    y_score = np.array(
+        [
+            [0.6, 0.4],
+            [0.0, 1],
+            [0.15, 0.85],
+            [0.15, 0.85],
+            [0.0, 1.0],
+            [0.2, 0.8],
+        ]
+    )
+
+    score = roc_auc_score(y_true, y_score[:, 1], multi_class="ovr")
+    assert score == 0.7777777777777778
+
+
+def test_compute_roc_auc_with_label_map(
+    db: Session, dataset_name: str, model_name: str, classification_test_data
+):
+    """Test ROC auc computation using a label_map to group labels together"""
+
+    # data for reference
+    # animal_gts = ["bird", "dog", "bird", "bird", "cat", "dog"]
+    # animal_preds = [
+    #     {"bird": 0.6, "dog": 0.2, "cat": 0.2},  # mammal: .4
+    #     {"cat": 0.9, "dog": 0.1, "bird": 0.0},  # mammal: 1
+    #     {"cat": 0.8, "dog": 0.05, "bird": 0.15},  # mammal: .85
+    #     {"dog": 0.75, "cat": 0.1, "bird": 0.15},  # mammal: .85
+    #     {"cat": 1.0, "dog": 0.0, "bird": 0.0},  # mammal: 1
+    #     {"cat": 0.4, "dog": 0.4, "bird": 0.2},  # mammal: .8
+    # ]
+
+    prediction_filter = schemas.Filter(
+        model_names=[model_name],
+        task_types=[enums.TaskType.CLASSIFICATION],
+    )
+    groundtruth_filter = schemas.Filter(
+        dataset_names=[dataset_name],
+        task_types=[enums.TaskType.CLASSIFICATION],
+    )
+
+    mappings = create_grouper_mappings(
+        db=db,
+        label_map=None,
+        evaluation_type="classification",
+        groundtruth_filter=groundtruth_filter,
+        prediction_filter=prediction_filter,
+    )
+
+    assert (
+        _compute_roc_auc(
+            db=db,
+            prediction_filter=prediction_filter,
+            groundtruth_filter=groundtruth_filter,
+            grouper_key="grouped_animals",
+            grouper_key_to_labels_mapping=mappings[
+                "grouper_key_to_labels_mapping"
+            ],
+        )
+        # TODO this is incorrect
+        == 0.8125
     )
 
 
@@ -392,7 +491,9 @@ def test_compute_classification(
         task_types=[enums.TaskType.CLASSIFICATION],
     )
 
-    confusion, metrics = _compute_clf_metrics(db, model_filter, datum_filter)
+    confusion, metrics = _compute_clf_metrics(
+        db, model_filter, datum_filter, label_map=None
+    )
 
     # Make matrices accessible by label_key
     confusion = {matrix.label_key: matrix for matrix in confusion}

@@ -1,5 +1,4 @@
 import heapq
-from collections import defaultdict
 from dataclasses import dataclass
 from typing import Dict, List
 
@@ -10,6 +9,7 @@ from sqlalchemy.orm import Session, aliased
 from velour_api import enums, schemas
 from velour_api.backend import core, models
 from velour_api.backend.metrics.metric_utils import (
+    create_grouper_mappings,
     create_metric_mappings,
     get_or_create_row,
     validate_computation,
@@ -150,43 +150,13 @@ def _compute_detection_metrics(
                 raise RuntimeError
 
     # create a map of labels to groupers; will be empty if the user didn't pass a label_map
-    mapping_dict = (
-        {
-            tuple(label): tuple(grouper_id)
-            for label, grouper_id in parameters.label_map
-        }
-        if parameters.label_map
-        else {}
+    mappings = create_grouper_mappings(
+        db=db,
+        label_map=parameters.label_map,
+        evaluation_type="detection",
+        groundtruth_filter=groundtruth_filter,
+        prediction_filter=prediction_filter,
     )
-
-    # Fetch all labels and map them to the appropriate grouper_id
-    labels = db.scalars(select(models.Label))
-
-    label_id_to_grouper_mapping = {}
-    grouper_id_to_label_mapping = {}
-    grouper_id_to_label_ids_mapping = defaultdict(list)
-
-    for label in labels:
-        # create an integer to track each group by
-        grouper_id = hash(
-            mapping_dict.get(
-                (label.key, label.value), (label.key, label.value)
-            )
-        )
-
-        label_id_to_grouper_mapping[label.id] = grouper_id
-        grouper_id_to_label_ids_mapping[grouper_id].append(label.id)
-
-        # map the grouper_id to a label object
-        if (label.key, label.value) not in mapping_dict:
-            grouper_id_to_label_mapping[grouper_id] = schemas.Label(
-                key=label.key, value=label.value
-            )
-        else:
-            grouper_key, grouper_value = mapping_dict[(label.key, label.value)]
-            grouper_id_to_label_mapping[grouper_id] = schemas.Label(
-                key=grouper_key, value=grouper_value
-            )
 
     # Join gt, datum, annotation, label
     gt = (
@@ -196,7 +166,7 @@ def _compute_detection_metrics(
             models.GroundTruth.label_id.label("label_id"),
             models.Annotation.datum_id.label("datum_id"),
             case(
-                label_id_to_grouper_mapping,
+                mappings["label_id_to_grouper_mapping"],
                 value=models.GroundTruth.label_id,
             ).label("label_id_grouper"),
         )
@@ -213,7 +183,7 @@ def _compute_detection_metrics(
             models.Prediction.score.label("score"),
             models.Annotation.datum_id.label("datum_id"),
             case(
-                label_id_to_grouper_mapping,
+                mappings["label_id_to_grouper_mapping"],
                 value=models.Prediction.label_id,
             ).label("label_id_grouper"),
         )
@@ -330,7 +300,7 @@ def _compute_detection_metrics(
     number_of_ground_truths_per_grouper = {}
 
     for grouper_id in ranking.keys():
-        label_ids = grouper_id_to_label_ids_mapping[grouper_id]
+        label_ids = mappings["grouper_id_to_label_ids_mapping"][grouper_id]
         groundtruth_filter.label_ids = label_ids
         number_of_ground_truths_per_grouper[grouper_id] = db.query(
             Query(func.count(models.GroundTruth.id))
@@ -342,7 +312,7 @@ def _compute_detection_metrics(
     detection_metrics = _ap(
         sorted_ranked_pairs=ranking,
         number_of_ground_truths=number_of_ground_truths_per_grouper,
-        label_map=grouper_id_to_label_mapping,
+        label_map=mappings["grouper_id_to_label_mapping"],
         iou_thresholds=parameters.iou_thresholds_to_compute,
     )
 

@@ -1,5 +1,3 @@
-from collections import defaultdict
-
 import numpy as np
 from sqlalchemy import Float, Integer
 from sqlalchemy.orm import Bundle, Session
@@ -8,6 +6,7 @@ from sqlalchemy.sql import and_, case, func, select
 from velour_api import schemas
 from velour_api.backend import core, models
 from velour_api.backend.metrics.metric_utils import (
+    create_grouper_mappings,
     create_metric_mappings,
     get_or_create_row,
     validate_computation,
@@ -19,8 +18,7 @@ def _compute_binary_roc_auc(
     db: Session,
     prediction_filter: schemas.Filter,
     groundtruth_filter: schemas.Filter,
-    gt_labels: list,
-    pred_labels: list,
+    label: schemas.Label,
 ) -> float:
     """
     Computes the binary ROC AUC score of a dataset and label.
@@ -33,20 +31,17 @@ def _compute_binary_roc_auc(
         The filter to be used to query predictions.
     groundtruth_filter : schemas.Filter
         The filter to be used to query groundtruths.
-    gt_labels : list
-        A list of sqlalchemy rows representing all of the labels associated with the groundtruth of a higher-level grouping value.
-    pred_labels : list
-        A list of sqlalchemy rows representing all of the labels associated with the predictions of a higher-level grouping value.
+    label : schemas.Label
+        The label to compute the score for.
 
     Returns
     -------
     float
         The binary ROC AUC score.
     """
-
-    # identify the datums of the associated groundtruth labels
+    # query to get the datum_ids and label values of groundtruths that have the given label key
     gts_filter = groundtruth_filter.model_copy()
-    gts_filter.label_ids = [label.id for label in gt_labels]
+    gts_filter.label_keys = [label.key]
     gts_query = (
         Query(
             models.Annotation.datum_id.label("datum_id"),
@@ -56,9 +51,9 @@ def _compute_binary_roc_auc(
         .groundtruths("groundtruth_subquery")
     )
 
-    # identify the datums of the associated prediction labels
+    # get the prediction scores for the given label (key and value)
     preds_filter = prediction_filter.model_copy()
-    preds_filter.labels = [label.id for label in pred_labels]
+    preds_filter.labels = [{label.key: label.value}]
     preds_query = (
         Query(
             models.Annotation.datum_id.label("datum_id"),
@@ -69,56 +64,30 @@ def _compute_binary_roc_auc(
         .predictions("prediction_subquery")
     )
 
-    # number of positives (# of datums where the prediction was one of our grouper's labels)
-    pos_datums = [
-        row.datum_id
-        for row in db.query(
-            select(preds_query.c.datum_id)
-            .select_from(preds_query)
-            .where(
-                preds_query.c.label_value.in_(
-                    [label.value for label in pred_labels]
-                ),
-            )
-            .subquery()
-        ).all()
-    ]
+    # number of groundtruth labels that match the given label value
+    n_pos = db.scalar(
+        select(func.count(gts_query.c.label_value)).where(
+            gts_query.c.label_value == label.value
+        )
+    )
+    # total number of groundtruths
+    n = db.scalar(select(func.count(gts_query.c.label_value)))
 
-    n_pos = len(pos_datums)
-
-    # number of negatives (# of datums where the prediction was not one of our grouper's labels)
-    neg_datums = [
-        row.datum_id
-        for row in db.query(
-            select(preds_query.c.datum_id)
-            .select_from(preds_query)
-            .where(
-                preds_query.c.datum_id.not_in(pos_datums),
-            )
-            .subquery()
-        ).all()
-    ]
-
-    n_neg = len(neg_datums)
-
-    if n_neg == 0:
+    if n - n_pos == 0:
         return 1.0
 
     # true positive rates
     tprs = (
         func.sum(
-            (gts_query.c.datum_id.in_(pos_datums)).cast(Integer).cast(Float)
+            (gts_query.c.label_value == label.value).cast(Integer).cast(Float)
         ).over(order_by=-preds_query.c.score)
         / n_pos
     )
 
     # false positive rates
-    fprs = (
-        func.sum(
-            (gts_query.c.datum_id.not_in(pos_datums)).cast(Integer).cast(Float)
-        ).over(order_by=-preds_query.c.score)
-        / n_neg
-    )
+    fprs = func.sum(
+        (gts_query.c.label_value != label.value).cast(Integer).cast(Float)
+    ).over(order_by=-preds_query.c.score) / (n - n_pos)
 
     tprs_fprs_query = (
         select(
@@ -182,51 +151,43 @@ def _compute_roc_auc(
     float | None
         The ROC AUC. Returns None if no labels exist for that label_key.
     """
+
     # get all of the labels associated with the grouper
     value_to_labels_mapping = grouper_key_to_labels_mapping[grouper_key]
 
     sum_roc_aucs = 0
     label_count = 0
+
     for grouper_value, labels in value_to_labels_mapping.items():
         # get the prediction labels associated with the grouper key and value
         label_filter = groundtruth_filter.model_copy()
         label_filter.label_ids = [label.id for label in labels]
-        pred_labels = [
+
+        # grouper_key_to_labels_mapping isn't filtered to a granular level, so we
+        # need to double-check the labels using core.get_labels
+        check_labels_for_label_value = [
             label
             for label in labels
             if schemas.Label(key=label.key, value=label.value)
-            in core.get_labels(
-                db=db, filters=label_filter, ignore_groundtruths=True
-            )
+            in core.get_labels(db=db, filters=label_filter)
         ]
 
-        # get the groundtruth labels associated with the grouper key and value
-        gt_labels = [
-            label
-            for label in labels
-            if schemas.Label(key=label.key, value=label.value)
-            in core.get_labels(
-                db=db, filters=label_filter, ignore_predictions=True
-            )
-        ]
-
-        # TODO this should probably look at gt_labels
-        if not pred_labels or not gt_labels:
+        if not check_labels_for_label_value:
             continue
 
-        bin_roc = _compute_binary_roc_auc(
-            db=db,
-            prediction_filter=prediction_filter,
-            groundtruth_filter=groundtruth_filter,
-            gt_labels=gt_labels,
-            pred_labels=pred_labels,
-        )
+        for label in labels:
+            bin_roc = _compute_binary_roc_auc(
+                db=db,
+                prediction_filter=prediction_filter,
+                groundtruth_filter=groundtruth_filter,
+                label=schemas.Label(key=label.key, value=label.value),
+            )
 
-        if bin_roc is not None:
-            sum_roc_aucs += bin_roc
-            label_count += 1
+            if bin_roc is not None:
+                sum_roc_aucs += bin_roc
+                label_count += 1
 
-    return sum_roc_aucs / label_count if label_count else -1
+    return sum_roc_aucs / label_count if label_count else None
 
 
 def _compute_confusion_matrix_at_grouper_key(
@@ -561,7 +522,7 @@ def _compute_clf_metrics(
     db: Session,
     prediction_filter: schemas.Filter,
     groundtruth_filter: schemas.Filter,
-    label_map: tuple,
+    label_map: list,
 ) -> tuple[
     list[schemas.ConfusionMatrix],
     list[
@@ -584,7 +545,7 @@ def _compute_clf_metrics(
         The filter to be used to query predictions.
     groundtruth_filter : schemas.Filter
         The filter to be used to query groundtruths.
-    label_map: Tuple[Tuple[Label, Label]]
+    label_map: List[List[Label, Label]]
         Optional mapping of individual Labels to a grouper Label. Useful when you need to evaluate performance using Labels that differ across datasets and models.
 
     Returns
@@ -592,56 +553,31 @@ def _compute_clf_metrics(
     Tuple[List[schemas.ConfusionMatrix], List[schemas.ConfusionMatrix | schemas.AccuracyMetric | schemas.ROCAUCMetric| schemas.PrecisionMetric | schemas.RecallMetric | schemas.F1Metric]]
         A tuple of confusion matrices and metrics.
     """
-    # retrieve dataset labels
-    dataset_labels = set(
-        db.query(
-            Query(models.Label).filter(groundtruth_filter).groundtruths()
-        ).all()
+    mappings = create_grouper_mappings(
+        db=db,
+        label_map=label_map,
+        evaluation_type="classification",
+        groundtruth_filter=groundtruth_filter,
+        prediction_filter=prediction_filter,
     )
-
-    # retrieve all model labels
-    model_labels = set(
-        db.query(
-            Query(models.Label).filter(prediction_filter).predictions()
-        ).all()
-    )
-
-    # find all unique labels
-    labels = list(dataset_labels.union(model_labels))
-
-    # create a map of labels to groupers; will be empty if the user didn't pass a label_map
-    mapping_dict = (
-        {tuple(label): tuple(grouper_key) for label, grouper_key in label_map}
-        if label_map
-        else {}
-    )
-
-    # define mappers to connect groupers with labels
-    label_value_to_grouper_value = {}
-    grouper_key_to_labels_mapping = defaultdict(lambda: defaultdict(set))
-    grouper_key_to_label_keys_mapping = defaultdict(set)
-
-    for label in labels:
-        # the grouper should equal the (label.key, label.value) if it wasn't mapped by the user
-        grouper_key, grouper_value = mapping_dict.get(
-            (label.key, label.value), (label.key, label.value)
-        )
-
-        label_value_to_grouper_value[label.value] = grouper_value
-        grouper_key_to_label_keys_mapping[grouper_key].add(label.key)
-        grouper_key_to_labels_mapping[grouper_key][grouper_value].add(label)
 
     # compute metrics and confusion matrix for each grouper id
     confusion_matrices, metrics = [], []
-    for grouper_key in grouper_key_to_labels_mapping.keys():
+    for grouper_key in mappings["grouper_key_to_labels_mapping"].keys():
         cm_and_metrics = _compute_confusion_matrix_and_metrics_at_grouper_key(
             db=db,
             prediction_filter=prediction_filter,
             groundtruth_filter=groundtruth_filter,
             grouper_key=grouper_key,
-            label_value_to_grouper_value=label_value_to_grouper_value,
-            grouper_key_to_label_keys_mapping=grouper_key_to_label_keys_mapping,
-            grouper_key_to_labels_mapping=grouper_key_to_labels_mapping,
+            label_value_to_grouper_value=mappings[
+                "label_value_to_grouper_value"
+            ],
+            grouper_key_to_label_keys_mapping=mappings[
+                "grouper_key_to_label_keys_mapping"
+            ],
+            grouper_key_to_labels_mapping=mappings[
+                "grouper_key_to_labels_mapping"
+            ],
         )
         if cm_and_metrics is not None:
             confusion_matrices.append(cm_and_metrics[0])
