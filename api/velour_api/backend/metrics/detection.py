@@ -55,7 +55,8 @@ def _calculate_101_pt_interp(precisions, recalls) -> float:
 def _ap(
     sorted_ranked_pairs: Dict[int, List[RankedPair]],
     number_of_ground_truths: Dict[int, int],
-    label_map: Dict[int, schemas.Label],
+    labels: Dict[int, schemas.Label],
+    label_id_to_grouper_mapping: Dict[int, int],
     iou_thresholds: list[float],
 ) -> list[schemas.APMetric]:
     """
@@ -67,25 +68,30 @@ def _ap(
 
     detection_metrics = []
     for iou_threshold in iou_thresholds:
-        for grouper_id in sorted_ranked_pairs:
+        for label_id, label in labels.items():
             precisions = []
             recalls = []
             cnt_tp = 0
             cnt_fp = 0
 
-            for row in sorted_ranked_pairs[grouper_id]:
-                if row.score > 0 and row.iou >= iou_threshold:
-                    cnt_tp += 1
-                else:
-                    cnt_fp += 1
-                cnt_fn = number_of_ground_truths[grouper_id] - cnt_tp
+            if label_id_to_grouper_mapping[label_id] in sorted_ranked_pairs:
+                grouper_id = label_id_to_grouper_mapping[label_id]
+                for row in sorted_ranked_pairs[grouper_id]:
+                    if row.score > 0 and row.iou >= iou_threshold:
+                        cnt_tp += 1
+                    else:
+                        cnt_fp += 1
+                    cnt_fn = number_of_ground_truths[grouper_id] - cnt_tp
 
-                precisions.append(
-                    cnt_tp / (cnt_tp + cnt_fp) if (cnt_tp + cnt_fp) else 0
-                )
-                recalls.append(
-                    cnt_tp / (cnt_tp + cnt_fn) if (cnt_tp + cnt_fn) else 0
-                )
+                    precisions.append(
+                        cnt_tp / (cnt_tp + cnt_fp) if (cnt_tp + cnt_fp) else 0
+                    )
+                    recalls.append(
+                        cnt_tp / (cnt_tp + cnt_fn) if (cnt_tp + cnt_fn) else 0
+                    )
+            else:
+                precisions = [0]
+                recalls = [0]
 
             detection_metrics.append(
                 schemas.APMetric(
@@ -93,7 +99,7 @@ def _ap(
                     value=_calculate_101_pt_interp(
                         precisions=precisions, recalls=recalls
                     ),
-                    label=label_map[grouper_id],
+                    label=label,
                 )
             )
     return detection_metrics
@@ -296,6 +302,16 @@ def _compute_detection_metrics(
                 )
             )
 
+    # Get groundtruth labels
+    groundtruth_labels = {
+        label.id: schemas.Label(key=label.key, value=label.value)
+        for label in db.scalars(
+            Query(models.Label)
+            .filter(groundtruth_filter)
+            .groundtruths(as_subquery=False)
+        )
+    }
+
     # Get the number of ground truths per grouper_id
     number_of_ground_truths_per_grouper = {}
 
@@ -312,8 +328,9 @@ def _compute_detection_metrics(
     detection_metrics = _ap(
         sorted_ranked_pairs=ranking,
         number_of_ground_truths=number_of_ground_truths_per_grouper,
-        label_map=mappings["grouper_id_to_label_mapping"],
+        labels=groundtruth_labels,
         iou_thresholds=parameters.iou_thresholds_to_compute,
+        label_id_to_grouper_mapping=mappings["label_id_to_grouper_mapping"],
     )
 
     # now extend to the averaged AP metrics and mAP metric
