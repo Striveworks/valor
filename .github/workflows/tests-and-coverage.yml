@@ -99,10 +99,10 @@ jobs:
       - run: |
           docker login -u ${{ needs.login-to-amazon-ecr.outputs.docker_username }} -p ${{ needs.login-to-amazon-ecr.outputs.docker_password }}
           docker pull 724664234782.dkr.ecr.us-east-1.amazonaws.com/library/hardened/bitnami/postgresql:15.3.0-debian-12
-          POSTGRES_PASSWORD=password POSTGRES_DB=velour docker run --expose "5432:5432" 724664234782.dkr.ecr.us-east-1.amazonaws.com/library/hardened/bitnami/postgresql:15.3.0-debian-12
+          POSTGRES_PASSWORD=password POSTGRES_DB=velour docker run --expose "5432:5432" --network "host" 724664234782.dkr.ecr.us-east-1.amazonaws.com/library/hardened/bitnami/postgresql:15.3.0-debian-12
           docker build -f=migrations/Dockerfile ./migrations -t migrations
           docker ps
-          POSTGRES_PASSWORD=password POSTGRES_HOST=0.0.0.0 POSTGRES_DB=velour POSTGRES_USERNAME=postgres POSTGRES_PORT=5432 docker run  --network "host" migrations
+          POSTGRES_PASSWORD=password POSTGRES_HOST=0.0.0.0 POSTGRES_DB=velour POSTGRES_USERNAME=postgres POSTGRES_PORT=5432 docker run --network "host" migrations
           cd ./api
           pip install ".[test]"
           coverage run --source=velour_api -m pytest -v tests/functional-tests
