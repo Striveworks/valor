@@ -70,7 +70,6 @@ def test_evaluate_segmentation_with_filter(
     for pred in pred_semantic_segs:
         model.add_prediction(dataset, pred)
 
-    # dataset.finalize()
     model.finalize_inferences(dataset)
 
     eval_job = model.evaluate_segmentation(
