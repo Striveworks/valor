@@ -89,7 +89,6 @@ class ImageMetadata:
             width=int(metadata.pop("width")),
             metadata=metadata,
         )
-        img._dataset_name = datum._dataset_name
         return img
 
     @classmethod
@@ -125,7 +124,6 @@ class ImageMetadata:
             metadata=metadata,
             geospatial=geospatial,
         )
-        datum._set_dataset_name(self._dataset_name)
         return datum
 
 

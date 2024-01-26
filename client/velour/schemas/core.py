@@ -29,8 +29,6 @@ def _reset_mapped_fields(obj):
                 setattr(obj, field.name, {})
             else:
                 setattr(obj, field.name, None)
-            
-
 
 
 @dataclass
@@ -64,7 +62,7 @@ class Label:
             not isinstance(self.score, float)
             and self.score is not None
         ):
-            raise TypeError(f"Attribute `score` should be of type `float` or `None`.")
+            raise TypeError(f"Attribute `score` should have a value of type `float` or be set to `None`.")
 
     def __str__(self):
         return str(self.tuple())
@@ -142,44 +140,44 @@ class Annotation:
 
         # labels
         if not isinstance(self.labels, list):
-            raise TypeError("Attribute `labels` should be of type `List[Label]`.")
+            raise TypeError("Attribute `labels` should have type `List[velour.Label]`.")
         for idx, label in enumerate(self.labels):
             if isinstance(self.labels[idx], dict):
                 self.labels[idx] = Label(**label)
             if not isinstance(self.labels[idx], Label):
-                raise TypeError("Attribute `labels` should be of type `List[Label]`.")
+                raise TypeError(f"Attribute `labels[{idx}]` should have type `velour.Label`.")
 
         # bounding box
         if self.bounding_box:
             if isinstance(self.bounding_box, dict):
                 self.bounding_box = BoundingBox(**self.bounding_box)
             if not isinstance(self.bounding_box, BoundingBox):
-                raise TypeError("Attribute `bounding_box` should be of type `BoundingBox`.")
+                raise TypeError("Attribute `bounding_box` should have type `velour.schemas.BoundingBox`.")
         
         # polygon
         if self.polygon:
             if isinstance(self.polygon, dict):
                 self.polygon = Polygon(**self.polygon)
             if not isinstance(self.polygon, Polygon):
-                raise TypeError("Attribute `polygon` should be of type `Polygon`.")
+                raise TypeError("Attribute `polygon` should have type `velour.schemas.Polygon`.")
             
         # multipolygon
         if self.multipolygon:
             if isinstance(self.multipolygon, dict):
                 self.multipolygon = MultiPolygon(**self.multipolygon)
             if not isinstance(self.multipolygon, MultiPolygon):
-                raise TypeError("Attribute `multipolygon` should be of type `MultiPolygon`.")
+                raise TypeError("Attribute `multipolygon` should have type `velour.schemas.MultiPolygon`.")
             
         # raster
         if self.raster:
             if isinstance(self.raster, dict):
                 self.raster = Raster(**self.raster)
             if not isinstance(self.raster, Raster):
-                raise TypeError("Attribute `raster` should be of type `Raster`.")
+                raise TypeError("Attribute `raster` should have type `velour.schemas.Raster`.")
 
         # metadata
         if not isinstance(self.metadata, dict):
-            raise TypeError("Attribute `metadata` should be of type `dict`.")
+            raise TypeError("Attribute `metadata` should have type `dict`.")
         validate_metadata(self.metadata)
         self.metadata = load_metadata(self.metadata)
 
@@ -189,11 +187,13 @@ class Datum:
     uid : Union[str, StringMapper] = StringMapper(name="datum_uids")
     metadata : Union[MetadataType, DictionaryMapper] = DictionaryMapper(name="datum_metadata")
     geospatial : Union[Optional[GeoJSONType], GeospatialMapper] = GeospatialMapper(name="datum_geospatial")
-    dataset_name: Optional[str] = None
 
     def __post_init__(self):
         _reset_mapped_fields(self)
 
+        if not isinstance(self.uid, str):
+            raise TypeError("Attribute `uid` should have type `str`.")
+        
         validate_metadata(self.metadata)
         self.metadata = load_metadata(self.metadata)
 
@@ -207,18 +207,21 @@ class GroundTruth:
         # validate datum
         if isinstance(self.datum, dict):
             self.datum = Datum(**self.datum)
+        if not isinstance(self.datum, Datum):
+            raise TypeError("Attribute `datum` should have type `velour.Datum`.")
 
         # validate annotations
         if not isinstance(self.annotations, list):
-            raise TypeError("Annotations should be given as a `list`.")
+            raise TypeError("Attribute `datum` should have type `List[velour.Annotation]`.")
         for idx, annotation in enumerate(self.annotations):
             if isinstance(self.annotations[idx], dict):
                 self.annotations[idx] = Annotation(**annotation)
+            if not isinstance(self.annotations[idx], Annotation):
+                raise TypeError(f"Attribute `annotations[{idx}]` should have type `velour.Annotation`.")
 
 
 @dataclass
 class Prediction:
-    model_name: str
     datum: Datum
     annotations: List[Annotation]
 
@@ -227,13 +230,17 @@ class Prediction:
         # validate datum
         if isinstance(self.datum, dict):
             self.datum = Datum(**self.datum)
+        if not isinstance(self.datum, Datum):
+            raise TypeError("Attribute `datum` should have type `velour.Datum`.")
 
         # validate annotations
         if not isinstance(self.annotations, list):
-            raise TypeError("Annotations should be given as a `list`.")
+            raise TypeError("Attribute `datum` should have type `List[velour.Annotation]`.")
         for idx, annotation in enumerate(self.annotations):
             if isinstance(self.annotations[idx], dict):
                 self.annotations[idx] = Annotation(**annotation)
+            if not isinstance(self.annotations[idx], Annotation):
+                raise TypeError(f"Attribute `annotations[{idx}]` should have type `velour.Annotation`.")
 
         # TaskType-specific validations
         for annotation in self.annotations:

@@ -8,7 +8,7 @@ from velour.types import MetadataType
 
 def _validate_href(value: str):
     if not isinstance(value, str):
-        raise SchemaTypeError("href", str, value)
+        raise TypeError("`href` key should have a `str` as its value.")
     if not (value.startswith("http://") or value.startswith("https://")):
         raise ValueError("`href` must start with http:// or https://")
 
@@ -16,12 +16,10 @@ def _validate_href(value: str):
 def validate_metadata(metadata: dict):
     """Validates metadata dictionary."""
     if not isinstance(metadata, dict):
-        raise SchemaTypeError(
-            "metadata", MetadataType, metadata
-        )
+        raise TypeError("`metadata` should be an object of type `dict`.")
     for key, value in metadata.items():
         if not isinstance(key, str):
-            raise SchemaTypeError("metadatum key", str, key)
+            raise TypeError("`metadata` key should have type `str`.")
         if not (
             isinstance(value, int)
             or isinstance(value, float)
@@ -30,9 +28,7 @@ def validate_metadata(metadata: dict):
             or isinstance(value, datetime.date)
             or isinstance(value, datetime.time)
         ):
-            raise SchemaTypeError(
-                "metadatum value", Union[float, int, str], value
-            )
+            raise TypeError("`metadata` value should have type `str`, `int`, `float` or `datetime`.")
 
         # Handle special key-values
         if key == "href":

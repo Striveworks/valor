@@ -1,9 +1,6 @@
-import datetime
 from dataclasses import dataclass
-from enum import Enum
-from typing import Dict, List, Union, Any, Optional
+from typing import Dict, List
 
-from velour.types import ValueType, GeoJSONType, GeometryType
 from velour.enums import AnnotationType, TaskType
 from velour.schemas.constraints import (
     Constraint,
@@ -126,145 +123,60 @@ class Filter:
         # create filter
         filter_request = cls()
 
-        # datasets
-        if "dataset_names" in expression_dict:
-            filter_request.dataset_names = [
-                expr.value for expr in expression_dict["dataset_names"]
-            ]
-        if "dataset_metadata" in expression_dict:
-            for expr in expression_dict["dataset_metadata"]:
-                if not filter_request.dataset_metadata:
-                    filter_request.dataset_metadata = {}
-                if expr.key not in filter_request.dataset_metadata:
-                    filter_request.dataset_metadata[expr.key] = []
-                filter_request.dataset_metadata[expr.key].append(
-                    Constraint(
-                        value=expr.value,
-                        operator=expr.operator,
-                    )
+        # export full constraints
+        for attr in [
+            "annotation_geometric_area",
+            "prediction_scores"
+            "dataset_geospatial",
+            "model_geospatial",
+            "datum_geospatial",
+            "annotation_geospatial",
+        ]:
+            if attr in expression_dict:
+                setattr(
+                    filter_request, 
+                    attr, 
+                    [
+                        expr.constraint     
+                        for expr in expression_dict[attr]
+                    ],
                 )
-        if "dataset_geospatial" in expression_dict:
-            filter_request.dataset_geospatial = [
-                Constraint(
-                    value=expr.value,
-                    operator=expr.operator,
-                )
-                for expr in expression_dict["dataset_geospatial"]
-            ]
-        # models
-        if "model_names" in expression_dict:
-            filter_request.model_names = [
-                expr.value for expr in expression_dict["model_names"]
-            ]
-        if "model_metadata" in expression_dict:
-            for expr in expression_dict["model_metadata"]:
-                if not filter_request.model_metadata:
-                    filter_request.model_metadata = {}
-                if expr.key not in filter_request.model_metadata:
-                    filter_request.model_metadata[expr.key] = []
-                filter_request.model_metadata[expr.key].append(
-                    Constraint(
-                        value=expr.value,
-                        operator=expr.operator,
-                    )
-                )
-        if "model_geospatial" in expression_dict:
-            filter_request.model_geospatial = [
-                Constraint(
-                    value=expr.value,
-                    operator=expr.operator,
-                )
-                for expr in expression_dict["model_geospatial"]
-            ]
-        # datums
-        if "datum_uids" in expression_dict:
-            filter_request.datum_uids = [
-                expr.value for expr in expression_dict["datum_uids"]
-            ]
-        if "datum_metadata" in expression_dict:
-            for expr in expression_dict["datum_metadata"]:
-                if not filter_request.datum_metadata:
-                    filter_request.datum_metadata = {}
-                if expr.key not in filter_request.datum_metadata:
-                    filter_request.datum_metadata[expr.key] = []
-                filter_request.datum_metadata[expr.key].append(
-                    Constraint(
-                        value=expr.value,
-                        operator=expr.operator,
-                    )
-                )
-        if "datum_geospatial" in expression_dict:
-            filter_request.datum_geospatial = [
-                Constraint(
-                    value=expr.value,
-                    operator=expr.operator,
-                )
-                for expr in expression_dict["datum_geospatial"]
-            ]
 
-        # annotations
-        if "task_types" in expression_dict:
-            filter_request.task_types = [
-                expr.value for expr in expression_dict["task_types"]
-            ]
-        if "annotation_types" in expression_dict:
-            filter_request.annotation_types = [
-                expr.value for expr in expression_dict["annotation_types"]
-            ]
-        if "annotation_geometric_area" in expression_dict:
-            filter_request.annotation_geometric_area = [
-                Constraint(
-                    value=expr.value,
-                    operator=expr.operator,
+        # export list of equality constraints
+        for attr in [
+            "dataset_names",
+            "model_names",
+            "datum_uids",
+            "task_types",
+            "annotation_types",
+            "labels",
+            "label_keys",
+        ]:
+            if attr in expression_dict:
+                setattr(
+                    filter_request,
+                    attr,
+                    [
+                        expr.constraint.value
+                        for expr in expression_dict[attr]
+                    ]
                 )
-                for expr in expression_dict["annotation_geometric_area"]
-            ]
-        if "annotation_metadata" in expression_dict:
-            for expr in expression_dict["annotation_metadata"]:
-                if not filter_request.annotation_metadata:
-                    filter_request.annotation_metadata = {}
-                if expr.key not in filter_request.annotation_metadata:
-                    filter_request.annotation_metadata[expr.key] = []
-                filter_request.annotation_metadata[expr.key].append(
-                    Constraint(
-                        value=expr.value,
-                        operator=expr.operator,
-                    )
-                )
-        if "annotation_geospatial" in expression_dict:
-            filter_request.annotation_geospatial = [
-                Constraint(
-                    value=expr.value,
-                    operator=expr.operator,
-                )
-                for expr in expression_dict["annotation_geospatial"]
-            ]
-        # predictions
-        if "prediction_scores" in expression_dict:
-            filter_request.prediction_scores = [
-                Constraint(
-                    value=expr.value,
-                    operator=expr.operator,
-                )
-                for expr in expression_dict["prediction_scores"]
-            ]
 
-        # labels
-        if "label_ids" in expression_dict:
-            filter_request.label_ids = [
-                expr.value for expr in expression_dict["label_ids"]
-            ]
-        if "labels" in expression_dict:
-            filter_request.labels = [
-                {expr.value.key: expr.value.value}
-                for expr in expression_dict["labels"]
-            ]
-        if "label_keys" in expression_dict:
-            filter_request.label_keys = [
-                expr.value for expr in expression_dict["label_keys"]
-            ]
+        # export metadata constraints
+        for attr in [
+            "dataset_metadata",
+            "model_metadata",
+            "datum_metadata",
+            "annotation_metadata",
+        ]:
+            if attr in expression_dict:
+                for expr in expression_dict[attr]:
+                    if not getattr(filter_request, attr):
+                        setattr(filter_request, attr, {})
+                    __value = getattr(filter_request, attr)
+                    if expr.key not in __value:
+                        __value[expr.key] = []
+                    __value[expr.key].append(expr.contstraint)
+                    setattr(filter_request, attr, __value)       
 
         return filter_request
-
-
-

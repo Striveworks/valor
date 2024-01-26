@@ -15,14 +15,15 @@ from .client import (
     ClientException,
     Dataset,
     Evaluation,
-    GroundTruth,
     Model,
-    Prediction,
 )
-from .schemas.core import (
+from .schemas import (
     Annotation,
     Datum,
     Label,
+    GroundTruth,
+    Prediction,
+    Filter,
 )
 
 __all__ = [
@@ -36,4 +37,5 @@ __all__ = [
     "Annotation",
     "GroundTruth",
     "Prediction",
+    "Filter",
 ]

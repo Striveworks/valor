@@ -5,7 +5,7 @@ import json
 import warnings
 import requests
 from packaging import version
-from dataclasses import asdict
+from dataclasses import asdict, dataclass
 from typing import Callable, List, Dict, Tuple, Optional, TypeVar, Union
 from urllib.parse import urlencode, urljoin
 
@@ -13,6 +13,7 @@ from velour import __version__ as client_version
 from velour.enums import TableStatus, AnnotationType, EvaluationStatus, TaskType
 from velour.schemas import (
     Label,
+    Annotation,
     Datum,
     GroundTruth,
     Prediction,
@@ -105,6 +106,40 @@ def _validate_version(client_version: str, api_version: str):
         logging.warning(_msg("newer"))
     else:
         logging.warning(_msg("older"))
+
+
+@dataclass
+class _DatumSchema(Datum):
+    dataset_name: Optional[str] = None
+    
+    def strip(self) -> Datum:
+        attr = self.__dict__.copy()
+        attr.pop("dataset_name")
+        return Datum(**attr)
+
+
+@dataclass
+class _GroundtruthSchema(GroundTruth):
+    datum: _DatumSchema
+    annotations: List[Annotation]
+
+    def strip(self) -> GroundTruth:
+        return GroundTruth(
+            datum=self.datum.strip(),
+            annotations=self.annotations,
+        )
+
+
+@dataclass
+class _PredictionSchema(Prediction):
+    model_name: Optional[str] = None
+    datum: _DatumSchema
+    annotations: List[Annotation]
+    
+    def strip(self) -> Prediction:
+        attr = self.__dict__.copy()
+        attr.pop("model_name")
+        return Prediction(**attr)
 
 
 class ClientException(Exception):
@@ -855,10 +890,11 @@ class Dataset:
                 f"GroundTruth for datum with uid `{groundtruth.datum.uid}` contains no annotations."
             )
 
-        groundtruth.datum._set_dataset_name(self.name)
+        groundtruth = _GroundtruthSchema(**groundtruth)
+        groundtruth.datum.dataset_name = self.name
         self.client._requests_post_rel_host(
             "groundtruths",
-            json=groundtruth.dict(),
+            json=asdict(groundtruth),
         )
 
     def get_groundtruth(self, datum: Union[Datum, str]) -> GroundTruth:
@@ -880,7 +916,7 @@ class Dataset:
         resp = self.client._requests_get_rel_host(
             f"groundtruths/dataset/{self.name}/datum/{uid}"
         ).json()
-        return GroundTruth._from_dict(resp)
+        return _GroundtruthSchema(**resp).strip()
 
     def get_labels(
         self,
@@ -913,7 +949,7 @@ class Dataset:
         datums = self.client.get_datums(
             filters=Filter(dataset_names=[self.name])
         )
-        return [Datum._from_dict(datum) for datum in datums]
+        return [Datum(**datum) for datum in datums]
 
     def get_evaluations(
         self,
@@ -1107,24 +1143,31 @@ class Model:
                 f"Prediction for datum with uid `{prediction.datum.uid}` contains no annotations."
             )
 
-        prediction._set_model_name(self.name)
-        # should check not already set or set by equal to dataset?
-        if prediction.datum._dataset_name is None:
-            prediction.datum._set_dataset_name(dataset)
-        else:
-            dataset_name = (
-                dataset.name if isinstance(dataset, Dataset) else dataset
-            )
-            if prediction.datum._dataset_name != dataset_name:
-                raise RuntimeError(
-                    f"Datum with uid `{prediction.datum.uid}` is already linked to the dataset `{prediction.datum._dataset_name}`"
-                    f" but you are trying to add a prediction on it to the dataset `{dataset_name}`"
-                )
-
+        prediction = _PredictionSchema(**prediction, model_name=self.name)
+        prediction.datum.dataset_name = dataset.name if isinstance(dataset, Dataset) else dataset
         return self.client._requests_post_rel_host(
             "predictions",
-            json=prediction.dict(),
+            json=asdict(prediction),
         )
+    
+    def get_prediction(self, dataset: Dataset, datum: Datum) -> Prediction:
+        """
+        Fetch a particular prediction.
+
+        Parameters
+        ----------
+        datum : Union[Datum, str]
+            The `Datum` or datum UID of the prediction to return.
+
+        Returns
+        ----------
+        Prediction
+            The requested `Prediction`.
+        """
+        resp = self.client._requests_get_rel_host(
+            f"predictions/model/{self.name}/dataset/{dataset.name}/datum/{datum.uid}",
+        ).json()
+        return _PredictionSchema(**resp).strip()
 
     def finalize_inferences(self, dataset: "Dataset") -> None:
         """
@@ -1343,25 +1386,6 @@ class Model:
         Delete the `Model` object from the backend.
         """
         self.client._requests_delete_rel_host(f"models/{self.name}").json()
-
-    def get_prediction(self, dataset: Dataset, datum: Datum) -> Prediction:
-        """
-        Fetch a particular prediction.
-
-        Parameters
-        ----------
-        datum : Union[Datum, str]
-            The `Datum` or datum UID of the prediction to return.
-
-        Returns
-        ----------
-        Prediction
-            The requested `Prediction`.
-        """
-        resp = self.client._requests_get_rel_host(
-            f"predictions/model/{self.name}/dataset/{dataset.name}/datum/{datum.uid}",
-        ).json()
-        return Prediction._from_dict(resp)
 
     def get_labels(
         self,
