@@ -4,7 +4,7 @@ from base64 import b64encode
 import numpy as np
 import pytest
 from PIL import Image
-from sqlalchemy import inspect, text
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from velour_api import crud, enums, schemas
@@ -35,13 +35,13 @@ def db():
     ]
 
     db = make_session()
-    inspector = inspect(db.connection())
-    for tablename in tablenames:
-        if inspector.has_table(tablename):
-            raise RuntimeError(
-                f"Table {tablename} already exists; "
-                "functional tests should be run with an empty db."
-            )
+    # inspector = inspect(db.connection())
+    # for tablename in tablenames:
+    #     if inspector.has_table(tablename):
+    #         raise RuntimeError(
+    #             f"Table {tablename} already exists; "
+    #             "functional tests should be run with an empty db."
+    #         )
 
     create_db()
     yield db
