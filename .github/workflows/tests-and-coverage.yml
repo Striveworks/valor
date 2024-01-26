@@ -98,11 +98,11 @@ jobs:
           python-version: "3.10"
       - run: |
           docker build -f=migrations/Dockerfile ./migrations -t migrations
-          docker run migrations
+          POSTGRES_PASSWORD=password POSTGRES_HOST=localhost POSTGRES_DB=velour POSTGRES_USERNAME=postgres POSTGRES_PORT=5432 docker run migrations
           cd ./api
           pip install ".[test]"
           coverage run --source=velour_api -m pytest -v tests/functional-tests
-        env:
+        env: #should env go before docker?
           POSTGRES_PASSWORD: password
           POSTGRES_HOST: localhost
           POSTGRES_DB: velour
