@@ -968,19 +968,20 @@ def test_evaluate_segmentation_synonmization(
         },
     )
 
-    # no labels are missing, since the missing labels have been mapped
+    # no labels are missing, since the missing labels have been mapped to a grouper label
     assert eval_job.missing_pred_labels == []
     assert eval_job.ignored_pred_labels == []
     assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
 
     metrics = eval_job.metrics
 
-    assert len(metrics) == 3
+    # there's now only two metrics, since all three (k, v) combinations have been mapped to (foo, bar)
+    assert len(metrics) == 2
     assert set(
         [
             (m["label"]["key"], m["label"]["value"])
             for m in metrics
             if "label" in m
         ]
-    ) == {("k2", "v2"), ("k3", "v3")}
+    ) == {("foo", "bar"), ("foo", "bar")}
     assert set([m["type"] for m in metrics]) == {"IOU", "mIOU"}

@@ -37,7 +37,25 @@ def _create_detection_grouper_mappings(mapping_dict, labels):
 def _create_segmentation_grouper_mappings(mapping_dict, labels):
     """Create grouper mappings for use when evaluating segmentations."""
 
-    pass
+    grouper_id_to_grouper_label_mapping = {}
+    grouper_id_to_label_ids_mapping = defaultdict(list)
+
+    for label in labels:
+        mapped_key, mapped_value = mapping_dict.get(
+            (label.key, label.value), (label.key, label.value)
+        )
+        # create an integer to track each group by
+        grouper_id = hash((mapped_key, mapped_value))
+
+        grouper_id_to_grouper_label_mapping[grouper_id] = schemas.Label(
+            key=mapped_key, value=mapped_value
+        )
+        grouper_id_to_label_ids_mapping[grouper_id].append(label.id)
+
+    return {
+        "grouper_id_to_label_ids_mapping": grouper_id_to_label_ids_mapping,
+        "grouper_id_to_grouper_label_mapping": grouper_id_to_grouper_label_mapping,
+    }
 
 
 def _create_classification_grouper_mappings(mapping_dict, labels):
