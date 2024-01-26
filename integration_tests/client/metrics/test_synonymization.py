@@ -136,29 +136,79 @@ def test_detection_synonymization(
     baseline_expected_metrics = [
         {
             "type": "AP",
-            "value": 0.504950495049505,
-            "label": {"key": "k1", "value": "v1"},
-            "parameters": {
-                "iou": 0.1,
-            },
+            "parameters": {"iou": 0.1},
+            "value": 0.0,
+            "label": {"key": "k2", "value": "v2"},
         },
         {
             "type": "AP",
+            "parameters": {"iou": 0.1},
             "value": 0.504950495049505,
             "label": {"key": "k1", "value": "v1"},
-            "parameters": {
-                "iou": 0.6,
-            },
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.1},
+            "value": 0.0,
+            "label": {"key": "class", "value": "british shorthair"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.1},
+            "value": 0.0,
+            "label": {"key": "class_name", "value": "maine coon cat"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.1},
+            "value": 0.0,
+            "label": {"key": "class", "value": "siamese cat"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.6},
+            "value": 0.0,
+            "label": {"key": "k2", "value": "v2"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.6},
+            "value": 0.504950495049505,
+            "label": {"key": "k1", "value": "v1"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.6},
+            "value": 0.0,
+            "label": {"key": "class", "value": "british shorthair"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.6},
+            "value": 0.0,
+            "label": {"key": "class_name", "value": "maine coon cat"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.6},
+            "value": 0.0,
+            "label": {"key": "class", "value": "siamese cat"},
         },
         {
             "type": "mAP",
             "parameters": {"iou": 0.1},
-            "value": 0.504950495049505,
+            "value": 0.100990099009901,
         },
         {
             "type": "mAP",
             "parameters": {"iou": 0.6},
-            "value": 0.504950495049505,
+            "value": 0.100990099009901,
+        },
+        {
+            "type": "APAveragedOverIOUs",
+            "parameters": {"ious": [0.1, 0.6]},
+            "value": 0.0,
+            "label": {"key": "k2", "value": "v2"},
         },
         {
             "type": "APAveragedOverIOUs",
@@ -167,9 +217,27 @@ def test_detection_synonymization(
             "label": {"key": "k1", "value": "v1"},
         },
         {
+            "type": "APAveragedOverIOUs",
+            "parameters": {"ious": [0.1, 0.6]},
+            "value": 0.0,
+            "label": {"key": "class", "value": "british shorthair"},
+        },
+        {
+            "type": "APAveragedOverIOUs",
+            "parameters": {"ious": [0.1, 0.6]},
+            "value": 0.0,
+            "label": {"key": "class_name", "value": "maine coon cat"},
+        },
+        {
+            "type": "APAveragedOverIOUs",
+            "parameters": {"ious": [0.1, 0.6]},
+            "value": 0.0,
+            "label": {"key": "class", "value": "siamese cat"},
+        },
+        {
             "type": "mAPAveragedOverIOUs",
             "parameters": {"ious": [0.1, 0.6]},
-            "value": 0.504950495049505,
+            "value": 0.100990099009901,
         },
     ]
 
@@ -196,8 +264,8 @@ def test_detection_synonymization(
         {
             "type": "AP",
             "parameters": {"iou": 0.1},
-            "value": 0.33663366336633666,
-            "label": {"key": "class", "value": "cat"},
+            "value": 0.0,
+            "label": {"key": "k2", "value": "v2"},
         },
         {
             "type": "AP",
@@ -207,9 +275,27 @@ def test_detection_synonymization(
         },
         {
             "type": "AP",
-            "parameters": {"iou": 0.6},
+            "parameters": {"iou": 0.1},
             "value": 0.33663366336633666,
-            "label": {"key": "class", "value": "cat"},
+            "label": {"key": "class", "value": "british shorthair"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.1},
+            "value": 0.33663366336633666,
+            "label": {"key": "class_name", "value": "maine coon cat"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.1},
+            "value": 0.33663366336633666,
+            "label": {"key": "class", "value": "siamese cat"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.6},
+            "value": 0.0,
+            "label": {"key": "k2", "value": "v2"},
         },
         {
             "type": "AP",
@@ -218,31 +304,67 @@ def test_detection_synonymization(
             "label": {"key": "k1", "value": "v1"},
         },
         {
+            "type": "AP",
+            "parameters": {"iou": 0.6},
+            "value": 0.33663366336633666,
+            "label": {"key": "class", "value": "british shorthair"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.6},
+            "value": 0.33663366336633666,
+            "label": {"key": "class_name", "value": "maine coon cat"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.6},
+            "value": 0.33663366336633666,
+            "label": {"key": "class", "value": "siamese cat"},
+        },
+        {
             "type": "mAP",
             "parameters": {"iou": 0.1},
-            "value": 0.42079207920792083,
+            "value": 0.302970297029703,
         },
         {
             "type": "mAP",
             "parameters": {"iou": 0.6},
-            "value": 0.42079207920792083,
+            "value": 0.302970297029703,
         },
         {
             "type": "APAveragedOverIOUs",
             "parameters": {"ious": [0.1, 0.6]},
-            "value": 0.33663366336633666,
-            "label": {"key": "class", "value": "cat"},
+            "value": 0.0,
+            "label": {"key": "k2", "value": "v2"},
         },
         {
             "type": "APAveragedOverIOUs",
             "parameters": {"ious": [0.1, 0.6]},
             "value": 0.504950495049505,
             "label": {"key": "k1", "value": "v1"},
+        },
+        {
+            "type": "APAveragedOverIOUs",
+            "parameters": {"ious": [0.1, 0.6]},
+            "value": 0.33663366336633666,
+            "label": {"key": "class", "value": "british shorthair"},
+        },
+        {
+            "type": "APAveragedOverIOUs",
+            "parameters": {"ious": [0.1, 0.6]},
+            "value": 0.33663366336633666,
+            "label": {"key": "class_name", "value": "maine coon cat"},
+        },
+        {
+            "type": "APAveragedOverIOUs",
+            "parameters": {"ious": [0.1, 0.6]},
+            "value": 0.33663366336633666,
+            "label": {"key": "class", "value": "siamese cat"},
         },
         {
             "type": "mAPAveragedOverIOUs",
             "parameters": {"ious": [0.1, 0.6]},
-            "value": 0.42079207920792083,
+            "value": 0.302970297029703,
         },
     ]
 
@@ -287,8 +409,8 @@ def test_detection_synonymization(
         {
             "type": "AP",
             "parameters": {"iou": 0.1},
-            "value": 0.6633663366336634,
-            "label": {"key": "foo", "value": "bar"},
+            "value": 0.0,
+            "label": {"key": "k2", "value": "v2"},
         },
         {
             "type": "AP",
@@ -298,9 +420,27 @@ def test_detection_synonymization(
         },
         {
             "type": "AP",
-            "parameters": {"iou": 0.6},
+            "parameters": {"iou": 0.1},
             "value": 0.6633663366336634,
-            "label": {"key": "foo", "value": "bar"},
+            "label": {"key": "class", "value": "british shorthair"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.1},
+            "value": 0.6633663366336634,
+            "label": {"key": "class_name", "value": "maine coon cat"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.1},
+            "value": 0.6633663366336634,
+            "label": {"key": "class", "value": "siamese cat"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.6},
+            "value": 0.0,
+            "label": {"key": "k2", "value": "v2"},
         },
         {
             "type": "AP",
@@ -309,31 +449,67 @@ def test_detection_synonymization(
             "label": {"key": "k1", "value": "v1"},
         },
         {
+            "type": "AP",
+            "parameters": {"iou": 0.6},
+            "value": 0.6633663366336634,
+            "label": {"key": "class", "value": "british shorthair"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.6},
+            "value": 0.6633663366336634,
+            "label": {"key": "class_name", "value": "maine coon cat"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.6},
+            "value": 0.6633663366336634,
+            "label": {"key": "class", "value": "siamese cat"},
+        },
+        {
             "type": "mAP",
             "parameters": {"iou": 0.1},
-            "value": 0.5841584158415842,
+            "value": 0.4990099009900991,
         },
         {
             "type": "mAP",
             "parameters": {"iou": 0.6},
-            "value": 0.5841584158415842,
+            "value": 0.4990099009900991,
         },
         {
             "type": "APAveragedOverIOUs",
             "parameters": {"ious": [0.1, 0.6]},
-            "value": 0.6633663366336634,
-            "label": {"key": "foo", "value": "bar"},
+            "value": 0.0,
+            "label": {"key": "k2", "value": "v2"},
         },
         {
             "type": "APAveragedOverIOUs",
             "parameters": {"ious": [0.1, 0.6]},
             "value": 0.504950495049505,
             "label": {"key": "k1", "value": "v1"},
+        },
+        {
+            "type": "APAveragedOverIOUs",
+            "parameters": {"ious": [0.1, 0.6]},
+            "value": 0.6633663366336634,
+            "label": {"key": "class", "value": "british shorthair"},
+        },
+        {
+            "type": "APAveragedOverIOUs",
+            "parameters": {"ious": [0.1, 0.6]},
+            "value": 0.6633663366336634,
+            "label": {"key": "class_name", "value": "maine coon cat"},
+        },
+        {
+            "type": "APAveragedOverIOUs",
+            "parameters": {"ious": [0.1, 0.6]},
+            "value": 0.6633663366336634,
+            "label": {"key": "class", "value": "siamese cat"},
         },
         {
             "type": "mAPAveragedOverIOUs",
             "parameters": {"ious": [0.1, 0.6]},
-            "value": 0.5841584158415842,
+            "value": 0.4990099009900991,
         },
     ]
 

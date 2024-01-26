@@ -12,7 +12,6 @@ def _create_detection_grouper_mappings(mapping_dict, labels):
     """Create grouper mappings for use when evaluating detections."""
 
     label_id_to_grouper_mapping = {}
-    grouper_id_to_label_mapping = {}
     grouper_id_to_label_ids_mapping = defaultdict(list)
 
     for label in labels:
@@ -26,20 +25,8 @@ def _create_detection_grouper_mappings(mapping_dict, labels):
         label_id_to_grouper_mapping[label.id] = grouper_id
         grouper_id_to_label_ids_mapping[grouper_id].append(label.id)
 
-        # map the grouper_id to a label object
-        if (label.key, label.value) not in mapping_dict:
-            grouper_id_to_label_mapping[grouper_id] = schemas.Label(
-                key=label.key, value=label.value
-            )
-        else:
-            grouper_key, grouper_value = mapping_dict[(label.key, label.value)]
-            grouper_id_to_label_mapping[grouper_id] = schemas.Label(
-                key=grouper_key, value=grouper_value
-            )
-
     return {
         "label_id_to_grouper_mapping": label_id_to_grouper_mapping,
-        "grouper_id_to_label_mapping": grouper_id_to_label_mapping,
         "grouper_id_to_label_ids_mapping": grouper_id_to_label_ids_mapping,
     }
 
