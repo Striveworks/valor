@@ -25,7 +25,12 @@ def _reset_mapped_fields(obj):
     for field in fields(obj):
         obj_type = type(getattr(obj, field.name))
         if issubclass(obj_type, _DeclarativeMapper):
-            setattr(obj, field.name, None)
+            if field.name == "metadata":
+                setattr(obj, field.name, {})
+            else:
+                setattr(obj, field.name, None)
+            
+
 
 
 @dataclass

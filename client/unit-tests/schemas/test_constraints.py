@@ -87,17 +87,17 @@ def test_numeric_mapper():
         _test_numeric_mapper("<")
         _test_numeric_mapper("in_")
         
-        with pytest.raises(ValueError):
+        with pytest.raises(AttributeError):
             _test_numeric_mapper("is_none")
-        with pytest.raises(ValueError):
+        with pytest.raises(AttributeError):
             _test_numeric_mapper("exists")
-        with pytest.raises(ValueError):
+        with pytest.raises(AttributeError):
             _test_numeric_mapper("contains")
-        with pytest.raises(ValueError):
+        with pytest.raises(AttributeError):
             _test_numeric_mapper("intersect")
-        with pytest.raises(ValueError):
+        with pytest.raises(AttributeError):
             _test_numeric_mapper("inside")
-        with pytest.raises(ValueError):
+        with pytest.raises(AttributeError):
             _test_numeric_mapper("outside")
 
     # test invalid type
@@ -114,25 +114,25 @@ def test_string_mapper():
     _test_string_mapper("!=")
     _test_string_mapper("in_")
     
-    with pytest.raises(ValueError):
+    with pytest.raises(AttributeError):
         _test_string_mapper(">=")
-    with pytest.raises(ValueError):
+    with pytest.raises(AttributeError):
         _test_string_mapper("<=")
-    with pytest.raises(ValueError):
+    with pytest.raises(AttributeError):
         _test_string_mapper(">")
-    with pytest.raises(ValueError):
+    with pytest.raises(AttributeError):
         _test_string_mapper("<")
-    with pytest.raises(ValueError):
+    with pytest.raises(AttributeError):
         _test_string_mapper("is_none")
-    with pytest.raises(ValueError):
+    with pytest.raises(AttributeError):
         _test_string_mapper("exists")
-    with pytest.raises(ValueError):
+    with pytest.raises(AttributeError):
         _test_string_mapper("contains")
-    with pytest.raises(ValueError):
+    with pytest.raises(AttributeError):
         _test_string_mapper("intersect")
-    with pytest.raises(ValueError):
+    with pytest.raises(AttributeError):
         _test_string_mapper("inside")
-    with pytest.raises(ValueError):
+    with pytest.raises(AttributeError):
         _test_string_mapper("outside")
 
     # test invalid type
@@ -169,17 +169,17 @@ def test_datetime_mapper():
         _test_datetime_mapper("<")
         _test_datetime_mapper("in_")
         
-        with pytest.raises(ValueError):
+        with pytest.raises(AttributeError):
             _test_datetime_mapper("is_none")
-        with pytest.raises(ValueError):
+        with pytest.raises(AttributeError):
             _test_datetime_mapper("exists")
-        with pytest.raises(ValueError):
+        with pytest.raises(AttributeError):
             _test_datetime_mapper("contains")
-        with pytest.raises(ValueError):
+        with pytest.raises(AttributeError):
             _test_datetime_mapper("intersect")
-        with pytest.raises(ValueError):
+        with pytest.raises(AttributeError):
             _test_datetime_mapper("inside")
-        with pytest.raises(ValueError):
+        with pytest.raises(AttributeError):
             _test_datetime_mapper("outside")
 
     # test invalid type
@@ -229,19 +229,19 @@ def test_geometry_mapper():
         with pytest.raises(NotImplementedError):
             _test_spatial_mapper("outside")
     
-        with pytest.raises(ValueError):
+        with pytest.raises(AttributeError):
             _test_spatial_mapper("==")
-        with pytest.raises(ValueError):
+        with pytest.raises(AttributeError):
             _test_spatial_mapper("!=")
-        with pytest.raises(ValueError):
+        with pytest.raises(AttributeError):
             _test_spatial_mapper(">=")
-        with pytest.raises(ValueError):
+        with pytest.raises(AttributeError):
             _test_spatial_mapper("<=")
-        with pytest.raises(ValueError):
+        with pytest.raises(AttributeError):
             _test_spatial_mapper(">")
-        with pytest.raises(ValueError):
+        with pytest.raises(AttributeError):
             _test_spatial_mapper("<")
-        with pytest.raises(ValueError):
+        with pytest.raises(AttributeError):
             _test_spatial_mapper("in_")      
 
     # test unsupported geometry
@@ -278,19 +278,19 @@ def test_geospatial_mapper():
         with pytest.raises(NotImplementedError):
             _test_spatial_mapper("exists")
     
-        with pytest.raises(ValueError):
+        with pytest.raises(AttributeError):
             _test_spatial_mapper("==")
-        with pytest.raises(ValueError):
+        with pytest.raises(AttributeError):
             _test_spatial_mapper("!=")
-        with pytest.raises(ValueError):
+        with pytest.raises(AttributeError):
             _test_spatial_mapper(">=")
-        with pytest.raises(ValueError):
+        with pytest.raises(AttributeError):
             _test_spatial_mapper("<=")
-        with pytest.raises(ValueError):
+        with pytest.raises(AttributeError):
             _test_spatial_mapper(">")
-        with pytest.raises(ValueError):
+        with pytest.raises(AttributeError):
             _test_spatial_mapper("<")
-        with pytest.raises(ValueError):
+        with pytest.raises(AttributeError):
             _test_spatial_mapper("in_")      
     
     # test invalid type
@@ -315,13 +315,13 @@ def test_dictionary_mapper():
         _test_dict_mapper("<")
         _test_dict_mapper("in_")
         
-        with pytest.raises(ValueError):
+        with pytest.raises(AttributeError):
             _test_dict_mapper("contains")
-        with pytest.raises(ValueError):
+        with pytest.raises(AttributeError):
             _test_dict_mapper("intersect")
-        with pytest.raises(ValueError):
+        with pytest.raises(AttributeError):
             _test_dict_mapper("inside")
-        with pytest.raises(ValueError):
+        with pytest.raises(AttributeError):
             _test_dict_mapper("outside")
 
     # test operators on `str`
@@ -335,21 +335,21 @@ def test_dictionary_mapper():
     _test_dict_mapper("!=")
     _test_dict_mapper("in_")
     
-    with pytest.raises(ValueError):
+    with pytest.raises(AttributeError):
         _test_dict_mapper(">=")
-    with pytest.raises(ValueError):
+    with pytest.raises(AttributeError):
         _test_dict_mapper("<=")
-    with pytest.raises(ValueError):
+    with pytest.raises(AttributeError):
         _test_dict_mapper(">")
-    with pytest.raises(ValueError):
+    with pytest.raises(AttributeError):
         _test_dict_mapper("<")
-    with pytest.raises(ValueError):
+    with pytest.raises(AttributeError):
         _test_dict_mapper("contains")
-    with pytest.raises(ValueError):
+    with pytest.raises(AttributeError):
         _test_dict_mapper("intersect")
-    with pytest.raises(ValueError):
+    with pytest.raises(AttributeError):
         _test_dict_mapper("inside")
-    with pytest.raises(ValueError):
+    with pytest.raises(AttributeError):
         _test_dict_mapper("outside")
 
     # test operators on `datetime` objects
@@ -384,13 +384,13 @@ def test_dictionary_mapper():
         _test_dict_mapper("<")
         _test_dict_mapper("in_")
         
-        with pytest.raises(ValueError):
+        with pytest.raises(AttributeError):
             _test_dict_mapper("contains")
-        with pytest.raises(ValueError):
+        with pytest.raises(AttributeError):
             _test_dict_mapper("intersect")
-        with pytest.raises(ValueError):
+        with pytest.raises(AttributeError):
             _test_dict_mapper("inside")
-        with pytest.raises(ValueError):
+        with pytest.raises(AttributeError):
             _test_dict_mapper("outside")
 
     # test invalid type
@@ -408,25 +408,25 @@ def test_label_mapper():
     _test_label_mapper("!=")
     _test_label_mapper("in_")
     
-    with pytest.raises(ValueError):
+    with pytest.raises(AttributeError):
         _test_label_mapper(">=")
-    with pytest.raises(ValueError):
+    with pytest.raises(AttributeError):
         _test_label_mapper("<=")
-    with pytest.raises(ValueError):
+    with pytest.raises(AttributeError):
         _test_label_mapper(">")
-    with pytest.raises(ValueError):
+    with pytest.raises(AttributeError):
         _test_label_mapper("<")
-    with pytest.raises(ValueError):
+    with pytest.raises(AttributeError):
         _test_label_mapper("is_none")
-    with pytest.raises(ValueError):
+    with pytest.raises(AttributeError):
         _test_label_mapper("exists")
-    with pytest.raises(ValueError):
+    with pytest.raises(AttributeError):
         _test_label_mapper("contains")
-    with pytest.raises(ValueError):
+    with pytest.raises(AttributeError):
         _test_label_mapper("intersect")
-    with pytest.raises(ValueError):
+    with pytest.raises(AttributeError):
         _test_label_mapper("inside")
-    with pytest.raises(ValueError):
+    with pytest.raises(AttributeError):
         _test_label_mapper("outside")
 
     # test invalid type
