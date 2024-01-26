@@ -48,7 +48,7 @@ def db():
 
     # Clear table after test
     for table in tablenames:
-        db.execute(text(f"TRUNCATE ${table} CASCADE;"))
+        db.execute(text(f"TRUNCATE {table} CASCADE;"))
         db.commit()
 
 
