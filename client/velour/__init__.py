@@ -13,6 +13,8 @@ except importlib_metadata.PackageNotFoundError:
 from .client import (
     Client, 
     ClientException,
+)
+from .coretypes import (
     Dataset,
     Evaluation,
     Model,

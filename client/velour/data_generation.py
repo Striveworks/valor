@@ -14,7 +14,7 @@ from velour import (
     enums,
 )
 from velour.client import Client
-from velour.meta_types import ImageMetadata
+from velour.metatypes import ImageMetadata
 from velour.schemas import BoundingBox, Raster
 
 

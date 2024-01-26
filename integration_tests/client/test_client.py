@@ -19,7 +19,7 @@ from velour import (
 )
 from velour.client import _validate_version
 from velour.enums import TaskType
-from velour.schemas import Filter, ValueFilter
+from velour.schemas import Filter
 
 
 @pytest.fixture

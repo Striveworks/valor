@@ -1,6 +1,6 @@
 import math
 
-from dataclasses import dataclass, fields, is_dataclass
+from dataclasses import dataclass, fields, is_dataclass, asdict
 from typing import Optional, List, Tuple, Union, Any
 
 from velour.types import MetadataType, GeoJSONType
@@ -15,7 +15,7 @@ from velour.schemas.constraints import (
     LabelMapper,
 )
 from velour.schemas.geometry import BoundingBox, Polygon, MultiPolygon, Raster
-from velour.schemas.metadata import validate_metadata, load_metadata
+from velour.schemas.metadata import validate_metadata, load_metadata, dump_metadata
 
 
 def _reset_mapped_fields(obj):
@@ -191,11 +191,20 @@ class Datum:
     def __post_init__(self):
         _reset_mapped_fields(self)
 
+        if not self.geospatial:
+            self.geospatial = None
+
         if not isinstance(self.uid, str):
             raise TypeError("Attribute `uid` should have type `str`.")
         
         validate_metadata(self.metadata)
         self.metadata = load_metadata(self.metadata)
+
+    @classmethod
+    def from_json(cls, resp: dict):
+        del resp["dataset_name"]
+        resp["metadata"] = dump_metadata(resp["metadata"])
+        return cls(**resp)
 
 
 @dataclass
@@ -218,6 +227,16 @@ class GroundTruth:
                 self.annotations[idx] = Annotation(**annotation)
             if not isinstance(self.annotations[idx], Annotation):
                 raise TypeError(f"Attribute `annotations[{idx}]` should have type `velour.Annotation`.")
+            
+    def to_json(self, dataset_name: str) -> dict:
+        req = asdict(self)
+        req["datum"]["dataset_name"] = dataset_name
+        return req
+    
+    @classmethod
+    def from_json(cls, resp: dict):
+        del resp["datum"]["dataset_name"]
+        return cls(**resp)
 
 
 @dataclass
@@ -267,3 +286,15 @@ class Prediction:
                             "For each label key, prediction scores must sum to 1, but"
                             f" for label key {k} got scores summing to {total_score}."
                         )
+
+    def to_json(self, dataset_name: str, model_name: str) -> dict:
+        req = asdict(self)
+        req["datum"]["dataset_name"] = dataset_name
+        req["model_name"] = model_name
+        return req
+    
+    @classmethod
+    def from_json(cls, resp: dict):
+        del resp["datum"]["dataset_name"]
+        del resp["model_name"]
+        return cls(**resp)

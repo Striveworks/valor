@@ -150,6 +150,15 @@ class _SpatialMapper(_NullableMapper):
         return self._create_expression(value, "outside")
     
 
+class BoolMapper(_EquatableMapper):
+    """
+    Declarative mapper for use with `bool` type values.
+    """
+    def _validate(self, value: Any, operator: str) -> None:
+        if not isinstance(value, bool):
+            raise TypeError(f"BoolMapper does not support object type `{type(value)}`.")
+
+
 class StringMapper(_EquatableMapper):
     """
     Declarative mapper for use with `str` type values.
@@ -267,6 +276,8 @@ class _DictionaryValueMapper(_NullableMapper, _QuantifiableMapper):
         
         # direct value to appropriate mapper (if it exists)
         vtype = type(value)
+        if vtype is bool:
+            return BoolMapper(self.name, self.key)._create_expression(value, operator)
         if vtype is str:
             return StringMapper(self.name, self.key)._create_expression(value, operator)
         elif vtype in [int, float]:
