@@ -108,6 +108,7 @@ jobs:
           docker ps
           docker run -e POSTGRES_PASSWORD=password -e POSTGRES_HOST=localhost -e POSTGRES_DB=velour -e POSTGRES_USERNAME=postgres -e POSTGRES_PORT=5432  --network "host" migrations
       - run: |
+          cd api
           pwd
           ls -a
           pip install ".[test]"
