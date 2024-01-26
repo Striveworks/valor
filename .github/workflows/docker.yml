@@ -1,7 +1,6 @@
 name: Builds and publishes a docker image for the backend service
 
 on:
-#  workflow_dispatch:
   push:
     paths:
       - api/**
