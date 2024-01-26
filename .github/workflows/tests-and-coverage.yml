@@ -102,7 +102,13 @@ jobs:
       - run:
           |
           docker build -f=migrations/Dockerfile ./migrations -t migrations
-          POSTGRES_PASSWORD=password POSTGRES_HOST=localhost POSTGRES_DB=velour POSTGRES_USERNAME=postgres POSTGRES_PORT=5432 docker run
+          docker run migrations
+        env:
+          POSTGRES_PASSWORD: password
+          POSTGRES_HOST: localhost
+          POSTGRES_DB: velour
+          POSTGRES_USERNAME: postgres
+          POSTGRES_PORT: 5432
       - run: pip install ".[test]"
       - run: coverage run --source=velour_api -m pytest -v tests/functional-tests
         env:
