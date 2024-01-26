@@ -1107,8 +1107,8 @@ def test_create_detection_metrics(
         [m.parameters["iou"] for m in metrics if m.type in {"AP", "mAP"}]
     ) == {0.2}
 
-    # should be five labels (since thats how many are in groundtruth set)
-    assert len(set(m.label_id for m in metrics if m.label_id is not None)) == 5
+    # should be six labels (five in the groundtruth set, and one additional label in the prediction set)
+    assert len(set(m.label_id for m in metrics if m.label_id is not None)) == 6
 
     # test getting metrics from evaluation settings id
     pydantic_metrics = crud.get_evaluations(
