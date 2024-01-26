@@ -37,10 +37,12 @@ def test__ap():
         ],
     }
 
-    labels = {
-        "0": schemas.Label(key="name", value="car"),
-        "1": schemas.Label(key="name", value="dog"),
-        "2": schemas.Label(key="name", value="person"),
+    grouper_mappings = {
+        "grouper_id_to_grouper_label_mapping": {
+            "0": schemas.Label(key="name", value="car"),
+            "1": schemas.Label(key="name", value="dog"),
+            "2": schemas.Label(key="name", value="person"),
+        }
     }
 
     number_of_ground_truths = {
@@ -91,7 +93,7 @@ def test__ap():
     detection_metrics = _ap(
         sorted_ranked_pairs=pairs,
         number_of_ground_truths=number_of_ground_truths,
-        grouper_id_to_grouper_label_mapping=labels,
+        grouper_mappings=grouper_mappings,
         iou_thresholds=iou_thresholds,
     )
 

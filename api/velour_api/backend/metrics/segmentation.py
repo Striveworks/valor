@@ -171,14 +171,14 @@ def _compute_segmentation_metrics(
         groundtruth_filter=groundtruth_filter,
     )
 
-    mappings = create_grouper_mappings(
+    grouper_mappings = create_grouper_mappings(
         labels=labels,
         label_map=parameters.label_map,
         evaluation_type="segmentation",
     )
 
     ret = []
-    for grouper_id, label_ids in mappings[
+    for grouper_id, label_ids in grouper_mappings[
         "grouper_id_to_label_ids_mapping"
     ].items():
         # set filter
@@ -195,9 +195,9 @@ def _compute_segmentation_metrics(
         if _compute_iou_score is None:
             continue
 
-        grouper_label = mappings["grouper_id_to_grouper_label_mapping"][
-            grouper_id
-        ]
+        grouper_label = grouper_mappings[
+            "grouper_id_to_grouper_label_mapping"
+        ][grouper_id]
 
         ret.append(
             IOUMetric(

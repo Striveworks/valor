@@ -145,7 +145,7 @@ def test_compute_confusion_matrix_at_grouper_key(
         groundtruth_filter=groundtruth_filter,
     )
 
-    mappings = create_grouper_mappings(
+    grouper_mappings = create_grouper_mappings(
         labels=labels,
         label_map=None,
         evaluation_type="classification",
@@ -156,10 +156,7 @@ def test_compute_confusion_matrix_at_grouper_key(
         prediction_filter=prediction_filter,
         groundtruth_filter=groundtruth_filter,
         grouper_key="animal",
-        grouper_key_to_label_keys_mapping=mappings[
-            "grouper_key_to_label_keys_mapping"
-        ],
-        label_value_to_grouper_value=mappings["label_value_to_grouper_value"],
+        grouper_mappings=grouper_mappings,
     )
     expected_entries = [
         schemas.ConfusionMatrixEntry(
@@ -190,10 +187,7 @@ def test_compute_confusion_matrix_at_grouper_key(
         prediction_filter=prediction_filter,
         groundtruth_filter=groundtruth_filter,
         grouper_key="color",
-        grouper_key_to_label_keys_mapping=mappings[
-            "grouper_key_to_label_keys_mapping"
-        ],
-        label_value_to_grouper_value=mappings["label_value_to_grouper_value"],
+        grouper_mappings=grouper_mappings,
     )
     expected_entries = [
         schemas.ConfusionMatrixEntry(
@@ -247,7 +241,7 @@ def test_compute_confusion_matrix_at_grouper_key_and_filter(
         groundtruth_filter=groundtruth_filter,
     )
 
-    mappings = create_grouper_mappings(
+    grouper_mappings = create_grouper_mappings(
         labels=labels,
         label_map=None,
         evaluation_type="classification",
@@ -258,10 +252,7 @@ def test_compute_confusion_matrix_at_grouper_key_and_filter(
         prediction_filter=prediction_filter,
         groundtruth_filter=groundtruth_filter,
         grouper_key="animal",
-        grouper_key_to_label_keys_mapping=mappings[
-            "grouper_key_to_label_keys_mapping"
-        ],
-        label_value_to_grouper_value=mappings["label_value_to_grouper_value"],
+        grouper_mappings=grouper_mappings,
     )
 
     # for this metadatum and label id we have the gts
@@ -314,7 +305,7 @@ def test_compute_confusion_matrix_at_grouper_key_and_label_map(
         groundtruth_filter=groundtruth_filter,
     )
 
-    mappings = create_grouper_mappings(
+    grouper_mappings = create_grouper_mappings(
         labels=labels,
         label_map=label_map,
         evaluation_type="classification",
@@ -325,10 +316,7 @@ def test_compute_confusion_matrix_at_grouper_key_and_label_map(
         prediction_filter=prediction_filter,
         groundtruth_filter=groundtruth_filter,
         grouper_key="animal",
-        grouper_key_to_label_keys_mapping=mappings[
-            "grouper_key_to_label_keys_mapping"
-        ],
-        label_value_to_grouper_value=mappings["label_value_to_grouper_value"],
+        grouper_mappings=grouper_mappings,
     )
 
     expected_entries = [
@@ -407,7 +395,7 @@ def test_compute_roc_auc(
         groundtruth_filter=groundtruth_filter,
     )
 
-    mappings = create_grouper_mappings(
+    grouper_mappings = create_grouper_mappings(
         labels=labels,
         label_map=None,
         evaluation_type="classification",
@@ -419,9 +407,7 @@ def test_compute_roc_auc(
             prediction_filter=prediction_filter,
             groundtruth_filter=groundtruth_filter,
             grouper_key="animal",
-            grouper_key_to_labels_mapping=mappings[
-                "grouper_key_to_labels_mapping"
-            ],
+            grouper_mappings=grouper_mappings,
         )
         == 0.8009259259259259
     )
@@ -431,9 +417,7 @@ def test_compute_roc_auc(
             prediction_filter=prediction_filter,
             groundtruth_filter=groundtruth_filter,
             grouper_key="color",
-            grouper_key_to_labels_mapping=mappings[
-                "grouper_key_to_labels_mapping"
-            ],
+            grouper_mappings=grouper_mappings,
         )
         == 0.43125
     )
@@ -444,9 +428,7 @@ def test_compute_roc_auc(
             prediction_filter=prediction_filter,
             groundtruth_filter=groundtruth_filter,
             grouper_key="not a key",
-            grouper_key_to_labels_mapping=mappings[
-                "grouper_key_to_labels_mapping"
-            ],
+            grouper_mappings=grouper_mappings,
         )
         is None
     )
@@ -497,7 +479,7 @@ def test_compute_roc_auc_groupby_metadata(
         groundtruth_filter=groundtruth_filter,
     )
 
-    mappings = create_grouper_mappings(
+    grouper_mappings = create_grouper_mappings(
         labels=labels,
         label_map=None,
         evaluation_type="classification",
@@ -509,9 +491,7 @@ def test_compute_roc_auc_groupby_metadata(
             prediction_filter=prediction_filter,
             groundtruth_filter=groundtruth_filter,
             grouper_key="animal",
-            grouper_key_to_labels_mapping=mappings[
-                "grouper_key_to_labels_mapping"
-            ],
+            grouper_mappings=grouper_mappings,
         )
         == (0.5 + 2 / 3) / 2
     )
@@ -562,7 +542,7 @@ def test_compute_roc_auc_with_label_map(
         groundtruth_filter=groundtruth_filter,
     )
 
-    mappings = create_grouper_mappings(
+    grouper_mappings = create_grouper_mappings(
         labels=labels,
         label_map=label_map,
         evaluation_type="classification",
@@ -574,9 +554,7 @@ def test_compute_roc_auc_with_label_map(
             prediction_filter=prediction_filter,
             groundtruth_filter=groundtruth_filter,
             grouper_key="animal",
-            grouper_key_to_labels_mapping=mappings[
-                "grouper_key_to_labels_mapping"
-            ],
+            grouper_mappings=grouper_mappings,
         )
         == 0.7777777777777779
     )

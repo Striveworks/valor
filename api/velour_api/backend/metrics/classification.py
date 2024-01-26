@@ -129,7 +129,7 @@ def _compute_roc_auc(
     prediction_filter: schemas.Filter,
     groundtruth_filter: schemas.Filter,
     grouper_key: str,
-    grouper_key_to_labels_mapping: dict,
+    grouper_mappings: dict,
 ) -> float | None:
     """
     Computes the area under the ROC curve. Note that for the multi-class setting
@@ -146,8 +146,8 @@ def _compute_roc_auc(
         The filter to be used to query groundtruths.
     grouper_key : str
         The key of the grouper to calculate the ROCAUC for.
-    grouper_key_to_labels_mapping : dict
-        A mapping of grouper_keys -> grouper_values -> set of labels associated with that grouper.
+    grouper_mappings: dict
+        A dictionary of mappings that connect groupers to their related labels
 
     Returns
     -------
@@ -156,7 +156,9 @@ def _compute_roc_auc(
     """
 
     # get all of the labels associated with the grouper
-    value_to_labels_mapping = grouper_key_to_labels_mapping[grouper_key]
+    value_to_labels_mapping = grouper_mappings[
+        "grouper_key_to_labels_mapping"
+    ][grouper_key]
 
     sum_roc_aucs = 0
     label_count = 0
@@ -198,8 +200,7 @@ def _compute_confusion_matrix_at_grouper_key(
     prediction_filter: schemas.Filter,
     groundtruth_filter: schemas.Filter,
     grouper_key: str,
-    grouper_key_to_label_keys_mapping: dict,
-    label_value_to_grouper_value: dict,
+    grouper_mappings: dict,
 ) -> schemas.ConfusionMatrix | None:
     """
     Computes the confusion matrix at a label_key.
@@ -212,10 +213,8 @@ def _compute_confusion_matrix_at_grouper_key(
         The filter to be used to query predictions.
     groundtruth_filter : schemas.Filter
         The filter to be used to query groundtruths.
-    grouper_key_to_label_keys_mapping : dict
-        A mapping of grouper_keys to all of the label keys they are associated with.
-    label_value_to_grouper_value : dict
-        A mapping of label values to grouper values.
+    grouper_mappings: dict
+        A dictionary of mappings that connect groupers to their related labels
 
     Returns
     -------
@@ -226,11 +225,15 @@ def _compute_confusion_matrix_at_grouper_key(
     """
     # groundtruths filter
     gFilter = groundtruth_filter.model_copy()
-    gFilter.label_keys = list(grouper_key_to_label_keys_mapping[grouper_key])
+    gFilter.label_keys = list(
+        grouper_mappings["grouper_key_to_label_keys_mapping"][grouper_key]
+    )
 
     # predictions filter
     pFilter = prediction_filter.model_copy()
-    pFilter.label_keys = list(grouper_key_to_label_keys_mapping[grouper_key])
+    pFilter.label_keys = list(
+        grouper_mappings["grouper_key_to_label_keys_mapping"][grouper_key]
+    )
 
     # 0. Get groundtruths that conform to gFilter
     groundtruths = (
@@ -312,11 +315,11 @@ def _compute_confusion_matrix_at_grouper_key(
     b = Bundle(
         "cols",
         case(
-            label_value_to_grouper_value,
+            grouper_mappings["label_value_to_grouper_value"],
             value=hard_preds_query.c.pred_label_value,
         ),
         case(
-            label_value_to_grouper_value,
+            grouper_mappings["label_value_to_grouper_value"],
             value=models.Label.value,
         ),
     )
@@ -415,9 +418,7 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
     prediction_filter: schemas.Filter,
     groundtruth_filter: schemas.Filter,
     grouper_key: str,
-    grouper_key_to_labels_mapping: dict,
-    grouper_key_to_label_keys_mapping: dict,
-    label_value_to_grouper_value: dict,
+    grouper_mappings: dict,
 ) -> (
     tuple[
         schemas.ConfusionMatrix,
@@ -442,12 +443,9 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
         The filter to be used to query predictions.
     groundtruth_filter : schemas.Filter
         The filter to be used to query groundtruths.
-    grouper_key_to_labels_mapping : dict
-        A mapping of grouper_keys -> grouper_values -> set of labels associated with that grouper.
-    grouper_key_to_label_keys_mapping : dict
-        A mapping of grouper_keys to all of the label keys they are associated with.
-    label_value_to_grouper_value : dict
-        A mapping of label values to grouper values.
+    grouper_mappings: dict
+        A dictionary of mappings that connect groupers to their related labels
+
 
     Returns
     -------
@@ -463,8 +461,7 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
         prediction_filter=prediction_filter,
         groundtruth_filter=groundtruth_filter,
         grouper_key=grouper_key,
-        label_value_to_grouper_value=label_value_to_grouper_value,
-        grouper_key_to_label_keys_mapping=grouper_key_to_label_keys_mapping,
+        grouper_mappings=grouper_mappings,
     )
 
     if confusion_matrix is None:
@@ -483,13 +480,15 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
                 prediction_filter=prediction_filter,
                 groundtruth_filter=groundtruth_filter,
                 grouper_key=grouper_key,
-                grouper_key_to_labels_mapping=grouper_key_to_labels_mapping,
+                grouper_mappings=grouper_mappings,
             ),
         ),
     ]
 
     # metrics that are per label
-    for grouper_value in grouper_key_to_labels_mapping[grouper_key].keys():
+    for grouper_value in grouper_mappings["grouper_key_to_labels_mapping"][
+        grouper_key
+    ].keys():
         (
             precision,
             recall,
@@ -563,7 +562,7 @@ def _compute_clf_metrics(
         groundtruth_filter=groundtruth_filter,
     )
 
-    mappings = create_grouper_mappings(
+    grouper_mappings = create_grouper_mappings(
         labels=labels,
         label_map=label_map,
         evaluation_type="classification",
@@ -571,21 +570,15 @@ def _compute_clf_metrics(
 
     # compute metrics and confusion matrix for each grouper id
     confusion_matrices, metrics = [], []
-    for grouper_key in mappings["grouper_key_to_labels_mapping"].keys():
+    for grouper_key in grouper_mappings[
+        "grouper_key_to_labels_mapping"
+    ].keys():
         cm_and_metrics = _compute_confusion_matrix_and_metrics_at_grouper_key(
             db=db,
             prediction_filter=prediction_filter,
             groundtruth_filter=groundtruth_filter,
             grouper_key=grouper_key,
-            label_value_to_grouper_value=mappings[
-                "label_value_to_grouper_value"
-            ],
-            grouper_key_to_label_keys_mapping=mappings[
-                "grouper_key_to_label_keys_mapping"
-            ],
-            grouper_key_to_labels_mapping=mappings[
-                "grouper_key_to_labels_mapping"
-            ],
+            grouper_mappings=grouper_mappings,
         )
         if cm_and_metrics is not None:
             confusion_matrices.append(cm_and_metrics[0])
