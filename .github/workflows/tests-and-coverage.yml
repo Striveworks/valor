@@ -32,18 +32,37 @@ jobs:
     outputs:
       docker_username: ${{ steps.login-ecr.outputs.docker_username_724664234782_dkr_ecr_us_east_1_amazonaws_com }}
       docker_password: ${{ steps.login-ecr.outputs.docker_password_724664234782_dkr_ecr_us_east_1_amazonaws_com }}
-  test-can-pull-migrations:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Login to ghcr and test pull
-        run: |
-          docker login ghcr.io -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }}
-          docker pull ghcr.io/striveworks/velour/migrations
+#  test-can-pull-migrations: doesn't work?
+#    runs-on: ubuntu-latest
+#    steps:
+#      - name: Login to ghcr and test pull
+#        run: |
+#          docker login ghcr.io -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }}
+#          docker pull ghcr.io/striveworks/velour/migrations
+#  build:
+#    runs-on: ubuntu-latest
+#    steps:
+#      - name: Checkout
+#        uses: actions/checkout@v4
+#      - name: Set up Docker Buildx
+#        uses: docker/setup-buildx-action@v3
+#      - name: Build and export
+#        uses: docker/build-push-action@v5
+#        with:
+#          context: ./migrations
+#          tags: migrations
+#          outputs: type=docker,dest=/tmp/migrations.tar
+#      - name: Upload artifact
+#        uses: actions/upload-artifact@v3
+#        with:
+#          name: myimage
+#          path: /tmp/migrations.tar
   backend-functional-tests:
     permissions:
       packages: read
     needs:
       - login-to-amazon-ecr
+#      - build
     env:
       COVERAGE_FILE: .coverage.backend-functional-tests
     runs-on: ubuntu-latest
@@ -51,17 +70,18 @@ jobs:
       run:
         working-directory: ./api
     services:
-      migrations:
-        image: ghcr.io/striveworks/velour/migrations
-        credentials:
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-        env: #TODO DRY
-          POSTGRES_PASSWORD: password
-          POSTGRES_HOST: localhost
-          POSTGRES_DB: velour
-          POSTGRES_USERNAME: postgres
-          POSTGRES_PORT: 5432
+#      migrations:
+#        image: migrations
+##        image: ghcr.io/striveworks/velour/migrations
+#        credentials:
+#          username: ${{ github.actor }}
+#          password: ${{ secrets.GITHUB_TOKEN }}
+#        env: #TODO DRY
+#          POSTGRES_PASSWORD: password
+#          POSTGRES_HOST: localhost
+#          POSTGRES_DB: velour
+#          POSTGRES_USERNAME: postgres
+#          POSTGRES_PORT: 5432
       postgis:
         image: 724664234782.dkr.ecr.us-east-1.amazonaws.com/library/hardened/bitnami/postgresql:15.3.0-debian-12
         credentials:
@@ -79,6 +99,10 @@ jobs:
       - uses: actions/setup-python@v4
         with:
           python-version: "3.10"
+      - run:
+          |
+          docker build -f=migrations/Dockerfile ./migrations -t migrations
+          POSTGRES_PASSWORD=password POSTGRES_HOST=localhost POSTGRES_DB=velour POSTGRES_USERNAME=postgres POSTGRES_PORT=5432 docker run
       - run: pip install ".[test]"
       - run: coverage run --source=velour_api -m pytest -v tests/functional-tests
         env:
