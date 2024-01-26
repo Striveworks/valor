@@ -167,7 +167,7 @@ def _compute_detection_metrics(
         evaluation_type="detection",
     )
 
-    # Join gt, datum, annotation, label
+    # Join gt, datum, annotation, label. Map grouper_ids to each label_id.
     gt = (
         Query(
             models.GroundTruth.id.label("id"),

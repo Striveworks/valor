@@ -309,7 +309,7 @@ def _compute_confusion_matrix_at_grouper_key(
         .alias()
     )
 
-    # 5. Link value to the Label.value object
+    # 5. Link each label value to its corresponding grouper value
     b = Bundle(
         "cols",
         case(
