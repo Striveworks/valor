@@ -164,12 +164,10 @@ def _compute_roc_auc(
     label_count = 0
 
     for grouper_value, labels in value_to_labels_mapping.items():
-        # get the prediction labels associated with the grouper key and value
         label_filter = groundtruth_filter.model_copy()
         label_filter.label_ids = [label.id for label in labels]
 
-        # grouper_key_to_labels_mapping isn't filtered to a granular level, so we
-        # need to double-check the labels using core.get_labels
+        # some labels in the "labels" argument may be out-of-scope given our groundtruth_filter, so we fetch all labels that are within scope of the groundtruth_filter to make sure we don't calculate ROCAUC for inappropriate labels
         check_labels_for_label_value = [
             label
             for label in labels

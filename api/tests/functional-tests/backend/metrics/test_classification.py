@@ -277,7 +277,7 @@ def test_compute_confusion_matrix_at_grouper_key_and_filter(
         assert e in cm.entries
 
 
-def test_compute_confusion_matrix_at_grouper_key_and_label_map(
+def test_compute_confusion_matrix_at_grouper_key_using_label_map(
     db: Session,
     dataset_name: str,
     model_name: str,
