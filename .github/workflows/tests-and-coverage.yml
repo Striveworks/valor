@@ -33,17 +33,10 @@ jobs:
     outputs:
       docker_username: ${{ steps.login-ecr.outputs.docker_username_724664234782_dkr_ecr_us_east_1_amazonaws_com }}
       docker_password: ${{ steps.login-ecr.outputs.docker_password_724664234782_dkr_ecr_us_east_1_amazonaws_com }}
-  build-migrations-image:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Build Docker image for migrations
-        run: |
-          set -e
-          IMAGE_NAME="ghcr.io/striveworks/velour/migrations:latest"
-          DOCKERFILE_PATH="migrations/Dockerfile"
-          docker build -t $IMAGE_NAME -f $DOCKERFILE_PATH migrations
+
   backend-functional-tests:
+    permissions:
+      packages: read
     needs:
       - login-to-amazon-ecr
       - build-migrations-image
@@ -65,7 +58,7 @@ jobs:
           POSTGRES_PASSWORD: password
           POSTGRES_DB: velour
       migrations:
-        image: ghcr.io/striveworks/velour/migrations
+        image: 724664234782.dkr.ecr.us-east-1.amazonaws.com/library/velour/migrations
         env: #TODO DRY
           POSTGRES_PASSWORD: password
           POSTGRES_HOST: localhost

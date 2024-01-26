@@ -30,17 +30,16 @@ jobs:
         with:
           role-to-assume: ${{ secrets.AWS_ROLE }}
           aws-region: ${{ secrets.AWS_ECR_REGION }}
-#      - name: build
-#        run: |
-#          docker build . -t ${IMAGE_NAME}
-#      - name: push
-#        run: |
-#          docker login ghcr.io -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }}
-#          docker push ${IMAGE_NAME}
-#          IMAGE_NAME_WITH_COMMIT_HASH=${IMAGE_NAME}:${{ github.sha }}
-#          docker tag ${IMAGE_NAME} ${IMAGE_NAME_WITH_COMMIT_HASH}
-#          docker push ${IMAGE_NAME_WITH_COMMIT_HASH}
-      # if there's a git tag then add another tag to the image with the git tag and push it
+      - name: build
+        run: |
+          docker build . -t ${IMAGE_NAME}
+      - name: push
+        run: |
+          docker login ghcr.io -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }}
+          docker push ${IMAGE_NAME}
+          IMAGE_NAME_WITH_COMMIT_HASH=${IMAGE_NAME}:${{ github.sha }}
+          docker tag ${IMAGE_NAME} ${IMAGE_NAME_WITH_COMMIT_HASH}
+          docker push ${IMAGE_NAME_WITH_COMMIT_HASH}
       - name: push git tag
         if: startsWith(github.ref, 'refs/tags/')
         run: |
@@ -49,7 +48,7 @@ jobs:
           docker push ${IMAGE_NAME}:${TAG}
       - uses: aws-actions/amazon-ecr-login@v1
         id: login-ecr
-      - name: push to ecr
+      - name: push to
         run: |
           ECR_IMAGE_NAME=${{ steps.login-ecr.outputs.registry }}/library/velour/migrations
           docker tag ${IMAGE_NAME} ${ECR_IMAGE_NAME}
