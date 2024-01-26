@@ -403,8 +403,11 @@ def test_compute_roc_auc_groupby_metadata(
     )
 
 
-def test_run_sklearn():
-    # TODO delete this after fixing roc_auc bug
+def test_compute_roc_auc_with_label_map(
+    db: Session, dataset_name: str, model_name: str, classification_test_data
+):
+    """Test ROC auc computation using a label_map to group labels together. Matches the following output from sklearn:
+
     import numpy as np
     from sklearn.metrics import roc_auc_score
 
@@ -424,22 +427,12 @@ def test_run_sklearn():
     score = roc_auc_score(y_true, y_score[:, 1], multi_class="ovr")
     assert score == 0.7777777777777778
 
+    """
 
-def test_compute_roc_auc_with_label_map(
-    db: Session, dataset_name: str, model_name: str, classification_test_data
-):
-    """Test ROC auc computation using a label_map to group labels together"""
-
-    # data for reference
-    # animal_gts = ["bird", "dog", "bird", "bird", "cat", "dog"]
-    # animal_preds = [
-    #     {"bird": 0.6, "dog": 0.2, "cat": 0.2},  # mammal: .4
-    #     {"cat": 0.9, "dog": 0.1, "bird": 0.0},  # mammal: 1
-    #     {"cat": 0.8, "dog": 0.05, "bird": 0.15},  # mammal: .85
-    #     {"dog": 0.75, "cat": 0.1, "bird": 0.15},  # mammal: .85
-    #     {"cat": 1.0, "dog": 0.0, "bird": 0.0},  # mammal: 1
-    #     {"cat": 0.4, "dog": 0.4, "bird": 0.2},  # mammal: .8
-    # ]
+    label_map = [
+        [["animal", "dog"], ["class", "mammal"]],
+        [["animal", "cat"], ["class", "mammal"]],
+    ]
 
     prediction_filter = schemas.Filter(
         model_names=[model_name],
@@ -452,7 +445,7 @@ def test_compute_roc_auc_with_label_map(
 
     mappings = create_grouper_mappings(
         db=db,
-        label_map=None,
+        label_map=label_map,
         evaluation_type="classification",
         groundtruth_filter=groundtruth_filter,
         prediction_filter=prediction_filter,
@@ -463,13 +456,13 @@ def test_compute_roc_auc_with_label_map(
             db=db,
             prediction_filter=prediction_filter,
             groundtruth_filter=groundtruth_filter,
-            grouper_key="grouped_animals",
+            grouper_key="animal",
             grouper_key_to_labels_mapping=mappings[
                 "grouper_key_to_labels_mapping"
             ],
         )
         # TODO this is incorrect
-        == 0.8125
+        == 0.7777777777777779
     )
 
 
