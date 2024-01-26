@@ -58,8 +58,6 @@ jobs:
 #          name: myimage
 #          path: /tmp/migrations.tar
   backend-functional-tests:
-    permissions:
-      packages: read
     needs:
       - login-to-amazon-ecr
 #      - build
@@ -94,7 +92,6 @@ jobs:
           POSTGRES_DB: velour
 
     steps:
-#      - TODO run migration before this
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
         with:
