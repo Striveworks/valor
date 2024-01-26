@@ -58,7 +58,7 @@ jobs:
           POSTGRES_PASSWORD: password
           POSTGRES_DB: velour
       migrations:
-        image: 724664234782.dkr.ecr.us-east-1.amazonaws.com/library/velour/migrations
+        image: ghcr.io/striveworks/velour/migrations
         env: #TODO DRY
           POSTGRES_PASSWORD: password
           POSTGRES_HOST: localhost
