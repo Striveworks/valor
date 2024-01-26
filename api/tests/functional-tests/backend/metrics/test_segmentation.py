@@ -1,4 +1,3 @@
-import pytest
 from sqlalchemy import and_, select
 from sqlalchemy.orm import Session
 
@@ -273,20 +272,18 @@ def test_count_groundtruths(
             _count_groundtruths(
                 db,
                 _generate_groundtruth_query(groundtruth_filter),
-                label_id,
             )
             == expected
         )
 
     groundtruth_filter.label_ids = [1000000]
-    with pytest.raises(RuntimeError) as exc_info:
+    assert (
         _count_groundtruths(
             db,
             _generate_groundtruth_query(groundtruth_filter),
-            1000000,
         )
-
-    assert "No groundtruth pixels for label" in str(exc_info)
+        is None
+    )
 
 
 def _help_count_predictions(
@@ -369,18 +366,25 @@ def test_compute_segmentation_metrics(
         pred_semantic_segs_img2_create=pred_semantic_segs_img2_create,
     )
 
-    model_filter = schemas.Filter(
+    prediction_filter = schemas.Filter(
         model_names=[model_name],
         dataset_names=[dataset_name],
     )
-    datum_filter = schemas.Filter(
+    groundtruth_filter = schemas.Filter(
         model_names=[model_name],
         dataset_names=[dataset_name],
         task_types=[enums.TaskType.SEGMENTATION],
         annotation_types=[enums.AnnotationType.RASTER],
     )
 
-    metrics = _compute_segmentation_metrics(db, model_filter, datum_filter)
+    metrics = _compute_segmentation_metrics(
+        db,
+        parameters=schemas.EvaluationParameters(
+            task_type=enums.TaskType.CLASSIFICATION, label_map=None
+        ),
+        prediction_filter=prediction_filter,
+        groundtruth_filter=groundtruth_filter,
+    )
     # should have five metrics (one IOU for each of the four labels, and one mIOU)
     assert len(metrics) == 5
     for metric in metrics[:-1]:
