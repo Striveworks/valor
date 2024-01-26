@@ -188,6 +188,47 @@ def get_labels(
     }
 
 
+def get_label_rows(
+    db: Session,
+    groundtruth_filter: schemas.Filter | None = None,
+    prediction_filter: schemas.Filter | None = None,
+) -> list:
+    """
+    Returns a set of unique label rows optionally filtered using a groundtruth and prediction filter.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    prediction_filter : schemas.Filter
+        The filter to be used to query predictions.
+    groundtruth_filter : schemas.Filter
+        The filter to be used to query groundtruths.
+
+    Returns
+    ----------
+    list
+        A list of label rows pulled from psql.
+    """
+
+    # retrieve dataset labels
+    dataset_labels = set(
+        db.query(
+            ops.Query(models.Label).filter(groundtruth_filter).groundtruths()
+        ).all()
+    )
+
+    # retrieve all model labels
+    model_labels = set(
+        db.query(
+            ops.Query(models.Label).filter(prediction_filter).predictions()
+        ).all()
+    )
+
+    # return all unique labels
+    return list(dataset_labels.union(model_labels))
+
+
 def get_label_keys(
     db: Session,
     filters: schemas.Filter | None = None,

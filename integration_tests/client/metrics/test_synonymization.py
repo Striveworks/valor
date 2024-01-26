@@ -138,7 +138,13 @@ def test_detection_synonymization(
             "type": "AP",
             "parameters": {"iou": 0.1},
             "value": 0.0,
-            "label": {"key": "k2", "value": "v2"},
+            "label": {"key": "class_name", "value": "maine coon cat"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.1},
+            "value": 0.0,
+            "label": {"key": "class", "value": "british shorthair"},
         },
         {
             "type": "AP",
@@ -150,13 +156,7 @@ def test_detection_synonymization(
             "type": "AP",
             "parameters": {"iou": 0.1},
             "value": 0.0,
-            "label": {"key": "class", "value": "british shorthair"},
-        },
-        {
-            "type": "AP",
-            "parameters": {"iou": 0.1},
-            "value": 0.0,
-            "label": {"key": "class_name", "value": "maine coon cat"},
+            "label": {"key": "k2", "value": "v2"},
         },
         {
             "type": "AP",
@@ -168,7 +168,13 @@ def test_detection_synonymization(
             "type": "AP",
             "parameters": {"iou": 0.6},
             "value": 0.0,
-            "label": {"key": "k2", "value": "v2"},
+            "label": {"key": "class_name", "value": "maine coon cat"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.6},
+            "value": 0.0,
+            "label": {"key": "class", "value": "british shorthair"},
         },
         {
             "type": "AP",
@@ -180,13 +186,7 @@ def test_detection_synonymization(
             "type": "AP",
             "parameters": {"iou": 0.6},
             "value": 0.0,
-            "label": {"key": "class", "value": "british shorthair"},
-        },
-        {
-            "type": "AP",
-            "parameters": {"iou": 0.6},
-            "value": 0.0,
-            "label": {"key": "class_name", "value": "maine coon cat"},
+            "label": {"key": "k2", "value": "v2"},
         },
         {
             "type": "AP",
@@ -208,7 +208,13 @@ def test_detection_synonymization(
             "type": "APAveragedOverIOUs",
             "parameters": {"ious": [0.1, 0.6]},
             "value": 0.0,
-            "label": {"key": "k2", "value": "v2"},
+            "label": {"key": "class_name", "value": "maine coon cat"},
+        },
+        {
+            "type": "APAveragedOverIOUs",
+            "parameters": {"ious": [0.1, 0.6]},
+            "value": 0.0,
+            "label": {"key": "class", "value": "british shorthair"},
         },
         {
             "type": "APAveragedOverIOUs",
@@ -220,13 +226,7 @@ def test_detection_synonymization(
             "type": "APAveragedOverIOUs",
             "parameters": {"ious": [0.1, 0.6]},
             "value": 0.0,
-            "label": {"key": "class", "value": "british shorthair"},
-        },
-        {
-            "type": "APAveragedOverIOUs",
-            "parameters": {"ious": [0.1, 0.6]},
-            "value": 0.0,
-            "label": {"key": "class_name", "value": "maine coon cat"},
+            "label": {"key": "k2", "value": "v2"},
         },
         {
             "type": "APAveragedOverIOUs",
@@ -257,21 +257,18 @@ def test_detection_synonymization(
     assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
 
     metrics = eval_job.metrics
-    assert metrics == baseline_expected_metrics
+    for m in metrics:
+        assert m in baseline_expected_metrics
+    for m in baseline_expected_metrics:
+        assert m in metrics
 
     # now, we correct most of the mismatched labels with a label map
     cat_expected_metrics = [
         {
             "type": "AP",
             "parameters": {"iou": 0.1},
-            "value": 0.0,
-            "label": {"key": "k2", "value": "v2"},
-        },
-        {
-            "type": "AP",
-            "parameters": {"iou": 0.1},
-            "value": 0.504950495049505,
-            "label": {"key": "k1", "value": "v1"},
+            "value": 0.33663366336633666,
+            "label": {"key": "class_name", "value": "maine coon cat"},
         },
         {
             "type": "AP",
@@ -282,8 +279,14 @@ def test_detection_synonymization(
         {
             "type": "AP",
             "parameters": {"iou": 0.1},
-            "value": 0.33663366336633666,
-            "label": {"key": "class_name", "value": "maine coon cat"},
+            "value": 0.504950495049505,
+            "label": {"key": "k1", "value": "v1"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.1},
+            "value": 0.0,
+            "label": {"key": "k2", "value": "v2"},
         },
         {
             "type": "AP",
@@ -294,14 +297,8 @@ def test_detection_synonymization(
         {
             "type": "AP",
             "parameters": {"iou": 0.6},
-            "value": 0.0,
-            "label": {"key": "k2", "value": "v2"},
-        },
-        {
-            "type": "AP",
-            "parameters": {"iou": 0.6},
-            "value": 0.504950495049505,
-            "label": {"key": "k1", "value": "v1"},
+            "value": 0.33663366336633666,
+            "label": {"key": "class_name", "value": "maine coon cat"},
         },
         {
             "type": "AP",
@@ -312,8 +309,14 @@ def test_detection_synonymization(
         {
             "type": "AP",
             "parameters": {"iou": 0.6},
-            "value": 0.33663366336633666,
-            "label": {"key": "class_name", "value": "maine coon cat"},
+            "value": 0.504950495049505,
+            "label": {"key": "k1", "value": "v1"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.6},
+            "value": 0.0,
+            "label": {"key": "k2", "value": "v2"},
         },
         {
             "type": "AP",
@@ -334,14 +337,8 @@ def test_detection_synonymization(
         {
             "type": "APAveragedOverIOUs",
             "parameters": {"ious": [0.1, 0.6]},
-            "value": 0.0,
-            "label": {"key": "k2", "value": "v2"},
-        },
-        {
-            "type": "APAveragedOverIOUs",
-            "parameters": {"ious": [0.1, 0.6]},
-            "value": 0.504950495049505,
-            "label": {"key": "k1", "value": "v1"},
+            "value": 0.33663366336633666,
+            "label": {"key": "class_name", "value": "maine coon cat"},
         },
         {
             "type": "APAveragedOverIOUs",
@@ -352,8 +349,14 @@ def test_detection_synonymization(
         {
             "type": "APAveragedOverIOUs",
             "parameters": {"ious": [0.1, 0.6]},
-            "value": 0.33663366336633666,
-            "label": {"key": "class_name", "value": "maine coon cat"},
+            "value": 0.504950495049505,
+            "label": {"key": "k1", "value": "v1"},
+        },
+        {
+            "type": "APAveragedOverIOUs",
+            "parameters": {"ious": [0.1, 0.6]},
+            "value": 0.0,
+            "label": {"key": "k2", "value": "v2"},
         },
         {
             "type": "APAveragedOverIOUs",
@@ -395,7 +398,10 @@ def test_detection_synonymization(
     assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
 
     metrics = eval_job.metrics
-    assert metrics == cat_expected_metrics
+    for m in metrics:
+        assert m in cat_expected_metrics
+    for m in cat_expected_metrics:
+        assert m in metrics
 
     assert eval_job.parameters.label_map == [
         [["class_name", "maine coon cat"], ["class", "cat"]],
@@ -409,14 +415,8 @@ def test_detection_synonymization(
         {
             "type": "AP",
             "parameters": {"iou": 0.1},
-            "value": 0.0,
-            "label": {"key": "k2", "value": "v2"},
-        },
-        {
-            "type": "AP",
-            "parameters": {"iou": 0.1},
-            "value": 0.504950495049505,
-            "label": {"key": "k1", "value": "v1"},
+            "value": 0.6633663366336634,
+            "label": {"key": "class_name", "value": "maine coon cat"},
         },
         {
             "type": "AP",
@@ -427,8 +427,14 @@ def test_detection_synonymization(
         {
             "type": "AP",
             "parameters": {"iou": 0.1},
-            "value": 0.6633663366336634,
-            "label": {"key": "class_name", "value": "maine coon cat"},
+            "value": 0.504950495049505,
+            "label": {"key": "k1", "value": "v1"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.1},
+            "value": 0.0,
+            "label": {"key": "k2", "value": "v2"},
         },
         {
             "type": "AP",
@@ -439,14 +445,8 @@ def test_detection_synonymization(
         {
             "type": "AP",
             "parameters": {"iou": 0.6},
-            "value": 0.0,
-            "label": {"key": "k2", "value": "v2"},
-        },
-        {
-            "type": "AP",
-            "parameters": {"iou": 0.6},
-            "value": 0.504950495049505,
-            "label": {"key": "k1", "value": "v1"},
+            "value": 0.6633663366336634,
+            "label": {"key": "class_name", "value": "maine coon cat"},
         },
         {
             "type": "AP",
@@ -457,8 +457,14 @@ def test_detection_synonymization(
         {
             "type": "AP",
             "parameters": {"iou": 0.6},
-            "value": 0.6633663366336634,
-            "label": {"key": "class_name", "value": "maine coon cat"},
+            "value": 0.504950495049505,
+            "label": {"key": "k1", "value": "v1"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.6},
+            "value": 0.0,
+            "label": {"key": "k2", "value": "v2"},
         },
         {
             "type": "AP",
@@ -469,24 +475,18 @@ def test_detection_synonymization(
         {
             "type": "mAP",
             "parameters": {"iou": 0.1},
-            "value": 0.4990099009900991,
+            "value": 0.499009900990099,
         },
         {
             "type": "mAP",
             "parameters": {"iou": 0.6},
-            "value": 0.4990099009900991,
+            "value": 0.499009900990099,
         },
         {
             "type": "APAveragedOverIOUs",
             "parameters": {"ious": [0.1, 0.6]},
-            "value": 0.0,
-            "label": {"key": "k2", "value": "v2"},
-        },
-        {
-            "type": "APAveragedOverIOUs",
-            "parameters": {"ious": [0.1, 0.6]},
-            "value": 0.504950495049505,
-            "label": {"key": "k1", "value": "v1"},
+            "value": 0.6633663366336634,
+            "label": {"key": "class_name", "value": "maine coon cat"},
         },
         {
             "type": "APAveragedOverIOUs",
@@ -497,8 +497,14 @@ def test_detection_synonymization(
         {
             "type": "APAveragedOverIOUs",
             "parameters": {"ious": [0.1, 0.6]},
-            "value": 0.6633663366336634,
-            "label": {"key": "class_name", "value": "maine coon cat"},
+            "value": 0.504950495049505,
+            "label": {"key": "k1", "value": "v1"},
+        },
+        {
+            "type": "APAveragedOverIOUs",
+            "parameters": {"ious": [0.1, 0.6]},
+            "value": 0.0,
+            "label": {"key": "k2", "value": "v2"},
         },
         {
             "type": "APAveragedOverIOUs",
@@ -509,7 +515,7 @@ def test_detection_synonymization(
         {
             "type": "mAPAveragedOverIOUs",
             "parameters": {"ious": [0.1, 0.6]},
-            "value": 0.4990099009900991,
+            "value": 0.499009900990099,
         },
     ]
 
@@ -539,7 +545,10 @@ def test_detection_synonymization(
     assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
 
     metrics = eval_job.metrics
-    assert metrics == foo_expected_metrics
+    for m in metrics:
+        assert m in foo_expected_metrics
+    for m in foo_expected_metrics:
+        assert m in metrics
 
     assert eval_job.parameters.label_map == [
         [["class_name", "maine coon cat"], ["foo", "bar"]],

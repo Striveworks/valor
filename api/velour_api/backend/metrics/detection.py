@@ -155,13 +155,16 @@ def _compute_detection_metrics(
             case _:
                 raise RuntimeError
 
-    # create a map of labels to groupers; will be empty if the user didn't pass a label_map
-    mappings = create_grouper_mappings(
+    labels = core.get_label_rows(
         db=db,
+        prediction_filter=prediction_filter,
+        groundtruth_filter=groundtruth_filter,
+    )
+
+    mappings = create_grouper_mappings(
+        labels=labels,
         label_map=parameters.label_map,
         evaluation_type="detection",
-        groundtruth_filter=groundtruth_filter,
-        prediction_filter=prediction_filter,
     )
 
     # Join gt, datum, annotation, label

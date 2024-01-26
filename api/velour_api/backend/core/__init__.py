@@ -51,6 +51,7 @@ from .label import (
     get_joint_keys,
     get_joint_labels,
     get_label_keys,
+    get_label_rows,
     get_labels,
 )
 from .model import (
@@ -109,6 +110,7 @@ __all__ = [
     "get_joint_labels",
     "get_label_keys",
     "get_labels",
+    "get_label_rows",
     "create_model",
     "delete_model",
     "fetch_model",

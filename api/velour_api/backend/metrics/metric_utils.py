@@ -4,8 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from velour_api import enums, schemas
-from velour_api.backend import core, models
-from velour_api.backend.ops import Query
+from velour_api.backend import core
 
 
 def _create_detection_grouper_mappings(mapping_dict, labels):
@@ -63,27 +62,21 @@ def _create_classification_grouper_mappings(mapping_dict, labels):
 
 
 def create_grouper_mappings(
-    db: Session,
+    labels: list,
     label_map: list | None,
     evaluation_type: str,
-    groundtruth_filter: schemas.Filter,
-    prediction_filter: schemas.Filter,
 ):
     """
     Creates a dictionary of grouper mappings that are used throughout our evaluation functions. These mappings enable Velour to group multiple labels together using a label_map.
 
     Parameters
     ----------
-    db : Session
-        The database Session to query against.
+    labels : list
+        A list of all labels.
     label_map : list
         An optional label map to use when grouping labels. If None is passed, this function will still create the appropriate mappings using individual labels.
     evaluation_type : str
         The type of evaluation to create mappings for.
-    prediction_filter : schemas.Filter
-        The filter to be used to query predictions.
-    groundtruth_filter : schemas.Filter
-        The filter to be used to query groundtruths.
 
     Returns
     ----------
@@ -91,28 +84,15 @@ def create_grouper_mappings(
         A dictionary of mappings.
     """
 
-    # retrieve dataset labels
-    dataset_labels = set(
-        db.query(
-            Query(models.Label).filter(groundtruth_filter).groundtruths()
-        ).all()
-    )
-
-    # retrieve all model labels
-    model_labels = set(
-        db.query(
-            Query(models.Label).filter(prediction_filter).predictions()
-        ).all()
-    )
-
-    # find all unique labels
-    labels = list(dataset_labels.union(model_labels))
-
-    mapping_function = {
+    mapping_functions = {
         "classification": _create_classification_grouper_mappings,
         "detection": _create_detection_grouper_mappings,
         "segmentation": _create_segmentation_grouper_mappings,
     }
+
+    assert (
+        evaluation_type in mapping_functions.keys()
+    ), f"evaluation_type must be one of {mapping_functions.keys()}"
 
     # create a map of labels to groupers; will be empty if the user didn't pass a label_map
     mapping_dict = (
@@ -121,7 +101,7 @@ def create_grouper_mappings(
         else {}
     )
 
-    return mapping_function[evaluation_type](mapping_dict, labels)
+    return mapping_functions[evaluation_type](mapping_dict, labels)
 
 
 def get_or_create_row(

@@ -556,12 +556,17 @@ def _compute_clf_metrics(
     Tuple[List[schemas.ConfusionMatrix], List[schemas.ConfusionMatrix | schemas.AccuracyMetric | schemas.ROCAUCMetric| schemas.PrecisionMetric | schemas.RecallMetric | schemas.F1Metric]]
         A tuple of confusion matrices and metrics.
     """
-    mappings = create_grouper_mappings(
+
+    labels = core.get_label_rows(
         db=db,
+        prediction_filter=prediction_filter,
+        groundtruth_filter=groundtruth_filter,
+    )
+
+    mappings = create_grouper_mappings(
+        labels=labels,
         label_map=label_map,
         evaluation_type="classification",
-        groundtruth_filter=groundtruth_filter,
-        prediction_filter=prediction_filter,
     )
 
     # compute metrics and confusion matrix for each grouper id
