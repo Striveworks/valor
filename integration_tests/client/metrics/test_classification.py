@@ -658,7 +658,7 @@ def pred_clfs_with_label_maps(
     ]
 
 
-def test_classification_with_label_maps(
+def test_evaluate_classification_with_label_maps(
     client: Client,
     gt_clfs_with_label_maps: list[GroundTruth],
     pred_clfs_with_label_maps: list[Prediction],

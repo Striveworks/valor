@@ -814,7 +814,7 @@ def preds_det_with_label_maps(
     ]
 
 
-def test_detection_with_label_maps(
+def test_evaluate_detection_with_label_maps(
     db: Session,
     dataset_name: str,
     model_name: str,
