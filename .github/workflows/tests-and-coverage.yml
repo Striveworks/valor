@@ -32,15 +32,13 @@ jobs:
     outputs:
       docker_username: ${{ steps.login-ecr.outputs.docker_username_724664234782_dkr_ecr_us_east_1_amazonaws_com }}
       docker_password: ${{ steps.login-ecr.outputs.docker_password_724664234782_dkr_ecr_us_east_1_amazonaws_com }}
-#  login-to-ghcr: #todo do i need this?
-#    runs-on: ubuntu-latest
-#    steps:
-#      - name: Login to ghcr
-#        id: login-ghcr
-#        run: docker login ghcr.io -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }}
-#    outputs:
-#      docker_username: ${{ steps.login-ghcr.outputs.docker_username_724664234782_dkr_ecr_us_east_1_amazonaws_com }}
-
+  test-can-pull-migrations:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Login to ghcr and test pull
+        run: |
+          docker login ghcr.io -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }}
+          docker pull ghcr.io/striveworks/velour/migrations
   backend-functional-tests:
     permissions:
       packages: read
