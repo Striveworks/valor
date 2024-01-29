@@ -2,10 +2,10 @@ from typing import Dict, List, Union
 
 import PIL.Image
 
-from velour import Datum 
-from velour.types import MetadataType
+from velour import Datum
 from velour.exceptions import SchemaTypeError
 from velour.schemas import validate_metadata
+from velour.types import MetadataType
 
 
 class ImageMetadata:

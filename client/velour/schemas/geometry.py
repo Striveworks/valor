@@ -1,7 +1,7 @@
 import io
 from base64 import b64decode, b64encode
 from dataclasses import dataclass, field
-from typing import List, Tuple, Union
+from typing import List, Tuple
 
 import numpy as np
 import PIL.Image

@@ -2,10 +2,7 @@ from dataclasses import dataclass
 from typing import Dict, List
 
 from velour.enums import AnnotationType, TaskType
-from velour.schemas.constraints import (
-    Constraint,
-    BinaryExpression,
-)
+from velour.schemas.constraints import BinaryExpression, Constraint
 
 
 @dataclass
@@ -134,12 +131,9 @@ class Filter:
         ]:
             if attr in expression_dict:
                 setattr(
-                    filter_request, 
-                    attr, 
-                    [
-                        expr.constraint     
-                        for expr in expression_dict[attr]
-                    ],
+                    filter_request,
+                    attr,
+                    [expr.constraint for expr in expression_dict[attr]],
                 )
 
         # export list of equality constraints
@@ -155,10 +149,7 @@ class Filter:
                 setattr(
                     filter_request,
                     attr,
-                    [
-                        expr.constraint.value
-                        for expr in expression_dict[attr]
-                    ]
+                    [expr.constraint.value for expr in expression_dict[attr]],
                 )
 
         # export metadata constraints
@@ -202,10 +193,7 @@ class Filter:
                 setattr(
                     filter_request,
                     "annotation_geometric_area",
-                    [
-                        expr.constraint
-                        for expr in expression_dict[attr]
-                    ]
+                    [expr.constraint for expr in expression_dict[attr]],
                 )
 
         return filter_request

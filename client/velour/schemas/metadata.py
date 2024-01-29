@@ -1,9 +1,5 @@
 import datetime
 from copy import deepcopy
-from typing import Dict, Union
-
-from velour.exceptions import SchemaTypeError
-from velour.types import MetadataType
 
 
 def _validate_href(value: str):
@@ -28,7 +24,9 @@ def validate_metadata(metadata: dict):
             or isinstance(value, datetime.date)
             or isinstance(value, datetime.time)
         ):
-            raise TypeError("`metadata` value should have type `str`, `int`, `float` or `datetime`.")
+            raise TypeError(
+                "`metadata` value should have type `str`, `int`, `float` or `datetime`."
+            )
 
         # Handle special key-values
         if key == "href":

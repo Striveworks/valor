@@ -464,7 +464,7 @@ def test_evaluate_detection_with_json_filters(
         iou_thresholds_to_return=[0.1, 0.6],
         filters=[
             Label.key == "k1",
-            Annotation.bounding_box.area  >= 1200,
+            Annotation.bounding_box.area >= 1200,
         ],
         convert_annotations_to_type=AnnotationType.BOX,
     )

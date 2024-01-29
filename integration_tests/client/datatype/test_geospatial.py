@@ -110,7 +110,7 @@ def test_geospatial_filter(
     assert len(eval_job.metrics) == 9
 
     # passing in an incorrectly-formatted geojson dict should return a ValueError
-    with pytest.raises(ValueError) as e:
+    with pytest.raises(KeyError) as e:
         model.evaluate_detection(
             dataset,
             iou_thresholds_to_compute=[0.1, 0.6],

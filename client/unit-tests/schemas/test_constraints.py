@@ -1,25 +1,25 @@
 import datetime
-import numpy
-from typing import Dict, List, Union, Any
 
+import numpy
 import pytest
 
 from velour import Label
 from velour.schemas.constraints import (
-    NumericMapper,
-    StringMapper,
-    GeometryMapper,
-    GeospatialMapper,
     DatetimeMapper,
     DictionaryMapper,
+    GeometryMapper,
+    GeospatialMapper,
     LabelMapper,
+    NumericMapper,
+    StringMapper,
+    _DictionaryValueMapper,
 )
 from velour.schemas.geometry import (
-    Point,
     BasicPolygon,
-    Polygon,
     BoundingBox,
     MultiPolygon,
+    Point,
+    Polygon,
     Raster,
 )
 
@@ -31,13 +31,13 @@ def _test_mapper(mapper, operator, value, retval=None):
     if operator == "==":
         expr = mapper(name, key) == value
     elif operator == "!=":
-        expr = mapper(name, key) != value        
+        expr = mapper(name, key) != value
     elif operator == ">=":
-        expr = mapper(name, key) >= value        
+        expr = mapper(name, key) >= value
     elif operator == "<=":
         expr = mapper(name, key) <= value
     elif operator == ">":
-        expr = mapper(name, key) > value        
+        expr = mapper(name, key) > value
     elif operator == "<":
         expr = mapper(name, key) < value
     elif operator == "contains":
@@ -60,11 +60,11 @@ def _test_mapper(mapper, operator, value, retval=None):
         operator = "=="
     else:
         raise NotImplementedError
-        
+
     assert expr.name == name
     assert expr.key == key
     assert expr.constraint.operator == operator
-    
+
     if retval:
         assert expr.constraint.value == retval
     elif value is None:
@@ -77,8 +77,10 @@ def test_numeric_mapper():
 
     # test operators on `int` and `float`
     for value in [int(123), float(0.123)]:
-        _test_numeric_mapper = lambda operator : _test_mapper(NumericMapper, operator, value)
-    
+
+        def _test_numeric_mapper(operator):
+            _test_mapper(NumericMapper, operator, value)
+
         _test_numeric_mapper("==")
         _test_numeric_mapper("!=")
         _test_numeric_mapper(">=")
@@ -86,7 +88,7 @@ def test_numeric_mapper():
         _test_numeric_mapper(">")
         _test_numeric_mapper("<")
         _test_numeric_mapper("in_")
-        
+
         with pytest.raises(AttributeError):
             _test_numeric_mapper("is_none")
         with pytest.raises(AttributeError):
@@ -106,14 +108,15 @@ def test_numeric_mapper():
 
 
 def test_string_mapper():
-    
+
     # test operators on `str`
-    _test_string_mapper = lambda operator : _test_mapper(StringMapper, operator, "some_str")
-    
+    def _test_string_mapper(operator):
+        _test_mapper(StringMapper, operator, "some_str")
+
     _test_string_mapper("==")
     _test_string_mapper("!=")
     _test_string_mapper("in_")
-    
+
     with pytest.raises(AttributeError):
         _test_string_mapper(">=")
     with pytest.raises(AttributeError):
@@ -148,10 +151,10 @@ def test_datetime_mapper():
     time_ = datetime.datetime.now().time()
     timedelta_ = datetime.timedelta(days=1)
 
-    datetime_filter = {"datetime" : str(datetime_.isoformat())}
-    date_filter = {"date" : str(date_.isoformat())}
-    time_filter = {"time" : str(time_.isoformat())}
-    timedelta_filter = {"duration" : str(timedelta_.total_seconds())}
+    datetime_filter = {"datetime": str(datetime_.isoformat())}
+    date_filter = {"date": str(date_.isoformat())}
+    time_filter = {"time": str(time_.isoformat())}
+    timedelta_filter = {"duration": str(timedelta_.total_seconds())}
 
     for value, retval in [
         (datetime_, datetime_filter),
@@ -159,8 +162,10 @@ def test_datetime_mapper():
         (time_, time_filter),
         (timedelta_, timedelta_filter),
     ]:
-        _test_datetime_mapper = lambda operator : _test_mapper(DatetimeMapper, operator, value, retval=retval)
-    
+
+        def _test_datetime_mapper(operator):
+            _test_mapper(DatetimeMapper, operator, value, retval=retval)
+
         _test_datetime_mapper("==")
         _test_datetime_mapper("!=")
         _test_datetime_mapper(">=")
@@ -168,7 +173,7 @@ def test_datetime_mapper():
         _test_datetime_mapper(">")
         _test_datetime_mapper("<")
         _test_datetime_mapper("in_")
-        
+
         with pytest.raises(AttributeError):
             _test_datetime_mapper("is_none")
         with pytest.raises(AttributeError):
@@ -193,12 +198,12 @@ def test_geometry_mapper():
     assert type(GeometryMapper("name", "key").area) is NumericMapper
 
     # test operators on geometry objects
-    point = Point(1,1)
+    point = Point(1, 1)
     basic_polygon = BasicPolygon(
         points=[
-            Point(0,0),
-            Point(0,1),
-            Point(1,0),
+            Point(0, 0),
+            Point(0, 1),
+            Point(1, 0),
         ]
     )
     polygon = Polygon(
@@ -206,7 +211,7 @@ def test_geometry_mapper():
     )
     bbox = BoundingBox.from_extrema(xmin=0, xmax=1, ymin=0, ymax=1)
     multipolygon = MultiPolygon(polygons=[polygon])
-    raster = Raster.from_numpy(numpy.zeros((10,10)) == True)
+    raster = Raster.from_numpy(numpy.zeros((10, 10)) == True)  # noqa 712
 
     for value in [
         point,
@@ -215,7 +220,9 @@ def test_geometry_mapper():
         multipolygon,
         raster,
     ]:
-        _test_spatial_mapper = lambda operator : _test_mapper(GeometryMapper, operator, value)
+
+        def _test_spatial_mapper(operator):
+            _test_mapper(GeometryMapper, operator, value)
 
         _test_spatial_mapper("is_none")
         _test_spatial_mapper("exists")
@@ -228,7 +235,7 @@ def test_geometry_mapper():
             _test_spatial_mapper("inside")
         with pytest.raises(NotImplementedError):
             _test_spatial_mapper("outside")
-    
+
         with pytest.raises(AttributeError):
             _test_spatial_mapper("==")
         with pytest.raises(AttributeError):
@@ -242,12 +249,12 @@ def test_geometry_mapper():
         with pytest.raises(AttributeError):
             _test_spatial_mapper("<")
         with pytest.raises(AttributeError):
-            _test_spatial_mapper("in_")      
+            _test_spatial_mapper("in_")
 
     # test unsupported geometry
     with pytest.raises(TypeError):
         _test_mapper(GeometryMapper, "intersect", "intersect")
-    
+
     # test invalid type
     with pytest.raises(TypeError):
         _test_mapper(GeometryMapper, "intersect", "some_str")
@@ -264,20 +271,21 @@ def test_geospatial_mapper():
     for value in [
         point,
     ]:
-        _test_spatial_mapper = lambda operator : _test_mapper(GeospatialMapper, operator, value)
+
+        def _test_spatial_mapper(operator):
+            _test_mapper(GeospatialMapper, operator, value)
 
         _test_spatial_mapper("intersect")
         _test_spatial_mapper("inside")
         _test_spatial_mapper("outside")
 
-
         with pytest.raises(NotImplementedError):
             _test_spatial_mapper("contains")
         with pytest.raises(NotImplementedError):
-            _test_spatial_mapper("is_none")            
+            _test_spatial_mapper("is_none")
         with pytest.raises(NotImplementedError):
             _test_spatial_mapper("exists")
-    
+
         with pytest.raises(AttributeError):
             _test_spatial_mapper("==")
         with pytest.raises(AttributeError):
@@ -291,20 +299,23 @@ def test_geospatial_mapper():
         with pytest.raises(AttributeError):
             _test_spatial_mapper("<")
         with pytest.raises(AttributeError):
-            _test_spatial_mapper("in_")      
-    
+            _test_spatial_mapper("in_")
+
     # test invalid type
     with pytest.raises(TypeError):
         _test_mapper(GeospatialMapper, "intersect", "some_str")
 
 
 def test_dictionary_mapper():
+    def mapper(operator, key) -> _DictionaryValueMapper:
+        return DictionaryMapper("name")[key]
 
     # test operators on `int` and `float`
     for value in [int(123), float(0.123)]:
-        mapper = lambda operator, key : DictionaryMapper("name")[key]
-        _test_dict_mapper = lambda operator : _test_mapper(mapper, operator, value)
-    
+
+        def _test_dict_mapper(operator):
+            _test_mapper(mapper, operator, value)
+
         _test_dict_mapper("is_none")
         _test_dict_mapper("exists")
         _test_dict_mapper("==")
@@ -314,7 +325,7 @@ def test_dictionary_mapper():
         _test_dict_mapper(">")
         _test_dict_mapper("<")
         _test_dict_mapper("in_")
-        
+
         with pytest.raises(AttributeError):
             _test_dict_mapper("contains")
         with pytest.raises(AttributeError):
@@ -326,15 +337,16 @@ def test_dictionary_mapper():
 
     # test operators on `str`
     value = "some_str"
-    mapper = lambda operator, key : DictionaryMapper("name")[key]
-    _test_dict_mapper = lambda operator : _test_mapper(mapper, operator, value)
-    
+
+    def _test_dict_mapper(operator):
+        _test_mapper(mapper, operator, value)
+
     _test_dict_mapper("is_none")
     _test_dict_mapper("exists")
     _test_dict_mapper("==")
     _test_dict_mapper("!=")
     _test_dict_mapper("in_")
-    
+
     with pytest.raises(AttributeError):
         _test_dict_mapper(">=")
     with pytest.raises(AttributeError):
@@ -358,10 +370,10 @@ def test_dictionary_mapper():
     time_ = datetime.datetime.now().time()
     timedelta_ = datetime.timedelta(days=1)
 
-    datetime_filter = {"datetime" : str(datetime_.isoformat())}
-    date_filter = {"date" : str(date_.isoformat())}
-    time_filter = {"time" : str(time_.isoformat())}
-    timedelta_filter = {"duration" : str(timedelta_.total_seconds())}
+    datetime_filter = {"datetime": str(datetime_.isoformat())}
+    date_filter = {"date": str(date_.isoformat())}
+    time_filter = {"time": str(time_.isoformat())}
+    timedelta_filter = {"duration": str(timedelta_.total_seconds())}
 
     for value, retval in [
         (datetime_, datetime_filter),
@@ -369,13 +381,16 @@ def test_dictionary_mapper():
         (time_, time_filter),
         (timedelta_, timedelta_filter),
     ]:
-        mapper = lambda operator, key : DictionaryMapper("name")[key]
-    
-        _test_dict_mapper = lambda operator : _test_mapper(mapper, operator, value)
+
+        def _test_dict_mapper(operator):
+            _test_mapper(mapper, operator, value)
+
         _test_dict_mapper("is_none")
         _test_dict_mapper("exists")
 
-        _test_dict_mapper = lambda operator : _test_mapper(mapper, operator, value, retval=retval)
+        def _test_dict_mapper(operator):
+            _test_mapper(mapper, operator, value, retval=retval)
+
         _test_dict_mapper("==")
         _test_dict_mapper("!=")
         _test_dict_mapper(">=")
@@ -383,7 +398,7 @@ def test_dictionary_mapper():
         _test_dict_mapper(">")
         _test_dict_mapper("<")
         _test_dict_mapper("in_")
-        
+
         with pytest.raises(AttributeError):
             _test_dict_mapper("contains")
         with pytest.raises(AttributeError):
@@ -395,19 +410,21 @@ def test_dictionary_mapper():
 
     # test invalid type
     with pytest.raises(NotImplementedError):
-        DictionaryMapper("name")["key"] == Point(1,1)
+        DictionaryMapper("name")["key"] == Point(1, 1)
 
 
 def test_label_mapper():
 
     # test operators on `Label`
     label = Label(key="k1", value="v1")
-    _test_label_mapper = lambda operator : _test_mapper(LabelMapper, operator, label, retval={'k1':'v1'})
-    
+
+    def _test_label_mapper(operator):
+        _test_mapper(LabelMapper, operator, label, retval={"k1": "v1"})
+
     _test_label_mapper("==")
     _test_label_mapper("!=")
     _test_label_mapper("in_")
-    
+
     with pytest.raises(AttributeError):
         _test_label_mapper(">=")
     with pytest.raises(AttributeError):

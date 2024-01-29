@@ -1,9 +1,10 @@
 from dataclasses import dataclass
-from typing import Optional, List
+from typing import List
 
-from velour.types import MetadataType
 from velour.enums import TaskType
 from velour.schemas.core import Label
+from velour.types import MetadataType
+
 
 @dataclass
 class DatasetSummary:

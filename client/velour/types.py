@@ -1,5 +1,6 @@
 import datetime
 from typing import Dict, List, Union
+
 from velour.schemas import geometry
 
 ValueType = Union[int, float, str, bool, Dict[str, str]]
@@ -7,23 +8,23 @@ ValueType = Union[int, float, str, bool, Dict[str, str]]
 MetadataType = Dict[
     str,
     Union[
-        int, 
-        float, 
-        str, 
-        bool, 
-        datetime.datetime, 
-        datetime.date, 
+        int,
+        float,
+        str,
+        bool,
+        datetime.datetime,
+        datetime.date,
         datetime.time,
         datetime.timedelta,
     ],
 ]
 
 GeometryType = Union[
-    geometry.Point, 
-    geometry.Polygon, 
-    geometry.BoundingBox, 
-    geometry.MultiPolygon, 
-    geometry.Raster
+    geometry.Point,
+    geometry.Polygon,
+    geometry.BoundingBox,
+    geometry.MultiPolygon,
+    geometry.Raster,
 ]
 
 GeoJSONPointType = Dict[str, Union[str, List[Union[float, int]]]]

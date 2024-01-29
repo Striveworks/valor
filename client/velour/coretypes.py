@@ -1,32 +1,569 @@
-import time
 import json
+import time
 import warnings
-from dataclasses import asdict, dataclass
-from typing import List, Dict, Tuple, Optional, Union
+from dataclasses import asdict
+from typing import Dict, List, Optional, Tuple, Union
 
 from velour.client import Client, ClientException
 from velour.enums import AnnotationType, EvaluationStatus, TaskType
-from velour.schemas import (
-    Label,
-    Annotation,
-    Datum,
-    GroundTruth,
-    Prediction,
-    EvaluationParameters,
-    EvaluationRequest,
+from velour.schemas.constraints import (
+    BinaryExpression,
+    DictionaryMapper,
+    GeometryMapper,
+    GeospatialMapper,
+    LabelMapper,
+    StringMapper,
+)
+from velour.schemas.core import Label
+from velour.schemas.evaluation import EvaluationParameters, EvaluationRequest
+from velour.schemas.filters import Filter
+from velour.schemas.geometry import BoundingBox, MultiPolygon, Polygon, Raster
+from velour.schemas.info import DatasetSummary
+from velour.schemas.metadata import (
     dump_metadata,
     load_metadata,
     validate_metadata,
-    DatasetSummary,
-    Filter,
 )
-from velour.schemas.constraints import (
-    BinaryExpression,
-    StringMapper, 
-    GeospatialMapper, 
-    DictionaryMapper,
-)
-from velour.types import MetadataType, GeoJSONType
+from velour.types import GeoJSONType, MetadataType
+
+
+class Datum:
+    """
+    A class used to store datum about `GroundTruths` and `Predictions`.
+
+    Parameters
+    ----------
+    uid : str
+        The UID of the `Datum`.
+    metadata : dict
+        A dictionary of metadata that describes the `Datum`.
+    geospatial :  dict
+        A GeoJSON-style dictionary describing the geospatial coordinates of the `Datum`.
+    """
+
+    uid: Union[str, StringMapper] = StringMapper(name="datum_uids")
+    metadata: Union[MetadataType, DictionaryMapper] = DictionaryMapper(
+        name="datum_metadata"
+    )
+    geospatial: Union[
+        Optional[GeoJSONType], GeospatialMapper
+    ] = GeospatialMapper(name="datum_geospatial")
+
+    def __init__(
+        self,
+        uid: str,
+        metadata: MetadataType = None,
+        geospatial: GeoJSONType = None,
+    ):
+        self.uid = uid
+        self.metadata = metadata if metadata else {}
+        self.geospatial = geospatial
+        self._validate()
+
+    def _validate(self):
+        """
+        Validates the parameters used to create a `Datum` object.
+        """
+        if not isinstance(self.uid, str):
+            raise TypeError("Attribute `uid` should have type `str`.")
+        validate_metadata(self.metadata)
+        self.metadata = load_metadata(self.metadata)
+
+    def __str__(self):
+        return str(self.to_dict(dataset_name=None).pop("dataset_name"))
+
+    def to_dict(self, dataset_name: Optional[str] = None) -> dict:
+        """
+        Defines how a `Datum` object is transformed into a dictionary.
+
+        Returns
+        ----------
+        dict
+            A dictionary of the `Datum's` attributes.
+        """
+        return {
+            "dataset_name": dataset_name,
+            "uid": self.uid,
+            "metadata": dump_metadata(self.metadata),
+            "geospatial": self.geospatial if self.geospatial else None,
+        }
+
+    @classmethod
+    def from_dict(cls, resp: dict) -> "Datum":
+        resp.pop("dataset_name", None)
+        return cls(**resp)
+
+    def __eq__(self, other):
+        """
+        Defines how `Datums` are compared to one another
+
+        Parameters
+        ----------
+        other : Datum
+            The object to compare with the `Datum`.
+
+        Returns
+        ----------
+        boolean
+            A boolean describing whether the two objects are equal.
+        """
+        if not isinstance(other, Datum):
+            raise TypeError(f"Expected type `{type(Datum)}`, got `{other}`")
+        return self.to_dict() == other.to_dict()
+
+
+class Annotation:
+    """
+    A class used to annotate `GroundTruths` and `Predictions`.
+
+    Parameters
+    ----------
+    task_type: TaskType
+        The task type associated with the `Annotation`.
+    labels: List[Label]
+        A list of labels to use for the `Annotation`.
+    metadata: Dict[str, Union[int, float, str, bool, datetime.datetime, datetime.date, datetime.time]]
+        A dictionary of metadata that describes the `Annotation`.
+    bounding_box: BoundingBox
+        A bounding box to assign to the `Annotation`.
+    polygon: Polygon
+        A polygon to assign to the `Annotation`.
+    multipolygon: MultiPolygon
+        A multipolygon to assign to the `Annotation`.
+    raster: Raster
+        A raster to assign to the `Annotation`.
+    jsonb: Dict
+        A jsonb to assign to the `Annotation`.
+
+    Attributes
+    ----------
+    geometric_area : float
+        The area of the annotation.
+
+    Examples
+    --------
+
+    Classification
+    >>> Annotation(
+    ...     task_type=TaskType.CLASSIFICATION,
+    ...     labels=[
+    ...         Label(key="class", value="dog"),
+    ...         Label(key="category", value="animal"),
+    ...     ]
+    ... )
+
+    Object-Detection BoundingBox
+    >>> annotation = Annotation(
+    ...     task_type=TaskType.DETECTION,
+    ...     labels=[Label(key="k1", value="v1")],
+    ...     bounding_box=box2,
+    ... )
+
+    Object-Detection Polygon
+    >>> annotation = Annotation(
+    ...     task_type=TaskType.DETECTION,
+    ...     labels=[Label(key="k1", value="v1")],
+    ...     polygon=polygon1,
+    ... )
+
+    Object-Detection Mulitpolygon
+    >>> annotation = Annotation(
+    ...     task_type=TaskType.DETECTION,
+    ...     labels=[Label(key="k1", value="v1")],
+    ...     multipolygon=multipolygon,
+    ... )
+
+    Object-Detection Raster
+    >>> annotation = Annotation(
+    ...     task_type=TaskType.DETECTION,
+    ...     labels=[Label(key="k1", value="v1")],
+    ...     raster=raster1,
+    ... )
+
+    Semantic-Segmentation Raster
+    >>> annotation = Annotation(
+    ...     task_type=TaskType.SEGMENTATION,
+    ...     labels=[Label(key="k1", value="v1")],
+    ...     raster=raster1,
+    ... )
+
+    Defining all supported annotation-types for a given task_type is allowed!
+    >>> Annotation(
+    ...     task_type=TaskType.DETECTION,
+    ...     labels=[Label(key="k1", value="v1")],
+    ...     bounding_box=box1,
+    ...     polygon=polygon1,
+    ...     multipolygon=multipolygon,
+    ...     raster=raster1,
+    ... )
+    """
+
+    task_type: Union[TaskType, StringMapper] = StringMapper(name="task_types")
+    labels: Union[List[Label], LabelMapper] = LabelMapper(name="labels")
+    metadata: Union[MetadataType, DictionaryMapper] = DictionaryMapper(
+        "annotation_metadata"
+    )
+    bounding_box: Union[
+        Optional[BoundingBox], GeometryMapper
+    ] = GeometryMapper("annotation_bounding_box")
+    polygon: Union[Optional[Polygon], GeometryMapper] = GeometryMapper(
+        "annotation_polygon"
+    )
+    multipolygon: Union[
+        Optional[MultiPolygon], GeometryMapper
+    ] = GeometryMapper("annotation_multipolygon")
+    raster: Union[Optional[Raster], GeometryMapper] = GeometryMapper(
+        "annotation_raster"
+    )
+
+    def __init__(
+        self,
+        task_type: TaskType,
+        labels: List[Label],
+        metadata: MetadataType = None,
+        bounding_box: BoundingBox = None,
+        polygon: Polygon = None,
+        multipolygon: MultiPolygon = None,
+        raster: Raster = None,
+    ):
+        self.task_type = task_type
+        self.labels = labels
+        self.metadata = metadata if metadata else {}
+        self.bounding_box = bounding_box
+        self.polygon = polygon
+        self.multipolygon = multipolygon
+        self.raster = raster
+        self._validate()
+
+    def _validate(self):
+        """
+        Validates the parameters used to create a `Annotation` object.
+        """
+        # task_type
+        if not isinstance(self.task_type, TaskType):
+            self.task_type = TaskType(self.task_type)
+
+        # labels
+        if not isinstance(self.labels, list):
+            raise TypeError(
+                "Attribute `labels` should have type `List[velour.Label]`."
+            )
+        for idx, label in enumerate(self.labels):
+            if isinstance(self.labels[idx], dict):
+                self.labels[idx] = Label(**label)
+            if not isinstance(self.labels[idx], Label):
+                raise TypeError(
+                    f"Attribute `labels[{idx}]` should have type `velour.Label`."
+                )
+
+        # bounding box
+        if self.bounding_box:
+            if isinstance(self.bounding_box, dict):
+                self.bounding_box = BoundingBox(**self.bounding_box)
+            if not isinstance(self.bounding_box, BoundingBox):
+                raise TypeError(
+                    "Attribute `bounding_box` should have type `velour.schemas.BoundingBox`."
+                )
+
+        # polygon
+        if self.polygon:
+            if isinstance(self.polygon, dict):
+                self.polygon = Polygon(**self.polygon)
+            if not isinstance(self.polygon, Polygon):
+                raise TypeError(
+                    "Attribute `polygon` should have type `velour.schemas.Polygon`."
+                )
+
+        # multipolygon
+        if self.multipolygon:
+            if isinstance(self.multipolygon, dict):
+                self.multipolygon = MultiPolygon(**self.multipolygon)
+            if not isinstance(self.multipolygon, MultiPolygon):
+                raise TypeError(
+                    "Attribute `multipolygon` should have type `velour.schemas.MultiPolygon`."
+                )
+
+        # raster
+        if self.raster:
+            if isinstance(self.raster, dict):
+                self.raster = Raster(**self.raster)
+            if not isinstance(self.raster, Raster):
+                raise TypeError(
+                    "Attribute `raster` should have type `velour.schemas.Raster`."
+                )
+
+        # metadata
+        if not isinstance(self.metadata, dict):
+            raise TypeError("Attribute `metadata` should have type `dict`.")
+        validate_metadata(self.metadata)
+        self.metadata = load_metadata(self.metadata)
+
+    def __str__(self):
+        return str(self.to_dict())
+
+    def to_dict(self) -> dict:
+        """
+        Defines how a `Annotation` object is transformed into a dictionary.
+
+        Returns
+        ----------
+        dict
+            A dictionary of the `Annotation's` attributes.
+        """
+        return {
+            "task_type": self.task_type.value,
+            "labels": [asdict(label) for label in self.labels],
+            "metadata": dump_metadata(self.metadata),
+            "bounding_box": asdict(self.bounding_box)
+            if self.bounding_box
+            else None,
+            "polygon": asdict(self.polygon) if self.polygon else None,
+            "multipolygon": asdict(self.multipolygon)
+            if self.multipolygon
+            else None,
+            "raster": asdict(self.raster) if self.raster else None,
+        }
+
+    @classmethod
+    def from_dict(cls, resp: dict):
+        return cls(**resp)
+
+    def __eq__(self, other):
+        """
+        Defines how `Annotations` are compared to one another
+
+        Parameters
+        ----------
+        other : Annotation
+            The object to compare with the `Annotation`.
+
+        Returns
+        ----------
+        boolean
+            A boolean describing whether the two objects are equal.
+        """
+        if not isinstance(other, Annotation):
+            raise TypeError(
+                f"Expected type `{type(Annotation)}`, got `{other}`"
+            )
+        return self.to_dict() == other.to_dict()
+
+
+class GroundTruth:
+    """
+    An object describing a groundtruth (e.g., a human-drawn bounding box on an image).
+
+    Parameters
+    ----------
+    datum : Datum
+        The `Datum` associated with the `GroundTruth`.
+    annotations : List[Annotation]
+        The list of `Annotations` associated with the `GroundTruth`.
+    """
+
+    def __init__(self, datum: Datum, annotations: List[Annotation]):
+        self.datum = datum
+        self.annotations = annotations
+        self._validate()
+
+    def _validate(self):
+        """
+        Validate the inputs of the `GroundTruth`.
+        """
+        # validate datum
+        if isinstance(self.datum, dict):
+            self.datum = Datum(**self.datum)
+        if not isinstance(self.datum, Datum):
+            raise TypeError(
+                "Attribute `datum` should have type `velour.Datum`."
+            )
+
+        # validate annotations
+        if not isinstance(self.annotations, list):
+            raise TypeError(
+                "Attribute `datum` should have type `List[velour.Annotation]`."
+            )
+        for idx, annotation in enumerate(self.annotations):
+            if isinstance(self.annotations[idx], dict):
+                self.annotations[idx] = Annotation(**annotation)
+            if not isinstance(self.annotations[idx], Annotation):
+                raise TypeError(
+                    f"Attribute `annotations[{idx}]` should have type `velour.Annotation`."
+                )
+
+    def __str__(self):
+        return str(self.to_dict(None))
+
+    def to_dict(
+        self,
+        dataset_name: Optional[str] = None,
+    ) -> dict:
+        """
+        Defines how a `GroundTruth` is transformed into a dictionary.
+
+        Returns
+        ----------
+        dict
+            A dictionary of the `GroundTruth's` attributes.
+        """
+        return {
+            "datum": self.datum.to_dict(dataset_name),
+            "annotations": [
+                annotation.to_dict() for annotation in self.annotations
+            ],
+        }
+
+    @classmethod
+    def from_dict(cls, resp: dict):
+        return cls(
+            datum=Datum.from_dict(resp["datum"]),
+            annotations=resp["annotations"],
+        )
+
+    def __eq__(self, other):
+        """
+        Defines how `GroundTruths` are compared to one another
+
+        Parameters
+        ----------
+        other : GroundTruth
+            The object to compare with the `GroundTruth`.
+
+        Returns
+        ----------
+        boolean
+            A boolean describing whether the two objects are equal.
+        """
+        if not isinstance(other, GroundTruth):
+            raise TypeError(
+                f"Expected type `{type(GroundTruth)}`, got `{other}`"
+            )
+        return self.dict() == other.dict()
+
+
+class Prediction:
+    """
+    An object describing a prediction (e.g., a machine-drawn bounding box on an image).
+
+    Parameters
+    ----------
+    datum : Datum
+        The `Datum` associated with the `Prediction`.
+    annotations : List[Annotation]
+        The list of `Annotations` associated with the `Prediction`.
+
+    Attributes
+    ----------
+    score : Union[float, int]
+        The score assigned to the `Prediction`.
+    """
+
+    def __init__(self, datum: Datum, annotations: List[Annotation] = None):
+        self.datum = datum
+        self.annotations = annotations
+        self._validate()
+
+    def _validate(self):
+        """
+        Validate the inputs of the `Prediction`.
+        """
+        # validate datum
+        if isinstance(self.datum, dict):
+            self.datum = Datum(**self.datum)
+        if not isinstance(self.datum, Datum):
+            raise TypeError(
+                "Attribute `datum` should have type `velour.Datum`."
+            )
+
+        # validate annotations
+        if not isinstance(self.annotations, list):
+            raise TypeError(
+                "Attribute `datum` should have type `List[velour.Annotation]`."
+            )
+        for idx, annotation in enumerate(self.annotations):
+            if isinstance(self.annotations[idx], dict):
+                self.annotations[idx] = Annotation(**annotation)
+            if not isinstance(self.annotations[idx], Annotation):
+                raise TypeError(
+                    f"Attribute `annotations[{idx}]` should have type `velour.Annotation`."
+                )
+
+        # TaskType-specific validations
+        for annotation in self.annotations:
+            if annotation.task_type in [
+                TaskType.CLASSIFICATION,
+                TaskType.DETECTION,
+            ]:
+                for label in annotation.labels:
+                    if label.score is None:
+                        raise ValueError(
+                            f"For task type `{annotation.task_type}` prediction labels must have scores, but got `None`"
+                        )
+            if annotation.task_type == TaskType.CLASSIFICATION:
+                label_keys_to_sum = {}
+                for scored_label in annotation.labels:
+                    label_key = scored_label.key
+                    if label_key not in label_keys_to_sum:
+                        label_keys_to_sum[label_key] = 0.0
+                    label_keys_to_sum[label_key] += scored_label.score
+
+                for k, total_score in label_keys_to_sum.items():
+                    if abs(total_score - 1) > 1e-5:
+                        raise ValueError(
+                            "For each label key, prediction scores must sum to 1, but"
+                            f" for label key {k} got scores summing to {total_score}."
+                        )
+
+    def __str__(self):
+        return str(self.to_dict(None, None))
+
+    def to_dict(
+        self,
+        dataset_name: Optional[str] = None,
+        model_name: Optional[str] = None,
+    ) -> dict:
+        """
+        Defines how a `Prediction` is transformed into a dictionary.
+
+        Returns
+        ----------
+        dict
+            A dictionary of the `Prediction's` attributes.
+        """
+        return {
+            "datum": self.datum.to_dict(dataset_name=dataset_name),
+            "model_name": model_name,
+            "annotations": [
+                annotation.to_dict() for annotation in self.annotations
+            ],
+        }
+
+    @classmethod
+    def from_dict(cls, resp: dict):
+        return cls(
+            datum=Datum.from_dict(resp["datum"]),
+            annotations=resp["annotations"],
+        )
+
+    def __eq__(self, other):
+        """
+        Defines how `Predictions` are compared to one another
+
+        Parameters
+        ----------
+        other : Prediction
+            The object to compare with the `Prediction`.
+
+        Returns
+        ----------
+        boolean
+            A boolean describing whether the two objects are equal.
+        """
+        if not isinstance(other, Prediction):
+            raise TypeError(
+                f"Expected type `{type(Prediction)}`, got `{other}`"
+            )
+        return self.dict(None, None) == other.dict(None, None)
 
 
 class Evaluation:
@@ -254,7 +791,7 @@ class Dataset:
             client.delete_dataset(name, timeout=30)
 
         if delete_if_exists or client.get_dataset(name) is None:
-            client.create_dataset(self.dict())
+            client.create_dataset(self.to_dict())
 
         for k, v in client.get_dataset(name).items():
             setattr(self, k, v)
@@ -276,9 +813,9 @@ class Dataset:
         self.metadata = load_metadata(self.metadata)
 
     def __str__(self):
-        return str(self.dict())
+        return str(self.to_dict())
 
-    def dict(self) -> dict:
+    def to_dict(self) -> dict:
         """
         Defines how a `Dataset` object is transformed into a dictionary.
 
@@ -313,10 +850,10 @@ class Dataset:
             warnings.warn(
                 f"GroundTruth for datum with uid `{groundtruth.datum.uid}` contains no annotations."
             )
-        
+
         self.client._requests_post_rel_host(
             "groundtruths",
-            json=groundtruth.to_json(self.name),
+            json=groundtruth.to_dict(self.name),
         )
 
     def get_groundtruth(self, datum: Union[Datum, str]) -> GroundTruth:
@@ -338,7 +875,7 @@ class Dataset:
         resp = self.client._requests_get_rel_host(
             f"groundtruths/dataset/{self.name}/datum/{uid}"
         ).json()
-        return GroundTruth.from_json(resp)
+        return GroundTruth.from_dict(resp)
 
     def get_labels(
         self,
@@ -371,7 +908,7 @@ class Dataset:
         datums = self.client.get_datums(
             filters=Filter(dataset_names=[self.name])
         )
-        return [Datum.from_json(datum) for datum in datums]
+        return [Datum.from_dict(datum) for datum in datums]
 
     def get_evaluations(
         self,
@@ -504,7 +1041,7 @@ class Model:
             client.delete_model(name, timeout=30)
 
         if delete_if_exists or client.get_model(name) is None:
-            client.create_model(self.dict())
+            client.create_model(self.to_dict())
 
         for k, v in client.get_model(name).items():
             setattr(self, k, v)
@@ -528,7 +1065,7 @@ class Model:
     def __str__(self):
         return str(self.dict())
 
-    def dict(self) -> dict:
+    def to_dict(self) -> dict:
         """
         Defines how a `Model` object is transformed into a dictionary.
 
@@ -566,15 +1103,15 @@ class Model:
             )
 
         dataset_name = (
-            dataset.name 
-            if isinstance(dataset, Dataset) 
-            else dataset
+            dataset.name if isinstance(dataset, Dataset) else dataset
         )
         return self.client._requests_post_rel_host(
             "predictions",
-            json=prediction.to_json(dataset_name=dataset_name, model_name=self.name),
+            json=prediction.to_dict(
+                dataset_name=dataset_name, model_name=self.name
+            ),
         )
-    
+
     def get_prediction(self, dataset: Dataset, datum: Datum) -> Prediction:
         """
         Fetch a particular prediction.
@@ -592,7 +1129,7 @@ class Model:
         resp = self.client._requests_get_rel_host(
             f"predictions/model/{self.name}/dataset/{dataset.name}/datum/{datum.uid}",
         ).json()
-        return Prediction.from_json(resp)
+        return Prediction.from_dict(resp)
 
     def finalize_inferences(self, dataset: "Dataset") -> None:
         """

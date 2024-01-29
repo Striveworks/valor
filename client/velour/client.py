@@ -1,18 +1,16 @@
-import os
 import logging
+import os
 import time
-import requests
-from packaging import version
 from dataclasses import asdict
 from typing import Callable, List, Optional, TypeVar, Union
 from urllib.parse import urlencode, urljoin
 
+import requests
+from packaging import version
+
 from velour import __version__ as client_version
 from velour.enums import TableStatus
-from velour.schemas import (
-    EvaluationRequest,
-    Filter,
-)
+from velour.schemas import EvaluationRequest, Filter
 
 T = TypeVar("T")
 
@@ -550,5 +548,3 @@ class Client:
             "evaluations", json=asdict(req)
         ).json()
         return resp
-
-

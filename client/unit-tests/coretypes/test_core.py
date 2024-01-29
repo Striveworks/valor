@@ -2,8 +2,7 @@ import copy
 
 import pytest
 
-from velour import enums
-from velour.schemas.core import Annotation, Datum, GroundTruth, Label, Prediction
+from velour import Annotation, Datum, GroundTruth, Label, Prediction, enums
 
 
 def test_datum():
