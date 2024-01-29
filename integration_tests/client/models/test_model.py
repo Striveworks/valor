@@ -31,7 +31,7 @@ from velour_api.backend import models
 def _list_of_points_from_wkt_polygon(
     db: Session, det: models.Annotation
 ) -> list[Point]:
-    geo = json.loads(db.scalar(det.polygon.ST_AsGeoJSON()))
+    geo = json.loads(db.scalar(det.polygon.ST_AsGeoJSON()) or "")
     assert len(geo["coordinates"]) == 1
     return [Point(p[0], p[1]) for p in geo["coordinates"][0][:-1]]
 
@@ -185,6 +185,7 @@ def test_create_image_model_with_predicted_detections(
     fx_point_lists = []
     for pd in pred_poly_dets:
         for ann in pd.annotations:
+            assert ann.polygon is not None
             fx_point_lists.append(ann.polygon.boundary.points)
 
     # check boundary
@@ -233,6 +234,7 @@ def test_create_model_with_predicted_segmentations(
     png_from_db = db.scalar(ST_AsPNG(raster_uid1))
     f = io.BytesIO(png_from_db.tobytes())
     mask_array = np.array(PIL.Image.open(f))
+    assert pred_instance_segs[0].annotations[0].raster is not None
     np.testing.assert_equal(
         mask_array, pred_instance_segs[0].annotations[0].raster.to_numpy()
     )
@@ -241,6 +243,7 @@ def test_create_model_with_predicted_segmentations(
     png_from_db = db.scalar(ST_AsPNG(raster_uid2))
     f = io.BytesIO(png_from_db.tobytes())
     mask_array = np.array(PIL.Image.open(f))
+    assert pred_instance_segs[1].annotations[0].raster is not None
     np.testing.assert_equal(
         mask_array, pred_instance_segs[1].annotations[0].raster.to_numpy()
     )
@@ -403,7 +406,7 @@ def test_add_prediction(
 
     # make sure we get an error when passing a non-Prediction object to add_prediction
     with pytest.raises(TypeError):
-        model.add_prediction(dataset, "not_a_pred")
+        model.add_prediction(dataset, "not_a_pred")  # type: ignore
 
     for pd in pred_dets:
         model.add_prediction(dataset, pd)
@@ -454,7 +457,7 @@ def test_add_empty_prediction(
 
     # make sure we get an error when passing a non-Prediction object to add_prediction
     with pytest.raises(TypeError):
-        model.add_prediction(dataset, "not_a_pred")
+        model.add_prediction(dataset, "not_a_pred")  # type: ignore
 
     # make sure we get a warning when adding a prediction without annotations
     with pytest.warns(UserWarning):
@@ -512,7 +515,7 @@ def test_add_skipped_prediction(
 
 def test_validate_model(client: Client, model_name: str):
     with pytest.raises(TypeError):
-        Model(client, name=123)
+        Model(client, name=123)  # type: ignore
 
     with pytest.raises(TypeError):
-        Model(client, name=model_name, id="not an int")
+        Model(client, name=model_name, id="not an int")  # type: ignore

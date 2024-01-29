@@ -19,7 +19,7 @@ def _test_create_image_dataset_with_gts(
     dataset_name: str,
     gts: list[Any],
     expected_labels_tuples: set[tuple[str, str]],
-    expected_image_uids: list[str],
+    expected_image_uids: set[str],
 ) -> Dataset:
     """This test does the following
     - Creates a dataset
@@ -50,13 +50,13 @@ def _test_create_image_dataset_with_gts(
     # check that the dataset has two images
     images = dataset.get_datums()
     assert len(images) == len(expected_image_uids)
-    assert set([image.uid for image in images]) == expected_image_uids
+    assert set([image._uid for image in images]) == expected_image_uids
 
     # check that there are two labels
     labels = dataset.get_labels()
     assert len(labels) == len(expected_labels_tuples)
     assert (
-        set([(label.key, label.value) for label in labels])
+        set([(label._key, label.value) for label in labels])
         == expected_labels_tuples
     )
 
@@ -131,9 +131,9 @@ def test_create_image_dataset_with_detections(
     gt_dets_uid1 = []
     gt_dets_uid2 = []
     for gt in gt_dets1 + gt_dets2:
-        if gt.datum.uid == "uid1":
+        if gt.datum._uid == "uid1":
             gt_dets_uid1.extend(gt.annotations)
-        elif gt.datum.uid == "uid2":
+        elif gt.datum._uid == "uid2":
             gt_dets_uid2.extend(gt.annotations)
     assert dets1.annotations == gt_dets_uid1
     assert dets2.annotations == gt_dets_uid2
@@ -380,7 +380,7 @@ def test_get_summary(
     assert summary.num_rasters == 1
     assert summary.task_types == [TaskType.DETECTION, TaskType.SEGMENTATION]
 
-    summary.labels.sort(key=lambda x: x.key)
+    summary.labels.sort(key=lambda x: x._key)
     assert summary.labels == [
         Label(key="k1", value="v1"),
         Label(key="k2", value="v2"),
@@ -395,7 +395,7 @@ def test_get_summary(
 
 def test_validate_dataset(client: Client, dataset_name: str):
     with pytest.raises(TypeError):
-        Dataset(client, name=123)
+        Dataset(client, name=123)  # type: ignore
 
     with pytest.raises(TypeError):
-        Dataset(client, name=dataset_name, id="not an int")
+        Dataset(client, name=dataset_name, id="not an int")  # type: ignore

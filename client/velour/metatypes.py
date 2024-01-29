@@ -1,10 +1,10 @@
-from typing import Dict, List, Union
+from typing import Dict, List, Optional, Union, cast
 
 import PIL.Image
 
 from velour import Datum
 from velour.schemas import validate_metadata
-from velour.types import MetadataType
+from velour.types import MetadataType, DictMetadataType, GeoJSONType
 
 
 class ImageMetadata:
@@ -30,22 +30,14 @@ class ImageMetadata:
         uid: str,
         height: int,
         width: int,
-        metadata: MetadataType = None,
-        geospatial: Dict[
-            str,
-            Union[
-                List[List[List[List[Union[float, int]]]]],
-                List[List[List[Union[float, int]]]],
-                List[Union[float, int]],
-                str,
-            ],
-        ] = None,
+        metadata: Optional[MetadataType] = None,
+        geospatial: Optional[GeoJSONType] = None,
     ):
         self.uid = uid
         self._dataset_name = None
         self.height = height
         self.width = width
-        self.metadata = metadata if metadata else {}
+        self.metadata: DictMetadataType = dict(metadata) if metadata else {}
         self.geospatial = geospatial if geospatial else {}
 
         if not isinstance(self.uid, str):
@@ -82,11 +74,13 @@ class ImageMetadata:
             raise ValueError(
                 f"`datum` does not contain height and/or width in metadata `{datum.metadata}`"
             )
-        metadata = datum.metadata.copy()
+        metadata = dict(datum.metadata)
+        width = cast(int, metadata.pop("width"))
+        height = cast(int, metadata.pop("height"))
         img = cls(
             uid=datum.uid,
-            height=int(metadata.pop("height")),
-            width=int(metadata.pop("width")),
+            height=int(height),
+            width=int(width),
             metadata=metadata,
         )
         return img
@@ -114,7 +108,7 @@ class ImageMetadata:
         """
         Converts an `ImageMetadata` object into a `Datum`.
         """
-        metadata = self.metadata.copy() if self.metadata else {}
+        metadata = dict(self.metadata) if self.metadata else {}
         geospatial = self.geospatial.copy() if self.geospatial else {}
 
         metadata["height"] = self.height
@@ -181,10 +175,10 @@ class VideoFrameMetadata:
                 f"`datum` does not contain height, width and/or frame in metadata `{datum.metadata}`"
             )
         image = ImageMetadata.from_datum(datum)
-        frame = image.metadata.pop("frame")
+        frame = cast(int, image.metadata.pop("frame"))
         return cls(
             image=image,
-            frame=frame,
+            frame=int(frame),
         )
 
     def to_datum(self) -> Datum:

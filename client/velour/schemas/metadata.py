@@ -1,5 +1,6 @@
 import datetime
-from copy import deepcopy
+
+from velour.types import MetadataType, ConvertibleMetadataType, DictMetadataType
 
 
 def _validate_href(value: str):
@@ -9,7 +10,7 @@ def _validate_href(value: str):
         raise ValueError("`href` must start with http:// or https://")
 
 
-def validate_metadata(metadata: dict):
+def validate_metadata(metadata: MetadataType):
     """Validates metadata dictionary."""
     if not isinstance(metadata, dict):
         raise TypeError("`metadata` should be an object of type `dict`.")
@@ -30,39 +31,45 @@ def validate_metadata(metadata: dict):
 
         # Handle special key-values
         if key == "href":
+            if not isinstance(value, str):
+                raise TypeError("The metadata key `href` is reserved for values of type `str`.")
             _validate_href(value)
 
 
-def dump_metadata(metadata: dict) -> dict:
+def dump_metadata(metadata: MetadataType) -> ConvertibleMetadataType:
     """Ensures that all nested attributes are numerics or str types."""
-    metadata = deepcopy(metadata)
+    _metadata: ConvertibleMetadataType = {}
     for key, value in metadata.items():
         if isinstance(value, datetime.datetime):
-            metadata[key] = {"datetime": value.isoformat()}
+            _metadata[key] = {"datetime": value.isoformat()}
         elif isinstance(value, datetime.date):
-            metadata[key] = {"date": value.isoformat()}
+            _metadata[key] = {"date": value.isoformat()}
         elif isinstance(value, datetime.time):
-            metadata[key] = {"time": value.isoformat()}
+            _metadata[key] = {"time": value.isoformat()}
         elif isinstance(value, datetime.timedelta):
-            metadata[key] = {"duration": str(value.total_seconds())}
-    return metadata
+            _metadata[key] = {"duration": str(value.total_seconds())}
+        else:
+            _metadata[key] = value
+    return _metadata
 
 
-def load_metadata(metadata: dict) -> dict:
+def load_metadata(metadata: ConvertibleMetadataType) -> MetadataType:
     """Reconstructs nested objects from primitive types."""
-    metadata = deepcopy(metadata)
+    _metadata: DictMetadataType = {}
     for key, value in metadata.items():
         if isinstance(value, dict):
             if "datetime" in value:
-                metadata[key] = datetime.datetime.fromisoformat(
+                _metadata[key] = datetime.datetime.fromisoformat(
                     value["datetime"]
                 )
             elif "date" in value:
-                metadata[key] = datetime.date.fromisoformat(value["date"])
+                _metadata[key] = datetime.date.fromisoformat(value["date"])
             elif "time" in value:
-                metadata[key] = datetime.time.fromisoformat(value["time"])
+                _metadata[key] = datetime.time.fromisoformat(value["time"])
             elif "duration" in value:
-                metadata[key] = datetime.timedelta(
+                _metadata[key] = datetime.timedelta(
                     seconds=float(value["duration"])
                 )
-    return metadata
+        else:
+            _metadata[key] = value
+    return _metadata

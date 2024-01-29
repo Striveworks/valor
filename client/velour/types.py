@@ -1,21 +1,27 @@
 import datetime
-from typing import Dict, List, Union
+from typing import Dict, List, Union, Mapping, Sequence
 
-from velour.schemas import geometry
+from velour.schemas import geometry, constraints
 
 ValueType = Union[int, float, str, bool, Dict[str, str]]
 
-MetadataType = Dict[
+MetadataValueType = Union[
+    int,
+    float,
+    str,
+    bool,
+    datetime.datetime,
+    datetime.date,
+    datetime.time,
+    datetime.timedelta,
+]
+MetadataType = Mapping[str, MetadataValueType]
+DictMetadataType = Dict[str, MetadataValueType]
+ConvertibleMetadataType = Mapping[
     str,
     Union[
-        int,
-        float,
-        str,
-        bool,
-        datetime.datetime,
-        datetime.date,
-        datetime.time,
-        datetime.timedelta,
+        MetadataValueType,
+        Dict[str, str],
     ],
 ]
 

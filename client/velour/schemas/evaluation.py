@@ -1,5 +1,5 @@
-from dataclasses import dataclass, field
-from typing import List, Union
+from dataclasses import dataclass
+from typing import List, Optional, Union
 
 from velour.enums import AnnotationType, TaskType
 from velour.schemas.filters import Filter
@@ -21,9 +21,9 @@ class EvaluationParameters:
     task_type: TaskType
 
     # object detection
-    convert_annotations_to_type: AnnotationType = None
-    iou_thresholds_to_compute: List[float] = None
-    iou_thresholds_to_return: List[float] = None
+    convert_annotations_to_type: Optional[AnnotationType] = None
+    iou_thresholds_to_compute: Optional[List[float]] = None
+    iou_thresholds_to_return: Optional[List[float]] = None
 
 
 @dataclass
@@ -45,9 +45,7 @@ class EvaluationRequest:
 
     model_names: Union[str, List[str]]
     datum_filter: Filter
-    parameters: EvaluationParameters = field(
-        default_factory=EvaluationParameters
-    )
+    parameters: EvaluationParameters
 
     def __post_init__(self):
         if isinstance(self.datum_filter, dict):

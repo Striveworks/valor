@@ -1,8 +1,16 @@
 from dataclasses import dataclass
-from typing import Dict, List
+from typing import Dict, List, Optional, Sequence, Iterable, Iterator, Union
 
 from velour.enums import AnnotationType, TaskType
 from velour.schemas.constraints import BinaryExpression, Constraint
+
+
+FilterExpressionsType = Sequence[
+    Union[
+        BinaryExpression, 
+        Sequence[BinaryExpression]
+    ]
+]
 
 
 @dataclass
@@ -12,43 +20,42 @@ class Filter:
 
     Attributes
     ----------
-    dataset_names: List[str]
+    dataset_names : List[str], optional
         A list of `Dataset` names to filter on.
-    dataset_metadata: Dict[str, List[Constraint]]
+    dataset_metadata : Dict[str, List[Constraint]], optional
         A dictionary of `Dataset` metadata to filter on.
-    dataset_geospatial: List[Constraint].
+    dataset_geospatial : List[Constraint], optional
         A list of `Dataset` geospatial filters to filter on.
-    model_names: List[str]
+    model_names : List[str], optional
         A list of `Model` names to filter on.
-    model_metadata: Dict[str, List[Constraint]]
+    model_metadata : Dict[str, List[Constraint]], optional
         A dictionary of `Model` metadata to filter on.
-    model_geospatial: List[Constraint]
+    model_geospatial : List[Constraint], optional
         A list of `Model` geospatial filters to filter on.
-    datum_uids: List[str]
+    datum_uids : List[str], optional
         A list of `Datum` UIDs to filter on.
-    datum_metadata: Dict[str, List[Constraint]] = None
+    datum_metadata : Dict[str, List[Constraint]], optional
         A dictionary of `Datum` metadata to filter on.
-    datum_geospatial: List[Constraint]
+    datum_geospatial : List[Constraint], optional
         A list of `Datum` geospatial filters to filter on.
-    task_types: List[TaskType]
+    task_types : List[TaskType], optional
         A list of task types to filter on.
-    annotation_types: List[AnnotationType]
+    annotation_types : List[AnnotationType], optional
         A list of `Annotation` types to filter on.
-    annotation_geometric_area: List[Constraint]
+    annotation_geometric_area : List[Constraint], optional
         A list of `Constraints` which are used to filter `Evaluations` according to the `Annotation`'s geometric area.
-    annotation_metadata: Dict[str, List[Constraint]]
+    annotation_metadata : Dict[str, List[Constraint]], optional
         A dictionary of `Annotation` metadata to filter on.
-    annotation_geospatial: List[Constraint]
+    annotation_geospatial : List[Constraint], optional
         A list of `Annotation` geospatial filters to filter on.
-    prediction_scores: List[Constraint]
+    prediction_scores : List[Constraint], optional
         A list of `Constraints` which are used to filter `Evaluations` according to the `Model`'s prediction scores.
-    labels: List[Label]
+    labels : List[Label], optional
         A list of `Labels' to filter on.
-    label_ids: List[int]
+    label_ids : List[int], optional
         A list of `Label` IDs to filter on.
-    label_keys: List[str] = None
+    label_keys : List[str], optional
         A list of `Label` keys to filter on.
-
 
     Raises
     ------
@@ -59,60 +66,59 @@ class Filter:
     """
 
     # datasets
-    dataset_names: List[str] = None
-    dataset_metadata: Dict[str, List[Constraint]] = None
-    dataset_geospatial: List[Constraint] = None
+    dataset_names: Optional[List[str]] = None
+    dataset_metadata: Optional[Dict[str, List[Constraint]]] = None
+    dataset_geospatial: Optional[List[Constraint]] = None
 
     # models
-    model_names: List[str] = None
-    model_metadata: Dict[str, List[Constraint]] = None
-    model_geospatial: List[Constraint] = None
+    model_names: Optional[List[str]] = None
+    model_metadata: Optional[Dict[str, List[Constraint]]] = None
+    model_geospatial: Optional[List[Constraint]] = None
 
     # datums
-    datum_uids: List[str] = None
-    datum_metadata: Dict[str, List[Constraint]] = None
-    datum_geospatial: List[Constraint] = None
+    datum_uids: Optional[List[str]] = None
+    datum_metadata: Optional[Dict[str, List[Constraint]]] = None
+    datum_geospatial: Optional[List[Constraint]] = None
 
     # annotations
-    task_types: List[TaskType] = None
-    annotation_types: List[AnnotationType] = None
-    annotation_geometric_area: List[Constraint] = None
-    annotation_metadata: Dict[str, List[Constraint]] = None
-    annotation_geospatial: List[Constraint] = None
+    task_types: Optional[List[TaskType]] = None
+    annotation_types: Optional[List[AnnotationType]] = None
+    annotation_geometric_area: Optional[List[Constraint]] = None
+    annotation_metadata: Optional[Dict[str, List[Constraint]]] = None
+    annotation_geospatial: Optional[List[Constraint]] = None
 
     # predictions
-    prediction_scores: List[Constraint] = None
+    prediction_scores: Optional[List[Constraint]] = None
 
     # labels
-    labels: List[Dict[str, str]] = None
-    label_ids: List[int] = None
-    label_keys: List[str] = None
+    labels: Optional[List[Dict[str, str]]] = None
+    label_ids: Optional[List[int]] = None
+    label_keys: Optional[List[str]] = None
 
     @classmethod
-    def create(cls, expressions: List[BinaryExpression]):
+    def create(cls, expressions: FilterExpressionsType):
         """
         Parses a list of `BinaryExpression` to create a `schemas.Filter` object.
 
         Parameters
         ----------
-        expressions: List[BinaryExpression]
-            A list of `BinaryExpressions' to parse into a `Filter` object.
+        expressions: Sequence[Union[BinaryExpression, Sequence[BinaryExpression]]]
+            A list of (lists of) `BinaryExpressions' to parse into a `Filter` object.
         """
 
-        # expand nested expressions
-        expression_list = [
-            expr for expr in expressions if isinstance(expr, BinaryExpression)
-        ] + [
-            expr_
-            for expr in expressions
-            if isinstance(expr, list)
-            for expr_ in expr
-            if isinstance(expr_, BinaryExpression)
-        ]
+        def flatten(
+            t: Iterable[Union[BinaryExpression, Iterable[BinaryExpression]]]
+        ) -> Iterator[BinaryExpression]:
+            """Flatten a nested iterable of BinaryExpressions."""
+            for item in t:
+                if isinstance(item, BinaryExpression):
+                    yield item
+                else:
+                    yield from flatten(item)
 
         # create dict using expr names as keys
         expression_dict = {}
-        for expr in expression_list:
+        for expr in flatten(expressions):
             if expr.name not in expression_dict:
                 expression_dict[expr.name] = []
             expression_dict[expr.name].append(expr)

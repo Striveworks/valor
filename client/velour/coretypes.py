@@ -3,14 +3,13 @@ import math
 import time
 import warnings
 from dataclasses import asdict, dataclass
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union, Sequence
 
 import numpy as np
 
 from velour.client import Client, ClientException
 from velour.enums import AnnotationType, EvaluationStatus, TaskType
 from velour.schemas.constraints import (
-    BinaryExpression,
     DictionaryMapper,
     GeometryMapper,
     GeospatialMapper,
@@ -19,9 +18,10 @@ from velour.schemas.constraints import (
     StringMapper,
 )
 from velour.schemas.evaluation import EvaluationParameters, EvaluationRequest
-from velour.schemas.filters import Filter
+from velour.schemas.filters import Filter, FilterExpressionsType
 from velour.schemas.geometry import BoundingBox, MultiPolygon, Polygon, Raster
 from velour.schemas.metadata import (
+    MetadataType,
     dump_metadata,
     load_metadata,
     validate_metadata,
@@ -96,19 +96,19 @@ class Label:
         if type(other) is not type(self):
             return False
 
-        # if the scores aren't the same type return False
-        if (other.score is None) != (self.score is None):
+        if self.key != other.key or self.value != other.value:
             return False
-
-        scores_equal = (other.score is None and self.score is None) or (
-            math.isclose(self.score, other.score)
-        )
-
-        return (
-            scores_equal
-            and self.key == other.key
-            and self.value == other.value
-        )
+        
+        if self.score is None or other.score is None:
+            return (other.score is None) == (self.score is None)
+        elif type(self.score) is float and type(other.score) is float:
+            return math.isclose(self.score, other.score)
+        elif type(self.score) is int and type(other.score) is int:
+            return self.score == other.score
+        elif type(self.score) is np.floating and type(other.score) is np.floating:
+            return np.isclose(self.score, other.score)
+        else:
+            return False
 
     def __hash__(self) -> int:
         """
@@ -130,6 +130,15 @@ class Label:
         tuple
             A tuple of the `Label's` arguments.
         """
+        if type(self.key) is not str:
+            raise ValueError
+        if type(self.score) is np.floating:
+            return (self.key, self.value, float(self.score))
+        elif (
+            type(self.score) is not int
+            and type(self.score) is not float
+        ):
+            raise ValueError
         return (self.key, self.value, self.score)
 
 
@@ -467,7 +476,7 @@ class GroundTruth:
         The list of `Annotations` associated with the `GroundTruth`.
     """
 
-    def __init__(self, datum: Datum, annotations: List[Annotation]):
+    def __init__(self, datum: Datum, annotations: Sequence[Annotation]):
         self.datum = datum
         self.annotations = annotations
         self._validate()
@@ -564,7 +573,11 @@ class Prediction:
         The score assigned to the `Prediction`.
     """
 
-    def __init__(self, datum: Datum, annotations: List[Annotation] = None):
+    def __init__(
+        self, 
+        datum: Datum, 
+        annotations: List[Annotation],
+    ):
         self.datum = datum
         self.annotations = annotations
         self._validate()
@@ -697,7 +710,7 @@ class Evaluation:
             A list of confusion matrix dictionaries returned by the job.
         """
         self.client = client
-        self._from_dict(**kwargs)
+        self.update(**kwargs)
 
     def dict(self):
         return {
@@ -711,7 +724,7 @@ class Evaluation:
             **self.kwargs,
         }
 
-    def _from_dict(
+    def update(
         self,
         *_,
         id: int,
@@ -719,8 +732,8 @@ class Evaluation:
         datum_filter: Filter,
         parameters: EvaluationParameters,
         status: EvaluationStatus,
-        metrics: List[dict],
-        confusion_matrices: List[dict],
+        metrics: List[Dict],
+        confusion_matrices: List[Dict],
         **kwargs,
     ):
         self.id = id
@@ -739,6 +752,10 @@ class Evaluation:
         self.metrics = metrics
         self.confusion_matrices = confusion_matrices
         self.kwargs = kwargs
+        self.ignored_pred_labels: Optional[List[Label]] = None
+        self.missing_pred_labels: Optional[List[Label]] = None
+        self.ignored_pred_keys: Optional[List[str]] = None
+        self.missing_pred_keys: Optional[List[str]] = None
 
         for k, v in kwargs.items():
             setattr(self, k, v)
@@ -762,13 +779,13 @@ class Evaluation:
         response = self.client.get_evaluations(evaluation_ids=[self.id])
         if not response:
             raise ClientException("Not Found")
-        self._from_dict(**response[0])
+        self.update(**response[0])
         return self.status
 
     def wait_for_completion(
         self,
         *,
-        timeout: int = None,
+        timeout: Optional[int] = None,
         interval: float = 1.0,
     ) -> EvaluationStatus:
         """
@@ -793,7 +810,7 @@ class Evaluation:
 
     def to_dataframe(
         self,
-        stratify_by: Tuple[str, str] = None,
+        stratify_by: Optional[Tuple[str, str]] = None,
     ):
         """
         Get all metrics associated with a Model and return them in a `pd.DataFrame`.
@@ -924,7 +941,7 @@ class Dataset:
         if delete_if_exists or client.get_dataset(name) is None:
             client.create_dataset(self.to_dict())
 
-        for k, v in client.get_dataset(name).items():
+        for k, v in (client.get_dataset(name) or {}).items():
             setattr(self, k, v)
         self.client = client
 
@@ -1174,7 +1191,7 @@ class Model:
         if delete_if_exists or client.get_model(name) is None:
             client.create_model(self.to_dict())
 
-        for k, v in client.get_model(name).items():
+        for k, v in (client.get_model(name) or {}).items():
             setattr(self, k, v)
         self.client = client
 
@@ -1272,9 +1289,9 @@ class Model:
 
     def _format_filters(
         self,
-        datasets: Union[Dataset, List[Dataset]],
-        filters: Union[Dict, List[BinaryExpression]],
-    ) -> Union[dict, Filter]:
+        datasets: Optional[Union[Dataset, List[Dataset]]],
+        filters: Optional[Union[Dict, FilterExpressionsType]],
+    ) -> Filter:
         """Formats evaluation request's `datum_filter` input."""
 
         # get list of dataset names
@@ -1285,19 +1302,20 @@ class Model:
             dataset_names_from_obj = [datasets.name]
 
         # format filtering object
-        if isinstance(filters, list) or filters is None:
+        if isinstance(filters, Sequence) or filters is None:
             filters = filters if filters else []
-            filters = Filter.create(filters)
+            filter_obj = Filter.create(filters)
 
             # reset model name
-            filters.model_names = None
-            filters.model_geospatial = None
-            filters.model_metadata = None
+            filter_obj.model_names = None
+            filter_obj.model_geospatial = None
+            filter_obj.model_metadata = None
 
             # set dataset names
-            if not filters.dataset_names:
-                filters.dataset_names = []
-            filters.dataset_names.extend(dataset_names_from_obj)
+            if not filter_obj.dataset_names:
+                filter_obj.dataset_names = []
+            filter_obj.dataset_names.extend(dataset_names_from_obj)
+            return filter_obj
 
         elif isinstance(filters, dict):
             # reset model name
@@ -1313,12 +1331,12 @@ class Model:
                 filters["dataset_names"] = []
             filters["dataset_names"].extend(dataset_names_from_obj)
 
-        return filters
+        return Filter(**filters)
 
     def evaluate_classification(
         self,
-        datasets: Union[Dataset, List[Dataset]] = None,
-        filters: Union[Dict, List[BinaryExpression]] = None,
+        datasets: Optional[Union[Dataset, List[Dataset]]] = None,
+        filters: Optional[Union[Dict, FilterExpressionsType]] = None,
     ) -> Evaluation:
         """
         Start a classification evaluation job.
@@ -1327,7 +1345,7 @@ class Model:
         ----------
         datasets : Union[Dataset, List[Dataset]], optional
             The dataset or list of datasets to evaluate against.
-        filters : Union[Dict, List[BinaryExpression]]
+        filters : Union[Dict, FilterExpressionsType = Sequence[Union[BinaryExpression, Sequence[BinaryExpression]]]], optional
             Optional set of filters to constrain evaluation by.
 
         Returns
@@ -1364,11 +1382,11 @@ class Model:
 
     def evaluate_detection(
         self,
-        datasets: Union[Dataset, List[Dataset]] = None,
-        filters: Union[Dict, List[BinaryExpression]] = None,
-        convert_annotations_to_type: AnnotationType = None,
-        iou_thresholds_to_compute: List[float] = None,
-        iou_thresholds_to_return: List[float] = None,
+        datasets: Optional[Union[Dataset, List[Dataset]]] = None,
+        filters: Optional[Union[Dict, FilterExpressionsType]] = None,
+        convert_annotations_to_type: Optional[AnnotationType] = None,
+        iou_thresholds_to_compute: Optional[List[float]] = None,
+        iou_thresholds_to_return: Optional[List[float]] = None,
     ) -> Evaluation:
         """
         Start a object-detection evaluation job.
@@ -1377,7 +1395,7 @@ class Model:
         ----------
         datasets : Union[Dataset, List[Dataset]], optional
             The dataset or list of datasets to evaluate against.
-        filters : Union[Dict, List[BinaryExpression]], optional
+        filters : Union[Dict, FilterExpressionsType = Sequence[Union[BinaryExpression, Sequence[BinaryExpression]]]], optional
             Optional set of filters to constrain evaluation by.
         convert_annotations_to_type : enums.AnnotationType, optional
             Forces the object detection evaluation to compute over this type.
@@ -1429,8 +1447,8 @@ class Model:
 
     def evaluate_segmentation(
         self,
-        datasets: Union[Dataset, List[Dataset]] = None,
-        filters: Union[Dict, List[BinaryExpression]] = None,
+        datasets: Optional[Union[Dataset, List[Dataset]]] = None,
+        filters: Optional[Union[Dict, FilterExpressionsType]] = None,
     ) -> Evaluation:
         """
         Start a semantic-segmentation evaluation job.
@@ -1439,7 +1457,7 @@ class Model:
         ----------
         datasets : Union[Dataset, List[Dataset]], optional
             The dataset or list of datasets to evaluate against.
-        filters : Union[Dict, List[BinaryExpression]]
+        filters : Union[Dict, FilterExpressionsType = Sequence[Union[BinaryExpression, Sequence[BinaryExpression]]]], optional
             Optional set of filters to constrain evaluation by.
 
         Returns
