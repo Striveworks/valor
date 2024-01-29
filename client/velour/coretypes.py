@@ -15,6 +15,8 @@ from typing import (
     Union,
 )
 
+import numpy as np
+
 from velour.client import Client, ClientException
 from velour.enums import AnnotationType, EvaluationStatus, TaskType
 from velour.exceptions import SchemaTypeError
@@ -56,7 +58,12 @@ class Label:
     key: ClassVar[DeclarativeMapper]
     label: ClassVar[DeclarativeMapper]
 
-    def __init__(self, key: str, value: str, score: Union[float, None] = None):
+    def __init__(
+        self,
+        key: str,
+        value: str,
+        score: Union[float, np.floating, None] = None,
+    ):
         self._key = key
         self.value = value
         self.score = score
@@ -70,15 +77,16 @@ class Label:
             raise TypeError("key should be of type `str`")
         if not isinstance(self.value, str):
             raise TypeError("value should be of type `str`")
-        if isinstance(self.score, int):
-            self.score = float(self.score)
-        if not isinstance(self.score, (float, type(None))):
-            raise TypeError("score should be of type `float`")
+        if self.score is not None:
+            try:
+                self.score = float(self.score)
+            except ValueError:
+                raise TypeError("score should be convertible to `float`")
 
     def __str__(self):
         return str(self.dict())
 
-    def tuple(self) -> Tuple[str, str, Union[float, None]]:
+    def tuple(self) -> Tuple[str, str, Union[float, np.floating, None]]:
         """
         Defines how the `Label` is turned into a tuple.
 

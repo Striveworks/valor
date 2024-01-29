@@ -776,6 +776,44 @@ def get_model(model_name: str, db: Session = Depends(get_db)) -> schemas.Model:
 
 
 @router.get(
+    "/models/{model_name}/eval-requests",
+    dependencies=[Depends(token_auth_scheme)],
+    tags=["Models"],
+)
+def get_model_eval_requests(
+    model_name: str, db: Session = Depends(get_db)
+) -> list[schemas.EvaluationResponse]:
+    """
+    Fetch a particular model.
+
+    GET Endpoint: `/models/{model_name}`
+
+    Parameters
+    ----------
+    model_name : str
+        The name of the model.
+    db : Session
+        The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
+
+    Returns
+    -------
+    list[EvaluationResponse]
+        The evaluation requessts associated to the model
+
+    Raises
+    ------
+    HTTPException (404)
+        If the model doesn't exist.
+    """
+    try:
+        return crud.get_evaluation_requests_from_model(
+            db=db, model_name=model_name
+        )
+    except Exception as e:
+        raise exceptions.create_http_error(e)
+
+
+@router.get(
     "/models/{model_name}/dataset/{dataset_name}/status",
     dependencies=[Depends(token_auth_scheme)],
     tags=["Models"],

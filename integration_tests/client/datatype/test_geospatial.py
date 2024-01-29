@@ -107,7 +107,7 @@ def test_geospatial_filter(
         },
     )
     assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
-    assert len(eval_job.metrics) == 6
+    assert len(eval_job.metrics) == 9
 
     # passing in an incorrectly-formatted geojson dict should return a ValueError
     with pytest.raises(ValueError) as e:
@@ -137,7 +137,7 @@ def test_geospatial_filter(
             "operator": "intersect",
         }
     ]
-    assert len(eval_job.metrics) == 6
+    assert len(eval_job.metrics) == 9
 
     # filtering by model is allowed, this is the equivalent of requesting..
     # "Give me the dataset that model A has operated over."
