@@ -41,12 +41,10 @@ def _polygons_to_binary_mask(
     mask = Image.new("1", (img_w, img_h), (False,))
     draw = ImageDraw.Draw(mask)
     for poly in polys:
-        # TODO: according to docs, fill should be a color represented by a str or (r,g,b) tuple...
-        draw.polygon(poly.boundary.tuple_list(), fill=(True,))
+        draw.polygon(poly.boundary.tuple_list(), fill=(True,))  # type: ignore
         if poly.holes is not None:
             for hole in poly.holes:
-                # TODO: similarly here
-                draw.polygon(hole.tuple_list(), fill=(False,))
+                draw.polygon(hole.tuple_list(), fill=(False,))  # type: ignore
 
     return np.array(mask)
 
