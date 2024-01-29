@@ -3,13 +3,14 @@ in the backend repo remain the same. Though maybe instead of duplicating
 the backend should depend on the client?
 """
 
-from enum import EnumMeta
+from enum import Enum
+from typing import Type
 
 from velour import enums
 from velour_api import enums as backend_enums
 
 
-def _enum_to_dict(enum: EnumMeta) -> dict:
+def _enum_to_dict(enum: Type[Enum]) -> dict:
     return {x.name: x.value for x in enum}
 
 

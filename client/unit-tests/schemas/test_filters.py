@@ -20,6 +20,7 @@ def test_labels_filter():
             )
         ]
     )
+    assert f.labels is not None
     assert {"k1": "v1"} in f.labels
     assert {"k2": "v2"} in f.labels
 
@@ -162,7 +163,9 @@ def test_declarative_mapper_string():
         expression = DeclarativeMapper(
             name="name",
             object_type=str,
-        ).intersect("value")
+        ).intersect(
+            "value"  # type: ignore
+        )
     with pytest.raises(TypeError):
         expression = DeclarativeMapper(
             name="name",
@@ -261,7 +264,9 @@ def test_declarative_mapper_int():
         expression = DeclarativeMapper(
             name="name",
             object_type=int,
-        ).intersect(1234)
+        ).intersect(
+            1234  # type: ignore
+        )
     with pytest.raises(TypeError):
         expression = DeclarativeMapper(
             name="name",
@@ -360,7 +365,9 @@ def test_declarative_mapper_float():
         expression = DeclarativeMapper(
             name="name",
             object_type=float,
-        ).intersect(12.34)
+        ).intersect(
+            12.34  # type: ignore
+        )
     with pytest.raises(TypeError):
         expression = DeclarativeMapper(
             name="name",
@@ -376,31 +383,49 @@ def test_declarative_mapper_float():
 def test_declarative_mapper_datetime_objects():
     def _test_datetime_object(datetime_object):
         # positive
-        DeclarativeMapper(
-            name="some_name",
-            object_type=type(datetime_object),
-        ) == datetime_object
-        DeclarativeMapper(
-            name="some_name",
-            object_type=type(datetime_object),
-        ) != datetime_object
-        DeclarativeMapper(
-            name="some_name",
-            object_type=type(datetime_object),
-        ) >= datetime_object
-        DeclarativeMapper(
-            name="some_name",
-            object_type=type(datetime_object),
-        ) <= datetime_object
-        DeclarativeMapper(
-            name="some_name",
-            object_type=type(datetime_object),
-        ) > datetime_object
-        DeclarativeMapper(
-            name="some_name",
-            object_type=type(datetime_object),
-        ) < datetime_object
-        DeclarativeMapper(
+        assert (
+            DeclarativeMapper(
+                name="some_name",
+                object_type=type(datetime_object),
+            )
+            == datetime_object
+        )
+        assert (
+            DeclarativeMapper(
+                name="some_name",
+                object_type=type(datetime_object),
+            )
+            != datetime_object
+        )
+        assert (
+            DeclarativeMapper(
+                name="some_name",
+                object_type=type(datetime_object),
+            )
+            >= datetime_object
+        )
+        assert (
+            DeclarativeMapper(
+                name="some_name",
+                object_type=type(datetime_object),
+            )
+            <= datetime_object
+        )
+        assert (
+            DeclarativeMapper(
+                name="some_name",
+                object_type=type(datetime_object),
+            )
+            > datetime_object
+        )
+        assert (
+            DeclarativeMapper(
+                name="some_name",
+                object_type=type(datetime_object),
+            )
+            < datetime_object
+        )
+        assert DeclarativeMapper(
             name="some_name",
             object_type=type(datetime_object),
         ).in_([datetime_object, datetime_object])
@@ -410,17 +435,17 @@ def test_declarative_mapper_datetime_objects():
             DeclarativeMapper(
                 name="some_name",
                 object_type=type(datetime_object),
-            ).intersect(datetime_object, datetime_object)
+            ).intersect(datetime_object)
         with pytest.raises(TypeError):
             DeclarativeMapper(
                 name="some_name",
                 object_type=type(datetime_object),
-            ).inside(datetime_object, datetime_object)
+            ).inside(datetime_object)
         with pytest.raises(TypeError):
             DeclarativeMapper(
                 name="some_name",
                 object_type=type(datetime_object),
-            ).outside(datetime_object, datetime_object)
+            ).outside(datetime_object)
 
     _test_datetime_object(datetime.datetime.now())
     _test_datetime_object(datetime.date.today())
@@ -454,7 +479,7 @@ def test_declarative_mapper_geospatial():
     ).outside(point)
 
     with pytest.raises(TypeError):
-        (
+        assert (
             DeclarativeMapper(
                 name="name",
                 object_type=object_type,
@@ -462,7 +487,7 @@ def test_declarative_mapper_geospatial():
             == point
         )
     with pytest.raises(TypeError):
-        (
+        assert (
             DeclarativeMapper(
                 name="name",
                 object_type=object_type,
@@ -470,7 +495,7 @@ def test_declarative_mapper_geospatial():
             != point
         )
     with pytest.raises(TypeError):
-        (
+        assert (
             DeclarativeMapper(
                 name="name",
                 object_type=object_type,
@@ -478,7 +503,7 @@ def test_declarative_mapper_geospatial():
             >= point
         )
     with pytest.raises(TypeError):
-        (
+        assert (
             DeclarativeMapper(
                 name="name",
                 object_type=object_type,
@@ -486,7 +511,7 @@ def test_declarative_mapper_geospatial():
             <= point
         )
     with pytest.raises(TypeError):
-        (
+        assert (
             DeclarativeMapper(
                 name="name",
                 object_type=object_type,
@@ -494,7 +519,7 @@ def test_declarative_mapper_geospatial():
             > point
         )
     with pytest.raises(TypeError):
-        (
+        assert (
             DeclarativeMapper(
                 name="name",
                 object_type=object_type,
