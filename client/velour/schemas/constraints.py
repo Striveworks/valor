@@ -335,5 +335,5 @@ class DictionaryMapper(_DeclarativeMapper):
 
     def _create_expression(self, value: Any, operator: str) -> None:
         raise NotImplementedError(
-            "Dictionary mapper does not define any operations for iteself. Please use `dict[key]` to create and expression."
+            "Dictionary mapper does not define any operations for iteself. Please use `dict[key]` to create an expression."
         )
