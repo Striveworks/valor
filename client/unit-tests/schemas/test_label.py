@@ -11,7 +11,7 @@ def test_label():
     # test `__post_init__`
     with pytest.raises(TypeError) as e:
         Label(key=123, value="123")
-    print(e)
+
     assert "str" in str(e)
     with pytest.raises(TypeError) as e:
         Label(key="123", value=123)

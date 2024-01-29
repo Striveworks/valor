@@ -1,8 +1,8 @@
 import datetime
-import numpy
 from dataclasses import dataclass
-from enum import Enum
 from typing import Any, List, Optional, Set, Union
+
+import numpy
 
 from velour.schemas.geometry import (
     BoundingBox,
@@ -25,6 +25,7 @@ class Constraint:
         operator : str
             The operator used to define the constraint.
     """
+
     value: Any
     operator: str
 
@@ -43,6 +44,7 @@ class BinaryExpression:
     key : str, optional
         An optional key used for object retrieval.
     """
+
     name: str
     constraint: Constraint
     key: Union[str, None] = None
@@ -68,11 +70,19 @@ class _DeclarativeMapper:
         self.valid_operators = {}
 
     def _valid_operators(self) -> Set[str]:
+        """
+        Set of valid operators.
+
+        Overload in subclasses with the following:
+        >>> valid_operators = {op1, op2}
+        >>> return super()._valid_operators().union(valid_operators)
+        """
         return set()
 
     def _create_expression(
         self, value: Any, operator: str
     ) -> BinaryExpression:
+        """Called by operator overload functions."""
         if operator not in self._valid_operators():
             raise AttributeError(
                 f"Mapper with type `{type(self)}` does not suppoert the `{operator}` operator."
@@ -90,9 +100,11 @@ class _DeclarativeMapper:
         )
 
     def _validate(self, value: Any, operator: str) -> None:
+        """Overload in subclasses to insert a validator."""
         pass
 
     def _modify(self, value: Any, operator: str) -> Any:
+        """Overload in subclasses to insert a value modification."""
         return value
 
     def __eq__(self, value: Any) -> BinaryExpression:
@@ -452,6 +464,7 @@ class _DictionaryValueMapper(_NullableMapper, _QuantifiableMapper):
     key : str, optional
         An optional key used for object retrieval.
     """
+
     def _create_expression(self, value: Any, operator: str) -> Any:
         if self.key is None:
             raise ValueError(
