@@ -1,5 +1,5 @@
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional, Tuple, Union
 
 import numpy as np
@@ -27,9 +27,9 @@ class Label:
     """
 
     value: str
-    key: Union[str, StringMapper] = StringMapper("label_keys")
-    score: Union[float, np.floating, NumericMapper, None] = NumericMapper(
-        "prediction_scores"
+    key: Union[str, StringMapper] = field(default=StringMapper("label_keys"))
+    score: Union[float, np.floating, NumericMapper, None] = field(
+        default=NumericMapper("prediction_scores")
     )
 
     def __post_init__(self):
