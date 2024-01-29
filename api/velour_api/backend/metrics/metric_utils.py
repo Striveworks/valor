@@ -89,7 +89,8 @@ def create_grouper_mappings(
     evaluation_type: str,
 ):
     """
-    Creates a dictionary of grouper mappings that are used throughout our evaluation functions. These mappings enable Velour to group multiple labels together using a label_map.
+    Creates a dictionary of mappings that connect each label with a "grouper" (i.e., a unique ID-key-value combination that can represent one or more labels).
+    These mappings enable Velour to group multiple labels together using the label_map argument in each evaluation function.
 
     Parameters
     ----------
@@ -103,7 +104,7 @@ def create_grouper_mappings(
     Returns
     ----------
     dict
-        A dictionary of mappings.
+        A dictionary of mappings that are used at evaluation time to group multiple labels together.
     """
 
     mapping_functions = {

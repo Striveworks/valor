@@ -1312,6 +1312,23 @@ class Model:
 
         return filters
 
+    def _create_label_map(self, label_map: Dict[Label, Label]) -> list:
+        """Convert a dictionary of label maps to a serializable list format."""
+        if not label_map:
+            return None
+
+        assert isinstance(label_map, dict) and all(
+            [
+                isinstance(key, Label) and isinstance(value, Label)
+                for key, value in label_map.items()
+            ]
+        ), "label_map should be a dictionary with valid Labels for both the key and value."
+
+        return [
+            [[key.key, key.value], [value.key, value.value]]
+            for key, value in label_map.items()
+        ]
+
     def evaluate_classification(
         self,
         datasets: Union[Dataset, List[Dataset]] = None,
@@ -1347,12 +1364,7 @@ class Model:
             datum_filter=datum_filter,
             parameters=EvaluationParameters(
                 task_type=TaskType.CLASSIFICATION,
-                label_map=[
-                    [[key.key, key.value], [value.key, value.value]]
-                    for key, value in label_map.items()
-                ]
-                if label_map
-                else None,
+                label_map=self._create_label_map(label_map=label_map),
             ),
         )
         resp = self.client.evaluate(evaluation)
@@ -1414,12 +1426,7 @@ class Model:
             convert_annotations_to_type=convert_annotations_to_type,
             iou_thresholds_to_compute=iou_thresholds_to_compute,
             iou_thresholds_to_return=iou_thresholds_to_return,
-            label_map=[
-                [[key.key, key.value], [value.key, value.value]]
-                for key, value in label_map.items()
-            ]
-            if label_map
-            else None,
+            label_map=self._create_label_map(label_map=label_map),
         )
 
         datum_filter = self._format_filters(datasets, filters)
@@ -1477,12 +1484,7 @@ class Model:
             datum_filter=datum_filter,
             parameters=EvaluationParameters(
                 task_type=TaskType.SEGMENTATION,
-                label_map=[
-                    [[key.key, key.value], [value.key, value.value]]
-                    for key, value in label_map.items()
-                ]
-                if label_map
-                else None,
+                label_map=self._create_label_map(label_map=label_map),
             ),
         )
         resp = self.client.evaluate(evaluation)

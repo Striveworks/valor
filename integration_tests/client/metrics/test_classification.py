@@ -943,3 +943,17 @@ def test_evaluate_classification_with_label_maps(
                 assert entry in row["entries"]
             for entry in row["entries"]:
                 assert entry in cat_expected_cm[1]["entries"]
+
+    # finally, check invalid label_map
+    with pytest.raises(AssertionError):
+        eval_job = model.evaluate_classification(
+            dataset,
+            label_map=[
+                [
+                    [
+                        Label(key="class", value="tabby cat"),
+                        Label(key="class", value="mammals"),
+                    ]
+                ]
+            ],
+        )
