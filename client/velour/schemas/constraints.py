@@ -1,4 +1,5 @@
 import datetime
+import numpy
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any, List, Optional, Set, Union
@@ -15,19 +16,51 @@ from velour.types import GeometryType
 
 @dataclass
 class Constraint:
+    """
+    Represents a constraint with a value and an operator.
+
+    Attributes:
+        value : Any
+            The value associated with the constraint.
+        operator : str
+            The operator used to define the constraint.
+    """
     value: Any
     operator: str
 
 
 @dataclass
 class BinaryExpression:
+    """
+    Stores a conditional relationship.
+
+    Attributes
+    ----------
+    name : str
+        The name of the object the expression is operating over.
+    constraint : velour.schemas.Constraint
+        The operation that is performed.
+    key : str, optional
+        An optional key used for object retrieval.
+    """
     name: str
     constraint: Constraint
-    key: Union[str, Enum, None] = None
+    key: Union[str, None] = None
 
 
 @dataclass
 class _DeclarativeMapper:
+    """
+    Base class for constructing mapping objects.
+
+    Attributes
+    ----------
+    name : str
+        The name of the object the expression is operating over.
+    key : str, optional
+        An optional key used for object retrieval.
+    """
+
     name: str
     key: Optional[str] = None
 
@@ -94,6 +127,19 @@ class _DeclarativeMapper:
 
 
 class _NullableMapper(_DeclarativeMapper):
+    """
+    Defines a mapping object that handles nullable values.
+
+    This object maps conditional expressions into `BinaryExpression` objects.
+
+    Attributes
+    ----------
+    name : str
+        The name of the object the expression is operating over.
+    key : str, optional
+        An optional key used for object retrieval.
+    """
+
     def _valid_operators(self) -> Set[str]:
         valid_operators = {"is_none", "exists"}
         return super()._valid_operators().union(valid_operators)
@@ -106,6 +152,19 @@ class _NullableMapper(_DeclarativeMapper):
 
 
 class _EquatableMapper(_DeclarativeMapper):
+    """
+    Defines a mapping object that handles equatable values.
+
+    This object maps conditional expressions into `BinaryExpression` objects.
+
+    Attributes
+    ----------
+    name : str
+        The name of the object the expression is operating over.
+    key : str, optional
+        An optional key used for object retrieval.
+    """
+
     def _valid_operators(self) -> Set[str]:
         valid_operators = {"==", "!="}
         return super()._valid_operators().union(valid_operators)
@@ -123,6 +182,19 @@ class _EquatableMapper(_DeclarativeMapper):
 
 
 class _QuantifiableMapper(_EquatableMapper):
+    """
+    Defines a mapping object that handles quantifiable values.
+
+    This object maps conditional expressions into `BinaryExpression` objects.
+
+    Attributes
+    ----------
+    name : str
+        The name of the object the expression is operating over.
+    key : str, optional
+        An optional key used for object retrieval.
+    """
+
     def _valid_operators(self) -> Set[str]:
         valid_operators = {">", "<", ">=", "<=", "==", "!="}
         return super()._valid_operators().union(valid_operators)
@@ -141,6 +213,19 @@ class _QuantifiableMapper(_EquatableMapper):
 
 
 class _SpatialMapper(_NullableMapper):
+    """
+    Defines a mapping object that handles spatial values.
+
+    This object maps conditional expressions into `BinaryExpression` objects.
+
+    Attributes
+    ----------
+    name : str
+        The name of the object the expression is operating over.
+    key : str, optional
+        An optional key used for object retrieval.
+    """
+
     def __post_init__(self):
         self.area = NumericMapper(name=f"{self.name}_area")
 
@@ -163,7 +248,16 @@ class _SpatialMapper(_NullableMapper):
 
 class BoolMapper(_EquatableMapper):
     """
-    Declarative mapper for use with `bool` type values.
+    Defines a mapping object that handles boolean values.
+
+    This object maps conditional expressions into `BinaryExpression` objects.
+
+    Attributes
+    ----------
+    name : str
+        The name of the object the expression is operating over.
+    key : str, optional
+        An optional key used for object retrieval.
     """
 
     def _validate(self, value: Any, operator: str) -> None:
@@ -175,7 +269,16 @@ class BoolMapper(_EquatableMapper):
 
 class StringMapper(_EquatableMapper):
     """
-    Declarative mapper for use with `str` type values.
+    Defines a mapping object that handles string values.
+
+    This object maps conditional expressions into `BinaryExpression` objects.
+
+    Attributes
+    ----------
+    name : str
+        The name of the object the expression is operating over.
+    key : str, optional
+        An optional key used for object retrieval.
     """
 
     def _validate(self, value: Any, operator: str) -> None:
@@ -187,7 +290,16 @@ class StringMapper(_EquatableMapper):
 
 class LabelMapper(_EquatableMapper):
     """
-    Declarative mapper for use with `velour.Label` type values.
+    Defines a mapping object that handles `velour.Label` objects.
+
+    This object maps conditional expressions into `BinaryExpression` objects.
+
+    Attributes
+    ----------
+    name : str
+        The name of the object the expression is operating over.
+    key : str, optional
+        An optional key used for object retrieval.
     """
 
     def _modify(self, value: Any, operator: str) -> Any:
@@ -212,11 +324,20 @@ class LabelMapper(_EquatableMapper):
 
 class NumericMapper(_QuantifiableMapper):
     """
-    Declarative mapper for use with `int` and `float` type values.
+    Defines a mapping object that handles numeric values.
+
+    This object maps conditional expressions into `BinaryExpression` objects.
+
+    Attributes
+    ----------
+    name : str
+        The name of the object the expression is operating over.
+    key : str, optional
+        An optional key used for object retrieval.
     """
 
     def _validate(self, value: Any, operator: str) -> None:
-        if type(value) not in [int, float]:
+        if type(value) not in [int, float, numpy.floating]:
             raise TypeError(
                 f"NumericMapper does not support object type `{type(value)}`."
             )
@@ -224,7 +345,16 @@ class NumericMapper(_QuantifiableMapper):
 
 class DatetimeMapper(_QuantifiableMapper):
     """
-    Declarative mapper for use with `datetime` objects.
+    Defines a mapping object that handles `datetime` objects.
+
+    This object maps conditional expressions into `BinaryExpression` objects.
+
+    Attributes
+    ----------
+    name : str
+        The name of the object the expression is operating over.
+    key : str, optional
+        An optional key used for object retrieval.
     """
 
     def _modify(self, value: Any, operator: str) -> Any:
@@ -244,6 +374,19 @@ class DatetimeMapper(_QuantifiableMapper):
 
 
 class GeometryMapper(_SpatialMapper):
+    """
+    Defines a mapping object that handles `velour.schemas.geometry` objects.
+
+    This object maps conditional expressions into `BinaryExpression` objects.
+
+    Attributes
+    ----------
+    name : str
+        The name of the object the expression is operating over.
+    key : str, optional
+        An optional key used for object retrieval.
+    """
+
     def _validate(self, value: GeometryType, operator: str):
 
         if operator in {"is_none", "exists"}:
@@ -266,6 +409,19 @@ class GeometryMapper(_SpatialMapper):
 
 
 class GeospatialMapper(_SpatialMapper):
+    """
+    Defines a mapping object that handles GeoJSON.
+
+    This object maps conditional expressions into `BinaryExpression` objects.
+
+    Attributes
+    ----------
+    name : str
+        The name of the object the expression is operating over.
+    key : str, optional
+        An optional key used for object retrieval.
+    """
+
     def _validate(self, value: GeometryType, operator: str):
 
         if operator not in {"inside", "outside", "intersect"}:
@@ -284,6 +440,18 @@ class GeospatialMapper(_SpatialMapper):
 
 
 class _DictionaryValueMapper(_NullableMapper, _QuantifiableMapper):
+    """
+    Defines a mapping object that handles arbitrary objects.
+
+    This object maps conditional expressions into `BinaryExpression` objects.
+
+    Attributes
+    ----------
+    name : str
+        The name of the object the expression is operating over.
+    key : str, optional
+        An optional key used for object retrieval.
+    """
     def _create_expression(self, value: Any, operator: str) -> Any:
         if self.key is None:
             raise ValueError(
@@ -330,6 +498,24 @@ class _DictionaryValueMapper(_NullableMapper, _QuantifiableMapper):
 
 
 class DictionaryMapper(_DeclarativeMapper):
+    """
+    Defines a dictionary mapping object that captures the key used to access the data..
+
+    This object returns a `_DictionaryValueMapper` when given a key.
+
+    Attributes
+    ----------
+    name : str
+        The name of the object the expression is operating over.
+    key : str, optional
+        An optional key used for object retrieval.
+
+    Examples
+    --------
+    >>> DictionaryMapper("name")["some_key"] == True
+    BinaryExpression(name='name', constraint=Constraint(value=True, operator='=='), key='some_key')
+    """
+
     def __getitem__(self, key: str):
         return _DictionaryValueMapper(self.name, key)
 
