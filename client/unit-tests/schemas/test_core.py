@@ -14,11 +14,11 @@ def test_datum():
 
     # test `__post_init__`
     with pytest.raises(SchemaTypeError):
-        Datum(uid=123)
+        Datum(uid=123)  # type: ignore
     with pytest.raises(SchemaTypeError):
-        Datum(uid="123", metadata=1)
+        Datum(uid="123", metadata=1)  # type: ignore
     with pytest.raises(SchemaTypeError):
-        Datum(uid="123", metadata=[1])
+        Datum(uid="123", metadata=[1])  # type: ignore
 
 
 def test_annotation(bbox, polygon, raster, labels, metadata):
@@ -54,7 +54,7 @@ def test_annotation(bbox, polygon, raster, labels, metadata):
 
     # test `__post_init__`
     with pytest.raises(ValueError) as e:
-        Annotation(task_type="something", labels=labels)
+        Annotation(task_type="something", labels=labels)  # type: ignore
     assert "is not a valid TaskType" in str(e)
     with pytest.raises(SchemaTypeError) as e:
         Annotation(
@@ -88,21 +88,21 @@ def test_annotation(bbox, polygon, raster, labels, metadata):
         Annotation(
             task_type=enums.TaskType.CLASSIFICATION,
             labels=labels,
-            metadata=[1234],
+            metadata=[1234],  # type: ignore
         )
     assert "`metadata` should be of type" in str(e)
     with pytest.raises(SchemaTypeError) as e:
         Annotation(
             task_type=enums.TaskType.CLASSIFICATION,
             labels=labels,
-            metadata={1: 1},
+            metadata={1: 1},  # type: ignore
         )
     assert "`metadatum key` should be of type" in str(e)
     with pytest.raises(SchemaTypeError) as e:
         Annotation(
             task_type=enums.TaskType.CLASSIFICATION,
             labels=labels,
-            metadata={"test": None},
+            metadata={"test": None},  # type: ignore
         )
     assert "`metadatum value` should be of type" in str(e)
 
@@ -120,14 +120,14 @@ def test_groundtruth_annotation():
 
     # test `__post_init__`
     with pytest.raises(ValueError) as e:
-        Annotation(task_type="soemthing", labels=[l1])
+        Annotation(task_type="soemthing", labels=[l1])  # type: ignore
     assert "is not a valid TaskType" in str(e)
     with pytest.raises(SchemaTypeError) as e:
-        Annotation(task_type=enums.TaskType.CLASSIFICATION, labels=l1)
+        Annotation(task_type=enums.TaskType.CLASSIFICATION, labels=l1)  # type: ignore
     assert "`labels` should be of type" in str(e)
     with pytest.raises(SchemaTypeError) as e:
         Annotation(
-            task_type=enums.TaskType.CLASSIFICATION, labels=[l1, l2, "label"]
+            task_type=enums.TaskType.CLASSIFICATION, labels=[l1, l2, "label"]  # type: ignore
         )
     assert "`label` should be of type" in str(e)
 
@@ -149,14 +149,14 @@ def test_prediction_annotation():
 
     # test `__post_init__`
     with pytest.raises(ValueError) as e:
-        Annotation(task_type="something", labels=[s1, s2, s3])
+        Annotation(task_type="something", labels=[s1, s2, s3])  # type: ignore
     assert "is not a valid TaskType" in str(e)
     with pytest.raises(SchemaTypeError) as e:
-        Annotation(task_type=enums.TaskType.CLASSIFICATION, labels=s1)
+        Annotation(task_type=enums.TaskType.CLASSIFICATION, labels=s1)  # type: ignore
     assert "`labels` should be of type" in str(e)
     with pytest.raises(SchemaTypeError) as e:
         Annotation(
-            task_type=enums.TaskType.CLASSIFICATION, labels=[s1, s2, "label"]
+            task_type=enums.TaskType.CLASSIFICATION, labels=[s1, s2, "label"]  # type: ignore
         )
     assert "`label` should be of type" in str(e)
 
@@ -178,20 +178,20 @@ def test_groundtruth():
     # test `__post_init__`
     with pytest.raises(SchemaTypeError) as e:
         GroundTruth(
-            datum="datum",
+            datum="datum",  # type: ignore
             annotations=gts,
         )
     assert "`datum` should be of type" in str(e)
     with pytest.raises(SchemaTypeError) as e:
         GroundTruth(
             datum=datum,
-            annotations=gts[0],
+            annotations=gts[0],  # type: ignore
         )
     assert "`annotations` should be of type" in str(e)
     with pytest.raises(SchemaTypeError) as e:
         GroundTruth(
             datum=datum,
-            annotations=[gts[0], gts[1], "annotation"],
+            annotations=[gts[0], gts[1], "annotation"],  # type: ignore
         )
     assert "`annotation` should be of type" in str(e)
 
@@ -215,18 +215,18 @@ def test_prediction():
 
     # test `__post_init__`
     with pytest.raises(SchemaTypeError) as e:
-        Prediction(datum="datum", annotations=pds)
+        Prediction(datum="datum", annotations=pds)  # type: ignore
     assert "`datum` should be of type" in str(e)
     with pytest.raises(SchemaTypeError) as e:
         Prediction(
             datum=datum,
-            annotations=pds[0],
+            annotations=pds[0],  # type: ignore
         )
     assert "`annotations` should be of type" in str(e)
     with pytest.raises(SchemaTypeError) as e:
         Prediction(
             datum=datum,
-            annotations=[pds[0], pds[1], "annotation"],
+            annotations=[pds[0], pds[1], "annotation"],  # type: ignore
         )
     assert "`annotation` should be of type" in str(e)
 

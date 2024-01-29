@@ -4,7 +4,16 @@ import math
 import time
 import warnings
 from dataclasses import asdict, dataclass
-from typing import Dict, List, Tuple, Union
+from typing import (
+    ClassVar,
+    Dict,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
+)
 
 import numpy as np
 
@@ -12,20 +21,18 @@ from velour.client import Client, ClientException
 from velour.enums import AnnotationType, EvaluationStatus, TaskType
 from velour.exceptions import SchemaTypeError
 from velour.schemas.evaluation import EvaluationParameters, EvaluationRequest
-from velour.schemas.filters import BinaryExpression, DeclarativeMapper, Filter
+from velour.schemas.filters import (
+    DeclarativeMapper,
+    Filter,
+    FilterExpressionsType,
+)
 from velour.schemas.geometry import BoundingBox, MultiPolygon, Polygon, Raster
 from velour.schemas.metadata import (
+    MetadataType,
     dump_metadata,
     load_metadata,
     validate_metadata,
 )
-
-MetadataType = Dict[
-    str,
-    Union[
-        int, float, str, bool, datetime.datetime, datetime.date, datetime.time
-    ],
-]
 
 
 class Label:
@@ -47,13 +54,17 @@ class Label:
         A unique ID for the `Label`.
     """
 
+    id: ClassVar[DeclarativeMapper]
+    key: ClassVar[DeclarativeMapper]
+    label: ClassVar[DeclarativeMapper]
+
     def __init__(
         self,
         key: str,
         value: str,
         score: Union[float, np.floating, None] = None,
     ):
-        self.key = key
+        self._key = key
         self.value = value
         self.score = score
         self._validate()
@@ -62,7 +73,7 @@ class Label:
         """
         Validate the inputs of the `Label`.
         """
-        if not isinstance(self.key, str):
+        if not isinstance(self._key, str):
             raise TypeError("key should be of type `str`")
         if not isinstance(self.value, str):
             raise TypeError("value should be of type `str`")
@@ -75,7 +86,7 @@ class Label:
     def __str__(self):
         return str(self.dict())
 
-    def tuple(self) -> Tuple[str, str, Union[float, None]]:
+    def tuple(self) -> Tuple[str, str, Union[float, np.floating, None]]:
         """
         Defines how the `Label` is turned into a tuple.
 
@@ -84,7 +95,7 @@ class Label:
         tuple
             A tuple of the `Label's` arguments.
         """
-        return (self.key, self.value, self.score)
+        return (self._key, self.value, self.score)
 
     def __eq__(self, other):
         """
@@ -101,25 +112,20 @@ class Label:
             A boolean describing whether the two objects are equal.
         """
         if (
-            not hasattr(other, "key")
-            or not hasattr(other, "key")
+            not hasattr(other, "_key")
+            or not hasattr(other, "value")
             or not hasattr(other, "score")
         ):
             return False
 
-        # if the scores aren't the same type return False
-        if (other.score is None) != (self.score is None):
+        if self._key != other._key or self.value != other.value:
             return False
 
-        scores_equal = (other.score is None and self.score is None) or (
-            math.isclose(self.score, other.score)
-        )
-
-        return (
-            scores_equal
-            and self.key == other.key
-            and self.value == other.value
-        )
+        if self.score is not None and other.score is not None:
+            return math.isclose(self.score, other.score)
+        else:
+            # if the scores aren't the same type return False
+            return (other.score is None) == (self.score is None)
 
     def __hash__(self) -> int:
         """
@@ -130,7 +136,7 @@ class Label:
         int
             The hashed 'Label`.
         """
-        return hash(f"key:{self.key},value:{self.value},score:{self.score}")
+        return hash(f"key:{self._key},value:{self.value},score:{self.score}")
 
     def dict(self) -> dict:
         """
@@ -142,7 +148,7 @@ class Label:
             A dictionary of the `Label's` attributes.
         """
         return {
-            "key": self.key,
+            "key": self._key,
             "value": self.value,
             "score": self.score,
         }
@@ -172,34 +178,34 @@ class Datum:
         A GeoJSON-style dictionary describing the geospatial coordinates of the `Datum`.
     """
 
+    uid: ClassVar[DeclarativeMapper]
+    metadata: ClassVar[DeclarativeMapper]
+    geospatial: ClassVar[DeclarativeMapper]
+
     def __init__(
         self,
         uid: str,
-        metadata: MetadataType = None,
-        geospatial: Dict[
-            str,
-            Union[
-                List[List[List[List[Union[float, int]]]]],
-                List[List[List[Union[float, int]]]],
-                List[Union[float, int]],
+        metadata: Optional[MetadataType] = None,
+        geospatial: Optional[
+            Mapping[
                 str,
-            ],
+                Union[
+                    List[List[List[List[Union[float, int]]]]],
+                    List[List[List[Union[float, int]]]],
+                    List[Union[float, int]],
+                    str,
+                ],
+            ]
         ] = None,
     ):
-        self.uid = uid
-        self.metadata = metadata if metadata else {}
-        self.geospatial = geospatial if geospatial else {}
-        self._dataset_name = None
-        self._validate()
+        if not isinstance(uid, str):
+            raise SchemaTypeError("uid", str, uid)
+        validate_metadata(metadata or {})
 
-    def _validate(self):
-        """
-        Validates the parameters used to create a `Datum` object.
-        """
-        if not isinstance(self.uid, str):
-            raise SchemaTypeError("uid", str, self.uid)
-        validate_metadata(self.metadata)
-        self.metadata = load_metadata(self.metadata)
+        self._uid = uid
+        self._metadata = dict(load_metadata(metadata or {}))
+        self._geospatial = geospatial if geospatial else {}
+        self._dataset_name = None
 
     def __str__(self):
         return str(self.dict())
@@ -215,13 +221,13 @@ class Datum:
         """
         return {
             "dataset_name": self._dataset_name,
-            "uid": self.uid,
-            "metadata": dump_metadata(self.metadata),
-            "geospatial": self.geospatial if self.geospatial else None,
+            "uid": self._uid,
+            "metadata": dump_metadata(self._metadata),
+            "geospatial": self._geospatial if self._geospatial else None,
         }
 
     @classmethod
-    def _from_dict(cls, d: dict) -> "Datum":
+    def _from_dict(cls, d: Dict) -> "Datum":
         dataset_name = d.pop("dataset_name", None)
         datum = cls(**d)
         datum._set_dataset_name(dataset_name)
@@ -245,10 +251,10 @@ class Datum:
             raise TypeError(f"Expected type `{type(Datum)}`, got `{other}`")
         return self.dict() == other.dict()
 
-    def _set_dataset_name(self, dataset: Union["Dataset", str]) -> None:
+    def _set_dataset_name(self, dataset: Union["Dataset", str, None]) -> None:
         """Sets the dataset the datum belongs to. This should never be called by the user."""
         self._dataset_name = (
-            dataset.name if isinstance(dataset, Dataset) else dataset
+            dataset._name if isinstance(dataset, Dataset) else dataset
         )
 
 
@@ -338,20 +344,26 @@ class Annotation:
     ... )
     """
 
+    task: ClassVar[DeclarativeMapper]
+    type: ClassVar[DeclarativeMapper]
+    metadata: ClassVar[DeclarativeMapper]
+    geometric_area: ClassVar[DeclarativeMapper]
+    geospatial: ClassVar[DeclarativeMapper]
+
     def __init__(
         self,
         task_type: TaskType,
         labels: List[Label],
-        metadata: MetadataType = None,
-        bounding_box: BoundingBox = None,
-        polygon: Polygon = None,
-        multipolygon: MultiPolygon = None,
-        raster: Raster = None,
-        jsonb: Dict = None,
+        metadata: Optional[MetadataType] = None,
+        bounding_box: Optional[BoundingBox] = None,
+        polygon: Optional[Polygon] = None,
+        multipolygon: Optional[MultiPolygon] = None,
+        raster: Optional[Raster] = None,
+        jsonb: Optional[Dict] = None,
     ):
         self.task_type = task_type
         self.labels = labels
-        self.metadata = metadata if metadata else {}
+        self._metadata = metadata if metadata else {}
         self.bounding_box = bounding_box
         self.polygon = polygon
         self.multipolygon = multipolygon
@@ -372,8 +384,11 @@ class Annotation:
         if not isinstance(self.labels, list):
             raise SchemaTypeError("labels", List[Label], self.labels)
         for idx, label in enumerate(self.labels):
-            if isinstance(self.labels[idx], dict):
-                self.labels[idx] = Label(**label)
+            if isinstance(label, dict):
+                kw_label = label.copy()
+                key = kw_label.pop("key")
+                value = kw_label.pop("value")
+                self.labels[idx] = Label(key, value, **kw_label)
             if not isinstance(self.labels[idx], Label):
                 raise SchemaTypeError("label", Label, self.labels[idx])
 
@@ -404,8 +419,8 @@ class Annotation:
                 raise SchemaTypeError("raster", Raster, self.raster)
 
         # metadata
-        validate_metadata(self.metadata)
-        self.metadata = load_metadata(self.metadata)
+        validate_metadata(self._metadata)
+        self._metadata = load_metadata(self._metadata)
 
     def __str__(self):
         return str(self.dict())
@@ -422,7 +437,7 @@ class Annotation:
         return {
             "task_type": self.task_type.value,
             "labels": [label.dict() for label in self.labels],
-            "metadata": dump_metadata(self.metadata),
+            "metadata": dump_metadata(self._metadata),
             "bounding_box": asdict(self.bounding_box)
             if self.bounding_box
             else None,
@@ -455,6 +470,45 @@ class Annotation:
         return self.dict() == other.dict()
 
 
+def _validate_annotations(
+    annotations: Sequence[Union[Dict, Annotation]]
+) -> Sequence[Annotation]:
+    """
+    Validates and transforms a sequence of annotation inputs to a sequence of
+    Annotation objects.
+
+    Parameters
+    ----------
+    annotations : Sequence[Union[Dict, Annotation]]
+        A sequence of dictionaries or Annotation objects to be validated and
+        transformed.
+
+    Returns
+    ----------
+    Sequence[Annotation]
+        A sequence of validated Annotation objects.
+
+    Raises
+    ------
+    SchemaTypeError
+        If 'annotations' is not a list or if any element in 'annotations' cannot
+        be parsed into an Annotation object.
+    """
+    if not isinstance(annotations, list):
+        raise SchemaTypeError("annotations", List[Annotation], annotations)
+    validated_annotations = []
+    for idx, annotation in enumerate(annotations):
+        if isinstance(annotation, dict):
+            kw_annotation = annotation.copy()
+            task_type = kw_annotation.pop("task_type")
+            labels = kw_annotation.pop("labels")
+            annotation = Annotation(task_type, labels, **kw_annotation)
+        if not isinstance(annotation, Annotation):
+            raise SchemaTypeError("annotation", Annotation, annotations[idx])
+        validated_annotations.append(annotation)
+    return validated_annotations
+
+
 class GroundTruth:
     """
     An object describing a groundtruth (e.g., a human-drawn bounding box on an image).
@@ -467,7 +521,7 @@ class GroundTruth:
         The list of `Annotations` associated with the `GroundTruth`.
     """
 
-    def __init__(self, datum: Datum, annotations: List[Annotation]):
+    def __init__(self, datum: Datum, annotations: Sequence[Annotation]):
         self.datum = datum
         self.annotations = annotations
         self._validate()
@@ -480,18 +534,7 @@ class GroundTruth:
         if not isinstance(self.datum, Datum):
             raise SchemaTypeError("datum", Datum, self.datum)
 
-        # validate annotations
-        if not isinstance(self.annotations, list):
-            raise SchemaTypeError(
-                "annotations", List[Annotation], self.annotations
-            )
-        for idx, annotation in enumerate(self.annotations):
-            if isinstance(self.annotations[idx], dict):
-                self.annotations[idx] = Annotation(**annotation)
-            if not isinstance(self.annotations[idx], Annotation):
-                raise SchemaTypeError(
-                    "annotation", Annotation, self.annotations[idx]
-                )
+        self.annotations = _validate_annotations(self.annotations)
 
     def __str__(self):
         return str(self.dict())
@@ -513,7 +556,7 @@ class GroundTruth:
         }
 
     @classmethod
-    def _from_dict(cls, d: dict) -> "GroundTruth":
+    def _from_dict(cls, d: Dict) -> "GroundTruth":
         return cls(
             datum=Datum._from_dict(d["datum"]), annotations=d["annotations"]
         )
@@ -556,9 +599,13 @@ class Prediction:
         The score assigned to the `Prediction`.
     """
 
-    def __init__(self, datum: Datum, annotations: List[Annotation] = None):
+    score: ClassVar[DeclarativeMapper]
+
+    def __init__(
+        self, datum: Datum, annotations: Optional[List[Annotation]] = None
+    ):
         self.datum = datum
-        self.annotations = annotations
+        self.annotations = _validate_annotations(annotations or [])
         self._model_name = None
         self._validate()
 
@@ -571,19 +618,6 @@ class Prediction:
             self.datum = Datum(**self.datum)
         if not isinstance(self.datum, Datum):
             raise SchemaTypeError("datum", Datum, self.datum)
-
-        # validate annotations
-        if not isinstance(self.annotations, list):
-            raise SchemaTypeError(
-                "annotations", List[Annotation], self.annotations
-            )
-        for idx, annotation in enumerate(self.annotations):
-            if isinstance(self.annotations[idx], dict):
-                self.annotations[idx] = Annotation(**annotation)
-            if not isinstance(self.annotations[idx], Annotation):
-                raise SchemaTypeError(
-                    "annotation", Annotation, self.annotations[idx]
-                )
 
         # TaskType-specific validations
         for annotation in self.annotations:
@@ -599,7 +633,7 @@ class Prediction:
             if annotation.task_type == TaskType.CLASSIFICATION:
                 label_keys_to_sum = {}
                 for scored_label in annotation.labels:
-                    label_key = scored_label.key
+                    label_key = scored_label._key
                     if label_key not in label_keys_to_sum:
                         label_keys_to_sum[label_key] = 0.0
                     label_keys_to_sum[label_key] += scored_label.score
@@ -632,7 +666,7 @@ class Prediction:
         }
 
     @classmethod
-    def _from_dict(cls, d: dict) -> "Prediction":
+    def _from_dict(cls, d: Dict) -> "Prediction":
         pred = cls(
             datum=Datum._from_dict(d["datum"]),
             annotations=d["annotations"],
@@ -661,7 +695,7 @@ class Prediction:
         return self.dict() == other.dict()
 
     def _set_model_name(self, model: Union["Model", str]):
-        self._model_name = model.name if isinstance(model, Model) else model
+        self._model_name = model._name if isinstance(model, Model) else model
 
 
 @dataclass
@@ -736,8 +770,8 @@ class Evaluation:
         datum_filter: Filter,
         parameters: EvaluationParameters,
         status: EvaluationStatus,
-        metrics: List[dict],
-        confusion_matrices: List[dict],
+        metrics: List[Dict],
+        confusion_matrices: List[Dict],
         **kwargs,
     ):
         self.id = id
@@ -756,6 +790,10 @@ class Evaluation:
         self.metrics = metrics
         self.confusion_matrices = confusion_matrices
         self.kwargs = kwargs
+        self.ignored_pred_labels: Optional[List[Label]] = None
+        self.missing_pred_labels: Optional[List[Label]] = None
+        self.ignored_pred_keys: Optional[List[str]] = None
+        self.missing_pred_keys: Optional[List[str]] = None
 
         for k, v in kwargs.items():
             setattr(self, k, v)
@@ -785,7 +823,7 @@ class Evaluation:
     def wait_for_completion(
         self,
         *,
-        timeout: int = None,
+        timeout: Optional[int] = None,
         interval: float = 1.0,
     ) -> EvaluationStatus:
         """
@@ -810,7 +848,7 @@ class Evaluation:
 
     def to_dataframe(
         self,
-        stratify_by: Tuple[str, str] = None,
+        stratify_by: Optional[Tuple[str, str]] = None,
     ):
         """
         Get all metrics associated with a Model and return them in a `pd.DataFrame`.
@@ -874,21 +912,27 @@ class Dataset:
         A GeoJSON-style dictionary describing the geospatial coordinates of the dataset.
     """
 
+    name: ClassVar[DeclarativeMapper]
+    metadata: ClassVar[DeclarativeMapper]
+    geospatial: ClassVar[DeclarativeMapper]
+
     def __init__(
         self,
         client: Client,
         name: str,
-        metadata: MetadataType = None,
-        geospatial: Dict[
-            str,
-            Union[
-                List[List[List[List[Union[float, int]]]]],
-                List[List[List[Union[float, int]]]],
-                List[Union[float, int]],
+        metadata: Optional[MetadataType] = None,
+        geospatial: Optional[
+            Dict[
                 str,
-            ],
+                Union[
+                    List[List[List[List[Union[float, int]]]]],
+                    List[List[List[Union[float, int]]]],
+                    List[Union[float, int]],
+                    str,
+                ],
+            ]
         ] = None,
-        id: Union[int, None] = None,
+        id: Optional[int] = None,
         delete_if_exists: bool = False,
     ):
         """
@@ -909,9 +953,9 @@ class Dataset:
         delete_if_exists : bool, default=False
             Deletes any existing dataset with the same name.
         """
-        self.name = name
-        self.metadata = metadata
-        self.geospatial = geospatial
+        self._name = name
+        self._metadata = metadata
+        self._geospatial = geospatial
         self.id = id
         self._validate_coretype()
 
@@ -921,7 +965,7 @@ class Dataset:
         if delete_if_exists or client.get_dataset(name) is None:
             client.create_dataset(self.dict())
 
-        for k, v in client.get_dataset(name).items():
+        for k, v in (client.get_dataset(name) or {}).items():
             setattr(self, k, v)
         self.client = client
 
@@ -930,18 +974,18 @@ class Dataset:
         Validates the arguments used to create a `Dataset` object.
         """
         # validation
-        if not isinstance(self.name, str):
+        if not isinstance(self._name, str):
             raise TypeError("`name` should be of type `str`")
         if not isinstance(self.id, int) and self.id is not None:
             raise TypeError("`id` should be of type `int`")
-        if not self.metadata:
-            self.metadata = {}
-        if not self.geospatial:
-            self.geospatial = {}
+        if not self._metadata:
+            self._metadata = {}
+        if not self._geospatial:
+            self._geospatial = {}
 
         # metadata
-        validate_metadata(self.metadata)
-        self.metadata = load_metadata(self.metadata)
+        validate_metadata(self._metadata)
+        self._metadata = load_metadata(self._metadata)
 
     def __str__(self):
         return str(self.dict())
@@ -957,9 +1001,9 @@ class Dataset:
         """
         return {
             "id": self.id,
-            "name": self.name,
-            "metadata": dump_metadata(self.metadata),
-            "geospatial": self.geospatial if self.geospatial else None,
+            "name": self._name,
+            "metadata": dump_metadata(self._metadata or {}),
+            "geospatial": self._geospatial if self._geospatial else None,
         }
 
     def add_groundtruth(
@@ -979,10 +1023,10 @@ class Dataset:
 
         if len(groundtruth.annotations) == 0:
             warnings.warn(
-                f"GroundTruth for datum with uid `{groundtruth.datum.uid}` contains no annotations."
+                f"GroundTruth for datum with uid `{groundtruth.datum._uid}` contains no annotations."
             )
 
-        groundtruth.datum._set_dataset_name(self.name)
+        groundtruth.datum._set_dataset_name(self._name)
         self.client._requests_post_rel_host(
             "groundtruths",
             json=groundtruth.dict(),
@@ -1003,9 +1047,9 @@ class Dataset:
         GroundTruth
             The requested `GroundTruth`.
         """
-        uid = datum.uid if isinstance(datum, Datum) else datum
+        uid = datum._uid if isinstance(datum, Datum) else datum
         resp = self.client._requests_get_rel_host(
-            f"groundtruths/dataset/{self.name}/datum/{uid}"
+            f"groundtruths/dataset/{self._name}/datum/{uid}"
         ).json()
         return GroundTruth._from_dict(resp)
 
@@ -1021,7 +1065,7 @@ class Dataset:
             A list of `Labels` associated with the dataset.
         """
         labels = self.client._requests_get_rel_host(
-            f"labels/dataset/{self.name}"
+            f"labels/dataset/{self._name}"
         ).json()
 
         return [
@@ -1038,7 +1082,7 @@ class Dataset:
             A list of `Datums` associated with the dataset.
         """
         datums = self.client.get_datums(
-            filters=Filter(dataset_names=[self.name])
+            filters=Filter(dataset_names=[self._name])
         )
         return [Datum._from_dict(datum) for datum in datums]
 
@@ -1055,7 +1099,7 @@ class Dataset:
         """
         return [
             Evaluation(self.client, **resp)
-            for resp in self.client.get_evaluations(datasets=self.name)
+            for resp in self.client.get_evaluations(datasets=self._name)
         ]
 
     def get_summary(self) -> DatasetSummary:
@@ -1092,7 +1136,7 @@ class Dataset:
             groundtruth_annotation_metadata: list of the unique metadata dictionaries in the dataset that are
             associated to annotations
         """
-        resp = self.client.get_dataset_summary(self.name)
+        resp = self.client.get_dataset_summary(self._name)
         return DatasetSummary(**resp)
 
     def finalize(
@@ -1102,7 +1146,7 @@ class Dataset:
         Finalize the `Dataset` object such that new `GroundTruths` cannot be added to it.
         """
         return self.client._requests_put_rel_host(
-            f"datasets/{self.name}/finalize"
+            f"datasets/{self._name}/finalize"
         )
 
     def delete(
@@ -1132,21 +1176,27 @@ class Model:
         A GeoJSON-style dictionary describing the geospatial coordinates of the model.
     """
 
+    name: ClassVar[DeclarativeMapper]
+    metadata: ClassVar[DeclarativeMapper]
+    geospatial: ClassVar[DeclarativeMapper]
+
     def __init__(
         self,
         client: Client,
         name: str,
-        metadata: MetadataType = None,
-        geospatial: Dict[
-            str,
-            Union[
-                List[List[List[List[Union[float, int]]]]],
-                List[List[List[Union[float, int]]]],
-                List[Union[float, int]],
+        metadata: Optional[MetadataType] = None,
+        geospatial: Optional[
+            Dict[
                 str,
-            ],
+                Union[
+                    List[List[List[List[Union[float, int]]]]],
+                    List[List[List[Union[float, int]]]],
+                    List[Union[float, int]],
+                    str,
+                ],
+            ]
         ] = None,
-        id: Union[int, None] = None,
+        id: Optional[int] = None,
         delete_if_exists: bool = False,
     ):
         """
@@ -1167,9 +1217,9 @@ class Model:
         delete_if_exists : bool, default=False
             Deletes any existing model with the same name.
         """
-        self.name = name
-        self.metadata = metadata
-        self.geospatial = geospatial
+        self._name = name
+        self._metadata = metadata
+        self._geospatial = geospatial
         self.id = id
         self._validate()
 
@@ -1179,7 +1229,7 @@ class Model:
         if delete_if_exists or client.get_model(name) is None:
             client.create_model(self.dict())
 
-        for k, v in client.get_model(name).items():
+        for k, v in (client.get_model(name) or {}).items():
             setattr(self, k, v)
         self.client = client
 
@@ -1187,18 +1237,18 @@ class Model:
         """
         Validates the arguments used to create a `Model` object.
         """
-        if not isinstance(self.name, str):
+        if not isinstance(self._name, str):
             raise TypeError("`name` should be of type `str`")
         if not isinstance(self.id, int) and self.id is not None:
             raise TypeError("`id` should be of type `int`")
-        if not self.metadata:
-            self.metadata = {}
-        if not self.geospatial:
-            self.geospatial = {}
+        if not self._metadata:
+            self._metadata = {}
+        if not self._geospatial:
+            self._geospatial = {}
 
         # metadata
-        validate_metadata(self.metadata)
-        self.metadata = load_metadata(self.metadata)
+        validate_metadata(self._metadata)
+        self._metadata = load_metadata(self._metadata)
 
     def __str__(self):
         return str(self.dict())
@@ -1214,9 +1264,9 @@ class Model:
         """
         return {
             "id": self.id,
-            "name": self.name,
-            "metadata": dump_metadata(self.metadata),
-            "geospatial": self.geospatial if self.geospatial else None,
+            "name": self._name,
+            "metadata": dump_metadata(self._metadata or {}),
+            "geospatial": self._geospatial if self._geospatial else None,
         }
 
     def add_prediction(
@@ -1237,20 +1287,20 @@ class Model:
 
         if len(prediction.annotations) == 0:
             warnings.warn(
-                f"Prediction for datum with uid `{prediction.datum.uid}` contains no annotations."
+                f"Prediction for datum with uid `{prediction.datum._uid}` contains no annotations."
             )
 
-        prediction._set_model_name(self.name)
+        prediction._set_model_name(self._name)
         # should check not already set or set by equal to dataset?
         if prediction.datum._dataset_name is None:
             prediction.datum._set_dataset_name(dataset)
         else:
             dataset_name = (
-                dataset.name if isinstance(dataset, Dataset) else dataset
+                dataset._name if isinstance(dataset, Dataset) else dataset
             )
             if prediction.datum._dataset_name != dataset_name:
                 raise RuntimeError(
-                    f"Datum with uid `{prediction.datum.uid}` is already linked to the dataset `{prediction.datum._dataset_name}`"
+                    f"Datum with uid `{prediction.datum._uid}` is already linked to the dataset `{prediction.datum._dataset_name}`"
                     f" but you are trying to add a prediction on it to the dataset `{dataset_name}`"
                 )
 
@@ -1264,37 +1314,38 @@ class Model:
         Finalize the `Model` object such that new `Predictions` cannot be added to it.
         """
         return self.client._requests_put_rel_host(
-            f"models/{self.name}/datasets/{dataset.name}/finalize"
+            f"models/{self._name}/datasets/{dataset._name}/finalize"
         ).json()
 
     def _format_filters(
         self,
-        datasets: Union[Dataset, List[Dataset]],
-        filters: Union[Dict, List[BinaryExpression]],
-    ) -> Union[dict, Filter]:
+        datasets: Optional[Union[Dataset, List[Dataset]]],
+        filters: Optional[Union[Dict, FilterExpressionsType]],
+    ) -> Filter:
         """Formats evaluation request's `datum_filter` input."""
 
         # get list of dataset names
         dataset_names_from_obj = []
         if isinstance(datasets, list):
-            dataset_names_from_obj = [dataset.name for dataset in datasets]
+            dataset_names_from_obj = [dataset._name for dataset in datasets]
         elif isinstance(datasets, Dataset):
-            dataset_names_from_obj = [datasets.name]
+            dataset_names_from_obj = [datasets._name]
 
         # format filtering object
-        if isinstance(filters, list) or filters is None:
+        if isinstance(filters, Sequence) or filters is None:
             filters = filters if filters else []
-            filters = Filter.create(filters)
+            filter_obj = Filter.create(filters)
 
             # reset model name
-            filters.model_names = None
-            filters.model_geospatial = None
-            filters.model_metadata = None
+            filter_obj.model_names = None
+            filter_obj.model_geospatial = None
+            filter_obj.model_metadata = None
 
             # set dataset names
-            if not filters.dataset_names:
-                filters.dataset_names = []
-            filters.dataset_names.extend(dataset_names_from_obj)
+            if not filter_obj.dataset_names:
+                filter_obj.dataset_names = []
+            filter_obj.dataset_names.extend(dataset_names_from_obj)
+            return filter_obj
 
         elif isinstance(filters, dict):
             # reset model name
@@ -1310,12 +1361,12 @@ class Model:
                 filters["dataset_names"] = []
             filters["dataset_names"].extend(dataset_names_from_obj)
 
-        return filters
+        return Filter(**filters)
 
     def evaluate_classification(
         self,
-        datasets: Union[Dataset, List[Dataset]] = None,
-        filters: Union[Dict, List[BinaryExpression]] = None,
+        datasets: Optional[Union[Dataset, List[Dataset]]] = None,
+        filters: Optional[Union[Dict, FilterExpressionsType]] = None,
     ) -> Evaluation:
         """
         Start a classification evaluation job.
@@ -1324,7 +1375,7 @@ class Model:
         ----------
         datasets : Union[Dataset, List[Dataset]], optional
             The dataset or list of datasets to evaluate against.
-        filters : Union[Dict, List[BinaryExpression]]
+        filters : Union[Dict, FilterExpressionsType = Sequence[Union[BinaryExpression, Sequence[BinaryExpression]]]], optional
             Optional set of filters to constrain evaluation by.
 
         Returns
@@ -1340,7 +1391,7 @@ class Model:
         datum_filter = self._format_filters(datasets, filters)
 
         evaluation = EvaluationRequest(
-            model_names=self.name,
+            model_names=self._name,
             datum_filter=datum_filter,
             parameters=EvaluationParameters(task_type=TaskType.CLASSIFICATION),
         )
@@ -1361,11 +1412,11 @@ class Model:
 
     def evaluate_detection(
         self,
-        datasets: Union[Dataset, List[Dataset]] = None,
-        filters: Union[Dict, List[BinaryExpression]] = None,
-        convert_annotations_to_type: AnnotationType = None,
-        iou_thresholds_to_compute: List[float] = None,
-        iou_thresholds_to_return: List[float] = None,
+        datasets: Optional[Union[Dataset, List[Dataset]]] = None,
+        filters: Optional[Union[Dict, FilterExpressionsType]] = None,
+        convert_annotations_to_type: Optional[AnnotationType] = None,
+        iou_thresholds_to_compute: Optional[List[float]] = None,
+        iou_thresholds_to_return: Optional[List[float]] = None,
     ) -> Evaluation:
         """
         Start a object-detection evaluation job.
@@ -1374,7 +1425,7 @@ class Model:
         ----------
         datasets : Union[Dataset, List[Dataset]], optional
             The dataset or list of datasets to evaluate against.
-        filters : Union[Dict, List[BinaryExpression]], optional
+        filters : Union[Dict, FilterExpressionsType = Sequence[Union[BinaryExpression, Sequence[BinaryExpression]]]], optional
             Optional set of filters to constrain evaluation by.
         convert_annotations_to_type : enums.AnnotationType, optional
             Forces the object detection evaluation to compute over this type.
@@ -1405,7 +1456,7 @@ class Model:
         datum_filter = self._format_filters(datasets, filters)
 
         evaluation = EvaluationRequest(
-            model_names=self.name,
+            model_names=self._name,
             datum_filter=datum_filter,
             parameters=parameters,
         )
@@ -1426,8 +1477,8 @@ class Model:
 
     def evaluate_segmentation(
         self,
-        datasets: Union[Dataset, List[Dataset]] = None,
-        filters: Union[Dict, List[BinaryExpression]] = None,
+        datasets: Optional[Union[Dataset, List[Dataset]]] = None,
+        filters: Optional[Union[Dict, FilterExpressionsType]] = None,
     ) -> Evaluation:
         """
         Start a semantic-segmentation evaluation job.
@@ -1436,7 +1487,7 @@ class Model:
         ----------
         datasets : Union[Dataset, List[Dataset]], optional
             The dataset or list of datasets to evaluate against.
-        filters : Union[Dict, List[BinaryExpression]]
+        filters : Union[Dict, FilterExpressionsType = Sequence[Union[BinaryExpression, Sequence[BinaryExpression]]]], optional
             Optional set of filters to constrain evaluation by.
 
         Returns
@@ -1449,7 +1500,7 @@ class Model:
 
         # create evaluation job
         evaluation = EvaluationRequest(
-            model_names=self.name,
+            model_names=self._name,
             datum_filter=datum_filter,
             parameters=EvaluationParameters(task_type=TaskType.SEGMENTATION),
         )
@@ -1492,7 +1543,7 @@ class Model:
             The requested `Prediction`.
         """
         resp = self.client._requests_get_rel_host(
-            f"predictions/model/{self.name}/dataset/{dataset.name}/datum/{datum.uid}",
+            f"predictions/model/{self._name}/dataset/{dataset._name}/datum/{datum._uid}",
         ).json()
         return Prediction._from_dict(resp)
 
@@ -1508,7 +1559,7 @@ class Model:
             A list of `Labels` associated with the model.
         """
         labels = self.client._requests_get_rel_host(
-            f"labels/model/{self.name}"
+            f"labels/model/{self._name}"
         ).json()
 
         return [
@@ -1528,46 +1579,8 @@ class Model:
         """
         return [
             Evaluation(self.client, **resp)
-            for resp in self.client.get_evaluations(models=self.name)
+            for resp in self.client.get_evaluations(models=self._name)
         ]
-
-    def get_metric_dataframes(
-        self,
-    ) -> dict:
-        """
-        Get all metrics associated with a Model and return them in a `pd.DataFrame`.
-
-        Returns
-        ----------
-        dict
-            A dictionary of the `Model's` metrics and settings, with the metrics being displayed in a `pd.DataFrame`.
-        """
-        try:
-            import pandas as pd
-        except ModuleNotFoundError:
-            raise ModuleNotFoundError(
-                "Must have pandas installed to use `get_metric_dataframes`."
-            )
-
-        ret = []
-        for evaluation in self.get_evaluations():
-            metrics = [
-                {**metric, "dataset": evaluation.dataset}
-                for metric in evaluation.metrics
-            ]
-            df = pd.DataFrame(metrics)
-            for k in ["label", "parameters"]:
-                df[k] = df[k].fillna("n/a")
-            df["parameters"] = df["parameters"].apply(json.dumps)
-            df["label"] = df["label"].apply(
-                lambda x: f"{x['key']}: {x['value']}" if x != "n/a" else x
-            )
-            df = df.pivot(
-                index=["type", "parameters", "label"], columns=["dataset"]
-            )
-            ret.append({"settings": evaluation.settings, "df": df})
-
-        return ret
 
 
 # Assign all DeclarativeMappers such that these coretypes can be used as filters.

@@ -1,5 +1,5 @@
 import math
-from typing import Dict, List, Tuple, Union
+from typing import Dict, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
@@ -41,16 +41,16 @@ def _polygons_to_binary_mask(
     mask = Image.new("1", (img_w, img_h), (False,))
     draw = ImageDraw.Draw(mask)
     for poly in polys:
-        draw.polygon(poly.boundary.tuple_list(), fill=(True,))
+        draw.polygon(poly.boundary.tuple_list(), fill=(True,))  # type: ignore
         if poly.holes is not None:
             for hole in poly.holes:
-                draw.polygon(hole.tuple_list(), fill=(False,))
+                draw.polygon(hole.tuple_list(), fill=(False,))  # type: ignore
 
     return np.array(mask)
 
 
 def create_combined_segmentation_mask(
-    annotated_datums: List[Union[GroundTruth, Prediction]],
+    annotated_datums: Sequence[Union[GroundTruth, Prediction]],
     label_key: str,
     task_type: Union[enums.TaskType, None] = None,
 ) -> Tuple[Image.Image, Dict[str, Image.Image]]:
@@ -90,7 +90,7 @@ def create_combined_segmentation_mask(
         len(
             set(
                 [
-                    annotated_datum.datum.uid
+                    annotated_datum.datum._uid
                     for annotated_datum in annotated_datums
                 ]
             )
@@ -129,7 +129,7 @@ def create_combined_segmentation_mask(
     label_values = []
     for annotation in annotations:
         for label in annotation.labels:
-            if label.key == label_key:
+            if label._key == label_key:
                 label_values.append(label.value)
     if not label_values:
         raise RuntimeError(
@@ -169,7 +169,7 @@ def create_combined_segmentation_mask(
 
 
 def draw_detections_on_image(
-    detections: List[Union[GroundTruth, Prediction]],
+    detections: Sequence[Union[GroundTruth, Prediction]],
     img: Image.Image,
 ) -> Image.Image:
     """
@@ -230,7 +230,7 @@ def _draw_detection_on_image(
 ) -> Image.Image:
     """Draw a detection on an image."""
     text = ", ".join(
-        [f"{label.key}:{label.value}" for label in detection.labels]
+        [f"{label._key}:{label.value}" for label in detection.labels]
     )
     if detection.polygon is not None:
         img = _draw_bounding_polygon_on_image(
@@ -255,7 +255,7 @@ def _draw_bounding_polygon_on_image(
     img: Image.Image,
     color: Tuple[int, int, int] = (255, 0, 0),
     inplace: bool = False,
-    text: str = None,
+    text: Optional[str] = None,
     font_size: int = 24,
 ) -> Image.Image:
     """Draw a bounding polygon on an image."""
@@ -282,8 +282,8 @@ def _write_text(
     font_size: int,
     text: str,
     boundary: schemas.BasicPolygon,
-    draw: ImageDraw.Draw,
-    color: str,
+    draw: ImageDraw.ImageDraw,
+    color: Union[Tuple[int, int, int], str],
 ):
     """Write text on an image."""
     try:
@@ -302,10 +302,10 @@ def _write_text(
 
     margin = math.ceil(0.05 * text_height) - 1
     draw.rectangle(
-        [
+        (
             (boundary.xmin, text_bottom - text_height - 2 * margin),
             (boundary.xmin + text_width, text_bottom),
-        ],
+        ),
         fill=color,
     )
     draw.text(

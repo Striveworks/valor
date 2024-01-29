@@ -1,6 +1,8 @@
 """ These integration tests should be run with a backend at http://localhost:8000
 that is no auth
 """
+from typing import Iterator
+
 import numpy as np
 import pytest
 from sqlalchemy import create_engine, select, text
@@ -17,7 +19,7 @@ from velour_api.backend import models
 
 
 @pytest.fixture
-def db() -> Session:
+def db() -> Iterator[Session]:
     """This fixture makes sure there's not datasets, models, or labels in the backend
     (raising a RuntimeError if there are). It returns a db session and as cleanup
     clears out all datasets, models, and labels from the backend.
@@ -66,7 +68,7 @@ def db() -> Session:
 
 
 @pytest.fixture
-def client(db: Session):
+def client(db: Session) -> Client:
     return Client(host="http://localhost:8000")
 
 
@@ -239,7 +241,7 @@ def gt_dets2(
                 Annotation(
                     task_type=TaskType.DETECTION,
                     labels=[Label(key="k1", value="v1")],
-                    polygon=Polygon(boundary=rect1.polygon, holes=None),
+                    polygon=Polygon(boundary=rect1.polygon, holes=[]),
                 ),
                 Annotation(
                     task_type=TaskType.DETECTION,
@@ -254,7 +256,7 @@ def gt_dets2(
                 Annotation(
                     task_type=TaskType.DETECTION,
                     labels=[Label(key="k1", value="v1")],
-                    polygon=Polygon(boundary=rect2.polygon, holes=None),
+                    polygon=Polygon(boundary=rect2.polygon, holes=[]),
                 )
             ],
         ),
@@ -286,7 +288,7 @@ def gt_poly_dets1(
                 Annotation(
                     task_type=TaskType.DETECTION,
                     labels=[Label(key="k1", value="v1")],
-                    polygon=Polygon(boundary=rect1.polygon, holes=None),
+                    polygon=Polygon(boundary=rect1.polygon, holes=[]),
                 ),
             ],
         ),
@@ -296,7 +298,7 @@ def gt_poly_dets1(
                 Annotation(
                     task_type=TaskType.DETECTION,
                     labels=[Label(key="k1", value="v1")],
-                    polygon=Polygon(boundary=rect2.polygon, holes=None),
+                    polygon=Polygon(boundary=rect2.polygon, holes=[]),
                 )
             ],
         ),
@@ -310,7 +312,7 @@ def gt_segs(
     rect3: BoundingBox,
     img1: ImageMetadata,
     img2: ImageMetadata,
-) -> list[Annotation]:
+) -> list[GroundTruth]:
     return [
         GroundTruth(
             datum=img1.to_datum(),
@@ -395,7 +397,9 @@ def gt_semantic_segs1_mask(img1: ImageMetadata) -> GroundTruth:
 
 
 @pytest.fixture
-def gt_semantic_segs2(rect3: BoundingBox, img2: ImageMetadata) -> GroundTruth:
+def gt_semantic_segs2(
+    rect3: BoundingBox, img2: ImageMetadata
+) -> list[GroundTruth]:
     return [
         GroundTruth(
             datum=img2.to_datum(),
@@ -570,10 +574,11 @@ def pred_poly_dets(pred_dets: list[Prediction]) -> list[Prediction]:
                     labels=annotation.labels,
                     polygon=Polygon(
                         boundary=annotation.bounding_box.polygon,
-                        holes=None,
+                        holes=[],
                     ),
                 )
                 for annotation in det.annotations
+                if annotation.bounding_box is not None
             ],
         )
         for det in pred_dets
