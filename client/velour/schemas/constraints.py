@@ -1,5 +1,5 @@
 import datetime
-from dataclasses import asdict, dataclass, is_dataclass
+from dataclasses import dataclass
 from enum import Enum
 from typing import Any, List, Optional, Set, Union
 
@@ -192,8 +192,8 @@ class LabelMapper(_EquatableMapper):
 
     def _modify(self, value: Any, operator: str) -> Any:
         # convert to dict
-        if is_dataclass(value):
-            value = asdict(value)
+        if hasattr(value, "to_dict"):
+            value = value.to_dict()
 
         # validate dict
         if not isinstance(value, dict):

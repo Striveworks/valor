@@ -8,7 +8,6 @@ from .constraints import (
     NumericMapper,
     StringMapper,
 )
-from .core import Label
 from .evaluation import EvaluationParameters, EvaluationRequest
 from .filters import Filter
 from .geometry import (
@@ -19,18 +18,9 @@ from .geometry import (
     Polygon,
     Raster,
 )
-from .info import DatasetSummary
 from .metadata import dump_metadata, load_metadata, validate_metadata
 
 __all__ = [
-    "Dataset",
-    "Model",
-    "Datum",
-    "Annotation",
-    "Label",
-    "GroundTruth",
-    "Prediction",
-    "DatasetSummary",
     "BasicPolygon",
     "Point",
     "BoundingBox",

@@ -17,10 +17,11 @@ from .coretypes import (
     Datum,
     Evaluation,
     GroundTruth,
+    Label,
     Model,
     Prediction,
 )
-from .schemas import Filter, Label
+from .schemas import Filter
 
 __all__ = [
     "Client",
