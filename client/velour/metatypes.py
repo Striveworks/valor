@@ -3,7 +3,6 @@ from typing import Dict, List, Union
 import PIL.Image
 
 from velour import Datum
-from velour.exceptions import SchemaTypeError
 from velour.schemas import validate_metadata
 from velour.types import MetadataType
 
@@ -149,9 +148,11 @@ class VideoFrameMetadata:
         self.frame = frame
 
         if not isinstance(self.image, ImageMetadata):
-            raise SchemaTypeError("image", ImageMetadata, self.image)
+            raise TypeError(
+                "`image` should be of type `velour.metatypes.ImageMetadata`"
+            )
         if not isinstance(self.frame, int):
-            raise SchemaTypeError("frame", int, self.frame)
+            raise TypeError("`frame` should be of type `int`.")
 
     @staticmethod
     def valid(datum: Datum) -> bool:
