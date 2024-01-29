@@ -27,7 +27,9 @@ class Label:
     """
 
     value: str
-    key: Union[str, StringMapper] = field(default_factory=StringMapper("label_keys"))
+    key: Union[str, StringMapper] = field(
+        default_factory=StringMapper("label_keys")
+    )
     score: Union[float, np.floating, NumericMapper, None] = field(
         default_factory=NumericMapper("prediction_scores")
     )
