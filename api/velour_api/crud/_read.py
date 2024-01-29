@@ -327,3 +327,24 @@ def get_evaluations(
         dataset_names=dataset_names,
         model_names=model_names,
     )
+
+
+def get_evaluation_requests_from_model(
+    db: Session, model_name: str
+) -> list[schemas.EvaluationResponse]:
+    """
+    Returns all evaluation settings for a given model.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    model_name : str
+        The model name to find evaluations of
+
+    Returns
+    ----------
+    list[schemas.EvaluationResponse]
+        A list of evaluations.
+    """
+    return backend.get_evaluation_requests_from_model(db, model_name)

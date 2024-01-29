@@ -2,6 +2,8 @@ import math
 from dataclasses import dataclass
 from typing import Optional, Tuple, Union
 
+import numpy as np
+
 from velour.schemas.constraints import (
     NumericMapper,
     StringMapper,
@@ -26,7 +28,7 @@ class Label:
 
     value: str
     key: Union[str, StringMapper] = StringMapper("label_keys")
-    score: Union[Optional[float], NumericMapper] = NumericMapper(
+    score: Union[float, np.floating, NumericMapper, None] = NumericMapper(
         "prediction_scores"
     )
 
@@ -47,10 +49,11 @@ class Label:
             raise TypeError("Attribute `key` should have type `str`.")
         if not isinstance(self.value, str):
             raise TypeError("Attribute `value` should have type `str`.")
-        if not isinstance(self.score, float) and self.score is not None:
-            raise TypeError(
-                "Attribute `score` should have a value of type `float` or be set to `None`."
-            )
+        if self.score is not None:
+            try:
+                self.score = float(self.score)
+            except ValueError:
+                raise TypeError("score should be convertible to `float`")
 
     def __str__(self):
         return str(self.tuple())
