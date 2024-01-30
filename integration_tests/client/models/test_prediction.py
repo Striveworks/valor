@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from velour import Annotation, Dataset, Label, Model, Prediction
 from velour.client import Client
+from velour.coretypes import GroundTruth
 from velour.enums import TaskType
 from velour.metatypes import ImageMetadata
 from velour.schemas import BasicPolygon, BoundingBox, Point, Polygon
@@ -18,7 +19,7 @@ def test_create_pred_detections_as_bbox_or_poly(
     client: Client,
     dataset_name: str,
     model_name: str,
-    gt_dets1: list[Annotation],
+    gt_dets1: list[GroundTruth],
     img1: ImageMetadata,
 ):
     """Test that a predicted detection can be created as either a bounding box

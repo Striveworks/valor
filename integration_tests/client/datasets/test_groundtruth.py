@@ -56,7 +56,7 @@ def test_create_gt_detections_as_bbox_or_poly(
                             Point(x=xmin, y=ymax),
                         ]
                     ),
-                    holes=None,
+                    holes=[],
                 ),
             ),
         ],
@@ -183,7 +183,7 @@ def test_add_groundtruth(
 
     # make sure we get an error when passing a non-groundtruth object to add_groundtruth
     with pytest.raises(TypeError):
-        dataset.add_groundtruth("not_a_gt")
+        dataset.add_groundtruth("not_a_gt")  # type: ignore
 
     # make sure we get a warning when passing a groundtruth without annotations
     with pytest.warns(UserWarning):
