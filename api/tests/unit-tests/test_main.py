@@ -34,11 +34,12 @@ def test__split_query_params():
 
 
 def test_protected_routes(client: TestClient):
-    """Check that all non-status routes are protected"""
+    """Check that all routes (except for health, ready, and token) are protected"""
     routes = [
         r
         for r in client.app.routes
-        if isinstance(r, APIRoute) and r.name not in {"health", "ready"}
+        if isinstance(r, APIRoute)
+        and r.name not in {"health", "ready", "login_for_access_token"}
     ]
     with patch(
         "velour_api.settings.AuthConfig.no_auth",
@@ -1122,9 +1123,3 @@ def test_get_labels(crud, client: TestClient):
 
 
 """ GET /user """
-
-
-def test_get_user(client: TestClient):
-    resp = client.get("/user")
-    assert resp.status_code == 200
-    assert resp.json() == {"email": None}
