@@ -838,24 +838,13 @@ def test_evaluate_detection_with_label_maps(
 
     # for the first evaluation, don't do anything about the mismatched labels
     # we expect the evaluation to return the same expected metrics as for our standard detection tests
+
     baseline_expected_metrics = [
         {
             "type": "AP",
             "parameters": {"iou": 0.1},
-            "value": 0.504950495049505,
-            "label": {"key": "k1", "value": "v1"},
-        },
-        {
-            "type": "AP",
-            "parameters": {"iou": 0.1},
             "value": 0.0,
-            "label": {"key": "class", "value": "siamese cat"},
-        },
-        {
-            "type": "AP",
-            "parameters": {"iou": 0.1},
-            "value": 0.0,
-            "label": {"key": "k2", "value": "v2"},
+            "label": {"key": "class_name", "value": "maine coon cat"},
         },
         {
             "type": "AP",
@@ -867,19 +856,37 @@ def test_evaluate_detection_with_label_maps(
             "type": "AP",
             "parameters": {"iou": 0.1},
             "value": 0.0,
+            "label": {"key": "k2", "value": "v2"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.1},
+            "value": 0.504950495049505,
+            "label": {"key": "k1", "value": "v1"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.1},
+            "value": 0.0,
+            "label": {"key": "class", "value": "siamese cat"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.6},
+            "value": 0.0,
             "label": {"key": "class_name", "value": "maine coon cat"},
         },
         {
             "type": "AP",
-            "parameters": {"iou": 0.1},
+            "parameters": {"iou": 0.6},
             "value": 0.0,
-            "label": {"key": "class_name", "value": "cat"},
+            "label": {"key": "class", "value": "british shorthair"},
         },
         {
             "type": "AP",
-            "parameters": {"iou": 0.1},
+            "parameters": {"iou": 0.6},
             "value": 0.0,
-            "label": {"key": "class", "value": "cat"},
+            "label": {"key": "k2", "value": "v2"},
         },
         {
             "type": "AP",
@@ -892,46 +899,34 @@ def test_evaluate_detection_with_label_maps(
             "parameters": {"iou": 0.6},
             "value": 0.0,
             "label": {"key": "class", "value": "siamese cat"},
-        },
-        {
-            "type": "AP",
-            "parameters": {"iou": 0.6},
-            "value": 0.0,
-            "label": {"key": "k2", "value": "v2"},
-        },
-        {
-            "type": "AP",
-            "parameters": {"iou": 0.6},
-            "value": 0.0,
-            "label": {"key": "class", "value": "british shorthair"},
-        },
-        {
-            "type": "AP",
-            "parameters": {"iou": 0.6},
-            "value": 0.0,
-            "label": {"key": "class_name", "value": "maine coon cat"},
-        },
-        {
-            "type": "AP",
-            "parameters": {"iou": 0.6},
-            "value": 0.0,
-            "label": {"key": "class_name", "value": "cat"},
-        },
-        {
-            "type": "AP",
-            "parameters": {"iou": 0.6},
-            "value": 0.0,
-            "label": {"key": "class", "value": "cat"},
         },
         {
             "type": "mAP",
             "parameters": {"iou": 0.1},
-            "value": 0.07213578500707214,
+            "value": 0.100990099009901,
         },
         {
             "type": "mAP",
             "parameters": {"iou": 0.6},
-            "value": 0.07213578500707214,
+            "value": 0.100990099009901,
+        },
+        {
+            "type": "APAveragedOverIOUs",
+            "parameters": {"ious": [0.1, 0.6]},
+            "value": 0.0,
+            "label": {"key": "class_name", "value": "maine coon cat"},
+        },
+        {
+            "type": "APAveragedOverIOUs",
+            "parameters": {"ious": [0.1, 0.6]},
+            "value": 0.0,
+            "label": {"key": "class", "value": "british shorthair"},
+        },
+        {
+            "type": "APAveragedOverIOUs",
+            "parameters": {"ious": [0.1, 0.6]},
+            "value": 0.0,
+            "label": {"key": "k2", "value": "v2"},
         },
         {
             "type": "APAveragedOverIOUs",
@@ -944,41 +939,11 @@ def test_evaluate_detection_with_label_maps(
             "parameters": {"ious": [0.1, 0.6]},
             "value": 0.0,
             "label": {"key": "class", "value": "siamese cat"},
-        },
-        {
-            "type": "APAveragedOverIOUs",
-            "parameters": {"ious": [0.1, 0.6]},
-            "value": 0.0,
-            "label": {"key": "k2", "value": "v2"},
-        },
-        {
-            "type": "APAveragedOverIOUs",
-            "parameters": {"ious": [0.1, 0.6]},
-            "value": 0.0,
-            "label": {"key": "class", "value": "british shorthair"},
-        },
-        {
-            "type": "APAveragedOverIOUs",
-            "parameters": {"ious": [0.1, 0.6]},
-            "value": 0.0,
-            "label": {"key": "class_name", "value": "maine coon cat"},
-        },
-        {
-            "type": "APAveragedOverIOUs",
-            "parameters": {"ious": [0.1, 0.6]},
-            "value": 0.0,
-            "label": {"key": "class_name", "value": "cat"},
-        },
-        {
-            "type": "APAveragedOverIOUs",
-            "parameters": {"ious": [0.1, 0.6]},
-            "value": 0.0,
-            "label": {"key": "class", "value": "cat"},
         },
         {
             "type": "mAPAveragedOverIOUs",
             "parameters": {"ious": [0.1, 0.6]},
-            "value": 0.07213578500707214,
+            "value": 0.100990099009901,
         },
     ]
 
@@ -1008,20 +973,8 @@ def test_evaluate_detection_with_label_maps(
         {
             "type": "AP",
             "parameters": {"iou": 0.1},
-            "value": 0.0,
-            "label": {"key": "class_name", "value": "cat"},
-        },
-        {
-            "type": "AP",
-            "parameters": {"iou": 0.1},
             "value": 0.33663366336633666,
             "label": {"key": "class", "value": "cat"},
-        },
-        {
-            "type": "AP",
-            "parameters": {"iou": 0.1},
-            "value": 0.0,
-            "label": {"key": "k2", "value": "v2"},
         },
         {
             "type": "AP",
@@ -1031,9 +984,9 @@ def test_evaluate_detection_with_label_maps(
         },
         {
             "type": "AP",
-            "parameters": {"iou": 0.6},
+            "parameters": {"iou": 0.1},
             "value": 0.0,
-            "label": {"key": "class_name", "value": "cat"},
+            "label": {"key": "k2", "value": "v2"},
         },
         {
             "type": "AP",
@@ -1044,30 +997,24 @@ def test_evaluate_detection_with_label_maps(
         {
             "type": "AP",
             "parameters": {"iou": 0.6},
-            "value": 0.0,
-            "label": {"key": "k2", "value": "v2"},
+            "value": 0.504950495049505,
+            "label": {"key": "k1", "value": "v1"},
         },
         {
             "type": "AP",
             "parameters": {"iou": 0.6},
-            "value": 0.504950495049505,
-            "label": {"key": "k1", "value": "v1"},
+            "value": 0.0,
+            "label": {"key": "k2", "value": "v2"},
         },
         {
             "type": "mAP",
             "parameters": {"iou": 0.1},
-            "value": 0.21039603960396042,
+            "value": 0.28052805280528054,
         },
         {
             "type": "mAP",
             "parameters": {"iou": 0.6},
-            "value": 0.21039603960396042,
-        },
-        {
-            "type": "APAveragedOverIOUs",
-            "parameters": {"ious": [0.1, 0.6]},
-            "value": 0.0,
-            "label": {"key": "class_name", "value": "cat"},
+            "value": 0.28052805280528054,
         },
         {
             "type": "APAveragedOverIOUs",
@@ -1078,19 +1025,19 @@ def test_evaluate_detection_with_label_maps(
         {
             "type": "APAveragedOverIOUs",
             "parameters": {"ious": [0.1, 0.6]},
-            "value": 0.0,
-            "label": {"key": "k2", "value": "v2"},
+            "value": 0.504950495049505,
+            "label": {"key": "k1", "value": "v1"},
         },
         {
             "type": "APAveragedOverIOUs",
             "parameters": {"ious": [0.1, 0.6]},
-            "value": 0.504950495049505,
-            "label": {"key": "k1", "value": "v1"},
+            "value": 0.0,
+            "label": {"key": "k2", "value": "v2"},
         },
         {
             "type": "mAPAveragedOverIOUs",
             "parameters": {"ious": [0.1, 0.6]},
-            "value": 0.21039603960396042,
+            "value": 0.28052805280528054,
         },
     ]
 
