@@ -32,35 +32,10 @@ jobs:
     outputs:
       docker_username: ${{ steps.login-ecr.outputs.docker_username_724664234782_dkr_ecr_us_east_1_amazonaws_com }}
       docker_password: ${{ steps.login-ecr.outputs.docker_password_724664234782_dkr_ecr_us_east_1_amazonaws_com }}
-#  test-can-pull-migrations: doesn't work?
-#    runs-on: ubuntu-latest
-#    steps:
-#      - name: Login to ghcr and test pull
-#        run: |
-#          docker login ghcr.io -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }}
-#          docker pull ghcr.io/striveworks/velour/migrations
-#  build:
-#    runs-on: ubuntu-latest
-#    steps:
-#      - name: Checkout
-#        uses: actions/checkout@v4
-#      - name: Set up Docker Buildx
-#        uses: docker/setup-buildx-action@v3
-#      - name: Build and export
-#        uses: docker/build-push-action@v5
-#        with:
-#          context: ./migrations
-#          tags: migrations
-#          outputs: type=docker,dest=/tmp/migrations.tar
-#      - name: Upload artifact
-#        uses: actions/upload-artifact@v3
-#        with:
-#          name: myimage
-#          path: /tmp/migrations.tar
+
   backend-functional-tests:
     needs:
       - login-to-amazon-ecr
-#      - build
     env:
       COVERAGE_FILE: .coverage.backend-functional-tests
     runs-on: ubuntu-latest
@@ -79,18 +54,6 @@ jobs:
         env:
           POSTGRES_PASSWORD: password
           POSTGRES_DB: velour
-#      migrations:
-#        image: migrations
-##        image: ghcr.io/striveworks/velour/migrations
-#        credentials:
-#          username: ${{ github.actor }}
-#          password: ${{ secrets.GITHUB_TOKEN }}
-#        env: #TODO DRY
-#          POSTGRES_PASSWORD: password
-#          POSTGRES_HOST: localhost
-#          POSTGRES_DB: velour
-#          POSTGRES_USERNAME: postgres
-#          POSTGRES_PORT: 5432
 
     steps:
       - uses: actions/checkout@v3
@@ -102,14 +65,12 @@ jobs:
           role-to-assume: ${{ env.AWS_ROLE }}
           aws-region: ${{ env.AWS_REGION }}
           mask-aws-account-id: "false"
-      - uses: aws-actions/amazon-ecr-login@v1
+      - uses: aws-actions/amazon-ecr-login@v1 #TODO remove ecr login
       - run: |
           docker build -f=migrations/Dockerfile ./migrations -t migrations
           docker ps
           docker run -e POSTGRES_PASSWORD=password -e POSTGRES_HOST=localhost -e POSTGRES_DB=velour -e POSTGRES_USERNAME=postgres -e POSTGRES_PORT=5432  --network "host" migrations
       - run: cd api && pip install ".[test]"
-      - run: pwd
-      - run: ls
       - run: cd api && coverage run --source=velour_api -m pytest -v tests/functional-tests
         env: #should env go before docker?
           POSTGRES_PASSWORD: password
@@ -117,7 +78,7 @@ jobs:
           POSTGRES_DB: velour
           POSTGRES_USERNAME: postgres
           POSTGRES_PORT: 5432
-      - run: coverage report
+      - run: cd api && coverage report
       - name: upload coverage report as artifact
         uses: actions/upload-artifact@v3
         with:
