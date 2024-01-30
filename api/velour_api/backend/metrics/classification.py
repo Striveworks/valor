@@ -147,7 +147,7 @@ def _compute_roc_auc(
     grouper_key : str
         The key of the grouper to calculate the ROCAUC for.
     grouper_mappings: dict
-        A dictionary of mappings that connect groupers to their related labels
+        A dictionary of mappings that connect groupers to their related labels.
 
     Returns
     -------
@@ -212,7 +212,7 @@ def _compute_confusion_matrix_at_grouper_key(
     groundtruth_filter : schemas.Filter
         The filter to be used to query groundtruths.
     grouper_mappings: dict
-        A dictionary of mappings that connect groupers to their related labels
+        A dictionary of mappings that connect groupers to their related labels.
 
     Returns
     -------
@@ -442,7 +442,7 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
     groundtruth_filter : schemas.Filter
         The filter to be used to query groundtruths.
     grouper_mappings: dict
-        A dictionary of mappings that connect groupers to their related labels
+        A dictionary of mappings that connect groupers to their related labels.
 
 
     Returns
