@@ -1,4 +1,3 @@
 services:
   db:
-#    Swap this back
-    image: "bitnami/postgresql:15-debian-11"
+    image: "724664234782.dkr.ecr.us-east-1.amazonaws.com/library/hardened/bitnami/postgresql:15.3.0-debian-12"

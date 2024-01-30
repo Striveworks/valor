@@ -12,13 +12,10 @@ from velour_api.backend import models
 from velour_api.backend.database import Base, create_db, make_session
 
 np.random.seed(29)
-dset_name = "test_dataset"
-model_name = "test_model"
 img1_size = (100, 200)
 img2_size = (80, 32)
 
 
-# replace this to using migrate down when its all done. just have it truncate instead of rebuilding tables
 @pytest.fixture
 def db():
     """This fixture provides a db session. a `RuntimeError` is raised if
@@ -33,16 +30,7 @@ def db():
     tablenames = [
         v.__tablename__ for v in classes if hasattr(v, "__tablename__")
     ]
-
     db = make_session()
-    # inspector = inspect(db.connection())
-    # for tablename in tablenames:
-    #     if inspector.has_table(tablename):
-    #         raise RuntimeError(
-    #             f"Table {tablename} already exists; "
-    #             "functional tests should be run with an empty db."
-    #         )
-
     create_db()
     yield db
 
