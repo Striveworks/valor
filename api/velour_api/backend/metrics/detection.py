@@ -57,7 +57,7 @@ def _ap(
     number_of_groundtruths_per_grouper: Dict[int, int],
     grouper_mappings: Dict[str, dict],
     iou_thresholds: list[float],
-    grouper_ids_associated_with_gts: list[int],
+    grouper_ids_associated_with_gts: set[int],
 ) -> list[schemas.APMetric]:
     """
     Computes the average precision. Return is a dict with keys

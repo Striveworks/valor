@@ -90,11 +90,14 @@ def test__ap():
         ),
     ]
 
+    grouper_ids_associated_with_gts = set(["0", "1", "2"])
+
     detection_metrics = _ap(
         sorted_ranked_pairs=pairs,
         number_of_groundtruths_per_grouper=number_of_groundtruths_per_grouper,
         grouper_mappings=grouper_mappings,
         iou_thresholds=iou_thresholds,
+        grouper_ids_associated_with_gts=grouper_ids_associated_with_gts,
     )
 
     assert len(reference_metrics) == len(detection_metrics)
