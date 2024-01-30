@@ -554,7 +554,7 @@ def _compute_clf_metrics(
         A tuple of confusion matrices and metrics.
     """
 
-    labels = core.get_label_rows(
+    labels = core.fetch_labels(
         db=db,
         prediction_filter=prediction_filter,
         groundtruth_filter=groundtruth_filter,

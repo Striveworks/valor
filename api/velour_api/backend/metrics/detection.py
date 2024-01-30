@@ -162,7 +162,7 @@ def _compute_detection_metrics(
             case _:
                 raise RuntimeError
 
-    labels = core.get_label_rows(
+    labels = core.fetch_labels(
         db=db,
         prediction_filter=prediction_filter,
         groundtruth_filter=groundtruth_filter,

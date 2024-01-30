@@ -188,11 +188,11 @@ def get_labels(
     }
 
 
-def get_label_rows(
+def fetch_labels(
     db: Session,
     groundtruth_filter: schemas.Filter | None = None,
     prediction_filter: schemas.Filter | None = None,
-) -> list:
+) -> list[models.Label]:
     """
     Returns a set of unique label rows optionally filtered using a groundtruth and prediction filter.
 
@@ -207,7 +207,7 @@ def get_label_rows(
 
     Returns
     ----------
-    list
+    list[models.Label]
         A list of label rows pulled from psql.
     """
 
@@ -321,7 +321,7 @@ def get_disjoint_labels(
     db: Session,
     lhs: schemas.Filter,
     rhs: schemas.Filter,
-    label_map: list = None,
+    label_map: list[list[list[str]]] = None,
 ) -> tuple[list[schemas.Label], list[schemas.Label]]:
     """
     Returns all unique labels that are not shared between both filters.
@@ -334,7 +334,7 @@ def get_disjoint_labels(
         Filter defining first label set.
     rhs : list[schemas.Filter]
         Filter defining second label set.
-    label_map: List[List[Label, Label]]
+    label_map: list[list[list[str]]], optional
         Optional mapping of individual Labels to a grouper Label. Useful when you need to evaluate performance using Labels that differ across datasets and models.
 
     Returns
@@ -363,7 +363,7 @@ def get_disjoint_keys(
     db: Session,
     lhs: schemas.Filter,
     rhs: schemas.Filter,
-    label_map: list = None,
+    label_map: list[list[list[str]]] = None,
 ) -> tuple[list[schemas.Label], list[schemas.Label]]:
     """
     Returns all unique label keys that are not shared between both predictions and groundtruths.
@@ -376,7 +376,8 @@ def get_disjoint_keys(
         Filter defining first label set.
     rhs : list[schemas.Filter]
         Filter defining second label set.
-    label_map: list
+    label_map: list[list[list[str]]], optional,
+
         Optional mapping of individual Labels to a grouper Label. Useful when you need to evaluate performance using Labels that differ across datasets and models.
 
     Returns

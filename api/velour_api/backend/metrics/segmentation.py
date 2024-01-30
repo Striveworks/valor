@@ -165,7 +165,7 @@ def _compute_segmentation_metrics(
 
     """
 
-    labels = core.get_label_rows(
+    labels = core.fetch_labels(
         db=db,
         prediction_filter=prediction_filter,
         groundtruth_filter=groundtruth_filter,

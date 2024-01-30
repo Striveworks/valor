@@ -45,13 +45,13 @@ from .groundtruth import (
 from .label import (
     create_labels,
     fetch_label,
+    fetch_labels,
     fetch_matching_labels,
     get_disjoint_keys,
     get_disjoint_labels,
     get_joint_keys,
     get_joint_labels,
     get_label_keys,
-    get_label_rows,
     get_labels,
 )
 from .model import (
@@ -110,7 +110,7 @@ __all__ = [
     "get_joint_labels",
     "get_label_keys",
     "get_labels",
-    "get_label_rows",
+    "fetch_labels",
     "create_model",
     "delete_model",
     "fetch_model",
