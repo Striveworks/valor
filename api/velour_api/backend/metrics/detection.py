@@ -89,19 +89,17 @@ def _ap(
                     recalls.append(
                         cnt_tp / (cnt_tp + cnt_fn) if (cnt_tp + cnt_fn) else 0
                     )
-            else:
-                precisions = [0]
-                recalls = [0]
 
-            detection_metrics.append(
-                schemas.APMetric(
-                    iou=iou_threshold,
-                    value=_calculate_101_pt_interp(
-                        precisions=precisions, recalls=recalls
-                    ),
-                    label=grouper_label,
+                detection_metrics.append(
+                    schemas.APMetric(
+                        iou=iou_threshold,
+                        value=_calculate_101_pt_interp(
+                            precisions=precisions, recalls=recalls
+                        ),
+                        label=grouper_label,
+                    )
                 )
-            )
+
     return detection_metrics
 
 
