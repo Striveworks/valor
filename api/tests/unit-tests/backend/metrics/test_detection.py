@@ -45,7 +45,7 @@ def test__ap():
         }
     }
 
-    number_of_ground_truths = {
+    number_of_groundtruths_per_grouper = {
         "0": 3,
         "1": 2,
         "2": 4,
@@ -92,7 +92,7 @@ def test__ap():
 
     detection_metrics = _ap(
         sorted_ranked_pairs=pairs,
-        number_of_ground_truths=number_of_ground_truths,
+        number_of_groundtruths_per_grouper=number_of_groundtruths_per_grouper,
         grouper_mappings=grouper_mappings,
         iou_thresholds=iou_thresholds,
     )

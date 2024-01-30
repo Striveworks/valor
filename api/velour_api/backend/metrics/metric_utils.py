@@ -86,7 +86,7 @@ def _create_classification_grouper_mappings(mapping_dict, labels):
 def create_grouper_mappings(
     labels: list,
     label_map: list | None,
-    evaluation_type: str,
+    evaluation_type: enums.TaskType,
 ):
     """
     Creates a dictionary of mappings that connect each label with a "grouper" (i.e., a unique ID-key-value combination that can represent one or more labels).
@@ -103,14 +103,14 @@ def create_grouper_mappings(
 
     Returns
     ----------
-    dict
+    Dict[str, dict]
         A dictionary of mappings that are used at evaluation time to group multiple labels together.
     """
 
     mapping_functions = {
-        "classification": _create_classification_grouper_mappings,
-        "detection": _create_detection_grouper_mappings,
-        "segmentation": _create_segmentation_grouper_mappings,
+        enums.TaskType.CLASSIFICATION: _create_classification_grouper_mappings,
+        enums.TaskType.DETECTION: _create_detection_grouper_mappings,
+        enums.TaskType.SEGMENTATION: _create_segmentation_grouper_mappings,
     }
 
     assert (

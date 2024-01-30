@@ -54,9 +54,10 @@ def _calculate_101_pt_interp(precisions, recalls) -> float:
 
 def _ap(
     sorted_ranked_pairs: Dict[int, List[RankedPair]],
-    number_of_ground_truths: Dict[int, int],
-    grouper_mappings: dict,
+    number_of_groundtruths_per_grouper: Dict[int, int],
+    grouper_mappings: Dict[str, dict],
     iou_thresholds: list[float],
+    grouper_ids_associated_with_gts: list[int],
 ) -> list[schemas.APMetric]:
     """
     Computes the average precision. Return is a dict with keys
@@ -70,6 +71,9 @@ def _ap(
         for grouper_id, grouper_label in grouper_mappings[
             "grouper_id_to_grouper_label_mapping"
         ].items():
+            if grouper_id not in grouper_ids_associated_with_gts:
+                continue
+
             precisions = []
             recalls = []
             cnt_tp = 0
@@ -81,7 +85,9 @@ def _ap(
                         cnt_tp += 1
                     else:
                         cnt_fp += 1
-                    cnt_fn = number_of_ground_truths[grouper_id] - cnt_tp
+                    cnt_fn = (
+                        number_of_groundtruths_per_grouper[grouper_id] - cnt_tp
+                    )
 
                     precisions.append(
                         cnt_tp / (cnt_tp + cnt_fp) if (cnt_tp + cnt_fp) else 0
@@ -89,16 +95,19 @@ def _ap(
                     recalls.append(
                         cnt_tp / (cnt_tp + cnt_fn) if (cnt_tp + cnt_fn) else 0
                     )
+            else:
+                precisions = [0]
+                recalls = [0]
 
-                detection_metrics.append(
-                    schemas.APMetric(
-                        iou=iou_threshold,
-                        value=_calculate_101_pt_interp(
-                            precisions=precisions, recalls=recalls
-                        ),
-                        label=grouper_label,
-                    )
+            detection_metrics.append(
+                schemas.APMetric(
+                    iou=iou_threshold,
+                    value=_calculate_101_pt_interp(
+                        precisions=precisions, recalls=recalls
+                    ),
+                    label=grouper_label,
                 )
+            )
 
     return detection_metrics
 
@@ -162,7 +171,7 @@ def _compute_detection_metrics(
     grouper_mappings = create_grouper_mappings(
         labels=labels,
         label_map=parameters.label_map,
-        evaluation_type="detection",
+        evaluation_type=enums.TaskType.DETECTION,
     )
 
     # Join gt, datum, annotation, label. Map grouper_ids to each label_id.
@@ -304,25 +313,35 @@ def _compute_detection_metrics(
             )
 
     # Get the number of ground truths per grouper_id
-    number_of_ground_truths_per_grouper = {}
+    number_of_groundtruths_per_grouper = {}
+
+    groundtruths = db.query(
+        Query(
+            models.GroundTruth.id,
+            case(
+                grouper_mappings["label_id_to_grouper_id_mapping"],
+                value=models.GroundTruth.label_id,
+            ).label("label_id_grouper"),
+        )
+        .filter(groundtruth_filter)
+        .groundtruths()
+    ).all()
+
+    grouper_ids_associated_with_gts = set([row[1] for row in groundtruths])
 
     for grouper_id in ranking.keys():
-        label_ids = grouper_mappings["grouper_id_to_label_ids_mapping"][
-            grouper_id
-        ]
-        groundtruth_filter.label_ids = label_ids
-        number_of_ground_truths_per_grouper[grouper_id] = db.query(
-            Query(func.count(models.GroundTruth.id))
-            .filter(groundtruth_filter)
-            .groundtruths()
-        ).scalar()
+        number_of_groundtruths_per_grouper[grouper_id] = len(
+            set([row[0] for row in groundtruths if row[1] == grouper_id])
+        )
 
     # Compute AP
+    grouper_ids_associated_with_gts
     detection_metrics = _ap(
         sorted_ranked_pairs=ranking,
-        number_of_ground_truths=number_of_ground_truths_per_grouper,
+        number_of_groundtruths_per_grouper=number_of_groundtruths_per_grouper,
         iou_thresholds=parameters.iou_thresholds_to_compute,
         grouper_mappings=grouper_mappings,
+        grouper_ids_associated_with_gts=grouper_ids_associated_with_gts,
     )
 
     # now extend to the averaged AP metrics and mAP metric

@@ -2,7 +2,7 @@ from geoalchemy2.functions import ST_Count, ST_MapAlgebra
 from sqlalchemy.orm import Session, aliased
 from sqlalchemy.sql import Select, func, select
 
-from velour_api import schemas
+from velour_api import enums, schemas
 from velour_api.backend import core, models
 from velour_api.backend.metrics.metric_utils import (
     create_grouper_mappings,
@@ -174,7 +174,7 @@ def _compute_segmentation_metrics(
     grouper_mappings = create_grouper_mappings(
         labels=labels,
         label_map=parameters.label_map,
-        evaluation_type="segmentation",
+        evaluation_type=enums.TaskType.SEGMENTATION,
     )
 
     ret = []

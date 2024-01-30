@@ -3,7 +3,7 @@ from sqlalchemy import Float, Integer
 from sqlalchemy.orm import Bundle, Session
 from sqlalchemy.sql import and_, case, func, select
 
-from velour_api import schemas
+from velour_api import enums, schemas
 from velour_api.backend import core, models
 from velour_api.backend.metrics.metric_utils import (
     create_grouper_mappings,
@@ -563,7 +563,7 @@ def _compute_clf_metrics(
     grouper_mappings = create_grouper_mappings(
         labels=labels,
         label_map=label_map,
-        evaluation_type="classification",
+        evaluation_type=enums.TaskType.CLASSIFICATION,
     )
 
     # compute metrics and confusion matrix for each grouper id
