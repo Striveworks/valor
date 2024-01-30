@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta, timezone
+
 import jwt
 from fastapi import HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -5,11 +7,6 @@ from starlette.requests import Request
 
 from velour_api import logger
 from velour_api.settings import auth_settings
-
-if auth_settings.jwks_url is not None:
-    jwks_client = jwt.PyJWKClient(auth_settings.jwks_url)
-else:
-    jwks_client = None
 
 
 class OptionalHTTPBearer(HTTPBearer):
@@ -25,9 +22,29 @@ class OptionalHTTPBearer(HTTPBearer):
         return ret
 
 
+def authenticate_user(username: str, password: str) -> bool:
+    return (
+        username == auth_settings.USERNAME
+        and password == auth_settings.PASSWORD
+    )
+
+
+def create_token(data: dict, expires_delta: timedelta | None = None):
+    to_encode = data.copy()
+
+    expires_delta = expires_delta or timedelta(days=1)
+    expire = datetime.now(timezone.utc) + expires_delta
+    to_encode.update({"exp": expire})
+
+    encoded_jwt = jwt.encode(
+        to_encode, auth_settings.SECRET_KEY, algorithm=auth_settings.ALGORITHM
+    )
+    return encoded_jwt
+
+
 def verify_token(token: HTTPAuthorizationCredentials | None) -> dict:
     """
-    Verifies a token. See https://auth0.com/blog/build-and-secure-fastapi-server-with-auth0/.
+    Verifies a JWT and returns the data contained in it.
 
     Parameters
     ----------
@@ -53,29 +70,14 @@ def verify_token(token: HTTPAuthorizationCredentials | None) -> dict:
             )
         return {}
 
-    def _handle_error(msg):
-        logger.debug(f"error in `verify_token` with `token={token}`: {msg}")
-        raise HTTPException(status_code=401)
-
-    try:
-        signing_key = jwks_client.get_signing_key_from_jwt(
-            token.credentials
-        ).key
-    except (
-        jwt.exceptions.PyJWKClientError,
-        jwt.exceptions.DecodeError,
-    ) as error:
-        _handle_error(error.__str__())
-
     try:
         payload = jwt.decode(
             token.credentials,
-            signing_key,
-            algorithms=auth_settings.algorithms,
-            audience=auth_settings.audience,
-            issuer=auth_settings.issuer,
+            auth_settings.SECRET_KEY,
+            algorithms=[auth_settings.ALGORITHM],
         )
     except Exception as e:
-        return _handle_error(str(e))
+        logger.debug(f"error in `verify_token` with `token={token}`: {e}")
+        raise HTTPException(status_code=401)
 
     return payload
