@@ -1,7 +1,17 @@
 import datetime
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, List, Union
+from typing import (
+    Any,
+    Dict,
+    Iterable,
+    Iterator,
+    List,
+    Optional,
+    Sequence,
+    Type,
+    Union,
+)
 
 from velour.enums import AnnotationType, TaskType
 
@@ -120,12 +130,14 @@ class BinaryExpression:
 
 
 class DeclarativeMapper:
-    def __init__(self, name: str, object_type: object, key: str = None):
+    def __init__(
+        self, name: str, object_type: Type, key: Optional[str] = None
+    ):
         self.name = name
         self.key = key
         self.object_type = object_type
 
-    def _validate_equality_operator(self, value: any, opstring: str):
+    def _validate_equality_operator(self, value: Any, opstring: str):
         """Validate that the inputs to ac operator filter are of the correct type."""
         if isinstance(value, dict):
             raise TypeError(
@@ -138,7 +150,7 @@ class DeclarativeMapper:
                 f"`{self.name}` should be of type `{self.object_type}`"
             )
 
-    def _validate_numeric_operator(self, value: any, opstring: str):
+    def _validate_numeric_operator(self, value: Any, opstring: str):
         """Validate the inputs to a numeric filter."""
         if (
             not isinstance(value, float)
@@ -256,6 +268,12 @@ class DeclarativeMapper:
         )
 
 
+# Type of expressions passed to Filter.create
+FilterExpressionsType = Sequence[
+    Union[BinaryExpression, Sequence[BinaryExpression]]
+]
+
+
 @dataclass
 class Filter:
     """
@@ -310,60 +328,59 @@ class Filter:
     """
 
     # datasets
-    dataset_names: List[str] = None
-    dataset_metadata: Dict[str, List[ValueFilter]] = None
-    dataset_geospatial: List[GeospatialFilter] = None
+    dataset_names: Optional[List[str]] = None
+    dataset_metadata: Optional[Dict[str, List[ValueFilter]]] = None
+    dataset_geospatial: Optional[List[GeospatialFilter]] = None
 
     # models
-    model_names: List[str] = None
-    model_metadata: Dict[str, List[ValueFilter]] = None
-    model_geospatial: List[GeospatialFilter] = None
+    model_names: Optional[List[str]] = None
+    model_metadata: Optional[Dict[str, List[ValueFilter]]] = None
+    model_geospatial: Optional[List[GeospatialFilter]] = None
 
     # datums
-    datum_uids: List[str] = None
-    datum_metadata: Dict[str, List[ValueFilter]] = None
-    datum_geospatial: List[GeospatialFilter] = None
+    datum_uids: Optional[List[str]] = None
+    datum_metadata: Optional[Dict[str, List[ValueFilter]]] = None
+    datum_geospatial: Optional[List[GeospatialFilter]] = None
 
     # annotations
-    task_types: List[TaskType] = None
-    annotation_types: List[AnnotationType] = None
-    annotation_geometric_area: List[ValueFilter] = None
-    annotation_metadata: Dict[str, List[ValueFilter]] = None
-    annotation_geospatial: List[GeospatialFilter] = None
+    task_types: Optional[List[TaskType]] = None
+    annotation_types: Optional[List[AnnotationType]] = None
+    annotation_geometric_area: Optional[List[ValueFilter]] = None
+    annotation_metadata: Optional[Dict[str, List[ValueFilter]]] = None
+    annotation_geospatial: Optional[List[GeospatialFilter]] = None
 
     # predictions
-    prediction_scores: List[ValueFilter] = None
+    prediction_scores: Optional[List[ValueFilter]] = None
 
     # labels
-    labels: List[Dict[str, str]] = None
-    label_ids: List[int] = None
-    label_keys: List[str] = None
+    labels: Optional[List[Dict[str, str]]] = None
+    label_ids: Optional[List[int]] = None
+    label_keys: Optional[List[str]] = None
 
     @classmethod
-    def create(cls, expressions: List[BinaryExpression]):
+    def create(cls, expressions: FilterExpressionsType) -> "Filter":
         """
         Parses a list of `BinaryExpression` to create a `schemas.Filter` object.
 
         Parameters
         ----------
-        expressions: List[BinaryExpression]
-            A list of `BinaryExpressions' to parse into a `Filter` object.
+        expressions: Sequence[Union[BinaryExpression, Sequence[BinaryExpression]]]
+            A list of (lists of) `BinaryExpressions' to parse into a `Filter` object.
         """
 
-        # expand nested expressions
-        expression_list = [
-            expr for expr in expressions if isinstance(expr, BinaryExpression)
-        ] + [
-            expr_
-            for expr in expressions
-            if isinstance(expr, list)
-            for expr_ in expr
-            if isinstance(expr_, BinaryExpression)
-        ]
+        def flatten(
+            t: Iterable[Union[BinaryExpression, Iterable[BinaryExpression]]]
+        ) -> Iterator[BinaryExpression]:
+            """Flatten a nested iterable of BinaryExpressions."""
+            for item in t:
+                if isinstance(item, BinaryExpression):
+                    yield item
+                else:
+                    yield from flatten(item)
 
         # create dict using expr names as keys
         expression_dict = {}
-        for expr in expression_list:
+        for expr in flatten(expressions):
             if expr.name not in expression_dict:
                 expression_dict[expr.name] = []
             expression_dict[expr.name].append(expr)
@@ -501,7 +518,7 @@ class Filter:
             ]
         if "labels" in expression_dict:
             filter_request.labels = [
-                {expr.value.key: expr.value.value}
+                {expr.value._key: expr.value.value}
                 for expr in expression_dict["labels"]
             ]
         if "label_keys" in expression_dict:

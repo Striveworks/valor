@@ -17,16 +17,13 @@ from velour_api.backend import models
 
 
 def bbox_to_poly(bbox: BoundingBox) -> Polygon:
-    return Polygon(
-        boundary=bbox.polygon,
-        holes=None,
-    )
+    return Polygon(boundary=bbox.polygon)
 
 
 def _list_of_points_from_wkt_polygon(
     db: Session, det: models.Annotation
 ) -> list[Point]:
-    geo = json.loads(db.scalar(det.polygon.ST_AsGeoJSON()))
+    geo = json.loads(db.scalar(det.polygon.ST_AsGeoJSON()) or "")
     assert len(geo["coordinates"]) == 1
     return [Point(p[0], p[1]) for p in geo["coordinates"][0][:-1]]
 
@@ -71,7 +68,7 @@ def test_boundary(
     db: Session,
     client: Client,
     dataset_name: str,
-    rect1: Polygon,
+    rect1: BoundingBox,
     img1: ImageMetadata,
 ):
     """Test consistency of boundary in backend and client"""
@@ -104,8 +101,8 @@ def test_iou(
     client: Client,
     dataset_name: str,
     model_name: str,
-    rect1: Polygon,
-    rect2: Polygon,
+    rect1: BoundingBox,
+    rect2: BoundingBox,
     img1: ImageMetadata,
 ):
     rect1_poly = bbox_to_poly(rect1)
@@ -125,7 +122,9 @@ def test_iou(
         )
     )
     dataset.finalize()
-    db_gt = db.scalar(select(models.Annotation)).polygon
+    annotation = db.scalar(select(models.Annotation))
+    assert annotation is not None
+    db_gt = annotation.polygon
 
     model = Model(client, model_name)
     model.add_prediction(
@@ -142,9 +141,11 @@ def test_iou(
         ),
     )
     model.finalize_inferences(dataset)
-    db_pred = db.scalar(
+    annotation2 = db.scalar(
         select(models.Annotation).where(models.Annotation.model_id.isnot(None))
-    ).polygon
+    )
+    assert annotation2 is not None
+    db_pred = annotation2.polygon
 
     # scraped from velour_api backend
     gintersection = ST_Intersection(db_gt, db_pred)

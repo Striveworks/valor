@@ -1,7 +1,8 @@
 import random
-from typing import Tuple
+from typing import cast
 
 import numpy as np
+from numpy.typing import NDArray
 from tqdm import tqdm
 
 from velour import (
@@ -14,6 +15,7 @@ from velour import (
     enums,
 )
 from velour.client import Client
+from velour.coretypes import Datum
 from velour.metatypes import ImageMetadata
 from velour.schemas import BoundingBox, Raster
 
@@ -31,7 +33,7 @@ def _generate_mask(
     width: int,
     minimum_mask_percent: float = 0.05,
     maximum_mask_percent: float = 0.4,
-) -> np.array:
+) -> NDArray:
     """Generate a random mask for an image with a given height and width"""
     mask_cutoff = random.uniform(minimum_mask_percent, maximum_mask_percent)
     mask = (np.random.random((height, width))) < mask_cutoff
@@ -84,18 +86,18 @@ def _generate_label(unique_id: str, add_score: bool = False) -> Label:
 
 
 def _generate_image_metadata(
-    unique_id: int,
+    unique_id: str,
     min_height: int = 360,
     max_height: int = 640,
     min_width: int = 360,
     max_width: int = 640,
-) -> Tuple[ImageMetadata, int, int]:
+) -> dict:
     """Generate metadata for an image"""
     height = random.randrange(min_height, max_height)
     width = random.randrange(min_width, max_width)
 
     return {
-        "uid": str(unique_id),
+        "uid": unique_id,
         "height": height,
         "width": width,
     }
@@ -174,7 +176,7 @@ def _generate_prediction_annotation(
 
 
 def _generate_prediction(
-    datum: ImageMetadata,
+    datum: Datum,
     height: int,
     width: int,
     n_annotations: int,
@@ -268,11 +270,12 @@ def generate_prediction_data(
     datums = dataset.get_datums()
 
     for datum in datums:
-        height, width = (datum.metadata["height"], datum.metadata["width"])
+        height = cast(int, datum._metadata["height"])
+        width = cast(int, datum._metadata["width"])
         prediction = _generate_prediction(
             datum=datum,
-            height=height,
-            width=width,
+            height=int(height),
+            width=int(width),
             n_annotations=n_annotations,
             n_labels=n_labels,
         )
