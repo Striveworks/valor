@@ -48,7 +48,7 @@ class AuthConfig(BaseSettings):
 
     @property
     def no_auth(self) -> bool:
-        return self.SECRET_KEY is None
+        return not bool(self.SECRET_KEY)
 
     @model_validator(mode="after")
     def check_all_fields(self):
