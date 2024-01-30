@@ -1375,10 +1375,12 @@ class Model:
             ]
         ), "label_map should be a dictionary with valid Labels for both the key and value."
 
-        return [
-            [[key.key, key.value], [value.key, value.value]]
+        return_value = [
+            [[key._key, key.value], [value._key, value.value]]
             for key, value in label_map.items()
         ]
+
+        return return_value
 
     def evaluate_classification(
         self,
@@ -1487,6 +1489,9 @@ class Model:
             datum_filter=datum_filter,
             parameters=parameters,
         )
+        import pdb
+
+        pdb.set_trace()
         resp = self.client.evaluate(evaluation)
         if len(resp) != 1:
             raise RuntimeError
