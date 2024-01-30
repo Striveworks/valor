@@ -56,9 +56,9 @@ class AuthConfig(BaseSettings):
         are set or none of them are.
         """
         bools = [
-            self.SECRET_KEY is None,
-            self.USERNAME is None,
-            self.PASSWORD is None,
+            bool(self.SECRET_KEY),
+            bool(self.USERNAME),
+            bool(self.PASSWORD),
         ]
         if any(bools) and not all(bools):
             raise ValueError(
