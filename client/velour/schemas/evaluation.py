@@ -29,7 +29,6 @@ class EvaluationParameters:
     label_map: Optional[Union[List[List[List[str]]], None]] = None
 
 
-
 @dataclass
 class EvaluationRequest:
     """
