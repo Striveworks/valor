@@ -2,14 +2,13 @@
 that is no auth
 """
 from velour import (
-    Client, 
-    Label,
-    Dataset, 
-    Datum, 
-    GroundTruth, 
-    Model, 
-    Prediction
     Client,
+    Dataset,
+    Datum,
+    GroundTruth,
+    Label,
+    Model,
+    Prediction,
 )
 from velour.enums import EvaluationStatus
 
@@ -112,8 +111,8 @@ def test_evaluate_segmentation_with_label_maps(
     gt_semantic_segs2: list[GroundTruth],
     pred_semantic_segs: list[Prediction],
 ):
-    dataset = Dataset(client, dataset_name)
-    model = Model(client, model_name)
+    dataset = Dataset.create(dataset_name)
+    model = Model.create(model_name)
 
     for gt in gt_semantic_segs1:
         gt.datum.metadata["color"] = "red"

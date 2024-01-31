@@ -30,7 +30,9 @@ def bearer_token() -> str:
 
 def test_auth_client_pos(bearer_token: str):
     """Test that we can successfully authenticate and hit an endpoint"""
-    client = ClientConnection(host="http://localhost:8000", access_token=bearer_token)
+    client = ClientConnection(
+        host="http://localhost:8000", access_token=bearer_token
+    )
     assert isinstance(client.get_datasets(), list)
 
 

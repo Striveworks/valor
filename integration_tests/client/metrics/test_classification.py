@@ -17,6 +17,7 @@ from velour import (
 )
 from velour.enums import EvaluationStatus, TaskType
 from velour.exceptions import ClientException
+from velour.metatypes import ImageMetadata
 
 
 def test_evaluate_image_clf(
@@ -668,12 +669,12 @@ def test_evaluate_classification_with_label_maps(
     dataset_name: str,
     model_name: str,
 ):
-    dataset = Dataset(client, dataset_name)
+    dataset = Dataset.create(dataset_name)
     for gt in gt_clfs_with_label_maps:
         dataset.add_groundtruth(gt)
     dataset.finalize()
 
-    model = Model(client, model_name)
+    model = Model.create(model_name)
     for pd in pred_clfs_with_label_maps:
         model.add_prediction(dataset, pd)
     model.finalize_inferences(dataset)

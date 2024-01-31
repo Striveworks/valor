@@ -12,11 +12,11 @@ from velour import (
     Annotation,
     Client,
     Dataset,
+    Filter,
     GroundTruth,
     Label,
     Model,
     Prediction,
-    Filter,
 )
 from velour.enums import AnnotationType, EvaluationStatus, TaskType
 from velour.exceptions import ClientException
@@ -829,14 +829,14 @@ def test_evaluate_detection_with_label_maps(
     gts_det_with_label_maps: list[GroundTruth],
     preds_det_with_label_maps: list[Prediction],
 ):
-    dataset = Dataset(client, dataset_name)
+    dataset = Dataset.create(dataset_name)
 
     for gt in gts_det_with_label_maps:
         dataset.add_groundtruth(gt)
 
     dataset.finalize()
 
-    model = Model(client, model_name)
+    model = Model.create(model_name)
 
     for pd in preds_det_with_label_maps:
         model.add_prediction(dataset, pd)
