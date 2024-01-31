@@ -1363,7 +1363,9 @@ class Model:
 
         return Filter(**filters)
 
-    def _create_label_map(self, label_map: Dict[Label, Label]) -> list:
+    def _create_label_map(
+        self, label_map: Dict[Label, Label]
+    ) -> list[list[list[str]]]:
         """Convert a dictionary of label maps to a serializable list format."""
         if not label_map:
             return None

@@ -85,9 +85,9 @@ def _create_classification_grouper_mappings(mapping_dict, labels):
 
 def create_grouper_mappings(
     labels: list,
-    label_map: list | None,
+    label_map: list[list[list[str]]] | None,
     evaluation_type: enums.TaskType,
-):
+) -> dict[str, dict[str | int, any]]:
     """
     Creates a dictionary of mappings that connect each label with a "grouper" (i.e., a unique ID-key-value combination that can represent one or more labels).
     These mappings enable Velour to group multiple labels together using the label_map argument in each evaluation function.
@@ -96,14 +96,14 @@ def create_grouper_mappings(
     ----------
     labels : list
         A list of all labels.
-    label_map : list
+    label_map: list[list[list[str]]], optional
         An optional label map to use when grouping labels. If None is passed, this function will still create the appropriate mappings using individual labels.
     evaluation_type : str
         The type of evaluation to create mappings for.
 
     Returns
     ----------
-    Dict[str, dict]
+    dict[str, dict[str | int, any]]
         A dictionary of mappings that are used at evaluation time to group multiple labels together.
     """
 

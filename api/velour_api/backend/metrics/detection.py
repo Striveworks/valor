@@ -1,6 +1,5 @@
 import heapq
 from dataclasses import dataclass
-from typing import Dict, List
 
 from geoalchemy2 import functions as gfunc
 from sqlalchemy import and_, case, func, select
@@ -53,9 +52,9 @@ def _calculate_101_pt_interp(precisions, recalls) -> float:
 
 
 def _ap(
-    sorted_ranked_pairs: Dict[int, List[RankedPair]],
-    number_of_groundtruths_per_grouper: Dict[int, int],
-    grouper_mappings: Dict[str, dict],
+    sorted_ranked_pairs: dict[int, list[RankedPair]],
+    number_of_groundtruths_per_grouper: dict[int, int],
+    grouper_mappings: dict[str, dict[str | int, any]],
     iou_thresholds: list[float],
     grouper_ids_associated_with_gts: set[int],
 ) -> list[schemas.APMetric]:

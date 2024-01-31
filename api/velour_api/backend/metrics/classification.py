@@ -129,7 +129,7 @@ def _compute_roc_auc(
     prediction_filter: schemas.Filter,
     groundtruth_filter: schemas.Filter,
     grouper_key: str,
-    grouper_mappings: dict,
+    grouper_mappings: dict[str, dict[str | int, any]],
 ) -> float | None:
     """
     Computes the area under the ROC curve. Note that for the multi-class setting
@@ -146,7 +146,7 @@ def _compute_roc_auc(
         The filter to be used to query groundtruths.
     grouper_key : str
         The key of the grouper to calculate the ROCAUC for.
-    grouper_mappings: dict
+    grouper_mappings: dict[str, dict[str | int, any]]
         A dictionary of mappings that connect groupers to their related labels.
 
     Returns
@@ -198,7 +198,7 @@ def _compute_confusion_matrix_at_grouper_key(
     prediction_filter: schemas.Filter,
     groundtruth_filter: schemas.Filter,
     grouper_key: str,
-    grouper_mappings: dict,
+    grouper_mappings: dict[str, dict[str | int, any]],
 ) -> schemas.ConfusionMatrix | None:
     """
     Computes the confusion matrix at a label_key.
@@ -211,7 +211,7 @@ def _compute_confusion_matrix_at_grouper_key(
         The filter to be used to query predictions.
     groundtruth_filter : schemas.Filter
         The filter to be used to query groundtruths.
-    grouper_mappings: dict
+    grouper_mappings: dict[str, dict[str | int, any]]
         A dictionary of mappings that connect groupers to their related labels.
 
     Returns
@@ -416,7 +416,7 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
     prediction_filter: schemas.Filter,
     groundtruth_filter: schemas.Filter,
     grouper_key: str,
-    grouper_mappings: dict,
+    grouper_mappings: dict[str, dict[str | int, any]],
 ) -> (
     tuple[
         schemas.ConfusionMatrix,
@@ -441,7 +441,7 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
         The filter to be used to query predictions.
     groundtruth_filter : schemas.Filter
         The filter to be used to query groundtruths.
-    grouper_mappings: dict
+    grouper_mappings: dict[str, dict[str | int, any]]
         A dictionary of mappings that connect groupers to their related labels.
 
 
@@ -522,7 +522,7 @@ def _compute_clf_metrics(
     db: Session,
     prediction_filter: schemas.Filter,
     groundtruth_filter: schemas.Filter,
-    label_map: list,
+    label_map: list[list[list[str]]] | None = None,
 ) -> tuple[
     list[schemas.ConfusionMatrix],
     list[
@@ -545,7 +545,7 @@ def _compute_clf_metrics(
         The filter to be used to query predictions.
     groundtruth_filter : schemas.Filter
         The filter to be used to query groundtruths.
-    label_map: List[List[Label, Label]]
+    label_map: list[list[list[str]]], optional
         Optional mapping of individual Labels to a grouper Label. Useful when you need to evaluate performance using Labels that differ across datasets and models.
 
     Returns
