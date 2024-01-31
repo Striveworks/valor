@@ -8,7 +8,7 @@
 <link href="../endpoints/" rel="prev"/>
 <link href="../contributing/" rel="next"/>
 <link href="../assets/images/favicon.png" rel="icon"/>
-<meta content="mkdocs-1.5.3, mkdocs-material-9.5.4" name="generator"/>
+<meta content="mkdocs-1.5.3, mkdocs-material-9.5.6" name="generator"/>
 <title>Technical Concepts - Velour</title>
 <link href="../assets/stylesheets/main.50c56a3b.min.css" rel="stylesheet"/>
 <link href="../assets/stylesheets/palette.06af60db.min.css" rel="stylesheet"/>
@@ -689,33 +689,27 @@
 <h2 id="supported-task-types">Supported Task Types</h2>
 <p>As of January 2024, Velour supports the following types of supervised learning tasks and associated metrics:</p>
 <ul>
-<li>Classification (including multi-label classification)<ul>
+<li>Classification (including multi-label classification)</li>
 <li>F1</li>
 <li>AUCROC</li>
 <li>Accuracy</li>
 <li>Precision</li>
 <li>Recall</li>
-</ul>
-</li>
-<li>Object detection<ul>
+<li>Object detection</li>
 <li>AP</li>
 <li>mAP</li>
 <li>AP Averaged Over IOU's</li>
 <li>mAP Averaged Over IOU's</li>
-</ul>
-</li>
-<li>Segmentation (including both instance and semantic segmentation)<ul>
+<li>Segmentation (including both instance and semantic segmentation)</li>
 <li>IOU</li>
 <li>mIOU</li>
-</ul>
-</li>
 </ul>
 <p>For descriptions of each of these metrics, see our <a href="../metrics/">Metrics</a> page.</p>
 <p>We expect the Velour framework to extend well to other types of supervised learning tasks, and plan to expand our supported task types in future releases.</p>
 <h2 id="components">Components</h2>
 <p>We can think of Velour in terms of four orthogonal components:</p>
 <h3 id="api">API</h3>
-<p>The core of Velour is a backend REST API service. Users can call the API's endpoints directly (e.g., <code>POST /datasets</code>), or they can use our Python client to handle the API calls in their Python environment.  All of Velour's state is stored in Postgres; the API itself is completely stateless.</p>
+<p>The core of Velour is a backend REST API service. Users can call the API's endpoints directly (e.g., <code>POST /datasets</code>), or they can use our Python client to handle the API calls in their Python environment. All of Velour's state is stored in Postgres; the API itself is completely stateless.</p>
 <p>Note that, after you start the API service in Dockers, you'll be able to view FastAPI's automatically generated API documentation at <code>https://&lt;your host&gt;/docs</code>.</p>
 <h3 id="postgresql">PostgreSQL</h3>
 <p>PostgreSQL (a.k.a., Postgres or psql) is an open-source relational database management system. We use Postgres to store all of Velour's various objects and states.</p>
@@ -743,15 +737,16 @@
 <p><code>Annotations</code> attach to both <code>GroundTruths</code> and <code>Predictions</code>, enabling users to add textual labels to these objects. If a <code>GroundTruth</code> depicts a bounding box around a cat, for example, the <code>Annotation</code> would be passed into the <code>GroundTruth</code> to clarify the correct label for the <code>GroundTruth</code> (e.g., <code>class=cat</code>) and any other labels the user wants to specify for that bounding box (e.g., <code>breed=tabby</code>).</p>
 <p><code>Annotations</code> require the user to specify their task type, labels, and metadata at instantition. Users can also pass-in various visual representations tailored to their specific task, such as bounding boxes, segmentations, or image rasters.</p>
 <h2 id="authentication">Authentication</h2>
-<p>The API can be run without authentication (by default), or with authentication provided by <a href="https://auth0.com/">auth0</a>. To enable authentication, you can either:</p>
+<p>The API can be run without authentication (by default), or with authentication with a single global username and password. To set this up, set the following environment variables when running the backend:</p>
 <ul>
-<li>Set the environment variables <code>AUTH_DOMAIN</code>, <code>AUTH_AUDIENCE</code>, and <code>AUTH_ALGORITHMS</code> manually (e.g., <code>export AUTH_DOMAIN=&lt;your domain&gt;</code>)</li>
+<li>Set the environment variables <code>SECRET_KEY</code>, <code>USERNAME</code>, and <code>PASSWORD</code> manually (e.g., <code>export SECRET_KEY=&lt;secret key&gt;</code>)</li>
 <li>Set these env variables in a file named <code>.env.auth</code>, and place that file in the <code>api</code> directory. An example of such a file would look like:</li>
 </ul>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a href="#__codelineno-0-1" id="__codelineno-0-1" name="__codelineno-0-1"></a>AUTH0_DOMAIN="your_domain.auth0.com"
-</span><span id="__span-0-2"><a href="#__codelineno-0-2" id="__codelineno-0-2" name="__codelineno-0-2"></a>AUTH0_AUDIENCE="https://your_domain.com/"
-</span><span id="__span-0-3"><a href="#__codelineno-0-3" id="__codelineno-0-3" name="__codelineno-0-3"></a>AUTH0_ALGORITHMS="RS256"
+<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a href="#__codelineno-0-1" id="__codelineno-0-1" name="__codelineno-0-1"></a>SECRET_KEY="secret key"
+</span><span id="__span-0-2"><a href="#__codelineno-0-2" id="__codelineno-0-2" name="__codelineno-0-2"></a>USERNAME="username"
+</span><span id="__span-0-3"><a href="#__codelineno-0-3" id="__codelineno-0-3" name="__codelineno-0-3"></a>PASSWORD="password"
 </span></code></pre></div>
+<p><code>SECRET_KEY</code> is the key used for encoding and decoding tokens, and should be a random string. <code>USERNAME</code> and <code>PASSWORD</code> are the username and password that will be used to authenticate requests.</p>
 <p>You can use the tests in <code>integration_tests/test_client_auth.py</code> to check whether your authenticator is running correctly.</p>
 <h2 id="deployment-settings">Deployment Settings</h2>
 <p>When deploying behind a proxy or with external routing, the environment variable <code>API_ROOT_PATH</code> environmental variable should be used to set the <code>root_path</code> arguement to <code>fastapi.FastAPI</code> (see https://fastapi.tiangolo.com/advanced/behind-a-proxy/#setting-the-root_path-in-the-fastapi-app).</p>
@@ -780,8 +775,8 @@
 <div class="md-dialog" data-md-component="dialog">
 <div class="md-dialog__inner md-typeset"></div>
 </div>
-<script id="__config" type="application/json">{"base": "..", "features": ["navigation.expand"], "search": "../assets/javascripts/workers/search.c011b7c0.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
-<script src="../assets/javascripts/bundle.7389ff0e.min.js"></script>
+<script id="__config" type="application/json">{"base": "..", "features": ["navigation.expand"], "search": "../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+<script src="../assets/javascripts/bundle.e1c3ead8.min.js"></script>
 <script>document$.subscribe(() => {
             window.update_swagger_ui_iframe_height = function (id) {
                 var iFrameID = document.getElementById(id);
