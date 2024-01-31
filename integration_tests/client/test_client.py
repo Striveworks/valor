@@ -6,6 +6,7 @@ from typing import List
 
 import pytest
 
+import velour
 from velour import (
     Annotation,
     Client,
@@ -81,6 +82,9 @@ def created_model(
 
 
 def test_connect():
+    # reset the connection
+    velour.client._connection = None
+
     bad_url = "localhost:8000"
 
     with pytest.raises(ValueError):
