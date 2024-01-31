@@ -135,8 +135,8 @@ def test_evaluate_detection(
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
         filters=[
-            Label.label.in_([Label(key="k1", value="v1")]),
-            Annotation.type == AnnotationType.BOX,
+            Annotation.labels.in_([Label(key="k1", value="v1")]),
+            Annotation.bounding_box.exists(),
         ],
     )
     assert (
@@ -152,7 +152,7 @@ def test_evaluate_detection(
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
         filters=[
-            Label.label == Label(key="k1", value="v1"),
+            Annotation.labels == Label(key="k1", value="v1"),
         ],
         convert_annotations_to_type=AnnotationType.BOX,
     )
@@ -171,7 +171,7 @@ def test_evaluate_detection(
             iou_thresholds_to_compute=[0.1, 0.6],
             iou_thresholds_to_return=[0.1, 0.6],
             filters=[
-                Label.label.in_([Label(key="k1", value="v2")]),
+                Annotation.labels.in_([Label(key="k1", value="v2")]),
             ],
             convert_annotations_to_type=AnnotationType.BOX,
         )
@@ -192,8 +192,8 @@ def test_evaluate_detection(
         iou_thresholds_to_return=[0.1, 0.6],
         filters=[
             Label.key == "k1",
-            Annotation.geometric_area >= 10,
-            Annotation.geometric_area <= 2000,
+            Annotation.bounding_box.area >= 10,
+            Annotation.bounding_box.area <= 2000,
         ],
         convert_annotations_to_type=AnnotationType.BOX,
     )
@@ -242,7 +242,7 @@ def test_evaluate_detection(
         iou_thresholds_to_return=[0.1, 0.6],
         filters=[
             Label.key == "k1",
-            Annotation.geometric_area >= 1200,
+            Annotation.bounding_box.area >= 1200,
         ],
         convert_annotations_to_type=AnnotationType.BOX,
     )
@@ -287,7 +287,7 @@ def test_evaluate_detection(
         iou_thresholds_to_return=[0.1, 0.6],
         filters=[
             Label.key == "k1",
-            Annotation.geometric_area <= 1200,
+            Annotation.bounding_box.area <= 1200,
         ],
         convert_annotations_to_type=AnnotationType.BOX,
     )
@@ -333,8 +333,8 @@ def test_evaluate_detection(
         iou_thresholds_to_return=[0.1, 0.6],
         filters=[
             Label.key == "k1",
-            Annotation.geometric_area >= 1200,
-            Annotation.geometric_area <= 1800,
+            Annotation.bounding_box.area >= 1200,
+            Annotation.bounding_box.area <= 1800,
         ],
         convert_annotations_to_type=AnnotationType.BOX,
     )
@@ -404,7 +404,7 @@ def test_evaluate_detection_with_json_filters(
         dataset,
         filters=[
             Label.key == "k1",
-            Annotation.type == AnnotationType.BOX,
+            Annotation.bounding_box.exists(),
         ],
     )
     assert (
@@ -464,7 +464,7 @@ def test_evaluate_detection_with_json_filters(
         iou_thresholds_to_return=[0.1, 0.6],
         filters=[
             Label.key == "k1",
-            Annotation.geometric_area >= 1200,
+            Annotation.bounding_box.area >= 1200,
         ],
         convert_annotations_to_type=AnnotationType.BOX,
     )
@@ -563,7 +563,7 @@ def test_get_evaluations(
         iou_thresholds_to_return=[0.1, 0.6],
         filters=[
             Label.key == "k1",
-            Annotation.type == AnnotationType.BOX,
+            Annotation.bounding_box.exists(),
         ],
     )
     eval_job.wait_for_completion(timeout=30)
@@ -670,7 +670,7 @@ def test_get_evaluations(
         iou_thresholds_to_return=[0.1, 0.6],
         filters=[
             Label.key == "k1",
-            Annotation.type == AnnotationType.BOX,
+            Annotation.bounding_box.exists(),
         ],
     )
     eval_job2.wait_for_completion(timeout=30)

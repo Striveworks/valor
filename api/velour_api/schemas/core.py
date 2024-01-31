@@ -238,7 +238,6 @@ class Annotation(BaseModel):
     polygon: Polygon | None = None
     multipolygon: MultiPolygon | None = None
     raster: Raster | None = None
-    jsonb: dict[str, str] | None = None
 
     model_config = ConfigDict(use_enum_values=True, extra="forbid")
 
