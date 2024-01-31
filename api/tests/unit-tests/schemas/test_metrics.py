@@ -317,9 +317,8 @@ def test_ROCAUCMetric():
     with pytest.raises(ValidationError):
         schemas.ROCAUCMetric(label_key=123, value=0.2)
 
-    # TODO check this using sklearn function
-    # with pytest.raises(ValidationError):
-    #     schemas.ROCAUCMetric(label_key="key", value=None)
+    with pytest.raises(ValidationError):
+        schemas.ROCAUCMetric(label_key="key", value=None)
 
     with pytest.raises(ValidationError):
         schemas.ROCAUCMetric(label_key="key", value="not a number")

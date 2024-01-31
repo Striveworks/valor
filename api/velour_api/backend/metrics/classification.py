@@ -120,7 +120,7 @@ def _compute_binary_roc_auc(
 
     ret = db.scalar(func.sum(trap_areas.c.trap_area))
     if ret is None:
-        return None
+        return np.isnan
     return ret
 
 

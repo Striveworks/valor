@@ -837,11 +837,10 @@ def test_evaluate_classification_with_label_maps(
             "parameters": {"label_key": "special_class"},
             "value": 0.5,
         },
-        # TODO double-check that this makes sense for ROCAUC to be 0 instead of -1
         {
             "type": "ROCAUC",
             "parameters": {"label_key": "special_class"},
-            "value": 0.0,
+            "value": -1,
         },
         {
             "type": "Precision",
