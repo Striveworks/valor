@@ -916,12 +916,8 @@ class Dataset:
     """
     A class describing a given dataset.
 
-    Attribute
+    Parameters
     ----------
-    client : Client
-        The `Client` object associated with the session.
-    id : int
-        The ID of the dataset.
     name : str
         The name of the dataset.
     metadata : dict
@@ -975,6 +971,23 @@ class Dataset:
         metadata: Optional[MetadataType] = None,
         geospatial: Optional[GeoJSONType] = None,
     ):
+        """
+        Creates a dataset that persists in the backend.
+
+        Parameters
+        ----------
+        name : str
+            The name of the dataset.
+        metadata : dict
+            A dictionary of metadata that describes the dataset.
+        geospatial :  dict
+            A GeoJSON-style dictionary describing the geospatial coordinates of the dataset.
+
+        Returns
+        -------
+        velour.Dataset
+            The created dataset.
+        """
         dataset = cls(
             name=name,
             metadata=metadata,
@@ -988,6 +1001,19 @@ class Dataset:
         cls,
         name: str,
     ):
+        """
+        Retrieves a dataset from the backend database.
+
+        Parameters
+        ----------
+        dataset : str
+            The name of the dataset.
+
+        Returns
+        -------
+        Union[velour.Dataset, None]
+            The dataset or 'None' if it doesn't exist.
+        """
         return Client().get_dataset(name)
 
     @classmethod
@@ -995,12 +1021,18 @@ class Dataset:
         cls, resp: dict, connection: Optional[ClientConnection] = None
     ):
         """
-        Construct a 'velour.Dataset' from a dictionary.
+        Construct a dataset from a dictionary.
 
         Parameters
         ----------
         resp : dict
             The dictionary containing a dataset definition.
+        connection : ClientConnection, optional
+            Option to share a ClientConnection rather than request a new one.
+
+        Returns
+        -------
+        velour.Dataset
         """
         resp.pop("id")
         return cls(**resp, connection=connection)
@@ -1167,12 +1199,8 @@ class Model:
     """
     A class describing a model that was trained on a particular dataset.
 
-    Attribute
+    Parameters
     ----------
-    client : Client
-        The `Client` object associated with the session.
-    id : int
-        The ID of the model.
     name : str
         The name of the model.
     metadata : dict
@@ -1228,6 +1256,23 @@ class Model:
         metadata: Optional[MetadataType] = None,
         geospatial: Optional[GeoJSONType] = None,
     ):
+        """
+        Creates a model that persists in the backend.
+
+        Parameters
+        ----------
+        name : str
+            The name of the model.
+        metadata : dict
+            A dictionary of metadata that describes the model.
+        geospatial :  dict
+            A GeoJSON-style dictionary describing the geospatial coordinates of the model.
+
+        Returns
+        -------
+        velour.Model
+            The created model.
+        """
         model = cls(
             name=name,
             metadata=metadata,
@@ -1241,6 +1286,19 @@ class Model:
         cls,
         name: str,
     ):
+        """
+        Retrieves a model from the backend database.
+
+        Parameters
+        ----------
+        name : str
+            The name of the model.
+
+        Returns
+        -------
+        Union[velour.Model, None]
+            The model or 'None' if it doesn't exist.
+        """
         return Client().get_model(name)
 
     @classmethod
@@ -1248,12 +1306,17 @@ class Model:
         cls, resp: dict, connection: Optional[ClientConnection] = None
     ):
         """
-        Construct a 'velour.Model' from a dictionary.
+        Construct a model from a dictionary.
 
         Parameters
         ----------
         resp : dict
             The dictionary containing a model definition.
+        connection : ClientConnection, optional
+            Option to share a ClientConnection rather than request a new one.
+
+        Returns
+        velour.Model
         """
         resp.pop("id")
         return cls(**resp, connection=connection)
