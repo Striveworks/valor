@@ -1,11 +1,10 @@
-from typing import Dict, List, Optional, Union, cast
+from typing import Optional, cast
 
 import PIL.Image
 
-from velour.coretypes import Datum
-from velour.exceptions import SchemaTypeError
+from velour import Datum
 from velour.schemas import validate_metadata
-from velour.schemas.metadata import DictMetadataType, MetadataType
+from velour.types import DictMetadataType, GeoJSONType, MetadataType
 
 
 class ImageMetadata:
@@ -32,23 +31,7 @@ class ImageMetadata:
         height: int,
         width: int,
         metadata: Optional[MetadataType] = None,
-        geospatial: Optional[
-            Dict[
-                str,
-                Union[
-                    List[List[List[List[Union[float, int]]]]],
-                    List[List[List[Union[float, int]]]],
-                    List[Union[float, int]],
-                    str,
-                    Union[
-                        List[List[List[List[Union[float, int]]]]],
-                        List[List[List[Union[float, int]]]],
-                        List[Union[float, int]],
-                        str,
-                    ],
-                ],
-            ]
-        ] = None,
+        geospatial: Optional[GeoJSONType] = None,
     ):
         self.uid = uid
         self._dataset_name = None
@@ -75,7 +58,7 @@ class ImageMetadata:
         datum : Datum
             The `Datum` to check validity for.
         """
-        return {"height", "width"}.issubset(datum._metadata)
+        return {"height", "width"}.issubset(datum.metadata)
 
     @classmethod
     def from_datum(cls, datum: Datum):
@@ -89,18 +72,17 @@ class ImageMetadata:
         """
         if not cls.valid(datum):
             raise ValueError(
-                f"`datum` does not contain height and/or width in metadata `{datum._metadata}`"
+                f"`datum` does not contain height and/or width in metadata `{datum.metadata}`"
             )
-        metadata = dict(datum._metadata)
+        metadata = dict(datum.metadata)
         width = cast(int, metadata.pop("width"))
         height = cast(int, metadata.pop("height"))
         img = cls(
-            uid=datum._uid,
+            uid=datum.uid,
             height=int(height),
             width=int(width),
             metadata=metadata,
         )
-        img._dataset_name = datum._dataset_name
         return img
 
     @classmethod
@@ -136,7 +118,6 @@ class ImageMetadata:
             metadata=metadata,
             geospatial=geospatial,
         )
-        datum._set_dataset_name(self._dataset_name)
         return datum
 
 
@@ -161,9 +142,11 @@ class VideoFrameMetadata:
         self.frame = frame
 
         if not isinstance(self.image, ImageMetadata):
-            raise SchemaTypeError("image", ImageMetadata, self.image)
+            raise TypeError(
+                "`image` should be of type `velour.metatypes.ImageMetadata`"
+            )
         if not isinstance(self.frame, int):
-            raise SchemaTypeError("frame", int, self.frame)
+            raise TypeError("`frame` should be of type `int`.")
 
     @staticmethod
     def valid(datum: Datum) -> bool:
@@ -175,7 +158,7 @@ class VideoFrameMetadata:
         datum : Datum
             The `Datum` to check validity for.
         """
-        return {"height", "width", "frame"}.issubset(datum._metadata)
+        return {"height", "width", "frame"}.issubset(datum.metadata)
 
     @classmethod
     def from_datum(cls, datum: Datum):
@@ -189,7 +172,7 @@ class VideoFrameMetadata:
         """
         if not cls.valid(datum):
             raise ValueError(
-                f"`datum` does not contain height, width and/or frame in metadata `{datum._metadata}`"
+                f"`datum` does not contain height, width and/or frame in metadata `{datum.metadata}`"
             )
         image = ImageMetadata.from_datum(datum)
         frame = cast(int, image.metadata.pop("frame"))
@@ -203,5 +186,5 @@ class VideoFrameMetadata:
         Converts an `VideoFrameMetadata` object into a `Datum`.
         """
         datum = self.image.to_datum()
-        datum._metadata["frame"] = self.frame
+        datum.metadata["frame"] = self.frame
         return datum

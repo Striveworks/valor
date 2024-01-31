@@ -11,10 +11,11 @@ def test_label():
     # test `__post_init__`
     with pytest.raises(TypeError) as e:
         Label(key=123, value="123")  # type: ignore
-    assert "should be of type `str`" in str(e)
+
+    assert "str" in str(e)
     with pytest.raises(TypeError) as e:
         Label(key="123", value=123)  # type: ignore
-    assert "should be of type `str`" in str(e)
+    assert "str" in str(e)
 
     # test member fn `tuple`
     assert l1.tuple() == ("test", "value", None)
@@ -42,10 +43,10 @@ def test_scored_label():
 
     with pytest.raises(TypeError) as e:
         Label(key="k", value="v", score="boo")  # type: ignore
-    assert "score should be convertible to `float`" in str(e)
+    assert "float" in str(e)
 
     # test property `key`
-    assert l1._key == "test"
+    assert l1.key == "test"
 
     # test property `value`
     assert l1.value == "value"

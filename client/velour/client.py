@@ -10,8 +10,7 @@ from packaging import version
 
 from velour import __version__ as client_version
 from velour.enums import TableStatus
-from velour.schemas.evaluation import EvaluationRequest
-from velour.schemas.filters import Filter
+from velour.schemas import EvaluationRequest, Filter
 
 T = TypeVar("T")
 
@@ -99,7 +98,7 @@ class ClientException(Exception):
 
 class Client:
     """
-    Client for interacting with the velour backend.
+    Velour client object for interacting with the api.
 
     Parameters
     ----------
@@ -360,7 +359,7 @@ class Client:
         self._requests_delete_rel_host(f"datasets/{name}")
         if timeout:
             for _ in range(timeout):
-                if self.get_dataset_status(name) is None:
+                if self.get_dataset(name) is None:
                     break
                 else:
                     time.sleep(1)
@@ -474,7 +473,7 @@ class Client:
 
         if timeout:
             for _ in range(timeout):
-                if self.get_dataset_status(name) is None:
+                if self.get_model(name) is None:
                     break
                 else:
                     time.sleep(1)
