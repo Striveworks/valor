@@ -13,7 +13,7 @@ import os
 import pytest
 import requests
 
-from velour import Client
+from velour.client import ClientConnection
 from velour.exceptions import ClientException
 
 
@@ -34,7 +34,7 @@ def bearer_token() -> str:
 
 def test_auth_client_pos(bearer_token: str):
     """Test that we can successfully authenticate and hit an endpoint"""
-    client = Client(host="http://localhost:8000", access_token=bearer_token)
+    client = ClientConnection(host="http://localhost:8000", access_token=bearer_token)
     assert isinstance(client.get_datasets(), list)
 
 
@@ -43,7 +43,7 @@ def test_auth_client_neg_no_token():
     an access token
     """
     with pytest.raises(ClientException) as exc_info:
-        Client(host="http://localhost:8000")
+        ClientConnection(host="http://localhost:8000")
     assert "Not authenticated" in str(exc_info)
 
 
@@ -52,5 +52,5 @@ def test_auth_client_neg_invalid_token():
     an invalid access token
     """
     with pytest.raises(ClientException) as exc_info:
-        Client(host="http://localhost:8000", access_token="asdasd")
+        ClientConnection(host="http://localhost:8000", access_token="asdasd")
     assert "Unauthorized" in str(exc_info)
