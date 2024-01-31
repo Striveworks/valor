@@ -1181,8 +1181,6 @@ class Model:
             A dictionary of metadata that describes the model.
         geospatial : dict
             A GeoJSON-style dictionary describing the geospatial coordinates of the model.
-        id : int, optional
-            SQL index for model.
         delete_if_exists : bool, default=False
             Deletes any existing model with the same name.
         """
