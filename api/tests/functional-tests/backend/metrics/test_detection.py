@@ -58,8 +58,6 @@ def test__compute_detection_metrics(
             "value": 0.576,
             "label": {"key": "class", "value": "49"},
         },
-        # {"iou": 0.5, "value": -1.0, "label": {"key": "class", "value": "3"}},
-        # {"iou": 0.75, "value": -1.0, "label": {"key": "class", "value": "3"}},
         {"iou": 0.5, "value": 1.0, "label": {"key": "class", "value": "0"}},
         {"iou": 0.75, "value": 0.723, "label": {"key": "class", "value": "0"}},
         {"iou": 0.5, "value": 1.0, "label": {"key": "class", "value": "1"}},
@@ -80,11 +78,6 @@ def test__compute_detection_metrics(
             "value": 0.555,  # note COCO had 0.556
             "label": {"key": "class", "value": "49"},
         },
-        # {
-        #     "ious": iou_thresholds,
-        #     "value": -1.0,
-        #     "label": {"key": "class", "value": "3"},
-        # },
         {
             "ious": iou_thresholds,
             "value": 0.725,

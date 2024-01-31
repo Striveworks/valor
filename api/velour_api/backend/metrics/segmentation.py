@@ -2,9 +2,10 @@ from geoalchemy2.functions import ST_Count, ST_MapAlgebra
 from sqlalchemy.orm import Session, aliased
 from sqlalchemy.sql import Select, func, select
 
-from velour_api import schemas
+from velour_api import enums, schemas
 from velour_api.backend import core, models
 from velour_api.backend.metrics.metric_utils import (
+    create_grouper_mappings,
     create_metric_mappings,
     get_or_create_row,
     validate_computation,
@@ -77,11 +78,7 @@ def _count_true_positives(
     return int(ret)
 
 
-def _count_groundtruths(
-    db: Session,
-    groundtruth_subquery: schemas.Filter,
-    label_id: int,
-) -> int:
+def _count_groundtruths(db: Session, groundtruth_subquery: Select) -> int:
     """Total number of groundtruth pixels for the given dataset and label"""
     ret = db.scalar(
         select(func.sum(ST_Count(models.Annotation.raster)))
@@ -91,8 +88,10 @@ def _count_groundtruths(
             models.Annotation.id == groundtruth_subquery.c.annotation_id,
         )
     )
+
     if ret is None:
-        raise RuntimeError(f"No groundtruth pixels for label id '{label_id}'.")
+        return None
+
     return int(ret)
 
 
@@ -118,7 +117,6 @@ def _compute_iou(
     db: Session,
     groundtruth_filter: schemas.Filter,
     prediction_filter: schemas.Filter,
-    label_id: int,
 ) -> float:
     """Computes the pixelwise intersection over union for the given dataset, model, and label"""
 
@@ -126,52 +124,84 @@ def _compute_iou(
     prediction_subquery = _generate_prediction_query(prediction_filter)
 
     tp = _count_true_positives(db, groundtruth_subquery, prediction_subquery)
-    gt = _count_groundtruths(db, groundtruth_subquery, label_id)
+    gt = _count_groundtruths(
+        db,
+        groundtruth_subquery=groundtruth_subquery,
+    )
+
+    if gt is None:
+        return None
+
     pred = _count_predictions(db, prediction_subquery)
 
     return tp / (gt + pred - tp)
 
 
-def _get_groundtruth_labels(
-    db: Session, groundtruth_filter: schemas.Filter
-) -> list[models.Label]:
-    """Fetch groundtruth labels from the database."""
-    return db.scalars(
-        Query(models.Label)
-        .filter(groundtruth_filter)
-        .groundtruths(as_subquery=False)
-        .distinct()
-    ).all()
-
-
 def _compute_segmentation_metrics(
     db: Session,
+    parameters: schemas.EvaluationParameters,
     prediction_filter: schemas.Filter,
     groundtruth_filter: schemas.Filter,
 ) -> list[IOUMetric | mIOUMetric]:
     """
-    Computes the _compute_IOU metrics. The return is one `IOUMetric` for each label in groundtruth
-    and one `mIOUMetric` for the mean _compute_IOU over all labels.
+    Computes segmentation metrics.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    parameters : schemas.EvaluationParameters
+        Any user-defined parameters.
+    prediction_filter : schemas.Filter
+        The filter to be used to query predictions.
+    groundtruth_filter : schemas.Filter
+        The filter to be used to query groundtruths.
+
+
+    Returns
+    ----------
+    List[schemas.IOUMetric | mIOUMetric]
+        A list containing one `IOUMetric` for each label in groundtruth and one `mIOUMetric` for the mean _compute_IOU over all labels.
+
     """
 
-    labels = _get_groundtruth_labels(db, groundtruth_filter)
+    labels = core.fetch_union_of_labels(
+        db=db,
+        rhs=prediction_filter,
+        lhs=groundtruth_filter,
+    )
+
+    grouper_mappings = create_grouper_mappings(
+        labels=labels,
+        label_map=parameters.label_map,
+        evaluation_type=enums.TaskType.SEGMENTATION,
+    )
 
     ret = []
-    for label in labels:
+    for grouper_id, label_ids in grouper_mappings[
+        "grouper_id_to_label_ids_mapping"
+    ].items():
         # set filter
-        groundtruth_filter.label_ids = [label.id]
-        prediction_filter.label_ids = [label.id]
+        groundtruth_filter.label_ids = [label_id for label_id in label_ids]
+        prediction_filter.label_ids = [label_id for label_id in label_ids]
 
         _compute_iou_score = _compute_iou(
             db,
             groundtruth_filter,
             prediction_filter,
-            label.id,
         )
+
+        # only add an IOUMetric if the label ids associated with the grouper id have at least one gt raster
+        if _compute_iou_score is None:
+            continue
+
+        grouper_label = grouper_mappings[
+            "grouper_id_to_grouper_label_mapping"
+        ][grouper_id]
 
         ret.append(
             IOUMetric(
-                label=schemas.Label(key=label.key, value=label.value),
+                label=grouper_label,
                 value=_compute_iou_score,
             )
         )
@@ -221,6 +251,7 @@ def compute_semantic_segmentation_metrics(
 
     metrics = _compute_segmentation_metrics(
         db=db,
+        parameters=parameters,
         prediction_filter=prediction_filter,
         groundtruth_filter=groundtruth_filter,
     )

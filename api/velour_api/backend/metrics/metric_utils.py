@@ -1,8 +1,138 @@
+from collections import defaultdict
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from velour_api import enums, schemas
-from velour_api.backend import core
+from velour_api.backend import core, models
+
+LabelMapType = list[list[list[str]]]
+
+
+def _create_detection_grouper_mappings(
+    mapping_dict: dict[tuple[str], tuple[str]], labels: list[models.Label]
+) -> dict[str, dict[str | int, any]]:
+    """Create grouper mappings for use when evaluating detections."""
+
+    label_id_to_grouper_id_mapping = {}
+    grouper_id_to_grouper_label_mapping = {}
+    grouper_id_to_label_ids_mapping = defaultdict(list)
+
+    for label in labels:
+        mapped_key, mapped_value = mapping_dict.get(
+            (label.key, label.value), (label.key, label.value)
+        )
+        # create an integer to track each group by
+        grouper_id = hash((mapped_key, mapped_value))
+
+        label_id_to_grouper_id_mapping[label.id] = grouper_id
+        grouper_id_to_grouper_label_mapping[grouper_id] = schemas.Label(
+            key=mapped_key, value=mapped_value
+        )
+        grouper_id_to_label_ids_mapping[grouper_id].append(label.id)
+
+    return {
+        "label_id_to_grouper_id_mapping": label_id_to_grouper_id_mapping,
+        "grouper_id_to_label_ids_mapping": grouper_id_to_label_ids_mapping,
+        "grouper_id_to_grouper_label_mapping": grouper_id_to_grouper_label_mapping,
+    }
+
+
+def _create_segmentation_grouper_mappings(
+    mapping_dict: dict[tuple[str], tuple[str]], labels: list[models.Label]
+) -> dict[str, dict[str | int, any]]:
+    """Create grouper mappings for use when evaluating segmentations."""
+
+    grouper_id_to_grouper_label_mapping = {}
+    grouper_id_to_label_ids_mapping = defaultdict(list)
+
+    for label in labels:
+        mapped_key, mapped_value = mapping_dict.get(
+            (label.key, label.value), (label.key, label.value)
+        )
+        # create an integer to track each group by
+        grouper_id = hash((mapped_key, mapped_value))
+
+        grouper_id_to_grouper_label_mapping[grouper_id] = schemas.Label(
+            key=mapped_key, value=mapped_value
+        )
+        grouper_id_to_label_ids_mapping[grouper_id].append(label.id)
+
+    return {
+        "grouper_id_to_label_ids_mapping": grouper_id_to_label_ids_mapping,
+        "grouper_id_to_grouper_label_mapping": grouper_id_to_grouper_label_mapping,
+    }
+
+
+def _create_classification_grouper_mappings(
+    mapping_dict: dict[tuple[str], tuple[str]], labels: list[models.Label]
+) -> dict[str, dict[str | int, any]]:
+    """Create grouper mappings for use when evaluating classifications."""
+
+    # define mappers to connect groupers with labels
+    label_value_to_grouper_value = {}
+    grouper_key_to_labels_mapping = defaultdict(lambda: defaultdict(set))
+    grouper_key_to_label_keys_mapping = defaultdict(set)
+
+    for label in labels:
+        # the grouper should equal the (label.key, label.value) if it wasn't mapped by the user
+        grouper_key, grouper_value = mapping_dict.get(
+            (label.key, label.value), (label.key, label.value)
+        )
+
+        label_value_to_grouper_value[label.value] = grouper_value
+        grouper_key_to_label_keys_mapping[grouper_key].add(label.key)
+        grouper_key_to_labels_mapping[grouper_key][grouper_value].add(label)
+
+    return {
+        "label_value_to_grouper_value": label_value_to_grouper_value,
+        "grouper_key_to_labels_mapping": grouper_key_to_labels_mapping,
+        "grouper_key_to_label_keys_mapping": grouper_key_to_label_keys_mapping,
+    }
+
+
+def create_grouper_mappings(
+    labels: list,
+    label_map: LabelMapType | None,
+    evaluation_type: enums.TaskType,
+) -> dict[str, dict[str | int, any]]:
+    """
+    Creates a dictionary of mappings that connect each label with a "grouper" (i.e., a unique ID-key-value combination that can represent one or more labels).
+    These mappings enable Velour to group multiple labels together using the label_map argument in each evaluation function.
+
+    Parameters
+    ----------
+    labels : list
+        A list of all labels.
+    label_map: LabelMapType, optional
+        An optional label map to use when grouping labels. If None is passed, this function will still create the appropriate mappings using individual labels.
+    evaluation_type : str
+        The type of evaluation to create mappings for.
+
+    Returns
+    ----------
+    dict[str, dict[str | int, any]]
+        A dictionary of mappings that are used at evaluation time to group multiple labels together.
+    """
+
+    mapping_functions = {
+        enums.TaskType.CLASSIFICATION: _create_classification_grouper_mappings,
+        enums.TaskType.DETECTION: _create_detection_grouper_mappings,
+        enums.TaskType.SEGMENTATION: _create_segmentation_grouper_mappings,
+    }
+    if evaluation_type not in mapping_functions.keys():
+        raise KeyError(
+            f"evaluation_type must be one of {mapping_functions.keys()}"
+        )
+
+    # create a map of labels to groupers; will be empty if the user didn't pass a label_map
+    mapping_dict = (
+        {tuple(label): tuple(grouper) for label, grouper in label_map}
+        if label_map
+        else {}
+    )
+
+    return mapping_functions[evaluation_type](mapping_dict, labels)
 
 
 def get_or_create_row(
@@ -87,9 +217,18 @@ def create_metric_mappings(
                 db=db,
                 label=metric.label,
             )
+
+            # create the label in the database if it doesn't exist
+            # this is useful if the user maps existing labels to a non-existant grouping label
+            if not label:
+                label = core.create_labels(db=db, labels=[metric.label])
+                label_id = label[0].id
+            else:
+                label_id = label.id
+
             ret.append(
                 metric.db_mapping(
-                    label_id=label.id if label else None,
+                    label_id=label_id,
                     evaluation_id=evaluation_id,
                 )
             )

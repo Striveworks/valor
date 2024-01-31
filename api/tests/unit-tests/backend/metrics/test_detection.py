@@ -37,13 +37,15 @@ def test__ap():
         ],
     }
 
-    labels = {
-        "0": schemas.Label(key="name", value="car"),
-        "1": schemas.Label(key="name", value="dog"),
-        "2": schemas.Label(key="name", value="person"),
+    grouper_mappings = {
+        "grouper_id_to_grouper_label_mapping": {
+            "0": schemas.Label(key="name", value="car"),
+            "1": schemas.Label(key="name", value="dog"),
+            "2": schemas.Label(key="name", value="person"),
+        }
     }
 
-    number_of_ground_truths = {
+    number_of_groundtruths_per_grouper = {
         "0": 3,
         "1": 2,
         "2": 4,
@@ -88,11 +90,14 @@ def test__ap():
         ),
     ]
 
+    grouper_ids_associated_with_gts = set(["0", "1", "2"])
+
     detection_metrics = _ap(
         sorted_ranked_pairs=pairs,
-        number_of_ground_truths=number_of_ground_truths,
-        labels=labels,
+        number_of_groundtruths_per_grouper=number_of_groundtruths_per_grouper,
+        grouper_mappings=grouper_mappings,
         iou_thresholds=iou_thresholds,
+        grouper_ids_associated_with_gts=grouper_ids_associated_with_gts,
     )
 
     assert len(reference_metrics) == len(detection_metrics)
