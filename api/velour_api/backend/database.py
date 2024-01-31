@@ -62,7 +62,6 @@ def make_session() -> Session:
 Base = declarative_base()
 
 
-# probably going to remove this altogether.
 @retry_connection(30)
 def create_db():
     db = make_session()
