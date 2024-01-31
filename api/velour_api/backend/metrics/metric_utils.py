@@ -6,6 +6,8 @@ from sqlalchemy.orm import Session
 from velour_api import enums, schemas
 from velour_api.backend import core, models
 
+LabelMapType = list[list[list[str]]]
+
 
 def _create_detection_grouper_mappings(
     mapping_dict: dict[tuple[str], tuple[str]], labels: list[models.Label]
@@ -91,7 +93,7 @@ def _create_classification_grouper_mappings(
 
 def create_grouper_mappings(
     labels: list,
-    label_map: list[list[list[str]]] | None,
+    label_map: LabelMapType | None,
     evaluation_type: enums.TaskType,
 ) -> dict[str, dict[str | int, any]]:
     """
@@ -102,7 +104,7 @@ def create_grouper_mappings(
     ----------
     labels : list
         A list of all labels.
-    label_map: list[list[list[str]]], optional
+    label_map: LabelMapType, optional
         An optional label map to use when grouping labels. If None is passed, this function will still create the appropriate mappings using individual labels.
     evaluation_type : str
         The type of evaluation to create mappings for.
@@ -118,10 +120,10 @@ def create_grouper_mappings(
         enums.TaskType.DETECTION: _create_detection_grouper_mappings,
         enums.TaskType.SEGMENTATION: _create_segmentation_grouper_mappings,
     }
-
-    assert (
-        evaluation_type in mapping_functions.keys()
-    ), f"evaluation_type must be one of {mapping_functions.keys()}"
+    if evaluation_type not in mapping_functions.keys():
+        raise KeyError(
+            f"evaluation_type must be one of {mapping_functions.keys()}"
+        )
 
     # create a map of labels to groupers; will be empty if the user didn't pass a label_map
     mapping_dict = (

@@ -13,6 +13,8 @@ from velour_api.backend.metrics.metric_utils import (
 )
 from velour_api.backend.ops import Query
 
+LabelMapType = list[list[list[str]]]
+
 
 def _compute_binary_roc_auc(
     db: Session,
@@ -522,7 +524,7 @@ def _compute_clf_metrics(
     db: Session,
     prediction_filter: schemas.Filter,
     groundtruth_filter: schemas.Filter,
-    label_map: list[list[list[str]]] | None = None,
+    label_map: LabelMapType | None = None,
 ) -> tuple[
     list[schemas.ConfusionMatrix],
     list[
@@ -545,7 +547,7 @@ def _compute_clf_metrics(
         The filter to be used to query predictions.
     groundtruth_filter : schemas.Filter
         The filter to be used to query groundtruths.
-    label_map: list[list[list[str]]], optional
+    label_map: LabelMapType, optional
         Optional mapping of individual Labels to a grouper Label. Useful when you need to evaluate performance using Labels that differ across datasets and models.
 
     Returns

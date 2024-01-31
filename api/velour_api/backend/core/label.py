@@ -5,6 +5,8 @@ from sqlalchemy.orm import Session
 from velour_api import schemas
 from velour_api.backend import models, ops
 
+LabelMapType = list[list[list[str]]]
+
 
 def fetch_label(
     db: Session,
@@ -321,7 +323,7 @@ def get_disjoint_labels(
     db: Session,
     lhs: schemas.Filter,
     rhs: schemas.Filter,
-    label_map: list[list[list[str]]] = None,
+    label_map: LabelMapType = None,
 ) -> tuple[list[schemas.Label], list[schemas.Label]]:
     """
     Returns all unique labels that are not shared between both filters.
@@ -334,7 +336,7 @@ def get_disjoint_labels(
         Filter defining first label set.
     rhs : list[schemas.Filter]
         Filter defining second label set.
-    label_map: list[list[list[str]]], optional
+    label_map: LabelMapType, optional
         Optional mapping of individual Labels to a grouper Label. Useful when you need to evaluate performance using Labels that differ across datasets and models.
 
     Returns
@@ -363,7 +365,7 @@ def get_disjoint_keys(
     db: Session,
     lhs: schemas.Filter,
     rhs: schemas.Filter,
-    label_map: list[list[list[str]]] = None,
+    label_map: LabelMapType = None,
 ) -> tuple[list[schemas.Label], list[schemas.Label]]:
     """
     Returns all unique label keys that are not shared between both predictions and groundtruths.
@@ -376,7 +378,7 @@ def get_disjoint_keys(
         Filter defining first label set.
     rhs : list[schemas.Filter]
         Filter defining second label set.
-    label_map: list[list[list[str]]], optional,
+    label_map: LabelMapType, optional,
 
         Optional mapping of individual Labels to a grouper Label. Useful when you need to evaluate performance using Labels that differ across datasets and models.
 

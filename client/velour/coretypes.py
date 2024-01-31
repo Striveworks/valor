@@ -1370,12 +1370,15 @@ class Model:
         if not label_map:
             return None
 
-        assert isinstance(label_map, dict) and all(
+        if not isinstance(label_map, dict) or not all(
             [
                 isinstance(key, Label) and isinstance(value, Label)
                 for key, value in label_map.items()
             ]
-        ), "label_map should be a dictionary with valid Labels for both the key and value."
+        ):
+            raise TypeError(
+                "label_map should be a dictionary with valid Labels for both the key and value."
+            )
 
         return_value = [
             [[key._key, key.value], [value._key, value.value]]
