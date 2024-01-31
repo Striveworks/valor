@@ -1790,6 +1790,38 @@ class Client:
             Datum.from_dict(datum) for datum in self.conn.get_datums(filter_)
         ]
 
+    def get_datum(
+        self,
+        dataset: Union[Dataset, str],
+        uid: str,
+    ) -> Union[Datum, None]:
+        """
+        Get datum.
+
+        `GET` endpoint.
+
+        Parameters
+        ----------
+        dataset : velour.Dataset
+            The dataset the datum belongs to.
+        uid : str
+            The uid of the datum.
+
+        Returns
+        -------
+        velour.Datum
+            The requested datum or 'None' if it doesn't exist.
+        """
+        if isinstance(dataset, Dataset):
+            dataset = dataset.name
+        try:
+            resp = self.conn.get_datum(dataset_name=dataset, uid=uid)
+            return Datum.from_dict(resp)
+        except ClientException as e:
+            if e.status_code == 404:
+                return None
+            raise e
+
     def get_dataset_status(
         self,
         name: str,
@@ -2028,6 +2060,33 @@ class Client:
             if e.status_code == 404:
                 return None
             raise e
+
+    def get_model_eval_requests(
+        self, model: Union[Model, str]
+    ) -> List[Evaluation]:
+        """
+        Get all evaluations that have been created for a model.
+
+        This does not return evaluation results.
+
+        `GET` endpoint.
+
+        Parameters
+        ----------
+        model : str
+            The model to search by.
+
+        Returns
+        -------
+        List[Evaluation]
+            A list of evaluations.
+        """
+        if isinstance(model, Model):
+            model = model.name
+        return [
+            Evaluation(**evaluation, connection=self.conn)
+            for evaluation in self.conn.get_model_eval_requests(model)
+        ]
 
     def delete_model(self, name: str, timeout: int = 0) -> None:
         """

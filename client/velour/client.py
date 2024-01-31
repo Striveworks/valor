@@ -452,7 +452,7 @@ class ClientConnection:
 
     def get_datums(self, filter_: Optional[dict] = None) -> List[dict]:
         """
-        Get datums associated with `Client`.
+        Get all datums with option to filter results.
 
         `GET` endpoint.
 
@@ -471,11 +471,31 @@ class ClientConnection:
             kwargs["json"] = filter_
         return self._requests_get_rel_host("data", **kwargs).json()
 
-    def get_datum(self):
+    def get_datum(
+        self,
+        dataset_name: str,
+        uid: str,
+    ) -> dict:
         """
+        Get datum.
+
         `GET` endpoint.
+
+        Parameters
+        ----------
+        dataset_name : str
+            The dataset the datum belongs to.
+        uid : str
+            The uid of the datum.
+
+        Returns
+        -------
+        dict
+            A dictionary describing a datum.
         """
-        pass
+        return self._requests_get_rel_host(
+            f"/data/dataset/{dataset_name}/uid/{uid}"
+        ).json()
 
     def create_model(self, model: dict) -> None:
         """
@@ -529,11 +549,27 @@ class ClientConnection:
         """
         return self._requests_get_rel_host(f"models/{name}").json()
 
-    def get_model_eval_requests(self):
+    def get_model_eval_requests(self, name: str) -> List[dict]:
         """
+        Get all evaluations that have been created for a model.
+
+        This does not return evaluation results.
+
         `GET` endpoint.
+
+        Parameters
+        ----------
+        name : str
+            The name of the model.
+
+        Returns
+        -------
+        List[dict]
+            A list of evaluations.
         """
-        pass
+        return self._requests_get_rel_host(
+            f"/models/{name}/eval-requests"
+        ).json()
 
     def get_model_status(
         self,
@@ -696,21 +732,23 @@ class ClientConnection:
         resp = self._requests_get_rel_host("api-version").json()
         return resp["api_version"]
 
-    def health(self):
+    def health(self) -> str:
         """
         Checks if service is healthy.
 
         `GET` endpoint.
         """
-        pass
+        resp = self._requests_get_rel_host("user").json()
+        return resp["status"]
 
-    def ready(self):
+    def ready(self) -> str:
         """
         Checks if service is ready.
 
         `GET` endpoint.
         """
-        pass
+        resp = self._requests_get_rel_host("user").json()
+        return resp["status"]
 
 
 def connect(
