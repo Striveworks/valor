@@ -47,8 +47,8 @@ class Label:
     """
 
     value = NumericProperty("value")
-    key = StringProperty("key", filter_name="label_keys")
-    score = NumericProperty("score", filter_name="prediction_scores")
+    key = StringProperty("label_keys")
+    score = NumericProperty("prediction_scores")
 
     def __init__(
         self,
@@ -153,11 +153,9 @@ class Datum:
         A GeoJSON-style dictionary describing the geospatial coordinates of the `Datum`.
     """
 
-    uid = StringProperty("uid", filter_name="datum_uids")
-    metadata = DictionaryProperty("metadata", filter_name="datum_metadata")
-    geospatial = GeospatialProperty(
-        "geospatial", filter_name="datum_geospatial"
-    )
+    uid = StringProperty("datum_uids")
+    metadata = DictionaryProperty("datum_metadata")
+    geospatial = GeospatialProperty("datum_geospatial")
 
     def __init__(
         self,

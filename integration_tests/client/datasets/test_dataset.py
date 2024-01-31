@@ -50,13 +50,13 @@ def _test_create_image_dataset_with_gts(
     # check that the dataset has two images
     images = dataset.get_datums()
     assert len(images) == len(expected_image_uids)
-    assert set([image._uid for image in images]) == expected_image_uids
+    assert set([image.uid for image in images]) == expected_image_uids
 
     # check that there are two labels
     labels = dataset.get_labels()
     assert len(labels) == len(expected_labels_tuples)
     assert (
-        set([(label._key, label.value) for label in labels])
+        set([(label.key, label.value) for label in labels])
         == expected_labels_tuples
     )
 
@@ -131,9 +131,9 @@ def test_create_image_dataset_with_detections(
     gt_dets_uid1 = []
     gt_dets_uid2 = []
     for gt in gt_dets1 + gt_dets2:
-        if gt.datum._uid == "uid1":
+        if gt.datum.uid == "uid1":
             gt_dets_uid1.extend(gt.annotations)
-        elif gt.datum._uid == "uid2":
+        elif gt.datum.uid == "uid2":
             gt_dets_uid2.extend(gt.annotations)
     assert dets1.annotations == gt_dets_uid1
     assert dets2.annotations == gt_dets_uid2
@@ -380,7 +380,7 @@ def test_get_summary(
     assert summary.num_rasters == 1
     assert summary.task_types == [TaskType.DETECTION, TaskType.SEGMENTATION]
 
-    summary.labels.sort(key=lambda x: x._key)
+    summary.labels.sort(key=lambda x: x.key)
     assert summary.labels == [
         Label(key="k1", value="v1"),
         Label(key="k2", value="v2"),

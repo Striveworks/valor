@@ -38,7 +38,7 @@ class BinaryExpression:
     Attributes
     ----------
     name : str
-        The name of the object the expression is operating over.
+        The name of the constrain.
     constraint : velour.schemas.Constraint
         The operation that is performed.
     key : str, optional
@@ -56,10 +56,8 @@ class _DeclarativeMapper:
 
     Parameters
     ----------
-    property_name : str
-        The name of the targeted attribute.
-    filter_name : str, optional
-        The name of the filter the expression is targeting. Only defined if different from `attribute_name`.
+    name : str
+        The name of the constrain.
     key : str, optional
         An optional key used for object retrieval.
     """
@@ -69,7 +67,7 @@ class _DeclarativeMapper:
         name: str,
         key: Optional[str] = None,
     ):
-        self.filter_name = name
+        self.name = name
         self.key = key
         self.valid_operators = {}
 
@@ -95,7 +93,7 @@ class _DeclarativeMapper:
         self._validate(value=value, operator=operator)
         value = self._modify(value=value, operator=operator)
         return BinaryExpression(
-            name=self.filter_name,
+            name=self.name,
             key=self.key,
             constraint=Constraint(
                 value=value,
@@ -139,7 +137,7 @@ class _NullableMapper(_DeclarativeMapper):
     Attributes
     ----------
     name : str
-        The name of the object the expression is operating over.
+        The name of the constrain.
     key : str, optional
         An optional key used for object retrieval.
     """
@@ -164,7 +162,7 @@ class _EquatableMapper(_DeclarativeMapper):
     Attributes
     ----------
     name : str
-        The name of the object the expression is operating over.
+        The name of the constrain.
     key : str, optional
         An optional key used for object retrieval.
     """
@@ -194,7 +192,7 @@ class _QuantifiableMapper(_EquatableMapper):
     Attributes
     ----------
     name : str
-        The name of the object the expression is operating over.
+        The name of the constrain.
     key : str, optional
         An optional key used for object retrieval.
     """
@@ -225,7 +223,7 @@ class BoolMapper(_EquatableMapper):
     Attributes
     ----------
     name : str
-        The name of the object the expression is operating over.
+        The name of the constrain.
     key : str, optional
         An optional key used for object retrieval.
     """
@@ -246,7 +244,7 @@ class StringMapper(_EquatableMapper):
     Attributes
     ----------
     name : str
-        The name of the object the expression is operating over.
+        The name of the constrain.
     key : str, optional
         An optional key used for object retrieval.
     """
@@ -267,7 +265,7 @@ class NumericMapper(_QuantifiableMapper):
     Attributes
     ----------
     name : str
-        The name of the object the expression is operating over.
+        The name of the constrain.
     key : str, optional
         An optional key used for object retrieval.
     """
@@ -288,7 +286,7 @@ class DatetimeMapper(_QuantifiableMapper):
     Attributes
     ----------
     name : str
-        The name of the object the expression is operating over.
+        The name of the constrain.
     key : str, optional
         An optional key used for object retrieval.
     """
@@ -318,14 +316,14 @@ class _SpatialMapper(_NullableMapper):
     Attributes
     ----------
     name : str
-        The name of the object the expression is operating over.
+        The name of the constrain.
     key : str, optional
         An optional key used for object retrieval.
     """
 
     @property
     def area(self):
-        return NumericMapper(name=f"{self.filter_name}_area")
+        return NumericMapper(name=f"{self.name}_area")
 
     def _valid_operators(self) -> Set[str]:
         valid_operators = {"contains", "inside", "outside", "intersect"}
@@ -353,7 +351,7 @@ class GeometryMapper(_SpatialMapper):
     Attributes
     ----------
     name : str
-        The name of the object the expression is operating over.
+        The name of the constrain.
     key : str, optional
         An optional key used for object retrieval.
     """
@@ -388,7 +386,7 @@ class GeospatialMapper(_SpatialMapper):
     Attributes
     ----------
     name : str
-        The name of the object the expression is operating over.
+        The name of the constrain.
     key : str, optional
         An optional key used for object retrieval.
     """
@@ -419,7 +417,7 @@ class _DictionaryValueMapper(_NullableMapper, _QuantifiableMapper):
     Attributes
     ----------
     name : str
-        The name of the object the expression is operating over.
+        The name of the constrain.
     key : str, optional
         An optional key used for object retrieval.
     """
@@ -432,7 +430,7 @@ class _DictionaryValueMapper(_NullableMapper, _QuantifiableMapper):
 
         if operator in {"is_none", "exists"} and value is None:
             return BinaryExpression(
-                name=self.filter_name,
+                name=self.name,
                 key=self.key,
                 constraint=Constraint(
                     value=None,
@@ -443,16 +441,16 @@ class _DictionaryValueMapper(_NullableMapper, _QuantifiableMapper):
         # direct value to appropriate mapper (if it exists)
         vtype = type(value)
         if vtype is bool:
-            return BoolMapper(
-                name=self.filter_name, key=self.key
-            )._create_expression(value, operator)
+            return BoolMapper(name=self.name, key=self.key)._create_expression(
+                value, operator
+            )
         if vtype is str:
             return StringMapper(
-                name=self.filter_name, key=self.key
+                name=self.name, key=self.key
             )._create_expression(value, operator)
         elif vtype in [int, float]:
             return NumericMapper(
-                name=self.filter_name, key=self.key
+                name=self.name, key=self.key
             )._create_expression(value, operator)
         elif vtype in [
             datetime.datetime,
@@ -461,7 +459,7 @@ class _DictionaryValueMapper(_NullableMapper, _QuantifiableMapper):
             datetime.timedelta,
         ]:
             return DatetimeMapper(
-                name=self.filter_name, key=self.key
+                name=self.name, key=self.key
             )._create_expression(value, operator)
         else:
             raise NotImplementedError(
@@ -478,7 +476,7 @@ class DictionaryMapper(_DeclarativeMapper):
     Attributes
     ----------
     name : str
-        The name of the object the expression is operating over.
+        The name of the constrain.
     key : str, optional
         An optional key used for object retrieval.
 
@@ -489,7 +487,7 @@ class DictionaryMapper(_DeclarativeMapper):
     """
 
     def __getitem__(self, key: str):
-        return _DictionaryValueMapper(name=self.filter_name, key=key)
+        return _DictionaryValueMapper(name=self.name, key=key)
 
     def _create_expression(self, value: Any, operator: str) -> None:
         raise NotImplementedError(
@@ -506,7 +504,7 @@ class LabelMapper(_EquatableMapper):
     Attributes
     ----------
     name : str
-        The name of the object the expression is operating over.
+        The name of the constrain.
     key : str, optional
         An optional key used for object retrieval.
     """
