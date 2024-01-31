@@ -1,10 +1,11 @@
 import os
 from contextlib import asynccontextmanager
+from typing import Annotated
 
 import sqlalchemy
-from fastapi import APIRouter, BackgroundTasks, Depends, FastAPI
+from fastapi import APIRouter, BackgroundTasks, Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.security import HTTPAuthorizationCredentials
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
 from velour_api import __version__ as api_version
@@ -1053,30 +1054,19 @@ def get_evaluations(
 """ AUTHENTICATION """
 
 
-@router.get(
-    "/user",
-    tags=["Authentication"],
-)
-def get_user(
-    token: HTTPAuthorizationCredentials | None = Depends(token_auth_scheme),
-) -> schemas.User:
-    """
-    Verify a user and return their email address.
+@app.post("/token", tags=["Authentication"])
+async def login_for_access_token(
+    form_data: Annotated[OAuth2PasswordRequestForm, Depends()]
+) -> str:
+    if not auth.authenticate_user(form_data.username, form_data.password):
+        raise HTTPException(
+            status_code=401,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
-    GET Endpoint: `/user`
-
-    Parameters
-    ----------
-    token: HTTPAuthorizationCredentials
-        The auth token for the user.
-
-    Returns
-    -------
-    schemas.User
-        A response object containing information about the user.
-    """
-    token_payload = auth.verify_token(token)
-    return schemas.User(email=token_payload.get("email"))
+    access_token = auth.create_token(data={"some data key": "some data value"})
+    return access_token
 
 
 @router.get(

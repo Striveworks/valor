@@ -5,6 +5,8 @@ from sqlalchemy.orm import Session
 from velour_api import schemas
 from velour_api.backend import models, ops
 
+LabelMapType = list[list[list[str]]]
+
 
 def fetch_label(
     db: Session,
@@ -280,6 +282,7 @@ def get_disjoint_labels(
     db: Session,
     lhs: schemas.Filter,
     rhs: schemas.Filter,
+    label_map: LabelMapType = None,
 ) -> tuple[list[schemas.Label], list[schemas.Label]]:
     """
     Returns all unique labels that are not shared between both filters.
@@ -292,6 +295,8 @@ def get_disjoint_labels(
         Filter defining first label set.
     rhs : list[schemas.Filter]
         Filter defining second label set.
+    label_map: LabelMapType, optional
+        Optional mapping of individual Labels to a grouper Label. Useful when you need to evaluate performance using Labels that differ across datasets and models.
 
     Returns
     ----------
@@ -300,8 +305,18 @@ def get_disjoint_labels(
     """
     lhs_labels = get_labels(db, lhs, ignore_predictions=True)
     rhs_labels = get_labels(db, rhs, ignore_groundtruths=True)
-    lhs_unique = list(lhs_labels - rhs_labels)
-    rhs_unique = list(rhs_labels - lhs_labels)
+
+    # don't count user-mapped labels as disjoint
+    mapped_labels = set()
+    if label_map:
+        for map_from, map_to in label_map:
+            mapped_labels.add(
+                schemas.Label(key=map_from[0], value=map_from[1])
+            )
+            mapped_labels.add(schemas.Label(key=map_to[0], value=map_to[1]))
+
+    lhs_unique = list(lhs_labels - rhs_labels - mapped_labels)
+    rhs_unique = list(rhs_labels - lhs_labels - mapped_labels)
     return (lhs_unique, rhs_unique)
 
 
@@ -309,6 +324,7 @@ def get_disjoint_keys(
     db: Session,
     lhs: schemas.Filter,
     rhs: schemas.Filter,
+    label_map: LabelMapType = None,
 ) -> tuple[list[schemas.Label], list[schemas.Label]]:
     """
     Returns all unique label keys that are not shared between both predictions and groundtruths.
@@ -321,6 +337,9 @@ def get_disjoint_keys(
         Filter defining first label set.
     rhs : list[schemas.Filter]
         Filter defining second label set.
+    label_map: LabelMapType, optional,
+
+        Optional mapping of individual Labels to a grouper Label. Useful when you need to evaluate performance using Labels that differ across datasets and models.
 
     Returns
     ----------
@@ -329,6 +348,70 @@ def get_disjoint_keys(
     """
     lhs_keys = get_label_keys(db, lhs, ignore_predictions=True)
     rhs_keys = get_label_keys(db, rhs, ignore_groundtruths=True)
-    lhs_unique = list(lhs_keys - rhs_keys)
-    rhs_unique = list(rhs_keys - lhs_keys)
+
+    # don't count user-mapped labels as disjoint
+    mapped_keys = set()
+    if label_map:
+        for map_from, map_to in label_map:
+            mapped_keys.add(map_from[0])
+            mapped_keys.add(map_to[0])
+
+    lhs_unique = list(lhs_keys - rhs_keys - mapped_keys)
+    rhs_unique = list(rhs_keys - lhs_keys - mapped_keys)
     return (lhs_unique, rhs_unique)
+
+
+def fetch_labels(
+    db: Session,
+    filter_: schemas.Filter,
+    ignore_groundtruths: bool = False,
+    ignore_predictions: bool = False,
+) -> models.Label | None:
+    """
+    Fetch a set of models.Label entries from the database.
+
+    Parameters
+    ----------
+    db : Session
+        SQLAlchemy ORM session.
+    filter_ : schemas.Filter
+        Filter to constrain results by.
+
+    Returns
+    -------
+    set[models.Label]
+    """
+    stmt = _getter_statement(
+        selection=models.Label,
+        filters=filter_,
+        ignore_groundtruths=ignore_groundtruths,
+        ignore_predictions=ignore_predictions,
+    )
+    return set(db.query(stmt.subquery()).all())
+
+
+def fetch_union_of_labels(
+    db: Session,
+    lhs: schemas.Filter,
+    rhs: schemas.Filter,
+) -> list[models.Label]:
+    """
+    Returns a list of unique models.Label that are shared between both filters.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    lhs : list[schemas.Filter]
+        Filter defining first label set.
+    rhs : list[schemas.Filter]
+        Filter defining second label set.
+
+    Returns
+    ----------
+    list[models.Label]
+        A list of labels.
+    """
+    lhs_labels = fetch_labels(db, filter_=lhs, ignore_predictions=True)
+    rhs_labels = fetch_labels(db, filter_=rhs, ignore_groundtruths=True)
+    return list(lhs_labels.union(rhs_labels))

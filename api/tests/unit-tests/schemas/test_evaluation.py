@@ -19,6 +19,17 @@ def test_EvaluationParameters():
         iou_thresholds_to_return=[],
     )
 
+    schemas.EvaluationParameters(
+        task_type=enums.TaskType.DETECTION,
+        iou_thresholds_to_compute=[],
+        iou_thresholds_to_return=[],
+        label_map=[
+            [["class_name", "maine coon cat"], ["class", "cat"]],
+            [["class", "siamese cat"], ["class", "cat"]],
+            [["class", "british shorthair"], ["class", "cat"]],
+        ],
+    )
+
     with pytest.raises(ValidationError):
         schemas.EvaluationParameters(
             task_type=enums.TaskType.CLASSIFICATION,
@@ -52,6 +63,14 @@ def test_EvaluationParameters():
             task_type=enums.TaskType.DETECTION,
             iou_thresholds_to_compute=[0.2, "test"],
             iou_thresholds_to_return=[],
+        )
+
+    with pytest.raises(ValidationError):
+        schemas.EvaluationParameters(
+            task_type=enums.TaskType.DETECTION,
+            iou_thresholds_to_compute=[0.2, "test"],
+            iou_thresholds_to_return=[],
+            label_map={"not a": "valid grouper"},
         )
 
 
