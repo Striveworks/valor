@@ -1233,8 +1233,6 @@ class Model:
             A dictionary of metadata that describes the model.
         geospatial : dict
             A GeoJSON-style dictionary describing the geospatial coordinates of the model.
-        id : int, optional
-            SQL index for model.
         delete_if_exists : bool, default=False
             Deletes any existing model with the same name.
         """
@@ -1446,10 +1444,35 @@ class Model:
 
         return Filter(**filters)
 
+    def _create_label_map(
+        self, label_map: Dict[Label, Label]
+    ) -> List[List[List[str]]]:
+        """Convert a dictionary of label maps to a serializable list format."""
+        if not label_map:
+            return None
+
+        if not isinstance(label_map, dict) or not all(
+            [
+                isinstance(key, Label) and isinstance(value, Label)
+                for key, value in label_map.items()
+            ]
+        ):
+            raise TypeError(
+                "label_map should be a dictionary with valid Labels for both the key and value."
+            )
+
+        return_value = [
+            [[key.key, key.value], [value.key, value.value]]
+            for key, value in label_map.items()
+        ]
+
+        return return_value
+
     def evaluate_classification(
         self,
         datasets: Optional[Union[Dataset, List[Dataset]]] = None,
         filters: Optional[Union[Dict, FilterExpressionsType]] = None,
+        label_map: Optional[Dict[Label, Label]] = None,
     ) -> Evaluation:
         """
         Start a classification evaluation job.
@@ -1460,6 +1483,8 @@ class Model:
             The dataset or list of datasets to evaluate against.
         filters : Union[Dict, FilterExpressionsType = Sequence[Union[BinaryExpression, Sequence[BinaryExpression]]]], optional
             Optional set of filters to constrain evaluation by.
+        label_map : Dict[Label, Label]
+            Optional mapping of individual Labels to a grouper Label. Useful when you need to evaluate performance using Labels that differ across datasets and models.
 
         Returns
         -------
@@ -1476,7 +1501,10 @@ class Model:
         request = EvaluationRequest(
             model_names=self.name,
             datum_filter=datum_filter,
-            parameters=EvaluationParameters(task_type=TaskType.CLASSIFICATION),
+            parameters=EvaluationParameters(
+                task_type=TaskType.CLASSIFICATION,
+                label_map=self._create_label_map(label_map=label_map),
+            ),
         )
 
         # create evaluation
@@ -1492,6 +1520,7 @@ class Model:
         convert_annotations_to_type: Optional[AnnotationType] = None,
         iou_thresholds_to_compute: Optional[List[float]] = None,
         iou_thresholds_to_return: Optional[List[float]] = None,
+        label_map: Optional[Dict[Label, Label]] = None,
     ) -> Evaluation:
         """
         Start a object-detection evaluation job.
@@ -1508,6 +1537,8 @@ class Model:
             Thresholds to compute mAP against.
         iou_thresholds_to_return : List[float], optional
             Thresholds to return AP for. Must be subset of `iou_thresholds_to_compute`.
+        label_map : Dict[Label, Label]
+            Optional mapping of individual Labels to a grouper Label. Useful when you need to evaluate performance using Labels that differ across datasets and models.
 
         Returns
         -------
@@ -1527,6 +1558,7 @@ class Model:
             convert_annotations_to_type=convert_annotations_to_type,
             iou_thresholds_to_compute=iou_thresholds_to_compute,
             iou_thresholds_to_return=iou_thresholds_to_return,
+            label_map=self._create_label_map(label_map=label_map),
         )
         datum_filter = self._format_filters(datasets, filters)
         request = EvaluationRequest(
@@ -1545,6 +1577,7 @@ class Model:
         self,
         datasets: Optional[Union[Dataset, List[Dataset]]] = None,
         filters: Optional[Union[Dict, FilterExpressionsType]] = None,
+        label_map: Optional[Dict[Label, Label]] = None,
     ) -> Evaluation:
         """
         Start a semantic-segmentation evaluation job.
@@ -1555,6 +1588,9 @@ class Model:
             The dataset or list of datasets to evaluate against.
         filters : Union[Dict, FilterExpressionsType = Sequence[Union[BinaryExpression, Sequence[BinaryExpression]]]], optional
             Optional set of filters to constrain evaluation by.
+        label_map : Dict[Label, Label]
+            Optional mapping of individual Labels to a grouper Label. Useful when you need to evaluate performance using Labels that differ across datasets and models.
+
 
         Returns
         -------
@@ -1566,7 +1602,10 @@ class Model:
         request = EvaluationRequest(
             model_names=self.name,
             datum_filter=datum_filter,
-            parameters=EvaluationParameters(task_type=TaskType.SEGMENTATION),
+            parameters=EvaluationParameters(
+                task_type=TaskType.SEGMENTATION,
+                label_map=self._create_label_map(label_map=label_map),
+            ),
         )
 
         # create evaluation

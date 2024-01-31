@@ -1,4 +1,3 @@
-import pytest
 from sqlalchemy import and_, select
 from sqlalchemy.orm import Session
 
@@ -10,7 +9,6 @@ from velour_api.backend.metrics.segmentation import (
     _count_true_positives,
     _generate_groundtruth_query,
     _generate_prediction_query,
-    _get_groundtruth_labels,
 )
 from velour_api.backend.models import Label
 
@@ -274,20 +272,18 @@ def test_count_groundtruths(
             _count_groundtruths(
                 db,
                 _generate_groundtruth_query(groundtruth_filter),
-                label_id,
             )
             == expected
         )
 
     groundtruth_filter.label_ids = [1000000]
-    with pytest.raises(RuntimeError) as exc_info:
+    assert (
         _count_groundtruths(
             db,
             _generate_groundtruth_query(groundtruth_filter),
-            1000000,
         )
-
-    assert "No groundtruth pixels for label" in str(exc_info)
+        is None
+    )
 
 
 def _help_count_predictions(
@@ -353,37 +349,6 @@ def test_count_predictions(
     )
 
 
-def test_get_groundtruth_labels(
-    db: Session,
-    dataset_name: str,
-    gt_semantic_segs_create: list[schemas.GroundTruth],
-):
-    _create_gt_data(
-        db=db,
-        dataset_name=dataset_name,
-        gt_semantic_segs_create=gt_semantic_segs_create,
-    )
-
-    groundtruth_filter = schemas.Filter(
-        dataset_names=[dataset_name],
-        task_types=[enums.TaskType.SEGMENTATION],
-        annotation_types=[enums.AnnotationType.RASTER],
-    )
-
-    labels = _get_groundtruth_labels(db, groundtruth_filter)
-
-    assert len(labels) == 4
-
-    assert set([(label.key, label.value) for label in labels]) == {
-        ("k1", "v1"),
-        ("k1", "v2"),
-        ("k2", "v2"),
-        ("k3", "v3"),
-    }
-
-    assert len(set([label.id for label in labels])) == 4
-
-
 def test_compute_segmentation_metrics(
     db: Session,
     dataset_name: str,
@@ -401,18 +366,25 @@ def test_compute_segmentation_metrics(
         pred_semantic_segs_img2_create=pred_semantic_segs_img2_create,
     )
 
-    model_filter = schemas.Filter(
+    prediction_filter = schemas.Filter(
         model_names=[model_name],
         dataset_names=[dataset_name],
     )
-    datum_filter = schemas.Filter(
+    groundtruth_filter = schemas.Filter(
         model_names=[model_name],
         dataset_names=[dataset_name],
         task_types=[enums.TaskType.SEGMENTATION],
         annotation_types=[enums.AnnotationType.RASTER],
     )
 
-    metrics = _compute_segmentation_metrics(db, model_filter, datum_filter)
+    metrics = _compute_segmentation_metrics(
+        db,
+        parameters=schemas.EvaluationParameters(
+            task_type=enums.TaskType.CLASSIFICATION, label_map=None
+        ),
+        prediction_filter=prediction_filter,
+        groundtruth_filter=groundtruth_filter,
+    )
     # should have five metrics (one IOU for each of the four labels, and one mIOU)
     assert len(metrics) == 5
     for metric in metrics[:-1]:

@@ -1,4 +1,3 @@
-
 # Technical Concepts
 
 On this page, we'll describe many of the technical concepts underpinning Velour.
@@ -15,30 +14,28 @@ Note that Velour does _not_ store raw data (such as underlying images) or facili
 - Evaluation metrics computed by Velour
 - State related to any of the above
 
-
 ## Supported Task Types
 
 As of January 2024, Velour supports the following types of supervised learning tasks and associated metrics:
 
 - Classification (including multi-label classification)
-    - F1
-    - AUCROC
-    - Accuracy
-    - Precision
-    - Recall
+  - F1
+  - AUCROC
+  - Accuracy
+  - Precision
+  - Recall
 - Object detection
-    - AP
-    - mAP
-    - AP Averaged Over IOU's
-    - mAP Averaged Over IOU's
+  - AP
+  - mAP
+  - AP Averaged Over IOU's
+  - mAP Averaged Over IOU's
 - Segmentation (including both instance and semantic segmentation)
-    - IOU
-    - mIOU
+  - IOU
+  - mIOU
 
 For descriptions of each of these metrics, see our [Metrics](metrics.md) page.
 
 We expect the Velour framework to extend well to other types of supervised learning tasks, and plan to expand our supported task types in future releases.
-
 
 ## Components
 
@@ -46,7 +43,7 @@ We can think of Velour in terms of four orthogonal components:
 
 ### API
 
-The core of Velour is a backend REST API service. Users can call the API's endpoints directly (e.g., `POST /datasets`), or they can use our Python client to handle the API calls in their Python environment.  All of Velour's state is stored in Postgres; the API itself is completely stateless.
+The core of Velour is a backend REST API service. Users can call the API's endpoints directly (e.g., `POST /datasets`), or they can use our Python client to handle the API calls in their Python environment. All of Velour's state is stored in Postgres; the API itself is completely stateless.
 
 Note that, after you start the API service in Dockers, you'll be able to view FastAPI's automatically generated API documentation at `https://<your host>/docs`.
 
@@ -74,9 +71,7 @@ The highest-level class is a `Dataset`, which stores metadata and annotations as
 
 `Models` describe a particular instantiation of a machine learning model. We use the `Model` object to delineate between different models runs, or between the same model run over time. Note that `Models` aren't children of `Datasets`; you can have one `Model` contain predictions for multiple `Datasets`.
 
-
 `Models` require a name at instantation, and can optionally take in various types of metadata that you want to associate with your model.
-
 
 ### `GroundTruth`
 
@@ -90,14 +85,11 @@ A `Prediction` object describes the output of a machine learning model. For an o
 
 `Predictions` take one `Datum` and a list of `Annotations` as arguments.
 
-
 ### `Datum`
 
 `Datums` are used to store metadata about `GroundTruths` or `Predictions`. This metadata can include user-supplied metadata (e.g., JSONs filled with config details) or geospatial coordinates (via the `geospatial` argument). `Datums` provide the vital link between `GroundTruths` / `Predictions` and `Datasets`, and are useful when filtering your evaluations on specific conditions.
 
-
 A `Datum` requires a universal ID (UID) and dataset name at instantiation, along with any `metadata` or `geospatial` dictionaries that you want to associate with your `GroundTruth` or `Prediction`.
-
 
 ### `Annotation`
 
@@ -105,26 +97,26 @@ A `Datum` requires a universal ID (UID) and dataset name at instantiation, along
 
 `Annotations` require the user to specify their task type, labels, and metadata at instantition. Users can also pass-in various visual representations tailored to their specific task, such as bounding boxes, segmentations, or image rasters.
 
-
 ## Authentication
 
-The API can be run without authentication (by default), or with authentication provided by [auth0](https://auth0.com/). To enable authentication, you can either:
+The API can be run without authentication (by default), or with authentication with a single global username and password. To set this up, set the following environment variables when running the backend:
 
-- Set the environment variables `AUTH_DOMAIN`, `AUTH_AUDIENCE`, and `AUTH_ALGORITHMS` manually (e.g., `export AUTH_DOMAIN=<your domain>`)
+- Set the environment variables `SECRET_KEY`, `USERNAME`, and `PASSWORD` manually (e.g., `export SECRET_KEY=<secret key>`)
 - Set these env variables in a file named `.env.auth`, and place that file in the `api` directory. An example of such a file would look like:
 
 ```
-AUTH0_DOMAIN="your_domain.auth0.com"
-AUTH0_AUDIENCE="https://your_domain.com/"
-AUTH0_ALGORITHMS="RS256"
+SECRET_KEY="secret key"
+USERNAME="username"
+PASSWORD="password"
 ```
+
+`SECRET_KEY` is the key used for encoding and decoding tokens, and should be a random string. `USERNAME` and `PASSWORD` are the username and password that will be used to authenticate requests.
 
 You can use the tests in `integration_tests/test_client_auth.py` to check whether your authenticator is running correctly.
 
 ## Deployment Settings
 
 When deploying behind a proxy or with external routing, the environment variable `API_ROOT_PATH` environmental variable should be used to set the `root_path` arguement to `fastapi.FastAPI` (see https://fastapi.tiangolo.com/advanced/behind-a-proxy/#setting-the-root_path-in-the-fastapi-app).
-
 
 ## Release Process
 
