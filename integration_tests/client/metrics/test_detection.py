@@ -484,7 +484,7 @@ def test_evaluate_detection_with_json_filters(
         eval_results_min_area_1200.wait_for_completion(timeout=30)
         == EvaluationStatus.DONE
     )
-    min_area_1200_metrics = eval_results_min_area_1200.metrics
+    min_area_1200_metrics = eval_results_min_area_1200.to_dict()["metrics"]
 
     eval_job_bounded_area_1200_1800 = model.evaluate_detection(
         dataset,
