@@ -3,7 +3,7 @@ import math
 import time
 import warnings
 from dataclasses import asdict, dataclass
-from typing import Dict, List, Optional, Tuple, Union, Sequence
+from typing import Dict, List, Optional, Tuple, Union, Sequence, Iterable, Any, Type
 
 import numpy as np
 
@@ -16,6 +16,7 @@ from velour.schemas.constraints import (
     LabelMapper,
     NumericMapper,
     StringMapper,
+    _DeclarativeMapper,
 )
 from velour.schemas.evaluation import EvaluationParameters, EvaluationRequest
 from velour.schemas.filters import Filter, FilterExpressionsType
@@ -26,14 +27,14 @@ from velour.schemas.metadata import (
     load_metadata,
     validate_metadata,
 )
-from velour.types import GeoJSONType, MetadataType
+from velour.types import GeoJSONType, MetadataType, is_floating
 
 
 class Label:
     """
     An object for labeling datasets, models, and annotations.
 
-    Attributes
+    Parameters
     ----------
     key : str
         The class key of the label.
@@ -41,13 +42,16 @@ class Label:
         The class value of the label.
     score : float, optional
         The score associated with the label (if applicable).
+
+    Attributes
+    ----------
+    filter_by : filter_factory
+        Declarative mappers used to create filters.
     """
 
-    value: str
-    key: Union[str, StringMapper] = StringMapper("label_keys")
-    score: Union[float, np.floating, NumericMapper, None] = NumericMapper(
-        "prediction_scores"
-    )
+    value = NumericMapper("value")
+    key = StringMapper("key", filter_name="label_keys")
+    score = NumericMapper("score", filter_name="prediction_scores")
 
     def __init__(
         self,
@@ -55,25 +59,27 @@ class Label:
         value: str,
         score: Union[float, np.floating, None] = None,
     ):
+        if not isinstance(key, str):
+            raise TypeError("Attribute `key` should have type `str`.")
+        if not isinstance(value, str):
+            raise TypeError("Attribute `value` should have type `str`.")
+        if score is not None:
+            if not is_floating(score):
+                raise TypeError("Attribute `score` should be a floating-point number or `None`.")
+
         self.key = key
         self.value = value
-        self.score = score
-
-        if not isinstance(self.key, str):
-            raise TypeError("Attribute `key` should have type `str`.")
-        if not isinstance(self.value, str):
-            raise TypeError("Attribute `value` should have type `str`.")
-        if self.score is not None:
-            try:
-                self.score = float(self.score)
-            except ValueError:
-                raise TypeError("score should be convertible to `float`")
+        self.score = score 
 
     def __str__(self):
         return str(self.tuple())
 
     def to_dict(self):
-        return self.__dict__.copy()
+        return {
+            "key": self.key,
+            "value": self.value,
+            "score": self.score,
+        }
 
     @classmethod
     def from_dict(cls, resp):
@@ -93,22 +99,23 @@ class Label:
         boolean
             A boolean describing whether the two objects are equal.
         """
+        # type mismatch
         if type(other) is not type(self):
             return False
 
+        # k,v mismatch
         if self.key != other.key or self.value != other.value:
             return False
         
+        # score is None
         if self.score is None or other.score is None:
             return (other.score is None) == (self.score is None)
-        elif type(self.score) is float and type(other.score) is float:
-            return math.isclose(self.score, other.score)
-        elif type(self.score) is int and type(other.score) is int:
-            return self.score == other.score
-        elif type(self.score) is np.floating and type(other.score) is np.floating:
+        
+        # scores not equal
+        if is_floating(self.score) and is_floating(other.score):
             return np.isclose(self.score, other.score)
-        else:
-            return False
+        
+        return False
 
     def __hash__(self) -> int:
         """
@@ -121,7 +128,7 @@ class Label:
         """
         return hash(f"key:{self.key},value:{self.value},score:{self.score}")
 
-    def tuple(self) -> Tuple[str, str, Optional[float]]:
+    def tuple(self) -> Tuple[str, str, Union[float, np.floating, None]]:
         """
         Defines how the `Label` is turned into a tuple.
 
@@ -130,17 +137,8 @@ class Label:
         tuple
             A tuple of the `Label's` arguments.
         """
-        if type(self.key) is not str:
-            raise ValueError
-        if type(self.score) is np.floating:
-            return (self.key, self.value, float(self.score))
-        elif (
-            type(self.score) is not int
-            and type(self.score) is not float
-        ):
-            raise ValueError
         return (self.key, self.value, self.score)
-
+            
 
 class Datum:
     """
@@ -156,29 +154,20 @@ class Datum:
         A GeoJSON-style dictionary describing the geospatial coordinates of the `Datum`.
     """
 
-    uid: Union[str, StringMapper] = StringMapper(name="datum_uids")
-    metadata: Union[MetadataType, DictionaryMapper] = DictionaryMapper(
-        name="datum_metadata"
-    )
-    geospatial: Union[
-        Optional[GeoJSONType], GeospatialMapper
-    ] = GeospatialMapper(name="datum_geospatial")
+    uid = StringMapper("uid", filter_name="datum_uids")
+    metadata = DictionaryMapper("metadata", filter_name="datum_metadata")
+    geospatial = GeospatialMapper("geospatial", filter_name="datum_geospatial")
 
     def __init__(
         self,
         uid: str,
-        metadata: MetadataType = None,
-        geospatial: GeoJSONType = None,
+        metadata: Optional[MetadataType] = None,
+        geospatial: Optional[GeoJSONType] = None,
     ):
         self.uid = uid
         self.metadata = metadata if metadata else {}
         self.geospatial = geospatial
-        self._validate()
 
-    def _validate(self):
-        """
-        Validates the parameters used to create a `Datum` object.
-        """
         if not isinstance(self.uid, str):
             raise TypeError("Attribute `uid` should have type `str`.")
         validate_metadata(self.metadata)
@@ -247,8 +236,6 @@ class Annotation:
         A multipolygon to assign to the `Annotation`.
     raster: Raster
         A raster to assign to the `Annotation`.
-    jsonb: Dict
-        A jsonb to assign to the `Annotation`.
 
     Attributes
     ----------
@@ -313,35 +300,25 @@ class Annotation:
     ... )
     """
 
-    task_type: Union[TaskType, StringMapper] = StringMapper(name="task_types")
-    labels: Union[List[Label], LabelMapper] = LabelMapper(name="labels")
-    metadata: Union[MetadataType, DictionaryMapper] = DictionaryMapper(
-        "annotation_metadata"
-    )
-    bounding_box: Union[
-        Optional[BoundingBox], GeometryMapper
-    ] = GeometryMapper("annotation_bounding_box")
-    polygon: Union[Optional[Polygon], GeometryMapper] = GeometryMapper(
-        "annotation_polygon"
-    )
-    multipolygon: Union[
-        Optional[MultiPolygon], GeometryMapper
-    ] = GeometryMapper("annotation_multipolygon")
-    raster: Union[Optional[Raster], GeometryMapper] = GeometryMapper(
-        "annotation_raster"
-    )
+    task_type=StringMapper("task_types")
+    labels=LabelMapper("labels")
+    metadata=DictionaryMapper("annotation_metadata")
+    bounding_box=GeometryMapper("annotation_bounding_box")
+    polygon=GeometryMapper("annotation_polygon")
+    multipolygon=GeometryMapper("annotation_multipolygon")
+    raster=GeometryMapper("annotation_raster")
 
     def __init__(
         self,
         task_type: TaskType,
         labels: List[Label],
-        metadata: MetadataType = None,
-        bounding_box: BoundingBox = None,
-        polygon: Polygon = None,
-        multipolygon: MultiPolygon = None,
-        raster: Raster = None,
+        metadata: Optional[MetadataType] = None,
+        bounding_box: Optional[BoundingBox] = None,
+        polygon: Optional[Polygon] = None,
+        multipolygon: Optional[MultiPolygon] = None,
+        raster: Optional[Raster] = None,
     ):
-        self.task_type = task_type
+        self.task_type = TaskType(task_type)
         self.labels = labels
         self.metadata = metadata if metadata else {}
         self.bounding_box = bounding_box
@@ -354,27 +331,19 @@ class Annotation:
         """
         Validates the parameters used to create a `Annotation` object.
         """
-        # task_type
-        if not isinstance(self.task_type, TaskType):
-            self.task_type = TaskType(self.task_type)
-
         # labels
         if not isinstance(self.labels, list):
             raise TypeError(
                 "Attribute `labels` should have type `List[velour.Label]`."
             )
         for idx, label in enumerate(self.labels):
-            if isinstance(self.labels[idx], dict):
-                self.labels[idx] = Label.from_dict(label)
-            if not isinstance(self.labels[idx], Label):
+            if not isinstance(label, Label):
                 raise TypeError(
                     f"Attribute `labels[{idx}]` should have type `velour.Label`."
                 )
 
         # bounding box
         if self.bounding_box:
-            if isinstance(self.bounding_box, dict):
-                self.bounding_box = BoundingBox(**self.bounding_box)
             if not isinstance(self.bounding_box, BoundingBox):
                 raise TypeError(
                     "Attribute `bounding_box` should have type `velour.schemas.BoundingBox`."
@@ -382,8 +351,6 @@ class Annotation:
 
         # polygon
         if self.polygon:
-            if isinstance(self.polygon, dict):
-                self.polygon = Polygon(**self.polygon)
             if not isinstance(self.polygon, Polygon):
                 raise TypeError(
                     "Attribute `polygon` should have type `velour.schemas.Polygon`."
@@ -391,8 +358,6 @@ class Annotation:
 
         # multipolygon
         if self.multipolygon:
-            if isinstance(self.multipolygon, dict):
-                self.multipolygon = MultiPolygon(**self.multipolygon)
             if not isinstance(self.multipolygon, MultiPolygon):
                 raise TypeError(
                     "Attribute `multipolygon` should have type `velour.schemas.MultiPolygon`."
@@ -400,8 +365,6 @@ class Annotation:
 
         # raster
         if self.raster:
-            if isinstance(self.raster, dict):
-                self.raster = Raster(**self.raster)
             if not isinstance(self.raster, Raster):
                 raise TypeError(
                     "Attribute `raster` should have type `velour.schemas.Raster`."
@@ -413,12 +376,56 @@ class Annotation:
         validate_metadata(self.metadata)
         self.metadata = load_metadata(self.metadata)
 
-    def __str__(self):
-        return str(self.to_dict())
+    @classmethod
+    def from_dict(cls, resp: dict):
+        """
+        Deserializes a `velour.Annotation` from a dictionary.
+
+        Parameters
+        ----------
+        resp : dict
+            The serialized annotation.
+
+        Returns
+        -------
+        velour.Annotation
+            The deserialized Annotation object.
+        """
+
+        task_type = TaskType(resp["task_type"])
+        labels = [
+            Label.from_dict(label)
+            for label in resp["labels"]
+        ]
+        metadata = load_metadata(resp["metadata"])
+
+        bounding_box = None
+        polygon = None
+        multipolygon = None
+        raster = None
+        if "bounding_box" in resp:
+            bounding_box = BoundingBox(**resp["bounding_box"])
+        if "polygon" in resp:
+            polygon = Polygon(**resp["polygon"])
+        if "multipolygon" in resp:
+            multipolygon = MultiPolygon(**resp["multipolygon"])
+        if "raster" in resp:
+            raster = Raster(**resp["raster"])
+
+        return cls(
+            task_type=task_type,
+            labels=labels,
+            metadata=metadata,
+            bounding_box=bounding_box,
+            polygon=polygon,
+            multipolygon=multipolygon,
+            raster=raster,
+        )
+
 
     def to_dict(self) -> dict:
         """
-        Defines how a `Annotation` object is transformed into a dictionary.
+        Defines how a `velour.Annotation` object is serialized into a dictionary.
 
         Returns
         ----------
@@ -438,10 +445,9 @@ class Annotation:
             else None,
             "raster": asdict(self.raster) if self.raster else None,
         }
-
-    @classmethod
-    def from_dict(cls, resp: dict):
-        return cls(**resp)
+    
+    def __str__(self):
+        return str(self.to_dict())
 
     def __eq__(self, other):
         """
@@ -476,7 +482,11 @@ class GroundTruth:
         The list of `Annotations` associated with the `GroundTruth`.
     """
 
-    def __init__(self, datum: Datum, annotations: Sequence[Annotation]):
+    def __init__(
+        self, 
+        datum: Datum, 
+        annotations: List[Annotation]
+    ):
         self.datum = datum
         self.annotations = annotations
         self._validate()
@@ -486,8 +496,6 @@ class GroundTruth:
         Validate the inputs of the `GroundTruth`.
         """
         # validate datum
-        if isinstance(self.datum, dict):
-            self.datum = Datum(**self.datum)
         if not isinstance(self.datum, Datum):
             raise TypeError(
                 "Attribute `datum` should have type `velour.Datum`."
@@ -499,15 +507,10 @@ class GroundTruth:
                 "Attribute `datum` should have type `List[velour.Annotation]`."
             )
         for idx, annotation in enumerate(self.annotations):
-            if isinstance(self.annotations[idx], dict):
-                self.annotations[idx] = Annotation(**annotation)
-            if not isinstance(self.annotations[idx], Annotation):
+            if not isinstance(annotation, Annotation):
                 raise TypeError(
                     f"Attribute `annotations[{idx}]` should have type `velour.Annotation`."
                 )
-
-    def __str__(self):
-        return str(self.to_dict(None))
 
     def to_dict(
         self,
@@ -530,10 +533,21 @@ class GroundTruth:
 
     @classmethod
     def from_dict(cls, resp: dict):
+        expected_keys = {"datum", "annotations"}
+        if set(resp.keys()) != expected_keys:
+            raise ValueError(f"Expected keys `{expected_keys}`, received `{set(resp.keys())}`.")
+        if not isinstance(resp["annotations"], list):
+            raise TypeError("Expected `annotations` member to be a `list`.")
         return cls(
             datum=Datum.from_dict(resp["datum"]),
-            annotations=resp["annotations"],
+            annotations=[
+                Annotation.from_dict(annotation)
+                for annotation in resp["annotations"]
+            ],
         )
+    
+    def __str__(self):
+        return str(self.to_dict(None))
 
     def __eq__(self, other):
         """
@@ -553,7 +567,7 @@ class GroundTruth:
             raise TypeError(
                 f"Expected type `{type(GroundTruth)}`, got `{other}`"
             )
-        return self.dict() == other.dict()
+        return self.to_dict() == other.to_dict()
 
 
 class Prediction:
@@ -575,7 +589,7 @@ class Prediction:
 
     def __init__(
         self, 
-        datum: Datum, 
+        datum: Datum,
         annotations: List[Annotation],
     ):
         self.datum = datum
@@ -587,8 +601,6 @@ class Prediction:
         Validate the inputs of the `Prediction`.
         """
         # validate datum
-        if isinstance(self.datum, dict):
-            self.datum = Datum(**self.datum)
         if not isinstance(self.datum, Datum):
             raise TypeError(
                 "Attribute `datum` should have type `velour.Datum`."
@@ -600,9 +612,7 @@ class Prediction:
                 "Attribute `datum` should have type `List[velour.Annotation]`."
             )
         for idx, annotation in enumerate(self.annotations):
-            if isinstance(self.annotations[idx], dict):
-                self.annotations[idx] = Annotation(**annotation)
-            if not isinstance(self.annotations[idx], Annotation):
+            if not isinstance(annotation, Annotation):
                 raise TypeError(
                     f"Attribute `annotations[{idx}]` should have type `velour.Annotation`."
                 )
@@ -633,9 +643,6 @@ class Prediction:
                             f" for label key {k} got scores summing to {total_score}."
                         )
 
-    def __str__(self):
-        return str(self.to_dict(None, None))
-
     def to_dict(
         self,
         dataset_name: Optional[str] = None,
@@ -659,10 +666,21 @@ class Prediction:
 
     @classmethod
     def from_dict(cls, resp: dict):
+        expected_keys = {"datum", "annotations", "model_name"}
+        if set(resp.keys()) != expected_keys:
+            raise ValueError(f"Expected keys `{expected_keys}`, received `{set(resp.keys())}`.")
+        if not isinstance(resp["annotations"], list):
+            raise TypeError("Expected `annotations` member to be a `list`.")
         return cls(
             datum=Datum.from_dict(resp["datum"]),
-            annotations=resp["annotations"],
+            annotations=[
+                Annotation.from_dict(annotation)
+                for annotation in resp["annotations"]
+            ],
         )
+    
+    def __str__(self):
+        return str(self.to_dict(None, None))
 
     def __eq__(self, other):
         """
@@ -682,7 +700,7 @@ class Prediction:
             raise TypeError(
                 f"Expected type `{type(Prediction)}`, got `{other}`"
             )
-        return self.dict(None, None) == other.dict(None, None)
+        return self.to_dict(None, None) == other.to_dict(None, None)
 
 
 class Evaluation:
@@ -898,7 +916,6 @@ class Dataset:
     geospatial :  dict
         A GeoJSON-style dictionary describing the geospatial coordinates of the dataset.
     """
-
     name = StringMapper("dataset_names")
     metadata = DictionaryMapper("dataset_metadata")
     geospatial = GeospatialMapper("dataset_geospatial")
@@ -909,9 +926,7 @@ class Dataset:
         name: str,
         metadata: Optional[MetadataType] = None,
         geospatial: Optional[GeoJSONType] = None,
-        id: Union[int, None] = None,
         delete_if_exists: bool = False,
-        **_,
     ):
         """
         Create or get a `Dataset` object.
@@ -930,10 +945,14 @@ class Dataset:
             Deletes any existing dataset with the same name.
         """
         self.name = name
-        self.metadata = metadata
+        self.metadata = metadata if metadata else {}
         self.geospatial = geospatial
-        self.id = id
-        self._validate()
+        
+        # validation
+        if not isinstance(self.name, str):
+            raise TypeError("`name` should be of type `str`")
+        validate_metadata(self.metadata)
+        self.metadata = load_metadata(self.metadata)
 
         if delete_if_exists and client.get_dataset(name) is not None:
             client.delete_dataset(name, timeout=30)
@@ -945,25 +964,10 @@ class Dataset:
             setattr(self, k, v)
         self.client = client
 
-    def _validate(self):
-        """
-        Validates the arguments used to create a `Model` object.
-        """
-        if not isinstance(self.name, str):
-            raise TypeError("`name` should be of type `str`")
-        if not isinstance(self.id, int) and self.id is not None:
-            raise TypeError("`id` should be of type `int`")
-        if not self.metadata:
-            self.metadata = {}
-
-        # metadata
-        validate_metadata(self.metadata)
-        self.metadata = load_metadata(self.metadata)
-
     def __str__(self):
         return str(self.to_dict())
 
-    def to_dict(self) -> dict:
+    def to_dict(self, id : Optional[int] = None) -> dict:
         """
         Defines how a `Dataset` object is transformed into a dictionary.
 
@@ -973,7 +977,7 @@ class Dataset:
             A dictionary of the `Dataset's` attributes.
         """
         return {
-            "id": self.id,
+            "id": id,
             "name": self.name,
             "metadata": dump_metadata(self.metadata),
             "geospatial": self.geospatial,
@@ -1147,7 +1151,6 @@ class Model:
     geospatial :  dict
         A GeoJSON-style dictionary describing the geospatial coordinates of the model.
     """
-
     name = StringMapper("model_names")
     metadata = DictionaryMapper("model_metadata")
     geospatial = GeospatialMapper("model_geospatial")
@@ -1158,7 +1161,6 @@ class Model:
         name: str,
         metadata: Optional[MetadataType] = None,
         geospatial: Optional[GeoJSONType] = None,
-        id: Union[int, None] = None,
         delete_if_exists: bool = False,
     ):
         """
@@ -1180,10 +1182,8 @@ class Model:
             Deletes any existing model with the same name.
         """
         self.name = name
-        self.metadata = metadata
+        self.metadata = metadata if metadata else {}
         self.geospatial = geospatial
-        self.id = id
-        self._validate()
 
         if delete_if_exists and client.get_model(name) is not None:
             client.delete_model(name, timeout=30)
@@ -1195,25 +1195,10 @@ class Model:
             setattr(self, k, v)
         self.client = client
 
-    def _validate(self):
-        """
-        Validates the arguments used to create a `Model` object.
-        """
-        if not isinstance(self.name, str):
-            raise TypeError("`name` should be of type `str`")
-        if not isinstance(self.id, int) and self.id is not None:
-            raise TypeError("`id` should be of type `int`")
-        if not self.metadata:
-            self.metadata = {}
-
-        # metadata
-        validate_metadata(self.metadata)
-        self.metadata = load_metadata(self.metadata)
-
     def __str__(self):
-        return str(self.dict())
+        return str(self.to_dict())
 
-    def to_dict(self) -> dict:
+    def to_dict(self, id: Optional[int] = None) -> dict:
         """
         Defines how a `Model` object is transformed into a dictionary.
 
@@ -1223,7 +1208,7 @@ class Model:
             A dictionary of the `Model's` attributes.
         """
         return {
-            "id": self.id,
+            "id": id,
             "name": self.name,
             "metadata": dump_metadata(self.metadata),
             "geospatial": self.geospatial,
@@ -1532,41 +1517,3 @@ class Model:
             Evaluation(self.client, **resp)
             for resp in self.client.get_evaluations(models=self.name)
         ]
-
-    def get_metric_dataframes(
-        self,
-    ) -> dict:
-        """
-        Get all metrics associated with a Model and return them in a `pd.DataFrame`.
-
-        Returns
-        ----------
-        dict
-            A dictionary of the `Model's` metrics and settings, with the metrics being displayed in a `pd.DataFrame`.
-        """
-        try:
-            import pandas as pd
-        except ModuleNotFoundError:
-            raise ModuleNotFoundError(
-                "Must have pandas installed to use `get_metric_dataframes`."
-            )
-
-        ret = []
-        for evaluation in self.get_evaluations():
-            metrics = [
-                {**metric, "dataset": evaluation.dataset}
-                for metric in evaluation.metrics
-            ]
-            df = pd.DataFrame(metrics)
-            for k in ["label", "parameters"]:
-                df[k] = df[k].fillna("n/a")
-            df["parameters"] = df["parameters"].apply(json.dumps)
-            df["label"] = df["label"].apply(
-                lambda x: f"{x['key']}: {x['value']}" if x != "n/a" else x
-            )
-            df = df.pivot(
-                index=["type", "parameters", "label"], columns=["dataset"]
-            )
-            ret.append({"settings": evaluation.settings, "df": df})
-
-        return ret

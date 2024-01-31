@@ -25,43 +25,44 @@ from velour.schemas.geometry import (
 
 
 def _test_mapper(mapper, operator, value, retval=None):
-    name = "name"
+    property_name = "property"
+    filter_name = "filter_name"
     key = "key"
 
     if operator == "==":
-        expr = mapper(name, key) == value
+        expr = mapper(property_name, filter_name, key) == value
     elif operator == "!=":
-        expr = mapper(name, key) != value
+        expr = mapper(property_name, filter_name, key) != value
     elif operator == ">=":
-        expr = mapper(name, key) >= value
+        expr = mapper(property_name, filter_name, key) >= value
     elif operator == "<=":
-        expr = mapper(name, key) <= value
+        expr = mapper(property_name, filter_name, key) <= value
     elif operator == ">":
-        expr = mapper(name, key) > value
+        expr = mapper(property_name, filter_name, key) > value
     elif operator == "<":
-        expr = mapper(name, key) < value
+        expr = mapper(property_name, filter_name, key) < value
     elif operator == "contains":
-        expr = mapper(name, key).contains(value)
+        expr = mapper(property_name, filter_name, key).contains(value)
     elif operator == "intersect":
-        expr = mapper(name, key).intersect(value)
+        expr = mapper(property_name, filter_name, key).intersect(value)
     elif operator == "inside":
-        expr = mapper(name, key).inside(value)
+        expr = mapper(property_name, filter_name, key).inside(value)
     elif operator == "outside":
-        expr = mapper(name, key).outside(value)
+        expr = mapper(property_name, filter_name, key).outside(value)
     elif operator == "is_none":
-        expr = mapper(name, key).is_none()
-        assert expr.name == name
+        expr = mapper(property_name, filter_name, key).is_none()
+        assert expr.name == filter_name
         value = None
     elif operator == "exists":
-        expr = mapper(name, key).exists()
+        expr = mapper(property_name, filter_name, key).exists()
         value = None
     elif operator == "in_":
-        expr = mapper(name, key).in_([value])[0]
+        expr = mapper(property_name, filter_name, key).in_([value])[0]
         operator = "=="
     else:
         raise NotImplementedError
 
-    assert expr.name == name
+    assert expr.name == filter_name
     assert expr.key == key
     assert expr.constraint.operator == operator
 
@@ -382,11 +383,11 @@ def test_dictionary_mapper():
         (timedelta_, timedelta_filter),
     ]:
 
-        def _test_dict_mapper(operator):
+        def _test_dict_mapper_no_key(operator):
             _test_mapper(mapper, operator, value)
 
-        _test_dict_mapper("is_none")
-        _test_dict_mapper("exists")
+        _test_dict_mapper_no_key("is_none")
+        _test_dict_mapper_no_key("exists")
 
         def _test_dict_mapper(operator):
             _test_mapper(mapper, operator, value, retval=retval)
@@ -410,7 +411,7 @@ def test_dictionary_mapper():
 
     # test invalid type
     with pytest.raises(NotImplementedError):
-        DictionaryMapper("name")["key"] == Point(1, 1)
+        DictionaryMapper("name")["key"] == Point(1, 1) # type: ignore
 
 
 def test_label_mapper():

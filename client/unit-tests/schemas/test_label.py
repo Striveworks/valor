@@ -43,7 +43,7 @@ def test_scored_label():
 
     with pytest.raises(TypeError) as e:
         Label(key="k", value="v", score="boo")  # type: ignore
-    assert "score should be convertible to `float`" in str(e)
+    assert "float" in str(e)
 
     # test property `key`
     assert l1.key == "test"
