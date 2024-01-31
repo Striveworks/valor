@@ -29,12 +29,16 @@ jobs:
         with:
           role-to-assume: ${{ secrets.AWS_ROLE }}
           aws-region: ${{ secrets.AWS_ECR_REGION }}
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       - name: build
         run: |
           docker build . -t ${IMAGE_NAME}
       - name: push
         run: |
-          docker login ghcr.io -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }}
           docker push ${IMAGE_NAME}
           IMAGE_NAME_WITH_COMMIT_HASH=${IMAGE_NAME}:${{ github.sha }}
           docker tag ${IMAGE_NAME} ${IMAGE_NAME_WITH_COMMIT_HASH}
@@ -77,13 +81,17 @@ jobs:
         with:
           role-to-assume: ${{ secrets.AWS_ROLE }}
           aws-region: ${{ secrets.AWS_ECR_REGION }}
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       - name: build
         run: |
           pip3 install setuptools_scm
           docker build --build-arg VERSION=$(python -m setuptools_scm) . -t ${IMAGE_NAME}
       - name: push
         run: |
-          docker login ghcr.io -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }}
           docker push ${IMAGE_NAME}
           IMAGE_NAME_WITH_COMMIT_HASH=${IMAGE_NAME}:${{ github.sha }}
           docker tag ${IMAGE_NAME} ${IMAGE_NAME_WITH_COMMIT_HASH}
