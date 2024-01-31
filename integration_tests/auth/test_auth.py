@@ -1,11 +1,9 @@
 """ These integration tests should be run with a backend at http://localhost:8000
-that has authentication enabled. The following environment variables for auth0 must
+that has authentication enabled. The following environment variables must
 be set for these tests:
 
-AUTH0_DOMAIN
-AUTH0_AUDIENCE
-AUTH0_CLIENT_ID
-AUTH0_CLIENT_SECRET
+USERNAME
+PASSWORD
 """
 
 import os
@@ -18,17 +16,15 @@ from velour.client import Client, ClientException
 
 @pytest.fixture
 def bearer_token() -> str:
-    url = f"https://{os.environ['AUTH0_DOMAIN']}/oauth/token"
+    url = "http://localhost:8000/token"
     data = {
-        "client_id": os.environ["AUTH0_CLIENT_ID"],
-        "client_secret": os.environ["AUTH0_CLIENT_SECRET"],
-        "grant_type": "client_credentials",
-        "audience": os.environ["AUTH0_AUDIENCE"],
+        "username": os.environ["USERNAME"],
+        "password": os.environ["PASSWORD"],
     }
 
     resp = requests.post(url, data=data)
 
-    return resp.json()["access_token"]
+    return resp.json()
 
 
 def test_auth_client_pos(bearer_token: str):
