@@ -1,8 +1,9 @@
 import datetime
-import numpy as np
-from typing import Dict, List, Union, Mapping, Sequence, Any
+from typing import Any, Dict, List, Mapping, Union
 
-from velour.schemas import geometry, constraints
+import numpy as np
+
+from velour.schemas import geometry
 
 ValueType = Union[int, float, str, bool, Dict[str, str]]
 
@@ -43,6 +44,13 @@ GeoJSONType = Union[
     GeoJSONPointType, GeoJSONPolygonType, GeoJSONMultiPolygonType
 ]
 
+DatetimeType = Union[
+    datetime.datetime,
+    datetime.date,
+    datetime.time,
+    datetime.timedelta,
+]
+
 
 def is_numeric(value: Any) -> bool:
     """
@@ -79,7 +87,4 @@ def is_floating(value: Any) -> bool:
     bool
         Whether the value is a floating point number.
     """
-    return (
-        isinstance(value, float)
-        or isinstance(value, np.floating)
-    )
+    return isinstance(value, float) or isinstance(value, np.floating)

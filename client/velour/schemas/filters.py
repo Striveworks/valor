@@ -1,15 +1,11 @@
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Sequence, Iterable, Iterator, Union
+from typing import Dict, Iterable, Iterator, List, Optional, Sequence, Union
 
 from velour.enums import AnnotationType, TaskType
 from velour.schemas.constraints import BinaryExpression, Constraint
 
-
 FilterExpressionsType = Sequence[
-    Union[
-        BinaryExpression, 
-        Sequence[BinaryExpression]
-    ]
+    Union[BinaryExpression, Sequence[BinaryExpression]]
 ]
 
 

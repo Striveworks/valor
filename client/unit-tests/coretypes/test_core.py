@@ -12,12 +12,12 @@ def test_datum():
 
     # test `__post_init__`
     with pytest.raises(TypeError):
-        Datum(uid=123) # type: ignore
+        Datum(uid=123)  # type: ignore
     with pytest.raises(TypeError):
-        Datum(uid="123", metadata=1) # type: ignore
+        Datum(uid="123", metadata=1)  # type: ignore
     with pytest.raises(TypeError):
-        Datum(uid="123", metadata=[1]) # type: ignore
- 
+        Datum(uid="123", metadata=[1])  # type: ignore
+
 
 def test_annotation(bbox, polygon, raster, labels, metadata):
     # valid
@@ -114,7 +114,7 @@ def test_groundtruth_annotation():
         Annotation(task_type="soemthing", labels=[l1])  # type: ignore
     assert "is not a valid TaskType" in str(e)
     with pytest.raises(TypeError) as e:
-        Annotation(task_type=enums.TaskType.CLASSIFICATION, labels=l1) # type: ignore
+        Annotation(task_type=enums.TaskType.CLASSIFICATION, labels=l1)  # type: ignore
     assert "List[velour.Label]" in str(e)
     with pytest.raises(TypeError) as e:
         Annotation(
@@ -143,7 +143,7 @@ def test_prediction_annotation():
         Annotation(task_type="something", labels=[s1, s2, s3])  # type: ignore
     assert "is not a valid TaskType" in str(e)
     with pytest.raises(TypeError) as e:
-        Annotation(task_type=enums.TaskType.CLASSIFICATION, labels=s1) # type: ignore
+        Annotation(task_type=enums.TaskType.CLASSIFICATION, labels=s1)  # type: ignore
     assert "List[velour.Label]" in str(e)
     with pytest.raises(TypeError) as e:
         Annotation(
@@ -206,7 +206,7 @@ def test_prediction():
 
     # test `__post_init__`
     with pytest.raises(TypeError) as e:
-        Prediction(datum="datum", annotations=pds) # type: ignore
+        Prediction(datum="datum", annotations=pds)  # type: ignore
     assert "velour.Datum" in str(e)
     with pytest.raises(TypeError) as e:
         Prediction(

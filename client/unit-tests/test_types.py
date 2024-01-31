@@ -1,6 +1,6 @@
 import numpy as np
 
-from velour.types import is_numeric, is_floating
+from velour.types import is_floating, is_numeric
 
 
 def test_is_numeric():

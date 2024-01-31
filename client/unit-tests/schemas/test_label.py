@@ -10,11 +10,11 @@ def test_label():
 
     # test `__post_init__`
     with pytest.raises(TypeError) as e:
-        Label(key=123, value="123") # type: ignore
+        Label(key=123, value="123")  # type: ignore
 
     assert "str" in str(e)
     with pytest.raises(TypeError) as e:
-        Label(key="123", value=123) # type: ignore
+        Label(key="123", value=123)  # type: ignore
     assert "str" in str(e)
 
     # test member fn `tuple`

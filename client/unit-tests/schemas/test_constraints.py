@@ -410,7 +410,7 @@ def test_dictionary_mapper():
 
     # test invalid type
     with pytest.raises(NotImplementedError):
-        DictionaryMapper("name")["key"] == Point(1, 1) # type: ignore
+        DictionaryMapper("name")["key"] == Point(1, 1)  # type: ignore
 
 
 def test_label_mapper():

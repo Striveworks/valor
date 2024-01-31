@@ -1,10 +1,10 @@
-from typing import Dict, List, Optional, Union, cast
+from typing import Optional, cast
 
 import PIL.Image
 
 from velour import Datum
 from velour.schemas import validate_metadata
-from velour.types import MetadataType, DictMetadataType, GeoJSONType
+from velour.types import DictMetadataType, GeoJSONType, MetadataType
 
 
 class ImageMetadata:

@@ -1,30 +1,31 @@
-import datetime
+from typing import Any, Optional, Union
+
 import numpy as np
-from typing import Union, Any, Optional
 
 from velour.schemas.constraints import (
     BoolMapper,
-    NumericMapper,
-    StringMapper,
     DatetimeMapper,
+    DictionaryMapper,
     GeometryMapper,
     GeospatialMapper,
-    DictionaryMapper,
     LabelMapper,
+    NumericMapper,
+    StringMapper,
 )
-from velour.types import GeoJSONType, MetadataType
-from velour.schemas import geometry
+from velour.types import DatetimeType, GeoJSONType, GeometryType, MetadataType
 
 
 def getter_factory(name: str, type_: type):
     def _getter(self) -> type_:
         return getattr(self, name)
+
     return _getter
 
 
 def setter_factory(name: str, type_: type):
     def _setter(self, __value: type_):
         setattr(self, name, __value)
+
     return _setter
 
 
@@ -44,10 +45,12 @@ class _BaseProperty(property):
         self.key = key
 
         # set up `property`
-        fget = lambda _ : self
+        fget = lambda _: self  # noqa: E731
         fset = None
         if not self.key:
-            fset = lambda instance, value : self.__convert_to_value__(instance, value)
+            fset = lambda instance, value: self.__convert_to_value__(  # noqa: E731
+                instance, value
+            )
         super().__init__(fget=fget, fset=fset)
 
     def __convert_to_value__(self, instance, value: Any):
@@ -63,33 +66,23 @@ class BoolProperty(_BaseProperty, BoolMapper):
 
 class NumericProperty(_BaseProperty, NumericMapper):
     type_ = Union[int, float, np.floating]
-    
+
 
 class StringProperty(_BaseProperty, StringMapper):
     type_ = str
 
 
 class DatetimeProperty(_BaseProperty, DatetimeMapper):
-    type_ = Union[
-        datetime.datetime,
-        datetime.date,
-        datetime.time,
-        datetime.timedelta,
-    ]
+    type_ = DatetimeType
 
 
 class GeometryProperty(_BaseProperty, GeometryMapper):
-    type_ = Union[
-        geometry.BoundingBox,
-        geometry.Polygon,
-        geometry.MultiPolygon,
-        geometry.Raster,
-    ]
+    type_ = GeometryType
 
 
 class GeospatialProperty(_BaseProperty, GeospatialMapper):
     type_ = GeoJSONType
-    
+
 
 class DictionaryProperty(_BaseProperty, DictionaryMapper):
     type_ = MetadataType

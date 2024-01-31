@@ -18,7 +18,7 @@ def test__validate_href():
         _validate_href("test")
     assert "`href` must start with http:// or https://" in str(e)
     with pytest.raises(TypeError) as e:
-        _validate_href(1) # type: ignore
+        _validate_href(1)  # type: ignore
     assert "str" in str(e)
 
 
@@ -28,13 +28,13 @@ def test_validate_metadata():
     validate_metadata({"test": 1.0})
 
     with pytest.raises(TypeError) as e:
-        validate_metadata({123: 123}) # type: ignore
+        validate_metadata({123: 123})  # type: ignore
 
     # Test supported value types
     with pytest.raises(TypeError):
-        validate_metadata({"test": (1, 2)}) # type: ignore
+        validate_metadata({"test": (1, 2)})  # type: ignore
     with pytest.raises(TypeError):
-        validate_metadata({"test": [1, 2]}) # type: ignore
+        validate_metadata({"test": [1, 2]})  # type: ignore
 
     # Test special type with name=href
     validate_metadata({"href": "http://test"})

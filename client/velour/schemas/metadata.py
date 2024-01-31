@@ -1,6 +1,10 @@
 import datetime
 
-from velour.types import MetadataType, ConvertibleMetadataType, DictMetadataType
+from velour.types import (
+    ConvertibleMetadataType,
+    DictMetadataType,
+    MetadataType,
+)
 
 
 def _validate_href(value: str):
@@ -32,7 +36,9 @@ def validate_metadata(metadata: MetadataType):
         # Handle special key-values
         if key == "href":
             if not isinstance(value, str):
-                raise TypeError("The metadata key `href` is reserved for values of type `str`.")
+                raise TypeError(
+                    "The metadata key `href` is reserved for values of type `str`."
+                )
             _validate_href(value)
 
 

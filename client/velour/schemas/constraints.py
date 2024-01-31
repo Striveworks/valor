@@ -1,10 +1,9 @@
 import datetime
 from dataclasses import dataclass
-from typing import Any, List, Optional, Set, Union, Type
+from typing import Any, List, Optional, Set, Union
 
 import numpy as np
 
-from velour.enums import TaskType
 from velour.schemas.geometry import (
     BoundingBox,
     MultiPolygon,
@@ -12,7 +11,7 @@ from velour.schemas.geometry import (
     Polygon,
     Raster,
 )
-from velour.types import GeometryType, GeoJSONType, MetadataType, MetadataValueType
+from velour.types import GeometryType
 
 
 @dataclass
@@ -113,34 +112,22 @@ class _DeclarativeMapper:
         return value
 
     def __eq__(self, value: Any) -> BinaryExpression:
-        raise AttributeError(
-            f"'{type(self)}' object has no attribute '=='"
-        )
+        raise AttributeError(f"'{type(self)}' object has no attribute '=='")
 
     def __ne__(self, value: Any) -> BinaryExpression:
-        raise AttributeError(
-            f"'{type(self)}' object has no attribute '!='"
-        )
+        raise AttributeError(f"'{type(self)}' object has no attribute '!='")
 
     def __lt__(self, value: Any) -> BinaryExpression:
-        raise AttributeError(
-            f"'{type(self)}' object has no attribute '<'"
-        )
+        raise AttributeError(f"'{type(self)}' object has no attribute '<'")
 
     def __gt__(self, value: Any) -> BinaryExpression:
-        raise AttributeError(
-            f"'{type(self)}' object has no attribute '>'"
-        )
+        raise AttributeError(f"'{type(self)}' object has no attribute '>'")
 
     def __le__(self, value: Any) -> BinaryExpression:
-        raise AttributeError(
-            f"'{type(self)}' object has no attribute '<='"
-        )
+        raise AttributeError(f"'{type(self)}' object has no attribute '<='")
 
     def __ge__(self, value: Any) -> BinaryExpression:
-        raise AttributeError(
-            f"'{type(self)}' object has no attribute '>='"
-        )
+        raise AttributeError(f"'{type(self)}' object has no attribute '>='")
 
 
 class _NullableMapper(_DeclarativeMapper):
@@ -263,7 +250,7 @@ class StringMapper(_EquatableMapper):
     key : str, optional
         An optional key used for object retrieval.
     """
-    
+
     def _validate(self, value: Any, operator: str) -> None:
         if not isinstance(value, str):
             raise TypeError(
@@ -284,7 +271,7 @@ class NumericMapper(_QuantifiableMapper):
     key : str, optional
         An optional key used for object retrieval.
     """
-    
+
     def _validate(self, value: Any, operator: str) -> None:
         if type(value) not in [int, float, np.floating]:
             raise TypeError(
@@ -370,7 +357,7 @@ class GeometryMapper(_SpatialMapper):
     key : str, optional
         An optional key used for object retrieval.
     """
-    
+
     def _validate(self, value: GeometryType, operator: str):
 
         if operator in {"is_none", "exists"}:
@@ -456,26 +443,26 @@ class _DictionaryValueMapper(_NullableMapper, _QuantifiableMapper):
         # direct value to appropriate mapper (if it exists)
         vtype = type(value)
         if vtype is bool:
-            return BoolMapper(name=self.filter_name, key=self.key)._create_expression(
-                value, operator
-            )
+            return BoolMapper(
+                name=self.filter_name, key=self.key
+            )._create_expression(value, operator)
         if vtype is str:
-            return StringMapper(name=self.filter_name, key=self.key)._create_expression(
-                value, operator
-            )
+            return StringMapper(
+                name=self.filter_name, key=self.key
+            )._create_expression(value, operator)
         elif vtype in [int, float]:
-            return NumericMapper(name=self.filter_name, key=self.key)._create_expression(
-                value, operator
-            )
+            return NumericMapper(
+                name=self.filter_name, key=self.key
+            )._create_expression(value, operator)
         elif vtype in [
             datetime.datetime,
             datetime.date,
             datetime.time,
             datetime.timedelta,
         ]:
-            return DatetimeMapper(name=self.filter_name, key=self.key)._create_expression(
-                value, operator
-            )
+            return DatetimeMapper(
+                name=self.filter_name, key=self.key
+            )._create_expression(value, operator)
         else:
             raise NotImplementedError(
                 f"Dictionary value with type `{type(value)}` is not suppoerted."
@@ -523,7 +510,7 @@ class LabelMapper(_EquatableMapper):
     key : str, optional
         An optional key used for object retrieval.
     """
-    
+
     def _modify(self, value: Any, operator: str) -> Any:
         # convert to dict
         if hasattr(value, "to_dict"):
