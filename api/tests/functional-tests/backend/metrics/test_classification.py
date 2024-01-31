@@ -3,14 +3,26 @@ from sqlalchemy.orm import Session
 
 from velour_api import crud, enums, schemas
 from velour_api.backend import models
-from velour_api.backend.core import create_or_get_evaluations
+from velour_api.backend.core import (
+    create_or_get_evaluations,
+    fetch_union_of_labels,
+)
 from velour_api.backend.metrics.classification import (
     _compute_accuracy_from_cm,
     _compute_clf_metrics,
-    _compute_confusion_matrix_at_label_key,
+    _compute_confusion_matrix_at_grouper_key,
     _compute_roc_auc,
     compute_clf_metrics,
 )
+from velour_api.backend.metrics.metric_utils import create_grouper_mappings
+
+
+@pytest.fixture
+def label_map():
+    return [
+        [["animal", "dog"], ["class", "mammal"]],
+        [["animal", "cat"], ["class", "mammal"]],
+    ]
 
 
 @pytest.fixture
@@ -115,7 +127,7 @@ def classification_test_data(db: Session, dataset_name: str, model_name: str):
     assert len(db.query(models.Prediction).all()) == 6 * 7
 
 
-def test_compute_confusion_matrix_at_label_key(
+def test_compute_confusion_matrix_at_grouper_key(
     db: Session,
     dataset_name: str,
     model_name: str,
@@ -130,11 +142,24 @@ def test_compute_confusion_matrix_at_label_key(
         task_types=[enums.TaskType.CLASSIFICATION],
     )
 
-    cm = _compute_confusion_matrix_at_label_key(
+    labels = fetch_union_of_labels(
+        db=db,
+        rhs=prediction_filter,
+        lhs=groundtruth_filter,
+    )
+
+    grouper_mappings = create_grouper_mappings(
+        labels=labels,
+        label_map=None,
+        evaluation_type=enums.TaskType.CLASSIFICATION,
+    )
+
+    cm = _compute_confusion_matrix_at_grouper_key(
         db=db,
         prediction_filter=prediction_filter,
         groundtruth_filter=groundtruth_filter,
-        label_key="animal",
+        grouper_key="animal",
+        grouper_mappings=grouper_mappings,
     )
     expected_entries = [
         schemas.ConfusionMatrixEntry(
@@ -160,11 +185,12 @@ def test_compute_confusion_matrix_at_label_key(
         assert entry in cm.entries
     assert _compute_accuracy_from_cm(cm) == 2 / 6
 
-    cm = _compute_confusion_matrix_at_label_key(
+    cm = _compute_confusion_matrix_at_grouper_key(
         db=db,
         prediction_filter=prediction_filter,
         groundtruth_filter=groundtruth_filter,
-        label_key="color",
+        grouper_key="color",
+        grouper_mappings=grouper_mappings,
     )
     expected_entries = [
         schemas.ConfusionMatrixEntry(
@@ -191,7 +217,7 @@ def test_compute_confusion_matrix_at_label_key(
     assert _compute_accuracy_from_cm(cm) == 3 / 6
 
 
-def test_compute_confusion_matrix_at_label_key_and_filter(
+def test_compute_confusion_matrix_at_grouper_key_and_filter(
     db: Session,
     dataset_name: str,
     model_name: str,
@@ -212,11 +238,24 @@ def test_compute_confusion_matrix_at_label_key_and_filter(
         datum_metadata={"md1": [schemas.StringFilter(value="md1-val0")]},
     )
 
-    cm = _compute_confusion_matrix_at_label_key(
+    labels = fetch_union_of_labels(
+        db=db,
+        rhs=prediction_filter,
+        lhs=groundtruth_filter,
+    )
+
+    grouper_mappings = create_grouper_mappings(
+        labels=labels,
+        label_map=None,
+        evaluation_type=enums.TaskType.CLASSIFICATION,
+    )
+
+    cm = _compute_confusion_matrix_at_grouper_key(
         db,
         prediction_filter=prediction_filter,
         groundtruth_filter=groundtruth_filter,
-        label_key="animal",
+        grouper_key="animal",
+        grouper_mappings=grouper_mappings,
     )
 
     # for this metadatum and label id we have the gts
@@ -236,6 +275,65 @@ def test_compute_confusion_matrix_at_label_key_and_filter(
             groundtruth="bird", prediction="dog", count=1
         ),
     ]
+    assert len(cm.entries) == len(expected_entries)
+    for e in expected_entries:
+        assert e in cm.entries
+
+
+def test_compute_confusion_matrix_at_grouper_key_using_label_map(
+    db: Session,
+    dataset_name: str,
+    model_name: str,
+    label_map,
+    classification_test_data,
+):
+    """
+    Test grouping using the label_map
+    """
+
+    prediction_filter = schemas.Filter(
+        dataset_names=[dataset_name],
+        model_names=[model_name],
+    )
+    groundtruth_filter = schemas.Filter(
+        dataset_names=[dataset_name],
+        model_names=[model_name],
+        task_types=[enums.TaskType.CLASSIFICATION],
+        datum_metadata={"md1": [schemas.StringFilter(value="md1-val0")]},
+    )
+
+    labels = fetch_union_of_labels(
+        db=db,
+        rhs=prediction_filter,
+        lhs=groundtruth_filter,
+    )
+
+    grouper_mappings = create_grouper_mappings(
+        labels=labels,
+        label_map=label_map,
+        evaluation_type=enums.TaskType.CLASSIFICATION,
+    )
+
+    cm = _compute_confusion_matrix_at_grouper_key(
+        db,
+        prediction_filter=prediction_filter,
+        groundtruth_filter=groundtruth_filter,
+        grouper_key="animal",
+        grouper_mappings=grouper_mappings,
+    )
+
+    expected_entries = [
+        schemas.ConfusionMatrixEntry(
+            groundtruth="bird", prediction="bird", count=1
+        ),
+        schemas.ConfusionMatrixEntry(
+            groundtruth="mammal", prediction="mammal", count=2
+        ),
+        schemas.ConfusionMatrixEntry(
+            groundtruth="mammal", prediction="mammal", count=2
+        ),
+    ]
+
     assert len(cm.entries) == len(expected_entries)
     for e in expected_entries:
         assert e in cm.entries
@@ -294,12 +392,25 @@ def test_compute_roc_auc(
         task_types=[enums.TaskType.CLASSIFICATION],
     )
 
+    labels = fetch_union_of_labels(
+        db=db,
+        rhs=prediction_filter,
+        lhs=groundtruth_filter,
+    )
+
+    grouper_mappings = create_grouper_mappings(
+        labels=labels,
+        label_map=None,
+        evaluation_type=enums.TaskType.CLASSIFICATION,
+    )
+
     assert (
         _compute_roc_auc(
             db=db,
             prediction_filter=prediction_filter,
             groundtruth_filter=groundtruth_filter,
-            label_key="animal",
+            grouper_key="animal",
+            grouper_mappings=grouper_mappings,
         )
         == 0.8009259259259259
     )
@@ -308,7 +419,8 @@ def test_compute_roc_auc(
             db=db,
             prediction_filter=prediction_filter,
             groundtruth_filter=groundtruth_filter,
-            label_key="color",
+            grouper_key="color",
+            grouper_mappings=grouper_mappings,
         )
         == 0.43125
     )
@@ -318,7 +430,8 @@ def test_compute_roc_auc(
             db=db,
             prediction_filter=prediction_filter,
             groundtruth_filter=groundtruth_filter,
-            label_key="not a key",
+            grouper_key="not a key",
+            grouper_mappings=grouper_mappings,
         )
         is None
     )
@@ -354,23 +467,99 @@ def test_compute_roc_auc_groupby_metadata(
 
     which gives 2/3. So we expect our implementation to give the average of 0.5 and 2/3
     """
-    model_filter = schemas.Filter(
+    prediction_filter = schemas.Filter(
         model_names=[model_name],
     )
-    datum_filter = schemas.Filter(
+    groundtruth_filter = schemas.Filter(
         dataset_names=[dataset_name],
         task_types=[enums.TaskType.CLASSIFICATION],
         datum_metadata={"md1": [schemas.StringFilter(value="md1-val0")]},
     )
 
+    labels = fetch_union_of_labels(
+        db=db,
+        rhs=prediction_filter,
+        lhs=groundtruth_filter,
+    )
+
+    grouper_mappings = create_grouper_mappings(
+        labels=labels,
+        label_map=None,
+        evaluation_type=enums.TaskType.CLASSIFICATION,
+    )
+
     assert (
         _compute_roc_auc(
             db,
-            prediction_filter=model_filter,
-            groundtruth_filter=datum_filter,
-            label_key="animal",
+            prediction_filter=prediction_filter,
+            groundtruth_filter=groundtruth_filter,
+            grouper_key="animal",
+            grouper_mappings=grouper_mappings,
         )
         == (0.5 + 2 / 3) / 2
+    )
+
+
+def test_compute_roc_auc_with_label_map(
+    db: Session,
+    dataset_name: str,
+    model_name: str,
+    classification_test_data,
+    label_map,
+):
+    """Test ROC auc computation using a label_map to group labels together. Matches the following output from sklearn:
+
+    import numpy as np
+    from sklearn.metrics import roc_auc_score
+
+    # for the "animal" label key
+    y_true = np.array([0, 1, 0, 0, 1, 1])
+    y_score = np.array(
+        [
+            [0.6, 0.4],
+            [0.0, 1],
+            [0.15, 0.85],
+            [0.15, 0.85],
+            [0.0, 1.0],
+            [0.2, 0.8],
+        ]
+    )
+
+    score = roc_auc_score(y_true, y_score[:, 1], multi_class="ovr")
+    assert score == 0.7777777777777778
+
+    """
+
+    prediction_filter = schemas.Filter(
+        model_names=[model_name],
+        task_types=[enums.TaskType.CLASSIFICATION],
+    )
+    groundtruth_filter = schemas.Filter(
+        dataset_names=[dataset_name],
+        task_types=[enums.TaskType.CLASSIFICATION],
+    )
+
+    labels = fetch_union_of_labels(
+        db=db,
+        rhs=prediction_filter,
+        lhs=groundtruth_filter,
+    )
+
+    grouper_mappings = create_grouper_mappings(
+        labels=labels,
+        label_map=label_map,
+        evaluation_type=enums.TaskType.CLASSIFICATION,
+    )
+
+    assert (
+        _compute_roc_auc(
+            db=db,
+            prediction_filter=prediction_filter,
+            groundtruth_filter=groundtruth_filter,
+            grouper_key="animal",
+            grouper_mappings=grouper_mappings,
+        )
+        == 0.7777777777777779
     )
 
 
@@ -392,7 +581,9 @@ def test_compute_classification(
         task_types=[enums.TaskType.CLASSIFICATION],
     )
 
-    confusion, metrics = _compute_clf_metrics(db, model_filter, datum_filter)
+    confusion, metrics = _compute_clf_metrics(
+        db, model_filter, datum_filter, label_map=None
+    )
 
     # Make matrices accessible by label_key
     confusion = {matrix.label_key: matrix for matrix in confusion}

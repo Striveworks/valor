@@ -324,7 +324,10 @@ def _create_responses(
         match parameters.task_type:
             case enums.TaskType.CLASSIFICATION:
                 missing_pred_keys, ignored_pred_keys = core.get_disjoint_keys(
-                    db, datum_filter, model_filter
+                    db,
+                    datum_filter,
+                    model_filter,
+                    label_map=parameters.label_map,
                 )
                 kwargs = {
                     "missing_pred_keys": missing_pred_keys,
@@ -334,7 +337,12 @@ def _create_responses(
                 (
                     missing_pred_labels,
                     ignored_pred_labels,
-                ) = core.get_disjoint_labels(db, datum_filter, model_filter)
+                ) = core.get_disjoint_labels(
+                    db,
+                    datum_filter,
+                    model_filter,
+                    label_map=parameters.label_map,
+                )
                 kwargs = {
                     "missing_pred_labels": missing_pred_labels,
                     "ignored_pred_labels": ignored_pred_labels,

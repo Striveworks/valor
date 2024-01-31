@@ -1,14 +1,14 @@
 import heapq
 from dataclasses import dataclass
-from typing import Dict, List
 
 from geoalchemy2 import functions as gfunc
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, case, func, select
 from sqlalchemy.orm import Session, aliased
 
 from velour_api import enums, schemas
 from velour_api.backend import core, models
 from velour_api.backend.metrics.metric_utils import (
+    create_grouper_mappings,
     create_metric_mappings,
     get_or_create_row,
     validate_computation,
@@ -52,10 +52,11 @@ def _calculate_101_pt_interp(precisions, recalls) -> float:
 
 
 def _ap(
-    sorted_ranked_pairs: Dict[int, List[RankedPair]],
-    number_of_ground_truths: Dict[int, int],
-    labels: Dict[int, schemas.Label],
+    sorted_ranked_pairs: dict[int, list[RankedPair]],
+    number_of_groundtruths_per_grouper: dict[int, int],
+    grouper_mappings: dict[str, dict[str | int, any]],
     iou_thresholds: list[float],
+    grouper_ids_associated_with_gts: set[int],
 ) -> list[schemas.APMetric]:
     """
     Computes the average precision. Return is a dict with keys
@@ -66,19 +67,26 @@ def _ap(
 
     detection_metrics = []
     for iou_threshold in iou_thresholds:
-        for label_id in labels:
+        for grouper_id, grouper_label in grouper_mappings[
+            "grouper_id_to_grouper_label_mapping"
+        ].items():
+            if grouper_id not in grouper_ids_associated_with_gts:
+                continue
+
             precisions = []
             recalls = []
             cnt_tp = 0
             cnt_fp = 0
 
-            if label_id in sorted_ranked_pairs:
-                for row in sorted_ranked_pairs[label_id]:
+            if grouper_id in sorted_ranked_pairs:
+                for row in sorted_ranked_pairs[grouper_id]:
                     if row.score > 0 and row.iou >= iou_threshold:
                         cnt_tp += 1
                     else:
                         cnt_fp += 1
-                    cnt_fn = number_of_ground_truths[label_id] - cnt_tp
+                    cnt_fn = (
+                        number_of_groundtruths_per_grouper[grouper_id] - cnt_tp
+                    )
 
                     precisions.append(
                         cnt_tp / (cnt_tp + cnt_fp) if (cnt_tp + cnt_fp) else 0
@@ -96,9 +104,10 @@ def _ap(
                     value=_calculate_101_pt_interp(
                         precisions=precisions, recalls=recalls
                     ),
-                    label=labels[label_id],
+                    label=grouper_label,
                 )
             )
+
     return detection_metrics
 
 
@@ -138,13 +147,43 @@ def _compute_detection_metrics(
 
     """
 
-    # Join gt, datum, annotation, label
+    def _annotation_type_to_column(
+        annotation_type: AnnotationType,
+        table,
+    ):
+        match annotation_type:
+            case AnnotationType.BOX:
+                return table.box
+            case AnnotationType.POLYGON:
+                return table.polygon
+            case AnnotationType.MULTIPOLYGON:
+                return table.multipolygon
+            case _:
+                raise RuntimeError
+
+    labels = core.fetch_union_of_labels(
+        db=db,
+        rhs=prediction_filter,
+        lhs=groundtruth_filter,
+    )
+
+    grouper_mappings = create_grouper_mappings(
+        labels=labels,
+        label_map=parameters.label_map,
+        evaluation_type=enums.TaskType.DETECTION,
+    )
+
+    # Join gt, datum, annotation, label. Map grouper_ids to each label_id.
     gt = (
         Query(
             models.GroundTruth.id.label("id"),
             models.GroundTruth.annotation_id.label("annotation_id"),
             models.GroundTruth.label_id.label("label_id"),
             models.Annotation.datum_id.label("datum_id"),
+            case(
+                grouper_mappings["label_id_to_grouper_id_mapping"],
+                value=models.GroundTruth.label_id,
+            ).label("label_id_grouper"),
         )
         .filter(groundtruth_filter)
         .groundtruths("groundtruths")
@@ -158,6 +197,10 @@ def _compute_detection_metrics(
             models.Prediction.label_id.label("label_id"),
             models.Prediction.score.label("score"),
             models.Annotation.datum_id.label("datum_id"),
+            case(
+                grouper_mappings["label_id_to_grouper_id_mapping"],
+                value=models.Prediction.label_id,
+            ).label("label_id_grouper"),
         )
         .filter(prediction_filter)
         .predictions("predictions")
@@ -171,6 +214,8 @@ def _compute_detection_metrics(
             pd.c.id.label("pd_id"),
             gt.c.label_id.label("gt_label_id"),
             pd.c.label_id.label("pd_label_id"),
+            gt.c.label_id_grouper.label("gt_label_id_grouper"),
+            pd.c.label_id_grouper.label("pd_label_id_grouper"),
             gt.c.annotation_id.label("gt_ann_id"),
             pd.c.annotation_id.label("pd_ann_id"),
             pd.c.score.label("score"),
@@ -180,9 +225,8 @@ def _compute_detection_metrics(
             pd,
             and_(
                 pd.c.datum_id == gt.c.datum_id,
-                pd.c.label_id == gt.c.label_id,
+                pd.c.label_id_grouper == gt.c.label_id_grouper,
             ),
-            full=True,
         )
         .subquery()
     )
@@ -190,22 +234,6 @@ def _compute_detection_metrics(
     # Alias the annotation table (required for joining twice)
     gt_annotation = aliased(models.Annotation)
     pd_annotation = aliased(models.Annotation)
-
-    def _annotation_type_to_column(
-        annotation_type: AnnotationType,
-        table,
-    ):
-        match annotation_type:
-            case AnnotationType.BOX:
-                return table.box
-            case AnnotationType.POLYGON:
-                return table.polygon
-            case AnnotationType.MULTIPOLYGON:
-                return table.multipolygon
-            case AnnotationType.RASTER:
-                return table.raster
-            case _:
-                raise RuntimeError
 
     # IOU Computation Block
     if target_type == AnnotationType.RASTER:
@@ -231,6 +259,8 @@ def _compute_detection_metrics(
             joint.c.pd_id.label("pd_id"),
             joint.c.gt_label_id.label("gt_label_id"),
             joint.c.pd_label_id.label("pd_label_id"),
+            joint.c.gt_label_id_grouper.label("gt_label_id_grouper"),
+            joint.c.pd_label_id_grouper.label("pd_label_id_grouper"),
             joint.c.score.label("score"),
             func.coalesce(iou_computation, 0).label("iou"),
         )
@@ -257,20 +287,22 @@ def _compute_detection_metrics(
         # datum_id = row[0]
         gt_id = row[1]
         pd_id = row[2]
-        gt_label_id = row[3]
+        # gt_label_id = row[3]
         # pd_label_id = row[4]
-        score = row[5]
-        iou = row[6]
+        gt_label_id_grouper = row[5]
+        # pd_label_id_grouper = row[6]
+        score = row[7]
+        iou = row[8]
 
         # Check if gt or pd already found
         if gt_id not in gt_set and pd_id not in pd_set:
             gt_set.add(gt_id)
             pd_set.add(pd_id)
 
-            if gt_label_id not in ranking:
-                ranking[gt_label_id] = []
+            if gt_label_id_grouper not in ranking:
+                ranking[gt_label_id_grouper] = []
 
-            ranking[gt_label_id].append(
+            ranking[gt_label_id_grouper].append(
                 RankedPair(
                     gt_id=gt_id,
                     pd_id=pd_id,
@@ -279,38 +311,43 @@ def _compute_detection_metrics(
                 )
             )
 
-    # Get groundtruth labels
-    groundtruth_labels = {
-        label.id: schemas.Label(key=label.key, value=label.value)
-        for label in db.scalars(
-            Query(models.Label)
-            .filter(groundtruth_filter)
-            .groundtruths(as_subquery=False)
-        )
-    }
+    # Get the number of ground truths per grouper_id
+    number_of_groundtruths_per_grouper = {}
 
-    # Get the number of ground truths per label id
-    number_of_ground_truths = {}
-    for id in groundtruth_labels:
-        groundtruth_filter.label_ids = [id]
-        number_of_ground_truths[id] = db.query(
-            Query(func.count(models.GroundTruth.id))
-            .filter(groundtruth_filter)
-            .groundtruths()
-        ).scalar()
+    groundtruths = db.query(
+        Query(
+            models.GroundTruth.id,
+            case(
+                grouper_mappings["label_id_to_grouper_id_mapping"],
+                value=models.GroundTruth.label_id,
+            ).label("label_id_grouper"),
+        )
+        .filter(groundtruth_filter)
+        .groundtruths()
+    ).all()
+
+    grouper_ids_associated_with_gts = set([row[1] for row in groundtruths])
+
+    for grouper_id in ranking.keys():
+        number_of_groundtruths_per_grouper[grouper_id] = len(
+            set([row[0] for row in groundtruths if row[1] == grouper_id])
+        )
 
     # Compute AP
+    grouper_ids_associated_with_gts
     detection_metrics = _ap(
         sorted_ranked_pairs=ranking,
-        number_of_ground_truths=number_of_ground_truths,
-        labels=groundtruth_labels,
+        number_of_groundtruths_per_grouper=number_of_groundtruths_per_grouper,
         iou_thresholds=parameters.iou_thresholds_to_compute,
+        grouper_mappings=grouper_mappings,
+        grouper_ids_associated_with_gts=grouper_ids_associated_with_gts,
     )
 
     # now extend to the averaged AP metrics and mAP metric
     mean_detection_metrics = _compute_mean_detection_metrics_from_aps(
         detection_metrics
     )
+
     detection_metrics_ave_over_ious = (
         _compute_detection_metrics_averaged_over_ious_from_aps(
             detection_metrics
