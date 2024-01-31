@@ -168,14 +168,14 @@ def _compute_roc_auc(
         label_filter.label_ids = [label.id for label in labels]
 
         # some labels in the "labels" argument may be out-of-scope given our groundtruth_filter, so we fetch all labels that are within scope of the groundtruth_filter to make sure we don't calculate ROCAUC for inappropriate labels
-        check_labels_for_label_value = [
+        in_scope_labels = [
             label
             for label in labels
             if schemas.Label(key=label.key, value=label.value)
             in core.get_labels(db=db, filters=label_filter)
         ]
 
-        if not check_labels_for_label_value:
+        if not in_scope_labels:
             continue
 
         for label in labels:
@@ -221,17 +221,17 @@ def _compute_confusion_matrix_at_grouper_key(
         that have both a groundtruth and prediction with label key `label_key`. Otherwise
         returns the confusion matrix.
     """
-    # groundtruths filter
-    gFilter = groundtruth_filter.model_copy()
-    gFilter.label_keys = list(
+    label_key_filter = list(
         grouper_mappings["grouper_key_to_label_keys_mapping"][grouper_key]
     )
 
+    # groundtruths filter
+    gFilter = groundtruth_filter.model_copy()
+    gFilter.label_keys = label_key_filter
+
     # predictions filter
     pFilter = prediction_filter.model_copy()
-    pFilter.label_keys = list(
-        grouper_mappings["grouper_key_to_label_keys_mapping"][grouper_key]
-    )
+    pFilter.label_keys = label_key_filter
 
     # 0. Get groundtruths that conform to gFilter
     groundtruths = (
