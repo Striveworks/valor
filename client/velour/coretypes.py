@@ -1345,7 +1345,7 @@ class Model:
             )
 
         return_value = [
-            [[key._key, key.value], [value._key, value.value]]
+            [[key.key, key.value], [value.key, value.value]]
             for key, value in label_map.items()
         ]
 

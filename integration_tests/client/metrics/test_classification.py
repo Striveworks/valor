@@ -641,7 +641,7 @@ def pred_clfs_with_label_maps(
                         Label(key="k12", value="v12", score=0.47),
                         Label(key="k12", value="v16", score=0.53),
                         Label(key="k13", value="v13", score=1.0),
-                        Label(key="class", value="cat", score=1),
+                        Label(key="class", value="cat", score=1.0),
                     ],
                 )
             ],
@@ -654,7 +654,7 @@ def pred_clfs_with_label_maps(
                     labels=[
                         Label(key="k4", value="v4", score=0.71),
                         Label(key="k4", value="v5", score=0.29),
-                        Label(key="class_name", value="cat", score=1),
+                        Label(key="class_name", value="cat", score=1.0),
                     ],
                 )
             ],
