@@ -163,7 +163,7 @@ def test__requests_wrapper(client: Client):
     with pytest.raises(ValueError):
         client._requests_wrapper("get", "/datasets/fake_dataset/status")
 
-    with pytest.raises(AssertionError):
+    with pytest.raises(ValueError):
         client._requests_wrapper("bad_method", "datasets/fake_dataset/status")
 
     with pytest.raises(ClientException):

@@ -3,7 +3,10 @@ from sqlalchemy.orm import Session
 
 from velour_api import crud, enums, schemas
 from velour_api.backend import models
-from velour_api.backend.core import create_or_get_evaluations, fetch_labels
+from velour_api.backend.core import (
+    create_or_get_evaluations,
+    fetch_union_of_labels,
+)
 from velour_api.backend.metrics.classification import (
     _compute_accuracy_from_cm,
     _compute_clf_metrics,
@@ -139,10 +142,10 @@ def test_compute_confusion_matrix_at_grouper_key(
         task_types=[enums.TaskType.CLASSIFICATION],
     )
 
-    labels = fetch_labels(
+    labels = fetch_union_of_labels(
         db=db,
-        prediction_filter=prediction_filter,
-        groundtruth_filter=groundtruth_filter,
+        rhs=prediction_filter,
+        lhs=groundtruth_filter,
     )
 
     grouper_mappings = create_grouper_mappings(
@@ -235,10 +238,10 @@ def test_compute_confusion_matrix_at_grouper_key_and_filter(
         datum_metadata={"md1": [schemas.StringFilter(value="md1-val0")]},
     )
 
-    labels = fetch_labels(
+    labels = fetch_union_of_labels(
         db=db,
-        prediction_filter=prediction_filter,
-        groundtruth_filter=groundtruth_filter,
+        rhs=prediction_filter,
+        lhs=groundtruth_filter,
     )
 
     grouper_mappings = create_grouper_mappings(
@@ -299,10 +302,10 @@ def test_compute_confusion_matrix_at_grouper_key_using_label_map(
         datum_metadata={"md1": [schemas.StringFilter(value="md1-val0")]},
     )
 
-    labels = fetch_labels(
+    labels = fetch_union_of_labels(
         db=db,
-        prediction_filter=prediction_filter,
-        groundtruth_filter=groundtruth_filter,
+        rhs=prediction_filter,
+        lhs=groundtruth_filter,
     )
 
     grouper_mappings = create_grouper_mappings(
@@ -389,10 +392,10 @@ def test_compute_roc_auc(
         task_types=[enums.TaskType.CLASSIFICATION],
     )
 
-    labels = fetch_labels(
+    labels = fetch_union_of_labels(
         db=db,
-        prediction_filter=prediction_filter,
-        groundtruth_filter=groundtruth_filter,
+        rhs=prediction_filter,
+        lhs=groundtruth_filter,
     )
 
     grouper_mappings = create_grouper_mappings(
@@ -473,10 +476,10 @@ def test_compute_roc_auc_groupby_metadata(
         datum_metadata={"md1": [schemas.StringFilter(value="md1-val0")]},
     )
 
-    labels = fetch_labels(
+    labels = fetch_union_of_labels(
         db=db,
-        prediction_filter=prediction_filter,
-        groundtruth_filter=groundtruth_filter,
+        rhs=prediction_filter,
+        lhs=groundtruth_filter,
     )
 
     grouper_mappings = create_grouper_mappings(
@@ -536,10 +539,10 @@ def test_compute_roc_auc_with_label_map(
         task_types=[enums.TaskType.CLASSIFICATION],
     )
 
-    labels = fetch_labels(
+    labels = fetch_union_of_labels(
         db=db,
-        prediction_filter=prediction_filter,
-        groundtruth_filter=groundtruth_filter,
+        rhs=prediction_filter,
+        lhs=groundtruth_filter,
     )
 
     grouper_mappings = create_grouper_mappings(

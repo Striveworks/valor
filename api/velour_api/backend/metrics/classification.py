@@ -556,10 +556,10 @@ def _compute_clf_metrics(
         A tuple of confusion matrices and metrics.
     """
 
-    labels = core.fetch_labels(
+    labels = core.fetch_union_of_labels(
         db=db,
-        prediction_filter=prediction_filter,
-        groundtruth_filter=groundtruth_filter,
+        rhs=prediction_filter,
+        lhs=groundtruth_filter,
     )
 
     grouper_mappings = create_grouper_mappings(

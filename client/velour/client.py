@@ -155,7 +155,11 @@ class Client:
         """
         Wrapper for handling API requests.
         """
-        assert method_name in ["get", "post", "put", "delete"]
+        accepted_methods = ["get", "post", "put", "delete"]
+        if method_name not in accepted_methods:
+            raise ValueError(
+                f"method_name should be one of {accepted_methods}"
+            )
 
         if endpoint[0] == "/":
             raise ValueError(

@@ -948,7 +948,7 @@ def test_evaluate_classification_with_label_maps(
                 assert entry in cat_expected_cm[1]["entries"]
 
     # finally, check invalid label_map
-    with pytest.raises(AssertionError):
+    with pytest.raises(TypeError):
         eval_job = model.evaluate_classification(
             dataset,
             label_map=[

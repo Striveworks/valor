@@ -190,47 +190,6 @@ def get_labels(
     }
 
 
-def fetch_labels(
-    db: Session,
-    groundtruth_filter: schemas.Filter | None = None,
-    prediction_filter: schemas.Filter | None = None,
-) -> list[models.Label]:
-    """
-    Returns a set of unique label rows optionally filtered using a groundtruth and prediction filter.
-
-    Parameters
-    ----------
-    db : Session
-        The database Session to query against.
-    prediction_filter : schemas.Filter
-        The filter to be used to query predictions.
-    groundtruth_filter : schemas.Filter
-        The filter to be used to query groundtruths.
-
-    Returns
-    ----------
-    list[models.Label]
-        A list of label rows pulled from psql.
-    """
-
-    # retrieve dataset labels
-    dataset_labels = set(
-        db.query(
-            ops.Query(models.Label).filter(groundtruth_filter).groundtruths()
-        ).all()
-    )
-
-    # retrieve all model labels
-    model_labels = set(
-        db.query(
-            ops.Query(models.Label).filter(prediction_filter).predictions()
-        ).all()
-    )
-
-    # return all unique labels
-    return list(dataset_labels.union(model_labels))
-
-
 def get_label_keys(
     db: Session,
     filters: schemas.Filter | None = None,
@@ -400,3 +359,59 @@ def get_disjoint_keys(
     lhs_unique = list(lhs_keys - rhs_keys - mapped_keys)
     rhs_unique = list(rhs_keys - lhs_keys - mapped_keys)
     return (lhs_unique, rhs_unique)
+
+
+def fetch_labels(
+    db: Session,
+    filter_: schemas.Filter,
+    ignore_groundtruths: bool = False,
+    ignore_predictions: bool = False,
+) -> models.Label | None:
+    """
+    Fetch a set of models.Label entries from the database.
+
+    Parameters
+    ----------
+    db : Session
+        SQLAlchemy ORM session.
+    filter_ : schemas.Filter
+        Filter to constrain results by.
+
+    Returns
+    -------
+    set[models.Label]
+    """
+    stmt = _getter_statement(
+        selection=models.Label,
+        filters=filter_,
+        ignore_groundtruths=ignore_groundtruths,
+        ignore_predictions=ignore_predictions,
+    )
+    return set(db.query(stmt.subquery()).all())
+
+
+def fetch_union_of_labels(
+    db: Session,
+    lhs: schemas.Filter,
+    rhs: schemas.Filter,
+) -> list[models.Label]:
+    """
+    Returns a list of unique models.Label that are shared between both filters.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    lhs : list[schemas.Filter]
+        Filter defining first label set.
+    rhs : list[schemas.Filter]
+        Filter defining second label set.
+
+    Returns
+    ----------
+    list[models.Label]
+        A list of labels.
+    """
+    lhs_labels = fetch_labels(db, filter_=lhs, ignore_predictions=True)
+    rhs_labels = fetch_labels(db, filter_=rhs, ignore_groundtruths=True)
+    return list(lhs_labels.union(rhs_labels))
