@@ -4,10 +4,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from velour_api import enums, schemas
-from velour_api.backend import core
+from velour_api.backend import core, models
 
 
-def _create_detection_grouper_mappings(mapping_dict, labels):
+def _create_detection_grouper_mappings(
+    mapping_dict: dict[tuple[str], tuple[str]], labels: list[models.Label]
+) -> dict[str, dict[str | int, any]]:
     """Create grouper mappings for use when evaluating detections."""
 
     label_id_to_grouper_id_mapping = {}
@@ -34,7 +36,9 @@ def _create_detection_grouper_mappings(mapping_dict, labels):
     }
 
 
-def _create_segmentation_grouper_mappings(mapping_dict, labels):
+def _create_segmentation_grouper_mappings(
+    mapping_dict: dict[tuple[str], tuple[str]], labels: list[models.Label]
+) -> dict[str, dict[str | int, any]]:
     """Create grouper mappings for use when evaluating segmentations."""
 
     grouper_id_to_grouper_label_mapping = {}
@@ -58,7 +62,9 @@ def _create_segmentation_grouper_mappings(mapping_dict, labels):
     }
 
 
-def _create_classification_grouper_mappings(mapping_dict, labels):
+def _create_classification_grouper_mappings(
+    mapping_dict: dict[tuple[str], tuple[str]], labels: list[models.Label]
+) -> dict[str, dict[str | int, any]]:
     """Create grouper mappings for use when evaluating classifications."""
 
     # define mappers to connect groupers with labels
@@ -118,6 +124,7 @@ def create_grouper_mappings(
     ), f"evaluation_type must be one of {mapping_functions.keys()}"
 
     # create a map of labels to groupers; will be empty if the user didn't pass a label_map
+    # TODO move this to client?
     mapping_dict = (
         {tuple(label): tuple(grouper_key) for label, grouper_key in label_map}
         if label_map

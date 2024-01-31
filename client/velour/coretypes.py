@@ -1365,7 +1365,7 @@ class Model:
 
     def _create_label_map(
         self, label_map: Dict[Label, Label]
-    ) -> list[list[list[str]]]:
+    ) -> List[List[List[str]]]:
         """Convert a dictionary of label maps to a serializable list format."""
         if not label_map:
             return None
