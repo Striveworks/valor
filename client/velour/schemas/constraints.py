@@ -38,7 +38,7 @@ class BinaryExpression:
     Attributes
     ----------
     name : str
-        The name of the constrain.
+        The name of the filter property.
     constraint : velour.schemas.Constraint
         The operation that is performed.
     key : str, optional
@@ -57,7 +57,7 @@ class _DeclarativeMapper:
     Parameters
     ----------
     name : str
-        The name of the constrain.
+        The name of the filter property.
     key : str, optional
         An optional key used for object retrieval.
     """
@@ -137,7 +137,7 @@ class _NullableMapper(_DeclarativeMapper):
     Attributes
     ----------
     name : str
-        The name of the constrain.
+        The name of the filter property.
     key : str, optional
         An optional key used for object retrieval.
     """
@@ -162,7 +162,7 @@ class _EquatableMapper(_DeclarativeMapper):
     Attributes
     ----------
     name : str
-        The name of the constrain.
+        The name of the filter property.
     key : str, optional
         An optional key used for object retrieval.
     """
@@ -192,7 +192,7 @@ class _QuantifiableMapper(_EquatableMapper):
     Attributes
     ----------
     name : str
-        The name of the constrain.
+        The name of the filter property.
     key : str, optional
         An optional key used for object retrieval.
     """
@@ -223,7 +223,7 @@ class BoolMapper(_EquatableMapper):
     Attributes
     ----------
     name : str
-        The name of the constrain.
+        The name of the filter property.
     key : str, optional
         An optional key used for object retrieval.
     """
@@ -244,7 +244,7 @@ class StringMapper(_EquatableMapper):
     Attributes
     ----------
     name : str
-        The name of the constrain.
+        The name of the filter property.
     key : str, optional
         An optional key used for object retrieval.
     """
@@ -265,7 +265,7 @@ class NumericMapper(_QuantifiableMapper):
     Attributes
     ----------
     name : str
-        The name of the constrain.
+        The name of the filter property.
     key : str, optional
         An optional key used for object retrieval.
     """
@@ -286,7 +286,7 @@ class DatetimeMapper(_QuantifiableMapper):
     Attributes
     ----------
     name : str
-        The name of the constrain.
+        The name of the filter property.
     key : str, optional
         An optional key used for object retrieval.
     """
@@ -316,7 +316,7 @@ class _SpatialMapper(_NullableMapper):
     Attributes
     ----------
     name : str
-        The name of the constrain.
+        The name of the filter property.
     key : str, optional
         An optional key used for object retrieval.
     """
@@ -351,7 +351,7 @@ class GeometryMapper(_SpatialMapper):
     Attributes
     ----------
     name : str
-        The name of the constrain.
+        The name of the filter property.
     key : str, optional
         An optional key used for object retrieval.
     """
@@ -386,7 +386,7 @@ class GeospatialMapper(_SpatialMapper):
     Attributes
     ----------
     name : str
-        The name of the constrain.
+        The name of the filter property.
     key : str, optional
         An optional key used for object retrieval.
     """
@@ -417,7 +417,7 @@ class _DictionaryValueMapper(_NullableMapper, _QuantifiableMapper):
     Attributes
     ----------
     name : str
-        The name of the constrain.
+        The name of the filter property.
     key : str, optional
         An optional key used for object retrieval.
     """
@@ -476,7 +476,7 @@ class DictionaryMapper(_DeclarativeMapper):
     Attributes
     ----------
     name : str
-        The name of the constrain.
+        The name of the filter property.
     key : str, optional
         An optional key used for object retrieval.
 
@@ -504,7 +504,7 @@ class LabelMapper(_EquatableMapper):
     Attributes
     ----------
     name : str
-        The name of the constrain.
+        The name of the filter property.
     key : str, optional
         An optional key used for object retrieval.
     """
