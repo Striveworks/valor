@@ -422,8 +422,6 @@ def test_add_prediction(
     # test get predictions
     pred = model.get_prediction(dataset, img1.to_datum())
     assert pred.annotations == pred_dets[0].annotations
-    assert pred._model_name == model_name
-    assert pred.datum._dataset_name == dataset_name
 
     client.delete_dataset(dataset_name, timeout=30)
 
@@ -475,8 +473,6 @@ def test_add_empty_prediction(
     pred = model.get_prediction(dataset, extra_datum)
     assert len(pred.annotations) == 1
     assert pred.annotations[0].task_type == TaskType.EMPTY
-    assert pred._model_name == model_name
-    assert pred.datum._dataset_name == dataset_name
 
     client.delete_dataset(dataset_name, timeout=30)
 
@@ -513,8 +509,6 @@ def test_add_skipped_prediction(
     pred = model.get_prediction(dataset, extra_datum)
     assert len(pred.annotations) == 1
     assert pred.annotations[0].task_type == TaskType.SKIP
-    assert pred._model_name == model_name
-    assert pred.datum._dataset_name == dataset_name
 
     client.delete_dataset(dataset_name, timeout=30)
 

@@ -59,10 +59,10 @@ def test_evaluate_segmentation_with_filter(
     model = Model(client, model_name)
 
     for gt in gt_semantic_segs1:
-        gt.datum._metadata["color"] = "red"
+        gt.datum.metadata["color"] = "red"
         dataset.add_groundtruth(gt)
     for gt in gt_semantic_segs2:
-        gt.datum._metadata["color"] = "blue"
+        gt.datum.metadata["color"] = "blue"
         dataset.add_groundtruth(gt)
 
     dataset.finalize()
