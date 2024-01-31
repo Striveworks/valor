@@ -1,8 +1,8 @@
 import logging
 import os
 import time
-from dataclasses import asdict
-from typing import Callable, List, Optional, TypeVar, Union
+from dataclasses import asdict, dataclass
+from typing import Callable, List, Optional, Union
 from urllib.parse import urlencode, urljoin
 
 import requests
@@ -10,9 +10,15 @@ from packaging import version
 
 from velour import __version__ as client_version
 from velour.enums import TableStatus
-from velour.schemas import EvaluationRequest, Filter
+from velour.exceptions import (
+    ClientAlreadyConnectedError,
+    ClientException,
+    ClientNotConnectedError,
+)
+from velour.schemas import EvaluationRequest
+from velour.types import T
 
-T = TypeVar("T")
+_connection = None
 
 
 def wait_for_predicate(
@@ -60,43 +66,8 @@ def wait_for_predicate(
     return state
 
 
-def _validate_version(
-    client_version: Optional[str], api_version: Optional[str]
-):
-    """Log and/or warn users if the Velour Python client version differs from the API version."""
-
-    def _msg(state):
-        return (
-            f"The Velour client version ({client_version}) is {state} than the Velour API version {api_version}"
-            f"\t==========================================================================================\n"
-            f"\t== Running with a mismatched client != API version may have unexpected results.\n"
-            f"\t== Please update your client to \033[1;{api_version}\033[0;31m to avoid aberrant behavior.\n"
-            f"\t==========================================================================================\n"
-            f"\033[0m"
-        )
-
-    if not api_version:
-        logging.warning("The Velour API didn't return a version number.")
-    elif not client_version:
-        logging.warning("The Velour client isn't versioned.")
-    elif api_version == client_version:
-        logging.debug(
-            f"The Velour API version {api_version} matches client version {client_version}."
-        )
-    elif version.parse(api_version) < version.parse(client_version):
-        logging.warning(_msg("newer"))
-    else:
-        logging.warning(_msg("older"))
-
-
-class ClientException(Exception):
-    def __init__(self, resp):
-        self.status_code = resp.status_code
-        self.detail = resp.json()["detail"]
-        super().__init__(str(self.detail))
-
-
-class Client:
+@dataclass
+class ClientConnection:
     """
     Velour client object for interacting with the api.
 
@@ -108,45 +79,57 @@ class Client:
         The access token for the host (if the host requires authentication).
     """
 
-    def __init__(self, host: str, access_token: Optional[str] = None):
-        if not (host.startswith("http://") or host.startswith("https://")):
+    host: str
+    access_token: Optional[str] = None
+
+    def __post_init__(self):
+        if not (
+            self.host.startswith("http://") or self.host.startswith("https://")
+        ):
             raise ValueError(
-                f"host must stat with 'http://' or 'https://' but got {host}"
+                f"host must stat with 'http://' or 'https://' but got {self.host}"
             )
 
-        if not host.endswith("/"):
-            host += "/"
-        self.host = host
-        self.access_token = os.getenv("VELOUR_ACCESS_TOKEN", access_token)
+        if not self.host.endswith("/"):
+            self.host += "/"
+        self.access_token = os.getenv("VELOUR_ACCESS_TOKEN", self.access_token)
 
         # check the connection by getting the api version number
-        api_version = self._get_api_version_number()
+        api_version = self.get_api_version()
+        """version = se."""
 
-        _validate_version(
+        self._validate_version(
             client_version=client_version, api_version=api_version
         )
 
         success_str = f"Successfully connected to host at {self.host}"
         print(success_str)
 
-    def _get_users_email(
-        self,
-    ) -> Union[str, None]:
-        """
-        Gets the users e-mail address (in the case when auth is enabled)
-        or returns None in the case of a no-auth backend.
-        """
-        resp = self._requests_get_rel_host("user").json()
-        return resp["email"]
+    def _validate_version(self, client_version: str, api_version: str):
+        """Log and/or warn users if the Velour Python client version differs from the API version."""
 
-    def _get_api_version_number(
-        self,
-    ) -> Union[str, None]:
-        """
-        Gets the version number of the API.
-        """
-        resp = self._requests_get_rel_host("api-version").json()
-        return resp["api_version"]
+        def _msg(state):
+            return (
+                f"The Velour client version ({client_version}) is {state} than the Velour API version {api_version}"
+                f"\t==========================================================================================\n"
+                f"\t== Running with a mismatched client != API version may have unexpected results.\n"
+                f"\t== Please update your client to \033[1;{api_version}\033[0;31m to avoid aberrant behavior.\n"
+                f"\t==========================================================================================\n"
+                f"\033[0m"
+            )
+
+        if not api_version:
+            logging.warning("The Velour API didn't return a version number.")
+        elif not client_version:
+            logging.warning("The Velour client isn't versioned.")
+        elif api_version == client_version:
+            logging.debug(
+                f"The Velour API version {api_version} matches client version {client_version}."
+            )
+        elif version.parse(api_version) < version.parse(client_version):
+            logging.warning(_msg("newer"))
+        else:
+            logging.warning(_msg("older"))
 
     def _requests_wrapper(
         self, method_name: str, endpoint: str, *args, **kwargs
@@ -209,34 +192,154 @@ class Client:
             method_name="delete", endpoint=endpoint, *args, **kwargs
         )
 
-    def get_labels(
+    def create_groundtruths(
         self,
-        filters: Optional[Filter] = None,
-    ) -> List[dict]:
+        groundtruth: dict,
+    ) -> None:
         """
-        Get labels associated with `Client`.
+        Create a groundtruth.
+
+        `CREATE` endpoint.
 
         Parameters
         ----------
-        filters : Filter, optional
-            Optional filter to constrain by.
+        groundtruth : dict
+            The groundtruth to be created.
+        """
+        return self._requests_post_rel_host(
+            "groundtruths",
+            json=groundtruth,
+        )
+
+    def get_groundtruth(
+        self,
+        dataset_name: str,
+        datum_uid: str,
+    ) -> dict:
+        """
+        Get a particular groundtruth.
+
+        `GET` endpoint.
+
+        Parameters
+        ----------
+        dataset_name : str
+            The name of the dataset the datum belongs to.
+        datum_uid : str
+            The uid of the desired datum.
+
+        Returns
+        ----------
+        dict
+            The requested groundtruth.
+        """
+        return self._requests_get_rel_host(
+            f"groundtruths/dataset/{dataset_name}/datum/{datum_uid}"
+        ).json()
+
+    def create_predictions(
+        self,
+        prediction: dict,
+    ) -> None:
+        """
+        Create a prediction.
+
+        `CREATE` endpoint.
+
+        Parameters
+        ----------
+        prediction : dict
+            The prediction to be created.
+        """
+        return self._requests_post_rel_host(
+            "predictions",
+            json=prediction,
+        )
+
+    def get_prediction(
+        self,
+        dataset_name: str,
+        model_name: str,
+        datum_uid: str,
+    ) -> dict:
+        """
+        Get a particular prediction.
+
+        `GET` endpoint.
+
+        Parameters
+        ----------
+        dataset_name : str
+            The name of the dataset the datum belongs to.
+        model_name : str
+            The name of the model that made the prediction.
+        datum_uid : str
+            The uid of the desired datum.
+
+        Returns
+        ----------
+        dict
+            The requested prediction.
+        """
+        return self._requests_get_rel_host(
+            f"predictions/model/{model_name}/dataset/{dataset_name}/datum/{datum_uid}",
+        ).json()
+
+    def get_labels(
+        self,
+        filter_: Optional[dict] = None,
+    ) -> List[dict]:
+        """
+        Gets all labels with option to filter.
+
+        `GET` endpoint.
+        """
+        kwargs = {}
+        if filter_:
+            kwargs["json"] = filter_
+        return self._requests_get_rel_host("labels", **kwargs).json()
+
+    def get_labels_from_dataset(self, name: str) -> List[dict]:
+        """
+        Get all labels associated with a dataset's groundtruths.
+
+        `GET` endpoint.
+
+        Parameters
+        ----------
+        name : str
+            The name of the dataset to search by.
 
         Returns
         ------
-        List[Label]
-            A list of `Label` objects attributed to `Client`.
+        List[dict]
+            A list of labels.
         """
-        kwargs = {}
-        if filters:
-            kwargs["json"] = asdict(filters)
-        return self._requests_get_rel_host("labels", **kwargs).json()
+        return self._requests_get_rel_host(f"labels/dataset/{name}").json()
 
-    def create_dataset(
-        self,
-        dataset: dict,
-    ):
+    def get_labels_from_model(self, name: str) -> List[dict]:
+        """
+        Get all labels associated with a model's predictions.
+
+        `GET` endpoint.
+
+        Parameters
+        ----------
+        name : str
+            The name of the model to search by.
+
+        Returns
+        ------
+        List[dict]
+            A list of labels.
+        """
+        return self._requests_get_rel_host(f"labels/model/{name}").json()
+
+    def create_dataset(self, dataset: dict):
         """
         Creates a dataset.
+
+        `CREATE` endpoint.
 
         Parameters
         ----------
@@ -245,12 +348,32 @@ class Client:
         """
         self._requests_post_rel_host("datasets", json=dataset)
 
-    def get_dataset(
-        self,
-        name: str,
-    ) -> Optional[dict]:
+    def get_datasets(self, filter_: Optional[dict] = None) -> List[dict]:
+        """
+        Get all datasets with option to filter.
+
+        `GET` endpoint.
+
+        Parameters
+        ----------
+        filter_ : Filter, optional
+            Optional filter to constrain by.
+
+        Returns
+        ------
+        List[dict]
+            A list of dictionaries describing all the datasets attributed to the `Client` object.
+        """
+        kwargs = {}
+        if filter_:
+            kwargs["json"] = filter_
+        return self._requests_get_rel_host("datasets", **kwargs).json()
+
+    def get_dataset(self, name: str) -> dict:
         """
         Gets a dataset by name.
+
+        `GET` endpoint.
 
         Parameters
         ----------
@@ -262,45 +385,80 @@ class Client:
         dict
             A dictionary containing all of the associated dataset attributes.
         """
-        try:
-            return self._requests_get_rel_host(f"datasets/{name}").json()
-        except ClientException as e:
-            if e.status_code == 404:
-                return None
-            raise e
+        return self._requests_get_rel_host(f"datasets/{name}").json()
 
-    def get_datasets(
-        self,
-        filters: Optional[Filter] = None,
-    ) -> List[dict]:
+    def get_dataset_status(self, name: str) -> TableStatus:
         """
-        Get datasets associated with `Client`.
+        Get the state of a given dataset.
+
+        `GET` endpoint.
 
         Parameters
         ----------
-        filters : Filter, optional
-            Optional filter to constrain by.
+        name : str
+            The name of the dataset we want to fetch the state of.
 
         Returns
         ------
-        List[dict]
-            A list of dictionaries describing all the datasets attributed to the `Client` object.
+        TableStatus
+            The state of the dataset.
         """
-        kwargs = {}
-        if filters:
-            kwargs["json"] = asdict(filters)
-        return self._requests_get_rel_host("datasets", **kwargs).json()
+        resp = self._requests_get_rel_host(f"datasets/{name}/status").json()
+        return TableStatus(resp)
 
-    def get_datums(
-        self,
-        filters: Optional[Filter] = None,
-    ) -> List[dict]:
+    def get_dataset_summary(self, name: str) -> dict:
         """
-        Get datums associated with `Client`.
+        Gets the summary of a dataset.
+
+        `GET` endpoint.
 
         Parameters
         ----------
-        filters : Filter, optional
+        name : str
+            The name of the dataset to create a summary for.
+
+        Returns
+        -------
+        dict
+            A dictionary containing the dataset summary.
+        """
+        return self._requests_get_rel_host(f"datasets/{name}/summary").json()
+
+    def finalize_dataset(self, name: str) -> None:
+        """
+        Finalizes a dataset such that new groundtruths cannot be added to it.
+
+        `PUT` endpoint.
+
+        Parameters
+        ----------
+        name : str
+            The name of the dataset.
+        """
+        return self._requests_put_rel_host(f"datasets/{name}/finalize")
+
+    def delete_dataset(self, name: str) -> None:
+        """
+        Deletes a dataset.
+
+        `DELETE` endpoint.
+
+        Parameters
+        ----------
+        name : str
+            The name of the dataset to be deleted.
+        """
+        self._requests_delete_rel_host(f"datasets/{name}")
+
+    def get_datums(self, filter_: Optional[dict] = None) -> List[dict]:
+        """
+        Get datums associated with `Client`.
+
+        `GET` endpoint.
+
+        Parameters
+        ----------
+        filter_ : dict, optional
             Optional filter to constrain by.
 
         Returns
@@ -309,71 +467,21 @@ class Client:
             A list of dictionaries describing all the datums of the specified dataset.
         """
         kwargs = {}
-        if filters:
-            kwargs["json"] = asdict(filters)
+        if filter_:
+            kwargs["json"] = filter_
         return self._requests_get_rel_host("data", **kwargs).json()
 
-    def get_dataset_status(
-        self,
-        dataset_name: str,
-    ) -> Optional[TableStatus]:
+    def get_datum(self):
         """
-        Get the state of a given dataset.
-
-        Parameters
-        ----------
-        dataset_name : str
-            The name of the dataset we want to fetch the state of.
-
-        Returns
-        ------
-        TableStatus | None
-            The state of the `Dataset`. Returns None if dataset does not exist.
+        `GET` endpoint.
         """
-        try:
-            resp = self._requests_get_rel_host(
-                f"datasets/{dataset_name}/status"
-            ).json()
-        except ClientException as e:
-            if e.status_code == 404:
-                return None
-            raise e
-        return TableStatus(resp)
+        pass
 
-    def get_dataset_summary(self, dataset_name: str) -> dict:
-        return self._requests_get_rel_host(
-            f"datasets/{dataset_name}/summary"
-        ).json()
-
-    def delete_dataset(self, name: str, timeout: int = 0) -> None:
-        """
-        Delete a dataset using FastAPI's `BackgroundProcess`.
-
-        Parameters
-        ----------
-        name : str
-            The name of the dataset to be deleted.
-        timeout : int
-            The number of seconds to wait in order to confirm that the dataset was deleted.
-        """
-        self._requests_delete_rel_host(f"datasets/{name}")
-        if timeout:
-            for _ in range(timeout):
-                if self.get_dataset(name) is None:
-                    break
-                else:
-                    time.sleep(1)
-            else:
-                raise TimeoutError(
-                    "Dataset wasn't deleted within timeout interval"
-                )
-
-    def create_model(
-        self,
-        model: dict,
-    ):
+    def create_model(self, model: dict) -> None:
         """
         Creates a model.
+
+        `CREATE` endpoint.
 
         Parameters
         ----------
@@ -382,12 +490,32 @@ class Client:
         """
         self._requests_post_rel_host("models", json=model)
 
-    def get_model(
-        self,
-        name: str,
-    ) -> Optional[dict]:
+    def get_models(self, filter_: Optional[dict] = None) -> List[dict]:
+        """
+        Get all models with option to filter results.
+
+        `GET` endpoint.
+
+        Parameters
+        ----------
+        filter_ : Filter, optional
+            Optional filter to constrain by.
+
+        Returns
+        ------
+        List[dict]
+            A list of dictionaries describing all the models.
+        """
+        kwargs = {}
+        if filter_:
+            kwargs["json"] = filter_
+        return self._requests_get_rel_host("models", **kwargs).json()
+
+    def get_model(self, name: str) -> dict:
         """
         Gets a model by name.
+
+        `GET` endpoint.
 
         Parameters
         ----------
@@ -399,42 +527,23 @@ class Client:
         dict
             A dictionary containing all of the associated model attributes.
         """
-        try:
-            return self._requests_get_rel_host(f"models/{name}").json()
-        except ClientException as e:
-            if e.status_code == 404:
-                return None
-            raise e
+        return self._requests_get_rel_host(f"models/{name}").json()
 
-    def get_models(
-        self,
-        filters: Optional[Filter] = None,
-    ) -> List[dict]:
+    def get_model_eval_requests(self):
         """
-        Get models associated with `Client`.
-
-        Parameters
-        ----------
-        filters : Filter, optional
-            Optional filter to constrain by.
-
-        Returns
-        ------
-        List[dict]
-            A list of dictionaries describing all the models attributed to the `Client` object.
+        `GET` endpoint.
         """
-        kwargs = {}
-        if filters:
-            kwargs["json"] = asdict(filters)
-        return self._requests_get_rel_host("models", **kwargs).json()
+        pass
 
     def get_model_status(
         self,
         dataset_name: str,
         model_name: str,
-    ) -> Optional[TableStatus]:
+    ) -> TableStatus:
         """
-        Get the state of a given model.
+        Get the state of a given model over a dataset.
+
+        `GET` endpoint.
 
         Parameters
         ----------
@@ -448,64 +557,90 @@ class Client:
         TableStatus
             The state of the `Model`.
         """
-        try:
-            resp = self._requests_get_rel_host(
-                f"models/{model_name}/dataset/{dataset_name}/status"
-            ).json()
-        except ClientException as e:
-            if e.status_code == 404:
-                return None
-            raise e
+        resp = self._requests_get_rel_host(
+            f"models/{model_name}/dataset/{dataset_name}/status"
+        ).json()
         return TableStatus(resp)
 
-    def delete_model(self, name: str, timeout: int = 0) -> None:
+    def finalize_inferences(
+        self,
+        dataset_name: str,
+        model_name: str,
+    ) -> None:
         """
-        Delete a model using FastAPI's `BackgroundProcess`.
+        Finalizes a model-dataset pairing such that new prediction cannot be added to it.
+
+        `PUT` endpoint.
+
+        Parameters
+        ----------
+        dataset_name : str
+            The name of the dataset.
+        model_name : str
+            The name of the model.
+        """
+        return self._requests_put_rel_host(
+            f"models/{model_name}/datasets/{dataset_name}/finalize"
+        ).json()
+
+    def delete_model(self, name: str) -> None:
+        """
+        Deletes a model.
+
+        `DELETE` endpoint.
 
         Parameters
         ----------
         name : str
             The name of the model to be deleted.
-        timeout : int
-            The number of seconds to wait in order to confirm that the model was deleted.
         """
         self._requests_delete_rel_host(f"models/{name}")
 
-        if timeout:
-            for _ in range(timeout):
-                if self.get_model(name) is None:
-                    break
-                else:
-                    time.sleep(1)
-            else:
-                raise TimeoutError(
-                    "Model wasn't deleted within timeout interval"
-                )
+    def evaluate(self, request: EvaluationRequest) -> List[dict]:
+        """
+        Creates as many evaluations as necessary to fulfill the request.
+
+        `CREATE` endpoint.
+
+        Parameters
+        ----------
+        request : schemas.EvaluationRequest
+            The requested evaluation parameters.
+
+        Returns
+        -------
+        List[dict]
+            A list of evaluations that meet the parameters.
+        """
+        return self._requests_post_rel_host(
+            "evaluations", json=asdict(request)
+        ).json()
 
     def get_evaluations(
         self,
         *,
-        evaluation_ids: Union[int, List[int], None] = None,
-        models: Union[str, List[str], None] = None,
-        datasets: Union[str, List[str], None] = None,
+        evaluation_ids: Optional[List[int]] = None,
+        models: Optional[List[str]] = None,
+        datasets: Optional[List[str]] = None,
     ) -> List[dict]:
         """
-        Returns all metrics associated with user-supplied dataset and/or model names.
+        Returns all evaluations associated with user-supplied dataset and/or model names.
+
+        `GET` endpoint.
 
         Parameters
         ----------
-        evaluation_ids : Union[int, List[int], None]
-            A list of job ids to return metrics for.  If the user passes a single value, it will automatically be converted to a list for convenience.
-        models : Union[str, List[str], None]
-            A list of model names that we want to return metrics for. If the user passes a string, it will automatically be converted to a list for convenience.
-        datasets : Union[str, List[str], None]
-            A list of dataset names that we want to return metrics for. If the user passes a string, it will automatically be converted to a list for convenience.
+        evaluation_ids : List[int], optional
+            A list of job ids to return metrics for.
+        models : List[str], optional
+            A list of model names that we want to return metrics for.
+        datasets : List[str], optional
+            A list of dataset names that we want to return metrics for.
 
         Returns
         -------
         List[dict]
             List of dictionaries describing the returned evaluations.
-
         """
 
         if not (evaluation_ids or models or datasets):
@@ -532,21 +667,95 @@ class Client:
 
         return self._requests_get_rel_host(endpoint).json()
 
-    def evaluate(self, req: EvaluationRequest) -> List[dict]:
+    def get_user(self) -> Union[str, None]:
         """
-        Creates as many evaluations as necessary to fulfill the request.
+        Gets the users e-mail address (in the case when auth is enabled)
+        or returns None in the case of a no-auth backend.
 
-        Parameters
-        ----------
-        req : schemas.EvaluationRequest
-            The requested evaluation parameters.
+        `GET` endpoint.
 
         Returns
         -------
-        List[schemas.EvaluationResponse]
-            A list of evaluations that meet the parameters.
+        Union[str, None]
+            The user's email address or `None` if it doesn't exist.
         """
-        resp = self._requests_post_rel_host(
-            "evaluations", json=asdict(req)
-        ).json()
-        return resp
+        resp = self._requests_get_rel_host("user").json()
+        return resp["email"]
+
+    def get_api_version(self) -> str:
+        """
+        Gets the version number of the API.
+
+        `GET` endpoint.
+
+        Returns
+        -------
+        Union[str, None]
+            The api version or `None` if it doesn't exist.
+        """
+        resp = self._requests_get_rel_host("api-version").json()
+        return resp["api_version"]
+
+    def health(self):
+        """
+        Checks if service is healthy.
+
+        `GET` endpoint.
+        """
+        pass
+
+    def ready(self):
+        """
+        Checks if service is ready.
+
+        `GET` endpoint.
+        """
+        pass
+
+
+def connect(
+    host: str,
+    access_token: Optional[str] = None,
+    reconnect: bool = False,
+):
+    """
+    Establishes a connection to the client.
+
+    Parameters
+    ----------
+    host : str
+        The host to connect to. Should start with "http://" or "https://".
+    access_token : str
+        The access token for the host (if the host requires authentication).
+    """
+    global _connection
+    if _connection is not None and not reconnect:
+        raise ClientAlreadyConnectedError
+
+    try:
+        _connection = ClientConnection(host, access_token)
+        _connection.get_api_version()
+    except Exception as e:
+        _connection = None
+        # TODO - raise ClientException showing no service found
+        raise e
+
+
+def get_connection() -> ClientConnection:
+    """
+    Gets the active client connection.
+
+    Returns
+    -------
+    ClientConnection
+        The active client connection.
+
+    Raises
+    ------
+    ClientNotConnectedError
+        If there is no active connection.
+    """
+    global _connection
+    if _connection is None:
+        raise ClientNotConnectedError
+    return _connection

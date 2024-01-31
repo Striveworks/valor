@@ -8,9 +8,17 @@ from geoalchemy2.functions import ST_Area
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from velour import Annotation, Dataset, GroundTruth, Label, Model, Prediction
-from velour.client import Client, ClientException
+from velour import (
+    Annotation,
+    Client,
+    Dataset,
+    GroundTruth,
+    Label,
+    Model,
+    Prediction,
+)
 from velour.enums import AnnotationType, EvaluationStatus, TaskType
+from velour.exceptions import ClientException
 from velour.schemas.filters import Filter
 from velour_api.backend import models
 
@@ -42,12 +50,12 @@ def test_evaluate_detection(
         datum2
             - Label (k1, v1) with Annotation area = 1100
     """
-    dataset = Dataset(client, dataset_name)
+    dataset = Dataset.create(dataset_name)
     for gt in gt_dets1:
         dataset.add_groundtruth(gt)
     dataset.finalize()
 
-    model = Model(client, model_name)
+    model = Model.create(model_name)
     for pd in pred_dets:
         model.add_prediction(dataset, pd)
     model.finalize_inferences(dataset)
@@ -107,8 +115,8 @@ def test_evaluate_detection(
     assert eval_job.missing_pred_labels == []
     assert eval_job.status == EvaluationStatus.DONE
 
-    result = eval_job.dict()
-    assert result == {
+    result = eval_job
+    assert result.to_dict() == {
         "id": eval_job.id,
         "model_name": model_name,
         "datum_filter": {
@@ -143,8 +151,7 @@ def test_evaluate_detection(
         eval_job_value_filter_using_in_.wait_for_completion(timeout=30)
         == EvaluationStatus.DONE
     )
-    value_filter_result = eval_job_value_filter_using_in_.dict()
-    assert value_filter_result["metrics"] == result["metrics"]
+    assert eval_job_value_filter_using_in_.metrics == result.metrics
 
     # same as the above, but not using the in_ operator
     eval_job_value_filter = model.evaluate_detection(
@@ -160,8 +167,7 @@ def test_evaluate_detection(
         eval_job_value_filter.wait_for_completion(timeout=30)
         == EvaluationStatus.DONE
     )
-    value_filter_result = eval_job_value_filter.dict()
-    assert value_filter_result["metrics"] == result["metrics"]
+    assert eval_job_value_filter.metrics == result.metrics
 
     # assert that this evaluation returns no metrics as there aren't any
     # Labels with key=k1 and value=v2
@@ -202,8 +208,7 @@ def test_evaluate_detection(
         eval_job_bounded_area_10_2000.wait_for_completion(timeout=30)
         == EvaluationStatus.DONE
     )
-    result = eval_job_bounded_area_10_2000.dict()
-    assert result == {
+    assert eval_job_bounded_area_10_2000.to_dict() == {
         "id": eval_job_bounded_area_10_2000.id,
         "model_name": model_name,
         "datum_filter": {
@@ -250,7 +255,7 @@ def test_evaluate_detection(
         eval_job_min_area_1200.wait_for_completion(timeout=30)
         == EvaluationStatus.DONE
     )
-    result = eval_job_min_area_1200.dict()
+    result = eval_job_min_area_1200.to_dict()
     min_area_1200_metrics = result.pop("metrics")
     assert result == {
         "id": eval_job_min_area_1200.id,
@@ -295,7 +300,7 @@ def test_evaluate_detection(
         eval_job_max_area_1200.wait_for_completion(timeout=30)
         == EvaluationStatus.DONE
     )
-    result = eval_job_max_area_1200.dict()
+    result = eval_job_max_area_1200.to_dict()
     max_area_1200_metrics = result.pop("metrics")
     assert result == {
         "id": eval_job_max_area_1200.id,
@@ -342,7 +347,7 @@ def test_evaluate_detection(
         eval_job_bounded_area_1200_1800.wait_for_completion(timeout=30)
         == EvaluationStatus.DONE
     )
-    result = eval_job_bounded_area_1200_1800.dict()
+    result = eval_job_bounded_area_1200_1800.to_dict()
     bounded_area_metrics = result.pop("metrics")
     assert result == {
         "id": eval_job_bounded_area_1200_1800.id,
@@ -389,12 +394,12 @@ def test_evaluate_detection_with_json_filters(
     gt_dets1: list[GroundTruth],
     pred_dets: list[Prediction],
 ):
-    dataset = Dataset(client, dataset_name)
+    dataset = Dataset.create(dataset_name)
     for gt in gt_dets1:
         dataset.add_groundtruth(gt)
     dataset.finalize()
 
-    model = Model(client, model_name)
+    model = Model.create(model_name)
     for pd in pred_dets:
         model.add_prediction(dataset, pd)
     model.finalize_inferences(dataset)
@@ -499,7 +504,7 @@ def test_evaluate_detection_with_json_filters(
         eval_job_bounded_area_1200_1800.wait_for_completion(timeout=30)
         == EvaluationStatus.DONE
     )
-    result = eval_job_bounded_area_1200_1800.dict()
+    result = eval_job_bounded_area_1200_1800.to_dict()
 
     bounded_area_metrics = result.pop("metrics")
     assert result == {
@@ -547,12 +552,12 @@ def test_get_evaluations(
     dataset_ = dataset_name
     model_ = model_name
 
-    dataset = Dataset(client, dataset_)
+    dataset = Dataset.create(dataset_)
     for gt in gt_dets1:
         dataset.add_groundtruth(gt)
     dataset.finalize()
 
-    model = Model(client, model_)
+    model = Model.create(model_)
     for pd in pred_dets:
         model.add_prediction(dataset, pd)
     model.finalize_inferences(dataset)
@@ -645,21 +650,23 @@ def test_get_evaluations(
     )
 
     assert len(evaluations) == 1
-    assert len(evaluations[0]["metrics"])
-    assert evaluations[0]["metrics"] == expected_metrics
+    assert len(evaluations[0].metrics)
+    assert evaluations[0].metrics == expected_metrics
 
     evaluations_by_evaluation_id = client.get_evaluations(
         evaluation_ids=eval_job.id
     )
     assert len(evaluations_by_evaluation_id) == 1
-    assert evaluations_by_evaluation_id[0] == evaluations[0]
+    assert (
+        evaluations_by_evaluation_id[0].to_dict() == evaluations[0].to_dict()
+    )
 
     # test incorrect names
     assert len(client.get_evaluations(datasets="wrong_dataset_name")) == 0
     assert len(client.get_evaluations(models="wrong_model_name")) == 0
 
     # test with multiple models
-    second_model = Model(client, "second_model")
+    second_model = Model.create("second_model")
     for pd in pred_dets2:
         second_model.add_prediction(dataset, pd)
     second_model.finalize_inferences(dataset)
@@ -678,36 +685,36 @@ def test_get_evaluations(
     second_model_evaluations = client.get_evaluations(models="second_model")
 
     assert len(second_model_evaluations) == 1
-    assert (
-        second_model_evaluations[0]["metrics"] == second_model_expected_metrics
-    )
+    assert second_model_evaluations[0].metrics == second_model_expected_metrics
 
     both_evaluations = client.get_evaluations(datasets=["test_dataset"])
 
     # should contain two different entries, one for each model
     assert len(both_evaluations) == 2
     for evaluation in both_evaluations:
-        assert evaluation["model_name"] in [
+        assert evaluation.model_name in [
             "second_model",
             model_name,
         ]
-        if evaluation["model_name"] == model_name:
-            assert evaluation["metrics"] == expected_metrics
-        elif evaluation["model_name"] == "second_model":
-            assert evaluation["metrics"] == second_model_expected_metrics
+        if evaluation.model_name == model_name:
+            assert evaluation.metrics == expected_metrics
+        elif evaluation.model_name == "second_model":
+            assert evaluation.metrics == second_model_expected_metrics
 
     # should be equivalent since there are only two models attributed to this dataset
     both_evaluations_from_model_names = client.get_evaluations(
         models=["second_model", "test_model"]
     )
     assert len(both_evaluations_from_model_names) == 2
-    assert both_evaluations[0] in both_evaluations_from_model_names
-    assert both_evaluations[1] in both_evaluations_from_model_names
+    assert {both_evaluations[0].id, both_evaluations[1].id} == {
+        eval_.id for eval_ in both_evaluations_from_model_names
+    }
 
     # should also be equivalent
     both_evaluations_from_evaluation_ids = client.get_evaluations(
         evaluation_ids=[eval_job.id, eval_job2.id]
     )
     assert len(both_evaluations_from_evaluation_ids) == 2
-    assert both_evaluations[0] in both_evaluations_from_evaluation_ids
-    assert both_evaluations[1] in both_evaluations_from_evaluation_ids
+    assert {both_evaluations[0].id, both_evaluations[1].id} == {
+        eval_.id for eval_ in both_evaluations_from_evaluation_ids
+    }

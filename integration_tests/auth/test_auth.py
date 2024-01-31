@@ -13,7 +13,8 @@ import os
 import pytest
 import requests
 
-from velour.client import Client, ClientException
+from velour import Client
+from velour.exceptions import ClientException
 
 
 @pytest.fixture

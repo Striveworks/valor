@@ -4,8 +4,7 @@ that is no auth
 
 import pytest
 
-from velour import Dataset, Datum, GroundTruth, Model, Prediction
-from velour.client import Client
+from velour import Client, Dataset, Datum, GroundTruth, Model, Prediction
 from velour.enums import EvaluationStatus
 
 
@@ -30,16 +29,16 @@ def test_set_and_get_geospatial(
     ]
     geo_dict = {"type": "Polygon", "coordinates": coordinates}
 
-    dataset = Dataset(client=client, name=dataset_name, geospatial=geo_dict)
+    dataset = Dataset.create(name=dataset_name, geospatial=geo_dict)
 
     # check Dataset's geospatial coordinates
     fetched_datasets = client.get_datasets()
-    assert fetched_datasets[0]["geospatial"] == geo_dict
+    assert fetched_datasets[0].geospatial == geo_dict
 
     # check Model's geospatial coordinates
-    Model(client=client, name=model_name, geospatial=geo_dict)
+    Model.create(name=model_name, geospatial=geo_dict)
     fetched_models = client.get_models()
-    assert fetched_models[0]["geospatial"] == geo_dict
+    assert fetched_models[0].geospatial == geo_dict
 
     # check Datums's geospatial coordinates
     for gt in gt_dets1:
@@ -81,13 +80,13 @@ def test_geospatial_filter(
     ]
     geo_dict = {"type": "Polygon", "coordinates": coordinates}
 
-    dataset = Dataset(client=client, name=dataset_name, geospatial=geo_dict)
+    dataset = Dataset.create(name=dataset_name, geospatial=geo_dict)
     for gt in gt_dets1:
         gt.datum.geospatial = geo_dict
         dataset.add_groundtruth(gt)
     dataset.finalize()
 
-    model = Model(client=client, name=model_name, geospatial=geo_dict)
+    model = Model.create(name=model_name, geospatial=geo_dict)
     for pd in pred_dets:
         pd.datum.geospatial = geo_dict
         model.add_prediction(dataset, pd)
@@ -130,8 +129,7 @@ def test_geospatial_filter(
     )
     assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
 
-    result = eval_job.dict()
-    assert result["datum_filter"]["datum_geospatial"] == [
+    assert eval_job.datum_filter.datum_geospatial == [
         {
             "value": geo_dict,
             "operator": "intersect",

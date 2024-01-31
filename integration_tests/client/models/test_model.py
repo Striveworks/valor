@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 
 from velour import (
     Annotation,
+    Client,
     Dataset,
     Datum,
     GroundTruth,
@@ -21,8 +22,8 @@ from velour import (
     Model,
     Prediction,
 )
-from velour.client import Client, ClientException
 from velour.enums import TaskType
+from velour.exceptions import ClientException
 from velour.metatypes import ImageMetadata
 from velour.schemas import Point
 from velour_api.backend import models
@@ -71,8 +72,8 @@ def _test_create_model_with_preds(
     -------
     the sqlalchemy objects for the created predictions
     """
-    dataset = Dataset(client, dataset_name)
-    model = Model(client, model_name)
+    dataset = Dataset.create(dataset_name)
+    model = Model.create(model_name)
 
     # verify we get an error if we try to create another model
     # with the same name
@@ -105,7 +106,7 @@ def _test_create_model_with_preds(
     assert set([p.score for p in db_preds]) == expected_scores
 
     # check that the get_model method works
-    retrieved_model = Model(client, model_name)
+    retrieved_model = Model.get(model_name)
     assert isinstance(retrieved_model, type(model))
     assert retrieved_model.name == model_name
 
@@ -119,8 +120,7 @@ def test_create_model_with_href_and_description(
 ):
     href = "http://a.com/b"
     description = "a description"
-    Model(
-        client,
+    Model.create(
         model_name,
         metadata={
             "href": href,
@@ -282,16 +282,10 @@ def test_client_delete_model(
     client: Client,
     model_name: str,
 ):
-    Model(client, model_name)
+    Model.create(model_name)
     assert db.scalar(select(func.count(models.Model.name))) == 1
     client.delete_model(model_name, timeout=30)
     assert db.scalar(select(func.count(models.Model.name))) == 0
-
-    assert client.get_model(model_name) is None
-    Model(client, model_name, delete_if_exists=True)
-    assert client.get_model(model_name) is not None
-    Model(client, model_name, delete_if_exists=True)
-    assert client.get_model(model_name) is not None
 
 
 def test_create_tabular_model_with_predicted_classifications(
@@ -398,11 +392,11 @@ def test_add_prediction(
         },
     )
 
-    dataset = Dataset(client, dataset_name)
+    dataset = Dataset.create(dataset_name)
     for gt in gt_dets1:
         dataset.add_groundtruth(gt)
 
-    model = Model(client, model_name)
+    model = Model.create(model_name)
 
     # make sure we get an error when passing a non-Prediction object to add_prediction
     with pytest.raises(TypeError):
@@ -437,7 +431,7 @@ def test_add_empty_prediction(
 ):
     extra_datum = Datum(uid="some_extra_datum")
 
-    dataset = Dataset(client, dataset_name)
+    dataset = Dataset.create(dataset_name)
     for gt in gt_dets1:
         dataset.add_groundtruth(gt)
     dataset.add_groundtruth(
@@ -453,7 +447,7 @@ def test_add_empty_prediction(
     )
     dataset.finalize()
 
-    model = Model(client, model_name)
+    model = Model.create(model_name)
 
     # make sure we get an error when passing a non-Prediction object to add_prediction
     with pytest.raises(TypeError):
@@ -488,7 +482,7 @@ def test_add_skipped_prediction(
 ):
     extra_datum = Datum(uid="some_extra_datum")
 
-    dataset = Dataset(client, dataset_name)
+    dataset = Dataset.create(dataset_name)
     dataset.add_groundtruth(
         GroundTruth(
             datum=extra_datum,
@@ -502,7 +496,7 @@ def test_add_skipped_prediction(
     )
     dataset.finalize()
 
-    model = Model(client, model_name)
+    model = Model.create(model_name)
     model.finalize_inferences(dataset)
 
     # test get predictions
@@ -515,7 +509,7 @@ def test_add_skipped_prediction(
 
 def test_validate_model(client: Client, model_name: str):
     with pytest.raises(TypeError):
-        Model(client, name=123)  # type: ignore
+        Model.create(name=123)  # type: ignore
 
     with pytest.raises(TypeError):
-        Model(client, name=model_name, id="not an int")  # type: ignore
+        Model.create(name=model_name, id="not an int")  # type: ignore

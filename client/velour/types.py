@@ -1,9 +1,11 @@
 import datetime
-from typing import Any, Dict, List, Mapping, Union
+from typing import Any, Dict, List, Mapping, TypeVar, Union
 
 import numpy as np
 
 from velour.schemas import geometry
+
+T = TypeVar("T")
 
 ValueType = Union[int, float, str, bool, Dict[str, str]]
 

@@ -5,8 +5,7 @@ from geoalchemy2.functions import ST_AsText
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from velour import Annotation, Dataset, Label, Model, Prediction
-from velour.client import Client
+from velour import Annotation, Client, Dataset, Label, Model, Prediction
 from velour.coretypes import GroundTruth
 from velour.enums import TaskType
 from velour.metatypes import ImageMetadata
@@ -27,12 +26,12 @@ def test_create_pred_detections_as_bbox_or_poly(
     """
     xmin, ymin, xmax, ymax = 10, 25, 30, 50
 
-    dataset = Dataset(client, dataset_name)
+    dataset = Dataset.create(dataset_name)
     for gt in gt_dets1:
         dataset.add_groundtruth(gt)
     dataset.finalize()
 
-    model = Model(client, model_name)
+    model = Model.create(model_name)
     pd = Prediction(
         datum=img1.to_datum(),
         annotations=[

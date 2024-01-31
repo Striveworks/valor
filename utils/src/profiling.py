@@ -16,10 +16,10 @@ import yappi
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
-from velour.client import Client
-from velour.client import Dataset as VelourDataset
-from velour.client import Evaluation as VelourEvaluation
-from velour.client import Model as VelourModel
+from velour import Client
+from velour import Dataset as VelourDataset
+from velour import Evaluation as VelourEvaluation
+from velour import Model as VelourModel
 from velour.data_generation import (
     generate_prediction_data,
     generate_segmentation_data,

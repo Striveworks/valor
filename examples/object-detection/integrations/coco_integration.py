@@ -317,7 +317,7 @@ def create_dataset_from_coco_panoptic(
         client.delete_dataset(name, timeout=5)
 
     if client.get_dataset(name) is not None:
-        dataset = Dataset(client, name)
+        dataset = Dataset.create(name)
     else:
         # create groundtruths
         gts = _create_groundtruths_from_coco_panoptic(

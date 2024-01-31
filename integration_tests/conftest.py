@@ -8,8 +8,9 @@ import pytest
 from sqlalchemy import create_engine, select, text
 from sqlalchemy.orm import Session
 
-from velour import Annotation, GroundTruth, Label, Prediction
-from velour.client import Client
+import velour
+from velour import Annotation, Client, GroundTruth, Label, Prediction
+from velour.client import ClientConnection, connect
 from velour.data_generation import _generate_mask
 from velour.enums import TaskType
 from velour.metatypes import ImageMetadata
@@ -19,17 +20,24 @@ from velour_api.backend import models
 
 
 @pytest.fixture
-def db() -> Iterator[Session]:
+def connection() -> ClientConnection:
+    if not velour.client._connection:
+        connect(host="http://localhost:8000")
+    return velour.client._connection
+
+
+@pytest.fixture
+def db(connection: ClientConnection) -> Iterator[Session]:
     """This fixture makes sure there's not datasets, models, or labels in the backend
     (raising a RuntimeError if there are). It returns a db session and as cleanup
     clears out all datasets, models, and labels from the backend.
     """
-    client = Client(host="http://localhost:8000")
+    client = Client(connection)
 
     if len(client.get_datasets()) > 0:
         raise RuntimeError(
             "Tests should be run on an empty velour backend but found existing datasets.",
-            [ds["name"] for ds in client.get_datasets()],
+            [ds.name for ds in client.get_datasets()],
         )
 
     if len(client.get_models()) > 0:
@@ -51,13 +59,13 @@ def db() -> Iterator[Session]:
 
     for model in client.get_models():
         try:
-            client.delete_model(model["name"], timeout=360)
+            client.delete_model(model.name, timeout=360)
         except exceptions.ModelDoesNotExistError:
             continue
 
     for dataset in client.get_datasets():
         try:
-            client.delete_dataset(dataset["name"], timeout=360)
+            client.delete_dataset(dataset.name, timeout=360)
         except exceptions.DatasetDoesNotExistError:
             continue
 
@@ -68,8 +76,8 @@ def db() -> Iterator[Session]:
 
 
 @pytest.fixture
-def client(db: Session) -> Client:
-    return Client(host="http://localhost:8000")
+def client(db: Session, connection: ClientConnection) -> Client:
+    return Client(connection)
 
 
 @pytest.fixture

@@ -4,8 +4,7 @@ that is no auth
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from velour import Annotation, Dataset, GroundTruth, Label
-from velour.client import Client
+from velour import Annotation, Client, Dataset, GroundTruth, Label
 from velour.enums import TaskType
 from velour.metatypes import ImageMetadata
 from velour.schemas import BoundingBox
@@ -37,7 +36,7 @@ def test_create_images_with_metadata(
     ).to_datum()
 
     # create dataset
-    dataset = Dataset(client, dataset_name)
+    dataset = Dataset.create(dataset_name)
     dataset.add_groundtruth(
         GroundTruth(
             datum=img1,
