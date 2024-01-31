@@ -124,9 +124,8 @@ def create_grouper_mappings(
     ), f"evaluation_type must be one of {mapping_functions.keys()}"
 
     # create a map of labels to groupers; will be empty if the user didn't pass a label_map
-    # TODO move this to client?
     mapping_dict = (
-        {tuple(label): tuple(grouper_key) for label, grouper_key in label_map}
+        {tuple(label): tuple(grouper) for label, grouper in label_map}
         if label_map
         else {}
     )
