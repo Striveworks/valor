@@ -21,6 +21,7 @@ from .coretypes import (
     Model,
     Prediction,
 )
+from .schemas import Filter
 
 __all__ = [
     "Client",
@@ -33,4 +34,5 @@ __all__ = [
     "Annotation",
     "GroundTruth",
     "Prediction",
+    "Filter",
 ]

@@ -1,32 +1,15 @@
 import datetime
-from typing import Dict, Mapping, Union
 
-from velour.exceptions import SchemaTypeError
-
-MetadataValueType = Union[
-    int,
-    float,
-    str,
-    bool,
-    datetime.datetime,
-    datetime.date,
-    datetime.time,
-    datetime.timedelta,
-]
-MetadataType = Mapping[str, MetadataValueType]
-DictMetadataType = Dict[str, MetadataValueType]
-ConvertibleMetadataType = Mapping[
-    str,
-    Union[
-        MetadataValueType,
-        Dict[str, str],
-    ],
-]
+from velour.types import (
+    ConvertibleMetadataType,
+    DictMetadataType,
+    MetadataType,
+)
 
 
 def _validate_href(value: str):
     if not isinstance(value, str):
-        raise SchemaTypeError("href", str, value)
+        raise TypeError("`href` key should have a `str` as its value.")
     if not (value.startswith("http://") or value.startswith("https://")):
         raise ValueError("`href` must start with http:// or https://")
 
@@ -34,12 +17,10 @@ def _validate_href(value: str):
 def validate_metadata(metadata: MetadataType):
     """Validates metadata dictionary."""
     if not isinstance(metadata, dict):
-        raise SchemaTypeError(
-            "metadata", Dict[str, Union[float, int, str]], metadata
-        )
+        raise TypeError("`metadata` should be an object of type `dict`.")
     for key, value in metadata.items():
         if not isinstance(key, str):
-            raise SchemaTypeError("metadatum key", str, key)
+            raise TypeError("`metadata` key should have type `str`.")
         if not (
             isinstance(value, int)
             or isinstance(value, float)
@@ -48,14 +29,16 @@ def validate_metadata(metadata: MetadataType):
             or isinstance(value, datetime.date)
             or isinstance(value, datetime.time)
         ):
-            raise SchemaTypeError(
-                "metadatum value", Union[float, int, str], value
+            raise TypeError(
+                "`metadata` value should have type `str`, `int`, `float` or `datetime`."
             )
 
         # Handle special key-values
         if key == "href":
             if not isinstance(value, str):
-                raise SchemaTypeError("href", str, value)
+                raise TypeError(
+                    "The metadata key `href` is reserved for values of type `str`."
+                )
             _validate_href(value)
 
 

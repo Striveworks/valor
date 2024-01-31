@@ -46,17 +46,17 @@ def test_set_and_get_geospatial(
         dataset.add_groundtruth(gt)
     dataset.finalize()
 
-    expected_coords = [gt.datum._geospatial for gt in gt_dets1]
+    expected_coords = [gt.datum.geospatial for gt in gt_dets1]
 
-    returned_datum1 = dataset.get_datums()[0]._geospatial
-    returned_datum2 = dataset.get_datums()[1]._geospatial
+    returned_datum1 = dataset.get_datums()[0].geospatial
+    returned_datum2 = dataset.get_datums()[1].geospatial
 
     assert expected_coords[0] == returned_datum1
     assert expected_coords[1] == returned_datum2
 
     dets1 = dataset.get_groundtruth("uid1")
 
-    assert dets1.datum._geospatial == expected_coords[0]
+    assert dets1.datum.geospatial == expected_coords[0]
 
 
 def test_geospatial_filter(
@@ -83,13 +83,13 @@ def test_geospatial_filter(
 
     dataset = Dataset(client=client, name=dataset_name, geospatial=geo_dict)
     for gt in gt_dets1:
-        gt.datum._geospatial = geo_dict
+        gt.datum.geospatial = geo_dict
         dataset.add_groundtruth(gt)
     dataset.finalize()
 
     model = Model(client=client, name=model_name, geospatial=geo_dict)
     for pd in pred_dets:
-        pd.datum._geospatial = geo_dict
+        pd.datum.geospatial = geo_dict
         model.add_prediction(dataset, pd)
     model.finalize_inferences(dataset)
 
@@ -110,7 +110,7 @@ def test_geospatial_filter(
     assert len(eval_job.metrics) == 9
 
     # passing in an incorrectly-formatted geojson dict should return a ValueError
-    with pytest.raises(ValueError) as e:
+    with pytest.raises(KeyError) as e:
         model.evaluate_detection(
             dataset,
             iou_thresholds_to_compute=[0.1, 0.6],

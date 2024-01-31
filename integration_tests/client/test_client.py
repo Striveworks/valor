@@ -19,7 +19,7 @@ from velour import (
 )
 from velour.client import _validate_version
 from velour.enums import TaskType
-from velour.schemas import Filter, ValueFilter
+from velour.schemas import Constraint, Filter
 
 
 @pytest.fixture
@@ -181,18 +181,14 @@ def test_get_labels(
     assert len(all_labels) == 10
 
     high_score_labels = client.get_labels(
-        filters=Filter(
-            prediction_scores=[ValueFilter(value=0.5, operator=">")]
-        )
+        filters=Filter(prediction_scores=[Constraint(value=0.5, operator=">")])
     )
     assert len(high_score_labels) == 5
     for label in high_score_labels:
         assert int(label["value"]) % 2 == 1
 
     low_score_labels = client.get_labels(
-        filters=Filter(
-            prediction_scores=[ValueFilter(value=0.5, operator="<")]
-        )
+        filters=Filter(prediction_scores=[Constraint(value=0.5, operator="<")])
     )
     assert len(low_score_labels) == 5
     for label in low_score_labels:

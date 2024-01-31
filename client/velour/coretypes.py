@@ -1,38 +1,30 @@
-import datetime
 import json
-import math
 import time
 import warnings
 from dataclasses import asdict, dataclass
-from typing import (
-    ClassVar,
-    Dict,
-    List,
-    Mapping,
-    Optional,
-    Sequence,
-    Tuple,
-    Union,
-)
+from typing import Dict, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
 
 from velour.client import Client, ClientException
 from velour.enums import AnnotationType, EvaluationStatus, TaskType
-from velour.exceptions import SchemaTypeError
 from velour.schemas.evaluation import EvaluationParameters, EvaluationRequest
-from velour.schemas.filters import (
-    DeclarativeMapper,
-    Filter,
-    FilterExpressionsType,
-)
+from velour.schemas.filters import Filter, FilterExpressionsType
 from velour.schemas.geometry import BoundingBox, MultiPolygon, Polygon, Raster
 from velour.schemas.metadata import (
-    MetadataType,
     dump_metadata,
     load_metadata,
     validate_metadata,
 )
+from velour.schemas.properties import (
+    DictionaryProperty,
+    GeometryProperty,
+    GeospatialProperty,
+    LabelProperty,
+    NumericProperty,
+    StringProperty,
+)
+from velour.types import GeoJSONType, MetadataType, is_floating
 
 
 class Label:
@@ -42,21 +34,21 @@ class Label:
     Parameters
     ----------
     key : str
-        A key for the `Label`.
+        The class key of the label.
     value : str
-        A value for the `Label`.
-    score : float
-        The score associated with the `Label` (where applicable).
+        The class value of the label.
+    score : float, optional
+        The score associated with the label (if applicable).
 
     Attributes
     ----------
-    id : int
-        A unique ID for the `Label`.
+    filter_by : filter_factory
+        Declarative mappers used to create filters.
     """
 
-    id: ClassVar[DeclarativeMapper]
-    key: ClassVar[DeclarativeMapper]
-    label: ClassVar[DeclarativeMapper]
+    value = NumericProperty("value")
+    key = StringProperty("label_keys")
+    score = NumericProperty("prediction_scores")
 
     def __init__(
         self,
@@ -64,38 +56,33 @@ class Label:
         value: str,
         score: Union[float, np.floating, None] = None,
     ):
-        self._key = key
+        if not isinstance(key, str):
+            raise TypeError("Attribute `key` should have type `str`.")
+        if not isinstance(value, str):
+            raise TypeError("Attribute `value` should have type `str`.")
+        if score is not None:
+            if not is_floating(score):
+                raise TypeError(
+                    "Attribute `score` should be a floating-point number or `None`."
+                )
+
+        self.key = key
         self.value = value
         self.score = score
-        self._validate()
-
-    def _validate(self):
-        """
-        Validate the inputs of the `Label`.
-        """
-        if not isinstance(self._key, str):
-            raise TypeError("key should be of type `str`")
-        if not isinstance(self.value, str):
-            raise TypeError("value should be of type `str`")
-        if self.score is not None:
-            try:
-                self.score = float(self.score)
-            except ValueError:
-                raise TypeError("score should be convertible to `float`")
 
     def __str__(self):
-        return str(self.dict())
+        return str(self.tuple())
 
-    def tuple(self) -> Tuple[str, str, Union[float, np.floating, None]]:
-        """
-        Defines how the `Label` is turned into a tuple.
+    def to_dict(self):
+        return {
+            "key": self.key,
+            "value": self.value,
+            "score": self.score,
+        }
 
-        Returns
-        ----------
-        tuple
-            A tuple of the `Label's` arguments.
-        """
-        return (self._key, self.value, self.score)
+    @classmethod
+    def from_dict(cls, resp):
+        return cls(**resp)
 
     def __eq__(self, other):
         """
@@ -111,21 +98,23 @@ class Label:
         boolean
             A boolean describing whether the two objects are equal.
         """
-        if (
-            not hasattr(other, "_key")
-            or not hasattr(other, "value")
-            or not hasattr(other, "score")
-        ):
+        # type mismatch
+        if type(other) is not type(self):
             return False
 
-        if self._key != other._key or self.value != other.value:
+        # k,v mismatch
+        if self.key != other.key or self.value != other.value:
             return False
 
-        if self.score is not None and other.score is not None:
-            return math.isclose(self.score, other.score)
-        else:
-            # if the scores aren't the same type return False
+        # score is None
+        if self.score is None or other.score is None:
             return (other.score is None) == (self.score is None)
+
+        # scores not equal
+        if is_floating(self.score) and is_floating(other.score):
+            return np.isclose(self.score, other.score)
+
+        return False
 
     def __hash__(self) -> int:
         """
@@ -136,32 +125,18 @@ class Label:
         int
             The hashed 'Label`.
         """
-        return hash(f"key:{self._key},value:{self.value},score:{self.score}")
+        return hash(f"key:{self.key},value:{self.value},score:{self.score}")
 
-    def dict(self) -> dict:
+    def tuple(self) -> Tuple[str, str, Union[float, np.floating, None]]:
         """
-        Defines how a `Label` is transformed into a dictionary.
+        Defines how the `Label` is turned into a tuple.
 
         Returns
         ----------
-        dict
-            A dictionary of the `Label's` attributes.
+        tuple
+            A tuple of the `Label's` arguments.
         """
-        return {
-            "key": self._key,
-            "value": self.value,
-            "score": self.score,
-        }
-
-    @classmethod
-    def all(cls, client: Client) -> List["Label"]:
-        """
-        Returns a list of all labels in the backend.
-        """
-        return [
-            cls(key=label["key"], value=label["value"], score=label["score"])
-            for label in client.get_labels()
-        ]
+        return (self.key, self.value, self.score)
 
 
 class Datum:
@@ -178,39 +153,29 @@ class Datum:
         A GeoJSON-style dictionary describing the geospatial coordinates of the `Datum`.
     """
 
-    uid: ClassVar[DeclarativeMapper]
-    metadata: ClassVar[DeclarativeMapper]
-    geospatial: ClassVar[DeclarativeMapper]
+    uid = StringProperty("datum_uids")
+    metadata = DictionaryProperty("datum_metadata")
+    geospatial = GeospatialProperty("datum_geospatial")
 
     def __init__(
         self,
         uid: str,
         metadata: Optional[MetadataType] = None,
-        geospatial: Optional[
-            Mapping[
-                str,
-                Union[
-                    List[List[List[List[Union[float, int]]]]],
-                    List[List[List[Union[float, int]]]],
-                    List[Union[float, int]],
-                    str,
-                ],
-            ]
-        ] = None,
+        geospatial: Optional[GeoJSONType] = None,
     ):
-        if not isinstance(uid, str):
-            raise SchemaTypeError("uid", str, uid)
-        validate_metadata(metadata or {})
+        self.uid = uid
+        self.metadata = metadata if metadata else {}
+        self.geospatial = geospatial
 
-        self._uid = uid
-        self._metadata = dict(load_metadata(metadata or {}))
-        self._geospatial = geospatial if geospatial else {}
-        self._dataset_name = None
+        if not isinstance(self.uid, str):
+            raise TypeError("Attribute `uid` should have type `str`.")
+        validate_metadata(self.metadata)
+        self.metadata = load_metadata(self.metadata)
 
     def __str__(self):
-        return str(self.dict())
+        return str(self.to_dict(dataset_name=None).pop("dataset_name"))
 
-    def dict(self) -> dict:
+    def to_dict(self, dataset_name: Optional[str] = None) -> dict:
         """
         Defines how a `Datum` object is transformed into a dictionary.
 
@@ -220,18 +185,16 @@ class Datum:
             A dictionary of the `Datum's` attributes.
         """
         return {
-            "dataset_name": self._dataset_name,
-            "uid": self._uid,
-            "metadata": dump_metadata(self._metadata),
-            "geospatial": self._geospatial if self._geospatial else None,
+            "dataset_name": dataset_name,
+            "uid": self.uid,
+            "metadata": dump_metadata(self.metadata),
+            "geospatial": self.geospatial if self.geospatial else None,
         }
 
     @classmethod
-    def _from_dict(cls, d: Dict) -> "Datum":
-        dataset_name = d.pop("dataset_name", None)
-        datum = cls(**d)
-        datum._set_dataset_name(dataset_name)
-        return datum
+    def from_dict(cls, resp: dict) -> "Datum":
+        resp.pop("dataset_name", None)
+        return cls(**resp)
 
     def __eq__(self, other):
         """
@@ -249,13 +212,7 @@ class Datum:
         """
         if not isinstance(other, Datum):
             raise TypeError(f"Expected type `{type(Datum)}`, got `{other}`")
-        return self.dict() == other.dict()
-
-    def _set_dataset_name(self, dataset: Union["Dataset", str, None]) -> None:
-        """Sets the dataset the datum belongs to. This should never be called by the user."""
-        self._dataset_name = (
-            dataset._name if isinstance(dataset, Dataset) else dataset
-        )
+        return self.to_dict() == other.to_dict()
 
 
 class Annotation:
@@ -278,8 +235,6 @@ class Annotation:
         A multipolygon to assign to the `Annotation`.
     raster: Raster
         A raster to assign to the `Annotation`.
-    jsonb: Dict
-        A jsonb to assign to the `Annotation`.
 
     Attributes
     ----------
@@ -344,11 +299,13 @@ class Annotation:
     ... )
     """
 
-    task: ClassVar[DeclarativeMapper]
-    type: ClassVar[DeclarativeMapper]
-    metadata: ClassVar[DeclarativeMapper]
-    geometric_area: ClassVar[DeclarativeMapper]
-    geospatial: ClassVar[DeclarativeMapper]
+    task_type = StringProperty("task_types")
+    labels = LabelProperty("labels")
+    metadata = DictionaryProperty("annotation_metadata")
+    bounding_box = GeometryProperty("annotation_bounding_box")
+    polygon = GeometryProperty("annotation_polygon")
+    multipolygon = GeometryProperty("annotation_multipolygon")
+    raster = GeometryProperty("annotation_raster")
 
     def __init__(
         self,
@@ -359,75 +316,119 @@ class Annotation:
         polygon: Optional[Polygon] = None,
         multipolygon: Optional[MultiPolygon] = None,
         raster: Optional[Raster] = None,
-        jsonb: Optional[Dict] = None,
     ):
-        self.task_type = task_type
+        self.task_type = TaskType(task_type)
         self.labels = labels
-        self._metadata = metadata if metadata else {}
+        self.metadata = metadata if metadata else {}
         self.bounding_box = bounding_box
         self.polygon = polygon
         self.multipolygon = multipolygon
         self.raster = raster
-        self.jsonb = jsonb
         self._validate()
 
     def _validate(self):
         """
         Validates the parameters used to create a `Annotation` object.
         """
-
-        # task_type
-        if not isinstance(self.task_type, TaskType):
-            self.task_type = TaskType(self.task_type)
-
         # labels
         if not isinstance(self.labels, list):
-            raise SchemaTypeError("labels", List[Label], self.labels)
+            raise TypeError(
+                "Attribute `labels` should have type `List[velour.Label]`."
+            )
         for idx, label in enumerate(self.labels):
-            if isinstance(label, dict):
-                kw_label = label.copy()
-                key = kw_label.pop("key")
-                value = kw_label.pop("value")
-                self.labels[idx] = Label(key, value, **kw_label)
-            if not isinstance(self.labels[idx], Label):
-                raise SchemaTypeError("label", Label, self.labels[idx])
+            if not isinstance(label, Label):
+                raise TypeError(
+                    f"Attribute `labels[{idx}]` should have type `velour.Label`."
+                )
 
-        # annotation data
+        # bounding box
         if self.bounding_box:
-            if isinstance(self.bounding_box, dict):
-                self.bounding_box = BoundingBox(**self.bounding_box)
             if not isinstance(self.bounding_box, BoundingBox):
-                raise SchemaTypeError(
-                    "bounding_box", BoundingBox, self.bounding_box
+                raise TypeError(
+                    "Attribute `bounding_box` should have type `velour.schemas.BoundingBox`."
                 )
+
+        # polygon
         if self.polygon:
-            if isinstance(self.polygon, dict):
-                self.polygon = Polygon(**self.polygon)
             if not isinstance(self.polygon, Polygon):
-                raise SchemaTypeError("polygon", Polygon, self.polygon)
-        if self.multipolygon:
-            if isinstance(self.multipolygon, dict):
-                self.multipolygon = MultiPolygon(**self.multipolygon)
-            if not isinstance(self.multipolygon, MultiPolygon):
-                raise SchemaTypeError(
-                    "multipolygon", MultiPolygon, self.multipolygon
+                raise TypeError(
+                    "Attribute `polygon` should have type `velour.schemas.Polygon`."
                 )
+
+        # multipolygon
+        if self.multipolygon:
+            if not isinstance(self.multipolygon, MultiPolygon):
+                raise TypeError(
+                    "Attribute `multipolygon` should have type `velour.schemas.MultiPolygon`."
+                )
+
+        # raster
         if self.raster:
-            if isinstance(self.raster, dict):
-                self.raster = Raster(**self.raster)
             if not isinstance(self.raster, Raster):
-                raise SchemaTypeError("raster", Raster, self.raster)
+                raise TypeError(
+                    "Attribute `raster` should have type `velour.schemas.Raster`."
+                )
 
         # metadata
-        validate_metadata(self._metadata)
-        self._metadata = load_metadata(self._metadata)
+        if not isinstance(self.metadata, dict):
+            raise TypeError("Attribute `metadata` should have type `dict`.")
+        validate_metadata(self.metadata)
+        self.metadata = load_metadata(self.metadata)
 
-    def __str__(self):
-        return str(self.dict())
-
-    def dict(self) -> dict:
+    @classmethod
+    def from_dict(cls, resp: dict):
         """
-        Defines how a `Annotation` object is transformed into a dictionary.
+        Deserializes a `velour.Annotation` from a dictionary.
+
+        Parameters
+        ----------
+        resp : dict
+            The serialized annotation.
+
+        Returns
+        -------
+        velour.Annotation
+            The deserialized Annotation object.
+        """
+
+        task_type = TaskType(resp["task_type"])
+        labels = [Label.from_dict(label) for label in resp["labels"]]
+        metadata = load_metadata(resp["metadata"])
+
+        bounding_box = None
+        polygon = None
+        multipolygon = None
+        raster = None
+        if "bounding_box" in resp:
+            bounding_box = (
+                BoundingBox(**resp["bounding_box"])
+                if resp["bounding_box"]
+                else None
+            )
+        if "polygon" in resp:
+            polygon = Polygon(**resp["polygon"]) if resp["polygon"] else None
+        if "multipolygon" in resp:
+            multipolygon = (
+                MultiPolygon(**resp["multipolygon"])
+                if resp["multipolygon"]
+                else None
+            )
+        if "raster" in resp:
+            raster = Raster(**resp["raster"]) if resp["raster"] else None
+
+        return cls(
+            task_type=task_type,
+            labels=labels,
+            metadata=metadata,
+            bounding_box=bounding_box,
+            polygon=polygon,
+            multipolygon=multipolygon,
+            raster=raster,
+        )
+
+    def to_dict(self) -> dict:
+        """
+        Defines how a `velour.Annotation` object is serialized into a dictionary.
 
         Returns
         ----------
@@ -436,8 +437,8 @@ class Annotation:
         """
         return {
             "task_type": self.task_type.value,
-            "labels": [label.dict() for label in self.labels],
-            "metadata": dump_metadata(self._metadata),
+            "labels": [label.to_dict() for label in self.labels],
+            "metadata": dump_metadata(self.metadata),
             "bounding_box": asdict(self.bounding_box)
             if self.bounding_box
             else None,
@@ -446,8 +447,10 @@ class Annotation:
             if self.multipolygon
             else None,
             "raster": asdict(self.raster) if self.raster else None,
-            "jsonb": self.jsonb,
         }
+
+    def __str__(self):
+        return str(self.to_dict())
 
     def __eq__(self, other):
         """
@@ -467,46 +470,7 @@ class Annotation:
             raise TypeError(
                 f"Expected type `{type(Annotation)}`, got `{other}`"
             )
-        return self.dict() == other.dict()
-
-
-def _validate_annotations(
-    annotations: Sequence[Union[Dict, Annotation]]
-) -> Sequence[Annotation]:
-    """
-    Validates and transforms a sequence of annotation inputs to a sequence of
-    Annotation objects.
-
-    Parameters
-    ----------
-    annotations : Sequence[Union[Dict, Annotation]]
-        A sequence of dictionaries or Annotation objects to be validated and
-        transformed.
-
-    Returns
-    ----------
-    Sequence[Annotation]
-        A sequence of validated Annotation objects.
-
-    Raises
-    ------
-    SchemaTypeError
-        If 'annotations' is not a list or if any element in 'annotations' cannot
-        be parsed into an Annotation object.
-    """
-    if not isinstance(annotations, list):
-        raise SchemaTypeError("annotations", List[Annotation], annotations)
-    validated_annotations = []
-    for idx, annotation in enumerate(annotations):
-        if isinstance(annotation, dict):
-            kw_annotation = annotation.copy()
-            task_type = kw_annotation.pop("task_type")
-            labels = kw_annotation.pop("labels")
-            annotation = Annotation(task_type, labels, **kw_annotation)
-        if not isinstance(annotation, Annotation):
-            raise SchemaTypeError("annotation", Annotation, annotations[idx])
-        validated_annotations.append(annotation)
-    return validated_annotations
+        return self.to_dict() == other.to_dict()
 
 
 class GroundTruth:
@@ -521,7 +485,7 @@ class GroundTruth:
         The list of `Annotations` associated with the `GroundTruth`.
     """
 
-    def __init__(self, datum: Datum, annotations: Sequence[Annotation]):
+    def __init__(self, datum: Datum, annotations: List[Annotation]):
         self.datum = datum
         self.annotations = annotations
         self._validate()
@@ -532,14 +496,25 @@ class GroundTruth:
         """
         # validate datum
         if not isinstance(self.datum, Datum):
-            raise SchemaTypeError("datum", Datum, self.datum)
+            raise TypeError(
+                "Attribute `datum` should have type `velour.Datum`."
+            )
 
-        self.annotations = _validate_annotations(self.annotations)
+        # validate annotations
+        if not isinstance(self.annotations, list):
+            raise TypeError(
+                "Attribute `datum` should have type `List[velour.Annotation]`."
+            )
+        for idx, annotation in enumerate(self.annotations):
+            if not isinstance(annotation, Annotation):
+                raise TypeError(
+                    f"Attribute `annotations[{idx}]` should have type `velour.Annotation`."
+                )
 
-    def __str__(self):
-        return str(self.dict())
-
-    def dict(self) -> dict:
+    def to_dict(
+        self,
+        dataset_name: Optional[str] = None,
+    ) -> dict:
         """
         Defines how a `GroundTruth` is transformed into a dictionary.
 
@@ -549,17 +524,31 @@ class GroundTruth:
             A dictionary of the `GroundTruth's` attributes.
         """
         return {
-            "datum": self.datum.dict(),
+            "datum": self.datum.to_dict(dataset_name),
             "annotations": [
-                annotation.dict() for annotation in self.annotations
+                annotation.to_dict() for annotation in self.annotations
             ],
         }
 
     @classmethod
-    def _from_dict(cls, d: Dict) -> "GroundTruth":
+    def from_dict(cls, resp: dict):
+        expected_keys = {"datum", "annotations"}
+        if set(resp.keys()) != expected_keys:
+            raise ValueError(
+                f"Expected keys `{expected_keys}`, received `{set(resp.keys())}`."
+            )
+        if not isinstance(resp["annotations"], list):
+            raise TypeError("Expected `annotations` member to be a `list`.")
         return cls(
-            datum=Datum._from_dict(d["datum"]), annotations=d["annotations"]
+            datum=Datum.from_dict(resp["datum"]),
+            annotations=[
+                Annotation.from_dict(annotation)
+                for annotation in resp["annotations"]
+            ],
         )
+
+    def __str__(self):
+        return str(self.to_dict(None))
 
     def __eq__(self, other):
         """
@@ -579,7 +568,7 @@ class GroundTruth:
             raise TypeError(
                 f"Expected type `{type(GroundTruth)}`, got `{other}`"
             )
-        return self.dict() == other.dict()
+        return self.to_dict() == other.to_dict()
 
 
 class Prediction:
@@ -599,14 +588,13 @@ class Prediction:
         The score assigned to the `Prediction`.
     """
 
-    score: ClassVar[DeclarativeMapper]
-
     def __init__(
-        self, datum: Datum, annotations: Optional[List[Annotation]] = None
+        self,
+        datum: Datum,
+        annotations: List[Annotation],
     ):
         self.datum = datum
-        self.annotations = _validate_annotations(annotations or [])
-        self._model_name = None
+        self.annotations = annotations
         self._validate()
 
     def _validate(self):
@@ -614,10 +602,21 @@ class Prediction:
         Validate the inputs of the `Prediction`.
         """
         # validate datum
-        if isinstance(self.datum, dict):
-            self.datum = Datum(**self.datum)
         if not isinstance(self.datum, Datum):
-            raise SchemaTypeError("datum", Datum, self.datum)
+            raise TypeError(
+                "Attribute `datum` should have type `velour.Datum`."
+            )
+
+        # validate annotations
+        if not isinstance(self.annotations, list):
+            raise TypeError(
+                "Attribute `datum` should have type `List[velour.Annotation]`."
+            )
+        for idx, annotation in enumerate(self.annotations):
+            if not isinstance(annotation, Annotation):
+                raise TypeError(
+                    f"Attribute `annotations[{idx}]` should have type `velour.Annotation`."
+                )
 
         # TaskType-specific validations
         for annotation in self.annotations:
@@ -633,7 +632,7 @@ class Prediction:
             if annotation.task_type == TaskType.CLASSIFICATION:
                 label_keys_to_sum = {}
                 for scored_label in annotation.labels:
-                    label_key = scored_label._key
+                    label_key = scored_label.key
                     if label_key not in label_keys_to_sum:
                         label_keys_to_sum[label_key] = 0.0
                     label_keys_to_sum[label_key] += scored_label.score
@@ -645,10 +644,11 @@ class Prediction:
                             f" for label key {k} got scores summing to {total_score}."
                         )
 
-    def __str__(self):
-        return str(self.dict())
-
-    def dict(self) -> dict:
+    def to_dict(
+        self,
+        dataset_name: Optional[str] = None,
+        model_name: Optional[str] = None,
+    ) -> dict:
         """
         Defines how a `Prediction` is transformed into a dictionary.
 
@@ -658,21 +658,32 @@ class Prediction:
             A dictionary of the `Prediction's` attributes.
         """
         return {
-            "datum": self.datum.dict(),
-            "model_name": self._model_name,
+            "datum": self.datum.to_dict(dataset_name=dataset_name),
+            "model_name": model_name,
             "annotations": [
-                annotation.dict() for annotation in self.annotations
+                annotation.to_dict() for annotation in self.annotations
             ],
         }
 
     @classmethod
-    def _from_dict(cls, d: Dict) -> "Prediction":
-        pred = cls(
-            datum=Datum._from_dict(d["datum"]),
-            annotations=d["annotations"],
+    def from_dict(cls, resp: dict):
+        expected_keys = {"datum", "annotations", "model_name"}
+        if set(resp.keys()) != expected_keys:
+            raise ValueError(
+                f"Expected keys `{expected_keys}`, received `{set(resp.keys())}`."
+            )
+        if not isinstance(resp["annotations"], list):
+            raise TypeError("Expected `annotations` member to be a `list`.")
+        return cls(
+            datum=Datum.from_dict(resp["datum"]),
+            annotations=[
+                Annotation.from_dict(annotation)
+                for annotation in resp["annotations"]
+            ],
         )
-        pred._set_model_name(d["model_name"])
-        return pred
+
+    def __str__(self):
+        return str(self.to_dict(None, None))
 
     def __eq__(self, other):
         """
@@ -692,35 +703,7 @@ class Prediction:
             raise TypeError(
                 f"Expected type `{type(Prediction)}`, got `{other}`"
             )
-        return self.dict() == other.dict()
-
-    def _set_model_name(self, model: Union["Model", str]):
-        self._model_name = model._name if isinstance(model, Model) else model
-
-
-@dataclass
-class DatasetSummary:
-    """Dataclass for storing dataset summary information"""
-
-    name: str
-    num_datums: int
-    num_annotations: int
-    num_bounding_boxes: int
-    num_polygons: int
-    num_groundtruth_multipolygons: int
-    num_rasters: int
-    task_types: List[TaskType]
-    labels: List[Label]
-    datum_metadata: List[MetadataType]
-    annotation_metadata: List[MetadataType]
-
-    def __post_init__(self):
-        for i, tt in enumerate(self.task_types):
-            if isinstance(tt, str):
-                self.task_types[i] = TaskType(tt)
-        for i, label in enumerate(self.labels):
-            if isinstance(label, dict):
-                self.labels[i] = Label(**label)
+        return self.to_dict(None, None) == other.to_dict(None, None)
 
 
 class Evaluation:
@@ -748,7 +731,7 @@ class Evaluation:
             A list of confusion matrix dictionaries returned by the job.
         """
         self.client = client
-        self._from_dict(**kwargs)
+        self.update(**kwargs)
 
     def dict(self):
         return {
@@ -762,7 +745,7 @@ class Evaluation:
             **self.kwargs,
         }
 
-    def _from_dict(
+    def update(
         self,
         *_,
         id: int,
@@ -817,7 +800,7 @@ class Evaluation:
         response = self.client.get_evaluations(evaluation_ids=[self.id])
         if not response:
             raise ClientException("Not Found")
-        self._from_dict(**response[0])
+        self.update(**response[0])
         return self.status
 
     def wait_for_completion(
@@ -894,6 +877,31 @@ class Evaluation:
         return df
 
 
+@dataclass
+class DatasetSummary:
+    """Dataclass for storing dataset summary information"""
+
+    name: str
+    num_datums: int
+    num_annotations: int
+    num_bounding_boxes: int
+    num_polygons: int
+    num_groundtruth_multipolygons: int
+    num_rasters: int
+    task_types: List[TaskType]
+    labels: List[Label]
+    datum_metadata: List[MetadataType]
+    annotation_metadata: List[MetadataType]
+
+    def __post_init__(self):
+        for i, tt in enumerate(self.task_types):
+            if isinstance(tt, str):
+                self.task_types[i] = TaskType(tt)
+        for i, label in enumerate(self.labels):
+            if isinstance(label, dict):
+                self.labels[i] = Label(**label)
+
+
 class Dataset:
     """
     A class describing a given dataset.
@@ -912,27 +920,16 @@ class Dataset:
         A GeoJSON-style dictionary describing the geospatial coordinates of the dataset.
     """
 
-    name: ClassVar[DeclarativeMapper]
-    metadata: ClassVar[DeclarativeMapper]
-    geospatial: ClassVar[DeclarativeMapper]
+    name = StringProperty("dataset_names")
+    metadata = DictionaryProperty("dataset_metadata")
+    geospatial = GeospatialProperty("dataset_geospatial")
 
     def __init__(
         self,
         client: Client,
         name: str,
         metadata: Optional[MetadataType] = None,
-        geospatial: Optional[
-            Dict[
-                str,
-                Union[
-                    List[List[List[List[Union[float, int]]]]],
-                    List[List[List[Union[float, int]]]],
-                    List[Union[float, int]],
-                    str,
-                ],
-            ]
-        ] = None,
-        id: Optional[int] = None,
+        geospatial: Optional[GeoJSONType] = None,
         delete_if_exists: bool = False,
     ):
         """
@@ -948,49 +945,33 @@ class Dataset:
             A dictionary of metadata that describes the dataset.
         geospatial : dict
             A GeoJSON-style dictionary describing the geospatial coordinates of the dataset.
-        id : int, optional
-            SQL index for model.
         delete_if_exists : bool, default=False
             Deletes any existing dataset with the same name.
         """
-        self._name = name
-        self._metadata = metadata
-        self._geospatial = geospatial
-        self.id = id
-        self._validate_coretype()
+        self.name = name
+        self.metadata = metadata if metadata else {}
+        self.geospatial = geospatial
+
+        # validation
+        if not isinstance(self.name, str):
+            raise TypeError("`name` should be of type `str`")
+        validate_metadata(self.metadata)
+        self.metadata = load_metadata(self.metadata)
 
         if delete_if_exists and client.get_dataset(name) is not None:
             client.delete_dataset(name, timeout=30)
 
         if delete_if_exists or client.get_dataset(name) is None:
-            client.create_dataset(self.dict())
+            client.create_dataset(self.to_dict())
 
         for k, v in (client.get_dataset(name) or {}).items():
             setattr(self, k, v)
         self.client = client
 
-    def _validate_coretype(self):
-        """
-        Validates the arguments used to create a `Dataset` object.
-        """
-        # validation
-        if not isinstance(self._name, str):
-            raise TypeError("`name` should be of type `str`")
-        if not isinstance(self.id, int) and self.id is not None:
-            raise TypeError("`id` should be of type `int`")
-        if not self._metadata:
-            self._metadata = {}
-        if not self._geospatial:
-            self._geospatial = {}
-
-        # metadata
-        validate_metadata(self._metadata)
-        self._metadata = load_metadata(self._metadata)
-
     def __str__(self):
-        return str(self.dict())
+        return str(self.to_dict())
 
-    def dict(self) -> dict:
+    def to_dict(self, id: Optional[int] = None) -> dict:
         """
         Defines how a `Dataset` object is transformed into a dictionary.
 
@@ -1000,10 +981,10 @@ class Dataset:
             A dictionary of the `Dataset's` attributes.
         """
         return {
-            "id": self.id,
-            "name": self._name,
-            "metadata": dump_metadata(self._metadata or {}),
-            "geospatial": self._geospatial if self._geospatial else None,
+            "id": id,
+            "name": self.name,
+            "metadata": dump_metadata(self.metadata),
+            "geospatial": self.geospatial,
         }
 
     def add_groundtruth(
@@ -1023,13 +1004,12 @@ class Dataset:
 
         if len(groundtruth.annotations) == 0:
             warnings.warn(
-                f"GroundTruth for datum with uid `{groundtruth.datum._uid}` contains no annotations."
+                f"GroundTruth for datum with uid `{groundtruth.datum.uid}` contains no annotations."
             )
 
-        groundtruth.datum._set_dataset_name(self._name)
         self.client._requests_post_rel_host(
             "groundtruths",
-            json=groundtruth.dict(),
+            json=groundtruth.to_dict(self.name),
         )
 
     def get_groundtruth(self, datum: Union[Datum, str]) -> GroundTruth:
@@ -1047,11 +1027,11 @@ class Dataset:
         GroundTruth
             The requested `GroundTruth`.
         """
-        uid = datum._uid if isinstance(datum, Datum) else datum
+        uid = datum.uid if isinstance(datum, Datum) else datum
         resp = self.client._requests_get_rel_host(
-            f"groundtruths/dataset/{self._name}/datum/{uid}"
+            f"groundtruths/dataset/{self.name}/datum/{uid}"
         ).json()
-        return GroundTruth._from_dict(resp)
+        return GroundTruth.from_dict(resp)
 
     def get_labels(
         self,
@@ -1065,7 +1045,7 @@ class Dataset:
             A list of `Labels` associated with the dataset.
         """
         labels = self.client._requests_get_rel_host(
-            f"labels/dataset/{self._name}"
+            f"labels/dataset/{self.name}"
         ).json()
 
         return [
@@ -1082,9 +1062,9 @@ class Dataset:
             A list of `Datums` associated with the dataset.
         """
         datums = self.client.get_datums(
-            filters=Filter(dataset_names=[self._name])
+            filters=Filter(dataset_names=[self.name])
         )
-        return [Datum._from_dict(datum) for datum in datums]
+        return [Datum.from_dict(datum) for datum in datums]
 
     def get_evaluations(
         self,
@@ -1099,7 +1079,7 @@ class Dataset:
         """
         return [
             Evaluation(self.client, **resp)
-            for resp in self.client.get_evaluations(datasets=self._name)
+            for resp in self.client.get_evaluations(datasets=self.name)
         ]
 
     def get_summary(self) -> DatasetSummary:
@@ -1136,7 +1116,7 @@ class Dataset:
             groundtruth_annotation_metadata: list of the unique metadata dictionaries in the dataset that are
             associated to annotations
         """
-        resp = self.client.get_dataset_summary(self._name)
+        resp = self.client.get_dataset_summary(self.name)
         return DatasetSummary(**resp)
 
     def finalize(
@@ -1146,7 +1126,7 @@ class Dataset:
         Finalize the `Dataset` object such that new `GroundTruths` cannot be added to it.
         """
         return self.client._requests_put_rel_host(
-            f"datasets/{self._name}/finalize"
+            f"datasets/{self.name}/finalize"
         )
 
     def delete(
@@ -1176,27 +1156,16 @@ class Model:
         A GeoJSON-style dictionary describing the geospatial coordinates of the model.
     """
 
-    name: ClassVar[DeclarativeMapper]
-    metadata: ClassVar[DeclarativeMapper]
-    geospatial: ClassVar[DeclarativeMapper]
+    name = StringProperty("model_names")
+    metadata = DictionaryProperty("model_metadata")
+    geospatial = GeospatialProperty("model_geospatial")
 
     def __init__(
         self,
         client: Client,
         name: str,
         metadata: Optional[MetadataType] = None,
-        geospatial: Optional[
-            Dict[
-                str,
-                Union[
-                    List[List[List[List[Union[float, int]]]]],
-                    List[List[List[Union[float, int]]]],
-                    List[Union[float, int]],
-                    str,
-                ],
-            ]
-        ] = None,
-        id: Optional[int] = None,
+        geospatial: Optional[GeoJSONType] = None,
         delete_if_exists: bool = False,
     ):
         """
@@ -1217,43 +1186,30 @@ class Model:
         delete_if_exists : bool, default=False
             Deletes any existing model with the same name.
         """
-        self._name = name
-        self._metadata = metadata
-        self._geospatial = geospatial
-        self.id = id
-        self._validate()
+        self.name = name
+        self.metadata = metadata if metadata else {}
+        self.geospatial = geospatial
+
+        # validation
+        if not isinstance(self.name, str):
+            raise TypeError("`name` should be of type `str`")
+        validate_metadata(self.metadata)
+        self.metadata = load_metadata(self.metadata)
 
         if delete_if_exists and client.get_model(name) is not None:
             client.delete_model(name, timeout=30)
 
         if delete_if_exists or client.get_model(name) is None:
-            client.create_model(self.dict())
+            client.create_model(self.to_dict())
 
         for k, v in (client.get_model(name) or {}).items():
             setattr(self, k, v)
         self.client = client
 
-    def _validate(self):
-        """
-        Validates the arguments used to create a `Model` object.
-        """
-        if not isinstance(self._name, str):
-            raise TypeError("`name` should be of type `str`")
-        if not isinstance(self.id, int) and self.id is not None:
-            raise TypeError("`id` should be of type `int`")
-        if not self._metadata:
-            self._metadata = {}
-        if not self._geospatial:
-            self._geospatial = {}
-
-        # metadata
-        validate_metadata(self._metadata)
-        self._metadata = load_metadata(self._metadata)
-
     def __str__(self):
-        return str(self.dict())
+        return str(self.to_dict())
 
-    def dict(self) -> dict:
+    def to_dict(self, id: Optional[int] = None) -> dict:
         """
         Defines how a `Model` object is transformed into a dictionary.
 
@@ -1263,10 +1219,10 @@ class Model:
             A dictionary of the `Model's` attributes.
         """
         return {
-            "id": self.id,
-            "name": self._name,
-            "metadata": dump_metadata(self._metadata or {}),
-            "geospatial": self._geospatial if self._geospatial else None,
+            "id": id,
+            "name": self.name,
+            "metadata": dump_metadata(self.metadata),
+            "geospatial": self.geospatial,
         }
 
     def add_prediction(
@@ -1287,34 +1243,44 @@ class Model:
 
         if len(prediction.annotations) == 0:
             warnings.warn(
-                f"Prediction for datum with uid `{prediction.datum._uid}` contains no annotations."
+                f"Prediction for datum with uid `{prediction.datum.uid}` contains no annotations."
             )
 
-        prediction._set_model_name(self._name)
-        # should check not already set or set by equal to dataset?
-        if prediction.datum._dataset_name is None:
-            prediction.datum._set_dataset_name(dataset)
-        else:
-            dataset_name = (
-                dataset._name if isinstance(dataset, Dataset) else dataset
-            )
-            if prediction.datum._dataset_name != dataset_name:
-                raise RuntimeError(
-                    f"Datum with uid `{prediction.datum._uid}` is already linked to the dataset `{prediction.datum._dataset_name}`"
-                    f" but you are trying to add a prediction on it to the dataset `{dataset_name}`"
-                )
-
+        dataset_name = (
+            dataset.name if isinstance(dataset, Dataset) else dataset
+        )
         return self.client._requests_post_rel_host(
             "predictions",
-            json=prediction.dict(),
+            json=prediction.to_dict(
+                dataset_name=dataset_name, model_name=self.name
+            ),
         )
+
+    def get_prediction(self, dataset: Dataset, datum: Datum) -> Prediction:
+        """
+        Fetch a particular prediction.
+
+        Parameters
+        ----------
+        datum : Union[Datum, str]
+            The `Datum` or datum UID of the prediction to return.
+
+        Returns
+        ----------
+        Prediction
+            The requested `Prediction`.
+        """
+        resp = self.client._requests_get_rel_host(
+            f"predictions/model/{self.name}/dataset/{dataset.name}/datum/{datum.uid}",
+        ).json()
+        return Prediction.from_dict(resp)
 
     def finalize_inferences(self, dataset: "Dataset") -> None:
         """
         Finalize the `Model` object such that new `Predictions` cannot be added to it.
         """
         return self.client._requests_put_rel_host(
-            f"models/{self._name}/datasets/{dataset._name}/finalize"
+            f"models/{self.name}/datasets/{dataset.name}/finalize"
         ).json()
 
     def _format_filters(
@@ -1327,9 +1293,9 @@ class Model:
         # get list of dataset names
         dataset_names_from_obj = []
         if isinstance(datasets, list):
-            dataset_names_from_obj = [dataset._name for dataset in datasets]
+            dataset_names_from_obj = [dataset.name for dataset in datasets]
         elif isinstance(datasets, Dataset):
-            dataset_names_from_obj = [datasets._name]
+            dataset_names_from_obj = [datasets.name]
 
         # format filtering object
         if isinstance(filters, Sequence) or filters is None:
@@ -1418,7 +1384,7 @@ class Model:
         datum_filter = self._format_filters(datasets, filters)
 
         evaluation = EvaluationRequest(
-            model_names=self._name,
+            model_names=self.name,
             datum_filter=datum_filter,
             parameters=EvaluationParameters(
                 task_type=TaskType.CLASSIFICATION,
@@ -1490,7 +1456,7 @@ class Model:
         datum_filter = self._format_filters(datasets, filters)
 
         evaluation = EvaluationRequest(
-            model_names=self._name,
+            model_names=self.name,
             datum_filter=datum_filter,
             parameters=parameters,
         )
@@ -1539,7 +1505,7 @@ class Model:
 
         # create evaluation job
         evaluation = EvaluationRequest(
-            model_names=self._name,
+            model_names=self.name,
             datum_filter=datum_filter,
             parameters=EvaluationParameters(
                 task_type=TaskType.SEGMENTATION,
@@ -1570,25 +1536,6 @@ class Model:
         """
         self.client._requests_delete_rel_host(f"models/{self.name}").json()
 
-    def get_prediction(self, dataset: Dataset, datum: Datum) -> Prediction:
-        """
-        Fetch a particular prediction.
-
-        Parameters
-        ----------
-        datum : Union[Datum, str]
-            The `Datum` or datum UID of the prediction to return.
-
-        Returns
-        ----------
-        Prediction
-            The requested `Prediction`.
-        """
-        resp = self.client._requests_get_rel_host(
-            f"predictions/model/{self._name}/dataset/{dataset._name}/datum/{datum._uid}",
-        ).json()
-        return Prediction._from_dict(resp)
-
     def get_labels(
         self,
     ) -> List[Label]:
@@ -1601,7 +1548,7 @@ class Model:
             A list of `Labels` associated with the model.
         """
         labels = self.client._requests_get_rel_host(
-            f"labels/model/{self._name}"
+            f"labels/model/{self.name}"
         ).json()
 
         return [
@@ -1621,83 +1568,5 @@ class Model:
         """
         return [
             Evaluation(self.client, **resp)
-            for resp in self.client.get_evaluations(models=self._name)
+            for resp in self.client.get_evaluations(models=self.name)
         ]
-
-
-# Assign all DeclarativeMappers such that these coretypes can be used as filters.
-# Label
-Label.id = DeclarativeMapper("label_ids", int)
-Label.key = DeclarativeMapper("label_keys", str)
-Label.label = DeclarativeMapper("labels", Label)
-
-# Datum
-Datum.uid = DeclarativeMapper("datum_uids", str)
-Datum.metadata = DeclarativeMapper(
-    "datum_metadata",
-    Union[int, float, str, datetime.datetime, datetime.date, datetime.time],
-)
-Datum.geospatial = DeclarativeMapper(
-    "datum_geospatial",
-    Union[
-        List[List[List[List[Union[float, int]]]]],
-        List[List[List[Union[float, int]]]],
-        List[Union[float, int]],
-        str,
-    ],
-)
-
-# Prediction
-Prediction.score = DeclarativeMapper("prediction_scores", Union[int, float])
-
-# Dataset
-Dataset.name = DeclarativeMapper("dataset_names", str)
-Dataset.metadata = DeclarativeMapper(
-    "dataset_metadata",
-    Union[int, float, str, datetime.datetime, datetime.date, datetime.time],
-)
-Dataset.geospatial = DeclarativeMapper(
-    "dataset_geospatial",
-    Union[
-        List[List[List[List[Union[float, int]]]]],
-        List[List[List[Union[float, int]]]],
-        List[Union[float, int]],
-        str,
-    ],
-)
-
-# Annotation
-Annotation.task = DeclarativeMapper("task_types", TaskType)
-Annotation.type = DeclarativeMapper("annotation_types", AnnotationType)
-Annotation.geometric_area = DeclarativeMapper(
-    "annotation_geometric_area", float
-)
-Annotation.metadata = DeclarativeMapper(
-    "annotation_metadata",
-    Union[int, float, str, datetime.datetime, datetime.date, datetime.time],
-)
-Annotation.geospatial = DeclarativeMapper(
-    "annotation_geospatial",
-    Union[
-        List[List[List[List[Union[float, int]]]]],
-        List[List[List[Union[float, int]]]],
-        List[Union[float, int]],
-        str,
-    ],
-)
-
-# Model
-Model.name = DeclarativeMapper("model_names", str)
-Model.metadata = DeclarativeMapper(
-    "model_metadata",
-    Union[int, float, str, datetime.datetime, datetime.date, datetime.time],
-)
-Model.geospatial = DeclarativeMapper(
-    "model_geospatial",
-    Union[
-        List[List[List[List[Union[float, int]]]]],
-        List[List[List[Union[float, int]]]],
-        List[Union[float, int]],
-        str,
-    ],
-)

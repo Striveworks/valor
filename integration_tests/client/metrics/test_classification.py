@@ -262,8 +262,8 @@ def test_evaluate_tabular_clf(
 
     assert isinstance(model.id, int)
     assert model.name == model_name
-    assert model._metadata is not None
-    assert len(model._metadata) == 0
+    assert model.metadata is not None
+    assert len(model.metadata) == 0
 
     # check evaluation
     results = model.get_evaluations()
