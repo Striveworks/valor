@@ -270,8 +270,8 @@ def generate_prediction_data(
     datums = dataset.get_datums()
 
     for datum in datums:
-        height = cast(int, datum._metadata["height"])
-        width = cast(int, datum._metadata["width"])
+        height = cast(int, datum.metadata["height"])
+        width = cast(int, datum.metadata["width"])
         prediction = _generate_prediction(
             datum=datum,
             height=int(height),

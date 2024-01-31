@@ -1,533 +1,103 @@
 import datetime
-from typing import Dict, List, Union
+from dataclasses import asdict
 
-import pytest
-
-from velour import Label
-from velour.schemas.filters import (
-    DeclarativeMapper,
-    Filter,
-    GeospatialFilter,
-    ValueFilter,
-)
+from velour import Annotation, Dataset, Datum, Filter, Label, Model
+from velour.enums import TaskType
 
 
-def test_labels_filter():
-    f = Filter.create(
-        [
-            Label.label.in_(
-                [Label(key="k1", value="v1"), Label(key="k2", value="v2")]
-            )
-        ]
-    )
-    assert f.labels is not None
-    assert {"k1": "v1"} in f.labels
-    assert {"k2": "v2"} in f.labels
+def test_empty_filter():
+    f = asdict(Filter())
+    assert f == {
+        "dataset_names": None,
+        "dataset_metadata": None,
+        "dataset_geospatial": None,
+        "model_names": None,
+        "model_metadata": None,
+        "model_geospatial": None,
+        "datum_uids": None,
+        "datum_metadata": None,
+        "datum_geospatial": None,
+        "task_types": None,
+        "annotation_types": None,
+        "annotation_geometric_area": None,
+        "annotation_metadata": None,
+        "annotation_geospatial": None,
+        "prediction_scores": None,
+        "labels": None,
+        "label_ids": None,
+        "label_keys": None,
+    }
 
 
-def test_value_filter():
-    def _test_numeric(value):
-        for operator in ["==", "!=", ">=", "<=", ">", "<"]:
-            ValueFilter(value=value, operator=operator)
-        for operator in ["inside", "outside", "intersect", "@"]:
-            with pytest.raises(ValueError):
-                ValueFilter(value=value, operator=operator)
-
-    def _test_string_or_bool(value):
-        for operator in ["==", "!="]:
-            ValueFilter(value=value, operator=operator)
-        for operator in [
-            ">=",
-            "<=",
-            ">",
-            "<",
-            "inside",
-            "outside",
-            "intersect",
-            "@",
-        ]:
-            with pytest.raises(ValueError):
-                ValueFilter(value=value, operator=operator)
-
-    # int
-    _test_numeric(int(123))
-
-    # float
-    _test_numeric(float(123))
-
-    # string
-    _test_string_or_bool(str(123))
-
-    # bool
-    _test_string_or_bool(True)
-
-    # datetime.datetime
-    _test_numeric(datetime.datetime.now())
-
-    # datetime.date
-    _test_numeric(datetime.date.today())
-
-    # datetime.time
-    _test_numeric(datetime.datetime.now().time())
-
-    # datetime.timedelta
-    _test_numeric(datetime.timedelta(days=1))
-
-    # unsupported type
-    class SomeUnsupportedType:
-        pass
-
-    with pytest.raises(TypeError):
-        _test_numeric(SomeUnsupportedType())
-    with pytest.raises(TypeError):
-        _test_string_or_bool(SomeUnsupportedType())
-
-
-def test_geospatial_schema():
-    GeospatialFilter(value={}, operator="intersect")
-    GeospatialFilter(value={}, operator="inside")
-    GeospatialFilter(value={}, operator="outside")
-
-    for operator in ["==", "!=", ">=", "<=", ">", "<", "@"]:
-        with pytest.raises(ValueError):
-            GeospatialFilter(value={}, operator=operator)
-
-
-def test_declarative_mapper_string():
-    expression = (
-        DeclarativeMapper(
-            name="name",
-            object_type=str,
-        )
-        == "value"
-    )
-    assert expression.name == "name"
-    assert expression.operator == "=="
-    assert expression.value == "value"
-    assert expression.key is None
-
-    expression = (
-        DeclarativeMapper(name="name", object_type=str, key="key") != "value"
-    )
-    assert expression.name == "name"
-    assert expression.operator == "!="
-    assert expression.value == "value"
-    assert expression.key == "key"
-
-    expression = DeclarativeMapper(
-        name="name",
-        object_type=str,
-    ).in_(["value1", "value2"])
-    assert expression[0].name == "name"
-    assert expression[0].operator == "=="
-    assert expression[0].value == "value1"
-    assert expression[0].key is None
-    assert expression[1].name == "name"
-    assert expression[1].operator == "=="
-    assert expression[1].value == "value2"
-    assert expression[1].key is None
-
-    with pytest.raises(TypeError):
-        expression = (
-            DeclarativeMapper(
-                name="name",
-                object_type=str,
-            )
-            >= "value"
-        )
-    with pytest.raises(TypeError):
-        expression = (
-            DeclarativeMapper(
-                name="name",
-                object_type=str,
-            )
-            <= "value"
-        )
-    with pytest.raises(TypeError):
-        expression = (
-            DeclarativeMapper(
-                name="name",
-                object_type=str,
-            )
-            > "value"
-        )
-    with pytest.raises(TypeError):
-        expression = (
-            DeclarativeMapper(
-                name="name",
-                object_type=str,
-            )
-            < "value"
-        )
-    with pytest.raises(TypeError):
-        expression = DeclarativeMapper(
-            name="name",
-            object_type=str,
-        ).intersect(
-            "value"  # type: ignore
-        )
-    with pytest.raises(TypeError):
-        expression = DeclarativeMapper(
-            name="name",
-            object_type=str,
-        ).inside("value")
-    with pytest.raises(TypeError):
-        expression = DeclarativeMapper(
-            name="name",
-            object_type=str,
-        ).outside("value")
-
-
-def test_declarative_mapper_int():
-    expression = (
-        DeclarativeMapper(
-            name="name",
-            object_type=int,
-        )
-        == 1234
-    )
-    assert expression.name == "name"
-    assert expression.operator == "=="
-    assert expression.value == 1234
-    assert expression.key is None
-
-    expression = (
-        DeclarativeMapper(name="name", object_type=int, key="key") != 1234
-    )
-    assert expression.name == "name"
-    assert expression.operator == "!="
-    assert expression.value == 1234
-    assert expression.key == "key"
-
-    expression = DeclarativeMapper(
-        name="name",
-        object_type=int,
-    ).in_([123, 987])
-    assert expression[0].name == "name"
-    assert expression[0].operator == "=="
-    assert expression[0].value == 123
-    assert expression[0].key is None
-    assert expression[1].name == "name"
-    assert expression[1].operator == "=="
-    assert expression[1].value == 987
-    assert expression[1].key is None
-
-    expression = (
-        DeclarativeMapper(
-            name="name",
-            object_type=int,
-        )
-        >= 1234
-    )
-    assert expression.name == "name"
-    assert expression.operator == ">="
-    assert expression.value == 1234
-    assert expression.key is None
-
-    expression = (
-        DeclarativeMapper(
-            name="name",
-            object_type=int,
-        )
-        <= 1234
-    )
-    assert expression.name == "name"
-    assert expression.operator == "<="
-    assert expression.value == 1234
-    assert expression.key is None
-
-    expression = (
-        DeclarativeMapper(
-            name="name",
-            object_type=int,
-        )
-        > 1234
-    )
-    assert expression.name == "name"
-    assert expression.operator == ">"
-    assert expression.value == 1234
-    assert expression.key is None
-
-    expression = (
-        DeclarativeMapper(
-            name="name",
-            object_type=int,
-        )
-        < 1234
-    )
-    assert expression.name == "name"
-    assert expression.operator == "<"
-    assert expression.value == 1234
-    assert expression.key is None
-
-    with pytest.raises(TypeError):
-        expression = DeclarativeMapper(
-            name="name",
-            object_type=int,
-        ).intersect(
-            1234  # type: ignore
-        )
-    with pytest.raises(TypeError):
-        expression = DeclarativeMapper(
-            name="name",
-            object_type=int,
-        ).inside(1234)
-    with pytest.raises(TypeError):
-        expression = DeclarativeMapper(
-            name="name",
-            object_type=int,
-        ).outside(1234)
-
-
-def test_declarative_mapper_float():
-    expression = (
-        DeclarativeMapper(
-            name="name",
-            object_type=float,
-        )
-        == 12.34
-    )
-    assert expression.name == "name"
-    assert expression.operator == "=="
-    assert expression.value == 12.34
-    assert expression.key is None
-
-    expression = (
-        DeclarativeMapper(name="name", object_type=float, key="key") != 12.34
-    )
-    assert expression.name == "name"
-    assert expression.operator == "!="
-    assert expression.value == 12.34
-    assert expression.key == "key"
-
-    expression = DeclarativeMapper(
-        name="name",
-        object_type=float,
-    ).in_([12.3, 98.7])
-    assert expression[0].name == "name"
-    assert expression[0].operator == "=="
-    assert expression[0].value == 12.3
-    assert expression[0].key is None
-    assert expression[1].name == "name"
-    assert expression[1].operator == "=="
-    assert expression[1].value == 98.7
-    assert expression[1].key is None
-
-    expression = (
-        DeclarativeMapper(
-            name="name",
-            object_type=float,
-        )
-        >= 12.34
-    )
-    assert expression.name == "name"
-    assert expression.operator == ">="
-    assert expression.value == 12.34
-    assert expression.key is None
-
-    expression = (
-        DeclarativeMapper(
-            name="name",
-            object_type=float,
-        )
-        <= 12.34
-    )
-    assert expression.name == "name"
-    assert expression.operator == "<="
-    assert expression.value == 12.34
-    assert expression.key is None
-
-    expression = (
-        DeclarativeMapper(
-            name="name",
-            object_type=float,
-        )
-        > 12.34
-    )
-    assert expression.name == "name"
-    assert expression.operator == ">"
-    assert expression.value == 12.34
-    assert expression.key is None
-
-    expression = (
-        DeclarativeMapper(
-            name="name",
-            object_type=float,
-        )
-        < 12.34
-    )
-    assert expression.name == "name"
-    assert expression.operator == "<"
-    assert expression.value == 12.34
-    assert expression.key is None
-
-    with pytest.raises(TypeError):
-        expression = DeclarativeMapper(
-            name="name",
-            object_type=float,
-        ).intersect(
-            12.34  # type: ignore
-        )
-    with pytest.raises(TypeError):
-        expression = DeclarativeMapper(
-            name="name",
-            object_type=float,
-        ).inside(12.34)
-    with pytest.raises(TypeError):
-        expression = DeclarativeMapper(
-            name="name",
-            object_type=float,
-        ).outside(12.34)
-
-
-def test_declarative_mapper_datetime_objects():
-    def _test_datetime_object(datetime_object):
-        # positive
-        assert (
-            DeclarativeMapper(
-                name="some_name",
-                object_type=type(datetime_object),
-            )
-            == datetime_object
-        )
-        assert (
-            DeclarativeMapper(
-                name="some_name",
-                object_type=type(datetime_object),
-            )
-            != datetime_object
-        )
-        assert (
-            DeclarativeMapper(
-                name="some_name",
-                object_type=type(datetime_object),
-            )
-            >= datetime_object
-        )
-        assert (
-            DeclarativeMapper(
-                name="some_name",
-                object_type=type(datetime_object),
-            )
-            <= datetime_object
-        )
-        assert (
-            DeclarativeMapper(
-                name="some_name",
-                object_type=type(datetime_object),
-            )
-            > datetime_object
-        )
-        assert (
-            DeclarativeMapper(
-                name="some_name",
-                object_type=type(datetime_object),
-            )
-            < datetime_object
-        )
-        assert DeclarativeMapper(
-            name="some_name",
-            object_type=type(datetime_object),
-        ).in_([datetime_object, datetime_object])
-
-        # negative
-        with pytest.raises(TypeError):
-            DeclarativeMapper(
-                name="some_name",
-                object_type=type(datetime_object),
-            ).intersect(datetime_object)
-        with pytest.raises(TypeError):
-            DeclarativeMapper(
-                name="some_name",
-                object_type=type(datetime_object),
-            ).inside(datetime_object)
-        with pytest.raises(TypeError):
-            DeclarativeMapper(
-                name="some_name",
-                object_type=type(datetime_object),
-            ).outside(datetime_object)
-
-    _test_datetime_object(datetime.datetime.now())
-    _test_datetime_object(datetime.date.today())
-    _test_datetime_object(datetime.datetime.now().time())
-    _test_datetime_object(datetime.timedelta(days=1))
-
-
-def test_declarative_mapper_geospatial():
-    point = {"type": "Point", "coordinates": [30.0, 10.0]}
-    object_type = Dict[
-        str,
-        Union[
-            List[List[List[List[Union[float, int]]]]],
-            List[List[List[Union[float, int]]]],
-            List[Union[float, int]],
-            str,
-        ],
+def test_declarative_filtering():
+    filters = [
+        Dataset.name == "dataset1",
+        Model.name == "model1",
+        Datum.uid == "uid1",
+        Label.key == "k1",
+        Label.score > 0.5,
+        Label.score < 0.75,
+        Annotation.labels == Label(key="k2", value="v2"),
+        Annotation.task_type.in_(
+            [TaskType.CLASSIFICATION, TaskType.DETECTION]
+        ),
+        # geometry filters
+        Annotation.raster.is_none(),
+        Annotation.multipolygon.is_none(),
+        Annotation.polygon.is_none(),
+        Annotation.bounding_box.exists(),
+        Annotation.bounding_box.area >= 1000,
+        Annotation.bounding_box.area <= 5000,
+        # metadata filters
+        Dataset.metadata["arbitrary_numeric_key"] >= 10,
+        Dataset.metadata["arbitrary_numeric_key"] < 20,
+        Model.metadata["arbitrary_str_key"] == "arbitrary value",
+        Datum.metadata["arbitrary_datetime_key"] >= datetime.timedelta(days=1),
+        Datum.metadata["arbitrary_datetime_key"] <= datetime.timedelta(days=2),
+        Annotation.metadata["myKey"] == "helloworld",
+        # geospatial filters
     ]
 
-    DeclarativeMapper(
-        name="name",
-        object_type=object_type,
-    ).intersect(point)
-    DeclarativeMapper(
-        name="name",
-        object_type=object_type,
-    ).inside(point)
-    DeclarativeMapper(
-        name="name",
-        object_type=object_type,
-    ).outside(point)
-
-    with pytest.raises(TypeError):
-        assert (
-            DeclarativeMapper(
-                name="name",
-                object_type=object_type,
-            )
-            == point
-        )
-    with pytest.raises(TypeError):
-        assert (
-            DeclarativeMapper(
-                name="name",
-                object_type=object_type,
-            )
-            != point
-        )
-    with pytest.raises(TypeError):
-        assert (
-            DeclarativeMapper(
-                name="name",
-                object_type=object_type,
-            )
-            >= point
-        )
-    with pytest.raises(TypeError):
-        assert (
-            DeclarativeMapper(
-                name="name",
-                object_type=object_type,
-            )
-            <= point
-        )
-    with pytest.raises(TypeError):
-        assert (
-            DeclarativeMapper(
-                name="name",
-                object_type=object_type,
-            )
-            > point
-        )
-    with pytest.raises(TypeError):
-        assert (
-            DeclarativeMapper(
-                name="name",
-                object_type=object_type,
-            )
-            < point
-        )
-    with pytest.raises(TypeError):
-        DeclarativeMapper(
-            name="name",
-            object_type=object_type,
-        ).in_([point, point])
+    f = asdict(Filter.create(filters))
+    assert f == {
+        "dataset_names": ["dataset1"],
+        "dataset_metadata": {
+            "arbitrary_numeric_key": [
+                {"value": 10, "operator": ">="},
+                {"value": 20, "operator": "<"},
+            ]
+        },
+        "dataset_geospatial": None,
+        "model_names": ["model1"],
+        "model_metadata": {
+            "arbitrary_str_key": [
+                {"value": "arbitrary value", "operator": "=="}
+            ]
+        },
+        "model_geospatial": None,
+        "datum_uids": ["uid1"],
+        "datum_metadata": {
+            "arbitrary_datetime_key": [
+                {"value": {"duration": "86400.0"}, "operator": ">="},
+                {"value": {"duration": "172800.0"}, "operator": "<="},
+            ]
+        },
+        "datum_geospatial": None,
+        "task_types": ["classification", "object-detection"],
+        "annotation_types": ["box"],
+        "annotation_geometric_area": [
+            {"value": 1000, "operator": ">="},
+            {"value": 5000, "operator": "<="},
+        ],
+        "annotation_metadata": {
+            "myKey": [{"value": "helloworld", "operator": "=="}]
+        },
+        "annotation_geospatial": None,
+        "prediction_scores": [
+            {"value": 0.5, "operator": ">"},
+            {"value": 0.75, "operator": "<"},
+        ],
+        "labels": [{"k2": "v2"}],
+        "label_ids": None,
+        "label_keys": ["k1"],
+    }
