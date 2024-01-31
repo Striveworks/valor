@@ -78,7 +78,7 @@ def _count_true_positives(
     return int(ret)
 
 
-def _count_groundtruths(db: Session, groundtruth_subquery) -> int:
+def _count_groundtruths(db: Session, groundtruth_subquery: Select) -> int:
     """Total number of groundtruth pixels for the given dataset and label"""
     ret = db.scalar(
         select(func.sum(ST_Count(models.Annotation.raster)))
