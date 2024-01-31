@@ -24,7 +24,7 @@ def bearer_token() -> str:
 
     resp = requests.post(url, data=data)
 
-    return resp.json()["access_token"]
+    return resp
 
 
 def test_auth_client_pos(bearer_token: str):
