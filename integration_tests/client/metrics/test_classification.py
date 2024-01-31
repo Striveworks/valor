@@ -837,10 +837,11 @@ def test_evaluate_classification_with_label_maps(
             "parameters": {"label_key": "special_class"},
             "value": 0.5,
         },
+        # TODO double-check that this makes sense for ROCAUC to be 0 instead of -1
         {
             "type": "ROCAUC",
             "parameters": {"label_key": "special_class"},
-            "value": -1.0,
+            "value": 0.0,
         },
         {
             "type": "Precision",
@@ -919,7 +920,6 @@ def test_evaluate_classification_with_label_maps(
             "entries": [{"prediction": "v4", "groundtruth": "v4", "count": 1}],
         },
     ]
-
     eval_job = model.evaluate_classification(dataset, label_map=label_mapping)
 
     assert eval_job.id

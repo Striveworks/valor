@@ -1489,9 +1489,7 @@ class Model:
             datum_filter=datum_filter,
             parameters=parameters,
         )
-        import pdb
 
-        pdb.set_trace()
         resp = self.client.evaluate(evaluation)
         if len(resp) != 1:
             raise RuntimeError
