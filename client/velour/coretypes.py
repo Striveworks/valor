@@ -9,14 +9,13 @@ import numpy as np
 
 from velour.client import Client, ClientException
 from velour.enums import AnnotationType, EvaluationStatus, TaskType
-from velour.schemas.constraints import (
-    DictionaryMapper,
-    GeometryMapper,
-    GeospatialMapper,
-    LabelMapper,
-    NumericMapper,
-    StringMapper,
-    _DeclarativeMapper,
+from velour.schemas.properties import (
+    DictionaryProperty,
+    GeometryProperty,
+    GeospatialProperty,
+    LabelProperty,
+    NumericProperty,
+    StringProperty,
 )
 from velour.schemas.evaluation import EvaluationParameters, EvaluationRequest
 from velour.schemas.filters import Filter, FilterExpressionsType
@@ -49,9 +48,9 @@ class Label:
         Declarative mappers used to create filters.
     """
 
-    value = NumericMapper("value")
-    key = StringMapper("key", filter_name="label_keys")
-    score = NumericMapper("score", filter_name="prediction_scores")
+    value = NumericProperty("value")
+    key = StringProperty("key", filter_name="label_keys")
+    score = NumericProperty("score", filter_name="prediction_scores")
 
     def __init__(
         self,
@@ -154,9 +153,9 @@ class Datum:
         A GeoJSON-style dictionary describing the geospatial coordinates of the `Datum`.
     """
 
-    uid = StringMapper("uid", filter_name="datum_uids")
-    metadata = DictionaryMapper("metadata", filter_name="datum_metadata")
-    geospatial = GeospatialMapper("geospatial", filter_name="datum_geospatial")
+    uid = StringProperty("uid", filter_name="datum_uids")
+    metadata = DictionaryProperty("metadata", filter_name="datum_metadata")
+    geospatial = GeospatialProperty("geospatial", filter_name="datum_geospatial")
 
     def __init__(
         self,
@@ -300,13 +299,13 @@ class Annotation:
     ... )
     """
 
-    task_type=StringMapper("task_types")
-    labels=LabelMapper("labels")
-    metadata=DictionaryMapper("annotation_metadata")
-    bounding_box=GeometryMapper("annotation_bounding_box")
-    polygon=GeometryMapper("annotation_polygon")
-    multipolygon=GeometryMapper("annotation_multipolygon")
-    raster=GeometryMapper("annotation_raster")
+    task_type=StringProperty("task_types")
+    labels=LabelProperty("labels")
+    metadata=DictionaryProperty("annotation_metadata")
+    bounding_box=GeometryProperty("annotation_bounding_box")
+    polygon=GeometryProperty("annotation_polygon")
+    multipolygon=GeometryProperty("annotation_multipolygon")
+    raster=GeometryProperty("annotation_raster")
 
     def __init__(
         self,
@@ -404,13 +403,25 @@ class Annotation:
         multipolygon = None
         raster = None
         if "bounding_box" in resp:
-            bounding_box = BoundingBox(**resp["bounding_box"])
+            bounding_box = (
+                BoundingBox(**resp["bounding_box"])
+                if resp["bounding_box"] else None
+            )
         if "polygon" in resp:
-            polygon = Polygon(**resp["polygon"])
+            polygon = (
+                Polygon(**resp["polygon"])
+                if resp["polygon"] else None
+            )
         if "multipolygon" in resp:
-            multipolygon = MultiPolygon(**resp["multipolygon"])
+            multipolygon = (
+                MultiPolygon(**resp["multipolygon"])
+                if resp["multipolygon"] else None
+            )
         if "raster" in resp:
-            raster = Raster(**resp["raster"])
+            raster = (
+                Raster(**resp["raster"])
+                if resp["raster"] else None
+            )
 
         return cls(
             task_type=task_type,
@@ -916,9 +927,9 @@ class Dataset:
     geospatial :  dict
         A GeoJSON-style dictionary describing the geospatial coordinates of the dataset.
     """
-    name = StringMapper("dataset_names")
-    metadata = DictionaryMapper("dataset_metadata")
-    geospatial = GeospatialMapper("dataset_geospatial")
+    name = StringProperty("dataset_names")
+    metadata = DictionaryProperty("dataset_metadata")
+    geospatial = GeospatialProperty("dataset_geospatial")
 
     def __init__(
         self,
@@ -1151,9 +1162,9 @@ class Model:
     geospatial :  dict
         A GeoJSON-style dictionary describing the geospatial coordinates of the model.
     """
-    name = StringMapper("model_names")
-    metadata = DictionaryMapper("model_metadata")
-    geospatial = GeospatialMapper("model_geospatial")
+    name = StringProperty("model_names")
+    metadata = DictionaryProperty("model_metadata")
+    geospatial = GeospatialProperty("model_geospatial")
 
     def __init__(
         self,
@@ -1184,6 +1195,12 @@ class Model:
         self.name = name
         self.metadata = metadata if metadata else {}
         self.geospatial = geospatial
+        
+        # validation
+        if not isinstance(self.name, str):
+            raise TypeError("`name` should be of type `str`")
+        validate_metadata(self.metadata)
+        self.metadata = load_metadata(self.metadata)
 
         if delete_if_exists and client.get_model(name) is not None:
             client.delete_model(name, timeout=30)

@@ -15,18 +15,6 @@ from velour.schemas.geometry import (
 from velour.types import GeometryType, GeoJSONType, MetadataType, MetadataValueType
 
 
-def getter_factory(name: str, type_: type):
-    def _getter(self) -> type_:
-        return getattr(self, name)
-    return _getter
-
-
-def setter_factory(name: str, type_: type):
-    def _setter(self, __value: type_):
-        setattr(self, name, __value)
-    return _setter
-
-
 @dataclass
 class Constraint:
     """
@@ -63,7 +51,7 @@ class BinaryExpression:
     key: Union[str, None] = None
 
 
-class _DeclarativeMapper(property):
+class _DeclarativeMapper:
     """
     Base class for constructing mapping objects.
 
@@ -79,32 +67,12 @@ class _DeclarativeMapper(property):
 
     def __init__(
         self,
-        property_name: str,
-        filter_name: Optional[str] = None,
+        name: str,
         key: Optional[str] = None,
-        prefix: str = "_",
     ):
-        self.property_name = property_name
-        self.attribute_name = f"{prefix}{property_name}"
-        self.filter_name = filter_name if filter_name else property_name
+        self.filter_name = name
         self.key = key
         self.valid_operators = {}
-
-        # set up `property`
-        fget = lambda _ : self
-        fset = None
-        if not self.key:
-            fset = lambda instance, value : self.__convert_to_value(instance, value)
-        super().__init__(fget=fget, fset=fset)
-
-    def __convert_to_value(self, instance, value: Any):
-        fget = getter_factory(self.attribute_name, type_=self._type())
-        fset = setter_factory(self.attribute_name, type_=self._type())
-        super().__init__(fget=fget, fset=fset)
-        setattr(instance, self.attribute_name, value)
-
-    def _type(self) -> type:
-        return Any
 
     def _valid_operators(self) -> Set[str]:
         """
@@ -274,8 +242,6 @@ class BoolMapper(_EquatableMapper):
     key : str, optional
         An optional key used for object retrieval.
     """
-    def _type(self) -> type:
-        return bool
 
     def _validate(self, value: Any, operator: str) -> None:
         if not isinstance(value, bool):
@@ -297,8 +263,6 @@ class StringMapper(_EquatableMapper):
     key : str, optional
         An optional key used for object retrieval.
     """
-    def _type(self) -> type:
-        return str
     
     def _validate(self, value: Any, operator: str) -> None:
         if not isinstance(value, str):
@@ -320,8 +284,6 @@ class NumericMapper(_QuantifiableMapper):
     key : str, optional
         An optional key used for object retrieval.
     """
-    def _type(self) -> type:
-        return Union[int, float, np.floating]
     
     def _validate(self, value: Any, operator: str) -> None:
         if type(value) not in [int, float, np.floating]:
@@ -343,9 +305,7 @@ class DatetimeMapper(_QuantifiableMapper):
     key : str, optional
         An optional key used for object retrieval.
     """
-    def _type(self) -> type:
-        return Union[datetime.datetime, datetime.date, datetime.time, datetime.timedelta]
-    
+
     def _modify(self, value: Any, operator: str) -> Any:
         vtype = type(value)
         if vtype is datetime.datetime:
@@ -376,6 +336,10 @@ class _SpatialMapper(_NullableMapper):
         An optional key used for object retrieval.
     """
 
+    @property
+    def area(self):
+        return NumericMapper(name=f"{self.filter_name}_area")
+
     def _valid_operators(self) -> Set[str]:
         valid_operators = {"contains", "inside", "outside", "intersect"}
         return super()._valid_operators().union(valid_operators)
@@ -391,10 +355,6 @@ class _SpatialMapper(_NullableMapper):
 
     def outside(self, value: Any) -> BinaryExpression:
         return self._create_expression(value, "outside")
-    
-    @property
-    def area(self):
-        return NumericMapper(self.property_name, f"{self.filter_name}_area")
 
 
 class GeometryMapper(_SpatialMapper):
@@ -410,8 +370,6 @@ class GeometryMapper(_SpatialMapper):
     key : str, optional
         An optional key used for object retrieval.
     """
-    def _type(self) -> type:
-        return Union[BoundingBox, Polygon, MultiPolygon, Raster]
     
     def _validate(self, value: GeometryType, operator: str):
 
@@ -447,8 +405,6 @@ class GeospatialMapper(_SpatialMapper):
     key : str, optional
         An optional key used for object retrieval.
     """
-    def _type(self) -> type:
-        return GeoJSONType
 
     def _validate(self, value: GeometryType, operator: str):
 
@@ -480,8 +436,6 @@ class _DictionaryValueMapper(_NullableMapper, _QuantifiableMapper):
     key : str, optional
         An optional key used for object retrieval.
     """
-    def _type(self) -> type:
-        return MetadataValueType
 
     def _create_expression(self, value: Any, operator: str) -> Any:
         if self.key is None:
@@ -502,15 +456,15 @@ class _DictionaryValueMapper(_NullableMapper, _QuantifiableMapper):
         # direct value to appropriate mapper (if it exists)
         vtype = type(value)
         if vtype is bool:
-            return BoolMapper(self.property_name, filter_name=self.filter_name, key=self.key)._create_expression(
+            return BoolMapper(name=self.filter_name, key=self.key)._create_expression(
                 value, operator
             )
         if vtype is str:
-            return StringMapper(self.property_name, self.filter_name, self.key)._create_expression(
+            return StringMapper(name=self.filter_name, key=self.key)._create_expression(
                 value, operator
             )
         elif vtype in [int, float]:
-            return NumericMapper(self.property_name, self.filter_name, self.key)._create_expression(
+            return NumericMapper(name=self.filter_name, key=self.key)._create_expression(
                 value, operator
             )
         elif vtype in [
@@ -519,7 +473,7 @@ class _DictionaryValueMapper(_NullableMapper, _QuantifiableMapper):
             datetime.time,
             datetime.timedelta,
         ]:
-            return DatetimeMapper(self.property_name, self.filter_name, self.key)._create_expression(
+            return DatetimeMapper(name=self.filter_name, key=self.key)._create_expression(
                 value, operator
             )
         else:
@@ -546,11 +500,9 @@ class DictionaryMapper(_DeclarativeMapper):
     >>> DictionaryMapper("name")["some_key"] == True
     BinaryExpression(name='name', constraint=Constraint(value=True, operator='=='), key='some_key')
     """
-    def _type(self) -> type:
-        return MetadataType
 
     def __getitem__(self, key: str):
-        return _DictionaryValueMapper(self.property_name, self.filter_name, key)
+        return _DictionaryValueMapper(name=self.filter_name, key=key)
 
     def _create_expression(self, value: Any, operator: str) -> None:
         raise NotImplementedError(
@@ -590,36 +542,3 @@ class LabelMapper(_EquatableMapper):
             raise ValueError("Label value must be of type `str`.")
 
         return {value["key"]: value["value"]}
-
-if __name__ == "__main__":
-    class Test:
-        score = DictionaryMapper("score", filter_name="prediction_scores")
-
-        def __init__(self, score):
-            self.score = score
-            
-    # expr = [
-    #     Test.score > 1,
-    #     Test.score > 1.0,
-    #     Test.score > 1,
-    # ]     
-    # # print(expr)
-
-    print(Test.score._type())
-
-    print(Test.score["some_key"] == 123)
-    print(Test.score["some_key"].is_none())
-            
-    t = Test({"key":"k1", "value":"k2"})
-
-    print(t.score)
-
-    # expr = [
-    #     Test.score > 1,
-    #     Test.score > 1.0,
-    #     Test.score > 1,
-    # ]     
-    # print(expr)
-
-
-
