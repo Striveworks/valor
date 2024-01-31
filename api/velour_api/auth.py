@@ -23,13 +23,43 @@ class OptionalHTTPBearer(HTTPBearer):
 
 
 def authenticate_user(username: str, password: str) -> bool:
+    """
+    Authenticates a user with the given username and password.
+
+    Parameters
+    ----------
+    username : str
+        The username to authenticate.
+    password : str
+        The password to authenticate.
+
+    Returns
+    -------
+    bool
+        True if the username and password match those in `auth_settings`, False otherwise.
+    """
     return (
         username == auth_settings.USERNAME
         and password == auth_settings.PASSWORD
     )
 
 
-def create_token(data: dict, expires_delta: timedelta | None = None):
+def create_token(data: dict, expires_delta: timedelta | None = None) -> str:
+    """
+    Creates a JWT from the given data.
+
+    Parameters
+    ----------
+    data : dict
+        The data to encode in the token.
+    expires_delta : timedelta, optional
+        The amount of time until the token expires if None then defaults to 1 day
+
+    Returns
+    -------
+    str
+        The encoded JWT.
+    """
     to_encode = data.copy()
 
     expires_delta = expires_delta or timedelta(days=1)
