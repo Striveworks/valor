@@ -282,7 +282,7 @@ def get_disjoint_labels(
     db: Session,
     lhs: schemas.Filter,
     rhs: schemas.Filter,
-    label_map: LabelMapType = None,
+    label_map: LabelMapType | None = None,
 ) -> tuple[list[schemas.Label], list[schemas.Label]]:
     """
     Returns all unique labels that are not shared between both filters.
@@ -324,7 +324,7 @@ def get_disjoint_keys(
     db: Session,
     lhs: schemas.Filter,
     rhs: schemas.Filter,
-    label_map: LabelMapType = None,
+    label_map: LabelMapType | None = None,
 ) -> tuple[list[schemas.Label], list[schemas.Label]]:
     """
     Returns all unique label keys that are not shared between both predictions and groundtruths.

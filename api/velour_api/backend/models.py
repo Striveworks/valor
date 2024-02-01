@@ -8,7 +8,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
 from velour_api.backend.database import Base
-from velour_api.enums import TaskType
+from velour_api.enums import EvaluationStatus, TaskType
 
 
 class Label(Base):
@@ -201,7 +201,7 @@ class Evaluation(Base):
     model_name: Mapped[str] = mapped_column(nullable=False)
     datum_filter = mapped_column(JSONB, nullable=False)
     parameters = mapped_column(JSONB, nullable=False)
-    status: Mapped[str] = mapped_column(nullable=False)
+    status: Mapped[EvaluationStatus] = mapped_column(nullable=False)
     geo = mapped_column(Geography(), nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
 

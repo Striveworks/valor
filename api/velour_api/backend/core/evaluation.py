@@ -10,7 +10,7 @@ from velour_api.backend.ops import Query
 
 def _create_dataset_expr_from_list(
     dataset_names: list[str],
-) -> BinaryExpression:
+) -> BinaryExpression | None:
     """
     Creates a sqlalchemy or_ expression from a list of str.
 
@@ -38,12 +38,12 @@ def _create_dataset_expr_from_list(
                 models.Evaluation.datum_filter["dataset_names"].op("?")(name)
                 for name in dataset_names
             ]
-        )
+        )  # type: ignore
 
 
 def _create_model_expr_from_list(
     model_names: list[str],
-) -> BinaryExpression:
+) -> BinaryExpression | None:
     """
     Creates a sqlalchemy or_ expression from a list of str.
 
@@ -62,14 +62,14 @@ def _create_model_expr_from_list(
     if not model_names:
         return None
     elif len(model_names) == 1:
-        return models.Evaluation.model_name == model_names[0]
+        return models.Evaluation.model_name == model_names[0]  # type: ignore
     else:
         return or_(
             *[models.Evaluation.model_name == name for name in model_names]
-        )
+        )  # type: ignore
 
 
-def _create_eval_expr_from_list(ids: list[int]) -> BinaryExpression:
+def _create_eval_expr_from_list(ids: list[int]) -> BinaryExpression | None:
     """
     Creates a sqlalchemy or_ expression from a list of int.
 
@@ -88,9 +88,9 @@ def _create_eval_expr_from_list(ids: list[int]) -> BinaryExpression:
     if not ids:
         return None
     elif len(ids) == 1:
-        return models.Evaluation.id == ids[0]
+        return models.Evaluation.id == ids[0]  # type: ignore
     else:
-        return or_(*[models.Evaluation.id == id_ for id_ in ids])
+        return or_(*[models.Evaluation.id == id_ for id_ in ids])  # type: ignore
 
 
 def _create_bulk_expression(
@@ -135,7 +135,6 @@ def _convert_db_metric_to_pydantic_metric(
         value=metric.value,
         label=label,
         parameters=metric.parameters,
-        group=None,
     )
 
 
@@ -202,7 +201,7 @@ def _split_request(
 
     # 1.a - get all datasets, note this uses the unmodified filter
     datasets_to_evaluate = (
-        db.query(Query(models.Dataset).filter(job_request.datum_filter).any())
+        db.query(Query(models.Dataset).filter(job_request.datum_filter).any())  # type: ignore
         .distinct()
         .all()
     )
@@ -214,7 +213,7 @@ def _split_request(
     # 1.b - get all models, note this uses the unmodified filter
     model_filter = schemas.Filter(model_names=job_request.model_names)
     model_to_evaluate = (
-        db.query(Query(models.Model).filter(model_filter).any())
+        db.query(Query(models.Model).filter(model_filter).any())  # type: ignore
         .distinct()
         .all()
     )
@@ -672,7 +671,7 @@ def count_active_evaluations(
     evaluation_ids: list[int] | None = None,
     dataset_names: list[str] | None = None,
     model_names: list[str] | None = None,
-) -> int:
+) -> int | None:
     """
     Count the number of active evaluations.
 

@@ -85,7 +85,7 @@ class EvaluationRequest(BaseModel):
         Any parameters that are used to modify an evaluation method.
     """
 
-    model_names: str | list[str]
+    model_names: list[str]
     datum_filter: Filter
     parameters: EvaluationParameters
 
