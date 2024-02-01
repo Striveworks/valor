@@ -1,4 +1,5 @@
 from typing import Optional
+from unittest.mock import Mock
 
 import pytest
 
@@ -21,7 +22,6 @@ def test_to_dataframe():
         return dict(type=type, parameters=parameters, value=value, label=label)
 
     df = Evaluation(
-        client=None,  # type: ignore
         id=1,
         model_name="model1",
         datum_filter=schemas.Filter(
@@ -51,6 +51,7 @@ def test_to_dataframe():
             ),
         ],
         confusion_matrices=[],
+        connection=Mock(),
     ).to_dataframe()
 
     df_str = """                                        value

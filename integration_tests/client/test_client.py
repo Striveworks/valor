@@ -9,7 +9,6 @@ import pytest
 from velour import (
     Annotation,
     Client,
-    ClientException,
     Dataset,
     Datum,
     GroundTruth,
@@ -17,8 +16,9 @@ from velour import (
     Model,
     Prediction,
 )
-from velour.client import _validate_version
+from velour.client import connect
 from velour.enums import TaskType
+from velour.exceptions import ClientException
 from velour.schemas import Constraint, Filter
 
 
@@ -41,7 +41,7 @@ def created_dataset(
     dataset_name: str,
     dataset_labels: List[Label],
 ) -> Dataset:
-    dataset = Dataset(client=client, name=dataset_name)
+    dataset = Dataset.create(name=dataset_name)
     dataset.add_groundtruth(
         groundtruth=GroundTruth(
             datum=Datum(uid="1"),
@@ -64,7 +64,7 @@ def created_model(
     model_labels: List[Label],
     created_dataset: Dataset,
 ) -> Model:
-    model = Model(client=client, name=model_name)
+    model = Model.create(name=model_name)
     model.add_prediction(
         dataset=created_dataset,
         prediction=Prediction(
@@ -80,25 +80,24 @@ def created_model(
     return model
 
 
-def test_client():
+def test_connect():
     bad_url = "localhost:8000"
-
     with pytest.raises(ValueError):
-        Client(host=bad_url)
+        connect(host=bad_url, reconnect=True)
 
     bad_url2 = "http://localhost:8111"
-
     with pytest.raises(Exception):
-        Client(host=bad_url2)
+        connect(host=bad_url2, reconnect=True)
 
     good_url = "http://localhost:8000"
-
-    assert Client(host=good_url)
+    connect(host=good_url, reconnect=True)
 
 
 def test_version_mismatch_warning(caplog):
     # test client being older than api
-    _validate_version(client_version="1.1.1", api_version="9.9.9")
+    Client().conn._validate_version(
+        client_version="1.1.1", api_version="9.9.9"
+    )
 
     assert all(
         record.levelname == "WARNING" and "older" in record.message
@@ -108,7 +107,9 @@ def test_version_mismatch_warning(caplog):
     caplog.clear()
 
     # test client being newer than api
-    _validate_version(client_version="9.9.9", api_version="1.1.1")
+    Client().conn._validate_version(
+        client_version="9.9.9", api_version="1.1.1"
+    )
 
     assert all(
         record.levelname == "WARNING" and "newer" in record.message
@@ -118,7 +119,9 @@ def test_version_mismatch_warning(caplog):
     caplog.clear()
 
     # test client and API being the same version
-    _validate_version(client_version="1.1.1", api_version="1.1.1")
+    Client().conn._validate_version(
+        client_version="1.1.1", api_version="1.1.1"
+    )
 
     assert all(
         record.levelname == "DEBUG"
@@ -128,7 +131,7 @@ def test_version_mismatch_warning(caplog):
     caplog.clear()
 
     # test missing client or API versions
-    _validate_version(client_version=None, api_version="1.1.1")
+    Client().conn._validate_version(client_version=None, api_version="1.1.1")
 
     assert all(
         record.levelname == "WARNING"
@@ -137,7 +140,7 @@ def test_version_mismatch_warning(caplog):
     )
     caplog.clear()
 
-    _validate_version(client_version="1.1.1", api_version=None)
+    Client().conn._validate_version(client_version="1.1.1", api_version=None)
 
     assert all(
         record.levelname == "WARNING"
@@ -150,7 +153,9 @@ def test_version_mismatch_warning(caplog):
     # test that semantic versioning works correctly
     # client_version > api_version when comparing strings, but
     # client_version < api_version when comparing semantic versions
-    _validate_version(client_version="1.12.2", api_version="1.101.12")
+    Client().conn._validate_version(
+        client_version="1.12.2", api_version="1.101.12"
+    )
 
     assert all(
         record.levelname == "WARNING" and "older" in record.message
@@ -161,13 +166,15 @@ def test_version_mismatch_warning(caplog):
 
 def test__requests_wrapper(client: Client):
     with pytest.raises(ValueError):
-        client._requests_wrapper("get", "/datasets/fake_dataset/status")
+        client.conn._requests_wrapper("get", "/datasets/fake_dataset/status")
 
     with pytest.raises(ValueError):
-        client._requests_wrapper("bad_method", "datasets/fake_dataset/status")
+        client.conn._requests_wrapper(
+            "bad_method", "datasets/fake_dataset/status"
+        )
 
     with pytest.raises(ClientException):
-        client._requests_wrapper("get", "not_an_endpoint")
+        client.conn._requests_wrapper("get", "not_an_endpoint")
 
 
 def test_get_labels(
@@ -181,18 +188,18 @@ def test_get_labels(
     assert len(all_labels) == 10
 
     high_score_labels = client.get_labels(
-        filters=Filter(prediction_scores=[Constraint(value=0.5, operator=">")])
+        filter_=Filter(prediction_scores=[Constraint(value=0.5, operator=">")])
     )
     assert len(high_score_labels) == 5
     for label in high_score_labels:
-        assert int(label["value"]) % 2 == 1
+        assert int(label.value) % 2 == 1
 
     low_score_labels = client.get_labels(
-        filters=Filter(prediction_scores=[Constraint(value=0.5, operator="<")])
+        filter_=Filter(prediction_scores=[Constraint(value=0.5, operator="<")])
     )
     assert len(low_score_labels) == 5
     for label in low_score_labels:
-        assert int(label["value"]) % 2 == 0
+        assert int(label.value) % 2 == 0
 
 
 def test_get_datasets(
@@ -204,14 +211,14 @@ def test_get_datasets(
 ):
     all_datasets = client.get_datasets()
     assert len(all_datasets) == 1
-    assert all_datasets[0]["name"] == created_dataset.name
+    assert all_datasets[0].name == created_dataset.name
 
-    pos_query = client.get_datasets(filters=Filter(labels=[{"class0": "1"}]))
+    pos_query = client.get_datasets(filter_=Filter(labels=[{"class0": "1"}]))
     assert len(pos_query) == 1
-    assert pos_query[0]["name"] == created_dataset.name
+    assert pos_query[0].name == created_dataset.name
 
     neg_query = client.get_datasets(
-        filters=Filter(labels=[{"some_other_class": "1"}])
+        filter_=Filter(labels=[{"some_other_class": "1"}])
     )
     assert len(neg_query) == 0
 
@@ -225,14 +232,14 @@ def test_get_models(
 ):
     all_models = client.get_models()
     assert len(all_models) == 1
-    assert all_models[0]["name"] == created_model.name
+    assert all_models[0].name == created_model.name
 
-    pos_query = client.get_models(filters=Filter(labels=[{"class0": "1"}]))
+    pos_query = client.get_models(filter_=Filter(labels=[{"class0": "1"}]))
     assert len(pos_query) == 1
-    assert pos_query[0]["name"] == created_model.name
+    assert pos_query[0].name == created_model.name
 
     neg_query = client.get_models(
-        filters=Filter(labels=[{"some_other_class": "1"}])
+        filter_=Filter(labels=[{"some_other_class": "1"}])
     )
     assert len(neg_query) == 0
 
@@ -246,13 +253,13 @@ def test_get_datums(
 ):
     all_datums = client.get_datums()
     assert len(all_datums) == 1
-    assert all_datums[0]["uid"] == "1"
+    assert all_datums[0].uid == "1"
 
-    pos_query = client.get_datums(filters=Filter(labels=[{"class0": "1"}]))
+    pos_query = client.get_datums(filter_=Filter(labels=[{"class0": "1"}]))
     assert len(pos_query) == 1
-    assert pos_query[0]["uid"] == "1"
+    assert pos_query[0].uid == "1"
 
     neg_query = client.get_datums(
-        filters=Filter(labels=[{"some_other_class": "1"}])
+        filter_=Filter(labels=[{"some_other_class": "1"}])
     )
     assert len(neg_query) == 0

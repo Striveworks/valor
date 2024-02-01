@@ -268,7 +268,6 @@ def _create_groundtruths_from_coco_panoptic(
 
 
 def create_dataset_from_coco_panoptic(
-    client: Client,
     name: str = "coco2017-panoptic-semseg",
     destination: str = "./coco",
     coco_url: str = "http://images.cocodataset.org/annotations/panoptic_annotations_trainval2017.zip",
@@ -280,8 +279,6 @@ def create_dataset_from_coco_panoptic(
 
     Parameters
     ----------
-    client : Client
-        Velour client object.
     name : str
         Desired dataset name.
     destination : str
@@ -298,6 +295,7 @@ def create_dataset_from_coco_panoptic(
         Reset the Velour dataset before attempting creation.
 
     """
+    client = Client()
 
     # download and unzip coco dataset
     data = download_coco_panoptic(
@@ -317,7 +315,7 @@ def create_dataset_from_coco_panoptic(
         client.delete_dataset(name, timeout=5)
 
     if client.get_dataset(name) is not None:
-        dataset = Dataset(client, name)
+        dataset = Dataset.create(name)
     else:
         # create groundtruths
         gts = _create_groundtruths_from_coco_panoptic(
@@ -330,8 +328,7 @@ def create_dataset_from_coco_panoptic(
         metadata["licenses"] = str(data["licenses"])
 
         # create dataset
-        dataset = Dataset(
-            client,
+        dataset = Dataset.create(
             name,
             metadata=metadata,
         )

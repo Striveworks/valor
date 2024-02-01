@@ -7,9 +7,9 @@ from geoalchemy2.functions import ST_AsText, ST_Polygon
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from velour import Annotation, Dataset, GroundTruth, Label
-from velour.client import Client, ClientException
+from velour import Annotation, Client, Dataset, GroundTruth, Label
 from velour.enums import TaskType
+from velour.exceptions import ClientException
 from velour.metatypes import ImageMetadata
 from velour.schemas import (
     BasicPolygon,
@@ -33,7 +33,7 @@ def test_create_gt_detections_as_bbox_or_poly(
     xmin, ymin, xmax, ymax = 10, 25, 30, 50
     image = ImageMetadata(uid="uid", height=200, width=150).to_datum()
 
-    dataset = Dataset(client, dataset_name)
+    dataset = Dataset.create(dataset_name)
     gt = GroundTruth(
         datum=image,
         annotations=[
@@ -120,7 +120,7 @@ def test_create_gt_segs_as_polys_or_masks(
         )
     )
 
-    dataset = Dataset(client, dataset_name)
+    dataset = Dataset.create(dataset_name)
 
     # check we get an error for adding semantic segmentation with duplicate labels
     with pytest.raises(ClientException) as exc_info:
@@ -179,7 +179,7 @@ def test_add_groundtruth(
     dataset_name: str,
     gt_semantic_segs_error: GroundTruth,
 ):
-    dataset = Dataset(client, dataset_name)
+    dataset = Dataset.create(dataset_name)
 
     # make sure we get an error when passing a non-groundtruth object to add_groundtruth
     with pytest.raises(TypeError):
@@ -210,7 +210,7 @@ def test_get_groundtruth(
     gt_semantic_segs1_mask: GroundTruth,
     gt_semantic_segs2_mask: GroundTruth,
 ):
-    dataset = Dataset(client, dataset_name)
+    dataset = Dataset.create(dataset_name)
     dataset.add_groundtruth(gt_semantic_segs1_mask)
     dataset.add_groundtruth(gt_semantic_segs2_mask)
 

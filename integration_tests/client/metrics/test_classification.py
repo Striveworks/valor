@@ -7,6 +7,7 @@ import pytest
 
 from velour import (
     Annotation,
+    Client,
     Dataset,
     Datum,
     GroundTruth,
@@ -14,8 +15,8 @@ from velour import (
     Model,
     Prediction,
 )
-from velour.client import Client, ClientException
 from velour.enums import EvaluationStatus, TaskType
+from velour.exceptions import ClientException
 from velour.metatypes import ImageMetadata
 
 
@@ -26,12 +27,12 @@ def test_evaluate_image_clf(
     dataset_name: str,
     model_name: str,
 ):
-    dataset = Dataset(client, dataset_name)
+    dataset = Dataset.create(dataset_name)
     for gt in gt_clfs:
         dataset.add_groundtruth(gt)
     dataset.finalize()
 
-    model = Model(client, model_name)
+    model = Model.create(model_name)
     for pd in pred_clfs:
         model.add_prediction(dataset, pd)
     model.finalize_inferences(dataset)
@@ -97,7 +98,7 @@ def test_evaluate_tabular_clf(
 ):
     assert len(gt_clfs_tabular) == len(pred_clfs_tabular)
 
-    dataset = Dataset(client, name=dataset_name)
+    dataset = Dataset.create(name=dataset_name)
     gts = [
         GroundTruth(
             datum=Datum(uid=f"uid{i}"),
@@ -114,7 +115,7 @@ def test_evaluate_tabular_clf(
         dataset.add_groundtruth(gt)
 
     # test dataset finalization
-    model = Model(client, name=model_name)
+    model = Model.create(name=model_name)
     with pytest.raises(ClientException) as exc_info:
         model.evaluate_classification(dataset).wait_for_completion(timeout=30)
     assert "has not been finalized" in str(exc_info)
@@ -236,9 +237,9 @@ def test_evaluate_tabular_clf(
     bulk_evals = client.get_evaluations(datasets=dataset_name)
 
     assert len(bulk_evals) == 1
-    for metric in bulk_evals[0]["metrics"]:
+    for metric in bulk_evals[0].metrics:
         assert metric in expected_metrics
-    assert len(bulk_evals[0]["confusion_matrices"][0]) == len(
+    assert len(bulk_evals[0].confusion_matrices[0]) == len(
         expected_confusion_matrix
     )
 
@@ -260,7 +261,6 @@ def test_evaluate_tabular_clf(
     # check model methods
     model.get_labels()
 
-    assert isinstance(model.id, int)
     assert model.name == model_name
     assert model.metadata is not None
     assert len(model.metadata) == 0
@@ -312,7 +312,7 @@ def test_stratify_clf_metrics(
     assert len(gt_clfs_tabular) == len(pred_clfs_tabular)
 
     # create data and two-different defining groups of cohorts
-    dataset = Dataset(client, name=dataset_name)
+    dataset = Dataset.create(name=dataset_name)
     for i, label_value in enumerate(gt_clfs_tabular):
         gt = GroundTruth(
             datum=Datum(
@@ -333,7 +333,7 @@ def test_stratify_clf_metrics(
         dataset.add_groundtruth(gt)
     dataset.finalize()
 
-    model = Model(client, name=model_name)
+    model = Model.create(name=model_name)
     for i, pred in enumerate(pred_clfs_tabular):
         pd = Prediction(
             datum=Datum(
@@ -458,7 +458,7 @@ def test_stratify_clf_metrics_by_time(
     assert len(gt_clfs_tabular) == len(pred_clfs_tabular)
 
     # create data and two-different defining groups of cohorts
-    dataset = Dataset(client, name=dataset_name)
+    dataset = Dataset.create(name=dataset_name)
     for i, label_value in enumerate(gt_clfs_tabular):
         gt = GroundTruth(
             datum=Datum(
@@ -478,7 +478,7 @@ def test_stratify_clf_metrics_by_time(
         dataset.add_groundtruth(gt)
     dataset.finalize()
 
-    model = Model(client, name=model_name)
+    model = Model.create(name=model_name)
     for i, pred in enumerate(pred_clfs_tabular):
         pd = Prediction(
             datum=Datum(
@@ -669,12 +669,12 @@ def test_evaluate_classification_with_label_maps(
     dataset_name: str,
     model_name: str,
 ):
-    dataset = Dataset(client, dataset_name)
+    dataset = Dataset.create(dataset_name)
     for gt in gt_clfs_with_label_maps:
         dataset.add_groundtruth(gt)
     dataset.finalize()
 
-    model = Model(client, model_name)
+    model = Model.create(model_name)
     for pd in pred_clfs_with_label_maps:
         model.add_prediction(dataset, pd)
     model.finalize_inferences(dataset)
