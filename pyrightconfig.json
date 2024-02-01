@@ -1,7 +1,8 @@
 {
-    "ignore": [
-        "api",
-        "examples",
-        "integration_tests",
+    "exclude": [
+        "*"
+    ],
+    "include": [
+        "client/velour"
     ]
 }

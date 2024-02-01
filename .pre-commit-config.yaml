@@ -27,3 +27,8 @@ repos:
         # https://pre-commit.com/#top_level-default_language_version
         language_version: python3.10
         args: [--line-length=79]
+
+  - repo: https://github.com/RobertCraigie/pyright-python
+    rev: v1.1.349
+    hooks:
+    - id: pyright
