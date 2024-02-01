@@ -109,10 +109,10 @@ class _DeclarativeMapper:
         """Overload in subclasses to insert a value modification."""
         return value
 
-    def __eq__(self, value: Any) -> BinaryExpression:
+    def __eq__(self, value: Any) -> BinaryExpression:  # type: ignore
         raise AttributeError(f"'{type(self)}' object has no attribute '=='")
 
-    def __ne__(self, value: Any) -> BinaryExpression:
+    def __ne__(self, value: Any) -> BinaryExpression:  # type: ignore
         raise AttributeError(f"'{type(self)}' object has no attribute '!='")
 
     def __lt__(self, value: Any) -> BinaryExpression:

@@ -84,7 +84,7 @@ class Label:
     def from_dict(cls, resp):
         return cls(**resp)
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
         """
         Defines how `Labels` are compared to one another
 
@@ -112,7 +112,7 @@ class Label:
 
         # scores not equal
         if is_floating(self.score) and is_floating(other.score):
-            return np.isclose(self.score, other.score)
+            return bool(np.isclose(self.score, other.score))
 
         return False
 

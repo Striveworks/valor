@@ -11,5 +11,5 @@
         "docs",
         "migrations"
     ],
-    "reportIncompatibleMethodOverride" : "none",
+    "reportIncompatibleMethodOverride" : "error",
 }
