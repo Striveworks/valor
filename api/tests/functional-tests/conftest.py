@@ -4,7 +4,7 @@ from base64 import b64encode
 import numpy as np
 import pytest
 from PIL import Image
-from sqlalchemy import inspect, text
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from velour_api import crud, enums, schemas
@@ -12,8 +12,6 @@ from velour_api.backend import models
 from velour_api.backend.database import Base, create_db, make_session
 
 np.random.seed(29)
-dset_name = "test_dataset"
-model_name = "test_model"
 img1_size = (100, 200)
 img2_size = (80, 32)
 
@@ -32,22 +30,14 @@ def db():
     tablenames = [
         v.__tablename__ for v in classes if hasattr(v, "__tablename__")
     ]
-
     db = make_session()
-    inspector = inspect(db.connection())
-    for tablename in tablenames:
-        if inspector.has_table(tablename):
-            raise RuntimeError(
-                f"Table {tablename} already exists; "
-                "functional tests should be run with an empty db."
-            )
-
     create_db()
     yield db
 
-    # clear postgres
-    db.execute(text(f"DROP TABLE {', '.join(tablenames)} CASCADE;"))
-    db.commit()
+    # Clear table after test
+    for table in tablenames:
+        db.execute(text(f"TRUNCATE {table} CASCADE;"))
+        db.commit()
 
 
 @pytest.fixture
