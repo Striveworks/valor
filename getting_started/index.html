@@ -683,19 +683,19 @@
 <div class="md-content" data-md-component="content">
 <article class="md-content__inner md-typeset">
 <h1 id="getting-started">Getting Started</h1>
-<p>Velour is a centralized evaluation store which makes it easy to measure, explore, and rank model performance. For an overview of what Velour is and why it's important, please refer to our <a href="../">high-level overview</a>.</p>
+<p>Velour is a centralized evaluation store that makes it easy to measure, explore, and rank model performance. For an overview of what Velour is and why it's important, please refer to our <a href="../">high-level overview</a>.</p>
 <p>On this page, we'll describe how to get up and running with Velour.</p>
 <h2 id="1-install-docker">1. Install Docker</h2>
 <p>As a first step, be sure your machine has Docker installed. <a href="https://docs.docker.com/engine/install/">Click here</a> for basic installation instructions.</p>
 <h2 id="2-clone-the-repo-and-open-the-directory">2. Clone the repo and open the directory</h2>
-<p>Choose a file in which to store Velour, then run:</p>
+<p>Choose a file in which to store Velour, and then run:</p>
 <div class="language-shell highlight"><pre><span></span><code><span id="__span-0-1"><a href="#__codelineno-0-1" id="__codelineno-0-1" name="__codelineno-0-1"></a>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/striveworks/velour
 </span><span id="__span-0-2"><a href="#__codelineno-0-2" id="__codelineno-0-2" name="__codelineno-0-2"></a><span class="nb">cd</span><span class="w"> </span>velour
 </span></code></pre></div>
 <h2 id="3-start-services">3. Start services</h2>
 <p>There are multiple ways to start the Velour API service.</p>
 <h3 id="a-helm-chart">a. Helm Chart</h3>
-<p>When deploying Velour on k8s via Helm, you can use our pre-built chart using the following commands:</p>
+<p>When deploying Velour on Kubernetes via Helm, you can use our pre-built chart using the following commands:</p>
 <div class="language-shell highlight"><pre><span></span><code><span id="__span-1-1"><a href="#__codelineno-1-1" id="__codelineno-1-1" name="__codelineno-1-1"></a>helm<span class="w"> </span>repo<span class="w"> </span>add<span class="w"> </span>velour<span class="w"> </span>https://striveworks.github.io/velour-charts/
 </span><span id="__span-1-2"><a href="#__codelineno-1-2" id="__codelineno-1-2" name="__codelineno-1-2"></a>helm<span class="w"> </span>install<span class="w"> </span>velour<span class="w"> </span>velour/velour
 </span><span id="__span-1-3"><a href="#__codelineno-1-3" id="__codelineno-1-3" name="__codelineno-1-3"></a><span class="c1"># Velour should now be avaiable at velour.namespace.svc.local</span>
@@ -705,9 +705,9 @@
 <h3 id="c-manual-deployment">c. Manual Deployment</h3>
 <p>If you would prefer to build your own image or want a debug console for the backend, please see the deployment instructions in <a href="../contributing/">"Contributing to Velour"</a>.</p>
 <h2 id="4-use-velour">4. Use Velour</h2>
-<p>There's two ways to access Velour: by leveraging our Python client, or by calling our REST endpoints directly.</p>
+<p>There are two ways to access Velour: by leveraging our Python client, or by calling our REST endpoints directly.</p>
 <h3 id="4a-using-the-python-client">4a. Using the Python client</h3>
-<p>Let's walk-through a hypothetical example where we're trying to classify dogs and cats in a series of images. Note that all of the code below is pseudo-code for clarity; please see our <a href="https://github.com/Striveworks/velour/blob/main/examples/getting_started.ipynb">"Getting Started"</a> notebook for a working example.</p>
+<p>Let's walk through a hypothetical example where we're trying to classify dogs and cats in a series of images. Note that all of the code below is pseudo-code for clarity; please see our <a href="https://github.com/Striveworks/velour/blob/main/examples/getting_started.ipynb">"Getting Started"</a> notebook for a working example.</p>
 <h4 id="install-the-client">Install the client</h4>
 <p>To install the Python client, you can run:</p>
 <div class="language-shell highlight"><pre><span></span><code><span id="__span-2-1"><a href="#__codelineno-2-1" id="__codelineno-2-1" name="__codelineno-2-1"></a>pip<span class="w"> </span>install<span class="w"> </span>velour-client
@@ -750,8 +750,8 @@
 </span><span id="__span-5-9"><a href="#__codelineno-5-9" id="__codelineno-5-9" name="__codelineno-5-9"></a>    <span class="n">geospatial</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>  <span class="c1"># optional, define a GeoJSON</span>
 </span><span id="__span-5-10"><a href="#__codelineno-5-10" id="__codelineno-5-10" name="__codelineno-5-10"></a><span class="p">)</span>
 </span></code></pre></div>
-<p>Next, we add one or more <code>GroundTruths</code> to our <code>Dataset</code>. These objects help Velour understand "What is the correct classification for this particular image?".</p>
-<div class="language-py highlight"><pre><span></span><code><span id="__span-6-1"><a href="#__codelineno-6-1" id="__codelineno-6-1" name="__codelineno-6-1"></a><span class="c1"># We start with an example of what 3rd party annotations could look like.</span>
+<p>Next, we add one or more <code>GroundTruths</code> to our <code>Dataset</code>. These objects help Velour understand: "What is the correct classification for this particular image?".</p>
+<div class="language-py highlight"><pre><span></span><code><span id="__span-6-1"><a href="#__codelineno-6-1" id="__codelineno-6-1" name="__codelineno-6-1"></a><span class="c1"># We start with an example of what third-party annotations could look like.</span>
 </span><span id="__span-6-2"><a href="#__codelineno-6-2" id="__codelineno-6-2" name="__codelineno-6-2"></a><span class="c1"># img3.png contains a bounding box annotation with label "dog".</span>
 </span><span id="__span-6-3"><a href="#__codelineno-6-3" id="__codelineno-6-3" name="__codelineno-6-3"></a><span class="c1"># img4.png contains a bounding box annotation with label "cat"</span>
 </span><span id="__span-6-4"><a href="#__codelineno-6-4" id="__codelineno-6-4" name="__codelineno-6-4"></a><span class="c1"># img5.png contains no annotations</span>
@@ -772,7 +772,7 @@
 </span><span id="__span-6-19"><a href="#__codelineno-6-19" id="__codelineno-6-19" name="__codelineno-6-19"></a>        <span class="p">}</span>
 </span><span id="__span-6-20"><a href="#__codelineno-6-20" id="__codelineno-6-20" name="__codelineno-6-20"></a>    <span class="p">)</span>
 </span><span id="__span-6-21"><a href="#__codelineno-6-21" id="__codelineno-6-21" name="__codelineno-6-21"></a>
-</span><span id="__span-6-22"><a href="#__codelineno-6-22" id="__codelineno-6-22" name="__codelineno-6-22"></a>    <span class="c1"># a Velour Annotation consists of a task_type, labels and optionally a geometry.</span>
+</span><span id="__span-6-22"><a href="#__codelineno-6-22" id="__codelineno-6-22" name="__codelineno-6-22"></a>    <span class="c1"># a Velour Annotation consists of a task_type, labels, and, optionally, a geometry.</span>
 </span><span id="__span-6-23"><a href="#__codelineno-6-23" id="__codelineno-6-23" name="__codelineno-6-23"></a>    <span class="n">annotations</span> <span class="o">=</span> <span class="p">[</span>
 </span><span id="__span-6-24"><a href="#__codelineno-6-24" id="__codelineno-6-24" name="__codelineno-6-24"></a>        <span class="n">Annotation</span><span class="p">(</span>
 </span><span id="__span-6-25"><a href="#__codelineno-6-25" id="__codelineno-6-25" name="__codelineno-6-25"></a>            <span class="n">task_type</span><span class="o">=</span><span class="n">TaskType</span><span class="o">.</span><span class="n">DETECTION</span><span class="p">,</span>
@@ -845,7 +845,7 @@
 </span><span id="__span-8-29"><a href="#__codelineno-8-29" id="__codelineno-8-29" name="__codelineno-8-29"></a>        <span class="n">annotations</span><span class="o">=</span><span class="n">annotations</span><span class="p">,</span>
 </span><span id="__span-8-30"><a href="#__codelineno-8-30" id="__codelineno-8-30" name="__codelineno-8-30"></a>    <span class="p">)</span>
 </span><span id="__span-8-31"><a href="#__codelineno-8-31" id="__codelineno-8-31" name="__codelineno-8-31"></a>
-</span><span id="__span-8-32"><a href="#__codelineno-8-32" id="__codelineno-8-32" name="__codelineno-8-32"></a><span class="c1"># lets represent the simulated model output in a similar format to the groundtruths.</span>
+</span><span id="__span-8-32"><a href="#__codelineno-8-32" id="__codelineno-8-32" name="__codelineno-8-32"></a><span class="c1"># let's represent the simulated model output in a similar format to the groundtruths:</span>
 </span><span id="__span-8-33"><a href="#__codelineno-8-33" id="__codelineno-8-33" name="__codelineno-8-33"></a><span class="n">object_detections</span> <span class="o">=</span> <span class="p">[</span>
 </span><span id="__span-8-34"><a href="#__codelineno-8-34" id="__codelineno-8-34" name="__codelineno-8-34"></a>    <span class="p">{</span><span class="s2">"path"</span><span class="p">:</span> <span class="s2">"a/b/c/img3.png"</span><span class="p">,</span> <span class="s2">"annotations"</span><span class="p">:</span> <span class="p">[</span>
 </span><span id="__span-8-35"><a href="#__codelineno-8-35" id="__codelineno-8-35" name="__codelineno-8-35"></a>        <span class="p">{</span><span class="s2">"labels"</span><span class="p">:</span> <span class="p">[{</span><span class="s2">"class_label"</span><span class="p">:</span> <span class="s2">"dog"</span><span class="p">,</span> <span class="s2">"score"</span><span class="p">:</span> <span class="mf">0.8</span><span class="p">},</span> <span class="p">{</span><span class="s2">"class_label"</span><span class="p">:</span> <span class="s2">"cat"</span><span class="p">,</span> <span class="s2">"score"</span><span class="p">:</span> <span class="mf">0.1</span><span class="p">},</span> <span class="p">{</span><span class="s2">"class_label"</span><span class="p">:</span> <span class="s2">"person"</span><span class="p">,</span> <span class="s2">"score"</span><span class="p">:</span> <span class="mf">0.1</span><span class="p">}],</span> <span class="s2">"bbox"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"xmin"</span><span class="p">:</span> <span class="mi">16</span><span class="p">,</span> <span class="s2">"ymin"</span><span class="p">:</span> <span class="mi">130</span><span class="p">,</span> <span class="s2">"xmax"</span><span class="p">:</span> <span class="mi">70</span><span class="p">,</span> <span class="s2">"ymax"</span><span class="p">:</span> <span class="mi">150</span><span class="p">}},</span>
@@ -887,9 +887,9 @@
 </span><span id="__span-9-19"><a href="#__codelineno-9-19" id="__codelineno-9-19" name="__codelineno-9-19"></a><span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">metrics</span><span class="p">)</span>
 </span></code></pre></div>
 <h4 id="run-a-filtered-evaluation-and-print-metrics">Run a filtered evaluation and print metrics</h4>
-<p>Velour offers more than just 1:1 evaluations, it allows the creation of metadata filters to stratify the dataset groundtruths and model predictions. This enables the user to ask complex questions about their data.</p>
-<p>With this in mind lets pose the question: <em>"How well did the model perform on animal prediction?"</em></p>
-<p>We can ask this question with the following evaluation statement.</p>
+<p>Velour offers more than just 1:1 evaluations; it allows the creation of metadata filters to stratify the dataset groundtruths and model predictions. This enables the user to ask complex questions about their data.</p>
+<p>With this in mind, let's pose the question: <em>"How well did the model perform on animal prediction?"</em></p>
+<p>We can ask this question with the following evaluation statement:</p>
 <div class="language-py highlight"><pre><span></span><code><span id="__span-10-1"><a href="#__codelineno-10-1" id="__codelineno-10-1" name="__codelineno-10-1"></a><span class="c1"># run evaluation</span>
 </span><span id="__span-10-2"><a href="#__codelineno-10-2" id="__codelineno-10-2" name="__codelineno-10-2"></a><span class="n">animal_evaluation</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">evaluate_classification</span><span class="p">(</span>
 </span><span id="__span-10-3"><a href="#__codelineno-10-3" id="__codelineno-10-3" name="__codelineno-10-3"></a>    <span class="n">dataset</span><span class="o">=</span><span class="n">dataset</span><span class="p">,</span>
@@ -916,7 +916,7 @@
 <h3 id="4b-using-api-endpoints">4b. Using API endpoints</h3>
 <p>You can also leverage Velour's API without using the Python client. <a href="../endpoints/">Click here</a> to read up on all of our API endpoints.</p>
 <h1 id="next-steps">Next Steps</h1>
-<p>For more examples, we'd recommend reviewing our <a href="https://github.com/Striveworks/velour/blob/main/examples/getting_started.ipynb">sample notebooks on GitHub</a>. For more detailed explainations of Velour's technical underpinnings, see our <a href="../technical_concepts/">technical concepts guide</a>.</p>
+<p>For more examples, we'd recommend reviewing our <a href="https://github.com/Striveworks/velour/blob/main/examples/getting_started.ipynb">sample notebooks on GitHub</a>. For more detailed explanations of Velour's technical underpinnings, see our <a href="../technical_concepts/">technical concepts guide</a>.</p>
 </article>
 </div>
 <script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>

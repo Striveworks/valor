@@ -680,7 +680,7 @@
 <p>The typical Velour workflow involves POSTing groundtruth annotations (e.g., class labels, bounding boxes, segmentation masks, etc.) and model predictions to our API service. The service leverages these groundtruths and predictions to compute evaluation metrics, and then stores the groundtruths, predictions, and evaluation metrics centrally in Postgres. Users can also attach metadata to their <code>Datasets</code>, <code>Models</code>, <code>GroundTruths</code>, and <code>Annotations</code>; this metadata makes it easy to query for specific subsets of evaluations at a later date. Once an evaluation is stored in Velour, users can query those evaluations from Postgres via <code>GET</code> requests to the Velour API.</p>
 <p>Note that Velour does <em>not</em> store raw data (such as underlying images) or facilitate model inference. Only the following items are stored in Postgres:</p>
 <ul>
-<li>GroundTruth annotations</li>
+<li>Groundtruth annotations</li>
 <li>Predictions outputted from a model</li>
 <li>Metadata from any of Velour's various classes</li>
 <li>Evaluation metrics computed by Velour</li>
@@ -689,53 +689,59 @@
 <h2 id="supported-task-types">Supported Task Types</h2>
 <p>As of January 2024, Velour supports the following types of supervised learning tasks and associated metrics:</p>
 <ul>
-<li>Classification (including multi-label classification)</li>
+<li>Classification (including multi-label classification)<ul>
 <li>F1</li>
-<li>AUCROC</li>
+<li>ROC AUC</li>
 <li>Accuracy</li>
 <li>Precision</li>
 <li>Recall</li>
-<li>Object detection</li>
+</ul>
+</li>
+<li>Object detection<ul>
 <li>AP</li>
 <li>mAP</li>
-<li>AP Averaged Over IOU's</li>
-<li>mAP Averaged Over IOU's</li>
-<li>Segmentation (including both instance and semantic segmentation)</li>
+<li>AP Averaged Over IOUs</li>
+<li>mAP Averaged Over IOUs</li>
+</ul>
+</li>
+<li>Segmentation (including both instance and semantic segmentation)<ul>
 <li>IOU</li>
 <li>mIOU</li>
 </ul>
+</li>
+</ul>
 <p>For descriptions of each of these metrics, see our <a href="../metrics/">Metrics</a> page.</p>
-<p>We expect the Velour framework to extend well to other types of supervised learning tasks, and plan to expand our supported task types in future releases.</p>
+<p>We expect the Velour framework to extend well to other types of supervised learning tasks and plan to expand our supported task types in future releases.</p>
 <h2 id="components">Components</h2>
 <p>We can think of Velour in terms of four orthogonal components:</p>
 <h3 id="api">API</h3>
-<p>The core of Velour is a backend REST API service. Users can call the API's endpoints directly (e.g., <code>POST /datasets</code>), or they can use our Python client to handle the API calls in their Python environment. All of Velour's state is stored in Postgres; the API itself is completely stateless.</p>
+<p>The core of Velour is a backend REST API service. Users can call the API's endpoints directly (e.g., <code>POST /datasets</code>), or they can use our Python client to handle the API calls in their Python environment.  All of Velour's state is stored in Postgres; the API itself is completely stateless.</p>
 <p>Note that, after you start the API service in Dockers, you'll be able to view FastAPI's automatically generated API documentation at <code>https://&lt;your host&gt;/docs</code>.</p>
 <h3 id="postgresql">PostgreSQL</h3>
-<p>PostgreSQL (a.k.a., Postgres or psql) is an open-source relational database management system. We use Postgres to store all of Velour's various objects and states.</p>
-<p>One of the most important reasons we chose Postgres was because of its PostGIS extension, which adds support for storing, indexing and querying geographic data. PostGIS enables Velour to quickly filter prior evaluations using geographic coordinates, which is a critically important feature for any computer vision tasks involving satellite data.</p>
+<p>PostgreSQL (a.k.a. Postgres or psql) is an open-source relational database management system. We use Postgres to store all of Velour's various objects and states.</p>
+<p>One of the most important reasons we chose Postgres was its PostGIS extension, which adds support for storing, indexing, and querying geographic data. PostGIS enables Velour to quickly filter prior evaluations using geographic coordinates, which is a critically important feature for any computer vision task involving satellite data.</p>
 <h3 id="python-client">Python Client</h3>
-<p>Finally, we created a client to make it easier for our users to play with Velour from their Python environment. All of Velour's validations and computations are handled by our API: the Python client simply provides convenient methods to call the API's endpoints.</p>
+<p>Finally, we created a client to make it easier for our users to play with Velour from their Python environment. All of Velour's validations and computations are handled by our API; the Python client simply provides convenient methods to call the API's endpoints.</p>
 <h2 id="classes">Classes</h2>
 <p>The Velour API and Python client both make use of six core classes:</p>
 <h3 id="dataset"><code>Dataset</code></h3>
-<p>The highest-level class is a <code>Dataset</code>, which stores metadata and annotations associated with a particular set of data. Note that <code>Dataset</code> is an abstraction: you can have multiple <code>Datasets</code> which reference the exact same input data, which is useful if you need to update or version your data over time.</p>
-<p><code>Datasets</code> require a name at instantation, and can optionally take in various types of metadata that you want to associate with your data.</p>
+<p>The highest-level class is a <code>Dataset</code>, which stores metadata and annotations associated with a particular set of data. Note that <code>Dataset</code> is an abstraction: You can have multiple <code>Datasets</code> that reference the exact same input data, which is useful if you need to update or version your data over time.</p>
+<p><code>Datasets</code> require a name at instantiation and can optionally take in various types of metadata that you want to associate with your data.</p>
 <h3 id="model"><code>Model</code></h3>
-<p><code>Models</code> describe a particular instantiation of a machine learning model. We use the <code>Model</code> object to delineate between different models runs, or between the same model run over time. Note that <code>Models</code> aren't children of <code>Datasets</code>; you can have one <code>Model</code> contain predictions for multiple <code>Datasets</code>.</p>
-<p><code>Models</code> require a name at instantation, and can optionally take in various types of metadata that you want to associate with your model.</p>
+<p><code>Models</code> describe a particular instantiation of a machine learning model. We use the <code>Model</code> object to delineate between different models runs or between the same model run over time. Note that <code>Models</code> aren't children of <code>Datasets</code>; you can have one <code>Model</code> contain predictions for multiple <code>Datasets</code>.</p>
+<p><code>Models</code> require a name at instantiation and can optionally take in various types of metadata that you want to associate with your model.</p>
 <h3 id="groundtruth"><code>GroundTruth</code></h3>
-<p>A <code>GroundTruth</code> object clarifies what the correct prediction should be for a given piece of data (e.g., an image). For an object detection task, for example, the <code>GroundTruth</code> would store a human-drawn bounding box that, when overlayed over an object, would correctly enclose the object that we're trying to predict.</p>
+<p>A <code>GroundTruth</code> object clarifies what the correct prediction should be for a given piece of data (e.g., an image). For an object detection task, for example, the <code>GroundTruth</code> would store a human-drawn bounding box that, when overlayed on an object, would correctly enclose the object that we're trying to predict.</p>
 <p><code>GroundTruths</code> take one <code>Datum</code> and a list of <code>Annotations</code> as arguments.</p>
 <h3 id="prediction"><code>Prediction</code></h3>
 <p>A <code>Prediction</code> object describes the output of a machine learning model. For an object detection task, for example, the <code>Prediction</code> would describe a machine-generated bounding box enclosing the area where a computer vision model believes a certain class of object can be found.</p>
 <p><code>Predictions</code> take one <code>Datum</code> and a list of <code>Annotations</code> as arguments.</p>
 <h3 id="datum"><code>Datum</code></h3>
-<p><code>Datums</code> are used to store metadata about <code>GroundTruths</code> or <code>Predictions</code>. This metadata can include user-supplied metadata (e.g., JSONs filled with config details) or geospatial coordinates (via the <code>geospatial</code> argument). <code>Datums</code> provide the vital link between <code>GroundTruths</code> / <code>Predictions</code> and <code>Datasets</code>, and are useful when filtering your evaluations on specific conditions.</p>
+<p><code>Datums</code> are used to store metadata about <code>GroundTruths</code> or <code>Predictions</code>. This metadata can include user-supplied metadata (e.g., JSONs filled with configuration details) or geospatial coordinates (via the <code>geospatial</code> argument). <code>Datums</code> provide the vital link between <code>GroundTruths</code> / <code>Predictions</code> and <code>Datasets</code>, and they are useful when filtering your evaluations on specific conditions.</p>
 <p>A <code>Datum</code> requires a universal ID (UID) and dataset name at instantiation, along with any <code>metadata</code> or <code>geospatial</code> dictionaries that you want to associate with your <code>GroundTruth</code> or <code>Prediction</code>.</p>
 <h3 id="annotation"><code>Annotation</code></h3>
 <p><code>Annotations</code> attach to both <code>GroundTruths</code> and <code>Predictions</code>, enabling users to add textual labels to these objects. If a <code>GroundTruth</code> depicts a bounding box around a cat, for example, the <code>Annotation</code> would be passed into the <code>GroundTruth</code> to clarify the correct label for the <code>GroundTruth</code> (e.g., <code>class=cat</code>) and any other labels the user wants to specify for that bounding box (e.g., <code>breed=tabby</code>).</p>
-<p><code>Annotations</code> require the user to specify their task type, labels, and metadata at instantition. Users can also pass-in various visual representations tailored to their specific task, such as bounding boxes, segmentations, or image rasters.</p>
+<p><code>Annotations</code> require the user to specify their task type, labels, and metadata at instantiation. Users can also pass in various visual representations tailored to their specific task, such as bounding boxes, segmentations, or image rasters.</p>
 <h2 id="authentication">Authentication</h2>
 <p>The API can be run without authentication (by default), or with authentication with a single global username and password. To set this up, set the following environment variables when running the backend:</p>
 <ul>
@@ -749,9 +755,9 @@
 <p><code>SECRET_KEY</code> is the key used for encoding and decoding tokens, and should be a random string. <code>USERNAME</code> and <code>PASSWORD</code> are the username and password that will be used to authenticate requests.</p>
 <p>You can use the tests in <code>integration_tests/test_client_auth.py</code> to check whether your authenticator is running correctly.</p>
 <h2 id="deployment-settings">Deployment Settings</h2>
-<p>When deploying behind a proxy or with external routing, the environment variable <code>API_ROOT_PATH</code> environmental variable should be used to set the <code>root_path</code> arguement to <code>fastapi.FastAPI</code> (see https://fastapi.tiangolo.com/advanced/behind-a-proxy/#setting-the-root_path-in-the-fastapi-app).</p>
+<p>When deploying behind a proxy or with external routing, the <code>API_ROOT_PATH</code> environmental variable should be used to set the <code>root_path</code> argument to <code>fastapi.FastAPI</code> (see https://fastapi.tiangolo.com/advanced/behind-a-proxy/#setting-the-root_path-in-the-fastapi-app).</p>
 <h2 id="release-process">Release Process</h2>
-<p>A release is made by publishing a tag of the form <code>vX.Y.Z</code> (e.g. <code>v0.1.0</code>). This will trigger a GitHub action that will build and publish the python client to <a href="https://pypi.org/project/velour-client/">PyPI</a>. These releases should be created using the <a href="https://github.com/Striveworks/velour/releases">GitHub UI</a>.</p>
+<p>A release is made by publishing a tag of the form <code>vX.Y.Z</code> (e.g., <code>v0.1.0</code>). This will trigger a GitHub action that will build and publish the Python client to <a href="https://pypi.org/project/velour-client/">PyPI</a>. These releases should be created using the <a href="https://github.com/Striveworks/velour/releases">GitHub UI</a>.</p>
 </article>
 </div>
 <script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
