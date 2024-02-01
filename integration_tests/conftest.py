@@ -1,6 +1,7 @@
 """ These integration tests should be run with a backend at http://localhost:8000
 that is no auth
 """
+import os
 from typing import Iterator
 
 import numpy as np
@@ -42,7 +43,14 @@ def db() -> Iterator[Session]:
             "Tests should be run on an empty velour backend but found existing labels."
         )
 
-    engine = create_engine("postgresql://postgres:password@localhost/postgres")
+    POSTGRES_HOST = os.getenv("POSTGRES_HOST", "localhost")
+    POSTGRES_USERNAME = os.getenv("POSTGRES_USERNAME", "postgres")
+    POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "password")
+    POSTGRES_DB = os.getenv("POSTGRES_DB", "velour")
+    POSTGRES_PORT = os.getenv("POSTGRES_PORT", "5432")
+    SQLALCHEMY_DATABASE_URL = f"postgresql://{POSTGRES_USERNAME}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
+
+    engine = create_engine(SQLALCHEMY_DATABASE_URL)
     sess = Session(engine)
     sess.execute(text("SET postgis.gdal_enabled_drivers = 'ENABLE_ALL';"))
     sess.execute(text("SET postgis.enable_outdb_rasters = True;"))
