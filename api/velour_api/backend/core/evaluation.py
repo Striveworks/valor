@@ -242,7 +242,7 @@ def _split_request(
     # 4. - create requests
     return [
         schemas.EvaluationRequest(
-            model_names=model.name,
+            model_names=[model.name],
             datum_filter=job_request.datum_filter,
             parameters=job_request.parameters,
         )
