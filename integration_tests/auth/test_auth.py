@@ -12,7 +12,7 @@ import pytest
 import requests
 
 from velour.client import ClientConnection
-from velour.exceptions import ClientException
+from velour.exceptions import ClientConnectionFailed
 
 
 @pytest.fixture
@@ -40,7 +40,7 @@ def test_auth_client_neg_no_token():
     """Test that we get an authentication error when we don't pass
     an access token
     """
-    with pytest.raises(ClientException) as exc_info:
+    with pytest.raises(ClientConnectionFailed) as exc_info:
         ClientConnection(host="http://localhost:8000")
     assert "Not authenticated" in str(exc_info)
 
@@ -49,6 +49,6 @@ def test_auth_client_neg_invalid_token():
     """Test that we get an unauthorized error when we pass
     an invalid access token
     """
-    with pytest.raises(ClientException) as exc_info:
+    with pytest.raises(ClientConnectionFailed) as exc_info:
         ClientConnection(host="http://localhost:8000", access_token="asdasd")
     assert "Unauthorized" in str(exc_info)
