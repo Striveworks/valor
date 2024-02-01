@@ -76,10 +76,11 @@ class Label:
         self.value = value
         self.score = score
 
-    def __str__(self):
-        return str(self.tuple())
+    def __str__(self) -> str:
+        """Dumps the object into a JSON formatted string."""
+        return json.dumps(self.to_dict(), indent=4)
 
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, Union[str, float, np.floating, None]]:
         return {
             "key": self.key,
             "value": self.value,
@@ -90,7 +91,7 @@ class Label:
     def from_dict(cls, resp):
         return cls(**resp)
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
         """
         Defines how `Labels` are compared to one another
 
@@ -379,10 +380,11 @@ class Annotation:
             "raster": asdict(self.raster) if self.raster else None,
         }
 
-    def __str__(self):
-        return str(self.to_dict())
+    def __str__(self) -> str:
+        """Dumps the object into a JSON formatted string."""
+        return json.dumps(self.to_dict(), indent=4)
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
         """
         Defines how `Annotations` are compared to one another
 
@@ -436,9 +438,6 @@ class Datum:
         validate_metadata(self.metadata)
         self.metadata = load_metadata(self.metadata)
 
-    def __str__(self):
-        return str(self.to_dict(dataset_name=None).pop("dataset_name"))
-
     def to_dict(self, dataset_name: Optional[str] = None) -> dict:
         """
         Defines how a `Datum` object is transformed into a dictionary.
@@ -460,7 +459,13 @@ class Datum:
         resp.pop("dataset_name", None)
         return cls(**resp)
 
-    def __eq__(self, other):
+    def __str__(self) -> str:
+        """Dumps the object into a JSON formatted string."""
+        objdict = self.to_dict(dataset_name=None)
+        objdict.pop("dataset_name")
+        return json.dumps(objdict, indent=4)
+
+    def __eq__(self, other) -> bool:
         """
         Defines how `Datums` are compared to one another
 
@@ -471,7 +476,7 @@ class Datum:
 
         Returns
         ----------
-        boolean
+        bool
             A boolean describing whether the two objects are equal.
         """
         if not isinstance(other, Datum):
@@ -553,8 +558,11 @@ class GroundTruth:
             ],
         )
 
-    def __str__(self):
-        return str(self.to_dict(None))
+    def __str__(self) -> str:
+        """Dumps the object into a JSON formatted string."""
+        objdict = self.to_dict(dataset_name=None)
+        objdict["datum"].pop("dataset_name")
+        return json.dumps(objdict, indent=4)
 
     def __eq__(self, other):
         """
@@ -688,8 +696,12 @@ class Prediction:
             ],
         )
 
-    def __str__(self):
-        return str(self.to_dict(None, None))
+    def __str__(self) -> str:
+        """Dumps the object into a JSON formatted string."""
+        objdict = self.to_dict(dataset_name=None)
+        objdict["datum"].pop("dataset_name")
+        objdict.pop("model_name")
+        return json.dumps(objdict, indent=4)
 
     def __eq__(self, other):
         """
@@ -1053,8 +1065,11 @@ class Dataset:
             "geospatial": self.geospatial,
         }
 
-    def __str__(self):
-        return str(self.to_dict())
+    def __str__(self) -> str:
+        """Dumps the object into a JSON formatted string."""
+        objdict = self.to_dict()
+        objdict.pop("id")
+        return json.dumps(objdict, indent=4)
 
     def add_groundtruth(
         self,
@@ -1335,8 +1350,11 @@ class Model:
             "geospatial": self.geospatial,
         }
 
-    def __str__(self):
-        return str(self.to_dict())
+    def __str__(self) -> str:
+        """Dumps the object into a JSON formatted string."""
+        objdict = self.to_dict()
+        objdict.pop("id")
+        return json.dumps(objdict, indent=4)
 
     def add_prediction(
         self,
