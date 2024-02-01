@@ -6,7 +6,7 @@ on:
       - api/**
       - migrations/**
       - .github/workflows/docker.yml
-    branches: [jyono-test-migrations-ecr-push]
+    branches: [main]
     tags:
       - "v*"
 
