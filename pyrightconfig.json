@@ -1,0 +1,7 @@
+{
+    "ignore": [
+        "api",
+        "examples",
+        "integration_tests",
+    ]
+}
