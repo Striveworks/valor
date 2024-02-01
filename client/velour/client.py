@@ -14,11 +14,10 @@ from velour.exceptions import (
     ClientAlreadyConnectedError,
     ClientException,
     ClientNotConnectedError,
+    ClientConnectionFailed,
 )
 from velour.schemas import EvaluationRequest
 from velour.types import T
-
-_connection = None
 
 
 def wait_for_predicate(
@@ -77,12 +76,18 @@ class ClientConnection:
         The host to connect to. Should start with "http://" or "https://".
     access_token : str
         The access token for the host (if the host requires authentication).
+
+    Raises
+    ------
+        ClientConnectionFailed:
+            If a connection could not be established.
     """
 
     host: str
     access_token: Optional[str] = None
 
     def __post_init__(self):
+        
         if not (
             self.host.startswith("http://") or self.host.startswith("https://")
         ):
@@ -95,8 +100,10 @@ class ClientConnection:
         self.access_token = os.getenv("VELOUR_ACCESS_TOKEN", self.access_token)
 
         # check the connection by getting the api version number
-        api_version = self.get_api_version()
-        """version = se."""
+        try:
+            api_version = self.get_api_version()
+        except Exception as e:
+            raise ClientConnectionFailed(str(e))
 
         self._validate_version(
             client_version=client_version, api_version=api_version
@@ -755,49 +762,76 @@ class ClientConnection:
         return resp["status"]
 
 
-def connect(
-    host: str,
-    access_token: Optional[str] = None,
-    reconnect: bool = False,
-):
+def _create_connection():
     """
-    Establishes a connection to the client.
+    Creates and manages a connection to the Velour API. 
 
-    Parameters
-    ----------
-    host : str
-        The host to connect to. Should start with "http://" or "https://".
-    access_token : str
-        The access token for the host (if the host requires authentication).
-    """
-    global _connection
-    if _connection is not None and not reconnect:
-        raise ClientAlreadyConnectedError
+    This function initializes a connection closure that can be used to establish and retrieve a client connection to the Velour API. It returns two functions: `connect` and `get_connection`. 
 
-    try:
-        _connection = ClientConnection(host, access_token)
-        _connection.get_api_version()
-    except Exception as e:
-        _connection = None
-        # TODO - raise ClientException showing no service found
-        raise e
+    The `connect` function is used to establish a new connection to the API, either with a new host or by reconnecting to an existing host. It raises an error if a connection is already established and `reconnect` is not set to `True`.
 
-
-def get_connection() -> ClientConnection:
-    """
-    Gets the active client connection.
+    The `get_connection` function is used to retrieve the current active connection. It raises an error if there's no active connection.
 
     Returns
     -------
-    ClientConnection
-        The active client connection.
-
-    Raises
-    ------
-    ClientNotConnectedError
-        If there is no active connection.
+    tuple
+        (connect, get_connection)
     """
-    global _connection
-    if _connection is None:
-        raise ClientNotConnectedError
-    return _connection
+    _connection = None
+    
+    def connect(
+        host: str,
+        access_token: Optional[str] = None,
+        reconnect: bool = False,
+    ):
+        """
+        Establishes a connection to the Velour API.
+
+        Parameters
+        ----------
+        host : str
+            The host to connect to. Should start with "http://" or "https://".
+        access_token : str
+            The access token for the host (if the host requires authentication).
+
+        Raises
+        ------
+        ClientAlreadyConnectedError:
+            If the connection has previously been established.
+        ClientConnectionFailed:
+            If a connection could not be established.
+        """
+        nonlocal _connection
+        if _connection is not None and not reconnect:
+            raise ClientAlreadyConnectedError
+        _connection = ClientConnection(host, access_token)
+
+    def get_connection():
+        """
+        Gets the active client connection.
+
+        Returns
+        -------
+        ClientConnection
+            The active client connection.
+
+        Raises
+        ------
+        ClientNotConnectedError
+            If there is no active connection.
+        """
+        if _connection is None:
+            raise ClientNotConnectedError
+        return _connection
+    
+    def reset_connection():
+        """
+        Resets the connection to its initial state.
+        """
+        nonlocal _connection
+        _connection = None
+    
+    return connect, get_connection, reset_connection
+
+
+connect, get_connection, reset_connection = _create_connection()

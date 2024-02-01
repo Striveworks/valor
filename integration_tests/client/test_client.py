@@ -6,7 +6,6 @@ from typing import List
 
 import pytest
 
-import velour
 from velour import (
     Annotation,
     Client,
@@ -17,7 +16,7 @@ from velour import (
     Model,
     Prediction,
 )
-from velour.client import connect
+from velour.client import connect, get_connection
 from velour.enums import TaskType
 from velour.exceptions import ClientException
 from velour.schemas import Constraint, Filter
@@ -82,22 +81,16 @@ def created_model(
 
 
 def test_connect():
-    # reset the connection
-    velour.client._connection = None
-
     bad_url = "localhost:8000"
-
     with pytest.raises(ValueError):
-        connect(host=bad_url)
+        connect(host=bad_url, reconnect=True)
 
     bad_url2 = "http://localhost:8111"
-
     with pytest.raises(Exception):
-        connect(host=bad_url2)
+        connect(host=bad_url2, reconnect=True)
 
     good_url = "http://localhost:8000"
-
-    assert connect(host=good_url) is None
+    connect(host=good_url, reconnect=True)
 
 
 def test_version_mismatch_warning(caplog):

@@ -13,3 +13,8 @@ class ClientAlreadyConnectedError(Exception):
 class ClientNotConnectedError(Exception):
     def __init__(self):
         super().__init__("Client not connected.")
+
+
+class ClientConnectionFailed(Exception):
+    def __init__(self, msg: str):
+        super().__init__(msg)

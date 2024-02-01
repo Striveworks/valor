@@ -6,7 +6,7 @@ from typing import Dict, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
 
-from velour.client import ClientConnection, get_connection
+from velour.client import ClientConnection, connect, get_connection
 from velour.enums import (
     AnnotationType,
     EvaluationStatus,
@@ -1445,8 +1445,8 @@ class Model:
         return Filter(**filters)
 
     def _create_label_map(
-        self, label_map: Dict[Label, Label]
-    ) -> List[List[List[str]]]:
+        self, label_map: Optional[Dict[Label, Label]]
+    ) -> Union[List[List[List[str]]], None]:
         """Convert a dictionary of label maps to a serializable list format."""
         if not label_map:
             return None
@@ -1666,6 +1666,26 @@ class Client:
         if not connection:
             connection = get_connection()
         self.conn = connection
+
+    @classmethod
+    def connect(
+        cls,
+        host: str,
+        access_token: Optional[str] = None,
+        reconnect: bool = False,
+    ):
+        """
+        Establishes a connection to the Velour API.
+
+        Parameters
+        ----------
+        host : str
+            The host to connect to. Should start with "http://" or "https://".
+        access_token : str
+            The access token for the host (if the host requires authentication).
+        """
+        connect(host=host, access_token=access_token, reconnect=reconnect)
+        return cls(get_connection())
 
     def get_labels(
         self,

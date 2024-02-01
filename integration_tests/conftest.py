@@ -8,9 +8,8 @@ import pytest
 from sqlalchemy import create_engine, select, text
 from sqlalchemy.orm import Session
 
-import velour
 from velour import Annotation, Client, GroundTruth, Label, Prediction
-from velour.client import ClientConnection, connect
+from velour.client import ClientConnection, connect, reset_connection
 from velour.data_generation import _generate_mask
 from velour.enums import TaskType
 from velour.metatypes import ImageMetadata
@@ -21,9 +20,8 @@ from velour_api.backend import models
 
 @pytest.fixture
 def connection() -> ClientConnection:
-    if not velour.client._connection:
-        connect(host="http://localhost:8000")
-    return velour.client._connection
+    reset_connection()
+    connect(host="http://localhost:8000")
 
 
 @pytest.fixture

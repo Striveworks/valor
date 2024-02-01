@@ -10,7 +10,7 @@ try:
 except importlib_metadata.PackageNotFoundError:
     __version__ = ""
 
-from .client import connect
+from .client import ClientConnection
 from .coretypes import (
     Annotation,
     Client,
@@ -25,8 +25,8 @@ from .coretypes import (
 from .schemas import Filter
 
 __all__ = [
-    "connect",
     "Client",
+    "ClientConnection",
     "Label",
     "Evaluation",
     "Dataset",

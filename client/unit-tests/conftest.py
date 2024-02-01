@@ -1,15 +1,9 @@
 from typing import List
-from unittest.mock import MagicMock, Mock
 
 import numpy as np
 import pytest
 
-import velour
 from velour import Label, schemas
-
-velour.client._connection = MagicMock()
-velour.client._connection.get_api_version = Mock()
-velour.client._connection.get_api_version.return_value = "123"
 
 
 @pytest.fixture
