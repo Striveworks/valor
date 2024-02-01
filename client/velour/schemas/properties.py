@@ -12,7 +12,12 @@ from velour.schemas.constraints import (
     NumericMapper,
     StringMapper,
 )
-from velour.types import DatetimeType, GeoJSONType, GeometryType, MetadataType
+from velour.types import (
+    DatetimeType,
+    DictMetadataType,
+    GeoJSONType,
+    GeometryType,
+)
 
 
 def getter_factory(name: str, type_: type):
@@ -48,7 +53,7 @@ class _BaseProperty(property):
         The type of value that this property stores.
     """
 
-    type_ = Any
+    type_ = object
 
     def __init__(
         self,
@@ -392,7 +397,7 @@ class DictionaryProperty(_BaseProperty, DictionaryMapper):
     {'some_float': 3.14, 'some_str': 'hello'}
     """
 
-    type_ = MetadataType
+    type_ = DictMetadataType
 
 
 class LabelProperty(_BaseProperty, LabelMapper):
