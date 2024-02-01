@@ -9,6 +9,7 @@
         "examples",
         "integration_tests",
         "docs",
+        "migrations"
     ],
     "reportMissingModuleSource" : "none",
     "reportMissingImports" : "none",
