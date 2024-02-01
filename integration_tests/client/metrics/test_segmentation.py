@@ -1,8 +1,15 @@
 """ These integration tests should be run with a backend at http://localhost:8000
 that is no auth
 """
-from velour import Dataset, Datum, GroundTruth, Label, Model, Prediction
-from velour.client import Client
+from velour import (
+    Client,
+    Dataset,
+    Datum,
+    GroundTruth,
+    Label,
+    Model,
+    Prediction,
+)
 from velour.enums import EvaluationStatus
 
 
@@ -14,8 +21,8 @@ def test_evaluate_segmentation(
     gt_semantic_segs2: list[GroundTruth],
     pred_semantic_segs: list[Prediction],
 ):
-    dataset = Dataset(client, dataset_name)
-    model = Model(client, model_name)
+    dataset = Dataset.create(dataset_name)
+    model = Model.create(model_name)
 
     for gt in gt_semantic_segs1 + gt_semantic_segs2:
         dataset.add_groundtruth(gt)
@@ -55,8 +62,8 @@ def test_evaluate_segmentation_with_filter(
     gt_semantic_segs2: list[GroundTruth],
     pred_semantic_segs: list[Prediction],
 ):
-    dataset = Dataset(client, dataset_name)
-    model = Model(client, model_name)
+    dataset = Dataset.create(dataset_name)
+    model = Model.create(model_name)
 
     for gt in gt_semantic_segs1:
         gt.datum.metadata["color"] = "red"
@@ -104,8 +111,8 @@ def test_evaluate_segmentation_with_label_maps(
     gt_semantic_segs2: list[GroundTruth],
     pred_semantic_segs: list[Prediction],
 ):
-    dataset = Dataset(client, dataset_name)
-    model = Model(client, model_name)
+    dataset = Dataset.create(dataset_name)
+    model = Model.create(model_name)
 
     for gt in gt_semantic_segs1:
         gt.datum.metadata["color"] = "red"

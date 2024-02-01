@@ -4,8 +4,7 @@ from dataclasses import asdict
 
 from PIL import Image
 
-from velour import Label
-from velour.client import Client
+from velour import Client, Label
 from velour.data_generation import (
     generate_prediction_data,
     generate_segmentation_data,
@@ -104,7 +103,7 @@ def test_generate_prediction_data(client: Client):
     )
     assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
 
-    eval_dict = eval_job.dict()
+    eval_dict = eval_job.to_dict()
     for key in [
         "id",
         "confusion_matrices",

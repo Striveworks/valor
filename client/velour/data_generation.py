@@ -7,6 +7,7 @@ from tqdm import tqdm
 
 from velour import (
     Annotation,
+    Client,
     Dataset,
     GroundTruth,
     Label,
@@ -14,7 +15,6 @@ from velour import (
     Prediction,
     enums,
 )
-from velour.client import Client
 from velour.coretypes import Datum
 from velour.metatypes import ImageMetadata
 from velour.schemas import BoundingBox, Raster
@@ -224,7 +224,7 @@ def generate_segmentation_data(
     n_labels : int
         The number of labels per annotation you'd like your dataset to contain.
     """
-    dataset = Dataset(client, dataset_name)
+    dataset = Dataset.create(dataset_name)
 
     unique_image_ids = list(range(n_images))
     for _ in tqdm(range(n_images)):
@@ -265,7 +265,7 @@ def generate_prediction_data(
     n_labels : int
         The number of labels per annotation you'd like your dataset to contain.
     """
-    model = Model(client, model_name)
+    model = Model.create(model_name)
 
     datums = dataset.get_datums()
 
