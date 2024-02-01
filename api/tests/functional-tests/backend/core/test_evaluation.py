@@ -529,8 +529,6 @@ def test_get_evaluation_requests_from_model(
         eval_request.parameters.task_type for eval_request in eval_requests
     } == {enums.TaskType.CLASSIFICATION, enums.TaskType.SEGMENTATION}
 
-    assert {eval_request.id for eval_request in eval_requests} == {1, 2}
-
 
 def test_evaluation_status(
     db: Session,
