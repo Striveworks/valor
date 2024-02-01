@@ -18,7 +18,7 @@ class OptionalHTTPBearer(HTTPBearer):
         if auth_settings.no_auth:
             return None
         ret = await super().__call__(request)
-        verify_token(ret)
+        verify_token(ret)  # type: ignore
         return ret
 
 
@@ -60,6 +60,11 @@ def create_token(data: dict, expires_delta: timedelta | None = None) -> str:
     str
         The encoded JWT.
     """
+    if not auth_settings.SECRET_KEY:
+        raise KeyError(
+            "Please set auth_settings.SECRET_KEY before creating a token."
+        )
+
     to_encode = data.copy()
 
     expires_delta = expires_delta or timedelta(days=1)
@@ -67,12 +72,14 @@ def create_token(data: dict, expires_delta: timedelta | None = None) -> str:
     to_encode.update({"exp": expire})
 
     encoded_jwt = jwt.encode(
-        to_encode, auth_settings.SECRET_KEY, algorithm=auth_settings.ALGORITHM
+        payload=to_encode,
+        key=auth_settings.SECRET_KEY,
+        algorithm=auth_settings.ALGORITHM,
     )
     return encoded_jwt
 
 
-def verify_token(token: HTTPAuthorizationCredentials | None) -> dict:
+def verify_token(token: HTTPAuthorizationCredentials) -> dict:
     """
     Verifies a JWT and returns the data contained in it.
 
@@ -93,6 +100,11 @@ def verify_token(token: HTTPAuthorizationCredentials | None) -> dict:
         Raises an HTTPException with status code 401 if there's any error in verifying
         or decoding the token.
     """
+    if not auth_settings.SECRET_KEY or not auth_settings.ALGORITHM:
+        raise KeyError(
+            "Please set auth_settings.SECRET_KEY and auth_settings.ALGORITHM before verifying a token."
+        )
+
     if auth_settings.no_auth:
         if token is not None:
             logger.debug(
@@ -102,8 +114,8 @@ def verify_token(token: HTTPAuthorizationCredentials | None) -> dict:
 
     try:
         payload = jwt.decode(
-            token.credentials,
-            auth_settings.SECRET_KEY,
+            jwt=token.credentials,
+            key=auth_settings.SECRET_KEY,
             algorithms=[auth_settings.ALGORITHM],
         )
     except Exception as e:
