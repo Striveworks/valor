@@ -4,7 +4,7 @@ import PIL.Image
 
 from velour import Datum
 from velour.schemas import validate_metadata
-from velour.types import DictMetadataType, GeoJSONType, MetadataType
+from velour.types import DictMetadataType, GeoJSONType
 
 
 class ImageMetadata:
@@ -30,7 +30,7 @@ class ImageMetadata:
         uid: str,
         height: int,
         width: int,
-        metadata: Optional[MetadataType] = None,
+        metadata: Optional[DictMetadataType] = None,
         geospatial: Optional[GeoJSONType] = None,
     ):
         self.uid = uid
