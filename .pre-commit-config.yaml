@@ -32,3 +32,4 @@ repos:
     rev: v1.1.349
     hooks:
     - id: pyright
+      additional_dependencies: ["requests", "Pillow >= 9.1.0", "numpy", "importlib_metadata; python_version < '3.8'", "tqdm", "pandas", "packaging"]

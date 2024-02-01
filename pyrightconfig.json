@@ -11,7 +11,5 @@
         "docs",
         "migrations"
     ],
-    "reportMissingModuleSource" : "none",
-    "reportMissingImports" : "none",
     "reportIncompatibleMethodOverride" : "none",
 }
