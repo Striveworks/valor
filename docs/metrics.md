@@ -22,6 +22,7 @@ If we're missing an important metric for your particular use case, please [write
 | AP Averaged Over IOUs 	| The average of several AP metrics, calculated at various IOUs, grouped by class. 	|
 | Mean Average Precision (mAP) 	| The mean of several AP scores, calculated over various classes.	|
 | mAP Averaged Over IOUs 	| The mean of several averaged AP scores, calculated over various classes. 	|
+
 ## Semantic Segmentation Metrics
 
 | Name 	| Description 	|
