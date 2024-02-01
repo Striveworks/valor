@@ -84,7 +84,7 @@ def _ground_truth_det_to_mot(
     gt: schemas.Annotation,
     obj_id_to_int: dict,
 ) -> list[float]:
-    """Helper to convert a ground truth detection into MOT format"""
+    """Helper to convert a groundtruth detection into MOT format"""
     if "frame" not in datum.metadata:
         raise ValueError("Datum does not contain a video frame number.")
     for label in gt.labels:

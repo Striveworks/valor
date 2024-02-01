@@ -1,6 +1,6 @@
 # Getting Started
 
-Velour is a centralized evaluation store which makes it easy to measure, explore, and rank model performance. For an overview of what Velour is and why it's important, please refer to our [high-level overview](index.md).
+Velour is a centralized evaluation store that makes it easy to measure, explore, and rank model performance. For an overview of what Velour is and why it's important, please refer to our [high-level overview](index.md).
 
 On this page, we'll describe how to get up and running with Velour.
 
@@ -11,7 +11,7 @@ As a first step, be sure your machine has Docker installed. [Click here](https:/
 
 ## 2. Clone the repo and open the directory
 
-Choose a file in which to store Velour, then run:
+Choose a file in which to store Velour, and then run:
 
 ```shell
 git clone https://github.com/striveworks/velour
@@ -25,7 +25,7 @@ There are multiple ways to start the Velour API service.
 
 ### a. Helm Chart
 
-When deploying Velour on k8s via Helm, you can use our pre-built chart using the following commands:
+When deploying Velour on Kubernetes via Helm, you can use our pre-built chart using the following commands:
 
 ```shell
 helm repo add velour https://striveworks.github.io/velour-charts/
@@ -43,11 +43,11 @@ If you would prefer to build your own image or want a debug console for the back
 
 ## 4. Use Velour
 
-There's two ways to access Velour: by leveraging our Python client, or by calling our REST endpoints directly.
+There are two ways to access Velour: by leveraging our Python client, or by calling our REST endpoints directly.
 
 ### 4a. Using the Python client
 
-Let's walk-through a hypothetical example where we're trying to classify dogs and cats in a series of images. Note that all of the code below is pseudo-code for clarity; please see our ["Getting Started"](https://github.com/Striveworks/velour/blob/main/examples/getting_started.ipynb) notebook for a working example.
+Let's walk through a hypothetical example where we're trying to classify dogs and cats in a series of images. Note that all of the code below is pseudo-code for clarity; please see our ["Getting Started"](https://github.com/Striveworks/velour/blob/main/examples/getting_started.ipynb) notebook for a working example.
 
 #### Install the client
 
@@ -108,11 +108,11 @@ dataset = Dataset(
 )
 ```
 
-Next, we add one or more `GroundTruths` to our `Dataset`. These objects help Velour understand "What is the correct classification for this particular image?".
+Next, we add one or more `GroundTruths` to our `Dataset`. These objects help Velour understand: "What is the correct classification for this particular image?".
 
 ```py
 
-# We start with an example of what 3rd party annotations could look like.
+# We start with an example of what third-party annotations could look like.
 # img3.png contains a bounding box annotation with label "dog".
 # img4.png contains a bounding box annotation with label "cat"
 # img5.png contains no annotations
@@ -133,7 +133,7 @@ for image in groundtruth_annotations:
         }
     )
 
-    # a Velour Annotation consists of a task_type, labels and optionally a geometry.
+    # a Velour Annotation consists of a task_type, labels, and, optionally, a geometry.
     annotations = [
         Annotation(
             task_type=TaskType.DETECTION,
@@ -214,7 +214,7 @@ def create_prediction_from_object_detection_dict(element: dict, datums_by_uid:di
         annotations=annotations,
     )
 
-# lets represent the simulated model output in a similar format to the groundtruths.
+# let's represent the simulated model output in a similar format to the groundtruths:
 object_detections = [
     {"path": "a/b/c/img3.png", "annotations": [
         {"labels": [{"class_label": "dog", "score": 0.8}, {"class_label": "cat", "score": 0.1}, {"class_label": "person", "score": 0.1}], "bbox": {"xmin": 16, "ymin": 130, "xmax": 70, "ymax": 150}},
@@ -262,11 +262,11 @@ print(result.metrics)
 
 #### Run a filtered evaluation and print metrics
 
-Velour offers more than just 1:1 evaluations, it allows the creation of metadata filters to stratify the dataset groundtruths and model predictions. This enables the user to ask complex questions about their data.
+Velour offers more than just 1:1 evaluations; it allows the creation of metadata filters to stratify the dataset groundtruths and model predictions. This enables the user to ask complex questions about their data.
 
-With this in mind lets pose the question: *"How well did the model perform on animal prediction?"*
+With this in mind, let's pose the question: *"How well did the model perform on animal prediction?"*
 
-We can ask this question with the following evaluation statement.
+We can ask this question with the following evaluation statement:
 
 ```py
 # run evaluation
@@ -301,4 +301,4 @@ You can also leverage Velour's API without using the Python client. [Click here]
 
 # Next Steps
 
-For more examples, we'd recommend reviewing our [sample notebooks on GitHub](https://github.com/Striveworks/velour/blob/main/examples/getting_started.ipynb). For more detailed explainations of Velour's technical underpinnings, see our [technical concepts guide](technical_concepts.md).
+For more examples, we'd recommend reviewing our [sample notebooks on GitHub](https://github.com/Striveworks/velour/blob/main/examples/getting_started.ipynb). For more detailed explanations of Velour's technical underpinnings, see our [technical concepts guide](technical_concepts.md).

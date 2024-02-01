@@ -311,7 +311,7 @@ def _compute_detection_metrics(
                 )
             )
 
-    # Get the number of ground truths per grouper_id
+    # Get the number of groundtruths per grouper_id
     number_of_groundtruths_per_grouper = {}
 
     groundtruths = db.query(
