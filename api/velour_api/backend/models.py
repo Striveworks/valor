@@ -8,6 +8,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
 from velour_api.backend.database import Base
+from velour_api.enums import TaskType
 
 
 class Label(Base):
@@ -107,7 +108,7 @@ class Annotation(Base):
     model_id: Mapped[int] = mapped_column(
         ForeignKey("model.id"), nullable=True
     )
-    task_type: Mapped[str] = mapped_column(nullable=False)
+    task_type: Mapped[TaskType] = mapped_column(nullable=False)
     meta = mapped_column(JSONB)
     geo = mapped_column(Geography(), nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())

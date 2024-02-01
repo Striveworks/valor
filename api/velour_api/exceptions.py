@@ -311,9 +311,9 @@ class AnnotationAlreadyExistsError(Exception):
         The uid of the datum.
     """
 
-    def __init__(self, datum_uid: str):
+    def __init__(self, datum_id: int):
         super().__init__(
-            f"Annotation(s) for datum with uid: `{datum_uid}` already exist."
+            f"Annotation(s) for datum with uid: `{datum_id}` already exist."
         )
 
 

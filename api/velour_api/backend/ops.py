@@ -12,6 +12,7 @@ from sqlalchemy import (
     select,
 )
 from sqlalchemy.dialects.postgresql import INTERVAL
+from sqlalchemy.orm import Query as SQLAlchemyQuery
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.orm.decl_api import DeclarativeMeta
 from sqlalchemy.sql.elements import BinaryExpression
@@ -30,7 +31,7 @@ from velour_api.schemas import (
 )
 
 
-class Query:
+class Query(SQLAlchemyQuery):
     """
     Query generator object.
 
@@ -53,7 +54,7 @@ class Query:
     def __init__(self, *args):
         self._args = args
         self._expressions: dict[DeclarativeMeta, list[BinaryExpression]] = {}
-        self._selected: set[DeclarativeMeta] = set(
+        self._selected: set[DeclarativeMeta | None] = set(
             [
                 self._map_attribute_to_table(argument)
                 for argument in args

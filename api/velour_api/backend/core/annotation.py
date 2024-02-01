@@ -2,7 +2,6 @@ import io
 import json
 from base64 import b64encode
 
-from geoalchemy2 import RasterElement
 from geoalchemy2.functions import ST_AsGeoJSON, ST_AsPNG, ST_Envelope
 from PIL import Image
 from sqlalchemy import and_, delete, func, select
@@ -15,7 +14,7 @@ from velour_api.backend.ops import Query
 
 
 def _get_bounding_box_of_raster(
-    db: Session, raster: RasterElement
+    db: Session, raster: Image.Image
 ) -> tuple[int, int, int, int]:
     """Get the enveloping bounding box of a raster"""
     env = json.loads(db.scalar(ST_AsGeoJSON(ST_Envelope(raster))))
@@ -27,7 +26,7 @@ def _get_bounding_box_of_raster(
 
 
 def _raster_to_png_b64(
-    db: Session, raster: RasterElement, height: float, width: float
+    db: Session, raster: Image.Image, height: float, width: float
 ) -> str:
     """Convert a raster to a png"""
     enveloping_box = _get_bounding_box_of_raster(db, raster)
@@ -78,7 +77,7 @@ def _create_annotation(
     annotation: schemas.Annotation,
     datum: models.Datum,
     model: models.Model | None = None,
-) -> list[models.Label]:
+) -> models.Annotation:
     """
     Convert an individual annotation's attributes into a dictionary for upload to psql.
 
@@ -187,7 +186,7 @@ def create_annotations(
     db: Session,
     annotations: list[schemas.Annotation],
     datum: models.Datum,
-    model: models.Model = None,
+    model: models.Model | None = None,
 ) -> list[models.Annotation]:
     """
     Create a list of annotations and associated labels in psql.
@@ -297,6 +296,7 @@ def get_annotation(
         The requested annotation.
     """
     # retrieve all labels associated with annotation
+    # TODO
     if annotation.model_id:
         q = Query(
             models.Label.key,
@@ -335,6 +335,7 @@ def get_annotation(
     )
 
     # Bounding Box
+    # TODO
     if annotation.box is not None:
         geojson = json.loads(db.scalar(ST_AsGeoJSON(annotation.box)))
         retval.bounding_box = schemas.BoundingBox(
@@ -346,6 +347,7 @@ def get_annotation(
 
     # Polygon
     if annotation.polygon is not None:
+        # TODO
         geojson = json.loads(db.scalar(ST_AsGeoJSON(annotation.polygon)))
         retval.polygon = schemas.geojson.from_dict(data=geojson).geometry()
 
@@ -354,17 +356,17 @@ def get_annotation(
         datum = db.scalar(
             select(models.Datum).where(models.Datum.id == annotation.datum_id)
         )
-        if "height" not in datum.meta or "width" not in datum.meta:
-            raise ValueError("missing height or width")
-        height = datum.meta["height"]
-        width = datum.meta["width"]
-        retval.raster = schemas.Raster(
-            mask=_raster_to_png_b64(
-                db, raster=annotation.raster, height=height, width=width
-            ),
-            height=height,
-            width=width,
-        )
+
+        if datum is not None:
+            if "height" not in datum.meta or "width" not in datum.meta:
+                raise ValueError("missing height or width")
+            height = datum.meta["height"]
+            width = datum.meta["width"]
+            retval.raster = schemas.Raster(
+                mask=_raster_to_png_b64(
+                    db, raster=annotation.raster, height=height, width=width
+                ),
+            )
 
     return retval
 
