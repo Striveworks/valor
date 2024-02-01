@@ -541,7 +541,7 @@ class Query(SQLAlchemyQuery):
         """
         return self.any(name, pivot=models.Prediction, as_subquery=as_subquery)
 
-    def filter(self, filters: Filter):
+    def filter(self, filters: Filter | None):
         """Parses `schemas.Filter`"""
         if filters is None:
             return self
