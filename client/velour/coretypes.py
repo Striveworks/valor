@@ -755,7 +755,7 @@ class Evaluation:
         self.conn = connection
         self.update(**kwargs)
 
-    def to_dict(self):
+    def to_dict(self) -> dict:
         return {
             "id": self.id,
             "model_name": self.model_name,
