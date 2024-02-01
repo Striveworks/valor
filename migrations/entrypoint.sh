@@ -22,7 +22,7 @@ wait_for_postgres() {
     exit 1
   fi
 
-  echo "PostgreSQL is ready!"
+  echo "PostgreSQL is ready."
 }
 
 wait_for_postgres
