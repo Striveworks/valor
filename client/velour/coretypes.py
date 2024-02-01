@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import time
 import warnings
@@ -30,7 +32,7 @@ from velour.schemas.properties import (
     NumericProperty,
     StringProperty,
 )
-from velour.types import GeoJSONType, MetadataType, is_floating
+from velour.types import DictMetadataType, GeoJSONType, is_floating
 
 
 class Label:
@@ -81,6 +83,14 @@ class Label:
         return json.dumps(self.to_dict(), indent=4)
 
     def to_dict(self) -> Dict[str, Union[str, float, np.floating, None]]:
+        """
+        Defines how a `velour.Label` object is serialized into a dictionary.
+
+        Returns
+        ----------
+        dict
+            A dictionary describing a label.
+        """
         return {
             "key": self.key,
             "value": self.value,
@@ -88,7 +98,18 @@ class Label:
         }
 
     @classmethod
-    def from_dict(cls, resp):
+    def from_dict(cls, resp) -> Label:
+        """
+        Construct a label from a dictionary.
+
+        Parameters
+        ----------
+        resp : dict
+            The dictionary containing a label.
+
+        Returns
+        velour.Label
+        """
         return cls(**resp)
 
     def __eq__(self, other) -> bool:
@@ -119,7 +140,7 @@ class Label:
 
         # scores not equal
         if is_floating(self.score) and is_floating(other.score):
-            return np.isclose(self.score, other.score)
+            return bool(np.isclose(self.score, other.score))
 
         return False
 
@@ -242,7 +263,7 @@ class Annotation:
         self,
         task_type: TaskType,
         labels: List[Label],
-        metadata: Optional[MetadataType] = None,
+        metadata: Optional[DictMetadataType] = None,
         bounding_box: Optional[BoundingBox] = None,
         polygon: Optional[Polygon] = None,
         multipolygon: Optional[MultiPolygon] = None,
@@ -307,19 +328,17 @@ class Annotation:
         self.metadata = load_metadata(self.metadata)
 
     @classmethod
-    def from_dict(cls, resp: dict):
+    def from_dict(cls, resp: dict) -> Annotation:
         """
-        Deserializes a `velour.Annotation` from a dictionary.
+        Construct a annotation from a dictionary.
 
         Parameters
         ----------
         resp : dict
-            The serialized annotation.
+            The dictionary containing a annotation.
 
         Returns
-        -------
         velour.Annotation
-            The deserialized Annotation object.
         """
 
         task_type = TaskType(resp["task_type"])
@@ -364,7 +383,7 @@ class Annotation:
         Returns
         ----------
         dict
-            A dictionary of the `Annotation's` attributes.
+            A dictionary describing a annotation.
         """
         return {
             "task_type": self.task_type.value,
@@ -426,7 +445,7 @@ class Datum:
     def __init__(
         self,
         uid: str,
-        metadata: Optional[MetadataType] = None,
+        metadata: Optional[DictMetadataType] = None,
         geospatial: Optional[GeoJSONType] = None,
     ):
         self.uid = uid
@@ -440,12 +459,12 @@ class Datum:
 
     def to_dict(self, dataset_name: Optional[str] = None) -> dict:
         """
-        Defines how a `Datum` object is transformed into a dictionary.
+        Defines how a `velour.Datum` object is serialized into a dictionary.
 
         Returns
         ----------
         dict
-            A dictionary of the `Datum's` attributes.
+            A dictionary describing a datum.
         """
         return {
             "dataset_name": dataset_name,
@@ -455,7 +474,18 @@ class Datum:
         }
 
     @classmethod
-    def from_dict(cls, resp: dict) -> "Datum":
+    def from_dict(cls, resp: dict) -> Datum:
+        """
+        Construct a datum from a dictionary.
+
+        Parameters
+        ----------
+        resp : dict
+            The dictionary containing a datum.
+
+        Returns
+        velour.Datum
+        """
         resp.pop("dataset_name", None)
         return cls(**resp)
 
@@ -527,12 +557,12 @@ class GroundTruth:
         dataset_name: Optional[str] = None,
     ) -> dict:
         """
-        Defines how a `GroundTruth` is transformed into a dictionary.
+        Defines how a `velour.GroundTruth` object is serialized into a dictionary.
 
         Returns
         ----------
         dict
-            A dictionary of the `GroundTruth's` attributes.
+            A dictionary describing a ground truth.
         """
         return {
             "datum": self.datum.to_dict(dataset_name),
@@ -542,7 +572,18 @@ class GroundTruth:
         }
 
     @classmethod
-    def from_dict(cls, resp: dict):
+    def from_dict(cls, resp: dict) -> GroundTruth:
+        """
+        Construct a ground truth from a dictionary.
+
+        Parameters
+        ----------
+        resp : dict
+            The dictionary containing a ground truth.
+
+        Returns
+        velour.GroundTruth
+        """
         expected_keys = {"datum", "annotations"}
         if set(resp.keys()) != expected_keys:
             raise ValueError(
@@ -664,12 +705,12 @@ class Prediction:
         model_name: Optional[str] = None,
     ) -> dict:
         """
-        Defines how a `Prediction` is transformed into a dictionary.
+        Defines how a `velour.Prediction` object is serialized into a dictionary.
 
         Returns
         ----------
         dict
-            A dictionary of the `Prediction's` attributes.
+            A dictionary describing a prediction.
         """
         return {
             "datum": self.datum.to_dict(dataset_name=dataset_name),
@@ -680,7 +721,18 @@ class Prediction:
         }
 
     @classmethod
-    def from_dict(cls, resp: dict):
+    def from_dict(cls, resp: dict) -> Prediction:
+        """
+        Construct a Prediction from a dictionary.
+
+        Parameters
+        ----------
+        resp : dict
+            The dictionary containing a prediction.
+
+        Returns
+        velour.Prediction
+        """
         expected_keys = {"datum", "annotations", "model_name"}
         if set(resp.keys()) != expected_keys:
             raise ValueError(
@@ -756,6 +808,14 @@ class Evaluation:
         self.update(**kwargs)
 
     def to_dict(self) -> dict:
+        """
+        Defines how a `velour.Evaluation` object is serialized into a dictionary.
+
+        Returns
+        ----------
+        dict
+            A dictionary describing a evaluation.
+        """
         return {
             "id": self.id,
             "model_name": self.model_name,
@@ -912,8 +972,8 @@ class DatasetSummary:
     num_rasters: int
     task_types: List[TaskType]
     labels: List[Label]
-    datum_metadata: List[MetadataType]
-    annotation_metadata: List[MetadataType]
+    datum_metadata: List[DictMetadataType]
+    annotation_metadata: List[DictMetadataType]
 
     def __post_init__(self):
         for i, tt in enumerate(self.task_types):
@@ -945,7 +1005,7 @@ class Dataset:
     def __init__(
         self,
         name: str,
-        metadata: Optional[MetadataType] = None,
+        metadata: Optional[DictMetadataType] = None,
         geospatial: Optional[GeoJSONType] = None,
         connection: Optional[ClientConnection] = None,
     ):
@@ -980,9 +1040,9 @@ class Dataset:
     def create(
         cls,
         name: str,
-        metadata: Optional[MetadataType] = None,
+        metadata: Optional[DictMetadataType] = None,
         geospatial: Optional[GeoJSONType] = None,
-    ):
+    ) -> Dataset:
         """
         Creates a dataset that persists in the backend.
 
@@ -1012,7 +1072,7 @@ class Dataset:
     def get(
         cls,
         name: str,
-    ):
+    ) -> Union[Dataset, None]:
         """
         Retrieves a dataset from the backend database.
 
@@ -1031,14 +1091,14 @@ class Dataset:
     @classmethod
     def from_dict(
         cls, resp: dict, connection: Optional[ClientConnection] = None
-    ):
+    ) -> Dataset:
         """
         Construct a dataset from a dictionary.
 
         Parameters
         ----------
         resp : dict
-            The dictionary containing a dataset definition.
+            The dictionary containing a dataset.
         connection : ClientConnection, optional
             Option to share a ClientConnection rather than request a new one.
 
@@ -1051,12 +1111,12 @@ class Dataset:
 
     def to_dict(self, id: Optional[int] = None) -> dict:
         """
-        Defines how a `Dataset` object is transformed into a dictionary.
+        Defines how a `velour.Dataset` object is serialized into a dictionary.
 
         Returns
         ----------
         dict
-            A dictionary of the `Dataset's` attributes.
+            A dictionary describing a model.
         """
         return {
             "id": id,
@@ -1231,7 +1291,7 @@ class Model:
     def __init__(
         self,
         name: str,
-        metadata: Optional[MetadataType] = None,
+        metadata: Optional[DictMetadataType] = None,
         geospatial: Optional[GeoJSONType] = None,
         connection: Optional[ClientConnection] = None,
     ):
@@ -1266,9 +1326,9 @@ class Model:
     def create(
         cls,
         name: str,
-        metadata: Optional[MetadataType] = None,
+        metadata: Optional[DictMetadataType] = None,
         geospatial: Optional[GeoJSONType] = None,
-    ):
+    ) -> Model:
         """
         Creates a model that persists in the backend.
 
@@ -1298,7 +1358,7 @@ class Model:
     def get(
         cls,
         name: str,
-    ):
+    ) -> Union[Model, None]:
         """
         Retrieves a model from the backend database.
 
@@ -1317,14 +1377,14 @@ class Model:
     @classmethod
     def from_dict(
         cls, resp: dict, connection: Optional[ClientConnection] = None
-    ):
+    ) -> Model:
         """
         Construct a model from a dictionary.
 
         Parameters
         ----------
         resp : dict
-            The dictionary containing a model definition.
+            The dictionary containing a model.
         connection : ClientConnection, optional
             Option to share a ClientConnection rather than request a new one.
 
@@ -1336,12 +1396,12 @@ class Model:
 
     def to_dict(self, id: Optional[int] = None) -> dict:
         """
-        Defines how a `Model` object is transformed into a dictionary.
+        Defines how a `velour.Model` object is serialized into a dictionary.
 
         Returns
         ----------
         dict
-            A dictionary of the `Model's` attributes.
+            A dictionary describing a model.
         """
         return {
             "id": id,
@@ -1463,7 +1523,8 @@ class Model:
         return Filter(**filters)
 
     def _create_label_map(
-        self, label_map: Optional[Dict[Label, Label]]
+        self,
+        label_map: Optional[Dict[Label, Label]],
     ) -> Union[List[List[List[str]]], None]:
         """Convert a dictionary of label maps to a serializable list format."""
         if not label_map:
@@ -1691,7 +1752,7 @@ class Client:
         host: str,
         access_token: Optional[str] = None,
         reconnect: bool = False,
-    ):
+    ) -> Client:
         """
         Establishes a connection to the Velour API.
 
@@ -1744,11 +1805,12 @@ class Client:
         List[velour.Label]
             A list of labels.
         """
-        if isinstance(dataset, Dataset):
-            dataset = dataset.name
+        dataset_name = (
+            dataset.name if isinstance(dataset, Dataset) else dataset
+        )
         return [
             Label.from_dict(label)
-            for label in self.conn.get_labels_from_dataset(dataset)
+            for label in self.conn.get_labels_from_dataset(dataset_name)
         ]
 
     def get_labels_from_model(self, model: Union[Model, str]) -> List[Label]:
@@ -1765,11 +1827,10 @@ class Client:
         List[velour.Label]
             A list of labels.
         """
-        if isinstance(model, Model):
-            model = model.name
+        model_name = model.name if isinstance(model, Model) else model
         return [
             Label.from_dict(label)
-            for label in self.conn.get_labels_from_model(model)
+            for label in self.conn.get_labels_from_model(model_name)
         ]
 
     def create_dataset(
@@ -1804,9 +1865,10 @@ class Client:
             The groundtruth to create.
         """
         if isinstance(groundtruth, GroundTruth):
-            if isinstance(dataset, Dataset):
-                dataset = dataset.name
-            groundtruth = groundtruth.to_dict(dataset_name=dataset)
+            dataset_name = (
+                dataset.name if isinstance(dataset, Dataset) else dataset
+            )
+            groundtruth = groundtruth.to_dict(dataset_name=dataset_name)
         return self.conn.create_groundtruths(groundtruth)
 
     def get_groundtruth(
@@ -1829,14 +1891,14 @@ class Client:
         Union[GroundTruth, None]
             The matching groundtruth or 'None' if it doesn't exist.
         """
-        if isinstance(dataset, Dataset):
-            dataset = dataset.name
-        if isinstance(datum, Datum):
-            datum = datum.uid
+        dataset_name = (
+            dataset.name if isinstance(dataset, Dataset) else dataset
+        )
+        datum_uid = datum.uid if isinstance(datum, Datum) else datum
 
         try:
             resp = self.conn.get_groundtruth(
-                dataset_name=dataset, datum_uid=datum
+                dataset_name=dataset_name, datum_uid=datum_uid
             )
             return GroundTruth.from_dict(resp)
         except ClientException as e:
@@ -1853,9 +1915,10 @@ class Client:
         dataset : str
             The dataset to be finalized.
         """
-        if isinstance(dataset, Dataset):
-            dataset = dataset.name
-        return self.conn.finalize_dataset(name=dataset)
+        dataset_name = (
+            dataset.name if isinstance(dataset, Dataset) else dataset
+        )
+        return self.conn.finalize_dataset(name=dataset_name)
 
     def get_dataset(
         self,
@@ -1952,10 +2015,11 @@ class Client:
         velour.Datum
             The requested datum or 'None' if it doesn't exist.
         """
-        if isinstance(dataset, Dataset):
-            dataset = dataset.name
+        dataset_name = (
+            dataset.name if isinstance(dataset, Dataset) else dataset
+        )
         try:
-            resp = self.conn.get_datum(dataset_name=dataset, uid=uid)
+            resp = self.conn.get_datum(dataset_name=dataset_name, uid=uid)
             return Datum.from_dict(resp)
         except ClientException as e:
             if e.status_code == 404:
@@ -2060,13 +2124,13 @@ class Client:
             The prediction to create.
         """
         if isinstance(prediction, Prediction):
-            if isinstance(dataset, Dataset):
-                dataset = dataset.name
-            if isinstance(model, Model):
-                model = model.name
+            dataset_name = (
+                dataset.name if isinstance(dataset, Dataset) else dataset
+            )
+            model_name = model.name if isinstance(model, Model) else model
             prediction = prediction.to_dict(
-                dataset_name=dataset,
-                model_name=model,
+                dataset_name=dataset_name,
+                model_name=model_name,
             )
         return self.conn.create_predictions(prediction)
 
@@ -2093,16 +2157,17 @@ class Client:
         Union[Prediction, None]
             The matching prediction or 'None' if it doesn't exist.
         """
-        if isinstance(dataset, Dataset):
-            dataset = dataset.name
-        if isinstance(model, Model):
-            model = model.name
-        if isinstance(datum, Datum):
-            datum = datum.uid
+        dataset_name = (
+            dataset.name if isinstance(dataset, Dataset) else dataset
+        )
+        model_name = model.name if isinstance(model, Model) else model
+        datum_uid = datum.uid if isinstance(datum, Datum) else datum
 
         try:
             resp = self.conn.get_prediction(
-                dataset_name=dataset, model_name=model, datum_uid=datum
+                dataset_name=dataset_name,
+                model_name=model_name,
+                datum_uid=datum_uid,
             )
             return Prediction.from_dict(resp)
         except ClientException as e:
@@ -2116,12 +2181,13 @@ class Client:
         """
         Finalizes a model-dataset pairing such that new prediction cannot be added to it.
         """
-        if isinstance(dataset, Dataset):
-            dataset = dataset.name
-        if isinstance(model, Model):
-            model = model.name
+        dataset_name = (
+            dataset.name if isinstance(dataset, Dataset) else dataset
+        )
+        model_name = model.name if isinstance(model, Model) else model
         return self.conn.finalize_inferences(
-            dataset_name=dataset, model_name=model
+            dataset_name=dataset_name,
+            model_name=model_name,
         )
 
     def get_model(
@@ -2221,11 +2287,10 @@ class Client:
         List[Evaluation]
             A list of evaluations.
         """
-        if isinstance(model, Model):
-            model = model.name
+        model_name = model.name if isinstance(model, Model) else model
         return [
             Evaluation(**evaluation, connection=self.conn)
-            for evaluation in self.conn.get_model_eval_requests(model)
+            for evaluation in self.conn.get_model_eval_requests(model_name)
         ]
 
     def delete_model(self, name: str, timeout: int = 0) -> None:

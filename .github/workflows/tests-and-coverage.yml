@@ -40,7 +40,8 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./api
+        working-directory: .
+
     services:
       postgis:
         image: 724664234782.dkr.ecr.us-east-1.amazonaws.com/library/hardened/bitnami/postgresql:15.3.0-debian-12
@@ -51,17 +52,26 @@ jobs:
           - 5432:5432
         env:
           POSTGRES_PASSWORD: password
+          POSTGRES_DB: velour
+
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
         with:
           python-version: "3.10"
-      - run: pip install ".[test]"
-      - run: coverage run --source=velour_api -m pytest -v tests/functional-tests
+      - run: |
+          docker build -f=migrations/Dockerfile ./migrations -t migrations
+          docker run -e POSTGRES_PASSWORD=password -e POSTGRES_HOST=localhost -e POSTGRES_DB=velour -e POSTGRES_USERNAME=postgres -e POSTGRES_PORT=5432  --network "host" migrations
+      - run: |
+          cd api && pip install ".[test]"
+          POSTGRES_PASSWORD=password POSTGRES_HOST=localhost POSTGRES_DB=velour POSTGRES_USERNAME=postgres POSTGRES_PORT=5432 coverage run --source=velour_api -m pytest -v tests/functional-tests
         env:
           POSTGRES_PASSWORD: password
           POSTGRES_HOST: localhost
-      - run: coverage report
+          POSTGRES_DB: velour
+          POSTGRES_USERNAME: postgres
+          POSTGRES_PORT: 5432
+      - run: cd api && coverage report
       - name: upload coverage report as artifact
         uses: actions/upload-artifact@v3
         with:

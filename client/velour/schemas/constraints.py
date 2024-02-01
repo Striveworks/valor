@@ -109,10 +109,10 @@ class _DeclarativeMapper:
         """Overload in subclasses to insert a value modification."""
         return value
 
-    def __eq__(self, value: Any) -> BinaryExpression:
+    def __eq__(self, value: Any) -> BinaryExpression:  # type: ignore
         raise AttributeError(f"'{type(self)}' object has no attribute '=='")
 
-    def __ne__(self, value: Any) -> BinaryExpression:
+    def __ne__(self, value: Any) -> BinaryExpression:  # type: ignore
         raise AttributeError(f"'{type(self)}' object has no attribute '!='")
 
     def __lt__(self, value: Any) -> BinaryExpression:
@@ -489,7 +489,9 @@ class DictionaryMapper(_DeclarativeMapper):
     def __getitem__(self, key: str):
         return _DictionaryValueMapper(name=self.name, key=key)
 
-    def _create_expression(self, value: Any, operator: str) -> None:
+    def _create_expression(
+        self, value: Any, operator: str
+    ) -> BinaryExpression:
         raise NotImplementedError(
             "Dictionary mapper does not define any operations for iteself. Please use `dict[key]` to create an expression."
         )
