@@ -489,7 +489,9 @@ class DictionaryMapper(_DeclarativeMapper):
     def __getitem__(self, key: str):
         return _DictionaryValueMapper(name=self.name, key=key)
 
-    def _create_expression(self, value: Any, operator: str) -> None:
+    def _create_expression(
+        self, value: Any, operator: str
+    ) -> BinaryExpression:
         raise NotImplementedError(
             "Dictionary mapper does not define any operations for iteself. Please use `dict[key]` to create an expression."
         )

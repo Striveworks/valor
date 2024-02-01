@@ -1,8 +1,16 @@
 {
-    "exclude": [
-        "*"
-    ],
     "include": [
         "client/velour"
-    ]
+    ],
+    "exclude": [
+        "client/unit-tests",
+        "api",
+        "utils",
+        "examples",
+        "integration_tests",
+        "docs",
+    ],
+    "reportMissingModuleSource" : "none",
+    "reportMissingImports" : "none",
+    "reportIncompatibleMethodOverride" : "none",
 }

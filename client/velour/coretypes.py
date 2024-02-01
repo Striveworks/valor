@@ -24,7 +24,7 @@ from velour.schemas.properties import (
     NumericProperty,
     StringProperty,
 )
-from velour.types import GeoJSONType, MetadataType, is_floating
+from velour.types import DictMetadataType, GeoJSONType, is_floating
 
 
 class Label:
@@ -160,7 +160,7 @@ class Datum:
     def __init__(
         self,
         uid: str,
-        metadata: Optional[MetadataType] = None,
+        metadata: Optional[DictMetadataType] = None,
         geospatial: Optional[GeoJSONType] = None,
     ):
         self.uid = uid
@@ -311,7 +311,7 @@ class Annotation:
         self,
         task_type: TaskType,
         labels: List[Label],
-        metadata: Optional[MetadataType] = None,
+        metadata: Optional[DictMetadataType] = None,
         bounding_box: Optional[BoundingBox] = None,
         polygon: Optional[Polygon] = None,
         multipolygon: Optional[MultiPolygon] = None,
@@ -890,8 +890,8 @@ class DatasetSummary:
     num_rasters: int
     task_types: List[TaskType]
     labels: List[Label]
-    datum_metadata: List[MetadataType]
-    annotation_metadata: List[MetadataType]
+    datum_metadata: List[DictMetadataType]
+    annotation_metadata: List[DictMetadataType]
 
     def __post_init__(self):
         for i, tt in enumerate(self.task_types):
@@ -928,7 +928,7 @@ class Dataset:
         self,
         client: Client,
         name: str,
-        metadata: Optional[MetadataType] = None,
+        metadata: Optional[DictMetadataType] = None,
         geospatial: Optional[GeoJSONType] = None,
         delete_if_exists: bool = False,
     ):
@@ -1164,7 +1164,7 @@ class Model:
         self,
         client: Client,
         name: str,
-        metadata: Optional[MetadataType] = None,
+        metadata: Optional[DictMetadataType] = None,
         geospatial: Optional[GeoJSONType] = None,
         delete_if_exists: bool = False,
     ):
@@ -1328,8 +1328,9 @@ class Model:
         return Filter(**filters)
 
     def _create_label_map(
-        self, label_map: Dict[Label, Label]
-    ) -> List[List[List[str]]]:
+        self,
+        label_map: Optional[Dict[Label, Label]] = None,
+    ) -> Union[List[List[List[str]]], None]:
         """Convert a dictionary of label maps to a serializable list format."""
         if not label_map:
             return None
