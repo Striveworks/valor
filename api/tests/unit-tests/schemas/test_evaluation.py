@@ -76,7 +76,7 @@ def test_EvaluationParameters():
 
 def test_EvaluationRequest():
     schemas.EvaluationRequest(
-        model_names="name",
+        model_names=["name"],
         datum_filter=schemas.Filter(),
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.CLASSIFICATION
