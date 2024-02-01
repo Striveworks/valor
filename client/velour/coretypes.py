@@ -52,7 +52,7 @@ class Label:
         Declarative mappers used to create filters.
     """
 
-    value = NumericProperty("value")
+    value = StringProperty("value")
     key = StringProperty("label_keys")
     score = NumericProperty("prediction_scores")
 
@@ -143,82 +143,6 @@ class Label:
             A tuple of the `Label's` arguments.
         """
         return (self.key, self.value, self.score)
-
-
-class Datum:
-    """
-    A class used to store datum about `GroundTruths` and `Predictions`.
-
-    Parameters
-    ----------
-    uid : str
-        The UID of the `Datum`.
-    metadata : dict
-        A dictionary of metadata that describes the `Datum`.
-    geospatial :  dict
-        A GeoJSON-style dictionary describing the geospatial coordinates of the `Datum`.
-    """
-
-    uid = StringProperty("datum_uids")
-    metadata = DictionaryProperty("datum_metadata")
-    geospatial = GeospatialProperty("datum_geospatial")
-
-    def __init__(
-        self,
-        uid: str,
-        metadata: Optional[MetadataType] = None,
-        geospatial: Optional[GeoJSONType] = None,
-    ):
-        self.uid = uid
-        self.metadata = metadata if metadata else {}
-        self.geospatial = geospatial
-
-        if not isinstance(self.uid, str):
-            raise TypeError("Attribute `uid` should have type `str`.")
-        validate_metadata(self.metadata)
-        self.metadata = load_metadata(self.metadata)
-
-    def __str__(self):
-        return str(self.to_dict(dataset_name=None).pop("dataset_name"))
-
-    def to_dict(self, dataset_name: Optional[str] = None) -> dict:
-        """
-        Defines how a `Datum` object is transformed into a dictionary.
-
-        Returns
-        ----------
-        dict
-            A dictionary of the `Datum's` attributes.
-        """
-        return {
-            "dataset_name": dataset_name,
-            "uid": self.uid,
-            "metadata": dump_metadata(self.metadata),
-            "geospatial": self.geospatial if self.geospatial else None,
-        }
-
-    @classmethod
-    def from_dict(cls, resp: dict) -> "Datum":
-        resp.pop("dataset_name", None)
-        return cls(**resp)
-
-    def __eq__(self, other):
-        """
-        Defines how `Datums` are compared to one another
-
-        Parameters
-        ----------
-        other : Datum
-            The object to compare with the `Datum`.
-
-        Returns
-        ----------
-        boolean
-            A boolean describing whether the two objects are equal.
-        """
-        if not isinstance(other, Datum):
-            raise TypeError(f"Expected type `{type(Datum)}`, got `{other}`")
-        return self.to_dict() == other.to_dict()
 
 
 class Annotation:
@@ -348,28 +272,28 @@ class Annotation:
                 )
 
         # bounding box
-        if self.bounding_box:
+        if self.bounding_box is not None:
             if not isinstance(self.bounding_box, BoundingBox):
                 raise TypeError(
                     "Attribute `bounding_box` should have type `velour.schemas.BoundingBox`."
                 )
 
         # polygon
-        if self.polygon:
+        if self.polygon is not None:
             if not isinstance(self.polygon, Polygon):
                 raise TypeError(
                     "Attribute `polygon` should have type `velour.schemas.Polygon`."
                 )
 
         # multipolygon
-        if self.multipolygon:
+        if self.multipolygon is not None:
             if not isinstance(self.multipolygon, MultiPolygon):
                 raise TypeError(
                     "Attribute `multipolygon` should have type `velour.schemas.MultiPolygon`."
                 )
 
         # raster
-        if self.raster:
+        if self.raster is not None:
             if not isinstance(self.raster, Raster):
                 raise TypeError(
                     "Attribute `raster` should have type `velour.schemas.Raster`."
@@ -477,6 +401,83 @@ class Annotation:
                 f"Expected type `{type(Annotation)}`, got `{other}`"
             )
         return self.to_dict() == other.to_dict()
+
+
+class Datum:
+    """
+    A class used to store datum about `GroundTruths` and `Predictions`.
+
+    Parameters
+    ----------
+    uid : str
+        The UID of the `Datum`.
+    metadata : dict
+        A dictionary of metadata that describes the `Datum`.
+    geospatial :  dict
+        A GeoJSON-style dictionary describing the geospatial coordinates of the `Datum`.
+    """
+
+    uid = StringProperty("datum_uids")
+    metadata = DictionaryProperty("datum_metadata")
+    geospatial = GeospatialProperty("datum_geospatial")
+
+    def __init__(
+        self,
+        uid: str,
+        metadata: Optional[MetadataType] = None,
+        geospatial: Optional[GeoJSONType] = None,
+    ):
+        self.uid = uid
+        self.metadata = metadata if metadata else {}
+        self.geospatial = geospatial
+
+        if not isinstance(self.uid, str):
+            raise TypeError("Attribute `uid` should have type `str`.")
+        validate_metadata(self.metadata)
+        self.metadata = load_metadata(self.metadata)
+
+    def __str__(self):
+        return str(self.to_dict(dataset_name=None).pop("dataset_name"))
+
+    def to_dict(self, dataset_name: Optional[str] = None) -> dict:
+        """
+        Defines how a `Datum` object is transformed into a dictionary.
+
+        Returns
+        ----------
+        dict
+            A dictionary of the `Datum's` attributes.
+        """
+        return {
+            "dataset_name": dataset_name,
+            "uid": self.uid,
+            "metadata": dump_metadata(self.metadata),
+            "geospatial": self.geospatial if self.geospatial else None,
+        }
+
+    @classmethod
+    def from_dict(cls, resp: dict) -> "Datum":
+        resp.pop("dataset_name", None)
+        return cls(**resp)
+
+    def __eq__(self, other):
+        """
+        Defines how `Datums` are compared to one another
+
+        Parameters
+        ----------
+        other : Datum
+            The object to compare with the `Datum`.
+
+        Returns
+        ----------
+        boolean
+            A boolean describing whether the two objects are equal.
+        """
+        if not isinstance(other, Datum):
+            raise TypeError(f"Expected type `{type(Datum)}`, got `{other}`")
+        return self.to_dict() == other.to_dict()
+
 
 
 class GroundTruth:
