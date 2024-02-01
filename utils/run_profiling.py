@@ -6,7 +6,7 @@ import warnings
 import seaborn as sns
 from src.profiling import profile_velour
 
-from velour.client import Client
+from velour import Client
 
 warnings.filterwarnings("ignore")
 sns.set_style("whitegrid")

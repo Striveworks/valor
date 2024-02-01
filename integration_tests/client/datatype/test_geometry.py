@@ -7,8 +7,15 @@ from geoalchemy2.functions import ST_Area, ST_Intersection, ST_Union
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from velour import Annotation, Dataset, GroundTruth, Label, Model, Prediction
-from velour.client import Client
+from velour import (
+    Annotation,
+    Client,
+    Dataset,
+    GroundTruth,
+    Label,
+    Model,
+    Prediction,
+)
 from velour.data_generation import _generate_mask
 from velour.enums import TaskType
 from velour.metatypes import ImageMetadata
@@ -72,7 +79,7 @@ def test_boundary(
     img1: ImageMetadata,
 ):
     """Test consistency of boundary in backend and client"""
-    dataset = Dataset(client, dataset_name)
+    dataset = Dataset.create(dataset_name)
     rect1_poly = bbox_to_poly(rect1)
     dataset.add_groundtruth(
         GroundTruth(
@@ -108,7 +115,7 @@ def test_iou(
     rect1_poly = bbox_to_poly(rect1)
     rect2_poly = bbox_to_poly(rect2)
 
-    dataset = Dataset(client, dataset_name)
+    dataset = Dataset.create(dataset_name)
     dataset.add_groundtruth(
         GroundTruth(
             datum=img1.to_datum(),
@@ -126,7 +133,7 @@ def test_iou(
     assert annotation is not None
     db_gt = annotation.polygon
 
-    model = Model(client, model_name)
+    model = Model.create(model_name)
     model.add_prediction(
         dataset,
         Prediction(
@@ -178,7 +185,7 @@ def test_add_raster_and_boundary_box(
         ],
     )
 
-    dataset = Dataset(client, dataset_name)
+    dataset = Dataset.create(dataset_name)
 
     dataset.add_groundtruth(gt)
 
