@@ -1,11 +1,8 @@
-import pytest
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import patch
 
-from velour.client import (
-    connect,
-    get_connection,
-    reset_connection,
-)
+import pytest
+
+from velour.client import connect, get_connection, reset_connection
 from velour.exceptions import (
     ClientAlreadyConnectedError,
     ClientConnectionFailed,
@@ -13,7 +10,7 @@ from velour.exceptions import (
 )
 
 
-@patch('velour.client.ClientConnection')
+@patch("velour.client.ClientConnection")
 def test_connect(ClientConnection):
     connect(host="host")
     ClientConnection.assert_called_once()
@@ -29,18 +26,18 @@ def test_connect(ClientConnection):
     assert "testing" in str(e)
 
 
-@patch('velour.client.ClientConnection')
+@patch("velour.client.ClientConnection")
 def test_get_connection(ClientConnection):
     reset_connection()
 
     with pytest.raises(ClientNotConnectedError):
         get_connection()
-    
+
     connect(host="host")
     ClientConnection.assert_called_once()
 
 
-@patch('velour.client.ClientConnection')
+@patch("velour.client.ClientConnection")
 def test_reset_connection(ClientConnection):
     connect(host="host", reconnect=True)
     assert get_connection() is not None
@@ -49,5 +46,5 @@ def test_reset_connection(ClientConnection):
 
     with pytest.raises(ClientNotConnectedError):
         get_connection()
-    connect(host="host") # test without reconnect arg
+    connect(host="host")  # test without reconnect arg
     assert get_connection() is not None

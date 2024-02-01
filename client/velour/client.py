@@ -12,9 +12,9 @@ from velour import __version__ as client_version
 from velour.enums import TableStatus
 from velour.exceptions import (
     ClientAlreadyConnectedError,
+    ClientConnectionFailed,
     ClientException,
     ClientNotConnectedError,
-    ClientConnectionFailed,
 )
 from velour.schemas import EvaluationRequest
 from velour.types import T
@@ -87,7 +87,7 @@ class ClientConnection:
     access_token: Optional[str] = None
 
     def __post_init__(self):
-        
+
         if not (
             self.host.startswith("http://") or self.host.startswith("https://")
         ):
@@ -764,9 +764,9 @@ class ClientConnection:
 
 def _create_connection():
     """
-    Creates and manages a connection to the Velour API. 
+    Creates and manages a connection to the Velour API.
 
-    This function initializes a connection closure that can be used to establish and retrieve a client connection to the Velour API. It returns two functions: `connect` and `get_connection`. 
+    This function initializes a connection closure that can be used to establish and retrieve a client connection to the Velour API. It returns two functions: `connect` and `get_connection`.
 
     The `connect` function is used to establish a new connection to the API, either with a new host or by reconnecting to an existing host. It raises an error if a connection is already established and `reconnect` is not set to `True`.
 
@@ -778,7 +778,7 @@ def _create_connection():
         (connect, get_connection)
     """
     _connection = None
-    
+
     def connect(
         host: str,
         access_token: Optional[str] = None,
@@ -823,14 +823,14 @@ def _create_connection():
         if _connection is None:
             raise ClientNotConnectedError
         return _connection
-    
+
     def reset_connection():
         """
         Resets the connection to its initial state.
         """
         nonlocal _connection
         _connection = None
-    
+
     return connect, get_connection, reset_connection
 
 

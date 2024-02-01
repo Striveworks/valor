@@ -479,7 +479,6 @@ class Datum:
         return self.to_dict() == other.to_dict()
 
 
-
 class GroundTruth:
     """
     An object describing a groundtruth (e.g., a human-drawn bounding box on an image).

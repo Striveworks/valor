@@ -1,24 +1,25 @@
 import numpy as np
 
 from velour import (
-    Label,
     Annotation,
+    Dataset,
     Datum,
     GroundTruth,
-    Prediction,
-    Dataset,
+    Label,
     Model,
+    Prediction,
+    enums,
 )
+from velour.schemas import geometry
 from velour.schemas.properties import (
-    NumericProperty,
-    StringProperty,
-    LabelProperty,
+    DictionaryProperty,
     GeometryProperty,
     GeospatialProperty,
-    DictionaryProperty,
+    LabelProperty,
+    NumericProperty,
+    StringProperty,
 )
-from velour import enums
-from velour.schemas import geometry
+
 
 def test_label_typing():
     assert type(Label.key) is StringProperty
@@ -29,7 +30,7 @@ def test_label_typing():
     assert type(label.key) is str
     assert type(label.value) is str
     assert label.score is None
-   
+
     label = Label(key="k1", value="v1", score=None)
     assert type(label.key) is str
     assert type(label.value) is str
@@ -62,10 +63,10 @@ def test_annotation_typing():
     assert annotation.multipolygon is None
     assert annotation.raster is None
 
-    bbox = geometry.BoundingBox.from_extrema(0,1,0,1)
+    bbox = geometry.BoundingBox.from_extrema(0, 1, 0, 1)
     polygon = geometry.Polygon(boundary=bbox.polygon)
     multipolygon = geometry.MultiPolygon(polygons=[polygon])
-    raster = geometry.Raster.from_numpy(np.zeros((10,10)) == 0)
+    raster = geometry.Raster.from_numpy(np.zeros((10, 10)) == 0)
     annotation = Annotation(
         task_type=enums.TaskType.CLASSIFICATION,
         labels=[],

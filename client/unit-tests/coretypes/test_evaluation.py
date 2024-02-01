@@ -1,6 +1,6 @@
 from typing import Optional
-
 from unittest.mock import Mock
+
 import pytest
 
 from velour import Evaluation, enums, schemas

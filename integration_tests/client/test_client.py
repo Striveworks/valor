@@ -16,7 +16,7 @@ from velour import (
     Model,
     Prediction,
 )
-from velour.client import connect, get_connection
+from velour.client import connect
 from velour.enums import TaskType
 from velour.exceptions import ClientException
 from velour.schemas import Constraint, Filter
