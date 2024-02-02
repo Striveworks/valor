@@ -15,7 +15,7 @@ start-postgis-docker:
 	docker run -p 5432:5432 -e POSTGRES_PASSWORD=password -d postgis/postgis
 
 functional-tests:
-	POSTGRES_PASSWORD=password POSTGRES_HOST=localhost pytest -v ./api/tests/functional-tests
+	POSTGRES_PASSWORD=password POSTGRES_HOST=localhost POSTGRES_DB=velour POSTGRES_USERNAME=postgres POSTGRES_PORT=5432  pytest -v ./api/tests/functional-tests
 
 start-server:
 	POSTGRES_PASSWORD=password POSTGRES_HOST=localhost uvicorn velour_api.main:app --host 0.0.0.0
