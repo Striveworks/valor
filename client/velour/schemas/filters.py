@@ -103,7 +103,7 @@ class Filter:
 
     # labels
     labels: Optional[List[Dict[str, str]]] = None
-    label_ids: Optional[list[int]] = None
+    label_ids: Optional[List[int]] = None
     label_keys: Optional[List[str]] = None
     label_scores: Optional[List[Constraint]] = None
 
