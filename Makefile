@@ -12,7 +12,11 @@ unit-tests:
 	python -m pytest -v ./client/unit-tests
 
 start-postgis-docker:
-	docker run -p 5432:5432 -e POSTGRES_PASSWORD=password -d postgis/postgis
+	docker run -p 5432:5432 -e POSTGRES_PASSWORD=password -e POSTGRES_DB=velour -d docker.io/postgis/postgis
+
+run-migrations:
+	docker build -f=migrations/Dockerfile ./migrations -t migrations && \
+	docker run -e POSTGRES_PASSWORD=password -e POSTGRES_HOST=localhost -e POSTGRES_DB=velour -e POSTGRES_USERNAME=postgres -e POSTGRES_PORT=5432 --network=host migrations
 
 functional-tests:
 	POSTGRES_PASSWORD=password POSTGRES_HOST=localhost POSTGRES_DB=velour POSTGRES_USERNAME=postgres POSTGRES_PORT=5432  pytest -v ./api/tests/functional-tests
