@@ -1,6 +1,6 @@
 from pydantic import BaseModel, ConfigDict, field_validator
 
-from velour_api.enums import AnnotationType, TaskType
+from velour_api.enums import TaskType
 from velour_api.schemas.geojson import (
     GeoJSONMultiPolygon,
     GeoJSONPoint,
@@ -386,10 +386,6 @@ class Filter(BaseModel):
         A list of `Datum` geospatial filters to filter on.
     task_types: List[TaskType], default=None
         A list of task types to filter on.
-    annotation_types: List[AnnotationType], default=None
-        A list of `Annotation` types to filter on.
-    annotation_geometric_area: List[ValueFilter], default=None
-        A list of `ValueFilters` which are used to filter `Evaluations` according to the `Annotation`'s geometric area.
     annotation_metadata: Dict[str, list[StringFilter | NumericFilter | DateTimeFilter]], default=None
         A dictionary of `Annotation` metadata to filter on.
     bounding_box : bool, optional
@@ -449,8 +445,6 @@ class Filter(BaseModel):
         list[StringFilter | NumericFilter | DateTimeFilter | BooleanFilter],
     ] | None = None
     annotation_geospatial: list[GeospatialFilter] | None = None
-    annotation_types: list[AnnotationType] | None = None
-    annotation_geometric_area: list[NumericFilter] | None = None
     bounding_box: bool | None = None
     bounding_box_area: list[NumericFilter] | None = None
     polygon: bool | None = None

@@ -81,7 +81,6 @@ def test_generate_prediction_data(client: Client):
         n_annotations=n_annotations,
         n_labels=n_labels,
     )
-
     assert len(dataset.get_datums()) == n_images
 
     model = generate_prediction_data(
@@ -103,6 +102,9 @@ def test_generate_prediction_data(client: Client):
     )
     assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
 
+    eval_job.poll()
+    print(eval_job.to_dict())
+
     eval_dict = eval_job.to_dict()
     for key in [
         "id",
@@ -113,6 +115,7 @@ def test_generate_prediction_data(client: Client):
         "missing_pred_labels",
     ]:
         eval_dict.pop(key)
+
     assert eval_dict == {
         "model_name": model_name,
         "datum_filter": {

@@ -56,6 +56,8 @@ class Filter:
         A optional constraint to filter by raster area.
     labels : List[Label], optional
         A list of `Labels' to filter on.
+    label_ids : List[int], optional
+        A list of label row id's.
     label_keys : List[str], optional
         A list of `Label` keys to filter on.
     label_scores : List[Constraint], optional
@@ -101,6 +103,7 @@ class Filter:
 
     # labels
     labels: Optional[List[Dict[str, str]]] = None
+    label_ids: Optional[list[int]] = None
     label_keys: Optional[List[str]] = None
     label_scores: Optional[List[Constraint]] = None
 

@@ -217,7 +217,7 @@ def test_evaluate_detection(
         "datum_filter": {
             **default_filter_properties,
             "dataset_names": ["test_dataset"],
-            "annotation_geometric_area": [
+            "bounding_box_area": [
                 {
                     "operator": ">=",
                     "value": 10.0,
@@ -267,7 +267,7 @@ def test_evaluate_detection(
         "datum_filter": {
             **default_filter_properties,
             "dataset_names": ["test_dataset"],
-            "annotation_geometric_area": [
+            "bounding_box_area": [
                 {
                     "operator": ">=",
                     "value": 1200.0,
@@ -313,7 +313,7 @@ def test_evaluate_detection(
         "datum_filter": {
             **default_filter_properties,
             "dataset_names": ["test_dataset"],
-            "annotation_geometric_area": [
+            "bounding_box_area": [
                 {
                     "operator": "<=",
                     "value": 1200.0,
@@ -361,7 +361,7 @@ def test_evaluate_detection(
         "datum_filter": {
             **default_filter_properties,
             "dataset_names": ["test_dataset"],
-            "annotation_geometric_area": [
+            "bounding_box_area": [
                 {
                     "operator": ">=",
                     "value": 1200.0,
@@ -492,7 +492,7 @@ def test_evaluate_detection_with_json_filters(
         iou_thresholds_to_return=[0.1, 0.6],
         filters={
             **default_filter_properties,
-            "annotation_geometric_area": [
+            "bounding_box_area": [
                 {
                     "operator": ">=",
                     "value": 1200.0,
@@ -520,7 +520,7 @@ def test_evaluate_detection_with_json_filters(
         "datum_filter": {
             **default_filter_properties,
             "dataset_names": ["test_dataset"],
-            "annotation_geometric_area": [
+            "bounding_box_area": [
                 {
                     "operator": ">=",
                     "value": 1200.0,

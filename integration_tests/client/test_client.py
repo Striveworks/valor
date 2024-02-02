@@ -188,14 +188,14 @@ def test_get_labels(
     assert len(all_labels) == 10
 
     high_score_labels = client.get_labels(
-        filter_=Filter(prediction_scores=[Constraint(value=0.5, operator=">")])
+        filter_=Filter(label_scores=[Constraint(value=0.5, operator=">")])
     )
     assert len(high_score_labels) == 5
     for label in high_score_labels:
         assert int(label.value) % 2 == 1
 
     low_score_labels = client.get_labels(
-        filter_=Filter(prediction_scores=[Constraint(value=0.5, operator="<")])
+        filter_=Filter(label_scores=[Constraint(value=0.5, operator="<")])
     )
     assert len(low_score_labels) == 5
     for label in low_score_labels:
