@@ -82,6 +82,9 @@ class Label:
         """Dumps the object into a JSON formatted string."""
         return json.dumps(self.to_dict(), indent=4)
 
+    def __repr__(self) -> str:
+        return str(self.tuple())
+
     def to_dict(self) -> Dict[str, Union[str, float, np.floating, None]]:
         """
         Defines how a `velour.Label` object is serialized into a dictionary.
@@ -806,6 +809,10 @@ class Evaluation:
             connection = get_connection()
         self.conn = connection
         self.update(**kwargs)
+
+    def __str__(self) -> str:
+        """Dumps the object into a JSON formatted string."""
+        return json.dumps(self.to_dict(), indent=4)
 
     def to_dict(self) -> dict:
         """
@@ -1562,7 +1569,7 @@ class Model:
             The dataset or list of datasets to evaluate against.
         filters : Union[Dict, FilterExpressionsType = Sequence[Union[BinaryExpression, Sequence[BinaryExpression]]]], optional
             Optional set of filters to constrain evaluation by.
-        label_map : Dict[Label, Label]
+        label_map : Dict[Label, Label], optional
             Optional mapping of individual Labels to a grouper Label. Useful when you need to evaluate performance using Labels that differ across datasets and models.
 
         Returns
@@ -1616,7 +1623,7 @@ class Model:
             Thresholds to compute mAP against.
         iou_thresholds_to_return : List[float], optional
             Thresholds to return AP for. Must be subset of `iou_thresholds_to_compute`.
-        label_map : Dict[Label, Label]
+        label_map : Dict[Label, Label], optional
             Optional mapping of individual Labels to a grouper Label. Useful when you need to evaluate performance using Labels that differ across datasets and models.
 
         Returns
@@ -1667,9 +1674,8 @@ class Model:
             The dataset or list of datasets to evaluate against.
         filters : Union[Dict, FilterExpressionsType = Sequence[Union[BinaryExpression, Sequence[BinaryExpression]]]], optional
             Optional set of filters to constrain evaluation by.
-        label_map : Dict[Label, Label]
+        label_map : Dict[Label, Label], optional
             Optional mapping of individual Labels to a grouper Label. Useful when you need to evaluate performance using Labels that differ across datasets and models.
-
 
         Returns
         -------

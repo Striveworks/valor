@@ -29,6 +29,7 @@ def test_empty_filter():
         "raster": None,
         "raster_area": None,
         "labels": None,
+        "label_ids": None,
         "label_keys": None,
         "label_scores": None,
     }
@@ -105,6 +106,7 @@ def test_declarative_filtering():
         "raster_area": None,
         "annotation_geospatial": None,
         "labels": [{"k2": "v2"}],
+        "label_ids": None,
         "label_keys": ["k1"],
         "label_scores": [
             {"value": 0.5, "operator": ">"},

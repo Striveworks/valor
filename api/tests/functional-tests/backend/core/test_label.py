@@ -361,12 +361,18 @@ def test_get_joint_labels(
         lhs=schemas.Filter(
             dataset_names=[dataset_name],
             task_types=[enums.TaskType.CLASSIFICATION],
-            annotation_types=[enums.AnnotationType.NONE],
+            bounding_box=False,
+            polygon=False,
+            multipolygon=False,
+            raster=False,
         ),
         rhs=schemas.Filter(
             model_names=[model_name],
             task_types=[enums.TaskType.CLASSIFICATION],
-            annotation_types=[enums.AnnotationType.NONE],
+            bounding_box=False,
+            polygon=False,
+            multipolygon=False,
+            raster=False,
         ),
     )
     assert len(labels) == 1
@@ -408,12 +414,18 @@ def test_get_disjoint_labels(
         lhs=schemas.Filter(
             dataset_names=[dataset_name],
             task_types=[enums.TaskType.CLASSIFICATION],
-            annotation_types=[enums.AnnotationType.NONE],
+            bounding_box=False,
+            polygon=False,
+            multipolygon=False,
+            raster=False,
         ),
         rhs=schemas.Filter(
             model_names=[model_name],
             task_types=[enums.TaskType.CLASSIFICATION],
-            annotation_types=[enums.AnnotationType.NONE],
+            bounding_box=False,
+            polygon=False,
+            multipolygon=False,
+            raster=False,
         ),
     )
     assert len(ds_unique) == 2
