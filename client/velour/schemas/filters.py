@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Dict, Iterable, Iterator, List, Optional, Sequence, Union
 
-from velour.enums import AnnotationType, TaskType
+from velour.enums import TaskType
 from velour.schemas.constraints import BinaryExpression, Constraint
 
 FilterExpressionsType = Sequence[
@@ -36,22 +36,30 @@ class Filter:
         A list of `Datum` geospatial filters to filter on.
     task_types : List[TaskType], optional
         A list of task types to filter on.
-    annotation_types : List[AnnotationType], optional
-        A list of `Annotation` types to filter on.
-    annotation_geometric_area : List[Constraint], optional
-        A list of `Constraints` which are used to filter `Evaluations` according to the `Annotation`'s geometric area.
     annotation_metadata : Dict[str, List[Constraint]], optional
         A dictionary of `Annotation` metadata to filter on.
-    annotation_geospatial : List[Constraint], optional
-        A list of `Annotation` geospatial filters to filter on.
-    prediction_scores : List[Constraint], optional
-        A list of `Constraints` which are used to filter `Evaluations` according to the `Model`'s prediction scores.
+    bounding_box : bool, optional
+        A toggle for filtering by bounding boxes.
+    bounding_box_area : bool, optional
+        A optional constraint to filter by bounding box area.
+    polygon : bool, optional
+        A toggle for filtering by polygons.
+    polygon_area : bool, optional
+        A optional constraint to filter by polygon area.
+    multipolygon : bool, optional
+        A toggle for filtering by multipolygons.
+    multipolygon_area : bool, optional
+        A optional constraint to filter by multipolygon area.
+    raster : bool, optional
+        A toggle for filtering by rasters.
+    raster_area : bool, optional
+        A optional constraint to filter by raster area.
     labels : List[Label], optional
         A list of `Labels' to filter on.
-    label_ids : List[int], optional
-        A list of `Label` IDs to filter on.
     label_keys : List[str], optional
         A list of `Label` keys to filter on.
+    label_scores : List[Constraint], optional
+        A list of `Constraints` which are used to filter `Evaluations` according to the `Model`'s prediction scores.
 
     Raises
     ------
@@ -78,18 +86,23 @@ class Filter:
 
     # annotations
     task_types: Optional[List[TaskType]] = None
-    annotation_types: Optional[List[AnnotationType]] = None
-    annotation_geometric_area: Optional[List[Constraint]] = None
     annotation_metadata: Optional[Dict[str, List[Constraint]]] = None
     annotation_geospatial: Optional[List[Constraint]] = None
 
-    # predictions
-    prediction_scores: Optional[List[Constraint]] = None
+    # geometries
+    bounding_box: Optional[bool] = None
+    bounding_box_area: Optional[List[Constraint]] = None
+    polygon: Optional[bool] = None
+    polygon_area: Optional[List[Constraint]] = None
+    multipolygon: Optional[bool] = None
+    multipolygon_area: Optional[List[Constraint]] = None
+    raster: Optional[bool] = None
+    raster_area: Optional[List[Constraint]] = None
 
     # labels
     labels: Optional[List[Dict[str, str]]] = None
-    label_ids: Optional[List[int]] = None
     label_keys: Optional[List[str]] = None
+    label_scores: Optional[List[Constraint]] = None
 
     @classmethod
     def create(cls, expressions: FilterExpressionsType):
@@ -124,12 +137,15 @@ class Filter:
 
         # export full constraints
         for attr in [
-            "annotation_geometric_area",
-            "prediction_scores",
             "dataset_geospatial",
             "model_geospatial",
             "datum_geospatial",
             "annotation_geospatial",
+            "bounding_box_area",
+            "polygon_area",
+            "multipolygon_area",
+            "raster_area",
+            "label_scores",
         ]:
             if attr in expression_dict:
                 setattr(
@@ -171,31 +187,18 @@ class Filter:
                     __value[expr.key].append(expr.constraint)
                     setattr(filter_request, attr, __value)
 
-        # edge cases
-        for attr, atype in [
-            ("annotation_bounding_box", AnnotationType.BOX),
-            ("annotation_polygon", AnnotationType.POLYGON),
-            ("annotation_multipolygon", AnnotationType.MULTIPOLYGON),
-            ("annotation_raster", AnnotationType.RASTER),
+        # bool cases
+        for attr in [
+            "bounding_box",
+            "polygon",
+            "multipolygon",
+            "raster",
         ]:
             if attr in expression_dict:
                 for expr in expression_dict[attr]:
                     if expr.constraint.operator == "exists":
-                        if not filter_request.annotation_types:
-                            filter_request.annotation_types = []
-                        filter_request.annotation_types.append(atype)
-
-        for attr in [
-            "annotation_bounding_box_area",
-            "annotation_polygon_area",
-            "annotation_multipolygon_area",
-            "annotation_raster_area",
-        ]:
-            if attr in expression_dict:
-                setattr(
-                    filter_request,
-                    "annotation_geometric_area",
-                    [expr.constraint for expr in expression_dict[attr]],
-                )
+                        setattr(filter_request, attr, True)
+                    elif expr.constraint.operator == "is_none":
+                        setattr(filter_request, attr, False)
 
         return filter_request

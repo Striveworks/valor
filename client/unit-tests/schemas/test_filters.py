@@ -18,14 +18,19 @@ def test_empty_filter():
         "datum_metadata": None,
         "datum_geospatial": None,
         "task_types": None,
-        "annotation_types": None,
-        "annotation_geometric_area": None,
         "annotation_metadata": None,
         "annotation_geospatial": None,
-        "prediction_scores": None,
+        "bounding_box": None,
+        "bounding_box_area": None,
+        "polygon": None,
+        "polygon_area": None,
+        "multipolygon": None,
+        "multipolygon_area": None,
+        "raster": None,
+        "raster_area": None,
         "labels": None,
-        "label_ids": None,
         "label_keys": None,
+        "label_scores": None,
     }
 
 
@@ -84,20 +89,25 @@ def test_declarative_filtering():
         },
         "datum_geospatial": None,
         "task_types": ["classification", "object-detection"],
-        "annotation_types": ["box"],
-        "annotation_geometric_area": [
+        "bounding_box": True,
+        "bounding_box_area": [
             {"value": 1000, "operator": ">="},
             {"value": 5000, "operator": "<="},
         ],
         "annotation_metadata": {
             "myKey": [{"value": "helloworld", "operator": "=="}]
         },
+        "polygon": False,
+        "polygon_area": None,
+        "multipolygon": False,
+        "multipolygon_area": None,
+        "raster": False,
+        "raster_area": None,
         "annotation_geospatial": None,
-        "prediction_scores": [
+        "labels": [{"k2": "v2"}],
+        "label_keys": ["k1"],
+        "label_scores": [
             {"value": 0.5, "operator": ">"},
             {"value": 0.75, "operator": "<"},
         ],
-        "labels": [{"k2": "v2"}],
-        "label_ids": None,
-        "label_keys": ["k1"],
     }

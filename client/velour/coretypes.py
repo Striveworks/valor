@@ -54,9 +54,9 @@ class Label:
         Declarative mappers used to create filters.
     """
 
-    value = StringProperty("value")
+    value = StringProperty("label_values")
     key = StringProperty("label_keys")
-    score = NumericProperty("prediction_scores")
+    score = NumericProperty("label_scores")
 
     def __init__(
         self,
@@ -254,10 +254,10 @@ class Annotation:
     task_type = StringProperty("task_types")
     labels = LabelProperty("labels")
     metadata = DictionaryProperty("annotation_metadata")
-    bounding_box = GeometryProperty("annotation_bounding_box")
-    polygon = GeometryProperty("annotation_polygon")
-    multipolygon = GeometryProperty("annotation_multipolygon")
-    raster = GeometryProperty("annotation_raster")
+    bounding_box = GeometryProperty("bounding_box")
+    polygon = GeometryProperty("polygon")
+    multipolygon = GeometryProperty("multipolygon")
+    raster = GeometryProperty("raster")
 
     def __init__(
         self,
