@@ -23,8 +23,8 @@ services:
       AUTH0_AUDIENCE: ${AUTH0_AUDIENCE}
       AUTH0_ALGORITHMS: ${AUTH0_ALGORITHMS}
       SECRET_KEY: ${SECRET_KEY}
-      USERNAME: ${USERNAME}
-      PASSWORD: ${PASSWORD}
+      VELOUR_USERNAME: ${VELOUR_USERNAME}
+      VELOUR_PASSWORD: ${VELOUR_PASSWORD}
     command: "uvicorn velour_api.main:app --reload --host 0.0.0.0"
     depends_on:
       - 'db'
