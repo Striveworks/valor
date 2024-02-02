@@ -19,7 +19,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_PORT: ${POSTGRES_PORT}
-      SECRET_KEY: ${SECRET_KEY}
+      VELOUR_SECRET_KEY: ${SECRET_KEY}
       VELOUR_USERNAME: ${VELOUR_USERNAME}
       VELOUR_PASSWORD: ${VELOUR_PASSWORD}
     command: "uvicorn velour_api.main:app --reload --host 0.0.0.0"
