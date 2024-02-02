@@ -325,7 +325,7 @@ def get_annotation(
 
     # Initialize
     retval = schemas.Annotation(
-        task_type=annotation.task_type,
+        task_type=annotation.task_type,  # type: ignore - models.Annotation.task_type should be a string in psql
         labels=labels,
         metadata=annotation.meta,
         bounding_box=None,

@@ -271,7 +271,7 @@ def _create_response(
         model_name=evaluation.model_name,
         datum_filter=evaluation.datum_filter,
         parameters=evaluation.parameters,
-        status=evaluation.status,
+        status=evaluation.status,  # type: ignore - must be str in psql
         metrics=[
             _convert_db_metric_to_pydantic_metric(db, metric)
             for metric in metrics
@@ -597,7 +597,7 @@ def get_evaluation_requests_from_model(
             model_name=model_name,
             datum_filter=eval_.datum_filter,
             parameters=eval_.parameters,
-            status=eval_.status,
+            status=eval_.status,  # type: ignore - must be str in psql
         )
         for eval_ in evaluations
     ]
