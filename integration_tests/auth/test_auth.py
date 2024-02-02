@@ -2,8 +2,8 @@
 that has authentication enabled. The following environment variables must
 be set for these tests:
 
-USERNAME
-PASSWORD
+VELOUR_USERNAME
+VELOUR_PASSWORD
 """
 
 import os
@@ -19,8 +19,8 @@ from velour.exceptions import ClientConnectionFailed
 def bearer_token() -> str:
     url = "http://localhost:8000/token"
     data = {
-        "username": os.environ["USERNAME"],
-        "password": os.environ["PASSWORD"],
+        "username": os.environ["VELOUR_USERNAME"],
+        "password": os.environ["VELOUR_PASSWORD"],
     }
 
     resp = requests.post(url, data=data)

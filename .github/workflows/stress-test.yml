@@ -69,9 +69,9 @@ jobs:
       - run: make stop-env
       - run: docker compose -p velour -f docker-compose.yml -f docker-compose.cicd-override.yml --env-file ./api/.env.testing up --build -d
         env:
-          SECRET_KEY: ${{ vars.SECRET_KEY }}
-          USERNAME: ${{ vars.USERNAME }}
-          PASSWORD: ${{ vars.PASSWORD }}
+          VELOUR_SECRET_KEY: ${{ vars.SECRET_KEY }}
+          VELOUR_USERNAME: ${{ vars.USERNAME }}
+          VELOUR_PASSWORD: ${{ vars.PASSWORD }}
       - name: sleep to give backend time to spin up
         run: sleep 15
 
