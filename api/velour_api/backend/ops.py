@@ -14,7 +14,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import INTERVAL
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.orm.decl_api import DeclarativeMeta
-from sqlalchemy.sql.elements import BinaryExpression
+from sqlalchemy.sql.elements import BinaryExpression, ColumnElement
 
 from velour_api import enums
 from velour_api.backend import models
@@ -52,8 +52,10 @@ class Query:
 
     def __init__(self, *args):
         self._args = args
-        self._expressions: dict[DeclarativeMeta, list[BinaryExpression]] = {}
-        self._selected: set[DeclarativeMeta] = set(
+        self._expressions: dict[
+            DeclarativeMeta, list[ColumnElement[bool]]
+        ] = {}
+        self._selected: set[DeclarativeMeta | None] = set(
             [
                 self._map_attribute_to_table(argument)
                 for argument in args
@@ -77,7 +79,9 @@ class Query:
         elif len(expressions) > 1:
             self._expressions[table].append(or_(*expressions))
 
-    def _expression(self, table_set: set[DeclarativeMeta]) -> BinaryExpression:
+    def _expression(
+        self, table_set: set[DeclarativeMeta]
+    ) -> ColumnElement[bool] | None:
         expressions = []
         for table in table_set:
             if table in self._expressions:
@@ -138,8 +142,8 @@ class Query:
     def _solve_groundtruth_graph(
         self,
         args: list[DeclarativeMeta | InstrumentedAttribute],
-        selected: list[DeclarativeMeta],
-        filtered: list[DeclarativeMeta],
+        selected: set[DeclarativeMeta],
+        filtered: set[DeclarativeMeta],
     ):
         """
         groundtruth_graph = [models.Dataset, models.Datum, models.Annotation, models.GroundTruth, models.Label]
@@ -181,8 +185,8 @@ class Query:
     def _solve_model_graph(
         self,
         args: list[DeclarativeMeta | InstrumentedAttribute],
-        selected: list[DeclarativeMeta],
-        filtered: list[DeclarativeMeta],
+        selected: set[DeclarativeMeta],
+        filtered: set[DeclarativeMeta],
     ):
         """
         model_graph = [[models.Model, models.Annotation, models.Prediction, models.Label], [models.Model, models.Annotation, models.Datum, models.Dataset]]
@@ -230,8 +234,8 @@ class Query:
     def _solve_prediction_graph(
         self,
         args: list[DeclarativeMeta | InstrumentedAttribute],
-        selected: list[DeclarativeMeta],
-        filtered: list[DeclarativeMeta],
+        selected: set[DeclarativeMeta],
+        filtered: set[DeclarativeMeta],
     ):
         """
         prediction_graph = [models.Dataset, models.Datum, models.Annotation, models.Prediction, models.Label]
@@ -273,8 +277,8 @@ class Query:
     def _solve_joint_graph(
         self,
         args: list[DeclarativeMeta | InstrumentedAttribute],
-        selected: list[DeclarativeMeta],
-        filtered: list[DeclarativeMeta],
+        selected: set[DeclarativeMeta],
+        filtered: set[DeclarativeMeta],
     ):
         """
         joint_graph = [[models.Dataset, models.Datum, models.Annotation, models.Label]]
@@ -630,67 +634,80 @@ class Query:
                     if isinstance(task_type, enums.TaskType)
                 ],
             )
-        if filters.annotation_types:
-            if enums.AnnotationType.NONE in filters.annotation_types:
-                self._add_expressions(
-                    models.Annotation,
-                    [
-                        and_(
-                            models.Annotation.box.is_(None),
-                            models.Annotation.polygon.is_(None),
-                            models.Annotation.multipolygon.is_(None),
-                            models.Annotation.raster.is_(None),
-                        )
-                    ],
+
+        # geometries
+        if filters.bounding_box is not None:
+            if filters.bounding_box:
+                self._add_expressions.append(
+                    models.Annotation, models.Annotation.box.isnot(None)
                 )
             else:
-                expressions = []
-                if enums.AnnotationType.BOX in filters.annotation_types:
-                    expressions.append(models.Annotation.box.isnot(None))
-                if enums.AnnotationType.POLYGON in filters.annotation_types:
-                    expressions.append(models.Annotation.polygon.isnot(None))
-                if (
-                    enums.AnnotationType.MULTIPOLYGON
-                    in filters.annotation_types
-                ):
-                    expressions.append(
-                        models.Annotation.multipolygon.isnot(None)
-                    )
-                if enums.AnnotationType.RASTER in filters.annotation_types:
-                    expressions.append(models.Annotation.raster.isnot(None))
-                self._add_expressions(models.Annotation, expressions)
-        if filters.annotation_geometric_area:
-            types = (
-                filters.annotation_types
-                if filters.annotation_types
-                else [
-                    enums.AnnotationType.BOX,
-                    enums.AnnotationType.POLYGON,
-                    enums.AnnotationType.MULTIPOLYGON,
-                    enums.AnnotationType.RASTER,
-                ]
-            )
-            for area_filter in filters.annotation_geometric_area:
-                area_expr = []
-                for atype in types:
-                    match atype:
-                        case enums.AnnotationType.BOX:
-                            geom = models.Annotation.box
-                            afunc = func.ST_Area
-                        case enums.AnnotationType.POLYGON:
-                            geom = models.Annotation.polygon
-                            afunc = func.ST_Area
-                        case enums.AnnotationType.MULTIPOLYGON:
-                            geom = models.Annotation.multipolygon
-                            afunc = func.ST_Area
-                        case enums.AnnotationType.RASTER:
-                            geom = models.Annotation.raster
-                            afunc = func.ST_Count
-                        case _:
-                            raise RuntimeError
-                    op = self._get_numeric_op(area_filter.operator)
-                    area_expr.append(op(afunc(geom), area_filter.value))
-                self._add_expressions(models.Annotation, area_expr)
+                self._add_expressions.append(
+                    models.Annotation, models.Annotation.box.is_(None)
+                )
+        if filters.polygon is not None:
+            if filters.polygon:
+                self._add_expressions.append(
+                    models.Annotation, models.Annotation.polygon.isnot(None)
+                )
+            else:
+                self._add_expressions.append(
+                    models.Annotation, models.Annotation.polygon.is_(None)
+                )
+        if filters.multipolygon is not None:
+            if filters.multipolygon:
+                self._add_expressions.append(
+                    models.Annotation,
+                    models.Annotation.multipolygon.isnot(None),
+                )
+            else:
+                self._add_expressions.append(
+                    models.Annotation, models.Annotation.multipolygon.is_(None)
+                )
+        if filters.raster is not None:
+            if filters.raster:
+                self._add_expressions.append(
+                    models.Annotation, models.Annotation.raster.isnot(None)
+                )
+            else:
+                self._add_expressions.append(
+                    models.Annotation, models.Annotation.raster.is_(None)
+                )
+
+        # geometric area
+        if filters.bounding_box_area:
+            area_expr = []
+            for area_filter in filters.bounding_box_area:
+                geom = models.Annotation.box
+                afunc = func.ST_Area
+                op = self._get_numeric_op(area_filter.operator)
+                area_expr.append(op(afunc(geom), area_filter.value))
+            self._add_expressions(models.Annotation, area_expr)
+        if filters.polygon_area:
+            area_expr = []
+            for area_filter in filters.polygon_area:
+                geom = models.Annotation.polygon
+                afunc = func.ST_Area
+                op = self._get_numeric_op(area_filter.operator)
+                area_expr.append(op(afunc(geom), area_filter.value))
+            self._add_expressions(models.Annotation, area_expr)
+        if filters.multipolygon_area:
+            area_expr = []
+            for area_filter in filters.multipolygon_area:
+                geom = models.Annotation.multipolygon
+                afunc = func.ST_Area
+                op = self._get_numeric_op(area_filter.operator)
+                area_expr.append(op(afunc(geom), area_filter.value))
+            self._add_expressions(models.Annotation, area_expr)
+        if filters.raster_area:
+            area_expr = []
+            for area_filter in filters.raster_area:
+                geom = models.Annotation.raster
+                afunc = func.ST_Count
+                op = self._get_numeric_op(area_filter.operator)
+                area_expr.append(op(afunc(geom), area_filter.value))
+            self._add_expressions(models.Annotation, area_expr)
+
         if filters.annotation_metadata:
             self._add_expressions(
                 models.Annotation,
@@ -698,22 +715,6 @@ class Query:
                     filters.annotation_metadata, models.Annotation
                 ),
             )
-        if filters.annotation_geospatial:
-            self._add_expressions(
-                models.Annotation,
-                self.filter_by_geospatial(
-                    filters.annotation_geospatial, models.Annotation
-                ),
-            )
-
-        # prediction
-        if filters.prediction_scores:
-            for score_filter in filters.prediction_scores:
-                op = self._get_numeric_op(score_filter.operator)
-                self._add_expressions(
-                    models.Prediction,
-                    [op(models.Prediction.score, score_filter.value)],
-                )
 
         # labels
         if filters.label_ids:
@@ -747,6 +748,15 @@ class Query:
                     if isinstance(key, str)
                 ],
             )
+
+        # prediction
+        if filters.label_scores:
+            for score_filter in filters.label_scores:
+                op = self._get_numeric_op(score_filter.operator)
+                self._add_expressions(
+                    models.Prediction,
+                    [op(models.Prediction.score, score_filter.value)],
+                )
 
         return self
 
