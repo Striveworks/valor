@@ -866,7 +866,7 @@ def test_complex_queries(
     f = schemas.Filter(
         model_names=[model_name1],
         labels=[{"class": "dog"}],
-        prediction_scores=[
+        label_scores=[
             schemas.NumericFilter(
                 value=0.9,
                 operator=">",
@@ -883,7 +883,7 @@ def test_complex_queries(
     f = schemas.Filter(
         model_names=[model_name1],
         labels=[{"class": "dog"}],
-        prediction_scores=[
+        label_scores=[
             schemas.NumericFilter(
                 value=0.75,
                 operator=">",
@@ -903,7 +903,7 @@ def test_query_by_annotation_geometry(
     model_sim,
 ):
     f = schemas.Filter(
-        annotation_geometric_area=[
+        bounding_box_area=[
             schemas.NumericFilter(
                 value=75,
                 operator=">",

@@ -526,7 +526,7 @@ def test_label_functions(
         schemas.Filter(
             dataset_names=[dataset_name],
             task_types=[enums.TaskType.SEGMENTATION],
-            annotation_types=[enums.AnnotationType.RASTER],
+            raster=True,
         ),
         ignore_predictions=True,
     ) == {
@@ -540,7 +540,7 @@ def test_label_functions(
             schemas.Filter(
                 dataset_names=[dataset_name],
                 task_types=[enums.TaskType.SEGMENTATION],
-                annotation_types=[enums.AnnotationType.POLYGON],
+                polygon=True,
             ),
             ignore_predictions=True,
         )
@@ -562,7 +562,7 @@ def test_label_functions(
         schemas.Filter(
             model_names=[model_name],
             dataset_names=[dataset_name],
-            annotation_types=[enums.AnnotationType.RASTER],
+            raster=True,
             task_types=[enums.TaskType.SEGMENTATION],
         ),
         ignore_groundtruths=True,
@@ -578,7 +578,7 @@ def test_label_functions(
             schemas.Filter(
                 model_names=[model_name],
                 dataset_names=[dataset_name],
-                annotation_types=[enums.AnnotationType.POLYGON],
+                polygon=True,
                 task_types=[enums.TaskType.SEGMENTATION],
             ),
             ignore_groundtruths=True,
@@ -623,7 +623,7 @@ def test_label_functions(
         db,
         schemas.Filter(
             dataset_names=[dataset_name],
-            annotation_types=[enums.AnnotationType.RASTER],
+            raster=True,
             task_types=[enums.TaskType.DETECTION],
         ),
         ignore_predictions=True,
@@ -636,7 +636,7 @@ def test_label_functions(
         db,
         schemas.Filter(
             dataset_names=[dataset_name],
-            annotation_types=[enums.AnnotationType.RASTER],
+            raster=True,
             task_types=[
                 enums.TaskType.DETECTION,
                 enums.TaskType.SEGMENTATION,
@@ -689,7 +689,7 @@ def test_label_functions(
         schemas.Filter(
             model_names=[model_name],
             dataset_names=[dataset_name],
-            annotation_types=[enums.AnnotationType.RASTER],
+            raster=True,
             task_types=[
                 enums.TaskType.SEGMENTATION,
                 enums.TaskType.DETECTION,
@@ -707,7 +707,7 @@ def test_label_functions(
             schemas.Filter(
                 model_names=[model_name],
                 dataset_names=[dataset_name],
-                annotation_types=[enums.AnnotationType.RASTER],
+                raster=True,
                 task_types=[enums.TaskType.DETECTION],
             ),
             ignore_groundtruths=True,

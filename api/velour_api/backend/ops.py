@@ -478,7 +478,7 @@ class Query:
             subquery = None
             return query, subquery
 
-    def _get_numeric_op(self, opstr) -> operator:
+    def _get_numeric_op(self, opstr) -> callable:
         ops = {
             ">": operator.gt,
             "<": operator.lt,
@@ -634,80 +634,6 @@ class Query:
                     if isinstance(task_type, enums.TaskType)
                 ],
             )
-
-        # geometries
-        if filters.bounding_box is not None:
-            if filters.bounding_box:
-                self._add_expressions.append(
-                    models.Annotation, models.Annotation.box.isnot(None)
-                )
-            else:
-                self._add_expressions.append(
-                    models.Annotation, models.Annotation.box.is_(None)
-                )
-        if filters.polygon is not None:
-            if filters.polygon:
-                self._add_expressions.append(
-                    models.Annotation, models.Annotation.polygon.isnot(None)
-                )
-            else:
-                self._add_expressions.append(
-                    models.Annotation, models.Annotation.polygon.is_(None)
-                )
-        if filters.multipolygon is not None:
-            if filters.multipolygon:
-                self._add_expressions.append(
-                    models.Annotation,
-                    models.Annotation.multipolygon.isnot(None),
-                )
-            else:
-                self._add_expressions.append(
-                    models.Annotation, models.Annotation.multipolygon.is_(None)
-                )
-        if filters.raster is not None:
-            if filters.raster:
-                self._add_expressions.append(
-                    models.Annotation, models.Annotation.raster.isnot(None)
-                )
-            else:
-                self._add_expressions.append(
-                    models.Annotation, models.Annotation.raster.is_(None)
-                )
-
-        # geometric area
-        if filters.bounding_box_area:
-            area_expr = []
-            for area_filter in filters.bounding_box_area:
-                geom = models.Annotation.box
-                afunc = func.ST_Area
-                op = self._get_numeric_op(area_filter.operator)
-                area_expr.append(op(afunc(geom), area_filter.value))
-            self._add_expressions(models.Annotation, area_expr)
-        if filters.polygon_area:
-            area_expr = []
-            for area_filter in filters.polygon_area:
-                geom = models.Annotation.polygon
-                afunc = func.ST_Area
-                op = self._get_numeric_op(area_filter.operator)
-                area_expr.append(op(afunc(geom), area_filter.value))
-            self._add_expressions(models.Annotation, area_expr)
-        if filters.multipolygon_area:
-            area_expr = []
-            for area_filter in filters.multipolygon_area:
-                geom = models.Annotation.multipolygon
-                afunc = func.ST_Area
-                op = self._get_numeric_op(area_filter.operator)
-                area_expr.append(op(afunc(geom), area_filter.value))
-            self._add_expressions(models.Annotation, area_expr)
-        if filters.raster_area:
-            area_expr = []
-            for area_filter in filters.raster_area:
-                geom = models.Annotation.raster
-                afunc = func.ST_Count
-                op = self._get_numeric_op(area_filter.operator)
-                area_expr.append(op(afunc(geom), area_filter.value))
-            self._add_expressions(models.Annotation, area_expr)
-
         if filters.annotation_metadata:
             self._add_expressions(
                 models.Annotation,
@@ -715,6 +641,104 @@ class Query:
                     filters.annotation_metadata, models.Annotation
                 ),
             )
+
+        # geometries
+        if filters.bounding_box is not None:
+            if filters.bounding_box:
+                self._add_expressions(
+                    models.Annotation, [models.Annotation.box.isnot(None)]
+                )
+            else:
+                self._add_expressions(
+                    models.Annotation, [models.Annotation.box.is_(None)]
+                )
+        if filters.polygon is not None:
+            if filters.polygon:
+                self._add_expressions(
+                    models.Annotation, [models.Annotation.polygon.isnot(None)]
+                )
+            else:
+                self._add_expressions(
+                    models.Annotation, [models.Annotation.polygon.is_(None)]
+                )
+        if filters.multipolygon is not None:
+            if filters.multipolygon:
+                self._add_expressions(
+                    models.Annotation,
+                    [models.Annotation.multipolygon.isnot(None)],
+                )
+            else:
+                self._add_expressions(
+                    models.Annotation,
+                    [models.Annotation.multipolygon.is_(None)],
+                )
+        if filters.raster is not None:
+            if filters.raster:
+                self._add_expressions(
+                    models.Annotation, [models.Annotation.raster.isnot(None)]
+                )
+            else:
+                self._add_expressions(
+                    models.Annotation, [models.Annotation.raster.is_(None)]
+                )
+
+        # geometric area - AND like-typed filters, OR different-typed filters
+        area_expr = []
+        if filters.bounding_box_area:
+            bounding_box_area_expr = []
+            for area_filter in filters.bounding_box_area:
+                op = self._get_numeric_op(area_filter.operator)
+                bounding_box_area_expr.append(
+                    op(func.ST_Area(models.Annotation.box), area_filter.value)
+                )
+            if len(bounding_box_area_expr) > 1:
+                area_expr.append(and_(*bounding_box_area_expr))
+            else:
+                area_expr.append(bounding_box_area_expr[0])
+        if filters.polygon_area:
+            polygon_area_expr = []
+            for area_filter in filters.polygon_area:
+                op = self._get_numeric_op(area_filter.operator)
+                polygon_area_expr.append(
+                    op(
+                        func.ST_Area(models.Annotation.polygon),
+                        area_filter.value,
+                    )
+                )
+            if len(polygon_area_expr) > 1:
+                area_expr.append(and_(*polygon_area_expr))
+            else:
+                area_expr.append(polygon_area_expr[0])
+        if filters.multipolygon_area:
+            multipolygon_area_expr = []
+            for area_filter in filters.multipolygon_area:
+                op = self._get_numeric_op(area_filter.operator)
+                multipolygon_area_expr.append(
+                    op(
+                        func.ST_Area(models.Annotation.multipolygon),
+                        area_filter.value,
+                    )
+                )
+            if len(multipolygon_area_expr) > 1:
+                area_expr.append(and_(*multipolygon_area_expr))
+            else:
+                area_expr.append(multipolygon_area_expr[0])
+        if filters.raster_area:
+            raster_area_expr = []
+            for area_filter in filters.raster_area:
+                op = self._get_numeric_op(area_filter.operator)
+                raster_area_expr.append(
+                    op(
+                        func.ST_Count(models.Annotation.raster),
+                        area_filter.value,
+                    )
+                )
+            if len(raster_area_expr) > 1:
+                area_expr.append(and_(*raster_area_expr))
+            else:
+                area_expr.append(raster_area_expr[0])
+        if area_expr:
+            self._add_expressions(models.Annotation, area_expr)
 
         # labels
         if filters.label_ids:

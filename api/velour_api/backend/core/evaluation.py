@@ -317,7 +317,7 @@ def _create_responses(
 
         datum_filter = schemas.Filter(**evaluation.datum_filter)
         model_filter = datum_filter.model_copy()
-        model_filter.dataset_names = None
+        # model_filter.dataset_names = None
         model_filter.model_names = [evaluation.model_name]
         parameters = schemas.EvaluationParameters(**evaluation.parameters)
 
