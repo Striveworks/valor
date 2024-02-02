@@ -1578,7 +1578,7 @@ class Model:
         # format request
         datum_filter = self._format_filters(datasets, filters)
         request = EvaluationRequest(
-            model_names=self.name,
+            model_names=[self.name],
             datum_filter=datum_filter,
             parameters=EvaluationParameters(
                 task_type=TaskType.CLASSIFICATION,
@@ -1641,7 +1641,7 @@ class Model:
         )
         datum_filter = self._format_filters(datasets, filters)
         request = EvaluationRequest(
-            model_names=self.name,
+            model_names=[self.name],
             datum_filter=datum_filter,
             parameters=parameters,
         )
@@ -1679,7 +1679,7 @@ class Model:
         # format request
         datum_filter = self._format_filters(datasets, filters)
         request = EvaluationRequest(
-            model_names=self.name,
+            model_names=[self.name],
             datum_filter=datum_filter,
             parameters=EvaluationParameters(
                 task_type=TaskType.SEGMENTATION,

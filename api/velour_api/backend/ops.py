@@ -1,4 +1,5 @@
 import operator
+from typing import Callable
 
 from sqlalchemy import (
     TIMESTAMP,
@@ -76,9 +77,11 @@ class Query(SQLAlchemyQuery):
         if len(expressions) == 1:
             self._expressions[table].extend(expressions)
         elif len(expressions) > 1:
-            self._expressions[table].append(or_(*expressions))
+            self._expressions[table].append(or_(*expressions))  # type: ignore - ColumnElement[bool]" is incompatible with "BinaryExpression[Unknown]
 
-    def _expression(self, table_set: set[DeclarativeMeta]) -> BinaryExpression:
+    def _expression(
+        self, table_set: set[DeclarativeMeta]
+    ) -> BinaryExpression | None:
         expressions = []
         for table in table_set:
             if table in self._expressions:
@@ -86,7 +89,7 @@ class Query(SQLAlchemyQuery):
         if len(expressions) == 1:
             return expressions[0]
         elif len(expressions) > 1:
-            return and_(*expressions)
+            return and_(*expressions)  # type: ignore - ColumnElement[bool]" is incompatible with "BinaryExpression[Unknown]
         else:
             return None
 
@@ -162,7 +165,7 @@ class Query(SQLAlchemyQuery):
         }
 
         # set of tables required to construct query
-        joint_set = selected.union(filtered)
+        joint_set = selected.union(filtered)  # type: ignore
 
         # generate query statement
         query = None
@@ -170,11 +173,11 @@ class Query(SQLAlchemyQuery):
             if query is None:
                 query = select(*args).select_from(table)
             else:
-                query = query.join(table, connections[table])
+                query = query.join(table, connections[table])  # type: ignore
 
         # generate where statement
         expression = self._expression(joint_set)
-        if expression is not None:
+        if expression is not None and query is not None:
             query = query.where(expression)
 
         return query
@@ -209,7 +212,7 @@ class Query(SQLAlchemyQuery):
             models.Label: models.Label.id == models.Prediction.label_id,
         }
 
-        joint_set = selected.union(filtered)
+        joint_set = selected.union(filtered)  # type: ignore
 
         # generate query statement
         graph = self._trim_extremities(subgraph1, joint_set)
@@ -218,8 +221,8 @@ class Query(SQLAlchemyQuery):
         repeated_set = {models.Model}
         for table in graph:
             if table not in repeated_set:
-                query = query.join(table, connections[table])
-                repeated_set.add(table)
+                query = query.join(table, connections[table])  # type: ignore
+                repeated_set.add(table)  # type: ignore
 
         # generate where statement
         expression = self._expression(joint_set)
@@ -254,7 +257,7 @@ class Query(SQLAlchemyQuery):
         }
 
         # set of tables required to construct query
-        joint_set = selected.union(filtered)
+        joint_set = selected.union(filtered)  # type: ignore
 
         # generate query statement
         query = None
@@ -262,11 +265,11 @@ class Query(SQLAlchemyQuery):
             if query is None:
                 query = select(*args).select_from(table)
             else:
-                query = query.join(table, connections[table])
+                query = query.join(table, connections[table])  # type: ignore
 
         # generate where statement
         expression = self._expression(joint_set)
-        if expression is not None:
+        if expression is not None and query is not None:
             query = query.where(expression)
 
         return query
@@ -300,7 +303,7 @@ class Query(SQLAlchemyQuery):
         }
 
         # set of tables required to construct query
-        joint_set = selected.union(filtered)
+        joint_set = selected.union(filtered)  # type: ignore
 
         # generate query statement
         query = None
@@ -319,20 +322,22 @@ class Query(SQLAlchemyQuery):
                     )
                     query = query.join(models.Label, connections[models.Label])
                 else:
-                    query = query.join(table, connections[table])
+                    query = query.join(table, connections[table])  # type: ignore
 
         # generate where statement
         expression = self._expression(joint_set)
-        if expression is not None:
+        if expression is not None and query is not None:
             query = query.where(expression)
 
         return query
 
     def _solve_nested_graphs(
         self,
-        query_solver: callable,
-        subquery_solver: callable,
-        unique_set: set[DeclarativeMeta],
+        query_solver: Callable,
+        subquery_solver: Callable,
+        unique_set: set[type[models.Model]]
+        | set[type[models.Prediction]]
+        | set[type[models.GroundTruth]],
         pivot_table: DeclarativeMeta | None = None,
     ):
         qset = (self._filtered - unique_set).union({models.Datum})
@@ -403,7 +408,7 @@ class Query(SQLAlchemyQuery):
                 self._filtered.add(pivot_table)
             else:
                 query = select(*self._args)
-                expression = self._expression(self._selected)
+                expression = self._expression(self._selected)  # type: ignore
                 if expression is not None:
                     query = query.where(expression)
                 return query, None
@@ -459,7 +464,7 @@ class Query(SQLAlchemyQuery):
             query_solver = self._solve_joint_graph
 
         # generate statement
-        if subquery_solver is not None:
+        if subquery_solver is not None and unique_set is not None:
             return self._solve_nested_graphs(
                 query_solver=query_solver,
                 subquery_solver=subquery_solver,
@@ -468,14 +473,14 @@ class Query(SQLAlchemyQuery):
             )
         else:
             query = query_solver(
-                self._args,
-                self._selected,
-                self._filtered,
+                self._args,  # type: ignore
+                self._selected,  # type: ignore
+                self._filtered,  # type: ignore
             )
             subquery = None
             return query, subquery
 
-    def _get_numeric_op(self, opstr) -> operator:
+    def _get_numeric_op(self, opstr) -> Callable:
         ops = {
             ">": operator.gt,
             "<": operator.lt,
@@ -488,13 +493,13 @@ class Query(SQLAlchemyQuery):
             raise ValueError(f"invalid numeric comparison operator `{opstr}`")
         return ops[opstr]
 
-    def _get_boolean_op(self, opstr) -> operator:
+    def _get_boolean_op(self, opstr) -> Callable:
         ops = {"==": operator.eq, "!=": operator.ne}
         if opstr not in ops:
             raise ValueError(f"invalid boolean comparison operator `{opstr}`")
         return ops[opstr]
 
-    def _get_string_op(self, opstr) -> operator:
+    def _get_string_op(self, opstr) -> Callable:
         ops = {
             "==": operator.eq,
             "!=": operator.ne,
@@ -516,9 +521,11 @@ class Query(SQLAlchemyQuery):
         Generates a sqlalchemy subquery. Graph is chosen automatically as best fit.
         """
         query, subquery = self._select_graph(pivot)
-        if subquery is not None:
+        if query is not None and subquery is not None:
             query = query.where(models.Datum.id.in_(subquery))
-        return query.subquery(name) if as_subquery else query
+            return query.subquery(name) if as_subquery else query
+        else:
+            raise RuntimeError("Query or Subquery returned None")
 
     def groundtruths(
         self, name: str = "generated_subquery", *, as_subquery: bool = True
@@ -541,6 +548,104 @@ class Query(SQLAlchemyQuery):
         """
         return self.any(name, pivot=models.Prediction, as_subquery=as_subquery)
 
+    def _filter_by_metadatum(
+        self,
+        key: str,
+        value_filter: NumericFilter
+        | StringFilter
+        | DateTimeFilter
+        | BooleanFilter,
+        table: DeclarativeMeta,
+    ) -> BinaryExpression:
+        if isinstance(value_filter, NumericFilter):
+            op = self._get_numeric_op(value_filter.operator)
+            lhs = table.meta[key].astext.cast(Float)  # type: ignore
+            rhs = value_filter.value
+        elif isinstance(value_filter, StringFilter):
+            op = self._get_string_op(value_filter.operator)
+            lhs = table.meta[key].astext  # type: ignore
+            rhs = value_filter.value
+        elif isinstance(value_filter, BooleanFilter):
+            op = self._get_boolean_op(value_filter.operator)
+            lhs = table.meta[key].astext.cast(Boolean)  # type: ignore
+            rhs = value_filter.value
+        elif isinstance(value_filter, DateTimeFilter):
+            if isinstance(value_filter.value, Time) or isinstance(
+                value_filter.value, Duration
+            ):
+                cast_type = INTERVAL
+            else:
+                cast_type = TIMESTAMP(timezone=True)
+            op = self._get_numeric_op(value_filter.operator)
+            lhs = cast(
+                table.meta[key][value_filter.value.key].astext,  # type: ignore
+                cast_type,  # type: ignore
+            )
+            rhs = cast(
+                value_filter.value.value,
+                cast_type,  # type: ignore
+            )
+        else:
+            raise NotImplementedError(
+                f"metadatum value of type `{type(value_filter.value)}` is currently not supported"
+            )
+        return op(lhs, rhs)
+
+    def filter_by_metadata(
+        self,
+        metadata: dict[
+            str,
+            list[
+                NumericFilter | StringFilter | DateTimeFilter | BooleanFilter
+            ],
+        ],
+        table: DeclarativeMeta,
+    ) -> list[BinaryExpression]:
+        expressions = [
+            self._filter_by_metadatum(key, value, table)
+            for key, f_list in metadata.items()
+            for value in f_list
+        ]
+        if len(expressions) > 1:
+            expressions = [and_(*expressions)]
+        return expressions  # type: ignore
+
+    def _filter_by_geospatial(
+        self,
+        geospatial_filters: list[GeospatialFilter],
+        model_object: models.Datum | models.Model | models.Dataset,
+    ):
+        geospatial_expressions = []
+        for geospatial_filter in geospatial_filters:
+            operator = geospatial_filter.operator
+            geojson = geospatial_filter.value
+
+            if operator == "inside":
+                geospatial_expressions.append(
+                    func.ST_Covers(
+                        # note that casting the WKT using ST_GEOGFROMTEXT isn't necessary here: we're implicitely comparing two geographies, not two geometries
+                        geojson.wkt(),
+                        model_object.geo,
+                    )
+                )
+            elif operator == "intersect":
+                geospatial_expressions.append(
+                    model_object.geo.ST_Intersects(
+                        geojson.wkt(),
+                    )
+                )
+            elif operator == "outside":
+                geospatial_expressions.append(
+                    not_(
+                        func.ST_Covers(
+                            geojson.wkt(),
+                            model_object.geo,
+                        )
+                    )
+                )
+
+        return geospatial_expressions
+
     def filter(self, filters: Filter | None):
         """Parses `schemas.Filter`"""
         if filters is None:
@@ -558,7 +663,7 @@ class Query(SQLAlchemyQuery):
                     models.Dataset.name == name
                     for name in filters.dataset_names
                     if isinstance(name, str)
-                ],
+                ],  # type: ignore - ColumnElement[bool]" is incompatible with "BinaryExpression[Unknown]
             )
         if filters.dataset_metadata:
             self._add_expressions(
@@ -582,7 +687,7 @@ class Query(SQLAlchemyQuery):
                     models.Model.name == name
                     for name in filters.model_names
                     if isinstance(name, str)
-                ],
+                ],  # type: ignore - ColumnElement[bool]" is incompatible with "BinaryExpression[Unknown]
             )
         if filters.model_metadata:
             self._add_expressions(
@@ -604,7 +709,7 @@ class Query(SQLAlchemyQuery):
                     models.Datum.uid == uid
                     for uid in filters.datum_uids
                     if isinstance(uid, str)
-                ],
+                ],  # type: ignore - ColumnElement[bool]" is incompatible with "BinaryExpression[Unknown]
             )
         if filters.datum_metadata:
             self._add_expressions(
@@ -629,7 +734,7 @@ class Query(SQLAlchemyQuery):
                     models.Annotation.task_type == task_type.value
                     for task_type in filters.task_types
                     if isinstance(task_type, enums.TaskType)
-                ],
+                ],  # type: ignore - ColumnElement[bool]" is incompatible with "BinaryExpression[Unknown]
             )
         if filters.annotation_types:
             if enums.AnnotationType.NONE in filters.annotation_types:
@@ -641,7 +746,7 @@ class Query(SQLAlchemyQuery):
                             models.Annotation.polygon.is_(None),
                             models.Annotation.multipolygon.is_(None),
                             models.Annotation.raster.is_(None),
-                        )
+                        )  # type: ignore - ColumnElement[bool]" is incompatible with "BinaryExpression[Unknown]
                     ],
                 )
             else:
@@ -702,7 +807,7 @@ class Query(SQLAlchemyQuery):
         if filters.annotation_geospatial:
             self._add_expressions(
                 models.Annotation,
-                self.filter_by_geospatial(
+                self._filter_by_geospatial(
                     filters.annotation_geospatial, models.Annotation
                 ),
             )
@@ -724,7 +829,7 @@ class Query(SQLAlchemyQuery):
                     models.Label.id == id
                     for id in filters.label_ids
                     if isinstance(id, int)
-                ],
+                ],  # type: ignore
             )
         if filters.labels:
             self._add_expressions(
@@ -737,7 +842,7 @@ class Query(SQLAlchemyQuery):
                     for label in filters.labels
                     if (isinstance(label, dict) and len(label) == 1)
                     for key, value in label.items()
-                ],
+                ],  # type: ignore
             )
         if filters.label_keys:
             self._add_expressions(
@@ -746,99 +851,7 @@ class Query(SQLAlchemyQuery):
                     models.Label.key == key
                     for key in filters.label_keys
                     if isinstance(key, str)
-                ],
+                ],  # type: ignore
             )
 
         return self
-
-    def _filter_by_metadatum(
-        self,
-        key: str,
-        value_filter: NumericFilter | StringFilter | DateTimeFilter,
-        table: DeclarativeMeta,
-    ) -> BinaryExpression:
-        if isinstance(value_filter, NumericFilter):
-            op = self._get_numeric_op(value_filter.operator)
-            lhs = table.meta[key].astext.cast(Float)
-            rhs = value_filter.value
-        elif isinstance(value_filter, StringFilter):
-            op = self._get_string_op(value_filter.operator)
-            lhs = table.meta[key].astext
-            rhs = value_filter.value
-        elif isinstance(value_filter, BooleanFilter):
-            op = self._get_boolean_op(value_filter.operator)
-            lhs = table.meta[key].astext.cast(Boolean)
-            rhs = value_filter.value
-        elif isinstance(value_filter, DateTimeFilter):
-            if isinstance(value_filter.value, Time) or isinstance(
-                value_filter.value, Duration
-            ):
-                cast_type = INTERVAL
-            else:
-                cast_type = TIMESTAMP(timezone=True)
-            op = self._get_numeric_op(value_filter.operator)
-            lhs = cast(
-                table.meta[key][value_filter.value.key].astext,
-                cast_type,
-            )
-            rhs = cast(
-                value_filter.value.value,
-                cast_type,
-            )
-        else:
-            raise NotImplementedError(
-                f"metadatum value of type `{type(value_filter.value)}` is currently not supported"
-            )
-        return op(lhs, rhs)
-
-    def filter_by_metadata(
-        self,
-        metadata: dict[
-            str, list[NumericFilter | StringFilter | DateTimeFilter]
-        ],
-        table: DeclarativeMeta,
-    ) -> list[BinaryExpression]:
-        expressions = [
-            self._filter_by_metadatum(key, value, table)
-            for key, f_list in metadata.items()
-            for value in f_list
-        ]
-        if len(expressions) > 1:
-            expressions = [and_(*expressions)]
-        return expressions
-
-    def _filter_by_geospatial(
-        self,
-        geospatial_filters: list[GeospatialFilter],
-        model_object: models.Datum | models.Model | models.Dataset,
-    ):
-        geospatial_expressions = []
-        for geospatial_filter in geospatial_filters:
-            operator = geospatial_filter.operator
-            geojson = geospatial_filter.value
-
-            if operator == "inside":
-                geospatial_expressions.append(
-                    func.ST_Covers(
-                        # note that casting the WKT using ST_GEOGFROMTEXT isn't necessary here: we're implicitely comparing two geographies, not two geometries
-                        geojson.wkt(),
-                        model_object.geo,
-                    )
-                )
-            elif operator == "intersect":
-                geospatial_expressions.append(
-                    model_object.geo.ST_Intersects(
-                        geojson.wkt(),
-                    )
-                )
-            elif operator == "outside":
-                geospatial_expressions.append(
-                    not_(
-                        func.ST_Covers(
-                            geojson.wkt(),
-                            model_object.geo,
-                        )
-                    )
-                )
-
-        return geospatial_expressions

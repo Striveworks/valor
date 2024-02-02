@@ -140,6 +140,7 @@ def _getter_statement(
     ignore_groundtruths: bool = False,
     ignore_predictions: bool = False,
 ) -> Subquery:
+    # TODO
     """Builds sql statement for other functions."""
     stmt = ops.Query(selection)
     if filters:
