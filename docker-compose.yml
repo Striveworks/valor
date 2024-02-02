@@ -1,6 +1,6 @@
 services:
   db:
-    image: "postgis/postgis"
+    image: "docker.io/postgis/postgis"
     ports:
       - "5432:5432"
     environment:
@@ -27,8 +27,8 @@ services:
       - 'db'
       - 'migrations'
   migrations:
-    build:
-      context: ./migrations
+    image: ghcr.io/striveworks/velour/migrations
+    build: ./migrations
     environment:
       POSTGRES_HOST: ${POSTGRES_HOST}
       POSTGRES_USERNAME: ${POSTGRES_USERNAME}
