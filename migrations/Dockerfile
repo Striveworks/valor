@@ -1,4 +1,4 @@
-FROM migrate/migrate
+FROM docker.io/migrate/migrate
 COPY . /migrations
 WORKDIR /migrations
 
