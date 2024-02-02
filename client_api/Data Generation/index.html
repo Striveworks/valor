@@ -658,7 +658,7 @@
 </span><span id="__span-0-265"><a id="__codelineno-0-265" name="__codelineno-0-265"></a><span class="sd">    n_labels : int</span>
 </span><span id="__span-0-266"><a id="__codelineno-0-266" name="__codelineno-0-266"></a><span class="sd">        The number of labels per annotation you'd like your dataset to contain.</span>
 </span><span id="__span-0-267"><a id="__codelineno-0-267" name="__codelineno-0-267"></a><span class="sd">    """</span>
-</span><span id="__span-0-268"><a id="__codelineno-0-268" name="__codelineno-0-268"></a>    <span class="n">model</span> <span class="o">=</span> <span class="n">Model</span><span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="n">model_name</span><span class="p">)</span>
+</span><span id="__span-0-268"><a id="__codelineno-0-268" name="__codelineno-0-268"></a>    <span class="n">model</span> <span class="o">=</span> <span class="n">Model</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">model_name</span><span class="p">)</span>
 </span><span id="__span-0-269"><a id="__codelineno-0-269" name="__codelineno-0-269"></a>
 </span><span id="__span-0-270"><a id="__codelineno-0-270" name="__codelineno-0-270"></a>    <span class="n">datums</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">get_datums</span><span class="p">()</span>
 </span><span id="__span-0-271"><a id="__codelineno-0-271" name="__codelineno-0-271"></a>
@@ -832,7 +832,7 @@
 </span><span id="__span-0-224"><a id="__codelineno-0-224" name="__codelineno-0-224"></a><span class="sd">    n_labels : int</span>
 </span><span id="__span-0-225"><a id="__codelineno-0-225" name="__codelineno-0-225"></a><span class="sd">        The number of labels per annotation you'd like your dataset to contain.</span>
 </span><span id="__span-0-226"><a id="__codelineno-0-226" name="__codelineno-0-226"></a><span class="sd">    """</span>
-</span><span id="__span-0-227"><a id="__codelineno-0-227" name="__codelineno-0-227"></a>    <span class="n">dataset</span> <span class="o">=</span> <span class="n">Dataset</span><span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="n">dataset_name</span><span class="p">)</span>
+</span><span id="__span-0-227"><a id="__codelineno-0-227" name="__codelineno-0-227"></a>    <span class="n">dataset</span> <span class="o">=</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">dataset_name</span><span class="p">)</span>
 </span><span id="__span-0-228"><a id="__codelineno-0-228" name="__codelineno-0-228"></a>
 </span><span id="__span-0-229"><a id="__codelineno-0-229" name="__codelineno-0-229"></a>    <span class="n">unique_image_ids</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">n_images</span><span class="p">))</span>
 </span><span id="__span-0-230"><a id="__codelineno-0-230" name="__codelineno-0-230"></a>    <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">tqdm</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">n_images</span><span class="p">)):</span>
