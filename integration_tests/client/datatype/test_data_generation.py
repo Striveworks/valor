@@ -102,9 +102,6 @@ def test_generate_prediction_data(client: Client):
     )
     assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
 
-    eval_job.poll()
-    print(eval_job.to_dict())
-
     eval_dict = eval_job.to_dict()
     for key in [
         "id",
