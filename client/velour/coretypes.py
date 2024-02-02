@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import time
 import warnings
@@ -6,8 +8,14 @@ from typing import Dict, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
 
-from velour.client import Client, ClientException
-from velour.enums import AnnotationType, EvaluationStatus, TaskType
+from velour.client import ClientConnection, connect, get_connection
+from velour.enums import (
+    AnnotationType,
+    EvaluationStatus,
+    TableStatus,
+    TaskType,
+)
+from velour.exceptions import ClientException
 from velour.schemas.evaluation import EvaluationParameters, EvaluationRequest
 from velour.schemas.filters import Filter, FilterExpressionsType
 from velour.schemas.geometry import BoundingBox, MultiPolygon, Polygon, Raster
@@ -24,7 +32,7 @@ from velour.schemas.properties import (
     NumericProperty,
     StringProperty,
 )
-from velour.types import GeoJSONType, MetadataType, is_floating
+from velour.types import DictMetadataType, GeoJSONType, is_floating
 
 
 class Label:
@@ -46,7 +54,7 @@ class Label:
         Declarative mappers used to create filters.
     """
 
-    value = NumericProperty("value")
+    value = StringProperty("value")
     key = StringProperty("label_keys")
     score = NumericProperty("prediction_scores")
 
@@ -70,10 +78,19 @@ class Label:
         self.value = value
         self.score = score
 
-    def __str__(self):
-        return str(self.tuple())
+    def __str__(self) -> str:
+        """Dumps the object into a JSON formatted string."""
+        return json.dumps(self.to_dict(), indent=4)
 
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, Union[str, float, np.floating, None]]:
+        """
+        Defines how a `velour.Label` object is serialized into a dictionary.
+
+        Returns
+        ----------
+        dict
+            A dictionary describing a label.
+        """
         return {
             "key": self.key,
             "value": self.value,
@@ -81,10 +98,21 @@ class Label:
         }
 
     @classmethod
-    def from_dict(cls, resp):
+    def from_dict(cls, resp) -> Label:
+        """
+        Construct a label from a dictionary.
+
+        Parameters
+        ----------
+        resp : dict
+            The dictionary containing a label.
+
+        Returns
+        velour.Label
+        """
         return cls(**resp)
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
         """
         Defines how `Labels` are compared to one another
 
@@ -112,7 +140,7 @@ class Label:
 
         # scores not equal
         if is_floating(self.score) and is_floating(other.score):
-            return np.isclose(self.score, other.score)
+            return bool(np.isclose(self.score, other.score))
 
         return False
 
@@ -137,82 +165,6 @@ class Label:
             A tuple of the `Label's` arguments.
         """
         return (self.key, self.value, self.score)
-
-
-class Datum:
-    """
-    A class used to store datum about `GroundTruths` and `Predictions`.
-
-    Parameters
-    ----------
-    uid : str
-        The UID of the `Datum`.
-    metadata : dict
-        A dictionary of metadata that describes the `Datum`.
-    geospatial :  dict
-        A GeoJSON-style dictionary describing the geospatial coordinates of the `Datum`.
-    """
-
-    uid = StringProperty("datum_uids")
-    metadata = DictionaryProperty("datum_metadata")
-    geospatial = GeospatialProperty("datum_geospatial")
-
-    def __init__(
-        self,
-        uid: str,
-        metadata: Optional[MetadataType] = None,
-        geospatial: Optional[GeoJSONType] = None,
-    ):
-        self.uid = uid
-        self.metadata = metadata if metadata else {}
-        self.geospatial = geospatial
-
-        if not isinstance(self.uid, str):
-            raise TypeError("Attribute `uid` should have type `str`.")
-        validate_metadata(self.metadata)
-        self.metadata = load_metadata(self.metadata)
-
-    def __str__(self):
-        return str(self.to_dict(dataset_name=None).pop("dataset_name"))
-
-    def to_dict(self, dataset_name: Optional[str] = None) -> dict:
-        """
-        Defines how a `Datum` object is transformed into a dictionary.
-
-        Returns
-        ----------
-        dict
-            A dictionary of the `Datum's` attributes.
-        """
-        return {
-            "dataset_name": dataset_name,
-            "uid": self.uid,
-            "metadata": dump_metadata(self.metadata),
-            "geospatial": self.geospatial if self.geospatial else None,
-        }
-
-    @classmethod
-    def from_dict(cls, resp: dict) -> "Datum":
-        resp.pop("dataset_name", None)
-        return cls(**resp)
-
-    def __eq__(self, other):
-        """
-        Defines how `Datums` are compared to one another
-
-        Parameters
-        ----------
-        other : Datum
-            The object to compare with the `Datum`.
-
-        Returns
-        ----------
-        boolean
-            A boolean describing whether the two objects are equal.
-        """
-        if not isinstance(other, Datum):
-            raise TypeError(f"Expected type `{type(Datum)}`, got `{other}`")
-        return self.to_dict() == other.to_dict()
 
 
 class Annotation:
@@ -311,7 +263,7 @@ class Annotation:
         self,
         task_type: TaskType,
         labels: List[Label],
-        metadata: Optional[MetadataType] = None,
+        metadata: Optional[DictMetadataType] = None,
         bounding_box: Optional[BoundingBox] = None,
         polygon: Optional[Polygon] = None,
         multipolygon: Optional[MultiPolygon] = None,
@@ -342,28 +294,28 @@ class Annotation:
                 )
 
         # bounding box
-        if self.bounding_box:
+        if self.bounding_box is not None:
             if not isinstance(self.bounding_box, BoundingBox):
                 raise TypeError(
                     "Attribute `bounding_box` should have type `velour.schemas.BoundingBox`."
                 )
 
         # polygon
-        if self.polygon:
+        if self.polygon is not None:
             if not isinstance(self.polygon, Polygon):
                 raise TypeError(
                     "Attribute `polygon` should have type `velour.schemas.Polygon`."
                 )
 
         # multipolygon
-        if self.multipolygon:
+        if self.multipolygon is not None:
             if not isinstance(self.multipolygon, MultiPolygon):
                 raise TypeError(
                     "Attribute `multipolygon` should have type `velour.schemas.MultiPolygon`."
                 )
 
         # raster
-        if self.raster:
+        if self.raster is not None:
             if not isinstance(self.raster, Raster):
                 raise TypeError(
                     "Attribute `raster` should have type `velour.schemas.Raster`."
@@ -376,19 +328,17 @@ class Annotation:
         self.metadata = load_metadata(self.metadata)
 
     @classmethod
-    def from_dict(cls, resp: dict):
+    def from_dict(cls, resp: dict) -> Annotation:
         """
-        Deserializes a `velour.Annotation` from a dictionary.
+        Construct a annotation from a dictionary.
 
         Parameters
         ----------
         resp : dict
-            The serialized annotation.
+            The dictionary containing a annotation.
 
         Returns
-        -------
         velour.Annotation
-            The deserialized Annotation object.
         """
 
         task_type = TaskType(resp["task_type"])
@@ -433,7 +383,7 @@ class Annotation:
         Returns
         ----------
         dict
-            A dictionary of the `Annotation's` attributes.
+            A dictionary describing a annotation.
         """
         return {
             "task_type": self.task_type.value,
@@ -449,10 +399,11 @@ class Annotation:
             "raster": asdict(self.raster) if self.raster else None,
         }
 
-    def __str__(self):
-        return str(self.to_dict())
+    def __str__(self) -> str:
+        """Dumps the object into a JSON formatted string."""
+        return json.dumps(self.to_dict(), indent=4)
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
         """
         Defines how `Annotations` are compared to one another
 
@@ -470,6 +421,96 @@ class Annotation:
             raise TypeError(
                 f"Expected type `{type(Annotation)}`, got `{other}`"
             )
+        return self.to_dict() == other.to_dict()
+
+
+class Datum:
+    """
+    A class used to store datum about `GroundTruths` and `Predictions`.
+
+    Parameters
+    ----------
+    uid : str
+        The UID of the `Datum`.
+    metadata : dict
+        A dictionary of metadata that describes the `Datum`.
+    geospatial :  dict
+        A GeoJSON-style dictionary describing the geospatial coordinates of the `Datum`.
+    """
+
+    uid = StringProperty("datum_uids")
+    metadata = DictionaryProperty("datum_metadata")
+    geospatial = GeospatialProperty("datum_geospatial")
+
+    def __init__(
+        self,
+        uid: str,
+        metadata: Optional[DictMetadataType] = None,
+        geospatial: Optional[GeoJSONType] = None,
+    ):
+        self.uid = uid
+        self.metadata = metadata if metadata else {}
+        self.geospatial = geospatial
+
+        if not isinstance(self.uid, str):
+            raise TypeError("Attribute `uid` should have type `str`.")
+        validate_metadata(self.metadata)
+        self.metadata = load_metadata(self.metadata)
+
+    def to_dict(self, dataset_name: Optional[str] = None) -> dict:
+        """
+        Defines how a `velour.Datum` object is serialized into a dictionary.
+
+        Returns
+        ----------
+        dict
+            A dictionary describing a datum.
+        """
+        return {
+            "dataset_name": dataset_name,
+            "uid": self.uid,
+            "metadata": dump_metadata(self.metadata),
+            "geospatial": self.geospatial if self.geospatial else None,
+        }
+
+    @classmethod
+    def from_dict(cls, resp: dict) -> Datum:
+        """
+        Construct a datum from a dictionary.
+
+        Parameters
+        ----------
+        resp : dict
+            The dictionary containing a datum.
+
+        Returns
+        velour.Datum
+        """
+        resp.pop("dataset_name", None)
+        return cls(**resp)
+
+    def __str__(self) -> str:
+        """Dumps the object into a JSON formatted string."""
+        objdict = self.to_dict(dataset_name=None)
+        objdict.pop("dataset_name")
+        return json.dumps(objdict, indent=4)
+
+    def __eq__(self, other) -> bool:
+        """
+        Defines how `Datums` are compared to one another
+
+        Parameters
+        ----------
+        other : Datum
+            The object to compare with the `Datum`.
+
+        Returns
+        ----------
+        bool
+            A boolean describing whether the two objects are equal.
+        """
+        if not isinstance(other, Datum):
+            raise TypeError(f"Expected type `{type(Datum)}`, got `{other}`")
         return self.to_dict() == other.to_dict()
 
 
@@ -516,12 +557,12 @@ class GroundTruth:
         dataset_name: Optional[str] = None,
     ) -> dict:
         """
-        Defines how a `GroundTruth` is transformed into a dictionary.
+        Defines how a `velour.GroundTruth` object is serialized into a dictionary.
 
         Returns
         ----------
         dict
-            A dictionary of the `GroundTruth's` attributes.
+            A dictionary describing a ground truth.
         """
         return {
             "datum": self.datum.to_dict(dataset_name),
@@ -531,7 +572,18 @@ class GroundTruth:
         }
 
     @classmethod
-    def from_dict(cls, resp: dict):
+    def from_dict(cls, resp: dict) -> GroundTruth:
+        """
+        Construct a ground truth from a dictionary.
+
+        Parameters
+        ----------
+        resp : dict
+            The dictionary containing a ground truth.
+
+        Returns
+        velour.GroundTruth
+        """
         expected_keys = {"datum", "annotations"}
         if set(resp.keys()) != expected_keys:
             raise ValueError(
@@ -547,8 +599,11 @@ class GroundTruth:
             ],
         )
 
-    def __str__(self):
-        return str(self.to_dict(None))
+    def __str__(self) -> str:
+        """Dumps the object into a JSON formatted string."""
+        objdict = self.to_dict(dataset_name=None)
+        objdict["datum"].pop("dataset_name")
+        return json.dumps(objdict, indent=4)
 
     def __eq__(self, other):
         """
@@ -650,12 +705,12 @@ class Prediction:
         model_name: Optional[str] = None,
     ) -> dict:
         """
-        Defines how a `Prediction` is transformed into a dictionary.
+        Defines how a `velour.Prediction` object is serialized into a dictionary.
 
         Returns
         ----------
         dict
-            A dictionary of the `Prediction's` attributes.
+            A dictionary describing a prediction.
         """
         return {
             "datum": self.datum.to_dict(dataset_name=dataset_name),
@@ -666,7 +721,18 @@ class Prediction:
         }
 
     @classmethod
-    def from_dict(cls, resp: dict):
+    def from_dict(cls, resp: dict) -> Prediction:
+        """
+        Construct a Prediction from a dictionary.
+
+        Parameters
+        ----------
+        resp : dict
+            The dictionary containing a prediction.
+
+        Returns
+        velour.Prediction
+        """
         expected_keys = {"datum", "annotations", "model_name"}
         if set(resp.keys()) != expected_keys:
             raise ValueError(
@@ -682,8 +748,12 @@ class Prediction:
             ],
         )
 
-    def __str__(self):
-        return str(self.to_dict(None, None))
+    def __str__(self) -> str:
+        """Dumps the object into a JSON formatted string."""
+        objdict = self.to_dict(dataset_name=None)
+        objdict["datum"].pop("dataset_name")
+        objdict.pop("model_name")
+        return json.dumps(objdict, indent=4)
 
     def __eq__(self, other):
         """
@@ -711,7 +781,9 @@ class Evaluation:
     Wraps `velour.client.Job` to provide evaluation-specifc members.
     """
 
-    def __init__(self, client: Client, *_, **kwargs):
+    def __init__(
+        self, connection: Optional[ClientConnection] = None, **kwargs
+    ):
         """
         Defines important attributes of the API's `EvaluationResult`.
 
@@ -730,10 +802,20 @@ class Evaluation:
         confusion_matrices : List[dict]
             A list of confusion matrix dictionaries returned by the job.
         """
-        self.client = client
+        if not connection:
+            connection = get_connection()
+        self.conn = connection
         self.update(**kwargs)
 
-    def dict(self):
+    def to_dict(self) -> dict:
+        """
+        Defines how a `velour.Evaluation` object is serialized into a dictionary.
+
+        Returns
+        ----------
+        dict
+            A dictionary describing a evaluation.
+        """
         return {
             "id": self.id,
             "model_name": self.model_name,
@@ -797,7 +879,7 @@ class Evaluation:
         ClientException
             If an Evaluation with the given `evaluation_id` is not found.
         """
-        response = self.client.get_evaluations(evaluation_ids=[self.id])
+        response = self.conn.get_evaluations(evaluation_ids=[self.id])
         if not response:
             raise ClientException("Not Found")
         self.update(**response[0])
@@ -890,8 +972,8 @@ class DatasetSummary:
     num_rasters: int
     task_types: List[TaskType]
     labels: List[Label]
-    datum_metadata: List[MetadataType]
-    annotation_metadata: List[MetadataType]
+    datum_metadata: List[DictMetadataType]
+    annotation_metadata: List[DictMetadataType]
 
     def __post_init__(self):
         for i, tt in enumerate(self.task_types):
@@ -906,12 +988,8 @@ class Dataset:
     """
     A class describing a given dataset.
 
-    Attribute
+    Parameters
     ----------
-    client : Client
-        The `Client` object associated with the session.
-    id : int
-        The ID of the dataset.
     name : str
         The name of the dataset.
     metadata : dict
@@ -926,11 +1004,10 @@ class Dataset:
 
     def __init__(
         self,
-        client: Client,
         name: str,
-        metadata: Optional[MetadataType] = None,
+        metadata: Optional[DictMetadataType] = None,
         geospatial: Optional[GeoJSONType] = None,
-        delete_if_exists: bool = False,
+        connection: Optional[ClientConnection] = None,
     ):
         """
         Create or get a `Dataset` object.
@@ -948,6 +1025,7 @@ class Dataset:
         delete_if_exists : bool, default=False
             Deletes any existing dataset with the same name.
         """
+        self.conn = connection
         self.name = name
         self.metadata = metadata if metadata else {}
         self.geospatial = geospatial
@@ -958,27 +1036,87 @@ class Dataset:
         validate_metadata(self.metadata)
         self.metadata = load_metadata(self.metadata)
 
-        if delete_if_exists and client.get_dataset(name) is not None:
-            client.delete_dataset(name, timeout=30)
+    @classmethod
+    def create(
+        cls,
+        name: str,
+        metadata: Optional[DictMetadataType] = None,
+        geospatial: Optional[GeoJSONType] = None,
+    ) -> Dataset:
+        """
+        Creates a dataset that persists in the backend.
 
-        if delete_if_exists or client.get_dataset(name) is None:
-            client.create_dataset(self.to_dict())
+        Parameters
+        ----------
+        name : str
+            The name of the dataset.
+        metadata : dict
+            A dictionary of metadata that describes the dataset.
+        geospatial :  dict
+            A GeoJSON-style dictionary describing the geospatial coordinates of the dataset.
 
-        for k, v in (client.get_dataset(name) or {}).items():
-            setattr(self, k, v)
-        self.client = client
+        Returns
+        -------
+        velour.Dataset
+            The created dataset.
+        """
+        dataset = cls(
+            name=name,
+            metadata=metadata,
+            geospatial=geospatial,
+        )
+        Client(dataset.conn).create_dataset(dataset)
+        return dataset
 
-    def __str__(self):
-        return str(self.to_dict())
+    @classmethod
+    def get(
+        cls,
+        name: str,
+    ) -> Union[Dataset, None]:
+        """
+        Retrieves a dataset from the backend database.
+
+        Parameters
+        ----------
+        dataset : str
+            The name of the dataset.
+
+        Returns
+        -------
+        Union[velour.Dataset, None]
+            The dataset or 'None' if it doesn't exist.
+        """
+        return Client().get_dataset(name)
+
+    @classmethod
+    def from_dict(
+        cls, resp: dict, connection: Optional[ClientConnection] = None
+    ) -> Dataset:
+        """
+        Construct a dataset from a dictionary.
+
+        Parameters
+        ----------
+        resp : dict
+            The dictionary containing a dataset.
+        connection : ClientConnection, optional
+            Option to share a ClientConnection rather than request a new one.
+
+        Returns
+        -------
+        velour.Dataset
+        """
+        resp.pop("id")
+        return cls(**resp, connection=connection)
 
     def to_dict(self, id: Optional[int] = None) -> dict:
         """
-        Defines how a `Dataset` object is transformed into a dictionary.
+        Defines how a `velour.Dataset` object is serialized into a dictionary.
 
         Returns
         ----------
         dict
-            A dictionary of the `Dataset's` attributes.
+            A dictionary describing a model.
         """
         return {
             "id": id,
@@ -987,17 +1125,23 @@ class Dataset:
             "geospatial": self.geospatial,
         }
 
+    def __str__(self) -> str:
+        """Dumps the object into a JSON formatted string."""
+        objdict = self.to_dict()
+        objdict.pop("id")
+        return json.dumps(objdict, indent=4)
+
     def add_groundtruth(
         self,
         groundtruth: GroundTruth,
-    ):
+    ) -> None:
         """
-        Add a groundtruth to a given dataset.
+        Add a groundtruth to the dataset.
 
         Parameters
         ----------
         groundtruth : GroundTruth
-            The `GroundTruth` object to add to the `Dataset`.
+            The groundtruth to create.
         """
         if not isinstance(groundtruth, GroundTruth):
             raise TypeError(f"Invalid type `{type(groundtruth)}`")
@@ -1007,31 +1151,26 @@ class Dataset:
                 f"GroundTruth for datum with uid `{groundtruth.datum.uid}` contains no annotations."
             )
 
-        self.client._requests_post_rel_host(
-            "groundtruths",
-            json=groundtruth.to_dict(self.name),
-        )
+        Client(self.conn).create_groundtruth(self, groundtruth)
 
-    def get_groundtruth(self, datum: Union[Datum, str]) -> GroundTruth:
+    def get_groundtruth(
+        self,
+        datum: Union[Datum, str],
+    ) -> Union[GroundTruth, None]:
         """
-        Fetches a given groundtruth from the backend.
+        Get a particular groundtruth.
 
         Parameters
         ----------
-        datum : Datum
-            The Datum of the 'GroundTruth' to fetch.
-
+        datum: Union[Datum, str]
+            The desired datum.
 
         Returns
         ----------
-        GroundTruth
-            The requested `GroundTruth`.
+        Union[GroundTruth, None]
+            The matching groundtruth or 'None' if it doesn't exist.
         """
-        uid = datum.uid if isinstance(datum, Datum) else datum
-        resp = self.client._requests_get_rel_host(
-            f"groundtruths/dataset/{self.name}/datum/{uid}"
-        ).json()
-        return GroundTruth.from_dict(resp)
+        return Client(self.conn).get_groundtruth(dataset=self, datum=datum)
 
     def get_labels(
         self,
@@ -1044,13 +1183,7 @@ class Dataset:
         List[Label]
             A list of `Labels` associated with the dataset.
         """
-        labels = self.client._requests_get_rel_host(
-            f"labels/dataset/{self.name}"
-        ).json()
-
-        return [
-            Label(key=label["key"], value=label["value"]) for label in labels
-        ]
+        return Client(self.conn).get_labels_from_dataset(self)
 
     def get_datums(self) -> List[Datum]:
         """
@@ -1061,10 +1194,9 @@ class Dataset:
         List[Datum]
             A list of `Datums` associated with the dataset.
         """
-        datums = self.client.get_datums(
-            filters=Filter(dataset_names=[self.name])
+        return Client(self.conn).get_datums(
+            filter_=Filter(dataset_names=[self.name])
         )
-        return [Datum.from_dict(datum) for datum in datums]
 
     def get_evaluations(
         self,
@@ -1077,10 +1209,7 @@ class Dataset:
         List[Evaluation]
             A list of `Evaluations` associated with the dataset.
         """
-        return [
-            Evaluation(self.client, **resp)
-            for resp in self.client.get_evaluations(datasets=self.name)
-        ]
+        return Client(self.conn).get_evaluations(datasets=[self])
 
     def get_summary(self) -> DatasetSummary:
         """
@@ -1116,38 +1245,37 @@ class Dataset:
             groundtruth_annotation_metadata: list of the unique metadata dictionaries in the dataset that are
             associated to annotations
         """
-        resp = self.client.get_dataset_summary(self.name)
-        return DatasetSummary(**resp)
+        return Client(self.conn).get_dataset_summary(self.name)
 
     def finalize(
         self,
     ):
         """
-        Finalize the `Dataset` object such that new `GroundTruths` cannot be added to it.
+        Finalizes the dataset such that new groundtruths cannot be added to it.
         """
-        return self.client._requests_put_rel_host(
-            f"datasets/{self.name}/finalize"
-        )
+        return Client(self.conn).finalize_dataset(self)
 
     def delete(
         self,
+        timeout: int = 0,
     ):
         """
-        Delete the `Dataset` object from the backend.
+        Delete the dataset from the backend.
+
+        Parameters
+        ----------
+        timeout : int, default=0
+            Sets a timeout in seconds.
         """
-        self.client._requests_delete_rel_host(f"datasets/{self.name}").json()
+        Client(self.conn).delete_dataset(self.name, timeout)
 
 
 class Model:
     """
     A class describing a model that was trained on a particular dataset.
 
-    Attribute
+    Parameters
     ----------
-    client : Client
-        The `Client` object associated with the session.
-    id : int
-        The ID of the model.
     name : str
         The name of the model.
     metadata : dict
@@ -1162,11 +1290,10 @@ class Model:
 
     def __init__(
         self,
-        client: Client,
         name: str,
-        metadata: Optional[MetadataType] = None,
+        metadata: Optional[DictMetadataType] = None,
         geospatial: Optional[GeoJSONType] = None,
-        delete_if_exists: bool = False,
+        connection: Optional[ClientConnection] = None,
     ):
         """
         Create or get a `Model` object.
@@ -1184,6 +1311,7 @@ class Model:
         delete_if_exists : bool, default=False
             Deletes any existing model with the same name.
         """
+        self.conn = connection
         self.name = name
         self.metadata = metadata if metadata else {}
         self.geospatial = geospatial
@@ -1194,27 +1322,86 @@ class Model:
         validate_metadata(self.metadata)
         self.metadata = load_metadata(self.metadata)
 
-        if delete_if_exists and client.get_model(name) is not None:
-            client.delete_model(name, timeout=30)
+    @classmethod
+    def create(
+        cls,
+        name: str,
+        metadata: Optional[DictMetadataType] = None,
+        geospatial: Optional[GeoJSONType] = None,
+    ) -> Model:
+        """
+        Creates a model that persists in the backend.
 
-        if delete_if_exists or client.get_model(name) is None:
-            client.create_model(self.to_dict())
+        Parameters
+        ----------
+        name : str
+            The name of the model.
+        metadata : dict
+            A dictionary of metadata that describes the model.
+        geospatial :  dict
+            A GeoJSON-style dictionary describing the geospatial coordinates of the model.
 
-        for k, v in (client.get_model(name) or {}).items():
-            setattr(self, k, v)
-        self.client = client
+        Returns
+        -------
+        velour.Model
+            The created model.
+        """
+        model = cls(
+            name=name,
+            metadata=metadata,
+            geospatial=geospatial,
+        )
+        Client(model.conn).create_model(model)
+        return model
 
-    def __str__(self):
-        return str(self.to_dict())
+    @classmethod
+    def get(
+        cls,
+        name: str,
+    ) -> Union[Model, None]:
+        """
+        Retrieves a model from the backend database.
+
+        Parameters
+        ----------
+        name : str
+            The name of the model.
+
+        Returns
+        -------
+        Union[velour.Model, None]
+            The model or 'None' if it doesn't exist.
+        """
+        return Client().get_model(name)
+
+    @classmethod
+    def from_dict(
+        cls, resp: dict, connection: Optional[ClientConnection] = None
+    ) -> Model:
+        """
+        Construct a model from a dictionary.
+
+        Parameters
+        ----------
+        resp : dict
+            The dictionary containing a model.
+        connection : ClientConnection, optional
+            Option to share a ClientConnection rather than request a new one.
+
+        Returns
+        velour.Model
+        """
+        resp.pop("id")
+        return cls(**resp, connection=connection)
 
     def to_dict(self, id: Optional[int] = None) -> dict:
         """
-        Defines how a `Model` object is transformed into a dictionary.
+        Defines how a `velour.Model` object is serialized into a dictionary.
 
         Returns
         ----------
         dict
-            A dictionary of the `Model's` attributes.
+            A dictionary describing a model.
         """
         return {
             "id": id,
@@ -1223,63 +1410,71 @@ class Model:
             "geospatial": self.geospatial,
         }
 
+    def __str__(self) -> str:
+        """Dumps the object into a JSON formatted string."""
+        objdict = self.to_dict()
+        objdict.pop("id")
+        return json.dumps(objdict, indent=4)
+
     def add_prediction(
-        self, dataset: Union[Dataset, str], prediction: Prediction
-    ):
+        self,
+        dataset: Union[Dataset, str],
+        prediction: Prediction,
+    ) -> None:
         """
-        Add a prediction to a given model.
+        Add a prediction to the model.
 
         Parameters
         ----------
-        prediction : Prediction
-            The `Prediction` object to add to the `Model`.
+        dataset : velour.Dataset
+            The dataset that is being operated over.
+        prediction : velour.Prediction
+            The prediction to create.
         """
+
         if not isinstance(prediction, Prediction):
-            raise TypeError(
-                f"Expected `velour.Prediction`, got `{type(prediction)}`"
-            )
+            raise TypeError(f"Invalid type `{type(prediction)}`")
 
         if len(prediction.annotations) == 0:
             warnings.warn(
                 f"Prediction for datum with uid `{prediction.datum.uid}` contains no annotations."
             )
 
-        dataset_name = (
-            dataset.name if isinstance(dataset, Dataset) else dataset
-        )
-        return self.client._requests_post_rel_host(
-            "predictions",
-            json=prediction.to_dict(
-                dataset_name=dataset_name, model_name=self.name
-            ),
+        Client(self.conn).create_prediction(
+            dataset=dataset, model=self, prediction=prediction
         )
 
-    def get_prediction(self, dataset: Dataset, datum: Datum) -> Prediction:
+    def get_prediction(
+        self, dataset: Union[Dataset, str], datum: Union[Datum, str]
+    ) -> Union[Prediction, None]:
         """
-        Fetch a particular prediction.
+        Get a particular prediction.
 
         Parameters
         ----------
-        datum : Union[Datum, str]
-            The `Datum` or datum UID of the prediction to return.
+        dataset: Union[Dataset, str]
+            The dataset the datum belongs to.
+        datum: Union[Datum, str]
+            The desired datum.
 
         Returns
         ----------
-        Prediction
-            The requested `Prediction`.
+        Union[Prediction, None]
+            The matching prediction or 'None' if it doesn't exist.
         """
-        resp = self.client._requests_get_rel_host(
-            f"predictions/model/{self.name}/dataset/{dataset.name}/datum/{datum.uid}",
-        ).json()
-        return Prediction.from_dict(resp)
+        return Client(self.conn).get_prediction(
+            dataset=dataset, model=self, datum=datum
+        )
 
-    def finalize_inferences(self, dataset: "Dataset") -> None:
+    def finalize_inferences(self, dataset: Union[Dataset, str]) -> None:
         """
-        Finalize the `Model` object such that new `Predictions` cannot be added to it.
+        Finalizes the model over a dataset such that new prediction cannot be added to it.
         """
-        return self.client._requests_put_rel_host(
-            f"models/{self.name}/datasets/{dataset.name}/finalize"
-        ).json()
+        if isinstance(dataset, Dataset):
+            dataset = dataset.name
+        return Client(self.conn).finalize_inferences(
+            dataset=dataset, model=self
+        )
 
     def _format_filters(
         self,
@@ -1328,8 +1523,9 @@ class Model:
         return Filter(**filters)
 
     def _create_label_map(
-        self, label_map: Dict[Label, Label]
-    ) -> List[List[List[str]]]:
+        self,
+        label_map: Optional[Dict[Label, Label]],
+    ) -> Union[List[List[List[str]]], None]:
         """Convert a dictionary of label maps to a serializable list format."""
         if not label_map:
             return None
@@ -1379,9 +1575,9 @@ class Model:
                 "Evaluation requires the definition of either datasets, dataset filters or both."
             )
 
+        # format request
         datum_filter = self._format_filters(datasets, filters)
-
-        evaluation = EvaluationRequest(
+        request = EvaluationRequest(
             model_names=self.name,
             datum_filter=datum_filter,
             parameters=EvaluationParameters(
@@ -1389,20 +1585,12 @@ class Model:
                 label_map=self._create_label_map(label_map=label_map),
             ),
         )
-        resp = self.client.evaluate(evaluation)
-        if len(resp) != 1:
+
+        # create evaluation
+        evaluation = Client(self.conn).evaluate(request)
+        if len(evaluation) != 1:
             raise RuntimeError
-        resp = resp[0]
-
-        # resp should have keys "missing_pred_keys", "ignored_pred_keys", with values
-        # list of label dicts. convert label dicts to Label objects
-
-        evaluation_job = Evaluation(
-            client=self.client,
-            **resp,
-        )
-
-        return evaluation_job
+        return evaluation[0]
 
     def evaluate_detection(
         self,
@@ -1443,6 +1631,7 @@ class Model:
         if iou_thresholds_to_return is None:
             iou_thresholds_to_return = [0.5, 0.75]
 
+        # format request
         parameters = EvaluationParameters(
             task_type=TaskType.DETECTION,
             convert_annotations_to_type=convert_annotations_to_type,
@@ -1450,29 +1639,18 @@ class Model:
             iou_thresholds_to_return=iou_thresholds_to_return,
             label_map=self._create_label_map(label_map=label_map),
         )
-
         datum_filter = self._format_filters(datasets, filters)
-
-        evaluation = EvaluationRequest(
+        request = EvaluationRequest(
             model_names=self.name,
             datum_filter=datum_filter,
             parameters=parameters,
         )
 
-        resp = self.client.evaluate(evaluation)
-        if len(resp) != 1:
+        # create evaluation
+        evaluation = Client(self.conn).evaluate(request)
+        if len(evaluation) != 1:
             raise RuntimeError
-        resp = resp[0]
-
-        # resp should have keys "missing_pred_labels", "ignored_pred_labels", with values
-        # list of label dicts. convert label dicts to Label objects
-
-        evaluation_job = Evaluation(
-            client=self.client,
-            **resp,
-        )
-
-        return evaluation_job
+        return evaluation[0]
 
     def evaluate_segmentation(
         self,
@@ -1498,11 +1676,9 @@ class Model:
         Evaluation
             a job object that can be used to track the status of the job and get the metrics of it upon completion
         """
-
+        # format request
         datum_filter = self._format_filters(datasets, filters)
-
-        # create evaluation job
-        evaluation = EvaluationRequest(
+        request = EvaluationRequest(
             model_names=self.name,
             datum_filter=datum_filter,
             parameters=EvaluationParameters(
@@ -1510,29 +1686,23 @@ class Model:
                 label_map=self._create_label_map(label_map=label_map),
             ),
         )
-        resp = self.client.evaluate(evaluation)
-        if len(resp) != 1:
+
+        # create evaluation
+        evaluation = Client(self.conn).evaluate(request)
+        if len(evaluation) != 1:
             raise RuntimeError
-        resp = resp[0]
+        return evaluation[0]
 
-        # resp should have keys "missing_pred_labels", "ignored_pred_labels", with values
-        # list of label dicts. convert label dicts to Label objects
-
-        # create client-side evaluation handler
-        evaluation_job = Evaluation(
-            client=self.client,
-            **resp,
-        )
-
-        return evaluation_job
-
-    def delete(
-        self,
-    ):
+    def delete(self, timeout: int = 0):
         """
         Delete the `Model` object from the backend.
+
+        Parameters
+        ----------
+        timeout : int, default=0
+            Sets a timeout in seconds.
         """
-        self.client._requests_delete_rel_host(f"models/{self.name}").json()
+        Client(self.conn).delete_model(self.name, timeout)
 
     def get_labels(
         self,
@@ -1545,13 +1715,7 @@ class Model:
         List[Label]
             A list of `Labels` associated with the model.
         """
-        labels = self.client._requests_get_rel_host(
-            f"labels/model/{self.name}"
-        ).json()
-
-        return [
-            Label(key=label["key"], value=label["value"]) for label in labels
-        ]
+        return Client(self.conn).get_labels_from_model(self)
 
     def get_evaluations(
         self,
@@ -1564,7 +1728,652 @@ class Model:
         List[Evaluation]
             A list of `Evaluations` associated with the model.
         """
+        return Client(self.conn).get_evaluations(models=[self])
+
+
+class Client:
+    """
+    Velour client object for interacting with the api.
+
+    Parameters
+    ----------
+    connection : ClientConnection, optional
+        Option to use an existing connection object.
+    """
+
+    def __init__(self, connection: Optional[ClientConnection] = None):
+        if not connection:
+            connection = get_connection()
+        self.conn = connection
+
+    @classmethod
+    def connect(
+        cls,
+        host: str,
+        access_token: Optional[str] = None,
+        reconnect: bool = False,
+    ) -> Client:
+        """
+        Establishes a connection to the Velour API.
+
+        Parameters
+        ----------
+        host : str
+            The host to connect to. Should start with "http://" or "https://".
+        access_token : str
+            The access token for the host (if the host requires authentication).
+        """
+        connect(host=host, access_token=access_token, reconnect=reconnect)
+        return cls(get_connection())
+
+    def get_labels(
+        self,
+        filter_: Union[Filter, dict, None] = None,
+    ) -> List[Label]:
+        """
+        Gets all labels with option to filter.
+
+        Parameters
+        ----------
+        filter_ : velour.Filter, optional
+            Optional filter to constrain by.
+
+        Returns
+        ------
+        List[velour.Label]
+            A list of labels.
+        """
+        if isinstance(filter_, Filter):
+            filter_ = asdict(filter_)
         return [
-            Evaluation(self.client, **resp)
-            for resp in self.client.get_evaluations(models=self.name)
+            Label.from_dict(label) for label in self.conn.get_labels(filter_)
+        ]
+
+    def get_labels_from_dataset(
+        self, dataset: Union[Dataset, str]
+    ) -> List[Label]:
+        """
+        Get all labels associated with a dataset's groundtruths.
+
+        Parameters
+        ----------
+        dataset : velour.Dataset
+            The dataset to search by.
+
+        Returns
+        ------
+        List[velour.Label]
+            A list of labels.
+        """
+        dataset_name = (
+            dataset.name if isinstance(dataset, Dataset) else dataset
+        )
+        return [
+            Label.from_dict(label)
+            for label in self.conn.get_labels_from_dataset(dataset_name)
+        ]
+
+    def get_labels_from_model(self, model: Union[Model, str]) -> List[Label]:
+        """
+        Get all labels associated with a model's groundtruths.
+
+        Parameters
+        ----------
+        model : velour.Model
+            The model to search by.
+
+        Returns
+        ------
+        List[velour.Label]
+            A list of labels.
+        """
+        model_name = model.name if isinstance(model, Model) else model
+        return [
+            Label.from_dict(label)
+            for label in self.conn.get_labels_from_model(model_name)
+        ]
+
+    def create_dataset(
+        self,
+        dataset: Union[Dataset, dict],
+    ) -> None:
+        """
+        Creates a dataset.
+
+        Parameters
+        ----------
+        dataset : velour.Dataset
+            The dataset to create.
+        """
+        if isinstance(dataset, Dataset):
+            dataset = dataset.to_dict()
+        self.conn.create_dataset(dataset)
+
+    def create_groundtruth(
+        self,
+        dataset: Union[Dataset, str],
+        groundtruth: Union[GroundTruth, dict],
+    ):
+        """
+        Create a groundtruth.
+
+        Parameters
+        ----------
+        dataset : velour.Dataset
+            The dataset to create the groundtruth for.
+        groundtruth : velour.GroundTruth
+            The groundtruth to create.
+        """
+        if isinstance(groundtruth, GroundTruth):
+            dataset_name = (
+                dataset.name if isinstance(dataset, Dataset) else dataset
+            )
+            groundtruth = groundtruth.to_dict(dataset_name=dataset_name)
+        return self.conn.create_groundtruths(groundtruth)
+
+    def get_groundtruth(
+        self,
+        dataset: Union[Dataset, str],
+        datum: Union[Datum, str],
+    ) -> Union[GroundTruth, None]:
+        """
+        Get a particular groundtruth.
+
+        Parameters
+        ----------
+        dataset: Union[Dataset, str]
+            The dataset the datum belongs to.
+        datum: Union[Datum, str]
+            The desired datum.
+
+        Returns
+        ----------
+        Union[GroundTruth, None]
+            The matching groundtruth or 'None' if it doesn't exist.
+        """
+        dataset_name = (
+            dataset.name if isinstance(dataset, Dataset) else dataset
+        )
+        datum_uid = datum.uid if isinstance(datum, Datum) else datum
+
+        try:
+            resp = self.conn.get_groundtruth(
+                dataset_name=dataset_name, datum_uid=datum_uid
+            )
+            return GroundTruth.from_dict(resp)
+        except ClientException as e:
+            if e.status_code == 404:
+                return None
+            raise e
+
+    def finalize_dataset(self, dataset: Union[Dataset, str]) -> None:
+        """
+        Finalizes a dataset such that new groundtruths cannot be added to it.
+
+        Parameters
+        ----------
+        dataset : str
+            The dataset to be finalized.
+        """
+        dataset_name = (
+            dataset.name if isinstance(dataset, Dataset) else dataset
+        )
+        return self.conn.finalize_dataset(name=dataset_name)
+
+    def get_dataset(
+        self,
+        name: str,
+    ) -> Union[Dataset, None]:
+        """
+        Gets a dataset by name.
+
+        Parameters
+        ----------
+        name : str
+            The name of the dataset to fetch.
+
+        Returns
+        -------
+        Union[Dataset, None]
+            A Dataset with matching name or 'None' if one doesn't exist.
+        """
+        try:
+            return Dataset.from_dict(
+                self.conn.get_dataset(name), connection=self.conn
+            )
+        except ClientException as e:
+            if e.status_code == 404:
+                return None
+            raise e
+
+    def get_datasets(
+        self,
+        filter_: Union[Filter, dict, None] = None,
+    ) -> List[Dataset]:
+        """
+        Get all datasets with option to filter results.
+
+        Parameters
+        ----------
+        filter_ : velour.Filter, optional
+            Optional filter to constrain by.
+
+        Returns
+        ------
+        List[velour.Dataset]
+            A list of datasets.
+        """
+        if isinstance(filter_, Filter):
+            filter_ = asdict(filter_)
+        return [
+            Dataset.from_dict(dataset, connection=self.conn)
+            for dataset in self.conn.get_datasets(filter_)
+        ]
+
+    def get_datums(
+        self,
+        filter_: Union[Filter, dict, None] = None,
+    ) -> List[Datum]:
+        """
+        Get all datums with option to filter results.
+
+        Parameters
+        ----------
+        filter_ : velour.Filter, optional
+            Optional filter to constrain by.
+
+        Returns
+        -------
+        List[velour.Datum]
+            A list datums.
+        """
+        if isinstance(filter_, Filter):
+            filter_ = asdict(filter_)
+        return [
+            Datum.from_dict(datum) for datum in self.conn.get_datums(filter_)
+        ]
+
+    def get_datum(
+        self,
+        dataset: Union[Dataset, str],
+        uid: str,
+    ) -> Union[Datum, None]:
+        """
+        Get datum.
+
+        `GET` endpoint.
+
+        Parameters
+        ----------
+        dataset : velour.Dataset
+            The dataset the datum belongs to.
+        uid : str
+            The uid of the datum.
+
+        Returns
+        -------
+        velour.Datum
+            The requested datum or 'None' if it doesn't exist.
+        """
+        dataset_name = (
+            dataset.name if isinstance(dataset, Dataset) else dataset
+        )
+        try:
+            resp = self.conn.get_datum(dataset_name=dataset_name, uid=uid)
+            return Datum.from_dict(resp)
+        except ClientException as e:
+            if e.status_code == 404:
+                return None
+            raise e
+
+    def get_dataset_status(
+        self,
+        name: str,
+    ) -> Union[TableStatus, None]:
+        """
+        Get the state of a given dataset.
+
+        Parameters
+        ----------
+        name : str
+            The name of the dataset we want to fetch the state of.
+
+        Returns
+        ------
+        TableStatus | None
+            The state of the dataset or 'None' if dataset does not exist.
+        """
+        try:
+            return self.conn.get_dataset_status(name)
+        except ClientException as e:
+            if e.status_code == 404:
+                return None
+            raise e
+
+    def get_dataset_summary(self, name: str) -> DatasetSummary:
+        """
+        Gets the summary of a dataset.
+
+        Parameters
+        ----------
+        name : str
+            The name of the dataset to create a summary for.
+
+        Returns
+        -------
+        DatasetSummary
+            A dataclass containing the dataset summary.
+        """
+        return DatasetSummary(**self.conn.get_dataset_summary(name))
+
+    def delete_dataset(self, name: str, timeout: int = 0) -> None:
+        """
+        Deletes a dataset.
+
+        Parameters
+        ----------
+        name : str
+            The name of the dataset to be deleted.
+        timeout : int
+            The number of seconds to wait in order to confirm that the dataset was deleted.
+        """
+        self.conn.delete_dataset(name)
+        if timeout:
+            for _ in range(timeout):
+                if self.get_dataset(name) is None:
+                    break
+                else:
+                    time.sleep(1)
+            else:
+                raise TimeoutError(
+                    "Dataset wasn't deleted within timeout interval"
+                )
+
+    def create_model(
+        self,
+        model: Union[Model, dict],
+    ):
+        """
+        Creates a model.
+
+        Parameters
+        ----------
+        model : velour.Model
+            The model to create.
+        """
+        if isinstance(model, Model):
+            model = model.to_dict()
+        self.conn.create_model(model)
+
+    def create_prediction(
+        self,
+        dataset: Union[Dataset, str],
+        model: Union[Model, str],
+        prediction: Union[Prediction, dict],
+    ) -> None:
+        """
+        Create a prediction.
+
+        Parameters
+        ----------
+        dataset : velour.Dataset
+            The dataset that is being operated over.
+        model : velour.Model
+            The model making the prediction.
+        prediction : velour.Prediction
+            The prediction to create.
+        """
+        if isinstance(prediction, Prediction):
+            dataset_name = (
+                dataset.name if isinstance(dataset, Dataset) else dataset
+            )
+            model_name = model.name if isinstance(model, Model) else model
+            prediction = prediction.to_dict(
+                dataset_name=dataset_name,
+                model_name=model_name,
+            )
+        return self.conn.create_predictions(prediction)
+
+    def get_prediction(
+        self,
+        dataset: Union[Dataset, str],
+        model: Union[Model, str],
+        datum: Union[Datum, str],
+    ) -> Union[Prediction, None]:
+        """
+        Get a particular prediction.
+
+        Parameters
+        ----------
+        dataset: Union[Dataset, str]
+            The dataset the datum belongs to.
+        model: Union[Model, str]
+            The model that made the prediction.
+        datum: Union[Datum, str]
+            The desired datum.
+
+        Returns
+        ----------
+        Union[Prediction, None]
+            The matching prediction or 'None' if it doesn't exist.
+        """
+        dataset_name = (
+            dataset.name if isinstance(dataset, Dataset) else dataset
+        )
+        model_name = model.name if isinstance(model, Model) else model
+        datum_uid = datum.uid if isinstance(datum, Datum) else datum
+
+        try:
+            resp = self.conn.get_prediction(
+                dataset_name=dataset_name,
+                model_name=model_name,
+                datum_uid=datum_uid,
+            )
+            return Prediction.from_dict(resp)
+        except ClientException as e:
+            if e.status_code == 404:
+                return None
+            raise e
+
+    def finalize_inferences(
+        self, dataset: Union[Dataset, str], model: Union[Model, str]
+    ) -> None:
+        """
+        Finalizes a model-dataset pairing such that new prediction cannot be added to it.
+        """
+        dataset_name = (
+            dataset.name if isinstance(dataset, Dataset) else dataset
+        )
+        model_name = model.name if isinstance(model, Model) else model
+        return self.conn.finalize_inferences(
+            dataset_name=dataset_name,
+            model_name=model_name,
+        )
+
+    def get_model(
+        self,
+        name: str,
+    ) -> Union[Model, None]:
+        """
+        Gets a model by name.
+
+        Parameters
+        ----------
+        name : str
+            The name of the model to fetch.
+
+        Returns
+        -------
+        Union[velour.Model, None]
+            A Model with matching name or 'None' if one doesn't exist.
+        """
+        try:
+            return Model.from_dict(
+                self.conn.get_model(name), connection=self.conn
+            )
+        except ClientException as e:
+            if e.status_code == 404:
+                return None
+            raise e
+
+    def get_models(
+        self,
+        filter_: Union[Filter, dict, None] = None,
+    ) -> List[Model]:
+        """
+        Get all models with option to filter results.
+
+        Parameters
+        ----------
+        filter_ : velour.Filter, optional
+            Optional filter to constrain by.
+
+        Returns
+        ------
+        List[velour.Model]
+            A list of models.
+        """
+        if isinstance(filter_, Filter):
+            filter_ = asdict(filter_)
+        return [
+            Model.from_dict(model, connection=self.conn)
+            for model in self.conn.get_models(filter_)
+        ]
+
+    def get_model_status(
+        self,
+        dataset_name: str,
+        model_name: str,
+    ) -> Optional[TableStatus]:
+        """
+        Get the state of a given model over a dataset.
+
+        Parameters
+        ----------
+        dataset_name : str
+            The name of the dataset that the model is operating over.
+        model_name : str
+            The name of the model we want to fetch the state of.
+
+        Returns
+        ------
+        Union[TableStatus, None]
+            The state of the model or 'None' if the model doesn't exist.
+        """
+        try:
+            return self.conn.get_model_status(dataset_name, model_name)
+        except ClientException as e:
+            if e.status_code == 404:
+                return None
+            raise e
+
+    def get_model_eval_requests(
+        self, model: Union[Model, str]
+    ) -> List[Evaluation]:
+        """
+        Get all evaluations that have been created for a model.
+
+        This does not return evaluation results.
+
+        `GET` endpoint.
+
+        Parameters
+        ----------
+        model : str
+            The model to search by.
+
+        Returns
+        -------
+        List[Evaluation]
+            A list of evaluations.
+        """
+        model_name = model.name if isinstance(model, Model) else model
+        return [
+            Evaluation(**evaluation, connection=self.conn)
+            for evaluation in self.conn.get_model_eval_requests(model_name)
+        ]
+
+    def delete_model(self, name: str, timeout: int = 0) -> None:
+        """
+        Deletes a model.
+
+        Parameters
+        ----------
+        name : str
+            The name of the model to be deleted.
+        timeout : int
+            The number of seconds to wait in order to confirm that the model was deleted.
+        """
+        self.conn.delete_model(name)
+        if timeout:
+            for _ in range(timeout):
+                if self.get_model(name) is None:
+                    break
+                else:
+                    time.sleep(1)
+            else:
+                raise TimeoutError(
+                    "Model wasn't deleted within timeout interval"
+                )
+
+    def get_evaluations(
+        self,
+        *,
+        evaluation_ids: Optional[List[int]] = None,
+        models: Union[List[Model], List[str], None] = None,
+        datasets: Union[List[Dataset], List[str], None] = None,
+    ) -> List[Evaluation]:
+        """
+        Returns all evaluations associated with user-supplied dataset and/or model names.
+
+        Parameters
+        ----------
+        evaluation_ids : List[int], optional.
+            A list of job ids to return metrics for.
+        models : Union[List[velour.Model], List[str]], optional
+            A list of model names that we want to return metrics for.
+        datasets : Union[List[velour.Dataset], List[str]], optional
+            A list of dataset names that we want to return metrics for.
+
+        Returns
+        -------
+        List[velour.Evaluation]
+            A list of evaluations.
+        """
+        if isinstance(datasets, list):
+            datasets = [
+                element.name if isinstance(element, Dataset) else element
+                for element in datasets
+            ]
+        if isinstance(models, list):
+            models = [
+                element.name if isinstance(element, Model) else element
+                for element in models
+            ]
+        return [
+            Evaluation(connection=self.conn, **evaluation)
+            for evaluation in self.conn.get_evaluations(
+                evaluation_ids=evaluation_ids,
+                models=models,
+                datasets=datasets,
+            )
+        ]
+
+    def evaluate(self, request: EvaluationRequest) -> List[Evaluation]:
+        """
+        Creates as many evaluations as necessary to fulfill the request.
+
+        Parameters
+        ----------
+        request : schemas.EvaluationRequest
+            The requested evaluation parameters.
+
+        Returns
+        -------
+        List[Evaluation]
+            A list of evaluations that meet the parameters.
+        """
+        return [
+            Evaluation(**evaluation)
+            for evaluation in self.conn.evaluate(request)
         ]

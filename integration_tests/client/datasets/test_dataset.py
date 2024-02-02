@@ -7,9 +7,9 @@ import pytest
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from velour import Annotation, Dataset, Datum, GroundTruth, Label
-from velour.client import Client, ClientException
+from velour import Annotation, Client, Dataset, Datum, GroundTruth, Label
 from velour.enums import TableStatus, TaskType
+from velour.exceptions import ClientException
 from velour.metatypes import ImageMetadata
 from velour_api.backend import models
 
@@ -39,7 +39,7 @@ def _test_create_image_dataset_with_gts(
         set of image uids to check were added to the database
     """
 
-    dataset = Dataset(client, dataset_name)
+    dataset = Dataset.create(dataset_name)
 
     with pytest.raises(ClientException) as exc_info:
         client.create_dataset({"name": dataset_name})
@@ -83,8 +83,7 @@ def test_create_image_dataset_with_href_and_description(
 ):
     href = "http://a.com/b"
     description = "a description"
-    Dataset(
-        client,
+    Dataset.create(
         dataset_name,
         metadata={
             "href": href,
@@ -212,16 +211,11 @@ def test_client_delete_dataset(
     dataset_name: str,
 ):
     """test that delete dataset returns a job whose status changes from "Processing" to "Done" """
-    Dataset(client, dataset_name)
+    Dataset.create(dataset_name)
     assert db.scalar(select(func.count(models.Dataset.name))) == 1
     client.delete_dataset(dataset_name, timeout=30)
     assert db.scalar(select(func.count(models.Dataset.name))) == 0
-
-    assert client.get_dataset(dataset_name) is None
-    Dataset(client, dataset_name, delete_if_exists=True)
-    assert client.get_dataset(dataset_name) is not None
-    Dataset(client, dataset_name, delete_if_exists=True)
-    assert client.get_dataset(dataset_name) is not None
+    assert Dataset.get(dataset_name) is None
 
 
 def test_create_tabular_dataset_and_add_groundtruth(
@@ -230,7 +224,7 @@ def test_create_tabular_dataset_and_add_groundtruth(
     metadata: Dict[str, Union[float, int, str]],
     dataset_name: str,
 ):
-    dataset = Dataset(client, name=dataset_name)
+    dataset = Dataset.create(name=dataset_name)
     assert isinstance(dataset, Dataset)
 
     md1 = {"metadatum1": metadata["metadatum1"]}
@@ -321,12 +315,11 @@ def test_get_dataset(
     dataset_name: str,
     gt_semantic_segs1_mask: GroundTruth,
 ):
-    dataset = Dataset(client, dataset_name)
+    dataset = Dataset.create(dataset_name)
     dataset.add_groundtruth(gt_semantic_segs1_mask)
 
     # check get
-    fetched_dataset = Dataset(client, dataset_name)
-    assert fetched_dataset.id == dataset.id
+    fetched_dataset = Dataset.get(dataset_name)
     assert fetched_dataset.name == dataset.name
     assert fetched_dataset.metadata == dataset.metadata
 
@@ -340,7 +333,7 @@ def test_get_dataset_status(
 ):
     assert client.get_dataset_status(dataset_name) is None
 
-    dataset = Dataset(client, dataset_name)
+    dataset = Dataset.create(dataset_name)
 
     assert client.get_dataset_status(dataset_name) == TableStatus.CREATING
 
@@ -365,7 +358,7 @@ def test_get_summary(
     gt_semantic_segs1_mask: GroundTruth,
     gt_dets1: list[GroundTruth],
 ):
-    dataset = Dataset(client, dataset_name)
+    dataset = Dataset.create(dataset_name)
     dataset.add_groundtruth(gt_semantic_segs1_mask)
     dataset.add_groundtruth(gt_dets1[1])
     dataset.finalize()
@@ -395,7 +388,7 @@ def test_get_summary(
 
 def test_validate_dataset(client: Client, dataset_name: str):
     with pytest.raises(TypeError):
-        Dataset(client, name=123)  # type: ignore
+        Dataset.create(name=123)  # type: ignore
 
     with pytest.raises(TypeError):
-        Dataset(client, name=dataset_name, id="not an int")  # type: ignore
+        Dataset.create(name=dataset_name, id="not an int")  # type: ignore

@@ -42,7 +42,7 @@ def validate_metadata(metadata: MetadataType):
             _validate_href(value)
 
 
-def dump_metadata(metadata: MetadataType) -> ConvertibleMetadataType:
+def dump_metadata(metadata: DictMetadataType) -> ConvertibleMetadataType:
     """Ensures that all nested attributes are numerics or str types."""
     _metadata: ConvertibleMetadataType = {}
     for key, value in metadata.items():
@@ -59,7 +59,7 @@ def dump_metadata(metadata: MetadataType) -> ConvertibleMetadataType:
     return _metadata
 
 
-def load_metadata(metadata: ConvertibleMetadataType) -> MetadataType:
+def load_metadata(metadata: ConvertibleMetadataType) -> DictMetadataType:
     """Reconstructs nested objects from primitive types."""
     _metadata: DictMetadataType = {}
     for key, value in metadata.items():

@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - api/**
+      - migrations/**
       - .github/workflows/docker.yml
     branches: [main]
     tags:
