@@ -44,7 +44,7 @@ class AuthConfig(BaseSettings):
     ALGORITHM: str | None = "HS256"
     USERNAME: str | None = None
     PASSWORD: str | None = None
-    model_config = ConfigDict(env_file=".env.auth")
+    model_config = ConfigDict(env_file=".env.auth", env_prefix="VELOUR_")
 
     @property
     def no_auth(self) -> bool:
