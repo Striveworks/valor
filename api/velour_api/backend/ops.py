@@ -5,6 +5,7 @@ from sqlalchemy import (
     TIMESTAMP,
     Boolean,
     Float,
+    Select,
     and_,
     cast,
     func,
@@ -360,7 +361,9 @@ class Query(SQLAlchemyQuery):
         )
         return query, subquery
 
-    def _select_graph(self, pivot_table: DeclarativeMeta | None = None):
+    def _select_graph(
+        self, pivot_table: DeclarativeMeta | None = None
+    ) -> tuple[Select | None, None]:
         """
         Selects best fitting graph to run query generation and returns tuple(query, subquery | None).
 
@@ -521,11 +524,13 @@ class Query(SQLAlchemyQuery):
         Generates a sqlalchemy subquery. Graph is chosen automatically as best fit.
         """
         query, subquery = self._select_graph(pivot)
-        if query is not None and subquery is not None:
+
+        if query is None:
+            raise RuntimeError("Query didn't return any data.")
+
+        if subquery is not None:
             query = query.where(models.Datum.id.in_(subquery))
-            return query.subquery(name) if as_subquery else query
-        else:
-            raise RuntimeError("Query or Subquery returned None")
+        return query.subquery(name) if as_subquery else query
 
     def groundtruths(
         self, name: str = "generated_subquery", *, as_subquery: bool = True
