@@ -222,45 +222,28 @@ def create_metric_mappings(
     """
     ret = []
     for metric in metrics:
-        if isinstance(
-            metric,
-            (
-                schemas.APMetricAveragedOverIOUs,
-                schemas.PrecisionMetric,
-                schemas.RecallMetric,
-                schemas.F1Metric,
-            ),
-        ):
+        if hasattr(metric, "label"):
             label = core.fetch_label(
                 db=db,
-                label=metric.label,
+                label=metric.label,  # type: ignore - https://github.com/microsoft/pylance-release/issues/2237
             )
 
             # create the label in the database if it doesn't exist
             # this is useful if the user maps existing labels to a non-existant grouping label
             if not label:
-                label = core.create_labels(db=db, labels=[metric.label])
+                label = core.create_labels(db=db, labels=[metric.label])  # type: ignore - https://github.com/microsoft/pylance-release/issues/2237
                 label_id = label[0].id
             else:
                 label_id = label.id
 
             ret.append(
                 metric.db_mapping(
-                    label_id=label_id,
+                    label_id=label_id,  # type: ignore - https://github.com/microsoft/pylance-release/issues/2237
                     evaluation_id=evaluation_id,
                 )
             )
-        elif isinstance(
-            metric,
-            (
-                schemas.mAPMetric,
-                schemas.mAPMetricAveragedOverIOUs,
-                schemas.ConfusionMatrix,
-                schemas.AccuracyMetric,
-                schemas.ROCAUCMetric,
-            ),
-        ):
-            ret.append(metric.db_mapping(evaluation_id=evaluation_id))
+        else:
+            ret.append(metric.db_mapping(evaluation_id=evaluation_id))  # type: ignore - unnecessary since we're checking for label attribute above
 
     return ret
 
