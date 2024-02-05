@@ -1,6 +1,7 @@
 from sqlalchemy import Subquery, and_, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+from sqlalchemy.sql.selectable import Select
 
 from velour_api import schemas
 from velour_api.backend import models, ops
@@ -139,8 +140,7 @@ def _getter_statement(
     filters: schemas.Filter | None = None,
     ignore_groundtruths: bool = False,
     ignore_predictions: bool = False,
-) -> Subquery:
-    # TODO
+) -> Subquery | Select:
     """Builds sql statement for other functions."""
     stmt = ops.Query(selection)
     if filters:
@@ -185,6 +185,7 @@ def get_labels(
         ignore_groundtruths=ignore_groundtruths,
         ignore_predictions=ignore_predictions,
     )
+    # TODO - Subquery type doesn't have a method subqueries
     return {
         schemas.Label(key=label.key, value=label.value)
         for label in db.query(stmt.subquery()).all()
@@ -216,6 +217,7 @@ def get_label_keys(
     set[str]
         A set of label keys.
     """
+    # TODO subquery is not compatitible with type executable. maybe remove subquery from _getter_statement?
     stmt = _getter_statement(
         selection=models.Label.key,
         filters=filters,
@@ -256,7 +258,7 @@ def get_joint_keys(
     db: Session,
     lhs: schemas.Filter,
     rhs: schemas.Filter,
-) -> list[schemas.Label]:
+) -> list[str]:
     """
     Returns all unique label keys that are shared between both filters.
 
@@ -326,7 +328,7 @@ def get_disjoint_keys(
     lhs: schemas.Filter,
     rhs: schemas.Filter,
     label_map: LabelMapType | None = None,
-) -> tuple[list[schemas.Label], list[schemas.Label]]:
+) -> tuple[list[str], list[str]]:
     """
     Returns all unique label keys that are not shared between both predictions and groundtruths.
 
@@ -367,7 +369,7 @@ def fetch_labels(
     filter_: schemas.Filter,
     ignore_groundtruths: bool = False,
     ignore_predictions: bool = False,
-) -> models.Label | None:
+) -> set[models.Label]:
     """
     Fetch a set of models.Label entries from the database.
 
@@ -382,6 +384,7 @@ def fetch_labels(
     -------
     set[models.Label]
     """
+    # TODO same issue with this function above
     stmt = _getter_statement(
         selection=models.Label,
         filters=filter_,

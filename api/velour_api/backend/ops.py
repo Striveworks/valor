@@ -17,7 +17,7 @@ from sqlalchemy.dialects.postgresql import INTERVAL
 from sqlalchemy.orm import Query as SQLAlchemyQuery
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.orm.decl_api import DeclarativeMeta
-from sqlalchemy.sql.elements import BinaryExpression
+from sqlalchemy.sql.elements import BinaryExpression, ColumnElement
 
 from velour_api import enums
 from velour_api.backend import models
@@ -55,7 +55,9 @@ class Query(SQLAlchemyQuery):
 
     def __init__(self, *args):
         self._args = args
-        self._expressions: dict[DeclarativeMeta, list[BinaryExpression]] = {}
+        self._expressions: dict[
+            DeclarativeMeta, list[ColumnElement[bool]]
+        ] = {}
         self._selected: set[DeclarativeMeta | None] = set(
             [
                 self._map_attribute_to_table(argument)
@@ -82,7 +84,7 @@ class Query(SQLAlchemyQuery):
 
     def _expression(
         self, table_set: set[DeclarativeMeta]
-    ) -> BinaryExpression | None:
+    ) -> ColumnElement[bool] | None:
         expressions = []
         for table in table_set:
             if table in self._expressions:
@@ -90,7 +92,7 @@ class Query(SQLAlchemyQuery):
         if len(expressions) == 1:
             return expressions[0]
         elif len(expressions) > 1:
-            return and_(*expressions)  # type: ignore - ColumnElement[bool]" is incompatible with "BinaryExpression[Unknown]
+            return and_(*expressions)
         else:
             return None
 
@@ -143,8 +145,8 @@ class Query(SQLAlchemyQuery):
     def _solve_groundtruth_graph(
         self,
         args: list[DeclarativeMeta | InstrumentedAttribute],
-        selected: list[DeclarativeMeta],
-        filtered: list[DeclarativeMeta],
+        selected: set[DeclarativeMeta],
+        filtered: set[DeclarativeMeta],
     ):
         """
         groundtruth_graph = [models.Dataset, models.Datum, models.Annotation, models.GroundTruth, models.Label]
@@ -186,8 +188,8 @@ class Query(SQLAlchemyQuery):
     def _solve_model_graph(
         self,
         args: list[DeclarativeMeta | InstrumentedAttribute],
-        selected: list[DeclarativeMeta],
-        filtered: list[DeclarativeMeta],
+        selected: set[DeclarativeMeta],
+        filtered: set[DeclarativeMeta],
     ):
         """
         model_graph = [[models.Model, models.Annotation, models.Prediction, models.Label], [models.Model, models.Annotation, models.Datum, models.Dataset]]
@@ -235,8 +237,8 @@ class Query(SQLAlchemyQuery):
     def _solve_prediction_graph(
         self,
         args: list[DeclarativeMeta | InstrumentedAttribute],
-        selected: list[DeclarativeMeta],
-        filtered: list[DeclarativeMeta],
+        selected: set[DeclarativeMeta],
+        filtered: set[DeclarativeMeta],
     ):
         """
         prediction_graph = [models.Dataset, models.Datum, models.Annotation, models.Prediction, models.Label]
@@ -278,8 +280,8 @@ class Query(SQLAlchemyQuery):
     def _solve_joint_graph(
         self,
         args: list[DeclarativeMeta | InstrumentedAttribute],
-        selected: list[DeclarativeMeta],
-        filtered: list[DeclarativeMeta],
+        selected: set[DeclarativeMeta],
+        filtered: set[DeclarativeMeta],
     ):
         """
         joint_graph = [[models.Dataset, models.Datum, models.Annotation, models.Label]]

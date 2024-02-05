@@ -69,6 +69,7 @@ def create_groundtruth(
         db.commit()
     except IntegrityError:
         db.rollback()
+        # TODO
         raise Exception
 
 
