@@ -411,7 +411,7 @@ def _validate_rasters(annotated_datum: GroundTruth | Prediction):
             # unpack datum metadata
             metadata = annotated_datum.datum.metadata
             if "height" not in metadata or "width" not in metadata:
-                raise RuntimeError(
+                raise ValueError(
                     "Attempted raster validation but image dimensions are missing."
                 )
 

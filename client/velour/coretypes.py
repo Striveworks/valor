@@ -54,9 +54,9 @@ class Label:
         Declarative mappers used to create filters.
     """
 
-    value = StringProperty("value")
+    value = StringProperty("label_values")
     key = StringProperty("label_keys")
-    score = NumericProperty("prediction_scores")
+    score = NumericProperty("label_scores")
 
     def __init__(
         self,
@@ -81,6 +81,9 @@ class Label:
     def __str__(self) -> str:
         """Dumps the object into a JSON formatted string."""
         return json.dumps(self.to_dict(), indent=4)
+
+    def __repr__(self) -> str:
+        return str(self.tuple())
 
     def to_dict(self) -> Dict[str, Union[str, float, np.floating, None]]:
         """
@@ -254,10 +257,10 @@ class Annotation:
     task_type = StringProperty("task_types")
     labels = LabelProperty("labels")
     metadata = DictionaryProperty("annotation_metadata")
-    bounding_box = GeometryProperty("annotation_bounding_box")
-    polygon = GeometryProperty("annotation_polygon")
-    multipolygon = GeometryProperty("annotation_multipolygon")
-    raster = GeometryProperty("annotation_raster")
+    bounding_box = GeometryProperty("bounding_box")
+    polygon = GeometryProperty("polygon")
+    multipolygon = GeometryProperty("multipolygon")
+    raster = GeometryProperty("raster")
 
     def __init__(
         self,
@@ -806,6 +809,10 @@ class Evaluation:
             connection = get_connection()
         self.conn = connection
         self.update(**kwargs)
+
+    def __str__(self) -> str:
+        """Dumps the object into a JSON formatted string."""
+        return json.dumps(self.to_dict(), indent=4)
 
     def to_dict(self) -> dict:
         """
@@ -1562,7 +1569,7 @@ class Model:
             The dataset or list of datasets to evaluate against.
         filters : Union[Dict, FilterExpressionsType = Sequence[Union[BinaryExpression, Sequence[BinaryExpression]]]], optional
             Optional set of filters to constrain evaluation by.
-        label_map : Dict[Label, Label]
+        label_map : Dict[Label, Label], optional
             Optional mapping of individual Labels to a grouper Label. Useful when you need to evaluate performance using Labels that differ across datasets and models.
 
         Returns
@@ -1616,7 +1623,7 @@ class Model:
             Thresholds to compute mAP against.
         iou_thresholds_to_return : List[float], optional
             Thresholds to return AP for. Must be subset of `iou_thresholds_to_compute`.
-        label_map : Dict[Label, Label]
+        label_map : Dict[Label, Label], optional
             Optional mapping of individual Labels to a grouper Label. Useful when you need to evaluate performance using Labels that differ across datasets and models.
 
         Returns
@@ -1667,9 +1674,8 @@ class Model:
             The dataset or list of datasets to evaluate against.
         filters : Union[Dict, FilterExpressionsType = Sequence[Union[BinaryExpression, Sequence[BinaryExpression]]]], optional
             Optional set of filters to constrain evaluation by.
-        label_map : Dict[Label, Label]
+        label_map : Dict[Label, Label], optional
             Optional mapping of individual Labels to a grouper Label. Useful when you need to evaluate performance using Labels that differ across datasets and models.
-
 
         Returns
         -------

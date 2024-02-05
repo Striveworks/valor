@@ -24,9 +24,11 @@ from velour.schemas.geometry import (
 )
 
 
-def _test_mapper(mapper, operator, value, retval=None):
+def _test_mapper(mapper, operator, value, retval=None, name_prefix=""):
     name = "name"
     key = "key"
+
+    ret_name = f"{name_prefix}{name}"
 
     if operator == "==":
         expr = mapper(name, key) == value
@@ -50,7 +52,6 @@ def _test_mapper(mapper, operator, value, retval=None):
         expr = mapper(name, key).outside(value)
     elif operator == "is_none":
         expr = mapper(name, key).is_none()
-        assert expr.name == name
         value = None
     elif operator == "exists":
         expr = mapper(name, key).exists()
@@ -61,7 +62,7 @@ def _test_mapper(mapper, operator, value, retval=None):
     else:
         raise NotImplementedError
 
-    assert expr.name == name
+    assert expr.name == ret_name
     assert expr.key == key
     assert expr.constraint.operator == operator
 
@@ -221,11 +222,13 @@ def test_geometry_mapper():
         raster,
     ]:
 
-        def _test_spatial_mapper(operator):
-            _test_mapper(GeometryMapper, operator, value)
+        def _test_spatial_mapper(operator, name_prefix=""):
+            _test_mapper(
+                GeometryMapper, operator, value, name_prefix=name_prefix
+            )
 
-        _test_spatial_mapper("is_none")
-        _test_spatial_mapper("exists")
+        _test_spatial_mapper("is_none", "require_")
+        _test_spatial_mapper("exists", "require_")
 
         with pytest.raises(NotImplementedError):
             _test_spatial_mapper("contains")
