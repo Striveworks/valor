@@ -127,7 +127,9 @@ def test_compute_mot_metrics():
     num_frames = 10
     predictions, groundtruths = generate_mot_data(num_frames)
 
-    out = compute_mot_metrics(predictions, groundtruths)
+    out = compute_mot_metrics(predictions, groundtruths).to_dict(
+        orient="records"
+    )[0]
 
     perfect_score = [
         num_frames,
