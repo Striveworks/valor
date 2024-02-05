@@ -45,7 +45,7 @@ def test_declarative_filtering():
         Label.score < 0.75,
         Annotation.labels == Label(key="k2", value="v2"),
         Annotation.task_type.in_(
-            [TaskType.CLASSIFICATION, TaskType.DETECTION]
+            [TaskType.CLASSIFICATION, TaskType.OBJECT_DETECTION]
         ),
         # geometry filters
         Annotation.raster.is_none(),

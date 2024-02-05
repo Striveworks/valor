@@ -42,7 +42,7 @@ def test_create_images_with_metadata(
             datum=img1,
             annotations=[
                 Annotation(
-                    task_type=TaskType.DETECTION,
+                    task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k", value="v")],
                     bounding_box=rect1,
                 ),

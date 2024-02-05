@@ -127,7 +127,7 @@ def test_evaluate_detection(
             "label_keys": ["k1"],
         },
         "parameters": {
-            "task_type": TaskType.DETECTION.value,
+            "task_type": TaskType.OBJECT_DETECTION.value,
             "convert_annotations_to_type": AnnotationType.BOX.value,
             "iou_thresholds_to_compute": [0.1, 0.6],
             "iou_thresholds_to_return": [0.1, 0.6],
@@ -230,7 +230,7 @@ def test_evaluate_detection(
             "label_keys": ["k1"],
         },
         "parameters": {
-            "task_type": TaskType.DETECTION.value,
+            "task_type": TaskType.OBJECT_DETECTION.value,
             "convert_annotations_to_type": AnnotationType.BOX.value,
             "iou_thresholds_to_compute": [0.1, 0.6],
             "iou_thresholds_to_return": [0.1, 0.6],
@@ -276,7 +276,7 @@ def test_evaluate_detection(
             "label_keys": ["k1"],
         },
         "parameters": {
-            "task_type": TaskType.DETECTION.value,
+            "task_type": TaskType.OBJECT_DETECTION.value,
             "convert_annotations_to_type": AnnotationType.BOX.value,
             "iou_thresholds_to_compute": [0.1, 0.6],
             "iou_thresholds_to_return": [0.1, 0.6],
@@ -322,7 +322,7 @@ def test_evaluate_detection(
             "label_keys": ["k1"],
         },
         "parameters": {
-            "task_type": TaskType.DETECTION.value,
+            "task_type": TaskType.OBJECT_DETECTION.value,
             "convert_annotations_to_type": AnnotationType.BOX.value,
             "iou_thresholds_to_compute": [0.1, 0.6],
             "iou_thresholds_to_return": [0.1, 0.6],
@@ -374,7 +374,7 @@ def test_evaluate_detection(
             "label_keys": ["k1"],
         },
         "parameters": {
-            "task_type": TaskType.DETECTION.value,
+            "task_type": TaskType.OBJECT_DETECTION.value,
             "convert_annotations_to_type": AnnotationType.BOX.value,
             "iou_thresholds_to_compute": [0.1, 0.6],
             "iou_thresholds_to_return": [0.1, 0.6],
@@ -533,7 +533,7 @@ def test_evaluate_detection_with_json_filters(
             "label_keys": ["k1"],
         },
         "parameters": {
-            "task_type": TaskType.DETECTION.value,
+            "task_type": TaskType.OBJECT_DETECTION.value,
             "convert_annotations_to_type": AnnotationType.BOX.value,
             "iou_thresholds_to_compute": [0.1, 0.6],
             "iou_thresholds_to_return": [0.1, 0.6],
@@ -741,22 +741,22 @@ def gts_det_with_label_maps(
             datum=img1.to_datum(),
             annotations=[
                 Annotation(
-                    task_type=TaskType.DETECTION,
+                    task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="class_name", value="maine coon cat")],
                     bounding_box=rect1,
                 ),
                 Annotation(
-                    task_type=TaskType.DETECTION,
+                    task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="class", value="british shorthair")],
                     bounding_box=rect3,
                 ),
                 Annotation(
-                    task_type=TaskType.DETECTION,
+                    task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k1", value="v1")],
                     bounding_box=rect1,
                 ),
                 Annotation(
-                    task_type=TaskType.DETECTION,
+                    task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k2", value="v2")],
                     bounding_box=rect3,
                 ),
@@ -766,12 +766,12 @@ def gts_det_with_label_maps(
             datum=img2.to_datum(),
             annotations=[
                 Annotation(
-                    task_type=TaskType.DETECTION,
+                    task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="class", value="siamese cat")],
                     bounding_box=rect2,
                 ),
                 Annotation(
-                    task_type=TaskType.DETECTION,
+                    task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k1", value="v1")],
                     bounding_box=rect2,
                 ),
@@ -792,12 +792,12 @@ def preds_det_with_label_maps(
             datum=img1.to_datum(),
             annotations=[
                 Annotation(
-                    task_type=TaskType.DETECTION,
+                    task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="class", value="cat", score=0.3)],
                     bounding_box=rect1,
                 ),
                 Annotation(
-                    task_type=TaskType.DETECTION,
+                    task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k1", value="v1", score=0.3)],
                     bounding_box=rect1,
                 ),
@@ -807,12 +807,12 @@ def preds_det_with_label_maps(
             datum=img2.to_datum(),
             annotations=[
                 Annotation(
-                    task_type=TaskType.DETECTION,
+                    task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="class_name", value="cat", score=0.98)],
                     bounding_box=rect2,
                 ),
                 Annotation(
-                    task_type=TaskType.DETECTION,
+                    task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k2", value="v2", score=0.98)],
                     bounding_box=rect2,
                 ),
