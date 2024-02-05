@@ -38,19 +38,19 @@ class Filter:
         A list of task types to filter on.
     annotation_metadata : Dict[str, List[Constraint]], optional
         A dictionary of `Annotation` metadata to filter on.
-    bounding_box : bool, optional
+    require_bounding_box : bool, optional
         A toggle for filtering by bounding boxes.
     bounding_box_area : bool, optional
         A optional constraint to filter by bounding box area.
-    polygon : bool, optional
+    require_polygon : bool, optional
         A toggle for filtering by polygons.
     polygon_area : bool, optional
         A optional constraint to filter by polygon area.
-    multipolygon : bool, optional
+    require_multipolygon : bool, optional
         A toggle for filtering by multipolygons.
     multipolygon_area : bool, optional
         A optional constraint to filter by multipolygon area.
-    raster : bool, optional
+    require_raster : bool, optional
         A toggle for filtering by rasters.
     raster_area : bool, optional
         A optional constraint to filter by raster area.
@@ -92,13 +92,13 @@ class Filter:
     annotation_geospatial: Optional[List[Constraint]] = None
 
     # geometries
-    bounding_box: Optional[bool] = None
+    require_bounding_box: Optional[bool] = None
     bounding_box_area: Optional[List[Constraint]] = None
-    polygon: Optional[bool] = None
+    require_polygon: Optional[bool] = None
     polygon_area: Optional[List[Constraint]] = None
-    multipolygon: Optional[bool] = None
+    require_multipolygon: Optional[bool] = None
     multipolygon_area: Optional[List[Constraint]] = None
-    raster: Optional[bool] = None
+    require_raster: Optional[bool] = None
     raster_area: Optional[List[Constraint]] = None
 
     # labels
@@ -192,10 +192,10 @@ class Filter:
 
         # bool cases
         for attr in [
-            "bounding_box",
-            "polygon",
-            "multipolygon",
-            "raster",
+            "require_bounding_box",
+            "require_polygon",
+            "require_multipolygon",
+            "require_raster",
         ]:
             if attr in expression_dict:
                 for expr in expression_dict[attr]:
