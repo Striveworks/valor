@@ -221,7 +221,7 @@ def groundtruths(
             datum=image,
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.DETECTION,
+                    task_type=enums.TaskType.OBJECT_DETECTION,
                     labels=[schemas.Label(key="class", value=class_label)],
                     bounding_box=schemas.BoundingBox.from_extrema(
                         xmin=box[0],
@@ -328,7 +328,7 @@ def predictions(
             datum=image,
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.DETECTION,
+                    task_type=enums.TaskType.OBJECT_DETECTION,
                     labels=[
                         schemas.Label(
                             key="class", value=class_label, score=score
@@ -375,17 +375,17 @@ def pred_semantic_segs_img1_create(
         datum=img1,
         annotations=[
             schemas.Annotation(
-                task_type=enums.TaskType.SEGMENTATION,
+                task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
                 raster=schemas.Raster(mask=b64_mask1),
                 labels=[schemas.Label(key="k1", value="v1")],
             ),
             schemas.Annotation(
-                task_type=enums.TaskType.SEGMENTATION,
+                task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
                 raster=schemas.Raster(mask=b64_mask2),
                 labels=[schemas.Label(key="k2", value="v2")],
             ),
             schemas.Annotation(
-                task_type=enums.TaskType.SEGMENTATION,
+                task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
                 raster=schemas.Raster(mask=b64_mask3),
                 labels=[schemas.Label(key="k2", value="v3")],
             ),
@@ -407,12 +407,12 @@ def pred_semantic_segs_img2_create(
         datum=img2,
         annotations=[
             schemas.Annotation(
-                task_type=enums.TaskType.SEGMENTATION,
+                task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
                 raster=schemas.Raster(mask=b64_mask1),
                 labels=[schemas.Label(key="k1", value="v1")],
             ),
             schemas.Annotation(
-                task_type=enums.TaskType.SEGMENTATION,
+                task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
                 raster=schemas.Raster(mask=b64_mask2),
                 labels=[schemas.Label(key="k2", value="v3")],
             ),
@@ -439,17 +439,17 @@ def gt_semantic_segs_create(
             datum=img1,
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.SEGMENTATION,
+                    task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
                     raster=schemas.Raster(mask=b64_mask1),
                     labels=[schemas.Label(key="k1", value="v1")],
                 ),
                 schemas.Annotation(
-                    task_type=enums.TaskType.SEGMENTATION,
+                    task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
                     raster=schemas.Raster(mask=b64_mask2),
                     labels=[schemas.Label(key="k1", value="v2")],
                 ),
                 schemas.Annotation(
-                    task_type=enums.TaskType.SEGMENTATION,
+                    task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
                     raster=schemas.Raster(mask=b64_mask3),
                     labels=[schemas.Label(key="k3", value="v3")],
                 ),
@@ -459,7 +459,7 @@ def gt_semantic_segs_create(
             datum=img2,
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.SEGMENTATION,
+                    task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
                     raster=schemas.Raster(mask=b64_mask4),
                     labels=[
                         schemas.Label(key="k1", value="v1"),
@@ -480,7 +480,7 @@ def groundtruth_detections(
             datum=img1,
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.DETECTION,
+                    task_type=enums.TaskType.OBJECT_DETECTION,
                     labels=[
                         schemas.Label(key="k1", value="v1"),
                         schemas.Label(key="k2", value="v2"),
@@ -500,7 +500,7 @@ def groundtruth_detections(
                     ),
                 ),
                 schemas.Annotation(
-                    task_type=enums.TaskType.DETECTION,
+                    task_type=enums.TaskType.OBJECT_DETECTION,
                     labels=[schemas.Label(key="k2", value="v2")],
                     metadata={},
                     polygon=schemas.Polygon(
@@ -531,7 +531,7 @@ def groundtruth_detections(
             datum=img2,
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.DETECTION,
+                    task_type=enums.TaskType.OBJECT_DETECTION,
                     labels=[
                         schemas.Label(key="k1", value="v1"),
                         schemas.Label(key="k2", value="v2"),
@@ -573,7 +573,7 @@ def prediction_detections(
             datum=img1,
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.DETECTION,
+                    task_type=enums.TaskType.OBJECT_DETECTION,
                     labels=[
                         schemas.Label(key="k1", value="v1", score=0.6),
                         schemas.Label(key="k1", value="v2", score=0.4),
@@ -592,7 +592,7 @@ def prediction_detections(
                     ),
                 ),
                 schemas.Annotation(
-                    task_type=enums.TaskType.DETECTION,
+                    task_type=enums.TaskType.OBJECT_DETECTION,
                     labels=[
                         schemas.Label(key="k2", value="v1", score=0.1),
                         schemas.Label(key="k2", value="v2", score=0.9),

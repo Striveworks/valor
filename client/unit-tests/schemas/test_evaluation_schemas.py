@@ -8,7 +8,7 @@ def test_evaluation_request():
             "dataset_names": ["ds"],
         },
         "parameters": {
-            "task_type": enums.TaskType.DETECTION.value,
+            "task_type": enums.TaskType.OBJECT_DETECTION.value,
             "convert_annotations_to_type": enums.AnnotationType.BOX.value,
         },
     }

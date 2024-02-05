@@ -174,7 +174,7 @@ def _compute_segmentation_metrics(
     grouper_mappings = create_grouper_mappings(
         labels=labels,
         label_map=parameters.label_map,
-        evaluation_type=enums.TaskType.SEGMENTATION,
+        evaluation_type=enums.TaskType.SEMANTIC_SEGMENTATION,
     )
 
     ret = []

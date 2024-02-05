@@ -215,12 +215,12 @@ def gt_dets1(
             datum=img1.to_datum(),
             annotations=[
                 Annotation(
-                    task_type=TaskType.DETECTION,
+                    task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k1", value="v1")],
                     bounding_box=rect1,
                 ),
                 Annotation(
-                    task_type=TaskType.DETECTION,
+                    task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k2", value="v2")],
                     bounding_box=rect3,
                 ),
@@ -230,7 +230,7 @@ def gt_dets1(
             datum=img2.to_datum(),
             annotations=[
                 Annotation(
-                    task_type=TaskType.DETECTION,
+                    task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k1", value="v1")],
                     bounding_box=rect2,
                 )
@@ -253,12 +253,12 @@ def gt_dets2(
             datum=img5.to_datum(),
             annotations=[
                 Annotation(
-                    task_type=TaskType.DETECTION,
+                    task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k1", value="v1")],
                     polygon=Polygon(boundary=rect1.polygon, holes=[]),
                 ),
                 Annotation(
-                    task_type=TaskType.DETECTION,
+                    task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k2", value="v2")],
                     bounding_box=rect3,
                 ),
@@ -268,7 +268,7 @@ def gt_dets2(
             datum=img6.to_datum(),
             annotations=[
                 Annotation(
-                    task_type=TaskType.DETECTION,
+                    task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k1", value="v1")],
                     polygon=Polygon(boundary=rect2.polygon, holes=[]),
                 )
@@ -278,7 +278,7 @@ def gt_dets2(
             datum=img8.to_datum(),
             annotations=[
                 Annotation(
-                    task_type=TaskType.DETECTION,
+                    task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k3", value="v3")],
                     bounding_box=rect3,
                 )
@@ -300,7 +300,7 @@ def gt_poly_dets1(
             datum=img1.to_datum(),
             annotations=[
                 Annotation(
-                    task_type=TaskType.DETECTION,
+                    task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k1", value="v1")],
                     polygon=Polygon(boundary=rect1.polygon, holes=[]),
                 ),
@@ -310,7 +310,7 @@ def gt_poly_dets1(
             datum=img2.to_datum(),
             annotations=[
                 Annotation(
-                    task_type=TaskType.DETECTION,
+                    task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k1", value="v1")],
                     polygon=Polygon(boundary=rect2.polygon, holes=[]),
                 )
@@ -332,14 +332,14 @@ def gt_segs(
             datum=img1.to_datum(),
             annotations=[
                 Annotation(
-                    task_type=TaskType.DETECTION,
+                    task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k1", value="v1")],
                     multipolygon=MultiPolygon(
                         polygons=[Polygon(boundary=rect1.polygon)]
                     ),
                 ),
                 Annotation(
-                    task_type=TaskType.SEGMENTATION,
+                    task_type=TaskType.SEMANTIC_SEGMENTATION,
                     labels=[Label(key="k2", value="v2")],
                     multipolygon=MultiPolygon(
                         polygons=[
@@ -354,7 +354,7 @@ def gt_segs(
             datum=img2.to_datum(),
             annotations=[
                 Annotation(
-                    task_type=TaskType.DETECTION,
+                    task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k1", value="v1")],
                     multipolygon=MultiPolygon(
                         polygons=[
@@ -379,7 +379,7 @@ def gt_semantic_segs1(
             datum=img1.to_datum(),
             annotations=[
                 Annotation(
-                    task_type=TaskType.SEGMENTATION,
+                    task_type=TaskType.SEMANTIC_SEGMENTATION,
                     labels=[Label(key="k2", value="v2")],
                     multipolygon=MultiPolygon(
                         polygons=[
@@ -402,7 +402,7 @@ def gt_semantic_segs1_mask(img1: ImageMetadata) -> GroundTruth:
         datum=img1.to_datum(),
         annotations=[
             Annotation(
-                task_type=TaskType.SEGMENTATION,
+                task_type=TaskType.SEMANTIC_SEGMENTATION,
                 labels=[Label(key="k2", value="v2")],
                 raster=raster,
             )
@@ -419,7 +419,7 @@ def gt_semantic_segs2(
             datum=img2.to_datum(),
             annotations=[
                 Annotation(
-                    task_type=TaskType.SEGMENTATION,
+                    task_type=TaskType.SEMANTIC_SEGMENTATION,
                     labels=[Label(key="k3", value="v3")],
                     multipolygon=MultiPolygon(
                         polygons=[Polygon(boundary=rect3.polygon)],
@@ -439,7 +439,7 @@ def gt_semantic_segs2_mask(img2: ImageMetadata) -> GroundTruth:
         datum=img2.to_datum(),
         annotations=[
             Annotation(
-                task_type=TaskType.SEGMENTATION,
+                task_type=TaskType.SEMANTIC_SEGMENTATION,
                 labels=[Label(key="k2", value="v2")],
                 raster=raster,
             )
@@ -457,7 +457,7 @@ def gt_semantic_segs_error(img1: ImageMetadata) -> GroundTruth:
         datum=img1.to_datum(),
         annotations=[
             Annotation(
-                task_type=TaskType.SEGMENTATION,
+                task_type=TaskType.SEMANTIC_SEGMENTATION,
                 labels=[Label(key="k3", value="v3")],
                 raster=raster,
             )
@@ -527,7 +527,7 @@ def pred_dets(
             datum=img1.to_datum(),
             annotations=[
                 Annotation(
-                    task_type=TaskType.DETECTION,
+                    task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k1", value="v1", score=0.3)],
                     bounding_box=rect1,
                 )
@@ -537,7 +537,7 @@ def pred_dets(
             datum=img2.to_datum(),
             annotations=[
                 Annotation(
-                    task_type=TaskType.DETECTION,
+                    task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k2", value="v2", score=0.98)],
                     bounding_box=rect2,
                 )
@@ -558,7 +558,7 @@ def pred_dets2(
             datum=img1.to_datum(),
             annotations=[
                 Annotation(
-                    task_type=TaskType.DETECTION,
+                    task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k1", value="v1", score=0.7)],
                     bounding_box=rect3,
                 )
@@ -568,7 +568,7 @@ def pred_dets2(
             datum=img2.to_datum(),
             annotations=[
                 Annotation(
-                    task_type=TaskType.DETECTION,
+                    task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k2", value="v2", score=0.98)],
                     bounding_box=rect4,
                 )
@@ -584,7 +584,7 @@ def pred_poly_dets(pred_dets: list[Prediction]) -> list[Prediction]:
             datum=det.datum,
             annotations=[
                 Annotation(
-                    task_type=TaskType.DETECTION,
+                    task_type=TaskType.OBJECT_DETECTION,
                     labels=annotation.labels,
                     polygon=Polygon(
                         boundary=annotation.bounding_box.polygon,
@@ -616,7 +616,7 @@ def pred_instance_segs(
             datum=img1.to_datum(),
             annotations=[
                 Annotation(
-                    task_type=TaskType.DETECTION,
+                    task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k1", value="v1", score=0.87)],
                     raster=Raster.from_numpy(mask_1),
                 )
@@ -626,7 +626,7 @@ def pred_instance_segs(
             datum=img2.to_datum(),
             annotations=[
                 Annotation(
-                    task_type=TaskType.DETECTION,
+                    task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k2", value="v2", score=0.92)],
                     raster=Raster.from_numpy(mask_2),
                 )
@@ -648,7 +648,7 @@ def pred_semantic_segs(
             datum=img1.to_datum(),
             annotations=[
                 Annotation(
-                    task_type=TaskType.SEGMENTATION,
+                    task_type=TaskType.SEMANTIC_SEGMENTATION,
                     labels=[Label(key="k2", value="v2")],
                     raster=Raster.from_numpy(mask_1),
                 )
@@ -658,7 +658,7 @@ def pred_semantic_segs(
             datum=img2.to_datum(),
             annotations=[
                 Annotation(
-                    task_type=TaskType.SEGMENTATION,
+                    task_type=TaskType.SEMANTIC_SEGMENTATION,
                     labels=[Label(key="k1", value="v1")],
                     raster=Raster.from_numpy(mask_2),
                 )

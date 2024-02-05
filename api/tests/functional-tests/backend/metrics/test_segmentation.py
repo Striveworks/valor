@@ -66,7 +66,7 @@ def test_query_generators(
 
     groundtruth_filter = schemas.Filter(
         dataset_names=[dataset_name],
-        task_types=[enums.TaskType.SEGMENTATION],
+        task_types=[enums.TaskType.SEMANTIC_SEGMENTATION],
         require_raster=True,
         label_ids=None,
     )
@@ -74,7 +74,7 @@ def test_query_generators(
     prediction_filter = schemas.Filter(
         dataset_names=[dataset_name],
         model_names=[model_name],
-        task_types=[enums.TaskType.SEGMENTATION],
+        task_types=[enums.TaskType.SEMANTIC_SEGMENTATION],
         require_raster=True,
         label_ids=None,
     )
@@ -191,7 +191,7 @@ def test_count_true_positives(
 
     groundtruth_filter = schemas.Filter(
         dataset_names=[dataset_name],
-        task_types=[enums.TaskType.SEGMENTATION],
+        task_types=[enums.TaskType.SEMANTIC_SEGMENTATION],
         require_raster=True,
         label_ids=None,
     )
@@ -199,7 +199,7 @@ def test_count_true_positives(
     prediction_filter = schemas.Filter(
         dataset_names=[dataset_name],
         model_names=[model_name],
-        task_types=[enums.TaskType.SEGMENTATION],
+        task_types=[enums.TaskType.SEMANTIC_SEGMENTATION],
         require_raster=True,
         label_ids=None,
     )
@@ -253,7 +253,7 @@ def test_count_groundtruths(
 
     groundtruth_filter = schemas.Filter(
         dataset_names=[dataset_name],
-        task_types=[enums.TaskType.SEGMENTATION],
+        task_types=[enums.TaskType.SEMANTIC_SEGMENTATION],
         require_raster=True,
         label_ids=None,
     )
@@ -318,7 +318,7 @@ def test_count_predictions(
     prediction_filter = schemas.Filter(
         dataset_names=[dataset_name],
         model_names=[model_name],
-        task_types=[enums.TaskType.SEGMENTATION],
+        task_types=[enums.TaskType.SEMANTIC_SEGMENTATION],
         require_raster=True,
         label_ids=None,
     )
@@ -373,7 +373,7 @@ def test_compute_segmentation_metrics(
     groundtruth_filter = schemas.Filter(
         model_names=[model_name],
         dataset_names=[dataset_name],
-        task_types=[enums.TaskType.SEGMENTATION],
+        task_types=[enums.TaskType.SEMANTIC_SEGMENTATION],
         require_raster=True,
     )
 

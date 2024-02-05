@@ -210,42 +210,42 @@ class Annotation:
 
     Object-Detection BoundingBox
     >>> annotation = Annotation(
-    ...     task_type=TaskType.DETECTION,
+    ...     task_type=TaskType.OBJECT_DETECTION,
     ...     labels=[Label(key="k1", value="v1")],
     ...     bounding_box=box2,
     ... )
 
     Object-Detection Polygon
     >>> annotation = Annotation(
-    ...     task_type=TaskType.DETECTION,
+    ...     task_type=TaskType.OBJECT_DETECTION,
     ...     labels=[Label(key="k1", value="v1")],
     ...     polygon=polygon1,
     ... )
 
     Object-Detection Mulitpolygon
     >>> annotation = Annotation(
-    ...     task_type=TaskType.DETECTION,
+    ...     task_type=TaskType.OBJECT_DETECTION,
     ...     labels=[Label(key="k1", value="v1")],
     ...     multipolygon=multipolygon,
     ... )
 
     Object-Detection Raster
     >>> annotation = Annotation(
-    ...     task_type=TaskType.DETECTION,
+    ...     task_type=TaskType.OBJECT_DETECTION,
     ...     labels=[Label(key="k1", value="v1")],
     ...     raster=raster1,
     ... )
 
     Semantic-Segmentation Raster
     >>> annotation = Annotation(
-    ...     task_type=TaskType.SEGMENTATION,
+    ...     task_type=TaskType.SEMANTIC_SEGMENTATION,
     ...     labels=[Label(key="k1", value="v1")],
     ...     raster=raster1,
     ... )
 
     Defining all supported annotation-types for a given task_type is allowed!
     >>> Annotation(
-    ...     task_type=TaskType.DETECTION,
+    ...     task_type=TaskType.OBJECT_DETECTION,
     ...     labels=[Label(key="k1", value="v1")],
     ...     bounding_box=box1,
     ...     polygon=polygon1,
@@ -680,7 +680,7 @@ class Prediction:
         for annotation in self.annotations:
             if annotation.task_type in [
                 TaskType.CLASSIFICATION,
-                TaskType.DETECTION,
+                TaskType.OBJECT_DETECTION,
             ]:
                 for label in annotation.labels:
                     if label.score is None:
@@ -1640,7 +1640,7 @@ class Model:
 
         # format request
         parameters = EvaluationParameters(
-            task_type=TaskType.DETECTION,
+            task_type=TaskType.OBJECT_DETECTION,
             convert_annotations_to_type=convert_annotations_to_type,
             iou_thresholds_to_compute=iou_thresholds_to_compute,
             iou_thresholds_to_return=iou_thresholds_to_return,
@@ -1688,7 +1688,7 @@ class Model:
             model_names=self.name,
             datum_filter=datum_filter,
             parameters=EvaluationParameters(
-                task_type=TaskType.SEGMENTATION,
+                task_type=TaskType.SEMANTIC_SEGMENTATION,
                 label_map=self._create_label_map(label_map=label_map),
             ),
         )

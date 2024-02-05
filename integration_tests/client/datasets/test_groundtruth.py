@@ -38,14 +38,14 @@ def test_create_gt_detections_as_bbox_or_poly(
         datum=image,
         annotations=[
             Annotation(
-                task_type=TaskType.DETECTION,
+                task_type=TaskType.OBJECT_DETECTION,
                 labels=[Label(key="k", value="v")],
                 bounding_box=BoundingBox.from_extrema(
                     xmin=xmin, ymin=ymin, xmax=xmax, ymax=ymax
                 ),
             ),
             Annotation(
-                task_type=TaskType.DETECTION,
+                task_type=TaskType.OBJECT_DETECTION,
                 labels=[Label(key="k", value="v")],
                 polygon=Polygon(
                     boundary=BasicPolygon(
@@ -128,12 +128,12 @@ def test_create_gt_segs_as_polys_or_masks(
             datum=img1.to_datum(),
             annotations=[
                 Annotation(
-                    task_type=TaskType.SEGMENTATION,
+                    task_type=TaskType.SEMANTIC_SEGMENTATION,
                     labels=[Label(key="k1", value="v1")],
                     raster=Raster.from_numpy(mask),
                 ),
                 Annotation(
-                    task_type=TaskType.SEGMENTATION,
+                    task_type=TaskType.SEMANTIC_SEGMENTATION,
                     labels=[Label(key="k1", value="v1")],
                     multipolygon=MultiPolygon(polygons=[poly]),
                 ),
@@ -149,12 +149,12 @@ def test_create_gt_segs_as_polys_or_masks(
         datum=img1.to_datum(),
         annotations=[
             Annotation(
-                task_type=TaskType.SEGMENTATION,
+                task_type=TaskType.SEMANTIC_SEGMENTATION,
                 labels=[Label(key="k1", value="v1")],
                 raster=Raster.from_numpy(mask),
             ),
             Annotation(
-                task_type=TaskType.DETECTION,
+                task_type=TaskType.OBJECT_DETECTION,
                 labels=[Label(key="k1", value="v1")],
                 multipolygon=MultiPolygon(polygons=[poly]),
             ),

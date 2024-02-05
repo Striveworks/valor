@@ -71,7 +71,7 @@ def test_get_labels_from_dataset(
             dataset_names=[dataset_name],
             task_types=[
                 enums.TaskType.CLASSIFICATION,
-                enums.TaskType.SEGMENTATION,
+                enums.TaskType.SEMANTIC_SEGMENTATION,
             ],
         ),
         ignore_prediction_labels=True,
@@ -83,7 +83,7 @@ def test_get_labels_from_dataset(
         db=db,
         filters=schemas.Filter(
             dataset_names=[dataset_name],
-            task_types=[enums.TaskType.DETECTION],
+            task_types=[enums.TaskType.OBJECT_DETECTION],
         ),
         ignore_prediction_labels=True,
     )
@@ -185,7 +185,10 @@ def test_get_dataset_summary(
     assert summary.num_groundtruth_multipolygons == 0
     assert summary.num_rasters == 1
     assert set(summary.task_types) == set(
-        [enums.TaskType.DETECTION.value, enums.TaskType.CLASSIFICATION.value]
+        [
+            enums.TaskType.OBJECT_DETECTION.value,
+            enums.TaskType.CLASSIFICATION.value,
+        ]
     )
     assert summary.datum_metadata == [
         {"width": 32.0, "height": 80.0},

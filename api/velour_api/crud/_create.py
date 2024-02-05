@@ -114,9 +114,9 @@ def create_or_get_evaluations(
         match evaluation.parameters.task_type:
             case enums.TaskType.CLASSIFICATION:
                 compute_func = backend.compute_clf_metrics
-            case enums.TaskType.DETECTION:
+            case enums.TaskType.OBJECT_DETECTION:
                 compute_func = backend.compute_detection_metrics
-            case enums.TaskType.SEGMENTATION:
+            case enums.TaskType.SEMANTIC_SEGMENTATION:
                 compute_func = backend.compute_semantic_segmentation_metrics
             case _:
                 raise RuntimeError

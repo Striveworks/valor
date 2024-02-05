@@ -86,7 +86,7 @@ def test_boundary(
             datum=img1.to_datum(),
             annotations=[
                 Annotation(
-                    task_type=TaskType.DETECTION,
+                    task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k1", value="v1")],
                     polygon=rect1_poly,
                 )
@@ -121,7 +121,7 @@ def test_iou(
             datum=img1.to_datum(),
             annotations=[
                 Annotation(
-                    task_type=TaskType.DETECTION,
+                    task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label("k", "v")],
                     polygon=rect1_poly,
                 )
@@ -140,7 +140,7 @@ def test_iou(
             datum=img1.to_datum(),
             annotations=[
                 Annotation(
-                    task_type=TaskType.DETECTION,
+                    task_type=TaskType.OBJECT_DETECTION,
                     polygon=rect2_poly,
                     labels=[Label("k", "v", score=0.6)],
                 )
@@ -175,7 +175,7 @@ def test_add_raster_and_boundary_box(
         datum=img1.to_datum(),
         annotations=[
             Annotation(
-                task_type=TaskType.DETECTION,
+                task_type=TaskType.OBJECT_DETECTION,
                 labels=[Label(key="k3", value="v3")],
                 bounding_box=BoundingBox.from_extrema(
                     xmin=10, ymin=10, xmax=60, ymax=40
