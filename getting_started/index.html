@@ -8,9 +8,9 @@
 <link href=".." rel="prev"/>
 <link href="../metrics/" rel="next"/>
 <link href="../assets/images/favicon.png" rel="icon"/>
-<meta content="mkdocs-1.5.3, mkdocs-material-9.5.6" name="generator"/>
+<meta content="mkdocs-1.5.3, mkdocs-material-9.5.7" name="generator"/>
 <title>Getting Started - Velour</title>
-<link href="../assets/stylesheets/main.50c56a3b.min.css" rel="stylesheet"/>
+<link href="../assets/stylesheets/main.f2e4d321.min.css" rel="stylesheet"/>
 <link href="../assets/stylesheets/palette.06af60db.min.css" rel="stylesheet"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&amp;display=fallback" rel="stylesheet"/>
@@ -775,7 +775,7 @@
 </span><span id="__span-6-22"><a href="#__codelineno-6-22" id="__codelineno-6-22" name="__codelineno-6-22"></a>    <span class="c1"># a Velour Annotation consists of a task_type, labels, and, optionally, a geometry.</span>
 </span><span id="__span-6-23"><a href="#__codelineno-6-23" id="__codelineno-6-23" name="__codelineno-6-23"></a>    <span class="n">annotations</span> <span class="o">=</span> <span class="p">[</span>
 </span><span id="__span-6-24"><a href="#__codelineno-6-24" id="__codelineno-6-24" name="__codelineno-6-24"></a>        <span class="n">Annotation</span><span class="p">(</span>
-</span><span id="__span-6-25"><a href="#__codelineno-6-25" id="__codelineno-6-25" name="__codelineno-6-25"></a>            <span class="n">task_type</span><span class="o">=</span><span class="n">TaskType</span><span class="o">.</span><span class="n">DETECTION</span><span class="p">,</span>
+</span><span id="__span-6-25"><a href="#__codelineno-6-25" id="__codelineno-6-25" name="__codelineno-6-25"></a>            <span class="n">task_type</span><span class="o">=</span><span class="n">TaskType</span><span class="o">.</span><span class="n">OBJECT_DETECTION</span><span class="p">,</span>
 </span><span id="__span-6-26"><a href="#__codelineno-6-26" id="__codelineno-6-26" name="__codelineno-6-26"></a>            <span class="n">labels</span><span class="o">=</span><span class="p">[</span><span class="n">Label</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="s2">"class_label"</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">annotation</span><span class="p">[</span><span class="s2">"class_label"</span><span class="p">])],</span>
 </span><span id="__span-6-27"><a href="#__codelineno-6-27" id="__codelineno-6-27" name="__codelineno-6-27"></a>            <span class="n">bounding_box</span><span class="o">=</span><span class="n">BoundingBox</span><span class="o">.</span><span class="n">from_extrema</span><span class="p">(</span>
 </span><span id="__span-6-28"><a href="#__codelineno-6-28" id="__codelineno-6-28" name="__codelineno-6-28"></a>                <span class="n">xmin</span><span class="o">=</span><span class="n">annotation</span><span class="p">[</span><span class="s2">"bbox"</span><span class="p">][</span><span class="s2">"xmin"</span><span class="p">],</span>
@@ -823,7 +823,7 @@
 </span><span id="__span-8-7"><a href="#__codelineno-8-7" id="__codelineno-8-7" name="__codelineno-8-7"></a>    <span class="c1"># create Annotations</span>
 </span><span id="__span-8-8"><a href="#__codelineno-8-8" id="__codelineno-8-8" name="__codelineno-8-8"></a>    <span class="n">annotations</span> <span class="o">=</span> <span class="p">[</span>
 </span><span id="__span-8-9"><a href="#__codelineno-8-9" id="__codelineno-8-9" name="__codelineno-8-9"></a>        <span class="n">Annotation</span><span class="p">(</span>
-</span><span id="__span-8-10"><a href="#__codelineno-8-10" id="__codelineno-8-10" name="__codelineno-8-10"></a>            <span class="n">task_type</span><span class="o">=</span><span class="n">TaskType</span><span class="o">.</span><span class="n">DETECTION</span><span class="p">,</span>
+</span><span id="__span-8-10"><a href="#__codelineno-8-10" id="__codelineno-8-10" name="__codelineno-8-10"></a>            <span class="n">task_type</span><span class="o">=</span><span class="n">TaskType</span><span class="o">.</span><span class="n">OBJECT_DETECTION</span><span class="p">,</span>
 </span><span id="__span-8-11"><a href="#__codelineno-8-11" id="__codelineno-8-11" name="__codelineno-8-11"></a>            <span class="n">labels</span><span class="o">=</span><span class="p">[</span>
 </span><span id="__span-8-12"><a href="#__codelineno-8-12" id="__codelineno-8-12" name="__codelineno-8-12"></a>                <span class="n">Label</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="s2">"class_label"</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">label</span><span class="p">[</span><span class="s2">"class_label"</span><span class="p">],</span> <span class="n">score</span><span class="o">=</span><span class="n">label</span><span class="p">[</span><span class="s2">"score"</span><span class="p">])</span>
 </span><span id="__span-8-13"><a href="#__codelineno-8-13" id="__codelineno-8-13" name="__codelineno-8-13"></a>                <span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">annotation</span><span class="p">[</span><span class="s2">"labels"</span><span class="p">]</span>
@@ -941,7 +941,7 @@
 <div class="md-dialog__inner md-typeset"></div>
 </div>
 <script id="__config" type="application/json">{"base": "..", "features": ["navigation.expand"], "search": "../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
-<script src="../assets/javascripts/bundle.e1c3ead8.min.js"></script>
+<script src="../assets/javascripts/bundle.caa56a14.min.js"></script>
 <script>document$.subscribe(() => {
             window.update_swagger_ui_iframe_height = function (id) {
                 var iFrameID = document.getElementById(id);

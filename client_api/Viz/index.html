@@ -8,9 +8,9 @@
 <link href="../VideoFrameMetadata/" rel="prev"/>
 <link href="../annotation/" rel="next"/>
 <link href="../../assets/images/favicon.png" rel="icon"/>
-<meta content="mkdocs-1.5.3, mkdocs-material-9.5.6" name="generator"/>
+<meta content="mkdocs-1.5.3, mkdocs-material-9.5.7" name="generator"/>
 <title>Viz - Velour</title>
-<link href="../../assets/stylesheets/main.50c56a3b.min.css" rel="stylesheet"/>
+<link href="../../assets/stylesheets/main.f2e4d321.min.css" rel="stylesheet"/>
 <link href="../../assets/stylesheets/palette.06af60db.min.css" rel="stylesheet"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&amp;display=fallback" rel="stylesheet"/>
@@ -820,8 +820,8 @@ segmentation that doesn't have <code>label_key</code> as the key of one of its l
 </span><span id="__span-0-103"><a id="__codelineno-0-103" name="__codelineno-0-103"></a>
 </span><span id="__span-0-104"><a id="__codelineno-0-104" name="__codelineno-0-104"></a>    <span class="c1"># Validate task type</span>
 </span><span id="__span-0-105"><a id="__codelineno-0-105" name="__codelineno-0-105"></a>    <span class="k">if</span> <span class="n">task_type</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">task_type</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span>
-</span><span id="__span-0-106"><a id="__codelineno-0-106" name="__codelineno-0-106"></a>        <span class="n">enums</span><span class="o">.</span><span class="n">TaskType</span><span class="o">.</span><span class="n">DETECTION</span><span class="p">,</span>
-</span><span id="__span-0-107"><a id="__codelineno-0-107" name="__codelineno-0-107"></a>        <span class="n">enums</span><span class="o">.</span><span class="n">TaskType</span><span class="o">.</span><span class="n">SEGMENTATION</span><span class="p">,</span>
+</span><span id="__span-0-106"><a id="__codelineno-0-106" name="__codelineno-0-106"></a>        <span class="n">enums</span><span class="o">.</span><span class="n">TaskType</span><span class="o">.</span><span class="n">OBJECT_DETECTION</span><span class="p">,</span>
+</span><span id="__span-0-107"><a id="__codelineno-0-107" name="__codelineno-0-107"></a>        <span class="n">enums</span><span class="o">.</span><span class="n">TaskType</span><span class="o">.</span><span class="n">SEMANTIC_SEGMENTATION</span><span class="p">,</span>
 </span><span id="__span-0-108"><a id="__codelineno-0-108" name="__codelineno-0-108"></a>    <span class="p">]:</span>
 </span><span id="__span-0-109"><a id="__codelineno-0-109" name="__codelineno-0-109"></a>        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
 </span><span id="__span-0-110"><a id="__codelineno-0-110" name="__codelineno-0-110"></a>            <span class="s2">"Expected either Instance or Semantic segmentation task_type."</span>
@@ -830,8 +830,8 @@ segmentation that doesn't have <code>label_key</code> as the key of one of its l
 </span><span id="__span-0-113"><a id="__codelineno-0-113" name="__codelineno-0-113"></a>    <span class="c1"># Create valid task type list</span>
 </span><span id="__span-0-114"><a id="__codelineno-0-114" name="__codelineno-0-114"></a>    <span class="k">if</span> <span class="n">task_type</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
 </span><span id="__span-0-115"><a id="__codelineno-0-115" name="__codelineno-0-115"></a>        <span class="n">task_types</span> <span class="o">=</span> <span class="p">[</span>
-</span><span id="__span-0-116"><a id="__codelineno-0-116" name="__codelineno-0-116"></a>            <span class="n">enums</span><span class="o">.</span><span class="n">TaskType</span><span class="o">.</span><span class="n">DETECTION</span><span class="p">,</span>
-</span><span id="__span-0-117"><a id="__codelineno-0-117" name="__codelineno-0-117"></a>            <span class="n">enums</span><span class="o">.</span><span class="n">TaskType</span><span class="o">.</span><span class="n">SEGMENTATION</span><span class="p">,</span>
+</span><span id="__span-0-116"><a id="__codelineno-0-116" name="__codelineno-0-116"></a>            <span class="n">enums</span><span class="o">.</span><span class="n">TaskType</span><span class="o">.</span><span class="n">OBJECT_DETECTION</span><span class="p">,</span>
+</span><span id="__span-0-117"><a id="__codelineno-0-117" name="__codelineno-0-117"></a>            <span class="n">enums</span><span class="o">.</span><span class="n">TaskType</span><span class="o">.</span><span class="n">SEMANTIC_SEGMENTATION</span><span class="p">,</span>
 </span><span id="__span-0-118"><a id="__codelineno-0-118" name="__codelineno-0-118"></a>        <span class="p">]</span>
 </span><span id="__span-0-119"><a id="__codelineno-0-119" name="__codelineno-0-119"></a>    <span class="k">else</span><span class="p">:</span>
 </span><span id="__span-0-120"><a id="__codelineno-0-120" name="__codelineno-0-120"></a>        <span class="n">task_types</span> <span class="o">=</span> <span class="p">[</span><span class="n">task_type</span><span class="p">]</span>
@@ -1146,7 +1146,7 @@ segmentation that doesn't have <code>label_key</code> as the key of one of its l
 </span><span id="__span-0-194"><a id="__codelineno-0-194" name="__codelineno-0-194"></a>        <span class="n">annotations</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">datum</span><span class="o">.</span><span class="n">annotations</span><span class="p">)</span>
 </span><span id="__span-0-195"><a id="__codelineno-0-195" name="__codelineno-0-195"></a>
 </span><span id="__span-0-196"><a id="__codelineno-0-196" name="__codelineno-0-196"></a>    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">detection</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">annotations</span><span class="p">):</span>
-</span><span id="__span-0-197"><a id="__codelineno-0-197" name="__codelineno-0-197"></a>        <span class="k">if</span> <span class="n">detection</span><span class="o">.</span><span class="n">task_type</span> <span class="ow">in</span> <span class="p">[</span><span class="n">enums</span><span class="o">.</span><span class="n">TaskType</span><span class="o">.</span><span class="n">DETECTION</span><span class="p">]:</span>
+</span><span id="__span-0-197"><a id="__codelineno-0-197" name="__codelineno-0-197"></a>        <span class="k">if</span> <span class="n">detection</span><span class="o">.</span><span class="n">task_type</span> <span class="ow">in</span> <span class="p">[</span><span class="n">enums</span><span class="o">.</span><span class="n">TaskType</span><span class="o">.</span><span class="n">OBJECT_DETECTION</span><span class="p">]:</span>
 </span><span id="__span-0-198"><a id="__codelineno-0-198" name="__codelineno-0-198"></a>            <span class="n">img</span> <span class="o">=</span> <span class="n">_draw_detection_on_image</span><span class="p">(</span><span class="n">detection</span><span class="p">,</span> <span class="n">img</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="n">i</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span>
 </span><span id="__span-0-199"><a id="__codelineno-0-199" name="__codelineno-0-199"></a>    <span class="k">return</span> <span class="n">img</span>
 </span></code></pre></div></td></tr></table></div>
@@ -1302,7 +1302,7 @@ segmentation that doesn't have <code>label_key</code> as the key of one of its l
 <div class="md-dialog__inner md-typeset"></div>
 </div>
 <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.expand"], "search": "../../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
-<script src="../../assets/javascripts/bundle.e1c3ead8.min.js"></script>
+<script src="../../assets/javascripts/bundle.caa56a14.min.js"></script>
 <script>document$.subscribe(() => {
             window.update_swagger_ui_iframe_height = function (id) {
                 var iFrameID = document.getElementById(id);
