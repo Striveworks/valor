@@ -643,8 +643,8 @@ class Query:
             )
 
         # geometries
-        if filters.bounding_box is not None:
-            if filters.bounding_box:
+        if filters.require_bounding_box is not None:
+            if filters.require_bounding_box:
                 self._add_expressions(
                     models.Annotation, [models.Annotation.box.isnot(None)]
                 )
@@ -652,8 +652,8 @@ class Query:
                 self._add_expressions(
                     models.Annotation, [models.Annotation.box.is_(None)]
                 )
-        if filters.polygon is not None:
-            if filters.polygon:
+        if filters.require_polygon is not None:
+            if filters.require_polygon:
                 self._add_expressions(
                     models.Annotation, [models.Annotation.polygon.isnot(None)]
                 )
@@ -661,8 +661,8 @@ class Query:
                 self._add_expressions(
                     models.Annotation, [models.Annotation.polygon.is_(None)]
                 )
-        if filters.multipolygon is not None:
-            if filters.multipolygon:
+        if filters.require_multipolygon is not None:
+            if filters.require_multipolygon:
                 self._add_expressions(
                     models.Annotation,
                     [models.Annotation.multipolygon.isnot(None)],
@@ -672,8 +672,8 @@ class Query:
                     models.Annotation,
                     [models.Annotation.multipolygon.is_(None)],
                 )
-        if filters.raster is not None:
-            if filters.raster:
+        if filters.require_raster is not None:
+            if filters.require_raster:
                 self._add_expressions(
                     models.Annotation, [models.Annotation.raster.isnot(None)]
                 )
