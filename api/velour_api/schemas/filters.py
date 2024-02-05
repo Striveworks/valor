@@ -42,43 +42,6 @@ class StringFilter(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    # def __eq__(self, other) -> bool:
-    #     """
-    #     Checks that two `StringFilters` are equivalent.
-
-    #     Parameters
-    #     ----------
-    #     other : StringFilter
-    #         The object to compare against.
-
-    #     Returns
-    #     ----------
-    #     boolean
-    #         A boolean describing whether the two objects are equal.
-
-    #     Raises
-    #     ----------
-    #     TypeError
-    #         When comparing against an object that isn't a `StringFilter`.
-    #     """
-    #     if not isinstance(other, StringFilter):
-    #         raise TypeError("expected StringFilter")
-    #     return (
-    #         self.value == other.value
-    #         and self.operator == other.operator
-    #     )
-
-    # def __hash__(self) -> int:
-    #     """
-    #     Hashes a `StringFilter`.
-
-    #     Returns
-    #     ----------
-    #     int
-    #         A hashed integer.
-    #     """
-    #     return hash(f"Value:{self.value},Op:{self.operator}")
-
 
 class NumericFilter(BaseModel):
     """
@@ -112,43 +75,6 @@ class NumericFilter(BaseModel):
         return op
 
     model_config = ConfigDict(extra="forbid")
-
-    # def __eq__(self, other) -> bool:
-    #     """
-    #     Checks that two `NumericFilters` are equivalent.
-
-    #     Parameters
-    #     ----------
-    #     other : NumericFilter
-    #         The object to compare against.
-
-    #     Returns
-    #     ----------
-    #     boolean
-    #         A boolean describing whether the two objects are equal.
-
-    #     Raises
-    #     ----------
-    #     TypeError
-    #         When comparing against an object that isn't a `NumericFilter`.
-    #     """
-    #     if not isinstance(other, NumericFilter):
-    #         raise TypeError("expected NumericFilter")
-    #     return (
-    #         self.value == other.value
-    #         and self.operator == other.operator
-    #     )
-
-    # def __hash__(self) -> int:
-    #     """
-    #     Hashes a `StringFilter`.
-
-    #     Returns
-    #     ----------
-    #     int
-    #         A hashed integer.
-    #     """
-    #     return hash(f"Value:{self.value},Op:{self.operator}")
 
 
 class BooleanFilter(BaseModel):
@@ -184,43 +110,6 @@ class BooleanFilter(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    # def __eq__(self, other) -> bool:
-    #     """
-    #     Checks that two `BooleanFilters` are equivalent.
-
-    #     Parameters
-    #     ----------
-    #     other : BooleanFilter
-    #         The object to compare against.
-
-    #     Returns
-    #     ----------
-    #     boolean
-    #         A boolean describing whether the two objects are equal.
-
-    #     Raises
-    #     ----------
-    #     TypeError
-    #         When comparing against an object that isn't a `BooleanFilter`.
-    #     """
-    #     if not isinstance(other, BooleanFilter):
-    #         raise TypeError("expected BooleanFilter")
-    #     return (
-    #         self.value == other.value
-    #         and self.operator == other.operator
-    #     )
-
-    # def __hash__(self) -> int:
-    #     """
-    #     Hashes a `BooleanFilter`.
-
-    #     Returns
-    #     ----------
-    #     int
-    #         A hashed integer.
-    #     """
-    #     return hash(f"Value:{self.value},Op:{self.operator}")
-
 
 class GeospatialFilter(BaseModel):
     """
@@ -250,43 +139,6 @@ class GeospatialFilter(BaseModel):
         return op
 
     model_config = ConfigDict(extra="forbid")
-
-    # def __eq__(self, other) -> bool:
-    #     """
-    #     Checks that two `GeospatialFilters` are equivalent.
-
-    #     Parameters
-    #     ----------
-    #     other : GeospatialFilter
-    #         The object to compare against.
-
-    #     Returns
-    #     ----------
-    #     boolean
-    #         A boolean describing whether the two objects are equal.
-
-    #     Raises
-    #     ----------
-    #     TypeError
-    #         When comparing against an object that isn't a `GeospatialFilter`.
-    #     """
-    #     if not isinstance(other, GeospatialFilter):
-    #         raise TypeError("expected GeospatialFilter")
-    #     return (
-    #         self.value == other.value
-    #         and self.operator == other.operator
-    #     )
-
-    # def __hash__(self) -> int:
-    #     """
-    #     Hashes a `GeospatialFilter`.
-
-    #     Returns
-    #     ----------
-    #     int
-    #         A hashed integer.
-    #     """
-    #     return hash(f"Value:{self.value.model_dump_json},Op:{self.operator}")
 
 
 class DateTimeFilter(BaseModel):
@@ -321,45 +173,6 @@ class DateTimeFilter(BaseModel):
         return op
 
     model_config = ConfigDict(extra="forbid")
-
-    # def __eq__(self, other) -> bool:
-    #     """
-    #     Checks that `DateTimeFilter` objects are equivalent.
-
-    #     Parameters
-    #     ----------
-    #     other : DateTimeFilter
-    #         The object to compare against.
-
-    #     Returns
-    #     ----------
-    #     boolean
-    #         A boolean describing whether the two objects are equal.
-
-    #     Raises
-    #     ----------
-    #     TypeError
-    #         When comparing against an object that isn't a `DateTimeFilter`.
-    #     """
-    #     if not isinstance(other, DateTimeFilter):
-    #         raise TypeError("expected DateTimeFilter")
-    #     return (
-    #         self.value == other.value
-    #         and self.operator == other.operator
-    #     )
-
-    # def __hash__(self) -> int:
-    #     """
-    #     Hashes a `DateTimeFilter`.
-
-    #     Returns
-    #     ----------
-    #     int
-    #         A hashed integer.
-    #     """
-    #     return hash(
-    #         f"Value:{self.value.value},Pattern:{self.value.pattern},Op:{self.operator}"
-    #     )
 
 
 class Filter(BaseModel):
