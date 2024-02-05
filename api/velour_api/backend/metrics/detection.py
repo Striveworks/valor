@@ -567,17 +567,17 @@ def compute_detection_metrics(
     )
     match target_type:
         case AnnotationType.BOX:
-            groundtruth_filter.bounding_box = True
-            prediction_filter.bounding_box = True
+            groundtruth_filter.require_bounding_box = True
+            prediction_filter.require_bounding_box = True
         case AnnotationType.POLYGON:
-            groundtruth_filter.polygon = True
-            prediction_filter.polygon = True
+            groundtruth_filter.require_polygon = True
+            prediction_filter.require_polygon = True
         case AnnotationType.MULTIPOLYGON:
-            groundtruth_filter.multipolygon = True
-            prediction_filter.multipolygon = True
+            groundtruth_filter.require_multipolygon = True
+            prediction_filter.require_multipolygon = True
         case AnnotationType.RASTER:
-            groundtruth_filter.raster = True
-            prediction_filter.raster = True
+            groundtruth_filter.require_raster = True
+            prediction_filter.require_raster = True
 
     metrics = _compute_detection_metrics(
         db=db,

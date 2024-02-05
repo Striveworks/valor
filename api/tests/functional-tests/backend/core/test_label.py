@@ -361,18 +361,18 @@ def test_get_joint_labels(
         lhs=schemas.Filter(
             dataset_names=[dataset_name],
             task_types=[enums.TaskType.CLASSIFICATION],
-            bounding_box=False,
-            polygon=False,
-            multipolygon=False,
-            raster=False,
+            require_bounding_box=False,
+            require_polygon=False,
+            require_multipolygon=False,
+            require_raster=False,
         ),
         rhs=schemas.Filter(
             model_names=[model_name],
             task_types=[enums.TaskType.CLASSIFICATION],
-            bounding_box=False,
-            polygon=False,
-            multipolygon=False,
-            raster=False,
+            require_bounding_box=False,
+            require_polygon=False,
+            require_multipolygon=False,
+            require_raster=False,
         ),
     )
     assert len(labels) == 1
@@ -414,18 +414,18 @@ def test_get_disjoint_labels(
         lhs=schemas.Filter(
             dataset_names=[dataset_name],
             task_types=[enums.TaskType.CLASSIFICATION],
-            bounding_box=False,
-            polygon=False,
-            multipolygon=False,
-            raster=False,
+            require_bounding_box=False,
+            require_polygon=False,
+            require_multipolygon=False,
+            require_raster=False,
         ),
         rhs=schemas.Filter(
             model_names=[model_name],
             task_types=[enums.TaskType.CLASSIFICATION],
-            bounding_box=False,
-            polygon=False,
-            multipolygon=False,
-            raster=False,
+            require_bounding_box=False,
+            require_polygon=False,
+            require_multipolygon=False,
+            require_raster=False,
         ),
     )
     assert len(ds_unique) == 2
@@ -538,7 +538,7 @@ def test_label_functions(
         schemas.Filter(
             dataset_names=[dataset_name],
             task_types=[enums.TaskType.SEGMENTATION],
-            raster=True,
+            require_raster=True,
         ),
         ignore_predictions=True,
     ) == {
@@ -552,7 +552,7 @@ def test_label_functions(
             schemas.Filter(
                 dataset_names=[dataset_name],
                 task_types=[enums.TaskType.SEGMENTATION],
-                polygon=True,
+                require_polygon=True,
             ),
             ignore_predictions=True,
         )
@@ -574,7 +574,7 @@ def test_label_functions(
         schemas.Filter(
             model_names=[model_name],
             dataset_names=[dataset_name],
-            raster=True,
+            require_raster=True,
             task_types=[enums.TaskType.SEGMENTATION],
         ),
         ignore_groundtruths=True,
@@ -590,7 +590,7 @@ def test_label_functions(
             schemas.Filter(
                 model_names=[model_name],
                 dataset_names=[dataset_name],
-                polygon=True,
+                require_polygon=True,
                 task_types=[enums.TaskType.SEGMENTATION],
             ),
             ignore_groundtruths=True,
@@ -635,7 +635,7 @@ def test_label_functions(
         db,
         schemas.Filter(
             dataset_names=[dataset_name],
-            raster=True,
+            require_raster=True,
             task_types=[enums.TaskType.DETECTION],
         ),
         ignore_predictions=True,
@@ -648,7 +648,7 @@ def test_label_functions(
         db,
         schemas.Filter(
             dataset_names=[dataset_name],
-            raster=True,
+            require_raster=True,
             task_types=[
                 enums.TaskType.DETECTION,
                 enums.TaskType.SEGMENTATION,
@@ -701,7 +701,7 @@ def test_label_functions(
         schemas.Filter(
             model_names=[model_name],
             dataset_names=[dataset_name],
-            raster=True,
+            require_raster=True,
             task_types=[
                 enums.TaskType.SEGMENTATION,
                 enums.TaskType.DETECTION,
@@ -719,7 +719,7 @@ def test_label_functions(
             schemas.Filter(
                 model_names=[model_name],
                 dataset_names=[dataset_name],
-                raster=True,
+                require_raster=True,
                 task_types=[enums.TaskType.DETECTION],
             ),
             ignore_groundtruths=True,

@@ -67,7 +67,7 @@ def test_query_generators(
     groundtruth_filter = schemas.Filter(
         dataset_names=[dataset_name],
         task_types=[enums.TaskType.SEGMENTATION],
-        raster=True,
+        require_raster=True,
         label_ids=None,
     )
 
@@ -75,7 +75,7 @@ def test_query_generators(
         dataset_names=[dataset_name],
         model_names=[model_name],
         task_types=[enums.TaskType.SEGMENTATION],
-        raster=True,
+        require_raster=True,
         label_ids=None,
     )
 
@@ -192,7 +192,7 @@ def test_count_true_positives(
     groundtruth_filter = schemas.Filter(
         dataset_names=[dataset_name],
         task_types=[enums.TaskType.SEGMENTATION],
-        raster=True,
+        require_raster=True,
         label_ids=None,
     )
 
@@ -200,7 +200,7 @@ def test_count_true_positives(
         dataset_names=[dataset_name],
         model_names=[model_name],
         task_types=[enums.TaskType.SEGMENTATION],
-        raster=True,
+        require_raster=True,
         label_ids=None,
     )
 
@@ -254,7 +254,7 @@ def test_count_groundtruths(
     groundtruth_filter = schemas.Filter(
         dataset_names=[dataset_name],
         task_types=[enums.TaskType.SEGMENTATION],
-        raster=True,
+        require_raster=True,
         label_ids=None,
     )
 
@@ -319,7 +319,7 @@ def test_count_predictions(
         dataset_names=[dataset_name],
         model_names=[model_name],
         task_types=[enums.TaskType.SEGMENTATION],
-        raster=True,
+        require_raster=True,
         label_ids=None,
     )
 
@@ -374,7 +374,7 @@ def test_compute_segmentation_metrics(
         model_names=[model_name],
         dataset_names=[dataset_name],
         task_types=[enums.TaskType.SEGMENTATION],
-        raster=True,
+        require_raster=True,
     )
 
     metrics = _compute_segmentation_metrics(

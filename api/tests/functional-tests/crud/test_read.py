@@ -95,7 +95,7 @@ def test_get_labels_from_dataset(
     ds1 = crud.get_labels(
         db=db,
         filters=schemas.Filter(
-            dataset_names=[dataset_name], bounding_box=False
+            dataset_names=[dataset_name], require_bounding_box=False
         ),
         ignore_prediction_labels=True,
     )
@@ -105,7 +105,9 @@ def test_get_labels_from_dataset(
     # POSITIVE - Test filter by annotation type
     ds1 = crud.get_labels(
         db=db,
-        filters=schemas.Filter(dataset_names=[dataset_name], polygon=True),
+        filters=schemas.Filter(
+            dataset_names=[dataset_name], require_polygon=True
+        ),
         ignore_prediction_labels=True,
     )
     assert len(ds1) == 1
@@ -116,7 +118,7 @@ def test_get_labels_from_dataset(
         db=db,
         filters=schemas.Filter(
             dataset_names=[dataset_name],
-            bounding_box=True,
+            require_bounding_box=True,
         ),
         ignore_prediction_labels=True,
     )
@@ -160,7 +162,7 @@ def test_get_labels_from_model(
         db=db,
         filters=schemas.Filter(
             model_names=[model_name],
-            bounding_box=True,
+            require_bounding_box=True,
         ),
         ignore_groundtruth_labels=True,
     )

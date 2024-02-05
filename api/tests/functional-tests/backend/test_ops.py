@@ -889,7 +889,7 @@ def test_complex_queries(
                 operator=">",
             )
         ],
-        bounding_box=True,
+        require_bounding_box=True,
     )
     q = Query(models.Datum.uid).filter(f).predictions()
     datum_uids = db.query(q).distinct().all()
