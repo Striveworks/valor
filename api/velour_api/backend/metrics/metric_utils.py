@@ -1,4 +1,5 @@
 from collections import defaultdict
+from typing import Sequence
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -95,7 +96,7 @@ def create_grouper_mappings(
     labels: list,
     label_map: LabelMapType | None,
     evaluation_type: enums.TaskType,
-) -> dict[str, dict[str | int, any]]:
+) -> dict[str, dict[str, dict]]:
     """
     Creates a dictionary of mappings that connect each label with a "grouper" (i.e., a unique ID-key-value combination that can represent one or more labels).
     These mappings enable Velour to group multiple labels together using the label_map argument in each evaluation function.
@@ -185,11 +186,17 @@ def get_or_create_row(
 
 def create_metric_mappings(
     db: Session,
-    metrics: list[
+    metrics: Sequence[
         schemas.APMetric
         | schemas.APMetricAveragedOverIOUs
         | schemas.mAPMetric
         | schemas.mAPMetricAveragedOverIOUs
+        | schemas.ConfusionMatrix
+        | schemas.AccuracyMetric
+        | schemas.ROCAUCMetric
+        | schemas.PrecisionMetric
+        | schemas.RecallMetric
+        | schemas.F1Metric
     ],
     evaluation_id: int,
 ) -> list[dict]:
