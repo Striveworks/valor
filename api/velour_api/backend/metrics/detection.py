@@ -170,7 +170,7 @@ def _compute_detection_metrics(
     grouper_mappings = create_grouper_mappings(
         labels=labels,
         label_map=parameters.label_map,
-        evaluation_type=enums.TaskType.DETECTION,
+        evaluation_type=enums.TaskType.OBJECT_DETECTION,
     )
 
     # Join gt, datum, annotation, label. Map grouper_ids to each label_id.
@@ -469,13 +469,15 @@ def _convert_annotations_to_common_type(
         prediction_type = AnnotationType.RASTER
         for dataset in datasets:
             dataset_type = core.get_annotation_type(
-                db=db, dataset=dataset, task_type=enums.TaskType.DETECTION
+                db=db,
+                dataset=dataset,
+                task_type=enums.TaskType.OBJECT_DETECTION,
             )
             model_type = core.get_annotation_type(
                 db=db,
                 dataset=dataset,
                 model=model,
-                task_type=enums.TaskType.DETECTION,
+                task_type=enums.TaskType.OBJECT_DETECTION,
             )
             groundtruth_type = (
                 dataset_type
@@ -490,7 +492,7 @@ def _convert_annotations_to_common_type(
     for dataset in datasets:
         # dataset
         source_type = core.get_annotation_type(
-            db=db, dataset=dataset, task_type=enums.TaskType.DETECTION
+            db=db, dataset=dataset, task_type=enums.TaskType.OBJECT_DETECTION
         )
         core.convert_geometry(
             db=db,
@@ -503,7 +505,7 @@ def _convert_annotations_to_common_type(
             db=db,
             dataset=dataset,
             model=model,
-            task_type=enums.TaskType.DETECTION,
+            task_type=enums.TaskType.OBJECT_DETECTION,
         )
         core.convert_geometry(
             db=db,

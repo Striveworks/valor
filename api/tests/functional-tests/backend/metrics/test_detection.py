@@ -25,7 +25,7 @@ def test__compute_detection_metrics(
     metrics = _compute_detection_metrics(
         db=db,
         parameters=schemas.EvaluationParameters(
-            task_type=enums.TaskType.DETECTION,
+            task_type=enums.TaskType.OBJECT_DETECTION,
             convert_annotations_to_type=enums.AnnotationType.BOX,
             iou_thresholds_to_compute=iou_thresholds,
             iou_thresholds_to_return=[0.5, 0.75],

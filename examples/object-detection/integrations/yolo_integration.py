@@ -46,7 +46,7 @@ def parse_detection_into_bounding_box(
         datum=datum,
         annotations=[
             Annotation(
-                task_type=enums.TaskType.DETECTION,
+                task_type=enums.TaskType.OBJECT_DETECTION,
                 labels=[scored_label],
                 bounding_box=bbox,
             )
@@ -120,7 +120,7 @@ def parse_detection_into_raster(
         datum=datum,
         annotations=[
             Annotation(
-                task_type=enums.TaskType.DETECTION,
+                task_type=enums.TaskType.OBJECT_DETECTION,
                 labels=[scored_label],
                 raster=Raster.from_numpy(mask),
             )

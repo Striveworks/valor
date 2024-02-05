@@ -49,8 +49,8 @@ def _generate_gt_annotation(
 ) -> Annotation:
     """Generate an annotation for a given image with a given number of labels"""
     task_types = [
-        enums.TaskType.DETECTION,
-        enums.TaskType.SEGMENTATION,
+        enums.TaskType.OBJECT_DETECTION,
+        enums.TaskType.SEMANTIC_SEGMENTATION,
     ]
     mask = _generate_mask(height=height, width=width)
     raster = Raster.from_numpy(mask)
@@ -171,7 +171,9 @@ def _generate_prediction_annotation(
         labels.append(label)
 
     return Annotation(
-        task_type=enums.TaskType.DETECTION, labels=labels, bounding_box=box
+        task_type=enums.TaskType.OBJECT_DETECTION,
+        labels=labels,
+        bounding_box=box,
     )
 
 

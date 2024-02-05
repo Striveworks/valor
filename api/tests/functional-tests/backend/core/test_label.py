@@ -29,7 +29,7 @@ def semantic_seg_gt_anns1(
     img1_gt_mask_bytes1: bytes,
 ) -> schemas.Annotation:
     return schemas.Annotation(
-        task_type=enums.TaskType.SEGMENTATION,
+        task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
         raster=schemas.Raster(mask=b64encode(img1_gt_mask_bytes1).decode()),
         labels=[
             schemas.Label(key="semsegk1", value="semsegv1"),
@@ -43,7 +43,7 @@ def semantic_seg_gt_anns2(
     img2_gt_mask_bytes1: bytes,
 ) -> schemas.Annotation:
     return schemas.Annotation(
-        task_type=enums.TaskType.SEGMENTATION,
+        task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
         raster=schemas.Raster(mask=b64encode(img2_gt_mask_bytes1).decode()),
         labels=[
             schemas.Label(key="semsegk2", value="semsegv2"),
@@ -55,7 +55,7 @@ def semantic_seg_gt_anns2(
 @pytest.fixture
 def semantic_seg_pred_anns1(img1_gt_mask_bytes1: bytes) -> schemas.Annotation:
     return schemas.Annotation(
-        task_type=enums.TaskType.SEGMENTATION,
+        task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
         raster=schemas.Raster(mask=b64encode(img1_gt_mask_bytes1).decode()),
         labels=[
             schemas.Label(key="semsegk1", value="semsegv1"),
@@ -67,7 +67,7 @@ def semantic_seg_pred_anns1(img1_gt_mask_bytes1: bytes) -> schemas.Annotation:
 @pytest.fixture
 def semantic_seg_pred_anns2(img2_gt_mask_bytes1: bytes) -> schemas.Annotation:
     return schemas.Annotation(
-        task_type=enums.TaskType.SEGMENTATION,
+        task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
         raster=schemas.Raster(mask=b64encode(img2_gt_mask_bytes1).decode()),
         labels=[
             schemas.Label(key="semsegk2", value="semsegv2"),
@@ -81,7 +81,7 @@ def instance_seg_gt_anns1(
     img1_gt_mask_bytes1: bytes,
 ) -> schemas.Annotation:
     return schemas.Annotation(
-        task_type=enums.TaskType.DETECTION,
+        task_type=enums.TaskType.OBJECT_DETECTION,
         raster=schemas.Raster(mask=b64encode(img1_gt_mask_bytes1).decode()),
         labels=[
             schemas.Label(key="inssegk1", value="inssegv1"),
@@ -95,7 +95,7 @@ def instance_seg_gt_anns2(
     img2_gt_mask_bytes1: bytes,
 ) -> schemas.Annotation:
     return schemas.Annotation(
-        task_type=enums.TaskType.DETECTION,
+        task_type=enums.TaskType.OBJECT_DETECTION,
         raster=schemas.Raster(mask=b64encode(img2_gt_mask_bytes1).decode()),
         labels=[
             schemas.Label(key="inssegk2", value="inssegv2"),
@@ -528,7 +528,7 @@ def test_label_functions(
         db,
         schemas.Filter(
             dataset_names=[dataset_name],
-            task_types=[enums.TaskType.SEGMENTATION],
+            task_types=[enums.TaskType.SEMANTIC_SEGMENTATION],
         ),
         ignore_predictions=True,
     ) == {"semsegk1", "semsegk2", "semsegk3"}
@@ -537,7 +537,7 @@ def test_label_functions(
         db,
         schemas.Filter(
             dataset_names=[dataset_name],
-            task_types=[enums.TaskType.SEGMENTATION],
+            task_types=[enums.TaskType.SEMANTIC_SEGMENTATION],
             require_raster=True,
         ),
         ignore_predictions=True,
@@ -551,7 +551,7 @@ def test_label_functions(
             db,
             schemas.Filter(
                 dataset_names=[dataset_name],
-                task_types=[enums.TaskType.SEGMENTATION],
+                task_types=[enums.TaskType.SEMANTIC_SEGMENTATION],
                 require_polygon=True,
             ),
             ignore_predictions=True,
@@ -564,7 +564,7 @@ def test_label_functions(
         schemas.Filter(
             model_names=[model_name],
             dataset_names=[dataset_name],
-            task_types=[enums.TaskType.SEGMENTATION],
+            task_types=[enums.TaskType.SEMANTIC_SEGMENTATION],
         ),
         ignore_groundtruths=True,
     ) == {"semsegk1", "semsegk2", "semsegk3_pred"}
@@ -575,7 +575,7 @@ def test_label_functions(
             model_names=[model_name],
             dataset_names=[dataset_name],
             require_raster=True,
-            task_types=[enums.TaskType.SEGMENTATION],
+            task_types=[enums.TaskType.SEMANTIC_SEGMENTATION],
         ),
         ignore_groundtruths=True,
     ) == {
@@ -591,7 +591,7 @@ def test_label_functions(
                 model_names=[model_name],
                 dataset_names=[dataset_name],
                 require_polygon=True,
-                task_types=[enums.TaskType.SEGMENTATION],
+                task_types=[enums.TaskType.SEMANTIC_SEGMENTATION],
             ),
             ignore_groundtruths=True,
         )
@@ -626,7 +626,7 @@ def test_label_functions(
         db,
         schemas.Filter(
             dataset_names=[dataset_name],
-            task_types=[enums.TaskType.DETECTION],
+            task_types=[enums.TaskType.OBJECT_DETECTION],
         ),
         ignore_predictions=True,
     ) == {"inssegk1", "inssegk2", "inssegk3"}
@@ -636,7 +636,7 @@ def test_label_functions(
         schemas.Filter(
             dataset_names=[dataset_name],
             require_raster=True,
-            task_types=[enums.TaskType.DETECTION],
+            task_types=[enums.TaskType.OBJECT_DETECTION],
         ),
         ignore_predictions=True,
     ) == {
@@ -650,8 +650,8 @@ def test_label_functions(
             dataset_names=[dataset_name],
             require_raster=True,
             task_types=[
-                enums.TaskType.DETECTION,
-                enums.TaskType.SEGMENTATION,
+                enums.TaskType.OBJECT_DETECTION,
+                enums.TaskType.SEMANTIC_SEGMENTATION,
             ],
         ),
         ignore_predictions=True,
@@ -668,7 +668,7 @@ def test_label_functions(
         db,
         schemas.Filter(
             dataset_names=[dataset_name],
-            task_types=[enums.TaskType.SEGMENTATION],
+            task_types=[enums.TaskType.SEMANTIC_SEGMENTATION],
         ),
         ignore_predictions=True,
     ) == {"semsegk1", "semsegk2", "semsegk3"}
@@ -678,7 +678,7 @@ def test_label_functions(
         schemas.Filter(
             model_names=[model_name],
             dataset_names=[dataset_name],
-            task_types=[enums.TaskType.SEGMENTATION],
+            task_types=[enums.TaskType.SEMANTIC_SEGMENTATION],
         ),
         ignore_groundtruths=True,
     ) == {"semsegk1", "semsegk2", "semsegk3_pred"}
@@ -689,7 +689,7 @@ def test_label_functions(
             schemas.Filter(
                 model_names=[model_name],
                 dataset_names=[dataset_name],
-                task_types=[enums.TaskType.DETECTION],
+                task_types=[enums.TaskType.OBJECT_DETECTION],
             ),
             ignore_groundtruths=True,
         )
@@ -703,8 +703,8 @@ def test_label_functions(
             dataset_names=[dataset_name],
             require_raster=True,
             task_types=[
-                enums.TaskType.SEGMENTATION,
-                enums.TaskType.DETECTION,
+                enums.TaskType.SEMANTIC_SEGMENTATION,
+                enums.TaskType.OBJECT_DETECTION,
             ],
         ),
         ignore_groundtruths=True,
@@ -720,7 +720,7 @@ def test_label_functions(
                 model_names=[model_name],
                 dataset_names=[dataset_name],
                 require_raster=True,
-                task_types=[enums.TaskType.DETECTION],
+                task_types=[enums.TaskType.OBJECT_DETECTION],
             ),
             ignore_groundtruths=True,
         )

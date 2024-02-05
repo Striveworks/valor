@@ -13,8 +13,8 @@ class TaskType(str, Enum):
     SKIP = "skip"
     EMPTY = "empty"
     CLASSIFICATION = "classification"
-    DETECTION = "object-detection"
-    SEGMENTATION = "semantic-segmentation"
+    OBJECT_DETECTION = "object-detection"
+    SEMANTIC_SEGMENTATION = "semantic-segmentation"
 
 
 class TableStatus(str, Enum):

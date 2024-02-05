@@ -160,9 +160,9 @@ def test_create_image_dataset_with_segmentations(
     semantic_segs = []
     for seg in segs:
         assert isinstance(seg, Annotation)
-        if seg.task_type == TaskType.DETECTION:
+        if seg.task_type == TaskType.OBJECT_DETECTION:
             instance_segs.append(seg)
-        elif seg.task_type == TaskType.SEGMENTATION:
+        elif seg.task_type == TaskType.SEMANTIC_SEGMENTATION:
             semantic_segs.append(seg)
 
     # should have one instance segmentation that's a rectangle
@@ -371,7 +371,10 @@ def test_get_summary(
     assert summary.num_polygons == 0
     assert summary.num_groundtruth_multipolygons == 0
     assert summary.num_rasters == 1
-    assert summary.task_types == [TaskType.DETECTION, TaskType.SEGMENTATION]
+    assert summary.task_types == [
+        TaskType.OBJECT_DETECTION,
+        TaskType.SEMANTIC_SEGMENTATION,
+    ]
 
     summary.labels.sort(key=lambda x: x.key)
     assert summary.labels == [
