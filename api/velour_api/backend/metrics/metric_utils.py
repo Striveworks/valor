@@ -99,7 +99,7 @@ def create_grouper_mappings(
     labels: list,
     label_map: LabelMapType | None,
     evaluation_type: enums.TaskType,
-) -> dict[str, dict[str, dict]]:
+) -> dict[str, dict]:
     """
     Creates a dictionary of mappings that connect each label with a "grouper" (i.e., a unique ID-key-value combination that can represent one or more labels).
     These mappings enable Velour to group multiple labels together using the label_map argument in each evaluation function.
@@ -200,6 +200,8 @@ def create_metric_mappings(
         | schemas.PrecisionMetric
         | schemas.RecallMetric
         | schemas.F1Metric
+        | schemas.IOUMetric
+        | schemas.mIOUMetric
     ],
     evaluation_id: int,
 ) -> list[dict]:

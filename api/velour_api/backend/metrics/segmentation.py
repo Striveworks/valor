@@ -23,7 +23,7 @@ def _generate_groundtruth_query(groundtruth_filter: schemas.Filter) -> Select:
         )
         .filter(groundtruth_filter)
         .groundtruths("gt")
-    )
+    )  # type: ignore - SQLAlchemy type issue
 
 
 def _generate_prediction_query(prediction_filter: schemas.Filter) -> Select:
@@ -36,7 +36,7 @@ def _generate_prediction_query(prediction_filter: schemas.Filter) -> Select:
         )
         .filter(prediction_filter)
         .predictions("pd")
-    )
+    )  # type: ignore - SQLAlchemy type issue
 
 
 def _count_true_positives(
@@ -59,9 +59,9 @@ def _count_true_positives(
                 )
             )
         )
-        .select_from(groundtruth_subquery)
+        .select_from(groundtruth_subquery)  # type: ignore - SQLAlchemy type issue
         .join(
-            prediction_subquery,
+            prediction_subquery,  # type: ignore - SQLAlchemy type issue
             prediction_subquery.c.datum_id == groundtruth_subquery.c.datum_id,
         )
         .join(
@@ -78,11 +78,13 @@ def _count_true_positives(
     return int(ret)
 
 
-def _count_groundtruths(db: Session, groundtruth_subquery: Select) -> int:
+def _count_groundtruths(
+    db: Session, groundtruth_subquery: Select
+) -> int | None:
     """Total number of groundtruth pixels for the given dataset and label"""
     ret = db.scalar(
         select(func.sum(ST_Count(models.Annotation.raster)))
-        .select_from(groundtruth_subquery)
+        .select_from(groundtruth_subquery)  # type: ignore - SQLAlchemy type issue
         .join(
             models.Annotation,
             models.Annotation.id == groundtruth_subquery.c.annotation_id,
@@ -102,7 +104,7 @@ def _count_predictions(
     """Total number of predicted pixels for the given dataset, model, and label"""
     ret = db.scalar(
         select(func.sum(ST_Count(models.Annotation.raster)))
-        .select_from(prediction_subquery)
+        .select_from(prediction_subquery)  # type: ignore - SQLAlchemy type issue
         .join(
             models.Annotation,
             models.Annotation.id == prediction_subquery.c.annotation_id,
@@ -117,7 +119,7 @@ def _compute_iou(
     db: Session,
     groundtruth_filter: schemas.Filter,
     prediction_filter: schemas.Filter,
-) -> float:
+) -> float | None:
     """Computes the pixelwise intersection over union for the given dataset, model, and label"""
 
     groundtruth_subquery = _generate_groundtruth_query(groundtruth_filter)
