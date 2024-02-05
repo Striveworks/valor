@@ -1,5 +1,6 @@
 import heapq
 from dataclasses import dataclass
+from typing import Sequence
 
 from geoalchemy2 import functions as gfunc
 from sqlalchemy import and_, case, func, select
@@ -54,10 +55,10 @@ def _calculate_101_pt_interp(precisions, recalls) -> float:
 def _ap(
     sorted_ranked_pairs: dict[int, list[RankedPair]],
     number_of_groundtruths_per_grouper: dict[int, int],
-    grouper_mappings: dict[str, dict[str | int, any]],
+    grouper_mappings: dict[str, dict],
     iou_thresholds: list[float],
     grouper_ids_associated_with_gts: set[int],
-) -> list[schemas.APMetric]:
+) -> Sequence[schemas.APMetric]:
     """
     Computes the average precision. Return is a dict with keys
     `f"IoU={iou_thres}"` for each `iou_thres` in `iou_thresholds` as well as
@@ -117,7 +118,7 @@ def _compute_detection_metrics(
     prediction_filter: schemas.Filter,
     groundtruth_filter: schemas.Filter,
     target_type: enums.AnnotationType,
-) -> list[
+) -> Sequence[
     schemas.APMetric
     | schemas.APMetricAveragedOverIOUs
     | schemas.mAPMetric
@@ -220,9 +221,9 @@ def _compute_detection_metrics(
             pd.c.annotation_id.label("pd_ann_id"),
             pd.c.score.label("score"),
         )
-        .select_from(gt)
+        .select_from(gt)  # type: ignore - SQLAlchemy type issue
         .join(
-            pd,
+            pd,  # type: ignore - SQLAlchemy type issue
             and_(
                 pd.c.datum_id == gt.c.datum_id,
                 pd.c.label_id_grouper == gt.c.label_id_grouper,
@@ -323,8 +324,8 @@ def _compute_detection_metrics(
             ).label("label_id_grouper"),
         )
         .filter(groundtruth_filter)
-        .groundtruths()
-    ).all()
+        .groundtruths()  # type: ignore - SQLAlchemy type issue
+    ).all()  # type: ignore - SQLAlchemy type issue
 
     grouper_ids_associated_with_gts = set([row[1] for row in groundtruths])
 
@@ -334,7 +335,6 @@ def _compute_detection_metrics(
         )
 
     # Compute AP
-    grouper_ids_associated_with_gts
     detection_metrics = _ap(
         sorted_ranked_pairs=ranking,
         number_of_groundtruths_per_grouper=number_of_groundtruths_per_grouper,
@@ -348,12 +348,12 @@ def _compute_detection_metrics(
         detection_metrics
     )
 
-    detection_metrics_ave_over_ious = (
+    detection_metrics_ave_over_ious = list(
         _compute_detection_metrics_averaged_over_ious_from_aps(
             detection_metrics
         )
     )
-    mean_detection_metrics_ave_over_ious = (
+    mean_detection_metrics_ave_over_ious = list(
         _compute_mean_detection_metrics_from_aps(
             detection_metrics_ave_over_ious
         )
@@ -368,7 +368,8 @@ def _compute_detection_metrics(
     mean_detection_metrics = [
         m
         for m in mean_detection_metrics
-        if m.iou in parameters.iou_thresholds_to_return
+        if isinstance(m, schemas.mAPMetric)
+        and m.iou in parameters.iou_thresholds_to_return
     ]
 
     return (
@@ -380,8 +381,8 @@ def _compute_detection_metrics(
 
 
 def _compute_detection_metrics_averaged_over_ious_from_aps(
-    ap_scores: list[schemas.APMetric],
-) -> list[schemas.APMetricAveragedOverIOUs]:
+    ap_scores: Sequence[schemas.APMetric],
+) -> Sequence[schemas.APMetricAveragedOverIOUs]:
     """Average AP metrics over IOU thresholds using a list of AP metrics."""
     label_tuple_to_values = {}
     label_tuple_to_ious = {}
@@ -420,21 +421,21 @@ def _average_ignore_minus_one(a):
 
 
 def _compute_mean_detection_metrics_from_aps(
-    ap_scores: list[schemas.APMetric | schemas.APMetricAveragedOverIOUs],
-) -> list[schemas.mAPMetric]:
+    ap_scores: Sequence[schemas.APMetric | schemas.APMetricAveragedOverIOUs],
+) -> Sequence[schemas.mAPMetric | schemas.mAPMetricAveragedOverIOUs]:
     """Calculate the mean of a list of AP metrics."""
 
     if len(ap_scores) == 0:
         return []
 
     # dictionary for mapping an iou threshold to set of APs
-    vals: dict[float | set[float], list] = {}
+    vals = {}
     labels: list[schemas.Label] = []
     for ap in ap_scores:
         if hasattr(ap, "iou"):
-            iou = ap.iou
+            iou = ap.iou  # type: ignore - pyright doesn't consider hasattr checks
         else:
-            iou = frozenset(ap.ious)
+            iou = frozenset(ap.ious)  # type: ignore - pyright doesn't consider hasattr checks
         if iou not in vals:
             vals[iou] = []
         vals[iou].append(ap.value)
@@ -447,7 +448,7 @@ def _compute_mean_detection_metrics_from_aps(
         schemas.mAPMetric(iou=iou, value=_average_ignore_minus_one(vals[iou]))
         if isinstance(iou, float)
         else schemas.mAPMetricAveragedOverIOUs(
-            ious=iou, value=_average_ignore_minus_one(vals[iou]), labels=labels
+            ious=iou, value=_average_ignore_minus_one(vals[iou])
         )
         for iou in vals.keys()
     ]
@@ -548,12 +549,12 @@ def compute_detection_metrics(
 
     # fetch model and datasets
     datasets = (
-        db.query(Query(models.Dataset).filter(groundtruth_filter).any())
+        db.query(Query(models.Dataset).filter(groundtruth_filter).any())  # type: ignore - SQLAlchemy type issue
         .distinct()
         .all()
     )
     model = (
-        db.query(Query(models.Model).filter(prediction_filter).any())
+        db.query(Query(models.Model).filter(prediction_filter).any())  # type: ignore - SQLAlchemy type issue
         .distinct()
         .one_or_none()
     )

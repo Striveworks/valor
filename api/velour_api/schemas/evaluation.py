@@ -27,8 +27,8 @@ class EvaluationParameters(BaseModel):
 
     # object detection
     convert_annotations_to_type: AnnotationType | None = None
-    iou_thresholds_to_compute: list[float] | None = None
-    iou_thresholds_to_return: list[float] | None = None
+    iou_thresholds_to_compute: list[float]
+    iou_thresholds_to_return: list[float]
     label_map: LabelMapType | None = None
 
     # pydantic setting

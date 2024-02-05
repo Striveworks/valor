@@ -397,7 +397,7 @@ class ROCAUCMetric(BaseModel):
     """
 
     label_key: str
-    value: float
+    value: float | None
 
     def db_mapping(self, evaluation_id: int) -> dict:
         """
