@@ -185,10 +185,9 @@ def get_labels(
         ignore_groundtruths=ignore_groundtruths,
         ignore_predictions=ignore_predictions,
     )
-    # TODO - Subquery type doesn't have a method subqueries
     return {
         schemas.Label(key=label.key, value=label.value)
-        for label in db.query(stmt.subquery()).all()
+        for label in db.query(stmt.subquery()).all()  # type: ignore - SQLAlchemy type issue
     }
 
 
@@ -217,14 +216,13 @@ def get_label_keys(
     set[str]
         A set of label keys.
     """
-    # TODO subquery is not compatitible with type executable. maybe remove subquery from _getter_statement?
     stmt = _getter_statement(
         selection=models.Label.key,
         filters=filters,
         ignore_groundtruths=ignore_groundtruths,
         ignore_predictions=ignore_predictions,
     )
-    return {key for key in db.scalars(stmt)}
+    return {key for key in db.scalars(stmt)}  # type: ignore - SQLAlchemy type issue
 
 
 def get_joint_labels(
@@ -384,14 +382,13 @@ def fetch_labels(
     -------
     set[models.Label]
     """
-    # TODO same issue with this function above
     stmt = _getter_statement(
         selection=models.Label,
         filters=filter_,
         ignore_groundtruths=ignore_groundtruths,
         ignore_predictions=ignore_predictions,
     )
-    return set(db.query(stmt.subquery()).all())
+    return set(db.query(stmt.subquery()).all())  # type: ignore - SQLAlchemy type issue
 
 
 def fetch_union_of_labels(

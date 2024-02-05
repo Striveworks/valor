@@ -296,14 +296,13 @@ def get_annotation(
         The requested annotation.
     """
     # retrieve all labels associated with annotation
-    # TODO
     if annotation.model_id:
         q = Query(
             models.Label.key,
             models.Label.value,
             models.Prediction.score,
         ).predictions(as_subquery=False)
-        q = q.where(models.Prediction.annotation_id == annotation.id)
+        q = q.where(models.Prediction.annotation_id == annotation.id)  # type: ignore - SQLAlchemy type issue
         labels = [
             schemas.Label(
                 key=scored_label[0],
@@ -317,7 +316,7 @@ def get_annotation(
             models.Label.key,
             models.Label.value,
         ).groundtruths(as_subquery=False)
-        q = q.where(models.GroundTruth.annotation_id == annotation.id)
+        q = q.where(models.GroundTruth.annotation_id == annotation.id)  # type: ignore - SQLAlchemy type issue
         labels = [
             schemas.Label(key=label[0], value=label[1])
             for label in db.query(q.subquery()).all()

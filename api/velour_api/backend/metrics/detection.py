@@ -162,6 +162,14 @@ def _compute_detection_metrics(
             case _:
                 raise RuntimeError
 
+    if (
+        parameters.iou_thresholds_to_return is None
+        or parameters.iou_thresholds_to_compute is None
+    ):
+        raise ValueError(
+            "iou_thresholds_to_return and iou_thresholds_to_compute are required attributes of EvaluationParameters when evaluating detections."
+        )
+
     labels = core.fetch_union_of_labels(
         db=db,
         rhs=prediction_filter,
