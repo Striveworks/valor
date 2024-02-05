@@ -361,7 +361,7 @@ class _PrecisionRecallF1Base(BaseModel):
         return {
             "value": self.value,
             "label_id": label_id,
-            "type": self.__type__,
+            "type": self.__type__,  # type: ignore - Member "__type__" is unknown because it's only assigned on Child classes
             "evaluation_id": evaluation_id,
         }
 
@@ -397,7 +397,7 @@ class ROCAUCMetric(BaseModel):
     """
 
     label_key: str
-    value: float | None
+    value: float
 
     def db_mapping(self, evaluation_id: int) -> dict:
         """
