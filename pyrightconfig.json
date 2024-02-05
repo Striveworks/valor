@@ -12,6 +12,12 @@
         "migrations"
     ],
     "ignore": [
-        "api"
+        "client/unit-tests",
+        "api",
+        "utils",
+        "examples",
+        "integration_tests",
+        "docs",
+        "migrations",
     ]
 }
