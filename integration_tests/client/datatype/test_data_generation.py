@@ -81,7 +81,6 @@ def test_generate_prediction_data(client: Client):
         n_annotations=n_annotations,
         n_labels=n_labels,
     )
-
     assert len(dataset.get_datums()) == n_images
 
     model = generate_prediction_data(
@@ -96,9 +95,7 @@ def test_generate_prediction_data(client: Client):
         dataset,
         iou_thresholds_to_compute=[0.1, 0.9],
         iou_thresholds_to_return=[0.1, 0.9],
-        filters=[
-            Label.key == "k1",
-        ],
+        filters=[Label.key == "k1"],
         convert_annotations_to_type=AnnotationType.BOX,
     )
     assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
@@ -113,6 +110,7 @@ def test_generate_prediction_data(client: Client):
         "missing_pred_labels",
     ]:
         eval_dict.pop(key)
+
     assert eval_dict == {
         "model_name": model_name,
         "datum_filter": {

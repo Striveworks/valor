@@ -1026,7 +1026,9 @@ def test_create_detection_metrics(
     # those fixtures create the necessary dataset, model, groundtruths, and predictions
 
     def method_to_test(
-        label_key: str, min_area: float = None, max_area: float = None
+        label_key: str,
+        min_area: float = None,
+        max_area: float = None,
     ):
         geometric_filters = []
         if min_area:
@@ -1043,15 +1045,15 @@ def test_create_detection_metrics(
                     operator="<=",
                 )
             )
+        if not geometric_filters:
+            geometric_filters = None
 
         job_request = schemas.EvaluationRequest(
             model_names=["test_model"],
             datum_filter=schemas.Filter(
-                dataset_names=["test_dataset"],
-                annotation_geometric_area=geometric_filters
-                if geometric_filters
-                else None,
                 label_keys=[label_key],
+                dataset_names=["test_dataset"],
+                bounding_box_area=geometric_filters,
             ),
             parameters=schemas.EvaluationParameters(
                 task_type=enums.TaskType.DETECTION,
@@ -1178,8 +1180,8 @@ def test_create_detection_metrics(
     assert model_evals[0] == schemas.EvaluationResponse(
         model_name=model_name,
         datum_filter=schemas.Filter(
-            dataset_names=[dataset_name],
             label_keys=["class"],
+            dataset_names=[dataset_name],
         ),
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.DETECTION,
@@ -1200,7 +1202,8 @@ def test_create_detection_metrics(
         model_name=model_name,
         datum_filter=schemas.Filter(
             dataset_names=[dataset_name],
-            annotation_geometric_area=[
+            label_keys=["class"],
+            bounding_box_area=[
                 schemas.NumericFilter(
                     value=min_area,
                     operator=">=",
@@ -1210,7 +1213,6 @@ def test_create_detection_metrics(
                     operator="<=",
                 ),
             ],
-            label_keys=["class"],
         ),
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.DETECTION,

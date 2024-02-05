@@ -90,10 +90,15 @@ class _DeclarativeMapper:
                 f"Mapper with type `{type(self)}` does not suppoert the `{operator}` operator."
             )
 
+        # overload-able validation
         self._validate(value=value, operator=operator)
-        value = self._modify(value=value, operator=operator)
+
+        # overload-able modifications
+        name = self._modify_name(operator=operator)
+        value = self._modify_value(value=value, operator=operator)
+
         return BinaryExpression(
-            name=self.name,
+            name=name,
             key=self.key,
             constraint=Constraint(
                 value=value,
@@ -105,9 +110,13 @@ class _DeclarativeMapper:
         """Overload in subclasses to insert a validator."""
         pass
 
-    def _modify(self, value: Any, operator: str) -> Any:
+    def _modify_value(self, value: Any, operator: str) -> Any:
         """Overload in subclasses to insert a value modification."""
         return value
+
+    def _modify_name(self, operator: str) -> str:
+        """Overload in subclasses to insert a name modification."""
+        return self.name
 
     def __eq__(self, value: Any) -> BinaryExpression:  # type: ignore
         raise AttributeError(f"'{type(self)}' object has no attribute '=='")
@@ -291,7 +300,7 @@ class DatetimeMapper(_QuantifiableMapper):
         An optional key used for object retrieval.
     """
 
-    def _modify(self, value: Any, operator: str) -> Any:
+    def _modify_value(self, value: Any, operator: str) -> Any:
         vtype = type(value)
         if vtype is datetime.datetime:
             return {"datetime": value.isoformat()}
@@ -375,6 +384,12 @@ class GeometryMapper(_SpatialMapper):
         raise NotImplementedError(
             "Geometric types only support 'is_none' and 'exists'. Support for other spatial operators is planned."
         )
+
+    def _modify_name(self, operator: str) -> str:
+        """Rename geometric type when nullable operators are used."""
+        if operator in {"is_none", "exists"}:
+            return f"require_{self.name}"
+        return self.name
 
 
 class GeospatialMapper(_SpatialMapper):
@@ -511,7 +526,7 @@ class LabelMapper(_EquatableMapper):
         An optional key used for object retrieval.
     """
 
-    def _modify(self, value: Any, operator: str) -> Any:
+    def _modify_value(self, value: Any, operator: str) -> Any:
         # convert to dict
         if hasattr(value, "to_dict"):
             value = value.to_dict()
