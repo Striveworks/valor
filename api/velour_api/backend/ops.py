@@ -485,7 +485,6 @@ class Query(SQLAlchemyQuery):
             subquery = None
             return query, subquery
 
-
     def _get_numeric_op(self, opstr) -> callable:
         ops = {
             ">": operator.gt,
