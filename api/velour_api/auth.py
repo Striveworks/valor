@@ -73,7 +73,7 @@ def create_token(data: dict, expires_delta: timedelta | None = None) -> str:
     expire = datetime.now(timezone.utc) + expires_delta
     to_encode.update({"exp": expire})
 
-    encoded_jwt = jwt.encode(
+    encoded_jwt = jwt.encode(  # type: ignore - pre-commit throws an error because it has both jwt and PyJWT installed
         payload=to_encode,
         key=auth_settings.SECRET_KEY,
         algorithm=auth_settings.ALGORITHM,
@@ -115,7 +115,7 @@ def verify_token(token: HTTPAuthorizationCredentials) -> dict:
         return {}
 
     try:
-        payload = jwt.decode(
+        payload = jwt.decode(  # type: ignore - pre-commit throws an error because it has both jwt and PyJWT installed
             jwt=token.credentials,
             key=auth_settings.SECRET_KEY,
             algorithms=[auth_settings.ALGORITHM],

@@ -346,7 +346,7 @@ def _compute_confusion_matrix_at_grouper_key(
             models.Label,
             models.Label.id == groundtruths.c.label_id,
         )
-        .group_by(b)
+        .group_by(b)  # type: ignore - SQLAlchemy Bundle not compatible with _first
     )
 
     res = db.execute(total_query).all()
