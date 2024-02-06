@@ -635,6 +635,48 @@ def get_datums(
         raise exceptions.create_http_error(e)
 
 
+@router.get(
+    "/data/dataset/{dataset_name}/uid/{uid}",
+    status_code=200,
+    dependencies=[Depends(token_auth_scheme)],
+    tags=["Datums"],
+)
+def get_datum(
+    dataset_name: str, uid: str, db: Session = Depends(get_db)
+) -> schemas.Datum | None:
+    """
+    Fetch a particular datum.
+    GET Endpoint: `/data/dataset/{dataset_name}/uid/{uid}`
+    Parameters
+    ----------
+    dataset_name : str
+        The name of the dataset.
+    uid : str
+        The UID of the datum.
+    db : Session
+        The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
+    Returns
+    -------
+    schemas.Datum
+        The requested datum.
+    Raises
+    ------
+    HTTPException (404)
+        If the dataset or datum doesn't exist.
+    """
+    try:
+        filter_ = schemas.Filter(
+            dataset_names=[dataset_name], datum_uids=[uid]
+        )
+
+        return crud.get_datums(
+            db=db,
+            filters=filter_,
+        )[0]
+    except Exception as e:
+        raise exceptions.create_http_error(e)
+
+
 """ MODELS """
 
 
