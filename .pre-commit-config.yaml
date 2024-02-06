@@ -29,7 +29,7 @@ repos:
         args: [--line-length=79]
 
   - repo: https://github.com/RobertCraigie/pyright-python
-    rev: v1.1.349
+    rev: v1.1.350
     hooks:
       - id: pyright
         additional_dependencies:
@@ -37,16 +37,17 @@ repos:
             "requests",
             "Pillow >= 9.1.0",
             "numpy",
-            "sqlalchemy",
-            "fastapi",
+            "python-dotenv",
+            "SQLAlchemy>=2.0",
+            "fastapi[all]>=0.100.0",
             "importlib_metadata; python_version < '3.8'",
-            "pydantic_settings",
+            "pydantic-settings",
             "tqdm",
             "pandas",
             "packaging",
-            "jwt",
+            "PyJWT[crypto]",
             "structlog",
-            "geoalchemy2",
+            "GeoAlchemy2",
             "motmetrics",
-            "psycopg2",
+            "psycopg2-binary",
           ]
