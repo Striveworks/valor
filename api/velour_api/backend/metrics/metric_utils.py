@@ -13,7 +13,7 @@ LabelMapType = list[list[list[str]]]
 def _create_detection_grouper_mappings(
     mapping_dict: dict[tuple[str, ...], tuple[str, ...]],
     labels: list[models.Label],
-) -> list:
+) -> dict[str, dict]:
     """Create grouper mappings for use when evaluating detections."""
 
     label_id_to_grouper_id_mapping = {}
@@ -189,9 +189,22 @@ def get_or_create_row(
 
 def create_metric_mappings(
     db: Session,
-    metrics: Sequence[schemas.APMetric],
+    metrics: Sequence[
+        schemas.APMetric
+        | schemas.APMetricAveragedOverIOUs
+        | schemas.mAPMetric
+        | schemas.mAPMetricAveragedOverIOUs
+        | schemas.ConfusionMatrix
+        | schemas.AccuracyMetric
+        | schemas.ROCAUCMetric
+        | schemas.PrecisionMetric
+        | schemas.RecallMetric
+        | schemas.F1Metric
+        | schemas.IOUMetric
+        | schemas.mIOUMetric
+    ],
     evaluation_id: int,
-) -> None:
+) -> list[dict]:
     """
     Create metric mappings from a list of metrics.
 
@@ -237,7 +250,7 @@ def create_metric_mappings(
     return ret
 
 
-def validate_computation(fn: Callable) -> callable:
+def validate_computation(fn: Callable) -> Callable:
     """
     Computation decorator that validates that a computation can proceed.
     """
