@@ -1,23 +1,21 @@
 {
-    "include": [
-        "client/velour"
-    ],
-    "exclude": [
-        "client/unit-tests",
-        "api",
-        "utils",
-        "examples",
-        "integration_tests",
-        "docs",
-        "migrations"
-    ],
-    "ignore": [
-        "client/unit-tests",
-        "api",
-        "utils",
-        "examples",
-        "integration_tests",
-        "docs",
-        "migrations",
-    ]
+  "include": ["client/velour", "api"],
+  "exclude": [
+    "client/unit-tests",
+    "api",
+    "utils",
+    "examples",
+    "integration_tests",
+    "docs",
+    "migrations"
+  ],
+  "ignore": [
+    "client/unit-tests",
+    "api/tests",
+    "utils",
+    "examples",
+    "integration_tests",
+    "docs",
+    "migrations"
+  ]
 }

@@ -80,7 +80,7 @@ class Query(SQLAlchemyQuery):
         if len(expressions) == 1:
             self._expressions[table].extend(expressions)
         elif len(expressions) > 1:
-            self._expressions[table].append(or_(*expressions))  # type: ignore - ColumnElement[bool]" is incompatible with "BinaryExpression[Unknown]
+            self._expressions[table].append(or_(*expressions))
 
     def _expression(
         self, table_set: set[DeclarativeMeta]
@@ -168,7 +168,7 @@ class Query(SQLAlchemyQuery):
         }
 
         # set of tables required to construct query
-        joint_set = selected.union(filtered)  # type: ignore
+        joint_set = selected.union(filtered)
 
         # generate query statement
         query = None
@@ -338,9 +338,11 @@ class Query(SQLAlchemyQuery):
         self,
         query_solver: Callable,
         subquery_solver: Callable,
-        unique_set: set[type[models.Model]]
-        | set[type[models.Prediction]]
-        | set[type[models.GroundTruth]],
+        unique_set: (
+            set[type[models.Model]]
+            | set[type[models.Prediction]]
+            | set[type[models.GroundTruth]]
+        ),
         pivot_table: DeclarativeMeta | None = None,
     ):
         qset = (self._filtered - unique_set).union({models.Datum})
@@ -485,7 +487,7 @@ class Query(SQLAlchemyQuery):
             subquery = None
             return query, subquery
 
-    def _get_numeric_op(self, opstr) -> callable:
+    def _get_numeric_op(self, opstr) -> Callable:
         ops = {
             ">": operator.gt,
             "<": operator.lt,
@@ -558,10 +560,9 @@ class Query(SQLAlchemyQuery):
     def _filter_by_metadatum(
         self,
         key: str,
-        value_filter: NumericFilter
-        | StringFilter
-        | DateTimeFilter
-        | BooleanFilter,
+        value_filter: (
+            NumericFilter | StringFilter | DateTimeFilter | BooleanFilter
+        ),
         table: DeclarativeMeta,
     ) -> BinaryExpression:
         if isinstance(value_filter, NumericFilter):
@@ -585,12 +586,12 @@ class Query(SQLAlchemyQuery):
                 cast_type = TIMESTAMP(timezone=True)
             op = self._get_numeric_op(value_filter.operator)
             lhs = cast(
-                table.meta[key][value_filter.value.key].astext,  # type: ignore
-                cast_type,  # type: ignore
+                table.meta[key][value_filter.value.key].astext,  # type: ignore - SQLAlchemy type issue
+                cast_type,  # type: ignore - SQLAlchemy type issue
             )
             rhs = cast(
                 value_filter.value.value,
-                cast_type,  # type: ignore
+                cast_type,  # type: ignore - SQLAlchemy type issue
             )
         else:
             raise NotImplementedError(
@@ -615,7 +616,7 @@ class Query(SQLAlchemyQuery):
         ]
         if len(expressions) > 1:
             expressions = [and_(*expressions)]
-        return expressions  # type: ignore
+        return expressions  # type: ignore - SQLAlchemy type issue
 
     def _filter_by_geospatial(
         self,
@@ -670,7 +671,7 @@ class Query(SQLAlchemyQuery):
                     models.Dataset.name == name
                     for name in filters.dataset_names
                     if isinstance(name, str)
-                ],  # type: ignore - ColumnElement[bool]" is incompatible with "BinaryExpression[Unknown]
+                ],  # type: ignore - SQLAlchemy type issue
             )
         if filters.dataset_metadata:
             self._add_expressions(
@@ -694,7 +695,7 @@ class Query(SQLAlchemyQuery):
                     models.Model.name == name
                     for name in filters.model_names
                     if isinstance(name, str)
-                ],  # type: ignore - ColumnElement[bool]" is incompatible with "BinaryExpression[Unknown]
+                ],  # type: ignore - SQLAlchemy type issue
             )
         if filters.model_metadata:
             self._add_expressions(
@@ -716,7 +717,7 @@ class Query(SQLAlchemyQuery):
                     models.Datum.uid == uid
                     for uid in filters.datum_uids
                     if isinstance(uid, str)
-                ],  # type: ignore - ColumnElement[bool]" is incompatible with "BinaryExpression[Unknown]
+                ],  # type: ignore - SQLAlchemy type issue
             )
         if filters.datum_metadata:
             self._add_expressions(
@@ -741,7 +742,7 @@ class Query(SQLAlchemyQuery):
                     models.Annotation.task_type == task_type.value
                     for task_type in filters.task_types
                     if isinstance(task_type, enums.TaskType)
-                ],  # type: ignore - ColumnElement[bool]" is incompatible with "BinaryExpression[Unknown]
+                ],  # type: ignore - SQLAlchemy type issue
             )
         if filters.annotation_metadata:
             self._add_expressions(

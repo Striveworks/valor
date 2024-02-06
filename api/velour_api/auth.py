@@ -18,7 +18,9 @@ class OptionalHTTPBearer(HTTPBearer):
         if auth_settings.no_auth:
             return None
         ret = await super().__call__(request)
-        verify_token(ret)  # type: ignore
+        if not ret:
+            raise RuntimeError("No token to verify.")
+        verify_token(ret)
         return ret
 
 
