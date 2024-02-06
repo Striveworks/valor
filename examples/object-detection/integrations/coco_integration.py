@@ -114,9 +114,9 @@ def _parse_categories(
     return {
         category["id"]: {
             "task_type": (
-                TaskType.DETECTION
+                TaskType.OBJECT_DETECTION
                 if category["isthing"]
-                else TaskType.SEGMENTATION
+                else TaskType.SEMANTIC_SEGMENTATION
             ),
             "labels": {
                 "supercategory": category["supercategory"],
@@ -142,7 +142,7 @@ def create_annotations_from_instance_segmentations(
 ) -> List[Annotation]:
     return [
         Annotation(
-            task_type=TaskType.DETECTION,
+            task_type=TaskType.OBJECT_DETECTION,
             labels=[
                 Label(
                     key="supercategory",
@@ -168,7 +168,7 @@ def create_annotations_from_instance_segmentations(
         if category_id_to_labels_and_task[segmentation["category_id"]][
             "task_type"
         ]
-        == TaskType.DETECTION
+        == TaskType.OBJECT_DETECTION
     ]
 
 
@@ -187,7 +187,7 @@ def create_annotations_from_semantic_segmentations(
         category_id = segmentation["category_id"]
         if (
             category_id_to_labels_and_task[category_id]["task_type"]
-            == TaskType.SEGMENTATION
+            == TaskType.SEMANTIC_SEGMENTATION
         ):
             for key, value in [
                 (
@@ -215,7 +215,7 @@ def create_annotations_from_semantic_segmentations(
     # create annotations for semantic segmentation
     return [
         Annotation(
-            task_type=TaskType.SEGMENTATION,
+            task_type=TaskType.SEMANTIC_SEGMENTATION,
             labels=[Label(key=key, value=str(value))],
             raster=Raster.from_numpy(semantic_masks[key][value]),
         )

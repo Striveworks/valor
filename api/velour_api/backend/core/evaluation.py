@@ -332,7 +332,10 @@ def _create_responses(
                     "missing_pred_keys": missing_pred_keys,
                     "ignored_pred_keys": ignored_pred_keys,
                 }
-            case (enums.TaskType.DETECTION | enums.TaskType.SEGMENTATION):
+            case (
+                enums.TaskType.OBJECT_DETECTION
+                | enums.TaskType.SEMANTIC_SEGMENTATION
+            ):
                 (
                     missing_pred_labels,
                     ignored_pred_labels,

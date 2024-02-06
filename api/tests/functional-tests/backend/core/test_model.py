@@ -28,7 +28,7 @@ def created_dataset(db: Session, dataset_name: str) -> str:
             datum=schemas.Datum(uid="uid2", dataset_name=dataset_name),
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.DETECTION,
+                    task_type=enums.TaskType.OBJECT_DETECTION,
                     labels=[schemas.Label(key="k1", value="v1")],
                 )
             ],
@@ -40,7 +40,7 @@ def created_dataset(db: Session, dataset_name: str) -> str:
             datum=schemas.Datum(uid="uid3", dataset_name=dataset_name),
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.SEGMENTATION,
+                    task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
                     labels=[schemas.Label(key="k1", value="v1")],
                 )
             ],
@@ -73,7 +73,7 @@ def created_model(db: Session, model_name: str, created_dataset: str) -> str:
             datum=schemas.Datum(uid="uid2", dataset_name=created_dataset),
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.DETECTION,
+                    task_type=enums.TaskType.OBJECT_DETECTION,
                     labels=[schemas.Label(key="k1", value="v1", score=1.0)],
                 )
             ],
@@ -86,7 +86,7 @@ def created_model(db: Session, model_name: str, created_dataset: str) -> str:
             datum=schemas.Datum(uid="uid3", dataset_name=created_dataset),
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.SEGMENTATION,
+                    task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
                     labels=[schemas.Label(key="k1", value="v1")],
                 )
             ],

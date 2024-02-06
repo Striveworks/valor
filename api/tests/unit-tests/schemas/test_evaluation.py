@@ -8,19 +8,19 @@ def test_EvaluationParameters():
     schemas.EvaluationParameters(task_type=enums.TaskType.CLASSIFICATION)
 
     schemas.EvaluationParameters(
-        task_type=enums.TaskType.DETECTION,
+        task_type=enums.TaskType.OBJECT_DETECTION,
         iou_thresholds_to_compute=[0.2, 0.6],
         iou_thresholds_to_return=[],
     )
 
     schemas.EvaluationParameters(
-        task_type=enums.TaskType.DETECTION,
+        task_type=enums.TaskType.OBJECT_DETECTION,
         iou_thresholds_to_compute=[],
         iou_thresholds_to_return=[],
     )
 
     schemas.EvaluationParameters(
-        task_type=enums.TaskType.DETECTION,
+        task_type=enums.TaskType.OBJECT_DETECTION,
         iou_thresholds_to_compute=[],
         iou_thresholds_to_return=[],
         label_map=[
@@ -39,35 +39,35 @@ def test_EvaluationParameters():
 
     with pytest.raises(ValidationError):
         schemas.EvaluationParameters(
-            task_type=enums.TaskType.SEGMENTATION,
+            task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
             iou_thresholds_to_compute=[0.2, 0.6],
             iou_thresholds_to_return=[],
         )
 
     with pytest.raises(ValidationError):
         schemas.EvaluationParameters(
-            task_type=enums.TaskType.DETECTION,
+            task_type=enums.TaskType.OBJECT_DETECTION,
             iou_thresholds_to_compute=None,
             iou_thresholds_to_return=[0.2],
         )
 
     with pytest.raises(ValidationError):
         schemas.EvaluationParameters(
-            task_type=enums.TaskType.DETECTION,
+            task_type=enums.TaskType.OBJECT_DETECTION,
             iou_thresholds_to_compute=None,
             iou_thresholds_to_return=0.2,
         )
 
     with pytest.raises(ValidationError):
         schemas.EvaluationParameters(
-            task_type=enums.TaskType.DETECTION,
+            task_type=enums.TaskType.OBJECT_DETECTION,
             iou_thresholds_to_compute=[0.2, "test"],
             iou_thresholds_to_return=[],
         )
 
     with pytest.raises(ValidationError):
         schemas.EvaluationParameters(
-            task_type=enums.TaskType.DETECTION,
+            task_type=enums.TaskType.OBJECT_DETECTION,
             iou_thresholds_to_compute=[0.2, "test"],
             iou_thresholds_to_return=[],
             label_map={"not a": "valid grouper"},

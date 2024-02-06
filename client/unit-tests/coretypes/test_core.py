@@ -22,19 +22,25 @@ def test_datum():
 def test_annotation(bbox, polygon, raster, labels, metadata):
     # valid
     Annotation(
-        task_type=enums.TaskType.DETECTION, bounding_box=bbox, labels=labels
+        task_type=enums.TaskType.OBJECT_DETECTION,
+        bounding_box=bbox,
+        labels=labels,
     )
     Annotation(
-        task_type=enums.TaskType.DETECTION, polygon=polygon, labels=labels
+        task_type=enums.TaskType.OBJECT_DETECTION,
+        polygon=polygon,
+        labels=labels,
     )
     Annotation(
-        task_type=enums.TaskType.DETECTION, raster=raster, labels=labels
+        task_type=enums.TaskType.OBJECT_DETECTION, raster=raster, labels=labels
     )
     Annotation(
-        task_type=enums.TaskType.SEGMENTATION, raster=raster, labels=labels
+        task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+        raster=raster,
+        labels=labels,
     )
     Annotation(
-        task_type=enums.TaskType.DETECTION,
+        task_type=enums.TaskType.OBJECT_DETECTION,
         labels=labels,
         bounding_box=bbox,
         polygon=polygon,
@@ -56,25 +62,25 @@ def test_annotation(bbox, polygon, raster, labels, metadata):
     assert "is not a valid TaskType" in str(e)
     with pytest.raises(TypeError) as e:
         Annotation(
-            task_type=enums.TaskType.DETECTION,
+            task_type=enums.TaskType.OBJECT_DETECTION,
             labels=labels,
             bounding_box=polygon,
         )
     with pytest.raises(TypeError) as e:
         Annotation(
-            task_type=enums.TaskType.DETECTION,
+            task_type=enums.TaskType.OBJECT_DETECTION,
             labels=labels,
             polygon=bbox,
         )
     with pytest.raises(TypeError) as e:
         Annotation(
-            task_type=enums.TaskType.DETECTION,
+            task_type=enums.TaskType.OBJECT_DETECTION,
             labels=labels,
             multipolygon=bbox,
         )
     with pytest.raises(TypeError) as e:
         Annotation(
-            task_type=enums.TaskType.DETECTION,
+            task_type=enums.TaskType.OBJECT_DETECTION,
             labels=labels,
             raster=bbox,
         )

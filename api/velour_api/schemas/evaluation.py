@@ -40,7 +40,7 @@ class EvaluationParameters(BaseModel):
         """Validate the IOU thresholds."""
 
         match values.task_type:
-            case TaskType.CLASSIFICATION | TaskType.SEGMENTATION:
+            case TaskType.CLASSIFICATION | TaskType.SEMANTIC_SEGMENTATION:
                 if values.convert_annotations_to_type is not None:
                     raise ValueError(
                         "`convert_annotations_to_type` should only be used for object detection evaluations."
@@ -53,7 +53,7 @@ class EvaluationParameters(BaseModel):
                     raise ValueError(
                         "`iou_thresholds_to_return` should only be used for object detection evaluations."
                     )
-            case TaskType.DETECTION:
+            case TaskType.OBJECT_DETECTION:
                 if values.iou_thresholds_to_return:
                     if not values.iou_thresholds_to_compute:
                         raise ValueError(

@@ -36,14 +36,14 @@ def test_create_pred_detections_as_bbox_or_poly(
         datum=img1.to_datum(),
         annotations=[
             Annotation(
-                task_type=TaskType.DETECTION,
+                task_type=TaskType.OBJECT_DETECTION,
                 labels=[Label(key="k", value="v", score=0.6)],
                 bounding_box=BoundingBox.from_extrema(
                     xmin=xmin, ymin=ymin, xmax=xmax, ymax=ymax
                 ),
             ),
             Annotation(
-                task_type=TaskType.DETECTION,
+                task_type=TaskType.OBJECT_DETECTION,
                 labels=[Label(key="k", value="v", score=0.4)],
                 polygon=Polygon(
                     boundary=BasicPolygon(
