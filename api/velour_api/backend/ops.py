@@ -491,19 +491,29 @@ class Query:
             raise ValueError(f"invalid numeric comparison operator `{opstr}`")
         return ops[opstr]
 
-    def _get_boolean_op(self, opstr) -> operator:
+    def _get_boolean_op(self, opstr) -> callable:
         ops = {"==": operator.eq, "!=": operator.ne}
         if opstr not in ops:
             raise ValueError(f"invalid boolean comparison operator `{opstr}`")
         return ops[opstr]
 
-    def _get_string_op(self, opstr) -> operator:
+    def _get_string_op(self, opstr) -> callable:
         ops = {
             "==": operator.eq,
             "!=": operator.ne,
         }
         if opstr not in ops:
             raise ValueError(f"invalid string comparison operator `{opstr}`")
+        return ops[opstr]
+
+    def _get_spatial_op(self, opstr) -> callable:
+        ops = {
+            "intersect": lambda lhs, rhs: func.ST_Covers(rhs, lhs),
+            "inside": lambda lhs, rhs: lhs.ST_Intersects(rhs),
+            "outside": lambda lhs, rhs: not_(func.ST_Covers(rhs, lhs)),
+        }
+        if opstr not in ops:
+            raise ValueError(f"invalid spatial operator `{opstr}`")
         return ops[opstr]
 
     """ Public methods """
@@ -787,7 +797,11 @@ class Query:
     def _filter_by_metadatum(
         self,
         key: str,
-        value_filter: NumericFilter | StringFilter | DateTimeFilter,
+        value_filter: NumericFilter
+        | StringFilter
+        | DateTimeFilter
+        | BooleanFilter
+        | GeospatialFilter,
         table: DeclarativeMeta,
     ) -> BinaryExpression:
         if isinstance(value_filter, NumericFilter):
@@ -818,6 +832,12 @@ class Query:
                 value_filter.value.value,
                 cast_type,
             )
+        elif isinstance(value_filter, GeospatialFilter):
+            op = self._get_spatial_op(value_filter.operator)
+            lhs = func.ST_GeomFromGeoJSON(
+                table.meta[key][value_filter.value.key]
+            )
+            rhs = value_filter.value.wkt()
         else:
             raise NotImplementedError(
                 f"metadatum value of type `{type(value_filter.value)}` is currently not supported"
@@ -827,7 +847,14 @@ class Query:
     def filter_by_metadata(
         self,
         metadata: dict[
-            str, list[NumericFilter | StringFilter | DateTimeFilter]
+            str,
+            list[
+                NumericFilter
+                | StringFilter
+                | DateTimeFilter
+                | BooleanFilter
+                | DateTimeFilter
+            ],
         ],
         table: DeclarativeMeta,
     ) -> list[BinaryExpression]:
@@ -839,39 +866,3 @@ class Query:
         if len(expressions) > 1:
             expressions = [and_(*expressions)]
         return expressions
-
-    def _filter_by_geospatial(
-        self,
-        geospatial_filters: list[GeospatialFilter],
-        model_object: models.Datum | models.Model | models.Dataset,
-    ):
-        geospatial_expressions = []
-        for geospatial_filter in geospatial_filters:
-            operator = geospatial_filter.operator
-            geojson = geospatial_filter.value
-
-            if operator == "inside":
-                geospatial_expressions.append(
-                    func.ST_Covers(
-                        # note that casting the WKT using ST_GEOGFROMTEXT isn't necessary here: we're implicitely comparing two geographies, not two geometries
-                        geojson.wkt(),
-                        model_object.geo,
-                    )
-                )
-            elif operator == "intersect":
-                geospatial_expressions.append(
-                    model_object.geo.ST_Intersects(
-                        geojson.wkt(),
-                    )
-                )
-            elif operator == "outside":
-                geospatial_expressions.append(
-                    not_(
-                        func.ST_Covers(
-                            geojson.wkt(),
-                            model_object.geo,
-                        )
-                    )
-                )
-
-        return geospatial_expressions

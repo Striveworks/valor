@@ -423,7 +423,9 @@ class GeospatialMapper(_SpatialMapper):
             )
 
 
-class _DictionaryValueMapper(_NullableMapper, _QuantifiableMapper):
+class _DictionaryValueMapper(
+    _QuantifiableMapper, _SpatialMapper, _NullableMapper
+):
     """
     Defines a mapping object that handles arbitrary objects.
 
@@ -474,6 +476,12 @@ class _DictionaryValueMapper(_NullableMapper, _QuantifiableMapper):
             datetime.timedelta,
         ]:
             return DatetimeMapper(
+                name=self.name, key=self.key
+            )._create_expression(value, operator)
+        elif vtype is dict:
+            if set(value.keys()) != {"type", "coordinates"}:
+                raise NotImplementedError("Type 'dict' only support GeoJSON.")
+            return GeospatialMapper(
                 name=self.name, key=self.key
             )._create_expression(value, operator)
         else:

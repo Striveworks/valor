@@ -4,7 +4,7 @@ import PIL.Image
 
 from velour import Datum
 from velour.schemas import validate_metadata
-from velour.types import DictMetadataType, GeoJSONType
+from velour.types import DictMetadataType
 
 
 class ImageMetadata:
@@ -21,8 +21,6 @@ class ImageMetadata:
         The width of the image.
     metadata : dict
         A dictionary of metadata that describes the image.
-    geospatial :  dict
-        A GeoJSON-style dictionary describing the geospatial coordinates of the image.
     """
 
     def __init__(
@@ -31,14 +29,12 @@ class ImageMetadata:
         height: int,
         width: int,
         metadata: Optional[DictMetadataType] = None,
-        geospatial: Optional[GeoJSONType] = None,
     ):
         self.uid = uid
         self._dataset_name = None
         self.height = height
         self.width = width
         self.metadata: DictMetadataType = dict(metadata) if metadata else {}
-        self.geospatial = geospatial if geospatial else {}
 
         if not isinstance(self.uid, str):
             raise TypeError("ImageMetadata uid must be a string.")
@@ -109,14 +105,12 @@ class ImageMetadata:
         Converts an `ImageMetadata` object into a `Datum`.
         """
         metadata = dict(self.metadata) if self.metadata else {}
-        geospatial = self.geospatial.copy() if self.geospatial else {}
 
         metadata["height"] = self.height
         metadata["width"] = self.width
         datum = Datum(
             uid=self.uid,
             metadata=metadata,
-            geospatial=geospatial,
         )
         return datum
 

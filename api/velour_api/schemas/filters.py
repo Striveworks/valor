@@ -183,23 +183,17 @@ class Filter(BaseModel):
     ----------
     dataset_names: List[str], default=None
         A list of `Dataset` names to filter on.
-    dataset_metadata: Dict[str, list[StringFilter | NumericFilter | DateTimeFilter]], default=None
+    dataset_metadata: Dict[str, list[StringFilter | NumericFilter | DateTimeFilter | BooleanFilter | GeospatialFilter]], default=None
         A dictionary of `Dataset` metadata to filter on.
-    dataset_geospatial: List[GeospatialFilter]., default=None
-        A list of `Dataset` geospatial filters to filter on.
     model_names: List[str], default=None
         A list of `Model` names to filter on.
-    model_metadata: Dict[str, list[StringFilter | NumericFilter | DateTimeFilter]], default=None
+    model_metadata: Dict[str, list[StringFilter | NumericFilter | DateTimeFilter | BooleanFilter | GeospatialFilter]], default=None
         A dictionary of `Model` metadata to filter on.
-    model_geospatial: List[GeospatialFilter], default=None
-        A list of `Model` geospatial filters to filter on.
-    datum_metadata: Dict[str, list[StringFilter | NumericFilter | DateTimeFilter]], default=None
+    datum_metadata: Dict[str, list[StringFilter | NumericFilter | DateTimeFilter | BooleanFilter | GeospatialFilter]], default=None
         A dictionary of `Datum` metadata to filter on.
-    datum_geospatial: List[GeospatialFilter], default=None
-        A list of `Datum` geospatial filters to filter on.
     task_types: List[TaskType], default=None
         A list of task types to filter on.
-    annotation_metadata: Dict[str, list[StringFilter | NumericFilter | DateTimeFilter]], default=None
+    annotation_metadata: Dict[str, list[StringFilter | NumericFilter | DateTimeFilter | BooleanFilter | GeospatialFilter]], default=None
         A dictionary of `Annotation` metadata to filter on.
     require_bounding_box : bool, optional
         A toggle for filtering by bounding boxes.
@@ -231,33 +225,53 @@ class Filter(BaseModel):
     dataset_names: list[str] | None = None
     dataset_metadata: dict[
         str,
-        list[StringFilter | NumericFilter | DateTimeFilter | BooleanFilter],
+        list[
+            StringFilter
+            | NumericFilter
+            | DateTimeFilter
+            | BooleanFilter
+            | GeospatialFilter
+        ],
     ] | None = None
-    dataset_geospatial: list[GeospatialFilter] | None = None
 
     # models
     model_names: list[str] | None = None
     model_metadata: dict[
         str,
-        list[StringFilter | NumericFilter | DateTimeFilter | BooleanFilter],
+        list[
+            StringFilter
+            | NumericFilter
+            | DateTimeFilter
+            | BooleanFilter
+            | GeospatialFilter
+        ],
     ] | None = None
-    model_geospatial: list[GeospatialFilter] | None = None
 
     # datums
     datum_uids: list[str] | None = None
     datum_metadata: dict[
         str,
-        list[StringFilter | NumericFilter | DateTimeFilter | BooleanFilter],
+        list[
+            StringFilter
+            | NumericFilter
+            | DateTimeFilter
+            | BooleanFilter
+            | GeospatialFilter
+        ],
     ] | None = None
-    datum_geospatial: list[GeospatialFilter] | None = None
 
     # annotations
     task_types: list[TaskType] | None = None
     annotation_metadata: dict[
         str,
-        list[StringFilter | NumericFilter | DateTimeFilter | BooleanFilter],
+        list[
+            StringFilter
+            | NumericFilter
+            | DateTimeFilter
+            | BooleanFilter
+            | GeospatialFilter
+        ],
     ] | None = None
-    annotation_geospatial: list[GeospatialFilter] | None = None
     require_bounding_box: bool | None = None
     bounding_box_area: list[NumericFilter] | None = None
     require_polygon: bool | None = None
