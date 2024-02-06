@@ -96,7 +96,7 @@ class EvaluationStatus(str, Enum):
     FAILED = "failed"
     DELETING = "deleting"
 
-    def next(self) -> set["EvaluationStatus"]:
+    def next(self) -> set["EvaluationStatus"] | None:
         """
         Returns the set of valid next states based on the current state.
         """

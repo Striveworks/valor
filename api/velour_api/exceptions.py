@@ -1,5 +1,6 @@
 import json
 from datetime import datetime
+from typing import Union
 
 from fastapi import HTTPException
 
@@ -451,8 +452,40 @@ error_to_status_code = {
     ServiceUnavailable: 503,
 }
 
+VelourException = Union[
+    ModelIsEmptyError,
+    ValueError,
+    AttributeError,
+    DatasetDoesNotExistError,
+    DatumDoesNotExistError,
+    ModelDoesNotExistError,
+    ModelInferencesDoNotExist,
+    EvaluationDoesNotExistError,
+    DatasetAlreadyExistsError,
+    DatasetIsEmptyError,
+    DatasetFinalizedError,
+    DatasetNotFinalizedError,
+    DatasetStateError,
+    ModelAlreadyExistsError,
+    ModelFinalizedError,
+    ModelNotFinalizedError,
+    ModelStateError,
+    DatumAlreadyExistsError,
+    DatumDoesNotBelongToDatasetError,
+    AnnotationAlreadyExistsError,
+    GroundTruthAlreadyExistsError,
+    PredictionAlreadyExistsError,
+    EvaluationAlreadyExistsError,
+    EvaluationRunningError,
+    EvaluationStateError,
+    NotImplementedError,
+    ServiceUnavailable,
+]
 
-def create_http_error(error: Exception) -> HTTPException:
+
+def create_http_error(
+    error: VelourException,
+) -> HTTPException:
     """
     Creates a HTTP execption using a caught exception.
 

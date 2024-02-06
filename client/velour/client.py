@@ -482,32 +482,6 @@ class ClientConnection:
             kwargs["json"] = filter_
         return self._requests_get_rel_host("data", **kwargs).json()
 
-    def get_datum(
-        self,
-        dataset_name: str,
-        uid: str,
-    ) -> dict:
-        """
-        Get datum.
-
-        `GET` endpoint.
-
-        Parameters
-        ----------
-        dataset_name : str
-            The dataset the datum belongs to.
-        uid : str
-            The uid of the datum.
-
-        Returns
-        -------
-        dict
-            A dictionary describing a datum.
-        """
-        return self._requests_get_rel_host(
-            f"/data/dataset/{dataset_name}/uid/{uid}"
-        ).json()
-
     def create_model(self, model: dict) -> None:
         """
         Creates a model.
