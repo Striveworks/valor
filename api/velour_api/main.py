@@ -19,7 +19,6 @@ from velour_api import (
     schemas,
 )
 from velour_api.backend import database
-from velour_api.exceptions import VelourExceptionType
 from velour_api.logging import LoggingRoute
 from velour_api.settings import auth_settings
 
@@ -94,7 +93,7 @@ def create_groundtruths(
     """
     try:
         crud.create_groundtruth(db=db, groundtruth=gt)
-    except VelourExceptionType as e:
+    except Exception as e:
         raise exceptions.create_http_error(e)
 
 
@@ -137,7 +136,7 @@ def get_groundtruth(
             dataset_name=dataset_name,
             datum_uid=uid,
         )
-    except VelourExceptionType as e:
+    except Exception as e:
         raise exceptions.create_http_error(e)
 
 
@@ -175,7 +174,7 @@ def create_predictions(
     """
     try:
         crud.create_prediction(db=db, prediction=pd)
-    except VelourExceptionType as e:
+    except Exception as e:
         raise exceptions.create_http_error(e)
 
 
@@ -221,7 +220,7 @@ def get_prediction(
             dataset_name=dataset_name,
             datum_uid=uid,
         )
-    except VelourExceptionType as e:
+    except Exception as e:
         raise exceptions.create_http_error(e)
 
 
@@ -257,7 +256,7 @@ def get_labels(
     """
     try:
         return crud.get_labels(db=db, filters=filters)
-    except VelourExceptionType as e:
+    except Exception as e:
         raise exceptions.create_http_error(e)
 
 
@@ -300,7 +299,7 @@ def get_labels_from_dataset(
             ),
             ignore_prediction_labels=True,
         )
-    except VelourExceptionType as e:
+    except Exception as e:
         raise exceptions.create_http_error(e)
 
 
@@ -343,7 +342,7 @@ def get_labels_from_model(
             ),
             ignore_groundtruth_labels=True,
         )
-    except VelourExceptionType as e:
+    except Exception as e:
         raise exceptions.create_http_error(e)
 
 
@@ -376,7 +375,7 @@ def create_dataset(dataset: schemas.Dataset, db: Session = Depends(get_db)):
     """
     try:
         crud.create_dataset(db=db, dataset=dataset)
-    except VelourExceptionType as e:
+    except Exception as e:
         raise exceptions.create_http_error(e)
 
 
@@ -408,7 +407,7 @@ def get_datasets(
     """
     try:
         return crud.get_datasets(db=db, filters=filters)
-    except VelourExceptionType as e:
+    except Exception as e:
         raise exceptions.create_http_error(e)
 
 
@@ -444,7 +443,7 @@ def get_dataset(
     """
     try:
         return crud.get_dataset(db=db, dataset_name=dataset_name)
-    except VelourExceptionType as e:
+    except Exception as e:
         raise exceptions.create_http_error(e)
 
 
@@ -481,7 +480,7 @@ def get_dataset_status(
     try:
         resp = crud.get_table_status(db=db, dataset_name=dataset_name)
         return resp
-    except VelourExceptionType as e:
+    except Exception as e:
         raise exceptions.create_http_error(e)
 
 
@@ -518,7 +517,7 @@ def get_dataset_summary(
     try:
         resp = crud.get_dataset_summary(db=db, name=dataset_name)
         return resp
-    except VelourExceptionType as e:
+    except Exception as e:
         raise exceptions.create_http_error(e)
 
 
@@ -551,7 +550,7 @@ def finalize_dataset(dataset_name: str, db: Session = Depends(get_db)):
     """
     try:
         crud.finalize(db=db, dataset_name=dataset_name)
-    except VelourExceptionType as e:
+    except Exception as e:
         raise exceptions.create_http_error(e)
 
 
@@ -589,7 +588,7 @@ def delete_dataset(
     logger.debug(f"request to delete dataset {dataset_name}")
     try:
         crud.delete(db=db, dataset_name=dataset_name)
-    except VelourExceptionType as e:
+    except Exception as e:
         raise exceptions.create_http_error(e)
 
 
@@ -632,7 +631,7 @@ def get_datums(
             db=db,
             filters=filters,
         )
-    except VelourExceptionType as e:
+    except Exception as e:
         raise exceptions.create_http_error(e)
 
 
@@ -667,7 +666,7 @@ def create_model(model: schemas.Model, db: Session = Depends(get_db)):
     """
     try:
         crud.create_model(db=db, model=model)
-    except VelourExceptionType as e:
+    except Exception as e:
         raise exceptions.create_http_error(e)
 
 
@@ -730,7 +729,7 @@ def get_model(model_name: str, db: Session = Depends(get_db)) -> schemas.Model:
     """
     try:
         return crud.get_model(db=db, model_name=model_name)
-    except VelourExceptionType as e:
+    except Exception as e:
         raise exceptions.create_http_error(e)
 
 
@@ -768,7 +767,7 @@ def get_model_eval_requests(
         return crud.get_evaluation_requests_from_model(
             db=db, model_name=model_name
         )
-    except VelourExceptionType as e:
+    except Exception as e:
         raise exceptions.create_http_error(e)
 
 
@@ -806,7 +805,7 @@ def get_model_status(
         return crud.get_table_status(
             db=db, dataset_name=dataset_name, model_name=model_name
         )
-    except VelourExceptionType as e:
+    except Exception as e:
         raise exceptions.create_http_error(e)
 
 
@@ -847,7 +846,7 @@ def finalize_inferences(
             model_name=model_name,
             dataset_name=dataset_name,
         )
-    except VelourExceptionType as e:
+    except Exception as e:
         raise exceptions.create_http_error(e)
 
 
@@ -882,7 +881,7 @@ def delete_model(
     """
     try:
         crud.delete(db=db, model_name=model_name)
-    except VelourExceptionType as e:
+    except Exception as e:
         raise exceptions.create_http_error(e)
 
 
@@ -936,7 +935,7 @@ def create_or_get_evaluations(
             job_request=job_request,
             task_handler=background_tasks,
         )
-    except VelourExceptionType as e:
+    except Exception as e:
         raise exceptions.create_http_error(e)
 
 
@@ -993,7 +992,7 @@ def get_evaluations(
     if evaluation_ids_str:
         try:
             evaluation_ids_ints = [int(id) for id in evaluation_ids_str]
-        except VelourExceptionType as e:
+        except Exception as e:
             raise exceptions.create_http_error(e)
     else:
         evaluation_ids_ints = None
@@ -1005,7 +1004,7 @@ def get_evaluations(
             dataset_names=dataset_names,
             model_names=model_names,
         )
-    except VelourExceptionType as e:
+    except Exception as e:
         raise exceptions.create_http_error(e)
 
 
@@ -1085,7 +1084,7 @@ def ready(db: Session = Depends(get_db)):
     try:
         db.execute(sqlalchemy.text("select 1"))
         return schemas.Readiness(status="ok")
-    except VelourExceptionType:
+    except Exception:
         raise exceptions.create_http_error(
             error=exceptions.ServiceUnavailable(
                 "Could not connect to postgresql."
