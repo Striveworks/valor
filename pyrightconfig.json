@@ -2,7 +2,6 @@
   "include": ["client/velour", "api"],
   "exclude": [
     "client/unit-tests",
-    "api",
     "utils",
     "examples",
     "integration_tests",

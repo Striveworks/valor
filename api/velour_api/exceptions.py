@@ -452,7 +452,7 @@ error_to_status_code = {
     ServiceUnavailable: 503,
 }
 
-VelourException = Union[
+VelourExceptionType = Union[
     ModelIsEmptyError,
     ValueError,
     AttributeError,
@@ -484,7 +484,7 @@ VelourException = Union[
 
 
 def create_http_error(
-    error: VelourException,
+    error: VelourExceptionType,
 ) -> HTTPException:
     """
     Creates a HTTP execption using a caught exception.
