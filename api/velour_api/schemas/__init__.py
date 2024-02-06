@@ -90,7 +90,6 @@ __all__ = [
     "mAPMetric",
     "mAPMetricAveragedOverIOUs",
     "ConfusionMatrixEntry",
-    "EvaluationSettings",
     "EvaluationRequest",
     "EvaluationResponse",
     "EvaluationParameters",

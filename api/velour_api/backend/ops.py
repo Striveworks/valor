@@ -654,7 +654,7 @@ class Query(SQLAlchemyQuery):
 
         return geospatial_expressions
 
-    def filter(self, filters: Filter | None):
+    def filter(self, filters: Filter | None):  # type: ignore - method "filter" overrides class "Query" in an incompatible manner
         """Parses `schemas.Filter`"""
         if filters is None:
             return self

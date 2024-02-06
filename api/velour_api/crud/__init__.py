@@ -35,7 +35,6 @@ __all__ = [
     "get_datasets",
     "get_dataset",
     "get_datums",
-    "get_datum",
     "get_dataset_summary",
     "get_models",
     "get_model",
