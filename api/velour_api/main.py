@@ -643,7 +643,7 @@ def get_datums(
 )
 def get_datum(
     dataset_name: str, uid: str, db: Session = Depends(get_db)
-) -> schemas.Datum | None:
+) -> list[schemas.Datum] | None:
     """
     Fetch a particular datum.
     GET Endpoint: `/data/dataset/{dataset_name}/uid/{uid}`
@@ -665,14 +665,13 @@ def get_datum(
         If the dataset or datum doesn't exist.
     """
     try:
-        filter_ = schemas.Filter(
-            dataset_names=[dataset_name], datum_uids=[uid]
-        )
-
         return crud.get_datums(
             db=db,
-            filters=filter_,
-        )[0]
+            filters=schemas.Filter(
+                dataset_names=[dataset_name],
+                datum_uids=[uid],
+            ),
+        )
     except Exception as e:
         raise exceptions.create_http_error(e)
 

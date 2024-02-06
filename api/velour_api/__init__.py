@@ -5,9 +5,12 @@ import os
 import structlog
 
 try:
-    logging_level = int(os.getenv("LOGGING_LEVEL"))
-except (TypeError, ValueError):
-    logging_level = logging.INFO
+    logging_level = getattr(
+        logging, os.environ.get("LOGGING_LEVEL", "INFO").upper()
+    )
+except AttributeError:
+    logging_level = getattr(logging, "INFO")
+
 
 structlog.configure(
     processors=[

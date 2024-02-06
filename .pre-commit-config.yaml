@@ -44,4 +44,9 @@ repos:
             "tqdm",
             "pandas",
             "packaging",
+            "jwt",
+            "structlog",
+            "geoalchemy2",
+            "motmetrics",
+            "psycopg2",
           ]

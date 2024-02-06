@@ -1095,14 +1095,14 @@ def test_get_datums(crud, client: TestClient):
 
 
 @patch("velour_api.main.crud")
-def test_get_dataset_datum(crud, client: TestClient):
-    crud.get_datum.return_value = None
+def test_get_datum(crud, client: TestClient):
+    crud.get_datum.return_value = []
     resp = client.get("/data/dataset/dsetname/uid/uid")
     assert resp.status_code == 200
-    crud.get_datum.assert_called_once()
+    crud.get_datums.assert_called_once()
 
     with patch(
-        "velour_api.main.crud.get_datum",
+        "velour_api.main.crud.get_datums",
         side_effect=exceptions.DatasetDoesNotExistError(""),
     ):
         resp = client.get("/data/dataset/dsetname/uid/uid")
