@@ -1,3 +1,5 @@
+from typing import Sequence
+
 import numpy as np
 from sqlalchemy import Float, Integer
 from sqlalchemy.orm import Bundle, Session
@@ -75,6 +77,11 @@ def _compute_binary_roc_auc(
     # total number of groundtruths
     n = db.scalar(select(func.count(gts_query.c.label_value)))
 
+    if n is None or n_pos is None:
+        raise RuntimeError(
+            "ROCAUC computation failed; db.scalar returned None for mathematical variables."
+        )
+
     if n_pos == 0:
         return 0
 
@@ -99,7 +106,10 @@ def _compute_binary_roc_auc(
             tprs.label("tprs"),
             fprs.label("fprs"),
             preds_query.c.score,
-        ).join(preds_query, gts_query.c.datum_id == preds_query.c.datum_id)
+        ).join(
+            preds_query,  # type: ignore - SQLAlchemy Subquery is incompatible with join type
+            gts_query.c.datum_id == preds_query.c.datum_id,
+        )
     ).subquery()
 
     trap_areas = select(
@@ -131,7 +141,7 @@ def _compute_roc_auc(
     prediction_filter: schemas.Filter,
     groundtruth_filter: schemas.Filter,
     grouper_key: str,
-    grouper_mappings: dict[str, dict[str | int, any]],
+    grouper_mappings: dict[str, dict[str, dict]],
 ) -> float | None:
     """
     Computes the area under the ROC curve. Note that for the multi-class setting
@@ -200,7 +210,7 @@ def _compute_confusion_matrix_at_grouper_key(
     prediction_filter: schemas.Filter,
     groundtruth_filter: schemas.Filter,
     grouper_key: str,
-    grouper_mappings: dict[str, dict[str | int, any]],
+    grouper_mappings: dict[str, dict[str, dict]],
 ) -> schemas.ConfusionMatrix | None:
     """
     Computes the confusion matrix at a label_key.
@@ -336,7 +346,7 @@ def _compute_confusion_matrix_at_grouper_key(
             models.Label,
             models.Label.id == groundtruths.c.label_id,
         )
-        .group_by(b)
+        .group_by(b)  # type: ignore - SQLAlchemy Bundle not compatible with _first
     )
 
     res = db.execute(total_query).all()
@@ -418,7 +428,7 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
     prediction_filter: schemas.Filter,
     groundtruth_filter: schemas.Filter,
     grouper_key: str,
-    grouper_mappings: dict[str, dict[str | int, any]],
+    grouper_mappings: dict[str, dict[str, dict]],
 ) -> (
     tuple[
         schemas.ConfusionMatrix,
@@ -527,7 +537,7 @@ def _compute_clf_metrics(
     label_map: LabelMapType | None = None,
 ) -> tuple[
     list[schemas.ConfusionMatrix],
-    list[
+    Sequence[
         schemas.ConfusionMatrix
         | schemas.AccuracyMetric
         | schemas.ROCAUCMetric

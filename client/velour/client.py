@@ -545,16 +545,13 @@ class ClientConnection:
     ) -> dict:
         """
         Get datum.
-
         `GET` endpoint.
-
         Parameters
         ----------
         dataset_name : str
             The dataset the datum belongs to.
         uid : str
             The uid of the datum.
-
         Returns
         -------
         dict

@@ -110,3 +110,5 @@ class EvaluationStatus(str, Enum):
             return {self.DONE, self.DELETING}
         elif self == self.DELETING:
             return {self.DELETING}
+        else:
+            raise NotImplementedError("State hasn't been implemented.")
