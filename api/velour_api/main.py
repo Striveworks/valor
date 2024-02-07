@@ -643,7 +643,7 @@ def get_datums(
 )
 def get_datum(
     dataset_name: str, uid: str, db: Session = Depends(get_db)
-) -> list[schemas.Datum] | None:
+) -> schemas.Datum | None:
     """
     Fetch a particular datum.
     GET Endpoint: `/data/dataset/{dataset_name}/uid/{uid}`
@@ -671,7 +671,7 @@ def get_datum(
                 dataset_names=[dataset_name],
                 datum_uids=[uid],
             ),
-        )
+        )[0]
     except Exception as e:
         raise exceptions.create_http_error(e)
 

@@ -180,7 +180,10 @@ class Query(SQLAlchemyQuery):
 
         # generate where statement
         expression = self._expression(joint_set)
-        if expression is not None and query is not None:
+        if query is None:
+            raise RuntimeError("Query is unexpectedly None.")
+
+        if expression is not None:
             query = query.where(expression)
 
         return query
@@ -272,7 +275,11 @@ class Query(SQLAlchemyQuery):
 
         # generate where statement
         expression = self._expression(joint_set)
-        if expression is not None and query is not None:
+
+        if query is None:
+            raise RuntimeError("Query is unexpectedly None.")
+
+        if expression is not None:
             query = query.where(expression)
 
         return query
@@ -329,7 +336,11 @@ class Query(SQLAlchemyQuery):
 
         # generate where statement
         expression = self._expression(joint_set)
-        if expression is not None and query is not None:
+
+        if query is None:
+            raise RuntimeError("Query is unexpectedly None.")
+
+        if expression is not None:
             query = query.where(expression)
 
         return query

@@ -108,35 +108,35 @@ def get_datums(
         A list of all datums.
     """
     subquery = Query(models.Datum.id).filter(filters).any()
+    if subquery is None:
+        raise RuntimeError("Subquery is unexpectedly None.")
+
     output = []
+    datums = (
+        db.query(models.Datum).where(models.Datum.id == subquery.c.id).all()
+    )
 
-    if subquery is not None:
-        datums = (
-            db.query(models.Datum)
-            .where(models.Datum.id == subquery.c.id)
-            .all()
+    for datum in datums:
+        geo_dict = (
+            schemas.geojson.from_dict(
+                json.loads(db.scalar(ST_AsGeoJSON(datum.geo)))
+            )
+            if datum.geo
+            else None
         )
+        dataset_name = db.scalar(
+            select(models.Dataset.name).where(
+                models.Dataset.id == datum.dataset_id
+            )
+        )
+        if dataset_name:
+            output.append(
+                schemas.Datum(
+                    dataset_name=dataset_name,
+                    uid=datum.uid,
+                    metadata=datum.meta,
+                    geospatial=geo_dict,
+                )
+            )
 
-        for datum in datums:
-            geo_dict = (
-                schemas.geojson.from_dict(
-                    json.loads(db.scalar(ST_AsGeoJSON(datum.geo)))
-                )
-                if datum.geo
-                else None
-            )
-            dataset_name = db.scalar(
-                select(models.Dataset.name).where(
-                    models.Dataset.id == datum.dataset_id
-                )
-            )
-            if dataset_name:
-                output.append(
-                    schemas.Datum(
-                        dataset_name=dataset_name,
-                        uid=datum.uid,
-                        metadata=datum.meta,
-                        geospatial=geo_dict,
-                    )
-                )
     return output
