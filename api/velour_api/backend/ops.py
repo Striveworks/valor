@@ -14,7 +14,6 @@ from sqlalchemy import (
     select,
 )
 from sqlalchemy.dialects.postgresql import INTERVAL
-from sqlalchemy.orm import Query as SQLAlchemyQuery
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.orm.decl_api import DeclarativeMeta
 from sqlalchemy.sql.elements import BinaryExpression, ColumnElement
@@ -33,7 +32,7 @@ from velour_api.schemas import (
 )
 
 
-class Query(SQLAlchemyQuery):
+class Query:
     """
     Query generator object.
 
