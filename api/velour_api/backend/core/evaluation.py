@@ -674,7 +674,7 @@ def count_active_evaluations(
     evaluation_ids: list[int] | None = None,
     dataset_names: list[str] | None = None,
     model_names: list[str] | None = None,
-) -> int | None:
+) -> int:
     """
     Count the number of active evaluations.
 
