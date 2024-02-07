@@ -11,9 +11,6 @@ create table label
     unique (key, value)
 );
 
-alter table label
-    owner to postgres;
-
 create index ix_label_id
     on label (id);
 
@@ -27,9 +24,6 @@ create table model
     status     varchar   not null,
     created_at timestamp not null
 );
-
-alter table model
-    owner to postgres;
 
 create index idx_model_geo
     on model using gist (geo);
@@ -50,9 +44,6 @@ create table dataset
     status     varchar   not null,
     created_at timestamp not null
 );
-
-alter table dataset
-    owner to postgres;
 
 create index ix_dataset_id
     on dataset (id);
@@ -76,9 +67,6 @@ create table evaluation
     unique (model_name, datum_filter, parameters)
 );
 
-alter table evaluation
-    owner to postgres;
-
 create index ix_evaluation_id
     on evaluation (id);
 
@@ -97,9 +85,6 @@ create table datum
     created_at timestamp not null,
     unique (dataset_id, uid)
 );
-
-alter table datum
-    owner to postgres;
 
 create index ix_datum_id
     on datum (id);
@@ -121,9 +106,6 @@ create table metric
     created_at    timestamp not null
 );
 
-alter table metric
-    owner to postgres;
-
 create index ix_metric_id
     on metric (id);
 
@@ -137,9 +119,6 @@ create table confusion_matrix
     value         jsonb,
     created_at    timestamp not null
 );
-
-alter table confusion_matrix
-    owner to postgres;
 
 create index ix_confusion_matrix_id
     on confusion_matrix (id);
@@ -161,9 +140,6 @@ create table annotation
     multipolygon geometry(MultiPolygon),
     raster       raster
 );
-
-alter table annotation
-    owner to postgres;
 
 create index idx_annotation_raster
     on annotation using gist (st_convexhull(raster));
@@ -195,9 +171,6 @@ create table groundtruth
     unique (annotation_id, label_id)
 );
 
-alter table groundtruth
-    owner to postgres;
-
 create index ix_groundtruth_id
     on groundtruth (id);
 
@@ -213,9 +186,6 @@ create table prediction
     created_at    timestamp not null,
     unique (annotation_id, label_id)
 );
-
-alter table prediction
-    owner to postgres;
 
 create index ix_prediction_id
     on prediction (id);
