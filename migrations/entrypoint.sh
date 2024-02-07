@@ -5,9 +5,11 @@ export POSTGRES_PASSWORD="$POSTGRES_PASSWORD"
 export POSTGRES_HOST="$POSTGRES_HOST"
 export POSTGRES_PORT="$POSTGRES_PORT"
 export POSTGRES_DB="$POSTGRES_DB"
+export POSTGRES_SSLMODE="${POSTGRES_SSLMODE:-disable}"
 
 MAX_RETRIES=10
 WAIT_SECONDS=3
+
 
 wait_for_postgres() {
   retries=0
@@ -27,4 +29,4 @@ wait_for_postgres() {
 
 wait_for_postgres
 
-migrate -path /migrations/sql -database "postgres://${POSTGRES_USERNAME}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}?sslmode=disable&application_name=velour_migrations" "$@"
+migrate -path /migrations/sql -database "postgres://${POSTGRES_USERNAME}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}?sslmode=${POSTGRES_SSLMODE}&application_name=velour_migrations" "$@"
