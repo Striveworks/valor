@@ -85,6 +85,8 @@ class ClientConnection:
 
     host: str
     access_token: Optional[str] = None
+    username: Optional[str] = None
+    password: Optional[str] = None
 
     def __post_init__(self):
 
@@ -98,6 +100,19 @@ class ClientConnection:
         if not self.host.endswith("/"):
             self.host += "/"
         self.access_token = os.getenv("VELOUR_ACCESS_TOKEN", self.access_token)
+        self.username = self.username or os.getenv("VELOUR_USERNAME")
+        self.password = self.password or os.getenv("VELOUR_PASSWORD")
+
+        if self.username and self.password and self.access_token:
+            raise ValueError(
+                "You can only provide either a username and password or an access token, not both."
+            )
+
+        if self.username and self.password:
+            self._using_username_password = True
+            self._get_access_token_from_username_and_password()
+        else:
+            self._using_username_password = False
 
         # check the connection by getting the api version number
         try:
@@ -111,6 +126,15 @@ class ClientConnection:
 
         success_str = f"Successfully connected to host at {self.host}"
         print(success_str)
+
+    def _get_access_token_from_username_and_password(self) -> None:
+        """Sets the access token from the username and password."""
+        resp = self._requests_post_rel_host(
+            "token",
+            data={"username": self.username, "password": self.password},
+        )
+        if resp.ok:
+            self.access_token = resp.json()
 
     def _validate_version(self, client_version: str, api_version: str):
         """Log and/or warn users if the Velour Python client version differs from the API version."""
@@ -158,16 +182,30 @@ class ClientConnection:
         url = urljoin(self.host, endpoint)
         requests_method = getattr(requests, method_name)
 
-        if self.access_token is not None:
-            headers = {"Authorization": f"Bearer {self.access_token}"}
-        else:
-            headers = None
-        resp = requests_method(url, headers=headers, *args, **kwargs)
-        if not resp.ok:
-            try:
-                raise ClientException(resp)
-            except (requests.exceptions.JSONDecodeError, KeyError):
-                resp.raise_for_status()
+        tried = False
+        while True:
+            if self.access_token is not None:
+                headers = {"Authorization": f"Bearer {self.access_token}"}
+            else:
+                headers = None
+            resp = requests_method(url, headers=headers, *args, **kwargs)
+            if not resp.ok:
+                # check if unauthorized and if using username and password, get a new
+                # token and try the request again
+                if (
+                    resp.status_code in [401, 403]
+                    and self._using_username_password
+                    and not tried
+                ):
+                    self._get_access_token_from_username_and_password()
+                else:
+                    try:
+                        raise ClientException(resp)
+                    except (requests.exceptions.JSONDecodeError, KeyError):
+                        resp.raise_for_status()
+            else:
+                break
+            tried = True
 
         return resp
 
@@ -781,6 +819,8 @@ def _create_connection():
 
     def connect(
         host: str,
+        username: Optional[str] = None,
+        password: Optional[str] = None,
         access_token: Optional[str] = None,
         reconnect: bool = False,
     ):
@@ -791,8 +831,13 @@ def _create_connection():
         ----------
         host : str
             The host to connect to. Should start with "http://" or "https://".
+        username: str
+            The username for the host (if the host requires authentication).
+        password: str
+            The password for the host (if the host requires authentication).
         access_token : str
-            The access token for the host (if the host requires authentication).
+            The access token for the host (if the host requires authentication). Mutually
+            exclusive with `username` and `password`.
 
         Raises
         ------
@@ -801,10 +846,16 @@ def _create_connection():
         ClientConnectionFailed:
             If a connection could not be established.
         """
+
         nonlocal _connection
         if _connection is not None and not reconnect:
             raise ClientAlreadyConnectedError
-        _connection = ClientConnection(host, access_token)
+        _connection = ClientConnection(
+            host,
+            username=username,
+            password=password,
+            access_token=access_token,
+        )
 
     def get_connection():
         """
