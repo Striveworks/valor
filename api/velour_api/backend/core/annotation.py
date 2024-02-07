@@ -227,7 +227,7 @@ def create_annotations(
         )
         .subquery()
     ).all():
-        raise exceptions.AnnotationAlreadyExistsError(datum.id)
+        raise exceptions.AnnotationAlreadyExistsError(datum.uid)
 
     # create annotations
     annotation_list = (
