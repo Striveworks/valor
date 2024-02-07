@@ -699,7 +699,7 @@ def count_active_evaluations(
         dataset_names=dataset_names,
         model_names=model_names,
     )
-    return db.scalar(
+    retval = db.scalar(
         select(func.count())
         .select_from(models.Evaluation)
         .where(
@@ -710,6 +710,11 @@ def count_active_evaluations(
             *expr,
         )
     )
+
+    if retval is None:
+        raise RuntimeError("psql didn't return any active evaluations.")
+
+    return retval
 
 
 def delete_evaluations(
