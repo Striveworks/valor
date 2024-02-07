@@ -3,6 +3,7 @@
   "exclude": [
     "client/unit-tests",
     "utils",
+    "api/tests",
     "examples",
     "integration_tests",
     "docs",
@@ -10,8 +11,8 @@
   ],
   "ignore": [
     "client/unit-tests",
-    "api/tests",
     "utils",
+    "api/tests",
     "examples",
     "integration_tests",
     "docs",
