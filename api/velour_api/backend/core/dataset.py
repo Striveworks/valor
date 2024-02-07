@@ -163,18 +163,19 @@ def get_datasets(
         Query(models.Dataset.id.label("id")).filter(filters).any()
     )
 
-    if datasets_subquery is not None:
-        datasets = (
-            db.query(models.Dataset)
-            .where(models.Dataset.id == datasets_subquery.c.id)
-            .all()
+    if datasets_subquery is None:
+        raise RuntimeError(
+            "psql unexpectedly returned None instead of a Subquery."
         )
-        return [
-            _load_dataset_schema(db=db, dataset=dataset)
-            for dataset in datasets
-        ]
-    else:
-        return []
+
+    datasets = (
+        db.query(models.Dataset)
+        .where(models.Dataset.id == datasets_subquery.c.id)
+        .all()
+    )
+    return [
+        _load_dataset_schema(db=db, dataset=dataset) for dataset in datasets
+    ]
 
 
 def get_dataset_status(

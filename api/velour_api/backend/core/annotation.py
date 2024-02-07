@@ -354,7 +354,9 @@ def get_annotation(
         )
 
         if datum is None:
-            raise RuntimeError("psql didn't return a Datum")
+            raise RuntimeError(
+                "psql unexpectedly returned None instead of a Datum."
+            )
 
         if "height" not in datum.meta or "width" not in datum.meta:
             raise ValueError("missing height or width")
