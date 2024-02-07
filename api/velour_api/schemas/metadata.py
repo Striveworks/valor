@@ -202,6 +202,7 @@ class GeoJSONPolygon(BaseModel):
             for points in subpoly:
                 if len(points) != 2:
                     raise ValueError("Points must exist in a 2D grid.")
+        return v
 
     def geometry(self) -> Polygon:
         """
@@ -278,6 +279,7 @@ class GeoJSONMultiPolygon(BaseModel):
                 for points in subpoly:
                     if len(points) != 2:
                         raise ValueError("Points must exist in a 2D grid.")
+        return v
 
     def geometry(self) -> MultiPolygon:
         """

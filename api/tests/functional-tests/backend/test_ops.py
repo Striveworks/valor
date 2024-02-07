@@ -1014,7 +1014,7 @@ def test_datum_geospatial_filters(
                 arg_name: {
                     "some_geo_attribute": [
                         schemas.GeospatialFilter(
-                            value=schemas.geojson.from_dict(geodict),
+                            value=schemas.metadata.geojson_from_dict(geodict),
                             operator=operator,
                         ),
                     ]
@@ -1205,7 +1205,7 @@ def test_dataset_geospatial_filters(
                 arg_name: {
                     "some_geo_attribute": [
                         schemas.GeospatialFilter(
-                            value=schemas.geojson.from_dict(geodict),
+                            value=schemas.metadata.geojson_from_dict(geodict),
                             operator=operator,
                         ),
                     ]
@@ -1343,7 +1343,7 @@ def test_model_geospatial_filters(
                 arg_name: {
                     "some_geo_attribute": [
                         schemas.GeospatialFilter(
-                            value=schemas.geojson.from_dict(geodict),
+                            value=schemas.metadata.geojson_from_dict(geodict),
                             operator=operator,
                         ),
                     ]

@@ -1,12 +1,15 @@
 from pydantic import BaseModel, ConfigDict, field_validator
 
 from velour_api.enums import TaskType
-from velour_api.schemas.geojson import (
+from velour_api.schemas.metadata import (
+    Date,
+    DateTime,
+    Duration,
     GeoJSONMultiPolygon,
     GeoJSONPoint,
     GeoJSONPolygon,
+    Time,
 )
-from velour_api.schemas.metadata import Date, DateTime, Duration, Time
 
 
 class StringFilter(BaseModel):
