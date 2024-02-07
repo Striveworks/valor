@@ -123,8 +123,8 @@ jobs:
       - name: test auth
         run: pytest -v integration_tests/auth/*
         env:
-          VELOUR_USERNAME: ${{ vars.USERNAME }}
-          VELOUR_PASSWORD: ${{ vars.PASSWORD }}
+          VELOUR_USERNAME_FOR_TESTING: ${{ vars.USERNAME }}
+          VELOUR_PASSWORD_FOR_TESTING: ${{ vars.PASSWORD }}
 
   backend-unit-tests:
     env:
