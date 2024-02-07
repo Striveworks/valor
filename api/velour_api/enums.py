@@ -111,4 +111,4 @@ class EvaluationStatus(str, Enum):
         elif self == self.DELETING:
             return {self.DELETING}
         else:
-            return set([])
+            raise NotImplementedError("State hasn't been implemented.")
