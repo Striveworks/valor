@@ -363,6 +363,7 @@ class _PrecisionRecallF1Base(BaseModel):
             "value": self.value,
             "label_id": label_id,
             "type": self.__type__,
+            "evaluation_id": evaluation_id,
         }
 
 
