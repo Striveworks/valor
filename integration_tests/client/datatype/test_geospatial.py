@@ -29,33 +29,40 @@ def test_set_and_get_geospatial(
     ]
     geo_dict = {"type": "Polygon", "coordinates": coordinates}
 
-    dataset = Dataset.create(name=dataset_name, geospatial=geo_dict)
+    dataset = Dataset.create(
+        name=dataset_name,
+        metadata={"geospatial": geo_dict},
+    )
 
     # check Dataset's geospatial coordinates
     fetched_datasets = client.get_datasets()
-    assert fetched_datasets[0].geospatial == geo_dict
+    assert fetched_datasets[0].metadata["geospatial"] == geo_dict
 
     # check Model's geospatial coordinates
-    Model.create(name=model_name, geospatial=geo_dict)
+    Model.create(
+        name=model_name,
+        metadata={"geospatial": geo_dict},
+    )
+
     fetched_models = client.get_models()
-    assert fetched_models[0].geospatial == geo_dict
+    assert fetched_models[0].metadata["geospatial"] == geo_dict
 
     # check Datums's geospatial coordinates
     for gt in gt_dets1:
         dataset.add_groundtruth(gt)
     dataset.finalize()
 
-    expected_coords = [gt.datum.geospatial for gt in gt_dets1]
+    expected_coords = [gt.datum.metadata["geospatial"] for gt in gt_dets1]
 
-    returned_datum1 = dataset.get_datums()[0].geospatial
-    returned_datum2 = dataset.get_datums()[1].geospatial
+    returned_datum1 = dataset.get_datums()[0].metadata["geospatial"]
+    returned_datum2 = dataset.get_datums()[1].metadata["geospatial"]
 
     assert expected_coords[0] == returned_datum1
     assert expected_coords[1] == returned_datum2
 
     dets1 = dataset.get_groundtruth("uid1")
 
-    assert dets1.datum.geospatial == expected_coords[0]
+    assert dets1.datum.metadata["geospatial"] == expected_coords[0]
 
 
 def test_geospatial_filter(
@@ -80,15 +87,17 @@ def test_geospatial_filter(
     ]
     geo_dict = {"type": "Polygon", "coordinates": coordinates}
 
-    dataset = Dataset.create(name=dataset_name, geospatial=geo_dict)
+    dataset = Dataset.create(
+        name=dataset_name, metadata={"geospatial": geo_dict}
+    )
     for gt in gt_dets1:
-        gt.datum.geospatial = geo_dict
+        gt.datum.metadata["geospatial"] = geo_dict
         dataset.add_groundtruth(gt)
     dataset.finalize()
 
-    model = Model.create(name=model_name, geospatial=geo_dict)
+    model = Model.create(name=model_name, metadata={"geospatial": geo_dict})
     for pd in pred_dets:
-        pd.datum.geospatial = geo_dict
+        gt.datum.metadata["geospatial"] = geo_dict
         model.add_prediction(dataset, pd)
     model.finalize_inferences(dataset)
 
@@ -97,39 +106,43 @@ def test_geospatial_filter(
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
         filters={
-            "dataset_geospatial": [
-                {
-                    "operator": "intersect",
-                    "value": geo_dict,
-                }
-            ],
+            "dataset_metadata": {
+                "geospatial": [
+                    {
+                        "operator": "intersect",
+                        "value": geo_dict,
+                    }
+                ],
+            }
         },
     )
     assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
     assert len(eval_job.metrics) == 9
 
     # passing in an incorrectly-formatted geojson dict should return a ValueError
-    with pytest.raises(KeyError) as e:
+    with pytest.raises(NotImplementedError) as e:
         model.evaluate_detection(
             dataset,
             iou_thresholds_to_compute=[0.1, 0.6],
             iou_thresholds_to_return=[0.1, 0.6],
             filters=[
-                Datum.geospatial.inside({"incorrectly_formatted_dict": {}})
+                Datum.metadata["geospatial"].inside(
+                    {"incorrectly_formatted_dict": {}}
+                )
             ],
         )
-    assert "should be a GeoJSON-style dictionary" in str(e)
+    assert "is not supported" in str(e)
 
     # test datums
     eval_job = model.evaluate_detection(
         dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
-        filters=[Datum.geospatial.intersect(geo_dict)],
+        filters=[Datum.metadata["geospatial"].intersect(geo_dict)],
     )
     assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
 
-    assert eval_job.datum_filter.datum_geospatial == [
+    assert eval_job.datum_filter.datum_metadata["geospatial"] == [
         {
             "value": geo_dict,
             "operator": "intersect",
@@ -144,22 +157,24 @@ def test_geospatial_filter(
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
         filters={
-            "model_geospatial": [
-                {
-                    "operator": "inside",
-                    "value": {
-                        "type": "Polygon",
-                        "coordinates": [
-                            [
-                                [124.0, 37.0],
-                                [128.0, 37.0],
-                                [128.0, 40.0],
-                                [124.0, 40.0],
-                            ]
-                        ],
-                    },
-                }
-            ],
+            "model_metadata": {
+                "geospatial": [
+                    {
+                        "operator": "inside",
+                        "value": {
+                            "type": "Polygon",
+                            "coordinates": [
+                                [
+                                    [124.0, 37.0],
+                                    [128.0, 37.0],
+                                    [128.0, 40.0],
+                                    [124.0, 40.0],
+                                ]
+                            ],
+                        },
+                    }
+                ],
+            }
         },
     )
     assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE

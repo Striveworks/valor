@@ -131,10 +131,7 @@ def img1() -> ImageMetadata:
     geo_dict = {"type": "Polygon", "coordinates": coordinates}
 
     return ImageMetadata(
-        uid="uid1",
-        height=900,
-        width=300,
-        geospatial=geo_dict,
+        uid="uid1", height=900, width=300, metadata={"geospatial": geo_dict}
     )
 
 
@@ -145,10 +142,7 @@ def img2() -> ImageMetadata:
     geo_dict = {"type": "Point", "coordinates": coordinates}
 
     return ImageMetadata(
-        uid="uid2",
-        height=40,
-        width=30,
-        geospatial=geo_dict,
+        uid="uid2", height=40, width=30, metadata={"geospatial": geo_dict}
     )
 
 

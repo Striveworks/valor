@@ -27,12 +27,11 @@ from velour.schemas.metadata import (
 from velour.schemas.properties import (
     DictionaryProperty,
     GeometryProperty,
-    GeospatialProperty,
     LabelProperty,
     NumericProperty,
     StringProperty,
 )
-from velour.types import DictMetadataType, GeoJSONType, is_floating
+from velour.types import DictMetadataType, is_floating
 
 
 class Label:
@@ -328,7 +327,6 @@ class Annotation:
         if not isinstance(self.metadata, dict):
             raise TypeError("Attribute `metadata` should have type `dict`.")
         validate_metadata(self.metadata)
-        self.metadata = load_metadata(self.metadata)
 
     @classmethod
     def from_dict(cls, resp: dict) -> Annotation:
@@ -437,28 +435,22 @@ class Datum:
         The UID of the `Datum`.
     metadata : dict
         A dictionary of metadata that describes the `Datum`.
-    geospatial :  dict
-        A GeoJSON-style dictionary describing the geospatial coordinates of the `Datum`.
     """
 
     uid = StringProperty("datum_uids")
     metadata = DictionaryProperty("datum_metadata")
-    geospatial = GeospatialProperty("datum_geospatial")
 
     def __init__(
         self,
         uid: str,
         metadata: Optional[DictMetadataType] = None,
-        geospatial: Optional[GeoJSONType] = None,
     ):
         self.uid = uid
         self.metadata = metadata if metadata else {}
-        self.geospatial = geospatial
 
         if not isinstance(self.uid, str):
             raise TypeError("Attribute `uid` should have type `str`.")
         validate_metadata(self.metadata)
-        self.metadata = load_metadata(self.metadata)
 
     def to_dict(self, dataset_name: Optional[str] = None) -> dict:
         """
@@ -473,7 +465,6 @@ class Datum:
             "dataset_name": dataset_name,
             "uid": self.uid,
             "metadata": dump_metadata(self.metadata),
-            "geospatial": self.geospatial if self.geospatial else None,
         }
 
     @classmethod
@@ -490,6 +481,7 @@ class Datum:
         velour.Datum
         """
         resp.pop("dataset_name", None)
+        resp["metadata"] = load_metadata(resp["metadata"])
         return cls(**resp)
 
     def __str__(self) -> str:
@@ -1001,19 +993,15 @@ class Dataset:
         The name of the dataset.
     metadata : dict
         A dictionary of metadata that describes the dataset.
-    geospatial :  dict
-        A GeoJSON-style dictionary describing the geospatial coordinates of the dataset.
     """
 
     name = StringProperty("dataset_names")
     metadata = DictionaryProperty("dataset_metadata")
-    geospatial = GeospatialProperty("dataset_geospatial")
 
     def __init__(
         self,
         name: str,
         metadata: Optional[DictMetadataType] = None,
-        geospatial: Optional[GeoJSONType] = None,
         connection: Optional[ClientConnection] = None,
     ):
         """
@@ -1027,28 +1015,23 @@ class Dataset:
             The name of the dataset.
         metadata : dict
             A dictionary of metadata that describes the dataset.
-        geospatial : dict
-            A GeoJSON-style dictionary describing the geospatial coordinates of the dataset.
         delete_if_exists : bool, default=False
             Deletes any existing dataset with the same name.
         """
         self.conn = connection
         self.name = name
         self.metadata = metadata if metadata else {}
-        self.geospatial = geospatial
 
         # validation
         if not isinstance(self.name, str):
             raise TypeError("`name` should be of type `str`")
         validate_metadata(self.metadata)
-        self.metadata = load_metadata(self.metadata)
 
     @classmethod
     def create(
         cls,
         name: str,
         metadata: Optional[DictMetadataType] = None,
-        geospatial: Optional[GeoJSONType] = None,
     ) -> Dataset:
         """
         Creates a dataset that persists in the backend.
@@ -1059,8 +1042,6 @@ class Dataset:
             The name of the dataset.
         metadata : dict
             A dictionary of metadata that describes the dataset.
-        geospatial :  dict
-            A GeoJSON-style dictionary describing the geospatial coordinates of the dataset.
 
         Returns
         -------
@@ -1070,7 +1051,6 @@ class Dataset:
         dataset = cls(
             name=name,
             metadata=metadata,
-            geospatial=geospatial,
         )
         Client(dataset.conn).create_dataset(dataset)
         return dataset
@@ -1114,6 +1094,7 @@ class Dataset:
         velour.Dataset
         """
         resp.pop("id")
+        resp["metadata"] = load_metadata(resp["metadata"])
         return cls(**resp, connection=connection)
 
     def to_dict(self, id: Optional[int] = None) -> dict:
@@ -1129,7 +1110,6 @@ class Dataset:
             "id": id,
             "name": self.name,
             "metadata": dump_metadata(self.metadata),
-            "geospatial": self.geospatial,
         }
 
     def __str__(self) -> str:
@@ -1287,19 +1267,15 @@ class Model:
         The name of the model.
     metadata : dict
         A dictionary of metadata that describes the model.
-    geospatial :  dict
-        A GeoJSON-style dictionary describing the geospatial coordinates of the model.
     """
 
     name = StringProperty("model_names")
     metadata = DictionaryProperty("model_metadata")
-    geospatial = GeospatialProperty("model_geospatial")
 
     def __init__(
         self,
         name: str,
         metadata: Optional[DictMetadataType] = None,
-        geospatial: Optional[GeoJSONType] = None,
         connection: Optional[ClientConnection] = None,
     ):
         """
@@ -1313,28 +1289,23 @@ class Model:
             The name of the model.
         metadata : dict
             A dictionary of metadata that describes the model.
-        geospatial : dict
-            A GeoJSON-style dictionary describing the geospatial coordinates of the model.
         delete_if_exists : bool, default=False
             Deletes any existing model with the same name.
         """
         self.conn = connection
         self.name = name
         self.metadata = metadata if metadata else {}
-        self.geospatial = geospatial
 
         # validation
         if not isinstance(self.name, str):
             raise TypeError("`name` should be of type `str`")
         validate_metadata(self.metadata)
-        self.metadata = load_metadata(self.metadata)
 
     @classmethod
     def create(
         cls,
         name: str,
         metadata: Optional[DictMetadataType] = None,
-        geospatial: Optional[GeoJSONType] = None,
     ) -> Model:
         """
         Creates a model that persists in the backend.
@@ -1345,8 +1316,6 @@ class Model:
             The name of the model.
         metadata : dict
             A dictionary of metadata that describes the model.
-        geospatial :  dict
-            A GeoJSON-style dictionary describing the geospatial coordinates of the model.
 
         Returns
         -------
@@ -1356,7 +1325,6 @@ class Model:
         model = cls(
             name=name,
             metadata=metadata,
-            geospatial=geospatial,
         )
         Client(model.conn).create_model(model)
         return model
@@ -1399,6 +1367,7 @@ class Model:
         velour.Model
         """
         resp.pop("id")
+        resp["metadata"] = load_metadata(resp["metadata"])
         return cls(**resp, connection=connection)
 
     def to_dict(self, id: Optional[int] = None) -> dict:
@@ -1414,7 +1383,6 @@ class Model:
             "id": id,
             "name": self.name,
             "metadata": dump_metadata(self.metadata),
-            "geospatial": self.geospatial,
         }
 
     def __str__(self) -> str:
@@ -1504,7 +1472,6 @@ class Model:
 
             # reset model name
             filter_obj.model_names = None
-            filter_obj.model_geospatial = None
             filter_obj.model_metadata = None
 
             # set dataset names
@@ -1516,7 +1483,6 @@ class Model:
         elif isinstance(filters, dict):
             # reset model name
             filters["model_names"] = None
-            filters["model_geospatial"] = None
             filters["model_metadata"] = None
 
             # set dataset names

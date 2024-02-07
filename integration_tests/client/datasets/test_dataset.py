@@ -383,8 +383,35 @@ def test_get_summary(
     ]
 
     assert len(summary.datum_metadata) == 2
-    assert {"height": 900, "width": 300} in summary.datum_metadata  # uid1
-    assert {"height": 40, "width": 30} in summary.datum_metadata  # uid2
+    assert {
+        "height": 900,
+        "width": 300,
+        "geospatial": {
+            "geojson": {
+                "type": "Polygon",
+                "coordinates": [
+                    [
+                        [125.2750725, 38.760525],
+                        [125.3902365, 38.775069],
+                        [125.5054005, 38.789613],
+                        [125.5051935, 38.71402425],
+                        [125.5049865, 38.6384355],
+                        [125.3902005, 38.6244225],
+                        [125.2754145, 38.6104095],
+                        [125.2752435, 38.68546725],
+                        [125.2750725, 38.760525],
+                    ]
+                ],
+            }
+        },
+    } in summary.datum_metadata  # uid1
+    assert {
+        "height": 40,
+        "width": 30,
+        "geospatial": {
+            "geojson": {"coordinates": [44.1, 22.4], "type": "Point"}
+        },
+    } in summary.datum_metadata  # uid2
 
     assert summary.annotation_metadata == []
 

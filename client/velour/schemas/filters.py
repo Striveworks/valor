@@ -20,20 +20,14 @@ class Filter:
         A list of `Dataset` names to filter on.
     dataset_metadata : Dict[str, List[Constraint]], optional
         A dictionary of `Dataset` metadata to filter on.
-    dataset_geospatial : List[Constraint], optional
-        A list of `Dataset` geospatial filters to filter on.
     model_names : List[str], optional
         A list of `Model` names to filter on.
     model_metadata : Dict[str, List[Constraint]], optional
         A dictionary of `Model` metadata to filter on.
-    model_geospatial : List[Constraint], optional
-        A list of `Model` geospatial filters to filter on.
     datum_uids : List[str], optional
         A list of `Datum` UIDs to filter on.
     datum_metadata : Dict[str, List[Constraint]], optional
         A dictionary of `Datum` metadata to filter on.
-    datum_geospatial : List[Constraint], optional
-        A list of `Datum` geospatial filters to filter on.
     task_types : List[TaskType], optional
         A list of task types to filter on.
     annotation_metadata : Dict[str, List[Constraint]], optional
@@ -74,22 +68,18 @@ class Filter:
     # datasets
     dataset_names: Optional[List[str]] = None
     dataset_metadata: Optional[Dict[str, List[Constraint]]] = None
-    dataset_geospatial: Optional[List[Constraint]] = None
 
     # models
     model_names: Optional[List[str]] = None
     model_metadata: Optional[Dict[str, List[Constraint]]] = None
-    model_geospatial: Optional[List[Constraint]] = None
 
     # datums
     datum_uids: Optional[List[str]] = None
     datum_metadata: Optional[Dict[str, List[Constraint]]] = None
-    datum_geospatial: Optional[List[Constraint]] = None
 
     # annotations
     task_types: Optional[List[TaskType]] = None
     annotation_metadata: Optional[Dict[str, List[Constraint]]] = None
-    annotation_geospatial: Optional[List[Constraint]] = None
 
     # geometries
     require_bounding_box: Optional[bool] = None
@@ -138,42 +128,7 @@ class Filter:
         # create filter
         filter_request = cls()
 
-        # export full constraints
-        for attr in [
-            "dataset_geospatial",
-            "model_geospatial",
-            "datum_geospatial",
-            "annotation_geospatial",
-            "bounding_box_area",
-            "polygon_area",
-            "multipolygon_area",
-            "raster_area",
-            "label_scores",
-        ]:
-            if attr in expression_dict:
-                setattr(
-                    filter_request,
-                    attr,
-                    [expr.constraint for expr in expression_dict[attr]],
-                )
-
-        # export list of equality constraints
-        for attr in [
-            "dataset_names",
-            "model_names",
-            "datum_uids",
-            "task_types",
-            "labels",
-            "label_keys",
-        ]:
-            if attr in expression_dict:
-                setattr(
-                    filter_request,
-                    attr,
-                    [expr.constraint.value for expr in expression_dict[attr]],
-                )
-
-        # export metadata constraints
+        # metadata constraints
         for attr in [
             "dataset_metadata",
             "model_metadata",
@@ -190,7 +145,22 @@ class Filter:
                     __value[expr.key].append(expr.constraint)
                     setattr(filter_request, attr, __value)
 
-        # bool cases
+        # numeric constraints
+        for attr in [
+            "bounding_box_area",
+            "polygon_area",
+            "multipolygon_area",
+            "raster_area",
+            "label_scores",
+        ]:
+            if attr in expression_dict:
+                setattr(
+                    filter_request,
+                    attr,
+                    [expr.constraint for expr in expression_dict[attr]],
+                )
+
+        # boolean constraints
         for attr in [
             "require_bounding_box",
             "require_polygon",
@@ -203,5 +173,21 @@ class Filter:
                         setattr(filter_request, attr, True)
                     elif expr.constraint.operator == "is_none":
                         setattr(filter_request, attr, False)
+
+        # equality constraints
+        for attr in [
+            "dataset_names",
+            "model_names",
+            "datum_uids",
+            "task_types",
+            "labels",
+            "label_keys",
+        ]:
+            if attr in expression_dict:
+                setattr(
+                    filter_request,
+                    attr,
+                    [expr.constraint.value for expr in expression_dict[attr]],
+                )
 
         return filter_request

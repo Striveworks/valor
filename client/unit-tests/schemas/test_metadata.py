@@ -3,23 +3,10 @@ import datetime
 import pytest
 
 from velour.schemas.metadata import (
-    _validate_href,
     dump_metadata,
     load_metadata,
     validate_metadata,
 )
-
-
-def test__validate_href():
-    _validate_href("http://test")
-    _validate_href("https://test")
-
-    with pytest.raises(ValueError) as e:
-        _validate_href("test")
-    assert "`href` must start with http:// or https://" in str(e)
-    with pytest.raises(TypeError) as e:
-        _validate_href(1)  # type: ignore
-    assert "str" in str(e)
 
 
 def test_validate_metadata():
@@ -27,7 +14,7 @@ def test_validate_metadata():
     validate_metadata({"test": 1})
     validate_metadata({"test": 1.0})
 
-    with pytest.raises(TypeError) as e:
+    with pytest.raises(TypeError):
         validate_metadata({123: 123})  # type: ignore
 
     # Test supported value types
@@ -35,16 +22,6 @@ def test_validate_metadata():
         validate_metadata({"test": (1, 2)})  # type: ignore
     with pytest.raises(TypeError):
         validate_metadata({"test": [1, 2]})  # type: ignore
-
-    # Test special type with name=href
-    validate_metadata({"href": "http://test"})
-    validate_metadata({"href": "https://test"})
-    with pytest.raises(ValueError) as e:
-        validate_metadata({"href": "test"})
-    assert "`href` must start with http:// or https://" in str(e)
-    with pytest.raises(TypeError) as e:
-        validate_metadata({"href": 1})
-    assert "str" in str(e)
 
     # Check int to float conversion
     validate_metadata({"test": 1})

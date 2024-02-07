@@ -7,35 +7,7 @@ from velour.schemas import geometry
 
 T = TypeVar("T")
 
-ValueType = Union[int, float, str, bool, Dict[str, str]]
-
-MetadataValueType = Union[
-    int,
-    float,
-    str,
-    bool,
-    datetime.datetime,
-    datetime.date,
-    datetime.time,
-    datetime.timedelta,
-]
-MetadataType = Mapping[str, MetadataValueType]
-DictMetadataType = Dict[str, MetadataValueType]
-ConvertibleMetadataType = Mapping[
-    str,
-    Union[
-        MetadataValueType,
-        Dict[str, str],
-    ],
-]
-
-GeometryType = Union[
-    geometry.Point,
-    geometry.Polygon,
-    geometry.BoundingBox,
-    geometry.MultiPolygon,
-    geometry.Raster,
-]
+AtomicTypes = Union[bool, int, float, str]
 
 GeoJSONPointType = Dict[str, Union[str, List[Union[float, int]]]]
 GeoJSONPolygonType = Dict[str, Union[str, List[List[List[Union[float, int]]]]]]
@@ -46,11 +18,32 @@ GeoJSONType = Union[
     GeoJSONPointType, GeoJSONPolygonType, GeoJSONMultiPolygonType
 ]
 
+GeometryType = Union[
+    geometry.Point,
+    geometry.Polygon,
+    geometry.BoundingBox,
+    geometry.MultiPolygon,
+    geometry.Raster,
+]
+
 DatetimeType = Union[
     datetime.datetime,
     datetime.date,
     datetime.time,
     datetime.timedelta,
+]
+
+
+MetadataValueType = Union[
+    AtomicTypes,
+    DatetimeType,
+    GeoJSONType,
+]
+MetadataType = Mapping[str, MetadataValueType]
+DictMetadataType = Dict[str, MetadataValueType]
+ConvertibleMetadataType = Mapping[
+    str,
+    Union[AtomicTypes, Dict[str, str], Dict[str, GeoJSONType]],
 ]
 
 

@@ -11,6 +11,7 @@ from velour.schemas.geometry import (
     Polygon,
     Raster,
 )
+from velour.schemas.metadata import _isinstance_geojson
 from velour.types import GeometryType
 
 
@@ -423,7 +424,9 @@ class GeospatialMapper(_SpatialMapper):
             )
 
 
-class _DictionaryValueMapper(_NullableMapper, _QuantifiableMapper):
+class _DictionaryValueMapper(
+    _QuantifiableMapper, _SpatialMapper, _NullableMapper
+):
     """
     Defines a mapping object that handles arbitrary objects.
 
@@ -476,9 +479,13 @@ class _DictionaryValueMapper(_NullableMapper, _QuantifiableMapper):
             return DatetimeMapper(
                 name=self.name, key=self.key
             )._create_expression(value, operator)
+        elif _isinstance_geojson(value):
+            return GeospatialMapper(
+                name=self.name, key=self.key
+            )._create_expression(value, operator)
         else:
             raise NotImplementedError(
-                f"Dictionary value with type `{type(value)}` is not suppoerted."
+                f"DictionaryMapper value `{value}` is not supported."
             )
 
 

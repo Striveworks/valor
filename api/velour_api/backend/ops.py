@@ -525,6 +525,16 @@ class Query:
             raise ValueError(f"invalid string comparison operator `{opstr}`")
         return ops[opstr]
 
+    def _get_spatial_op(self, opstr) -> Callable:
+        ops = {
+            "intersect": lambda lhs, rhs: func.ST_Intersects(lhs, rhs),
+            "inside": lambda lhs, rhs: func.ST_Covers(rhs, lhs),
+            "outside": lambda lhs, rhs: not_(func.ST_Covers(rhs, lhs)),
+        }
+        if opstr not in ops:
+            raise ValueError(f"invalid spatial operator `{opstr}`")
+        return ops[opstr]
+
     """ Public methods """
 
     def any(
@@ -570,22 +580,24 @@ class Query:
     def _filter_by_metadatum(
         self,
         key: str,
-        value_filter: (
-            NumericFilter | StringFilter | DateTimeFilter | BooleanFilter
-        ),
+        value_filter: NumericFilter
+        | StringFilter
+        | BooleanFilter
+        | DateTimeFilter
+        | GeospatialFilter,
         table: DeclarativeMeta,
     ) -> BinaryExpression:
         if isinstance(value_filter, NumericFilter):
             op = self._get_numeric_op(value_filter.operator)
-            lhs = table.meta[key].astext.cast(Float)  # type: ignore
+            lhs = table.meta[key].astext.cast(Float)  # type: ignore - SQLAlchemy type issue
             rhs = value_filter.value
         elif isinstance(value_filter, StringFilter):
             op = self._get_string_op(value_filter.operator)
-            lhs = table.meta[key].astext  # type: ignore
+            lhs = table.meta[key].astext  # type: ignore - SQLAlchemy type issue
             rhs = value_filter.value
         elif isinstance(value_filter, BooleanFilter):
             op = self._get_boolean_op(value_filter.operator)
-            lhs = table.meta[key].astext.cast(Boolean)  # type: ignore
+            lhs = table.meta[key].astext.cast(Boolean)  # type: ignore - SQLAlchemy type issue
             rhs = value_filter.value
         elif isinstance(value_filter, DateTimeFilter):
             if isinstance(value_filter.value, Time) or isinstance(
@@ -603,6 +615,10 @@ class Query:
                 value_filter.value.value,
                 cast_type,  # type: ignore - SQLAlchemy type issue
             )
+        elif isinstance(value_filter, GeospatialFilter):
+            op = self._get_spatial_op(value_filter.operator)
+            lhs = func.ST_GeomFromGeoJSON(table.meta[key]["geojson"])  # type: ignore - SQLAlchemy type issue
+            rhs = func.ST_GeomFromGeoJSON(value_filter.value.model_dump_json())
         else:
             raise NotImplementedError(
                 f"metadatum value of type `{type(value_filter.value)}` is currently not supported"
@@ -614,7 +630,11 @@ class Query:
         metadata: dict[
             str,
             list[
-                NumericFilter | StringFilter | DateTimeFilter | BooleanFilter
+                NumericFilter
+                | StringFilter
+                | BooleanFilter
+                | DateTimeFilter
+                | GeospatialFilter
             ],
         ],
         table: DeclarativeMeta,
@@ -627,42 +647,6 @@ class Query:
         if len(expressions) > 1:
             expressions = [and_(*expressions)]
         return expressions  # type: ignore - SQLAlchemy type issue
-
-    def _filter_by_geospatial(
-        self,
-        geospatial_filters: list[GeospatialFilter],
-        model_object: models.Datum | models.Model | models.Dataset,
-    ):
-        geospatial_expressions = []
-        for geospatial_filter in geospatial_filters:
-            operator = geospatial_filter.operator
-            geojson = geospatial_filter.value
-
-            if operator == "inside":
-                geospatial_expressions.append(
-                    func.ST_Covers(
-                        # note that casting the WKT using ST_GEOGFROMTEXT isn't necessary here: we're implicitely comparing two geographies, not two geometries
-                        geojson.wkt(),
-                        model_object.geo,
-                    )
-                )
-            elif operator == "intersect":
-                geospatial_expressions.append(
-                    model_object.geo.ST_Intersects(
-                        geojson.wkt(),
-                    )
-                )
-            elif operator == "outside":
-                geospatial_expressions.append(
-                    not_(
-                        func.ST_Covers(
-                            geojson.wkt(),
-                            model_object.geo,
-                        )
-                    )
-                )
-
-        return geospatial_expressions
 
     def filter(self, filters: Filter | None):  # type: ignore - method "filter" overrides class "Query" in an incompatible manner
         """Parses `schemas.Filter`"""
@@ -690,12 +674,6 @@ class Query:
                     filters.dataset_metadata, models.Dataset
                 ),
             )
-        if filters.dataset_geospatial:
-            geospatial_expressions = self._filter_by_geospatial(
-                geospatial_filters=filters.dataset_geospatial,
-                model_object=models.Dataset,
-            )
-            self._add_expressions(models.Dataset, geospatial_expressions)
 
         # models
         if filters.model_names:
@@ -712,12 +690,6 @@ class Query:
                 models.Model,
                 self.filter_by_metadata(filters.model_metadata, models.Model),
             )
-        if filters.model_geospatial:
-            geospatial_expressions = self._filter_by_geospatial(
-                geospatial_filters=filters.model_geospatial,
-                model_object=models.Model,
-            )
-            self._add_expressions(models.Model, geospatial_expressions)
 
         # datums
         if filters.datum_uids:
@@ -737,12 +709,6 @@ class Query:
                     table=models.Datum,
                 ),
             )
-        if filters.datum_geospatial:
-            geospatial_expressions = self._filter_by_geospatial(
-                geospatial_filters=filters.datum_geospatial,
-                model_object=models.Datum,
-            )
-            self._add_expressions(models.Datum, geospatial_expressions)
 
         # annotations
         if filters.task_types:
