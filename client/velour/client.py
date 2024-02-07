@@ -131,6 +131,7 @@ class ClientConnection:
         """Sets the access token from the username and password."""
         resp = self._requests_post_rel_host(
             "token",
+            ignore_auth=True,
             data={"username": self.username, "password": self.password},
         )
         if resp.ok:
@@ -163,10 +164,26 @@ class ClientConnection:
             logging.warning(_msg("older"))
 
     def _requests_wrapper(
-        self, method_name: str, endpoint: str, *args, **kwargs
+        self,
+        method_name: str,
+        endpoint: str,
+        ignore_auth: bool = False,
+        *args,
+        **kwargs,
     ):
         """
         Wrapper for handling API requests.
+
+        Parameters
+        ----------
+        method_name : str
+            The name of the method to use for the request.
+        endpoint : str
+            The endpoint to send the request to.
+        ignore_auth : bool, default=False
+            Option to ignore authentication when you know the endpoint does not
+            require a bearer token. this is used by the `_get_access_token_from_username_and_password`
+            to avoid infinite recursion.
         """
         accepted_methods = ["get", "post", "put", "delete"]
         if method_name not in accepted_methods:
@@ -196,6 +213,7 @@ class ClientConnection:
                     resp.status_code in [401, 403]
                     and self._using_username_password
                     and not tried
+                    and not ignore_auth
                 ):
                     self._get_access_token_from_username_and_password()
                 else:

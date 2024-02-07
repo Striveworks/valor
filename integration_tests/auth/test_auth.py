@@ -12,17 +12,20 @@ import pytest
 import requests
 
 from velour.client import ClientConnection
-from velour.exceptions import ClientConnectionFailed
+from velour.exceptions import ClientConnectionFailed, ClientException
 
 
+# the environment variables for these fixtures have the suffix
+# _FOR_TESTING since the client itself will look for the env variables
+# without the suffix
 @pytest.fixture
 def username() -> str:
-    return os.environ["VELOUR_USERNAME"]
+    return os.environ["VELOUR_USERNAME_FOR_TESTING"]
 
 
 @pytest.fixture
 def password() -> str:
-    return os.environ["VELOUR_PASSWORD"]
+    return os.environ["VELOUR_PASSWORD_FOR_TESTING"]
 
 
 @pytest.fixture
@@ -62,16 +65,25 @@ def test_auth_client_creds_pos(username: str, password: str):
     assert isinstance(client.get_datasets(), list)
 
 
+def test_auth_client_creds_refetch_bearer(username: str, password: str):
+    """Test that we can refetch a bearer token"""
+    client = ClientConnection(
+        host="http://localhost:8000", username=username, password=password
+    )
+    client.access_token = None
+    assert isinstance(client.get_datasets(), list)
+
+
 def test_auth_client_creds_neg(username: str, password: str):
     """Test that we can successfully authenticate via bearer token
     and hit an endpoint"""
-    with pytest.raises(ClientConnectionFailed) as exc_info:
+    with pytest.raises(ClientException) as exc_info:
         ClientConnection(
             host="http://localhost:8000",
             username=username,
             password="invalid password",
         )
-    assert "Unauthorized" in str(exc_info)
+    assert "Incorrect username or password" in str(exc_info)
 
 
 def test_auth_client_bearer_neg_no_token_or_creds():
