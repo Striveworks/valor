@@ -1,15 +1,12 @@
 import importlib.metadata
-import logging
 import os
 
 import structlog
 
 try:
-    logging_level = getattr(
-        logging, os.environ.get("LOGGING_LEVEL", "INFO").upper()
-    )
-except AttributeError:
-    logging_level = getattr(logging, "INFO")
+    logging_level = int(os.getenv("LOGGING_LEVEL", 20))
+except (TypeError, ValueError):
+    logging_level = 20
 
 
 structlog.configure(
