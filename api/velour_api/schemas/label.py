@@ -51,9 +51,10 @@ class Label(BaseModel):
         if (other.score is None) != (self.score is None):
             return False
 
-        scores_equal = (other.score is None and self.score is None) or (
-            math.isclose(self.score, other.score)
-        )
+        if self.score is None or other.score is None:
+            scores_equal = other.score is None and self.score is None
+        else:
+            scores_equal = math.isclose(self.score, other.score)
 
         return (
             scores_equal

@@ -2,7 +2,6 @@ import io
 import json
 from base64 import b64encode
 
-from geoalchemy2 import RasterElement
 from geoalchemy2.functions import ST_AsGeoJSON, ST_AsPNG, ST_Envelope
 from PIL import Image
 from sqlalchemy import and_, delete, func, select
@@ -15,7 +14,7 @@ from velour_api.backend.ops import Query
 
 
 def _get_bounding_box_of_raster(
-    db: Session, raster: RasterElement
+    db: Session, raster: Image.Image
 ) -> tuple[int, int, int, int]:
     """Get the enveloping bounding box of a raster"""
     env = json.loads(db.scalar(ST_AsGeoJSON(ST_Envelope(raster))))
@@ -27,7 +26,7 @@ def _get_bounding_box_of_raster(
 
 
 def _raster_to_png_b64(
-    db: Session, raster: RasterElement, height: float, width: float
+    db: Session, raster: Image.Image, height: float, width: float
 ) -> str:
     """Convert a raster to a png"""
     enveloping_box = _get_bounding_box_of_raster(db, raster)
@@ -78,7 +77,7 @@ def _create_annotation(
     annotation: schemas.Annotation,
     datum: models.Datum,
     model: models.Model | None = None,
-) -> list[models.Label]:
+) -> models.Annotation:
     """
     Convert an individual annotation's attributes into a dictionary for upload to psql.
 
@@ -187,7 +186,7 @@ def create_annotations(
     db: Session,
     annotations: list[schemas.Annotation],
     datum: models.Datum,
-    model: models.Model = None,
+    model: models.Model | None = None,
 ) -> list[models.Annotation]:
     """
     Create a list of annotations and associated labels in psql.
@@ -228,7 +227,7 @@ def create_annotations(
         )
         .subquery()
     ).all():
-        raise exceptions.AnnotationAlreadyExistsError(datum.id)
+        raise exceptions.AnnotationAlreadyExistsError(datum.uid)
 
     # create annotations
     annotation_list = (
@@ -303,7 +302,7 @@ def get_annotation(
             models.Label.value,
             models.Prediction.score,
         ).predictions(as_subquery=False)
-        q = q.where(models.Prediction.annotation_id == annotation.id)
+        q = q.where(models.Prediction.annotation_id == annotation.id)  # type: ignore - SQLAlchemy type issue
         labels = [
             schemas.Label(
                 key=scored_label[0],
@@ -317,7 +316,7 @@ def get_annotation(
             models.Label.key,
             models.Label.value,
         ).groundtruths(as_subquery=False)
-        q = q.where(models.GroundTruth.annotation_id == annotation.id)
+        q = q.where(models.GroundTruth.annotation_id == annotation.id)  # type: ignore - SQLAlchemy type issue
         labels = [
             schemas.Label(key=label[0], value=label[1])
             for label in db.query(q.subquery()).all()
@@ -325,7 +324,7 @@ def get_annotation(
 
     # Initialize
     retval = schemas.Annotation(
-        task_type=annotation.task_type,
+        task_type=annotation.task_type,  # type: ignore - models.Annotation.task_type should be a string in psql
         labels=labels,
         metadata=annotation.meta,
         bounding_box=None,
@@ -340,8 +339,7 @@ def get_annotation(
         retval.bounding_box = schemas.BoundingBox(
             polygon=schemas.metadata.geojson_from_dict(data=geojson)
             .geometry()
-            .boundary,
-            box=None,
+            .boundary,  # type: ignore - this is guaranteed to be a polygon
         )
 
     # Polygon
@@ -349,13 +347,19 @@ def get_annotation(
         geojson = json.loads(db.scalar(ST_AsGeoJSON(annotation.polygon)))
         retval.polygon = schemas.metadata.geojson_from_dict(
             data=geojson
-        ).geometry()
+        ).geometry()  # type: ignore - guaranteed to be a polygon in this case
 
     # Raster
     if annotation.raster is not None:
         datum = db.scalar(
             select(models.Datum).where(models.Datum.id == annotation.datum_id)
         )
+
+        if datum is None:
+            raise RuntimeError(
+                "psql unexpectedly returned None instead of a Datum."
+            )
+
         if "height" not in datum.meta or "width" not in datum.meta:
             raise ValueError("missing height or width")
         height = datum.meta["height"]
@@ -364,8 +368,6 @@ def get_annotation(
             mask=_raster_to_png_b64(
                 db, raster=annotation.raster, height=height, width=width
             ),
-            height=height,
-            width=width,
         )
 
     return retval

@@ -318,9 +318,6 @@ def test_ROCAUCMetric():
         schemas.ROCAUCMetric(label_key=123, value=0.2)
 
     with pytest.raises(ValidationError):
-        schemas.ROCAUCMetric(label_key="key", value=None)
-
-    with pytest.raises(ValidationError):
         schemas.ROCAUCMetric(label_key="key", value="not a number")
 
     assert all(

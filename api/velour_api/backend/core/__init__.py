@@ -94,7 +94,6 @@ __all__ = [
     "get_unique_datum_metadata_in_dataset",
     "get_unique_groundtruth_annotation_metadata_in_dataset",
     "get_dataset_summary",
-    "fetch_dataset_row",
     "delete_dataset",
     "create_datum",
     "fetch_datum",

@@ -1,5 +1,9 @@
+from collections import OrderedDict
+
 import motmetrics as mm
 import numpy as np
+from numpy.typing import NDArray
+from pandas import DataFrame
 
 from velour_api import schemas
 
@@ -42,10 +46,10 @@ class MOTDetection:
 
     def __init__(
         self,
-        frame_number: int = None,
-        object_id: str = None,
-        bbox: schemas.BoundingBox = None,
-        confidence: float = None,
+        frame_number: int | float,
+        object_id: str,
+        bbox: schemas.BoundingBox,
+        confidence: float,
     ):
         self.frame_number = frame_number
         self.object_id = object_id
@@ -56,13 +60,13 @@ class MOTDetection:
             confidence <= 1 and confidence >= 0
         ), "Confidence must be in [0,1]"
 
-    def to_list(self) -> list[int | float]:
+    def to_list(self) -> list[int | float | str]:
         """
         Convert the MOT object to a list as expected by MOT metrics calculators.
 
         Returns
         ----------
-        List[int | float]
+        List[int | float | str]
             A list of MOT attributes.
         """
         return [
@@ -83,18 +87,25 @@ def _ground_truth_det_to_mot(
     datum: schemas.Datum,
     gt: schemas.Annotation,
     obj_id_to_int: dict,
-) -> list[float]:
+) -> NDArray:
     """Helper to convert a groundtruth detection into MOT format"""
     if "frame" not in datum.metadata:
         raise ValueError("Datum does not contain a video frame number.")
+    if not gt.labels:
+        raise ValueError("Groundtruth does not contain labels.")
+
     for label in gt.labels:
         if label.key == OBJECT_ID_LABEL_KEY:
             break
     bbox = gt.bounding_box
+
+    if not bbox:
+        raise ValueError("Groundtruth is missing bounding box.")
+
     mot_det = MOTDetection(
-        frame_number=datum.metadata["frame"],
+        frame_number=datum.metadata["frame"],  # type: ignore - we don't need to explicitely type the "frame" key of the metadata dict
         object_id=obj_id_to_int[
-            label.value
+            label.value  # type: ignore - label shouldn't be unbound if gt.labels isn't empty
         ],  # Label's value is used as object id
         bbox=bbox,
         confidence=1,
@@ -107,22 +118,28 @@ def _pred_det_to_mot(
     pred: schemas.Annotation,
     obj_id_to_int: dict,
     object_id_label_key: str = OBJECT_ID_LABEL_KEY,
-) -> list[float]:
+) -> NDArray:
     """Helper to convert a predicted detection into MOT format"""
     if "frame" not in datum.metadata:
         raise ValueError("Datum does not contain a video frame number.")
+    if not pred.labels:
+        raise ValueError("Prediction does not contain labels.")
     for scored_label in pred.labels:
         if scored_label.key == object_id_label_key:
             break
 
     bbox = pred.bounding_box
+
+    if not bbox:
+        raise ValueError("Prediction is missing bounding box.")
+
     mot_det = MOTDetection(
-        frame_number=datum.metadata["frame"],
+        frame_number=datum.metadata["frame"],  # type: ignore - we don't need to explicitely type the "frame" key of the metadata dict
         object_id=obj_id_to_int[
-            scored_label.value
-        ],  # Label's value is used as object id
+            scored_label.value  # type: ignore - label shouldn't be unbound if gt.labels isn't empty
+        ],
         bbox=bbox,
-        confidence=scored_label.score,
+        confidence=scored_label.score,  # type: ignore - label shouldn't be unbound if pred.labels isn't empty
     )
     return np.array(mot_det.to_list())
 
@@ -130,7 +147,7 @@ def _pred_det_to_mot(
 def compute_mot_metrics(
     predictions: list[schemas.Prediction],
     groundtruths: list[schemas.GroundTruth],
-) -> dict:
+) -> DataFrame | dict | OrderedDict:
     """
     Compute the multi-object tracking (MOT) metrics given predictions and groundtruths. See https://arxiv.org/abs/1603.00831 for details on MOT.
 
@@ -211,4 +228,4 @@ def compute_mot_metrics(
         name="acc",
     )
 
-    return summary.to_dict(orient="records")[0]
+    return summary

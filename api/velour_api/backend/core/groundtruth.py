@@ -66,7 +66,7 @@ def create_groundtruth(
         db.commit()
     except IntegrityError:
         db.rollback()
-        raise exceptions.GroundTruthAlreadyExistsError
+        raise Exception
 
 
 def get_groundtruth(

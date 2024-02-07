@@ -390,13 +390,13 @@ class Annotation:
             "task_type": self.task_type.value,
             "labels": [label.to_dict() for label in self.labels],
             "metadata": dump_metadata(self.metadata),
-            "bounding_box": asdict(self.bounding_box)
-            if self.bounding_box
-            else None,
+            "bounding_box": (
+                asdict(self.bounding_box) if self.bounding_box else None
+            ),
             "polygon": asdict(self.polygon) if self.polygon else None,
-            "multipolygon": asdict(self.multipolygon)
-            if self.multipolygon
-            else None,
+            "multipolygon": (
+                asdict(self.multipolygon) if self.multipolygon else None
+            ),
             "raster": asdict(self.raster) if self.raster else None,
         }
 
@@ -1551,7 +1551,7 @@ class Model:
         # format request
         datum_filter = self._format_filters(datasets, filters)
         request = EvaluationRequest(
-            model_names=self.name,
+            model_names=[self.name],
             datum_filter=datum_filter,
             parameters=EvaluationParameters(
                 task_type=TaskType.CLASSIFICATION,
@@ -1614,7 +1614,7 @@ class Model:
         )
         datum_filter = self._format_filters(datasets, filters)
         request = EvaluationRequest(
-            model_names=self.name,
+            model_names=[self.name],
             datum_filter=datum_filter,
             parameters=parameters,
         )
@@ -1651,7 +1651,7 @@ class Model:
         # format request
         datum_filter = self._format_filters(datasets, filters)
         request = EvaluationRequest(
-            model_names=self.name,
+            model_names=[self.name],
             datum_filter=datum_filter,
             parameters=EvaluationParameters(
                 task_type=TaskType.SEMANTIC_SEGMENTATION,
@@ -1972,16 +1972,13 @@ class Client:
     ) -> Union[Datum, None]:
         """
         Get datum.
-
         `GET` endpoint.
-
         Parameters
         ----------
         dataset : velour.Dataset
             The dataset the datum belongs to.
         uid : str
             The uid of the datum.
-
         Returns
         -------
         velour.Datum

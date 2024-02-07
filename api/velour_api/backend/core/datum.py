@@ -104,6 +104,9 @@ def get_datums(
         A list of all datums.
     """
     subquery = Query(models.Datum.id).filter(filters).any()
+    if subquery is None:
+        raise RuntimeError("Subquery is unexpectedly None.")
+
     datums = (
         db.query(models.Datum).where(models.Datum.id == subquery.c.id).all()
     )
@@ -113,7 +116,7 @@ def get_datums(
                 select(models.Dataset.name).where(
                     models.Dataset.id == datum.dataset_id
                 )
-            ),
+            ),  # type: ignore - sqlalchemy typing
             uid=datum.uid,
             metadata=datum.meta,
         )

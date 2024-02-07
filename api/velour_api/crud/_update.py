@@ -4,7 +4,7 @@ from velour_api import enums
 from velour_api.backend import set_dataset_status, set_model_status
 
 
-def finalize(*, db: Session, dataset_name: str, model_name: str = None):
+def finalize(*, db: Session, dataset_name: str, model_name: str | None = None):
     """
     Finalizes dataset and dataset/model pairings.
     """

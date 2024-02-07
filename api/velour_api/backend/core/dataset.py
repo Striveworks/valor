@@ -13,6 +13,7 @@ from velour_api.backend.core.groundtruth import delete_groundtruths
 from velour_api.backend.core.label import get_labels
 from velour_api.backend.core.prediction import delete_dataset_predictions
 from velour_api.backend.ops import Query
+from velour_api.schemas.core import MetadataType
 
 
 def _load_dataset_schema(
@@ -93,8 +94,8 @@ def fetch_dataset(
         db.query(models.Dataset)
         .where(
             and_(
-                models.Dataset.name == name
-                and models.Dataset.status != enums.TableStatus.DELETING
+                models.Dataset.name == name  # type: ignore https://github.com/microsoft/pyright/issues/5062
+                and models.Dataset.status != enums.TableStatus.DELETING  # type: ignore nhttps://github.com/microsoft/pyright/issues/5062
             )
         )
         .one_or_none()
@@ -149,6 +150,12 @@ def get_datasets(
     datasets_subquery = (
         Query(models.Dataset.id.label("id")).filter(filters).any()
     )
+
+    if datasets_subquery is None:
+        raise RuntimeError(
+            "psql unexpectedly returned None instead of a Subquery."
+        )
+
     datasets = (
         db.query(models.Dataset)
         .where(models.Dataset.id == datasets_subquery.c.id)
@@ -319,7 +326,9 @@ def get_n_groundtruth_rasters_in_dataset(db: Session, name: str) -> int:
     )
 
 
-def get_unique_task_types_in_dataset(db: Session, name: str) -> list[str]:
+def get_unique_task_types_in_dataset(
+    db: Session, name: str
+) -> list[enums.TaskType]:
     return db.scalars(
         select(models.Annotation.task_type)
         .join(models.GroundTruth)
@@ -327,10 +336,12 @@ def get_unique_task_types_in_dataset(db: Session, name: str) -> list[str]:
         .join(models.Dataset)
         .where(models.Dataset.name == name)
         .distinct()
-    ).all()
+    ).all()  # type: ignore - SQLAlchemy type issue
 
 
-def get_unique_datum_metadata_in_dataset(db: Session, name: str) -> list[str]:
+def get_unique_datum_metadata_in_dataset(
+    db: Session, name: str
+) -> list[MetadataType]:
     md = db.scalars(
         select(models.Datum.meta)
         .join(models.Dataset)
@@ -345,7 +356,7 @@ def get_unique_datum_metadata_in_dataset(db: Session, name: str) -> list[str]:
 
 def get_unique_groundtruth_annotation_metadata_in_dataset(
     db: Session, name: str
-) -> list[str]:
+) -> list[MetadataType]:
     md = db.scalars(
         select(models.Annotation.meta)
         .join(models.GroundTruth)
@@ -379,7 +390,7 @@ def get_dataset_summary(db: Session, name: str) -> schemas.DatasetSummary:
         ),
         num_rasters=get_n_groundtruth_rasters_in_dataset(db, name),
         task_types=get_unique_task_types_in_dataset(db, name),
-        labels=gt_labels,
+        labels=list(gt_labels),
         datum_metadata=get_unique_datum_metadata_in_dataset(db, name),
         annotation_metadata=get_unique_groundtruth_annotation_metadata_in_dataset(
             db, name

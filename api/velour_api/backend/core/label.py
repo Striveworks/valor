@@ -1,6 +1,7 @@
 from sqlalchemy import Subquery, and_, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+from sqlalchemy.sql.selectable import Select
 
 from velour_api import schemas
 from velour_api.backend import models, ops
@@ -139,7 +140,7 @@ def _getter_statement(
     filters: schemas.Filter | None = None,
     ignore_groundtruths: bool = False,
     ignore_predictions: bool = False,
-) -> Subquery:
+) -> Subquery | Select:
     """Builds sql statement for other functions."""
     stmt = ops.Query(selection)
     if filters:
@@ -186,7 +187,7 @@ def get_labels(
     )
     return {
         schemas.Label(key=label.key, value=label.value)
-        for label in db.query(stmt.subquery()).all()
+        for label in db.query(stmt.subquery()).all()  # type: ignore - SQLAlchemy type issue
     }
 
 
@@ -221,7 +222,7 @@ def get_label_keys(
         ignore_groundtruths=ignore_groundtruths,
         ignore_predictions=ignore_predictions,
     )
-    return {key for key in db.scalars(stmt)}
+    return {key for key in db.scalars(stmt)}  # type: ignore - SQLAlchemy type issue
 
 
 def get_joint_labels(
@@ -255,7 +256,7 @@ def get_joint_keys(
     db: Session,
     lhs: schemas.Filter,
     rhs: schemas.Filter,
-) -> list[schemas.Label]:
+) -> list[str]:
     """
     Returns all unique label keys that are shared between both filters.
 
@@ -282,7 +283,7 @@ def get_disjoint_labels(
     db: Session,
     lhs: schemas.Filter,
     rhs: schemas.Filter,
-    label_map: LabelMapType = None,
+    label_map: LabelMapType | None = None,
 ) -> tuple[list[schemas.Label], list[schemas.Label]]:
     """
     Returns all unique labels that are not shared between both filters.
@@ -324,8 +325,8 @@ def get_disjoint_keys(
     db: Session,
     lhs: schemas.Filter,
     rhs: schemas.Filter,
-    label_map: LabelMapType = None,
-) -> tuple[list[schemas.Label], list[schemas.Label]]:
+    label_map: LabelMapType | None = None,
+) -> tuple[list[str], list[str]]:
     """
     Returns all unique label keys that are not shared between both predictions and groundtruths.
 
@@ -366,7 +367,7 @@ def fetch_labels(
     filter_: schemas.Filter,
     ignore_groundtruths: bool = False,
     ignore_predictions: bool = False,
-) -> models.Label | None:
+) -> set[models.Label]:
     """
     Fetch a set of models.Label entries from the database.
 
@@ -387,7 +388,7 @@ def fetch_labels(
         ignore_groundtruths=ignore_groundtruths,
         ignore_predictions=ignore_predictions,
     )
-    return set(db.query(stmt.subquery()).all())
+    return set(db.query(stmt.subquery()).all())  # type: ignore - SQLAlchemy type issue
 
 
 def fetch_union_of_labels(
