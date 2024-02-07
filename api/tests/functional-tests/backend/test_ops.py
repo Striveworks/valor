@@ -16,46 +16,137 @@ datum_uid4 = "uid4"
 
 
 @pytest.fixture
-def metadata_1() -> dict[str, int | float | str]:
+def geospatial_coordinates() -> (
+    dict[
+        str,
+        schemas.GeoJSONPoint
+        | schemas.GeoJSONPolygon
+        | schemas.GeoJSONMultiPolygon,
+    ]
+):
+    return {
+        "point": {"type": "Point", "coordinates": [125.2750725, 38.760525]},
+        "polygon1": {
+            "type": "Polygon",
+            "coordinates": [
+                [
+                    [-10, -10],
+                    [10, -10],
+                    [10, 10],
+                    [-10, 10],
+                    [-10, -10],
+                ]
+            ],
+        },
+        "polygon2": {
+            "type": "Polygon",
+            "coordinates": [
+                [
+                    [20, 20],
+                    [20, 30],
+                    [30, 30],
+                    [30, 20],
+                    [20, 20],
+                ]
+            ],
+        },
+        "polygon3": {
+            "type": "Polygon",
+            "coordinates": [
+                [
+                    [80, 80],
+                    [100, 80],
+                    [90, 120],
+                    [80, 80],
+                ]
+            ],
+        },
+        "multipolygon": {
+            "type": "MultiPolygon",
+            "coordinates": [
+                [
+                    [
+                        [50, 50],
+                        [70, 50],
+                        [70, 70],
+                        [50, 70],
+                        [50, 50],
+                    ],
+                    [
+                        [30, 30],
+                        [35, 30],
+                        [35, 35],
+                        [30, 35],
+                        [30, 30],
+                    ],
+                ],
+                [
+                    [
+                        [10, 10],
+                        [20, 10],
+                        [20, 20],
+                        [10, 20],
+                        [10, 10],
+                    ],
+                ],
+            ],
+        },
+    }
+
+
+@pytest.fixture
+def metadata_1(geospatial_coordinates) -> dict[str, int | float | str]:
     return {
         "some_numeric_attribute": 0.4,
         "some_str_attribute": "abc",
         "height": 10,
         "width": 10,
         "some_bool_attribute": True,
+        "some_geo_attribute": {
+            "geojson": geospatial_coordinates["polygon1"],
+        },
     }
 
 
 @pytest.fixture
-def metadata_2() -> dict[str, int | float | str]:
+def metadata_2(geospatial_coordinates) -> dict[str, int | float | str]:
     return {
         "some_numeric_attribute": 0.6,
         "some_str_attribute": "abc",
         "height": 10,
         "width": 10,
         "some_bool_attribute": False,
+        "some_geo_attribute": {
+            "geojson": geospatial_coordinates["multipolygon"],
+        },
     }
 
 
 @pytest.fixture
-def metadata_3() -> dict[str, int | float | str]:
+def metadata_3(geospatial_coordinates) -> dict[str, int | float | str]:
     return {
         "some_numeric_attribute": 0.4,
         "some_str_attribute": "xyz",
         "height": 10,
         "width": 10,
         "some_bool_attribute": True,
+        "some_geo_attribute": {
+            "geojson": geospatial_coordinates["polygon2"],
+        },
     }
 
 
 @pytest.fixture
-def metadata_4() -> dict[str, int | float | str]:
+def metadata_4(geospatial_coordinates) -> dict[str, int | float | str]:
     return {
         "some_numeric_attribute": 0.6,
         "some_str_attribute": "xyz",
         "height": 10,
         "width": 10,
         "some_bool_attribute": False,
+        "some_geo_attribute": {
+            "geojson": geospatial_coordinates["polygon3"],
+        },
     }
 
 
@@ -91,115 +182,38 @@ def raster_2():
 
 
 @pytest.fixture
-def geospatial_coordinates() -> (
-    dict[
-        str,
-        schemas.GeoJSONPoint
-        | schemas.GeoJSONPolygon
-        | schemas.GeoJSONMultiPolygon,
-    ]
-):
-    return {
-        "point": {"type": "Point", "coordinates": [125.2750725, 38.760525]},
-        "polygon1": {
-            "type": "Polygon",
-            "coordinates": [
-                [
-                    [-10, -10],
-                    [10, -10],
-                    [10, 10],
-                    [-10, 10],
-                ]
-            ],
-        },
-        "polygon2": {
-            "type": "Polygon",
-            "coordinates": [
-                [
-                    [20, 20],
-                    [20, 30],
-                    [30, 30],
-                    [30, 20],
-                ]
-            ],
-        },
-        "polygon3": {
-            "type": "Polygon",
-            "coordinates": [
-                [
-                    [80, 80],
-                    [100, 80],
-                    [90, 120],
-                ]
-            ],
-        },
-        "multipolygon": {
-            "type": "MultiPolygon",
-            "coordinates": [
-                [
-                    [
-                        [50, 50],
-                        [70, 50],
-                        [70, 70],
-                        [50, 70],
-                    ],
-                    [
-                        [30, 30],
-                        [35, 30],
-                        [35, 35],
-                        [30, 35],
-                    ],
-                ],
-                [
-                    [
-                        [10, 10],
-                        [20, 10],
-                        [20, 20],
-                        [10, 20],
-                    ],
-                ],
-            ],
-        },
-    }
-
-
-@pytest.fixture
-def datum_1(metadata_1, geospatial_coordinates) -> schemas.Datum:
+def datum_1(metadata_1) -> schemas.Datum:
     return schemas.Datum(
         uid=datum_uid1,
         dataset_name=dset_name,
         metadata=metadata_1,
-        geospatial=geospatial_coordinates["polygon1"],
     )
 
 
 @pytest.fixture
-def datum_2(metadata_2, geospatial_coordinates) -> schemas.Datum:
+def datum_2(metadata_2) -> schemas.Datum:
     return schemas.Datum(
         uid=datum_uid2,
         dataset_name=dset_name,
         metadata=metadata_2,
-        geospatial=geospatial_coordinates["multipolygon"],
     )
 
 
 @pytest.fixture
-def datum_3(metadata_3, geospatial_coordinates) -> schemas.Datum:
+def datum_3(metadata_3) -> schemas.Datum:
     return schemas.Datum(
         uid=datum_uid3,
         dataset_name=dset_name,
         metadata=metadata_3,
-        geospatial=geospatial_coordinates["polygon2"],
     )
 
 
 @pytest.fixture
-def datum_4(metadata_4, geospatial_coordinates) -> schemas.Datum:
+def datum_4(metadata_4) -> schemas.Datum:
     return schemas.Datum(
         uid=datum_uid4,
         dataset_name=dset_name,
         metadata=metadata_4,
-        geospatial=geospatial_coordinates["polygon3"],
     )
 
 
@@ -539,14 +553,12 @@ def dataset_sim(
     groundtruth_cat_datum_2,
     groundtruth_dog_datum_3,
     groundtruth_dog_datum_4,
-    geospatial_coordinates,
 ):
     crud.create_dataset(
         db=db,
         dataset=schemas.Dataset(
             name=dset_name,
             metadata=metadata_1,
-            geospatial=geospatial_coordinates["polygon1"],
         ),
     )
     crud.create_groundtruth(db=db, groundtruth=groundtruth_cat_datum_1)
@@ -570,14 +582,12 @@ def model_sim(
     prediction_dog_datum2_model2,
     prediction_cat_datum3_model2,
     prediction_cat_datum4_model2,
-    geospatial_coordinates,
 ):
     crud.create_model(
         db=db,
         model=schemas.Model(
             name=model_name1,
             metadata=metadata_1,
-            geospatial=geospatial_coordinates["polygon1"],
         ),
     )
     crud.create_prediction(db=db, prediction=prediction_cat_datum1_model1)
@@ -984,7 +994,7 @@ def test_datum_geospatial_filters(
     db: Session,
     model_sim,
     model_object=models.Datum.uid,
-    arg_name: str = "datum_geospatial",
+    arg_name: str = "datum_metadata",
 ):
     def _get_geospatial_names_from_filter(
         db: Session,
@@ -1001,12 +1011,14 @@ def test_datum_geospatial_filters(
     ):
         f = schemas.Filter(
             **{
-                arg_name: [
-                    schemas.GeospatialFilter(
-                        value=schemas.geojson.from_dict(geodict),
-                        operator=operator,
-                    ),
-                ]
+                arg_name: {
+                    "some_geo_attribute": [
+                        schemas.GeospatialFilter(
+                            value=schemas.geojson.from_dict(geodict),
+                            operator=operator,
+                        ),
+                    ]
+                }
             }
         )
 
@@ -1025,6 +1037,7 @@ def test_datum_geospatial_filters(
                     [60, -20],
                     [60, 60],
                     [-20, 60],
+                    [-20, -20],
                 ]
             ],
         },
@@ -1048,6 +1061,7 @@ def test_datum_geospatial_filters(
                     [110, 60],
                     [110, 110],
                     [60, 110],
+                    [60, 60],
                 ]
             ],
         },
@@ -1087,6 +1101,7 @@ def test_datum_geospatial_filters(
                         [20, -20],
                         [20, 20],
                         [-20, 20],
+                        [-20, -20],
                     ]
                 ],
                 [
@@ -1095,6 +1110,7 @@ def test_datum_geospatial_filters(
                         [15, 35],
                         [35, 35],
                         [35, 15],
+                        [15, 15],
                     ]
                 ],
             ],
@@ -1151,6 +1167,7 @@ def test_datum_geospatial_filters(
                     [60, -20],
                     [60, 60],
                     [-20, 60],
+                    [-20, -20],
                 ]
             ],
         },
@@ -1168,7 +1185,7 @@ def test_dataset_geospatial_filters(
     db: Session,
     model_sim,
     model_object=models.Dataset.name,
-    arg_name: str = "dataset_geospatial",
+    arg_name: str = "dataset_metadata",
 ):
     def _get_geospatial_names_from_filter(
         db: Session,
@@ -1185,12 +1202,14 @@ def test_dataset_geospatial_filters(
     ):
         f = schemas.Filter(
             **{
-                arg_name: [
-                    schemas.GeospatialFilter(
-                        value=schemas.geojson.from_dict(geodict),
-                        operator=operator,
-                    ),
-                ]
+                arg_name: {
+                    "some_geo_attribute": [
+                        schemas.GeospatialFilter(
+                            value=schemas.geojson.from_dict(geodict),
+                            operator=operator,
+                        ),
+                    ]
+                }
             }
         )
 
@@ -1209,6 +1228,7 @@ def test_dataset_geospatial_filters(
                     [60, -20],
                     [60, 60],
                     [-20, 60],
+                    [-20, -20],
                 ]
             ],
         },
@@ -1247,6 +1267,7 @@ def test_dataset_geospatial_filters(
                         [20, -20],
                         [20, 20],
                         [-20, 20],
+                        [-20, -20],
                     ]
                 ],
                 [
@@ -1255,6 +1276,7 @@ def test_dataset_geospatial_filters(
                         [15, 35],
                         [35, 35],
                         [35, 15],
+                        [15, 15],
                     ]
                 ],
             ],
@@ -1301,7 +1323,7 @@ def test_model_geospatial_filters(
     db: Session,
     model_sim,
     model_object=models.Model.name,
-    arg_name: str = "model_geospatial",
+    arg_name: str = "model_metadata",
 ):
     def _get_geospatial_names_from_filter(
         db: Session,
@@ -1318,12 +1340,14 @@ def test_model_geospatial_filters(
     ):
         f = schemas.Filter(
             **{
-                arg_name: [
-                    schemas.GeospatialFilter(
-                        value=schemas.geojson.from_dict(geodict),
-                        operator=operator,
-                    ),
-                ]
+                arg_name: {
+                    "some_geo_attribute": [
+                        schemas.GeospatialFilter(
+                            value=schemas.geojson.from_dict(geodict),
+                            operator=operator,
+                        ),
+                    ]
+                }
             }
         )
 
@@ -1342,6 +1366,7 @@ def test_model_geospatial_filters(
                     [60, -20],
                     [60, 60],
                     [-20, 60],
+                    [-20, -20],
                 ]
             ],
         },
@@ -1380,6 +1405,7 @@ def test_model_geospatial_filters(
                         [20, -20],
                         [20, 20],
                         [-20, 20],
+                        [-20, -20],
                     ]
                 ],
                 [
@@ -1388,6 +1414,7 @@ def test_model_geospatial_filters(
                         [15, 35],
                         [35, 35],
                         [35, 15],
+                        [15, 15],
                     ]
                 ],
             ],
@@ -1411,7 +1438,6 @@ def test_model_geospatial_filters(
         model_object=model_object,
         arg_name=arg_name,
     )
-
     assert len(names) == 0
 
     # test outside
@@ -1426,8 +1452,9 @@ def test_model_geospatial_filters(
         arg_name=arg_name,
     )
 
-    assert len(names) == 1
+    assert len(names) == 2
     assert ("model1",) in names
+    assert ("model2",) in names
 
 
 @pytest.fixture

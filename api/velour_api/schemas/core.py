@@ -6,11 +6,6 @@ import PIL.Image
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 from velour_api.enums import TaskType
-from velour_api.schemas.geojson import (
-    GeoJSONMultiPolygon,
-    GeoJSONPoint,
-    GeoJSONPolygon,
-)
 from velour_api.schemas.geometry import (
     BoundingBox,
     MultiPolygon,
@@ -18,12 +13,10 @@ from velour_api.schemas.geometry import (
     Raster,
 )
 from velour_api.schemas.label import Label
+from velour_api.schemas.metadata import DateTimeType, GeoJSONType
 
-GeospatialMetadatum = dict[
-    str, GeoJSONPoint | GeoJSONPolygon | GeoJSONMultiPolygon
-]
 MetadataType = dict[
-    str, float | str | bool | GeospatialMetadatum | dict[str, str]
+    str, float | str | bool | dict[str, DateTimeType | GeoJSONType]
 ]
 
 
@@ -59,7 +52,7 @@ class Dataset(BaseModel):
         The ID of the dataset.
     name : str
         The name of the dataset.
-    metadata :  dict
+    metadata :  MetadataType
         A dictionary of metadata that describes the dataset.
 
     Raises
@@ -70,7 +63,7 @@ class Dataset(BaseModel):
 
     id: int | None = None
     name: str
-    metadata: dict[str, float | str | dict[str, str]] = {}
+    metadata: MetadataType = {}
     model_config = ConfigDict(extra="forbid")
 
     @field_validator("name")
@@ -94,7 +87,7 @@ class Model(BaseModel):
         The ID of the model.
     name : str
         The name of the model.
-    metadata :  dict
+    metadata :  MetadataType
         A dictionary of metadata that describes the model.
 
     Raises
@@ -129,7 +122,7 @@ class Datum(BaseModel):
         The UID of the `Datum`.
     dataset_name : str
         The name of the dataset to associate the `Datum` with.
-    metadata : dict
+    metadata : MetadataType
         A dictionary of metadata that describes the `Datum`.
 
     Raises
@@ -198,7 +191,7 @@ class Annotation(BaseModel):
         The task type associated with the `Annotation`.
     labels: List[Label]
         A list of labels to use for the `Annotation`.
-    metadata: Dict[str, Union[int, float, str]]
+    metadata: MetadataType
         A dictionary of metadata that describes the `Annotation`.
     bounding_box: BoundingBox
         A bounding box to assign to the `Annotation`.

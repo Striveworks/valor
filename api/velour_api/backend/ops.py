@@ -508,8 +508,8 @@ class Query:
 
     def _get_spatial_op(self, opstr) -> callable:
         ops = {
-            "intersect": lambda lhs, rhs: func.ST_Covers(rhs, lhs),
-            "inside": lambda lhs, rhs: lhs.ST_Intersects(rhs),
+            "intersect": lambda lhs, rhs: func.ST_Intersects(lhs, rhs),
+            "inside": lambda lhs, rhs: func.ST_Covers(rhs, lhs),
             "outside": lambda lhs, rhs: not_(func.ST_Covers(rhs, lhs)),
         }
         if opstr not in ops:
@@ -580,12 +580,6 @@ class Query:
                     filters.dataset_metadata, models.Dataset
                 ),
             )
-        if filters.dataset_geospatial:
-            geospatial_expressions = self._filter_by_geospatial(
-                geospatial_filters=filters.dataset_geospatial,
-                model_object=models.Dataset,
-            )
-            self._add_expressions(models.Dataset, geospatial_expressions)
 
         # models
         if filters.model_names:
@@ -602,12 +596,6 @@ class Query:
                 models.Model,
                 self.filter_by_metadata(filters.model_metadata, models.Model),
             )
-        if filters.model_geospatial:
-            geospatial_expressions = self._filter_by_geospatial(
-                geospatial_filters=filters.model_geospatial,
-                model_object=models.Model,
-            )
-            self._add_expressions(models.Model, geospatial_expressions)
 
         # datums
         if filters.datum_uids:
@@ -627,12 +615,6 @@ class Query:
                     table=models.Datum,
                 ),
             )
-        if filters.datum_geospatial:
-            geospatial_expressions = self._filter_by_geospatial(
-                geospatial_filters=filters.datum_geospatial,
-                model_object=models.Datum,
-            )
-            self._add_expressions(models.Datum, geospatial_expressions)
 
         # annotations
         if filters.task_types:
@@ -834,10 +816,8 @@ class Query:
             )
         elif isinstance(value_filter, GeospatialFilter):
             op = self._get_spatial_op(value_filter.operator)
-            lhs = func.ST_GeomFromGeoJSON(
-                table.meta[key][value_filter.value.key]
-            )
-            rhs = value_filter.value.wkt()
+            lhs = func.ST_GeomFromGeoJSON(table.meta[key]["geojson"])
+            rhs = func.ST_GeomFromGeoJSON(value_filter.value.model_dump_json())
         else:
             raise NotImplementedError(
                 f"metadatum value of type `{type(value_filter.value)}` is currently not supported"
