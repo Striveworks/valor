@@ -44,7 +44,7 @@ class AuthConfig(BaseSettings):
     ALGORITHM: str | None = "HS256"
     USERNAME: str | None = None
     PASSWORD: str | None = None
-    model_config = ConfigDict(env_file=".env.auth", env_prefix="VELOUR_")
+    model_config = ConfigDict(env_file=".env.auth", env_prefix="VELOUR_")  # type: ignore - pydantic error; type "ConfigDict" cannot be assigned to declared type "SettingsConfigDict"
 
     @property
     def no_auth(self) -> bool:

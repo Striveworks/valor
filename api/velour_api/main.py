@@ -646,9 +646,7 @@ def get_datum(
 ) -> schemas.Datum | None:
     """
     Fetch a particular datum.
-
     GET Endpoint: `/data/dataset/{dataset_name}/uid/{uid}`
-
     Parameters
     ----------
     dataset_name : str
@@ -657,23 +655,28 @@ def get_datum(
         The UID of the datum.
     db : Session
         The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
-
     Returns
     -------
     schemas.Datum
         The requested datum.
-
     Raises
     ------
     HTTPException (404)
         If the dataset or datum doesn't exist.
     """
     try:
-        return crud.get_datum(
+        datums = crud.get_datums(
             db=db,
-            dataset_name=dataset_name,
-            uid=uid,
+            filters=schemas.Filter(
+                dataset_names=[dataset_name],
+                datum_uids=[uid],
+            ),
         )
+
+        if len(datums) == 0:
+            raise exceptions.DatumDoesNotExistError(uid=uid)
+
+        return datums[0]
     except Exception as e:
         raise exceptions.create_http_error(e)
 
@@ -989,9 +992,9 @@ def create_or_get_evaluations(
     tags=["Evaluations"],
 )
 def get_evaluations(
-    datasets: str = None,
-    models: str = None,
-    evaluation_ids: str = None,
+    datasets: str | None = None,
+    models: str | None = None,
+    evaluation_ids: str | None = None,
     db: Session = Depends(get_db),
 ) -> list[schemas.EvaluationResponse]:
     """
