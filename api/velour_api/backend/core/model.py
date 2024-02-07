@@ -1,6 +1,3 @@
-import json
-
-from geoalchemy2.functions import ST_AsGeoJSON
 from sqlalchemy import and_, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -26,18 +23,10 @@ def _load_model_schema(
     model: models.Model,
 ) -> schemas.Model:
     """Convert database row to schema."""
-    geodict = (
-        schemas.geojson.from_dict(
-            json.loads(db.scalar(ST_AsGeoJSON(model.geo)))
-        )
-        if model.geo
-        else None
-    )
     return schemas.Model(
         id=model.id,
         name=model.name,
         metadata=model.meta,
-        geospatial=geodict,
     )
 
 
@@ -108,7 +97,6 @@ def create_model(
         row = models.Model(
             name=model.name,
             meta=model.metadata,
-            geo=model.geospatial.wkt() if model.geospatial else None,
             status=ModelStatus.READY,
         )
         db.add(row)

@@ -130,7 +130,6 @@ def test_get_model(db: Session, created_model):
     assert model is not None
     assert model.name == created_model
     assert model.metadata == {}
-    assert model.geospatial is None
 
     with pytest.raises(exceptions.ModelDoesNotExistError):
         core.get_model(db, "some_nonexistent_model")

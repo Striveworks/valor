@@ -130,7 +130,6 @@ def test_get_dataset(db: Session, created_dataset):
     assert dataset is not None
     assert dataset.name == created_dataset
     assert dataset.metadata == {}
-    assert dataset.geospatial is None
 
     with pytest.raises(exceptions.DatasetDoesNotExistError):
         core.get_dataset(db, "some_nonexistent_dataset")

@@ -21,7 +21,6 @@ from .filters import (
     NumericFilter,
     StringFilter,
 )
-from .geojson import GeoJSONMultiPolygon, GeoJSONPoint, GeoJSONPolygon
 from .geometry import (
     BasicPolygon,
     BoundingBox,
@@ -31,7 +30,15 @@ from .geometry import (
     Raster,
 )
 from .info import APIVersion
-from .metadata import Date, DateTime, Duration, Time
+from .metadata import (
+    Date,
+    DateTime,
+    Duration,
+    GeoJSONMultiPolygon,
+    GeoJSONPoint,
+    GeoJSONPolygon,
+    Time,
+)
 from .metrics import (
     AccuracyMetric,
     APMetric,

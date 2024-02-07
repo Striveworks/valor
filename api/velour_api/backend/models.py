@@ -1,6 +1,6 @@
 import datetime
 
-from geoalchemy2 import Geography, Geometry, Raster
+from geoalchemy2 import Geometry, Raster
 from geoalchemy2.functions import ST_SetBandNoDataValue, ST_SetGeoReference
 from sqlalchemy import ForeignKey, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB
@@ -109,7 +109,6 @@ class Annotation(Base):
     )
     task_type: Mapped[str] = mapped_column(nullable=False)
     meta = mapped_column(JSONB)
-    geo = mapped_column(Geography(), nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
 
     # columns - geometric
@@ -141,7 +140,6 @@ class Datum(Base):
     )
     uid: Mapped[str] = mapped_column(nullable=False)
     meta = mapped_column(JSONB)
-    geo = mapped_column(Geography(), nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
 
     # relationship
@@ -160,7 +158,6 @@ class Model(Base):
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     name: Mapped[str] = mapped_column(index=True, unique=True)
     meta = mapped_column(JSONB)
-    geo = mapped_column(Geography(), nullable=True)
     status: Mapped[str] = mapped_column(nullable=False)
     created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
 
@@ -177,7 +174,6 @@ class Dataset(Base):
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     name: Mapped[str] = mapped_column(index=True, unique=True)
     meta = mapped_column(JSONB)
-    geo = mapped_column(Geography(), nullable=True)
     status: Mapped[str] = mapped_column(nullable=False)
     created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
 
@@ -201,7 +197,6 @@ class Evaluation(Base):
     datum_filter = mapped_column(JSONB, nullable=False)
     parameters = mapped_column(JSONB, nullable=False)
     status: Mapped[str] = mapped_column(nullable=False)
-    geo = mapped_column(Geography(), nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
 
     # relationships

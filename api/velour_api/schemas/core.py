@@ -6,11 +6,6 @@ import PIL.Image
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 from velour_api.enums import TaskType
-from velour_api.schemas.geojson import (
-    GeoJSONMultiPolygon,
-    GeoJSONPoint,
-    GeoJSONPolygon,
-)
 from velour_api.schemas.geometry import (
     BoundingBox,
     MultiPolygon,
@@ -18,8 +13,11 @@ from velour_api.schemas.geometry import (
     Raster,
 )
 from velour_api.schemas.label import Label
+from velour_api.schemas.metadata import DateTimeType, GeoJSONType
 
-MetadataType = dict[str, float | str | bool | dict[str, str]]
+MetadataType = dict[
+    str, float | str | bool | dict[str, DateTimeType | GeoJSONType]
+]
 
 
 def _validate_name_format(name: str):
@@ -54,10 +52,8 @@ class Dataset(BaseModel):
         The ID of the dataset.
     name : str
         The name of the dataset.
-    metadata :  dict
+    metadata :  MetadataType
         A dictionary of metadata that describes the dataset.
-    geospatial : dict
-        A GeoJSON-style dictionary describing the geospatial coordinates of the dataset.
 
     Raises
     ----------
@@ -67,10 +63,7 @@ class Dataset(BaseModel):
 
     id: int | None = None
     name: str
-    metadata: dict[str, float | str | dict[str, str]] = {}
-    geospatial: GeoJSONPoint | GeoJSONPolygon | GeoJSONMultiPolygon | None = (
-        None
-    )
+    metadata: MetadataType = {}
     model_config = ConfigDict(extra="forbid")
 
     @field_validator("name")
@@ -94,10 +87,8 @@ class Model(BaseModel):
         The ID of the model.
     name : str
         The name of the model.
-    metadata :  dict
+    metadata :  MetadataType
         A dictionary of metadata that describes the model.
-    geospatial : dict
-        A GeoJSON-style dictionary describing the geospatial metadata of the model.
 
     Raises
     ----------
@@ -108,9 +99,6 @@ class Model(BaseModel):
     id: int | None = None
     name: str
     metadata: MetadataType = {}
-    geospatial: GeoJSONPoint | GeoJSONPolygon | GeoJSONMultiPolygon | None = (
-        None
-    )
     model_config = ConfigDict(extra="forbid")
 
     @field_validator("name")
@@ -134,10 +122,8 @@ class Datum(BaseModel):
         The UID of the `Datum`.
     dataset_name : str
         The name of the dataset to associate the `Datum` with.
-    metadata : dict
+    metadata : MetadataType
         A dictionary of metadata that describes the `Datum`.
-    geospatial :  dict
-        A GeoJSON-style dictionary describing the geospatial coordinates of the `Datum`.
 
     Raises
     ----------
@@ -148,9 +134,6 @@ class Datum(BaseModel):
     uid: str
     dataset_name: str
     metadata: MetadataType = {}
-    geospatial: GeoJSONPoint | GeoJSONPolygon | GeoJSONMultiPolygon | None = (
-        None
-    )
     model_config = ConfigDict(extra="forbid")
 
     @field_validator("uid")
@@ -195,7 +178,6 @@ class Datum(BaseModel):
             self.uid == other.uid
             and self.dataset_name == other.dataset_name
             and self.metadata == other.metadata
-            and self.geospatial == other.geospatial
         )
 
 
@@ -209,7 +191,7 @@ class Annotation(BaseModel):
         The task type associated with the `Annotation`.
     labels: List[Label]
         A list of labels to use for the `Annotation`.
-    metadata: Dict[str, Union[int, float, str]]
+    metadata: MetadataType
         A dictionary of metadata that describes the `Annotation`.
     bounding_box: BoundingBox
         A bounding box to assign to the `Annotation`.

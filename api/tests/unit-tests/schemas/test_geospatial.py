@@ -6,7 +6,7 @@ from velour_api import schemas
 
 def test_GeoJSON():
     # test valid entries
-    valid_point = schemas.geojson.from_dict(
+    valid_point = schemas.metadata.geojson_from_dict(
         {"type": "Point", "coordinates": [125.2750725, 38.760525]}
     )
     assert type(valid_point.geometry()) is schemas.Point
@@ -19,7 +19,22 @@ def test_GeoJSON():
     )
     assert valid_point.model_dump()["type"] == "Point"
 
-    valid_polygon = schemas.geojson.from_dict(
+    with pytest.raises(ValidationError):
+        schemas.metadata.geojson_from_dict(
+            {
+                "type": "Polygon",
+                "coordinates": [
+                    [
+                        [125.2750725, 38.760525],
+                        [125.3902365, 38.775069],
+                        [125.5054005, 38.789613],
+                        [125.5051935, 38.71402425],
+                    ]
+                ],
+            }
+        )
+
+    valid_polygon = schemas.metadata.geojson_from_dict(
         {
             "type": "Polygon",
             "coordinates": [
@@ -28,7 +43,8 @@ def test_GeoJSON():
                     [125.3902365, 38.775069],
                     [125.5054005, 38.789613],
                     [125.5051935, 38.71402425],
-                ]
+                    [125.2750725, 38.760525],
+                ],
             ],
         }
     )
@@ -42,7 +58,44 @@ def test_GeoJSON():
     )
     assert valid_polygon.model_dump()["type"] == "Polygon"
 
-    valid_multi = schemas.geojson.from_dict(
+    with pytest.raises(ValidationError):
+        schemas.metadata.geojson_from_dict(
+            {
+                "type": "MultiPolygon",
+                "coordinates": [
+                    [
+                        [
+                            [125.2750725, 38.760525],
+                            [125.3902365, 38.775069],
+                            [125.5054005, 38.789613],
+                            [125.5051935, 38.71402425],
+                        ],
+                        [
+                            [125.2750725, 38.760525],
+                            [125.3902365, 38.775069],
+                            [125.5054005, 38.789613],
+                            [125.5051935, 38.71402425],
+                        ],
+                    ],
+                    [
+                        [
+                            [125.2750725, 38.760525],
+                            [125.3902365, 38.775069],
+                            [125.5054005, 38.789613],
+                            [125.5051935, 38.71402425],
+                        ],
+                        [
+                            [125.2750725, 38.760525],
+                            [125.3902365, 38.775069],
+                            [125.5054005, 38.789613],
+                            [125.5051935, 38.71402425],
+                        ],
+                    ],
+                ],
+            }
+        )
+
+    valid_multi = schemas.metadata.geojson_from_dict(
         {
             "type": "MultiPolygon",
             "coordinates": [
@@ -52,12 +105,14 @@ def test_GeoJSON():
                         [125.3902365, 38.775069],
                         [125.5054005, 38.789613],
                         [125.5051935, 38.71402425],
+                        [125.2750725, 38.760525],
                     ],
                     [
                         [125.2750725, 38.760525],
                         [125.3902365, 38.775069],
                         [125.5054005, 38.789613],
                         [125.5051935, 38.71402425],
+                        [125.2750725, 38.760525],
                     ],
                 ],
                 [
@@ -66,12 +121,14 @@ def test_GeoJSON():
                         [125.3902365, 38.775069],
                         [125.5054005, 38.789613],
                         [125.5051935, 38.71402425],
+                        [125.2750725, 38.760525],
                     ],
                     [
                         [125.2750725, 38.760525],
                         [125.3902365, 38.775069],
                         [125.5054005, 38.789613],
                         [125.5051935, 38.71402425],
+                        [125.2750725, 38.760525],
                     ],
                 ],
             ],
@@ -89,7 +146,7 @@ def test_GeoJSON():
 
     # invalids
     with pytest.raises(ValueError):
-        schemas.geojson.from_dict(
+        schemas.metadata.geojson_from_dict(
             {
                 "type": "fake_type",
                 "coordinates": [
@@ -101,7 +158,7 @@ def test_GeoJSON():
         )
 
     with pytest.raises(ValidationError):
-        schemas.geojson.from_dict(
+        schemas.metadata.geojson_from_dict(
             {
                 "type": "Polygon",
                 "coordinates": "fake_string",
@@ -109,7 +166,7 @@ def test_GeoJSON():
         )
 
     with pytest.raises(ValidationError):
-        schemas.geojson.from_dict(
+        schemas.metadata.geojson_from_dict(
             {
                 "type": "Polygon",
                 "coordinates": [
@@ -121,7 +178,7 @@ def test_GeoJSON():
         ).geometry()
 
     with pytest.raises(ValidationError):
-        schemas.geojson.from_dict(
+        schemas.metadata.geojson_from_dict(
             {
                 "type": "Polygon",
                 "coordinates": [

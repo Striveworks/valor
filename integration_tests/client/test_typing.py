@@ -14,7 +14,6 @@ from velour.schemas import geometry
 from velour.schemas.properties import (
     DictionaryProperty,
     GeometryProperty,
-    GeospatialProperty,
     LabelProperty,
     NumericProperty,
     StringProperty,
@@ -88,17 +87,14 @@ def test_annotation_typing():
 def test_datum_typing():
     assert type(Datum.uid) is StringProperty
     assert type(Datum.metadata) is DictionaryProperty
-    assert type(Datum.geospatial) is GeospatialProperty
 
     datum = Datum(uid="test")
     assert type(datum.uid) is str
     assert type(datum.metadata) is dict
-    assert datum.geospatial is None
 
-    datum = Datum(uid="test", metadata={}, geospatial={})
+    datum = Datum(uid="test", metadata={})
     assert type(datum.uid) is str
     assert type(datum.metadata) is dict
-    assert type(datum.geospatial) is dict
 
 
 def test_groundtruth_typing():
@@ -118,30 +114,24 @@ def test_prediction_typing():
 def test_dataset_typing():
     assert type(Dataset.name) is StringProperty
     assert type(Dataset.metadata) is DictionaryProperty
-    assert type(Dataset.geospatial) is GeospatialProperty
 
     dataset = Dataset(name="test")
     assert type(dataset.name) is str
     assert type(dataset.metadata) is dict
-    assert dataset.geospatial is None
 
-    dataset = Dataset(name="test", metadata={}, geospatial={})
+    dataset = Dataset(name="test", metadata={})
     assert type(dataset.name) is str
     assert type(dataset.metadata) is dict
-    assert type(dataset.geospatial) is dict
 
 
 def test_model_typing():
     assert type(Model.name) is StringProperty
     assert type(Model.metadata) is DictionaryProperty
-    assert type(Model.geospatial) is GeospatialProperty
 
     model = Model(name="test")
     assert type(model.name) is str
     assert type(model.metadata) is dict
-    assert model.geospatial is None
 
-    model = Model(name="test", metadata={}, geospatial={})
+    model = Model(name="test", metadata={})
     assert type(model.name) is str
     assert type(model.metadata) is dict
-    assert type(model.geospatial) is dict
