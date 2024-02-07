@@ -665,13 +665,18 @@ def get_datum(
         If the dataset or datum doesn't exist.
     """
     try:
-        return crud.get_datums(
+        datums = crud.get_datums(
             db=db,
             filters=schemas.Filter(
                 dataset_names=[dataset_name],
                 datum_uids=[uid],
             ),
-        )[0]
+        )
+
+        if len(datums) == 0:
+            raise exceptions.DatumDoesNotExistError(uid=uid)
+
+        return datums[0]
     except Exception as e:
         raise exceptions.create_http_error(e)
 
