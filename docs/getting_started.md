@@ -136,7 +136,7 @@ for image in groundtruth_annotations:
     # a Velour Annotation consists of a task_type, labels, and, optionally, a geometry.
     annotations = [
         Annotation(
-            task_type=TaskType.DETECTION,
+            task_type=TaskType.OBJECT_DETECTION,
             labels=[Label(key="class_label", value=annotation["class_label"])],
             bounding_box=BoundingBox.from_extrema(
                 xmin=annotation["bbox"]["xmin"],
@@ -192,7 +192,7 @@ def create_prediction_from_object_detection_dict(element: dict, datums_by_uid:di
     # create Annotations
     annotations = [
         Annotation(
-            task_type=TaskType.DETECTION,
+            task_type=TaskType.OBJECT_DETECTION,
             labels=[
                 Label(key="class_label", value=label["class_label"], score=label["score"])
                 for label in annotation["labels"]

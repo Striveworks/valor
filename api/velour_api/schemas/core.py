@@ -249,7 +249,7 @@ def _check_semantic_segmentations_single_label(
     labels = []
     indices = dict()
     for index, annotation in enumerate(annotations):
-        if annotation.task_type == TaskType.SEGMENTATION:
+        if annotation.task_type == TaskType.SEMANTIC_SEGMENTATION:
             for label in annotation.labels:
                 if label in labels:
                     raise ValueError(
@@ -352,14 +352,14 @@ class Prediction(BaseModel):
         for annotation in v:
             if annotation.task_type in [
                 TaskType.CLASSIFICATION,
-                TaskType.DETECTION,
+                TaskType.OBJECT_DETECTION,
             ]:
                 for label in annotation.labels:
                     if label.score is None:
                         raise ValueError(
                             f"Missing score for label in {annotation.task_type} task."
                         )
-            elif annotation.task_type == TaskType.SEGMENTATION:
+            elif annotation.task_type == TaskType.SEMANTIC_SEGMENTATION:
                 for label in annotation.labels:
                     if label.score is not None:
                         raise ValueError(
@@ -411,7 +411,7 @@ def _validate_rasters(annotated_datum: GroundTruth | Prediction):
             # unpack datum metadata
             metadata = annotated_datum.datum.metadata
             if "height" not in metadata or "width" not in metadata:
-                raise RuntimeError(
+                raise ValueError(
                     "Attempted raster validation but image dimensions are missing."
                 )
 

@@ -80,17 +80,17 @@ def generate_mot_data(num_frames: int):
             annotations=[
                 schemas.Annotation(
                     labels=labels1,
-                    task_type=enums.TaskType.DETECTION,
+                    task_type=enums.TaskType.OBJECT_DETECTION,
                     bounding_box=boundary1,
                 ),
                 schemas.Annotation(
                     labels=labels2,
-                    task_type=enums.TaskType.DETECTION,
+                    task_type=enums.TaskType.OBJECT_DETECTION,
                     bounding_box=boundary2,
                 ),
                 schemas.Annotation(
                     labels=labels3,
-                    task_type=enums.TaskType.DETECTION,
+                    task_type=enums.TaskType.OBJECT_DETECTION,
                     bounding_box=boundary3,
                 ),
             ],
@@ -103,17 +103,17 @@ def generate_mot_data(num_frames: int):
             annotations=[
                 schemas.Annotation(
                     labels=scored_labels1,
-                    task_type=enums.TaskType.DETECTION,
+                    task_type=enums.TaskType.OBJECT_DETECTION,
                     bounding_box=boundary1,
                 ),
                 schemas.Annotation(
                     labels=scored_labels2,
-                    task_type=enums.TaskType.DETECTION,
+                    task_type=enums.TaskType.OBJECT_DETECTION,
                     bounding_box=boundary2,
                 ),
                 schemas.Annotation(
                     labels=scored_labels3,
-                    task_type=enums.TaskType.DETECTION,
+                    task_type=enums.TaskType.OBJECT_DETECTION,
                     bounding_box=boundary3,
                 ),
             ],

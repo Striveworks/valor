@@ -11,4 +11,13 @@
         "docs",
         "migrations"
     ],
+    "ignore": [
+        "client/unit-tests",
+        "api",
+        "utils",
+        "examples",
+        "integration_tests",
+        "docs",
+        "migrations",
+    ]
 }

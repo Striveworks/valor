@@ -18,14 +18,20 @@ def test_empty_filter():
         "datum_metadata": None,
         "datum_geospatial": None,
         "task_types": None,
-        "annotation_types": None,
-        "annotation_geometric_area": None,
         "annotation_metadata": None,
         "annotation_geospatial": None,
-        "prediction_scores": None,
+        "require_bounding_box": None,
+        "bounding_box_area": None,
+        "require_polygon": None,
+        "polygon_area": None,
+        "require_multipolygon": None,
+        "multipolygon_area": None,
+        "require_raster": None,
+        "raster_area": None,
         "labels": None,
         "label_ids": None,
         "label_keys": None,
+        "label_scores": None,
     }
 
 
@@ -39,7 +45,7 @@ def test_declarative_filtering():
         Label.score < 0.75,
         Annotation.labels == Label(key="k2", value="v2"),
         Annotation.task_type.in_(
-            [TaskType.CLASSIFICATION, TaskType.DETECTION]
+            [TaskType.CLASSIFICATION, TaskType.OBJECT_DETECTION]
         ),
         # geometry filters
         Annotation.raster.is_none(),
@@ -84,20 +90,26 @@ def test_declarative_filtering():
         },
         "datum_geospatial": None,
         "task_types": ["classification", "object-detection"],
-        "annotation_types": ["box"],
-        "annotation_geometric_area": [
+        "require_bounding_box": True,
+        "bounding_box_area": [
             {"value": 1000, "operator": ">="},
             {"value": 5000, "operator": "<="},
         ],
         "annotation_metadata": {
             "myKey": [{"value": "helloworld", "operator": "=="}]
         },
+        "require_polygon": False,
+        "polygon_area": None,
+        "require_multipolygon": False,
+        "multipolygon_area": None,
+        "require_raster": False,
+        "raster_area": None,
         "annotation_geospatial": None,
-        "prediction_scores": [
-            {"value": 0.5, "operator": ">"},
-            {"value": 0.75, "operator": "<"},
-        ],
         "labels": [{"k2": "v2"}],
         "label_ids": None,
         "label_keys": ["k1"],
+        "label_scores": [
+            {"value": 0.5, "operator": ">"},
+            {"value": 0.75, "operator": "<"},
+        ],
     }

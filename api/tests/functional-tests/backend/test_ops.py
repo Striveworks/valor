@@ -217,25 +217,25 @@ def groundtruth_annotations_cat(
             labels=[label_cat],
         ),
         schemas.Annotation(
-            task_type=TaskType.DETECTION,
+            task_type=TaskType.OBJECT_DETECTION,
             labels=[label_cat],
             bounding_box=schemas.BoundingBox.from_extrema(0, 0, 10, 10),
             metadata=metadata_1,
         ),
         schemas.Annotation(
-            task_type=TaskType.DETECTION,
+            task_type=TaskType.OBJECT_DETECTION,
             labels=[label_cat],
             bounding_box=schemas.BoundingBox.from_extrema(0, 0, 1, 50),
             metadata=metadata_2,
         ),
         schemas.Annotation(
-            task_type=TaskType.DETECTION,
+            task_type=TaskType.OBJECT_DETECTION,
             labels=[label_cat],
             raster=raster_1,
             metadata=metadata_1,
         ),
         schemas.Annotation(
-            task_type=TaskType.DETECTION,
+            task_type=TaskType.OBJECT_DETECTION,
             labels=[label_cat],
             raster=raster_2,
             metadata=metadata_2,
@@ -257,25 +257,25 @@ def groundtruth_annotations_dog(
             labels=[label_dog],
         ),
         schemas.Annotation(
-            task_type=TaskType.DETECTION,
+            task_type=TaskType.OBJECT_DETECTION,
             labels=[label_dog],
             bounding_box=schemas.BoundingBox.from_extrema(0, 0, 10, 10),
             metadata=metadata_3,
         ),
         schemas.Annotation(
-            task_type=TaskType.DETECTION,
+            task_type=TaskType.OBJECT_DETECTION,
             labels=[label_dog],
             bounding_box=schemas.BoundingBox.from_extrema(0, 0, 1, 50),
             metadata=metadata_4,
         ),
         schemas.Annotation(
-            task_type=TaskType.DETECTION,
+            task_type=TaskType.OBJECT_DETECTION,
             labels=[label_dog],
             raster=raster_1,
             metadata=metadata_3,
         ),
         schemas.Annotation(
-            task_type=TaskType.DETECTION,
+            task_type=TaskType.OBJECT_DETECTION,
             labels=[label_dog],
             raster=raster_2,
             metadata=metadata_4,
@@ -299,7 +299,7 @@ def prediction_annotations_cat(
             ],
         ),
         schemas.Annotation(
-            task_type=TaskType.DETECTION,
+            task_type=TaskType.OBJECT_DETECTION,
             labels=[
                 schemas.Label(key="class", value="cat", score=0.8),
                 schemas.Label(key="class", value="dog", score=0.2),
@@ -308,7 +308,7 @@ def prediction_annotations_cat(
             metadata=metadata_1,
         ),
         schemas.Annotation(
-            task_type=TaskType.DETECTION,
+            task_type=TaskType.OBJECT_DETECTION,
             labels=[
                 schemas.Label(key="class", value="cat", score=0.7),
                 schemas.Label(key="class", value="dog", score=0.3),
@@ -317,7 +317,7 @@ def prediction_annotations_cat(
             metadata=metadata_2,
         ),
         schemas.Annotation(
-            task_type=TaskType.DETECTION,
+            task_type=TaskType.OBJECT_DETECTION,
             labels=[
                 schemas.Label(key="class", value="cat", score=0.75),
                 schemas.Label(key="class", value="dog", score=0.25),
@@ -326,7 +326,7 @@ def prediction_annotations_cat(
             metadata=metadata_1,
         ),
         schemas.Annotation(
-            task_type=TaskType.DETECTION,
+            task_type=TaskType.OBJECT_DETECTION,
             labels=[
                 schemas.Label(key="class", value="cat", score=0.95),
                 schemas.Label(key="class", value="dog", score=0.05),
@@ -353,7 +353,7 @@ def prediction_annotations_dog(
             ],
         ),
         schemas.Annotation(
-            task_type=TaskType.DETECTION,
+            task_type=TaskType.OBJECT_DETECTION,
             labels=[
                 schemas.Label(key="class", value="cat", score=0.2),
                 schemas.Label(key="class", value="dog", score=0.8),
@@ -362,7 +362,7 @@ def prediction_annotations_dog(
             metadata=metadata_3,
         ),
         schemas.Annotation(
-            task_type=TaskType.DETECTION,
+            task_type=TaskType.OBJECT_DETECTION,
             labels=[
                 schemas.Label(key="class", value="cat", score=0.3),
                 schemas.Label(key="class", value="dog", score=0.7),
@@ -371,7 +371,7 @@ def prediction_annotations_dog(
             metadata=metadata_4,
         ),
         schemas.Annotation(
-            task_type=TaskType.DETECTION,
+            task_type=TaskType.OBJECT_DETECTION,
             labels=[
                 schemas.Label(key="class", value="cat", score=0.25),
                 schemas.Label(key="class", value="dog", score=0.75),
@@ -380,7 +380,7 @@ def prediction_annotations_dog(
             metadata=metadata_3,
         ),
         schemas.Annotation(
-            task_type=TaskType.DETECTION,
+            task_type=TaskType.OBJECT_DETECTION,
             labels=[
                 schemas.Label(key="class", value="cat", score=0.05),
                 schemas.Label(key="class", value="dog", score=0.95),
@@ -866,7 +866,7 @@ def test_complex_queries(
     f = schemas.Filter(
         model_names=[model_name1],
         labels=[{"class": "dog"}],
-        prediction_scores=[
+        label_scores=[
             schemas.NumericFilter(
                 value=0.9,
                 operator=">",
@@ -883,13 +883,13 @@ def test_complex_queries(
     f = schemas.Filter(
         model_names=[model_name1],
         labels=[{"class": "dog"}],
-        prediction_scores=[
+        label_scores=[
             schemas.NumericFilter(
                 value=0.75,
                 operator=">",
             )
         ],
-        annotation_types=[enums.AnnotationType.BOX],
+        require_bounding_box=True,
     )
     q = Query(models.Datum.uid).filter(f).predictions()
     datum_uids = db.query(q).distinct().all()
@@ -903,7 +903,7 @@ def test_query_by_annotation_geometry(
     model_sim,
 ):
     f = schemas.Filter(
-        annotation_geometric_area=[
+        bounding_box_area=[
             schemas.NumericFilter(
                 value=75,
                 operator=">",

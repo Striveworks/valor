@@ -31,7 +31,7 @@ def created_dataset(db: Session, dataset_name: str) -> str:
             datum=schemas.Datum(uid="uid2", dataset_name=dataset_name),
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.DETECTION,
+                    task_type=enums.TaskType.OBJECT_DETECTION,
                     labels=[schemas.Label(key="k1", value="v1")],
                 )
             ],
@@ -43,7 +43,7 @@ def created_dataset(db: Session, dataset_name: str) -> str:
             datum=schemas.Datum(uid="uid3", dataset_name=dataset_name),
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.SEGMENTATION,
+                    task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
                     labels=[schemas.Label(key="k1", value="v1")],
                 )
             ],
@@ -76,7 +76,7 @@ def created_model(db: Session, model_name: str, created_dataset: str) -> str:
             datum=schemas.Datum(uid="uid2", dataset_name=created_dataset),
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.DETECTION,
+                    task_type=enums.TaskType.OBJECT_DETECTION,
                     labels=[schemas.Label(key="k1", value="v1", score=1.0)],
                 )
             ],
@@ -89,7 +89,7 @@ def created_model(db: Session, model_name: str, created_dataset: str) -> str:
             datum=schemas.Datum(uid="uid3", dataset_name=created_dataset),
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.SEGMENTATION,
+                    task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
                     labels=[schemas.Label(key="k1", value="v1")],
                 )
             ],
@@ -255,7 +255,7 @@ def test__fetch_evaluation_from_subrequest(
         model_names=[created_model],
         datum_filter=schemas.Filter(dataset_names=[created_dataset]),
         parameters=schemas.EvaluationParameters(
-            task_type=enums.TaskType.SEGMENTATION,
+            task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
         ),
     )
     created_2, _ = core.create_or_get_evaluations(db, job_request_2)
@@ -387,7 +387,7 @@ def test_fetch_evaluation_from_id(
         model_names=[created_model],
         datum_filter=schemas.Filter(dataset_names=[created_dataset]),
         parameters=schemas.EvaluationParameters(
-            task_type=enums.TaskType.SEGMENTATION,
+            task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
         ),
     )
     created_2, _ = core.create_or_get_evaluations(db, job_request_2)
@@ -405,7 +405,7 @@ def test_fetch_evaluation_from_id(
     assert fetched_evaluation.id == evaluation_id_2
     assert (
         fetched_evaluation.parameters["task_type"]
-        == enums.TaskType.SEGMENTATION
+        == enums.TaskType.SEMANTIC_SEGMENTATION
     )
 
 
@@ -430,7 +430,7 @@ def test_get_evaluations(
         model_names=[created_model],
         datum_filter=schemas.Filter(dataset_names=[created_dataset]),
         parameters=schemas.EvaluationParameters(
-            task_type=enums.TaskType.SEGMENTATION,
+            task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
         ),
     )
     created_2, _ = core.create_or_get_evaluations(db, job_request_2)
@@ -512,7 +512,7 @@ def test_get_evaluation_requests_from_model(
         model_names=[created_model],
         datum_filter=schemas.Filter(dataset_names=[created_dataset]),
         parameters=schemas.EvaluationParameters(
-            task_type=enums.TaskType.SEGMENTATION,
+            task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
         ),
     )
     core.create_or_get_evaluations(db, job_request_2)
@@ -527,7 +527,7 @@ def test_get_evaluation_requests_from_model(
 
     assert {
         eval_request.parameters.task_type for eval_request in eval_requests
-    } == {enums.TaskType.CLASSIFICATION, enums.TaskType.SEGMENTATION}
+    } == {enums.TaskType.CLASSIFICATION, enums.TaskType.SEMANTIC_SEGMENTATION}
 
 
 def test_evaluation_status(
@@ -678,7 +678,7 @@ def test_count_active_evaluations(
         model_names=[created_model],
         datum_filter=schemas.Filter(dataset_names=[created_dataset]),
         parameters=schemas.EvaluationParameters(
-            task_type=enums.TaskType.SEGMENTATION,
+            task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
         ),
     )
     created, _ = core.create_or_get_evaluations(db, job_request_2)
@@ -724,7 +724,7 @@ def test_count_active_evaluations(
         model_names=[created_model],
         datum_filter=schemas.Filter(dataset_names=[created_dataset]),
         parameters=schemas.EvaluationParameters(
-            task_type=enums.TaskType.DETECTION,
+            task_type=enums.TaskType.OBJECT_DETECTION,
         ),
     )
     evaluation_3, _ = core.create_or_get_evaluations(db, job_request_3)
