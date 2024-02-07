@@ -235,10 +235,8 @@ def _split_request(
         dataset.name for dataset in datasets_to_evaluate
     ]
     job_request.datum_filter.dataset_metadata = None
-    job_request.datum_filter.dataset_geospatial = None
     job_request.datum_filter.model_names = None
     job_request.datum_filter.model_metadata = None
-    job_request.datum_filter.model_geospatial = None
 
     # 4. - create requests
     return [

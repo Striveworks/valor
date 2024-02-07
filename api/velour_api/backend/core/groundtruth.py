@@ -1,6 +1,3 @@
-import json
-
-from geoalchemy2.functions import ST_AsGeoJSON
 from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -98,21 +95,11 @@ def get_groundtruth(
     # retrieve from table
     dataset = core.fetch_dataset(db, name=dataset_name)
     datum = core.fetch_datum(db, dataset_id=dataset.id, uid=datum_uid)
-
-    geo_dict = (
-        schemas.geojson.from_dict(
-            json.loads(db.scalar(ST_AsGeoJSON(datum.geo)))
-        )
-        if datum.geo
-        else None
-    )
-
     return schemas.GroundTruth(
         datum=schemas.Datum(
             uid=datum.uid,
             dataset_name=dataset_name,
             metadata=datum.meta,
-            geospatial=geo_dict,
         ),
         annotations=core.get_annotations(db, datum),
     )

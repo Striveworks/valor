@@ -1,6 +1,3 @@
-import json
-
-from geoalchemy2.functions import ST_AsGeoJSON
 from sqlalchemy import and_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -39,7 +36,6 @@ def create_datum(
             uid=datum.uid,
             dataset_id=dataset.id,
             meta=datum.metadata,
-            geo=datum.geospatial.wkt() if datum.geospatial else None,
         )
         db.add(row)
         db.commit()
@@ -111,26 +107,15 @@ def get_datums(
     datums = (
         db.query(models.Datum).where(models.Datum.id == subquery.c.id).all()
     )
-
-    output = []
-    for datum in datums:
-        geo_dict = (
-            schemas.geojson.from_dict(
-                json.loads(db.scalar(ST_AsGeoJSON(datum.geo)))
-            )
-            if datum.geo
-            else None
+    return [
+        schemas.Datum(
+            dataset_name=db.scalar(
+                select(models.Dataset.name).where(
+                    models.Dataset.id == datum.dataset_id
+                )
+            ),
+            uid=datum.uid,
+            metadata=datum.meta,
         )
-        output.append(
-            schemas.Datum(
-                dataset_name=db.scalar(
-                    select(models.Dataset.name).where(
-                        models.Dataset.id == datum.dataset_id
-                    )
-                ),
-                uid=datum.uid,
-                metadata=datum.meta,
-                geospatial=geo_dict,
-            )
-        )
-    return output
+        for datum in datums
+    ]

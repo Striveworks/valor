@@ -19,7 +19,12 @@ from velour_api.schemas.geometry import (
 )
 from velour_api.schemas.label import Label
 
-MetadataType = dict[str, float | str | bool | dict[str, str]]
+GeospatialMetadatum = dict[
+    str, GeoJSONPoint | GeoJSONPolygon | GeoJSONMultiPolygon
+]
+MetadataType = dict[
+    str, float | str | bool | GeospatialMetadatum | dict[str, str]
+]
 
 
 def _validate_name_format(name: str):
@@ -56,8 +61,6 @@ class Dataset(BaseModel):
         The name of the dataset.
     metadata :  dict
         A dictionary of metadata that describes the dataset.
-    geospatial : dict
-        A GeoJSON-style dictionary describing the geospatial coordinates of the dataset.
 
     Raises
     ----------
@@ -68,9 +71,6 @@ class Dataset(BaseModel):
     id: int | None = None
     name: str
     metadata: dict[str, float | str | dict[str, str]] = {}
-    geospatial: GeoJSONPoint | GeoJSONPolygon | GeoJSONMultiPolygon | None = (
-        None
-    )
     model_config = ConfigDict(extra="forbid")
 
     @field_validator("name")
@@ -96,8 +96,6 @@ class Model(BaseModel):
         The name of the model.
     metadata :  dict
         A dictionary of metadata that describes the model.
-    geospatial : dict
-        A GeoJSON-style dictionary describing the geospatial metadata of the model.
 
     Raises
     ----------
@@ -108,9 +106,6 @@ class Model(BaseModel):
     id: int | None = None
     name: str
     metadata: MetadataType = {}
-    geospatial: GeoJSONPoint | GeoJSONPolygon | GeoJSONMultiPolygon | None = (
-        None
-    )
     model_config = ConfigDict(extra="forbid")
 
     @field_validator("name")
@@ -136,8 +131,6 @@ class Datum(BaseModel):
         The name of the dataset to associate the `Datum` with.
     metadata : dict
         A dictionary of metadata that describes the `Datum`.
-    geospatial :  dict
-        A GeoJSON-style dictionary describing the geospatial coordinates of the `Datum`.
 
     Raises
     ----------
@@ -148,9 +141,6 @@ class Datum(BaseModel):
     uid: str
     dataset_name: str
     metadata: MetadataType = {}
-    geospatial: GeoJSONPoint | GeoJSONPolygon | GeoJSONMultiPolygon | None = (
-        None
-    )
     model_config = ConfigDict(extra="forbid")
 
     @field_validator("uid")
@@ -195,7 +185,6 @@ class Datum(BaseModel):
             self.uid == other.uid
             and self.dataset_name == other.dataset_name
             and self.metadata == other.metadata
-            and self.geospatial == other.geospatial
         )
 
 

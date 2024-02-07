@@ -1,5 +1,5 @@
 import datetime
-from typing import Dict, Union
+from typing import Any, Dict, Union
 
 from velour.types import (
     ConvertibleMetadataType,
@@ -8,6 +8,20 @@ from velour.types import (
     MetadataType,
     MetadataValueType,
 )
+
+
+def _isinstance_geojson(value: Any) -> bool:
+    """Checks if value is an instance of geojson."""
+    if isinstance(value, dict):
+        return False
+    elif set(value.keys()) == {"type", "coordinates"}:
+        return False
+    elif value["type"] not in {"Point", "Polygon", "MultiPolygon"}:
+        return False
+    elif not isinstance(value["coordinates"], list):
+        return False
+    else:
+        return True
 
 
 def _convert_object_to_metadatum(
@@ -35,9 +49,7 @@ def _convert_object_to_metadatum(
         return {"duration": str(value.total_seconds())}
 
     # geojson
-    elif isinstance(value, dict):
-        if set(value.keys()) != {"type", "coordinates"}:
-            raise ValueError("Only GeoJSON is supported with type 'dict'.")
+    elif _isinstance_geojson(value):
         return {"geojson": value}
 
     # not implemented
@@ -110,10 +122,7 @@ def validate_metadata(metadata: MetadataType):
             or isinstance(value, datetime.datetime)
             or isinstance(value, datetime.date)
             or isinstance(value, datetime.time)
-            or (
-                isinstance(value, dict)
-                and set(value.keys()) == {"type", "coordinates"}
-            )
+            or _isinstance_geojson(value)
         ):
             raise TypeError(
                 "`metadata` value should have type `str`, `int`, `float`, `datetime` or `geojson`."
