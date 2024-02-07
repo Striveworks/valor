@@ -353,16 +353,18 @@ def get_annotation(
             select(models.Datum).where(models.Datum.id == annotation.datum_id)
         )
 
-        if datum is not None:
-            if "height" not in datum.meta or "width" not in datum.meta:
-                raise ValueError("missing height or width")
-            height = datum.meta["height"]
-            width = datum.meta["width"]
-            retval.raster = schemas.Raster(
-                mask=_raster_to_png_b64(
-                    db, raster=annotation.raster, height=height, width=width
-                ),
-            )
+        if datum is None:
+            raise RuntimeError("psql didn't return a Datum")
+
+        if "height" not in datum.meta or "width" not in datum.meta:
+            raise ValueError("missing height or width")
+        height = datum.meta["height"]
+        width = datum.meta["width"]
+        retval.raster = schemas.Raster(
+            mask=_raster_to_png_b64(
+                db, raster=annotation.raster, height=height, width=width
+            ),
+        )
 
     return retval
 
