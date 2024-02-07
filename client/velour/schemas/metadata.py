@@ -12,9 +12,9 @@ from velour.types import (
 
 def _isinstance_geojson(value: Any) -> bool:
     """Checks if value is an instance of geojson."""
-    if isinstance(value, dict):
+    if not isinstance(value, dict):
         return False
-    elif set(value.keys()) == {"type", "coordinates"}:
+    elif set(value.keys()) != {"type", "coordinates"}:
         return False
     elif value["type"] not in {"Point", "Polygon", "MultiPolygon"}:
         return False

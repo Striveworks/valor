@@ -10,16 +10,12 @@ def test_empty_filter():
     assert f == {
         "dataset_names": None,
         "dataset_metadata": None,
-        "dataset_geospatial": None,
         "model_names": None,
         "model_metadata": None,
-        "model_geospatial": None,
         "datum_uids": None,
         "datum_metadata": None,
-        "datum_geospatial": None,
         "task_types": None,
         "annotation_metadata": None,
-        "annotation_geospatial": None,
         "require_bounding_box": None,
         "bounding_box_area": None,
         "require_polygon": None,
@@ -61,7 +57,6 @@ def test_declarative_filtering():
         Datum.metadata["arbitrary_datetime_key"] >= datetime.timedelta(days=1),
         Datum.metadata["arbitrary_datetime_key"] <= datetime.timedelta(days=2),
         Annotation.metadata["myKey"] == "helloworld",
-        # geospatial filters
     ]
 
     f = asdict(Filter.create(filters))
@@ -73,14 +68,12 @@ def test_declarative_filtering():
                 {"value": 20, "operator": "<"},
             ]
         },
-        "dataset_geospatial": None,
         "model_names": ["model1"],
         "model_metadata": {
             "arbitrary_str_key": [
                 {"value": "arbitrary value", "operator": "=="}
             ]
         },
-        "model_geospatial": None,
         "datum_uids": ["uid1"],
         "datum_metadata": {
             "arbitrary_datetime_key": [
@@ -88,8 +81,10 @@ def test_declarative_filtering():
                 {"value": {"duration": "172800.0"}, "operator": "<="},
             ]
         },
-        "datum_geospatial": None,
-        "task_types": ["classification", "object-detection"],
+        "task_types": [
+            TaskType.CLASSIFICATION.value,
+            TaskType.OBJECT_DETECTION.value,
+        ],
         "require_bounding_box": True,
         "bounding_box_area": [
             {"value": 1000, "operator": ">="},
@@ -104,7 +99,6 @@ def test_declarative_filtering():
         "multipolygon_area": None,
         "require_raster": False,
         "raster_area": None,
-        "annotation_geospatial": None,
         "labels": [{"k2": "v2"}],
         "label_ids": None,
         "label_keys": ["k1"],

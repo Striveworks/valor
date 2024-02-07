@@ -11,6 +11,7 @@ from velour.schemas.geometry import (
     Polygon,
     Raster,
 )
+from velour.schemas.metadata import _isinstance_geojson
 from velour.types import GeometryType
 
 
@@ -478,15 +479,13 @@ class _DictionaryValueMapper(
             return DatetimeMapper(
                 name=self.name, key=self.key
             )._create_expression(value, operator)
-        elif vtype is dict:
-            if set(value.keys()) != {"type", "coordinates"}:
-                raise NotImplementedError("Type 'dict' only support GeoJSON.")
+        elif _isinstance_geojson(value):
             return GeospatialMapper(
                 name=self.name, key=self.key
             )._create_expression(value, operator)
         else:
             raise NotImplementedError(
-                f"Dictionary value with type `{type(value)}` is not suppoerted."
+                f"DictionaryMapper value `{value}` is not supported."
             )
 
 
