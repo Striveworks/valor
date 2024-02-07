@@ -10,6 +10,14 @@ export POSTGRES_SSLMODE="${POSTGRES_SSLMODE:-disable}"
 MAX_RETRIES=10
 WAIT_SECONDS=3
 
+echo "1"
+echo $(ls migrations/sql)
+echo "2"
+echo $(ls /migrations/sql)
+echo "3"
+echo $(ls ./)
+
+
 wait_for_postgres() {
   retries=0
   until nc -z -w 1 $POSTGRES_HOST $POSTGRES_PORT || [ $retries -eq $MAX_RETRIES ]; do
