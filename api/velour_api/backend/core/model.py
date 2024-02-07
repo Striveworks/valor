@@ -177,7 +177,7 @@ def get_model(
 def get_models(
     db: Session,
     filters: schemas.Filter | None = None,
-) -> list[schemas.Dataset]:
+) -> list[schemas.Model]:
     """
     Get models with optional filter constraint.
 

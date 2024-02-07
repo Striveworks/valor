@@ -289,7 +289,7 @@ class GroundTruth(BaseModel):
         _check_semantic_segmentations_single_label(v)
         return v
 
-    @model_validator(mode="after")
+    @model_validator(mode="after")  # type: ignore - pydantic type error
     @classmethod
     def _validate_annotation_rasters(cls, values):
         """Validate any rasters on the groundtruth."""
@@ -338,7 +338,7 @@ class Prediction(BaseModel):
         _validate_name_format(v)
         return v
 
-    @model_validator(mode="after")
+    @model_validator(mode="after")  # type: ignore - pydantic type error
     @classmethod
     def _validate_annotation_rasters(cls, values):
         """Validate any rasters on the annotation."""

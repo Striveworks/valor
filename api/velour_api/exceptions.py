@@ -418,6 +418,7 @@ class EvaluationStateError(Exception):
 
 error_to_status_code = {
     # 400
+    Exception: 400,
     ModelIsEmptyError: 400,
     ValueError: 400,
     AttributeError: 400,
@@ -452,7 +453,38 @@ error_to_status_code = {
 }
 
 
-def create_http_error(error: Exception) -> HTTPException:
+def create_http_error(
+    error: (
+        Exception
+        | ModelIsEmptyError
+        | ValueError
+        | AttributeError
+        | DatasetDoesNotExistError
+        | DatumDoesNotExistError
+        | ModelDoesNotExistError
+        | ModelInferencesDoNotExist
+        | EvaluationDoesNotExistError
+        | DatasetAlreadyExistsError
+        | DatasetIsEmptyError
+        | DatasetFinalizedError
+        | DatasetNotFinalizedError
+        | DatasetStateError
+        | ModelAlreadyExistsError
+        | ModelFinalizedError
+        | ModelNotFinalizedError
+        | ModelStateError
+        | DatumAlreadyExistsError
+        | DatumDoesNotBelongToDatasetError
+        | AnnotationAlreadyExistsError
+        | GroundTruthAlreadyExistsError
+        | PredictionAlreadyExistsError
+        | EvaluationAlreadyExistsError
+        | EvaluationRunningError
+        | EvaluationStateError
+        | NotImplementedError
+        | ServiceUnavailable
+    ),
+) -> HTTPException:
     """
     Creates a HTTP execption using a caught exception.
 

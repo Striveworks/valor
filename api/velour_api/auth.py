@@ -18,6 +18,8 @@ class OptionalHTTPBearer(HTTPBearer):
         if auth_settings.no_auth:
             return None
         ret = await super().__call__(request)
+        if not ret:
+            raise RuntimeError("No token to verify.")
         verify_token(ret)
         return ret
 
@@ -60,19 +62,26 @@ def create_token(data: dict, expires_delta: timedelta | None = None) -> str:
     str
         The encoded JWT.
     """
+    if not auth_settings.SECRET_KEY:
+        raise KeyError(
+            "Please set auth_settings.SECRET_KEY before creating a token."
+        )
+
     to_encode = data.copy()
 
     expires_delta = expires_delta or timedelta(days=1)
     expire = datetime.now(timezone.utc) + expires_delta
     to_encode.update({"exp": expire})
 
-    encoded_jwt = jwt.encode(
-        to_encode, auth_settings.SECRET_KEY, algorithm=auth_settings.ALGORITHM
+    encoded_jwt = jwt.encode(  # type: ignore - pre-commit throws an error because it has both jwt and PyJWT installed
+        payload=to_encode,
+        key=auth_settings.SECRET_KEY,
+        algorithm=auth_settings.ALGORITHM,
     )
     return encoded_jwt
 
 
-def verify_token(token: HTTPAuthorizationCredentials | None) -> dict:
+def verify_token(token: HTTPAuthorizationCredentials) -> dict:
     """
     Verifies a JWT and returns the data contained in it.
 
@@ -93,6 +102,11 @@ def verify_token(token: HTTPAuthorizationCredentials | None) -> dict:
         Raises an HTTPException with status code 401 if there's any error in verifying
         or decoding the token.
     """
+    if not auth_settings.SECRET_KEY or not auth_settings.ALGORITHM:
+        raise KeyError(
+            "Please set auth_settings.SECRET_KEY and auth_settings.ALGORITHM before verifying a token."
+        )
+
     if auth_settings.no_auth:
         if token is not None:
             logger.debug(
@@ -101,9 +115,9 @@ def verify_token(token: HTTPAuthorizationCredentials | None) -> dict:
         return {}
 
     try:
-        payload = jwt.decode(
-            token.credentials,
-            auth_settings.SECRET_KEY,
+        payload = jwt.decode(  # type: ignore - pre-commit throws an error because it has both jwt and PyJWT installed
+            jwt=token.credentials,
+            key=auth_settings.SECRET_KEY,
             algorithms=[auth_settings.ALGORITHM],
         )
     except Exception as e:

@@ -1,4 +1,5 @@
 from collections import defaultdict
+from typing import Callable, Sequence
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -10,8 +11,9 @@ LabelMapType = list[list[list[str]]]
 
 
 def _create_detection_grouper_mappings(
-    mapping_dict: dict[tuple[str], tuple[str]], labels: list[models.Label]
-) -> dict[str, dict[str | int, any]]:
+    mapping_dict: dict[tuple[str, ...], tuple[str, ...]],
+    labels: list[models.Label],
+) -> dict[str, dict]:
     """Create grouper mappings for use when evaluating detections."""
 
     label_id_to_grouper_id_mapping = {}
@@ -39,8 +41,9 @@ def _create_detection_grouper_mappings(
 
 
 def _create_segmentation_grouper_mappings(
-    mapping_dict: dict[tuple[str], tuple[str]], labels: list[models.Label]
-) -> dict[str, dict[str | int, any]]:
+    mapping_dict: dict[tuple[str, ...], tuple[str, ...]],
+    labels: list[models.Label],
+) -> dict[str, dict]:
     """Create grouper mappings for use when evaluating segmentations."""
 
     grouper_id_to_grouper_label_mapping = {}
@@ -65,8 +68,9 @@ def _create_segmentation_grouper_mappings(
 
 
 def _create_classification_grouper_mappings(
-    mapping_dict: dict[tuple[str], tuple[str]], labels: list[models.Label]
-) -> dict[str, dict[str | int, any]]:
+    mapping_dict: dict[tuple[str, ...], tuple[str, ...]],
+    labels: list[models.Label],
+) -> dict[str, dict]:
     """Create grouper mappings for use when evaluating classifications."""
 
     # define mappers to connect groupers with labels
@@ -95,7 +99,7 @@ def create_grouper_mappings(
     labels: list,
     label_map: LabelMapType | None,
     evaluation_type: enums.TaskType,
-) -> dict[str, dict[str | int, any]]:
+) -> dict[str, dict]:
     """
     Creates a dictionary of mappings that connect each label with a "grouper" (i.e., a unique ID-key-value combination that can represent one or more labels).
     These mappings enable Velour to group multiple labels together using the label_map argument in each evaluation function.
@@ -139,8 +143,8 @@ def get_or_create_row(
     db: Session,
     model_class: type,
     mapping: dict,
-    columns_to_ignore: list[str] = None,
-) -> any:
+    columns_to_ignore: list[str] | None = None,
+):
     """
     Tries to get the row defined by mapping. If that exists then its mapped object is returned. Otherwise a row is created by `mapping` and the newly created object is returned.
 
@@ -185,11 +189,19 @@ def get_or_create_row(
 
 def create_metric_mappings(
     db: Session,
-    metrics: list[
+    metrics: Sequence[
         schemas.APMetric
         | schemas.APMetricAveragedOverIOUs
         | schemas.mAPMetric
         | schemas.mAPMetricAveragedOverIOUs
+        | schemas.ConfusionMatrix
+        | schemas.AccuracyMetric
+        | schemas.ROCAUCMetric
+        | schemas.PrecisionMetric
+        | schemas.RecallMetric
+        | schemas.F1Metric
+        | schemas.IOUMetric
+        | schemas.mIOUMetric
     ],
     evaluation_id: int,
 ) -> list[dict]:
@@ -215,30 +227,30 @@ def create_metric_mappings(
         if hasattr(metric, "label"):
             label = core.fetch_label(
                 db=db,
-                label=metric.label,
+                label=metric.label,  # type: ignore - https://github.com/microsoft/pylance-release/issues/2237
             )
 
             # create the label in the database if it doesn't exist
             # this is useful if the user maps existing labels to a non-existant grouping label
             if not label:
-                label = core.create_labels(db=db, labels=[metric.label])
+                label = core.create_labels(db=db, labels=[metric.label])  # type: ignore - https://github.com/microsoft/pylance-release/issues/2237
                 label_id = label[0].id
             else:
                 label_id = label.id
 
             ret.append(
                 metric.db_mapping(
-                    label_id=label_id,
+                    label_id=label_id,  # type: ignore - https://github.com/microsoft/pylance-release/issues/2237
                     evaluation_id=evaluation_id,
                 )
             )
         else:
-            ret.append(metric.db_mapping(evaluation_id=evaluation_id))
+            ret.append(metric.db_mapping(evaluation_id=evaluation_id))  # type: ignore - unnecessary since we're checking for label attribute above
 
     return ret
 
 
-def validate_computation(fn: callable) -> callable:
+def validate_computation(fn: Callable) -> Callable:
     """
     Computation decorator that validates that a computation can proceed.
     """

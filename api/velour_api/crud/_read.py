@@ -104,7 +104,7 @@ def get_labels(
 def get_datums(
     *,
     db: Session,
-    filters: schemas.Filter = None,
+    filters: schemas.Filter | None = None,
 ) -> list[schemas.Datum]:
     """
     Get datums with optional filter.
