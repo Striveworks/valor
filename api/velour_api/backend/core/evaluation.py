@@ -5,7 +5,7 @@ from sqlalchemy.sql.elements import BinaryExpression
 
 from velour_api import enums, exceptions, schemas
 from velour_api.backend import core, models
-from velour_api.backend.ops import Query
+from velour_api.backend.query import Query
 
 
 def _create_dataset_expr_from_list(

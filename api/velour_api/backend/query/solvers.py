@@ -3,7 +3,11 @@ from typing import Callable
 from sqlalchemy import Select, and_, or_, select
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.orm.decl_api import DeclarativeMeta
-from sqlalchemy.sql.elements import BinaryExpression, ColumnElement
+from sqlalchemy.sql.elements import (
+    BinaryExpression,
+    ColumnElement,
+    UnaryExpression,
+)
 
 from velour_api.backend.models import (
     Annotation,
@@ -35,7 +39,8 @@ def _create_where_expression(
 
 
 def _trim_extremities(
-    graph: list[DeclarativeMeta], joint_set: set[DeclarativeMeta]
+    graph: list[DeclarativeMeta],
+    joint_set: set[DeclarativeMeta],
 ) -> list[DeclarativeMeta]:
     """trim graph extremities of unused nodes"""
     lhi = 0
@@ -52,7 +57,7 @@ def _trim_extremities(
 
 
 def _solve_groundtruth_graph(
-    args: list[DeclarativeMeta | InstrumentedAttribute],
+    args: tuple[DeclarativeMeta | InstrumentedAttribute | UnaryExpression],
     selected: set[DeclarativeMeta],
     filtered: set[DeclarativeMeta],
     expressions: dict[
@@ -100,7 +105,7 @@ def _solve_groundtruth_graph(
 
 
 def _solve_model_graph(
-    args: list[DeclarativeMeta | InstrumentedAttribute],
+    args: tuple[DeclarativeMeta | InstrumentedAttribute | UnaryExpression],
     selected: set[DeclarativeMeta],
     filtered: set[DeclarativeMeta],
     expressions: dict[
@@ -151,7 +156,7 @@ def _solve_model_graph(
 
 
 def _solve_prediction_graph(
-    args: list[DeclarativeMeta | InstrumentedAttribute],
+    args: tuple[DeclarativeMeta | InstrumentedAttribute | UnaryExpression],
     selected: set[DeclarativeMeta],
     filtered: set[DeclarativeMeta],
     expressions: dict[
@@ -200,7 +205,7 @@ def _solve_prediction_graph(
 
 
 def _solve_joint_graph(
-    args: list[DeclarativeMeta | InstrumentedAttribute],
+    args: tuple[DeclarativeMeta | InstrumentedAttribute | UnaryExpression],
     selected: set[DeclarativeMeta],
     filtered: set[DeclarativeMeta],
     expressions: dict[
@@ -265,7 +270,7 @@ def _solve_nested_graphs(
     unique_set: (
         set[type[Model]] | set[type[Prediction]] | set[type[GroundTruth]]
     ),
-    args: list[DeclarativeMeta | InstrumentedAttribute],
+    args: tuple[DeclarativeMeta | InstrumentedAttribute | UnaryExpression],
     selected: set[DeclarativeMeta],
     filtered: set[DeclarativeMeta],
     expressions: dict[
@@ -275,16 +280,18 @@ def _solve_nested_graphs(
 ):
     qset = (filtered - unique_set).union({Datum})
     query = query_solver(
-        args,
-        selected,
-        qset,
+        args=args,
+        selected=selected,
+        filtered=qset,
+        expressions=expressions,
     )
     sub_qset = filtered.intersection(unique_set).union({Datum})
     subquery = (
         subquery_solver(
-            [Datum.id],
-            {Datum},
-            sub_qset,
+            args=[Datum.id],
+            selected={Datum},
+            filtered=sub_qset,
+            expressions=expressions,
         )
         if pivot_table in filtered or sub_qset != {pivot_table}
         else None
@@ -293,7 +300,9 @@ def _solve_nested_graphs(
 
 
 def solve_graph(
-    select_args: list[DeclarativeMeta | InstrumentedAttribute],
+    select_args: tuple[
+        DeclarativeMeta | InstrumentedAttribute | UnaryExpression
+    ],
     selected_tables: set[DeclarativeMeta],
     filter_by_tables: set[DeclarativeMeta],
     expressions: dict[
@@ -356,7 +365,7 @@ def solve_graph(
     joint_set = selected_tables.union(filter_by_tables)
 
     # create set of tables to select graph with
-    selected_tables = (
+    graph_set = (
         {pivot_table}.union(joint_set)
         if isinstance(pivot_table, DeclarativeMeta)
         else joint_set
@@ -367,7 +376,7 @@ def solve_graph(
 
     # solve groundtruth graph
     if (
-        GroundTruth in selected_tables
+        GroundTruth in graph_set
         and Prediction not in selected_tables
         and Model not in selected_tables
     ):
@@ -380,11 +389,11 @@ def solve_graph(
             unique_set = {Prediction}
     # solve model or prediction graph
     elif GroundTruth not in selected_tables and (
-        Model in selected_tables or Prediction in selected_tables
+        Model in graph_set or Prediction in graph_set
     ):
         query_solver = (
             _solve_model_graph
-            if Model in selected_tables
+            if Model in graph_set
             else _solve_prediction_graph
         )
         if GroundTruth in joint_set:

@@ -1,4 +1,3 @@
-from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.orm.decl_api import DeclarativeMeta
 from sqlalchemy.sql.elements import BinaryExpression, ColumnElement
 
@@ -19,6 +18,7 @@ from velour_api.backend.query.filtering import (
     filter_by_model,
     filter_by_prediction,
 )
+from velour_api.backend.query.mapping import map_arguments_to_tables
 from velour_api.backend.query.solvers import solve_graph
 from velour_api.schemas import Filter
 
@@ -45,43 +45,27 @@ class Query:
 
     def __init__(self, *args):
         self._args = args
-        self._selected: set[DeclarativeMeta | None] = set(
-            [
-                self._map_attribute_to_table(argument)
-                for argument in args
-                if (
-                    isinstance(argument, DeclarativeMeta)
-                    or isinstance(argument, InstrumentedAttribute)
-                    or hasattr(argument, "__visit_name__")
-                )
-            ]
-        )
+        self._selected: set[DeclarativeMeta] = map_arguments_to_tables(args)
         self._filtered = set()
-        self._excluded = set()
         self._expressions: dict[
             DeclarativeMeta, list[ColumnElement[bool]]
         ] = {}
 
     def select_from(self, *args):
-        self._selected: set[DeclarativeMeta | None] = set(
-            [
-                self._map_attribute_to_table(argument)
-                for argument in args
-                if (
-                    isinstance(argument, DeclarativeMeta)
-                    or isinstance(argument, InstrumentedAttribute)
-                    or hasattr(argument, "__visit_name__")
-                )
-            ]
-        )
+        self._selected = map_arguments_to_tables(args)
         return self
 
-    def exclude(self, *args):
-        """Exclude tables from query."""
-        for table in args:
-            if isinstance(table, DeclarativeMeta):
-                self._excluded.add(table)
-        return self
+    def _add_expressions(
+        self,
+        table: DeclarativeMeta,
+        expressions: list[ColumnElement[bool] | BinaryExpression],
+    ) -> None:
+        if len(expressions) == 0:
+            return
+        self._filtered.add(table)
+        if table not in self._expressions:
+            self._expressions[table] = []
+        self._expressions[table].extend(expressions)
 
     def filter(self, filter_: Filter | None):  # type: ignore - method "filter" overrides class "Query" in an incompatible manner
         """Parses `schemas.Filter`"""
@@ -99,7 +83,7 @@ class Query:
         self._add_expressions(Prediction, filter_by_prediction(filter_))
         return self
 
-    def compile(
+    def any(
         self,
         name: str = "generated_subquery",
         *,
@@ -109,13 +93,8 @@ class Query:
         """
         Generates a sqlalchemy subquery. Graph is chosen automatically as best fit.
         """
-        if self._selected is not None:
-            raise RuntimeError("No tables selected.")
-
-        self._selected = self._selected - self._excluded
-        self._filtered = self._filtered - self._excluded
         query, subquery = solve_graph(
-            select_args=self._args,  # type: ignore
+            select_args=self._args,
             selected_tables=self._selected,
             filter_by_tables=self._filtered,
             expressions=self._expressions,
@@ -134,7 +113,7 @@ class Query:
         """
         Generates a sqlalchemy subquery using a groundtruths-focused graph.
         """
-        return self.compile(name, pivot=GroundTruth, as_subquery=as_subquery)
+        return self.any(name, pivot=GroundTruth, as_subquery=as_subquery)
 
     def predictions(
         self,
@@ -145,42 +124,4 @@ class Query:
         """
         Generates a sqlalchemy subquery using a predictions-focused graph.
         """
-        return self.compile(name, pivot=Prediction, as_subquery=as_subquery)
-
-    def _map_attribute_to_table(
-        self, attr: InstrumentedAttribute | DeclarativeMeta
-    ) -> DeclarativeMeta | None:
-        if isinstance(attr, DeclarativeMeta):
-            return attr
-        elif isinstance(attr, InstrumentedAttribute):
-            table_name = attr.table.name
-        elif hasattr(attr, "__visit_name__"):
-            table_name = attr.__visit_name__
-        else:
-            table_name = None
-
-        match table_name:
-            case Dataset.__tablename__:
-                return Dataset
-            case Model.__tablename__:
-                return Model
-            case Datum.__tablename__:
-                return Datum
-            case Annotation.__tablename__:
-                return Annotation
-            case GroundTruth.__tablename__:
-                return GroundTruth
-            case Prediction.__tablename__:
-                return Prediction
-            case Label.__tablename__:
-                return Label
-            case _:
-                return None
-
-    def _add_expressions(
-        self, table, expressions: list[ColumnElement[bool] | BinaryExpression]
-    ) -> None:
-        self._filtered.add(table)
-        if table not in self._expressions:
-            self._expressions[table] = []
-        self._expressions[table].extend(expressions)
+        return self.any(name, pivot=Prediction, as_subquery=as_subquery)
