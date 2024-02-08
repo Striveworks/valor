@@ -1,5 +1,6 @@
 import os
 import time
+from typing import Callable
 
 import psycopg2
 from sqlalchemy import create_engine
@@ -74,17 +75,25 @@ def check_db_connection(db: Session) -> None:
 first_time_make_session_called = True
 
 
-def make_session() -> Session:
-    """Creates a session and enables the gdal drivers (needed for raster support). The first
-    time this is called we verify that the we can actually connect to the database.
-    """
-    global first_time_make_session_called
-    db = sessionmaker(autocommit=False, autoflush=False, bind=engine)()
-    if first_time_make_session_called:
-        check_db_connection(db)
-        try_to_enable_gdal_drivers(db)
-        first_time_make_session_called = False
-    return db
+def make_make_session() -> Callable[[], Session]:
 
+    first_time_make_session_called = True
+
+    def make_session() -> Session:
+        """Creates a session and enables the gdal drivers (needed for raster support). The first
+        time this is called we verify that the we can actually connect to the database.
+        """
+        nonlocal first_time_make_session_called
+        db = sessionmaker(autocommit=False, autoflush=False, bind=engine)()
+        if first_time_make_session_called:
+            check_db_connection(db)
+            try_to_enable_gdal_drivers(db)
+            first_time_make_session_called = False
+        return db
+
+    return make_session
+
+
+make_session = make_make_session()
 
 Base = declarative_base()
