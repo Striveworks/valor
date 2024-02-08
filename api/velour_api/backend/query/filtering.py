@@ -27,22 +27,11 @@ from velour_api.schemas import (
 )
 
 
-def _get_numeric_op(opstr) -> Callable:
+def _get_boolean_op(opstr) -> Callable:
     ops = {
-        ">": operator.gt,
-        "<": operator.lt,
-        ">=": operator.ge,
-        "<=": operator.le,
         "==": operator.eq,
         "!=": operator.ne,
     }
-    if opstr not in ops:
-        raise ValueError(f"invalid numeric comparison operator `{opstr}`")
-    return ops[opstr]
-
-
-def _get_boolean_op(opstr) -> Callable:
-    ops = {"==": operator.eq, "!=": operator.ne}
     if opstr not in ops:
         raise ValueError(f"invalid boolean comparison operator `{opstr}`")
     return ops[opstr]
@@ -55,6 +44,20 @@ def _get_string_op(opstr) -> Callable:
     }
     if opstr not in ops:
         raise ValueError(f"invalid string comparison operator `{opstr}`")
+    return ops[opstr]
+
+
+def _get_numeric_op(opstr) -> Callable:
+    ops = {
+        ">": operator.gt,
+        "<": operator.lt,
+        ">=": operator.ge,
+        "<=": operator.le,
+        "==": operator.eq,
+        "!=": operator.ne,
+    }
+    if opstr not in ops:
+        raise ValueError(f"invalid numeric comparison operator `{opstr}`")
     return ops[opstr]
 
 
@@ -122,7 +125,7 @@ def _filter_by_metadatum(
         rhs = func.ST_GeomFromGeoJSON(value_filter.value.model_dump_json())
     else:
         raise NotImplementedError(
-            f"metadatum value of type `{type(value_filter.value)}` is currently not supported"
+            f"Filter with type `{type(value_filter)}` is currently not supported"
         )
     return op(lhs, rhs)
 
