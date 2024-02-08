@@ -73,8 +73,8 @@ def make_session() -> Session:
     global first_time_make_session_called
     db = sessionmaker(autocommit=False, autoflush=False, bind=engine)()
     if first_time_make_session_called:
-        try_to_enable_gdal_drivers(db)
         check_db_connection(db)
+        try_to_enable_gdal_drivers(db)
         first_time_make_session_called = False
     return db
 
