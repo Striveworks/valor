@@ -75,7 +75,9 @@ def _recursive_select_to_table_names(
             table_names.extend(_recursive_select_to_table_names(clause))
         return table_names
     else:
-        raise TypeError(f"Unsupported table type '{type(argument)}'.")
+        raise NotImplementedError(
+            f"Unsupported table type '{type(argument)}'."
+        )
 
 
 def map_arguments_to_tables(args: tuple[Any]) -> set[DeclarativeMeta]:

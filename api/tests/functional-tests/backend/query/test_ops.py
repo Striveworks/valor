@@ -616,7 +616,7 @@ def test_query_datasets(
     model_sim,
 ):
     # Check that passing a non-InstrumentedAttribute returns None
-    with pytest.raises(TypeError):
+    with pytest.raises(NotImplementedError):
         Query("not_a_valid_attribute")
 
     # Q: Get names for datasets where label class=cat exists in groundtruths.
