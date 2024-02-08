@@ -89,9 +89,9 @@ def _convert_polygon_to_box(
     Parameters
     ----------
     dataset_id : int
-        the id of the dataset.
-    model_id : int
-        the id of the model.
+        A dataset id.
+    model_id : int, optional
+        A model id.
 
     Returns
     ----------
@@ -104,7 +104,7 @@ def _convert_polygon_to_box(
         if model_id
         else models.Annotation.model_id.is_(None)
     )
-    subquery1 = (
+    subquery = (
         select(models.Annotation.id)
         .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
         .where(
@@ -113,12 +113,28 @@ def _convert_polygon_to_box(
             models.Datum.dataset_id == dataset_id,
             model_expr,
         )
-        .alias("subquery1")
+        .alias("subquery")
     )
     return (
         update(models.Annotation)
-        .where(models.Annotation.id == subquery1.c.id)
+        .where(models.Annotation.id == subquery.c.id)
         .values(box=func.ST_Envelope(models.Annotation.polygon))
+    )
+
+
+def _convert_multipolygon_to_box(
+    dataset_id: int, model_id: int | None = None
+) -> Update:
+    raise NotImplementedError(
+        "Conversion from multipolygon to box is currently unsupported."
+    )
+
+
+def _convert_multipolygon_to_polygon(
+    dataset_id: int, model_id: int | None = None
+) -> Update:
+    raise NotImplementedError(
+        "Conversion from multipolygon to polygon is currently unsupported."
     )
 
 
@@ -131,9 +147,9 @@ def _convert_raster_to_box(
     Parameters
     ----------
     dataset_id : int
-        the id of the dataset.
-    model_id : int
-        the id of the model.
+        A dataset id.
+    model_id : int, optional
+        A model id.
 
     Returns
     ----------
@@ -194,9 +210,9 @@ def _convert_raster_to_polygon(
     Parameters
     ----------
     dataset_id : int
-        the id of the dataset.
-    model_id : int
-        the id of the model.
+        A dataset id.
+    model_id : int, optional
+        A model id.
 
     Returns
     ----------
@@ -253,9 +269,9 @@ def _convert_raster_to_multipolygon(
     Parameters
     ----------
     dataset_id : int
-        the id of the dataset.
-    model_id : int
-        the id of the model.
+        A dataset id.
+    model_id : int, optional
+        A model id.
 
     Returns
     ----------
@@ -352,20 +368,14 @@ def convert_geometry(
             AnnotationType.POLYGON: _convert_raster_to_polygon,
             AnnotationType.MULTIPOLYGON: _convert_raster_to_multipolygon,
         },
+        AnnotationType.MULTIPOLYGON: {
+            AnnotationType.BOX: _convert_multipolygon_to_box,
+            AnnotationType.POLYGON: _convert_multipolygon_to_polygon,
+        },
         AnnotationType.POLYGON: {
             AnnotationType.BOX: _convert_polygon_to_box,
         },
     }
-
-    # validate conversion exists
-    if source_type not in source_to_target_conversion:
-        raise NotImplementedError(
-            f"Source type `{source_type}` does not have any conversion functions defined."
-        )
-    if target_type not in source_to_target_conversion[source_type]:
-        raise NotImplementedError(
-            f"The conversion from `{source_type}` to `{target_type}` does not match any defined conversion functions."
-        )
 
     # get update
     update_stmt = source_to_target_conversion[source_type][target_type](
