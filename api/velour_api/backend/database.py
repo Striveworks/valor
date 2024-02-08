@@ -54,8 +54,13 @@ def retry_connection(timeout: int):
 def make_session() -> Session:
     """Creates a session and enables the gdal drivers (needed for raster support)"""
     db = sessionmaker(autocommit=False, autoflush=False, bind=engine)()
-    db.execute(text("SET postgis.gdal_enabled_drivers = 'ENABLE_ALL';"))
-    db.commit()
+    try:
+        db.execute(text("SET postgis.gdal_enabled_drivers = 'ENABLE_ALL';"))
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        db.close()
+        raise e
     return db
 
 
