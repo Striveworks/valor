@@ -24,7 +24,18 @@ logger.debug(
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
 
-check_db_connection_called = False
+
+def try_to_enable_gdal_drivers(db: Session) -> None:
+    """Tries to enable the GDAL drivers for the database. However in some cases
+    the application may not have permission to and so that must be taken care of
+    out side of this application
+    """
+    try:
+        db.execute(text("SET postgis.gdal_enabled_drivers = 'ENABLE_ALL';"))
+        db.commit()
+    except (psycopg2.OperationalError, OperationalError, ProgrammingError):
+        db.rollback()
+        db.close()
 
 
 def check_db_connection(db: Session) -> None:
@@ -51,8 +62,8 @@ def check_db_connection(db: Session) -> None:
                     f"Failed to connect to database within {timeout} seconds, with error: {str(e)}"
                 )
 
-    global check_db_connection_called
-    check_db_connection_called = True
+
+first_time_make_session_called = True
 
 
 def make_session() -> Session:
@@ -60,8 +71,12 @@ def make_session() -> Session:
     time this is called we verify that the we can actually connect to the database.
     """
     db = sessionmaker(autocommit=False, autoflush=False, bind=engine)()
-    if not check_db_connection_called:
+    if first_time_make_session_called:
+        try_to_enable_gdal_drivers(db)
         check_db_connection(db)
+
+        global first_time_make_session_called
+        first_time_make_session_called = False
     return db
 
 
