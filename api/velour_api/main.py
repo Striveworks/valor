@@ -1,5 +1,4 @@
 import os
-from contextlib import asynccontextmanager
 from typing import Annotated
 
 import sqlalchemy
@@ -25,16 +24,7 @@ from velour_api.settings import auth_settings
 token_auth_scheme = auth.OptionalHTTPBearer()
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    database.create_db()
-    yield
-
-
-app = FastAPI(
-    root_path=os.getenv("API_ROOT_PATH", ""),
-    lifespan=lifespan,
-)
+app = FastAPI(root_path=os.getenv("API_ROOT_PATH", ""))
 router = APIRouter(route_class=LoggingRoute)
 app.add_middleware(
     CORSMiddleware,
