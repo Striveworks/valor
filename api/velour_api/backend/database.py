@@ -70,12 +70,11 @@ def make_session() -> Session:
     """Creates a session and enables the gdal drivers (needed for raster support). The first
     time this is called we verify that the we can actually connect to the database.
     """
+    global first_time_make_session_called
     db = sessionmaker(autocommit=False, autoflush=False, bind=engine)()
     if first_time_make_session_called:
         try_to_enable_gdal_drivers(db)
         check_db_connection(db)
-
-        global first_time_make_session_called
         first_time_make_session_called = False
     return db
 
