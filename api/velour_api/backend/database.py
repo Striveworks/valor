@@ -33,9 +33,10 @@ def try_to_enable_gdal_drivers(db: Session) -> None:
     try:
         db.execute(
             text(
-                f"ALTER {POSTGRES_DB} SET postgis.gdal_enabled_drivers = 'ENABLE_ALL';"
+                "ALTER SYSTEM SET postgis.gdal_enabled_drivers = 'ENABLE_ALL';"
             )
         )
+        db.execute(text("SET postgis.gdal_enabled_drivers = 'ENABLE_ALL';"))
         db.commit()
     except (psycopg2.OperationalError, OperationalError, ProgrammingError):
         db.rollback()
