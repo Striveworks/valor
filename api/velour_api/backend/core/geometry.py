@@ -16,11 +16,21 @@ from velour_api.backend import models
 from velour_api.enums import AnnotationType, TaskType
 
 
-class GeomvalType(CompositeType):
+class GeometricValueType(CompositeType):
+    """
+    SQLAlchemy typing override.
+
+    Not to be confused with typing aliases used for PyRight.
+
+    This prevents sqlalchemy from automatically converting geometries to WKB.
+    """
+
     typemap = {"geom": Geometry("MULTIPOLYGON"), "val": Float}
 
 
 class RawGeometry(Geometry):
+    """Modified SQLAlchemy geometry type."""
+
     cache_ok = True
 
     def column_expression(self, col):
@@ -168,7 +178,7 @@ def _convert_raster_to_box(
             func.ST_MakeValid(
                 type_coerce(
                     func.ST_DumpAsPolygons(models.Annotation.raster),
-                    GeomvalType(),
+                    GeometricValueType(),
                 ).geom,
                 type_=RawGeometry,
             ).label("geom"),
@@ -231,7 +241,7 @@ def _convert_raster_to_polygon(
             func.ST_MakeValid(
                 type_coerce(
                     func.ST_DumpAsPolygons(models.Annotation.raster),
-                    GeomvalType(),
+                    GeometricValueType(),
                 ).geom,
                 type_=RawGeometry,
             ).label("geom"),
@@ -290,7 +300,7 @@ def _convert_raster_to_multipolygon(
             func.ST_MakeValid(
                 type_coerce(
                     func.ST_DumpAsPolygons(models.Annotation.raster),
-                    GeomvalType(),
+                    GeometricValueType(),
                 ).geom,
                 type_=RawGeometry,
             ).label("geom"),

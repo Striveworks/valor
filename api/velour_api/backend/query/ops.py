@@ -1,4 +1,3 @@
-from sqlalchemy.orm.decl_api import DeclarativeMeta
 from sqlalchemy.sql.elements import BinaryExpression, ColumnElement
 
 from velour_api.backend.models import (
@@ -20,6 +19,7 @@ from velour_api.backend.query.filtering import (
 )
 from velour_api.backend.query.mapping import map_arguments_to_tables
 from velour_api.backend.query.solvers import solve_graph
+from velour_api.backend.query.types import TableTypeAlias
 from velour_api.schemas import Filter
 
 
@@ -29,7 +29,7 @@ class Query:
 
     Attributes
     ----------
-    *args : DeclarativeMeta | InstrumentedAttribute
+    *args : TableTypeAlias | InstrumentedAttribute
         args is a list of models or model attributes. (e.g. Label or Label.key)
 
     Examples
@@ -45,11 +45,9 @@ class Query:
 
     def __init__(self, *args):
         self._args = args
-        self._selected: set[DeclarativeMeta] = map_arguments_to_tables(args)
+        self._selected: set[TableTypeAlias] = map_arguments_to_tables(args)
         self._filtered = set()
-        self._expressions: dict[
-            DeclarativeMeta, list[ColumnElement[bool]]
-        ] = {}
+        self._expressions: dict[TableTypeAlias, list[ColumnElement[bool]]] = {}
 
     def select_from(self, *args):
         self._selected = map_arguments_to_tables(args)
@@ -57,7 +55,7 @@ class Query:
 
     def _add_expressions(
         self,
-        table: DeclarativeMeta,
+        table: TableTypeAlias,
         expressions: list[ColumnElement[bool] | BinaryExpression],
     ) -> None:
         if len(expressions) == 0:
@@ -67,7 +65,7 @@ class Query:
             self._expressions[table] = []
         self._expressions[table].extend(expressions)
 
-    def filter(self, filter_: Filter | None):  # type: ignore - method "filter" overrides class "Query" in an incompatible manner
+    def filter(self, filter_: Filter | None):
         """Parses `schemas.Filter`"""
         if filter_ is None:
             return self
@@ -87,7 +85,7 @@ class Query:
         self,
         name: str = "generated_subquery",
         *,
-        pivot: DeclarativeMeta | None = None,
+        pivot: TableTypeAlias | None = None,
         as_subquery: bool = True,
     ):
         """

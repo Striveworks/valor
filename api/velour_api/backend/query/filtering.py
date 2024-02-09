@@ -3,7 +3,6 @@ from typing import Callable
 
 from sqlalchemy import TIMESTAMP, Boolean, Float, and_, cast, func, not_, or_
 from sqlalchemy.dialects.postgresql import INTERVAL
-from sqlalchemy.orm.decl_api import DeclarativeMeta
 from sqlalchemy.sql.elements import BinaryExpression, ColumnElement
 
 from velour_api import enums
@@ -15,6 +14,7 @@ from velour_api.backend.models import (
     Model,
     Prediction,
 )
+from velour_api.backend.query.types import TableTypeAlias
 from velour_api.schemas import (
     BooleanFilter,
     DateTimeFilter,
@@ -28,6 +28,7 @@ from velour_api.schemas import (
 
 
 def _get_boolean_op(opstr) -> Callable:
+    """Returns function if operator is valid for boolean comparison."""
     ops = {
         "==": operator.eq,
         "!=": operator.ne,
@@ -38,6 +39,7 @@ def _get_boolean_op(opstr) -> Callable:
 
 
 def _get_string_op(opstr) -> Callable:
+    """Returns function if operator is valid for string comparison."""
     ops = {
         "==": operator.eq,
         "!=": operator.ne,
@@ -48,6 +50,7 @@ def _get_string_op(opstr) -> Callable:
 
 
 def _get_numeric_op(opstr) -> Callable:
+    """Returns function if operator is valid for numeric comparison."""
     ops = {
         ">": operator.gt,
         "<": operator.lt,
@@ -62,6 +65,7 @@ def _get_numeric_op(opstr) -> Callable:
 
 
 def _get_spatial_op(opstr) -> Callable:
+    """Returns function if operator is valid for spatial comparison."""
     ops = {
         "intersect": lambda lhs, rhs: func.ST_Intersects(lhs, rhs),
         "inside": lambda lhs, rhs: func.ST_Covers(rhs, lhs),
@@ -89,39 +93,40 @@ def _filter_by_metadatum(
     | BooleanFilter
     | DateTimeFilter
     | GeospatialFilter,
-    table: DeclarativeMeta,
+    table: TableTypeAlias,
 ) -> BinaryExpression:
+    """
+    Filter by metadatum.
+
+    Supports all existing filter types.
+    """
     if isinstance(value_filter, NumericFilter):
         op = _get_numeric_op(value_filter.operator)
-        lhs = table.meta[key].astext.cast(Float)  # type: ignore - SQLAlchemy type issue
+        lhs = table.meta[key].astext.cast(Float)
         rhs = value_filter.value
     elif isinstance(value_filter, StringFilter):
         op = _get_string_op(value_filter.operator)
-        lhs = table.meta[key].astext  # type: ignore - SQLAlchemy type issue
+        lhs = table.meta[key].astext
         rhs = value_filter.value
     elif isinstance(value_filter, BooleanFilter):
         op = _get_boolean_op(value_filter.operator)
-        lhs = table.meta[key].astext.cast(Boolean)  # type: ignore - SQLAlchemy type issue
+        lhs = table.meta[key].astext.cast(Boolean)
         rhs = value_filter.value
     elif isinstance(value_filter, DateTimeFilter):
+        lhs_operand = table.meta[key][value_filter.value.key].astext
+        rhs_operand = (value_filter.value.value,)
         if isinstance(value_filter.value, Time) or isinstance(
             value_filter.value, Duration
         ):
-            cast_type = INTERVAL
+            lhs = cast(lhs_operand, INTERVAL)
+            rhs = cast(rhs_operand, INTERVAL)
         else:
-            cast_type = TIMESTAMP(timezone=True)
+            lhs = cast(lhs_operand, TIMESTAMP(timezone=True))
+            rhs = cast(rhs_operand, TIMESTAMP(timezone=True))
         op = _get_numeric_op(value_filter.operator)
-        lhs = cast(
-            table.meta[key][value_filter.value.key].astext,  # type: ignore - SQLAlchemy type issue
-            cast_type,  # type: ignore - SQLAlchemy type issue
-        )
-        rhs = cast(
-            value_filter.value.value,
-            cast_type,  # type: ignore - SQLAlchemy type issue
-        )
     elif isinstance(value_filter, GeospatialFilter):
         op = _get_spatial_op(value_filter.operator)
-        lhs = func.ST_GeomFromGeoJSON(table.meta[key]["geojson"])  # type: ignore - SQLAlchemy type issue
+        lhs = func.ST_GeomFromGeoJSON(table.meta[key]["geojson"])
         rhs = func.ST_GeomFromGeoJSON(value_filter.value.model_dump_json())
     else:
         raise NotImplementedError(
@@ -141,8 +146,11 @@ def _filter_by_metadata(
             | GeospatialFilter
         ],
     ],
-    table: DeclarativeMeta,
-) -> list[BinaryExpression]:
+    table: TableTypeAlias,
+) -> list[ColumnElement[bool]] | list[BinaryExpression]:
+    """
+    Iterates through a dictionary containing metadata.
+    """
     expressions = [
         _filter_by_metadatum(key, value, table)
         for key, f_list in metadata.items()
@@ -150,12 +158,25 @@ def _filter_by_metadata(
     ]
     if len(expressions) > 1:
         expressions = [and_(*expressions)]
-    return expressions  # type: ignore - SQLAlchemy type issue
+    return expressions
 
 
 def filter_by_dataset(
     filter_: Filter,
 ) -> list[ColumnElement[bool] | BinaryExpression]:
+    """
+    Constructs sqlalchemy expressions using dataset filters.
+
+    Parameters
+    ----------
+    filter_ : schemas.Filter
+        The filter to apply.
+
+    Returns
+    -------
+    list[ColumnElement[bool] | BinaryExpression]
+        A list of expressions that can be used in a WHERE clause.
+    """
     expressions = []
     if filter_.dataset_names:
         expressions.append(
@@ -163,7 +184,7 @@ def filter_by_dataset(
                 Dataset.name == name
                 for name in filter_.dataset_names
                 if isinstance(name, str)
-            ]  # type: ignore - SQLAlchemy type issue
+            ]
         )
     if filter_.dataset_metadata:
         expressions.append(
@@ -175,6 +196,19 @@ def filter_by_dataset(
 def filter_by_model(
     filter_: Filter,
 ) -> list[ColumnElement[bool] | BinaryExpression]:
+    """
+    Constructs sqlalchemy expressions using model filters.
+
+    Parameters
+    ----------
+    filter_ : schemas.Filter
+        The filter to apply.
+
+    Returns
+    -------
+    list[ColumnElement[bool] | BinaryExpression]
+        A list of expressions that can be used in a WHERE clause.
+    """
     expressions = []
     if filter_.model_names:
         expressions.append(
@@ -182,7 +216,7 @@ def filter_by_model(
                 Model.name == name
                 for name in filter_.model_names
                 if isinstance(name, str)
-            ],  # type: ignore - SQLAlchemy type issue
+            ],
         )
     if filter_.model_metadata:
         expressions.append(
@@ -194,6 +228,19 @@ def filter_by_model(
 def filter_by_datum(
     filter_: Filter,
 ) -> list[ColumnElement[bool] | BinaryExpression]:
+    """
+    Constructs sqlalchemy expressions using datum filters.
+
+    Parameters
+    ----------
+    filter_ : schemas.Filter
+        The filter to apply.
+
+    Returns
+    -------
+    list[ColumnElement[bool] | BinaryExpression]
+        A list of expressions that can be used in a WHERE clause.
+    """
     expressions = []
     if filter_.datum_uids:
         expressions.append(
@@ -201,7 +248,7 @@ def filter_by_datum(
                 Datum.uid == uid
                 for uid in filter_.datum_uids
                 if isinstance(uid, str)
-            ],  # type: ignore - SQLAlchemy type issue
+            ],
         )
     if filter_.datum_metadata:
         expressions.append(
@@ -216,6 +263,19 @@ def filter_by_datum(
 def filter_by_annotation(
     filter_: Filter,
 ) -> list[ColumnElement[bool] | BinaryExpression]:
+    """
+    Constructs sqlalchemy expressions using annotation filters.
+
+    Parameters
+    ----------
+    filter_ : schemas.Filter
+        The filter to apply.
+
+    Returns
+    -------
+    list[ColumnElement[bool] | BinaryExpression]
+        A list of expressions that can be used in a WHERE clause.
+    """
     expressions = []
     if filter_.task_types:
         expressions.append(
@@ -223,7 +283,7 @@ def filter_by_annotation(
                 Annotation.task_type == task_type.value
                 for task_type in filter_.task_types
                 if isinstance(task_type, enums.TaskType)
-            ],  # type: ignore - SQLAlchemy type issue
+            ],
         )
     if filter_.annotation_metadata:
         expressions.append(
@@ -316,6 +376,19 @@ def filter_by_annotation(
 def filter_by_label(
     filter_: Filter,
 ) -> list[ColumnElement[bool] | BinaryExpression]:
+    """
+    Constructs sqlalchemy expressions using label filters.
+
+    Parameters
+    ----------
+    filter_ : schemas.Filter
+        The filter to apply.
+
+    Returns
+    -------
+    list[ColumnElement[bool] | BinaryExpression]
+        A list of expressions that can be used in a WHERE clause.
+    """
     expressions = []
     if filter_.label_ids:
         expressions.append(
@@ -323,7 +396,7 @@ def filter_by_label(
                 Label.id == id
                 for id in filter_.label_ids
                 if isinstance(id, int)
-            ],  # type: ignore
+            ],
         )
     if filter_.labels:
         expressions.append(
@@ -335,7 +408,7 @@ def filter_by_label(
                 for label in filter_.labels
                 if (isinstance(label, dict) and len(label) == 1)
                 for key, value in label.items()
-            ],  # type: ignore
+            ],
         )
     if filter_.label_keys:
         expressions.append(
@@ -343,7 +416,7 @@ def filter_by_label(
                 Label.key == key
                 for key in filter_.label_keys
                 if isinstance(key, str)
-            ],  # type: ignore
+            ],
         )
 
     return _flatten_expressions(expressions)
@@ -352,6 +425,19 @@ def filter_by_label(
 def filter_by_prediction(
     filter_: Filter,
 ) -> list[ColumnElement[bool] | BinaryExpression]:
+    """
+    Constructs sqlalchemy expressions using prediction filters.
+
+    Parameters
+    ----------
+    filter_ : schemas.Filter
+        The filter to apply.
+
+    Returns
+    -------
+    list[ColumnElement[bool] | BinaryExpression]
+        A list of expressions that can be used in a WHERE clause.
+    """
     expressions = []
     if filter_.label_scores:
         for score_filter in filter_.label_scores:

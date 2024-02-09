@@ -2,7 +2,6 @@ from typing import Callable
 
 from sqlalchemy import Select, and_, or_, select
 from sqlalchemy.orm.attributes import InstrumentedAttribute
-from sqlalchemy.orm.decl_api import DeclarativeMeta
 from sqlalchemy.sql.elements import (
     BinaryExpression,
     ColumnElement,
@@ -19,13 +18,18 @@ from velour_api.backend.models import (
     Prediction,
 )
 
+TableTypeAlias = (
+    Dataset | Model | Datum | Annotation | GroundTruth | Prediction | Label
+)
+
 
 def _create_where_expression(
-    table_set: set[DeclarativeMeta],
+    table_set: set[TableTypeAlias],
     expressions: dict[
-        DeclarativeMeta, list[ColumnElement[bool] | BinaryExpression]
+        TableTypeAlias, list[ColumnElement[bool] | BinaryExpression]
     ],
 ) -> ColumnElement[bool] | BinaryExpression | None:
+    """Constructs a where expression."""
     expr_agg = []
     for table in table_set:
         if table in expressions:
@@ -39,10 +43,10 @@ def _create_where_expression(
 
 
 def _trim_extremities(
-    graph: list[DeclarativeMeta],
-    joint_set: set[DeclarativeMeta],
-) -> list[DeclarativeMeta]:
-    """trim graph extremities of unused nodes"""
+    graph: list[TableTypeAlias],
+    joint_set: set[TableTypeAlias],
+) -> list[TableTypeAlias]:
+    """Trim graph extremities of unused nodes"""
     lhi = 0
     rhi = len(graph)
     for idx, table in enumerate(graph):
@@ -57,14 +61,16 @@ def _trim_extremities(
 
 
 def _solve_groundtruth_graph(
-    args: tuple[DeclarativeMeta | InstrumentedAttribute | UnaryExpression],
-    selected: set[DeclarativeMeta],
-    filtered: set[DeclarativeMeta],
+    args: tuple[TableTypeAlias | InstrumentedAttribute | UnaryExpression],
+    selected: set[TableTypeAlias],
+    filtered: set[TableTypeAlias],
     expressions: dict[
-        DeclarativeMeta, list[ColumnElement[bool] | BinaryExpression]
+        TableTypeAlias, list[ColumnElement[bool] | BinaryExpression]
     ],
 ):
     """
+    Solves the groundtruths graph.
+
     groundtruth_graph = [Dataset, Datum, Annotation, GroundTruth, Label]
     """
     # Graph defintion
@@ -91,7 +97,7 @@ def _solve_groundtruth_graph(
         if query is None:
             query = select(*args).select_from(table)
         else:
-            query = query.join(table, connections[table])  # type: ignore
+            query = query.join(table, connections[table])
 
     # generate where statement
     expression = _create_where_expression(joint_set, expressions)
@@ -105,14 +111,16 @@ def _solve_groundtruth_graph(
 
 
 def _solve_model_graph(
-    args: tuple[DeclarativeMeta | InstrumentedAttribute | UnaryExpression],
-    selected: set[DeclarativeMeta],
-    filtered: set[DeclarativeMeta],
+    args: tuple[TableTypeAlias | InstrumentedAttribute | UnaryExpression],
+    selected: set[TableTypeAlias],
+    filtered: set[TableTypeAlias],
     expressions: dict[
-        DeclarativeMeta, list[ColumnElement[bool] | BinaryExpression]
+        TableTypeAlias, list[ColumnElement[bool] | BinaryExpression]
     ],
 ):
     """
+    Solves the model (models, predictions) graph.
+
     model_graph = [[Model, Annotation, Prediction, Label], [Model, Annotation, Datum, Dataset]]
     """
     subgraph1 = [
@@ -135,7 +143,7 @@ def _solve_model_graph(
         Label: Label.id == Prediction.label_id,
     }
 
-    joint_set = selected.union(filtered)  # type: ignore
+    joint_set = selected.union(filtered)
 
     # generate query statement
     graph = _trim_extremities(subgraph1, joint_set)
@@ -144,8 +152,8 @@ def _solve_model_graph(
     repeated_set = {Model}
     for table in graph:
         if table not in repeated_set:
-            query = query.join(table, connections[table])  # type: ignore
-            repeated_set.add(table)  # type: ignore
+            query = query.join(table, connections[table])
+            repeated_set.add(table)
 
     # generate where statement
     expression = _create_where_expression(joint_set, expressions)
@@ -156,14 +164,16 @@ def _solve_model_graph(
 
 
 def _solve_prediction_graph(
-    args: tuple[DeclarativeMeta | InstrumentedAttribute | UnaryExpression],
-    selected: set[DeclarativeMeta],
-    filtered: set[DeclarativeMeta],
+    args: tuple[TableTypeAlias | InstrumentedAttribute | UnaryExpression],
+    selected: set[TableTypeAlias],
+    filtered: set[TableTypeAlias],
     expressions: dict[
-        DeclarativeMeta, list[ColumnElement[bool] | BinaryExpression]
+        TableTypeAlias, list[ColumnElement[bool] | BinaryExpression]
     ],
 ):
     """
+    Solves the predictions graph.
+
     prediction_graph = [Dataset, Datum, Annotation, Prediction, Label]
     """
     # Graph defintion
@@ -182,7 +192,7 @@ def _solve_prediction_graph(
     }
 
     # set of tables required to construct query
-    joint_set = selected.union(filtered)  # type: ignore
+    joint_set = selected.union(filtered)
 
     # generate query statement
     query = None
@@ -190,7 +200,7 @@ def _solve_prediction_graph(
         if query is None:
             query = select(*args).select_from(table)
         else:
-            query = query.join(table, connections[table])  # type: ignore
+            query = query.join(table, connections[table])
 
     # generate where statement
     expression = _create_where_expression(joint_set, expressions)
@@ -205,14 +215,16 @@ def _solve_prediction_graph(
 
 
 def _solve_joint_graph(
-    args: tuple[DeclarativeMeta | InstrumentedAttribute | UnaryExpression],
-    selected: set[DeclarativeMeta],
-    filtered: set[DeclarativeMeta],
+    args: tuple[TableTypeAlias | InstrumentedAttribute | UnaryExpression],
+    selected: set[TableTypeAlias],
+    filtered: set[TableTypeAlias],
     expressions: dict[
-        DeclarativeMeta, list[ColumnElement[bool] | BinaryExpression]
+        TableTypeAlias, list[ColumnElement[bool] | BinaryExpression]
     ],
 ):
     """
+    Solves the joint (groundtruths, predictions) graph.
+
     joint_graph = [[Dataset, Datum, Annotation, Label]]
     """
     graph = [
@@ -233,7 +245,7 @@ def _solve_joint_graph(
     }
 
     # set of tables required to construct query
-    joint_set = selected.union(filtered)  # type: ignore
+    joint_set = selected.union(filtered)
 
     # generate query statement
     query = None
@@ -250,7 +262,7 @@ def _solve_joint_graph(
                 )
                 query = query.join(Label, connections[Label])
             else:
-                query = query.join(table, connections[table])  # type: ignore
+                query = query.join(table, connections[table])
 
     # generate where statement
     expression = _create_where_expression(joint_set, expressions)
@@ -270,14 +282,17 @@ def _solve_nested_graphs(
     unique_set: (
         set[type[Model]] | set[type[Prediction]] | set[type[GroundTruth]]
     ),
-    args: tuple[DeclarativeMeta | InstrumentedAttribute | UnaryExpression],
-    selected: set[DeclarativeMeta],
-    filtered: set[DeclarativeMeta],
+    args: tuple[TableTypeAlias | InstrumentedAttribute | UnaryExpression],
+    selected: set[TableTypeAlias],
+    filtered: set[TableTypeAlias],
     expressions: dict[
-        DeclarativeMeta, list[ColumnElement[bool] | BinaryExpression]
+        TableTypeAlias, list[ColumnElement[bool] | BinaryExpression]
     ],
-    pivot_table: DeclarativeMeta | None = None,
+    pivot_table: TableTypeAlias | None = None,
 ):
+    """
+    Handles the edge case where multiple graphs are required.
+    """
     qset = (filtered - unique_set).union({Datum})
     query = query_solver(
         args=args,
@@ -301,14 +316,14 @@ def _solve_nested_graphs(
 
 def solve_graph(
     select_args: tuple[
-        DeclarativeMeta | InstrumentedAttribute | UnaryExpression
+        TableTypeAlias | InstrumentedAttribute | UnaryExpression
     ],
-    selected_tables: set[DeclarativeMeta],
-    filter_by_tables: set[DeclarativeMeta],
+    selected_tables: set[TableTypeAlias],
+    filter_by_tables: set[TableTypeAlias],
     expressions: dict[
-        DeclarativeMeta, list[ColumnElement[bool] | BinaryExpression]
+        TableTypeAlias, list[ColumnElement[bool] | BinaryExpression]
     ],
-    pivot_table: DeclarativeMeta | None = None,
+    pivot_table: TableTypeAlias | None = None,
 ) -> tuple[Select | None, None]:
     """
     Selects best fitting graph to run query generation and returns tuple(query, subquery | None).
@@ -350,16 +365,16 @@ def solve_graph(
             filter_by_tables.add(pivot_table)
         else:
             query = select(*select_args)
-            expression = _create_where_expression(selected_tables, expressions)  # type: ignore
+            expression = _create_where_expression(selected_tables, expressions)
             if expression is not None:
                 query = query.where(expression)
             return query, None
 
     # edge case - catch intersection that resolves into an empty return.
-    # if {GroundTruth, Prediction}.issubset(selected_tables):
-    #     raise RuntimeError(
-    #         f"Cannot evaluate graph as invalid connection between queried tables. `{selected_tables}`"
-    #     )
+    if {GroundTruth, Prediction}.issubset(selected_tables):
+        raise RuntimeError(
+            f"Cannot evaluate graph as invalid connection between queried tables. `{selected_tables}`"
+        )
 
     # create joint (selected + filtered) table set
     joint_set = selected_tables.union(filter_by_tables)
@@ -367,7 +382,7 @@ def solve_graph(
     # create set of tables to select graph with
     graph_set = (
         {pivot_table}.union(joint_set)
-        if isinstance(pivot_table, DeclarativeMeta)
+        if isinstance(pivot_table, TableTypeAlias)
         else joint_set
     )
 
