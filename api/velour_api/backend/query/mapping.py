@@ -95,7 +95,6 @@ def _recursive_select_to_table_names(
         if not argument._has_args:
             return []
         return _recursive_select_to_table_names(argument.clause_expr.element)
-
     elif isinstance(argument, ClauseList):
         table_names = []
         for clause in argument.clauses:
