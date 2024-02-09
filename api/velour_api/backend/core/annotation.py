@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from velour_api import enums, exceptions, schemas
 from velour_api.backend import models
-from velour_api.backend.ops import Query
+from velour_api.backend.query import Query
 
 
 def _get_bounding_box_of_raster(

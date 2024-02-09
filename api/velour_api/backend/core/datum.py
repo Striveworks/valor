@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from velour_api import exceptions, schemas
 from velour_api.backend import models
 from velour_api.backend.core.dataset import fetch_dataset
-from velour_api.backend.ops import Query
+from velour_api.backend.query import Query
 
 
 def create_datum(

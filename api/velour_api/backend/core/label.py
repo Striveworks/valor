@@ -4,7 +4,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy.sql.selectable import Select
 
 from velour_api import schemas
-from velour_api.backend import models, ops
+from velour_api.backend import models
+from velour_api.backend.query import Query
 
 LabelMapType = list[list[list[str]]]
 
@@ -142,7 +143,7 @@ def _getter_statement(
     ignore_predictions: bool = False,
 ) -> Subquery | Select:
     """Builds sql statement for other functions."""
-    stmt = ops.Query(selection)
+    stmt = Query(selection)
     if filters:
         stmt = stmt.filter(filters)
     if not ignore_groundtruths and ignore_predictions:

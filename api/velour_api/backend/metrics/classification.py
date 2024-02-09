@@ -13,7 +13,7 @@ from velour_api.backend.metrics.metric_utils import (
     get_or_create_row,
     validate_computation,
 )
-from velour_api.backend.ops import Query
+from velour_api.backend.query import Query
 
 LabelMapType = list[list[list[str]]]
 
