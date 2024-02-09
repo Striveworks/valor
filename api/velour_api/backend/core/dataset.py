@@ -12,7 +12,7 @@ from velour_api.backend.core.evaluation import (
 from velour_api.backend.core.groundtruth import delete_groundtruths
 from velour_api.backend.core.label import get_labels
 from velour_api.backend.core.prediction import delete_dataset_predictions
-from velour_api.backend.ops import Query
+from velour_api.backend.query import Query
 from velour_api.schemas.core import MetadataType
 
 

@@ -1,5 +1,6 @@
 import numpy
 import pytest
+from sqlalchemy import distinct, func
 from sqlalchemy.orm import Session
 
 from velour_api import crud, enums, schemas
@@ -615,23 +616,23 @@ def test_query_datasets(
     model_sim,
 ):
     # Check that passing a non-InstrumentedAttribute returns None
-    q = Query("not_a_valid_attribute")
-    assert len(q._selected) == 0
+    with pytest.raises(NotImplementedError):
+        Query("not_a_valid_attribute")
 
     # Q: Get names for datasets where label class=cat exists in groundtruths.
     f = schemas.Filter(labels=[{"class": "cat"}])
-    query_obj = Query(models.Dataset.name)
+    query_obj = Query(distinct(models.Dataset.name))
     assert len(query_obj._selected) == 1
-
     q = query_obj.filter(f).groundtruths()
-    dataset_names = db.query(q).distinct().all()
+
+    dataset_names = db.query(q).all()
     assert len(dataset_names) == 1
     assert (dset_name,) in dataset_names
 
     # Q: Get names for datasets where label=tree exists in groundtruths
     f = schemas.Filter(labels=[{"class": "tree"}])
     q = Query(models.Dataset.name).filter(f).groundtruths()
-    dataset_names = db.query(q).distinct().all()
+    dataset_names = db.query(q).all()
     assert len(dataset_names) == 0
 
 
@@ -2471,3 +2472,56 @@ def test_annotation_datetime_queries(
     _test_annotation_datetime_query(db, date_key, date_metadata)
     _test_annotation_datetime_query(db, time_key, time_metadata)
     _test_annotation_datetime_query(db, duration_key, duration_metadata)
+
+
+def test_query_expression_types(
+    db: Session,
+    model_sim,
+):
+    # Test `distinct`
+    f = schemas.Filter(labels=[{"class": "cat"}])
+    q = Query(distinct(models.Dataset.name)).filter(f).groundtruths()
+    dataset_names = db.query(q).all()
+    assert len(dataset_names) == 1
+    assert (dset_name,) in dataset_names
+
+    # Test `func.count`, note this returns 10 b/c of joins.
+    f = schemas.Filter(labels=[{"class": "cat"}])
+    q = (
+        Query(func.count(models.Dataset.name))
+        .filter(f)
+        .groundtruths(as_subquery=False)
+    )
+    assert db.scalar(q) == 10
+
+    # Test `func.count` with nested distinct.
+    f = schemas.Filter(labels=[{"class": "cat"}])
+    q = (
+        Query(func.count(distinct(models.Dataset.name)))
+        .filter(f)
+        .groundtruths(as_subquery=False)
+    )
+    assert db.scalar(q) == 1
+
+    # Test distinct with nested`func.count`
+    #   This is to test the recursive table search
+    #   querying with this order-of-ops will fail.
+    f = schemas.Filter(labels=[{"class": "cat"}])
+    q = Query(distinct(func.count(models.Dataset.name))).filter(f)
+    assert q._selected == {models.Dataset}
+
+    # Test `func.count` without args, note this returns 10 b/c of joins.
+    f = schemas.Filter(labels=[{"class": "cat"}])
+    q = (
+        Query(func.count())
+        .select_from(models.Dataset)
+        .filter(f)
+        .groundtruths(as_subquery=False)
+    )
+    assert db.scalar(q) == 10
+
+    # Test nested functions
+    q = Query(func.max(func.ST_Area(models.Annotation.box))).groundtruths(
+        as_subquery=False
+    )
+    assert db.scalar(q) == 100.0
