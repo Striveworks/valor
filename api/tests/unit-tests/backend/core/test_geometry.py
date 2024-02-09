@@ -2,7 +2,7 @@ from sqlalchemy import func, select, type_coerce, update
 
 from velour_api.backend import models
 from velour_api.backend.core.geometry import (
-    GeomvalType,
+    GeometricValueType,
     RawGeometry,
     _convert_polygon_to_box,
     _convert_raster_to_box,
@@ -59,7 +59,7 @@ def test__convert_raster_to_box():
             func.ST_MakeValid(
                 type_coerce(
                     func.ST_DumpAsPolygons(models.Annotation.raster),
-                    GeomvalType(),
+                    GeometricValueType(),
                 ).geom,
                 type_=RawGeometry,
             ).label("geom"),
@@ -98,7 +98,7 @@ def test__convert_raster_to_box():
             func.ST_MakeValid(
                 type_coerce(
                     func.ST_DumpAsPolygons(models.Annotation.raster),
-                    GeomvalType(),
+                    GeometricValueType(),
                 ).geom,
                 type_=RawGeometry,
             ).label("geom"),
@@ -139,7 +139,7 @@ def test__convert_raster_to_polygon():
             func.ST_MakeValid(
                 type_coerce(
                     func.ST_DumpAsPolygons(models.Annotation.raster),
-                    GeomvalType(),
+                    GeometricValueType(),
                 ).geom,
                 type_=RawGeometry,
             ).label("geom"),
@@ -174,7 +174,7 @@ def test__convert_raster_to_polygon():
             func.ST_MakeValid(
                 type_coerce(
                     func.ST_DumpAsPolygons(models.Annotation.raster),
-                    GeomvalType(),
+                    GeometricValueType(),
                 ).geom,
                 type_=RawGeometry,
             ).label("geom"),
@@ -211,7 +211,7 @@ def test__convert_raster_to_multipolygon():
             func.ST_MakeValid(
                 type_coerce(
                     func.ST_DumpAsPolygons(models.Annotation.raster),
-                    GeomvalType(),
+                    GeometricValueType(),
                 ).geom,
                 type_=RawGeometry,
             ).label("geom"),
@@ -246,7 +246,7 @@ def test__convert_raster_to_multipolygon():
             func.ST_MakeValid(
                 type_coerce(
                     func.ST_DumpAsPolygons(models.Annotation.raster),
-                    GeomvalType(),
+                    GeometricValueType(),
                 ).geom,
                 type_=RawGeometry,
             ).label("geom"),
