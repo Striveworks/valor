@@ -22,7 +22,7 @@ services:
       VELOUR_SECRET_KEY: ${VELOUR_SECRET_KEY}
       VELOUR_USERNAME: ${VELOUR_USERNAME}
       VELOUR_PASSWORD: ${VELOUR_PASSWORD}
-    command: "uvicorn velour_api.main:app --reload --host 0.0.0.0"
+    command: "uvicorn velour_api.main:app --reload --host 0.0.0.0 --log-level warning"
     depends_on:
       - 'db'
       - 'migrations'
