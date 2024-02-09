@@ -2,6 +2,7 @@ from typing import Callable
 
 from sqlalchemy import Select, and_, or_, select
 from sqlalchemy.orm.attributes import InstrumentedAttribute
+from sqlalchemy.orm.decl_api import DeclarativeMeta
 from sqlalchemy.sql.elements import (
     BinaryExpression,
     ColumnElement,
@@ -164,11 +165,11 @@ def _solve_model_graph(
 
 
 def _solve_prediction_graph(
-    args: tuple[TableTypeAlias | InstrumentedAttribute | UnaryExpression],
-    selected: set[TableTypeAlias],
-    filtered: set[TableTypeAlias],
+    args: tuple[DeclarativeMeta | InstrumentedAttribute | UnaryExpression],
+    selected: set[DeclarativeMeta],
+    filtered: set[DeclarativeMeta],
     expressions: dict[
-        TableTypeAlias, list[ColumnElement[bool] | BinaryExpression]
+        DeclarativeMeta, list[ColumnElement[bool] | BinaryExpression]
     ],
 ):
     """
@@ -282,13 +283,13 @@ def _solve_nested_graphs(
     unique_set: (
         set[type[Model]] | set[type[Prediction]] | set[type[GroundTruth]]
     ),
-    args: tuple[TableTypeAlias | InstrumentedAttribute | UnaryExpression],
-    selected: set[TableTypeAlias],
-    filtered: set[TableTypeAlias],
+    args: tuple[DeclarativeMeta | InstrumentedAttribute | UnaryExpression],
+    selected: set[DeclarativeMeta],
+    filtered: set[DeclarativeMeta],
     expressions: dict[
-        TableTypeAlias, list[ColumnElement[bool] | BinaryExpression]
+        DeclarativeMeta, list[ColumnElement[bool] | BinaryExpression]
     ],
-    pivot_table: TableTypeAlias | None = None,
+    pivot_table: DeclarativeMeta | None = None,
 ):
     """
     Handles the edge case where multiple graphs are required.
@@ -382,7 +383,7 @@ def solve_graph(
     # create set of tables to select graph with
     graph_set = (
         {pivot_table}.union(joint_set)
-        if isinstance(pivot_table, TableTypeAlias)
+        if isinstance(pivot_table, DeclarativeMeta)
         else joint_set
     )
 

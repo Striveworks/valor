@@ -2,6 +2,7 @@ from typing import Any
 
 from sqlalchemy import Function
 from sqlalchemy.orm.attributes import InstrumentedAttribute
+from sqlalchemy.orm.decl_api import DeclarativeMeta
 from sqlalchemy.sql.elements import (
     Case,
     ClauseElement,
@@ -51,6 +52,7 @@ def _map_name_to_table(table_name: str) -> TableTypeAlias | None:
 
 def _recursive_select_to_table_names(
     argument: TableTypeAlias
+    | DeclarativeMeta
     | InstrumentedAttribute
     | UnaryExpression
     | Function
@@ -69,6 +71,8 @@ def _recursive_select_to_table_names(
         return [argument.name]
     if isinstance(argument, TableTypeAlias):
         return [argument.__tablename__]
+    if isinstance(argument, DeclarativeMeta):
+        return [argument.__tablename__]  # type: ignore - sqlalchemy typing issue
     elif isinstance(argument, InstrumentedAttribute):
         return _recursive_select_to_table_names(argument.table)
     elif isinstance(argument, UnaryExpression):
