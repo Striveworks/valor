@@ -1,7 +1,6 @@
 import os
 from typing import Annotated
 
-import sqlalchemy
 from fastapi import APIRouter, BackgroundTasks, Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
@@ -1118,7 +1117,7 @@ def ready(db: Session = Depends(get_db)):
         A response indicating that the service is up and connected to the database.
     """
     try:
-        db.execute(sqlalchemy.text("select 1"))
+        database.check_db_connection(db=db, timeout=0)
         return schemas.Readiness(status="ok")
     except Exception:
         raise exceptions.create_http_error(

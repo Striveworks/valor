@@ -47,15 +47,21 @@ def try_to_enable_gdal_drivers(db: Session) -> None:
         db.close()
 
 
-def check_db_connection(db: Session) -> None:
+def check_db_connection(db: Session, timeout: int = 30) -> None:
     """Check if the database connection is valid
+
+    Parameters
+    ----------
+    db : Session
+        The database connection
+    timeout : int, optional
+        The number of seconds to wait for the database to connect, by default 30
 
     Raises
     ------
     RuntimeError
         If unable to connect to the database within 30 seconds
     """
-    timeout = 30
     start_time = time.time()
     while True:
         try:
