@@ -8,7 +8,7 @@
 <link href="../Geometries/" rel="prev"/>
 <link href="../filters/" rel="next"/>
 <link href="../../../assets/images/favicon.png" rel="icon"/>
-<meta content="mkdocs-1.5.3, mkdocs-material-9.5.7" name="generator"/>
+<meta content="mkdocs-1.5.3, mkdocs-material-9.5.8" name="generator"/>
 <title>Evaluation - Velour</title>
 <link href="../../../assets/stylesheets/main.f2e4d321.min.css" rel="stylesheet"/>
 <link href="../../../assets/stylesheets/palette.06af60db.min.css" rel="stylesheet"/>
@@ -511,7 +511,7 @@
 <tr>
 <td><code><span title="velour.schemas.evaluation.EvaluationParameters.iou_thresholds_to_compute">iou_thresholds_to_compute</span></code></td>
 <td>
-<code><span title="typing.List">List</span>[float]</code>
+<code><span title="typing.Optional">Optional</span>[<span title="typing.List">List</span>[float]]</code>
 </td>
 <td>
 <div class="doc-md-description">
@@ -522,7 +522,7 @@
 <tr>
 <td><code><span title="velour.schemas.evaluation.EvaluationParameters.iou_thresholds_to_return">iou_thresholds_to_return</span></code></td>
 <td>
-<code><span title="typing.List">List</span>[float]</code>
+<code><span title="typing.Optional">Optional</span>[<span title="typing.List">List</span>[float]]</code>
 </td>
 <td>
 <div class="doc-md-description">
@@ -573,9 +573,9 @@
 </span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12"></a>
 </span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13"></a><span class="sd">    Attributes</span>
 </span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14"></a><span class="sd">    ----------</span>
-</span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15"></a><span class="sd">    iou_thresholds_to_compute : List[float]</span>
+</span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15"></a><span class="sd">    iou_thresholds_to_compute : Optional[List[float]]</span>
 </span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16"></a><span class="sd">        A list of floats describing which Intersection over Unions (IoUs) to use when calculating metrics (i.e., mAP).</span>
-</span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17"></a><span class="sd">    iou_thresholds_to_return: List[float]</span>
+</span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17"></a><span class="sd">    iou_thresholds_to_return: Optional[List[float]]</span>
 </span><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18"></a><span class="sd">        A list of floats describing which Intersection over Union (IoUs) thresholds to calculate a metric for. Must be a subset of `iou_thresholds_to_compute`.</span>
 </span><span id="__span-0-19"><a id="__codelineno-0-19" name="__codelineno-0-19"></a><span class="sd">    label_map: Optional[List[List[List[str]]]]</span>
 </span><span id="__span-0-20"><a id="__codelineno-0-20" name="__codelineno-0-20"></a><span class="sd">        Optional mapping of individual Labels to a grouper Label. Useful when you need to evaluate performance using Labels that differ across datasets and models.</span>
@@ -735,7 +735,7 @@
 <div class="md-dialog__inner md-typeset"></div>
 </div>
 <script id="__config" type="application/json">{"base": "../../..", "features": ["navigation.expand"], "search": "../../../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
-<script src="../../../assets/javascripts/bundle.caa56a14.min.js"></script>
+<script src="../../../assets/javascripts/bundle.8fd75fb4.min.js"></script>
 <script>document$.subscribe(() => {
             window.update_swagger_ui_iframe_height = function (id) {
                 var iFrameID = document.getElementById(id);
