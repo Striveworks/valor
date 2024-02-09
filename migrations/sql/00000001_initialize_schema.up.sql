@@ -20,13 +20,9 @@ create table model
         primary key,
     name       varchar   not null,
     meta       jsonb,
-    geo        geography(Geometry, 4326),
     status     varchar   not null,
     created_at timestamp not null
 );
-
-create index idx_model_geo
-    on model using gist (geo);
 
 create unique index ix_model_name
     on model (name);
@@ -40,7 +36,6 @@ create table dataset
         primary key,
     name       varchar   not null,
     meta       jsonb,
-    geo        geography(Geometry, 4326),
     status     varchar   not null,
     created_at timestamp not null
 );
@@ -51,9 +46,6 @@ create index ix_dataset_id
 create unique index ix_dataset_name
     on dataset (name);
 
-create index idx_dataset_geo
-    on dataset using gist (geo);
-
 create table evaluation
 (
     id           serial
@@ -62,16 +54,12 @@ create table evaluation
     datum_filter jsonb     not null,
     parameters   jsonb     not null,
     status       varchar   not null,
-    geo          geography(Geometry, 4326),
     created_at   timestamp not null,
     unique (model_name, datum_filter, parameters)
 );
 
 create index ix_evaluation_id
     on evaluation (id);
-
-create index idx_evaluation_geo
-    on evaluation using gist (geo);
 
 create table datum
 (
@@ -81,16 +69,12 @@ create table datum
         references dataset,
     uid        varchar   not null,
     meta       jsonb,
-    geo        geography(Geometry, 4326),
     created_at timestamp not null,
     unique (dataset_id, uid)
 );
 
 create index ix_datum_id
     on datum (id);
-
-create index idx_datum_geo
-    on datum using gist (geo);
 
 create table metric
 (
@@ -133,7 +117,6 @@ create table annotation
         references model,
     task_type    varchar   not null,
     meta         jsonb,
-    geo          geography(Geometry, 4326),
     created_at   timestamp not null,
     box          geometry(Polygon),
     polygon      geometry(Polygon),
@@ -155,9 +138,6 @@ create index ix_annotation_id
 
 create index idx_annotation_polygon
     on annotation using gist (polygon);
-
-create index idx_annotation_geo
-    on annotation using gist (geo);
 
 create table groundtruth
 (
