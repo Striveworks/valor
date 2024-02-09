@@ -1,6 +1,17 @@
 create extension if not exists "postgis";
 create extension if not exists "postgis_raster";
 
+drop table if exists metric cascade;
+drop table if exists confusion_matrix cascade;
+drop table if exists evaluation cascade;
+drop table if exists groundtruth cascade;
+drop table if exists prediction cascade;
+drop table if exists label cascade;
+drop table if exists annotation cascade;
+drop table if exists model cascade;
+drop table if exists datum cascade;
+drop table if exists dataset cascade;
+
 create table label
 (
     id         serial
