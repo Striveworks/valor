@@ -12,7 +12,6 @@ from velour_api.enums import EvaluationStatus, TableStatus, TaskType
 
 @pytest.fixture
 def client() -> TestClient:
-    database.create_db = MagicMock()
     database.make_session = MagicMock()
     from velour_api import main
 

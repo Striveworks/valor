@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from velour_api import crud, enums, schemas
 from velour_api.backend import models
-from velour_api.backend.database import Base, create_db, make_session
+from velour_api.backend.database import Base, make_session
 
 np.random.seed(29)
 img1_size = (100, 200)
@@ -31,7 +31,6 @@ def db():
         v.__tablename__ for v in classes if hasattr(v, "__tablename__")
     ]
     db = make_session()
-    create_db()
     yield db
 
     # Clear table after test
