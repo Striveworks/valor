@@ -1,8 +1,6 @@
 import os
-from contextlib import asynccontextmanager
 from typing import Annotated
 
-import sqlalchemy
 from fastapi import APIRouter, BackgroundTasks, Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
@@ -25,16 +23,7 @@ from velour_api.settings import auth_settings
 token_auth_scheme = auth.OptionalHTTPBearer()
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    database.create_db()
-    yield
-
-
-app = FastAPI(
-    root_path=os.getenv("API_ROOT_PATH", ""),
-    lifespan=lifespan,
-)
+app = FastAPI(root_path=os.getenv("API_ROOT_PATH", ""))
 router = APIRouter(route_class=LoggingRoute)
 app.add_middleware(
     CORSMiddleware,
@@ -1128,7 +1117,7 @@ def ready(db: Session = Depends(get_db)):
         A response indicating that the service is up and connected to the database.
     """
     try:
-        db.execute(sqlalchemy.text("select 1"))
+        database.check_db_connection(db=db, timeout=0)
         return schemas.Readiness(status="ok")
     except Exception:
         raise exceptions.create_http_error(
