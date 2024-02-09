@@ -8,7 +8,11 @@ from starlette.background import BackgroundTask
 logger = structlog.get_logger()
 
 
-def log_request(request: Request):
+def log_request(
+    request: Request, ignore_paths=frozenset(["/health", "/ready"])
+):
+    if request.url.path in ignore_paths:
+        return
     logger.info(
         "Velour API Call",
         method=request.method,
