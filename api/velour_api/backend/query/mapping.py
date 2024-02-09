@@ -72,7 +72,11 @@ def _recursive_select_to_table_names(
     if isinstance(argument, TableTypeAlias):
         return [argument.__tablename__]
     if isinstance(argument, DeclarativeMeta):
-        return [argument.__tablename__]  # type: ignore - sqlalchemy typing issue
+        if "__tablename__" not in argument.__dict__:
+            raise ValueError(
+                f"DeclarativeMeta object '{argument}' missing __tablename__ attribute."
+            )
+        return [argument.__dict__["__tablename__"]]
     elif isinstance(argument, InstrumentedAttribute):
         return _recursive_select_to_table_names(argument.table)
     elif isinstance(argument, UnaryExpression):
