@@ -73,7 +73,7 @@ def _recursive_select_to_table_names(
         return [argument.__tablename__]
     if isinstance(argument, DeclarativeMeta):
         if "__tablename__" not in argument.__dict__:
-            raise ValueError(
+            raise AttributeError(
                 f"DeclarativeMeta object '{argument}' missing __tablename__ attribute."
             )
         return [argument.__dict__["__tablename__"]]
