@@ -34,7 +34,7 @@ from .metrics import (
     compute_detection_metrics,
     compute_semantic_segmentation_metrics,
 )
-from .ops import Query
+from .query import Query
 
 __all__ = [
     "create_dataset",

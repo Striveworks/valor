@@ -14,7 +14,7 @@ from velour_api.backend.core.evaluation import (
     delete_evaluations,
 )
 from velour_api.backend.core.prediction import delete_model_predictions
-from velour_api.backend.ops import Query
+from velour_api.backend.query import Query
 from velour_api.enums import ModelStatus, TableStatus
 
 

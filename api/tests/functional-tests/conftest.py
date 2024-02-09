@@ -128,14 +128,6 @@ def img2_gt_mask_bytes1():
 
 
 @pytest.fixture
-def dset(db: Session) -> models.Dataset:
-    dset = models.Dataset(name="dset")
-    db.add(dset)
-    db.commit()
-    return dset
-
-
-@pytest.fixture
 def images() -> list[schemas.Datum]:
     return [
         schemas.Datum(
