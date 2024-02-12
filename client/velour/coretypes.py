@@ -1138,7 +1138,9 @@ class Dataset:
                 f"GroundTruth for datum with uid `{groundtruth.datum.uid}` contains no annotations."
             )
 
-        Client(self.conn).create_groundtruths(dataset=self, groundtruths=[groundtruth])
+        Client(self.conn).create_groundtruths(
+            dataset=self, groundtruths=[groundtruth]
+        )
 
     def get_groundtruth(
         self,
@@ -1416,8 +1418,8 @@ class Model:
             )
 
         Client(self.conn).create_predictions(
-            dataset=dataset, 
-            model=self, 
+            dataset=dataset,
+            model=self,
             predictions=[prediction],
         )
 
@@ -2094,7 +2096,9 @@ class Client:
             The predictions to create.
         """
         predictions_json = [
-            prediction.to_dict(dataset_name=dataset.name, model_name=model.name)
+            prediction.to_dict(
+                dataset_name=dataset.name, model_name=model.name
+            )
             for prediction in predictions
         ]
         return self.conn.create_predictions(predictions_json)
