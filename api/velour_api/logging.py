@@ -11,10 +11,7 @@ logger = structlog.get_logger()
 def log_endpoint(
     request: Request,
     status_code: Optional[int],
-    ignore_paths=frozenset(["/health", "/ready"]),
 ):
-    if request.url.path in ignore_paths and status_code == 200:
-        return
     logger.info(
         "Velour API Call",
         method=request.method,
