@@ -261,21 +261,21 @@ class ClientConnection:
 
     def create_groundtruths(
         self,
-        groundtruth: dict,
+        groundtruths: List[dict],
     ) -> None:
         """
-        Create a groundtruth.
+        Creates groundtruths.
 
         `CREATE` endpoint.
 
         Parameters
         ----------
-        groundtruth : dict
-            The groundtruth to be created.
+        groundtruths : List[dict]
+            The groundtruths to be created.
         """
         return self._requests_post_rel_host(
             "groundtruths",
-            json=groundtruth,
+            json=groundtruths,
         )
 
     def get_groundtruth(
@@ -306,21 +306,21 @@ class ClientConnection:
 
     def create_predictions(
         self,
-        prediction: dict,
+        predictions: List[dict],
     ) -> None:
         """
-        Create a prediction.
+        Creates predictions.
 
         `CREATE` endpoint.
 
         Parameters
         ----------
-        prediction : dict
-            The prediction to be created.
+        predictions : List[dict]
+            The predictions to be created.
         """
         return self._requests_post_rel_host(
             "predictions",
-            json=prediction,
+            json=predictions,
         )
 
     def get_prediction(

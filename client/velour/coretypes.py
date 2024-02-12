@@ -1138,7 +1138,7 @@ class Dataset:
                 f"GroundTruth for datum with uid `{groundtruth.datum.uid}` contains no annotations."
             )
 
-        Client(self.conn).create_groundtruth(self, groundtruth)
+        Client(self.conn).create_groundtruths(dataset=self, groundtruths=[groundtruth])
 
     def get_groundtruth(
         self,
@@ -1393,7 +1393,7 @@ class Model:
 
     def add_prediction(
         self,
-        dataset: Union[Dataset, str],
+        dataset: Dataset,
         prediction: Prediction,
     ) -> None:
         """
@@ -1415,8 +1415,10 @@ class Model:
                 f"Prediction for datum with uid `{prediction.datum.uid}` contains no annotations."
             )
 
-        Client(self.conn).create_prediction(
-            dataset=dataset, model=self, prediction=prediction
+        Client(self.conn).create_predictions(
+            dataset=dataset, 
+            model=self, 
+            predictions=[prediction],
         )
 
     def get_prediction(
@@ -1821,27 +1823,26 @@ class Client:
             dataset = dataset.to_dict()
         self.conn.create_dataset(dataset)
 
-    def create_groundtruth(
+    def create_groundtruths(
         self,
-        dataset: Union[Dataset, str],
-        groundtruth: Union[GroundTruth, dict],
+        dataset: Dataset,
+        groundtruths: List[GroundTruth],
     ):
         """
-        Create a groundtruth.
+        Creates groundtruths.
 
         Parameters
         ----------
         dataset : velour.Dataset
             The dataset to create the groundtruth for.
-        groundtruth : velour.GroundTruth
-            The groundtruth to create.
+        groundtruths : List[velour.GroundTruth]
+            The groundtruths to create.
         """
-        if isinstance(groundtruth, GroundTruth):
-            dataset_name = (
-                dataset.name if isinstance(dataset, Dataset) else dataset
-            )
-            groundtruth = groundtruth.to_dict(dataset_name=dataset_name)
-        return self.conn.create_groundtruths(groundtruth)
+        groundtruths_json = [
+            groundtruth.to_dict(dataset_name=dataset.name)
+            for groundtruth in groundtruths
+        ]
+        return self.conn.create_groundtruths(groundtruths_json)
 
     def get_groundtruth(
         self,
@@ -2074,14 +2075,14 @@ class Client:
             model = model.to_dict()
         self.conn.create_model(model)
 
-    def create_prediction(
+    def create_predictions(
         self,
-        dataset: Union[Dataset, str],
-        model: Union[Model, str],
-        prediction: Union[Prediction, dict],
+        dataset: Dataset,
+        model: Model,
+        predictions: List[Prediction],
     ) -> None:
         """
-        Create a prediction.
+        Creates predictions.
 
         Parameters
         ----------
@@ -2089,19 +2090,14 @@ class Client:
             The dataset that is being operated over.
         model : velour.Model
             The model making the prediction.
-        prediction : velour.Prediction
-            The prediction to create.
+        predictions : List[velour.Prediction]
+            The predictions to create.
         """
-        if isinstance(prediction, Prediction):
-            dataset_name = (
-                dataset.name if isinstance(dataset, Dataset) else dataset
-            )
-            model_name = model.name if isinstance(model, Model) else model
-            prediction = prediction.to_dict(
-                dataset_name=dataset_name,
-                model_name=model_name,
-            )
-        return self.conn.create_predictions(prediction)
+        predictions_json = [
+            prediction.to_dict(dataset_name=dataset.name, model_name=model.name)
+            for prediction in predictions
+        ]
+        return self.conn.create_predictions(predictions_json)
 
     def get_prediction(
         self,
