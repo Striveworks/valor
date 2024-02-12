@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import time
+import warnings
 from dataclasses import asdict, dataclass
 from typing import Dict, List, Optional, Sequence, Tuple, Union
 
@@ -1861,10 +1862,19 @@ class Client:
         groundtruths : List[velour.GroundTruth]
             The groundtruths to create.
         """
-        groundtruths_json = [
-            groundtruth.to_dict(dataset_name=dataset.name)
-            for groundtruth in groundtruths
-        ]
+        groundtruths_json = []
+        for groundtruth in groundtruths:
+            if not isinstance(groundtruth, GroundTruth):
+                raise TypeError(
+                    f"Expected groundtruth to be of type 'velour.GroundTruth' not '{type(groundtruth)}'."
+                )
+            if len(groundtruth.annotations) == 0:
+                warnings.warn(
+                    f"GroundTruth for datum with uid `{groundtruth.datum.uid}` contains no annotations."
+                )
+            groundtruths_json.append(
+                groundtruth.to_dict(dataset_name=dataset.name)
+            )
         self.conn.create_groundtruths(groundtruths_json)
 
     def get_groundtruth(
@@ -2116,12 +2126,22 @@ class Client:
         predictions : List[velour.Prediction]
             The predictions to create.
         """
-        predictions_json = [
-            prediction.to_dict(
-                dataset_name=dataset.name, model_name=model.name
+        predictions_json = []
+        for prediction in predictions:
+            if not isinstance(prediction, Prediction):
+                raise TypeError(
+                    f"Expected prediction to be of type 'velour.Prediction' not '{type(prediction)}'."
+                )
+            if len(prediction.annotations) == 0:
+                warnings.warn(
+                    f"Prediction for datum with uid `{prediction.datum.uid}` contains no annotations."
+                )
+            predictions_json.append(
+                prediction.to_dict(
+                    dataset_name=dataset.name,
+                    model_name=model.name,
+                )
             )
-            for prediction in predictions
-        ]
         self.conn.create_predictions(predictions_json)
 
     def get_prediction(
