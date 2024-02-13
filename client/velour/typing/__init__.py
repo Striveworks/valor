@@ -9,7 +9,7 @@ from velour.schemas.metadata import (
     MetadataValueType,
 )
 
-from .type_checks import is_floating, is_numeric
+from .type_checks import is_float, is_numeric
 from .types import FilterType, T
 
 __all__ = [
@@ -24,5 +24,5 @@ __all__ = [
     "FilterType",
     "T",
     "is_numeric",
-    "is_floating",
+    "is_float",
 ]

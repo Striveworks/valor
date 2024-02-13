@@ -31,7 +31,7 @@ from velour.schemas.properties import (
     NumericProperty,
     StringProperty,
 )
-from velour.typing import DictMetadataType, FilterType, is_floating
+from velour.typing import DictMetadataType, FilterType, is_float
 
 
 def _format_filter(filter_by: Optional[FilterType]) -> Filter:
@@ -93,7 +93,7 @@ class Label:
         if not isinstance(value, str):
             raise TypeError("Attribute `value` should have type `str`.")
         if score is not None:
-            if not is_floating(score):
+            if not is_float(score):
                 raise TypeError(
                     "Attribute `score` should be a floating-point number or `None`."
                 )
@@ -166,7 +166,7 @@ class Label:
             return (other.score is None) == (self.score is None)
 
         # scores not equal
-        if is_floating(self.score) and is_floating(other.score):
+        if is_float(self.score) and is_float(other.score):
             return bool(np.isclose(self.score, other.score))
 
         return False

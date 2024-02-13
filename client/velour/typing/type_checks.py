@@ -17,14 +17,10 @@ def is_numeric(value: Any) -> bool:
     bool
         Whether the value is a number.
     """
-    return (
-        isinstance(value, int)
-        or isinstance(value, float)
-        or isinstance(value, np.floating)
-    )
+    return isinstance(value, (int, float, np.floating))
 
 
-def is_floating(value: Any) -> bool:
+def is_float(value: Any) -> bool:
     """
     Checks whether the value input is a floating point type.
 
@@ -38,4 +34,4 @@ def is_floating(value: Any) -> bool:
     bool
         Whether the value is a floating point number.
     """
-    return isinstance(value, float) or isinstance(value, np.floating)
+    return isinstance(value, (float, np.floating))
