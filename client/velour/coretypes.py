@@ -1130,15 +1130,27 @@ class Dataset:
         groundtruth : GroundTruth
             The groundtruth to create.
         """
-        if not isinstance(groundtruth, GroundTruth):
-            raise TypeError(f"Invalid type `{type(groundtruth)}`")
+        Client(self.conn).create_groundtruths(
+            dataset=self,
+            groundtruths=[groundtruth],
+        )
 
-        if len(groundtruth.annotations) == 0:
-            warnings.warn(
-                f"GroundTruth for datum with uid `{groundtruth.datum.uid}` contains no annotations."
-            )
+    def add_groundtruths(
+        self,
+        groundtruths: List[GroundTruth],
+    ) -> None:
+        """
+        Add multiple groundtruths to the dataset.
 
-        Client(self.conn).create_groundtruth(self, groundtruth)
+        Parameters
+        ----------
+        groundtruths : List[GroundTruth]
+            The groundtruths to create.
+        """
+        Client(self.conn).create_groundtruths(
+            dataset=self,
+            groundtruths=groundtruths,
+        )
 
     def get_groundtruth(
         self,
@@ -1393,7 +1405,7 @@ class Model:
 
     def add_prediction(
         self,
-        dataset: Union[Dataset, str],
+        dataset: Dataset,
         prediction: Prediction,
     ) -> None:
         """
@@ -1406,17 +1418,31 @@ class Model:
         prediction : velour.Prediction
             The prediction to create.
         """
+        Client(self.conn).create_predictions(
+            dataset=dataset,
+            model=self,
+            predictions=[prediction],
+        )
 
-        if not isinstance(prediction, Prediction):
-            raise TypeError(f"Invalid type `{type(prediction)}`")
+    def add_predictions(
+        self,
+        dataset: Dataset,
+        predictions: List[Prediction],
+    ) -> None:
+        """
+        Add multiple predictions to the model.
 
-        if len(prediction.annotations) == 0:
-            warnings.warn(
-                f"Prediction for datum with uid `{prediction.datum.uid}` contains no annotations."
-            )
-
-        Client(self.conn).create_prediction(
-            dataset=dataset, model=self, prediction=prediction
+        Parameters
+        ----------
+        dataset : velour.Dataset
+            The dataset that is being operated over.
+        predictions : List[velour.Prediction]
+            The predictions to create.
+        """
+        Client(self.conn).create_predictions(
+            dataset=dataset,
+            model=self,
+            predictions=predictions,
         )
 
     def get_prediction(
@@ -1821,27 +1847,35 @@ class Client:
             dataset = dataset.to_dict()
         self.conn.create_dataset(dataset)
 
-    def create_groundtruth(
+    def create_groundtruths(
         self,
-        dataset: Union[Dataset, str],
-        groundtruth: Union[GroundTruth, dict],
+        dataset: Dataset,
+        groundtruths: List[GroundTruth],
     ):
         """
-        Create a groundtruth.
+        Creates groundtruths.
 
         Parameters
         ----------
         dataset : velour.Dataset
             The dataset to create the groundtruth for.
-        groundtruth : velour.GroundTruth
-            The groundtruth to create.
+        groundtruths : List[velour.GroundTruth]
+            The groundtruths to create.
         """
-        if isinstance(groundtruth, GroundTruth):
-            dataset_name = (
-                dataset.name if isinstance(dataset, Dataset) else dataset
+        groundtruths_json = []
+        for groundtruth in groundtruths:
+            if not isinstance(groundtruth, GroundTruth):
+                raise TypeError(
+                    f"Expected groundtruth to be of type 'velour.GroundTruth' not '{type(groundtruth)}'."
+                )
+            if len(groundtruth.annotations) == 0:
+                warnings.warn(
+                    f"GroundTruth for datum with uid `{groundtruth.datum.uid}` contains no annotations."
+                )
+            groundtruths_json.append(
+                groundtruth.to_dict(dataset_name=dataset.name)
             )
-            groundtruth = groundtruth.to_dict(dataset_name=dataset_name)
-        return self.conn.create_groundtruths(groundtruth)
+        self.conn.create_groundtruths(groundtruths_json)
 
     def get_groundtruth(
         self,
@@ -2074,14 +2108,14 @@ class Client:
             model = model.to_dict()
         self.conn.create_model(model)
 
-    def create_prediction(
+    def create_predictions(
         self,
-        dataset: Union[Dataset, str],
-        model: Union[Model, str],
-        prediction: Union[Prediction, dict],
+        dataset: Dataset,
+        model: Model,
+        predictions: List[Prediction],
     ) -> None:
         """
-        Create a prediction.
+        Creates predictions.
 
         Parameters
         ----------
@@ -2089,19 +2123,26 @@ class Client:
             The dataset that is being operated over.
         model : velour.Model
             The model making the prediction.
-        prediction : velour.Prediction
-            The prediction to create.
+        predictions : List[velour.Prediction]
+            The predictions to create.
         """
-        if isinstance(prediction, Prediction):
-            dataset_name = (
-                dataset.name if isinstance(dataset, Dataset) else dataset
+        predictions_json = []
+        for prediction in predictions:
+            if not isinstance(prediction, Prediction):
+                raise TypeError(
+                    f"Expected prediction to be of type 'velour.Prediction' not '{type(prediction)}'."
+                )
+            if len(prediction.annotations) == 0:
+                warnings.warn(
+                    f"Prediction for datum with uid `{prediction.datum.uid}` contains no annotations."
+                )
+            predictions_json.append(
+                prediction.to_dict(
+                    dataset_name=dataset.name,
+                    model_name=model.name,
+                )
             )
-            model_name = model.name if isinstance(model, Model) else model
-            prediction = prediction.to_dict(
-                dataset_name=dataset_name,
-                model_name=model_name,
-            )
-        return self.conn.create_predictions(prediction)
+        self.conn.create_predictions(predictions_json)
 
     def get_prediction(
         self,

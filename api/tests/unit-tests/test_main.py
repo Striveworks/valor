@@ -146,7 +146,7 @@ def test_post_groundtruth(client: TestClient):
         "velour_api.main.crud.create_groundtruth",
         side_effect=exceptions.DatasetFinalizedError("dsetname"),
     ):
-        resp = client.post("/groundtruths", json=example_json)
+        resp = client.post("/groundtruths", json=[example_json])
         assert resp.status_code == 409
 
     # check that we get an error if the dataset doesn't exist
@@ -154,7 +154,7 @@ def test_post_groundtruth(client: TestClient):
         "velour_api.main.crud.create_groundtruth",
         side_effect=exceptions.DatasetDoesNotExistError("fake_dsetname"),
     ):
-        resp = client.post("/groundtruths", json=example_json)
+        resp = client.post("/groundtruths", json=[example_json])
         assert resp.status_code == 404
 
 
@@ -198,7 +198,7 @@ def test_post_groundtruth_classification(client: TestClient):
         client=client,
         endpoint="/groundtruths",
         crud_method_name="create_groundtruth",
-        example_json=example_json,
+        example_json=[example_json],
     )
 
 
@@ -240,7 +240,7 @@ def test_post_groundtruth_bbox_detection(client: TestClient):
         client=client,
         endpoint="/groundtruths",
         crud_method_name="create_groundtruth",
-        example_json=example_json,
+        example_json=[example_json],
     )
 
 
@@ -301,7 +301,7 @@ def test_post_groundtruth_polygon_detection(client: TestClient):
         client=client,
         endpoint="/groundtruths",
         crud_method_name="create_groundtruth",
-        example_json=example_json,
+        example_json=[example_json],
     )
 
 
@@ -350,7 +350,7 @@ def test_post_groundtruth_raster_segmentation(client: TestClient):
         client=client,
         endpoint="/groundtruths",
         crud_method_name="create_groundtruth",
-        example_json=example_json,
+        example_json=[example_json],
     )
 
 
@@ -434,7 +434,7 @@ def test_post_prediction(client: TestClient):
         "velour_api.main.crud.create_prediction",
         side_effect=exceptions.ModelDoesNotExistError("model1"),
     ):
-        resp = client.post("/predictions", json=example_json)
+        resp = client.post("/predictions", json=[example_json])
         assert resp.status_code == 404
 
     # check we get a code (409) if the datum does not exist
@@ -442,7 +442,7 @@ def test_post_prediction(client: TestClient):
         "velour_api.main.crud.create_prediction",
         side_effect=exceptions.DatumDoesNotExistError("uid1"),
     ):
-        resp = client.post("/predictions", json=example_json)
+        resp = client.post("/predictions", json=[example_json])
         assert resp.status_code == 404
 
     # check we get a code (409) if the dataset hasn't been finalized
@@ -450,7 +450,7 @@ def test_post_prediction(client: TestClient):
         "velour_api.main.crud.create_prediction",
         side_effect=exceptions.DatasetNotFinalizedError("dataset1"),
     ):
-        resp = client.post("/predictions", json=example_json)
+        resp = client.post("/predictions", json=[example_json])
         assert resp.status_code == 409
 
 
@@ -494,7 +494,7 @@ def test_post_prediction_classification(client: TestClient):
         client=client,
         endpoint="/predictions",
         crud_method_name="create_prediction",
-        example_json=example_json,
+        example_json=[example_json],
     )
 
 
@@ -538,7 +538,7 @@ def test_post_prediction_bbox_detection(client: TestClient):
         client=client,
         endpoint="/predictions",
         crud_method_name="create_prediction",
-        example_json=example_json,
+        example_json=[example_json],
     )
 
 
@@ -603,52 +603,54 @@ def test_post_prediction_polygon_detection(client: TestClient):
         client=client,
         endpoint="/predictions",
         crud_method_name="create_prediction",
-        example_json=example_json,
+        example_json=[example_json],
     )
 
 
 def test_post_prediction_raster_segmentation(client: TestClient):
-    example_json = {
-        "model_name": "model1",
-        "datum": {
-            "uid": "file_uid",
-            "dataset_name": "dataset1",
-            "metadata": {
-                "height": 20,
-                "width": 20,
-            },
-        },
-        "annotations": [
-            {
-                "labels": [
-                    {"key": "k1", "value": "v1", "score": 0.9},
-                    {"key": "k1", "value": "v2", "score": 0.1},
-                ],
-                "task_type": TaskType.OBJECT_DETECTION.value,
+    example_json = [
+        {
+            "model_name": "model1",
+            "datum": {
+                "uid": "file_uid",
+                "dataset_name": "dataset1",
                 "metadata": {
-                    "meta1": 0.4,
-                    "meta2": "v1",
-                },
-                "raster": {
-                    "mask": "iVBORw0KGgoAAAANSUhEUgAAABQAAAAUAQAAAACl8iCgAAAAF0lEQVR4nGP4f4CBiYGBIGZgsP9AjDoAuysDE0GVDN8AAAAASUVORK5CYII=",
+                    "height": 20,
+                    "width": 20,
                 },
             },
-            {
-                "labels": [
-                    {"key": "k1", "value": "v1"},
-                    {"key": "k1", "value": "v2"},
-                ],
-                "task_type": TaskType.SEMANTIC_SEGMENTATION.value,
-                "metadata": {
-                    "meta1": 0.4,
-                    "meta2": "v1",
+            "annotations": [
+                {
+                    "labels": [
+                        {"key": "k1", "value": "v1", "score": 0.9},
+                        {"key": "k1", "value": "v2", "score": 0.1},
+                    ],
+                    "task_type": TaskType.OBJECT_DETECTION.value,
+                    "metadata": {
+                        "meta1": 0.4,
+                        "meta2": "v1",
+                    },
+                    "raster": {
+                        "mask": "iVBORw0KGgoAAAANSUhEUgAAABQAAAAUAQAAAACl8iCgAAAAF0lEQVR4nGP4f4CBiYGBIGZgsP9AjDoAuysDE0GVDN8AAAAASUVORK5CYII=",
+                    },
                 },
-                "raster": {
-                    "mask": "iVBORw0KGgoAAAANSUhEUgAAABQAAAAUAQAAAACl8iCgAAAAF0lEQVR4nGP4f4CBiYGBIGZgsP9AjDoAuysDE0GVDN8AAAAASUVORK5CYII=",
+                {
+                    "labels": [
+                        {"key": "k1", "value": "v1"},
+                        {"key": "k1", "value": "v2"},
+                    ],
+                    "task_type": TaskType.SEMANTIC_SEGMENTATION.value,
+                    "metadata": {
+                        "meta1": 0.4,
+                        "meta2": "v1",
+                    },
+                    "raster": {
+                        "mask": "iVBORw0KGgoAAAANSUhEUgAAABQAAAAUAQAAAACl8iCgAAAAF0lEQVR4nGP4f4CBiYGBIGZgsP9AjDoAuysDE0GVDN8AAAAASUVORK5CYII=",
+                    },
                 },
-            },
-        ],
-    }
+            ],
+        }
+    ]
     _test_post_endpoints(
         client=client,
         endpoint="/predictions",

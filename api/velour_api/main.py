@@ -59,7 +59,7 @@ def get_db():
     tags=["GroundTruths"],
 )
 def create_groundtruths(
-    gt: schemas.GroundTruth, db: Session = Depends(get_db)
+    groundtruths: list[schemas.GroundTruth], db: Session = Depends(get_db)
 ):
     """
     Create a groundtruth in the database.
@@ -68,8 +68,8 @@ def create_groundtruths(
 
     Parameters
     ----------
-    gt : schemas.GroundTruth
-        The groundtruth to add to the database.
+    groundtruths : list[schemas.GroundTruth]
+        The groundtruths to add to the database.
     db : Session
         The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
 
@@ -81,7 +81,8 @@ def create_groundtruths(
         If the dataset has been finalized, or if the datum already exists.
     """
     try:
-        crud.create_groundtruth(db=db, groundtruth=gt)
+        for groundtruth in groundtruths:
+            crud.create_groundtruth(db=db, groundtruth=groundtruth)
     except Exception as e:
         raise exceptions.create_http_error(e)
 
@@ -139,7 +140,7 @@ def get_groundtruth(
     tags=["Predictions"],
 )
 def create_predictions(
-    pd: schemas.Prediction,
+    predictions: list[schemas.Prediction],
     db: Session = Depends(get_db),
 ):
     """
@@ -149,8 +150,8 @@ def create_predictions(
 
     Parameters
     ----------
-    pd : schemas.Prediction
-        The prediction to add to the database.
+    predictions : list[schemas.Prediction]
+        The predictions to add to the database.
     db : Session
         The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
 
@@ -162,7 +163,8 @@ def create_predictions(
         If the model has been finalized, or if the dataset has not been finalized.
     """
     try:
-        crud.create_prediction(db=db, prediction=pd)
+        for prediction in predictions:
+            crud.create_prediction(db=db, prediction=prediction)
     except Exception as e:
         raise exceptions.create_http_error(e)
 

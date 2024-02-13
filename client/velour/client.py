@@ -1,4 +1,6 @@
+import json
 import logging
+import math
 import os
 import time
 from dataclasses import asdict, dataclass
@@ -63,6 +65,84 @@ def wait_for_predicate(
             raise TimeoutError
         state = update_func()
     return state
+
+
+def get_json_size(json_obj: object, encoding: str = "utf-8") -> int:
+    """
+    Returns the number of bytes to describe the json as a string.
+
+    Parameters
+    ----------
+    json_obj : object
+        A JSON-compatible object.
+    encoding : str, default='utf-8'
+        The method used to encode the string object into a bytes format.
+
+    Returns
+    -------
+    int
+        The size of the object in bytes.
+    """
+    return len(
+        json.dumps(json_obj, ensure_ascii=False).encode(
+            encoding
+        )  # this outputs bytes
+    )
+
+
+def chunk_list(
+    json_list: list, chunk_size_bytes: int, encoding: str = "utf-8"
+) -> List[list]:
+    """
+    Chunks a list into smaller lists.
+
+    Parameters
+    ----------
+    json_list : list
+        A list of JSON-compatible objects.
+    chunk_size_bytes : int
+        The maximum number of bytes that a multi-element array can use.
+    encoding : str, default='utf-8'
+        The method used to encode the string object into a bytes format.
+
+    Returns
+    -------
+    List[list]
+        A list of lists containing JSON-compatible objects.
+    """
+    # edge case
+    if len(json_list) == 1:
+        if get_json_size(json_list, encoding) > chunk_size_bytes:
+            logging.warning(
+                f"Attempting to POST an object that is larger than {chunk_size_bytes} bytes."
+            )
+        return [json_list]
+
+    n_elements = len(json_list)
+    avg_element_size = get_json_size(json_list) / n_elements
+    n_elements_per_chunk = int(chunk_size_bytes / avg_element_size)
+    n_chunks = math.ceil(n_elements / n_elements_per_chunk)
+
+    chunks = []
+    for i in range(n_chunks):
+        lhi = i * n_elements_per_chunk
+        rhi = (i + 1) * n_elements_per_chunk
+        new_chunk_size = get_json_size(
+            json_obj=json_list[lhi:rhi], encoding=encoding
+        )
+        if (
+            new_chunk_size > chunk_size_bytes
+        ):  # Recursively chunk if still too large.
+            chunks.extend(
+                chunk_list(
+                    json_list=json_list[lhi:rhi],
+                    chunk_size_bytes=chunk_size_bytes,
+                    encoding=encoding,
+                )
+            )
+        else:
+            chunks.append(json_list[lhi:rhi])
+    return chunks
 
 
 @dataclass
@@ -261,22 +341,30 @@ class ClientConnection:
 
     def create_groundtruths(
         self,
-        groundtruth: dict,
+        groundtruths: List[dict],
+        chunk_size_bytes: int = int(1e7),
     ) -> None:
         """
-        Create a groundtruth.
+        Creates groundtruths.
 
         `CREATE` endpoint.
 
         Parameters
         ----------
-        groundtruth : dict
-            The groundtruth to be created.
+        groundtruths : List[dict]
+            The groundtruths to be created.
+        chunk_size_bytes : int, default=1e7
+            Maximum size of a POST'ed json in bytes. Defaults to 10MB.
         """
-        return self._requests_post_rel_host(
-            "groundtruths",
-            json=groundtruth,
+        chunked_groundtruths = chunk_list(
+            json_list=groundtruths,
+            chunk_size_bytes=chunk_size_bytes,
         )
+        for chunk in chunked_groundtruths:
+            self._requests_post_rel_host(
+                "groundtruths",
+                json=chunk,
+            )
 
     def get_groundtruth(
         self,
@@ -306,22 +394,30 @@ class ClientConnection:
 
     def create_predictions(
         self,
-        prediction: dict,
+        predictions: List[dict],
+        chunk_size_bytes: int = int(1e7),
     ) -> None:
         """
-        Create a prediction.
+        Creates predictions.
 
         `CREATE` endpoint.
 
         Parameters
         ----------
-        prediction : dict
-            The prediction to be created.
+        predictions : List[dict]
+            The predictions to be created.
+        chunk_size_bytes : int, default=1e7
+            Maximum size of a POST'ed json in bytes. Defaults to 10MB.
         """
-        return self._requests_post_rel_host(
-            "predictions",
-            json=prediction,
+        chunked_predictions = chunk_list(
+            json_list=predictions,
+            chunk_size_bytes=chunk_size_bytes,
         )
+        for chunk in chunked_predictions:
+            self._requests_post_rel_host(
+                "predictions",
+                json=chunk,
+            )
 
     def get_prediction(
         self,
