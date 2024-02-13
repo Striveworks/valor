@@ -4,7 +4,7 @@ import math
 import os
 import time
 from dataclasses import asdict, dataclass
-from typing import Callable, List, Optional, Union
+from typing import Callable, List, Optional, TypeVar, Union
 from urllib.parse import urlencode, urljoin
 
 import requests
@@ -19,7 +19,8 @@ from velour.exceptions import (
     ClientNotConnectedError,
 )
 from velour.schemas import EvaluationRequest
-from velour.typing import T
+
+T = TypeVar("T")
 
 
 def wait_for_predicate(

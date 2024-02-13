@@ -11,7 +11,15 @@ from velour.schemas.geometry import (
     Polygon,
     Raster,
 )
-from velour.schemas.metadata import GeometryType, _isinstance_geojson
+from velour.typing import is_geojson
+
+GeometryType = Union[
+    Point,
+    Polygon,
+    BoundingBox,
+    MultiPolygon,
+    Raster,
+]
 
 
 @dataclass
@@ -478,7 +486,7 @@ class _DictionaryValueMapper(
             return DatetimeMapper(
                 name=self.name, key=self.key
             )._create_expression(value, operator)
-        elif _isinstance_geojson(value):
+        elif is_geojson(value):
             return GeospatialMapper(
                 name=self.name, key=self.key
             )._create_expression(value, operator)

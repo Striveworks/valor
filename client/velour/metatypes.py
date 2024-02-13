@@ -3,8 +3,7 @@ from typing import Optional, cast
 import PIL.Image
 
 from velour import Datum
-from velour.schemas import validate_metadata
-from velour.typing import DictMetadataType
+from velour.schemas.metadata import MetadataType, validate_metadata
 
 
 class ImageMetadata:
@@ -28,13 +27,13 @@ class ImageMetadata:
         uid: str,
         height: int,
         width: int,
-        metadata: Optional[DictMetadataType] = None,
+        metadata: Optional[MetadataType] = None,
     ):
         self.uid = uid
         self._dataset_name = None
         self.height = height
         self.width = width
-        self.metadata: DictMetadataType = dict(metadata) if metadata else {}
+        self.metadata: MetadataType = dict(metadata) if metadata else {}
 
         if not isinstance(self.uid, str):
             raise TypeError("ImageMetadata uid must be a string.")
