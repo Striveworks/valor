@@ -1,6 +1,6 @@
 import numpy as np
 
-from velour.types import is_floating, is_numeric
+from velour.typing import is_float, is_numeric
 
 
 def test_is_numeric():
@@ -11,9 +11,9 @@ def test_is_numeric():
     assert not is_numeric("hello world")
 
 
-def test_is_floating():
-    assert is_floating(float(0.5))
-    assert is_floating(np.float32(0.5))
-    assert not is_floating(int(1))
-    assert not is_floating(None)
-    assert not is_floating("hello world")
+def test_is_float():
+    assert is_float(float(0.5))
+    assert is_float(np.float32(0.5))
+    assert not is_float(int(1))
+    assert not is_float(None)
+    assert not is_float("hello world")

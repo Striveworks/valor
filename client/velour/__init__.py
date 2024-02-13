@@ -22,7 +22,7 @@ from .coretypes import (
     Model,
     Prediction,
 )
-from .schemas import Filter
+from .schemas import Constraint, Filter
 
 __all__ = [
     "connect",
@@ -37,4 +37,5 @@ __all__ = [
     "GroundTruth",
     "Prediction",
     "Filter",
+    "Constraint",
 ]

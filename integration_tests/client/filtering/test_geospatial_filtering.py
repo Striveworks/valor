@@ -4,7 +4,15 @@ that is no auth
 
 import pytest
 
-from velour import Client, Dataset, Datum, GroundTruth, Model, Prediction
+from velour import (
+    Client,
+    Constraint,
+    Dataset,
+    Datum,
+    GroundTruth,
+    Model,
+    Prediction,
+)
 from velour.enums import EvaluationStatus
 
 
@@ -105,7 +113,7 @@ def test_geospatial_filter(
     eval_job = model.evaluate_detection(
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
-        filters={
+        filter_by={
             "dataset_metadata": {
                 "geospatial": [
                     {
@@ -125,7 +133,7 @@ def test_geospatial_filter(
             dataset,
             iou_thresholds_to_compute=[0.1, 0.6],
             iou_thresholds_to_return=[0.1, 0.6],
-            filters=[
+            filter_by=[
                 Datum.metadata["geospatial"].inside(
                     {"incorrectly_formatted_dict": {}}
                 )
@@ -138,15 +146,12 @@ def test_geospatial_filter(
         dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
-        filters=[Datum.metadata["geospatial"].intersect(geo_dict)],
+        filter_by=[Datum.metadata["geospatial"].intersect(geo_dict)],
     )
     assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
 
     assert eval_job.datum_filter.datum_metadata["geospatial"] == [
-        {
-            "value": geo_dict,
-            "operator": "intersect",
-        }
+        Constraint(value=geo_dict, operator="intersect")
     ]
     assert len(eval_job.metrics) == 9
 
@@ -156,7 +161,7 @@ def test_geospatial_filter(
         dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
-        filters={
+        filter_by={
             "model_metadata": {
                 "geospatial": [
                     {

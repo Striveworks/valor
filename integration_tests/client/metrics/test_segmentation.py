@@ -81,7 +81,7 @@ def test_evaluate_segmentation_with_filter(
 
     eval_job = model.evaluate_segmentation(
         dataset,
-        filters=[
+        filter_by=[
             Datum.metadata["color"] == "red",
         ],
     )

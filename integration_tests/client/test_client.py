@@ -188,14 +188,14 @@ def test_get_labels(
     assert len(all_labels) == 10
 
     high_score_labels = client.get_labels(
-        filter_=Filter(label_scores=[Constraint(value=0.5, operator=">")])
+        Filter(label_scores=[Constraint(value=0.5, operator=">")])
     )
     assert len(high_score_labels) == 5
     for label in high_score_labels:
         assert int(label.value) % 2 == 1
 
     low_score_labels = client.get_labels(
-        filter_=Filter(label_scores=[Constraint(value=0.5, operator="<")])
+        Filter(label_scores=[Constraint(value=0.5, operator="<")])
     )
     assert len(low_score_labels) == 5
     for label in low_score_labels:
@@ -213,13 +213,11 @@ def test_get_datasets(
     assert len(all_datasets) == 1
     assert all_datasets[0].name == created_dataset.name
 
-    pos_query = client.get_datasets(filter_=Filter(labels=[{"class0": "1"}]))
+    pos_query = client.get_datasets(Filter(labels=[{"class0": "1"}]))
     assert len(pos_query) == 1
     assert pos_query[0].name == created_dataset.name
 
-    neg_query = client.get_datasets(
-        filter_=Filter(labels=[{"some_other_class": "1"}])
-    )
+    neg_query = client.get_datasets(Filter(labels=[{"some_other_class": "1"}]))
     assert len(neg_query) == 0
 
 
@@ -234,13 +232,11 @@ def test_get_models(
     assert len(all_models) == 1
     assert all_models[0].name == created_model.name
 
-    pos_query = client.get_models(filter_=Filter(labels=[{"class0": "1"}]))
+    pos_query = client.get_models(Filter(labels=[{"class0": "1"}]))
     assert len(pos_query) == 1
     assert pos_query[0].name == created_model.name
 
-    neg_query = client.get_models(
-        filter_=Filter(labels=[{"some_other_class": "1"}])
-    )
+    neg_query = client.get_models(Filter(labels=[{"some_other_class": "1"}]))
     assert len(neg_query) == 0
 
 
@@ -255,11 +251,9 @@ def test_get_datums(
     assert len(all_datums) == 1
     assert all_datums[0].uid == "1"
 
-    pos_query = client.get_datums(filter_=Filter(labels=[{"class0": "1"}]))
+    pos_query = client.get_datums(Filter(labels=[{"class0": "1"}]))
     assert len(pos_query) == 1
     assert pos_query[0].uid == "1"
 
-    neg_query = client.get_datums(
-        filter_=Filter(labels=[{"some_other_class": "1"}])
-    )
+    neg_query = client.get_datums(Filter(labels=[{"some_other_class": "1"}]))
     assert len(neg_query) == 0
