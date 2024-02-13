@@ -38,7 +38,19 @@ def is_float(value: Any) -> bool:
 
 
 def is_geojson(value: Any) -> bool:
-    """Checks if value is an instance of geojson."""
+    """
+    Checks if value is an instance of geojson.
+
+    Parameters
+    ----------
+    value : Any
+        The value to check.
+
+    Returns
+    -------
+    bool
+        Whether the value conforms to the geojson standard.
+    """
     if not isinstance(value, dict):
         return False
     elif set(value.keys()) != {"type", "coordinates"}:
