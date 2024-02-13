@@ -120,6 +120,13 @@ class Filter:
                     for v in vlist
                 ]
 
+        # unpack tasktypes
+        if self.task_types:
+            self.task_types = [
+                v if isinstance(v, TaskType) else TaskType(v)
+                for v in self.task_types
+            ]
+
         # unpack area
         if self.bounding_box_area:
             self.bounding_box_area = [
