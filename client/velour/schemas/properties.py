@@ -12,7 +12,7 @@ from velour.schemas.constraints import (
     NumericMapper,
     StringMapper,
 )
-from velour.types import (
+from velour.typing import (
     DatetimeType,
     DictMetadataType,
     GeoJSONType,

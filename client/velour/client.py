@@ -19,7 +19,7 @@ from velour.exceptions import (
     ClientNotConnectedError,
 )
 from velour.schemas import EvaluationRequest
-from velour.types import T
+from velour.typing import T
 
 
 def wait_for_predicate(

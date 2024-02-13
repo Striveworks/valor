@@ -4,7 +4,7 @@ import json
 import time
 import warnings
 from dataclasses import asdict, dataclass
-from typing import Dict, List, Optional, Sequence, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
 
@@ -17,7 +17,7 @@ from velour.enums import (
 )
 from velour.exceptions import ClientException
 from velour.schemas.evaluation import EvaluationParameters, EvaluationRequest
-from velour.schemas.filters import Filter, FilterExpressionsType
+from velour.schemas.filters import Filter
 from velour.schemas.geometry import BoundingBox, MultiPolygon, Polygon, Raster
 from velour.schemas.metadata import (
     dump_metadata,
@@ -31,7 +31,32 @@ from velour.schemas.properties import (
     NumericProperty,
     StringProperty,
 )
-from velour.types import DictMetadataType, is_floating
+from velour.typing import DictMetadataType, FilterType, is_floating
+
+
+def _format_filter(filter_by: Optional[FilterType]) -> Filter:
+    """
+    Formats the various filter or constraint representations into a 'schemas.Filter' object.
+
+    Parameters
+    ----------
+    filter_ : Union[Filter, List[BinaryExpression], dict]
+        The reference filter.
+
+    Returns
+    -------
+    velour.schemas.Filter
+        A properly formatted 'schemas.Filter' object.
+    """
+    if isinstance(filter_by, Filter):
+        return filter_by
+    elif isinstance(filter_by, list) or filter_by is None:
+        filter_by = filter_by if filter_by else []
+        return Filter.create(filter_by)
+    elif isinstance(filter_by, dict):
+        return Filter(**filter_by)
+    else:
+        raise TypeError
 
 
 class Label:
@@ -1194,7 +1219,7 @@ class Dataset:
             A list of `Datums` associated with the dataset.
         """
         return Client(self.conn).get_datums(
-            filter_=Filter(dataset_names=[self.name])
+            filter_by=Filter(dataset_names=[self.name])
         )
 
     def get_evaluations(
@@ -1477,12 +1502,12 @@ class Model:
             dataset=dataset, model=self
         )
 
-    def _format_filters(
+    def _format_constraints(
         self,
-        datasets: Optional[Union[Dataset, List[Dataset]]],
-        filters: Optional[Union[Dict, FilterExpressionsType]],
+        datasets: Optional[Union[Dataset, List[Dataset]]] = None,
+        filter_by: Optional[FilterType] = None,
     ) -> Filter:
-        """Formats evaluation request's `datum_filter` input."""
+        """Formats the 'datum_filter' for any evaluation requests."""
 
         # get list of dataset names
         dataset_names_from_obj = []
@@ -1491,35 +1516,18 @@ class Model:
         elif isinstance(datasets, Dataset):
             dataset_names_from_obj = [datasets.name]
 
-        # format filtering object
-        if isinstance(filters, Sequence) or filters is None:
-            filters = filters if filters else []
-            filter_obj = Filter.create(filters)
+        # create a 'schemas.Filter' object from the constraints.
+        filter_ = _format_filter(filter_by)
 
-            # reset model name
-            filter_obj.model_names = None
-            filter_obj.model_metadata = None
+        # reset model name
+        filter_.model_names = None
+        filter_.model_metadata = None
 
-            # set dataset names
-            if not filter_obj.dataset_names:
-                filter_obj.dataset_names = []
-            filter_obj.dataset_names.extend(dataset_names_from_obj)
-            return filter_obj
-
-        elif isinstance(filters, dict):
-            # reset model name
-            filters["model_names"] = None
-            filters["model_metadata"] = None
-
-            # set dataset names
-            if (
-                "dataset_names" not in filters
-                or filters["dataset_names"] is None
-            ):
-                filters["dataset_names"] = []
-            filters["dataset_names"].extend(dataset_names_from_obj)
-
-        return Filter(**filters)
+        # set dataset names
+        if not filter_.dataset_names:
+            filter_.dataset_names = []
+        filter_.dataset_names.extend(dataset_names_from_obj)
+        return filter_
 
     def _create_label_map(
         self,
@@ -1549,7 +1557,7 @@ class Model:
     def evaluate_classification(
         self,
         datasets: Optional[Union[Dataset, List[Dataset]]] = None,
-        filters: Optional[Union[Dict, FilterExpressionsType]] = None,
+        filter_by: Optional[FilterType] = None,
         label_map: Optional[Dict[Label, Label]] = None,
     ) -> Evaluation:
         """
@@ -1559,8 +1567,8 @@ class Model:
         ----------
         datasets : Union[Dataset, List[Dataset]], optional
             The dataset or list of datasets to evaluate against.
-        filters : Union[Dict, FilterExpressionsType = Sequence[Union[BinaryExpression, Sequence[BinaryExpression]]]], optional
-            Optional set of filters to constrain evaluation by.
+        filter_by : FilterType, optional
+            Optional set of constraints to filter evaluation by.
         label_map : Dict[Label, Label], optional
             Optional mapping of individual Labels to a grouper Label. Useful when you need to evaluate performance using Labels that differ across datasets and models.
 
@@ -1569,13 +1577,13 @@ class Model:
         Evaluation
             A job object that can be used to track the status of the job and get the metrics of it upon completion.
         """
-        if not datasets and not filters:
+        if not datasets and not filter_by:
             raise ValueError(
                 "Evaluation requires the definition of either datasets, dataset filters or both."
             )
 
         # format request
-        datum_filter = self._format_filters(datasets, filters)
+        datum_filter = self._format_constraints(datasets, filter_by)
         request = EvaluationRequest(
             model_names=[self.name],
             datum_filter=datum_filter,
@@ -1594,7 +1602,7 @@ class Model:
     def evaluate_detection(
         self,
         datasets: Optional[Union[Dataset, List[Dataset]]] = None,
-        filters: Optional[Union[Dict, FilterExpressionsType]] = None,
+        filter_by: Optional[FilterType] = None,
         convert_annotations_to_type: Optional[AnnotationType] = None,
         iou_thresholds_to_compute: Optional[List[float]] = None,
         iou_thresholds_to_return: Optional[List[float]] = None,
@@ -1607,8 +1615,8 @@ class Model:
         ----------
         datasets : Union[Dataset, List[Dataset]], optional
             The dataset or list of datasets to evaluate against.
-        filters : Union[Dict, FilterExpressionsType = Sequence[Union[BinaryExpression, Sequence[BinaryExpression]]]], optional
-            Optional set of filters to constrain evaluation by.
+        filter_by : FilterType, optional
+            Optional set of constraints to filter evaluation by.
         convert_annotations_to_type : enums.AnnotationType, optional
             Forces the object detection evaluation to compute over this type.
         iou_thresholds_to_compute : List[float], optional
@@ -1638,7 +1646,7 @@ class Model:
             iou_thresholds_to_return=iou_thresholds_to_return,
             label_map=self._create_label_map(label_map=label_map),
         )
-        datum_filter = self._format_filters(datasets, filters)
+        datum_filter = self._format_constraints(datasets, filter_by)
         request = EvaluationRequest(
             model_names=[self.name],
             datum_filter=datum_filter,
@@ -1654,7 +1662,7 @@ class Model:
     def evaluate_segmentation(
         self,
         datasets: Optional[Union[Dataset, List[Dataset]]] = None,
-        filters: Optional[Union[Dict, FilterExpressionsType]] = None,
+        filter_by: Optional[FilterType] = None,
         label_map: Optional[Dict[Label, Label]] = None,
     ) -> Evaluation:
         """
@@ -1664,8 +1672,8 @@ class Model:
         ----------
         datasets : Union[Dataset, List[Dataset]], optional
             The dataset or list of datasets to evaluate against.
-        filters : Union[Dict, FilterExpressionsType = Sequence[Union[BinaryExpression, Sequence[BinaryExpression]]]], optional
-            Optional set of filters to constrain evaluation by.
+        filter_by : FilterType, optional
+            Optional set of constraints to filter evaluation by.
         label_map : Dict[Label, Label], optional
             Optional mapping of individual Labels to a grouper Label. Useful when you need to evaluate performance using Labels that differ across datasets and models.
 
@@ -1675,7 +1683,7 @@ class Model:
             a job object that can be used to track the status of the job and get the metrics of it upon completion
         """
         # format request
-        datum_filter = self._format_filters(datasets, filters)
+        datum_filter = self._format_constraints(datasets, filter_by)
         request = EvaluationRequest(
             model_names=[self.name],
             datum_filter=datum_filter,
@@ -1766,23 +1774,23 @@ class Client:
 
     def get_labels(
         self,
-        filter_: Union[Filter, dict, None] = None,
+        filter_by: Optional[FilterType] = None,
     ) -> List[Label]:
         """
         Gets all labels with option to filter.
 
         Parameters
         ----------
-        filter_ : velour.Filter, optional
-            Optional filter to constrain by.
+        filter_by : FilterType, optional
+            Optional constraints to filter by.
 
         Returns
         ------
         List[velour.Label]
             A list of labels.
         """
-        if isinstance(filter_, Filter):
-            filter_ = asdict(filter_)
+        filter_ = _format_filter(filter_by)
+        filter_ = asdict(filter_)
         return [
             Label.from_dict(label) for label in self.conn.get_labels(filter_)
         ]
@@ -1954,21 +1962,22 @@ class Client:
 
     def get_datasets(
         self,
-        filter_: Union[Filter, dict, None] = None,
+        filter_by: Optional[FilterType] = None,
     ) -> List[Dataset]:
         """
         Get all datasets with option to filter results.
 
         Parameters
         ----------
-        filter_ : velour.Filter, optional
-            Optional filter to constrain by.
+        filter_by : FilterType, optional
+            Optional constraints to filter by.
 
         Returns
         ------
         List[velour.Dataset]
             A list of datasets.
         """
+        filter_ = _format_filter(filter_by)
         if isinstance(filter_, Filter):
             filter_ = asdict(filter_)
         return [
@@ -1978,21 +1987,22 @@ class Client:
 
     def get_datums(
         self,
-        filter_: Union[Filter, dict, None] = None,
+        filter_by: Optional[FilterType] = None,
     ) -> List[Datum]:
         """
         Get all datums with option to filter results.
 
         Parameters
         ----------
-        filter_ : velour.Filter, optional
-            Optional filter to constrain by.
+        filter_by : FilterType, optional
+            Optional constraints to filter by.
 
         Returns
         -------
         List[velour.Datum]
             A list datums.
         """
+        filter_ = _format_filter(filter_by)
         if isinstance(filter_, Filter):
             filter_ = asdict(filter_)
         return [
@@ -2228,21 +2238,22 @@ class Client:
 
     def get_models(
         self,
-        filter_: Union[Filter, dict, None] = None,
+        filter_by: Optional[FilterType] = None,
     ) -> List[Model]:
         """
         Get all models with option to filter results.
 
         Parameters
         ----------
-        filter_ : velour.Filter, optional
-            Optional filter to constrain by.
+        filter_by : FilterType, optional
+            Optional constraints to filter by.
 
         Returns
         ------
         List[velour.Model]
             A list of models.
         """
+        filter_ = _format_filter(filter_by)
         if isinstance(filter_, Filter):
             filter_ = asdict(filter_)
         return [

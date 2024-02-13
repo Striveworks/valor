@@ -4,7 +4,7 @@ import PIL.Image
 
 from velour import Datum
 from velour.schemas import validate_metadata
-from velour.types import DictMetadataType
+from velour.typing import DictMetadataType
 
 
 class ImageMetadata:

@@ -106,7 +106,7 @@ def test_evaluate_detection(
         dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
-        filters=[
+        filter_by=[
             Label.key == "k1",
         ],
         convert_annotations_to_type=AnnotationType.BOX,
@@ -145,7 +145,7 @@ def test_evaluate_detection(
         dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
-        filters=[
+        filter_by=[
             Annotation.labels.in_([Label(key="k1", value="v1")]),
             Annotation.bounding_box.exists(),
         ],
@@ -161,7 +161,7 @@ def test_evaluate_detection(
         dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
-        filters=[
+        filter_by=[
             Annotation.labels == Label(key="k1", value="v1"),
         ],
         convert_annotations_to_type=AnnotationType.BOX,
@@ -179,7 +179,7 @@ def test_evaluate_detection(
             dataset,
             iou_thresholds_to_compute=[0.1, 0.6],
             iou_thresholds_to_return=[0.1, 0.6],
-            filters=[
+            filter_by=[
                 Annotation.labels.in_([Label(key="k1", value="v2")]),
             ],
             convert_annotations_to_type=AnnotationType.BOX,
@@ -199,7 +199,7 @@ def test_evaluate_detection(
         dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
-        filters=[
+        filter_by=[
             Label.key == "k1",
             Annotation.bounding_box.area >= 10,
             Annotation.bounding_box.area <= 2000,
@@ -249,7 +249,7 @@ def test_evaluate_detection(
         dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
-        filters=[
+        filter_by=[
             Label.key == "k1",
             Annotation.bounding_box.area >= 1200,
         ],
@@ -295,7 +295,7 @@ def test_evaluate_detection(
         dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
-        filters=[
+        filter_by=[
             Label.key == "k1",
             Annotation.bounding_box.area <= 1200,
         ],
@@ -342,7 +342,7 @@ def test_evaluate_detection(
         dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
-        filters=[
+        filter_by=[
             Label.key == "k1",
             Annotation.bounding_box.area >= 1200,
             Annotation.bounding_box.area <= 1800,
@@ -414,7 +414,7 @@ def test_evaluate_detection_with_json_filters(
     # test default iou arguments
     eval_results = model.evaluate_detection(
         dataset,
-        filters=[
+        filter_by=[
             Label.key == "k1",
             Annotation.bounding_box.exists(),
         ],
@@ -474,7 +474,7 @@ def test_evaluate_detection_with_json_filters(
         dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
-        filters=[
+        filter_by=[
             Label.key == "k1",
             Annotation.bounding_box.area >= 1200,
         ],
@@ -490,7 +490,7 @@ def test_evaluate_detection_with_json_filters(
         dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
-        filters={
+        filter_by={
             **default_filter_properties,
             "bounding_box_area": [
                 {
@@ -574,7 +574,7 @@ def test_get_evaluations(
         dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
-        filters=[
+        filter_by=[
             Label.key == "k1",
             Annotation.bounding_box.exists(),
         ],
@@ -683,7 +683,7 @@ def test_get_evaluations(
         dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
-        filters=[
+        filter_by=[
             Label.key == "k1",
             Annotation.bounding_box.exists(),
         ],

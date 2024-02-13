@@ -1,12 +1,8 @@
 from dataclasses import dataclass
-from typing import Dict, Iterable, Iterator, List, Optional, Sequence, Union
+from typing import Dict, Iterable, Iterator, List, Optional, Union
 
 from velour.enums import TaskType
 from velour.schemas.constraints import BinaryExpression, Constraint
-
-FilterExpressionsType = Sequence[
-    Union[BinaryExpression, Sequence[BinaryExpression]]
-]
 
 
 @dataclass
@@ -97,8 +93,66 @@ class Filter:
     label_keys: Optional[List[str]] = None
     label_scores: Optional[List[Constraint]] = None
 
+    def __post_init__(self):
+        # unpack metadata
+        if self.dataset_metadata is not None:
+            for k, vlist in self.dataset_metadata.items():
+                self.dataset_metadata[k] = [
+                    v if isinstance(v, Constraint) else Constraint(**v)
+                    for v in vlist
+                ]
+        if self.model_metadata is not None:
+            for k, vlist in self.model_metadata.items():
+                self.model_metadata[k] = [
+                    v if isinstance(v, Constraint) else Constraint(**v)
+                    for v in vlist
+                ]
+        if self.datum_metadata is not None:
+            for k, vlist in self.datum_metadata.items():
+                self.datum_metadata[k] = [
+                    v if isinstance(v, Constraint) else Constraint(**v)
+                    for v in vlist
+                ]
+        if self.annotation_metadata is not None:
+            for k, vlist in self.annotation_metadata.items():
+                self.annotation_metadata[k] = [
+                    v if isinstance(v, Constraint) else Constraint(**v)
+                    for v in vlist
+                ]
+
+        # unpack area
+        if self.bounding_box_area:
+            self.bounding_box_area = [
+                v if isinstance(v, Constraint) else Constraint(**v)
+                for v in self.bounding_box_area
+            ]
+        if self.polygon_area:
+            self.polygon_area = [
+                v if isinstance(v, Constraint) else Constraint(**v)
+                for v in self.polygon_area
+            ]
+        if self.multipolygon_area:
+            self.multipolygon_area = [
+                v if isinstance(v, Constraint) else Constraint(**v)
+                for v in self.multipolygon_area
+            ]
+        if self.raster_area:
+            self.raster_area = [
+                v if isinstance(v, Constraint) else Constraint(**v)
+                for v in self.raster_area
+            ]
+
+        # scores
+        if self.label_scores:
+            self.label_scores = [
+                v if isinstance(v, Constraint) else Constraint(**v)
+                for v in self.label_scores
+            ]
+
     @classmethod
-    def create(cls, expressions: FilterExpressionsType):
+    def create(
+        cls, expressions: List[Union[BinaryExpression, List[BinaryExpression]]]
+    ):
         """
         Parses a list of `BinaryExpression` to create a `schemas.Filter` object.
 

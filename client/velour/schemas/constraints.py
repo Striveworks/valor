@@ -12,7 +12,7 @@ from velour.schemas.geometry import (
     Raster,
 )
 from velour.schemas.metadata import _isinstance_geojson
-from velour.types import GeometryType
+from velour.typing import GeometryType
 
 
 @dataclass
