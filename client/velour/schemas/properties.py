@@ -14,7 +14,7 @@ from velour.schemas.constraints import (
     NumericMapper,
     StringMapper,
 )
-from velour.schemas.metadata import DictMetadataType, GeoJSONType
+from velour.schemas.metadata import GeoJSONType, MetadataType
 
 DatetimeType = Union[
     datetime.datetime,
@@ -401,7 +401,7 @@ class DictionaryProperty(_BaseProperty, DictionaryMapper):
     {'some_float': 3.14, 'some_str': 'hello'}
     """
 
-    type_ = DictMetadataType
+    type_ = MetadataType
 
 
 class LabelProperty(_BaseProperty, LabelMapper):

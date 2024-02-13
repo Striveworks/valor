@@ -1,5 +1,5 @@
 import datetime
-from typing import Dict, List, Mapping, Union
+from typing import Dict, List, Union
 
 from velour.typing import is_geojson
 
@@ -12,7 +12,7 @@ GeoJSONType = Union[
     GeoJSONPointType, GeoJSONPolygonType, GeoJSONMultiPolygonType
 ]
 
-MetadataValueType = Union[
+ValueType = Union[
     bool,
     int,
     float,
@@ -23,9 +23,9 @@ MetadataValueType = Union[
     datetime.timedelta,
     GeoJSONType,
 ]
-MetadataType = Mapping[str, MetadataValueType]
-DictMetadataType = Dict[str, MetadataValueType]
-ConvertibleMetadataType = Mapping[
+
+MetadataType = Dict[str, ValueType]
+ConvertibleMetadataType = Dict[
     str,
     Union[
         bool,
@@ -39,7 +39,7 @@ ConvertibleMetadataType = Mapping[
 
 
 def _convert_object_to_metadatum(
-    value: MetadataValueType,
+    value: ValueType,
 ) -> Union[bool, int, float, str, Dict[str, str], Dict[str, GeoJSONType]]:
     """Converts an object into a velour metadatum."""
 
@@ -75,7 +75,7 @@ def _convert_object_to_metadatum(
 
 def _convert_metadatum_to_object(
     value: Union[bool, int, float, str, Dict[str, str], Dict[str, GeoJSONType]]
-) -> MetadataValueType:
+) -> ValueType:
     """Converts a velour metadatum into an object."""
 
     # atomic types
@@ -143,7 +143,7 @@ def validate_metadata(metadata: MetadataType):
             )
 
 
-def dump_metadata(metadata: DictMetadataType) -> ConvertibleMetadataType:
+def dump_metadata(metadata: MetadataType) -> ConvertibleMetadataType:
     """Converts metadata to API-compatible dictionary."""
     return {
         key: _convert_object_to_metadatum(value)
@@ -151,7 +151,7 @@ def dump_metadata(metadata: DictMetadataType) -> ConvertibleMetadataType:
     }
 
 
-def load_metadata(metadata: ConvertibleMetadataType) -> DictMetadataType:
+def load_metadata(metadata: ConvertibleMetadataType) -> MetadataType:
     """Converts API metadata to Client-compatible dictionary."""
     return {
         key: _convert_metadatum_to_object(value)
