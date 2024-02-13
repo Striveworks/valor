@@ -1,8 +1,30 @@
+import datetime
+
+import pytest
+
 from velour import Annotation, Constraint, Dataset, Filter, Label, Model
 from velour.coretypes import _format_filter
 
 
-def test__format_filter():
+@pytest.fixture
+def geojson() -> dict:
+    coordinates = [
+        [
+            [125.2750725, 38.760525],
+            [125.3902365, 38.775069],
+            [125.5054005, 38.789613],
+            [125.5051935, 38.71402425],
+            [125.5049865, 38.6384355],
+            [125.3902005, 38.6244225],
+            [125.2754145, 38.6104095],
+            [125.2752435, 38.68546725],
+            [125.2750725, 38.760525],
+        ]
+    ]
+    return {"type": "Polygon", "coordinates": coordinates}
+
+
+def test__format_filter(geojson):
 
     filter_object = Filter(
         dataset_names=["a", "b", "c"],
@@ -15,6 +37,22 @@ def test__format_filter():
         dataset_metadata={
             "some_str": [Constraint(value="foobar", operator="==")],
             "some_float": [Constraint(value=0.123, operator=">=")],
+            "some_datetime": [
+                Constraint(
+                    value={
+                        "duration": str(
+                            datetime.timedelta(days=1).total_seconds()
+                        )
+                    },
+                    operator=">",
+                )
+            ],
+            "some_geospatial": [
+                Constraint(
+                    value=geojson,
+                    operator="intersect",
+                )
+            ],
         },
     )
 
@@ -27,6 +65,8 @@ def test__format_filter():
             Annotation.polygon.area < 5000,
             Dataset.metadata["some_str"] == "foobar",
             Dataset.metadata["some_float"] >= 0.123,
+            Dataset.metadata["some_datetime"] > datetime.timedelta(days=1),
+            Dataset.metadata["some_geospatial"].intersect(geojson),
         ]
     )
 
@@ -42,6 +82,22 @@ def test__format_filter():
             "dataset_metadata": {
                 "some_str": [{"value": "foobar", "operator": "=="}],
                 "some_float": [{"value": 0.123, "operator": ">="}],
+                "some_datetime": [
+                    {
+                        "value": {
+                            "duration": str(
+                                datetime.timedelta(days=1).total_seconds()
+                            )
+                        },
+                        "operator": ">",
+                    }
+                ],
+                "some_geospatial": [
+                    {
+                        "value": geojson,
+                        "operator": "intersect",
+                    }
+                ],
             },
         }
     )
