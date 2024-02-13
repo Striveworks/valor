@@ -26,14 +26,17 @@ def geojson() -> dict:
 
 def test__format_filter(geojson):
 
+    abc = ["a", "b", "c"]
+    xyz = ["x", "y", "z"]
+    score = Constraint(value=0.75, operator=">")
+    lower_thresh = Constraint(value=1000, operator=">")
+    upper_thresh = Constraint(value=5000, operator="<")
+
     filter_object = Filter(
-        dataset_names=["a", "b", "c"],
-        model_names=["x", "y", "z"],
-        label_scores=[Constraint(value=0.75, operator=">")],
-        polygon_area=[
-            Constraint(value=1000, operator=">"),
-            Constraint(value=5000, operator="<"),
-        ],
+        dataset_names=abc,
+        model_names=xyz,
+        label_scores=[score],
+        polygon_area=[lower_thresh, upper_thresh],
         dataset_metadata={
             "some_str": [Constraint(value="foobar", operator="==")],
             "some_float": [Constraint(value=0.123, operator=">=")],

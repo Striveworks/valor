@@ -1,9 +1,7 @@
 import datetime
-from typing import Any, Dict, List, Mapping, Union
+from typing import Dict, List, Mapping, Union
 
-from velour.schemas import geometry
-
-AtomicTypes = Union[bool, int, float, str]
+from velour.typing import is_geojson
 
 GeoJSONPointType = Dict[str, Union[str, List[Union[float, int]]]]
 GeoJSONPolygonType = Dict[str, Union[str, List[List[List[Union[float, int]]]]]]
@@ -14,46 +12,30 @@ GeoJSONType = Union[
     GeoJSONPointType, GeoJSONPolygonType, GeoJSONMultiPolygonType
 ]
 
-GeometryType = Union[
-    geometry.Point,
-    geometry.Polygon,
-    geometry.BoundingBox,
-    geometry.MultiPolygon,
-    geometry.Raster,
-]
-
-DatetimeType = Union[
+MetadataValueType = Union[
+    bool,
+    int,
+    float,
+    str,
     datetime.datetime,
     datetime.date,
     datetime.time,
     datetime.timedelta,
-]
-
-MetadataValueType = Union[
-    AtomicTypes,
-    DatetimeType,
     GeoJSONType,
 ]
 MetadataType = Mapping[str, MetadataValueType]
 DictMetadataType = Dict[str, MetadataValueType]
 ConvertibleMetadataType = Mapping[
     str,
-    Union[AtomicTypes, Dict[str, str], Dict[str, GeoJSONType]],
+    Union[
+        bool,
+        int,
+        float,
+        str,
+        Dict[str, str],
+        Dict[str, GeoJSONType],
+    ],
 ]
-
-
-def _isinstance_geojson(value: Any) -> bool:
-    """Checks if value is an instance of geojson."""
-    if not isinstance(value, dict):
-        return False
-    elif set(value.keys()) != {"type", "coordinates"}:
-        return False
-    elif value["type"] not in {"Point", "Polygon", "MultiPolygon"}:
-        return False
-    elif not isinstance(value["coordinates"], list):
-        return False
-    else:
-        return True
 
 
 def _convert_object_to_metadatum(
@@ -81,7 +63,7 @@ def _convert_object_to_metadatum(
         return {"duration": str(value.total_seconds())}
 
     # geojson
-    elif _isinstance_geojson(value):
+    elif is_geojson(value):
         return {"geojson": value}
 
     # not implemented
@@ -154,7 +136,7 @@ def validate_metadata(metadata: MetadataType):
             or isinstance(value, datetime.datetime)
             or isinstance(value, datetime.date)
             or isinstance(value, datetime.time)
-            or _isinstance_geojson(value)
+            or is_geojson(value)
         ):
             raise TypeError(
                 "`metadata` value should have type `str`, `int`, `float`, `datetime` or `geojson`."

@@ -1,3 +1,4 @@
+import datetime
 from typing import Any, Optional, Union
 
 import numpy as np
@@ -7,17 +8,20 @@ from velour.schemas.constraints import (
     DatetimeMapper,
     DictionaryMapper,
     GeometryMapper,
+    GeometryType,
     GeospatialMapper,
     LabelMapper,
     NumericMapper,
     StringMapper,
 )
-from velour.schemas.metadata import (
-    DatetimeType,
-    DictMetadataType,
-    GeoJSONType,
-    GeometryType,
-)
+from velour.schemas.metadata import DictMetadataType, GeoJSONType
+
+DatetimeType = Union[
+    datetime.datetime,
+    datetime.date,
+    datetime.time,
+    datetime.timedelta,
+]
 
 
 def getter_factory(name: str, type_: type):

@@ -16,10 +16,12 @@ from velour.enums import (
     TaskType,
 )
 from velour.exceptions import ClientException
+from velour.schemas.constraints import BinaryExpression
 from velour.schemas.evaluation import EvaluationParameters, EvaluationRequest
 from velour.schemas.filters import Filter
 from velour.schemas.geometry import BoundingBox, MultiPolygon, Polygon, Raster
 from velour.schemas.metadata import (
+    DictMetadataType,
     dump_metadata,
     load_metadata,
     validate_metadata,
@@ -31,7 +33,11 @@ from velour.schemas.properties import (
     NumericProperty,
     StringProperty,
 )
-from velour.typing import DictMetadataType, FilterType, is_float
+from velour.typing import is_float
+
+FilterType = Union[
+    Filter, List[Union[BinaryExpression, List[BinaryExpression]]], dict
+]
 
 
 def _format_filter(filter_by: Optional[FilterType]) -> Filter:
@@ -40,7 +46,7 @@ def _format_filter(filter_by: Optional[FilterType]) -> Filter:
 
     Parameters
     ----------
-    filter_ : Union[Filter, List[BinaryExpression], dict]
+    filter_by : FilterType, optional
         The reference filter.
 
     Returns

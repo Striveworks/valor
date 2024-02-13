@@ -3,8 +3,7 @@ from typing import Optional, cast
 import PIL.Image
 
 from velour import Datum
-from velour.schemas import validate_metadata
-from velour.typing import DictMetadataType
+from velour.schemas.metadata import DictMetadataType, validate_metadata
 
 
 class ImageMetadata:
