@@ -6,9 +6,9 @@ Velour offers rich support for attaching metadata to almost any object, which ca
 
 The metadata types supported are:
 
-- simple data types (strings, numerics)
-- datetimes (via `datetime.datetime` in the Velour client)
-- geometry and geographies (via GeoJSON)
+- simple data types (strings, numerics, boolean)
+- datetimes (via `datetime.datetime`, `datetime.date`, `datetime.time`, and `datetime.timedelta` in the Velour client)
+- geometries and geographies (via GeoJSON)
 
 Metadata is added on object creation. For example, if you want to use metadata to organize models that come from training run checkpoints. This may look like
 
@@ -38,7 +38,7 @@ For example, using the above example where `capture_day` was added as metadata, 
 ```python
 import datetime
 
-import Velour
+import velour
 
 model: Velour.Model # classification model
 dset: Velour.Dataset # dataset to evaluate on
@@ -54,7 +54,7 @@ eval2 = model.evaluate_classification(dset, filter_by=[Datum.metadata["capture_d
 As an example for filtering by geometric attributes, consider evaluating an object detection model's performance on small objects, where we define small as being less than 500 square pixels in area. This can be achieved via
 
 ```python
-import Velour
+import velour
 
 model: Velour.Model # object detection model
 dset: Velour.Dataset # dataset to evaluate on
@@ -67,7 +67,7 @@ dset.evaluate_detection(dset, filter_by=[Velour.Annotation.bounding_box.area < 5
 Filtering can also be used when querying for different objects. For example, taking the model section checkpoint example from above, we could query model checkpoints from a training run based on the checkpoint number greater than 100 by
 
 ```python
-from Velour import client
+from velour import client
 
 run_name: str # run name to query for
 
