@@ -9,6 +9,7 @@ These docs are organized as follows:
 - **[Overview](index.md)** (this page): Provides an overview of what Velour is, why it's important, and how it works.
 - **[Sample Notebook](https://github.com/Striveworks/velour/blob/main/examples/getting_started.ipynb)**: Illustrates how to evaluate model performance using Velour in a descriptive Jupyter notebook.
 - **[Getting Started](getting_started.md)**: Details everything you need to get up and running with Velour.
+- **[Metadata and Filtering](metadata_and_filtering.md)**: Describes Velour's robust support for adding metadata to data, along with how to filter evaluations and Velour objects based on metadata and other attributes.
 - **[Metrics](https://striveworks.github.io/velour/metrics)**: Describes all of the metrics that you can calculate using Velour.
 - **[Endpoints](endpoints.md)**: Documents Velour's various API endpoints.
 - **[Technical Concepts](technical_concepts.md)**: Describes the technical concepts that underpin Velour.
