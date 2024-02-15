@@ -13,6 +13,7 @@ nav:
   - Getting Started: "getting_started.md"
   - Metrics: "metrics.md"
   - Endpoints: "endpoints.md"
+  - Metadata & Filtering: "metadata_and_filtering.md"
   - Technical Concepts: "technical_concepts.md"
   - Contributing & Development: "contributing.md"
   - Python Client API: "client_api"
