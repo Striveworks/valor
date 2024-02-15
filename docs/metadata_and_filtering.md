@@ -40,8 +40,8 @@ import datetime
 
 import velour
 
-model: Velour.Model # classification model
-dset: Velour.Dataset # dataset to evaluate on
+model: velour.Model # classification model
+dset: velour.Dataset # dataset to evaluate on
 
 # compare performance on data captured before and after 2020
 d = datetime.datetime(day=5, month=10, year=2020)
@@ -56,10 +56,10 @@ As an example for filtering by geometric attributes, consider evaluating an obje
 ```python
 import velour
 
-model: Velour.Model # object detection model
-dset: Velour.Dataset # dataset to evaluate on
+model: velour.Model # object detection model
+dset: velour.Dataset # dataset to evaluate on
 
-dset.evaluate_detection(dset, filter_by=[Velour.Annotation.bounding_box.area < 500])
+dset.evaluate_detection(dset, filter_by=[velour.Annotation.bounding_box.area < 500])
 ```
 
 ### Filtering in queries
