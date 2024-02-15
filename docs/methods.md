@@ -1,3 +1,29 @@
+---
+header-includes:
+  - \usepackage[ruled,vlined,linesnumbered]{algorithm2e}
+---
+# Algorithm 1
+Just a sample algorithmn
+\begin{algorithm}[H]
+\DontPrintSemicolon
+\SetAlgoLined
+\KwResult{Write here the result}
+\SetKwInOut{Input}{Input}\SetKwInOut{Output}{Output}
+\Input{Write here the input}
+\Output{Write here the output}
+\BlankLine
+\While{While condition}{
+    instructions\;
+    \eIf{condition}{
+        instructions1\;
+        instructions2\;
+    }{
+        instructions3\;
+    }
+}
+\caption{While loop with If/Else condition}
+\end{algorithm}
+
 # Evaluation Methods
 
 ## Classification
@@ -117,27 +143,44 @@ $Recall = \dfrac{|TP|}{|TP| + |FN|}$
 
 1. Definitions
 
-    - $Groundtruths = \{ g_1, \ g_2, \ \ldots, \ g_k \}$
+    - $Groundtruths \ (G) = \{ g_1, \ g_2, \ \ldots, \ g_k \}$
 
-    - $Predictions = \{ p_1, \ p_2, \ \ldots, \ p_n \} \ where \ (score_1 > score_2 > \cdots > score_n)$
+    - $Predictions \ (P) = \{ p_1, \ p_2, \ \ldots, \ p_n \}\text{ where }(score_1 > score_2 > \cdots > score_n)$
 
-    - $Intersection \ Over \ Union \ (IOU) = \dfrac{Area( g_{geometry} \cap p_{geometry} )}{Area( g_{geometry} \cup p_{geometry} )}$
+1. Create prediction pairings.
 
-1. Create ranked pairings.
-
-    - $ Cartesian \ (Cross) \ Join = \{ p_1g_1, \ p_1g_2, \ \ldots, \ p_n g_k \} $
-
-    - $ Constrain \ by \ (p_{i, datum} = g_{j, datum}) $
+    - $ Pairings = \left\{ \ (p,g) \in P \times G \ | \ p_{datum} \neq g_{datum} \ \right\} $
 
 1. Compute IOU's
 
-    - $iou_{ij} = IOU( p_i, \ g_j )$
+    - $Intersection \ Over \ Union \ (IOU) = \dfrac{Area( p_{geom} \cap g_{geom} )}{Area( p_{geom} \cup g_{geom} )}$
 
-    - Order the pairings by IOU but retain i-th order.
+    - $ iou_{ij} = IOU( p_i, \ g_j ) $
 
-1. Rank the pairing list by IOU.
+1. Order the prediction pairings by IOU.
 
-    - $Ranked \ Pairings = \{ pairing_1, \ pairing_2, \ \ldots, \ pairing_m \} \ where \ (iou_{i1} > iou_{i2} > \cdots > iou_{ik})$
+    ```python
+    ordered_pairings = sort(pairings, lambda pairing : -pairing.iou)
+    ```
+
+1. Greedily select pairings.
+
+    ```python
+    g_set = set()
+    p_set = set()
+    valid_list = list()
+
+    for p, g in ordered_pairing:
+        if p in p_set or g in g_set:
+            continue
+        p_set.add(p)
+        g_set.add(g)
+        valid_list.append(pairing)
+    ```
+
+    - $\text{Define valid list }V$
+
+    - $\text{For each }(p_i,g_j)\text{ in Ordered Pairings:}\\\text{If }(p_i \not\in V) \land (g_j \not\in V)\text{ then append }(p_i,g_j)\text{ to }V$
 
 1. Compute AP.
 
@@ -156,11 +199,15 @@ $Recall = \dfrac{|TP|}{|TP| + |FN|}$
 
     - Calculate the cumulative sum for precision and recall.
 
-        - $P_i = \sum\limits_{j=1}^{i} Precision ( RankedPairing_j ) $
+        - $\text{Number of groundtruths} = |G| = |TP| + |FN|$
 
-        - $R_i = \sum\limits_{j=1}^{i} Recall ( RankedPairing_j ) $
+        - $|TP|_x = \sum\limits_{i=1}^x \begin{cases} 1 \text{ if }iou>threshold \\ 0\text{ otherwise} \end{cases} $
 
-    - $Average \ Precision \ (AP) = \sum\limits_{i=1}^m (R_i - R_{i-1}) P_i \ where \ R_0 = 0$
+        - $\text{Cumulative Precision: } P_x = \dfrac{|TP|_x}{x}$
+
+        - $\text{Cumulative Recall: } R_x = \dfrac{|TP|_x}{|G|}$
+
+    - $\text{Average Precision} = \sum\limits_{x} (R_x - R_{x-1}) P_x \ where \ R_0 = 0$
 
 # Mean Average Precision (mAP)
 

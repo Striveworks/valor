@@ -1,0 +1,69 @@
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+\begin{document}
+
+\begin{algorithm}
+\caption{Create Ordered Pairings}
+\label{alg:orderPairings}
+\begin{algorithmic}
+
+\Require A list $pairings$ of elements where each element has an attribute $iou$.
+\Ensure The list $ordered\_pairings$ sorted such that elements with higher $iou$ values precede those with lower $iou$ values.
+
+\State $groundtruth \gets (datum, geom, label)$
+\State \hspace{\algorithmicindent} $datum$: The datum associated with the groundtruth.
+\State \hspace{\algorithmicindent} $geom$: Geometric annotation.
+\State \hspace{\algorithmicindent} $label$: Label key-value pair.
+
+\State $prediction \gets (datum, geom, label, score)$
+\State \hspace{\algorithmicindent} $datum$: The datum associated with the prediction.
+\State \hspace{\algorithmicindent} $geom$: Geometric annotation.
+\State \hspace{\algorithmicindent} $label$: Label key-value pair.
+\State \hspace{\algorithmicindent} $score$: Confidence score.
+
+\Procedure{CreatePairings}{$groundtruths, predictions$}
+
+    \State $k \gets \text{number of } groundtruths$
+    \State $n \gets \text{number of } predictions$
+    \For{$i \gets 0$ \textbf{to} $n-1$}
+        \State $prediction[i] \gets (datum, geom, label)$
+        \For{$j \gets 0$ \textbf{to} $n-i-1$}
+            \If{$pairings[j].iou < pairings[j+1].iou$}
+                \State Swap $pairings[j]$ and $pairings[j+1]$
+            \EndIf
+        \EndFor
+    \EndFor
+    \State $ordered\_pairings \gets pairings$
+    \State \textbf{return} $ordered\_pairings$
+\EndProcedure
+
+
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}
+\caption{Filter Ordered Pairs}
+\label{alg:uniquePairings}
+\begin{algorithmic}
+
+\Require $ordered\_pairings$ is a list of tuples containing $p$ and $g$
+\Ensure $valid\_pairs$ contains pairings from $ordered\_pairings$ where $p$ and $g$ are never repeated.
+
+\State $G_{visited} \gets \text{empty set}$
+\State $P_{visited} \gets \text{empty set}$
+\State $valid\_pairs \gets \text{empty list}$
+\For{$p, g$ in $ordered\_pairings$}
+    \If{$p \text{ in } p_{visited} \text{ or } g \text{ in } g_{visited}$}
+        \State \textbf{continue}
+    \Else
+        \State Add $g$ to $G_{visited}$
+        \State Add $p$ to $P_{visited}$
+        \State Append $(p,g)$ to $valid\_pairs$
+    \EndIf
+\EndFor
+\end{algorithmic}
+\end{algorithm}
+\end{document}
