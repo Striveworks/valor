@@ -35,3 +35,29 @@ def is_float(value: Any) -> bool:
         Whether the value is a floating point number.
     """
     return isinstance(value, (float, np.floating))
+
+
+def is_geojson(value: Any) -> bool:
+    """
+    Checks if value is an instance of geojson.
+
+    Parameters
+    ----------
+    value : Any
+        The value to check.
+
+    Returns
+    -------
+    bool
+        Whether the value conforms to the geojson standard.
+    """
+    if not isinstance(value, dict):
+        return False
+    elif set(value.keys()) != {"type", "coordinates"}:
+        return False
+    elif value["type"] not in {"Point", "Polygon", "MultiPolygon"}:
+        return False
+    elif not isinstance(value["coordinates"], list):
+        return False
+    else:
+        return True

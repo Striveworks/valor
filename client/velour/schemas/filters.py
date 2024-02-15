@@ -94,67 +94,52 @@ class Filter:
     label_scores: Optional[List[Constraint]] = None
 
     def __post_init__(self):
+        def _unpack_metadata(metadata: Optional[dict]) -> Union[dict, None]:
+            if metadata is None:
+                return None
+            for k, vlist in metadata.items():
+                metadata[k] = [
+                    v if isinstance(v, Constraint) else Constraint(**v)
+                    for v in vlist
+                ]
+            return metadata
+
         # unpack metadata
-        if self.dataset_metadata is not None:
-            for k, vlist in self.dataset_metadata.items():
-                self.dataset_metadata[k] = [
-                    v if isinstance(v, Constraint) else Constraint(**v)
-                    for v in vlist
-                ]
-        if self.model_metadata is not None:
-            for k, vlist in self.model_metadata.items():
-                self.model_metadata[k] = [
-                    v if isinstance(v, Constraint) else Constraint(**v)
-                    for v in vlist
-                ]
-        if self.datum_metadata is not None:
-            for k, vlist in self.datum_metadata.items():
-                self.datum_metadata[k] = [
-                    v if isinstance(v, Constraint) else Constraint(**v)
-                    for v in vlist
-                ]
-        if self.annotation_metadata is not None:
-            for k, vlist in self.annotation_metadata.items():
-                self.annotation_metadata[k] = [
-                    v if isinstance(v, Constraint) else Constraint(**v)
-                    for v in vlist
-                ]
+        self.dataset_metadata = _unpack_metadata(self.dataset_metadata)
+        self.model_metadata = _unpack_metadata(self.model_metadata)
+        self.datum_metadata = _unpack_metadata(self.datum_metadata)
+        self.annotation_metadata = _unpack_metadata(self.annotation_metadata)
+
+        def _unpack_list(
+            vlist: Optional[list], object_type: type
+        ) -> Optional[list]:
+            if vlist is None:
+                return None
+            conversion = (
+                lambda v: object_type(**v)
+                if object_type is Constraint
+                else lambda v: object_type(v)
+            )
+            return [
+                v if isinstance(v, object_type) else conversion(v)
+                for v in vlist
+            ]
 
         # unpack tasktypes
-        if self.task_types:
-            self.task_types = [
-                v if isinstance(v, TaskType) else TaskType(v)
-                for v in self.task_types
-            ]
+        self.task_types = _unpack_list(self.task_types, TaskType)
 
         # unpack area
-        if self.bounding_box_area:
-            self.bounding_box_area = [
-                v if isinstance(v, Constraint) else Constraint(**v)
-                for v in self.bounding_box_area
-            ]
-        if self.polygon_area:
-            self.polygon_area = [
-                v if isinstance(v, Constraint) else Constraint(**v)
-                for v in self.polygon_area
-            ]
-        if self.multipolygon_area:
-            self.multipolygon_area = [
-                v if isinstance(v, Constraint) else Constraint(**v)
-                for v in self.multipolygon_area
-            ]
-        if self.raster_area:
-            self.raster_area = [
-                v if isinstance(v, Constraint) else Constraint(**v)
-                for v in self.raster_area
-            ]
+        self.bounding_box_area = _unpack_list(
+            self.bounding_box_area, Constraint
+        )
+        self.polygon_area = _unpack_list(self.polygon_area, Constraint)
+        self.multipolygon_area = _unpack_list(
+            self.multipolygon_area, Constraint
+        )
+        self.raster_area = _unpack_list(self.raster_area, Constraint)
 
         # scores
-        if self.label_scores:
-            self.label_scores = [
-                v if isinstance(v, Constraint) else Constraint(**v)
-                for v in self.label_scores
-            ]
+        self.label_scores = _unpack_list(self.label_scores, Constraint)
 
     @classmethod
     def create(

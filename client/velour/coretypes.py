@@ -16,10 +16,12 @@ from velour.enums import (
     TaskType,
 )
 from velour.exceptions import ClientException
+from velour.schemas.constraints import BinaryExpression
 from velour.schemas.evaluation import EvaluationParameters, EvaluationRequest
 from velour.schemas.filters import Filter
 from velour.schemas.geometry import BoundingBox, MultiPolygon, Polygon, Raster
 from velour.schemas.metadata import (
+    MetadataType,
     dump_metadata,
     load_metadata,
     validate_metadata,
@@ -31,7 +33,11 @@ from velour.schemas.properties import (
     NumericProperty,
     StringProperty,
 )
-from velour.typing import DictMetadataType, FilterType, is_float
+from velour.typing import is_float
+
+FilterType = Union[
+    Filter, List[Union[BinaryExpression, List[BinaryExpression]]], dict
+]
 
 
 def _format_filter(filter_by: Optional[FilterType]) -> Filter:
@@ -40,7 +46,7 @@ def _format_filter(filter_by: Optional[FilterType]) -> Filter:
 
     Parameters
     ----------
-    filter_ : Union[Filter, List[BinaryExpression], dict]
+    filter_by : FilterType, optional
         The reference filter.
 
     Returns
@@ -290,7 +296,7 @@ class Annotation:
         self,
         task_type: TaskType,
         labels: List[Label],
-        metadata: Optional[DictMetadataType] = None,
+        metadata: Optional[MetadataType] = None,
         bounding_box: Optional[BoundingBox] = None,
         polygon: Optional[Polygon] = None,
         multipolygon: Optional[MultiPolygon] = None,
@@ -468,7 +474,7 @@ class Datum:
     def __init__(
         self,
         uid: str,
-        metadata: Optional[DictMetadataType] = None,
+        metadata: Optional[MetadataType] = None,
     ):
         self.uid = uid
         self.metadata = metadata if metadata else {}
@@ -996,8 +1002,8 @@ class DatasetSummary:
     num_rasters: int
     task_types: List[TaskType]
     labels: List[Label]
-    datum_metadata: List[DictMetadataType]
-    annotation_metadata: List[DictMetadataType]
+    datum_metadata: List[MetadataType]
+    annotation_metadata: List[MetadataType]
 
     def __post_init__(self):
         for i, tt in enumerate(self.task_types):
@@ -1026,7 +1032,7 @@ class Dataset:
     def __init__(
         self,
         name: str,
-        metadata: Optional[DictMetadataType] = None,
+        metadata: Optional[MetadataType] = None,
         connection: Optional[ClientConnection] = None,
     ):
         """
@@ -1056,7 +1062,7 @@ class Dataset:
     def create(
         cls,
         name: str,
-        metadata: Optional[DictMetadataType] = None,
+        metadata: Optional[MetadataType] = None,
     ) -> Dataset:
         """
         Creates a dataset that persists in the backend.
@@ -1312,7 +1318,7 @@ class Model:
     def __init__(
         self,
         name: str,
-        metadata: Optional[DictMetadataType] = None,
+        metadata: Optional[MetadataType] = None,
         connection: Optional[ClientConnection] = None,
     ):
         """
@@ -1342,7 +1348,7 @@ class Model:
     def create(
         cls,
         name: str,
-        metadata: Optional[DictMetadataType] = None,
+        metadata: Optional[MetadataType] = None,
     ) -> Model:
         """
         Creates a model that persists in the backend.
