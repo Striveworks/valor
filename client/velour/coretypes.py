@@ -1040,14 +1040,12 @@ class Dataset:
 
         Parameters
         ----------
-        client : Client
-            The `Client` object associated with the session.
         name : str
             The name of the dataset.
         metadata : dict
-            A dictionary of metadata that describes the dataset.
-        delete_if_exists : bool, default=False
-            Deletes any existing dataset with the same name.
+            An optional dictionary of metadata that describes the dataset.
+        connection : ClientConnnetion
+            An optional Velour client object for interacting with the api.
         """
         self.conn = connection
         self.name = name
@@ -1096,7 +1094,7 @@ class Dataset:
 
         Parameters
         ----------
-        dataset : str
+        name : str
             The name of the dataset.
 
         Returns
@@ -1326,14 +1324,12 @@ class Model:
 
         Parameters
         ----------
-        client : Client
-            The `Client` object associated with the session.
         name : str
             The name of the model.
         metadata : dict
-            A dictionary of metadata that describes the model.
-        delete_if_exists : bool, default=False
-            Deletes any existing model with the same name.
+            An optional dictionary of metadata that describes the dataset.
+        connection : ClientConnnetion
+            An optional Velour client object for interacting with the api.
         """
         self.conn = connection
         self.name = name
