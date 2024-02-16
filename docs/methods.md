@@ -144,36 +144,62 @@ $Recall = \dfrac{|TP|}{|TP| + |FN|}$
 
 1. Create pairings.
 
-$\textbf{Data: }\text{Lists of groundtruths and predictions sharing the same label.} \\ $
-$\textbf{Results: }\text{Ranked list of IoU's.} \\ $
-$\textbf{Note: }\text{Assume }argsort\text{ algorithm sorts in descending order.} \\ $
+$\textbf{Data: }\text{Lists of groundtruths and predictions sharing the same label.} $
 
-$1 \hspace{1.5em} groundtruths \gets \text{list of geometries} \\ $
-$2 \hspace{1.5em} predictions \gets \text{list of geometries} \\ $
-$3 \hspace{1.5em} scores \gets \text{list of prediction scores} \\ $
+$\textbf{Results: }\text{Ranked list of IoU's.} $
 
-$4 \hspace{1.5em} k \gets \text{length of } groundtruths\\ $
+$\textbf{Note: }\text{Assume }argsort\text{ algorithm sorts in descending order.} $
 
-$5 \hspace{1.5em} visited \gets \text{new empty set} \\ $
-$6 \hspace{1.5em} ious \gets \text{new list of size }k\\ $
-$7 \hspace{1.5em} ranked\_ious \gets \text{new empty list} \\ $
 
-$8 \hspace{1.5em} I \gets \textbf{argsort}(scores) \\ $
-$9 \hspace{1.5em} \textbf{foreach }i\text{ in }I\textbf{ do} \\ $
-$10 \hspace{1em} | \quad p \gets predictions[i] \\ $
-$11 \hspace{1em} | \quad \textbf{for }j=1\text{ to }k\textbf{ do} \\ $
-$12 \hspace{1em} | \quad | \quad g \gets groundtruths[j] \\ $
-$13 \hspace{1em} | \quad | \quad ious[j] \gets IoU(p, g) \\ $
-$14 \hspace{1em} | \quad \textbf{end} \\ $
-$15 \hspace{1em} | \quad J \gets \textbf{argsort}(ious) \\ $
-$16 \hspace{1em} | \quad \textbf{foreach }j\text{ in }J\textbf{ do} \\ $
-$17 \hspace{1em} | \quad | \quad \textbf{if }j\text{ not in }visited\_groundtruths \textbf{ then} \\ $
-$18 \hspace{1em} | \quad | \quad | \quad visited.add(j) \\ $
-$19 \hspace{1em} | \quad | \quad | \quad ranked\_ious.append(ious[j]) \\ $
-$20 \hspace{1em} | \quad | \quad | \quad \textbf{break} \\ $
-$21 \hspace{1em} | \quad | \quad \textbf{end} \\ $
-$22 \hspace{1em} | \quad \textbf{end} \\ $
-$23 \hspace{1em} \textbf{end} \\ $
+$1 \hspace{1.5em} groundtruths \gets \text{list of geometries} $
+
+$2 \hspace{1.5em} predictions \gets \text{list of geometries} $
+
+$3 \hspace{1.5em} scores \gets \text{list of prediction scores} $
+
+
+$4 \hspace{1.5em} k \gets \text{length of } groundtruths$
+
+
+$5 \hspace{1.5em} visited \gets \text{new empty set} $
+
+$6 \hspace{1.5em} ious \gets \text{new list of size }k$
+
+$7 \hspace{1.5em} ranked\_ious \gets \text{new empty list} $
+
+
+$8 \hspace{1.5em} I \gets \textbf{argsort}(scores) $
+
+$9 \hspace{1.5em} \textbf{foreach }i\text{ in }I\textbf{ do} $
+
+$10 \hspace{1em} | \quad p \gets predictions[i] $
+
+$11 \hspace{1em} | \quad \textbf{for }j=1\text{ to }k\textbf{ do} $
+
+$12 \hspace{1em} | \quad | \quad g \gets groundtruths[j] $
+
+$13 \hspace{1em} | \quad | \quad ious[j] \gets IoU(p, g) $
+
+$14 \hspace{1em} | \quad \textbf{end} $
+
+$15 \hspace{1em} | \quad J \gets \textbf{argsort}(ious) $
+
+$16 \hspace{1em} | \quad \textbf{foreach }j\text{ in }J\textbf{ do} $
+
+$17 \hspace{1em} | \quad | \quad \textbf{if }j\text{ not in }visited\_groundtruths \textbf{ then} $
+
+$18 \hspace{1em} | \quad | \quad | \quad visited.add(j) $
+
+$19 \hspace{1em} | \quad | \quad | \quad ranked\_ious.append(ious[j]) $
+
+$20 \hspace{1em} | \quad | \quad | \quad \textbf{break} $
+
+$21 \hspace{1em} | \quad | \quad \textbf{end} $
+
+$22 \hspace{1em} | \quad \textbf{end} $
+
+$23 \hspace{1em} \textbf{end} $
+
 
 $$
 \begin{aligned}
