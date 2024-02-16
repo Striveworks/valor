@@ -1951,7 +1951,7 @@ class Client:
         Returns
         -------
         Union[Dataset, None]
-            A Dataset with matching name or 'None' if one doesn't exist.
+            A Dataset with a matching name, or 'None' if one doesn't exist.
         """
         try:
             return Dataset.from_dict(
@@ -1967,7 +1967,7 @@ class Client:
         filter_by: Optional[FilterType] = None,
     ) -> List[Dataset]:
         """
-        Get all datasets with option to filter results.
+        Get all datasets, with an option to filter results according to some user-defined parameters.
 
         Parameters
         ----------
@@ -1992,7 +1992,7 @@ class Client:
         filter_by: Optional[FilterType] = None,
     ) -> List[Datum]:
         """
-        Get all datums with option to filter results.
+        Get all datums using an optional filter
 
         Parameters
         ----------
@@ -2024,7 +2024,7 @@ class Client:
         dataset : velour.Dataset
             The dataset the datum belongs to.
         uid : str
-            The uid of the datum.
+            The UID of the datum.
         Returns
         -------
         velour.Datum
@@ -2056,7 +2056,7 @@ class Client:
         Returns
         ------
         TableStatus | None
-            The state of the dataset or 'None' if dataset does not exist.
+            The state of the dataset, or 'None' if the dataset does not exist.
         """
         try:
             return self.conn.get_dataset_status(name)
@@ -2201,7 +2201,7 @@ class Client:
         self, dataset: Union[Dataset, str], model: Union[Model, str]
     ) -> None:
         """
-        Finalizes a model-dataset pairing such that new prediction cannot be added to it.
+        Finalizes a model-dataset pairing such that new predictions cannot be added to it.
         """
         dataset_name = (
             dataset.name if isinstance(dataset, Dataset) else dataset

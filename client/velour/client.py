@@ -616,7 +616,7 @@ class ClientConnection:
 
     def get_datums(self, filter_: Optional[dict] = None) -> List[dict]:
         """
-        Get all datums with option to filter results.
+        Get all datums using an optional filter
 
         `GET` endpoint.
 
@@ -648,7 +648,7 @@ class ClientConnection:
         dataset_name : str
             The dataset the datum belongs to.
         uid : str
-            The uid of the datum.
+            The UID of the datum.
         Returns
         -------
         dict
@@ -765,7 +765,7 @@ class ClientConnection:
         model_name: str,
     ) -> None:
         """
-        Finalizes a model-dataset pairing such that new prediction cannot be added to it.
+        Finalizes a model-dataset pairing such that new predictions cannot be added to it.
 
         `PUT` endpoint.
 

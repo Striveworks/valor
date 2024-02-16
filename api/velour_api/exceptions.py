@@ -259,7 +259,7 @@ class DatumDoesNotExistError(Exception):
     Parameters
     -------
     uid : str
-        The uid of the datum.
+        The UID of the datum.
     """
 
     def __init__(self, uid: str):
@@ -273,7 +273,7 @@ class DatumAlreadyExistsError(Exception):
     Parameters
     -------
     uid : str
-        The uid of the datum.
+        The UID of the datum.
     """
 
     def __init__(self, uid: str):
@@ -289,7 +289,7 @@ class DatumDoesNotBelongToDatasetError(Exception):
     dataset_name : str
         The name of the dataset.
     datum_uid : str
-        The uid of the datum.
+        The UID of the datum.
     """
 
     def __init__(self, dataset_name: str, datum_uid: str):
@@ -308,7 +308,7 @@ class AnnotationAlreadyExistsError(Exception):
     Parameters
     -------
     datum_uid : str
-        The uid of the datum.
+        The UID of the datum.
     """
 
     def __init__(self, datum_uid: str):
