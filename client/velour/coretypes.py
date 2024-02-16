@@ -542,7 +542,7 @@ class Datum:
 
 class GroundTruth:
     """
-    An object describing a groundtruth (e.g., a human-drawn bounding box on an image).
+    An object describing a ground truth (e.g., a human-drawn bounding box on an image).
 
     Parameters
     ----------
@@ -1152,12 +1152,12 @@ class Dataset:
         groundtruth: GroundTruth,
     ) -> None:
         """
-        Add a groundtruth to the dataset.
+        Add a ground truth to the dataset.
 
         Parameters
         ----------
-        groundtruth : GroundTruth
-            The groundtruth to create.
+        ground truth : GroundTruth
+            The ground truth to create.
         """
         Client(self.conn).create_groundtruths(
             dataset=self,
@@ -1169,12 +1169,12 @@ class Dataset:
         groundtruths: List[GroundTruth],
     ) -> None:
         """
-        Add multiple groundtruths to the dataset.
+        Add multiple ground truths to the dataset.
 
         Parameters
         ----------
-        groundtruths : List[GroundTruth]
-            The groundtruths to create.
+        ground truths : List[GroundTruth]
+            The ground truths to create.
         """
         Client(self.conn).create_groundtruths(
             dataset=self,
@@ -1186,7 +1186,7 @@ class Dataset:
         datum: Union[Datum, str],
     ) -> Union[GroundTruth, None]:
         """
-        Get a particular groundtruth.
+        Get a particular ground truth.
 
         Parameters
         ----------
@@ -1196,7 +1196,7 @@ class Dataset:
         Returns
         ----------
         Union[GroundTruth, None]
-            The matching groundtruth or 'None' if it doesn't exist.
+            The matching ground truth or 'None' if it doesn't exist.
         """
         return Client(self.conn).get_groundtruth(dataset=self, datum=datum)
 
@@ -1279,7 +1279,7 @@ class Dataset:
         self,
     ):
         """
-        Finalizes the dataset such that new groundtruths cannot be added to it.
+        Finalizes the dataset such that new ground truths cannot be added to it.
         """
         return Client(self.conn).finalize_dataset(self)
 
@@ -1801,7 +1801,7 @@ class Client:
         self, dataset: Union[Dataset, str]
     ) -> List[Label]:
         """
-        Get all labels associated with a dataset's groundtruths.
+        Get all labels associated with a dataset's ground truths.
 
         Parameters
         ----------
@@ -1823,7 +1823,7 @@ class Client:
 
     def get_labels_from_model(self, model: Union[Model, str]) -> List[Label]:
         """
-        Get all labels associated with a model's groundtruths.
+        Get all labels associated with a model's ground truths.
 
         Parameters
         ----------
@@ -1863,20 +1863,20 @@ class Client:
         groundtruths: List[GroundTruth],
     ):
         """
-        Creates groundtruths.
+        Creates ground truths.
 
         Parameters
         ----------
         dataset : velour.Dataset
-            The dataset to create the groundtruth for.
+            The dataset to create the ground truth for.
         groundtruths : List[velour.GroundTruth]
-            The groundtruths to create.
+            The ground truths to create.
         """
         groundtruths_json = []
         for groundtruth in groundtruths:
             if not isinstance(groundtruth, GroundTruth):
                 raise TypeError(
-                    f"Expected groundtruth to be of type 'velour.GroundTruth' not '{type(groundtruth)}'."
+                    f"Expected ground truth to be of type 'velour.GroundTruth' not '{type(groundtruth)}'."
                 )
             if len(groundtruth.annotations) == 0:
                 warnings.warn(
@@ -1893,7 +1893,7 @@ class Client:
         datum: Union[Datum, str],
     ) -> Union[GroundTruth, None]:
         """
-        Get a particular groundtruth.
+        Get a particular ground truth.
 
         Parameters
         ----------
@@ -1905,7 +1905,7 @@ class Client:
         Returns
         ----------
         Union[GroundTruth, None]
-            The matching groundtruth or 'None' if it doesn't exist.
+            The matching ground truth or 'None' if it doesn't exist.
         """
         dataset_name = (
             dataset.name if isinstance(dataset, Dataset) else dataset
@@ -1924,7 +1924,7 @@ class Client:
 
     def finalize_dataset(self, dataset: Union[Dataset, str]) -> None:
         """
-        Finalizes a dataset such that new groundtruths cannot be added to it.
+        Finalizes a dataset such that new ground truths cannot be added to it.
 
         Parameters
         ----------
