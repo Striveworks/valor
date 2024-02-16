@@ -398,7 +398,7 @@ class EvaluationStateError(Exception):
     Parameters
     -------
     evaluation_id : int
-        The id of the evaluation.
+        The ID of the evaluation.
     current_state : enums.EvaluationStatus
         The current state of the evaluation.
     requested_state : enums.EvaluationStatus

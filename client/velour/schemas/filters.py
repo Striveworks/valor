@@ -31,19 +31,19 @@ class Filter:
     require_bounding_box : bool, optional
         A toggle for filtering by bounding boxes.
     bounding_box_area : bool, optional
-        A optional constraint to filter by bounding box area.
+        An optional constraint to filter by bounding box area.
     require_polygon : bool, optional
         A toggle for filtering by polygons.
     polygon_area : bool, optional
-        A optional constraint to filter by polygon area.
+        An optional constraint to filter by polygon area.
     require_multipolygon : bool, optional
         A toggle for filtering by multipolygons.
     multipolygon_area : bool, optional
-        A optional constraint to filter by multipolygon area.
+        An optional constraint to filter by multipolygon area.
     require_raster : bool, optional
         A toggle for filtering by rasters.
     raster_area : bool, optional
-        A optional constraint to filter by raster area.
+        An optional constraint to filter by raster area.
     labels : List[Label], optional
         A list of `Labels' to filter on.
     label_ids : List[int], optional
@@ -113,15 +113,21 @@ class Filter:
         def _unpack_list(
             vlist: Optional[list], object_type: type
         ) -> Optional[list]:
+            def _handle_conversion(v, object_type):
+                if object_type is Constraint:
+                    return object_type(**v)
+                else:
+                    return object_type(v)
+
             if vlist is None:
                 return None
-            conversion = (
-                lambda v: object_type(**v)
-                if object_type is Constraint
-                else lambda v: object_type(v)
-            )
+
             return [
-                v if isinstance(v, object_type) else conversion(v)
+                (
+                    v
+                    if isinstance(v, object_type)
+                    else _handle_conversion(v=v, object_type=object_type)
+                )
                 for v in vlist
             ]
 

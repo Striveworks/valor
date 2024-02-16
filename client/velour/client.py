@@ -346,14 +346,14 @@ class ClientConnection:
         chunk_size_bytes: int = int(1e7),
     ) -> None:
         """
-        Creates groundtruths.
+        Creates ground truths.
 
         `CREATE` endpoint.
 
         Parameters
         ----------
         groundtruths : List[dict]
-            The groundtruths to be created.
+            The ground truths to be created.
         chunk_size_bytes : int, default=1e7
             Maximum size of a POST'ed json in bytes. Defaults to 10MB.
         """
@@ -373,7 +373,7 @@ class ClientConnection:
         datum_uid: str,
     ) -> dict:
         """
-        Get a particular groundtruth.
+        Get a particular ground truth.
 
         `GET` endpoint.
 
@@ -387,7 +387,7 @@ class ClientConnection:
         Returns
         ----------
         dict
-            The requested groundtruth.
+            The requested ground truth.
         """
         return self._requests_get_rel_host(
             f"groundtruths/dataset/{dataset_name}/datum/{datum_uid}"
@@ -454,7 +454,7 @@ class ClientConnection:
         filter_: Optional[dict] = None,
     ) -> List[dict]:
         """
-        Gets all labels with option to filter.
+        Gets all labels using an optional filter.
 
         `GET` endpoint.
         """
@@ -465,7 +465,7 @@ class ClientConnection:
 
     def get_labels_from_dataset(self, name: str) -> List[dict]:
         """
-        Get all labels associated with a dataset's groundtruths.
+        Get all labels associated with a dataset's ground truths.
 
         `GET` endpoint.
 
@@ -590,7 +590,7 @@ class ClientConnection:
 
     def finalize_dataset(self, name: str) -> None:
         """
-        Finalizes a dataset such that new groundtruths cannot be added to it.
+        Finalizes a dataset such that new ground truths cannot be added to it.
 
         `PUT` endpoint.
 
@@ -673,7 +673,7 @@ class ClientConnection:
 
     def get_models(self, filter_: Optional[dict] = None) -> List[dict]:
         """
-        Get all models with option to filter results.
+        Get all models using an optional filter.
 
         `GET` endpoint.
 
@@ -828,7 +828,7 @@ class ClientConnection:
         Parameters
         ----------
         evaluation_ids : List[int], optional
-            A list of job ids to return metrics for.
+            A list of job IDs to return metrics for.
         models : List[str], optional
             A list of model names that we want to return metrics for.
         datasets : List[str], optional

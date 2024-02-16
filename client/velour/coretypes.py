@@ -816,7 +816,7 @@ class Evaluation:
         Attributes
         ----------
         id : int
-            The id of the evaluation.
+            The ID of the evaluation.
         model_name : str
             The name of the evaluated model.
         datum_filter : schemas.Filter
@@ -844,7 +844,7 @@ class Evaluation:
         Returns
         ----------
         dict
-            A dictionary describing a evaluation.
+            A dictionary describing an evaluation.
         """
         return {
             "id": self.id,
@@ -1252,8 +1252,8 @@ class Dataset:
 
             num_datums: total number of datums in the dataset
 
-            num_annotations: total number of labeled annotations in the dataset. if an
-            object (such as a bounding box) has multiple labels then each label is counted separately
+            num_annotations: total number of labeled annotations in the dataset; if an
+            object (such as a bounding box) has multiple labels, then each label is counted separately
 
             num_bounding_boxes: total number of bounding boxes in the dataset
 
@@ -1779,7 +1779,7 @@ class Client:
         filter_by: Optional[FilterType] = None,
     ) -> List[Label]:
         """
-        Gets all labels with option to filter.
+        Gets all labels using an optional filter.
 
         Parameters
         ----------
@@ -2227,7 +2227,7 @@ class Client:
         Returns
         -------
         Union[velour.Model, None]
-            A Model with matching name or 'None' if one doesn't exist.
+            A model with a matching name, or 'None' if one doesn't exist.
         """
         try:
             return Model.from_dict(
@@ -2243,7 +2243,7 @@ class Client:
         filter_by: Optional[FilterType] = None,
     ) -> List[Model]:
         """
-        Get all models with option to filter results.
+        Get all models using an optional filter.
 
         Parameters
         ----------

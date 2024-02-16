@@ -125,7 +125,7 @@ class EvaluationResponse(BaseModel):
     Attributes
     ----------
     id : int
-        The id of the evaluation.
+        The ID of the evaluation.
     model_name : str
         The name of the evaluated model.
     datum_filter : schemas.Filter

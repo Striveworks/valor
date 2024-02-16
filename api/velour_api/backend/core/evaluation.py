@@ -513,7 +513,7 @@ def fetch_evaluation_from_id(
     db : Session
         The database session.
     evaluation_id : int
-        The id of the evaluation.
+        The ID of the evaluation.
 
     Returns
     -------
@@ -616,7 +616,7 @@ def get_evaluation_status(
     db : Session
         The database session.
     evaluation_id : int
-        The id of the evaluation.
+        The ID of the evaluation.
 
     Returns
     -------
@@ -640,7 +640,7 @@ def set_evaluation_status(
     db : Session
         The database session.
     evaluation_id : int
-        The id of the evaluation.
+        The ID of the evaluation.
     status : enums.EvaluationStatus
         The desired state of the evaluation.
 
