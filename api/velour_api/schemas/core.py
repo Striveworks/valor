@@ -160,7 +160,7 @@ class Datum(BaseModel):
 
     def __eq__(self, other):
         """
-        Defines how `Datums` are compared to one another
+        Defines how `Datums` are compared to one another.
 
         Parameters
         ----------

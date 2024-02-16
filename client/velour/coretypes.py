@@ -147,7 +147,7 @@ class Label:
 
     def __eq__(self, other) -> bool:
         """
-        Defines how `Labels` are compared to one another
+        Defines how `Labels` are compared to one another.
 
         Parameters
         ----------
@@ -273,7 +273,7 @@ class Annotation:
     ...     raster=raster1,
     ... )
 
-    Defining all supported annotation-types for a given task_type is allowed!
+    Defining all supported annotation types for a given `task_type` is allowed!
     >>> Annotation(
     ...     task_type=TaskType.OBJECT_DETECTION,
     ...     labels=[Label(key="k1", value="v1")],
@@ -313,7 +313,7 @@ class Annotation:
 
     def _validate(self):
         """
-        Validates the parameters used to create a `Annotation` object.
+        Validates the parameters used to create an `Annotation` object.
         """
         # labels
         if not isinstance(self.labels, list):
@@ -362,12 +362,12 @@ class Annotation:
     @classmethod
     def from_dict(cls, resp: dict) -> Annotation:
         """
-        Construct a annotation from a dictionary.
+        Construct an annotation from a dictionary.
 
         Parameters
         ----------
         resp : dict
-            The dictionary containing a annotation.
+            The dictionary containing an annotation.
 
         Returns
         velour.Annotation
@@ -415,7 +415,7 @@ class Annotation:
         Returns
         ----------
         dict
-            A dictionary describing a annotation.
+            A dictionary describing an annotation.
         """
         return {
             "task_type": self.task_type.value,
@@ -437,7 +437,7 @@ class Annotation:
 
     def __eq__(self, other) -> bool:
         """
-        Defines how `Annotations` are compared to one another
+        Defines how `Annotations` are compared to one another.
 
         Parameters
         ----------
@@ -523,7 +523,7 @@ class Datum:
 
     def __eq__(self, other) -> bool:
         """
-        Defines how `Datums` are compared to one another
+        Defines how `Datums` are compared to one another.
 
         Parameters
         ----------
@@ -633,7 +633,7 @@ class GroundTruth:
 
     def __eq__(self, other):
         """
-        Defines how `GroundTruths` are compared to one another
+        Defines how `GroundTruths` are compared to one another.
 
         Parameters
         ----------
@@ -783,7 +783,7 @@ class Prediction:
 
     def __eq__(self, other):
         """
-        Defines how `Predictions` are compared to one another
+        Defines how `Predictions` are compared to one another.
 
         Parameters
         ----------
@@ -895,9 +895,9 @@ class Evaluation:
 
     def poll(self) -> EvaluationStatus:
         """
-        Poll the backend.
+        Poll the back end.
 
-        Updates the evaluation with the latest state from the backend.
+        Updates the evaluation with the latest state from the back end.
 
         Returns
         -------
@@ -1045,7 +1045,7 @@ class Dataset:
         metadata : dict
             An optional dictionary of metadata that describes the dataset.
         connection : ClientConnnetion
-            An optional Velour client object for interacting with the api.
+            An optional Velour client object for interacting with the API.
         """
         self.conn = connection
         self.name = name
@@ -1063,7 +1063,7 @@ class Dataset:
         metadata: Optional[MetadataType] = None,
     ) -> Dataset:
         """
-        Creates a dataset that persists in the backend.
+        Creates a dataset that persists in the back end.
 
         Parameters
         ----------
@@ -1090,7 +1090,7 @@ class Dataset:
         name: str,
     ) -> Union[Dataset, None]:
         """
-        Retrieves a dataset from the backend database.
+        Retrieves a dataset from the back end database.
 
         Parameters
         ----------
@@ -1288,7 +1288,7 @@ class Dataset:
         timeout: int = 0,
     ):
         """
-        Delete the dataset from the backend.
+        Delete the dataset from the back end.
 
         Parameters
         ----------
@@ -1329,7 +1329,7 @@ class Model:
         metadata : dict
             An optional dictionary of metadata that describes the dataset.
         connection : ClientConnnetion
-            An optional Velour client object for interacting with the api.
+            An optional Velour client object for interacting with the API.
         """
         self.conn = connection
         self.name = name
@@ -1347,7 +1347,7 @@ class Model:
         metadata: Optional[MetadataType] = None,
     ) -> Model:
         """
-        Creates a model that persists in the backend.
+        Creates a model that persists in the back end.
 
         Parameters
         ----------
@@ -1374,7 +1374,7 @@ class Model:
         name: str,
     ) -> Union[Model, None]:
         """
-        Retrieves a model from the backend database.
+        Retrieves a model from the back end database.
 
         Parameters
         ----------
@@ -1496,7 +1496,7 @@ class Model:
 
     def finalize_inferences(self, dataset: Union[Dataset, str]) -> None:
         """
-        Finalizes the model over a dataset such that new prediction cannot be added to it.
+        Finalizes the model over a dataset such that new predictions cannot be added to it.
         """
         if isinstance(dataset, Dataset):
             dataset = dataset.name
@@ -1572,7 +1572,7 @@ class Model:
         filter_by : FilterType, optional
             Optional set of constraints to filter evaluation by.
         label_map : Dict[Label, Label], optional
-            Optional mapping of individual Labels to a grouper Label. Useful when you need to evaluate performance using Labels that differ across datasets and models.
+            Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
 
         Returns
         -------
@@ -1611,7 +1611,7 @@ class Model:
         label_map: Optional[Dict[Label, Label]] = None,
     ) -> Evaluation:
         """
-        Start a object-detection evaluation job.
+        Start an object-detection evaluation job.
 
         Parameters
         ----------
@@ -1626,7 +1626,7 @@ class Model:
         iou_thresholds_to_return : List[float], optional
             Thresholds to return AP for. Must be subset of `iou_thresholds_to_compute`.
         label_map : Dict[Label, Label], optional
-            Optional mapping of individual Labels to a grouper Label. Useful when you need to evaluate performance using Labels that differ across datasets and models.
+            Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
 
         Returns
         -------
@@ -1677,12 +1677,12 @@ class Model:
         filter_by : FilterType, optional
             Optional set of constraints to filter evaluation by.
         label_map : Dict[Label, Label], optional
-            Optional mapping of individual Labels to a grouper Label. Useful when you need to evaluate performance using Labels that differ across datasets and models.
+            Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
 
         Returns
         -------
         Evaluation
-            a job object that can be used to track the status of the job and get the metrics of it upon completion
+            A job object that can be used to track the status of the job and get the metrics of it upon completion
         """
         # format request
         datum_filter = self._format_constraints(datasets, filter_by)
@@ -1703,7 +1703,7 @@ class Model:
 
     def delete(self, timeout: int = 0):
         """
-        Delete the `Model` object from the backend.
+        Delete the `Model` object from the back end.
 
         Parameters
         ----------
@@ -1741,7 +1741,7 @@ class Model:
 
 class Client:
     """
-    Velour client object for interacting with the api.
+    Velour client object for interacting with the API.
 
     Parameters
     ----------
@@ -2352,7 +2352,7 @@ class Client:
         Parameters
         ----------
         evaluation_ids : List[int], optional.
-            A list of job ids to return metrics for.
+            A list of job IDs to return metrics for.
         models : Union[List[velour.Model], List[str]], optional
             A list of model names that we want to return metrics for.
         datasets : Union[List[velour.Dataset], List[str]], optional

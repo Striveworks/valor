@@ -28,7 +28,7 @@ class Label(BaseModel):
 
     def __eq__(self, other):
         """
-        Defines how `Labels` are compared to one another
+        Defines how `Labels` are compared to one another.
 
         Parameters
         ----------

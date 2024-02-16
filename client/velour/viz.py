@@ -71,13 +71,13 @@ def create_combined_segmentation_mask(
     -------
     tuple
         The first element of the tuple is the combined mask, as an RGB PIL image. The second
-        element is a color legend: it's a dict with keys the unique values of the labels and the
-        values of the dict are PIL image swatches of the color corresponding to the label value.
+        element is a color legend: it's a dict with the unique labels as keys and the
+        PIL image swatches as values.
 
     Raises
     ------
     RuntimeError
-        If all segmentations don't belong to the same image, or there is a
+        If all segmentations don't belong to the same image or there is a
         segmentation that doesn't have `label_key` as the key of one of its labels.
     ValueError
         If there aren't any segmentations.
@@ -204,21 +204,21 @@ def draw_bounding_box_on_image(
     img: Image.Image,
     color: Tuple[int, int, int] = (255, 0, 0),
 ) -> Image.Image:
-    """Draws a bounding polygon on an image. This operation is not done in-place
+    """Draws a bounding polygon on an image. This operation is not done in place.
 
     Parameters
     ----------
     bounding_box
-        bounding box to draw on the image
+        Bounding box to draw on the image.
     img
-        pillow image to draw on
+        Pillow image to draw on.
     color
-        RGB tuple of the color to use
+        RGB tuple of the color to use.
 
     Returns
     -------
     img
-        pillow image with bounding box drawn on it
+        Pillow image with bounding box drawn on it.
     """
     return _draw_bounding_polygon_on_image(
         bounding_box.polygon, img, color=color, inplace=False
@@ -322,7 +322,7 @@ def draw_raster_on_image(
     color: Tuple[int, int, int] = (255, 0, 0),
     alpha: float = 0.4,
 ) -> Image.Image:
-    """Draws the raster on top of an image. This operation is not done in-place
+    """Draws the raster on top of an image. This operation is not done in place.
 
     Parameters
     ----------
