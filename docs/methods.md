@@ -1,38 +1,4 @@
----
-header-includes:
-  - \usepackage[ruled,vlined,linesnumbered]{algorithm2e}
----
-# Algorithm 1
-Just a sample algorithmn
-\begin{algorithm}[H]
-\DontPrintSemicolon
-\SetAlgoLined
-\KwResult{Write here the result}
-\SetKwInOut{Input}{Input}\SetKwInOut{Output}{Output}
-\Input{Write here the input}
-\Output{Write here the output}
-\BlankLine
-\While{While condition}{
-    instructions\;
-    \eIf{condition}{
-        instructions1\;
-        instructions2\;
-    }{
-        instructions3\;
-    }
-}
-\caption{While loop with If/Else condition}
-\end{algorithm}
-
-# Evaluation Methods
-
-## Classification
-
-
-## Object-Detection
-
-
-### Average Precision (Model -> Dataset)
+### NOTES - Average Precision (Model -> Dataset)
 
 1. Aggregate data.
     1. Aggregate groundtruths.
@@ -68,54 +34,9 @@ Just a sample algorithmn
     1. Integrate Precision over Recall
         1. 101-point interpolation standard.
 
+# Binary ROCAUC
 
-| 1.1 Groundtruths |
-| ---------------- |
-| $Groundtruth$ |
-| $Annotation$ |
-| $Datum $|
-| $Label$ |
-
-| 1.2 Predictions |
-| --------------- |
-| $Prediction$ |
-| $Annotation$ |
-| $Datum $|
-| $Label$ |
-
-| 2.1 Joint Table |
-| --------------- |
-| $Datum$ |
-| $Groundtruth$ |
-| $Prediction$ |
-| $Label_{groundtruth}$ |
-| $Label_{prediction}$ |
-| $Annotation_{groundtruth}$ |
-| $Annotation_{prediction}$ |
-| $Prediction_{score}$ |
-
-| 3.1 IoU Table |
-| --------------- |
-| $Datum$ |
-| $Groundtruth$ |
-| $Prediction$ |
-| $Label_{groundtruth}$ |
-| $Label_{prediction}$ |
-| $Prediction_{score}$ |
-| $IoU$ |
-
-| 6.1 Ranked Table |
-| --------------- |
-| $Groundtruth$ |
-| $Prediction$ |
-| $Prediction_{score}$ |
-| $IoU$ |
-
-
-### Binary ROCAUC
-
-
-### Determining Binary Truth
+## Determining Binary Truth
 
 | Element | Description |
 | ------- | ------------ |
@@ -124,86 +45,45 @@ Just a sample algorithmn
 | True Negative (TN) | Prediction returns False and is correct. |
 | False Negative (FN) | Prediction returns False and is incorrect. |
 
-
-### Determining Multi-Class Truth
-
-$\text{ 9} \quad
-$\text{10} \quad
-
-### Precision
-
-$Precision = \dfrac{|TP|}{|TP| + |FP|}$
-
-### Recall
-
-$Recall = \dfrac{|TP|}{|TP| + |FN|}$
-
 # Average Precision (AP)
 
 ## Object-Detection
 
-1. Create pairings.
+Requirements
+1. For a pairing to exist both elements must share the same
+    1. Datum
+    1. Label
 
-$\textbf{Data: }\text{Lists of groundtruths and predictions sharing the same label.} $
+### Calculate Intersection-over-Union (IoU)
 
-$\textbf{Results: }\text{Ranked list of IoU's.} $
+$$Intersection \ over \ Union \ (IoU) = \dfrac{Area( prediction \cap groundtruth )}{Area( prediction \cup groundtruth )}$$
 
-$\textbf{Note: }\text{Assume }argsort\text{ algorithm sorts in descending order.} $
+#### PostGIS Functions
 
+- [ST_INTERSECTION](https://postgis.net/docs/ST_Intersection.html)
 
-$1 \hspace{1.5em} groundtruths \gets \text{list of geometries} $
+- [ST_UNION](https://postgis.net/docs/ST_Union.html)
 
-$2 \hspace{1.5em} predictions \gets \text{list of geometries} $
+- [ST_AREA](https://postgis.net/docs/ST_Area.html) for Polygon Area
 
-$3 \hspace{1.5em} scores \gets \text{list of prediction scores} $
+    ```sql
+    SELECT ST_Area(annotation.bounding_box) FROM annotation;
+    SELECT ST_Area(annotation.polygon) FROM annotation;
+    SELECT ST_Area(annotation.multipolygon) FROM annotation;
+    ```
 
+- [ST_COUNT](https://postgis.net/docs/RT_ST_Count.html) for Raster Area
 
-$4 \hspace{1.5em} k \gets \text{length of } groundtruths$
+    ```sql
+    SELECT ST_Count(annotation.raster) FROM annotation;
+    ```
 
-
-$5 \hspace{1.5em} visited \gets \text{new empty set} $
-
-$6 \hspace{1.5em} ious \gets \text{new list of size }k$
-
-$7 \hspace{1.5em} ranked\_ious \gets \text{new empty list} $
-
-
-$8 \hspace{1.5em} I \gets \textbf{argsort}(scores) $
-
-$9 \hspace{1.5em} \textbf{foreach }i\text{ in }I\textbf{ do} $
-
-$10 \hspace{1em} | \quad p \gets predictions[i] $
-
-$11 \hspace{1em} | \quad \textbf{for }j=1\text{ to }k\textbf{ do} $
-
-$12 \hspace{1em} | \quad | \quad g \gets groundtruths[j] $
-
-$13 \hspace{1em} | \quad | \quad ious[j] \gets IoU(p, g) $
-
-$14 \hspace{1em} | \quad \textbf{end} $
-
-$15 \hspace{1em} | \quad J \gets \textbf{argsort}(ious) $
-
-$16 \hspace{1em} | \quad \textbf{foreach }j\text{ in }J\textbf{ do} $
-
-$17 \hspace{1em} | \quad | \quad \textbf{if }j\text{ not in }visited\_groundtruths \textbf{ then} $
-
-$18 \hspace{1em} | \quad | \quad | \quad visited.add(j) $
-
-$19 \hspace{1em} | \quad | \quad | \quad ranked\_ious.append(ious[j]) $
-
-$20 \hspace{1em} | \quad | \quad | \quad \textbf{break} $
-
-$21 \hspace{1em} | \quad | \quad \textbf{end} $
-
-$22 \hspace{1em} | \quad \textbf{end} $
-
-$23 \hspace{1em} \textbf{end} $
-
+### Ranking IOU's
 
 $$
 \begin{aligned}
-&\textbf{Data: }\text{Lists of groundtruths and predictions sharing the same label.} \\
+&\underline{\large\textbf{Algorithm 1} \hspace{0.5em} \text{Rank IOU's}} \\
+&\textbf{Data: }\text{Lists of groundtruths and predictions sharing the same label for a datum.} \\
 &\textbf{Results: }\text{Ranked list of IoU's.} \\
 &\textbf{Note: }\text{Assume }argsort\text{ algorithm sorts in descending order.} \\
 \\
@@ -236,105 +116,75 @@ $$
 \end{aligned}
 $$
 
+### Calculate Average Precision.
 
-1. Create pairings.
+- Calculate Precision and Recall
 
-    - Requirements
-        1. Predictions should be ordered by score in descending.
-        1. Pairings for each prediction should be ordered by iou in descending order.
-        1. For a pairing to exist both elements must share the same
-            1. Datum
-            1. Label
+    | Case | Description |
+    | ------- | ------------ |
+    | True Positive (TP) | Prediction meets IoU threshold requirements. |
+    | False Positive (FP) | Prediction fails IoU threshold requirements. |
+    | True Negative (TN) | Unused.
+    | False Negative (FN) | No prediction exists. |
 
-    ```sql
-    SELECT *
-    FROM groundtruth
-    CROSS JOIN prediction
-    WHERE groundtruth.datum_id = prediction.datum_id
-    AND groundtruth.label_id = prediction.label_id
-    ORDER BY -prediction.score
-    ```
+    - $Precision = \dfrac{|TP|}{|TP| + |FP|}$
 
-1. Compute Intersection-over-Union (IoU) of annotations using PostGIS
+    - $Recall = \dfrac{|TP|}{|TP| + |FN|}$
 
-    $$Intersection \ over \ Union \ (IoU) = \dfrac{Area( prediction \cap groundtruth )}{Area( prediction \cup groundtruth )}$$
+- $\text{Average Precision} = \sum\limits_{x} (R_x - R_{x-1}) P_x \ where \ R_0 = 0$
 
-    ### PostGIS Functions
-
-    - [ST_INTERSECTION](https://postgis.net/docs/ST_Intersection.html)
-
-    - [ST_UNION](https://postgis.net/docs/ST_Union.html)
-
-    - [ST_AREA](https://postgis.net/docs/ST_Area.html) for Polygon Area
-
-        ```sql
-        SELECT ST_Area(annotation.bounding_box) FROM annotation;
-        SELECT ST_Area(annotation.polygon) FROM annotation;
-        SELECT ST_Area(annotation.multipolygon) FROM annotation;
-        ```
-
-    - [ST_COUNT](https://postgis.net/docs/RT_ST_Count.html) for Raster Area
-
-        ```sql
-        SELECT ST_Count(annotation.raster) FROM annotation;
-        ```
-
-1. Greedily select pairings.
-
-    ```python
-    g_set = set()
-    p_set = set()
-    valid_list = list()
-
-    for p, g in ordered_pairing:
-        if p in p_set or g in g_set:
-            continue
-        p_set.add(p)
-        g_set.add(g)
-        valid_list.append(pairing)
-    ```
-
-    - $\text{Define valid list }V$
-
-    - $\text{For each }(p_i,g_j)\text{ in Ordered Pairings:}\\\text{If }(p_i \not\in V) \land (g_j \not\in V)\text{ then append }(p_i,g_j)\text{ to }V$
-
-1. Compute AP.
-
-    - Calculate Precision and Recall
-
-        | Case | Description |
-        | ------- | ------------ |
-        | True Positive (TP) | Prediction meets IoU threshold requirements. |
-        | False Positive (FP) | Prediction fails IoU threshold requirements. |
-        | True Negative (TN) | Unused.
-        | False Negative (FN) | No prediction exists. |
-
-        - $Precision = \dfrac{|TP|}{|TP| + |FP|}$
-
-        - $Recall = \dfrac{|TP|}{|TP| + |FN|}$
-
-    - Calculate the cumulative sum for precision and recall.
-
-        - $\text{Number of groundtruths} = |G| = |TP| + |FN|$
-
-        - $|TP|_x = \sum\limits_{i=1}^x \begin{cases} 1 \text{ if }iou>threshold \\ 0\text{ otherwise} \end{cases} $
-
-        - $\text{Cumulative Precision: } P_x = \dfrac{|TP|_x}{x}$
-
-        - $\text{Cumulative Recall: } R_x = \dfrac{|TP|_x}{|G|}$
-
-    - $\text{Average Precision} = \sum\limits_{x} (R_x - R_{x-1}) P_x \ where \ R_0 = 0$
+$$
+\begin{aligned}
+&\underline{\large\textbf{Algorithm 2} \hspace{0.5em} \text{Precision-Recall Curve}} \\
+&\textbf{Data: }\text{Ranked list of IoU's for a label and a IoU threshold between 0 and 1.} \\
+&\textbf{Results: }\text{List of points on a curve.} \\
+\\
+&1 \hspace{1.5em} ranked\_ious \gets \text{list of IoU's} \\
+&2 \hspace{1.5em} threshold \gets \text{IoU Threshold} \\
+\\
+&3 \hspace{1.5em} n \gets \text{total number of groundtruths.} \\
+&4 \hspace{1.5em} count\_tp \gets 0 \\
+\\
+&5 \hspace{1.5em} curve \gets \text{new empty list} \\
+\\
+&6 \hspace{1.5em} \textbf{for }i=0\text{ to }n-1\textbf{ do} \\
+&7 \hspace{1.5em} | \quad \textbf{if } ranked\_ious[i] \ge threshold \textbf{ then} \\
+&8 \hspace{1.5em} | \quad | \quad count\_tp \gets count\_tp + 1 \\
+&9 \hspace{1.5em} | \quad \textbf{end} \\
+&10 \hspace{1em} | \quad precision \gets count\_tp \mathrel{{/}} (i+1) \\
+&11 \hspace{1em} | \quad recall \gets count\_tp \mathrel{{/}} n \\
+&12 \hspace{1em} | \quad curve.append((recall, precision)) \\
+&13 \hspace{1em} \textbf{end} \\
+\end{aligned}
+$$
 
 
-# Mean Average Precision (mAP)
+$$
+\begin{aligned}
+&\underline{\large\textbf{Algorithm 3} \hspace{0.5em} \text{Average Precision using 101-Point Interpolation}} \\
+&\textbf{Data: }\text{List of points representing the precision-recall curve.} \\
+&\textbf{Results: }\text{The AP metric.} \\
+\\
+&1 \hspace{1.5em} curve \gets \text{list of points with form } [(x_1,y_1),\ldots,(x_n,y_n)]\\
+&2 \hspace{1.5em} threshold \gets \text{IoU Threshold} \\
+\\
+&3 \hspace{1.5em} n \gets \text{total number of groundtruths.} \\
+&4 \hspace{1.5em} count\_tp \gets 0 \\
+\\
+&5 \hspace{1.5em} curve \gets \text{new empty list} \\
+\\
+&6 \hspace{1.5em} \textbf{for }i=0\text{ to }n-1\textbf{ do} \\
+&7 \hspace{1.5em} | \quad \textbf{if } ranked\_ious[i] \ge threshold \textbf{ then} \\
+&8 \hspace{1.5em} | \quad | \quad count\_tp \gets count\_tp + 1 \\
+&9 \hspace{1.5em} | \quad \textbf{end} \\
+&10 \hspace{1em} | \quad precision \gets count\_tp \mathrel{{/}} (i+1) \\
+&11 \hspace{1em} | \quad recall \gets count\_tp \mathrel{{/}} n \\
+&12 \hspace{1em} | \quad curve.append((recall, precision)) \\
+&13 \hspace{1em} \textbf{end} \\
+\end{aligned}
+$$
 
-$mAP = \dfrac{1}{|classes|} \sum\limits_{c \in classes} AP_{c}$
-
-# SQL Examples
-
-## Object-Detection
-
-### AP of Bounding Boxes
+### Example - Bounding Box
 
 ```sql
 CREATE OR REPLACE FUNCTION calculate_iou(groundtruth geometry, prediction geometry)
@@ -379,3 +229,18 @@ WHERE groundtruth_subquery.datum_id = prediction_subquery.datum_id
 AND groundtruth_subquery.label_id = prediction_subquery.label_id
 ORDER BY -score, -iou
 ```
+
+
+
+
+# Mean Average Precision (mAP)
+
+$mAP = \dfrac{1}{|classes|} \sum\limits_{c \in classes} AP_{c}$
+
+# SQL Examples
+
+## Object-Detection
+
+### AP of Bounding Boxes
+
+
