@@ -1992,7 +1992,7 @@ class Client:
         filter_by: Optional[FilterType] = None,
     ) -> List[Datum]:
         """
-        Get all datums using an optional filter
+        Get all datums using an optional filter.
 
         Parameters
         ----------

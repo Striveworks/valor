@@ -616,7 +616,7 @@ class ClientConnection:
 
     def get_datums(self, filter_: Optional[dict] = None) -> List[dict]:
         """
-        Get all datums using an optional filter
+        Get all datums using an optional filter.
 
         `GET` endpoint.
 
