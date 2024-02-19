@@ -50,23 +50,6 @@ jobs:
           TAG=$(git describe --tags --abbrev=0)
           docker tag ${IMAGE_NAME} ${IMAGE_NAME}:${TAG}
           docker push ${IMAGE_NAME}:${TAG}
-      - uses: aws-actions/amazon-ecr-login@v1
-        id: login-ecr
-      - name: push to ecr
-        run: |
-          ECR_IMAGE_NAME=${{ steps.login-ecr.outputs.registry }}/library/valor/migrations
-          docker tag ${IMAGE_NAME} ${ECR_IMAGE_NAME}
-          docker push ${ECR_IMAGE_NAME}
-          ECR_IMAGE_NAME_WITH_COMMIT_HASH=${IMAGE_NAME}:${{ github.sha }}
-          docker tag ${ECR_IMAGE_NAME} ${ECR_IMAGE_NAME_WITH_COMMIT_HASH}
-          docker push ${ECR_IMAGE_NAME_WITH_COMMIT_HASH}
-      - name: push git tag to ecr
-        if: startsWith(github.ref, 'refs/tags/')
-        run: |
-          ECR_IMAGE_NAME=${{ steps.login-ecr.outputs.registry }}/library/valor/migrations
-          TAG=$(git describe --tags --abbrev=0)
-          docker tag ${IMAGE_NAME} ${ECR_IMAGE_NAME}:${TAG}
-          docker push ${ECR_IMAGE_NAME}:${TAG}
 
   build-and-publish-docker-service:
     runs-on: ubuntu-latest
@@ -104,20 +87,3 @@ jobs:
           TAG=$(git describe --tags --abbrev=0)
           docker tag ${IMAGE_NAME} ${IMAGE_NAME}:${TAG}
           docker push ${IMAGE_NAME}:${TAG}
-      - uses: aws-actions/amazon-ecr-login@v1
-        id: login-ecr
-      - name: push to ecr
-        run: |
-          ECR_IMAGE_NAME=${{ steps.login-ecr.outputs.registry }}/library/valor/valor-service
-          docker tag ${IMAGE_NAME} ${ECR_IMAGE_NAME}
-          docker push ${ECR_IMAGE_NAME}
-          ECR_IMAGE_NAME_WITH_COMMIT_HASH=${IMAGE_NAME}:${{ github.sha }}
-          docker tag ${ECR_IMAGE_NAME} ${ECR_IMAGE_NAME_WITH_COMMIT_HASH}
-          docker push ${ECR_IMAGE_NAME_WITH_COMMIT_HASH}
-      - name: push git tag to ecr
-        if: startsWith(github.ref, 'refs/tags/')
-        run: |
-          ECR_IMAGE_NAME=${{ steps.login-ecr.outputs.registry }}/library/valor/valor-service
-          TAG=$(git describe --tags --abbrev=0)
-          docker tag ${IMAGE_NAME} ${ECR_IMAGE_NAME}:${TAG}
-          docker push ${ECR_IMAGE_NAME}:${TAG}
