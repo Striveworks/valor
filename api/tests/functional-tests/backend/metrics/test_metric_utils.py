@@ -1,9 +1,9 @@
 import pytest
 from sqlalchemy.orm import Session
 
-from velour_api import enums, schemas
-from velour_api.backend import core
-from velour_api.backend.metrics.metric_utils import validate_computation
+from valor_api import enums, schemas
+from valor_api.backend import core
+from valor_api.backend.metrics.metric_utils import validate_computation
 
 
 @pytest.fixture

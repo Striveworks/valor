@@ -6,8 +6,8 @@ the backend should depend on the client?
 from enum import Enum
 from typing import Type
 
-from velour import enums
-from velour_api import enums as backend_enums
+from valor import enums
+from valor_api import enums as backend_enums
 
 
 def _enum_to_dict(enum: Type[Enum]) -> dict:

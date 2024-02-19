@@ -2,7 +2,7 @@ import copy
 
 import pytest
 
-from velour import Annotation, Datum, GroundTruth, Label, Prediction, enums
+from valor import Annotation, Datum, GroundTruth, Label, Prediction, enums
 
 
 def test_datum():
@@ -121,12 +121,12 @@ def test_groundtruth_annotation():
     assert "is not a valid TaskType" in str(e)
     with pytest.raises(TypeError) as e:
         Annotation(task_type=enums.TaskType.CLASSIFICATION, labels=l1)  # type: ignore
-    assert "List[velour.Label]" in str(e)
+    assert "List[valor.Label]" in str(e)
     with pytest.raises(TypeError) as e:
         Annotation(
             task_type=enums.TaskType.CLASSIFICATION, labels=[l1, l2, "label"]  # type: ignore
         )
-    assert "velour.Label" in str(e)
+    assert "valor.Label" in str(e)
 
 
 def test_prediction_annotation():
@@ -150,12 +150,12 @@ def test_prediction_annotation():
     assert "is not a valid TaskType" in str(e)
     with pytest.raises(TypeError) as e:
         Annotation(task_type=enums.TaskType.CLASSIFICATION, labels=s1)  # type: ignore
-    assert "List[velour.Label]" in str(e)
+    assert "List[valor.Label]" in str(e)
     with pytest.raises(TypeError) as e:
         Annotation(
             task_type=enums.TaskType.CLASSIFICATION, labels=[s1, s2, "label"]  # type: ignore
         )
-    assert "velour.Label" in str(e)
+    assert "valor.Label" in str(e)
 
 
 def test_groundtruth():
@@ -178,19 +178,19 @@ def test_groundtruth():
             datum="datum",  # type: ignore
             annotations=gts,
         )
-    assert "velour.Datum" in str(e)
+    assert "valor.Datum" in str(e)
     with pytest.raises(TypeError) as e:
         GroundTruth(
             datum=datum,
             annotations=gts[0],  # type: ignore
         )
-    assert "List[velour.Annotation]" in str(e)
+    assert "List[valor.Annotation]" in str(e)
     with pytest.raises(TypeError) as e:
         GroundTruth(
             datum=datum,
             annotations=[gts[0], gts[1], "annotation"],  # type: ignore
         )
-    assert "velour.Annotation" in str(e)
+    assert "valor.Annotation" in str(e)
 
 
 def test_prediction():
@@ -213,19 +213,19 @@ def test_prediction():
     # test `__post_init__`
     with pytest.raises(TypeError) as e:
         Prediction(datum="datum", annotations=pds)  # type: ignore
-    assert "velour.Datum" in str(e)
+    assert "valor.Datum" in str(e)
     with pytest.raises(TypeError) as e:
         Prediction(
             datum=datum,
             annotations=pds[0],  # type: ignore
         )
-    assert "List[velour.Annotation]" in str(e)
+    assert "List[valor.Annotation]" in str(e)
     with pytest.raises(TypeError) as e:
         Prediction(
             datum=datum,
             annotations=[pds[0], pds[1], "annotation"],  # type: ignore
         )
-    assert "velour.Annotation" in str(e)
+    assert "valor.Annotation" in str(e)
 
     with pytest.raises(ValueError) as e:
         Prediction(

@@ -5,8 +5,8 @@ import pytest
 from PIL import Image
 from sqlalchemy.orm import Session
 
-from velour_api import schemas
-from velour_api.backend import models
+from valor_api import schemas
+from valor_api.backend import models
 
 
 def bytes_to_pil(b: bytes) -> Image.Image:

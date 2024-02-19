@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from velour_api import enums, schemas
+from valor_api import enums, schemas
 
 
 def test_EvaluationParameters():

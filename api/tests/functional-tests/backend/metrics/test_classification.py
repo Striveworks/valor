@@ -1,20 +1,20 @@
 import pytest
 from sqlalchemy.orm import Session
 
-from velour_api import crud, enums, schemas
-from velour_api.backend import models
-from velour_api.backend.core import (
+from valor_api import crud, enums, schemas
+from valor_api.backend import models
+from valor_api.backend.core import (
     create_or_get_evaluations,
     fetch_union_of_labels,
 )
-from velour_api.backend.metrics.classification import (
+from valor_api.backend.metrics.classification import (
     _compute_accuracy_from_cm,
     _compute_clf_metrics,
     _compute_confusion_matrix_at_grouper_key,
     _compute_roc_auc,
     compute_clf_metrics,
 )
-from velour_api.backend.metrics.metric_utils import create_grouper_mappings
+from valor_api.backend.metrics.metric_utils import create_grouper_mappings
 
 
 @pytest.fixture

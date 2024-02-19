@@ -7,11 +7,11 @@ import pytest
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from velour import Annotation, Client, Dataset, Datum, GroundTruth, Label
-from velour.enums import TableStatus, TaskType
-from velour.exceptions import ClientException
-from velour.metatypes import ImageMetadata
-from velour_api.backend import models
+from valor import Annotation, Client, Dataset, Datum, GroundTruth, Label
+from valor.enums import TableStatus, TaskType
+from valor.exceptions import ClientException
+from valor.metatypes import ImageMetadata
+from valor_api.backend import models
 
 
 def _test_create_image_dataset_with_gts(
@@ -32,7 +32,7 @@ def _test_create_image_dataset_with_gts(
     ----------
     client
     gts
-        list of groundtruth objects (from `velour.data_types`)
+        list of groundtruth objects (from `valor.data_types`)
     expected_labels_tuples
         set of tuples of key/value labels to check were added to the database
     expected_image_uids

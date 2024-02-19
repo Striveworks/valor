@@ -1,4 +1,4 @@
-::: velour.Model
+::: valor.Model
     handler: python
     options:
         show_root_heading: false

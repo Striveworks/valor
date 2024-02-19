@@ -52,7 +52,7 @@ jobs:
           - 5432:5432
         env:
           POSTGRES_PASSWORD: password
-          POSTGRES_DB: velour
+          POSTGRES_DB: valor
 
     steps:
       - uses: actions/checkout@v3
@@ -61,14 +61,14 @@ jobs:
           python-version: "3.10"
       - run: |
           docker build -f=migrations/Dockerfile ./migrations -t migrations
-          docker run -e POSTGRES_PASSWORD=password -e POSTGRES_HOST=localhost -e POSTGRES_DB=velour -e POSTGRES_USERNAME=postgres -e POSTGRES_PORT=5432  --network "host" migrations
+          docker run -e POSTGRES_PASSWORD=password -e POSTGRES_HOST=localhost -e POSTGRES_DB=valor -e POSTGRES_USERNAME=postgres -e POSTGRES_PORT=5432  --network "host" migrations
       - run: |
           cd api && pip install ".[test]"
-          POSTGRES_PASSWORD=password POSTGRES_HOST=localhost POSTGRES_DB=velour POSTGRES_USERNAME=postgres POSTGRES_PORT=5432 coverage run --source=velour_api -m pytest -v tests/functional-tests
+          POSTGRES_PASSWORD=password POSTGRES_HOST=localhost POSTGRES_DB=valor POSTGRES_USERNAME=postgres POSTGRES_PORT=5432 coverage run --source=valor_api -m pytest -v tests/functional-tests
         env:
           POSTGRES_PASSWORD: password
           POSTGRES_HOST: localhost
-          POSTGRES_DB: velour
+          POSTGRES_DB: valor
           POSTGRES_USERNAME: postgres
           POSTGRES_PORT: 5432
       - run: cd api && coverage report
@@ -95,7 +95,7 @@ jobs:
       - name: login to ECR
         run: aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login -u AWS --password-stdin 724664234782.dkr.ecr.us-east-1.amazonaws.com
       - name: setup backend test env
-        run: docker compose -p velour -f docker-compose.yml -f docker-compose.cicd-override.yml --env-file ./api/.env.testing up --build -d
+        run: docker compose -p valor -f docker-compose.yml -f docker-compose.cicd-override.yml --env-file ./api/.env.testing up --build -d
       - uses: actions/setup-python@v4
         with:
           python-version: "3.10"
@@ -105,7 +105,7 @@ jobs:
       - name: install client
         run: pip install -e ".[test]"
         working-directory: ./client
-      - run: coverage run --source="api/velour_api,client/velour" -m pytest -v integration_tests/client/*
+      - run: coverage run --source="api/valor_api,client/valor" -m pytest -v integration_tests/client/*
       - run: coverage report
       - name: upload coverage report as artifact
         uses: actions/upload-artifact@v3
@@ -113,18 +113,18 @@ jobs:
           name: ${{ env.COVERAGE_FILE }}
           path: ${{ env.COVERAGE_FILE }}
       - run: make stop-env
-      - run: docker compose -p velour -f docker-compose.yml -f docker-compose.cicd-override.yml --env-file ./api/.env.testing up --build -d
+      - run: docker compose -p valor -f docker-compose.yml -f docker-compose.cicd-override.yml --env-file ./api/.env.testing up --build -d
         env:
-          VELOUR_SECRET_KEY: ${{ vars.SECRET_KEY }}
-          VELOUR_USERNAME: ${{ vars.USERNAME }}
-          VELOUR_PASSWORD: ${{ vars.PASSWORD }}
+          VALOR_SECRET_KEY: ${{ vars.SECRET_KEY }}
+          VALOR_USERNAME: ${{ vars.USERNAME }}
+          VALOR_PASSWORD: ${{ vars.PASSWORD }}
       - name: sleep to give backend time to spin up
         run: sleep 15
       - name: test auth
         run: pytest -v integration_tests/auth/*
         env:
-          VELOUR_USERNAME_FOR_TESTING: ${{ vars.USERNAME }}
-          VELOUR_PASSWORD_FOR_TESTING: ${{ vars.PASSWORD }}
+          VALOR_USERNAME_FOR_TESTING: ${{ vars.USERNAME }}
+          VALOR_PASSWORD_FOR_TESTING: ${{ vars.PASSWORD }}
 
   backend-unit-tests:
     env:
@@ -139,7 +139,7 @@ jobs:
         with:
           python-version: "3.10"
       - run: pip install ".[test]"
-      - run: coverage run --source=velour_api -m pytest -v tests/unit-tests
+      - run: coverage run --source=valor_api -m pytest -v tests/unit-tests
       - run: coverage report
       - name: upload coverage report as artifact
         uses: actions/upload-artifact@v3
@@ -210,7 +210,7 @@ jobs:
         with:
           auth: ${{ secrets.GIST_SECRET }}
           gistID: 501428c92df8d0de6805f40fb78b1363
-          filename: velour-coverage.json
+          filename: valor-coverage.json
           label: Coverage
           message: ${{ env.total }}%
           minColorRange: 50

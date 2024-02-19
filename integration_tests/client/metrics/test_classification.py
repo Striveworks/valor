@@ -5,7 +5,7 @@ from datetime import date, datetime
 
 import pytest
 
-from velour import (
+from valor import (
     Annotation,
     Client,
     Dataset,
@@ -15,9 +15,9 @@ from velour import (
     Model,
     Prediction,
 )
-from velour.enums import EvaluationStatus, TaskType
-from velour.exceptions import ClientException
-from velour.metatypes import ImageMetadata
+from valor.enums import EvaluationStatus, TaskType
+from valor.exceptions import ClientException
+from valor.metatypes import ImageMetadata
 
 
 def test_evaluate_image_clf(

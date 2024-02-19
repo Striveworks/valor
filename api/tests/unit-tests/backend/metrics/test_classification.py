@@ -1,5 +1,5 @@
-from velour_api import schemas
-from velour_api.backend.metrics.classification import (
+from valor_api import schemas
+from valor_api.backend.metrics.classification import (
     _compute_accuracy_from_cm,
     _compute_precision_and_recall_f1_from_confusion_matrix,
 )

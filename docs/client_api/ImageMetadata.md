@@ -1,4 +1,4 @@
-::: velour.metatypes.ImageMetadata
+::: valor.metatypes.ImageMetadata
     handler: python
     options:
         show_root_heading: false

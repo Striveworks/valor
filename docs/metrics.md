@@ -1,8 +1,8 @@
 # Metrics
 
-Let's look at the various metrics you can calculate using Velour.
+Let's look at the various metrics you can calculate using Valor.
 
-If we're missing an important metric for your particular use case, please [write us a GitHub Issue ticket](https://github.com/Striveworks/velour/issues). We love hearing your suggestions.
+If we're missing an important metric for your particular use case, please [write us a GitHub Issue ticket](https://github.com/Striveworks/valor/issues). We love hearing your suggestions.
 
 
 ## Classification Metrics
@@ -30,4 +30,4 @@ If we're missing an important metric for your particular use case, please [write
 | Intersection Over Union (IOU) 	| The overlap between the groundtruth and predicted regions of an image, measured as a percentage, grouped by class. IOUs are calculated by a) fetching the groundtruth and prediction rasters for a particular image and class, b) counting the true positive pixels (e.g., the number of pixels that were selected in both the groundtruth masks and prediction masks), and c) dividing the sum of true positives by the total number of pixels in both the groundtruth and prediction masks. |
 | Mean IOU 	| The average of IOUs, calculated over several different classes. 	|
 
-\*When calculating IOUs for object detection metrics, Velour handles the necessary conversion between different types of image annotations. For example, if your model prediction is a polygon and your groundtruth is a raster, then the raster will be converted to a polygon prior to calculating the IOU.
+\*When calculating IOUs for object detection metrics, Valor handles the necessary conversion between different types of image annotations. For example, if your model prediction is a polygon and your groundtruth is a raster, then the raster will be converted to a polygon prior to calculating the IOU.

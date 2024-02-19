@@ -1,4 +1,4 @@
-::: velour.schemas.geometry
+::: valor.schemas.geometry
     handler: python
     options:
         show_root_heading: false

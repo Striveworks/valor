@@ -2,9 +2,9 @@ import numpy
 import PIL
 from PIL.Image import Resampling
 
-from velour import Annotation, Datum, Label, Prediction, enums
-from velour.metatypes import ImageMetadata
-from velour.schemas import BoundingBox, Raster
+from valor import Annotation, Datum, Label, Prediction, enums
+from valor.metatypes import ImageMetadata
+from valor.schemas import BoundingBox, Raster
 
 
 def parse_detection_into_bounding_box(

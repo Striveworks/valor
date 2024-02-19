@@ -7,8 +7,8 @@ from integrations.yolo import (
     parse_yolo_object_detection,
 )
 
-from velour import Annotation, Prediction
-from velour.metatypes import ImageMetadata
+from valor import Annotation, Prediction
+from valor.metatypes import ImageMetadata
 
 
 class BoxOnGPU(object):
@@ -189,7 +189,7 @@ def yolo_mask(image):
 
 
 @pytest.fixture
-def velour_mask(image):
+def valor_mask(image):
     x = numpy.zeros((image["height"], image["width"]), dtype=numpy.uint8)
     x[int(image["height"] / 2) :, int(image["width"] / 2) :] = 255
     # One-quarter of the image is colored.
@@ -207,7 +207,7 @@ def test_parse_yolo_image_classification(image, names):
         probs=probs,
     )
 
-    velour_image = ImageMetadata(
+    valor_image = ImageMetadata(
         dataset="dataset",
         uid=image["uid"],
         height=image["height"],
@@ -215,7 +215,7 @@ def test_parse_yolo_image_classification(image, names):
     )
 
     prediction = parse_yolo_image_classification(
-        results, velour_image, label_key="class"
+        results, valor_image, label_key="class"
     )
 
     assert isinstance(prediction, Prediction)
@@ -233,17 +233,17 @@ def test_parse_yolo_image_classification(image, names):
         assert annotation.labels[i].score == probs[i]
 
 
-def test__convert_yolo_segmentation(image, yolo_mask, velour_mask):
+def test__convert_yolo_segmentation(image, yolo_mask, valor_mask):
     yolo_mask = MaskOnGPU(yolo_mask)
     output = _convert_yolo_segmentation(
         yolo_mask, image["height"], image["width"]
     )
-    assert output.shape == velour_mask.shape
-    assert (output == velour_mask).all()
+    assert output.shape == valor_mask.shape
+    assert (output == valor_mask).all()
 
 
 def test_parse_yolo_image_segmentation(
-    image, names, bboxes, yolo_mask, velour_mask
+    image, names, bboxes, yolo_mask, valor_mask
 ):
     img = numpy.random.rand(image["height"], image["width"], 3)
     masks = numpy.stack([yolo_mask, yolo_mask, yolo_mask])
@@ -256,7 +256,7 @@ def test_parse_yolo_image_segmentation(
         masks=masks,
     )
 
-    velour_image = ImageMetadata(
+    valor_image = ImageMetadata(
         dataset="dataset",
         uid=image["uid"],
         height=image["height"],
@@ -264,7 +264,7 @@ def test_parse_yolo_image_segmentation(
     )
 
     prediction = parse_yolo_image_segmentation(
-        results, velour_image, label_key="class"
+        results, valor_image, label_key="class"
     )
 
     image_datum = ImageMetadata.from_datum(prediction.datum)
@@ -280,7 +280,7 @@ def test_parse_yolo_image_segmentation(
         assert prediction.annotations[i].labels[0].value == names[i]
         assert prediction.annotations[i].labels[0].score == bboxes[i][4]
         assert (
-            prediction.annotations[i].raster.to_numpy() == velour_mask
+            prediction.annotations[i].raster.to_numpy() == valor_mask
         ).all()
 
 
@@ -291,7 +291,7 @@ def test_parse_yolo_object_detection(image, bboxes, names):
         orig_img=img, path=image["path"], names=names, boxes=bboxes
     )
 
-    velour_image = ImageMetadata(
+    valor_image = ImageMetadata(
         dataset="dataset",
         uid=image["uid"],
         height=image["height"],
@@ -299,7 +299,7 @@ def test_parse_yolo_object_detection(image, bboxes, names):
     )
 
     prediction = parse_yolo_object_detection(
-        results, velour_image, label_key="class"
+        results, valor_image, label_key="class"
     )
 
     image_datum = ImageMetadata.from_datum(prediction.datum)

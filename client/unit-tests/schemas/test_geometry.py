@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from velour import schemas
+from valor import schemas
 
 
 def test_point():
@@ -68,14 +68,14 @@ def test_polygon():
     # test `__post_init__`
     with pytest.raises(TypeError) as e:
         schemas.Polygon(boundary=123)  # type: ignore
-    assert "boundary should be of type `velour.schemas.BasicPolygon`" in str(e)
+    assert "boundary should be of type `valor.schemas.BasicPolygon`" in str(e)
     with pytest.raises(TypeError) as e:
         schemas.Polygon(boundary=poly, holes=123)  # type: ignore
-    assert "holes should be a list of `velour.schemas.BasicPolygon`" in str(e)
+    assert "holes should be a list of `valor.schemas.BasicPolygon`" in str(e)
     with pytest.raises(TypeError) as e:
         schemas.Polygon(boundary=poly, holes=[123])  # type: ignore
     assert (
-        "should contain elements of type `velour.schemas.BasicPolygon`"
+        "should contain elements of type `valor.schemas.BasicPolygon`"
         in str(e)
     )
 
@@ -91,7 +91,7 @@ def test_boundingbox():
     schemas.BoundingBox(polygon=poly)
     with pytest.raises(TypeError) as e:
         schemas.BoundingBox(polygon=p1)  # type: ignore
-    assert "should be of type `velour.schemas.BasicPolygon`" in str(e)
+    assert "should be of type `valor.schemas.BasicPolygon`" in str(e)
     with pytest.raises(ValueError) as e:
         schemas.BoundingBox(polygon=schemas.BasicPolygon(points=[p1, p2, p3]))
     assert "should be made of a 4-point polygon" in str(e)
@@ -120,11 +120,11 @@ def test_multipolygon():
     # test `__post_init__`
     with pytest.raises(TypeError) as e:
         schemas.MultiPolygon(polygons=component_poly)  # type: ignore
-    assert "polygons should be list of `velour.schemas.Polyon`" in str(e)
+    assert "polygons should be list of `valor.schemas.Polyon`" in str(e)
     with pytest.raises(TypeError) as e:
         schemas.MultiPolygon(polygons=[component_poly])  # type: ignore
     assert (
-        "polygons list should contain elements of type `velour.schemas.Polygon`"
+        "polygons list should contain elements of type `valor.schemas.Polygon`"
         in str(e)
     )
 
