@@ -39,7 +39,7 @@ You can download the latest Valor image from `ghcr.io/striveworks/valor/valor-se
 
 ### c. Manual Deployment
 
-If you would prefer to build your own image or want a debug console for the backend, please see the deployment instructions in ["Contributing to Valor"](contributing.md).
+If you would prefer to build your own image or want a debug console for the back end, please see the deployment instructions in ["Contributing to Valor"](contributing.md).
 
 ## 4. Use Valor
 
@@ -83,7 +83,7 @@ from valor.enums import TaskType
 
 #### Connect to the Client
 
-The `valor.Client` class gives an object that is used to communicate with the `valor` backend.
+The `valor.Client` class gives an object that is used to communicate with the `valor` back end.
 
 ```py
 client = Client("http://localhost:8000")

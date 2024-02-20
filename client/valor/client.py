@@ -867,7 +867,7 @@ class ClientConnection:
     def get_user(self) -> Union[str, None]:
         """
         Gets the users e-mail address (in the case when auth is enabled)
-        or returns None in the case of a no-auth backend.
+        or returns None in the case of a no-auth back end.
 
         `GET` endpoint.
 

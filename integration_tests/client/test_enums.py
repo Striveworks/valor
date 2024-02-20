@@ -1,6 +1,6 @@
 """ These tests make sure that the enums in the client and
-in the backend repo remain the same. Though maybe instead of duplicating
-the backend should depend on the client?
+in the back end repo remain the same. Though maybe instead of duplicating
+the back end should depend on the client?
 """
 
 from enum import Enum

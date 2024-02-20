@@ -1,6 +1,7 @@
-""" These integration tests should be run with a backend at http://localhost:8000
+""" These integration tests should be run with a back end at http://localhost:8000
 that is no auth
 """
+
 import json
 
 from geoalchemy2.functions import ST_Area, ST_Intersection, ST_Union
@@ -78,7 +79,7 @@ def test_boundary(
     rect1: BoundingBox,
     img1: ImageMetadata,
 ):
-    """Test consistency of boundary in backend and client"""
+    """Test consistency of boundary in back end and client"""
     dataset = Dataset.create(dataset_name)
     rect1_poly = bbox_to_poly(rect1)
     dataset.add_groundtruth(
@@ -154,7 +155,7 @@ def test_iou(
     assert annotation2 is not None
     db_pred = annotation2.polygon
 
-    # scraped from valor_api backend
+    # scraped from valor_api back end
     gintersection = ST_Intersection(db_gt, db_pred)
     gunion = ST_Union(db_gt, db_pred)
     iou_computation = ST_Area(gintersection) / ST_Area(gunion)

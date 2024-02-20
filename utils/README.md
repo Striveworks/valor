@@ -16,7 +16,7 @@ python -m pip install -r requirements.text
 
 ### 2. Setup profilers
 
-Start by adding decorators to the backend endpoints that you want to profile. If you wanted to profile `/groundtruths`, for example, you'd add the following to lines to [`api/valor_api/main.py`](https://github.com/Striveworks/valor/blob/main/api/valor_api/main.py#L57):
+Start by adding decorators to the back end endpoints that you want to profile. If you wanted to profile `/groundtruths`, for example, you'd add the following to lines to [`api/valor_api/main.py`](https://github.com/Striveworks/valor/blob/main/api/valor_api/main.py#L57):
 
 ```python
 

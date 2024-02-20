@@ -1,4 +1,4 @@
-""" These integration tests should be run with a backend at http://localhost:8000
+""" These integration tests should be run with a back end at http://localhost:8000
 that has authentication enabled. The following environment variables must
 be set for these tests:
 

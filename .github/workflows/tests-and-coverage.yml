@@ -14,7 +14,7 @@ env:
 
 jobs:
   # this job is necessary to set up docker auth for the service containers for the
-  # backend functional test
+  # back end functional test
   login-to-amazon-ecr:
     runs-on: ubuntu-latest
     steps:
@@ -94,7 +94,7 @@ jobs:
         id: login-ecr
       - name: login to ECR
         run: aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login -u AWS --password-stdin 724664234782.dkr.ecr.us-east-1.amazonaws.com
-      - name: setup backend test env
+      - name: setup back end test env
         run: docker compose -p valor -f docker-compose.yml -f docker-compose.cicd-override.yml --env-file ./api/.env.testing up --build -d
       - uses: actions/setup-python@v4
         with:
@@ -118,7 +118,7 @@ jobs:
           VALOR_SECRET_KEY: ${{ vars.SECRET_KEY }}
           VALOR_USERNAME: ${{ vars.USERNAME }}
           VALOR_PASSWORD: ${{ vars.PASSWORD }}
-      - name: sleep to give backend time to spin up
+      - name: sleep to give back end time to spin up
         run: sleep 15
       - name: test auth
         run: pytest -v integration_tests/auth/*

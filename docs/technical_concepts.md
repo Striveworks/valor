@@ -43,7 +43,7 @@ We can think of Valor in terms of four orthogonal components:
 
 ### API
 
-The core of Valor is a backend REST API service. Users can call the API's endpoints directly (e.g., `POST /datasets`), or they can use our Python client to handle the API calls in their Python environment. All of Valor's state is stored in Postgres; the API itself is completely stateless.
+The core of Valor is a back end REST API service. Users can call the API's endpoints directly (e.g., `POST /datasets`), or they can use our Python client to handle the API calls in their Python environment. All of Valor's state is stored in Postgres; the API itself is completely stateless.
 
 Note that, after you start the API service in Dockers, you'll be able to view FastAPI's automatically generated API documentation at `https://<your host>/docs`.
 
@@ -99,7 +99,7 @@ A `Datum` requires a universal ID (UID) and dataset name at instantiation, along
 
 ## Authentication
 
-The API can be run without authentication (by default), or with authentication with a single global username and password. To set this up, set the following environment variables when running the backend:
+The API can be run without authentication (by default), or with authentication with a single global username and password. To set this up, set the following environment variables when running the back end:
 
 - Set the environment variables `VALOR_SECRET_KEY`, `VALOR_USERNAME`, and `VALOR_PASSWORD` manually (e.g., `export SECRET_KEY=<secret key>`)
 - Set these env variables in a file named `.env.auth`, and place that file in the `api` directory. An example of such a file would look like:

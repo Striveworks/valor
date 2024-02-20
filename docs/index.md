@@ -142,4 +142,4 @@ model.finalize_inferences(dataset)
 ```
 
 **Q. Why am I getting GDAL driver errors?**
-**A.** For some computations (mostly involving rasters), Valor requires the PostGIS database to have all GDAL drivers enabled. The Valor backend attempts to enable these but it might not have permission depending on your specific setup. If you encounter this error, [see here](https://postgis.net/docs/postgis_gdal_enabled_drivers.html) for ways to enable the drivers directly in the PostGIS instance.
+**A.** For some computations (mostly involving rasters), Valor requires the PostGIS database to have all GDAL drivers enabled. The Valor back end attempts to enable these but it might not have permission depending on your specific setup. If you encounter this error, [see here](https://postgis.net/docs/postgis_gdal_enabled_drivers.html) for ways to enable the drivers directly in the PostGIS instance.
