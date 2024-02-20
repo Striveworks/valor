@@ -11,9 +11,9 @@ from integrations.chariot.models import (
     _parse_chariot_predict_proba_image_classification,
 )
 
-from velour import enums
-from velour.metatypes import ImageMetadata
-from velour.schemas import BoundingBox, Point
+from valor import enums
+from valor.metatypes import ImageMetadata
+from valor.schemas import BoundingBox, Point
 
 chariot_integration = pytest.importorskip("integration_utils.chariot")
 
@@ -395,24 +395,24 @@ def test__parse_chariot_predict_image_classification(
 
     datum = ImageMetadata(uid="", width=1000, height=2000).to_datum()
 
-    velour_classifications = _parse_chariot_predict_image_classification(
+    valor_classifications = _parse_chariot_predict_image_classification(
         datum,
         chariot_labels,
         chariot_classifications,
     )
 
-    assert len(velour_classifications.annotations) == 1
+    assert len(valor_classifications.annotations) == 1
     assert (
-        velour_classifications.annotations[0].task_type
+        valor_classifications.annotations[0].task_type
         == enums.TaskType.CLASSIFICATION
     )
-    assert velour_classifications.datum == datum
+    assert valor_classifications.datum == datum
 
     # validate label key set
     assert set(
         [
             scored_label.key
-            for det in velour_classifications.annotations
+            for det in valor_classifications.annotations
             for scored_label in det.labels
         ]
     ) == {"class_label"}
@@ -421,13 +421,13 @@ def test__parse_chariot_predict_image_classification(
     assert set(
         [
             scored_label.value
-            for det in velour_classifications.annotations
+            for det in valor_classifications.annotations
             for scored_label in det.labels
         ]
     ) == {"dog", "cat", "elephant"}
 
     # validate scores
-    for scored_label in velour_classifications.annotations[0].labels:
+    for scored_label in valor_classifications.annotations[0].labels:
         if scored_label.value == chariot_classifications[0]:
             assert scored_label.score == 1.0
         else:
@@ -441,24 +441,24 @@ def test__parse_chariot_predict_proba_image_classification(
 
     datum = ImageMetadata(uid="", width=1000, height=2000).to_datum()
 
-    velour_classifications = _parse_chariot_predict_proba_image_classification(
+    valor_classifications = _parse_chariot_predict_proba_image_classification(
         datum,
         chariot_labels,
         chariot_classifications,
     )
 
-    assert len(velour_classifications.annotations) == 1
+    assert len(valor_classifications.annotations) == 1
     assert (
-        velour_classifications.annotations[0].task_type
+        valor_classifications.annotations[0].task_type
         == enums.TaskType.CLASSIFICATION
     )
-    assert velour_classifications.datum == datum
+    assert valor_classifications.datum == datum
 
     # validate label key set
     assert set(
         [
             scored_label.key
-            for det in velour_classifications.annotations
+            for det in valor_classifications.annotations
             for scored_label in det.labels
         ]
     ) == {"class_label"}
@@ -467,13 +467,13 @@ def test__parse_chariot_predict_proba_image_classification(
     assert set(
         [
             scored_label.value
-            for det in velour_classifications.annotations
+            for det in valor_classifications.annotations
             for scored_label in det.labels
         ]
     ) == {"dog", "cat", "elephant"}
 
     # validate scores
-    for scored_label in velour_classifications.annotations[0].labels:
+    for scored_label in valor_classifications.annotations[0].labels:
         idx = chariot_labels[scored_label.value]
         assert chariot_classifications[0][idx] == scored_label.score
 
@@ -484,14 +484,14 @@ def test__parse_chariot_detect_image_object_detection(
     datum = ImageMetadata(uid="", width=1000, height=2000).to_datum()
 
     # test parsing
-    velour_detections = _parse_chariot_detect_image_object_detection(
+    valor_detections = _parse_chariot_detect_image_object_detection(
         datum, obj_det_prediction
     )
 
     assert set(
         [
             scored_label.key
-            for det in velour_detections.annotations
+            for det in valor_detections.annotations
             for scored_label in det.labels
         ]
     ) == {"class_label"}
@@ -499,17 +499,17 @@ def test__parse_chariot_detect_image_object_detection(
     assert set(
         [
             scored_label.value
-            for det in velour_detections.annotations
+            for det in valor_detections.annotations
             for scored_label in det.labels
         ]
     ) == {"person", "car"}
 
     chariot_detection_boxes = obj_det_prediction[0]["detection_boxes"]
-    for i, velour_det in enumerate(velour_detections.annotations):
+    for i, valor_det in enumerate(valor_detections.annotations):
         assert [
-            velour_det.bounding_box.ymin,
-            velour_det.bounding_box.xmin,
-            velour_det.bounding_box.ymax,
-            velour_det.bounding_box.xmax,
+            valor_det.bounding_box.ymin,
+            valor_det.bounding_box.xmin,
+            valor_det.bounding_box.ymax,
+            valor_det.bounding_box.xmax,
         ] in chariot_detection_boxes
-        assert velour_det.polygon is None
+        assert valor_det.polygon is None

@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from velour_api import schemas
+from valor_api import schemas
 
 
 def test_info_APIVersion():

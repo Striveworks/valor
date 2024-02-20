@@ -4,14 +4,14 @@ from dataclasses import asdict
 
 from PIL import Image
 
-from velour import Client, Label
-from velour.data_generation import (
+from valor import Client, Label
+from valor.data_generation import (
     generate_prediction_data,
     generate_segmentation_data,
 )
-from velour.enums import AnnotationType, EvaluationStatus, TaskType
-from velour.metatypes import ImageMetadata
-from velour.schemas.filters import Filter
+from valor.enums import AnnotationType, EvaluationStatus, TaskType
+from valor.metatypes import ImageMetadata
+from valor.schemas.filters import Filter
 
 
 def _mask_bytes_to_pil(mask_bytes):

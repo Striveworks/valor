@@ -1,3 +1,3 @@
-# velour client
+# valor client
 
-_velour client_ is a python package for interacting with a backend _velour_ service.
+_valor client_ is a python package for interacting with a backend _valor_ service.

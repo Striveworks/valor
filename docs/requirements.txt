@@ -1,0 +1,6 @@
+mkdocs
+mkdocs-material
+mkdocstrings
+mkdocstrings-python
+mkdocs-include-dir-to-nav
+mkdocs-swagger-ui-tag

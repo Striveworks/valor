@@ -3,8 +3,8 @@ import operator
 import pytest
 from sqlalchemy import and_, func, not_
 
-from velour_api.backend import models
-from velour_api.backend.query.filtering import (
+from valor_api.backend import models
+from valor_api.backend.query.filtering import (
     _filter_by_metadatum,
     _get_boolean_op,
     _get_numeric_op,
@@ -12,7 +12,7 @@ from velour_api.backend.query.filtering import (
     _get_string_op,
     filter_by_annotation,
 )
-from velour_api.schemas import Filter, NumericFilter
+from valor_api.schemas import Filter, NumericFilter
 
 
 def test__get_boolean_op():

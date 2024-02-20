@@ -2,7 +2,7 @@ import datetime
 
 import pytest
 
-from velour.schemas.metadata import (
+from valor.schemas.metadata import (
     dump_metadata,
     load_metadata,
     validate_metadata,

@@ -23,7 +23,7 @@ jobs:
       - name: install client
         run: pip install "client/.[test]"
       - name: install mkdocs and plug-ins
-        run: pip install mkdocs-material mkdocstrings mkdocs-include-dir-to-nav mkdocstrings-python mkdocs-swagger-ui-tag
+        run: pip install -r docs/requirements.txt
       - name: generate new swagger docs
         run: python docs/scripts/generate_swagger_docs.py
       - name: deploy docs to gh

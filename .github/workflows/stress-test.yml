@@ -49,7 +49,7 @@ jobs:
       - name: login to ECR
         run: aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login -u AWS --password-stdin 724664234782.dkr.ecr.us-east-1.amazonaws.com
       - name: setup backend test env
-        run: docker compose -p velour -f docker-compose.yml -f docker-compose.cicd-override.yml --env-file ./api/.env.testing up --build -d
+        run: docker compose -p valor -f docker-compose.yml -f docker-compose.cicd-override.yml --env-file ./api/.env.testing up --build -d
       - uses: actions/setup-python@v4
         with:
           python-version: "3.10"
@@ -59,7 +59,7 @@ jobs:
       - name: install client
         run: pip install -e ".[test]"
         working-directory: ./client
-      - run: coverage run --source="api/velour_api,client/velour" -m pytest -v integration_tests/stress_test.py
+      - run: coverage run --source="api/valor_api,client/valor" -m pytest -v integration_tests/stress_test.py
       - run: coverage report
       - name: upload coverage report as artifact
         uses: actions/upload-artifact@v3
@@ -67,11 +67,11 @@ jobs:
           name: ${{ env.COVERAGE_FILE }}
           path: ${{ env.COVERAGE_FILE }}
       - run: make stop-env
-      - run: docker compose -p velour -f docker-compose.yml -f docker-compose.cicd-override.yml --env-file ./api/.env.testing up --build -d
+      - run: docker compose -p valor -f docker-compose.yml -f docker-compose.cicd-override.yml --env-file ./api/.env.testing up --build -d
         env:
-          VELOUR_SECRET_KEY: ${{ vars.SECRET_KEY }}
-          VELOUR_USERNAME: ${{ vars.USERNAME }}
-          VELOUR_PASSWORD: ${{ vars.PASSWORD }}
+          VALOR_SECRET_KEY: ${{ vars.SECRET_KEY }}
+          VALOR_USERNAME: ${{ vars.USERNAME }}
+          VALOR_PASSWORD: ${{ vars.PASSWORD }}
       - name: sleep to give backend time to spin up
         run: sleep 15
 
@@ -100,7 +100,7 @@ jobs:
         with:
           auth: ${{ secrets.GIST_SECRET }}
           gistID: 501428c92df8d0de6805f40fb78b1363
-          filename: velour-coverage.json
+          filename: valor-coverage.json
           label: Coverage
           message: ${{ env.total }}%
           minColorRange: 50

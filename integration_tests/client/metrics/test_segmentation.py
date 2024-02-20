@@ -1,16 +1,8 @@
 """ These integration tests should be run with a backend at http://localhost:8000
 that is no auth
 """
-from velour import (
-    Client,
-    Dataset,
-    Datum,
-    GroundTruth,
-    Label,
-    Model,
-    Prediction,
-)
-from velour.enums import EvaluationStatus
+from valor import Client, Dataset, Datum, GroundTruth, Label, Model, Prediction
+from valor.enums import EvaluationStatus
 
 
 def test_evaluate_segmentation(

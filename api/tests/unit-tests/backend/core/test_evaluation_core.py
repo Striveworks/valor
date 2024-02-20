@@ -1,7 +1,7 @@
 from sqlalchemy import or_
 
-from velour_api.backend import models
-from velour_api.backend.core.evaluation import (
+from valor_api.backend import models
+from valor_api.backend.core.evaluation import (
     _create_bulk_expression,
     _create_dataset_expr_from_list,
     _create_eval_expr_from_list,

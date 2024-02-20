@@ -5,12 +5,12 @@ from geoalchemy2.functions import ST_AsText
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from velour import Annotation, Client, Dataset, Label, Model, Prediction
-from velour.coretypes import GroundTruth
-from velour.enums import TaskType
-from velour.metatypes import ImageMetadata
-from velour.schemas import BasicPolygon, BoundingBox, Point, Polygon
-from velour_api.backend import models
+from valor import Annotation, Client, Dataset, Label, Model, Prediction
+from valor.coretypes import GroundTruth
+from valor.enums import TaskType
+from valor.metatypes import ImageMetadata
+from valor.schemas import BasicPolygon, BoundingBox, Point, Polygon
+from valor_api.backend import models
 
 
 def test_create_pred_detections_as_bbox_or_poly(

@@ -1,4 +1,4 @@
-::: velour.Annotation
+::: valor.Annotation
     handler: python
     options:
         show_root_heading: false

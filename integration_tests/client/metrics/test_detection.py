@@ -8,7 +8,7 @@ from geoalchemy2.functions import ST_Area
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from velour import (
+from valor import (
     Annotation,
     Client,
     Dataset,
@@ -18,11 +18,11 @@ from velour import (
     Model,
     Prediction,
 )
-from velour.enums import AnnotationType, EvaluationStatus, TaskType
-from velour.exceptions import ClientException
-from velour.metatypes import ImageMetadata
-from velour.schemas import BoundingBox
-from velour_api.backend import models
+from valor.enums import AnnotationType, EvaluationStatus, TaskType
+from valor.exceptions import ClientException
+from valor.metatypes import ImageMetadata
+from valor.schemas import BoundingBox
+from valor_api.backend import models
 
 default_filter_properties = asdict(Filter())
 

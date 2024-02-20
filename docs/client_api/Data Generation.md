@@ -1,4 +1,4 @@
-::: velour.data_generation
+::: valor.data_generation
     handler: python
     options:
         show_root_heading: false

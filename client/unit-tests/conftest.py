@@ -3,7 +3,7 @@ from typing import List
 import numpy as np
 import pytest
 
-from velour import Label, schemas
+from valor import Label, schemas
 
 
 @pytest.fixture

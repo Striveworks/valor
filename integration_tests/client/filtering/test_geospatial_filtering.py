@@ -4,7 +4,7 @@ that is no auth
 
 import pytest
 
-from velour import (
+from valor import (
     Client,
     Constraint,
     Dataset,
@@ -13,7 +13,7 @@ from velour import (
     Model,
     Prediction,
 )
-from velour.enums import EvaluationStatus
+from valor.enums import EvaluationStatus
 
 
 def test_set_and_get_geospatial(

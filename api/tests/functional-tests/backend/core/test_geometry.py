@@ -1,13 +1,13 @@
 import pytest
 from sqlalchemy.orm import Session
 
-from velour_api import enums, schemas
-from velour_api.backend.core import fetch_dataset
-from velour_api.backend.core.geometry import (
+from valor_api import enums, schemas
+from valor_api.backend.core import fetch_dataset
+from valor_api.backend.core.geometry import (
     convert_geometry,
     get_annotation_type,
 )
-from velour_api.crud import create_dataset, create_groundtruth
+from valor_api.crud import create_dataset, create_groundtruth
 
 
 @pytest.fixture

@@ -9,14 +9,14 @@ import pytest
 from sqlalchemy import create_engine, select, text
 from sqlalchemy.orm import Session
 
-from velour import Annotation, Client, GroundTruth, Label, Prediction
-from velour.client import ClientConnection, connect, reset_connection
-from velour.data_generation import _generate_mask
-from velour.enums import TaskType
-from velour.metatypes import ImageMetadata
-from velour.schemas import BoundingBox, MultiPolygon, Polygon, Raster
-from velour_api import exceptions
-from velour_api.backend import models
+from valor import Annotation, Client, GroundTruth, Label, Prediction
+from valor.client import ClientConnection, connect, reset_connection
+from valor.data_generation import _generate_mask
+from valor.enums import TaskType
+from valor.metatypes import ImageMetadata
+from valor.schemas import BoundingBox, MultiPolygon, Polygon, Raster
+from valor_api import exceptions
+from valor_api.backend import models
 
 
 @pytest.fixture
@@ -35,24 +35,24 @@ def db(connection: ClientConnection) -> Iterator[Session]:
 
     if len(client.get_datasets()) > 0:
         raise RuntimeError(
-            "Tests should be run on an empty velour backend but found existing datasets.",
+            "Tests should be run on an empty valor backend but found existing datasets.",
             [ds.name for ds in client.get_datasets()],
         )
 
     if len(client.get_models()) > 0:
         raise RuntimeError(
-            "Tests should be run on an empty velour backend but found existing models."
+            "Tests should be run on an empty valor backend but found existing models."
         )
 
     if len(client.get_labels()) > 0:
         raise RuntimeError(
-            "Tests should be run on an empty velour backend but found existing labels."
+            "Tests should be run on an empty valor backend but found existing labels."
         )
 
     POSTGRES_HOST = os.getenv("POSTGRES_HOST", "localhost")
     POSTGRES_USERNAME = os.getenv("POSTGRES_USERNAME", "postgres")
     POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "password")
-    POSTGRES_DB = os.getenv("POSTGRES_DB", "velour")
+    POSTGRES_DB = os.getenv("POSTGRES_DB", "valor")
     POSTGRES_PORT = os.getenv("POSTGRES_PORT", "5432")
     SQLALCHEMY_DATABASE_URL = f"postgresql://{POSTGRES_USERNAME}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
 
