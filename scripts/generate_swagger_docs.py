@@ -3,7 +3,7 @@ import json
 
 from fastapi.openapi.utils import get_openapi
 
-from velour_api.main import app
+from valor_api.main import app
 
 with open("docs/static/openapi.json", "w") as f:
     json.dump(
