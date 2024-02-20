@@ -26,7 +26,7 @@ async def log_endpoint_middleware(
     return response
 
 
-async def request_validation_exception_handler(
+async def handle_request_validation_exception(
     request: Request, exc: RequestValidationError
 ) -> Union[JSONResponse, Response]:
     response = await fastapi_request_validation_exception_handler(request, exc)
@@ -34,7 +34,7 @@ async def request_validation_exception_handler(
     return response
 
 
-async def unhandled_exception_handler(
+async def handle_unhandled_exception(
     request: Request, exc: RequestValidationError
 ) -> Union[JSONResponse, Response]:
     logger.error(

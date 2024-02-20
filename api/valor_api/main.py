@@ -11,9 +11,9 @@ from valor_api import __version__ as api_version
 from valor_api import api_utils, auth, crud, enums, exceptions, logger, schemas
 from valor_api.backend import database
 from valor_api.logging import (
+    handle_request_validation_exception,
+    handle_unhandled_exception,
     log_endpoint_middleware,
-    request_validation_exception_handler,
-    unhandled_exception_handler,
 )
 from valor_api.settings import auth_settings
 
@@ -30,9 +30,9 @@ app.add_middleware(
 )
 app.middleware("http")(log_endpoint_middleware)
 app.exception_handler(RequestValidationError)(
-    request_validation_exception_handler
+    handle_request_validation_exception
 )
-app.exception_handler(Exception)(unhandled_exception_handler)
+app.exception_handler(Exception)(handle_unhandled_exception)
 
 
 logger.info(
