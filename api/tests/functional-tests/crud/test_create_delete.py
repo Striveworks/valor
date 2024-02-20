@@ -933,7 +933,7 @@ def test_gt_seg_as_mask_or_polys(
     db: Session,
     dataset_name: str,
 ):
-    """Check that a groundtruth segmentation can be created as a polygon or mask"""
+    """Check that a ground truth segmentation can be created as a polygon or mask"""
     xmin, xmax, ymin, ymax = 11, 45, 37, 102
     h, w = 150, 200
     mask = np.zeros((h, w), dtype=bool)

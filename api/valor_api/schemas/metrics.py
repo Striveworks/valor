@@ -191,7 +191,7 @@ class ConfusionMatrixEntry(BaseModel):
     prediction : str
         The prediction.
     groundtruth : str
-        The groundtruth.
+        The ground truth.
     count : int
         The value of the element in the matrix.
     """

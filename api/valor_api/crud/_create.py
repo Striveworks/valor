@@ -56,7 +56,7 @@ def create_groundtruth(
     groundtruth: schemas.GroundTruth,
 ):
     """
-    Creates a groundtruth.
+    Creates a ground truth.
 
     Parameters
     ----------

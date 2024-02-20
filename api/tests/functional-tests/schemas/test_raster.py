@@ -143,7 +143,7 @@ def _pred_seg_from_bytes(
 # def test_intersection_pred_seg_multi_poly_gt_seg(
 #     db: Session, model: models.Model, img: models.Datum
 # ):
-#     """Tests intersection of a prediction mask with a groundtruth
+#     """Tests intersection of a prediction mask with a ground truth
 #     that's comprised of two disjoint polygons, with one having a hole
 #     """
 

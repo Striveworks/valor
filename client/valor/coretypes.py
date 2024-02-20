@@ -1864,7 +1864,7 @@ class Client:
         ----------
 
         dataset : valor.Dataset
-            The dataset to create the groundtruth for.
+            The dataset to create the ground truth for.
         groundtruths : List[valor.GroundTruth]
             The groundtruths to create.
         """
@@ -1872,11 +1872,11 @@ class Client:
         for groundtruth in groundtruths:
             if not isinstance(groundtruth, GroundTruth):
                 raise TypeError(
-                    f"Expected groundtruth to be of type 'valor.GroundTruth' not '{type(groundtruth)}'."
+                    f"Expected ground truth to be of type 'valor.GroundTruth' not '{type(ground truth)}'."
                 )
             if len(groundtruth.annotations) == 0:
                 warnings.warn(
-                    f"GroundTruth for datum with uid `{groundtruth.datum.uid}` contains no annotations."
+                    f"GroundTruth for datum with uid `{ground truth.datum.uid}` contains no annotations."
                 )
             groundtruths_json.append(
                 groundtruth.to_dict(dataset_name=dataset.name)

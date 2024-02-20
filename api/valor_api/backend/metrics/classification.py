@@ -68,7 +68,7 @@ def _compute_binary_roc_auc(
         .predictions("prediction_subquery")
     )
 
-    # number of groundtruth labels that match the given label value
+    # number of ground truth labels that match the given label value
     n_pos = db.scalar(
         select(func.count(gts_query.c.label_value)).where(
             gts_query.c.label_value == label.value
@@ -230,7 +230,7 @@ def _compute_confusion_matrix_at_grouper_key(
     -------
     schemas.ConfusionMatrix | None
         Returns None in the case that there are no common images in the dataset
-        that have both a groundtruth and prediction with label key `label_key`. Otherwise
+        that have both a ground truth and prediction with label key `label_key`. Otherwise
         returns the confusion matrix.
     """
     label_key_filter = list(

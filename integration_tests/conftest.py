@@ -1,6 +1,7 @@
 """ These integration tests should be run with a backend at http://localhost:8000
 that is no auth
 """
+
 import os
 from typing import Iterator
 
@@ -501,7 +502,7 @@ def gt_clfs(
 
 @pytest.fixture
 def gt_clfs_tabular() -> list[int]:
-    """groundtruth for a tabular classification task"""
+    """ground truth for a tabular classification task"""
     return [1, 1, 2, 0, 0, 0, 1, 1, 1, 1]
 
 
