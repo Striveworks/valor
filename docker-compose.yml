@@ -7,10 +7,10 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
   service:
-    image: ghcr.io/striveworks/velour/velour-service
+    image: ghcr.io/striveworks/valor/valor-service
     build: ./api
     volumes:
-      - ./api/velour_api:/src/velour_api
+      - ./api/valor_api:/src/valor_api
     ports:
       - "8000:8000"
     environment:
@@ -19,15 +19,15 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_PORT: ${POSTGRES_PORT}
-      VELOUR_SECRET_KEY: ${VELOUR_SECRET_KEY}
-      VELOUR_USERNAME: ${VELOUR_USERNAME}
-      VELOUR_PASSWORD: ${VELOUR_PASSWORD}
-    command: "uvicorn velour_api.main:app --reload --host 0.0.0.0 --log-level warning"
+      VALOR_SECRET_KEY: ${VALOR_SECRET_KEY}
+      VALOR_USERNAME: ${VALOR_USERNAME}
+      VALOR_PASSWORD: ${VALOR_PASSWORD}
+    command: "uvicorn valor_api.main:app --reload --host 0.0.0.0 --log-level warning"
     depends_on:
       - 'db'
       - 'migrations'
   migrations:
-    image: ghcr.io/striveworks/velour/migrations
+    image: ghcr.io/striveworks/valor/migrations
     build: ./migrations
     environment:
       POSTGRES_HOST: ${POSTGRES_HOST}

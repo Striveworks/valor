@@ -3,9 +3,9 @@ from base64 import b64encode
 import pytest
 from sqlalchemy.orm import Session
 
-from velour_api import crud, enums, schemas
-from velour_api.backend import models
-from velour_api.backend.core.label import (
+from valor_api import crud, enums, schemas
+from valor_api.backend import models
+from valor_api.backend.core.label import (
     create_labels,
     fetch_label,
     fetch_matching_labels,
@@ -16,7 +16,7 @@ from velour_api.backend.core.label import (
     get_label_keys,
     get_labels,
 )
-from velour_api.crud import (
+from valor_api.crud import (
     create_dataset,
     create_groundtruth,
     create_model,

@@ -1,5 +1,5 @@
 name: Bug Report
-description: Report incorrect behavior in the velour library
+description: Report incorrect behavior in the valor library
 title: "BUG: "
 labels: [Bug]
 
@@ -7,10 +7,10 @@ body:
   - type: checkboxes
     id: checks
     attributes:
-      label: velour version checks
+      label: valor version checks
       options:
         - label: >
-            I have confirmed this bug exists on the latest version of velour.
+            I have confirmed this bug exists on the latest version of valor.
           required: true
   - type: textarea
     id: example

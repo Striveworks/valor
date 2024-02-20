@@ -2,7 +2,7 @@ import math
 
 import pytest
 
-from velour_api import enums, schemas
+from valor_api import enums, schemas
 
 
 @pytest.fixture

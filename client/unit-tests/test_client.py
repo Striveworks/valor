@@ -2,15 +2,15 @@ from unittest.mock import patch
 
 import pytest
 
-from velour.client import connect, get_connection, reset_connection
-from velour.exceptions import (
+from valor.client import connect, get_connection, reset_connection
+from valor.exceptions import (
     ClientAlreadyConnectedError,
     ClientConnectionFailed,
     ClientNotConnectedError,
 )
 
 
-@patch("velour.client.ClientConnection")
+@patch("valor.client.ClientConnection")
 def test_connect(ClientConnection):
     connect(host="host")
     ClientConnection.assert_called_once()
@@ -26,7 +26,7 @@ def test_connect(ClientConnection):
     assert "testing" in str(e)
 
 
-@patch("velour.client.ClientConnection")
+@patch("valor.client.ClientConnection")
 def test_get_connection(ClientConnection):
     reset_connection()
 
@@ -37,7 +37,7 @@ def test_get_connection(ClientConnection):
     ClientConnection.assert_called_once()
 
 
-@patch("velour.client.ClientConnection")
+@patch("valor.client.ClientConnection")
 def test_reset_connection(ClientConnection):
     connect(host="host", reconnect=True)
     assert get_connection() is not None

@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from velour import Label
+from valor import Label
 
 
 def test_label():

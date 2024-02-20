@@ -7,11 +7,11 @@ from geoalchemy2.functions import ST_AsText, ST_Polygon
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from velour import Annotation, Client, Dataset, GroundTruth, Label
-from velour.enums import TaskType
-from velour.exceptions import ClientException
-from velour.metatypes import ImageMetadata
-from velour.schemas import (
+from valor import Annotation, Client, Dataset, GroundTruth, Label
+from valor.enums import TaskType
+from valor.exceptions import ClientException
+from valor.metatypes import ImageMetadata
+from valor.schemas import (
     BasicPolygon,
     BoundingBox,
     MultiPolygon,
@@ -19,7 +19,7 @@ from velour.schemas import (
     Polygon,
     Raster,
 )
-from velour_api.backend import models
+from valor_api.backend import models
 
 
 def test_create_gt_detections_as_bbox_or_poly(

@@ -6,7 +6,7 @@ from typing import List
 
 import pytest
 
-from velour import (
+from valor import (
     Annotation,
     Client,
     Dataset,
@@ -16,10 +16,10 @@ from velour import (
     Model,
     Prediction,
 )
-from velour.client import connect
-from velour.enums import TaskType
-from velour.exceptions import ClientException
-from velour.schemas import Constraint, Filter
+from valor.client import connect
+from valor.enums import TaskType
+from valor.exceptions import ClientException
+from valor.schemas import Constraint, Filter
 
 
 @pytest.fixture

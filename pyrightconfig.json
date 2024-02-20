@@ -1,5 +1,5 @@
 {
-  "include": ["client/velour", "api"],
+  "include": ["client/valor", "api"],
   "exclude": [
     "client/unit-tests",
     "utils",

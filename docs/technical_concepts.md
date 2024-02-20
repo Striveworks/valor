@@ -1,22 +1,22 @@
 # Technical Concepts
 
-On this page, we'll describe many of the technical concepts underpinning Velour.
+On this page, we'll describe many of the technical concepts underpinning Valor.
 
 ## High-Level Workflow
 
-The typical Velour workflow involves POSTing groundtruth annotations (e.g., class labels, bounding boxes, segmentation masks, etc.) and model predictions to our API service. The service leverages these groundtruths and predictions to compute evaluation metrics, and then stores the groundtruths, predictions, and evaluation metrics centrally in Postgres. Users can also attach metadata to their `Datasets`, `Models`, `GroundTruths`, and `Annotations`; this metadata makes it easy to query for specific subsets of evaluations at a later date. Once an evaluation is stored in Velour, users can query those evaluations from Postgres via `GET` requests to the Velour API.
+The typical Valor workflow involves POSTing groundtruth annotations (e.g., class labels, bounding boxes, segmentation masks, etc.) and model predictions to our API service. The service leverages these groundtruths and predictions to compute evaluation metrics, and then stores the groundtruths, predictions, and evaluation metrics centrally in Postgres. Users can also attach metadata to their `Datasets`, `Models`, `GroundTruths`, and `Annotations`; this metadata makes it easy to query for specific subsets of evaluations at a later date. Once an evaluation is stored in Valor, users can query those evaluations from Postgres via `GET` requests to the Valor API.
 
-Note that Velour does _not_ store raw data (such as underlying images) or facilitate model inference. Only the following items are stored in Postgres:
+Note that Valor does _not_ store raw data (such as underlying images) or facilitate model inference. Only the following items are stored in Postgres:
 
 - Groundtruth annotations
 - Predictions outputted from a model
-- Metadata from any of Velour's various classes
-- Evaluation metrics computed by Velour
+- Metadata from any of Valor's various classes
+- Evaluation metrics computed by Valor
 - State related to any of the above
 
 ## Supported Task Types
 
-As of January 2024, Velour supports the following types of supervised learning tasks and associated metrics:
+As of January 2024, Valor supports the following types of supervised learning tasks and associated metrics:
 
 - Classification (including multi-label classification)
   - F1
@@ -35,31 +35,31 @@ As of January 2024, Velour supports the following types of supervised learning t
 
 For descriptions of each of these metrics, see our [Metrics](metrics.md) page.
 
-We expect the Velour framework to extend well to other types of supervised learning tasks and plan to expand our supported task types in future releases.
+We expect the Valor framework to extend well to other types of supervised learning tasks and plan to expand our supported task types in future releases.
 
 ## Components
 
-We can think of Velour in terms of four orthogonal components:
+We can think of Valor in terms of four orthogonal components:
 
 ### API
 
-The core of Velour is a backend REST API service. Users can call the API's endpoints directly (e.g., `POST /datasets`), or they can use our Python client to handle the API calls in their Python environment. All of Velour's state is stored in Postgres; the API itself is completely stateless.
+The core of Valor is a backend REST API service. Users can call the API's endpoints directly (e.g., `POST /datasets`), or they can use our Python client to handle the API calls in their Python environment. All of Valor's state is stored in Postgres; the API itself is completely stateless.
 
 Note that, after you start the API service in Dockers, you'll be able to view FastAPI's automatically generated API documentation at `https://<your host>/docs`.
 
 ### PostgreSQL
 
-PostgreSQL (a.k.a. Postgres or psql) is an open-source relational database management system. We use Postgres to store all of Velour's various objects and states.
+PostgreSQL (a.k.a. Postgres or psql) is an open-source relational database management system. We use Postgres to store all of Valor's various objects and states.
 
-One of the most important reasons we chose Postgres was its PostGIS extension, which adds support for storing, indexing, and querying geographic data. PostGIS enables Velour to quickly filter prior evaluations using geographic coordinates, which is a critically important feature for any computer vision task involving satellite data.
+One of the most important reasons we chose Postgres was its PostGIS extension, which adds support for storing, indexing, and querying geographic data. PostGIS enables Valor to quickly filter prior evaluations using geographic coordinates, which is a critically important feature for any computer vision task involving satellite data.
 
 ### Python Client
 
-Finally, we created a client to make it easier for our users to play with Velour from their Python environment. All of Velour's validations and computations are handled by our API; the Python client simply provides convenient methods to call the API's endpoints.
+Finally, we created a client to make it easier for our users to play with Valor from their Python environment. All of Valor's validations and computations are handled by our API; the Python client simply provides convenient methods to call the API's endpoints.
 
 ## Classes
 
-The Velour API and Python client both make use of six core classes:
+The Valor API and Python client both make use of six core classes:
 
 ### `Dataset`
 
@@ -101,16 +101,16 @@ A `Datum` requires a universal ID (UID) and dataset name at instantiation, along
 
 The API can be run without authentication (by default), or with authentication with a single global username and password. To set this up, set the following environment variables when running the backend:
 
-- Set the environment variables `VELOUR_SECRET_KEY`, `VELOUR_USERNAME`, and `VELOUR_PASSWORD` manually (e.g., `export SECRET_KEY=<secret key>`)
+- Set the environment variables `VALOR_SECRET_KEY`, `VALOR_USERNAME`, and `VALOR_PASSWORD` manually (e.g., `export SECRET_KEY=<secret key>`)
 - Set these env variables in a file named `.env.auth`, and place that file in the `api` directory. An example of such a file would look like:
 
 ```
-VELOUR_SECRET_KEY="secret key"
-VELOUR_USERNAME="username"
-VELOUR_PASSWORD="password"
+VALOR_SECRET_KEY="secret key"
+VALOR_USERNAME="username"
+VALOR_PASSWORD="password"
 ```
 
-`VELOUR_SECRET_KEY` is the key used for encoding and decoding tokens, and should be a random string. `VELOUR_USERNAME` and `VELOUR_PASSWORD` are the username and password that will be used to authenticate requests.
+`VALOR_SECRET_KEY` is the key used for encoding and decoding tokens, and should be a random string. `VALOR_USERNAME` and `VALOR_PASSWORD` are the username and password that will be used to authenticate requests.
 
 You can use the tests in `integration_tests/test_client_auth.py` to check whether your authenticator is running correctly.
 
@@ -120,4 +120,4 @@ When deploying behind a proxy or with external routing, the `API_ROOT_PATH` envi
 
 ## Release Process
 
-A release is made by publishing a tag of the form `vX.Y.Z` (e.g., `v0.1.0`). This will trigger a GitHub action that will build and publish the Python client to [PyPI](https://pypi.org/project/velour-client/). These releases should be created using the [GitHub UI](https://github.com/Striveworks/velour/releases).
+A release is made by publishing a tag of the form `vX.Y.Z` (e.g., `v0.1.0`). This will trigger a GitHub action that will build and publish the Python client to [PyPI](https://pypi.org/project/valor-client/). These releases should be created using the [GitHub UI](https://github.com/Striveworks/valor/releases).

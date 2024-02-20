@@ -1,7 +1,7 @@
 import pytest
 
-from velour_api.backend import models
-from velour_api.backend.query.mapping import _map_name_to_table
+from valor_api.backend import models
+from valor_api.backend.query.mapping import _map_name_to_table
 
 
 def test__map_name_to_table():

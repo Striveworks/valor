@@ -10,7 +10,7 @@ body:
       label: Location of the documentation
       description: >
         Please provide the location of the documentation (e.g., a URL)
-      placeholder: https://striveworks.github.io/velour/
+      placeholder: https://striveworks.github.io/valor/
     validations:
       required: true
   - type: textarea

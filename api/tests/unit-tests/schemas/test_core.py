@@ -1,8 +1,8 @@
 import pytest
 from pydantic import ValidationError
 
-from velour_api import enums, schemas
-from velour_api.schemas.core import _validate_name_format, _validate_uid_format
+from valor_api import enums, schemas
+from valor_api.schemas.core import _validate_name_format, _validate_uid_format
 
 
 def test__validate_name_format():

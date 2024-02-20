@@ -1,10 +1,10 @@
-# velour profiling utility
+# valor profiling utility
 
-This directory contains decorators and helper functions that can be used to profile velour
+This directory contains decorators and helper functions that can be used to profile valor
 
 ## Usage
 
-From `velour`, follow these instructions to generate profiling data.
+From `valor`, follow these instructions to generate profiling data.
 
 ### 1. Install python packages
 
@@ -16,7 +16,7 @@ python -m pip install -r requirements.text
 
 ### 2. Setup profilers
 
-Start by adding decorators to the backend endpoints that you want to profile. If you wanted to profile `/groundtruths`, for example, you'd add the following to lines to [`api/velour_api/main.py`](https://github.com/Striveworks/velour/blob/main/api/velour_api/main.py#L57):
+Start by adding decorators to the backend endpoints that you want to profile. If you wanted to profile `/groundtruths`, for example, you'd add the following to lines to [`api/valor_api/main.py`](https://github.com/Striveworks/valor/blob/main/api/valor_api/main.py#L57):
 
 ```python
 

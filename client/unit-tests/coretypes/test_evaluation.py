@@ -3,7 +3,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from velour import Evaluation, enums, schemas
+from valor import Evaluation, enums, schemas
 
 try:
     import pandas as pd  # noqa: F401

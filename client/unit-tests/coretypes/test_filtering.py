@@ -2,8 +2,8 @@ import datetime
 
 import pytest
 
-from velour import Annotation, Constraint, Dataset, Filter, Label, Model
-from velour.coretypes import _format_filter
+from valor import Annotation, Constraint, Dataset, Filter, Label, Model
+from valor.coretypes import _format_filter
 
 
 @pytest.fixture

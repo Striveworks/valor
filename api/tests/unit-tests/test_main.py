@@ -4,16 +4,16 @@ import pytest
 from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
 
-from velour_api import exceptions, schemas
-from velour_api.api_utils import _split_query_params
-from velour_api.backend import database
-from velour_api.enums import EvaluationStatus, TableStatus, TaskType
+from valor_api import exceptions, schemas
+from valor_api.api_utils import _split_query_params
+from valor_api.backend import database
+from valor_api.enums import EvaluationStatus, TableStatus, TaskType
 
 
 @pytest.fixture
 def client() -> TestClient:
     database.make_session = MagicMock()
-    from velour_api import main
+    from valor_api import main
 
     main.get_db = MagicMock()
 
@@ -41,7 +41,7 @@ def test_protected_routes(client: TestClient):
         and r.name not in {"health", "ready", "login_for_access_token"}
     ]
     with patch(
-        "velour_api.settings.AuthConfig.no_auth",
+        "valor_api.settings.AuthConfig.no_auth",
         new_callable=PropertyMock(return_value=False),
     ):
         for r in routes:
@@ -50,7 +50,7 @@ def test_protected_routes(client: TestClient):
                 assert resp.status_code == 403, f"{r}, {m}"
 
 
-@patch("velour_api.main.crud")
+@patch("valor_api.main.crud")
 def _test_post_endpoints(
     crud,
     client: TestClient,
@@ -78,7 +78,7 @@ def _test_post_endpoints(
         assert resp.status_code == 405
 
 
-@patch("velour_api.main.crud")
+@patch("valor_api.main.crud")
 def _test_post_evaluation_endpoint(
     crud,
     client: TestClient,
@@ -99,21 +99,21 @@ def _test_post_evaluation_endpoint(
     assert resp.status_code == 422
 
     with patch(
-        "velour_api.main.crud." + crud_method_name,
+        "valor_api.main.crud." + crud_method_name,
         side_effect=ValueError(),
     ):
         resp = client.post(endpoint, json=example_json)
         assert resp.status_code == 400
 
     with patch(
-        "velour_api.main.crud." + crud_method_name,
+        "valor_api.main.crud." + crud_method_name,
         side_effect=exceptions.DatasetNotFinalizedError(""),
     ):
         resp = client.post(endpoint, json=example_json)
         assert resp.status_code == 409
 
     with patch(
-        "velour_api.main.crud." + crud_method_name,
+        "valor_api.main.crud." + crud_method_name,
         side_effect=exceptions.ModelStateError("a", "b", "c"),
     ):
         resp = client.post(endpoint, json=example_json)
@@ -143,7 +143,7 @@ def test_post_groundtruth(client: TestClient):
 
     # check we get a conflict (409) if the dataset is finalized
     with patch(
-        "velour_api.main.crud.create_groundtruth",
+        "valor_api.main.crud.create_groundtruth",
         side_effect=exceptions.DatasetFinalizedError("dsetname"),
     ):
         resp = client.post("/groundtruths", json=[example_json])
@@ -151,7 +151,7 @@ def test_post_groundtruth(client: TestClient):
 
     # check that we get an error if the dataset doesn't exist
     with patch(
-        "velour_api.main.crud.create_groundtruth",
+        "valor_api.main.crud.create_groundtruth",
         side_effect=exceptions.DatasetDoesNotExistError("fake_dsetname"),
     ):
         resp = client.post("/groundtruths", json=[example_json])
@@ -357,7 +357,7 @@ def test_post_groundtruth_raster_segmentation(client: TestClient):
 """ GET /groundtruths/dataset/{dataset_name}/datum/{uid} """
 
 
-@patch("velour_api.main.crud")
+@patch("valor_api.main.crud")
 def test_get_groundtruth(crud, client: TestClient):
     crud.get_groundtruth.return_value = {
         "datum": {
@@ -398,7 +398,7 @@ def test_get_groundtruth(crud, client: TestClient):
     crud.get_groundtruth.assert_called_once()
 
     with patch(
-        "velour_api.main.crud.get_groundtruth",
+        "valor_api.main.crud.get_groundtruth",
         side_effect=exceptions.DatasetDoesNotExistError("dsetname"),
     ):
         resp = client.get("/groundtruths/dataset/dsetname/datum/1")
@@ -431,7 +431,7 @@ def test_post_prediction(client: TestClient):
 
     # check we get a code (404) if the model does not exist
     with patch(
-        "velour_api.main.crud.create_prediction",
+        "valor_api.main.crud.create_prediction",
         side_effect=exceptions.ModelDoesNotExistError("model1"),
     ):
         resp = client.post("/predictions", json=[example_json])
@@ -439,7 +439,7 @@ def test_post_prediction(client: TestClient):
 
     # check we get a code (409) if the datum does not exist
     with patch(
-        "velour_api.main.crud.create_prediction",
+        "valor_api.main.crud.create_prediction",
         side_effect=exceptions.DatumDoesNotExistError("uid1"),
     ):
         resp = client.post("/predictions", json=[example_json])
@@ -447,7 +447,7 @@ def test_post_prediction(client: TestClient):
 
     # check we get a code (409) if the dataset hasn't been finalized
     with patch(
-        "velour_api.main.crud.create_prediction",
+        "valor_api.main.crud.create_prediction",
         side_effect=exceptions.DatasetNotFinalizedError("dataset1"),
     ):
         resp = client.post("/predictions", json=[example_json])
@@ -662,7 +662,7 @@ def test_post_prediction_raster_segmentation(client: TestClient):
 """ GET /predictions/model/{model_name}/dataset/{dataset_name}/datum/{uid} """
 
 
-@patch("velour_api.main.crud")
+@patch("valor_api.main.crud")
 def test_get_prediction(crud, client: TestClient):
     crud.get_prediction.return_value = {
         "model_name": "model1",
@@ -704,7 +704,7 @@ def test_get_prediction(crud, client: TestClient):
     crud.get_prediction.assert_called_once()
 
     with patch(
-        "velour_api.main.crud.get_prediction",
+        "valor_api.main.crud.get_prediction",
         side_effect=exceptions.DatasetDoesNotExistError("dsetname"),
     ):
         resp = client.get(
@@ -735,7 +735,7 @@ def test_post_datasets(client: TestClient):
     )
 
     with patch(
-        "velour_api.main.crud.create_dataset",
+        "valor_api.main.crud.create_dataset",
         side_effect=exceptions.DatasetAlreadyExistsError(""),
     ):
         resp = client.post("/datasets", json=example_json)
@@ -745,7 +745,7 @@ def test_post_datasets(client: TestClient):
 """ GET /datasets """
 
 
-@patch("velour_api.main.crud")
+@patch("valor_api.main.crud")
 def test_get_datasets(crud, client: TestClient):
     crud.get_datasets.return_value = []
     resp = client.get("/datasets")
@@ -756,7 +756,7 @@ def test_get_datasets(crud, client: TestClient):
 """ GET /datasets/{dataset_name} """
 
 
-@patch("velour_api.main.crud")
+@patch("valor_api.main.crud")
 def test_get_dataset_by_name(crud, client: TestClient):
     crud.get_dataset.return_value = schemas.Dataset(
         id=1, name="name", metadata={}
@@ -766,7 +766,7 @@ def test_get_dataset_by_name(crud, client: TestClient):
     crud.get_dataset.assert_called_once()
 
     with patch(
-        "velour_api.main.crud.get_dataset",
+        "valor_api.main.crud.get_dataset",
         side_effect=exceptions.DatasetDoesNotExistError(""),
     ):
         resp = client.get("/datasets/dsetname")
@@ -779,7 +779,7 @@ def test_get_dataset_by_name(crud, client: TestClient):
 """ GET /datasets/{dataset_name}/status"""
 
 
-@patch("velour_api.main.crud")
+@patch("valor_api.main.crud")
 def test_get_dataset_status(crud, client: TestClient):
     crud.get_table_status.return_value = TableStatus.FINALIZED.value
     resp = client.get("/datasets/dsetname/status")
@@ -787,7 +787,7 @@ def test_get_dataset_status(crud, client: TestClient):
     crud.get_table_status.assert_called_once()
 
     with patch(
-        "velour_api.main.crud.get_table_status",
+        "valor_api.main.crud.get_table_status",
         side_effect=exceptions.DatasetDoesNotExistError(""),
     ):
         resp = client.get("/datasets/dsetname/status")
@@ -797,21 +797,21 @@ def test_get_dataset_status(crud, client: TestClient):
 """ PUT /datasets/{dataset_name}/finalize """
 
 
-@patch("velour_api.main.crud")
+@patch("valor_api.main.crud")
 def test_finalize_datasets(crud, client: TestClient):
     resp = client.put("/datasets/dsetname/finalize")
     assert resp.status_code == 200
     crud.finalize.assert_called_once()
 
     with patch(
-        "velour_api.main.crud.finalize",
+        "valor_api.main.crud.finalize",
         side_effect=exceptions.DatasetDoesNotExistError(""),
     ):
         resp = client.put("datasets/dsetname/finalize")
         assert resp.status_code == 404
 
     with patch(
-        "velour_api.main.crud.finalize",
+        "valor_api.main.crud.finalize",
         side_effect=exceptions.DatasetIsEmptyError(""),
     ):
         resp = client.put("datasets/dsetname/finalize")
@@ -824,7 +824,7 @@ def test_finalize_datasets(crud, client: TestClient):
 """ DELETE /datasets/{dataset_name} """
 
 
-@patch("velour_api.main.crud")
+@patch("valor_api.main.crud")
 def test_delete_dataset(crud, client: TestClient):
     crud.delete.return_value = None
     resp = client.delete("/datasets/dsetname")
@@ -854,7 +854,7 @@ def test_post_models(client: TestClient):
     )
 
     with patch(
-        "velour_api.main.crud.create_model",
+        "valor_api.main.crud.create_model",
         side_effect=exceptions.ModelAlreadyExistsError(""),
     ):
         resp = client.post("/models", json=example_json)
@@ -864,7 +864,7 @@ def test_post_models(client: TestClient):
 """ GET /models"""
 
 
-@patch("velour_api.main.crud")
+@patch("valor_api.main.crud")
 def test_get_models(crud, client: TestClient):
     crud.get_models.return_value = []
     resp = client.get("/models")
@@ -875,7 +875,7 @@ def test_get_models(crud, client: TestClient):
 """ GET /models/{model_name} """
 
 
-@patch("velour_api.main.crud")
+@patch("valor_api.main.crud")
 def test_get_model_by_name(crud, client: TestClient):
     crud.get_model.return_value = schemas.Model(id=1, name="name", metadata={})
     resp = client.get("/models/modelname")
@@ -883,7 +883,7 @@ def test_get_model_by_name(crud, client: TestClient):
     crud.get_model.assert_called_once()
 
     with patch(
-        "velour_api.main.crud.get_model",
+        "valor_api.main.crud.get_model",
         side_effect=exceptions.ModelDoesNotExistError(""),
     ):
         resp = client.get("/models/modelname")
@@ -896,21 +896,21 @@ def test_get_model_by_name(crud, client: TestClient):
 """ PUT /models/{model_name}/finalize/datasets/{dataset_name}/finalize """
 
 
-@patch("velour_api.main.crud")
+@patch("valor_api.main.crud")
 def test_finalize_inferences(crud, client: TestClient):
     resp = client.put("/models/modelname/datasets/dsetname/finalize")
     assert resp.status_code == 200
     crud.finalize.assert_called_once()
 
     with patch(
-        "velour_api.main.crud.finalize",
+        "valor_api.main.crud.finalize",
         side_effect=exceptions.DatasetDoesNotExistError(""),
     ):
         resp = client.put("/models/modelname/datasets/dsetname/finalize")
         assert resp.status_code == 404
 
     with patch(
-        "velour_api.main.crud.finalize",
+        "valor_api.main.crud.finalize",
         side_effect=exceptions.DatasetIsEmptyError(""),
     ):
         resp = client.put("/models/modelname/datasets/dsetname/finalize")
@@ -923,7 +923,7 @@ def test_finalize_inferences(crud, client: TestClient):
 """ DELETE /models/{model_name} """
 
 
-@patch("velour_api.main.crud")
+@patch("valor_api.main.crud")
 def test_delete_model(crud, client: TestClient):
     crud.delete.return_value = None
     resp = client.delete("/models/modelname")
@@ -1035,7 +1035,7 @@ def test_post_semenatic_segmentation_metrics(client: TestClient):
 """ GET /labels/dataset/{dataset_name} """
 
 
-@patch("velour_api.main.crud")
+@patch("valor_api.main.crud")
 def test_get_dataset_labels(crud, client: TestClient):
     crud.get_labels.return_value = []
     resp = client.get("/labels/dataset/dsetname")
@@ -1043,7 +1043,7 @@ def test_get_dataset_labels(crud, client: TestClient):
     crud.get_labels.assert_called_once()
 
     with patch(
-        "velour_api.main.crud.get_labels",
+        "valor_api.main.crud.get_labels",
         side_effect=exceptions.DatasetDoesNotExistError(""),
     ):
         resp = client.get("/labels/dataset/dsetname")
@@ -1056,7 +1056,7 @@ def test_get_dataset_labels(crud, client: TestClient):
 """ GET /labels/model/{model_name} """
 
 
-@patch("velour_api.main.crud")
+@patch("valor_api.main.crud")
 def test_get_model_labels(crud, client: TestClient):
     crud.get_labels.return_value = []
     resp = client.get("/labels/model/modelname")
@@ -1064,7 +1064,7 @@ def test_get_model_labels(crud, client: TestClient):
     crud.get_labels.assert_called_once()
 
     with patch(
-        "velour_api.main.crud.get_labels",
+        "valor_api.main.crud.get_labels",
         side_effect=exceptions.ModelDoesNotExistError(""),
     ):
         resp = client.get("/labels/model/modelname")
@@ -1074,7 +1074,7 @@ def test_get_model_labels(crud, client: TestClient):
 """ GET /data/dataset/{dataset_name} """
 
 
-@patch("velour_api.main.crud")
+@patch("valor_api.main.crud")
 def test_get_datums(crud, client: TestClient):
     crud.get_datums.return_value = []
     resp = client.get("/data")
@@ -1082,7 +1082,7 @@ def test_get_datums(crud, client: TestClient):
     crud.get_datums.assert_called_once()
 
     with patch(
-        "velour_api.main.crud.get_datums",
+        "valor_api.main.crud.get_datums",
         side_effect=exceptions.DatasetDoesNotExistError(""),
     ):
         resp = client.get("/data")
@@ -1095,7 +1095,7 @@ def test_get_datums(crud, client: TestClient):
 """ GET /data/dataset/{dataset_name}/uid/{uid} """
 
 
-@patch("velour_api.main.crud")
+@patch("valor_api.main.crud")
 def test_get_datum(crud, client: TestClient):
     crud.get_datums.return_value = [
         schemas.Datum(uid="uid", dataset_name="dataset_name")
@@ -1106,7 +1106,7 @@ def test_get_datum(crud, client: TestClient):
     crud.get_datums.assert_called_once()
 
     with patch(
-        "velour_api.main.crud.get_datums",
+        "valor_api.main.crud.get_datums",
         side_effect=exceptions.DatasetDoesNotExistError(""),
     ):
         resp = client.get("/data/dataset/dsetname/uid/uid")
@@ -1119,7 +1119,7 @@ def test_get_datum(crud, client: TestClient):
 """ GET /labels """
 
 
-@patch("velour_api.main.crud")
+@patch("valor_api.main.crud")
 def test_get_labels(crud, client: TestClient):
     crud.get_labels.return_value = []
     resp = client.get("/labels")

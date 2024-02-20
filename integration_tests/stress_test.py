@@ -3,11 +3,11 @@ from integration_tests.client.datatype.test_data_generation import (
     test_generate_segmentation_data,
 )
 
-from velour import Client
+from valor import Client
 
 
 def test_large_dataset_upload(client: Client):
-    """Tests the upload of a large dataset to velour (runtime: ~20 minutes)"""
+    """Tests the upload of a large dataset to valor (runtime: ~20 minutes)"""
     test_generate_segmentation_data(
         client=client,
         dataset_name="stress_test_dataset",

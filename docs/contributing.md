@@ -1,6 +1,6 @@
-# Contributing to Velour
+# Contributing to Valor
 
-We welcome all contributions, bug reports, bug fixes, documentation improvements, enhancements, and ideas aimed at improving Velour. This doc describes the high-level process for how to contribute to this repository. If you have any questions or comments about this process, please feel free to reach out to us on [Slack](https://striveworks-public.slack.com/join/shared_invite/zt-1a0jx768y-2J1fffN~b4fXYM8GecvOhA#/shared-invite/email).
+We welcome all contributions, bug reports, bug fixes, documentation improvements, enhancements, and ideas aimed at improving Valor. This doc describes the high-level process for how to contribute to this repository. If you have any questions or comments about this process, please feel free to reach out to us on [Slack](https://striveworks-public.slack.com/join/shared_invite/zt-1a0jx768y-2J1fffN~b4fXYM8GecvOhA#/shared-invite/email).
 
 ## On GitHub
 
@@ -16,9 +16,9 @@ If you are new to Git, these official resources can help bring you up to speed:
 
 Generally, the high-level workflow for contributing to this repo includes:
 
-1. Submitting an issue or enhancement request using the appropriate template on [GitHub Issues](https://github.com/Striveworks/velour/issues).
+1. Submitting an issue or enhancement request using the appropriate template on [GitHub Issues](https://github.com/Striveworks/valor/issues).
 2. Gathering feedback from devs and the broader community in your issue _before_ starting to code.
-3. Forking the Velour repo, making your proposed changes, and submitting a pull request (PR). When submitting a PR, please be sure to:
+3. Forking the Valor repo, making your proposed changes, and submitting a pull request (PR). When submitting a PR, please be sure to:
      1. Update the README.md and/or any relevant docstrings with details of your change.
      2. Add tests where necessary.
      3. Run `pre-commit install` on your local repo before your last commit to ensure your changes follow our formatting guidelines.
@@ -58,16 +58,16 @@ make start-server # Start the API service locally
 
 ### Setting Up Your Environment
 
-Creating a Velour-specific Python environment at the start of development can help you avoid dependency and versioning issues later on. To start, we'd recommend activating a new Python environment:
+Creating a Valor-specific Python environment at the start of development can help you avoid dependency and versioning issues later on. To start, we'd recommend activating a new Python environment:
 
 ```bash
 # venv
-python3 -m venv .env-velour
-source .env-velour/bin/activate
+python3 -m venv .env-valor
+source .env-valor/bin/activate
 
 # conda
-conda create --name velour python=3.11
-conda activate velour
+conda create --name valor python=3.11
+conda activate valor
 ```
 
 Next, install [pre-commit](https://pre-commit.com/) to ensure formatting consistency throughout your repo:

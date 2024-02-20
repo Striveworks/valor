@@ -7,7 +7,7 @@ import PIL.Image
 import pytest
 from pydantic import ValidationError
 
-from velour_api import schemas
+from valor_api import schemas
 
 
 def _create_b64_mask(mode: str, ext: str = ".png", size=(20, 20)) -> str:

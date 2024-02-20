@@ -1,4 +1,4 @@
-# velour backend
+# valor backend
 
 ## docker compose envs
 

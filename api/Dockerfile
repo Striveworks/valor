@@ -12,5 +12,5 @@ RUN python -m pip install -U pip
 # and then pass it to the build arg VERSION. this is so we don't need to install
 # git and put .git (which setuptools_scm needs to determine the version) in the container
 RUN SETUPTOOLS_SCM_PRETEND_VERSION=${VERSION} python -m pip install .
-COPY ./velour_api /src/velour_api
-CMD ["uvicorn", "velour_api.main:app", "--host", "0.0.0.0", "--log-level", "warning"]
+COPY ./valor_api /src/valor_api
+CMD ["uvicorn", "valor_api.main:app", "--host", "0.0.0.0", "--log-level", "warning"]

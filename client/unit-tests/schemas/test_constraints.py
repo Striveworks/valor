@@ -3,8 +3,8 @@ import datetime
 import numpy
 import pytest
 
-from velour import Label
-from velour.schemas.constraints import (
+from valor import Label
+from valor.schemas.constraints import (
     DatetimeMapper,
     DictionaryMapper,
     GeometryMapper,
@@ -14,7 +14,7 @@ from velour.schemas.constraints import (
     StringMapper,
     _DictionaryValueMapper,
 )
-from velour.schemas.geometry import (
+from valor.schemas.geometry import (
     BasicPolygon,
     BoundingBox,
     MultiPolygon,

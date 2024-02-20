@@ -9,8 +9,8 @@ from PIL import Image
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from velour_api import crud, enums, exceptions, schemas
-from velour_api.backend import models
+from valor_api import crud, enums, exceptions, schemas
+from valor_api.backend import models
 
 
 def _bytes_to_pil(b: bytes) -> Image.Image:
@@ -925,7 +925,7 @@ def test_segmentation_area_multi_polygon(
     )
 
 
-# @NOTE This should be handle by `velour.schemas.Raster`
+# @NOTE This should be handle by `valor.schemas.Raster`
 # def test__select_statement_from_poly(
 
 

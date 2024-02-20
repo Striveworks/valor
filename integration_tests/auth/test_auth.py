@@ -2,8 +2,8 @@
 that has authentication enabled. The following environment variables must
 be set for these tests:
 
-VELOUR_USERNAME
-VELOUR_PASSWORD
+VALOR_USERNAME
+VALOR_PASSWORD
 """
 
 import os
@@ -11,8 +11,8 @@ import os
 import pytest
 import requests
 
-from velour.client import ClientConnection
-from velour.exceptions import ClientConnectionFailed, ClientException
+from valor.client import ClientConnection
+from valor.exceptions import ClientConnectionFailed, ClientException
 
 
 # the environment variables for these fixtures have the suffix
@@ -20,12 +20,12 @@ from velour.exceptions import ClientConnectionFailed, ClientException
 # without the suffix
 @pytest.fixture
 def username() -> str:
-    return os.environ["VELOUR_USERNAME_FOR_TESTING"]
+    return os.environ["VALOR_USERNAME_FOR_TESTING"]
 
 
 @pytest.fixture
 def password() -> str:
-    return os.environ["VELOUR_PASSWORD_FOR_TESTING"]
+    return os.environ["VALOR_PASSWORD_FOR_TESTING"]
 
 
 @pytest.fixture

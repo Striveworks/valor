@@ -1,8 +1,8 @@
 import datetime
 from dataclasses import asdict
 
-from velour import Annotation, Dataset, Datum, Filter, Label, Model
-from velour.enums import TaskType
+from valor import Annotation, Dataset, Datum, Filter, Label, Model
+from valor.enums import TaskType
 
 
 def test_empty_filter():

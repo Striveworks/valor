@@ -2,11 +2,11 @@ import numpy as np
 import PIL.Image
 import pytest
 
-from velour import Annotation, GroundTruth, Label
-from velour.enums import TaskType
-from velour.metatypes import ImageMetadata
-from velour.schemas import BasicPolygon, MultiPolygon, Point, Polygon, Raster
-from velour.viz import (
+from valor import Annotation, GroundTruth, Label
+from valor.enums import TaskType
+from valor.metatypes import ImageMetadata
+from valor.schemas import BasicPolygon, MultiPolygon, Point, Polygon, Raster
+from valor.viz import (
     _polygons_to_binary_mask,
     create_combined_segmentation_mask,
     draw_detections_on_image,

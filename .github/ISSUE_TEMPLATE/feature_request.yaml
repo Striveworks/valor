@@ -1,5 +1,5 @@
 name: Feature Request
-description: Suggest an idea for velour
+description: Suggest an idea for valor
 title: "ENH: "
 labels: [Enhancement]
 
@@ -11,19 +11,19 @@ body:
       description: Please check what type of feature request you would like to propose.
       options:
         - label: >
-            Adding new functionality to velour
+            Adding new functionality to valor
         - label: >
-            Changing existing functionality in velour
+            Changing existing functionality in valor
         - label: >
-            Removing existing functionality in velour
+            Removing existing functionality in valor
   - type: textarea
     id: description
     attributes:
       label: Problem Description
       description: >
-        Please describe what problem the feature would solve, e.g. "I wish I could use velour to ..."
+        Please describe what problem the feature would solve, e.g. "I wish I could use valor to ..."
       placeholder: >
-        I wish I could use velour to return evaluations for my top-ranked model.
+        I wish I could use valor to return evaluations for my top-ranked model.
     validations:
       required: true
   - type: textarea

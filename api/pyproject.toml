@@ -1,7 +1,7 @@
 [project]
-name = "velour-api"
+name = "valor-api"
 dynamic = ["version"]
-description = "Backend for Velour evaluation store"
+description = "Backend for Valor evaluation store"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { file = "LICENSE" }

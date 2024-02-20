@@ -3,9 +3,9 @@ import pytest
 from sqlalchemy import distinct, func
 from sqlalchemy.orm import Session
 
-from velour_api import crud, enums, schemas
-from velour_api.backend import Query, models
-from velour_api.enums import TaskType
+from valor_api import crud, enums, schemas
+from valor_api.backend import Query, models
+from valor_api.enums import TaskType
 
 dset_name = "dataset1"
 model_name1 = "model1"
