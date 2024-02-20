@@ -1,61 +1,47 @@
-from typing import Callable, Optional
+from typing import Awaitable, Callable, Union
 
 import structlog
-from fastapi import BackgroundTasks, HTTPException, Request, Response
-from fastapi.routing import APIRoute
-from starlette.background import BackgroundTask
+from fastapi import Request, Response
+from fastapi.exception_handlers import (
+    request_validation_exception_handler as fastapi_request_validation_exception_handler,
+)
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse, PlainTextResponse
 
 logger = structlog.get_logger()
 
 
-def log_endpoint(
+async def log_endpoint_middleware(
     request: Request,
-    status_code: Optional[int],
-):
+    call_next: Callable[[Request], Awaitable[Union[Response, JSONResponse]]],
+) -> Union[Response, JSONResponse]:
+    response = await call_next(request)
     logger.info(
         "Valor API Call",
         method=request.method,
         path=request.url.path,
         hostname=request.url.hostname,
-        status=status_code,
+        status=response.status_code,
     )
-
-
-def add_task(response: Response, task: BackgroundTask) -> Response:
-    if not response.background:
-        response.background = BackgroundTasks([task])
-    elif isinstance(response.background, BackgroundTasks):
-        response.background.add_task(task)
-    else:  # Empirically this doesn't happen but let's handle it anyway
-        if not isinstance(response.background, BackgroundTask):
-            logger.error(
-                "Unexpected response.background",
-                background_type=str(type(response.background)),
-            )
-        old_task = response.background
-        response.background = BackgroundTasks([old_task, task])
-
     return response
 
 
-class LoggingRoute(APIRoute):
-    def get_route_handler(self) -> Callable:
-        original_route_handler = super().get_route_handler()
+async def request_validation_exception_handler(
+    request: Request, exc: RequestValidationError
+) -> Union[JSONResponse, Response]:
+    response = await fastapi_request_validation_exception_handler(request, exc)
+    logger.warn("Valor request validation exception", errors=exc.errors())
+    return response
 
-        async def custom_route_handler(request: Request) -> Response:
-            try:
-                response = await original_route_handler(request)
-            except HTTPException as e:
-                log_endpoint(request, e.status_code)
-                raise
-            except Exception:
-                log_endpoint(request, None)
-                logger.exception("Uncaught exception")
-                raise
-            else:
-                task = BackgroundTask(
-                    log_endpoint, request, response.status_code
-                )
-            return add_task(response, task)
 
-        return custom_route_handler
+async def unhandled_exception_handler(
+    request: Request, exc: RequestValidationError
+) -> Union[JSONResponse, Response]:
+    logger.error(
+        "Valor unhandled exception",
+        method=request.method,
+        path=request.url.path,
+        hostname=request.url.hostname,
+        exception=str(exc),
+    )
+    return PlainTextResponse("Internal Server Error", status_code=500)
