@@ -187,7 +187,9 @@ Average precision is defined as the integration of the precision-recall curve. H
 
 $$
 AP = \frac{1}{101} \sum\limits_{r\in\{ 0, 0.01, \ldots , 1 \}}\rho_{interp}(r)
-\\
+$$
+
+$$
 \rho_{interp} = \underset{\tilde{r}:\tilde{r} \ge r}{max \ \rho (\tilde{r})}
 $$
 
