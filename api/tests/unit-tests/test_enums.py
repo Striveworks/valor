@@ -1,6 +1,6 @@
 import pytest
 
-from velour_api.enums import (
+from valor_api.enums import (
     AnnotationType,
     EvaluationStatus,
     ModelStatus,

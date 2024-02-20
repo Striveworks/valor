@@ -2,8 +2,8 @@ import pytest
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from velour_api import enums, exceptions, schemas
-from velour_api.backend import core, models
+from valor_api import enums, exceptions, schemas
+from valor_api.backend import core, models
 
 
 @pytest.fixture

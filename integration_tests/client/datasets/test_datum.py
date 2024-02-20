@@ -4,11 +4,11 @@ that is no auth
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from velour import Annotation, Client, Dataset, GroundTruth, Label
-from velour.enums import TaskType
-from velour.metatypes import ImageMetadata
-from velour.schemas import BoundingBox
-from velour_api.backend import models
+from valor import Annotation, Client, Dataset, GroundTruth, Label
+from valor.enums import TaskType
+from valor.metatypes import ImageMetadata
+from valor.schemas import BoundingBox
+from valor_api.backend import models
 
 
 def test_create_images_with_metadata(

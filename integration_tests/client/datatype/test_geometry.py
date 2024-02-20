@@ -7,7 +7,7 @@ from geoalchemy2.functions import ST_Area, ST_Intersection, ST_Union
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from velour import (
+from valor import (
     Annotation,
     Client,
     Dataset,
@@ -16,11 +16,11 @@ from velour import (
     Model,
     Prediction,
 )
-from velour.data_generation import _generate_mask
-from velour.enums import TaskType
-from velour.metatypes import ImageMetadata
-from velour.schemas import BoundingBox, Point, Polygon, Raster
-from velour_api.backend import models
+from valor.data_generation import _generate_mask
+from valor.enums import TaskType
+from valor.metatypes import ImageMetadata
+from valor.schemas import BoundingBox, Point, Polygon, Raster
+from valor_api.backend import models
 
 
 def bbox_to_poly(bbox: BoundingBox) -> Polygon:
@@ -154,7 +154,7 @@ def test_iou(
     assert annotation2 is not None
     db_pred = annotation2.polygon
 
-    # scraped from velour_api backend
+    # scraped from valor_api backend
     gintersection = ST_Intersection(db_gt, db_pred)
     gunion = ST_Union(db_gt, db_pred)
     iou_computation = ST_Area(gintersection) / ST_Area(gunion)

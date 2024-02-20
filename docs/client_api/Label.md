@@ -1,4 +1,4 @@
-::: velour.Label
+::: valor.Label
     handler: python
     options:
         show_root_heading: false

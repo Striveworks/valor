@@ -1,8 +1,8 @@
 from sqlalchemy.orm import Session
 
-from velour_api import enums, schemas
-from velour_api.backend.metrics.detection import _compute_detection_metrics
-from velour_api.backend.models import GroundTruth, Prediction
+from valor_api import enums, schemas
+from valor_api.backend.metrics.detection import _compute_detection_metrics
+from valor_api.backend.models import GroundTruth, Prediction
 
 
 def _round_dict(d: dict, prec: int = 3) -> None:

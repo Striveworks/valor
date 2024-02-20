@@ -1,7 +1,7 @@
 from sqlalchemy import func, select, type_coerce, update
 
-from velour_api.backend import models
-from velour_api.backend.core.geometry import (
+from valor_api.backend import models
+from valor_api.backend.core.geometry import (
     GeometricValueType,
     RawGeometry,
     _convert_polygon_to_box,

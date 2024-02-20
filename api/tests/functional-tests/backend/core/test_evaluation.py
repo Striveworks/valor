@@ -1,9 +1,9 @@
 import pytest
 from sqlalchemy.orm import Session
 
-from velour_api import enums, exceptions, schemas
-from velour_api.backend import core, models
-from velour_api.backend.core.evaluation import (
+from valor_api import enums, exceptions, schemas
+from valor_api.backend import core, models
+from valor_api.backend.core.evaluation import (
     _fetch_evaluation_from_subrequest,
     _verify_ready_to_evaluate,
 )

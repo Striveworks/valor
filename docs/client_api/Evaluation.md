@@ -1,4 +1,4 @@
-::: velour.Evaluation
+::: valor.Evaluation
     handler: python
     options:
         show_root_heading: false

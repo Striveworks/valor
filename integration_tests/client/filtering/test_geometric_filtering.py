@@ -3,9 +3,9 @@ from typing import List, Tuple
 import numpy as np
 import pytest
 
-from velour import Annotation, Dataset, Datum, Filter, GroundTruth, Label
-from velour.enums import TaskType
-from velour.schemas import BoundingBox, MultiPolygon, Polygon, Raster
+from valor import Annotation, Dataset, Datum, Filter, GroundTruth, Label
+from valor.enums import TaskType
+from valor.schemas import BoundingBox, MultiPolygon, Polygon, Raster
 
 
 @pytest.fixture
@@ -226,7 +226,7 @@ def test_filter_by_polygon(client, groundtruths_with_areas, areas):
 
 
 def test_filter_by_multipolygon(client, groundtruths_with_areas, areas):
-    # NOTE - Velour currently transforms multipolygons into rasters.
+    # NOTE - Valor currently transforms multipolygons into rasters.
     dataset = Dataset.create("myDataset")
     for gt in groundtruths_with_areas:
         dataset.add_groundtruth(gt)

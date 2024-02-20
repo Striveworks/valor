@@ -1,4 +1,4 @@
-::: velour.schemas.filters
+::: valor.schemas.filters
     handler: python
     options:
         show_root_heading: false

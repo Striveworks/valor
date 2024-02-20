@@ -1,5 +1,5 @@
-from velour_api import schemas
-from velour_api.backend.metrics.detection import (
+from valor_api import schemas
+from valor_api.backend.metrics.detection import (
     RankedPair,
     _ap,
     _calculate_101_pt_interp,

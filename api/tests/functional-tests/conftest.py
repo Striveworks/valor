@@ -7,9 +7,9 @@ from PIL import Image
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from velour_api import crud, enums, schemas
-from velour_api.backend import models
-from velour_api.backend.database import Base, make_session
+from valor_api import crud, enums, schemas
+from valor_api.backend import models
+from valor_api.backend.database import Base, make_session
 
 np.random.seed(29)
 img1_size = (100, 200)
@@ -19,9 +19,9 @@ img2_size = (80, 32)
 @pytest.fixture
 def db():
     """This fixture provides a db session. a `RuntimeError` is raised if
-    a velour tablename already exists. At teardown, all velour tables are wiped.
+    a valor tablename already exists. At teardown, all valor tables are wiped.
     """
-    # get all velour table names
+    # get all valor table names
     classes = [
         v
         for v in models.__dict__.values()

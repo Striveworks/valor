@@ -11,10 +11,10 @@ import PIL.Image
 import requests
 from tqdm import tqdm
 
-from velour import Annotation, Client, Dataset, Datum, GroundTruth, Label
-from velour.enums import TaskType
-from velour.metatypes import ImageMetadata
-from velour.schemas import Raster
+from valor import Annotation, Client, Dataset, Datum, GroundTruth, Label
+from valor.enums import TaskType
+from valor.metatypes import ImageMetadata
+from valor.schemas import Raster
 
 
 def download_coco_panoptic(
@@ -90,7 +90,7 @@ def download_image(datum: Datum) -> PIL.Image:
 
 def _parse_image_to_datum(image: dict) -> Datum:
     """
-    Parse COCO image to Velour Datum
+    Parse COCO image to Valor Datum
     """
     image = image.copy()
     uid = str(image.pop("id"))
@@ -109,7 +109,7 @@ def _parse_categories(
     categories: list,
 ) -> Dict[int, Union[TaskType, Dict[str, str]]]:
     """
-    Parse COCO categories into `velour.enums.TaskType` and `velour.Label`
+    Parse COCO categories into `valor.enums.TaskType` and `valor.Label`
     """
     return {
         category["id"]: {
@@ -292,7 +292,7 @@ def create_dataset_from_coco_panoptic(
     limit : int, default=0
         Limits the number of datums. Default to 0 for no action.
     delete_if_exists : bool, default=False
-        Reset the Velour dataset before attempting creation.
+        Reset the Valor dataset before attempting creation.
 
     """
     client = Client()

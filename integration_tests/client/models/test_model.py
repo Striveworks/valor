@@ -12,7 +12,7 @@ from geoalchemy2.functions import ST_AsPNG
 from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session
 
-from velour import (
+from valor import (
     Annotation,
     Client,
     Dataset,
@@ -22,11 +22,11 @@ from velour import (
     Model,
     Prediction,
 )
-from velour.enums import TaskType
-from velour.exceptions import ClientException
-from velour.metatypes import ImageMetadata
-from velour.schemas import Point
-from velour_api.backend import models
+from valor.enums import TaskType
+from valor.exceptions import ClientException
+from valor.metatypes import ImageMetadata
+from valor.schemas import Point
+from valor_api.backend import models
 
 
 def _list_of_points_from_wkt_polygon(
@@ -55,11 +55,11 @@ def _test_create_model_with_preds(
     ----------
     client
     gts
-        list of groundtruth objects (from `velour.data_types`)
+        list of groundtruth objects (from `valor.data_types`)
     preds
-        list of prediction objects (from `velour.data_types`)
+        list of prediction objects (from `valor.data_types`)
     preds_model_class
-        class in `velour_api.models` that specifies the labeled predictions
+        class in `valor_api.models` that specifies the labeled predictions
     preds_expected_number
         expected number of (labeled) predictions added to the database
     expected_labels_tuples

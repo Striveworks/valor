@@ -1,4 +1,4 @@
-from velour import enums, schemas
+from valor import enums, schemas
 
 
 def test_evaluation_request():

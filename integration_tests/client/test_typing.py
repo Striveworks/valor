@@ -1,6 +1,6 @@
 import numpy as np
 
-from velour import (
+from valor import (
     Annotation,
     Dataset,
     Datum,
@@ -10,8 +10,8 @@ from velour import (
     Prediction,
     enums,
 )
-from velour.schemas import geometry
-from velour.schemas.properties import (
+from valor.schemas import geometry
+from valor.schemas.properties import (
     DictionaryProperty,
     GeometryProperty,
     LabelProperty,

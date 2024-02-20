@@ -16,15 +16,15 @@ import yappi
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
-from velour import Client
-from velour import Dataset as VelourDataset
-from velour import Evaluation as VelourEvaluation
-from velour import Model as VelourModel
-from velour.data_generation import (
+from valor import Client
+from valor import Dataset as ValorDataset
+from valor import Evaluation as ValorEvaluation
+from valor import Model as ValorModel
+from valor.data_generation import (
     generate_prediction_data,
     generate_segmentation_data,
 )
-from velour.enums import JobStatus
+from valor.enums import JobStatus
 
 """ FastAPI Profiling Decorators """
 
@@ -333,7 +333,7 @@ def _generate_docker_snapshot() -> dict:
     return output
 
 
-""" Velour-Specific Functions """
+""" Valor-Specific Functions """
 
 
 def _setup_dataset(
@@ -342,8 +342,8 @@ def _setup_dataset(
     n_images: int,
     n_annotations: int,
     n_labels: int,
-) -> VelourDataset:
-    """Generate a velour dataset with a given number of images, annotations, and labels"""
+) -> ValorDataset:
+    """Generate a valor dataset with a given number of images, annotations, and labels"""
     assert (
         min(n_images, n_annotations, n_labels) > 0
     ), "You must generate at least one image, annotation, and label"
@@ -362,12 +362,12 @@ def _setup_dataset(
 
 def _get_evaluation_metrics(
     client: Client,
-    dataset: VelourDataset,
+    dataset: ValorDataset,
     model_name: str,
     n_predictions: int,
     n_annotations: int,
     n_labels: int,
-) -> Tuple[VelourModel, VelourEvaluation]:
+) -> Tuple[ValorModel, ValorEvaluation]:
     """Create arbitrary evaluation metrics based on some dataset"""
 
     model = generate_prediction_data(
@@ -394,7 +394,7 @@ def _get_evaluation_metrics(
     return (model, eval_job)
 
 
-def _run_velour_profiling_functions(
+def _run_valor_profiling_functions(
     client: Client,
     dataset_name: str,
     model_name: str,
@@ -403,7 +403,7 @@ def _run_velour_profiling_functions(
     n_annotations: int,
     n_labels: int,
 ) -> dict:
-    """Call the various functions that we want to use to profile velour. Returns a dict of intermediary times that we want to include in our output"""
+    """Call the various functions that we want to use to profile valor. Returns a dict of intermediary times that we want to include in our output"""
 
     start = timeit.default_timer()
 
@@ -442,7 +442,7 @@ def _run_velour_profiling_functions(
     return timeit_output
 
 
-def profile_velour(
+def profile_valor(
     client: Client,
     dataset_name: str,
     n_image_grid: List[int],
@@ -451,12 +451,12 @@ def profile_velour(
     n_label_grid: List[int],
 ) -> List[dict]:
     """
-    Profile velour while generating VelourDatasets of various sizes
+    Profile valor while generating ValorDatasets of various sizes
 
     Parameters
     ----------
     client
-        The Client object used to access your velour instance
+        The Client object used to access your valor instance
     dataset_name
         The name of the dataset you want to use for profiling
     n_image_grid
@@ -489,7 +489,7 @@ def profile_velour(
                     }
 
                     results = _profile_func(
-                        _run_velour_profiling_functions, **kwargs
+                        _run_valor_profiling_functions, **kwargs
                     )
 
                     snapshot = _generate_docker_snapshot()

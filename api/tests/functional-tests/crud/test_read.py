@@ -1,7 +1,7 @@
 import pytest
 from sqlalchemy.orm import Session
 
-from velour_api import crud, enums, exceptions, schemas
+from valor_api import crud, enums, exceptions, schemas
 
 
 def test_get_dataset(

@@ -1,8 +1,8 @@
 from sqlalchemy import and_, select
 from sqlalchemy.orm import Session
 
-from velour_api import crud, enums, schemas
-from velour_api.backend.metrics.segmentation import (
+from valor_api import crud, enums, schemas
+from valor_api.backend.metrics.segmentation import (
     _compute_segmentation_metrics,
     _count_groundtruths,
     _count_predictions,
@@ -10,7 +10,7 @@ from velour_api.backend.metrics.segmentation import (
     _generate_groundtruth_query,
     _generate_prediction_query,
 )
-from velour_api.backend.models import Label
+from valor_api.backend.models import Label
 
 
 def _create_gt_data(
