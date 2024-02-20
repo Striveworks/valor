@@ -92,7 +92,7 @@ def _ground_truth_det_to_mot(
     if "frame" not in datum.metadata:
         raise ValueError("Datum does not contain a video frame number.")
     if not gt.labels:
-        raise ValueError("Groundtruth does not contain labels.")
+        raise ValueError("GroundTruth does not contain labels.")
 
     for label in gt.labels:
         if label.key == OBJECT_ID_LABEL_KEY:
@@ -100,7 +100,7 @@ def _ground_truth_det_to_mot(
     bbox = gt.bounding_box
 
     if not bbox:
-        raise ValueError("Groundtruth is missing bounding box.")
+        raise ValueError("GroundTruth is missing bounding box.")
 
     mot_det = MOTDetection(
         frame_number=datum.metadata["frame"],  # type: ignore - we don't need to explicitely type the "frame" key of the metadata dict

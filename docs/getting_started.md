@@ -91,7 +91,7 @@ client = Client("http://localhost:8000")
 
 In the event that the host uses authentication, the argument `access_token` should also be passed to `Client`.
 
-#### Pass your groundtruths into Valor
+#### Pass your ground truths into Valor
 
 First, we define our `Dataset` object using `Dataset.create()`.
 
@@ -125,7 +125,7 @@ groundtruth_annotations = [
 for image in groundtruth_annotations:
 
     # each image is represented by a Valor Datum.
-    # this is used to connect groundtruths and predictions when it's time for evaluation.
+    # this is used to connect ground truths and predictions when it's time for evaluation.
     datum = Datum(
         uid=Path(image["path"]).stem, # strip the filename for use as Datum uid.
         metadata={
@@ -214,7 +214,7 @@ def create_prediction_from_object_detection_dict(element: dict, datums_by_uid:di
         annotations=annotations,
     )
 
-# let's represent the simulated model output in a similar format to the groundtruths:
+# let's represent the simulated model output in a similar format to the ground truths:
 object_detections = [
     {"path": "a/b/c/img3.png", "annotations": [
         {"labels": [{"class_label": "dog", "score": 0.8}, {"class_label": "cat", "score": 0.1}, {"class_label": "person", "score": 0.1}], "bbox": {"xmin": 16, "ymin": 130, "xmax": 70, "ymax": 150}},
@@ -262,7 +262,7 @@ print(result.metrics)
 
 #### Run a filtered evaluation and print metrics
 
-Valor offers more than just 1:1 evaluations; it allows the creation of metadata filters to stratify the dataset groundtruths and model predictions. This enables the user to ask complex questions about their data.
+Valor offers more than just 1:1 evaluations; it allows the creation of metadata filters to stratify the dataset ground truths and model predictions. This enables the user to ask complex questions about their data.
 
 With this in mind, let's pose the question: *"How well did the model perform on animal prediction?"*
 

@@ -4,11 +4,11 @@ On this page, we'll describe many of the technical concepts underpinning Valor.
 
 ## High-Level Workflow
 
-The typical Valor workflow involves POSTing groundtruth annotations (e.g., class labels, bounding boxes, segmentation masks, etc.) and model predictions to our API service. The service leverages these groundtruths and predictions to compute evaluation metrics, and then stores the groundtruths, predictions, and evaluation metrics centrally in Postgres. Users can also attach metadata to their `Datasets`, `Models`, `GroundTruths`, and `Annotations`; this metadata makes it easy to query for specific subsets of evaluations at a later date. Once an evaluation is stored in Valor, users can query those evaluations from Postgres via `GET` requests to the Valor API.
+The typical Valor workflow involves POSTing ground truth annotations (e.g., class labels, bounding boxes, segmentation masks, etc.) and model predictions to our API service. The service leverages these ground truths and predictions to compute evaluation metrics, and then stores the ground truths, predictions, and evaluation metrics centrally in Postgres. Users can also attach metadata to their `Datasets`, `Models`, `GroundTruths`, and `Annotations`; this metadata makes it easy to query for specific subsets of evaluations at a later date. Once an evaluation is stored in Valor, users can query those evaluations from Postgres via `GET` requests to the Valor API.
 
 Note that Valor does _not_ store raw data (such as underlying images) or facilitate model inference. Only the following items are stored in Postgres:
 
-- Groundtruth annotations
+- Ground truth annotations
 - Predictions outputted from a model
 - Metadata from any of Valor's various classes
 - Evaluation metrics computed by Valor

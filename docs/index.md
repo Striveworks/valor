@@ -38,7 +38,7 @@ With these three use cases in mind, we set out to build a centralized evaluation
 
 Valor is a centralized evaluation store that makes it easy to measure, explore, and rank model performance. Our ultimate goal with Valor is to help data scientists and engineers pick the right ML model for their specific needs. To that end, we built Valor with three design principles in mind:
 
-- **Valor works with any dataset or model:** We believe Valor should be able to handle any supervised learning task that you want to throw at it. Just pass in your groundtruth annotations and predictions, describe your learning task (i.e., object detection), and Valor will do the rest. (Note: At launch, Valor will only support classification and computer vision (i.e., image segmentation and object detection) tasks. We're confident this framework will abstract well to other supervised learning tasks and plan to support them in later releases).
+- **Valor works with any dataset or model:** We believe Valor should be able to handle any supervised learning task that you want to throw at it. Just pass in your ground truth annotations and predictions, describe your learning task (i.e., object detection), and Valor will do the rest. (Note: At launch, Valor will only support classification and computer vision (i.e., image segmentation and object detection) tasks. We're confident this framework will abstract well to other supervised learning tasks and plan to support them in later releases).
 - **Valor can handle any type of image, model, or dataset metadata you throw at it:** Metadata is a critical component of any evaluation store as it enables the system to offer tailored model recommendations based on a user's specific needs. To that end, we built Valor to handle any metadata under the sun. Dates, geospatial coordinates, and even JSONs filled with configuration details are all on the table. This means you can slice and dice your evaluations any way you want: just pass in the right labels for your use case and define your filter (say a geographic bounding box), and you’ll get back results for your specific needs.
 - **Valor standardizes the evaluation process:** The trickiest part of comparing two different model runs is avoiding apples-to-oranges comparisons. Valor helps you audit your metrics and avoid false comparisons by versioning your uploads, storing them in a centralized location, and ensuring that you only compare runs that used the exact same filters and metrics.
 
@@ -78,7 +78,7 @@ To get started with Valor, we'd recommend reviewing our [sample notebooks](https
 
 **Q. Does Valor store data?**
 
-**A.** Valor only stores groundtruth annotations, model predictions, and user-defined metadata.
+**A.** Valor only stores ground truth annotations, model predictions, and user-defined metadata.
 
 **Q. What is a Datum?**
 
@@ -98,7 +98,7 @@ datum = image.to_datum()
 
 **Q. What is a GroundTruth?**
 
-**A.** `valor.GroundTruth` objects in Valor each represent a singular datum and its associated annotations that provide a reference standard or the 'truth' against which predictions are compared. There cannot be multiple groundtruths per datum.
+**A.** `valor.GroundTruth` objects in Valor each represent a singular datum and its associated annotations that provide a reference standard or the 'truth' against which predictions are compared. There cannot be multiple ground truths per datum.
 
 **Q. What is a Prediction?**
 
@@ -127,9 +127,9 @@ dataset.finalize()
 Models are finalized automatically given two conditions.
 
 1. The working dataset is finalized.
-1. There is a 1:1 mapping of predictions to groundtruths.
+1. There is a 1:1 mapping of predictions to ground truths.
 
-Models and their predictions can also be finalized prematurely using the `valor.Model.finalize_inferences` member function. This will generate empty predictions with task type `enums.TaskType.SKIP` to achieve the 1:1 groundtruth mapping.
+Models and their predictions can also be finalized prematurely using the `valor.Model.finalize_inferences` member function. This will generate empty predictions with task type `enums.TaskType.SKIP` to achieve the 1:1 ground truth mapping.
 
 ```python
 from valor import Client, Dataset, Model
