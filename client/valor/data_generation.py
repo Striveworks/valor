@@ -252,24 +252,20 @@ def generate_prediction_data(
     n_labels: int = 2,
 ):
     """
-        Generate an arbitrary number of predictions for a previously generated dataset.
+    Generate an arbitrary number of predictions for a previously generated dataset.
 
-        Parameters
-        ----------
-        client : Session
-    <<<<<<< HEAD:client/velour/data_generation.py
-            The Client object used to access your Velour instance.
-    =======
-            The Client object used to access your valor instance.
-    >>>>>>> main:client/valor/data_generation.py
-        dataset : Dataset
-            The dataset object to create predictions for.
-        model_name : str
-            The name of your model.
-        n_annotations : int
-            The number of annotations per prediction you'd like your dataset to contain.
-        n_labels : int
-            The number of labels per annotation you'd like your dataset to contain.
+    Parameters
+    ----------
+    client : Session
+    The Client object used to access your Valor instance.
+    dataset : Dataset
+        The dataset object to create predictions for.
+    model_name : str
+        The name of your model.
+    n_annotations : int
+        The number of annotations per prediction you'd like your dataset to contain.
+    n_labels : int
+        The number of labels per annotation you'd like your dataset to contain.
     """
     model = Model.create(model_name)
 

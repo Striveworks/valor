@@ -1040,7 +1040,7 @@ class Dataset:
         metadata : dict
             An optional dictionary of metadata that describes the dataset.
         connection : ClientConnnetion
-            An optional Velour client object for interacting with the API.
+            An optional Valor client object for interacting with the API.
         """
         self.conn = connection
         self.name = name
@@ -1324,7 +1324,7 @@ class Model:
         metadata : dict
             An optional dictionary of metadata that describes the dataset.
         connection : ClientConnnetion
-            An optional Velour client object for interacting with the API.
+            An optional Valor client object for interacting with the API.
         """
         self.conn = connection
         self.name = name
@@ -1736,16 +1736,12 @@ class Model:
 
 class Client:
     """
-    <<<<<<< HEAD:client/velour/coretypes.py
-        Velour client object for interacting with the API.
-    =======
-        Valor client object for interacting with the api.
-    >>>>>>> main:client/valor/coretypes.py
+    Valor client object for interacting with the api.
 
-        Parameters
-        ----------
-        connection : ClientConnection, optional
-            Option to use an existing connection object.
+    Parameters
+    ----------
+    connection : ClientConnection, optional
+        Option to use an existing connection object.
     """
 
     def __init__(self, connection: Optional[ClientConnection] = None):
@@ -2217,22 +2213,17 @@ class Client:
         name: str,
     ) -> Union[Model, None]:
         """
-                Gets a model by name.
+        Gets a model by name.
 
-                Parameters
-                ----------
-                name : str
-                    The name of the model to fetch.
+        Parameters
+        ----------
+        name : str
+            The name of the model to fetch.
 
-                Returns
-                -------
-        <<<<<<< HEAD:client/velour/coretypes.py
-                Union[velour.Model, None]
-                    A model with a matching name, or 'None' if one doesn't exist.
-        =======
-                Union[valor.Model, None]
-                    A Model with matching name or 'None' if one doesn't exist.
-        >>>>>>> main:client/valor/coretypes.py
+        Returns
+        -------
+        Union[valor.Model, None]
+            A Model with matching name or 'None' if one doesn't exist.
         """
         try:
             return Model.from_dict(
@@ -2352,26 +2343,21 @@ class Client:
         datasets: Union[List[Dataset], List[str], None] = None,
     ) -> List[Evaluation]:
         """
-                Returns all evaluations associated with user-supplied dataset and/or model names.
+        Returns all evaluations associated with user-supplied dataset and/or model names.
 
-                Parameters
-                ----------
-                evaluation_ids : List[int], optional.
-        <<<<<<< HEAD:client/velour/coretypes.py
-                    A list of job IDs to return metrics for.
-                models : Union[List[velour.Model], List[str]], optional
-        =======
-                    A list of job ids to return metrics for.
-                models : Union[List[valor.Model], List[str]], optional
-        >>>>>>> main:client/valor/coretypes.py
-                    A list of model names that we want to return metrics for.
-                datasets : Union[List[valor.Dataset], List[str]], optional
-                    A list of dataset names that we want to return metrics for.
+        Parameters
+        ----------
+        evaluation_ids : List[int], optional.
+            A list of job IDs to return metrics for.
+        models : Union[List[valor.Model], List[str]], optional
+            A list of model names that we want to return metrics for.
+        datasets : Union[List[valor.Dataset], List[str]], optional
+            A list of dataset names that we want to return metrics for.
 
-                Returns
-                -------
-                List[valor.Evaluation]
-                    A list of evaluations.
+        Returns
+        -------
+        List[valor.Evaluation]
+            A list of evaluations.
         """
         if isinstance(datasets, list):
             datasets = [
