@@ -6,7 +6,7 @@ from fastapi.exception_handlers import (
     request_validation_exception_handler as fastapi_request_validation_exception_handler,
 )
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse, PlainTextResponse
+from fastapi.responses import JSONResponse
 
 logger = structlog.get_logger()
 
@@ -44,4 +44,7 @@ async def handle_unhandled_exception(
         hostname=request.url.hostname,
         exception=str(exc),
     )
-    return PlainTextResponse("Internal Server Error", status_code=500)
+    return JSONResponse(
+        content={"status": 500, "detail": "Internal Server Error"},
+        status_code=500,
+    )
