@@ -2,13 +2,17 @@
 
 # TOC
 
-- [Binary ROCAUC](#binary-rocauc) (WIP)
-- [Average Precision (AP)](#average-precision-ap)
-    - Classification (TBD)
-    - [Object-Detection](#object-detection)
-    - Semantic-Segmentation (WIP)
 
-# Binary ROCAUC
+- [Classification](#classification)
+- [Object Detection](#object-detection)
+    - [Average Precision (AP)](#average-precision-ap)
+    - [Mean Average Precision (mAP)](#mean-average-precision-map)
+- [Semantic Segmentation](#semantic-segmentation)
+    - [Mean Average Precision](#mean-average-precision-map-1)
+
+# Classification
+
+## Binary ROCAUC
 
 ## Determining Binary Truth
 
@@ -19,48 +23,16 @@
 | True Negative (TN) | Prediction returns False and is correct. |
 | False Negative (FN) | Prediction returns False and is incorrect. |
 
-# Average Precision (AP)
 
-## Object-Detection
+# Object Detection
+
+## Average Precision (AP)
 
 For object-detection and segmentation tasks, average-precision is calculated from the intersection-over-union (IoU) of geometric annotations.
 
 ### Intersection-over-Union (IoU)
 
 $$Intersection \ over \ Union \ (IoU) = \dfrac{Area( prediction \cap groundtruth )}{Area( prediction \cup groundtruth )}$$
-
-#### Relevant PostGIS Functions
-
-- [ST_INTERSECTION](https://postgis.net/docs/ST_Intersection.html)
-
-- [ST_UNION](https://postgis.net/docs/ST_Union.html)
-
-- [ST_AREA](https://postgis.net/docs/ST_Area.html) for Polygon Area
-
-    ```sql
-    SELECT ST_Area(annotation.bounding_box) FROM annotation;
-    SELECT ST_Area(annotation.polygon) FROM annotation;
-    SELECT ST_Area(annotation.multipolygon) FROM annotation;
-    ```
-
-- [ST_COUNT](https://postgis.net/docs/RT_ST_Count.html) for Raster Area
-
-    ```sql
-    SELECT ST_Count(annotation.raster) FROM annotation;
-    ```
-
-#### Example - Polygon IoU Calculation in PostGIS
-
-```sql
-CREATE OR REPLACE FUNCTION calculate_iou(groundtruth geometry, prediction geometry)
-RETURNS numeric AS $$
-BEGIN
-    RETURN (
-        SELECT COALESCE(ST_AREA(ST_INTERSECTION(groundtruth, prediction)) / ST_AREA(ST_UNION(groundtruth, prediction)), 0)
-    );
-END;
-$$;
-```
 
 ### Finding the best prediction for a groundtruth.
 
@@ -104,40 +76,7 @@ $$
 \end{aligned}
 $$
 
-#### Example - PostgreSQL Implementation
 
-```sql
-SELECT
-prediction_subquery.id AS p_id,
-groundtruth _subquery.id AS g_id,
-groundtruth_subquery.label_id AS label_id
-prediction_subquery.score AS score,
-calculate_iou(groundtruth_subquery.geom, prediction_subquery.geom) AS iou
-FROM (
-    SELECT
-    groundtruth.id,
-    groundtruth.datum_id,
-    groundtruth.label_id,
-    annotation.box AS geom
-    FROM groundtruth
-    JOIN annotation
-    ON groundtruth.annotation_id = annotation.id
-) AS groundtruth_subquery
-CROSS JOIN (
-    SELECT
-    prediction.id AS id,
-    prediction.datum_id AS datum_id,
-    prediction.label_id AS label_id,
-    prediciion.score AS score,
-    annotation.box AS geom
-    FROM prediction
-    JOIN annotation
-    ON prediction.annotation_id = annotation.id
-) AS prediction_subquery
-WHERE groundtruth_subquery.datum_id = prediction_subquery.datum_id
-AND groundtruth_subquery.label_id = prediction_subquery.label_id
-ORDER BY -score, -iou
-```
 
 ### What are Precision and Recall?
 
@@ -193,14 +132,99 @@ $$
 \rho_{interp} = \underset{\tilde{r}:\tilde{r} \ge r}{max \ \rho (\tilde{r})}
 $$
 
+### PostgreSQL Implementations
+
+#### Relevant PostGIS Functions
+
+- [ST_INTERSECTION](https://postgis.net/docs/ST_Intersection.html)
+
+- [ST_UNION](https://postgis.net/docs/ST_Union.html)
+
+- [ST_AREA](https://postgis.net/docs/ST_Area.html) for Polygon Area
+
+    ```sql
+    SELECT ST_Area(annotation.bounding_box) FROM annotation;
+    SELECT ST_Area(annotation.polygon) FROM annotation;
+    SELECT ST_Area(annotation.multipolygon) FROM annotation;
+    ```
+
+- [ST_COUNT](https://postgis.net/docs/RT_ST_Count.html) for Raster Area
+
+    ```sql
+    SELECT ST_Count(annotation.raster) FROM annotation;
+    ```
+
+#### Polygon IoU Calculation in PostGIS
+
+```sql
+CREATE OR REPLACE FUNCTION calculate_iou(groundtruth geometry, prediction geometry)
+RETURNS numeric AS $$
+BEGIN
+    RETURN (
+        SELECT COALESCE(ST_AREA(ST_INTERSECTION(groundtruth, prediction)) / ST_AREA(ST_UNION(groundtruth, prediction)), 0)
+    );
+END;
+$$;
+```
+
+#### Raster IoU Calculation in PostGIS
+
+```sql
+CREATE OR REPLACE FUNCTION calculate_iou(groundtruth geometry, prediction geometry)
+RETURNS numeric AS $$
+BEGIN
+    RETURN (
+        SELECT COALESCE(ST_COUNT(ST_INTERSECTION(groundtruth, prediction)) / ST_COUNT(ST_UNION(groundtruth, prediction)), 0)
+    );
+END;
+$$;
+```
+
+#### Creating ranked pairs.
+
+```sql
+SELECT
+prediction_subquery.id AS p_id,
+groundtruth _subquery.id AS g_id,
+groundtruth_subquery.label_id AS label_id
+prediction_subquery.score AS score,
+calculate_iou(groundtruth_subquery.geom, prediction_subquery.geom) AS iou
+FROM (
+    SELECT
+    groundtruth.id,
+    groundtruth.datum_id,
+    groundtruth.label_id,
+    annotation.box AS geom
+    FROM groundtruth
+    JOIN annotation
+    ON groundtruth.annotation_id = annotation.id
+) AS groundtruth_subquery
+CROSS JOIN (
+    SELECT
+    prediction.id AS id,
+    prediction.datum_id AS datum_id,
+    prediction.label_id AS label_id,
+    prediciion.score AS score,
+    annotation.box AS geom
+    FROM prediction
+    JOIN annotation
+    ON prediction.annotation_id = annotation.id
+) AS prediction_subquery
+WHERE groundtruth_subquery.datum_id = prediction_subquery.datum_id
+AND groundtruth_subquery.label_id = prediction_subquery.label_id
+ORDER BY -score, -iou
+```
+
 ### References
 - [MS COCO Detection Evaluation](https://cocodataset.org/#detection-eval)
 - [Mean Average Precision (mAP) Using the COCO Evaluator](https://pyimagesearch.com/2022/05/02/mean-average-precision-map-using-the-coco-evaluator/)
 
-# Mean Average Precision (mAP)
+## Mean Average Precision (mAP)
 
 $mAP = \dfrac{1}{|classes|} \sum\limits_{c \in classes} AP_{c}$
 
+# Semantic Segmentation
 
+## Mean Average Precision (mAP)
 
-
+$mAP = \dfrac{1}{|classes|} \sum\limits_{c \in classes} AP_{c}$
