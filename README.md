@@ -1,6 +1,6 @@
 # Valor: A Centralized Evaluation Store
 
-![badge](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/ekorman/501428c92df8d0de6805f40fb78b1363/raw/valor-coverage.json)
+![badge](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/ekorman/c002bbe8c0e479921401b884f4b9fc53/raw/valor-coverage.json)
 
 
 Valor is a centralized evaluation store which makes it easy to measure, explore, and rank model performance. Valor empowers data scientists and engineers to evaluate the performance of their machine learning pipelines and use those evaluations to make better modeling decisions in the future.
