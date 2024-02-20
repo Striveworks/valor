@@ -532,8 +532,8 @@
 <td>
 <div class="doc-md-description">
 <p>The first element of the tuple is the combined mask, as an RGB PIL image. The second
-element is a color legend: it's a dict with keys the unique values of the labels and the
-values of the dict are PIL image swatches of the color corresponding to the label value.</p>
+element is a color legend: it's a dict with the unique labels as keys and the
+PIL image swatches as values.</p>
 </div>
 </td>
 </tr>
@@ -554,7 +554,7 @@ values of the dict are PIL image swatches of the color corresponding to the labe
 </td>
 <td>
 <div class="doc-md-description">
-<p>If all segmentations don't belong to the same image, or there is a
+<p>If all segmentations don't belong to the same image or there is a
 segmentation that doesn't have <code>label_key</code> as the key of one of its labels.</p>
 </div>
 </td>
@@ -711,13 +711,13 @@ segmentation that doesn't have <code>label_key</code> as the key of one of its l
 </span><span id="__span-0-71"><a id="__codelineno-0-71" name="__codelineno-0-71"></a><span class="sd">    -------</span>
 </span><span id="__span-0-72"><a id="__codelineno-0-72" name="__codelineno-0-72"></a><span class="sd">    tuple</span>
 </span><span id="__span-0-73"><a id="__codelineno-0-73" name="__codelineno-0-73"></a><span class="sd">        The first element of the tuple is the combined mask, as an RGB PIL image. The second</span>
-</span><span id="__span-0-74"><a id="__codelineno-0-74" name="__codelineno-0-74"></a><span class="sd">        element is a color legend: it's a dict with keys the unique values of the labels and the</span>
-</span><span id="__span-0-75"><a id="__codelineno-0-75" name="__codelineno-0-75"></a><span class="sd">        values of the dict are PIL image swatches of the color corresponding to the label value.</span>
+</span><span id="__span-0-74"><a id="__codelineno-0-74" name="__codelineno-0-74"></a><span class="sd">        element is a color legend: it's a dict with the unique labels as keys and the</span>
+</span><span id="__span-0-75"><a id="__codelineno-0-75" name="__codelineno-0-75"></a><span class="sd">        PIL image swatches as values.</span>
 </span><span id="__span-0-76"><a id="__codelineno-0-76" name="__codelineno-0-76"></a>
 </span><span id="__span-0-77"><a id="__codelineno-0-77" name="__codelineno-0-77"></a><span class="sd">    Raises</span>
 </span><span id="__span-0-78"><a id="__codelineno-0-78" name="__codelineno-0-78"></a><span class="sd">    ------</span>
 </span><span id="__span-0-79"><a id="__codelineno-0-79" name="__codelineno-0-79"></a><span class="sd">    RuntimeError</span>
-</span><span id="__span-0-80"><a id="__codelineno-0-80" name="__codelineno-0-80"></a><span class="sd">        If all segmentations don't belong to the same image, or there is a</span>
+</span><span id="__span-0-80"><a id="__codelineno-0-80" name="__codelineno-0-80"></a><span class="sd">        If all segmentations don't belong to the same image or there is a</span>
 </span><span id="__span-0-81"><a id="__codelineno-0-81" name="__codelineno-0-81"></a><span class="sd">        segmentation that doesn't have `label_key` as the key of one of its labels.</span>
 </span><span id="__span-0-82"><a id="__codelineno-0-82" name="__codelineno-0-82"></a><span class="sd">    ValueError</span>
 </span><span id="__span-0-83"><a id="__codelineno-0-83" name="__codelineno-0-83"></a><span class="sd">        If there aren't any segmentations.</span>
@@ -815,7 +815,7 @@ segmentation that doesn't have <code>label_key</code> as the key of one of its l
 <code class="highlight language-python"><span class="n">valor</span><span class="o">.</span><span class="n">viz</span><span class="o">.</span><span class="n">draw_bounding_box_on_image</span><span class="p">(</span><span class="n">bounding_box</span><span class="p">,</span> <span class="n">img</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="p">(</span><span class="mi">255</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span></code>
 </h3>
 <div class="doc doc-contents">
-<p>Draws a bounding polygon on an image. This operation is not done in-place</p>
+<p>Draws a bounding polygon on an image. This operation is not done in place.</p>
 <p><strong>Parameters:</strong></p>
 <table>
 <thead>
@@ -834,7 +834,7 @@ segmentation that doesn't have <code>label_key</code> as the key of one of its l
 </td>
 <td>
 <div class="doc-md-description">
-<p>bounding box to draw on the image</p>
+<p>Bounding box to draw on the image.</p>
 </div>
 </td>
 <td>
@@ -848,7 +848,7 @@ segmentation that doesn't have <code>label_key</code> as the key of one of its l
 </td>
 <td>
 <div class="doc-md-description">
-<p>pillow image to draw on</p>
+<p>Pillow image to draw on.</p>
 </div>
 </td>
 <td>
@@ -862,7 +862,7 @@ segmentation that doesn't have <code>label_key</code> as the key of one of its l
 </td>
 <td>
 <div class="doc-md-description">
-<p>RGB tuple of the color to use</p>
+<p>RGB tuple of the color to use.</p>
 </div>
 </td>
 <td>
@@ -886,7 +886,7 @@ segmentation that doesn't have <code>label_key</code> as the key of one of its l
 </td>
 <td>
 <div class="doc-md-description">
-<p>pillow image with bounding box drawn on it</p>
+<p>Pillow image with bounding box drawn on it.</p>
 </div>
 </td>
 </tr>
@@ -922,21 +922,21 @@ segmentation that doesn't have <code>label_key</code> as the key of one of its l
 </span><span id="__span-0-204"><a id="__codelineno-0-204" name="__codelineno-0-204"></a>    <span class="n">img</span><span class="p">:</span> <span class="n">Image</span><span class="o">.</span><span class="n">Image</span><span class="p">,</span>
 </span><span id="__span-0-205"><a id="__codelineno-0-205" name="__codelineno-0-205"></a>    <span class="n">color</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">255</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
 </span><span id="__span-0-206"><a id="__codelineno-0-206" name="__codelineno-0-206"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="o">.</span><span class="n">Image</span><span class="p">:</span>
-</span><span id="__span-0-207"><a id="__codelineno-0-207" name="__codelineno-0-207"></a><span class="w">    </span><span class="sd">"""Draws a bounding polygon on an image. This operation is not done in-place</span>
+</span><span id="__span-0-207"><a id="__codelineno-0-207" name="__codelineno-0-207"></a><span class="w">    </span><span class="sd">"""Draws a bounding polygon on an image. This operation is not done in place.</span>
 </span><span id="__span-0-208"><a id="__codelineno-0-208" name="__codelineno-0-208"></a>
 </span><span id="__span-0-209"><a id="__codelineno-0-209" name="__codelineno-0-209"></a><span class="sd">    Parameters</span>
 </span><span id="__span-0-210"><a id="__codelineno-0-210" name="__codelineno-0-210"></a><span class="sd">    ----------</span>
 </span><span id="__span-0-211"><a id="__codelineno-0-211" name="__codelineno-0-211"></a><span class="sd">    bounding_box</span>
-</span><span id="__span-0-212"><a id="__codelineno-0-212" name="__codelineno-0-212"></a><span class="sd">        bounding box to draw on the image</span>
+</span><span id="__span-0-212"><a id="__codelineno-0-212" name="__codelineno-0-212"></a><span class="sd">        Bounding box to draw on the image.</span>
 </span><span id="__span-0-213"><a id="__codelineno-0-213" name="__codelineno-0-213"></a><span class="sd">    img</span>
-</span><span id="__span-0-214"><a id="__codelineno-0-214" name="__codelineno-0-214"></a><span class="sd">        pillow image to draw on</span>
+</span><span id="__span-0-214"><a id="__codelineno-0-214" name="__codelineno-0-214"></a><span class="sd">        Pillow image to draw on.</span>
 </span><span id="__span-0-215"><a id="__codelineno-0-215" name="__codelineno-0-215"></a><span class="sd">    color</span>
-</span><span id="__span-0-216"><a id="__codelineno-0-216" name="__codelineno-0-216"></a><span class="sd">        RGB tuple of the color to use</span>
+</span><span id="__span-0-216"><a id="__codelineno-0-216" name="__codelineno-0-216"></a><span class="sd">        RGB tuple of the color to use.</span>
 </span><span id="__span-0-217"><a id="__codelineno-0-217" name="__codelineno-0-217"></a>
 </span><span id="__span-0-218"><a id="__codelineno-0-218" name="__codelineno-0-218"></a><span class="sd">    Returns</span>
 </span><span id="__span-0-219"><a id="__codelineno-0-219" name="__codelineno-0-219"></a><span class="sd">    -------</span>
 </span><span id="__span-0-220"><a id="__codelineno-0-220" name="__codelineno-0-220"></a><span class="sd">    img</span>
-</span><span id="__span-0-221"><a id="__codelineno-0-221" name="__codelineno-0-221"></a><span class="sd">        pillow image with bounding box drawn on it</span>
+</span><span id="__span-0-221"><a id="__codelineno-0-221" name="__codelineno-0-221"></a><span class="sd">        Pillow image with bounding box drawn on it.</span>
 </span><span id="__span-0-222"><a id="__codelineno-0-222" name="__codelineno-0-222"></a><span class="sd">    """</span>
 </span><span id="__span-0-223"><a id="__codelineno-0-223" name="__codelineno-0-223"></a>    <span class="k">return</span> <span class="n">_draw_bounding_polygon_on_image</span><span class="p">(</span>
 </span><span id="__span-0-224"><a id="__codelineno-0-224" name="__codelineno-0-224"></a>        <span class="n">bounding_box</span><span class="o">.</span><span class="n">polygon</span><span class="p">,</span> <span class="n">img</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">False</span>
@@ -1081,7 +1081,7 @@ segmentation that doesn't have <code>label_key</code> as the key of one of its l
 <code class="highlight language-python"><span class="n">valor</span><span class="o">.</span><span class="n">viz</span><span class="o">.</span><span class="n">draw_raster_on_image</span><span class="p">(</span><span class="n">raster</span><span class="p">,</span> <span class="n">img</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="p">(</span><span class="mi">255</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.4</span><span class="p">)</span></code>
 </h3>
 <div class="doc doc-contents">
-<p>Draws the raster on top of an image. This operation is not done in-place</p>
+<p>Draws the raster on top of an image. This operation is not done in place.</p>
 <p><strong>Parameters:</strong></p>
 <table>
 <thead>
@@ -1172,7 +1172,7 @@ segmentation that doesn't have <code>label_key</code> as the key of one of its l
 </span><span id="__span-0-322"><a id="__codelineno-0-322" name="__codelineno-0-322"></a>    <span class="n">color</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">255</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
 </span><span id="__span-0-323"><a id="__codelineno-0-323" name="__codelineno-0-323"></a>    <span class="n">alpha</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.4</span><span class="p">,</span>
 </span><span id="__span-0-324"><a id="__codelineno-0-324" name="__codelineno-0-324"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="o">.</span><span class="n">Image</span><span class="p">:</span>
-</span><span id="__span-0-325"><a id="__codelineno-0-325" name="__codelineno-0-325"></a><span class="w">    </span><span class="sd">"""Draws the raster on top of an image. This operation is not done in-place</span>
+</span><span id="__span-0-325"><a id="__codelineno-0-325" name="__codelineno-0-325"></a><span class="w">    </span><span class="sd">"""Draws the raster on top of an image. This operation is not done in place.</span>
 </span><span id="__span-0-326"><a id="__codelineno-0-326" name="__codelineno-0-326"></a>
 </span><span id="__span-0-327"><a id="__codelineno-0-327" name="__codelineno-0-327"></a><span class="sd">    Parameters</span>
 </span><span id="__span-0-328"><a id="__codelineno-0-328" name="__codelineno-0-328"></a><span class="sd">    ----------</span>

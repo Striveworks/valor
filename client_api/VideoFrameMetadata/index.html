@@ -564,7 +564,7 @@
 </span><span id="__span-0-144"><a id="__codelineno-0-144" name="__codelineno-0-144"></a>    <span class="nd">@staticmethod</span>
 </span><span id="__span-0-145"><a id="__codelineno-0-145" name="__codelineno-0-145"></a>    <span class="k">def</span> <span class="nf">valid</span><span class="p">(</span><span class="n">datum</span><span class="p">:</span> <span class="n">Datum</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
 </span><span id="__span-0-146"><a id="__codelineno-0-146" name="__codelineno-0-146"></a><span class="w">        </span><span class="sd">"""</span>
-</span><span id="__span-0-147"><a id="__codelineno-0-147" name="__codelineno-0-147"></a><span class="sd">        Asserts wehether the `Datum's` height and width is a valid subset of the image's height and width.</span>
+</span><span id="__span-0-147"><a id="__codelineno-0-147" name="__codelineno-0-147"></a><span class="sd">        Asserts whether the `Datum's` height and width is a valid subset of the image's height and width.</span>
 </span><span id="__span-0-148"><a id="__codelineno-0-148" name="__codelineno-0-148"></a>
 </span><span id="__span-0-149"><a id="__codelineno-0-149" name="__codelineno-0-149"></a><span class="sd">        Parameters</span>
 </span><span id="__span-0-150"><a id="__codelineno-0-150" name="__codelineno-0-150"></a><span class="sd">        ----------</span>
@@ -576,7 +576,7 @@
 </span><span id="__span-0-156"><a id="__codelineno-0-156" name="__codelineno-0-156"></a>    <span class="nd">@classmethod</span>
 </span><span id="__span-0-157"><a id="__codelineno-0-157" name="__codelineno-0-157"></a>    <span class="k">def</span> <span class="nf">from_datum</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">datum</span><span class="p">:</span> <span class="n">Datum</span><span class="p">):</span>
 </span><span id="__span-0-158"><a id="__codelineno-0-158" name="__codelineno-0-158"></a><span class="w">        </span><span class="sd">"""</span>
-</span><span id="__span-0-159"><a id="__codelineno-0-159" name="__codelineno-0-159"></a><span class="sd">        Creates an `VideoFrameMetadata` object from a `Datum`.</span>
+</span><span id="__span-0-159"><a id="__codelineno-0-159" name="__codelineno-0-159"></a><span class="sd">        Creates a `VideoFrameMetadata` object from a `Datum`.</span>
 </span><span id="__span-0-160"><a id="__codelineno-0-160" name="__codelineno-0-160"></a>
 </span><span id="__span-0-161"><a id="__codelineno-0-161" name="__codelineno-0-161"></a><span class="sd">        Parameters</span>
 </span><span id="__span-0-162"><a id="__codelineno-0-162" name="__codelineno-0-162"></a><span class="sd">        ----------</span>
@@ -596,7 +596,7 @@
 </span><span id="__span-0-176"><a id="__codelineno-0-176" name="__codelineno-0-176"></a>
 </span><span id="__span-0-177"><a id="__codelineno-0-177" name="__codelineno-0-177"></a>    <span class="k">def</span> <span class="nf">to_datum</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Datum</span><span class="p">:</span>
 </span><span id="__span-0-178"><a id="__codelineno-0-178" name="__codelineno-0-178"></a><span class="w">        </span><span class="sd">"""</span>
-</span><span id="__span-0-179"><a id="__codelineno-0-179" name="__codelineno-0-179"></a><span class="sd">        Converts an `VideoFrameMetadata` object into a `Datum`.</span>
+</span><span id="__span-0-179"><a id="__codelineno-0-179" name="__codelineno-0-179"></a><span class="sd">        Converts a `VideoFrameMetadata` object into a `Datum`.</span>
 </span><span id="__span-0-180"><a id="__codelineno-0-180" name="__codelineno-0-180"></a><span class="sd">        """</span>
 </span><span id="__span-0-181"><a id="__codelineno-0-181" name="__codelineno-0-181"></a>        <span class="n">datum</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">to_datum</span><span class="p">()</span>
 </span><span id="__span-0-182"><a id="__codelineno-0-182" name="__codelineno-0-182"></a>        <span class="n">datum</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s2">"frame"</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span>
@@ -613,7 +613,7 @@
 </span>
 </h3>
 <div class="doc doc-contents">
-<p>Creates an <code>VideoFrameMetadata</code> object from a <code>Datum</code>.</p>
+<p>Creates a <code>VideoFrameMetadata</code> object from a <code>Datum</code>.</p>
 <p><strong>Parameters:</strong></p>
 <table>
 <thead>
@@ -665,7 +665,7 @@
 <span class="normal"><a href="#__codelineno-0-175">175</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-156"><a id="__codelineno-0-156" name="__codelineno-0-156"></a><span class="nd">@classmethod</span>
 </span><span id="__span-0-157"><a id="__codelineno-0-157" name="__codelineno-0-157"></a><span class="k">def</span> <span class="nf">from_datum</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">datum</span><span class="p">:</span> <span class="n">Datum</span><span class="p">):</span>
 </span><span id="__span-0-158"><a id="__codelineno-0-158" name="__codelineno-0-158"></a><span class="w">    </span><span class="sd">"""</span>
-</span><span id="__span-0-159"><a id="__codelineno-0-159" name="__codelineno-0-159"></a><span class="sd">    Creates an `VideoFrameMetadata` object from a `Datum`.</span>
+</span><span id="__span-0-159"><a id="__codelineno-0-159" name="__codelineno-0-159"></a><span class="sd">    Creates a `VideoFrameMetadata` object from a `Datum`.</span>
 </span><span id="__span-0-160"><a id="__codelineno-0-160" name="__codelineno-0-160"></a>
 </span><span id="__span-0-161"><a id="__codelineno-0-161" name="__codelineno-0-161"></a><span class="sd">    Parameters</span>
 </span><span id="__span-0-162"><a id="__codelineno-0-162" name="__codelineno-0-162"></a><span class="sd">    ----------</span>
@@ -691,7 +691,7 @@
 <code class="highlight language-python"><span class="n">valor</span><span class="o">.</span><span class="n">metatypes</span><span class="o">.</span><span class="n">VideoFrameMetadata</span><span class="o">.</span><span class="n">to_datum</span><span class="p">()</span></code>
 </h3>
 <div class="doc doc-contents">
-<p>Converts an <code>VideoFrameMetadata</code> object into a <code>Datum</code>.</p>
+<p>Converts a <code>VideoFrameMetadata</code> object into a <code>Datum</code>.</p>
 <details class="quote">
 <summary>Source code in <code>valor/metatypes.py</code></summary>
 <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-177">177</a></span>
@@ -702,7 +702,7 @@
 <span class="normal"><a href="#__codelineno-0-182">182</a></span>
 <span class="normal"><a href="#__codelineno-0-183">183</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-177"><a id="__codelineno-0-177" name="__codelineno-0-177"></a><span class="k">def</span> <span class="nf">to_datum</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Datum</span><span class="p">:</span>
 </span><span id="__span-0-178"><a id="__codelineno-0-178" name="__codelineno-0-178"></a><span class="w">    </span><span class="sd">"""</span>
-</span><span id="__span-0-179"><a id="__codelineno-0-179" name="__codelineno-0-179"></a><span class="sd">    Converts an `VideoFrameMetadata` object into a `Datum`.</span>
+</span><span id="__span-0-179"><a id="__codelineno-0-179" name="__codelineno-0-179"></a><span class="sd">    Converts a `VideoFrameMetadata` object into a `Datum`.</span>
 </span><span id="__span-0-180"><a id="__codelineno-0-180" name="__codelineno-0-180"></a><span class="sd">    """</span>
 </span><span id="__span-0-181"><a id="__codelineno-0-181" name="__codelineno-0-181"></a>    <span class="n">datum</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">to_datum</span><span class="p">()</span>
 </span><span id="__span-0-182"><a id="__codelineno-0-182" name="__codelineno-0-182"></a>    <span class="n">datum</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s2">"frame"</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span>
@@ -719,7 +719,7 @@
 </span>
 </h3>
 <div class="doc doc-contents">
-<p>Asserts wehether the <code>Datum's</code> height and width is a valid subset of the image's height and width.</p>
+<p>Asserts whether the <code>Datum's</code> height and width is a valid subset of the image's height and width.</p>
 <p><strong>Parameters:</strong></p>
 <table>
 <thead>
@@ -762,7 +762,7 @@
 <span class="normal"><a href="#__codelineno-0-154">154</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-144"><a id="__codelineno-0-144" name="__codelineno-0-144"></a><span class="nd">@staticmethod</span>
 </span><span id="__span-0-145"><a id="__codelineno-0-145" name="__codelineno-0-145"></a><span class="k">def</span> <span class="nf">valid</span><span class="p">(</span><span class="n">datum</span><span class="p">:</span> <span class="n">Datum</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
 </span><span id="__span-0-146"><a id="__codelineno-0-146" name="__codelineno-0-146"></a><span class="w">    </span><span class="sd">"""</span>
-</span><span id="__span-0-147"><a id="__codelineno-0-147" name="__codelineno-0-147"></a><span class="sd">    Asserts wehether the `Datum's` height and width is a valid subset of the image's height and width.</span>
+</span><span id="__span-0-147"><a id="__codelineno-0-147" name="__codelineno-0-147"></a><span class="sd">    Asserts whether the `Datum's` height and width is a valid subset of the image's height and width.</span>
 </span><span id="__span-0-148"><a id="__codelineno-0-148" name="__codelineno-0-148"></a>
 </span><span id="__span-0-149"><a id="__codelineno-0-149" name="__codelineno-0-149"></a><span class="sd">    Parameters</span>
 </span><span id="__span-0-150"><a id="__codelineno-0-150" name="__codelineno-0-150"></a><span class="sd">    ----------</span>

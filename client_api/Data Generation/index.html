@@ -432,7 +432,7 @@
 <code class="highlight language-python"><span class="n">valor</span><span class="o">.</span><span class="n">data_generation</span><span class="o">.</span><span class="n">generate_prediction_data</span><span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="n">dataset</span><span class="p">,</span> <span class="n">model_name</span><span class="p">,</span> <span class="n">n_annotations</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">n_labels</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span></code>
 </h3>
 <div class="doc doc-contents">
-<p>Generate an arbitrary number of predictions for a previously-generated dataset.</p>
+<p>Generate an arbitrary number of predictions for a previously generated dataset.</p>
 <p><strong>Parameters:</strong></p>
 <table>
 <thead>
@@ -451,7 +451,18 @@
 </td>
 <td>
 <div class="doc-md-description">
-<p>The Client object used to access your valor instance.</p>
+</div>
+</td>
+<td>
+<em>required</em>
+</td>
+</tr>
+<tr>
+<td><code>The</code></td>
+<td>
+</td>
+<td>
+<div class="doc-md-description">
 </div>
 </td>
 <td>
@@ -566,12 +577,12 @@
 </span><span id="__span-0-252"><a id="__codelineno-0-252" name="__codelineno-0-252"></a>    <span class="n">n_labels</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
 </span><span id="__span-0-253"><a id="__codelineno-0-253" name="__codelineno-0-253"></a><span class="p">):</span>
 </span><span id="__span-0-254"><a id="__codelineno-0-254" name="__codelineno-0-254"></a><span class="w">    </span><span class="sd">"""</span>
-</span><span id="__span-0-255"><a id="__codelineno-0-255" name="__codelineno-0-255"></a><span class="sd">    Generate an arbitrary number of predictions for a previously-generated dataset.</span>
+</span><span id="__span-0-255"><a id="__codelineno-0-255" name="__codelineno-0-255"></a><span class="sd">    Generate an arbitrary number of predictions for a previously generated dataset.</span>
 </span><span id="__span-0-256"><a id="__codelineno-0-256" name="__codelineno-0-256"></a>
 </span><span id="__span-0-257"><a id="__codelineno-0-257" name="__codelineno-0-257"></a><span class="sd">    Parameters</span>
 </span><span id="__span-0-258"><a id="__codelineno-0-258" name="__codelineno-0-258"></a><span class="sd">    ----------</span>
 </span><span id="__span-0-259"><a id="__codelineno-0-259" name="__codelineno-0-259"></a><span class="sd">    client : Session</span>
-</span><span id="__span-0-260"><a id="__codelineno-0-260" name="__codelineno-0-260"></a><span class="sd">        The Client object used to access your valor instance.</span>
+</span><span id="__span-0-260"><a id="__codelineno-0-260" name="__codelineno-0-260"></a><span class="sd">    The Client object used to access your Valor instance.</span>
 </span><span id="__span-0-261"><a id="__codelineno-0-261" name="__codelineno-0-261"></a><span class="sd">    dataset : Dataset</span>
 </span><span id="__span-0-262"><a id="__codelineno-0-262" name="__codelineno-0-262"></a><span class="sd">        The dataset object to create predictions for.</span>
 </span><span id="__span-0-263"><a id="__codelineno-0-263" name="__codelineno-0-263"></a><span class="sd">    model_name : str</span>
@@ -608,7 +619,7 @@
 <code class="highlight language-python"><span class="n">valor</span><span class="o">.</span><span class="n">data_generation</span><span class="o">.</span><span class="n">generate_segmentation_data</span><span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="n">dataset_name</span><span class="p">,</span> <span class="n">n_images</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">n_annotations</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">n_labels</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span></code>
 </h3>
 <div class="doc doc-contents">
-<p>Generate a synthetic valor dataset given a set of input images.</p>
+<p>Generate a synthetic Valor dataset given a set of input images.</p>
 <p><strong>Parameters:</strong></p>
 <table>
 <thead>
@@ -641,7 +652,7 @@
 </td>
 <td>
 <div class="doc-md-description">
-<p>The name of the dataset you want to generate in valor.</p>
+<p>The name of the dataset you want to generate in Valor.</p>
 </div>
 </td>
 <td>
@@ -740,14 +751,14 @@
 </span><span id="__span-0-211"><a id="__codelineno-0-211" name="__codelineno-0-211"></a>    <span class="n">n_labels</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
 </span><span id="__span-0-212"><a id="__codelineno-0-212" name="__codelineno-0-212"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dataset</span><span class="p">:</span>
 </span><span id="__span-0-213"><a id="__codelineno-0-213" name="__codelineno-0-213"></a><span class="w">    </span><span class="sd">"""</span>
-</span><span id="__span-0-214"><a id="__codelineno-0-214" name="__codelineno-0-214"></a><span class="sd">    Generate a synthetic valor dataset given a set of input images.</span>
+</span><span id="__span-0-214"><a id="__codelineno-0-214" name="__codelineno-0-214"></a><span class="sd">    Generate a synthetic Valor dataset given a set of input images.</span>
 </span><span id="__span-0-215"><a id="__codelineno-0-215" name="__codelineno-0-215"></a>
 </span><span id="__span-0-216"><a id="__codelineno-0-216" name="__codelineno-0-216"></a><span class="sd">    Parameters</span>
 </span><span id="__span-0-217"><a id="__codelineno-0-217" name="__codelineno-0-217"></a><span class="sd">    ----------</span>
 </span><span id="__span-0-218"><a id="__codelineno-0-218" name="__codelineno-0-218"></a><span class="sd">    client : Session</span>
 </span><span id="__span-0-219"><a id="__codelineno-0-219" name="__codelineno-0-219"></a><span class="sd">        The Client object used to access your valor instance.</span>
 </span><span id="__span-0-220"><a id="__codelineno-0-220" name="__codelineno-0-220"></a><span class="sd">    dataset_name : str</span>
-</span><span id="__span-0-221"><a id="__codelineno-0-221" name="__codelineno-0-221"></a><span class="sd">        The name of the dataset you want to generate in valor.</span>
+</span><span id="__span-0-221"><a id="__codelineno-0-221" name="__codelineno-0-221"></a><span class="sd">        The name of the dataset you want to generate in Valor.</span>
 </span><span id="__span-0-222"><a id="__codelineno-0-222" name="__codelineno-0-222"></a><span class="sd">    n_images : int</span>
 </span><span id="__span-0-223"><a id="__codelineno-0-223" name="__codelineno-0-223"></a><span class="sd">        The number of images you'd like your dataset to contain.</span>
 </span><span id="__span-0-224"><a id="__codelineno-0-224" name="__codelineno-0-224"></a><span class="sd">    n_annotations : int</span>
