@@ -211,14 +211,14 @@ def generate_segmentation_data(
     n_labels: int = 2,
 ) -> Dataset:
     """
-    Generate a synthetic valor dataset given a set of input images.
+    Generate a synthetic Valor dataset given a set of input images.
 
     Parameters
     ----------
     client : Session
         The Client object used to access your valor instance.
     dataset_name : str
-        The name of the dataset you want to generate in valor.
+        The name of the dataset you want to generate in Valor.
     n_images : int
         The number of images you'd like your dataset to contain.
     n_annotations : int
@@ -252,12 +252,12 @@ def generate_prediction_data(
     n_labels: int = 2,
 ):
     """
-    Generate an arbitrary number of predictions for a previously-generated dataset.
+    Generate an arbitrary number of predictions for a previously generated dataset.
 
     Parameters
     ----------
     client : Session
-        The Client object used to access your valor instance.
+    The Client object used to access your Valor instance.
     dataset : Dataset
         The dataset object to create predictions for.
     model_name : str

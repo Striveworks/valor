@@ -99,7 +99,7 @@ class BasicPolygon:
     Raises
     ------
     TypeError
-        If `points` is not a list or an element in `points` is not a `Point`.
+        If `points` is not a list, or an element in `points` is not a `Point`.
     ValueError
         If the number of unique points in `points` is less than 3,
         making the BasicPolygon invalid.
@@ -191,7 +191,7 @@ class Polygon:
     ------
     TypeError
         If `boundary` is not a `BasicPolygon` or cannot be converted to one.
-        If `holes` is not a list or an element in `holes` is not a `BasicPolygon`.
+        If `holes` is not a list, or an element in `holes` is not a `BasicPolygon`.
 
     Examples
     --------
@@ -359,7 +359,7 @@ class MultiPolygon:
     Raises
     ------
     TypeError
-        If `polygons` is not a list or an element in `polygons` is not a `Polygon`.
+        If `polygons` is not a list, or an element in `polygons` is not a `Polygon`.
 
     Examples
     --------

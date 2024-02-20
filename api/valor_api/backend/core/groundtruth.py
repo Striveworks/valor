@@ -18,7 +18,7 @@ def create_groundtruth(
     db : Session
         The database Session to query against.
     groundtruth: schemas.GroundTruth
-        The groundtruth to create.
+        The ground truth to create.
     """
     # check dataset status
     if (

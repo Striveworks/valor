@@ -160,7 +160,7 @@ class Datum(BaseModel):
 
     def __eq__(self, other):
         """
-        Defines how `Datums` are compared to one another
+        Defines how `Datums` are compared to one another.
 
         Parameters
         ----------
@@ -244,7 +244,7 @@ def _check_semantic_segmentations_single_label(
 
 class GroundTruth(BaseModel):
     """
-    An object describing a groundtruth (e.g., a human-drawn bounding box on an image).
+    An object describing a ground truth (e.g., a human-drawn bounding box on an image).
 
     Attributes
     ----------

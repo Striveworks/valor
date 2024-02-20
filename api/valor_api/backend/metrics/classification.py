@@ -558,7 +558,7 @@ def _compute_clf_metrics(
     groundtruth_filter : schemas.Filter
         The filter to be used to query groundtruths.
     label_map: LabelMapType, optional
-        Optional mapping of individual Labels to a grouper Label. Useful when you need to evaluate performance using Labels that differ across datasets and models.
+        Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
 
     Returns
     ----------

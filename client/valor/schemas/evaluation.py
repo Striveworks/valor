@@ -17,7 +17,7 @@ class EvaluationParameters:
     iou_thresholds_to_return: Optional[List[float]]
         A list of floats describing which Intersection over Union (IoUs) thresholds to calculate a metric for. Must be a subset of `iou_thresholds_to_compute`.
     label_map: Optional[List[List[List[str]]]]
-        Optional mapping of individual Labels to a grouper Label. Useful when you need to evaluate performance using Labels that differ across datasets and models.
+        Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
     """
 
     task_type: TaskType
