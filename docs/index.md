@@ -13,7 +13,7 @@ These docs are organized as follows:
 - **[Metrics](https://striveworks.github.io/valor/metrics)**: Describes all of the metrics that you can calculate using Valor.
 - **[Endpoints](endpoints.md)**: Documents Valor's various API endpoints.
 - **[Technical Concepts](technical_concepts.md)**: Describes the technical concepts that underpin Valor.
-- **[Contributing and Development](getting_started.md)**: Explains how you can build on and contribute to Valor.
+- **[Contributing and Development](contributing.md)**: Explains how you can build on and contribute to Valor.
 - **[Python Client API](client_api/Client.md)**: Shares reference documentation for our Python client.
 
 # Overview
