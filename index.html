@@ -5,7 +5,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width,initial-scale=1" name="viewport"/>
-<link href="getting_started/" rel="next"/>
+<link href="installation/" rel="next"/>
 <link href="assets/images/favicon.png" rel="icon"/>
 <meta content="mkdocs-1.5.3, mkdocs-material-9.5.10" name="generator"/>
 <title>Valor</title>
@@ -127,16 +127,23 @@
 </a>
 </li>
 <li class="md-nav__item">
-<a class="md-nav__link" href="https://github.com/Striveworks/valor/blob/main/examples/getting_started.ipynb">
+<a class="md-nav__link" href="installation/">
 <span class="md-ellipsis">
-    Sample Notebook
+    Installation
   </span>
 </a>
 </li>
 <li class="md-nav__item">
-<a class="md-nav__link" href="getting_started/">
+<a class="md-nav__link" href="basic_usage/">
 <span class="md-ellipsis">
-    Getting Started
+    Basic Usage
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="https://github.com/Striveworks/valor/blob/main/examples/">
+<span class="md-ellipsis">
+    Sample Notebooks
   </span>
 </a>
 </li>
@@ -176,15 +183,15 @@
 </a>
 </li>
 <li class="md-nav__item md-nav__item--nested">
-<input class="md-nav__toggle md-toggle md-toggle--indeterminate" id="__nav_9" type="checkbox"/>
-<label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+<input class="md-nav__toggle md-toggle md-toggle--indeterminate" id="__nav_10" type="checkbox"/>
+<label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="0">
 <span class="md-ellipsis">
     Python Client API
   </span>
 <span class="md-nav__icon md-icon"></span>
 </label>
-<nav aria-expanded="false" aria-labelledby="__nav_9_label" class="md-nav" data-md-level="1">
-<label class="md-nav__title" for="__nav_9">
+<nav aria-expanded="false" aria-labelledby="__nav_10_label" class="md-nav" data-md-level="1">
+<label class="md-nav__title" for="__nav_10">
 <span class="md-nav__icon md-icon"></span>
             Python Client API
           </label>
@@ -281,15 +288,15 @@
 </a>
 </li>
 <li class="md-nav__item md-nav__item--nested">
-<input class="md-nav__toggle md-toggle md-toggle--indeterminate" id="__nav_9_14" type="checkbox"/>
-<label class="md-nav__link" for="__nav_9_14" id="__nav_9_14_label" tabindex="0">
+<input class="md-nav__toggle md-toggle md-toggle--indeterminate" id="__nav_10_14" type="checkbox"/>
+<label class="md-nav__link" for="__nav_10_14" id="__nav_10_14_label" tabindex="0">
 <span class="md-ellipsis">
     Schemas
   </span>
 <span class="md-nav__icon md-icon"></span>
 </label>
-<nav aria-expanded="false" aria-labelledby="__nav_9_14_label" class="md-nav" data-md-level="2">
-<label class="md-nav__title" for="__nav_9_14">
+<nav aria-expanded="false" aria-labelledby="__nav_10_14_label" class="md-nav" data-md-level="2">
+<label class="md-nav__title" for="__nav_10_14">
 <span class="md-nav__icon md-icon"></span>
             Schemas
           </label>
@@ -337,13 +344,14 @@
 <div class="md-content" data-md-component="content">
 <article class="md-content__inner md-typeset">
 <h1 id="introduction">Introduction</h1>
-<p>Valor is a centralized evaluation store that makes it easy to measure, explore, and rank model performance. Valor empowers data scientists and engineers to evaluate the performance of their machine learning pipelines and use those evaluations to make better modeling decisions in the future. <a href="https://github.com/Striveworks/valor/blob/main/examples/getting_started.ipynb">Click here</a> to skip this textual introduction and dive right into our sample notebook.</p>
+<p>Valor is a centralized evaluation store that makes it easy to measure, explore, and rank model performance. Valor empowers data scientists and engineers to evaluate the performance of their machine learning pipelines and use those evaluations to make better modeling decisions in the future. To skip this textual introduction and dive right in, first go <a href="getting_started.md">here</a> for instructions to setup the velour service, and then checkout the <a href="https://github.com/Striveworks/valor/blob/main/examples/">sample notebooks</a>.</p>
 <p>Valor is maintained by Striveworks, a cutting-edge machine learning operations (MLOps) company based out of Austin, Texas. We'd love to learn more about your interest in Valor and answer any questions you may have; please don't hesitate to reach out to us on <a href="https://striveworks-public.slack.com/join/shared_invite/zt-1a0jx768y-2J1fffN~b4fXYM8GecvOhA#/shared-invite/email">Slack</a> or <a href="https://github.com/striveworks/valor">GitHub</a>.</p>
 <p>These docs are organized as follows:</p>
 <ul>
 <li><strong><a href="./">Overview</a></strong> (this page): Provides an overview of what Valor is, why it's important, and how it works.</li>
-<li><strong><a href="https://github.com/Striveworks/valor/blob/main/examples/getting_started.ipynb">Sample Notebook</a></strong>: Illustrates how to evaluate model performance using Valor in a descriptive Jupyter notebook.</li>
-<li><strong><a href="getting_started/">Getting Started</a></strong>: Details everything you need to get up and running with Valor.</li>
+<li><strong><a href="installation/">Installation</a></strong>: Explains how to install Valor.</li>
+<li><strong><a href="basic_usage/">Basic Usage</a></strong>: Details everything you need to get up and running with using Valor.</li>
+<li><strong><a href="https://github.com/Striveworks/valor/blob/main/examples/">Sample Notebooks</a></strong>: Collection of descriptive Jupyter notebooks giving examples of how to evaluate model performance using Valor.</li>
 <li><strong><a href="metadata_and_filtering/">Metadata and Filtering</a></strong>: Describes Valor's robust support for adding metadata to data, along with how to filter evaluations and Valor objects based on metadata and other attributes.</li>
 <li><strong><a href="https://striveworks.github.io/valor/metrics">Metrics</a></strong>: Describes all of the metrics that you can calculate using Valor.</li>
 <li><strong><a href="endpoints/">Endpoints</a></strong>: Documents Valor's various API endpoints.</li>
@@ -382,7 +390,7 @@
 <p>Finally, once all of our previous pipeline runs and evaluations are stored in Valor, we can use Valor’s API to specify our exact filter criteria and get back its model rankings. In this case, we can ask Valor to find us the best model for detecting forest fires at night in a 50 mile radius around (42.36, -71.03), sorted by mAP. Valor will then filter all of our stored evaluation metrics, rank each model with evaluations that meet our criteria, and send back all relevant evaluation metrics to help us determine which model to use for our new modeling pipeline.</p>
 <p><img alt="A satellite image of forest fires." src="static/example_2.png"/></p>
 <h1 id="next-steps">Next Steps</h1>
-<p>To get started with Valor, we'd recommend reviewing our <a href="https://github.com/Striveworks/valor/blob/main/examples/getting_started.ipynb">sample notebooks</a> or reading our <a href="getting_started/">Getting Started docs</a>. For more detailed explanations of Valor's technical underpinnings, see our <a href="technical_concepts/">technical concepts guide</a>.</p>
+<p>To get started with Valor, we'd recommend reviewing our <a href="https://github.com/Striveworks/valor/blob/main/examples/getting_started.ipynb">sample notebooks</a> or reading our <a href="getting_started.md">Getting Started docs</a>. For more detailed explanations of Valor's technical underpinnings, see our <a href="technical_concepts/">technical concepts guide</a>.</p>
 <h1 id="faq">FAQ</h1>
 <p><strong>Q. What is Valor?</strong></p>
 <p><strong>A.</strong> Valor is a centralized evaluation store which makes it easy to measure, explore, and rank model performance. For an overview of what Valor is and why it's important, please refer to our <a href="./">high-level overview</a>.</p>
