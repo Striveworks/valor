@@ -175,9 +175,9 @@
 </a>
 </li>
 <li class="md-nav__item">
-<a class="md-nav__link" href="#pass-your-groundtruths-into-valor">
+<a class="md-nav__link" href="#pass-your-ground-truths-into-valor">
 <span class="md-ellipsis">
-      Pass your groundtruths into Valor
+      Pass your ground truths into Valor
     </span>
 </a>
 </li>
@@ -440,9 +440,9 @@
 </a>
 </li>
 <li class="md-nav__item">
-<a class="md-nav__link" href="#pass-your-groundtruths-into-valor">
+<a class="md-nav__link" href="#pass-your-ground-truths-into-valor">
 <span class="md-ellipsis">
-      Pass your groundtruths into Valor
+      Pass your ground truths into Valor
     </span>
 </a>
 </li>
@@ -489,7 +489,7 @@
 <p>On this page, we'll describe the basic usage of Valor. For how to install velour, please see our <a href="../installation/">installation guide</a>.</p>
 <p>There are two ways to access Valor: by leveraging our Python client (the typical way users of Valor will interact with the service), or by calling our REST endpoints directly (e.g. for integrating Valor into other services). This guide covers the former way of interacting with Valor. For the latter, please see our <a href="../endpoints/">API endpoints documentation</a>.</p>
 <h2 id="using-the-python-client">Using the Python client</h2>
-<p>Let's walk through a hypothetical example where we're trying to classify dogs and cats in a series of images. Note that all of the code below is pseudo-code for clarity; please see our <a href="https://github.com/Striveworks/valor/blob/main/examples/getting_started.ipynb">"Getting Started"</a> notebook for a working example.</p>
+<p>Let's walk through a hypothetical example where we're trying to classify dogs and cats in a series of images. Note that all of the code below is pseudo-code for clarity; please see our <a href="https://github.com/Striveworks/valor/blob/main/examples/getting_started.ipynb">Getting Started</a> notebook for a working example.</p>
 <h3 id="import-dependencies">Import dependencies</h3>
 <p>Import basic objects directly from the client module using:</p>
 <div class="language-py highlight"><pre><span></span><code><span id="__span-0-1"><a href="#__codelineno-0-1" id="__codelineno-0-1" name="__codelineno-0-1"></a><span class="kn">from</span> <span class="nn">valor</span> <span class="kn">import</span> <span class="p">(</span>
@@ -512,12 +512,12 @@
 </span><span id="__span-0-18"><a href="#__codelineno-0-18" id="__codelineno-0-18" name="__codelineno-0-18"></a><span class="kn">from</span> <span class="nn">valor.enums</span> <span class="kn">import</span> <span class="n">TaskType</span>
 </span></code></pre></div>
 <h3 id="connect-to-the-client">Connect to the Client</h3>
-<p>The <code>valor.Client</code> class gives an object that is used to communicate with the <code>valor</code> backend.</p>
+<p>The <code>valor.Client</code> class gives an object that is used to communicate with the <code>valor</code> back end.</p>
 <div class="language-py highlight"><pre><span></span><code><span id="__span-1-1"><a href="#__codelineno-1-1" id="__codelineno-1-1" name="__codelineno-1-1"></a><span class="n">connect</span><span class="p">(</span><span class="s2">"http://0.0.0.0:8000"</span><span class="p">)</span>
 </span><span id="__span-1-2"><a href="#__codelineno-1-2" id="__codelineno-1-2" name="__codelineno-1-2"></a><span class="n">client</span> <span class="o">=</span> <span class="n">Client</span><span class="p">()</span>
 </span></code></pre></div>
 <p>In the event that the host uses authentication, the argument <code>access_token</code> should also be passed to <code>Client</code>.</p>
-<h3 id="pass-your-groundtruths-into-valor">Pass your groundtruths into Valor</h3>
+<h3 id="pass-your-ground-truths-into-valor">Pass your ground truths into Valor</h3>
 <p>First, we define our <code>Dataset</code> object using <code>Dataset.create()</code>.</p>
 <div class="language-py highlight"><pre><span></span><code><span id="__span-2-1"><a href="#__codelineno-2-1" id="__codelineno-2-1" name="__codelineno-2-1"></a><span class="n">dataset</span> <span class="o">=</span> <span class="n">Dataset</span><span class="p">(</span>
 </span><span id="__span-2-2"><a href="#__codelineno-2-2" id="__codelineno-2-2" name="__codelineno-2-2"></a>    <span class="n">client</span><span class="o">=</span><span class="n">client</span><span class="p">,</span>
@@ -544,9 +544,9 @@
 </span><span id="__span-3-11"><a href="#__codelineno-3-11" id="__codelineno-3-11" name="__codelineno-3-11"></a><span class="k">for</span> <span class="n">image</span> <span class="ow">in</span> <span class="n">groundtruth_annotations</span><span class="p">:</span>
 </span><span id="__span-3-12"><a href="#__codelineno-3-12" id="__codelineno-3-12" name="__codelineno-3-12"></a>
 </span><span id="__span-3-13"><a href="#__codelineno-3-13" id="__codelineno-3-13" name="__codelineno-3-13"></a>    <span class="c1"># each image is represented by a Valor Datum.</span>
-</span><span id="__span-3-14"><a href="#__codelineno-3-14" id="__codelineno-3-14" name="__codelineno-3-14"></a>    <span class="c1"># this is used to connect groundtruths and predictions when it's time for evaluation.</span>
+</span><span id="__span-3-14"><a href="#__codelineno-3-14" id="__codelineno-3-14" name="__codelineno-3-14"></a>    <span class="c1"># this is used to connect ground truths and predictions when it's time for evaluation.</span>
 </span><span id="__span-3-15"><a href="#__codelineno-3-15" id="__codelineno-3-15" name="__codelineno-3-15"></a>    <span class="n">datum</span> <span class="o">=</span> <span class="n">Datum</span><span class="p">(</span>
-</span><span id="__span-3-16"><a href="#__codelineno-3-16" id="__codelineno-3-16" name="__codelineno-3-16"></a>        <span class="n">uid</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="n">image</span><span class="p">[</span><span class="s2">"path"</span><span class="p">])</span><span class="o">.</span><span class="n">stem</span><span class="p">,</span> <span class="c1"># strip the filename for use as Datum uid.</span>
+</span><span id="__span-3-16"><a href="#__codelineno-3-16" id="__codelineno-3-16" name="__codelineno-3-16"></a>        <span class="n">uid</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="n">image</span><span class="p">[</span><span class="s2">"path"</span><span class="p">])</span><span class="o">.</span><span class="n">stem</span><span class="p">,</span> <span class="c1"># strip the filename for use as Datum UID.</span>
 </span><span id="__span-3-17"><a href="#__codelineno-3-17" id="__codelineno-3-17" name="__codelineno-3-17"></a>        <span class="n">metadata</span><span class="o">=</span><span class="p">{</span>
 </span><span id="__span-3-18"><a href="#__codelineno-3-18" id="__codelineno-3-18" name="__codelineno-3-18"></a>            <span class="s2">"path"</span><span class="p">:</span> <span class="n">image</span><span class="p">[</span><span class="s2">"path"</span><span class="p">],</span>  <span class="c1"># store the path in metadata</span>
 </span><span id="__span-3-19"><a href="#__codelineno-3-19" id="__codelineno-3-19" name="__codelineno-3-19"></a>        <span class="p">}</span>
@@ -577,7 +577,7 @@
 </span><span id="__span-3-44"><a href="#__codelineno-3-44" id="__codelineno-3-44" name="__codelineno-3-44"></a>    <span class="c1"># add it to your dataset</span>
 </span><span id="__span-3-45"><a href="#__codelineno-3-45" id="__codelineno-3-45" name="__codelineno-3-45"></a>    <span class="n">dataset</span><span class="o">.</span><span class="n">add_groundtruth</span><span class="p">(</span><span class="n">groundtruth</span><span class="p">)</span>
 </span><span id="__span-3-46"><a href="#__codelineno-3-46" id="__codelineno-3-46" name="__codelineno-3-46"></a>
-</span><span id="__span-3-47"><a href="#__codelineno-3-47" id="__codelineno-3-47" name="__codelineno-3-47"></a><span class="c1"># now that we've added all our groundtruths, we can finalize our dataset for evaluation</span>
+</span><span id="__span-3-47"><a href="#__codelineno-3-47" id="__codelineno-3-47" name="__codelineno-3-47"></a><span class="c1"># now that we've added all our ground truths, we can finalize our dataset for evaluation</span>
 </span><span id="__span-3-48"><a href="#__codelineno-3-48" id="__codelineno-3-48" name="__codelineno-3-48"></a><span class="n">dataset</span><span class="o">.</span><span class="n">finalize</span><span class="p">()</span>
 </span></code></pre></div>
 <h3 id="pass-your-predictions-into-valor">Pass your predictions into Valor</h3>
@@ -625,7 +625,7 @@
 </span><span id="__span-5-29"><a href="#__codelineno-5-29" id="__codelineno-5-29" name="__codelineno-5-29"></a>        <span class="n">annotations</span><span class="o">=</span><span class="n">annotations</span><span class="p">,</span>
 </span><span id="__span-5-30"><a href="#__codelineno-5-30" id="__codelineno-5-30" name="__codelineno-5-30"></a>    <span class="p">)</span>
 </span><span id="__span-5-31"><a href="#__codelineno-5-31" id="__codelineno-5-31" name="__codelineno-5-31"></a>
-</span><span id="__span-5-32"><a href="#__codelineno-5-32" id="__codelineno-5-32" name="__codelineno-5-32"></a><span class="c1"># let's represent the simulated model output in a similar format to the groundtruths:</span>
+</span><span id="__span-5-32"><a href="#__codelineno-5-32" id="__codelineno-5-32" name="__codelineno-5-32"></a><span class="c1"># let's represent the simulated model output in a similar format to the ground truths:</span>
 </span><span id="__span-5-33"><a href="#__codelineno-5-33" id="__codelineno-5-33" name="__codelineno-5-33"></a><span class="n">object_detections</span> <span class="o">=</span> <span class="p">[</span>
 </span><span id="__span-5-34"><a href="#__codelineno-5-34" id="__codelineno-5-34" name="__codelineno-5-34"></a>    <span class="p">{</span><span class="s2">"path"</span><span class="p">:</span> <span class="s2">"a/b/c/img3.png"</span><span class="p">,</span> <span class="s2">"annotations"</span><span class="p">:</span> <span class="p">[</span>
 </span><span id="__span-5-35"><a href="#__codelineno-5-35" id="__codelineno-5-35" name="__codelineno-5-35"></a>        <span class="p">{</span><span class="s2">"labels"</span><span class="p">:</span> <span class="p">[{</span><span class="s2">"class_label"</span><span class="p">:</span> <span class="s2">"dog"</span><span class="p">,</span> <span class="s2">"score"</span><span class="p">:</span> <span class="mf">0.8</span><span class="p">},</span> <span class="p">{</span><span class="s2">"class_label"</span><span class="p">:</span> <span class="s2">"cat"</span><span class="p">,</span> <span class="s2">"score"</span><span class="p">:</span> <span class="mf">0.1</span><span class="p">},</span> <span class="p">{</span><span class="s2">"class_label"</span><span class="p">:</span> <span class="s2">"person"</span><span class="p">,</span> <span class="s2">"score"</span><span class="p">:</span> <span class="mf">0.1</span><span class="p">}],</span> <span class="s2">"bbox"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"xmin"</span><span class="p">:</span> <span class="mi">16</span><span class="p">,</span> <span class="s2">"ymin"</span><span class="p">:</span> <span class="mi">130</span><span class="p">,</span> <span class="s2">"xmax"</span><span class="p">:</span> <span class="mi">70</span><span class="p">,</span> <span class="s2">"ymax"</span><span class="p">:</span> <span class="mi">150</span><span class="p">}},</span>
@@ -667,7 +667,7 @@
 </span><span id="__span-6-19"><a href="#__codelineno-6-19" id="__codelineno-6-19" name="__codelineno-6-19"></a><span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">metrics</span><span class="p">)</span>
 </span></code></pre></div>
 <h3 id="run-a-filtered-evaluation-and-print-metrics">Run a filtered evaluation and print metrics</h3>
-<p>Valor offers more than just 1:1 evaluations; it allows the creation of metadata filters to stratify the dataset groundtruths and model predictions. This enables the user to ask complex questions about their data.</p>
+<p>Valor offers more than just 1:1 evaluations; it allows the creation of metadata filters to stratify the dataset ground truths and model predictions. This enables the user to ask complex questions about their data.</p>
 <p>With this in mind, let's pose the question: <em>"How well did the model perform on animal prediction?"</em></p>
 <p>We can ask this question with the following evaluation statement:</p>
 <div class="language-py highlight"><pre><span></span><code><span id="__span-7-1"><a href="#__codelineno-7-1" id="__codelineno-7-1" name="__codelineno-7-1"></a><span class="c1"># run evaluation</span>

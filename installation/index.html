@@ -146,12 +146,12 @@
     </label>
 <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix="">
 <li class="md-nav__item">
-<a class="md-nav__link" href="#setting-up-the-backend-service">
+<a class="md-nav__link" href="#setting-up-the-back-end-service">
 <span class="md-ellipsis">
-      Setting up the backend service
+      Setting up the back end service
     </span>
 </a>
-<nav aria-label="Setting up the backend service" class="md-nav">
+<nav aria-label="Setting up the back end service" class="md-nav">
 <ul class="md-nav__list">
 <li class="md-nav__item">
 <a class="md-nav__link" href="#using-docker-compose">
@@ -404,12 +404,12 @@
     </label>
 <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix="">
 <li class="md-nav__item">
-<a class="md-nav__link" href="#setting-up-the-backend-service">
+<a class="md-nav__link" href="#setting-up-the-back-end-service">
 <span class="md-ellipsis">
-      Setting up the backend service
+      Setting up the back end service
     </span>
 </a>
-<nav aria-label="Setting up the backend service" class="md-nav">
+<nav aria-label="Setting up the back end service" class="md-nav">
 <ul class="md-nav__list">
 <li class="md-nav__item">
 <a class="md-nav__link" href="#using-docker-compose">
@@ -457,34 +457,88 @@
 <div class="md-content" data-md-component="content">
 <article class="md-content__inner md-typeset">
 <h1 id="installation">Installation</h1>
-<p>Valor is comprised of a backend service (which consists of a REST API and a Postgres DB with the PostGIS extension) and a python client for interacting with it.</p>
-<h2 id="setting-up-the-backend-service">Setting up the backend service</h2>
+<p>Valor is comprised of two services: a back end service (which consists of a REST API and a Postgres DB with the PostGIS extension), and a python client for interacting with the back end service.</p>
+<h2 id="setting-up-the-back-end-service">Setting up the back end service</h2>
 <h3 id="using-docker-compose">Using docker compose</h3>
 <p>The easiest way to get up and running with Valor is to use docker compose with the <code>docker-compose.yml</code> file in the repo root:</p>
 <div class="language-shell highlight"><pre><span></span><code><span id="__span-0-1"><a href="#__codelineno-0-1" id="__codelineno-0-1" name="__codelineno-0-1"></a>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/striveworks/valor
 </span><span id="__span-0-2"><a href="#__codelineno-0-2" id="__codelineno-0-2" name="__codelineno-0-2"></a><span class="nb">cd</span><span class="w"> </span>valor
 </span><span id="__span-0-3"><a href="#__codelineno-0-3" id="__codelineno-0-3" name="__codelineno-0-3"></a>docker<span class="w"> </span>compose<span class="w"> </span>--env-file<span class="w"> </span>./api/.env.testing<span class="w"> </span>up
 </span></code></pre></div>
-<p>This will set up the necessary environment variables, start both the API and database services, and run the database migration job. To rest that everything is running properly, the endpoint <code>localhost:8000/health</code> should return <code>{"status":"ok"}</code></p>
+<p>This will set up the necessary environment variables, start both the API and database services, and run the database migration job. The endpoint <code>localhost:8000/health</code> should return <code>{"status":"ok"}</code> if all of Valor's services were started correctly.</p>
 <p><strong>Note: running Valor this way is not intended for production and scalable use, and is only recommended for development and testing purposes</strong>.</p>
 <h3 id="deploying-via-docker-and-a-hosted-database">Deploying via Docker and a hosted database</h3>
-<p>For a more production grade deployment, we publish the images <code>ghcr.io/striveworks/valor/valor-service</code> for the REST API, and <code>ghcr.io/striveworks/valor/migrations</code>, which is used for setting up the database and migrations. These can be paired with any Postgres database with the PostGIS extension.</p>
-<p>The following environment variables are required for running these
-| Variable | Description | Images that need it |
-| --- | --- | --- |
-| <code>POSTGRES_HOST</code> | The host of the Postgres database | <code>valor-service</code>, <code>migrations</code> |
-| <code>POSTGRES_PORT</code> | The port of the Postgres database | <code>valor-service</code>, <code>migrations</code> |
-| <code>POSTGRES_DB</code> | The name of the Postgres database | <code>valor-service</code>, <code>migrations</code> |
-| <code>POSTGRES_USERNAME</code> | The user of the Postgres database | <code>valor-service</code>, <code>migrations</code> |
-| <code>POSTGRES_PASSWORD</code> | The password of the Postgres database | <code>valor-service</code>, <code>migrations</code> |
-| <code>POSTGRES_SSLMODE</code> | Sets the Postgres instance SSL mode (typically needs to be "require") | <code>migrations</code> |
-| <code>API_ROOT_PATH</code> | the root path of the API (if serving behind a proxy) | <code>valor-service</code> |</p>
-<p>Additionally, the Valor REST API has optional single username/password/bearer token authentication. To enable this, the <code>valor-service</code> image requires the following environment variables:
-| Variable | Description |
-| --- | --- |
-| <code>VALOR_USERNAME</code> | The username to use |
-| <code>VALOR_PASSWORD</code> | The password to use |
-| <code>VALOR_SECRET_KEY</code> | A random, secret string used for signing JWT tokens |</p>
+<p>For a more production grade deployment, we publish the images <code>ghcr.io/striveworks/valor/valor-service</code> (used for the REST API) and <code>ghcr.io/striveworks/valor/migrations</code> (used for setting up the database and migrations). These can be paired with any Postgres database with the PostGIS extension.</p>
+<p>The following environment variables are required for running these images:</p>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Description</th>
+<th>Images that need it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>POSTGRES_HOST</code></td>
+<td>The host of the Postgres database</td>
+<td><code>valor-service</code>, <code>migrations</code></td>
+</tr>
+<tr>
+<td><code>POSTGRES_PORT</code></td>
+<td>The port of the Postgres database</td>
+<td><code>valor-service</code>, <code>migrations</code></td>
+</tr>
+<tr>
+<td><code>POSTGRES_DB</code></td>
+<td>The name of the Postgres database</td>
+<td><code>valor-service</code>, <code>migrations</code></td>
+</tr>
+<tr>
+<td><code>POSTGRES_USERNAME</code></td>
+<td>The user of the Postgres database</td>
+<td><code>valor-service</code>, <code>migrations</code></td>
+</tr>
+<tr>
+<td><code>POSTGRES_PASSWORD</code></td>
+<td>The password of the Postgres database</td>
+<td><code>valor-service</code>, <code>migrations</code></td>
+</tr>
+<tr>
+<td><code>POSTGRES_SSLMODE</code></td>
+<td>Sets the Postgres instance SSL mode (typically needs to be "require")</td>
+<td><code>migrations</code></td>
+</tr>
+<tr>
+<td><code>API_ROOT_PATH</code></td>
+<td>The root path of the API (if serving behind a proxy)</td>
+<td><code>valor-service</code></td>
+</tr>
+</tbody>
+</table>
+<p>Additionally, the Valor REST API has an optional single username/password/bearer token authentication. To enable this feature, the <code>valor-service</code> image requires the following environment variables:</p>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>VALOR_USERNAME</code></td>
+<td>The username to use</td>
+</tr>
+<tr>
+<td><code>VALOR_PASSWORD</code></td>
+<td>The password to use</td>
+</tr>
+<tr>
+<td><code>VALOR_SECRET_KEY</code></td>
+<td>A random, secret string used for signing JWT tokens</td>
+</tr>
+</tbody>
+</table>
 <h3 id="helm-chart">Helm Chart</h3>
 <p>Alternatively, we provide pre-built charts for deplying Valor on Kubernetes via Helm using the following commands:</p>
 <div class="language-shell highlight"><pre><span></span><code><span id="__span-1-1"><a href="#__codelineno-1-1" id="__codelineno-1-1" name="__codelineno-1-1"></a>helm<span class="w"> </span>repo<span class="w"> </span>add<span class="w"> </span>valor<span class="w"> </span>https://striveworks.github.io/valor-charts/
@@ -492,7 +546,7 @@
 </span><span id="__span-1-3"><a href="#__codelineno-1-3" id="__codelineno-1-3" name="__codelineno-1-3"></a><span class="c1"># Valor should now be avaiable at valor.namespace.svc.local</span>
 </span></code></pre></div>
 <h3 id="manual-deployment">Manual Deployment</h3>
-<p>If you would prefer to build your own image or want a debug console for the backend, please see the deployment instructions in <a href="../contributing/">"Contributing to Valor"</a>.</p>
+<p>If you would prefer to build your own image or want a debug console for the back end, please see the deployment instructions in <a href="../contributing/">Contributing to Valor</a>.</p>
 <h2 id="setting-up-the-python-client">Setting up the Python client</h2>
 <p>The python client can be installed via pip:</p>
 <div class="language-shell highlight"><pre><span></span><code><span id="__span-2-1"><a href="#__codelineno-2-1" id="__codelineno-2-1" name="__codelineno-2-1"></a>pip<span class="w"> </span>install<span class="w"> </span>valor-client

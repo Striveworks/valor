@@ -217,12 +217,12 @@
 <nav aria-label="Development Tips and Tricks" class="md-nav">
 <ul class="md-nav__list">
 <li class="md-nav__item">
-<a class="md-nav__link" href="#deploying-the-backend-for-development">
+<a class="md-nav__link" href="#deploying-the-back-end-for-development">
 <span class="md-ellipsis">
-      Deploying the Backend for Development
+      Deploying the Back End for Development
     </span>
 </a>
-<nav aria-label="Deploying the Backend for Development" class="md-nav">
+<nav aria-label="Deploying the Back End for Development" class="md-nav">
 <ul class="md-nav__list">
 <li class="md-nav__item">
 <a class="md-nav__link" href="#docker-compose">
@@ -271,16 +271,16 @@
 </a>
 </li>
 <li class="md-nav__item">
-<a class="md-nav__link" href="#running-backend-unit-tests">
+<a class="md-nav__link" href="#running-back-end-unit-tests">
 <span class="md-ellipsis">
-      Running backend unit tests
+      Running back end unit tests
     </span>
 </a>
 </li>
 <li class="md-nav__item">
-<a class="md-nav__link" href="#running-backend-functional-tests">
+<a class="md-nav__link" href="#running-back-end-functional-tests">
 <span class="md-ellipsis">
-      Running backend functional tests
+      Running back end functional tests
     </span>
 </a>
 </li>
@@ -476,12 +476,12 @@
 <nav aria-label="Development Tips and Tricks" class="md-nav">
 <ul class="md-nav__list">
 <li class="md-nav__item">
-<a class="md-nav__link" href="#deploying-the-backend-for-development">
+<a class="md-nav__link" href="#deploying-the-back-end-for-development">
 <span class="md-ellipsis">
-      Deploying the Backend for Development
+      Deploying the Back End for Development
     </span>
 </a>
-<nav aria-label="Deploying the Backend for Development" class="md-nav">
+<nav aria-label="Deploying the Back End for Development" class="md-nav">
 <ul class="md-nav__list">
 <li class="md-nav__item">
 <a class="md-nav__link" href="#docker-compose">
@@ -530,16 +530,16 @@
 </a>
 </li>
 <li class="md-nav__item">
-<a class="md-nav__link" href="#running-backend-unit-tests">
+<a class="md-nav__link" href="#running-back-end-unit-tests">
 <span class="md-ellipsis">
-      Running backend unit tests
+      Running back end unit tests
     </span>
 </a>
 </li>
 <li class="md-nav__item">
-<a class="md-nav__link" href="#running-backend-functional-tests">
+<a class="md-nav__link" href="#running-back-end-functional-tests">
 <span class="md-ellipsis">
-      Running backend functional tests
+      Running back end functional tests
     </span>
 </a>
 </li>
@@ -583,7 +583,7 @@
 </ol>
 <p>For questions or comments on this process, please reach out to us at any time on <a href="https://striveworks-public.slack.com/join/shared_invite/zt-1a0jx768y-2J1fffN~b4fXYM8GecvOhA#/shared-invite/email">Slack</a>.</p>
 <h2 id="development-tips-and-tricks">Development Tips and Tricks</h2>
-<h3 id="deploying-the-backend-for-development">Deploying the Backend for Development</h3>
+<h3 id="deploying-the-back-end-for-development">Deploying the Back End for Development</h3>
 <h4 id="docker-compose">Docker Compose</h4>
 <p>The fastest way to test the API and Python client is via Docker Compose. Start by setting the environment variable <code>POSTGRES_PASSWORD</code> to your liking, and then start Docker and build the container:</p>
 <div class="language-shell highlight"><pre><span></span><code><span id="__span-0-1"><a href="#__codelineno-0-1" id="__codelineno-0-1" name="__codelineno-0-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">POSTGRES_PASSWORD</span><span class="o">=</span><span class="s2">"my_password"</span>
@@ -633,10 +633,10 @@
 <h4 id="running-integration-tests">Running integration tests</h4>
 <div class="language-shell highlight"><pre><span></span><code><span id="__span-7-1"><a href="#__codelineno-7-1" id="__codelineno-7-1" name="__codelineno-7-1"></a>pytest<span class="w"> </span>integration_tests
 </span></code></pre></div>
-<h4 id="running-backend-unit-tests">Running backend unit tests</h4>
+<h4 id="running-back-end-unit-tests">Running back end unit tests</h4>
 <div class="language-shell highlight"><pre><span></span><code><span id="__span-8-1"><a href="#__codelineno-8-1" id="__codelineno-8-1" name="__codelineno-8-1"></a>pytest<span class="w"> </span>api/tests/unit-tests
 </span></code></pre></div>
-<h4 id="running-backend-functional-tests">Running backend functional tests</h4>
+<h4 id="running-back-end-functional-tests">Running back end functional tests</h4>
 <blockquote>
 <p><strong>Note:</strong> Functional tests require a running instance of PostgreSQL, which you can start using <code>make start-postgis-docker</code>.</p>
 </blockquote>

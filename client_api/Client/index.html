@@ -1574,15 +1574,15 @@
 </span><span id="__span-0-1864"><a id="__codelineno-0-1864" name="__codelineno-0-1864"></a><span class="sd">        ----------</span>
 </span><span id="__span-0-1865"><a id="__codelineno-0-1865" name="__codelineno-0-1865"></a>
 </span><span id="__span-0-1866"><a id="__codelineno-0-1866" name="__codelineno-0-1866"></a><span class="sd">        dataset : valor.Dataset</span>
-</span><span id="__span-0-1867"><a id="__codelineno-0-1867" name="__codelineno-0-1867"></a><span class="sd">            The dataset to create the groundtruth for.</span>
+</span><span id="__span-0-1867"><a id="__codelineno-0-1867" name="__codelineno-0-1867"></a><span class="sd">            The dataset to create the ground truth for.</span>
 </span><span id="__span-0-1868"><a id="__codelineno-0-1868" name="__codelineno-0-1868"></a><span class="sd">        groundtruths : List[valor.GroundTruth]</span>
-</span><span id="__span-0-1869"><a id="__codelineno-0-1869" name="__codelineno-0-1869"></a><span class="sd">            The groundtruths to create.</span>
+</span><span id="__span-0-1869"><a id="__codelineno-0-1869" name="__codelineno-0-1869"></a><span class="sd">            The ground truths to create.</span>
 </span><span id="__span-0-1870"><a id="__codelineno-0-1870" name="__codelineno-0-1870"></a><span class="sd">        """</span>
 </span><span id="__span-0-1871"><a id="__codelineno-0-1871" name="__codelineno-0-1871"></a>        <span class="n">groundtruths_json</span> <span class="o">=</span> <span class="p">[]</span>
 </span><span id="__span-0-1872"><a id="__codelineno-0-1872" name="__codelineno-0-1872"></a>        <span class="k">for</span> <span class="n">groundtruth</span> <span class="ow">in</span> <span class="n">groundtruths</span><span class="p">:</span>
 </span><span id="__span-0-1873"><a id="__codelineno-0-1873" name="__codelineno-0-1873"></a>            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">groundtruth</span><span class="p">,</span> <span class="n">GroundTruth</span><span class="p">):</span>
 </span><span id="__span-0-1874"><a id="__codelineno-0-1874" name="__codelineno-0-1874"></a>                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
-</span><span id="__span-0-1875"><a id="__codelineno-0-1875" name="__codelineno-0-1875"></a>                    <span class="sa">f</span><span class="s2">"Expected groundtruth to be of type 'valor.GroundTruth' not '</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">groundtruth</span><span class="p">)</span><span class="si">}</span><span class="s2">'."</span>
+</span><span id="__span-0-1875"><a id="__codelineno-0-1875" name="__codelineno-0-1875"></a>                    <span class="sa">f</span><span class="s2">"Expected ground truth to be of type 'valor.GroundTruth' not '</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">groundtruth</span><span class="p">)</span><span class="si">}</span><span class="s2">'."</span>
 </span><span id="__span-0-1876"><a id="__codelineno-0-1876" name="__codelineno-0-1876"></a>                <span class="p">)</span>
 </span><span id="__span-0-1877"><a id="__codelineno-0-1877" name="__codelineno-0-1877"></a>            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">groundtruth</span><span class="o">.</span><span class="n">annotations</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
 </span><span id="__span-0-1878"><a id="__codelineno-0-1878" name="__codelineno-0-1878"></a>                <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
@@ -2295,7 +2295,7 @@
 </td>
 <td>
 <div class="doc-md-description">
-<p>The dataset to create the groundtruth for.</p>
+<p>The dataset to create the ground truth for.</p>
 </div>
 </td>
 <td>
@@ -2309,7 +2309,7 @@
 </td>
 <td>
 <div class="doc-md-description">
-<p>The groundtruths to create.</p>
+<p>The ground truths to create.</p>
 </div>
 </td>
 <td>
@@ -2361,15 +2361,15 @@
 </span><span id="__span-0-1864"><a id="__codelineno-0-1864" name="__codelineno-0-1864"></a><span class="sd">    ----------</span>
 </span><span id="__span-0-1865"><a id="__codelineno-0-1865" name="__codelineno-0-1865"></a>
 </span><span id="__span-0-1866"><a id="__codelineno-0-1866" name="__codelineno-0-1866"></a><span class="sd">    dataset : valor.Dataset</span>
-</span><span id="__span-0-1867"><a id="__codelineno-0-1867" name="__codelineno-0-1867"></a><span class="sd">        The dataset to create the groundtruth for.</span>
+</span><span id="__span-0-1867"><a id="__codelineno-0-1867" name="__codelineno-0-1867"></a><span class="sd">        The dataset to create the ground truth for.</span>
 </span><span id="__span-0-1868"><a id="__codelineno-0-1868" name="__codelineno-0-1868"></a><span class="sd">    groundtruths : List[valor.GroundTruth]</span>
-</span><span id="__span-0-1869"><a id="__codelineno-0-1869" name="__codelineno-0-1869"></a><span class="sd">        The groundtruths to create.</span>
+</span><span id="__span-0-1869"><a id="__codelineno-0-1869" name="__codelineno-0-1869"></a><span class="sd">        The ground truths to create.</span>
 </span><span id="__span-0-1870"><a id="__codelineno-0-1870" name="__codelineno-0-1870"></a><span class="sd">    """</span>
 </span><span id="__span-0-1871"><a id="__codelineno-0-1871" name="__codelineno-0-1871"></a>    <span class="n">groundtruths_json</span> <span class="o">=</span> <span class="p">[]</span>
 </span><span id="__span-0-1872"><a id="__codelineno-0-1872" name="__codelineno-0-1872"></a>    <span class="k">for</span> <span class="n">groundtruth</span> <span class="ow">in</span> <span class="n">groundtruths</span><span class="p">:</span>
 </span><span id="__span-0-1873"><a id="__codelineno-0-1873" name="__codelineno-0-1873"></a>        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">groundtruth</span><span class="p">,</span> <span class="n">GroundTruth</span><span class="p">):</span>
 </span><span id="__span-0-1874"><a id="__codelineno-0-1874" name="__codelineno-0-1874"></a>            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
-</span><span id="__span-0-1875"><a id="__codelineno-0-1875" name="__codelineno-0-1875"></a>                <span class="sa">f</span><span class="s2">"Expected groundtruth to be of type 'valor.GroundTruth' not '</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">groundtruth</span><span class="p">)</span><span class="si">}</span><span class="s2">'."</span>
+</span><span id="__span-0-1875"><a id="__codelineno-0-1875" name="__codelineno-0-1875"></a>                <span class="sa">f</span><span class="s2">"Expected ground truth to be of type 'valor.GroundTruth' not '</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">groundtruth</span><span class="p">)</span><span class="si">}</span><span class="s2">'."</span>
 </span><span id="__span-0-1876"><a id="__codelineno-0-1876" name="__codelineno-0-1876"></a>            <span class="p">)</span>
 </span><span id="__span-0-1877"><a id="__codelineno-0-1877" name="__codelineno-0-1877"></a>        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">groundtruth</span><span class="o">.</span><span class="n">annotations</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
 </span><span id="__span-0-1878"><a id="__codelineno-0-1878" name="__codelineno-0-1878"></a>            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>

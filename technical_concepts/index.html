@@ -607,10 +607,10 @@
 <h1 id="technical-concepts">Technical Concepts</h1>
 <p>On this page, we'll describe many of the technical concepts underpinning Valor.</p>
 <h2 id="high-level-workflow">High-Level Workflow</h2>
-<p>The typical Valor workflow involves POSTing groundtruth annotations (e.g., class labels, bounding boxes, segmentation masks, etc.) and model predictions to our API service. The service leverages these groundtruths and predictions to compute evaluation metrics, and then stores the groundtruths, predictions, and evaluation metrics centrally in Postgres. Users can also attach metadata to their <code>Datasets</code>, <code>Models</code>, <code>GroundTruths</code>, and <code>Annotations</code>; this metadata makes it easy to query for specific subsets of evaluations at a later date. Once an evaluation is stored in Valor, users can query those evaluations from Postgres via <code>GET</code> requests to the Valor API.</p>
+<p>The typical Valor workflow involves POSTing ground truth annotations (e.g., class labels, bounding boxes, segmentation masks, etc.) and model predictions to our API service. The service leverages these ground truths and predictions to compute evaluation metrics, and then stores the ground truths, predictions, and evaluation metrics centrally in Postgres. Users can also attach metadata to their <code>Datasets</code>, <code>Models</code>, <code>GroundTruths</code>, and <code>Annotations</code>; this metadata makes it easy to query for specific subsets of evaluations at a later date. Once an evaluation is stored in Valor, users can query those evaluations from Postgres via <code>GET</code> requests to the Valor API.</p>
 <p>Note that Valor does <em>not</em> store raw data (such as underlying images) or facilitate model inference. Only the following items are stored in Postgres:</p>
 <ul>
-<li>Groundtruth annotations</li>
+<li>Ground truth annotations</li>
 <li>Predictions outputted from a model</li>
 <li>Metadata from any of Valor's various classes</li>
 <li>Evaluation metrics computed by Valor</li>
@@ -639,7 +639,7 @@
 <h2 id="components">Components</h2>
 <p>We can think of Valor in terms of four orthogonal components:</p>
 <h3 id="api">API</h3>
-<p>The core of Valor is a backend REST API service. Users can call the API's endpoints directly (e.g., <code>POST /datasets</code>), or they can use our Python client to handle the API calls in their Python environment. All of Valor's state is stored in Postgres; the API itself is completely stateless.</p>
+<p>The core of Valor is a back end REST API service. Users can call the API's endpoints directly (e.g., <code>POST /datasets</code>), or they can use our Python client to handle the API calls in their Python environment. All of Valor's state is stored in Postgres; the API itself is completely stateless.</p>
 <p>Note that, after you start the API service in Dockers, you'll be able to view FastAPI's automatically generated API documentation at <code>https://&lt;your host&gt;/docs</code>.</p>
 <h3 id="postgresql">PostgreSQL</h3>
 <p>PostgreSQL (a.k.a. Postgres or psql) is an open-source relational database management system. We use Postgres to store all of Valor's various objects and states.</p>
@@ -652,7 +652,7 @@
 <p>The highest-level class is a <code>Dataset</code>, which stores metadata and annotations associated with a particular set of data. Note that <code>Dataset</code> is an abstraction: You can have multiple <code>Datasets</code> that reference the exact same input data, which is useful if you need to update or version your data over time.</p>
 <p><code>Datasets</code> require a name at instantiation and can optionally take in various types of metadata that you want to associate with your data.</p>
 <h3 id="model"><code>Model</code></h3>
-<p><code>Models</code> describe a particular instantiation of a machine learning model. We use the <code>Model</code> object to delineate between different models runs or between the same model run over time. Note that <code>Models</code> aren't children of <code>Datasets</code>; you can have one <code>Model</code> contain predictions for multiple <code>Datasets</code>.</p>
+<p><code>Models</code> describe a particular instantiation of a machine learning model. We use the <code>Model</code> object to delineate between different model runs or between the same model run over time. Note that <code>Models</code> aren't children of <code>Datasets</code>; you can have one <code>Model</code> contain predictions for multiple <code>Datasets</code>.</p>
 <p><code>Models</code> require a name at instantiation and can optionally take in various types of metadata that you want to associate with your model.</p>
 <h3 id="groundtruth"><code>GroundTruth</code></h3>
 <p>A <code>GroundTruth</code> object clarifies what the correct prediction should be for a given piece of data (e.g., an image). For an object detection task, for example, the <code>GroundTruth</code> would store a human-drawn bounding box that, when overlayed on an object, would correctly enclose the object that we're trying to predict.</p>
@@ -667,10 +667,10 @@
 <p><code>Annotations</code> attach to both <code>GroundTruths</code> and <code>Predictions</code>, enabling users to add textual labels to these objects. If a <code>GroundTruth</code> depicts a bounding box around a cat, for example, the <code>Annotation</code> would be passed into the <code>GroundTruth</code> to clarify the correct label for the <code>GroundTruth</code> (e.g., <code>class=cat</code>) and any other labels the user wants to specify for that bounding box (e.g., <code>breed=tabby</code>).</p>
 <p><code>Annotations</code> require the user to specify their task type, labels, and metadata at instantiation. Users can also pass in various visual representations tailored to their specific task, such as bounding boxes, segmentations, or image rasters.</p>
 <h2 id="authentication">Authentication</h2>
-<p>The API can be run without authentication (by default), or with authentication with a single global username and password. To set this up, set the following environment variables when running the backend:</p>
+<p>The API can be run without authentication (by default), or with authentication with a single global username and password. To set this up, set the following environment variables when running the back end:</p>
 <ul>
 <li>Set the environment variables <code>VALOR_SECRET_KEY</code>, <code>VALOR_USERNAME</code>, and <code>VALOR_PASSWORD</code> manually (e.g., <code>export SECRET_KEY=&lt;secret key&gt;</code>)</li>
-<li>Set these env variables in a file named <code>.env.auth</code>, and place that file in the <code>api</code> directory. An example of such a file would look like:</li>
+<li>Set these environment variables in a file named <code>.env.auth</code>, and place that file in the <code>api</code> directory. An example of such a file would look like:</li>
 </ul>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a href="#__codelineno-0-1" id="__codelineno-0-1" name="__codelineno-0-1"></a>VALOR_SECRET_KEY="secret key"
 </span><span id="__span-0-2"><a href="#__codelineno-0-2" id="__codelineno-0-2" name="__codelineno-0-2"></a>VALOR_USERNAME="username"
@@ -679,7 +679,7 @@
 <p><code>VALOR_SECRET_KEY</code> is the key used for encoding and decoding tokens, and should be a random string. <code>VALOR_USERNAME</code> and <code>VALOR_PASSWORD</code> are the username and password that will be used to authenticate requests.</p>
 <p>You can use the tests in <code>integration_tests/test_client_auth.py</code> to check whether your authenticator is running correctly.</p>
 <h2 id="deployment-settings">Deployment Settings</h2>
-<p>When deploying behind a proxy or with external routing, the <code>API_ROOT_PATH</code> environmental variable should be used to set the <code>root_path</code> argument to <code>fastapi.FastAPI</code> (see https://fastapi.tiangolo.com/advanced/behind-a-proxy/#setting-the-root_path-in-the-fastapi-app).</p>
+<p>When deploying behind a proxy or with external routing, the <code>API_ROOT_PATH</code> environment variable should be used to set the <code>root_path</code> argument to <code>fastapi.FastAPI</code> (see https://fastapi.tiangolo.com/advanced/behind-a-proxy/#setting-the-root_path-in-the-fastapi-app).</p>
 <h2 id="release-process">Release Process</h2>
 <p>A release is made by publishing a tag of the form <code>vX.Y.Z</code> (e.g., <code>v0.1.0</code>). This will trigger a GitHub action that will build and publish the Python client to <a href="https://pypi.org/project/valor-client/">PyPI</a>. These releases should be created using the <a href="https://github.com/Striveworks/valor/releases">GitHub UI</a>.</p>
 </article>
