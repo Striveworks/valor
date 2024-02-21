@@ -1,18 +1,4 @@
-
-
-# TOC
-
-
-- [Classification](#classification)
-- [Object Detection](#object-detection)
-    - [Average Precision (AP)](#average-precision-ap)
-    - [Mean Average Precision (mAP)](#mean-average-precision-map)
-- [Semantic Segmentation](#semantic-segmentation)
-    - [Mean Average Precision](#mean-average-precision-map-1)
-
-# Classification
-
-## Binary ROCAUC
+# ROC AUC for Classification
 
 ## Determining Binary Truth
 
@@ -23,18 +9,50 @@
 | True Negative (TN) | Prediction returns False and is correct. |
 | False Negative (FN) | Prediction returns False and is incorrect. |
 
+- $\text{True Positive Rate} = \dfrac{|TP|}{|TP| + |FN|}$
 
-# Object Detection
+- $\text{False Positive Rate} = \dfrac{|FP|}{|FP| + |TN|}$
 
-## Average Precision (AP)
+- $\text{Precision} = \dfrac{|TP|}{|TP| + |FP|}$
 
-For object-detection and segmentation tasks, average-precision is calculated from the intersection-over-union (IoU) of geometric annotations.
+- $\text{Recall} = \dfrac{|TP|}{|TP| + |FN|}$
 
-### Intersection-over-Union (IoU)
+## Receiver Operating Characteristic (ROC)
+
+WIP
+
+## Area under the ROC curve (ROC AUC)
+
+WIP
+
+## Reference
+- [Classification: ROC Curve and AUC](https://developers.google.com/machine-learning/crash-course/classification/roc-and-auc)
+
+
+# Average Precision (AP) for Object Detection
+
+For object-detection and instance segmentation tasks, average-precision is calculated from the intersection-over-union (IoU) of geometric annotations.
+
+## What is Intersection-over-Union (IoU)?
+
+The overlap between the groundtruth and predicted regions of an image, measured as a percentage, grouped by class. IOUs are calculated by a) fetching the groundtruth and prediction rasters for a particular image and class, b) counting the true positive pixels (e.g., the number of pixels that were selected in both the groundtruth masks and prediction masks), and c) dividing the sum of true positives by the total number of pixels in both the groundtruth and prediction masks.
 
 $$Intersection \ over \ Union \ (IoU) = \dfrac{Area( prediction \cap groundtruth )}{Area( prediction \cup groundtruth )}$$
 
-### Finding the best prediction for a groundtruth.
+## Multiclass Precision and Recall
+
+| Case | Description |
+| :- | :- |
+| True Positive (TP) | Prediction meets IoU threshold requirements. |
+| False Positive (FP) | Prediction fails IoU threshold requirements. |
+| True Negative (TN) | Unused in multi-class evaluation.
+| False Negative (FN) | No prediction exists. |
+
+- $Precision = \dfrac{|TP|}{|TP| + |FP|} = \dfrac{\text{Number of True Predictions}}{|\text{Predictions}|}$
+
+- $Recall = \dfrac{|TP|}{|TP| + |FN|} = \dfrac{\text{Number of True Predictions}}{|\text{Groundtruths}|}$
+
+## Finding the best prediction for a groundtruth.
 
 To properly evaluate a detection we must first find the best matches of predictions to ground truths. We start by iterating over predictions by score from highest to lowest. For each prediction we assign the ground truth with the highest IoU value. Both the prediction and ground truth are now considered paired and removed from the pool of choices.
 
@@ -76,22 +94,7 @@ $$
 \end{aligned}
 $$
 
-
-
-### What are Precision and Recall?
-
-| Case | Description |
-| :- | :- |
-| True Positive (TP) | Prediction meets IoU threshold requirements. |
-| False Positive (FP) | Prediction fails IoU threshold requirements. |
-| True Negative (TN) | Unused in multi-class evaluation.
-| False Negative (FN) | No prediction exists. |
-
-- $Precision = \dfrac{|TP|}{|TP| + |FP|} = \dfrac{\text{Number of True Predictions}}{|\text{Predictions}|}$
-
-- $Recall = \dfrac{|TP|}{|TP| + |FN|} = \dfrac{\text{Number of True Predictions}}{|\text{Groundtruths}|}$
-
-### Precision-Recall Curve
+## Precision-Recall Curve
 
 We can now compute the precision-recall curve using our previously ranked IoU's.
 
@@ -120,7 +123,7 @@ $$
 \end{aligned}
 $$
 
-### Calculate Average Precision
+## Calculate Average Precision
 
 Average precision is defined as the integration of the precision-recall curve. However, due to the varying nature of datasets it has been shown that interpolating this curve with a fixed set of points helps to reduce inconsistencies between dataset splits. The defacto standard has been to use a 101-point interpolation of the precision-recall curve to compute this integral.
 
@@ -132,9 +135,9 @@ $$
 \rho_{interp} = \underset{\tilde{r}:\tilde{r} \ge r}{max \ \rho (\tilde{r})}
 $$
 
-### PostgreSQL Implementations
+## PostgreSQL Implementations
 
-#### Relevant PostGIS Functions
+### Relevant PostGIS Functions
 
 - [ST_INTERSECTION](https://postgis.net/docs/ST_Intersection.html)
 
@@ -154,7 +157,7 @@ $$
     SELECT ST_Count(annotation.raster) FROM annotation;
     ```
 
-#### Polygon IoU Calculation in PostGIS
+### Polygon IoU Calculation in PostGIS
 
 ```sql
 CREATE OR REPLACE FUNCTION calculate_iou(groundtruth geometry, prediction geometry)
@@ -180,7 +183,7 @@ END;
 $$;
 ```
 
-#### Creating ranked pairs.
+### Creating ranked pairs.
 
 ```sql
 SELECT
@@ -215,16 +218,9 @@ AND groundtruth_subquery.label_id = prediction_subquery.label_id
 ORDER BY -score, -iou
 ```
 
-### References
+## References
 - [MS COCO Detection Evaluation](https://cocodataset.org/#detection-eval)
 - [Mean Average Precision (mAP) Using the COCO Evaluator](https://pyimagesearch.com/2022/05/02/mean-average-precision-map-using-the-coco-evaluator/)
 
-## Mean Average Precision (mAP)
-
-$mAP = \dfrac{1}{|classes|} \sum\limits_{c \in classes} AP_{c}$
-
-# Semantic Segmentation
-
-## Mean Average Precision (mAP)
-
-$mAP = \dfrac{1}{|classes|} \sum\limits_{c \in classes} AP_{c}$
+## Notes
+- When calculating IOUs for object detection metrics, Valor handles the necessary conversion between different types of image annotations. For example, if your model prediction is a polygon and your groundtruth is a raster, then the raster will be converted to a polygon prior to calculating the IOU.
