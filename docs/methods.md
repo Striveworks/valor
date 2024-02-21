@@ -25,7 +25,7 @@ WIP
 
 WIP
 
-## Reference
+## References
 - [Classification: ROC Curve and AUC](https://developers.google.com/machine-learning/crash-course/classification/roc-and-auc)
 
 
@@ -123,7 +123,7 @@ $$
 \end{aligned}
 $$
 
-## Calculate Average Precision
+## Calculating Average Precision
 
 Average precision is defined as the integration of the precision-recall curve. However, due to the varying nature of datasets it has been shown that interpolating this curve with a fixed set of points helps to reduce inconsistencies between dataset splits. The defacto standard has been to use a 101-point interpolation of the precision-recall curve to compute this integral.
 
@@ -135,9 +135,16 @@ $$
 \rho_{interp} = \underset{\tilde{r}:\tilde{r} \ge r}{max \ \rho (\tilde{r})}
 $$
 
-## PostgreSQL Implementations
+## References
+- [MS COCO Detection Evaluation](https://cocodataset.org/#detection-eval)
+- [Mean Average Precision (mAP) Using the COCO Evaluator](https://pyimagesearch.com/2022/05/02/mean-average-precision-map-using-the-coco-evaluator/)
 
-### Relevant PostGIS Functions
+## Notes
+- When calculating IOUs for object detection metrics, Valor handles the necessary conversion between different types of image annotations. For example, if your model prediction is a polygon and your groundtruth is a raster, then the raster will be converted to a polygon prior to calculating the IOU.
+
+# PostgreSQL Implementations
+
+## Relevant PostGIS Functions
 
 - [ST_INTERSECTION](https://postgis.net/docs/ST_Intersection.html)
 
@@ -157,7 +164,7 @@ $$
     SELECT ST_Count(annotation.raster) FROM annotation;
     ```
 
-### Polygon IoU Calculation in PostGIS
+## Polygon IoU Calculation in PostGIS
 
 ```sql
 CREATE OR REPLACE FUNCTION calculate_iou(groundtruth geometry, prediction geometry)
@@ -170,7 +177,7 @@ END;
 $$;
 ```
 
-#### Raster IoU Calculation in PostGIS
+## Raster IoU Calculation in PostGIS
 
 ```sql
 CREATE OR REPLACE FUNCTION calculate_iou(groundtruth geometry, prediction geometry)
@@ -183,7 +190,7 @@ END;
 $$;
 ```
 
-### Creating ranked pairs.
+## Creating ranked pairs for AP calculation.
 
 ```sql
 SELECT
@@ -217,10 +224,3 @@ WHERE groundtruth_subquery.datum_id = prediction_subquery.datum_id
 AND groundtruth_subquery.label_id = prediction_subquery.label_id
 ORDER BY -score, -iou
 ```
-
-## References
-- [MS COCO Detection Evaluation](https://cocodataset.org/#detection-eval)
-- [Mean Average Precision (mAP) Using the COCO Evaluator](https://pyimagesearch.com/2022/05/02/mean-average-precision-map-using-the-coco-evaluator/)
-
-## Notes
-- When calculating IOUs for object detection metrics, Valor handles the necessary conversion between different types of image annotations. For example, if your model prediction is a polygon and your groundtruth is a raster, then the raster will be converted to a polygon prior to calculating the IOU.
