@@ -1,7 +1,8 @@
 import os
 from typing import Annotated
 
-from fastapi import APIRouter, BackgroundTasks, Depends, FastAPI, HTTPException
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
@@ -9,14 +10,17 @@ from sqlalchemy.orm import Session
 from valor_api import __version__ as api_version
 from valor_api import api_utils, auth, crud, enums, exceptions, logger, schemas
 from valor_api.backend import database
-from valor_api.logging import LoggingRoute
+from valor_api.logging import (
+    handle_request_validation_exception,
+    handle_unhandled_exception,
+    log_endpoint_middleware,
+)
 from valor_api.settings import auth_settings
 
 token_auth_scheme = auth.OptionalHTTPBearer()
 
 
 app = FastAPI(root_path=os.getenv("API_ROOT_PATH", ""))
-router = APIRouter(route_class=LoggingRoute)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost", "http://localhost:3000"],
@@ -24,6 +28,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.middleware("http")(log_endpoint_middleware)
+app.exception_handler(RequestValidationError)(
+    handle_request_validation_exception
+)
+app.exception_handler(Exception)(handle_unhandled_exception)
 
 
 logger.info(
@@ -44,7 +53,7 @@ def get_db():
 """ GROUNDTRUTHS """
 
 
-@router.post(
+@app.post(
     "/groundtruths",
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
@@ -79,7 +88,7 @@ def create_groundtruths(
         raise exceptions.create_http_error(e)
 
 
-@router.get(
+@app.get(
     "/groundtruths/dataset/{dataset_name}/datum/{uid}",
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
@@ -125,7 +134,7 @@ def get_groundtruth(
 """ PREDICTIONS """
 
 
-@router.post(
+@app.post(
     "/predictions",
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
@@ -161,7 +170,7 @@ def create_predictions(
         raise exceptions.create_http_error(e)
 
 
-@router.get(
+@app.get(
     "/predictions/model/{model_name}/dataset/{dataset_name}/datum/{uid}",
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
@@ -210,7 +219,7 @@ def get_prediction(
 """ LABELS """
 
 
-@router.get(
+@app.get(
     "/labels",
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
@@ -243,7 +252,7 @@ def get_labels(
         raise exceptions.create_http_error(e)
 
 
-@router.get(
+@app.get(
     "/labels/dataset/{dataset_name}",
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
@@ -286,7 +295,7 @@ def get_labels_from_dataset(
         raise exceptions.create_http_error(e)
 
 
-@router.get(
+@app.get(
     "/labels/model/{model_name}",
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
@@ -332,7 +341,7 @@ def get_labels_from_model(
 """ DATASET """
 
 
-@router.post(
+@app.post(
     "/datasets",
     status_code=201,
     dependencies=[Depends(token_auth_scheme)],
@@ -362,7 +371,7 @@ def create_dataset(dataset: schemas.Dataset, db: Session = Depends(get_db)):
         raise exceptions.create_http_error(e)
 
 
-@router.get(
+@app.get(
     "/datasets",
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
@@ -394,7 +403,7 @@ def get_datasets(
         raise exceptions.create_http_error(e)
 
 
-@router.get(
+@app.get(
     "/datasets/{dataset_name}",
     dependencies=[Depends(token_auth_scheme)],
     tags=["Datasets"],
@@ -430,7 +439,7 @@ def get_dataset(
         raise exceptions.create_http_error(e)
 
 
-@router.get(
+@app.get(
     "/datasets/{dataset_name}/status",
     dependencies=[Depends(token_auth_scheme)],
     tags=["Datasets"],
@@ -467,7 +476,7 @@ def get_dataset_status(
         raise exceptions.create_http_error(e)
 
 
-@router.get(
+@app.get(
     "/datasets/{dataset_name}/summary",
     dependencies=[Depends(token_auth_scheme)],
     tags=["Datasets"],
@@ -504,7 +513,7 @@ def get_dataset_summary(
         raise exceptions.create_http_error(e)
 
 
-@router.put(
+@app.put(
     "/datasets/{dataset_name}/finalize",
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
@@ -537,7 +546,7 @@ def finalize_dataset(dataset_name: str, db: Session = Depends(get_db)):
         raise exceptions.create_http_error(e)
 
 
-@router.delete(
+@app.delete(
     "/datasets/{dataset_name}",
     dependencies=[Depends(token_auth_scheme)],
     tags=["Datasets"],
@@ -578,7 +587,7 @@ def delete_dataset(
 """ DATUMS """
 
 
-@router.get(
+@app.get(
     "/data",
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
@@ -618,7 +627,7 @@ def get_datums(
         raise exceptions.create_http_error(e)
 
 
-@router.get(
+@app.get(
     "/data/dataset/{dataset_name}/uid/{uid}",
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
@@ -667,7 +676,7 @@ def get_datum(
 """ MODELS """
 
 
-@router.post(
+@app.post(
     "/models",
     status_code=201,
     dependencies=[Depends(token_auth_scheme)],
@@ -699,7 +708,7 @@ def create_model(model: schemas.Model, db: Session = Depends(get_db)):
         raise exceptions.create_http_error(e)
 
 
-@router.get(
+@app.get(
     "/models",
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
@@ -728,7 +737,7 @@ def get_models(
     return crud.get_models(db=db, filters=filters)
 
 
-@router.get(
+@app.get(
     "/models/{model_name}",
     dependencies=[Depends(token_auth_scheme)],
     tags=["Models"],
@@ -762,7 +771,7 @@ def get_model(model_name: str, db: Session = Depends(get_db)) -> schemas.Model:
         raise exceptions.create_http_error(e)
 
 
-@router.get(
+@app.get(
     "/models/{model_name}/eval-requests",
     dependencies=[Depends(token_auth_scheme)],
     tags=["Models"],
@@ -800,7 +809,7 @@ def get_model_eval_requests(
         raise exceptions.create_http_error(e)
 
 
-@router.get(
+@app.get(
     "/models/{model_name}/dataset/{dataset_name}/status",
     dependencies=[Depends(token_auth_scheme)],
     tags=["Models"],
@@ -838,7 +847,7 @@ def get_model_status(
         raise exceptions.create_http_error(e)
 
 
-@router.put(
+@app.put(
     "/models/{model_name}/datasets/{dataset_name}/finalize",
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
@@ -879,7 +888,7 @@ def finalize_inferences(
         raise exceptions.create_http_error(e)
 
 
-@router.delete(
+@app.delete(
     "/models/{model_name}",
     dependencies=[Depends(token_auth_scheme)],
     tags=["Models"],
@@ -917,7 +926,7 @@ def delete_model(
 """ EVALUATION """
 
 
-@router.post(
+@app.post(
     "/evaluations",
     status_code=202,
     dependencies=[Depends(token_auth_scheme)],
@@ -968,7 +977,7 @@ def create_or_get_evaluations(
         raise exceptions.create_http_error(e)
 
 
-@router.get(
+@app.get(
     "/evaluations",
     dependencies=[Depends(token_auth_scheme)],
     response_model_exclude_none=True,
@@ -1055,7 +1064,7 @@ async def login_for_access_token(
     return access_token
 
 
-@router.get(
+@app.get(
     "/api-version",
     tags=["Info"],
     dependencies=[Depends(token_auth_scheme)],
@@ -1077,7 +1086,7 @@ def get_api_version() -> schemas.APIVersion:
 """ STATUS """
 
 
-@router.get(
+@app.get(
     "/health",
     tags=["Status"],
 )
@@ -1095,7 +1104,7 @@ def health():
     return schemas.Health(status="ok")
 
 
-@router.get(
+@app.get(
     "/ready",
     tags=["Status"],
 )
@@ -1119,6 +1128,3 @@ def ready(db: Session = Depends(get_db)):
                 "Could not connect to postgresql."
             )
         )
-
-
-app.include_router(router)
