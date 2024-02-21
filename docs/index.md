@@ -1,14 +1,15 @@
 # Introduction
 
-Valor is a centralized evaluation store that makes it easy to measure, explore, and rank model performance. Valor empowers data scientists and engineers to evaluate the performance of their machine learning pipelines and use those evaluations to make better modeling decisions in the future. [Click here](https://github.com/Striveworks/valor/blob/main/examples/getting_started.ipynb) to skip this textual introduction and dive right into our sample notebook.
+Valor is a centralized evaluation store that makes it easy to measure, explore, and rank model performance. Valor empowers data scientists and engineers to evaluate the performance of their machine learning pipelines and use those evaluations to make better modeling decisions in the future. To skip this textual introduction and dive right in, first go [here](getting_started.md) for instructions to setup the velour service, and then checkout the [sample notebooks](https://github.com/Striveworks/valor/blob/main/examples/).
 
 Valor is maintained by Striveworks, a cutting-edge machine learning operations (MLOps) company based out of Austin, Texas. We'd love to learn more about your interest in Valor and answer any questions you may have; please don't hesitate to reach out to us on [Slack](https://striveworks-public.slack.com/join/shared_invite/zt-1a0jx768y-2J1fffN~b4fXYM8GecvOhA#/shared-invite/email) or [GitHub](https://github.com/striveworks/valor).
 
 These docs are organized as follows:
 
 - **[Overview](index.md)** (this page): Provides an overview of what Valor is, why it's important, and how it works.
-- **[Sample Notebook](https://github.com/Striveworks/valor/blob/main/examples/getting_started.ipynb)**: Illustrates how to evaluate model performance using Valor in a descriptive Jupyter notebook.
-- **[Getting Started](getting_started.md)**: Details everything you need to get up and running with Valor.
+- **[Installation](installation.md)**: Explains how to install Valor.
+- **[Basic Usage](basic_usage.md)**: Details everything you need to get up and running with using Valor.
+- **[Sample Notebooks](https://github.com/Striveworks/valor/blob/main/examples/)**: Collection of descriptive Jupyter notebooks giving examples of how to evaluate model performance using Valor.
 - **[Metadata and Filtering](metadata_and_filtering.md)**: Describes Valor's robust support for adding metadata to data, along with how to filter evaluations and Valor objects based on metadata and other attributes.
 - **[Metrics](https://striveworks.github.io/valor/metrics)**: Describes all of the metrics that you can calculate using Valor.
 - **[Endpoints](endpoints.md)**: Documents Valor's various API endpoints.

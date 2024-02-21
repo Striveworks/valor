@@ -1,68 +1,22 @@
-# Getting Started
+# Basic Usage
 
 Valor is a centralized evaluation store that makes it easy to measure, explore, and rank model performance. For an overview of what Valor is and why it's important, please refer to our [high-level overview](index.md).
 
-On this page, we'll describe how to get up and running with Valor.
+On this page, we'll describe the basic usage of Valor. For how to install velour, please see our [installation guide](installation.md).
 
-## 1. Install Docker
+There are two ways to access Valor: by leveraging our Python client (the typical way users of Valor will interact with the service), or by calling our REST endpoints directly (e.g. for integrating Valor into other services). This guide covers the former way of interacting with Valor. For the latter, please see our [API endpoints documentation](endpoints.md).
 
-As a first step, be sure your machine has Docker installed. [Click here](https://docs.docker.com/engine/install/) for basic installation instructions.
-
-
-## 2. Clone the repo and open the directory
-
-Choose a file in which to store Valor, and then run:
-
-```shell
-git clone https://github.com/striveworks/valor
-cd valor
-```
-
-
-## 3. Start services
-
-There are multiple ways to start the Valor API service.
-
-### a. Helm Chart
-
-When deploying Valor on Kubernetes via Helm, you can use our pre-built chart using the following commands:
-
-```shell
-helm repo add valor https://striveworks.github.io/valor-charts/
-helm install valor valor/valor
-# Valor should now be avaiable at valor.namespace.svc.local
-```
-
-### b. Docker
-
-You can download the latest Valor image from `ghcr.io/striveworks/valor/valor-service`.
-
-### c. Manual Deployment
-
-If you would prefer to build your own image or want a debug console for the back end, please see the deployment instructions in ["Contributing to Valor"](contributing.md).
-
-## 4. Use Valor
-
-There are two ways to access Valor: by leveraging our Python client, or by calling our REST endpoints directly.
-
-### 4a. Using the Python client
+## Using the Python client
 
 Let's walk through a hypothetical example where we're trying to classify dogs and cats in a series of images. Note that all of the code below is pseudo-code for clarity; please see our ["Getting Started"](https://github.com/Striveworks/valor/blob/main/examples/getting_started.ipynb) notebook for a working example.
 
-#### Install the client
+### Import dependencies
 
-To install the Python client, you can run:
-
-```shell
-pip install valor-client
-```
-
-#### Import dependencies
-
-Import dependencies directly from the client module using:
+Import basic objects directly from the client module using:
 
 ```py
 from valor import (
+    connect
     Client,
     Dataset,
     Model,
@@ -81,12 +35,13 @@ from valor.schemas import (
 from valor.enums import TaskType
 ```
 
-#### Connect to the Client
+### Connect to the Client
 
 The `valor.Client` class gives an object that is used to communicate with the `valor` back end.
 
 ```py
-client = Client("http://localhost:8000")
+connect("http://0.0.0.0:8000")
+client = Client()
 ```
 
 In the event that the host uses authentication, the argument `access_token` should also be passed to `Client`.
@@ -162,7 +117,7 @@ for image in groundtruth_annotations:
 dataset.finalize()
 ```
 
-#### Pass your predictions into Valor
+### Pass your predictions into Valor
 
 Now that we've passed several images of dogs into Valor, we need to pass in model predictions before we can evaluate whether those predictions were correct or not. To accomplish this task, we start by defining our `Model`:
 
@@ -234,7 +189,7 @@ for element in object_detections:
     model.add_prediction(prediction)
 ```
 
-#### Run your evaluation and print metrics
+### Run your evaluation and print metrics
 
 Now that both our `Dataset` and `Model` are finalized, we can evaluate how well our hypothetical model performed.
 
@@ -243,7 +198,7 @@ Now that both our `Dataset` and `Model` are finalized, we can evaluate how well 
 evaluation = model.evaluate_classification(
     dataset=dataset,
     filters=[
-        Label.label.in_(
+        Annotation.labels.in_(
             [
                 Label(key="class_label", value="dog"),
                 Label(key="class_label", value="cat"),
@@ -260,11 +215,11 @@ result = evaluation.get_result()
 print(result.metrics)
 ```
 
-#### Run a filtered evaluation and print metrics
+### Run a filtered evaluation and print metrics
 
 Valor offers more than just 1:1 evaluations; it allows the creation of metadata filters to stratify the dataset ground truths and model predictions. This enables the user to ask complex questions about their data.
 
-With this in mind, let's pose the question: *"How well did the model perform on animal prediction?"*
+With this in mind, let's pose the question: _"How well did the model perform on animal prediction?"_
 
 We can ask this question with the following evaluation statement:
 
@@ -274,7 +229,7 @@ animal_evaluation = model.evaluate_classification(
     dataset=dataset,
     filters=[
         # with this filter, we're asking Valor to only evaluate how well our model performed on predicting cats and dogs.
-        Label.label.in_(
+        Annotation.labels.in_(
             [
                 Label(key="class_label", value="dog"),
                 Label(key="class_label", value="cat"),
@@ -294,11 +249,6 @@ print(result.metrics)
 
 For more examples, please see our [sample notebooks](https://github.com/Striveworks/valor/tree/main/sample_notebooks).
 
-
-### 4b. Using API endpoints
-You can also leverage Valor's API without using the Python client. [Click here](endpoints.md) to read up on all of our API endpoints.
-
-
-# Next Steps
+## Next Steps
 
 For more examples, we'd recommend reviewing our [sample notebooks on GitHub](https://github.com/Striveworks/valor/blob/main/examples/getting_started.ipynb). For more detailed explanations of Valor's technical underpinnings, see our [technical concepts guide](technical_concepts.md).
