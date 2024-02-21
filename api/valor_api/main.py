@@ -70,7 +70,7 @@ def create_groundtruths(
     Parameters
     ----------
     groundtruths : list[schemas.GroundTruth]
-        The groundtruths to add to the database.
+        The ground truths to add to the database.
     db : Session
         The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
 

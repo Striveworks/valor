@@ -71,11 +71,11 @@ To get started with Valor, we'd recommend reviewing our [sample notebooks](https
 
 **Q. What is Valor?**
 
-**A.** Valor is a centralized evaluation store which makes it easy to measure, explore, and rank model performance. For an overview of what Valor is and why it's important, please refer to our [high-level overview](index.md).
+**A.** Valor is a centralized evaluation store that makes it easy to measure, explore, and rank model performance. For an overview of what Valor is and why it's important, please refer to our [high-level overview](index.md).
 
 **Q. What evaluation methods are supported?**
 
-**A.** Valor currently support generic classification as well as object-detection and semantic-segmentation for images. The long-term goal for Valor is to support the most popular supervised learning methods.
+**A.** Valor currently supports generic classification as well as object-detection and semantic-segmentation for images. The long-term goal for Valor is to support the most popular supervised learning methods.
 
 **Q. Does Valor store data?**
 
@@ -83,7 +83,7 @@ To get started with Valor, we'd recommend reviewing our [sample notebooks](https
 
 **Q. What is a Datum?**
 
-**A.** A `valor.Datum` object is a generic type that represents a datum in the context of a machine learning workflow. The object stores a uid and related metadata in a dictionary. This metadata allows for the user to construct their own abstraction layer by mapping a real-world type (e.g. an image) into a `valor.Datum` type.
+**A.** A `valor.Datum` object is a generic type that represents a datum in the context of a machine learning workflow. The object stores a UID and related metadata in a dictionary. This metadata allows for the user to construct their own abstraction layer by mapping a real-world type (e.g., an image) into a `valor.Datum` type.
 
 ```python
 from valor.metatypes import ImageMetadata
@@ -113,9 +113,9 @@ datum = image.to_datum()
 
 **Q. Why am I getting `NotFinalizedError` when trying to run an evaluation?**
 
-**A.** Valor requires both dataset and model representations be finalized before evaluation can take place. Finalization is crucial for auditability as it ensures that data finalized at a certrain date is immutable.
+**A.** Valor requires both dataset and model representations to be finalized before evaluation can take place. Finalization is crucial for auditability as it ensures that data finalized at a certain date is immutable.
 
-Dataset finalization is accomplished throught the `valor.Dataset.finalize` member function.
+Dataset finalization is accomplished through the `valor.Dataset.finalize` member function.
 
 ```python
 from valor import Client, Dataset
@@ -143,4 +143,5 @@ model.finalize_inferences(dataset)
 ```
 
 **Q. Why am I getting GDAL driver errors?**
-**A.** For some computations (mostly involving rasters), Valor requires the PostGIS database to have all GDAL drivers enabled. The Valor back end attempts to enable these but it might not have permission depending on your specific setup. If you encounter this error, [see here](https://postgis.net/docs/postgis_gdal_enabled_drivers.html) for ways to enable the drivers directly in the PostGIS instance.
+
+**A.** For some computations (mostly involving rasters), Valor requires the PostGIS database to have all GDAL drivers enabled. The Valor back end attempts to enable these drivers, but it might not have permission depending on your specific setup. If you encounter this error, [see here](https://postgis.net/docs/postgis_gdal_enabled_drivers.html) for ways to enable the drivers directly in the PostGIS instance.

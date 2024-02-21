@@ -1162,7 +1162,7 @@ def test_evaluate_detection_with_label_maps(
     ]
 
     label_mapping = {
-        # map the groundtruths
+        # map the ground truths
         Label(key="class_name", value="maine coon cat"): Label(
             key="foo", value="bar"
         ),

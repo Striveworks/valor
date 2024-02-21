@@ -1022,8 +1022,8 @@ def test_create_detection_metrics(
     groundtruths,
     predictions,
 ):
-    # the groundtruths and predictions arguments are not used but
-    # those fixtures create the necessary dataset, model, groundtruths, and predictions
+    # the ground truths and predictions arguments are not used but
+    # those fixtures create the necessary dataset, model, ground truths, and predictions
 
     def method_to_test(
         label_key: str,

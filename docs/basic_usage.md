@@ -8,7 +8,7 @@ There are two ways to access Valor: by leveraging our Python client (the typical
 
 ## Using the Python client
 
-Let's walk through a hypothetical example where we're trying to classify dogs and cats in a series of images. Note that all of the code below is pseudo-code for clarity; please see our ["Getting Started"](https://github.com/Striveworks/valor/blob/main/examples/getting_started.ipynb) notebook for a working example.
+Let's walk through a hypothetical example where we're trying to classify dogs and cats in a series of images. Note that all of the code below is pseudo-code for clarity; please see our [Getting Started](https://github.com/Striveworks/valor/blob/main/examples/getting_started.ipynb) notebook for a working example.
 
 ### Import dependencies
 
@@ -82,7 +82,7 @@ for image in groundtruth_annotations:
     # each image is represented by a Valor Datum.
     # this is used to connect ground truths and predictions when it's time for evaluation.
     datum = Datum(
-        uid=Path(image["path"]).stem, # strip the filename for use as Datum uid.
+        uid=Path(image["path"]).stem, # strip the filename for use as Datum UID.
         metadata={
             "path": image["path"],  # store the path in metadata
         }

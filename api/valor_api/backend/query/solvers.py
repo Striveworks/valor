@@ -70,7 +70,7 @@ def _solve_groundtruth_graph(
     ],
 ):
     """
-    Solves the groundtruths graph.
+    Solves the ground truths graph.
 
     groundtruth_graph = [Dataset, Datum, Annotation, GroundTruth, Label]
     """
