@@ -9,8 +9,9 @@ theme:
     primary: deep purple
 nav:
   - Overview: "index.md"
+  - Installation: "installation.md"
   - Sample Notebook: "https://github.com/Striveworks/valor/blob/main/examples/getting_started.ipynb"
-  - Getting Started: "getting_started.md"
+  - Basic Usage: "basic_usage.md"
   - Metadata & Filtering: "metadata_and_filtering.md"
   - Metrics: "metrics.md"
   - Endpoints: "endpoints.md"

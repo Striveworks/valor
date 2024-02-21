@@ -1,0 +1,63 @@
+# Installation
+
+Valor is comprised of a backend service (which consists of a REST API and a Postgres DB with the PostGIS extension) and a python client for interacting with it.
+
+## Setting up the backend service
+
+### Using docker compose
+
+The easiest way to get up and running for with everything needed is to use docker compose with the `docekr-compose.yml` file in the repo root:
+
+```shell
+git clone https://github.com/striveworks/valor
+cd valor
+docker compose --env-file ./api/.env.testing up
+```
+
+This will set up the backend service, the database, run database migration job, set necessary the environment variables, etc. To rest that everything is running properly, the endpoint `localhost:8000/health` should return `{"status":"ok"}`
+
+**Note: this is not a secure deployment of Valor, and is only recommended for development and testing purposes**.
+
+### Using docker for the REST API and a hosted database
+
+For a more production grade deployment, we publish the images `ghcr.io/striveworks/valor/valor-service` for the REST API, and `ghcr.io/striveworks/valor/migrations`, which is used for setting up the database and migrations. These can be paired with any Postgres database with the PostGIS extension.
+
+The following environment variables are required for running these
+| Variable | Description | Images that need it |
+| --- | --- | --- |
+| `POSTGRES_HOST` | The host of the Postgres database | `valor-service`, `migrations` |
+| `POSTGRES_PORT` | The port of the Postgres database | `valor-service`, `migrations` |
+| `POSTGRES_DB` | The name of the Postgres database | `valor-service`, `migrations` |
+| `POSTGRES_USERNAME` | The user of the Postgres database | `valor-service`, `migrations` |
+| `POSTGRES_PASSWORD` | The password of the Postgres database | `valor-service`, `migrations` |
+| `POSTGRES_SSLMODE` | Sets the Postgres instance SSL mode (typically needs to be "require") | `migrations` |
+| `API_ROOT_PATH` | the root path of the API (if serving behind a proxy) | `valor-service` |
+
+Additionally, the Valor REST API has optional single username/password/bearer token authentication. To enable this, the `valor-service` image requires the following environment variables:
+| Variable | Description |
+| --- | --- |
+| `VALOR_USERNAME` | The username to use |
+| `VALOR_PASSWORD` | The password to use |
+| `VALOR_SECRET_KEY` | A random, secret string used for signing JWT tokens |
+
+### Helm Chart
+
+Alternatively, we provide pre-built charts for deplying Valor on Kubernetes via Helm using the following commands:
+
+```shell
+helm repo add valor https://striveworks.github.io/valor-charts/
+helm install valor valor/valor
+# Valor should now be avaiable at valor.namespace.svc.local
+```
+
+### Manual Deployment
+
+If you would prefer to build your own image or want a debug console for the backend, please see the deployment instructions in ["Contributing to Valor"](contributing.md).
+
+## Setting up the Python client
+
+The python client can be installed via pip:
+
+```shell
+pip install valor-client
+```
