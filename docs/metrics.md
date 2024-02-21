@@ -38,30 +38,29 @@ If we're missing an important metric for your particular use case, please [write
 
 | Element | Description |
 | ------- | ------------ |
-| True Positive (TP) | Prediction returns True and is correct. |
-| False Positive (FP) | Prediction returns True and is incorrect. |
-| True Negative (TN) | Prediction returns False and is correct. |
-| False Negative (FN) | Prediction returns False and is incorrect. |
+| True Positive (TP) | Prediction confidence is above a threshold and is correct. |
+| False Positive (FP) | Prediction confidence is above a threshold and is incorrect. |
+| True Negative (TN) | Prediction confidence is below a threshold and is correct. |
+| False Negative (FN) | Prediction confidence is below a threshold and is incorrect. |
 
-- $\text{True Positive Rate} = \dfrac{|TP|}{|TP| + |FN|}$
+- $\text{True Positive Rate (TPR)} = \dfrac{|TP|}{|TP| + |FN|}$
 
-- $\text{False Positive Rate} = \dfrac{|FP|}{|FP| + |TN|}$
-
-- $\text{Precision} = \dfrac{|TP|}{|TP| + |FP|}$
-
-- $\text{Recall} = \dfrac{|TP|}{|TP| + |FN|}$
+- $\text{False Positive Rate (FPR)} = \dfrac{|FP|}{|FP| + |TN|}$
 
 ### Receiver Operating Characteristic (ROC)
 
-WIP
+An ROC curve plots TPR vs. FPR at different confidence thresholds.
 
 ### Area under the ROC curve (ROC AUC)
 
-WIP
+From the ROC curve we calculate the ROC AUC metric by taking the integral using the trapezoidal rule formula.
+
+$$
+\sum_{i=1}^{|scores|} \frac{(TPR(scores_{i-1}) - TPR(scores_i)) \cdot (FPR(scores_{i-1}) - FPR(scores_i))}{2}
+$$
 
 ### References
 - [Classification: ROC Curve and AUC](https://developers.google.com/machine-learning/crash-course/classification/roc-and-auc)
-
 
 ## Average Precision (AP) for Object Detection
 
@@ -69,7 +68,7 @@ For object-detection and instance segmentation tasks, average-precision is calcu
 
 ### What is Intersection-over-Union (IoU)?
 
-The overlap between the groundtruth and predicted regions of an image, measured as a percentage, grouped by class. IOUs are calculated by a) fetching the groundtruth and prediction rasters for a particular image and class, b) counting the true positive pixels (e.g., the number of pixels that were selected in both the groundtruth masks and prediction masks), and c) dividing the sum of true positives by the total number of pixels in both the groundtruth and prediction masks.
+IoU is the ratio of intersecting area over total area spanned by two geometries.
 
 $$Intersection \ over \ Union \ (IoU) = \dfrac{Area( prediction \cap groundtruth )}{Area( prediction \cup groundtruth )}$$
 
@@ -130,7 +129,7 @@ $$
 
 ### Precision-Recall Curve
 
-We can now compute the precision-recall curve using our previously ranked IoU's.
+We can now compute the precision-recall curve using our previously ranked IoU's. We do this by iterating through the ranked IoU's and creating points cumulatively using recall and precision.
 
 $$
 \begin{aligned}
