@@ -18,7 +18,7 @@ If we're missing an important metric for your particular use case, please [write
 
 | Name | Description | Equation |
 | :- | :- | :- |
-| Average Precision (AP) | The weighted mean of precisions achieved at several different recall thresholds for a single Intersection over Union (IoU)*, grouped by class. | See [AP methods](methods.md#average-precision-ap-for-object-detection). |
+| Average Precision (AP) | The weighted mean of precisions achieved at several different recall thresholds for a single Intersection over Union (IoU), grouped by class. | See [AP methods](methods.md#average-precision-ap-for-object-detection). |
 | AP Averaged Over IoUs | The average of several AP metrics, calculated at various IoUs, grouped by class. | $$\dfrac{1}{\|thresholds\|} \sum\limits_{iou \in thresholds} AP_{iou}$$ |
 | Mean Average Precision (mAP) 	| The mean of several AP scores, calculated over various classes. | $$\dfrac{1}{\|classes\|} \sum\limits_{c \in classes} AP_{c}$$ |
 | mAP Averaged Over IoUs | The mean of several averaged AP scores, calculated over various classes. | $$\dfrac{1}{\|thresholds\|} \sum\limits_{iou \in thresholds} mAP_{iou}$$ |
