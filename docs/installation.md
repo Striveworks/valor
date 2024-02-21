@@ -1,8 +1,8 @@
 # Installation
 
-Valor is comprised of a backend service (which consists of a REST API and a Postgres DB with the PostGIS extension) and a python client for interacting with it.
+Valor is comprised of a back end service (which consists of a REST API and a Postgres DB with the PostGIS extension) and a python client for interacting with it.
 
-## Setting up the backend service
+## Setting up the back end service
 
 ### Using docker compose
 
@@ -52,7 +52,7 @@ helm install valor valor/valor
 
 ### Manual Deployment
 
-If you would prefer to build your own image or want a debug console for the backend, please see the deployment instructions in ["Contributing to Valor"](contributing.md).
+If you would prefer to build your own image or want a debug console for the back end, please see the deployment instructions in ["Contributing to Valor"](contributing.md).
 
 ## Setting up the Python client
 

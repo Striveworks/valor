@@ -113,7 +113,7 @@ for image in groundtruth_annotations:
     # add it to your dataset
     dataset.add_groundtruth(groundtruth)
 
-# now that we've added all our groundtruths, we can finalize our dataset for evaluation
+# now that we've added all our ground truths, we can finalize our dataset for evaluation
 dataset.finalize()
 ```
 
