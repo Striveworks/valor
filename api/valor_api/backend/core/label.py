@@ -298,7 +298,7 @@ def get_disjoint_labels(
     rhs : list[schemas.Filter]
         Filter defining second label set.
     label_map: LabelMapType, optional
-        Optional mapping of individual Labels to a grouper Label. Useful when you need to evaluate performance using Labels that differ across datasets and models.
+        Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
 
     Returns
     ----------
@@ -341,7 +341,7 @@ def get_disjoint_keys(
         Filter defining second label set.
     label_map: LabelMapType, optional,
 
-        Optional mapping of individual Labels to a grouper Label. Useful when you need to evaluate performance using Labels that differ across datasets and models.
+        Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
 
     Returns
     ----------

@@ -53,7 +53,7 @@ class APMetric(BaseModel):
         label_id : int
             The id of the label.
         evaluation_id : ind
-            The id of the evaluation.
+            The ID of the evaluation.
 
         Returns
         ----------
@@ -95,7 +95,7 @@ class APMetricAveragedOverIOUs(BaseModel):
         label_id : int
             The id of the label.
         evaluation_id : ind
-            The id of the evaluation.
+            The ID of the evaluation.
 
         Returns
         ----------
@@ -132,7 +132,7 @@ class mAPMetric(BaseModel):
         Parameters
         ----------
         evaluation_id : ind
-            The id of the evaluation.
+            The ID of the evaluation.
 
         Returns
         ----------
@@ -168,7 +168,7 @@ class mAPMetricAveragedOverIOUs(BaseModel):
         Parameters
         ----------
         evaluation_id : ind
-            The id of the evaluation.
+            The ID of the evaluation.
 
         Returns
         ----------
@@ -191,7 +191,7 @@ class ConfusionMatrixEntry(BaseModel):
     prediction : str
         The prediction.
     groundtruth : str
-        The groundtruth.
+        The ground truth.
     count : int
         The value of the element in the matrix.
     """

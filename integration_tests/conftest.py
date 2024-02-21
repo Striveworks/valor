@@ -1,6 +1,7 @@
-""" These integration tests should be run with a backend at http://localhost:8000
+""" These integration tests should be run with a back end at http://localhost:8000
 that is no auth
 """
+
 import os
 from typing import Iterator
 
@@ -27,26 +28,26 @@ def connection() -> ClientConnection:
 
 @pytest.fixture
 def db(connection: ClientConnection) -> Iterator[Session]:
-    """This fixture makes sure there's not datasets, models, or labels in the backend
+    """This fixture makes sure there's not datasets, models, or labels in the back end
     (raising a RuntimeError if there are). It returns a db session and as cleanup
-    clears out all datasets, models, and labels from the backend.
+    clears out all datasets, models, and labels from the back end.
     """
     client = Client(connection)
 
     if len(client.get_datasets()) > 0:
         raise RuntimeError(
-            "Tests should be run on an empty valor backend but found existing datasets.",
+            "Tests should be run on an empty valor back end but found existing datasets.",
             [ds.name for ds in client.get_datasets()],
         )
 
     if len(client.get_models()) > 0:
         raise RuntimeError(
-            "Tests should be run on an empty valor backend but found existing models."
+            "Tests should be run on an empty valor back end but found existing models."
         )
 
     if len(client.get_labels()) > 0:
         raise RuntimeError(
-            "Tests should be run on an empty valor backend but found existing labels."
+            "Tests should be run on an empty valor back end but found existing labels."
         )
 
     POSTGRES_HOST = os.getenv("POSTGRES_HOST", "localhost")
@@ -501,7 +502,7 @@ def gt_clfs(
 
 @pytest.fixture
 def gt_clfs_tabular() -> list[int]:
-    """groundtruth for a tabular classification task"""
+    """ground truth for a tabular classification task"""
     return [1, 1, 2, 0, 0, 0, 1, 1, 1, 1]
 
 

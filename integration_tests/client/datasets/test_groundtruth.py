@@ -1,6 +1,7 @@
-""" These integration tests should be run with a backend at http://localhost:8000
+""" These integration tests should be run with a back end at http://localhost:8000
 that is no auth
 """
+
 import numpy as np
 import pytest
 from geoalchemy2.functions import ST_AsText, ST_Polygon
@@ -27,7 +28,7 @@ def test_create_gt_detections_as_bbox_or_poly(
     client: Client,
     dataset_name: str,
 ):
-    """Test that a groundtruth detection can be created as either a bounding box
+    """Test that a ground truth detection can be created as either a bounding box
     or a polygon
     """
     xmin, ymin, xmax, ymax = 10, 25, 30, 50
@@ -101,7 +102,7 @@ def test_create_gt_segs_as_polys_or_masks(
     dataset_name: str,
     img1: ImageMetadata,
 ):
-    """Test that we can create a dataset with groundtruth segmentations that are defined
+    """Test that we can create a dataset with ground truth segmentations that are defined
     both my polygons and mask arrays
     """
     xmin, xmax, ymin, ymax = 11, 45, 37, 102
@@ -181,11 +182,11 @@ def test_add_groundtruth(
 ):
     dataset = Dataset.create(dataset_name)
 
-    # make sure we get an error when passing a non-groundtruth object to add_groundtruth
+    # make sure we get an error when passing a non-ground truth object to add_groundtruth
     with pytest.raises(TypeError):
         dataset.add_groundtruth("not_a_gt")  # type: ignore
 
-    # make sure we get a warning when passing a groundtruth without annotations
+    # make sure we get a warning when passing a ground truth without annotations
     with pytest.warns(UserWarning):
         dataset.add_groundtruth(
             GroundTruth(

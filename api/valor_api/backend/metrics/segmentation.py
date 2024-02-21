@@ -15,7 +15,7 @@ from valor_api.schemas.metrics import IOUMetric, mIOUMetric
 
 
 def _generate_groundtruth_query(groundtruth_filter: schemas.Filter) -> Select:
-    """Generate a sqlalchemy query to fetch a groundtruth."""
+    """Generate a sqlalchemy query to fetch a ground truth."""
     return (
         Query(
             models.Annotation.id.label("annotation_id"),
@@ -81,7 +81,7 @@ def _count_true_positives(
 def _count_groundtruths(
     db: Session, groundtruth_subquery: Select
 ) -> int | None:
-    """Total number of groundtruth pixels for the given dataset and label"""
+    """Total number of ground truth pixels for the given dataset and label"""
     ret = db.scalar(
         select(func.sum(ST_Count(models.Annotation.raster)))
         .select_from(groundtruth_subquery)  # type: ignore - SQLAlchemy type issue
@@ -163,7 +163,7 @@ def _compute_segmentation_metrics(
     Returns
     ----------
     List[schemas.IOUMetric | mIOUMetric]
-        A list containing one `IOUMetric` for each label in groundtruth and one `mIOUMetric` for the mean _compute_IOU over all labels.
+        A list containing one `IOUMetric` for each label in ground truth and one `mIOUMetric` for the mean _compute_IOU over all labels.
 
     """
 

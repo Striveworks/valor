@@ -160,7 +160,7 @@ class Datum(BaseModel):
 
     def __eq__(self, other):
         """
-        Defines how `Datums` are compared to one another
+        Defines how `Datums` are compared to one another.
 
         Parameters
         ----------
@@ -244,7 +244,7 @@ def _check_semantic_segmentations_single_label(
 
 class GroundTruth(BaseModel):
     """
-    An object describing a groundtruth (e.g., a human-drawn bounding box on an image).
+    An object describing a ground truth (e.g., a human-drawn bounding box on an image).
 
     Attributes
     ----------
@@ -274,7 +274,7 @@ class GroundTruth(BaseModel):
     @model_validator(mode="after")  # type: ignore - pydantic type error
     @classmethod
     def _validate_annotation_rasters(cls, values):
-        """Validate any rasters on the groundtruth."""
+        """Validate any rasters on the ground truth."""
         return _validate_rasters(values)
 
 

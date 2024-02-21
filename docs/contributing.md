@@ -32,7 +32,7 @@ For questions or comments on this process, please reach out to us at any time on
 
 ## Development Tips and Tricks
 
-### Deploying the Backend for Development
+### Deploying the Back End for Development
 
 #### Docker Compose
 
@@ -113,13 +113,13 @@ pip install pytest
 pytest integration_tests
 ```
 
-#### Running backend unit tests
+#### Running back end unit tests
 
 ```shell
 pytest api/tests/unit-tests
 ```
 
-#### Running backend functional tests
+#### Running back end functional tests
 
 > **Note:** Functional tests require a running instance of PostgreSQL, which you can start using `make start-postgis-docker`.
 

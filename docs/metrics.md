@@ -173,4 +173,4 @@ $$
 - [Mean Average Precision (mAP) Using the COCO Evaluator](https://pyimagesearch.com/2022/05/02/mean-average-precision-map-using-the-coco-evaluator/)
 
 ### Notes
-- When calculating IOUs for object detection metrics, Valor handles the necessary conversion between different types of image annotations. For example, if your model prediction is a polygon and your groundtruth is a raster, then the raster will be converted to a polygon prior to calculating the IOU.
+- When calculating IOUs for object detection metrics, Valor handles the necessary conversion between different types of geometric annotations. For example, if your model prediction is a polygon and your groundtruth is a raster, then the raster will be converted to a polygon prior to calculating the IOU.

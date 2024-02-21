@@ -259,7 +259,7 @@ class DatumDoesNotExistError(Exception):
     Parameters
     -------
     uid : str
-        The uid of the datum.
+        The UID of the datum.
     """
 
     def __init__(self, uid: str):
@@ -273,7 +273,7 @@ class DatumAlreadyExistsError(Exception):
     Parameters
     -------
     uid : str
-        The uid of the datum.
+        The UID of the datum.
     """
 
     def __init__(self, uid: str):
@@ -289,7 +289,7 @@ class DatumDoesNotBelongToDatasetError(Exception):
     dataset_name : str
         The name of the dataset.
     datum_uid : str
-        The uid of the datum.
+        The UID of the datum.
     """
 
     def __init__(self, dataset_name: str, datum_uid: str):
@@ -308,7 +308,7 @@ class AnnotationAlreadyExistsError(Exception):
     Parameters
     -------
     datum_uid : str
-        The uid of the datum.
+        The UID of the datum.
     """
 
     def __init__(self, datum_uid: str):
@@ -319,12 +319,12 @@ class AnnotationAlreadyExistsError(Exception):
 
 class GroundTruthAlreadyExistsError(Exception):
     """
-    Raises an exception if a groundtruth is duplicated.
+    Raises an exception if a ground truth is duplicated.
     """
 
     def __init__(self, annotation_id: int, label_id: int):
         super().__init__(
-            f"A groundtruth already exists mapping label `{label_id}` to annotation `{annotation_id}`."
+            f"A ground truth already exists mapping label `{label_id}` to annotation `{annotation_id}`."
         )
 
 
@@ -398,7 +398,7 @@ class EvaluationStateError(Exception):
     Parameters
     -------
     evaluation_id : int
-        The id of the evaluation.
+        The ID of the evaluation.
     current_state : enums.EvaluationStatus
         The current state of the evaluation.
     requested_state : enums.EvaluationStatus

@@ -4,11 +4,11 @@ On this page, we'll describe many of the technical concepts underpinning Valor.
 
 ## High-Level Workflow
 
-The typical Valor workflow involves POSTing groundtruth annotations (e.g., class labels, bounding boxes, segmentation masks, etc.) and model predictions to our API service. The service leverages these groundtruths and predictions to compute evaluation metrics, and then stores the groundtruths, predictions, and evaluation metrics centrally in Postgres. Users can also attach metadata to their `Datasets`, `Models`, `GroundTruths`, and `Annotations`; this metadata makes it easy to query for specific subsets of evaluations at a later date. Once an evaluation is stored in Valor, users can query those evaluations from Postgres via `GET` requests to the Valor API.
+The typical Valor workflow involves POSTing ground truth annotations (e.g., class labels, bounding boxes, segmentation masks, etc.) and model predictions to our API service. The service leverages these ground truths and predictions to compute evaluation metrics, and then stores the ground truths, predictions, and evaluation metrics centrally in Postgres. Users can also attach metadata to their `Datasets`, `Models`, `GroundTruths`, and `Annotations`; this metadata makes it easy to query for specific subsets of evaluations at a later date. Once an evaluation is stored in Valor, users can query those evaluations from Postgres via `GET` requests to the Valor API.
 
 Note that Valor does _not_ store raw data (such as underlying images) or facilitate model inference. Only the following items are stored in Postgres:
 
-- Groundtruth annotations
+- Ground truth annotations
 - Predictions outputted from a model
 - Metadata from any of Valor's various classes
 - Evaluation metrics computed by Valor
@@ -43,7 +43,7 @@ We can think of Valor in terms of four orthogonal components:
 
 ### API
 
-The core of Valor is a backend REST API service. Users can call the API's endpoints directly (e.g., `POST /datasets`), or they can use our Python client to handle the API calls in their Python environment. All of Valor's state is stored in Postgres; the API itself is completely stateless.
+The core of Valor is a back end REST API service. Users can call the API's endpoints directly (e.g., `POST /datasets`), or they can use our Python client to handle the API calls in their Python environment. All of Valor's state is stored in Postgres; the API itself is completely stateless.
 
 Note that, after you start the API service in Dockers, you'll be able to view FastAPI's automatically generated API documentation at `https://<your host>/docs`.
 
@@ -69,7 +69,7 @@ The highest-level class is a `Dataset`, which stores metadata and annotations as
 
 ### `Model`
 
-`Models` describe a particular instantiation of a machine learning model. We use the `Model` object to delineate between different models runs or between the same model run over time. Note that `Models` aren't children of `Datasets`; you can have one `Model` contain predictions for multiple `Datasets`.
+`Models` describe a particular instantiation of a machine learning model. We use the `Model` object to delineate between different model runs or between the same model run over time. Note that `Models` aren't children of `Datasets`; you can have one `Model` contain predictions for multiple `Datasets`.
 
 `Models` require a name at instantiation and can optionally take in various types of metadata that you want to associate with your model.
 
@@ -99,10 +99,10 @@ A `Datum` requires a universal ID (UID) and dataset name at instantiation, along
 
 ## Authentication
 
-The API can be run without authentication (by default), or with authentication with a single global username and password. To set this up, set the following environment variables when running the backend:
+The API can be run without authentication (by default), or with authentication with a single global username and password. To set this up, set the following environment variables when running the back end:
 
 - Set the environment variables `VALOR_SECRET_KEY`, `VALOR_USERNAME`, and `VALOR_PASSWORD` manually (e.g., `export SECRET_KEY=<secret key>`)
-- Set these env variables in a file named `.env.auth`, and place that file in the `api` directory. An example of such a file would look like:
+- Set these environment variables in a file named `.env.auth`, and place that file in the `api` directory. An example of such a file would look like:
 
 ```
 VALOR_SECRET_KEY="secret key"
@@ -116,7 +116,7 @@ You can use the tests in `integration_tests/test_client_auth.py` to check whethe
 
 ## Deployment Settings
 
-When deploying behind a proxy or with external routing, the `API_ROOT_PATH` environmental variable should be used to set the `root_path` argument to `fastapi.FastAPI` (see https://fastapi.tiangolo.com/advanced/behind-a-proxy/#setting-the-root_path-in-the-fastapi-app).
+When deploying behind a proxy or with external routing, the `API_ROOT_PATH` environment variable should be used to set the `root_path` argument to `fastapi.FastAPI` (see https://fastapi.tiangolo.com/advanced/behind-a-proxy/#setting-the-root_path-in-the-fastapi-app).
 
 ## Release Process
 

@@ -142,7 +142,7 @@ class Label:
 
     def __eq__(self, other) -> bool:
         """
-        Defines how `Labels` are compared to one another
+        Defines how `Labels` are compared to one another.
 
         Parameters
         ----------
@@ -268,7 +268,7 @@ class Annotation:
     ...     raster=raster1,
     ... )
 
-    Defining all supported annotation-types for a given task_type is allowed!
+    Defining all supported annotation types for a given `task_type` is allowed!
     >>> Annotation(
     ...     task_type=TaskType.OBJECT_DETECTION,
     ...     labels=[Label(key="k1", value="v1")],
@@ -308,7 +308,7 @@ class Annotation:
 
     def _validate(self):
         """
-        Validates the parameters used to create a `Annotation` object.
+        Validates the parameters used to create an `Annotation` object.
         """
         # labels
         if not isinstance(self.labels, list):
@@ -357,12 +357,12 @@ class Annotation:
     @classmethod
     def from_dict(cls, resp: dict) -> Annotation:
         """
-        Construct a annotation from a dictionary.
+        Construct an annotation from a dictionary.
 
         Parameters
         ----------
         resp : dict
-            The dictionary containing a annotation.
+            The dictionary containing an annotation.
 
         Returns
         valor.Annotation
@@ -410,7 +410,7 @@ class Annotation:
         Returns
         ----------
         dict
-            A dictionary describing a annotation.
+            A dictionary describing an annotation.
         """
         return {
             "task_type": self.task_type.value,
@@ -432,7 +432,7 @@ class Annotation:
 
     def __eq__(self, other) -> bool:
         """
-        Defines how `Annotations` are compared to one another
+        Defines how `Annotations` are compared to one another.
 
         Parameters
         ----------
@@ -518,7 +518,7 @@ class Datum:
 
     def __eq__(self, other) -> bool:
         """
-        Defines how `Datums` are compared to one another
+        Defines how `Datums` are compared to one another.
 
         Parameters
         ----------
@@ -537,7 +537,7 @@ class Datum:
 
 class GroundTruth:
     """
-    An object describing a groundtruth (e.g., a human-drawn bounding box on an image).
+    An object describing a ground truth (e.g., a human-drawn bounding box on an image).
 
     Parameters
     ----------
@@ -628,7 +628,7 @@ class GroundTruth:
 
     def __eq__(self, other):
         """
-        Defines how `GroundTruths` are compared to one another
+        Defines how `GroundTruths` are compared to one another.
 
         Parameters
         ----------
@@ -778,7 +778,7 @@ class Prediction:
 
     def __eq__(self, other):
         """
-        Defines how `Predictions` are compared to one another
+        Defines how `Predictions` are compared to one another.
 
         Parameters
         ----------
@@ -811,7 +811,7 @@ class Evaluation:
         Attributes
         ----------
         id : int
-            The id of the evaluation.
+            The ID of the evaluation.
         model_name : str
             The name of the evaluated model.
         datum_filter : schemas.Filter
@@ -839,7 +839,7 @@ class Evaluation:
         Returns
         ----------
         dict
-            A dictionary describing a evaluation.
+            A dictionary describing an evaluation.
         """
         return {
             "id": self.id,
@@ -890,9 +890,9 @@ class Evaluation:
 
     def poll(self) -> EvaluationStatus:
         """
-        Poll the backend.
+        Poll the back end.
 
-        Updates the evaluation with the latest state from the backend.
+        Updates the evaluation with the latest state from the back end.
 
         Returns
         -------
@@ -1035,14 +1035,12 @@ class Dataset:
 
         Parameters
         ----------
-        client : Client
-            The `Client` object associated with the session.
         name : str
             The name of the dataset.
         metadata : dict
-            A dictionary of metadata that describes the dataset.
-        delete_if_exists : bool, default=False
-            Deletes any existing dataset with the same name.
+            An optional dictionary of metadata that describes the dataset.
+        connection : ClientConnnetion
+            An optional Valor client object for interacting with the API.
         """
         self.conn = connection
         self.name = name
@@ -1060,7 +1058,7 @@ class Dataset:
         metadata: Optional[MetadataType] = None,
     ) -> Dataset:
         """
-        Creates a dataset that persists in the backend.
+        Creates a dataset that persists in the back end.
 
         Parameters
         ----------
@@ -1087,11 +1085,11 @@ class Dataset:
         name: str,
     ) -> Union[Dataset, None]:
         """
-        Retrieves a dataset from the backend database.
+        Retrieves a dataset from the back end database.
 
         Parameters
         ----------
-        dataset : str
+        name : str
             The name of the dataset.
 
         Returns
@@ -1149,12 +1147,12 @@ class Dataset:
         groundtruth: GroundTruth,
     ) -> None:
         """
-        Add a groundtruth to the dataset.
+        Add a ground truth to the dataset.
 
         Parameters
         ----------
-        groundtruth : GroundTruth
-            The groundtruth to create.
+        ground truth : GroundTruth
+            The ground truth to create.
         """
         Client(self.conn).create_groundtruths(
             dataset=self,
@@ -1166,12 +1164,12 @@ class Dataset:
         groundtruths: List[GroundTruth],
     ) -> None:
         """
-        Add multiple groundtruths to the dataset.
+        Add multiple ground truths to the dataset.
 
         Parameters
         ----------
-        groundtruths : List[GroundTruth]
-            The groundtruths to create.
+        ground truths : List[GroundTruth]
+            The ground truths to create.
         """
         Client(self.conn).create_groundtruths(
             dataset=self,
@@ -1183,7 +1181,7 @@ class Dataset:
         datum: Union[Datum, str],
     ) -> Union[GroundTruth, None]:
         """
-        Get a particular groundtruth.
+        Get a particular ground truth.
 
         Parameters
         ----------
@@ -1193,7 +1191,7 @@ class Dataset:
         Returns
         ----------
         Union[GroundTruth, None]
-            The matching groundtruth or 'None' if it doesn't exist.
+            The matching ground truth or 'None' if it doesn't exist.
         """
         return Client(self.conn).get_groundtruth(dataset=self, datum=datum)
 
@@ -1249,8 +1247,8 @@ class Dataset:
 
             num_datums: total number of datums in the dataset
 
-            num_annotations: total number of labeled annotations in the dataset. if an
-            object (such as a bounding box) has multiple labels then each label is counted separately
+            num_annotations: total number of labeled annotations in the dataset; if an
+            object (such as a bounding box) has multiple labels, then each label is counted separately
 
             num_bounding_boxes: total number of bounding boxes in the dataset
 
@@ -1276,7 +1274,7 @@ class Dataset:
         self,
     ):
         """
-        Finalizes the dataset such that new groundtruths cannot be added to it.
+        Finalizes the dataset such that new ground truths cannot be added to it.
         """
         return Client(self.conn).finalize_dataset(self)
 
@@ -1285,7 +1283,7 @@ class Dataset:
         timeout: int = 0,
     ):
         """
-        Delete the dataset from the backend.
+        Delete the dataset from the back end.
 
         Parameters
         ----------
@@ -1321,14 +1319,12 @@ class Model:
 
         Parameters
         ----------
-        client : Client
-            The `Client` object associated with the session.
         name : str
             The name of the model.
         metadata : dict
-            A dictionary of metadata that describes the model.
-        delete_if_exists : bool, default=False
-            Deletes any existing model with the same name.
+            An optional dictionary of metadata that describes the dataset.
+        connection : ClientConnnetion
+            An optional Valor client object for interacting with the API.
         """
         self.conn = connection
         self.name = name
@@ -1346,7 +1342,7 @@ class Model:
         metadata: Optional[MetadataType] = None,
     ) -> Model:
         """
-        Creates a model that persists in the backend.
+        Creates a model that persists in the back end.
 
         Parameters
         ----------
@@ -1373,7 +1369,7 @@ class Model:
         name: str,
     ) -> Union[Model, None]:
         """
-        Retrieves a model from the backend database.
+        Retrieves a model from the back end database.
 
         Parameters
         ----------
@@ -1495,7 +1491,7 @@ class Model:
 
     def finalize_inferences(self, dataset: Union[Dataset, str]) -> None:
         """
-        Finalizes the model over a dataset such that new prediction cannot be added to it.
+        Finalizes the model over a dataset such that new predictions cannot be added to it.
         """
         if isinstance(dataset, Dataset):
             dataset = dataset.name
@@ -1571,7 +1567,7 @@ class Model:
         filter_by : FilterType, optional
             Optional set of constraints to filter evaluation by.
         label_map : Dict[Label, Label], optional
-            Optional mapping of individual Labels to a grouper Label. Useful when you need to evaluate performance using Labels that differ across datasets and models.
+            Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
 
         Returns
         -------
@@ -1610,7 +1606,7 @@ class Model:
         label_map: Optional[Dict[Label, Label]] = None,
     ) -> Evaluation:
         """
-        Start a object-detection evaluation job.
+        Start an object-detection evaluation job.
 
         Parameters
         ----------
@@ -1625,7 +1621,7 @@ class Model:
         iou_thresholds_to_return : List[float], optional
             Thresholds to return AP for. Must be subset of `iou_thresholds_to_compute`.
         label_map : Dict[Label, Label], optional
-            Optional mapping of individual Labels to a grouper Label. Useful when you need to evaluate performance using Labels that differ across datasets and models.
+            Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
 
         Returns
         -------
@@ -1676,12 +1672,12 @@ class Model:
         filter_by : FilterType, optional
             Optional set of constraints to filter evaluation by.
         label_map : Dict[Label, Label], optional
-            Optional mapping of individual Labels to a grouper Label. Useful when you need to evaluate performance using Labels that differ across datasets and models.
+            Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
 
         Returns
         -------
         Evaluation
-            a job object that can be used to track the status of the job and get the metrics of it upon completion
+            A job object that can be used to track the status of the job and get the metrics of it upon completion
         """
         # format request
         datum_filter = self._format_constraints(datasets, filter_by)
@@ -1702,7 +1698,7 @@ class Model:
 
     def delete(self, timeout: int = 0):
         """
-        Delete the `Model` object from the backend.
+        Delete the `Model` object from the back end.
 
         Parameters
         ----------
@@ -1778,7 +1774,7 @@ class Client:
         filter_by: Optional[FilterType] = None,
     ) -> List[Label]:
         """
-        Gets all labels with option to filter.
+        Gets all labels using an optional filter.
 
         Parameters
         ----------
@@ -1800,7 +1796,7 @@ class Client:
         self, dataset: Union[Dataset, str]
     ) -> List[Label]:
         """
-        Get all labels associated with a dataset's groundtruths.
+        Get all labels associated with a dataset's ground truths.
 
         Parameters
         ----------
@@ -1822,7 +1818,7 @@ class Client:
 
     def get_labels_from_model(self, model: Union[Model, str]) -> List[Label]:
         """
-        Get all labels associated with a model's groundtruths.
+        Get all labels associated with a model's ground truths.
 
         Parameters
         ----------
@@ -1862,20 +1858,21 @@ class Client:
         groundtruths: List[GroundTruth],
     ):
         """
-        Creates groundtruths.
+        Creates ground truths.
 
         Parameters
         ----------
+
         dataset : valor.Dataset
-            The dataset to create the groundtruth for.
+            The dataset to create the ground truth for.
         groundtruths : List[valor.GroundTruth]
-            The groundtruths to create.
+            The ground truths to create.
         """
         groundtruths_json = []
         for groundtruth in groundtruths:
             if not isinstance(groundtruth, GroundTruth):
                 raise TypeError(
-                    f"Expected groundtruth to be of type 'valor.GroundTruth' not '{type(groundtruth)}'."
+                    f"Expected ground truth to be of type 'valor.GroundTruth' not '{type(groundtruth)}'."
                 )
             if len(groundtruth.annotations) == 0:
                 warnings.warn(
@@ -1892,7 +1889,7 @@ class Client:
         datum: Union[Datum, str],
     ) -> Union[GroundTruth, None]:
         """
-        Get a particular groundtruth.
+        Get a particular ground truth.
 
         Parameters
         ----------
@@ -1904,7 +1901,7 @@ class Client:
         Returns
         ----------
         Union[GroundTruth, None]
-            The matching groundtruth or 'None' if it doesn't exist.
+            The matching ground truth or 'None' if it doesn't exist.
         """
         dataset_name = (
             dataset.name if isinstance(dataset, Dataset) else dataset
@@ -1923,7 +1920,7 @@ class Client:
 
     def finalize_dataset(self, dataset: Union[Dataset, str]) -> None:
         """
-        Finalizes a dataset such that new groundtruths cannot be added to it.
+        Finalizes a dataset such that new ground truths cannot be added to it.
 
         Parameters
         ----------
@@ -1950,7 +1947,7 @@ class Client:
         Returns
         -------
         Union[Dataset, None]
-            A Dataset with matching name or 'None' if one doesn't exist.
+            A Dataset with a matching name, or 'None' if one doesn't exist.
         """
         try:
             return Dataset.from_dict(
@@ -1966,7 +1963,7 @@ class Client:
         filter_by: Optional[FilterType] = None,
     ) -> List[Dataset]:
         """
-        Get all datasets with option to filter results.
+        Get all datasets, with an option to filter results according to some user-defined parameters.
 
         Parameters
         ----------
@@ -1991,7 +1988,7 @@ class Client:
         filter_by: Optional[FilterType] = None,
     ) -> List[Datum]:
         """
-        Get all datums with option to filter results.
+        Get all datums using an optional filter.
 
         Parameters
         ----------
@@ -2023,7 +2020,7 @@ class Client:
         dataset : valor.Dataset
             The dataset the datum belongs to.
         uid : str
-            The uid of the datum.
+            The UID of the datum.
         Returns
         -------
         valor.Datum
@@ -2055,7 +2052,7 @@ class Client:
         Returns
         ------
         TableStatus | None
-            The state of the dataset or 'None' if dataset does not exist.
+            The state of the dataset, or 'None' if the dataset does not exist.
         """
         try:
             return self.conn.get_dataset_status(name)
@@ -2200,7 +2197,7 @@ class Client:
         self, dataset: Union[Dataset, str], model: Union[Model, str]
     ) -> None:
         """
-        Finalizes a model-dataset pairing such that new prediction cannot be added to it.
+        Finalizes a model-dataset pairing such that new predictions cannot be added to it.
         """
         dataset_name = (
             dataset.name if isinstance(dataset, Dataset) else dataset
@@ -2242,7 +2239,7 @@ class Client:
         filter_by: Optional[FilterType] = None,
     ) -> List[Model]:
         """
-        Get all models with option to filter results.
+        Get all models using an optional filter.
 
         Parameters
         ----------
@@ -2351,7 +2348,7 @@ class Client:
         Parameters
         ----------
         evaluation_ids : List[int], optional.
-            A list of job ids to return metrics for.
+            A list of job IDs to return metrics for.
         models : Union[List[valor.Model], List[str]], optional
             A list of model names that we want to return metrics for.
         datasets : Union[List[valor.Dataset], List[str]], optional

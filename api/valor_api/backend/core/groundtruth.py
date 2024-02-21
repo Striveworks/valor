@@ -11,14 +11,14 @@ def create_groundtruth(
     groundtruth: schemas.GroundTruth,
 ):
     """
-    Creates a groundtruth.
+    Creates a ground truth.
 
     Parameters
     ----------
     db : Session
         The database Session to query against.
     groundtruth: schemas.GroundTruth
-        The groundtruth to create.
+        The ground truth to create.
     """
     # check dataset status
     if (
@@ -75,7 +75,7 @@ def get_groundtruth(
     datum_uid: str,
 ) -> schemas.GroundTruth:
     """
-    Fetch a groundtruth.
+    Fetch a ground truth.
 
     Parameters
     ----------
@@ -90,7 +90,7 @@ def get_groundtruth(
     Returns
     ----------
     schemas.GroundTruth
-        The requested groundtruth.
+        The requested ground truth.
     """
     # retrieve from table
     dataset = core.fetch_dataset(db, name=dataset_name)

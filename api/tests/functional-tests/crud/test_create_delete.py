@@ -933,7 +933,7 @@ def test_gt_seg_as_mask_or_polys(
     db: Session,
     dataset_name: str,
 ):
-    """Check that a groundtruth segmentation can be created as a polygon or mask"""
+    """Check that a ground truth segmentation can be created as a polygon or mask"""
     xmin, xmax, ymin, ymax = 11, 45, 37, 102
     h, w = 150, 200
     mask = np.zeros((h, w), dtype=bool)
@@ -1022,8 +1022,8 @@ def test_create_detection_metrics(
     groundtruths,
     predictions,
 ):
-    # the groundtruths and predictions arguments are not used but
-    # those fixtures create the necessary dataset, model, groundtruths, and predictions
+    # the ground truths and predictions arguments are not used but
+    # those fixtures create the necessary dataset, model, ground truths, and predictions
 
     def method_to_test(
         label_key: str,

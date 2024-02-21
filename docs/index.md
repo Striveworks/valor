@@ -1,19 +1,20 @@
 # Introduction
 
-Valor is a centralized evaluation store that makes it easy to measure, explore, and rank model performance. Valor empowers data scientists and engineers to evaluate the performance of their machine learning pipelines and use those evaluations to make better modeling decisions in the future. [Click here](https://github.com/Striveworks/valor/blob/main/examples/getting_started.ipynb) to skip this textual introduction and dive right into our sample notebook.
+Valor is a centralized evaluation store that makes it easy to measure, explore, and rank model performance. Valor empowers data scientists and engineers to evaluate the performance of their machine learning pipelines and use those evaluations to make better modeling decisions in the future. To skip this textual introduction and dive right in, first go [here](getting_started.md) for instructions to setup the velour service, and then checkout the [sample notebooks](https://github.com/Striveworks/valor/blob/main/examples/).
 
 Valor is maintained by Striveworks, a cutting-edge machine learning operations (MLOps) company based out of Austin, Texas. We'd love to learn more about your interest in Valor and answer any questions you may have; please don't hesitate to reach out to us on [Slack](https://striveworks-public.slack.com/join/shared_invite/zt-1a0jx768y-2J1fffN~b4fXYM8GecvOhA#/shared-invite/email) or [GitHub](https://github.com/striveworks/valor).
 
 These docs are organized as follows:
 
 - **[Overview](index.md)** (this page): Provides an overview of what Valor is, why it's important, and how it works.
-- **[Sample Notebook](https://github.com/Striveworks/valor/blob/main/examples/getting_started.ipynb)**: Illustrates how to evaluate model performance using Valor in a descriptive Jupyter notebook.
-- **[Getting Started](getting_started.md)**: Details everything you need to get up and running with Valor.
+- **[Installation](installation.md)**: Explains how to install Valor.
+- **[Basic Usage](basic_usage.md)**: Details everything you need to get up and running with using Valor.
+- **[Sample Notebooks](https://github.com/Striveworks/valor/blob/main/examples/)**: Collection of descriptive Jupyter notebooks giving examples of how to evaluate model performance using Valor.
 - **[Metadata and Filtering](metadata_and_filtering.md)**: Describes Valor's robust support for adding metadata to data, along with how to filter evaluations and Valor objects based on metadata and other attributes.
 - **[Metrics](https://striveworks.github.io/valor/metrics)**: Describes all of the metrics that you can calculate using Valor.
 - **[Endpoints](endpoints.md)**: Documents Valor's various API endpoints.
 - **[Technical Concepts](technical_concepts.md)**: Describes the technical concepts that underpin Valor.
-- **[Contributing and Development](getting_started.md)**: Explains how you can build on and contribute to Valor.
+- **[Contributing and Development](contributing.md)**: Explains how you can build on and contribute to Valor.
 - **[Python Client API](client_api/Client.md)**: Shares reference documentation for our Python client.
 
 # Overview
@@ -38,7 +39,7 @@ With these three use cases in mind, we set out to build a centralized evaluation
 
 Valor is a centralized evaluation store that makes it easy to measure, explore, and rank model performance. Our ultimate goal with Valor is to help data scientists and engineers pick the right ML model for their specific needs. To that end, we built Valor with three design principles in mind:
 
-- **Valor works with any dataset or model:** We believe Valor should be able to handle any supervised learning task that you want to throw at it. Just pass in your groundtruth annotations and predictions, describe your learning task (i.e., object detection), and Valor will do the rest. (Note: At launch, Valor will only support classification and computer vision (i.e., image segmentation and object detection) tasks. We're confident this framework will abstract well to other supervised learning tasks and plan to support them in later releases).
+- **Valor works with any dataset or model:** We believe Valor should be able to handle any supervised learning task that you want to throw at it. Just pass in your ground truth annotations and predictions, describe your learning task (i.e., object detection), and Valor will do the rest. (Note: At launch, Valor will only support classification and computer vision (i.e., image segmentation and object detection) tasks. We're confident this framework will abstract well to other supervised learning tasks and plan to support them in later releases).
 - **Valor can handle any type of image, model, or dataset metadata you throw at it:** Metadata is a critical component of any evaluation store as it enables the system to offer tailored model recommendations based on a user's specific needs. To that end, we built Valor to handle any metadata under the sun. Dates, geospatial coordinates, and even JSONs filled with configuration details are all on the table. This means you can slice and dice your evaluations any way you want: just pass in the right labels for your use case and define your filter (say a geographic bounding box), and you’ll get back results for your specific needs.
 - **Valor standardizes the evaluation process:** The trickiest part of comparing two different model runs is avoiding apples-to-oranges comparisons. Valor helps you audit your metrics and avoid false comparisons by versioning your uploads, storing them in a centralized location, and ensuring that you only compare runs that used the exact same filters and metrics.
 
@@ -70,19 +71,19 @@ To get started with Valor, we'd recommend reviewing our [sample notebooks](https
 
 **Q. What is Valor?**
 
-**A.** Valor is a centralized evaluation store which makes it easy to measure, explore, and rank model performance. For an overview of what Valor is and why it's important, please refer to our [high-level overview](index.md).
+**A.** Valor is a centralized evaluation store that makes it easy to measure, explore, and rank model performance. For an overview of what Valor is and why it's important, please refer to our [high-level overview](index.md).
 
 **Q. What evaluation methods are supported?**
 
-**A.** Valor currently support generic classification as well as object-detection and semantic-segmentation for images. The long-term goal for Valor is to support the most popular supervised learning methods.
+**A.** Valor currently supports generic classification as well as object-detection and semantic-segmentation for images. The long-term goal for Valor is to support the most popular supervised learning methods.
 
 **Q. Does Valor store data?**
 
-**A.** Valor only stores groundtruth annotations, model predictions, and user-defined metadata.
+**A.** Valor only stores ground truth annotations, model predictions, and user-defined metadata.
 
 **Q. What is a Datum?**
 
-**A.** A `valor.Datum` object is a generic type that represents a datum in the context of a machine learning workflow. The object stores a uid and related metadata in a dictionary. This metadata allows for the user to construct their own abstraction layer by mapping a real-world type (e.g. an image) into a `valor.Datum` type.
+**A.** A `valor.Datum` object is a generic type that represents a datum in the context of a machine learning workflow. The object stores a UID and related metadata in a dictionary. This metadata allows for the user to construct their own abstraction layer by mapping a real-world type (e.g., an image) into a `valor.Datum` type.
 
 ```python
 from valor.metatypes import ImageMetadata
@@ -98,7 +99,7 @@ datum = image.to_datum()
 
 **Q. What is a GroundTruth?**
 
-**A.** `valor.GroundTruth` objects in Valor each represent a singular datum and its associated annotations that provide a reference standard or the 'truth' against which predictions are compared. There cannot be multiple groundtruths per datum.
+**A.** `valor.GroundTruth` objects in Valor each represent a singular datum and its associated annotations that provide a reference standard or the 'truth' against which predictions are compared. There cannot be multiple ground truths per datum.
 
 **Q. What is a Prediction?**
 
@@ -112,9 +113,9 @@ datum = image.to_datum()
 
 **Q. Why am I getting `NotFinalizedError` when trying to run an evaluation?**
 
-**A.** Valor requires both dataset and model representations be finalized before evaluation can take place. Finalization is crucial for auditability as it ensures that data finalized at a certrain date is immutable.
+**A.** Valor requires both dataset and model representations to be finalized before evaluation can take place. Finalization is crucial for auditability as it ensures that data finalized at a certain date is immutable.
 
-Dataset finalization is accomplished throught the `valor.Dataset.finalize` member function.
+Dataset finalization is accomplished through the `valor.Dataset.finalize` member function.
 
 ```python
 from valor import Client, Dataset
@@ -127,9 +128,9 @@ dataset.finalize()
 Models are finalized automatically given two conditions.
 
 1. The working dataset is finalized.
-1. There is a 1:1 mapping of predictions to groundtruths.
+1. There is a 1:1 mapping of predictions to ground truths.
 
-Models and their predictions can also be finalized prematurely using the `valor.Model.finalize_inferences` member function. This will generate empty predictions with task type `enums.TaskType.SKIP` to achieve the 1:1 groundtruth mapping.
+Models and their predictions can also be finalized prematurely using the `valor.Model.finalize_inferences` member function. This will generate empty predictions with task type `enums.TaskType.SKIP` to achieve the 1:1 ground truth mapping.
 
 ```python
 from valor import Client, Dataset, Model
@@ -142,4 +143,5 @@ model.finalize_inferences(dataset)
 ```
 
 **Q. Why am I getting GDAL driver errors?**
-**A.** For some computations (mostly involving rasters), Valor requires the PostGIS database to have all GDAL drivers enabled. The Valor backend attempts to enable these but it might not have permission depending on your specific setup. If you encounter this error, [see here](https://postgis.net/docs/postgis_gdal_enabled_drivers.html) for ways to enable the drivers directly in the PostGIS instance.
+
+**A.** For some computations (mostly involving rasters), Valor requires the PostGIS database to have all GDAL drivers enabled. The Valor back end attempts to enable these drivers, but it might not have permission depending on your specific setup. If you encounter this error, [see here](https://postgis.net/docs/postgis_gdal_enabled_drivers.html) for ways to enable the drivers directly in the PostGIS instance.

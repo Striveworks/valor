@@ -1,4 +1,4 @@
-name: Builds and publishes a docker image for the backend service
+name: Builds and publishes a docker image for the back end service
 
 on:
   push:

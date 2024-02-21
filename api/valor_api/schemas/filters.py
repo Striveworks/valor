@@ -201,19 +201,19 @@ class Filter(BaseModel):
     require_bounding_box : bool, optional
         A toggle for filtering by bounding boxes.
     bounding_box_area : bool, optional
-        A optional constraint to filter by bounding box area.
+        An optional constraint to filter by bounding box area.
     require_polygon : bool, optional
         A toggle for filtering by polygons.
     polygon_area : bool, optional
-        A optional constraint to filter by polygon area.
+        An optional constraint to filter by polygon area.
     require_multipolygon : bool, optional
         A toggle for filtering by multipolygons.
     multipolygon_area : bool, optional
-        A optional constraint to filter by multipolygon area.
+        An optional constraint to filter by multipolygon area.
     require_raster : bool, optional
         A toggle for filtering by rasters.
     raster_area : bool, optional
-        A optional constraint to filter by raster area.
+        An optional constraint to filter by raster area.
     labels: List[Dict[str, str]], default=None
         A dictionary of `Labels' to filter on.
     label_ids: List[int], default=None
@@ -226,55 +226,67 @@ class Filter(BaseModel):
 
     # datasets
     dataset_names: list[str] | None = None
-    dataset_metadata: dict[
-        str,
-        list[
-            StringFilter
-            | NumericFilter
-            | DateTimeFilter
-            | BooleanFilter
-            | GeospatialFilter
-        ],
-    ] | None = None
+    dataset_metadata: (
+        dict[
+            str,
+            list[
+                StringFilter
+                | NumericFilter
+                | DateTimeFilter
+                | BooleanFilter
+                | GeospatialFilter
+            ],
+        ]
+        | None
+    ) = None
 
     # models
     model_names: list[str] | None = None
-    model_metadata: dict[
-        str,
-        list[
-            StringFilter
-            | NumericFilter
-            | DateTimeFilter
-            | BooleanFilter
-            | GeospatialFilter
-        ],
-    ] | None = None
+    model_metadata: (
+        dict[
+            str,
+            list[
+                StringFilter
+                | NumericFilter
+                | DateTimeFilter
+                | BooleanFilter
+                | GeospatialFilter
+            ],
+        ]
+        | None
+    ) = None
 
     # datums
     datum_uids: list[str] | None = None
-    datum_metadata: dict[
-        str,
-        list[
-            StringFilter
-            | NumericFilter
-            | DateTimeFilter
-            | BooleanFilter
-            | GeospatialFilter
-        ],
-    ] | None = None
+    datum_metadata: (
+        dict[
+            str,
+            list[
+                StringFilter
+                | NumericFilter
+                | DateTimeFilter
+                | BooleanFilter
+                | GeospatialFilter
+            ],
+        ]
+        | None
+    ) = None
 
     # annotations
     task_types: list[TaskType] | None = None
-    annotation_metadata: dict[
-        str,
-        list[
-            StringFilter
-            | NumericFilter
-            | DateTimeFilter
-            | BooleanFilter
-            | GeospatialFilter
-        ],
-    ] | None = None
+    annotation_metadata: (
+        dict[
+            str,
+            list[
+                StringFilter
+                | NumericFilter
+                | DateTimeFilter
+                | BooleanFilter
+                | GeospatialFilter
+            ],
+        ]
+        | None
+    ) = None
     require_bounding_box: bool | None = None
     bounding_box_area: list[NumericFilter] | None = None
     require_polygon: bool | None = None

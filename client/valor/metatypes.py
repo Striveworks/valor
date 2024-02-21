@@ -46,7 +46,7 @@ class ImageMetadata:
     @staticmethod
     def valid(datum: Datum) -> bool:
         """
-        Asserts wehether the `Datum's` height and width is a valid subset of the image's height and width.
+        Asserts whether the `Datum's` height and width is a valid subset of the image's height and width.
 
         Parameters
         ----------
@@ -144,7 +144,7 @@ class VideoFrameMetadata:
     @staticmethod
     def valid(datum: Datum) -> bool:
         """
-        Asserts wehether the `Datum's` height and width is a valid subset of the image's height and width.
+        Asserts whether the `Datum's` height and width is a valid subset of the image's height and width.
 
         Parameters
         ----------
@@ -156,7 +156,7 @@ class VideoFrameMetadata:
     @classmethod
     def from_datum(cls, datum: Datum):
         """
-        Creates an `VideoFrameMetadata` object from a `Datum`.
+        Creates a `VideoFrameMetadata` object from a `Datum`.
 
         Parameters
         ----------
@@ -176,7 +176,7 @@ class VideoFrameMetadata:
 
     def to_datum(self) -> Datum:
         """
-        Converts an `VideoFrameMetadata` object into a `Datum`.
+        Converts a `VideoFrameMetadata` object into a `Datum`.
         """
         datum = self.image.to_datum()
         datum.metadata["frame"] = self.frame
