@@ -229,7 +229,7 @@ animal_evaluation = model.evaluate_classification(
     dataset=dataset,
     filters=[
         # with this filter, we're asking Valor to only evaluate how well our model performed on predicting cats and dogs.
-        Label.label.in_(
+        Annotation.labels.in_(
             [
                 Label(key="class_label", value="dog"),
                 Label(key="class_label", value="cat"),
