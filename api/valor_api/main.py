@@ -63,14 +63,14 @@ def create_groundtruths(
     groundtruths: list[schemas.GroundTruth], db: Session = Depends(get_db)
 ):
     """
-    Create a groundtruth in the database.
+    Create a ground truth in the database.
 
     POST Endpoint: `/groundtruths`
 
     Parameters
     ----------
     groundtruths : list[schemas.GroundTruth]
-        The groundtruths to add to the database.
+        The ground truths to add to the database.
     db : Session
         The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
 
@@ -98,23 +98,23 @@ def get_groundtruth(
     dataset_name: str, uid: str, db: Session = Depends(get_db)
 ) -> schemas.GroundTruth | None:
     """
-    Fetch a groundtruth from the database.
+    Fetch a ground truth from the database.
 
     GET Endpoint: `/groundtruths/dataset/{dataset_name}/datum/{uid}`
 
     Parameters
     ----------
     dataset_name : str
-        The name of the dataset to fetch the groundtruth from.
+        The name of the dataset to fetch the ground truth from.
     uid : str
-        The UID of the groundtruth.
+        The UID of the ground truth.
     db : Session
         The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
 
     Returns
     -------
     schemas.GroundTruth
-        Thee groundtruth requested by the user.
+        Thee ground truth requested by the user.
 
     Raises
     ------

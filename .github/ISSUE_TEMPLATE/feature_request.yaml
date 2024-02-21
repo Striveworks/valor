@@ -33,7 +33,7 @@ body:
       description: >
         Please describe how the new feature would be implemented, using psudocode if relevant.
       placeholder: >
-        Add a new backend function that returns evaluations for the top N models.
+        Add a new back end function that returns evaluations for the top N models.
 
         def get_ranked_evaluations(..., top_n = None):
             """

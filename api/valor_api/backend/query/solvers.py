@@ -70,7 +70,7 @@ def _solve_groundtruth_graph(
     ],
 ):
     """
-    Solves the groundtruths graph.
+    Solves the ground truths graph.
 
     groundtruth_graph = [Dataset, Datum, Annotation, GroundTruth, Label]
     """
@@ -233,7 +233,7 @@ def _solve_joint_graph(
         Datum,
         Annotation,
         Label,
-    ]  # excluding label as edge case due to forking at groundtruth, prediction
+    ]  # excluding label as edge case due to forking at ground truth, prediction
     connections = {
         Datum: Datum.dataset_id == Dataset.id,
         Annotation: Annotation.datum_id == Datum.id,
@@ -336,7 +336,7 @@ def solve_graph(
     sequental lists. From these sequential graphs it is possible to construct the minimum set of nodes required to generate a query.
     For queries that can be described by a single foundational graph, the solution is to trim both ends of the sequence until you
     reach nodes in the query set. The relationships of the remaining nodes can then be used to construct the query. Two foundational
-    graphs are required for queries that include both groundtruth and prediction/model constraints. The solver inserts `Datum` as
+    graphs are required for queries that include both ground truth and prediction/model constraints. The solver inserts `Datum` as
     the linking point between these two graphs allowing the generation of a query and subquery.
 
     The four foundational graphs:
@@ -353,8 +353,8 @@ def solve_graph(
 
     Descriptions:
     groundtruth_graph : All prediction or model related information removed.
-    model_graph       : All groundtruth related information removed.
-    prediction_graph  : Subgraph of model_graph. All groundtruth and model information removed.
+    model_graph       : All ground truth related information removed.
+    prediction_graph  : Subgraph of model_graph. All ground truth and model information removed.
     joint_graph       : Predictions and groundtruths combined under a full outer join.
     """
 
@@ -390,7 +390,7 @@ def solve_graph(
     subquery_solver = None
     unique_set = None
 
-    # solve groundtruth graph
+    # solve ground truth graph
     if (
         GroundTruth in graph_set
         and Prediction not in selected_tables

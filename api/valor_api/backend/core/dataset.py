@@ -248,7 +248,7 @@ def get_n_datums_in_dataset(db: Session, name: str) -> int:
 
 
 def get_n_groundtruth_annotations(db: Session, name: str) -> int:
-    """Returns the number of groundtruth annotations in a dataset."""
+    """Returns the number of ground truth annotations in a dataset."""
     return (
         db.query(models.Annotation)
         .join(models.GroundTruth)

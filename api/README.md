@@ -1,8 +1,8 @@
-# valor backend
+# valor back end
 
 ## docker compose envs
 
-To bring up a testing environment, which runs the current backend code and a postgres instance with the PostGIS extension, run
+To bring up a testing environment, which runs the current back end code and a postgres instance with the PostGIS extension, run
 
 ```shell
 make test-env
@@ -20,4 +20,4 @@ For local development you can run
 make dev-env
 ```
 
-This will mount the backend code into the container and live refresh the backend service upon code updates.
+This will mount the back end code into the container and live refresh the back end service upon code updates.

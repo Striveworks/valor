@@ -40,7 +40,7 @@ def generate_tracemalloc_profile(filepath: str) -> any:
     func
         The function you want to profile
     db
-        The sqlalchemy session used by your backend
+        The sqlalchemy session used by your back end
     args
         Positional args to pass to your function
     kwargs
@@ -96,7 +96,7 @@ def generate_memory_profile(filepath: str) -> any:
     func
         The function you want to profile
     db
-        The sqlalchemy session used by your backend
+        The sqlalchemy session used by your back end
     args
         Positional args to pass to your function
     kwargs
@@ -134,7 +134,7 @@ def generate_yappi_profile(filepath: str) -> any:
     func
         The function you want to profile
     db
-        The sqlalchemy session used by your backend
+        The sqlalchemy session used by your back end
     args
         Positional args to pass to your function
     kwargs
@@ -173,7 +173,7 @@ def generate_cprofile(filepath: str) -> any:
     func
         The function you want to profile
     db
-        The sqlalchemy session used by your backend
+        The sqlalchemy session used by your back end
     args
         Positional args to pass to your function
     kwargs
@@ -387,7 +387,7 @@ def _get_evaluation_metrics(
         timeout=30,
     )
 
-    # sleep to give the backend time to compute
+    # sleep to give the back end time to compute
     while eval_job.status != JobStatus.DONE:
         time.sleep(1)
 

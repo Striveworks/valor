@@ -142,12 +142,12 @@ def images() -> list[schemas.Datum]:
     ]
 
 
-# groundtruths to use for testing AP
+# ground truths to use for testing AP
 @pytest.fixture
 def groundtruths(
     db: Session, images: list[schemas.Datum]
 ) -> list[list[models.GroundTruth]]:
-    """Creates a dataset called "test_dataset" with some groundtruth
+    """Creates a dataset called "test_dataset" with some ground truth
     detections. These detections are taken from a torchmetrics unit test (see test_metrics.py)
     """
     dataset_name = "test_dataset"

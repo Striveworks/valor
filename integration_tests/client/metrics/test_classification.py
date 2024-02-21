@@ -1,6 +1,7 @@
-""" These integration tests should be run with a backend at http://localhost:8000
+""" These integration tests should be run with a back end at http://localhost:8000
 that is no auth
 """
+
 from datetime import date, datetime
 
 import pytest
@@ -812,7 +813,7 @@ def test_evaluate_classification_with_label_maps(
     # now try using a label map to connect all the cats
 
     label_mapping = {
-        # map the groundtruths
+        # map the ground truths
         Label(key="class", value="tabby cat"): Label(
             key="special_class", value="cat_type1"
         ),

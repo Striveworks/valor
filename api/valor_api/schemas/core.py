@@ -274,7 +274,7 @@ class GroundTruth(BaseModel):
     @model_validator(mode="after")  # type: ignore - pydantic type error
     @classmethod
     def _validate_annotation_rasters(cls, values):
-        """Validate any rasters on the groundtruth."""
+        """Validate any rasters on the ground truth."""
         return _validate_rasters(values)
 
 

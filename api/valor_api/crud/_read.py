@@ -81,7 +81,7 @@ def get_labels(
     ignore_prediction_labels : bool, default=False
         Option to ignore prediction labels in the result.
     ignore_groundtruths : bool, default=False
-        Option to ignore groundtruth labels in the result.
+        Option to ignore ground truth labels in the result.
 
     Returns
     ----------
@@ -188,7 +188,7 @@ def get_groundtruth(
     datum_uid: str,
 ) -> schemas.GroundTruth:
     """
-    Fetch a groundtruth.
+    Fetch a ground truth.
 
     Parameters
     ----------
@@ -203,7 +203,7 @@ def get_groundtruth(
     Returns
     ----------
     schemas.GroundTruth
-        The requested groundtruth.
+        The requested ground truth.
     """
     return backend.get_groundtruth(
         db,

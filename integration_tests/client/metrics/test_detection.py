@@ -1,6 +1,7 @@
-""" These integration tests should be run with a backend at http://localhost:8000
+""" These integration tests should be run with a back end at http://localhost:8000
 that is no auth
 """
+
 from dataclasses import asdict
 
 import pytest
@@ -1161,7 +1162,7 @@ def test_evaluate_detection_with_label_maps(
     ]
 
     label_mapping = {
-        # map the groundtruths
+        # map the ground truths
         Label(key="class_name", value="maine coon cat"): Label(
             key="foo", value="bar"
         ),
