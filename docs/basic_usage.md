@@ -198,7 +198,7 @@ Now that both our `Dataset` and `Model` are finalized, we can evaluate how well 
 evaluation = model.evaluate_classification(
     dataset=dataset,
     filters=[
-        Label.label.in_(
+        Annotation.labels.in_(
             [
                 Label(key="class_label", value="dog"),
                 Label(key="class_label", value="cat"),

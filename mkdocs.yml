@@ -10,8 +10,8 @@ theme:
 nav:
   - Overview: "index.md"
   - Installation: "installation.md"
-  - Sample Notebook: "https://github.com/Striveworks/valor/blob/main/examples/getting_started.ipynb"
   - Basic Usage: "basic_usage.md"
+  - Sample Notebooks: "https://github.com/Striveworks/valor/blob/main/examples/"
   - Metadata & Filtering: "metadata_and_filtering.md"
   - Metrics: "metrics.md"
   - Endpoints: "endpoints.md"

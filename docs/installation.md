@@ -6,7 +6,7 @@ Valor is comprised of a backend service (which consists of a REST API and a Post
 
 ### Using docker compose
 
-The easiest way to get up and running for with everything needed is to use docker compose with the `docekr-compose.yml` file in the repo root:
+The easiest way to get up and running with Valor is to use docker compose with the `docker-compose.yml` file in the repo root:
 
 ```shell
 git clone https://github.com/striveworks/valor
@@ -14,11 +14,11 @@ cd valor
 docker compose --env-file ./api/.env.testing up
 ```
 
-This will set up the backend service, the database, run database migration job, set necessary the environment variables, etc. To rest that everything is running properly, the endpoint `localhost:8000/health` should return `{"status":"ok"}`
+This will set up the necessary environment variables, start both the API and database services, and run the database migration job. To rest that everything is running properly, the endpoint `localhost:8000/health` should return `{"status":"ok"}`
 
-**Note: this is not a secure deployment of Valor, and is only recommended for development and testing purposes**.
+**Note: running Valor this way is not intended for production and scalable use, and is only recommended for development and testing purposes**.
 
-### Using docker for the REST API and a hosted database
+### Deploying via Docker and a hosted database
 
 For a more production grade deployment, we publish the images `ghcr.io/striveworks/valor/valor-service` for the REST API, and `ghcr.io/striveworks/valor/migrations`, which is used for setting up the database and migrations. These can be paired with any Postgres database with the PostGIS extension.
 
