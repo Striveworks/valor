@@ -46,7 +46,7 @@ client = Client()
 
 In the event that the host uses authentication, the argument `access_token` should also be passed to `Client`.
 
-#### Pass your ground truths into Valor
+### Pass your ground truths into Valor
 
 First, we define our `Dataset` object using `Dataset.create()`.
 
