@@ -50,16 +50,32 @@ If we're missing an important metric for your particular use case, please [write
 
 - $\text{False Positive Rate (FPR)} = \dfrac{|FP|}{|FP| + |TN|}$
 
+These rates vary depending on a threshold so we can add a threshold parameter to be more explicit.
+
+$$
+TPR(threshold) = \dfrac{|TP(threshold)|}{|TP(threshold)| + |FN(threshold)|}
+$$
+
+$$
+FPR(threshold) = \dfrac{|FP(threshold)|}{|FP(threshold)| + |TN(threshold)|}
+$$
+
 ### Receiver Operating Characteristic (ROC)
 
 An ROC curve plots TPR vs. FPR at different confidence thresholds.
+
+In Valor, we use the confidence scores sorted in decreasing order as our thresholds.
+
+$$
+Point(score) = (FPR(score), \ TPR(score))
+$$
 
 ### Area under the ROC curve (ROC AUC)
 
 From the ROC curve we calculate the ROC AUC metric by approximating the integral using the trapezoidal rule formula.
 
 $$
-\sum_{i=1}^{|scores|} \frac{(TPR(scores_{i-1}) - TPR(scores_i)) \cdot (FPR(scores_{i-1}) - FPR(scores_i))}{2}
+ROC AUC =  \sum_{i=1}^{|scores|} \frac{  \lVert Point(score_{i-1}) - Point(score_i) \rVert }{2}
 $$
 
 ### References
