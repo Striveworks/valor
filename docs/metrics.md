@@ -19,16 +19,16 @@ If we're missing an important metric for your particular use case, please [write
 | Name | Description | Equation |
 | :- | :- | :- |
 | Average Precision (AP) | The weighted mean of precisions achieved at several different recall thresholds for a single Intersection over Union (IOU), grouped by class. | See [AP methods](#average-precision-ap). |
-| AP Averaged Over IOUs | The average of several AP metrics, calculated at various IOUs, grouped by class. | $$\dfrac{1}{\|thresholds\|} \sum\limits_{iou \in thresholds} AP_{iou}$$ |
-| Mean Average Precision (mAP) 	| The mean of several AP scores, calculated over various classes. | $$\dfrac{1}{\|classes\|} \sum\limits_{c \in classes} AP_{c}$$ |
-| mAP Averaged Over IOUs | The mean of several averaged AP scores, calculated over various classes. | $$\dfrac{1}{\|thresholds\|} \sum\limits_{iou \in thresholds} mAP_{iou}$$ |
+| AP Averaged Over IOUs | The average of several AP metrics, calculated at various IOUs, grouped by class. | $$\dfrac{1}{\text{number of thresholds}} \sum\limits_{iou \in thresholds} AP_{iou}$$ |
+| Mean Average Precision (mAP) 	| The mean of several AP scores, calculated over various classes. | $$\dfrac{1}{\text{number of classes}} \sum\limits_{c \in classes} AP_{c}$$ |
+| mAP Averaged Over IOUs | The mean of several averaged AP scores, calculated over various classes. | $$\dfrac{1}{\text{number of thresholds}} \sum\limits_{iou \in thresholds} mAP_{iou}$$ |
 
 ## Semantic Segmentation Metrics
 
 | Name | Description | Equation |
 | :- | :- | :- |
 | Intersection Over Union (IOU) | A ratio between the groundtruth and predicted regions of an image, measured as a percentage, grouped by class. |$$\dfrac{area( prediction \cap groundtruth )}{area( prediction \cup groundtruth )}$$ |
-| Mean IOU 	| The average of IOUs, calculated over several different classes. | $$\dfrac{1}{\|classes\|} \sum\limits_{c \in classes} IOU_{c}$$ |
+| Mean IOU 	| The average of IOUs, calculated over several different classes. | $$\dfrac{1}{\text{number of classes}} \sum\limits_{c \in classes} IOU_{c}$$ |
 
 # Notes
 1. When calculating IOUs for object detection metrics, Valor handles the necessary conversion between different types of geometric annotations. For example, if your model prediction is a polygon and your groundtruth is a raster, then the raster will be converted to a polygon prior to calculating the IOU.
