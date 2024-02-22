@@ -2,7 +2,7 @@
 
 Valor is a centralized evaluation store that makes it easy to measure, explore, and rank model performance. For an overview of what Valor is and why it's important, please refer to our [high-level overview](index.md).
 
-On this page, we'll describe the basic usage of Valor. For how to install velour, please see our [installation guide](installation.md).
+On this page, we'll describe the basic usage of Valor. For how to install Valor, please see our [installation guide](installation.md).
 
 There are two ways to access Valor: by leveraging our Python client (the typical way users of Valor will interact with the service), or by calling our REST endpoints directly (e.g. for integrating Valor into other services). This guide covers the former way of interacting with Valor. For the latter, please see our [API endpoints documentation](endpoints.md).
 
