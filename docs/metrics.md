@@ -41,6 +41,8 @@ If we're missing an important metric for your particular use case, please [write
 
 An ROC curve plots TPR vs. FPR at different confidence thresholds.
 
+See [Classification: ROC Curve and AUC](https://developers.google.com/machine-learning/crash-course/classification/roc-and-auc) for an in-depth overview of this metric.
+
 #### Determining the rate of correct predictions.
 
 | Element | Description |
@@ -77,9 +79,6 @@ From the ROC curve we calculate the ROC AUC metric by approximating the integral
 $$
 ROC AUC =  \sum_{i=1}^{|scores|} \frac{  \lVert Point(score_{i-1}) - Point(score_i) \rVert }{2}
 $$
-
-### References
-- [Classification: ROC Curve and AUC](https://developers.google.com/machine-learning/crash-course/classification/roc-and-auc)
 
 ## Average Precision (AP)
 
