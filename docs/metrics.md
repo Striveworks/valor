@@ -18,26 +18,30 @@ If we're missing an important metric for your particular use case, please [write
 
 | Name | Description | Equation |
 | :- | :- | :- |
-| Average Precision (AP) | The weighted mean of precisions achieved at several different recall thresholds for a single Intersection over Union (IoU), grouped by class. | See [AP methods](#average-precision-ap). |
-| AP Averaged Over IoUs | The average of several AP metrics, calculated at various IoUs, grouped by class. | $$\dfrac{1}{\|thresholds\|} \sum\limits_{iou \in thresholds} AP_{iou}$$ |
+| Average Precision (AP) | The weighted mean of precisions achieved at several different recall thresholds for a single Intersection over Union (IOU), grouped by class. | See [AP methods](#average-precision-ap). |
+| AP Averaged Over IOUs | The average of several AP metrics, calculated at various IOUs, grouped by class. | $$\dfrac{1}{\|thresholds\|} \sum\limits_{iou \in thresholds} AP_{iou}$$ |
 | Mean Average Precision (mAP) 	| The mean of several AP scores, calculated over various classes. | $$\dfrac{1}{\|classes\|} \sum\limits_{c \in classes} AP_{c}$$ |
-| mAP Averaged Over IoUs | The mean of several averaged AP scores, calculated over various classes. | $$\dfrac{1}{\|thresholds\|} \sum\limits_{iou \in thresholds} mAP_{iou}$$ |
+| mAP Averaged Over IOUs | The mean of several averaged AP scores, calculated over various classes. | $$\dfrac{1}{\|thresholds\|} \sum\limits_{iou \in thresholds} mAP_{iou}$$ |
 
 ## Semantic Segmentation Metrics
 
 | Name | Description | Equation |
 | :- | :- | :- |
-| Intersection Over Union (IoU) | A ratio between the groundtruth and predicted regions of an image, measured as a percentage, grouped by class. |$$\dfrac{area( prediction \cap groundtruth )}{area( prediction \cup groundtruth )}$$ |
-| Mean IoU 	| The average of IoUs, calculated over several different classes. | $$\dfrac{1}{\|classes\|} \sum\limits_{c \in classes} IoU_{c}$$ |
+| Intersection Over Union (IOU) | A ratio between the groundtruth and predicted regions of an image, measured as a percentage, grouped by class. |$$\dfrac{area( prediction \cap groundtruth )}{area( prediction \cup groundtruth )}$$ |
+| Mean IOU 	| The average of IOUs, calculated over several different classes. | $$\dfrac{1}{\|classes\|} \sum\limits_{c \in classes} IOU_{c}$$ |
 
 # Notes
-1. When calculating IoUs for object detection metrics, Valor handles the necessary conversion between different types of geometric annotations. For example, if your model prediction is a polygon and your groundtruth is a raster, then the raster will be converted to a polygon prior to calculating the IoU.
+1. When calculating IOUs for object detection metrics, Valor handles the necessary conversion between different types of geometric annotations. For example, if your model prediction is a polygon and your groundtruth is a raster, then the raster will be converted to a polygon prior to calculating the IOU.
 
 # Appendix: Metric Calculations
 
 ## Binary ROC AUC
 
-### Determining the rate of correct predictions.
+### Receiver Operating Characteristic (ROC)
+
+An ROC curve plots TPR vs. FPR at different confidence thresholds.
+
+#### Determining the rate of correct predictions.
 
 | Element | Description |
 | ------- | ------------ |
@@ -60,10 +64,6 @@ $$
 FPR(threshold) = \dfrac{|FP(threshold)|}{|FP(threshold)| + |TN(threshold)|}
 $$
 
-### Receiver Operating Characteristic (ROC)
-
-An ROC curve plots TPR vs. FPR at different confidence thresholds.
-
 In Valor, we use the confidence scores sorted in decreasing order as our thresholds.
 
 $$
@@ -83,20 +83,20 @@ $$
 
 ## Average Precision (AP)
 
-For object-detection and instance segmentation tasks, average-precision is calculated from the intersection-over-union (IoU) of geometric annotations.
+For object-detection and instance segmentation tasks, average-precision is calculated from the intersection-over-union (IOU) of geometric predictions and ground truths.
 
 ### Multiclass Precision and Recall
 
-Geometric annotations use the ratio intersection-over-union (IoU) to calculate precision and recall. IoU is the ratio of intersecting area over the joint area spanned by the two geometries and is defined in the following equation.
+Tasks that predict geometries (such as object detection or instance segmentation) use the ratio intersection-over-union (IOU) to calculate precision and recall. IOU is the ratio of intersecting area over the joint area spanned by the two geometries and is defined in the following equation.
 
-$$Intersection \ over \ Union \ (IoU) = \dfrac{Area( prediction \cap groundtruth )}{Area( prediction \cup groundtruth )}$$
+$$Intersection \ over \ Union \ (IOU) = \dfrac{Area( prediction \cap groundtruth )}{Area( prediction \cup groundtruth )}$$
 
-By setting a threshold we can use IoU to determine whether we count a prediction-groundtruth pairing based on their overlap.
+By setting a threshold we can use IOU to determine whether we count a prediction-groundtruth pairing based on their overlap.
 
 | Case | Description |
 | :- | :- |
-| True Positive (TP) | Prediction-GroundTruth pair exists with IoU >= threshold. |
-| False Positive (FP) | Prediction-GroundTruth pair exists with IoU < threshold. |
+| True Positive (TP) | Prediction-GroundTruth pair exists with IOU >= threshold. |
+| False Positive (FP) | Prediction-GroundTruth pair exists with IOU < threshold. |
 | True Negative (TN) | Unused in multi-class evaluation.
 | False Negative (FN) | No Prediction exists for the GroundTruth. |
 
@@ -106,74 +106,44 @@ By setting a threshold we can use IoU to determine whether we count a prediction
 
 ### Finding the best prediction for a groundtruth.
 
-To properly evaluate a detection, we must first find the best matches of predictions to ground truths. We start by iterating over our predictions, ordering them by highest scores first. We pair each prediction with the ground truth that has the highest calculated IOU. Both the prediction and ground truth are now considered paired and removed from the pool of choices.
+To properly evaluate a detection, we must first find the best pairings of predictions to ground truths. We start by iterating over our predictions, ordering them by highest scores first. We pair each prediction with the ground truth that has the highest calculated IOU. Both the prediction and ground truth are now considered paired and removed from the pool of choices.
 
-Note: For simplicity, the following algorithm assumes operation over the same datum and label.
+```python
+def rank_ious(
+    groundtruths: list,
+    predictions: list,
+) -> list[float]:
+    """Ranks ious by unique pairings."""
 
-$$
-\begin{aligned}
-&\underline{\large\textbf{Algorithm 1} \hspace{0.5em} \text{Rank IoU's}} \\
-&\textbf{Data: }\text{Lists of groundtruths and predictions sharing the same label for a datum.} \\
-&\textbf{Results: }\text{Ranked list of IoU's.} \\
-&\textbf{Note: }\text{Assume }argsort\text{ algorithm sorts in descending order.} \\
-\\
-&1 \hspace{1.5em} groundtruths \gets \text{list of geometries} \\
-&2 \hspace{1.5em} predictions \gets \text{list of geometries} \\
-&3 \hspace{1.5em} scores \gets \text{list of prediction scores} \\
-\\
-&4 \hspace{1.5em} k \gets \text{length of } groundtruths\\
-\\
-&5 \hspace{1.5em} visited \gets \text{new empty set} \\
-&6 \hspace{1.5em} ious \gets \text{new list of size }k\\
-&7 \hspace{1.5em} ranked\_ious \gets \text{new empty list} \\
-\\
-&8 \hspace{1.5em} I \gets \textbf{argsort}(scores) \\
-&9 \hspace{1.5em} \textbf{foreach }i\text{ in }I\textbf{ do} \\
-&10 \hspace{1em} | \quad p \gets predictions[i] \\
-&11 \hspace{1em} | \quad \textbf{for }j=1\text{ to }k\textbf{ do} \\
-&12 \hspace{1em} | \quad | \quad g \gets groundtruths[j] \\
-&13 \hspace{1em} | \quad | \quad ious[j] \gets IoU(p, g) \\
-&14 \hspace{1em} | \quad \textbf{end} \\
-&15 \hspace{1em} | \quad J \gets \textbf{argsort}(ious) \\
-&16 \hspace{1em} | \quad \textbf{foreach }j\text{ in }J\textbf{ do} \\
-&17 \hspace{1em} | \quad | \quad \textbf{if }j\text{ not in }visited\_groundtruths \textbf{ then} \\
-&18 \hspace{1em} | \quad | \quad | \quad visited.add(j) \\
-&19 \hspace{1em} | \quad | \quad | \quad ranked\_ious.append(ious[j]) \\
-&20 \hspace{1em} | \quad | \quad | \quad \textbf{break} \\
-&21 \hspace{1em} | \quad | \quad \textbf{end} \\
-&22 \hspace{1em} | \quad \textbf{end} \\
-&23 \hspace{1em} \textbf{end} \\
-\end{aligned}
-$$
+    retval = []
+    groundtruths = set(groundtruths)
+    for prediction in sorted(predictions, key=lambda x : -x.score):
+        groundtruth = max(groundtruths, key=lambda x : calculate_iou(groundtruth, prediction))
+        groundtruths.remove(groundtruth)
+        retval.append(calculate_iou(groundtruth, prediction))
+```
 
 ### Precision-Recall Curve
 
-We can now compute the precision-recall curve using our previously ranked IoU's. We do this by iterating through the ranked IoU's and creating points cumulatively using recall and precision.
+We can now compute the precision-recall curve using our previously ranked IOU's. We do this by iterating through the ranked IOU's and creating points cumulatively using recall and precision.
 
-$$
-\begin{aligned}
-&\underline{\large\textbf{Algorithm 2} \hspace{0.5em} \text{Precision-Recall Curve}} \\
-&\textbf{Data: }\text{Ranked list of IoU's for a label and a IoU threshold between 0 and 1.} \\
-&\textbf{Results: }\text{List of points on a curve.} \\
-\\
-&1 \hspace{1.5em} ranked\_ious \gets \text{list of IoU's} \\
-&2 \hspace{1.5em} threshold \gets \text{IoU Threshold} \\
-\\
-&3 \hspace{1.5em} n \gets \text{total number of groundtruths.} \\
-&4 \hspace{1.5em} count\_tp \gets 0 \\
-\\
-&5 \hspace{1.5em} curve \gets \text{new empty list} \\
-\\
-&6 \hspace{1.5em} \textbf{for }i=0\text{ to }n-1\textbf{ do} \\
-&7 \hspace{1.5em} | \quad \textbf{if } ranked\_ious[i] \ge threshold \textbf{ then} \\
-&8 \hspace{1.5em} | \quad | \quad count\_tp \gets count\_tp + 1 \\
-&9 \hspace{1.5em} | \quad \textbf{end} \\
-&10 \hspace{1em} | \quad precision \gets count\_tp \mathrel{{/}} (i+1) \\
-&11 \hspace{1em} | \quad recall \gets count\_tp \mathrel{{/}} n \\
-&12 \hspace{1em} | \quad curve.append((recall, precision)) \\
-&13 \hspace{1em} \textbf{end} \\
-\end{aligned}
-$$
+```python
+def create_precision_recall_curve(
+    number_of_groundtruths: int,
+    ranked_ious: list[float],
+    threshold: float
+) -> list[tuple[float, float]]:
+    """Creates the precision-recall curve from a list of IOU's and a threshold."""
+
+    retval = []
+    count_tp = 0
+    for i in range(ranked_ious):
+        if ranked_ious[i] >= threshold:
+            count_tp += 1
+        precision = count_tp / (i + 1)
+        recall = count_tp / number_of_groundtruths
+        retval.append((recall, precision))
+```
 
 ### Calculating Average Precision
 
