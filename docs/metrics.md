@@ -41,10 +41,10 @@ If we're missing an important metric for your particular use case, please [write
 
 | Element | Description |
 | ------- | ------------ |
-| True Positive (TP) | Prediction confidence is above a threshold and is correct. |
-| False Positive (FP) | Prediction confidence is above a threshold and is incorrect. |
-| True Negative (TN) | Prediction confidence is below a threshold and is correct. |
-| False Negative (FN) | Prediction confidence is below a threshold and is incorrect. |
+| True Positive (TP) | Prediction confidence score >= threshold and is correct. |
+| False Positive (FP) | Prediction confidence score >= threshold and is incorrect. |
+| True Negative (TN) | Prediction confidence score < threshold and is correct. |
+| False Negative (FN) | Prediction confidence score < threshold and is incorrect. |
 
 - $\text{True Positive Rate (TPR)} = \dfrac{|TP|}{|TP| + |FN|}$
 
