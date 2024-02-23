@@ -67,11 +67,17 @@ def _ap(
     `f"IoU={min(iou_thresholds)}:{max(iou_thresholds)}"` which is the average
     of the scores across all of the IoU thresholds.
     """
+    if score_threshold < 0 or score_threshold > 1.0:
+        raise ValueError(
+            "Score threshold should exist in the range 0 <= threshold <= 1."
+        )
+    if min(iou_thresholds) <= 0 or max(iou_thresholds) > 1.0:
+        raise ValueError(
+            "IOU thresholds should exist in the range 0 < threshold <= 1."
+        )
 
     detection_metrics = []
     for iou_threshold in iou_thresholds:
-        if iou_threshold <= 0:
-            raise ValueError("IOU thresholds should be greater than zero.")
         for grouper_id, grouper_label in grouper_mappings[
             "grouper_id_to_grouper_label_mapping"
         ].items():
