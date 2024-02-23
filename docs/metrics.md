@@ -51,19 +51,9 @@ In Valor, we use the confidence scores sorted in decreasing order as our thresho
 | True Negative (TN) | Prediction confidence score < threshold and is correct. |
 | False Negative (FN) | Prediction confidence score < threshold and is incorrect. |
 
-- $\text{True Positive Rate (TPR)} = \dfrac{|TP|}{|TP| + |FN|}$
+- $\text{True Positive Rate (TPR)} = \dfrac{|TP|}{|TP| + |FN|} = \dfrac{|TP(threshold)|}{|TP(threshold)| + |FN(threshold)|}$
 
-- $\text{False Positive Rate (FPR)} = \dfrac{|FP|}{|FP| + |TN|}$
-
-As the confidence threshold varies we need to rewrite the TPR and FPR definitions to be more explicit.
-
-$$
-TPR(threshold) = \dfrac{|TP(threshold)|}{|TP(threshold)| + |FN(threshold)|}
-$$
-
-$$
-FPR(threshold) = \dfrac{|FP(threshold)|}{|FP(threshold)| + |TN(threshold)|}
-$$
+- $\text{False Positive Rate (FPR)} = \dfrac{|FP|}{|FP| + |TN|} = \dfrac{|FP(threshold)|}{|FP(threshold)| + |TN(threshold)|}$
 
 We now use the confidence scores, sorted in decreasing order, as our thresholds in order to generate points on a curve.
 
