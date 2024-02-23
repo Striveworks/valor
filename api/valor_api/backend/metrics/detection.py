@@ -1,4 +1,5 @@
 import heapq
+import math
 from dataclasses import dataclass
 from typing import Sequence
 
@@ -58,6 +59,7 @@ def _ap(
     grouper_mappings: dict[str, dict],
     iou_thresholds: list[float],
     grouper_ids_associated_with_gts: set[int],
+    score_threshold: float = 0,
 ) -> Sequence[schemas.APMetric]:
     """
     Computes the average precision. Return is a dict with keys
@@ -65,6 +67,14 @@ def _ap(
     `f"IoU={min(iou_thresholds)}:{max(iou_thresholds)}"` which is the average
     of the scores across all of the IoU thresholds.
     """
+    if score_threshold < 0 or score_threshold > 1.0:
+        raise ValueError(
+            "Score threshold should exist in the range 0 <= threshold <= 1."
+        )
+    if min(iou_thresholds) <= 0 or max(iou_thresholds) > 1.0:
+        raise ValueError(
+            "IOU thresholds should exist in the range 0 < threshold <= 1."
+        )
 
     detection_metrics = []
     for iou_threshold in iou_thresholds:
@@ -81,7 +91,15 @@ def _ap(
 
             if grouper_id in sorted_ranked_pairs:
                 for row in sorted_ranked_pairs[grouper_id]:
-                    if row.score > 0 and row.iou >= iou_threshold:
+                    score_conditional = row.score > score_threshold or (
+                        math.isclose(row.score, score_threshold)
+                        and score_threshold > 0
+                    )
+                    iou_conditional = (
+                        row.iou >= iou_threshold and iou_threshold > 0
+                    )
+
+                    if score_conditional and iou_conditional:
                         cnt_tp += 1
                     else:
                         cnt_fp += 1
@@ -286,7 +304,9 @@ def _compute_detection_metrics(
     )
 
     # Order by score, iou
-    ordered_ious = db.query(ious).order_by(-ious.c.score, -ious.c.iou).all()
+    ordered_ious = (
+        db.query(ious).order_by(-ious.c.score, -ious.c.iou, ious.c.gt_id).all()
+    )
 
     # Filter out repeated id's
     gt_set = set()

@@ -1,3 +1,5 @@
+import pytest
+
 from valor_api import schemas
 from valor_api.backend.metrics.detection import (
     RankedPair,
@@ -22,6 +24,7 @@ def test__compute_mean_detection_metrics_from_aps():
 
 
 def test__ap():
+
     pairs = {
         "0": [
             RankedPair(1, 1, score=0.8, iou=0.6),
@@ -105,3 +108,26 @@ def test__ap():
         assert pd.iou == gt.iou
         assert truncate_float(pd.value) == truncate_float(gt.value)
         assert pd.label == gt.label
+
+    # Test iou threshold outside 0 < t <= 1
+    for illegal_thresh in [-1.1, -0.1, 0, 1.1]:
+        with pytest.raises(ValueError):
+            _ap(
+                sorted_ranked_pairs=pairs,
+                number_of_groundtruths_per_grouper=number_of_groundtruths_per_grouper,
+                grouper_mappings=grouper_mappings,
+                iou_thresholds=iou_thresholds + [0],
+                grouper_ids_associated_with_gts=grouper_ids_associated_with_gts,
+            )
+
+    # Test score threshold outside 0 <= t <= 1
+    for illegal_thresh in [-1.1, -0.1, 1.1]:
+        with pytest.raises(ValueError):
+            _ap(
+                sorted_ranked_pairs=pairs,
+                number_of_groundtruths_per_grouper=number_of_groundtruths_per_grouper,
+                grouper_mappings=grouper_mappings,
+                iou_thresholds=iou_thresholds,
+                grouper_ids_associated_with_gts=grouper_ids_associated_with_gts,
+                score_threshold=illegal_thresh,
+            )
