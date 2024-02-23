@@ -42,7 +42,7 @@ An ROC curve plots the True Positive Rate (TPR) vs. the False Positive Rate (FPR
 
 In Valor, we use the confidence scores sorted in decreasing order as our thresholds. Using these thresholds, we can calculate our TPR and FPR as follows:
 
-#### Determining the Rate of Correct Predictions.
+#### Determining the Rate of Correct Predictions
 
 | Element | Description |
 | ------- | ------------ |
@@ -65,7 +65,7 @@ $$
 FPR(threshold) = \dfrac{|FP(threshold)|}{|FP(threshold)| + |TN(threshold)|}
 $$
 
-We now use the confidence scores sorted in decreasing order as our thresholds to generate points on a curve.
+We now use the confidence scores, sorted in decreasing order, as our thresholds in order to generate points on a curve.
 
 $$
 Point(score) = (FPR(score), \ TPR(score))
@@ -83,7 +83,7 @@ See [Classification: ROC Curve and AUC](https://developers.google.com/machine-le
 
 ## Average Precision (AP)
 
-For object detection and instance segmentation tasks, average-precision is calculated from the intersection-over-union (IOU) of geometric predictions and ground truths.
+For object detection and instance segmentation tasks, average precision is calculated from the intersection-over-union (IOU) of geometric predictions and ground truths.
 
 ### Multiclass Precision and Recall
 
