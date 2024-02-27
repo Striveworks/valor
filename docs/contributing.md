@@ -52,7 +52,8 @@ pip install api # Install the API in your python environment
 
 export POSTGRES_PASSWORD=password
 export POSTGRES_HOST=localhost
-make start-postgis # Start the postgis service in Docker
+make start-postgis-docker # Start the postgis service in Docker
+make run-migrations # Instantiate the table schemas in Postgres
 make start-server # Start the API service locally
 ```
 
@@ -81,10 +82,10 @@ Finally, you're ready to install your client and API modules:
 
 ```bash
 # Install the Client module
-python -m pip install -e client/.[test]
+python -m pip install -e client/.
 
 # Install the API module
-python -m pip install -e api/.[test]
+python -m pip install -e api/.
 ```
 
 ### Use pgAdmin to Debug PostGIS
