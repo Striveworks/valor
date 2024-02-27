@@ -8,7 +8,7 @@
 <link href="../technical_concepts/" rel="prev"/>
 <link href="../client_api/Annotation/" rel="next"/>
 <link href="../assets/images/favicon.png" rel="icon"/>
-<meta content="mkdocs-1.5.3, mkdocs-material-9.5.10" name="generator"/>
+<meta content="mkdocs-1.5.3, mkdocs-material-9.5.11" name="generator"/>
 <title>Contributing &amp; Development - Valor</title>
 <link href="../assets/stylesheets/main.7e359304.min.css" rel="stylesheet"/>
 <link href="../assets/stylesheets/palette.06af60db.min.css" rel="stylesheet"/>
@@ -595,8 +595,9 @@
 </span><span id="__span-1-2"><a href="#__codelineno-1-2" id="__codelineno-1-2" name="__codelineno-1-2"></a>
 </span><span id="__span-1-3"><a href="#__codelineno-1-3" id="__codelineno-1-3" name="__codelineno-1-3"></a><span class="nb">export</span><span class="w"> </span><span class="nv">POSTGRES_PASSWORD</span><span class="o">=</span>password
 </span><span id="__span-1-4"><a href="#__codelineno-1-4" id="__codelineno-1-4" name="__codelineno-1-4"></a><span class="nb">export</span><span class="w"> </span><span class="nv">POSTGRES_HOST</span><span class="o">=</span>localhost
-</span><span id="__span-1-5"><a href="#__codelineno-1-5" id="__codelineno-1-5" name="__codelineno-1-5"></a>make<span class="w"> </span>start-postgis<span class="w"> </span><span class="c1"># Start the postgis service in Docker</span>
-</span><span id="__span-1-6"><a href="#__codelineno-1-6" id="__codelineno-1-6" name="__codelineno-1-6"></a>make<span class="w"> </span>start-server<span class="w"> </span><span class="c1"># Start the API service locally</span>
+</span><span id="__span-1-5"><a href="#__codelineno-1-5" id="__codelineno-1-5" name="__codelineno-1-5"></a>make<span class="w"> </span>start-postgis-docker<span class="w"> </span><span class="c1"># Start the postgis service in Docker</span>
+</span><span id="__span-1-6"><a href="#__codelineno-1-6" id="__codelineno-1-6" name="__codelineno-1-6"></a>make<span class="w"> </span>run-migrations<span class="w"> </span><span class="c1"># Instantiate the table schemas in Postgres</span>
+</span><span id="__span-1-7"><a href="#__codelineno-1-7" id="__codelineno-1-7" name="__codelineno-1-7"></a>make<span class="w"> </span>start-server<span class="w"> </span><span class="c1"># Start the API service locally</span>
 </span></code></pre></div>
 <h3 id="setting-up-your-environment">Setting Up Your Environment</h3>
 <p>Creating a Valor-specific Python environment at the start of development can help you avoid dependency and versioning issues later on. To start, we'd recommend activating a new Python environment:</p>
@@ -614,10 +615,10 @@
 </span></code></pre></div>
 <p>Finally, you're ready to install your client and API modules:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a href="#__codelineno-4-1" id="__codelineno-4-1" name="__codelineno-4-1"></a><span class="c1"># Install the Client module</span>
-</span><span id="__span-4-2"><a href="#__codelineno-4-2" id="__codelineno-4-2" name="__codelineno-4-2"></a>python<span class="w"> </span>-m<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span>client/.<span class="o">[</span>test<span class="o">]</span>
+</span><span id="__span-4-2"><a href="#__codelineno-4-2" id="__codelineno-4-2" name="__codelineno-4-2"></a>python<span class="w"> </span>-m<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span>client/.
 </span><span id="__span-4-3"><a href="#__codelineno-4-3" id="__codelineno-4-3" name="__codelineno-4-3"></a>
 </span><span id="__span-4-4"><a href="#__codelineno-4-4" id="__codelineno-4-4" name="__codelineno-4-4"></a><span class="c1"># Install the API module</span>
-</span><span id="__span-4-5"><a href="#__codelineno-4-5" id="__codelineno-4-5" name="__codelineno-4-5"></a>python<span class="w"> </span>-m<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span>api/.<span class="o">[</span>test<span class="o">]</span>
+</span><span id="__span-4-5"><a href="#__codelineno-4-5" id="__codelineno-4-5" name="__codelineno-4-5"></a>python<span class="w"> </span>-m<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span>api/.
 </span></code></pre></div>
 <h3 id="use-pgadmin-to-debug-postgis">Use pgAdmin to Debug PostGIS</h3>
 <p>You can use the pgAdmin utility to debug your PostGIS tables as you code. Start by <a href="https://www.pgadmin.org/download/">installing pgAdmin</a>, and then select <code>Object &gt; Register &gt; Server</code> to connect to your PostGIS container. The default connection details are listed below for convenience:</p>
