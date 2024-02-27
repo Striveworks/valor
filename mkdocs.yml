@@ -7,6 +7,8 @@ theme:
   palette:
     scheme: slate
     primary: deep purple
+extra_javascript:
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
 nav:
   - Overview: "index.md"
   - Installation: "installation.md"
