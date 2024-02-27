@@ -38,7 +38,7 @@ def _calculate_101_pt_interp(precisions, recalls) -> float:
     data.sort(key=lambda x: x[1])
     # negative is because we want a max heap
     prec_heap = [[-precision, i] for i, (precision, _) in enumerate(data)]
-    prec_heap.sort()
+    heapq.heapify(prec_heap)
 
     cutoff_idx = 0
     ret = 0
