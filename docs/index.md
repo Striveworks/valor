@@ -1,3 +1,5 @@
+
+
 # Introduction
 
 Valor is a centralized evaluation store that makes it easy to measure, explore, and rank model performance. Valor empowers data scientists and engineers to evaluate the performance of their machine learning pipelines and use those evaluations to make better modeling decisions in the future. To skip this textual introduction and dive right in, first go [here](installation.md) for instructions to setup the Valor service, and then checkout the [sample notebooks](https://github.com/Striveworks/valor/blob/main/examples/).
@@ -11,7 +13,7 @@ These docs are organized as follows:
 - **[Basic Usage](basic_usage.md)**: Details everything you need to get up and running with using Valor.
 - **[Sample Notebooks](https://github.com/Striveworks/valor/blob/main/examples/)**: Collection of descriptive Jupyter notebooks giving examples of how to evaluate model performance using Valor.
 - **[Metadata and Filtering](metadata_and_filtering.md)**: Describes Valor's robust support for adding metadata to data, along with how to filter evaluations and Valor objects based on metadata and other attributes.
-- **[Metrics](https://striveworks.github.io/valor/metrics)**: Describes all of the metrics that you can calculate using Valor.
+- **[Metrics](metrics.md)**: Describes all of the metrics that you can calculate using Valor.
 - **[Endpoints](endpoints.md)**: Documents Valor's various API endpoints.
 - **[Technical Concepts](technical_concepts.md)**: Describes the technical concepts that underpin Valor.
 - **[Contributing and Development](contributing.md)**: Explains how you can build on and contribute to Valor.
