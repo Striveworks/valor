@@ -12,11 +12,21 @@ unit-tests:
 	python -m pytest -v ./client/unit-tests
 
 start-postgis-docker:
+ifeq ($(shell uname -s),Darwin)
 	docker run -p 5432:5432 -e POSTGRES_PASSWORD=password -e POSTGRES_DB=valor -d docker.io/postgis/postgis
+else
+	docker run -p 5432:5432 --network "host" -e POSTGRES_PASSWORD=password -e POSTGRES_DB=valor -d docker.io/postgis/postgis
+endif
 
 run-migrations:
+ifeq ($(shell uname -s),Darwin)
 	docker build -f=migrations/Dockerfile ./migrations -t migrations && \
 	docker run -e POSTGRES_PASSWORD=password -e POSTGRES_HOST=host.docker.internal -e POSTGRES_DB=valor -e POSTGRES_USERNAME=postgres -e POSTGRES_PORT=5432 migrations
+else
+	docker build -f=migrations/Dockerfile ./migrations -t migrations && \
+	docker run -e POSTGRES_PASSWORD=password --network "host" -e POSTGRES_HOST=localhost -e POSTGRES_DB=valor -e POSTGRES_USERNAME=postgres -e POSTGRES_PORT=5432
+endif
+
 
 functional-tests:
 	POSTGRES_PASSWORD=password POSTGRES_HOST=localhost POSTGRES_DB=valor POSTGRES_USERNAME=postgres POSTGRES_PORT=5432  pytest -v ./api/tests/functional-tests
