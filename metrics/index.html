@@ -422,22 +422,22 @@
 <tr>
 <td style="text-align: left;">Precision</td>
 <td style="text-align: left;">The number of true positives divided by the total number of positive predictions (i.e., the number of true positives plus the number of false positives).</td>
-<td style="text-align: left;">$$\dfrac{|TP|}{|TP|+|FP|}$$</td>
+<td style="text-align: left;"><span class="arithmatex">\(<span class="arithmatex">\(\dfrac{\|TP\|}{\|TP\|+\|FP\|}\)</span>\)</span></td>
 </tr>
 <tr>
 <td style="text-align: left;">Recall</td>
 <td style="text-align: left;">The number of true positives divided by the total count of the class of interest (i.e., the number of true positives plus the number of true negatives).</td>
-<td style="text-align: left;">$$\dfrac{|TP|}{|TP|+|FN|}$$</td>
+<td style="text-align: left;"><span class="arithmatex">\(<span class="arithmatex">\(\dfrac{\|TP\|}{\|TP\|+\|FN\|}\)</span>\)</span></td>
 </tr>
 <tr>
 <td style="text-align: left;">F1</td>
 <td style="text-align: left;">A weighted average of precision and recall.</td>
-<td style="text-align: left;">$$\frac{2 * Precision * Recall}{Precision + Recall}$$</td>
+<td style="text-align: left;"><span class="arithmatex">\(<span class="arithmatex">\(\frac{2 * Precision * Recall}{Precision + Recall}\)</span>\)</span></td>
 </tr>
 <tr>
 <td style="text-align: left;">Accuracy</td>
 <td style="text-align: left;">The number of true predictions divided by the total number of predictions.</td>
-<td style="text-align: left;">$$\dfrac{|TP|+|TN|}{|TP|+|TN|+|FP|+|FN|}$$</td>
+<td style="text-align: left;"><span class="arithmatex">\(<span class="arithmatex">\(\dfrac{\|TP\|+\|TN\|}{\|TP\|+\|TN\|+\|FP\|+\|FN\|}\)</span>\)</span></td>
 </tr>
 <tr>
 <td style="text-align: left;">ROC AUC</td>
@@ -464,17 +464,17 @@
 <tr>
 <td style="text-align: left;">AP Averaged Over IOUs</td>
 <td style="text-align: left;">The average of several AP metrics, calculated at various IOUs, grouped by class.</td>
-<td style="text-align: left;">$$\dfrac{1}{\text{number of thresholds}} \sum\limits_{iou \in thresholds} AP_{iou}$$</td>
+<td style="text-align: left;"><span class="arithmatex">\(<span class="arithmatex">\(\dfrac{1}{\text{number of thresholds}} \sum\limits_{iou \in thresholds} AP_{iou}\)</span>\)</span></td>
 </tr>
 <tr>
 <td style="text-align: left;">Mean Average Precision (mAP)</td>
 <td style="text-align: left;">The mean of several AP scores, calculated over various classes.</td>
-<td style="text-align: left;">$$\dfrac{1}{\text{number of classes}} \sum\limits_{c \in classes} AP_{c}$$</td>
+<td style="text-align: left;"><span class="arithmatex">\(<span class="arithmatex">\(\dfrac{1}{\text{number of classes}} \sum\limits_{c \in classes} AP_{c}\)</span>\)</span></td>
 </tr>
 <tr>
 <td style="text-align: left;">mAP Averaged Over IOUs</td>
 <td style="text-align: left;">The mean of several averaged AP scores, calculated over various classes.</td>
-<td style="text-align: left;">$$\dfrac{1}{\text{number of thresholds}} \sum\limits_{iou \in thresholds} mAP_{iou}$$</td>
+<td style="text-align: left;"><span class="arithmatex">\(<span class="arithmatex">\(\dfrac{1}{\text{number of thresholds}} \sum\limits_{iou \in thresholds} mAP_{iou}\)</span>\)</span></td>
 </tr>
 </tbody>
 </table>
@@ -492,12 +492,12 @@
 <tr>
 <td style="text-align: left;">Intersection Over Union (IOU)</td>
 <td style="text-align: left;">A ratio between the groundtruth and predicted regions of an image, measured as a percentage, grouped by class.</td>
-<td style="text-align: left;">$$\dfrac{area( prediction \cap groundtruth )}{area( prediction \cup groundtruth )}$$</td>
+<td style="text-align: left;"><span class="arithmatex">\(<span class="arithmatex">\(\dfrac{area( prediction \cap groundtruth )}{area( prediction \cup groundtruth )}\)</span>\)</span></td>
 </tr>
 <tr>
 <td style="text-align: left;">Mean IOU</td>
 <td style="text-align: left;">The average of IOUs, calculated over several different classes.</td>
-<td style="text-align: left;">$$\dfrac{1}{\text{number of classes}} \sum\limits_{c \in classes} IOU_{c}$$</td>
+<td style="text-align: left;"><span class="arithmatex">\(<span class="arithmatex">\(\dfrac{1}{\text{number of classes}} \sum\limits_{c \in classes} IOU_{c}\)</span>\)</span></td>
 </tr>
 </tbody>
 </table>
@@ -535,27 +535,27 @@
 </table>
 <ul>
 <li>
-<p>$$\text{True Positive Rate (TPR)} = \dfrac{|TP|}{|TP| + |FN|} = \dfrac{|TP(threshold)|}{|TP(threshold)| + |FN(threshold)|}$$</p>
+<p><span class="arithmatex">\(\text{True Positive Rate (TPR)} = \dfrac{|TP|}{|TP| + |FN|} = \dfrac{|TP(threshold)|}{|TP(threshold)| + |FN(threshold)|}\)</span></p>
 </li>
 <li>
-<p>$$\text{False Positive Rate (FPR)} = \dfrac{|FP|}{|FP| + |TN|} = \dfrac{|FP(threshold)|}{|FP(threshold)| + |TN(threshold)|}$$</p>
+<p><span class="arithmatex">\(\text{False Positive Rate (FPR)} = \dfrac{|FP|}{|FP| + |TN|} = \dfrac{|FP(threshold)|}{|FP(threshold)| + |TN(threshold)|}\)</span></p>
 </li>
 </ul>
 <p>We now use the confidence scores, sorted in decreasing order, as our thresholds in order to generate points on a curve.</p>
-<p>$$
+<div class="arithmatex">\[
 Point(score) = (FPR(score), \ TPR(score))
-$$</p>
+\]</div>
 <h3 id="area-under-the-roc-curve-roc-auc">Area Under the ROC Curve (ROC AUC)</h3>
 <p>After calculating the ROC curve, we find the ROC AUC metric by approximating the integral using the trapezoidal rule formula.</p>
-<p>$$
+<div class="arithmatex">\[
 ROC AUC =  \sum_{i=1}^{|scores|} \frac{  \lVert Point(score_{i-1}) - Point(score_i) \rVert }{2}
-$$</p>
+\]</div>
 <p>See <a href="https://developers.google.com/machine-learning/crash-course/classification/roc-and-auc">Classification: ROC Curve and AUC</a> for more information.</p>
 <h2 id="average-precision-ap">Average Precision (AP)</h2>
 <p>For object detection and instance segmentation tasks, average precision is calculated from the intersection-over-union (IOU) of geometric predictions and ground truths.</p>
 <h3 id="multiclass-precision-and-recall">Multiclass Precision and Recall</h3>
 <p>Tasks that predict geometries (such as object detection or instance segmentation) use the ratio intersection-over-union (IOU) to calculate precision and recall. IOU is the ratio of the intersecting area over the joint area spanned by the two geometries, and is defined in the following equation.</p>
-<p>$$Intersection \ over \ Union \ (IOU) = \dfrac{Area( prediction \cap groundtruth )}{Area( prediction \cup groundtruth )}$$</p>
+<div class="arithmatex">\[Intersection \ over \ Union \ (IOU) = \dfrac{Area( prediction \cap groundtruth )}{Area( prediction \cup groundtruth )}\]</div>
 <p>Using different IOU thresholds, we can determine whether we count a pairing between a prediction and a ground truth pairing based on their overlap.</p>
 <table>
 <thead>
@@ -585,10 +585,10 @@ $$</p>
 </table>
 <ul>
 <li>
-<p>$$Precision = \dfrac{|TP|}{|TP| + |FP|} = \dfrac{\text{Number of True Predictions}}{|\text{Predictions}|}$$</p>
+<p><span class="arithmatex">\(Precision = \dfrac{|TP|}{|TP| + |FP|} = \dfrac{\text{Number of True Predictions}}{|\text{Predictions}|}\)</span></p>
 </li>
 <li>
-<p>$$Recall = \dfrac{|TP|}{|TP| + |FN|} = \dfrac{\text{Number of True Predictions}}{|\text{Groundtruths}|}$$</p>
+<p><span class="arithmatex">\(Recall = \dfrac{|TP|}{|TP| + |FN|} = \dfrac{\text{Number of True Predictions}}{|\text{Groundtruths}|}\)</span></p>
 </li>
 </ul>
 <h3 id="matching-ground-truths-with-predictions">Matching Ground Truths with Predictions</h3>
@@ -627,12 +627,12 @@ $$</p>
 <h3 id="calculating-average-precision">Calculating Average Precision</h3>
 <p>Average precision is defined as the area under the precision-recall curve.</p>
 <p>We will use a 101-point interpolation of the curve to be consistent with the COCO evaluator. The intent behind interpolation is to reduce the fuzziness that results from ranking pairs.</p>
-<p>$$
-AP = \frac{1}{101} \sum\limits_{r\in{ 0, 0.01, \ldots , 1 }}\rho_{interp}(r)
-$$</p>
-<p>$$
+<div class="arithmatex">\[
+AP = \frac{1}{101} \sum\limits_{r\in\{ 0, 0.01, \ldots , 1 \}}\rho_{interp}(r)
+\]</div>
+<div class="arithmatex">\[
 \rho_{interp} = \underset{\tilde{r}:\tilde{r} \ge r}{max \ \rho (\tilde{r})}
-$$</p>
+\]</div>
 <h3 id="references">References</h3>
 <ul>
 <li><a href="https://cocodataset.org/#detection-eval">MS COCO Detection Evaluation</a></li>
