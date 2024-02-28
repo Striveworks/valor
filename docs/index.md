@@ -1,5 +1,3 @@
-
-
 # Introduction
 
 Valor is a centralized evaluation store that makes it easy to measure, explore, and rank model performance. Valor empowers data scientists and engineers to evaluate the performance of their machine learning pipelines and use those evaluations to make better modeling decisions in the future. To skip this textual introduction and dive right in, first go [here](installation.md) for instructions to setup the Valor service, and then checkout the [sample notebooks](https://github.com/Striveworks/valor/blob/main/examples/).
