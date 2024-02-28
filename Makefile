@@ -12,11 +12,7 @@ unit-tests:
 	python -m pytest -v ./client/unit-tests
 
 start-postgis-docker:
-ifeq ($(shell uname -s),Darwin)
 	docker run -p 5432:5432 -e POSTGRES_PASSWORD=password -e POSTGRES_DB=valor -d docker.io/postgis/postgis
-else
-	docker run -p 5432:5432 --network "host" -e POSTGRES_PASSWORD=password -e POSTGRES_DB=valor -d docker.io/postgis/postgis
-endif
 
 run-migrations:
 ifeq ($(shell uname -s),Darwin)
