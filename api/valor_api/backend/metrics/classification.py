@@ -223,6 +223,8 @@ def _compute_confusion_matrix_at_grouper_key(
         The filter to be used to query predictions.
     groundtruth_filter : schemas.Filter
         The filter to be used to query groundtruths.
+    grouper_key: str
+        The key of the grouper used to calculate the confusion matrix.
     grouper_mappings: dict[str, dict[str | int, any]]
         A dictionary of mappings that connect groupers to their related labels.
 

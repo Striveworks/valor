@@ -53,14 +53,39 @@ def _calculate_101_pt_interp(precisions, recalls) -> float:
     return ret / 101
 
 
+# TODO
+def _calculate_ar():
+    """
+    To calculate Average Recall (AR):
+    1) Find the count of true positives above a certain IOU threshold (e.g., .5) for all images containing a ground truth of a particular class.
+    2) Divide that count of true positives by the total number of ground truths to get the recall per class and IOU threshold. Append that recall value to a list.
+    3) Repeat steps 1 & 2 for multiple IOU thresholds (e.g., [.5, .75])
+    4) Take the average of your list of recalls
+
+    Note that this metric differs from [COCO's calculation](https://cocodataset.org/#detection-eval) in two ways:
+    - [COCO calculates](https://github.com/cocodataset/cocoapi/blob/8c9bcc3cf640524c4c20a9c40e89cb6a2f2fa0e9/PythonAPI/pycocotools/cocoeval.py#L466) three different AR metrics (AR@1, AR@5, AR@100) by [limiting the maximum number of detections which are considered during the matching process](https://github.com/rafaelpadilla/review_object_detection_metrics/blob/2efe66d2c4b89e4fcc64e490d4caced2096f03aa/src/evaluators/coco_evaluator.py#L138), while Valor doesn't impose any detection limits when creating matched pairs of ground truths and predictions.
+    - COCO averages across classes while calculating AR, while we calculate AR separately for each class (note this holds true for AP as well: COCO's "Average Precision" is the same calculation as what we call "Mean Average Precision"). Our calculations matches the [original FAIR definition](https://arxiv.org/pdf/1502.05082.pdf) of AR.
+
+    References
+    - [Efficient Graph-Friendly COCO Metric Computation for Train-TimeModel Evaluation](https://arxiv.org/pdf/2207.12120.pdf)
+    - [What makes for effective detection proposals?](https://arxiv.org/abs/1502.05082)
+    """
+    pass
+
+
+# TODO _calculate_ap()?
 def _ap(
     sorted_ranked_pairs: dict[int, list[RankedPair]],
     number_of_groundtruths_per_grouper: dict[int, int],
+    # TODO delete if not needed
+    number_of_predictions_per_grouper: dict[int, int],
     grouper_mappings: dict[str, dict],
     iou_thresholds: list[float],
     grouper_ids_associated_with_gts: set[int],
     score_threshold: float = 0,
-) -> Sequence[schemas.APMetric]:
+) -> Sequence[
+    schemas.APMetric
+]:  # Tuple[Sequence[schemas.APMetric], list[dict]]:  TODO fix
     """
     Computes the average precision. Return is a dict with keys
     `f"IoU={iou_thres}"` for each `iou_thres` in `iou_thresholds` as well as
@@ -76,7 +101,9 @@ def _ap(
             "IOU thresholds should exist in the range 0 < threshold <= 1."
         )
 
-    detection_metrics = []
+    ap_metrics = []
+    # TODO delete if not needed
+    # confusion_matrices = []
     for iou_threshold in iou_thresholds:
         for grouper_id, grouper_label in grouper_mappings[
             "grouper_id_to_grouper_label_mapping"
@@ -103,9 +130,15 @@ def _ap(
                         cnt_tp += 1
                     else:
                         cnt_fp += 1
+
                     cnt_fn = (
                         number_of_groundtruths_per_grouper[grouper_id] - cnt_tp
                     )
+
+                    # TODO delete if not needed
+                    # cnt_tn = (
+                    #     number_of_predictions_per_grouper[grouper_id] - cnt_fn
+                    # )
 
                     precisions.append(
                         cnt_tp / (cnt_tp + cnt_fp) if (cnt_tp + cnt_fp) else 0
@@ -117,7 +150,21 @@ def _ap(
                 precisions = [0]
                 recalls = [0]
 
-            detection_metrics.append(
+            # TODO delete if not needed
+            # confusion_matrices.append(
+            #     {
+            #         "iou": iou_threshold,
+            #         "label": grouper_label,
+            #         "tp": cnt_tp,
+            #         "fp": cnt_fp,
+            #         "tn": cnt_tn,
+            #         "fn": cnt_fn,
+            #         "precisions": precisions,
+            #         "recalls": recalls,
+            #     }
+            # )
+
+            ap_metrics.append(
                 schemas.APMetric(
                     iou=iou_threshold,
                     value=_calculate_101_pt_interp(
@@ -127,7 +174,7 @@ def _ap(
                 )
             )
 
-    return detection_metrics
+    return ap_metrics
 
 
 def _compute_detection_metrics(
@@ -342,6 +389,7 @@ def _compute_detection_metrics(
 
     # Get the number of groundtruths per grouper_id
     number_of_groundtruths_per_grouper = {}
+    number_of_predictions_per_grouper = {}
 
     groundtruths = db.query(
         Query(
@@ -355,17 +403,34 @@ def _compute_detection_metrics(
         .groundtruths()  # type: ignore - SQLAlchemy type issue
     ).all()  # type: ignore - SQLAlchemy type issue
 
+    predictions = db.query(
+        Query(
+            models.Prediction.id,
+            case(
+                grouper_mappings["label_id_to_grouper_id_mapping"],
+                value=models.Prediction.label_id,
+            ).label("label_id_grouper"),
+        )
+        .filter(prediction_filter)
+        .predictions()  # type: ignore - SQLAlchemy type issue
+    ).all()  # type: ignore - SQLAlchemy type issue
+
     grouper_ids_associated_with_gts = set([row[1] for row in groundtruths])
 
     for grouper_id in ranking.keys():
         number_of_groundtruths_per_grouper[grouper_id] = len(
             set([row[0] for row in groundtruths if row[1] == grouper_id])
         )
+        number_of_predictions_per_grouper[grouper_id] = len(
+            set([row[0] for row in predictions if row[1] == grouper_id])
+        )
 
     # Compute AP
-    detection_metrics = _ap(
+    ap_metrics = _ap(
         sorted_ranked_pairs=ranking,
         number_of_groundtruths_per_grouper=number_of_groundtruths_per_grouper,
+        # TODO delete if not needed
+        number_of_predictions_per_grouper=number_of_predictions_per_grouper,
         iou_thresholds=parameters.iou_thresholds_to_compute,
         grouper_mappings=grouper_mappings,
         grouper_ids_associated_with_gts=grouper_ids_associated_with_gts,
@@ -373,13 +438,11 @@ def _compute_detection_metrics(
 
     # now extend to the averaged AP metrics and mAP metric
     mean_detection_metrics = _compute_mean_detection_metrics_from_aps(
-        detection_metrics
+        ap_metrics
     )
 
     detection_metrics_ave_over_ious = list(
-        _compute_detection_metrics_averaged_over_ious_from_aps(
-            detection_metrics
-        )
+        _compute_detection_metrics_averaged_over_ious_from_aps(ap_metrics)
     )
     mean_detection_metrics_ave_over_ious = list(
         _compute_mean_detection_metrics_from_aps(
@@ -388,10 +451,8 @@ def _compute_detection_metrics(
     )
 
     # filter out only specified ious
-    detection_metrics = [
-        m
-        for m in detection_metrics
-        if m.iou in parameters.iou_thresholds_to_return
+    ap_metrics = [
+        m for m in ap_metrics if m.iou in parameters.iou_thresholds_to_return
     ]
     mean_detection_metrics = [
         m
@@ -401,7 +462,9 @@ def _compute_detection_metrics(
     ]
 
     return (
-        detection_metrics
+        ap_metrics
+        # TODO delete if not needed
+        # + confusion_matrices
         + mean_detection_metrics
         + detection_metrics_ave_over_ious
         + mean_detection_metrics_ave_over_ious
@@ -473,10 +536,14 @@ def _compute_mean_detection_metrics_from_aps(
 
     # get mAP metrics at the individual IOUs
     mean_detection_metrics = [
-        schemas.mAPMetric(iou=iou, value=_average_ignore_minus_one(vals[iou]))
-        if isinstance(iou, float)
-        else schemas.mAPMetricAveragedOverIOUs(
-            ious=iou, value=_average_ignore_minus_one(vals[iou])
+        (
+            schemas.mAPMetric(
+                iou=iou, value=_average_ignore_minus_one(vals[iou])
+            )
+            if isinstance(iou, float)
+            else schemas.mAPMetricAveragedOverIOUs(
+                ious=iou, value=_average_ignore_minus_one(vals[iou])
+            )
         )
         for iou in vals.keys()
     ]
