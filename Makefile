@@ -20,7 +20,7 @@ ifeq ($(shell uname -s),Darwin)
 	docker run -e POSTGRES_PASSWORD=password -e POSTGRES_HOST=host.docker.internal -e POSTGRES_DB=valor -e POSTGRES_USERNAME=postgres -e POSTGRES_PORT=5432 migrations
 else
 	docker build -f=migrations/Dockerfile ./migrations -t migrations && \
-	docker run -e POSTGRES_PASSWORD=password --network "host" -e POSTGRES_HOST=localhost -e POSTGRES_DB=valor -e POSTGRES_USERNAME=postgres -e POSTGRES_PORT=5432
+	docker run -e POSTGRES_PASSWORD=password --network "host" -e POSTGRES_HOST=localhost -e POSTGRES_DB=valor -e POSTGRES_USERNAME=postgres -e POSTGRES_PORT=5432 migrations
 endif
 
 
