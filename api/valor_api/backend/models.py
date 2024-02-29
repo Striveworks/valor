@@ -6,6 +6,7 @@ from sqlalchemy import ForeignKey, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
+from pgvector.sqlalchemy import Vector
 
 from valor_api.backend.database import Base
 
@@ -26,6 +27,20 @@ class Label(Base):
     )
     predictions: Mapped[list["Prediction"]] = relationship(
         back_populates="label"
+    )
+
+
+class Embedding(Base):
+    __tablename__ = "embedding"
+
+    # columns
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    value = mapped_column(Vector())
+    created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
+
+    # relationships
+    annotations: Mapped[list["Annotation"]] = relationship(
+        back_populates="embedding"
     )
 
 
@@ -111,11 +126,12 @@ class Annotation(Base):
     meta = mapped_column(JSONB)
     created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
 
-    # columns - geometric
+    # columns - linked objects
     box = mapped_column(Geometry("POLYGON"), nullable=True)
     polygon = mapped_column(Geometry("POLYGON"), nullable=True)
     multipolygon = mapped_column(Geometry("MULTIPOLYGON"), nullable=True)
     raster = mapped_column(GDALRaster, nullable=True)
+    embedding_id = mapped_column(ForeignKey("embedding.id"), nullable=True)
 
     # relationships
     datum: Mapped["Datum"] = relationship(back_populates="annotations")

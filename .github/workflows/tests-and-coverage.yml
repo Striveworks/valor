@@ -16,14 +16,6 @@ jobs:
     defaults:
       run:
         working-directory: .
-    services:
-      postgis:
-        image: postgis/postgis
-        ports:
-          - 5432:5432
-        env:
-          POSTGRES_PASSWORD: password
-          POSTGRES_DB: valor
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
@@ -31,6 +23,8 @@ jobs:
           python-version: "3.10"
       - name: set up postgres
         run: |
+          docker build ./database -t pgvalor
+          docker run -p 5432:5432 -e POSTGRES_PASSWORD=password -e POSTGRES_DB=valor -d pgvalor
           docker build ./migrations -t migrations
           docker run -e POSTGRES_PASSWORD=password -e POSTGRES_HOST=localhost -e POSTGRES_DB=valor -e POSTGRES_USERNAME=postgres -e POSTGRES_PORT=5432 --network "host" migrations
       - name: run functional tests
@@ -56,6 +50,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      - name: build postgres
+        run: |
+          docker build ./database -t pgvalor
       - name: setup back end test env
         run: docker compose -p valor -f docker-compose.yml --env-file ./api/.env.testing up --build -d
       - uses: actions/setup-python@v4

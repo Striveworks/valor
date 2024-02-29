@@ -7,95 +7,6 @@ from valor_api.backend import core, models
 
 
 @pytest.fixture
-def created_dataset(db: Session, dataset_name: str) -> str:
-    dataset = schemas.Dataset(name=dataset_name)
-    core.create_dataset(db, dataset=dataset)
-    core.create_groundtruth(
-        db=db,
-        groundtruth=schemas.GroundTruth(
-            datum=schemas.Datum(uid="uid1", dataset_name=dataset_name),
-            annotations=[
-                schemas.Annotation(
-                    task_type=enums.TaskType.CLASSIFICATION,
-                    labels=[schemas.Label(key="k1", value="v1")],
-                )
-            ],
-        ),
-    )
-    core.create_groundtruth(
-        db=db,
-        groundtruth=schemas.GroundTruth(
-            datum=schemas.Datum(uid="uid2", dataset_name=dataset_name),
-            annotations=[
-                schemas.Annotation(
-                    task_type=enums.TaskType.OBJECT_DETECTION,
-                    labels=[schemas.Label(key="k1", value="v1")],
-                )
-            ],
-        ),
-    )
-    core.create_groundtruth(
-        db=db,
-        groundtruth=schemas.GroundTruth(
-            datum=schemas.Datum(uid="uid3", dataset_name=dataset_name),
-            annotations=[
-                schemas.Annotation(
-                    task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
-                    labels=[schemas.Label(key="k1", value="v1")],
-                )
-            ],
-        ),
-    )
-    return dataset_name
-
-
-@pytest.fixture
-def created_model(db: Session, model_name: str, created_dataset: str) -> str:
-    model = schemas.Model(name=model_name)
-    core.create_model(db, model=model)
-    core.create_prediction(
-        db=db,
-        prediction=schemas.Prediction(
-            model_name=model_name,
-            datum=schemas.Datum(uid="uid1", dataset_name=created_dataset),
-            annotations=[
-                schemas.Annotation(
-                    task_type=enums.TaskType.CLASSIFICATION,
-                    labels=[schemas.Label(key="k1", value="v1", score=1.0)],
-                )
-            ],
-        ),
-    )
-    core.create_prediction(
-        db=db,
-        prediction=schemas.Prediction(
-            model_name=model_name,
-            datum=schemas.Datum(uid="uid2", dataset_name=created_dataset),
-            annotations=[
-                schemas.Annotation(
-                    task_type=enums.TaskType.OBJECT_DETECTION,
-                    labels=[schemas.Label(key="k1", value="v1", score=1.0)],
-                )
-            ],
-        ),
-    )
-    core.create_prediction(
-        db=db,
-        prediction=schemas.Prediction(
-            model_name=model_name,
-            datum=schemas.Datum(uid="uid3", dataset_name=created_dataset),
-            annotations=[
-                schemas.Annotation(
-                    task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
-                    labels=[schemas.Label(key="k1", value="v1")],
-                )
-            ],
-        ),
-    )
-    return model_name
-
-
-@pytest.fixture
 def created_datasets(db: Session) -> list[str]:
     dataset1 = schemas.Dataset(name="dataset1")
     dataset2 = schemas.Dataset(name="dataset2")
@@ -104,31 +15,31 @@ def created_datasets(db: Session) -> list[str]:
     return ["dataset1", "dataset2"]
 
 
-def test_create_dataset(db: Session, created_dataset):
+def test_create_dataset(db: Session, core_created_dataset):
     dataset = db.query(
         select(models.Dataset)
-        .where(models.Dataset.name == created_dataset)
+        .where(models.Dataset.name == core_created_dataset)
         .subquery()
     ).one_or_none()
     assert dataset is not None
-    assert dataset.name == created_dataset
+    assert dataset.name == core_created_dataset
     assert dataset.meta == {}
 
 
-def test_fetch_dataset(db: Session, created_dataset):
-    dataset = core.fetch_dataset(db, created_dataset)
+def test_fetch_dataset(db: Session, core_created_dataset):
+    dataset = core.fetch_dataset(db, core_created_dataset)
     assert dataset is not None
-    assert dataset.name == created_dataset
+    assert dataset.name == core_created_dataset
     assert dataset.meta == {}
 
     with pytest.raises(exceptions.DatasetDoesNotExistError):
         core.fetch_dataset(db, "some_nonexistent_dataset")
 
 
-def test_get_dataset(db: Session, created_dataset):
-    dataset = core.get_dataset(db, created_dataset)
+def test_get_dataset(db: Session, core_created_dataset):
+    dataset = core.get_dataset(db, core_created_dataset)
     assert dataset is not None
-    assert dataset.name == created_dataset
+    assert dataset.name == core_created_dataset
     assert dataset.metadata == {}
 
     with pytest.raises(exceptions.DatasetDoesNotExistError):
@@ -141,72 +52,72 @@ def test_get_datasets(db: Session, created_datasets):
         assert dataset.name in created_datasets
 
 
-def test_dataset_status(db: Session, created_dataset):
+def test_dataset_status(db: Session, core_created_dataset):
     # creating
     assert (
-        core.get_dataset_status(db, created_dataset)
+        core.get_dataset_status(db, core_created_dataset)
         == enums.TableStatus.CREATING
     )
 
     # finalized
-    core.set_dataset_status(db, created_dataset, enums.TableStatus.FINALIZED)
+    core.set_dataset_status(db, core_created_dataset, enums.TableStatus.FINALIZED)
     assert (
-        core.get_dataset_status(db, created_dataset)
+        core.get_dataset_status(db, core_created_dataset)
         == enums.TableStatus.FINALIZED
     )
 
     # test others
-    core.set_dataset_status(db, created_dataset, enums.TableStatus.FINALIZED)
+    core.set_dataset_status(db, core_created_dataset, enums.TableStatus.FINALIZED)
     with pytest.raises(exceptions.DatasetStateError):
         core.set_dataset_status(
-            db, created_dataset, enums.TableStatus.CREATING
+            db, core_created_dataset, enums.TableStatus.CREATING
         )
 
     # deleting
-    core.set_dataset_status(db, created_dataset, enums.TableStatus.DELETING)
+    core.set_dataset_status(db, core_created_dataset, enums.TableStatus.DELETING)
     assert (
-        core.get_dataset_status(db, created_dataset)
+        core.get_dataset_status(db, core_created_dataset)
         == enums.TableStatus.DELETING
     )
 
     # test others
     with pytest.raises(exceptions.DatasetStateError):
         core.set_dataset_status(
-            db, created_dataset, enums.TableStatus.CREATING
+            db, core_created_dataset, enums.TableStatus.CREATING
         )
     with pytest.raises(exceptions.DatasetStateError):
         core.set_dataset_status(
-            db, created_dataset, enums.TableStatus.FINALIZED
+            db, core_created_dataset, enums.TableStatus.FINALIZED
         )
 
 
-def test_dataset_status_create_to_delete(db: Session, created_dataset):
+def test_dataset_status_create_to_delete(db: Session, core_created_dataset):
     # creating
     assert (
-        core.get_dataset_status(db, created_dataset)
+        core.get_dataset_status(db, core_created_dataset)
         == enums.TableStatus.CREATING
     )
 
     # deleting
-    core.set_dataset_status(db, created_dataset, enums.TableStatus.DELETING)
+    core.set_dataset_status(db, core_created_dataset, enums.TableStatus.DELETING)
     assert (
-        core.get_dataset_status(db, created_dataset)
+        core.get_dataset_status(db, core_created_dataset)
         == enums.TableStatus.DELETING
     )
 
 
 def test_dataset_status_with_evaluations(
     db: Session,
-    created_dataset: str,
-    created_model: str,
+    core_created_dataset: str,
+    core_created_model: str,
 ):
     # create an evaluation
-    core.set_dataset_status(db, created_dataset, enums.TableStatus.FINALIZED)
+    core.set_dataset_status(db, core_created_dataset, enums.TableStatus.FINALIZED)
     evaluations, _ = core.create_or_get_evaluations(
         db,
         schemas.EvaluationRequest(
-            model_names=[created_model],
-            datum_filter=schemas.Filter(dataset_names=[created_dataset]),
+            model_names=[core_created_model],
+            datum_filter=schemas.Filter(dataset_names=[core_created_dataset]),
             parameters=schemas.EvaluationParameters(
                 task_type=enums.TaskType.CLASSIFICATION,
             ),
@@ -223,14 +134,14 @@ def test_dataset_status_with_evaluations(
     # test that deletion is blocked while evaluation is running
     with pytest.raises(exceptions.EvaluationRunningError):
         core.set_dataset_status(
-            db, created_dataset, enums.TableStatus.DELETING
+            db, core_created_dataset, enums.TableStatus.DELETING
         )
 
     # set the evaluation to the done state
     core.set_evaluation_status(db, evaluation_id, enums.EvaluationStatus.DONE)
 
     # test that deletion is unblocked when evaluation is DONE
-    core.set_dataset_status(db, created_dataset, enums.TableStatus.DELETING)
+    core.set_dataset_status(db, core_created_dataset, enums.TableStatus.DELETING)
 
 
 def test_delete_dataset(db: Session):

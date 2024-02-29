@@ -8,7 +8,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from valor_api import crud, enums, schemas
-from valor_api.backend import models
+from valor_api.backend import models, core
 from valor_api.backend.database import Base, make_session
 
 np.random.seed(29)
@@ -643,3 +643,106 @@ def dataset_model_create(
     # clean up
     crud.delete(db=db, model_name=model_name)
     crud.delete(db=db, dataset_name=dataset_name)
+
+
+@pytest.fixture
+def core_created_dataset(db: Session, dataset_name: str) -> str:
+    dataset = schemas.Dataset(name=dataset_name)
+    core.create_dataset(db, dataset=dataset)
+    core.create_groundtruth(
+        db=db,
+        groundtruth=schemas.GroundTruth(
+            datum=schemas.Datum(uid="uid1", dataset_name=dataset_name),
+            annotations=[
+                schemas.Annotation(
+                    task_type=enums.TaskType.CLASSIFICATION,
+                    labels=[schemas.Label(key="k1", value="v1")],
+                )
+            ],
+        ),
+    )
+    core.create_groundtruth(
+        db=db,
+        groundtruth=schemas.GroundTruth(
+            datum=schemas.Datum(uid="uid2", dataset_name=dataset_name),
+            annotations=[
+                schemas.Annotation(
+                    task_type=enums.TaskType.OBJECT_DETECTION,
+                    labels=[schemas.Label(key="k1", value="v1")],
+                    bounding_box=schemas.BoundingBox.from_extrema(0, 0, 1, 1),
+                )
+            ],
+        ),
+    )
+    core.create_groundtruth(
+        db=db,
+        groundtruth=schemas.GroundTruth(
+            datum=schemas.Datum(
+                uid="uid3",
+                dataset_name=dataset_name,
+                metadata={"height": 10, "width": 10},
+            ),
+            annotations=[
+                schemas.Annotation(
+                    task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+                    labels=[schemas.Label(key="k1", value="v1")],
+                    raster=schemas.Raster.from_numpy(np.zeros((10, 10)) == 0),
+                )
+            ],
+        ),
+    )
+    return dataset_name
+
+
+@pytest.fixture
+def core_created_model(
+    db: Session, model_name: str, core_created_dataset: str
+) -> str:
+    model = schemas.Model(name=model_name)
+    core.create_model(db, model=model)
+    core.create_prediction(
+        db=db,
+        prediction=schemas.Prediction(
+            model_name=model_name,
+            datum=schemas.Datum(uid="uid1", dataset_name=core_created_dataset),
+            annotations=[
+                schemas.Annotation(
+                    task_type=enums.TaskType.CLASSIFICATION,
+                    labels=[schemas.Label(key="k1", value="v1", score=1.0)],
+                )
+            ],
+        ),
+    )
+    core.create_prediction(
+        db=db,
+        prediction=schemas.Prediction(
+            model_name=model_name,
+            datum=schemas.Datum(uid="uid2", dataset_name=core_created_dataset),
+            annotations=[
+                schemas.Annotation(
+                    task_type=enums.TaskType.OBJECT_DETECTION,
+                    labels=[schemas.Label(key="k1", value="v1", score=1.0)],
+                    bounding_box=schemas.BoundingBox.from_extrema(0, 0, 1, 1),
+                )
+            ],
+        ),
+    )
+    core.create_prediction(
+        db=db,
+        prediction=schemas.Prediction(
+            model_name=model_name,
+            datum=schemas.Datum(
+                uid="uid3",
+                dataset_name=core_created_dataset,
+                metadata={"height": 10, "width": 10},
+            ),
+            annotations=[
+                schemas.Annotation(
+                    task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+                    labels=[schemas.Label(key="k1", value="v1")],
+                    raster=schemas.Raster.from_numpy(np.zeros((10, 10)) == 0),
+                )
+            ],
+        ),
+    )
+    return model_name

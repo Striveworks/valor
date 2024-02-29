@@ -73,6 +73,21 @@ def _wkt_multipolygon_to_raster(wkt: str):
     ).scalar_subquery()
 
 
+def _create_embedding(
+    db: Session,
+    value: list[float],
+) -> int:
+    """Creates a embedding row."""
+    try:
+        row = models.Embedding(value=value)
+        db.add(row)
+        db.commit()
+    except IntegrityError as e:
+        db.rollback()
+        raise e
+    return row.id
+
+
 def _create_annotation(
     annotation: schemas.Annotation,
     datum: models.Datum,
@@ -98,6 +113,7 @@ def _create_annotation(
     box = None
     polygon = None
     raster = None
+    embedding_id = None
 
     if isinstance(annotation.bounding_box, schemas.BoundingBox):
         box = annotation.bounding_box.wkt()
@@ -107,6 +123,8 @@ def _create_annotation(
         raster = _wkt_multipolygon_to_raster(annotation.multipolygon.wkt())
     if isinstance(annotation.raster, schemas.Raster):
         raster = annotation.raster.mask_bytes
+    if annotation.embedding is not None:
+        embedding_id = _create_embedding(db=db, value=annotation.embedding)
 
     mapping = {
         "datum_id": datum.id,

@@ -6,95 +6,6 @@ from valor_api.backend import core
 from valor_api.backend.metrics.metric_utils import validate_computation
 
 
-@pytest.fixture
-def created_dataset(db: Session, dataset_name: str) -> str:
-    dataset = schemas.Dataset(name=dataset_name)
-    core.create_dataset(db, dataset=dataset)
-    core.create_groundtruth(
-        db=db,
-        groundtruth=schemas.GroundTruth(
-            datum=schemas.Datum(uid="uid1", dataset_name=dataset_name),
-            annotations=[
-                schemas.Annotation(
-                    task_type=enums.TaskType.CLASSIFICATION,
-                    labels=[schemas.Label(key="k1", value="v1")],
-                )
-            ],
-        ),
-    )
-    core.create_groundtruth(
-        db=db,
-        groundtruth=schemas.GroundTruth(
-            datum=schemas.Datum(uid="uid2", dataset_name=dataset_name),
-            annotations=[
-                schemas.Annotation(
-                    task_type=enums.TaskType.OBJECT_DETECTION,
-                    labels=[schemas.Label(key="k1", value="v1")],
-                )
-            ],
-        ),
-    )
-    core.create_groundtruth(
-        db=db,
-        groundtruth=schemas.GroundTruth(
-            datum=schemas.Datum(uid="uid3", dataset_name=dataset_name),
-            annotations=[
-                schemas.Annotation(
-                    task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
-                    labels=[schemas.Label(key="k1", value="v1")],
-                )
-            ],
-        ),
-    )
-    return dataset_name
-
-
-@pytest.fixture
-def created_model(db: Session, model_name: str, created_dataset: str) -> str:
-    model = schemas.Model(name=model_name)
-    core.create_model(db, model=model)
-    core.create_prediction(
-        db=db,
-        prediction=schemas.Prediction(
-            model_name=model_name,
-            datum=schemas.Datum(uid="uid1", dataset_name=created_dataset),
-            annotations=[
-                schemas.Annotation(
-                    task_type=enums.TaskType.CLASSIFICATION,
-                    labels=[schemas.Label(key="k1", value="v1", score=1.0)],
-                )
-            ],
-        ),
-    )
-    core.create_prediction(
-        db=db,
-        prediction=schemas.Prediction(
-            model_name=model_name,
-            datum=schemas.Datum(uid="uid2", dataset_name=created_dataset),
-            annotations=[
-                schemas.Annotation(
-                    task_type=enums.TaskType.OBJECT_DETECTION,
-                    labels=[schemas.Label(key="k1", value="v1", score=1.0)],
-                )
-            ],
-        ),
-    )
-    core.create_prediction(
-        db=db,
-        prediction=schemas.Prediction(
-            model_name=model_name,
-            datum=schemas.Datum(uid="uid3", dataset_name=created_dataset),
-            annotations=[
-                schemas.Annotation(
-                    task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
-                    labels=[schemas.Label(key="k1", value="v1")],
-                )
-            ],
-        ),
-    )
-    return model_name
-
-
 @validate_computation
 def _test_successful_computation(db, evaluation_id, *args, **kwargs):
     pass
@@ -107,16 +18,16 @@ def _test_failed_computation(db, evaluation_id, *args, **kwargs):
 
 def test_validate_computation(
     db: Session,
-    created_dataset: str,
-    created_model: str,
+    core_created_dataset: str,
+    core_created_model: str,
 ):
     # create evaluation
-    core.set_dataset_status(db, created_dataset, enums.TableStatus.FINALIZED)
+    core.set_dataset_status(db, core_created_dataset, enums.TableStatus.FINALIZED)
     created, _ = core.create_or_get_evaluations(
         db,
         schemas.EvaluationRequest(
-            model_names=[created_model],
-            datum_filter=schemas.Filter(dataset_names=[created_dataset]),
+            model_names=[core_created_model],
+            datum_filter=schemas.Filter(dataset_names=[core_created_dataset]),
             parameters=schemas.EvaluationParameters(
                 task_type=enums.TaskType.CLASSIFICATION,
             ),
