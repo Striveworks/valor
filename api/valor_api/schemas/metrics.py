@@ -26,6 +26,48 @@ class Metric(BaseModel):
     label: Label | None = None
 
 
+class ARMetric(BaseModel):
+    """
+    An AR metric response from the API.
+
+    Attributes
+    ----------
+    ious : list[float]
+        A list of intersect-over-union (IOU) values.
+    value : float
+        The value of the metric.
+    label : Label
+        The `Label` for the metric.
+    """
+
+    ious: list[float]
+    value: float
+    label: Label
+
+    def db_mapping(self, label_id: int, evaluation_id: int) -> dict:
+        """
+        Creates a mapping for use when uploading the metric to the database.
+
+        Parameters
+        ----------
+        label_id : int
+            The id of the label.
+        evaluation_id : ind
+            The ID of the evaluation.
+
+        Returns
+        ----------
+        A mapping dictionary.
+        """
+        return {
+            "value": self.value,
+            "label_id": label_id,
+            "type": "AR",
+            "evaluation_id": evaluation_id,
+            "parameters": {"ious": list(self.ious)},
+        }
+
+
 class APMetric(BaseModel):
     """
     An AP metric response from the API.
@@ -107,6 +149,44 @@ class APMetricAveragedOverIOUs(BaseModel):
             "type": "APAveragedOverIOUs",
             "evaluation_id": evaluation_id,
             "parameters": {"ious": list(self.ious)},
+        }
+
+
+class mARMetric(BaseModel):
+    """
+    An mAR metric response from the API.
+
+    Attributes
+    ----------
+    ious : set[float]
+        A set of intersect-over-union (IOU) values.
+    value : float
+        The value of the metric.
+    """
+
+    ious: set[float]
+    value: float
+
+    def db_mapping(self, evaluation_id: int) -> dict:
+        """
+        Creates a mapping for use when uploading the metric to the database.
+
+        Parameters
+        ----------
+        evaluation_id : ind
+            The ID of the evaluation.
+
+        Returns
+        ----------
+        A mapping dictionary.
+        """
+        return {
+            "value": self.value,
+            "type": "mAR",
+            "evaluation_id": evaluation_id,
+            "parameters": {
+                "ious": list(self.ious),
+            },
         }
 
 

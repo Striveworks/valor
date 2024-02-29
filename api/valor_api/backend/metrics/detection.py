@@ -1,7 +1,8 @@
 import heapq
 import math
+from collections import defaultdict
 from dataclasses import dataclass
-from typing import Sequence
+from typing import Sequence, Tuple
 
 from geoalchemy2 import functions as gfunc
 from sqlalchemy import and_, case, func, select
@@ -83,9 +84,7 @@ def _ap(
     iou_thresholds: list[float],
     grouper_ids_associated_with_gts: set[int],
     score_threshold: float = 0,
-) -> Sequence[
-    schemas.APMetric
-]:  # Tuple[Sequence[schemas.APMetric], list[dict]]:  TODO fix
+) -> Tuple[list[schemas.APMetric], list[schemas.ARMetric]]:
     """
     Computes the average precision. Return is a dict with keys
     `f"IoU={iou_thres}"` for each `iou_thres` in `iou_thresholds` as well as
@@ -102,12 +101,16 @@ def _ap(
         )
 
     ap_metrics = []
+    ar_metrics = []
+
     # TODO delete if not needed
     # confusion_matrices = []
-    for iou_threshold in iou_thresholds:
-        for grouper_id, grouper_label in grouper_mappings[
-            "grouper_id_to_grouper_label_mapping"
-        ].items():
+    for grouper_id, grouper_label in grouper_mappings[
+        "grouper_id_to_grouper_label_mapping"
+    ].items():
+        recalls_across_thresholds = []
+
+        for iou_threshold in iou_thresholds:
             if grouper_id not in grouper_ids_associated_with_gts:
                 continue
 
@@ -150,20 +153,6 @@ def _ap(
                 precisions = [0]
                 recalls = [0]
 
-            # TODO delete if not needed
-            # confusion_matrices.append(
-            #     {
-            #         "iou": iou_threshold,
-            #         "label": grouper_label,
-            #         "tp": cnt_tp,
-            #         "fp": cnt_fp,
-            #         "tn": cnt_tn,
-            #         "fn": cnt_fn,
-            #         "precisions": precisions,
-            #         "recalls": recalls,
-            #     }
-            # )
-
             ap_metrics.append(
                 schemas.APMetric(
                     iou=iou_threshold,
@@ -174,7 +163,24 @@ def _ap(
                 )
             )
 
-    return ap_metrics
+            recalls_across_thresholds.append(
+                recalls[-1]
+            )  # we only care about the last value in recalls since it considers all true positives
+
+        ar_metrics.append(
+            schemas.ARMetric(
+                ious=iou_thresholds,
+                value=(
+                    sum(recalls_across_thresholds)
+                    / len(recalls_across_thresholds)
+                    if recalls_across_thresholds
+                    else 0
+                ),
+                label=grouper_label,
+            )
+        )
+
+    return ap_metrics, ar_metrics
 
 
 def _compute_detection_metrics(
@@ -185,8 +191,10 @@ def _compute_detection_metrics(
     target_type: enums.AnnotationType,
 ) -> Sequence[
     schemas.APMetric
+    | schemas.ARMetric
     | schemas.APMetricAveragedOverIOUs
     | schemas.mAPMetric
+    | schemas.mARMetric
     | schemas.mAPMetricAveragedOverIOUs
 ]:
     """
@@ -208,7 +216,7 @@ def _compute_detection_metrics(
 
     Returns
     ----------
-    List[schemas.APMetric | schemas.APMetricAveragedOverIOUs | schemas.mAPMetric | schemas.mAPMetricAveragedOverIOUs]
+    List[schemas.APMetric | schemas.ARMetric | schemas.APMetricAveragedOverIOUs | schemas.mAPMetric | schemas.mARMetric | schemas.mAPMetricAveragedOverIOUs]
         A list of average precision metrics.
 
     """
@@ -426,7 +434,8 @@ def _compute_detection_metrics(
         )
 
     # Compute AP
-    ap_metrics = _ap(
+    # TODO rename _ap?
+    ap_metrics, ar_metrics = _ap(
         sorted_ranked_pairs=ranking,
         number_of_groundtruths_per_grouper=number_of_groundtruths_per_grouper,
         # TODO delete if not needed
@@ -436,38 +445,36 @@ def _compute_detection_metrics(
         grouper_ids_associated_with_gts=grouper_ids_associated_with_gts,
     )
 
-    # now extend to the averaged AP metrics and mAP metric
-    mean_detection_metrics = _compute_mean_detection_metrics_from_aps(
-        ap_metrics
-    )
+    # calculate averaged metrics
+    mean_ap_metrics = _compute_mean_detection_metrics_from_aps(ap_metrics)
+    mean_ar_metrics = _compute_mean_ar_metrics(ar_metrics)
 
-    detection_metrics_ave_over_ious = list(
+    ap_metrics_ave_over_ious = list(
         _compute_detection_metrics_averaged_over_ious_from_aps(ap_metrics)
     )
-    mean_detection_metrics_ave_over_ious = list(
-        _compute_mean_detection_metrics_from_aps(
-            detection_metrics_ave_over_ious
-        )
+
+    mean_ap_metrics_ave_over_ious = list(
+        _compute_mean_detection_metrics_from_aps(ap_metrics_ave_over_ious)
     )
 
     # filter out only specified ious
     ap_metrics = [
         m for m in ap_metrics if m.iou in parameters.iou_thresholds_to_return
     ]
-    mean_detection_metrics = [
+    mean_ap_metrics = [
         m
-        for m in mean_detection_metrics
+        for m in mean_ap_metrics
         if isinstance(m, schemas.mAPMetric)
         and m.iou in parameters.iou_thresholds_to_return
     ]
 
     return (
         ap_metrics
-        # TODO delete if not needed
-        # + confusion_matrices
-        + mean_detection_metrics
-        + detection_metrics_ave_over_ious
-        + mean_detection_metrics_ave_over_ious
+        + ar_metrics
+        + mean_ap_metrics
+        + mean_ar_metrics
+        + ap_metrics_ave_over_ious
+        + mean_ap_metrics_ave_over_ious
     )
 
 
@@ -511,6 +518,30 @@ def _average_ignore_minus_one(a):
     return -1 if div0_flag else num / denom
 
 
+def _compute_mean_ar_metrics(
+    ar_metrics: Sequence[schemas.ARMetric],
+) -> list[schemas.mARMetric]:
+    """Calculate the mean of a list of AR metrics."""
+
+    if len(ar_metrics) == 0:
+        return []
+
+    ious_to_values = defaultdict(list)
+    for metric in ar_metrics:
+        ious_to_values[frozenset(metric.ious)].append(metric.value)
+
+    mean_metrics = []
+    for ious in ious_to_values.keys():
+        mean_metrics.append(
+            schemas.mARMetric(
+                ious=ious,
+                value=_average_ignore_minus_one(ious_to_values[ious]),
+            )
+        )
+
+    return mean_metrics
+
+
 def _compute_mean_detection_metrics_from_aps(
     ap_scores: Sequence[schemas.APMetric | schemas.APMetricAveragedOverIOUs],
 ) -> Sequence[schemas.mAPMetric | schemas.mAPMetricAveragedOverIOUs]:
@@ -531,6 +562,7 @@ def _compute_mean_detection_metrics_from_aps(
             vals[iou] = []
         vals[iou].append(ap.value)
 
+        # TODO can we delete labels?
         if ap.label not in labels:
             labels.append(ap.label)
 
