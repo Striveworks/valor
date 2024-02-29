@@ -1,3 +1,4 @@
+import numpy as np
 import pytest
 from pydantic import ValidationError
 
@@ -192,13 +193,12 @@ def test_annotation_without_scores(metadata, bbox, polygon, raster, labels):
         task_type=enums.TaskType.OBJECT_DETECTION,
         labels=labels,
         metadata={},
+        bounding_box=bbox,
     )
     schemas.Annotation(
         task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
         labels=labels,
         metadata={},
-        bounding_box=bbox,
-        polygon=polygon,
         raster=raster,
     )
     schemas.Annotation(
@@ -208,10 +208,12 @@ def test_annotation_without_scores(metadata, bbox, polygon, raster, labels):
     schemas.Annotation(
         task_type=enums.TaskType.OBJECT_DETECTION.value,
         labels=labels,
+        bounding_box=bbox,
     )
     schemas.Annotation(
         task_type=enums.TaskType.SEMANTIC_SEGMENTATION.value,
         labels=labels,
+        raster=raster,
     )
     schemas.Annotation(
         task_type=enums.TaskType.SEMANTIC_SEGMENTATION.value,
@@ -281,24 +283,27 @@ def test_annotation_with_scores(
         task_type=enums.TaskType.OBJECT_DETECTION,
         labels=scored_labels,
         metadata={},
+        bounding_box=bbox,
     )
     schemas.Annotation(
         task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
         labels=scored_labels,
         metadata={},
-        bounding_box=bbox,
-        polygon=polygon,
         raster=raster,
     )
     schemas.Annotation(
-        task_type=enums.TaskType.CLASSIFICATION.value, labels=scored_labels
+        task_type=enums.TaskType.CLASSIFICATION.value,
+        labels=scored_labels,
     )
     schemas.Annotation(
-        task_type=enums.TaskType.OBJECT_DETECTION.value, labels=scored_labels
+        task_type=enums.TaskType.OBJECT_DETECTION.value,
+        labels=scored_labels,
+        bounding_box=bbox,
     )
     schemas.Annotation(
         task_type=enums.TaskType.SEMANTIC_SEGMENTATION.value,
         labels=scored_labels,
+        raster=raster,
     )
 
     # test property `task_type`
@@ -491,22 +496,6 @@ def test_prediction(metadata, predicted_annotations, labels, scored_labels):
     assert "prediction scores must sum to 1" in str(e.value.errors()[0]["msg"])
 
     # check score is provided
-    for task_type in [
-        enums.TaskType.CLASSIFICATION,
-        enums.TaskType.OBJECT_DETECTION,
-    ]:
-        with pytest.raises(ValueError) as e:
-            schemas.Prediction(
-                model_name="name",
-                datum=schemas.Datum(
-                    uid="uid",
-                    dataset_name="name",
-                ),
-                annotations=[
-                    schemas.Annotation(labels=labels, task_type=task_type)
-                ],
-            )
-        assert "Missing score for label" in str(e)
 
     with pytest.raises(ValueError) as e:
         schemas.Prediction(
@@ -517,8 +506,43 @@ def test_prediction(metadata, predicted_annotations, labels, scored_labels):
             ),
             annotations=[
                 schemas.Annotation(
+                    task_type=enums.TaskType.CLASSIFICATION,
+                    labels=labels,
+                )
+            ],
+        )
+    assert "Missing score for label" in str(e)
+
+    with pytest.raises(ValueError) as e:
+        schemas.Prediction(
+            model_name="name",
+            datum=schemas.Datum(
+                uid="uid",
+                dataset_name="name",
+            ),
+            annotations=[
+                schemas.Annotation(
+                    task_type=enums.TaskType.OBJECT_DETECTION,
+                    labels=labels,
+                    bounding_box=schemas.BoundingBox.from_extrema(0, 0, 1, 1),
+                )
+            ],
+        )
+    assert "Missing score for label" in str(e)
+
+    with pytest.raises(ValueError) as e:
+        schemas.Prediction(
+            model_name="name",
+            datum=schemas.Datum(
+                uid="uid",
+                dataset_name="name",
+                metadata={"height": 10, "width": 10},
+            ),
+            annotations=[
+                schemas.Annotation(
                     labels=scored_labels,
                     task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+                    raster=schemas.Raster.from_numpy(np.zeros((10, 10)) == 0),
                 )
             ],
         )

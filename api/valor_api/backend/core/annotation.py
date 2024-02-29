@@ -89,6 +89,7 @@ def _create_embedding(
 
 
 def _create_annotation(
+    db: Session,
     annotation: schemas.Annotation,
     datum: models.Datum,
     model: models.Model | None = None,
@@ -115,13 +116,13 @@ def _create_annotation(
     raster = None
     embedding_id = None
 
-    if isinstance(annotation.bounding_box, schemas.BoundingBox):
+    if annotation.bounding_box:
         box = annotation.bounding_box.wkt()
-    if isinstance(annotation.polygon, schemas.Polygon):
+    if annotation.polygon:
         polygon = annotation.polygon.wkt()
-    if isinstance(annotation.multipolygon, schemas.MultiPolygon):
+    if annotation.multipolygon:
         raster = _wkt_multipolygon_to_raster(annotation.multipolygon.wkt())
-    if isinstance(annotation.raster, schemas.Raster):
+    if annotation.raster:
         raster = annotation.raster.mask_bytes
     if annotation.embedding is not None:
         embedding_id = _create_embedding(db=db, value=annotation.embedding)
@@ -134,68 +135,7 @@ def _create_annotation(
         "box": box,
         "polygon": polygon,
         "raster": raster,
-    }
-    return models.Annotation(**mapping)
-
-
-def _create_empty_annotation(
-    datum: models.Datum,
-    model: models.Model | None = None,
-) -> models.Annotation:
-    """
-    Create an empty annotation for upload to psql.
-
-    Parameters
-    ----------
-    datum : models.Datum
-        The datum associated with the annotation.
-    model : models.Model, optional
-        The model associated with the annotation.
-
-    Returns
-    ----------
-    models.Annotation
-        A populated models.Annotation object.
-    """
-    mapping = {
-        "datum_id": datum.id,
-        "model_id": model.id if model else None,
-        "task_type": enums.TaskType.EMPTY,
-        "meta": {},
-        "box": None,
-        "polygon": None,
-        "raster": None,
-    }
-    return models.Annotation(**mapping)
-
-
-def _create_skipped_annotation(
-    datum: models.Datum,
-    model: models.Model | None = None,
-) -> models.Annotation:
-    """
-    Create a skipped annotation for upload to psql.
-
-    Parameters
-    ----------
-    datum : models.Datum
-        The datum associated with the annotation.
-    model : models.Model, optional
-        The model associated with the annotation.
-
-    Returns
-    ----------
-    models.Annotation
-        A populated models.Annotation object.
-    """
-    mapping = {
-        "datum_id": datum.id,
-        "model_id": model.id if model else None,
-        "task_type": enums.TaskType.SKIP,
-        "meta": {},
-        "box": None,
-        "polygon": None,
-        "raster": None,
+        "embedding_id": embedding_id,
     }
     return models.Annotation(**mapping)
 
@@ -248,14 +188,12 @@ def create_annotations(
         raise exceptions.AnnotationAlreadyExistsError(datum.uid)
 
     # create annotations
-    annotation_list = (
-        [
-            _create_annotation(annotation=annotation, datum=datum, model=model)
-            for annotation in annotations
-        ]
-        if annotations
-        else [_create_empty_annotation(datum=datum, model=model)]
-    )
+    annotation_list = [
+        _create_annotation(
+            db=db, annotation=annotation, datum=datum, model=model
+        )
+        for annotation in annotations
+    ]
 
     try:
         db.add_all(annotation_list)
@@ -284,7 +222,13 @@ def create_skipped_annotations(
         The model associated with the annotation.
     """
     annotation_list = [
-        _create_skipped_annotation(datum, model) for datum in datums
+        _create_annotation(
+            db=db,
+            annotation=schemas.Annotation(task_type=enums.TaskType.SKIP),
+            datum=datum,
+            model=model,
+        )
+        for datum in datums
     ]
     try:
         db.add_all(annotation_list)
@@ -340,34 +284,29 @@ def get_annotation(
             for label in db.query(q.subquery()).all()
         ]
 
-    # Initialize
-    retval = schemas.Annotation(
-        task_type=annotation.task_type,  # type: ignore - models.Annotation.task_type should be a string in psql
-        labels=labels,
-        metadata=annotation.meta,
-        bounding_box=None,
-        polygon=None,
-        multipolygon=None,
-        raster=None,
-    )
+    # initialize
+    bounding_box = None
+    polygon = None
+    raster = None
+    embedding = None
 
-    # Bounding Box
+    # bounding box
     if annotation.box is not None:
         geojson = json.loads(db.scalar(ST_AsGeoJSON(annotation.box)))
-        retval.bounding_box = schemas.BoundingBox(
+        bounding_box = schemas.BoundingBox(
             polygon=schemas.metadata.geojson_from_dict(data=geojson)
             .geometry()
             .boundary,  # type: ignore - this is guaranteed to be a polygon
         )
 
-    # Polygon
+    # polygon
     if annotation.polygon is not None:
         geojson = json.loads(db.scalar(ST_AsGeoJSON(annotation.polygon)))
-        retval.polygon = schemas.metadata.geojson_from_dict(
+        polygon = schemas.metadata.geojson_from_dict(
             data=geojson
         ).geometry()  # type: ignore - guaranteed to be a polygon in this case
 
-    # Raster
+    # raster
     if annotation.raster is not None:
         datum = db.scalar(
             select(models.Datum).where(models.Datum.id == annotation.datum_id)
@@ -382,13 +321,29 @@ def get_annotation(
             raise ValueError("missing height or width")
         height = datum.meta["height"]
         width = datum.meta["width"]
-        retval.raster = schemas.Raster(
+        raster = schemas.Raster(
             mask=_raster_to_png_b64(
                 db, raster=annotation.raster, height=height, width=width
             ),
         )
 
-    return retval
+    # embedding
+    if annotation.embedding_id:
+        embedding = db.scalar(
+            select(models.Embedding).where(
+                models.Embedding.id == annotation.embedding_id
+            )
+        )
+
+    return schemas.Annotation(
+        task_type=annotation.task_type,  # type: ignore - models.Annotation.task_type should be a string in psql
+        labels=labels,
+        metadata=annotation.meta,
+        bounding_box=bounding_box,
+        polygon=polygon,  # type: ignore - guaranteed to be a polygon in this case
+        raster=raster,
+        embedding=embedding,
+    )
 
 
 def get_annotations(

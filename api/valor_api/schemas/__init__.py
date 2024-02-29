@@ -1,13 +1,5 @@
 from .auth import User
-from .core import (
-    Annotation,
-    Dataset,
-    Datum,
-    GroundTruth,
-    Label,
-    Model,
-    Prediction,
-)
+from .core import Annotation, Dataset, Datum, GroundTruth, Model, Prediction
 from .evaluation import (
     EvaluationParameters,
     EvaluationRequest,
@@ -30,6 +22,7 @@ from .geometry import (
     Raster,
 )
 from .info import APIVersion
+from .label import Label
 from .metadata import (
     Date,
     DateTime,

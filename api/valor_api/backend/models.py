@@ -2,11 +2,11 @@ import datetime
 
 from geoalchemy2 import Geometry, Raster
 from geoalchemy2.functions import ST_SetBandNoDataValue, ST_SetGeoReference
+from pgvector.sqlalchemy import Vector
 from sqlalchemy import ForeignKey, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
-from pgvector.sqlalchemy import Vector
 
 from valor_api.backend.database import Base
 
@@ -136,6 +136,7 @@ class Annotation(Base):
     # relationships
     datum: Mapped["Datum"] = relationship(back_populates="annotations")
     model: Mapped["Model"] = relationship(back_populates="annotations")
+    embedding: Mapped[Embedding] = relationship(back_populates="annotations")
     groundtruths: Mapped[list["GroundTruth"]] = relationship(
         cascade="all, delete-orphan"
     )

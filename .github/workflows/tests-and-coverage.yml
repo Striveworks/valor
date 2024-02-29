@@ -54,7 +54,7 @@ jobs:
         run: |
           docker build ./database -t pgvalor
       - name: setup back end test env
-        run: docker compose -p valor -f docker-compose.yml --env-file ./api/.env.testing up --build -d
+        run: docker compose -p valor -f docker-compose.yml -f docker-compose.cicd-override.yml --env-file ./api/.env.testing up --build -d
       - uses: actions/setup-python@v4
         with:
           python-version: "3.10"
@@ -72,7 +72,7 @@ jobs:
           name: ${{ env.COVERAGE_FILE }}
           path: ${{ env.COVERAGE_FILE }}
       - run: make stop-env
-      - run: docker compose -p valor -f docker-compose.yml --env-file ./api/.env.testing up --build -d
+      - run: docker compose -p valor -f docker-compose.yml -f docker-compose.cicd-override.yml --env-file ./api/.env.testing up --build -d
         env:
           VALOR_SECRET_KEY: ${{ vars.SECRET_KEY }}
           VALOR_USERNAME: ${{ vars.USERNAME }}

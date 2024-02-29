@@ -1,0 +1,3 @@
+services:
+  db:
+    image: docker.io/library/pgvalor

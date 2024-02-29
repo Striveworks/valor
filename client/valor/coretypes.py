@@ -203,18 +203,20 @@ class Annotation:
     ----------
     task_type: TaskType
         The task type associated with the `Annotation`.
-    labels: List[Label]
+    labels: List[Label], optional
         A list of labels to use for the `Annotation`.
     metadata: Dict[str, Union[int, float, str, bool, datetime.datetime, datetime.date, datetime.time]]
         A dictionary of metadata that describes the `Annotation`.
-    bounding_box: BoundingBox
+    bounding_box: BoundingBox, optional
         A bounding box to assign to the `Annotation`.
-    polygon: Polygon
+    polygon: Polygon, optional
         A polygon to assign to the `Annotation`.
-    multipolygon: MultiPolygon
+    multipolygon: MultiPolygon, optional
         A multipolygon to assign to the `Annotation`.
-    raster: Raster
+    raster: Raster, optional
         A raster to assign to the `Annotation`.
+    embedding: List[float], optional
+        An embedding, described by a list of values with type float and a maximum length of 16,000.
 
     Attributes
     ----------
@@ -290,20 +292,22 @@ class Annotation:
     def __init__(
         self,
         task_type: TaskType,
-        labels: List[Label],
+        labels: Optional[List[Label]] = None,
         metadata: Optional[MetadataType] = None,
         bounding_box: Optional[BoundingBox] = None,
         polygon: Optional[Polygon] = None,
         multipolygon: Optional[MultiPolygon] = None,
         raster: Optional[Raster] = None,
+        embedding: Optional[List[float]] = None,
     ):
         self.task_type = TaskType(task_type)
-        self.labels = labels
+        self.labels = labels if labels else []
         self.metadata = metadata if metadata else {}
         self.bounding_box = bounding_box
         self.polygon = polygon
         self.multipolygon = multipolygon
         self.raster = raster
+        self.embedding = embedding
         self._validate()
 
     def _validate(self):
@@ -349,6 +353,18 @@ class Annotation:
                     "Attribute `raster` should have type `valor.schemas.Raster`."
                 )
 
+        # embedding
+        if self.embedding is not None:
+            if not isinstance(self.embedding, list):
+                raise TypeError(
+                    "Attribute `embedding` should have type `List[float]`."
+                )
+            for idx, embedding in enumerate(self.embedding):
+                if not isinstance(embedding, (int, float, np.floating)):
+                    raise TypeError(
+                        f"Attribute `embedding[{idx}]` should have type `float`, received element with type `{type(embedding)}`."
+                    )
+
         # metadata
         if not isinstance(self.metadata, dict):
             raise TypeError("Attribute `metadata` should have type `dict`.")
@@ -376,6 +392,8 @@ class Annotation:
         polygon = None
         multipolygon = None
         raster = None
+        embedding = None
+
         if "bounding_box" in resp:
             bounding_box = (
                 BoundingBox(**resp["bounding_box"])
@@ -392,6 +410,8 @@ class Annotation:
             )
         if "raster" in resp:
             raster = Raster(**resp["raster"]) if resp["raster"] else None
+        if "embedding" in resp:
+            embedding = resp["embedding"]
 
         return cls(
             task_type=task_type,
@@ -401,6 +421,7 @@ class Annotation:
             polygon=polygon,
             multipolygon=multipolygon,
             raster=raster,
+            embedding=embedding,
         )
 
     def to_dict(self) -> dict:
@@ -424,6 +445,7 @@ class Annotation:
                 asdict(self.multipolygon) if self.multipolygon else None
             ),
             "raster": asdict(self.raster) if self.raster else None,
+            "embedding": self.embedding if self.embedding else None,
         }
 
     def __str__(self) -> str:

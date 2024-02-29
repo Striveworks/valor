@@ -10,7 +10,7 @@ from valor_api.backend.core.evaluation import (
 
 
 @pytest.fixture
-def finalized_dataset(core_created_dataset) -> str:
+def finalized_dataset(db: Session, core_created_dataset: str) -> str:
     core.set_dataset_status(
         db=db, name=core_created_dataset, status=enums.TableStatus.FINALIZED
     )
@@ -18,7 +18,9 @@ def finalized_dataset(core_created_dataset) -> str:
 
 
 @pytest.fixture
-def finalized_model(core_created_dataset, core_created_model) -> str:
+def finalized_model(
+    db: Session, core_created_dataset: str, core_created_model: str
+) -> str:
     core.set_model_status(
         db=db,
         dataset_name=core_created_dataset,
@@ -446,7 +448,9 @@ def test_get_evaluation_requests_from_model(
     )
     core.create_or_get_evaluations(db, job_request_2)
 
-    eval_requests = core.get_evaluation_requests_from_model(db, finalized_model)
+    eval_requests = core.get_evaluation_requests_from_model(
+        db, finalized_model
+    )
 
     assert len(eval_requests) == 2
 
