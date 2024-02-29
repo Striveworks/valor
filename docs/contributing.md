@@ -52,7 +52,7 @@ pip install api # Install the API in your python environment
 
 export POSTGRES_PASSWORD=password
 export POSTGRES_HOST=localhost
-make start-postgis-docker # Start the postgis service in Docker
+make start-postgres-docker # Start the custom postgres service in Docker
 make run-migrations # Instantiate the table schemas in Postgres
 make start-server # Start the API service locally
 ```
@@ -122,7 +122,7 @@ pytest api/tests/unit-tests
 
 #### Running back end functional tests
 
-> **Note:** Functional tests require a running instance of PostgreSQL, which you can start using `make start-postgis-docker`.
+> **Note:** Functional tests require a running instance of PostgreSQL, which you can start using `make start-postgres-docker`.
 
 ```shell
 POSTGRES_PASSWORD=password \
