@@ -178,7 +178,7 @@ def test_create_gt_segs_as_polys_or_masks(
 def test_add_groundtruth(
     client: Client,
     dataset_name: str,
-    gt_semantic_segs_error: GroundTruth,
+    gt_semantic_segs_mismatch: GroundTruth,
 ):
     dataset = Dataset.create(dataset_name)
 
@@ -197,10 +197,8 @@ def test_add_groundtruth(
             )
         )
 
-    with pytest.raises(ClientException) as exc_info:
-        dataset.add_groundtruth(gt_semantic_segs_error)
-
-    assert "raster and image to have" in str(exc_info)
+    # make sure raster is not dependent on datum metadata
+    dataset.add_groundtruth(gt_semantic_segs_mismatch)
 
     client.delete_dataset(dataset_name, timeout=30)
 

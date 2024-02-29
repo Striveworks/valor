@@ -1,9 +1,6 @@
-import io
 import re
-from base64 import b64decode
 
-import PIL.Image
-from pydantic import BaseModel, ConfigDict, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, field_validator
 
 from valor_api.enums import TaskType
 from valor_api.schemas.geometry import (
@@ -271,12 +268,6 @@ class GroundTruth(BaseModel):
         _check_semantic_segmentations_single_label(v)
         return v
 
-    @model_validator(mode="after")  # type: ignore - pydantic type error
-    @classmethod
-    def _validate_annotation_rasters(cls, values):
-        """Validate any rasters on the ground truth."""
-        return _validate_rasters(values)
-
 
 class Prediction(BaseModel):
     """
@@ -319,13 +310,6 @@ class Prediction(BaseModel):
             raise ValueError("invalid string")
         _validate_name_format(v)
         return v
-
-    @model_validator(mode="after")  # type: ignore - pydantic type error
-    @classmethod
-    def _validate_annotation_rasters(cls, values):
-        """Validate any rasters on the annotation."""
-
-        return _validate_rasters(values)
 
     @field_validator("annotations")
     @classmethod
@@ -378,32 +362,3 @@ class Prediction(BaseModel):
         """Validate that a label doesn't appear more than once."""
         _check_semantic_segmentations_single_label(v)
         return v
-
-
-def _mask_bytes_to_pil(mask_bytes):
-    """Convert a byte mask to a PIL.Image."""
-    with io.BytesIO(mask_bytes) as f:
-        return PIL.Image.open(f)
-
-
-def _validate_rasters(annotated_datum: GroundTruth | Prediction):
-    """Validate that the Annotation metadata matches what's described in a raster."""
-    for annotation in annotated_datum.annotations:
-        if annotation.raster is not None:
-            # unpack datum metadata
-            metadata = annotated_datum.datum.metadata
-            if "height" not in metadata or "width" not in metadata:
-                raise ValueError(
-                    "Attempted raster validation but image dimensions are missing."
-                )
-
-            # validate raster wrt datum metadata
-            mask_size = _mask_bytes_to_pil(
-                b64decode(annotation.raster.mask)
-            ).size
-            image_size = (metadata["width"], metadata["height"])
-            if mask_size != image_size:
-                raise ValueError(
-                    f"Expected raster and image to have the same size, but got size {mask_size} for the mask and {image_size} for image."
-                )
-    return annotated_datum
