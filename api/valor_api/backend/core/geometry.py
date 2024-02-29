@@ -172,16 +172,13 @@ def _convert_raster_to_box(
         if model_id
         else models.Annotation.model_id.is_(None)
     )
-    subquery1 = (
+    subquery = (
         select(
             models.Annotation.id.label("id"),
-            func.ST_MakeValid(
-                type_coerce(
-                    func.ST_DumpAsPolygons(models.Annotation.raster),
-                    GeometricValueType(),
-                ).geom,
+            func.ST_Envelope(
+                func.ST_Union(models.Annotation.raster),
                 type_=RawGeometry,
-            ).label("geom"),
+            ).label("raster_envelope"),
         )
         .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
         .where(
@@ -190,23 +187,12 @@ def _convert_raster_to_box(
             models.Datum.dataset_id == dataset_id,
             model_expr,
         )
-        .alias("subquery1")
-    )
-    subquery2 = (
-        select(
-            subquery1.c.id.label("id"),
-            func.ST_Envelope(
-                func.ST_Union(subquery1.c.geom),
-                type_=RawGeometry,
-            ).label("raster_envelope"),
-        )
-        .group_by(subquery1.c.id)
-        .alias("subquery2")
+        .alias("subquery")
     )
     return (
         update(models.Annotation)
-        .where(models.Annotation.id == subquery2.c.id)
-        .values(box=subquery2.c.raster_envelope)
+        .where(models.Annotation.id == subquery.c.id)
+        .values(box=subquery.c.raster_envelope)
     )
 
 

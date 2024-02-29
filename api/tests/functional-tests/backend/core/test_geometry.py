@@ -1,10 +1,20 @@
+import json
+
 import numpy as np
 import pytest
+from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session
 
 from valor_api import enums, schemas
+from valor_api.backend import models
 from valor_api.backend.core import fetch_dataset
 from valor_api.backend.core.geometry import (
+    _convert_multipolygon_to_box,
+    _convert_multipolygon_to_polygon,
+    _convert_polygon_to_box,
+    _convert_raster_to_box,
+    _convert_raster_to_multipolygon,
+    _convert_raster_to_polygon,
     convert_geometry,
     get_annotation_type,
 )
@@ -26,11 +36,11 @@ from valor_api.schemas import (
 @pytest.fixture
 def rotated_box_points() -> list[Point]:
     return [
-        Point(x=0, y=3),
-        Point(x=3, y=6),
-        Point(x=6, y=3),
-        Point(x=3, y=0),
-        Point(x=0, y=3),
+        Point(x=1, y=3),
+        Point(x=4, y=6),
+        Point(x=7, y=3),
+        Point(x=4, y=0),
+        Point(x=1, y=3),
     ]
 
 
@@ -38,8 +48,8 @@ def rotated_box_points() -> list[Point]:
 def bbox() -> BoundingBox:
     """Defined as the envelope of `rotated_box_points`."""
     return BoundingBox.from_extrema(
-        xmin=0,
-        xmax=6,
+        xmin=1,
+        xmax=7,
         ymin=0,
         ymax=6,
     )
@@ -56,24 +66,28 @@ def polygon(rotated_box_points) -> Polygon:
 
 @pytest.fixture
 def multipolygon(polygon) -> MultiPolygon:
-    return MultiPolygon(
-        polygons=[polygon]
-    )
+    return MultiPolygon(polygons=[polygon])
 
 
 @pytest.fixture
 def raster() -> Raster:
     """Rasterization of `rotated_box_points`."""
-    r = np.zeros((10,10))
+    r = np.zeros((10, 10))
     for y in range(-1, -5, -1):
-        for x in range(4+y, 3-y, 1):
-            r[y,x] = 1
+        for x in range(5 + y, 4 - y, 1):
+            r[y, x] = 1
     for y in range(-5, -8, -1):
-        for x in range(-y-4, 11+y, 1):
-            print()
+
+        # 2 - 6   -5       -3-y           12 + y
+        # 3 - 5   -6       -3-y           12 + y
+        # 4 -     -7       -3-y           12 + y
+
+        for x in range(-3 - y, 12 + y):
             print(y, x)
-            r[y,x] = 1
-    return r
+            r[y, x] = 1
+    print()
+    print(r)
+    return Raster.from_numpy(r == 1)
 
 
 @pytest.fixture
@@ -102,18 +116,41 @@ def create_objdet_dataset(
     multipolygon: MultiPolygon,
     raster: Raster,
 ):
-    bbox_groundtruth = GroundTruth(
-        datum=Datum(
-            uid="uid1",
-            dataset_name=dataset_name,
-        ),
+    datum = Datum(
+        uid="uid1",
+        dataset_name=dataset_name,
+    )
+    task_type = enums.TaskType.OBJECT_DETECTION
+    labels = [schemas.Label(key="k1", value="v1")]
+    groundtruth = GroundTruth(
+        datum=datum,
         annotations=[
             Annotation(
-                task_type=enums.TaskType.OBJECT_DETECTION,
-                labels=[schemas.Label(key="k1", value="v1")]
-            )
-        ]
+                task_type=task_type,
+                labels=labels,
+                bounding_box=bbox,
+            ),
+            Annotation(
+                task_type=task_type,
+                labels=labels,
+                polygon=polygon,
+            ),
+            Annotation(
+                task_type=task_type,
+                labels=labels,
+                multipolygon=multipolygon,
+            ),
+            Annotation(
+                task_type=task_type,
+                labels=labels,
+                raster=raster,
+            ),
+        ],
     )
+    dataset = schemas.Dataset(name=dataset_name)
+    create_dataset(db=db, dataset=dataset)
+    create_groundtruth(db=db, groundtruth=groundtruth)
+    return dataset_name
 
 
 def test_get_annotation_type(
@@ -183,8 +220,52 @@ def test_convert_geometry_input(
     assert "currently unsupported" in str(e)
 
 
-def test_convert_from_raster(raster, multipolygon, bbox, polygon):
+def test__convert_raster_to_bbox(
+    db: Session,
+    create_objdet_dataset: str,
+    bbox: BoundingBox,
+):
+    dataset = fetch_dataset(db=db, name=create_objdet_dataset)
 
+    annotation_id = db.scalar(
+        select(models.Annotation.id).where(
+            and_(
+                models.Annotation.box.is_(None),
+                models.Annotation.polygon.is_(None),
+                models.Annotation.multipolygon.is_(None),
+                models.Annotation.raster.isnot(None),
+            )
+        )
+    )
+    assert annotation_id is not None
+
+    q = _convert_raster_to_box(dataset_id=dataset.id)
+    db.execute(q)
+
+    annotation = db.query(
+        select(models.Annotation)
+        .where(models.Annotation.id == annotation_id)
+        .subquery()
+    ).one_or_none()
+    assert annotation is not None
+
+    assert annotation.box is not None
+    assert annotation.polygon is None
+    assert annotation.multipolygon is None
+    assert annotation.raster is not None
+
+    geom = json.loads(
+        db.scalar(func.ST_AsGeoJSON(func.ST_Envelope(annotation.raster)))
+    )
+    converted_box = schemas.BoundingBox(
+        polygon=schemas.metadata.geojson_from_dict(data=geom)
+        .geometry()
+        .boundary,  # type: ignore - this is guaranteed to be a polygon
+    )
+
+    # check that points match
+    for original_point in bbox.polygon.points:
+        assert original_point in converted_box.polygon.points
 
 
 def test_convert_raster_to_polygon():
