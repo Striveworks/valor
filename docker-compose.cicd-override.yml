@@ -1,3 +1,0 @@
-services:
-  db:
-    image: "724664234782.dkr.ecr.us-east-1.amazonaws.com/library/hardened/bitnami/postgresql:15.3.0-debian-12"
