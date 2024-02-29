@@ -22,7 +22,9 @@ def test_validate_computation(
     core_created_model: str,
 ):
     # create evaluation
-    core.set_dataset_status(db, core_created_dataset, enums.TableStatus.FINALIZED)
+    core.set_dataset_status(
+        db, core_created_dataset, enums.TableStatus.FINALIZED
+    )
     created, _ = core.create_or_get_evaluations(
         db,
         schemas.EvaluationRequest(

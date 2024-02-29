@@ -8,7 +8,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from valor_api import crud, enums, schemas
-from valor_api.backend import models, core
+from valor_api.backend import core, models
 from valor_api.backend.database import Base, make_session
 
 np.random.seed(29)

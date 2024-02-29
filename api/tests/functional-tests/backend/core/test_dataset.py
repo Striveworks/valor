@@ -60,21 +60,27 @@ def test_dataset_status(db: Session, core_created_dataset):
     )
 
     # finalized
-    core.set_dataset_status(db, core_created_dataset, enums.TableStatus.FINALIZED)
+    core.set_dataset_status(
+        db, core_created_dataset, enums.TableStatus.FINALIZED
+    )
     assert (
         core.get_dataset_status(db, core_created_dataset)
         == enums.TableStatus.FINALIZED
     )
 
     # test others
-    core.set_dataset_status(db, core_created_dataset, enums.TableStatus.FINALIZED)
+    core.set_dataset_status(
+        db, core_created_dataset, enums.TableStatus.FINALIZED
+    )
     with pytest.raises(exceptions.DatasetStateError):
         core.set_dataset_status(
             db, core_created_dataset, enums.TableStatus.CREATING
         )
 
     # deleting
-    core.set_dataset_status(db, core_created_dataset, enums.TableStatus.DELETING)
+    core.set_dataset_status(
+        db, core_created_dataset, enums.TableStatus.DELETING
+    )
     assert (
         core.get_dataset_status(db, core_created_dataset)
         == enums.TableStatus.DELETING
@@ -99,7 +105,9 @@ def test_dataset_status_create_to_delete(db: Session, core_created_dataset):
     )
 
     # deleting
-    core.set_dataset_status(db, core_created_dataset, enums.TableStatus.DELETING)
+    core.set_dataset_status(
+        db, core_created_dataset, enums.TableStatus.DELETING
+    )
     assert (
         core.get_dataset_status(db, core_created_dataset)
         == enums.TableStatus.DELETING
@@ -112,7 +120,9 @@ def test_dataset_status_with_evaluations(
     core_created_model: str,
 ):
     # create an evaluation
-    core.set_dataset_status(db, core_created_dataset, enums.TableStatus.FINALIZED)
+    core.set_dataset_status(
+        db, core_created_dataset, enums.TableStatus.FINALIZED
+    )
     evaluations, _ = core.create_or_get_evaluations(
         db,
         schemas.EvaluationRequest(
@@ -141,7 +151,9 @@ def test_dataset_status_with_evaluations(
     core.set_evaluation_status(db, evaluation_id, enums.EvaluationStatus.DONE)
 
     # test that deletion is unblocked when evaluation is DONE
-    core.set_dataset_status(db, core_created_dataset, enums.TableStatus.DELETING)
+    core.set_dataset_status(
+        db, core_created_dataset, enums.TableStatus.DELETING
+    )
 
 
 def test_delete_dataset(db: Session):

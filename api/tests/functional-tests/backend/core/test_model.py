@@ -56,7 +56,9 @@ def test_model_status(db: Session, core_created_model, core_created_dataset):
     # creating
     assert (
         core.get_model_status(
-            db=db, dataset_name=core_created_dataset, model_name=core_created_model
+            db=db,
+            dataset_name=core_created_dataset,
+            model_name=core_created_model,
         )
         == enums.TableStatus.CREATING
     )
@@ -71,7 +73,9 @@ def test_model_status(db: Session, core_created_model, core_created_dataset):
         )
     assert (
         core.get_model_status(
-            db=db, dataset_name=core_created_dataset, model_name=core_created_model
+            db=db,
+            dataset_name=core_created_dataset,
+            model_name=core_created_model,
         )
         == enums.TableStatus.CREATING
     )
@@ -90,7 +94,9 @@ def test_model_status(db: Session, core_created_model, core_created_dataset):
     )
     assert (
         core.get_model_status(
-            db=db, dataset_name=core_created_dataset, model_name=core_created_model
+            db=db,
+            dataset_name=core_created_dataset,
+            model_name=core_created_model,
         )
         == enums.TableStatus.FINALIZED
     )
@@ -119,7 +125,9 @@ def test_model_status(db: Session, core_created_model, core_created_dataset):
     )
     assert (
         core.get_model_status(
-            db=db, dataset_name=core_created_dataset, model_name=core_created_model
+            db=db,
+            dataset_name=core_created_dataset,
+            model_name=core_created_model,
         )
         == enums.TableStatus.DELETING
     )
@@ -147,7 +155,9 @@ def test_model_status_with_evaluations(
     core_created_model: str,
 ):
     # create an evaluation
-    core.set_dataset_status(db, core_created_dataset, enums.TableStatus.FINALIZED)
+    core.set_dataset_status(
+        db, core_created_dataset, enums.TableStatus.FINALIZED
+    )
     created, _ = core.create_or_get_evaluations(
         db,
         schemas.EvaluationRequest(
@@ -169,7 +179,10 @@ def test_model_status_with_evaluations(
     # test that deletion is blocked while evaluation is running
     with pytest.raises(exceptions.EvaluationRunningError):
         core.set_model_status(
-            db, core_created_dataset, core_created_model, enums.TableStatus.DELETING
+            db,
+            core_created_dataset,
+            core_created_model,
+            enums.TableStatus.DELETING,
         )
 
     # set the evaluation to the done state
@@ -177,7 +190,10 @@ def test_model_status_with_evaluations(
 
     # test that deletion is unblocked when evaluation is DONE
     core.set_model_status(
-        db, core_created_dataset, core_created_model, enums.TableStatus.DELETING
+        db,
+        core_created_dataset,
+        core_created_model,
+        enums.TableStatus.DELETING,
     )
 
 
