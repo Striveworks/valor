@@ -77,7 +77,21 @@ def _create_embedding(
     db: Session,
     value: list[float],
 ) -> int:
-    """Creates a embedding row."""
+    """
+    Creates a row in the embedding table.
+
+    Parameters
+    ----------
+    db : Session
+        The current database session.
+    value : list[float]
+        The embedding, represented as a list of type float.
+
+    Returns
+    -------
+    int
+        The row id of the embedding.
+    """
     try:
         row = models.Embedding(value=value)
         db.add(row)
