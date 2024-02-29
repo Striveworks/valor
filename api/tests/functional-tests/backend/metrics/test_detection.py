@@ -95,6 +95,39 @@ def test__compute_detection_metrics(
         },
         # mAP METRICS AVERAGED OVER IOUS
         {"ious": iou_thresholds, "value": 0.637},
+        # TODO finish test
+        # TODO note the benchmarks on this site are for ious=[.5, .95] https://github.com/Lightning-AI/torchmetrics/blob/107dbfd5fb158b7ae6d76281df44bd94c836bfce/tests/unittests/detection/test_map.py#L231
+        # AR METRICS
+        {
+            "ious": iou_thresholds,
+            "value": 0.454,
+            "label": {"key": "class", "value": "2"},
+        },
+        {
+            "ious": iou_thresholds,
+            "value": 0.555,  # note COCO had 0.556
+            "label": {"key": "class", "value": "49"},
+        },
+        {
+            "ious": iou_thresholds,
+            "value": 0.725,
+            "label": {"key": "class", "value": "0"},
+        },
+        {
+            "ious": iou_thresholds,
+            "value": 0.8,
+            "label": {"key": "class", "value": "1"},
+        },
+        {
+            "ious": iou_thresholds,
+            "value": 0.650,
+            "label": {"key": "class", "value": "4"},
+        },
+        # mAR METRICS
+        {
+            "ious": iou_thresholds,
+            "value": 0.650,
+        },
     ]
 
     assert len(metrics) == len(expected)
