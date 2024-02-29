@@ -34,7 +34,8 @@ def test_create_read_embedding_annotation(
             datum=Datum(uid="uid123"),
             annotations=[
                 Annotation(
-                    task_type=TaskType.EMBEDDING, embedding=[1, 2, 3, 4, 5]
+                    task_type=TaskType.EMBEDDING,
+                    embedding=[1, 2, 3, 4, 5],
                 )
             ],
         ),

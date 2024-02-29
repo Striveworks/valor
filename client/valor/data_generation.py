@@ -69,7 +69,9 @@ def _generate_gt_annotation(
         task_type=task_type,
         labels=labels,
         raster=raster,
-        bounding_box=bounding_box,
+        bounding_box=bounding_box
+        if task_type == enums.TaskType.OBJECT_DETECTION
+        else None,
     )
 
 

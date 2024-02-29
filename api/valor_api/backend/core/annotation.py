@@ -330,7 +330,7 @@ def get_annotation(
     # embedding
     if annotation.embedding_id:
         embedding = db.scalar(
-            select(models.Embedding).where(
+            select(models.Embedding.value).where(
                 models.Embedding.id == annotation.embedding_id
             )
         )
