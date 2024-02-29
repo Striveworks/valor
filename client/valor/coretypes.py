@@ -136,6 +136,7 @@ class Label:
             The dictionary containing a label.
 
         Returns
+        -------
         valor.Label
         """
         return cls(**resp)
@@ -381,6 +382,7 @@ class Annotation:
             The dictionary containing an annotation.
 
         Returns
+        -------
         valor.Annotation
         """
 
@@ -429,7 +431,7 @@ class Annotation:
         Defines how a `valor.Annotation` object is serialized into a dictionary.
 
         Returns
-        ----------
+        -------
         dict
             A dictionary describing an annotation.
         """
@@ -526,6 +528,7 @@ class Datum:
             The dictionary containing a datum.
 
         Returns
+        -------
         valor.Datum
         """
         resp.pop("dataset_name", None)
@@ -625,6 +628,7 @@ class GroundTruth:
             The dictionary containing a ground truth.
 
         Returns
+        -------
         valor.GroundTruth
         """
         expected_keys = {"datum", "annotations"}
@@ -774,6 +778,7 @@ class Prediction:
             The dictionary containing a prediction.
 
         Returns
+        -------
         valor.Prediction
         """
         expected_keys = {"datum", "annotations", "model_name"}
@@ -1173,7 +1178,7 @@ class Dataset:
 
         Parameters
         ----------
-        ground truth : GroundTruth
+        groundtruth : GroundTruth
             The ground truth to create.
         """
         Client(self.conn).create_groundtruths(
@@ -1190,7 +1195,7 @@ class Dataset:
 
         Parameters
         ----------
-        ground truths : List[GroundTruth]
+        groundtruths : List[GroundTruth]
             The ground truths to create.
         """
         Client(self.conn).create_groundtruths(
@@ -1420,6 +1425,7 @@ class Model:
             Option to share a ClientConnection rather than request a new one.
 
         Returns
+        -------
         valor.Model
         """
         resp.pop("id")
