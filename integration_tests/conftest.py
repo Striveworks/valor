@@ -443,11 +443,9 @@ def gt_semantic_segs2_mask(img2: ImageMetadata) -> GroundTruth:
 
 
 @pytest.fixture
-def gt_semantic_segs_error(img1: ImageMetadata) -> GroundTruth:
+def gt_semantic_segs_mismatch(img1: ImageMetadata) -> GroundTruth:
     mask = _generate_mask(height=100, width=100)
     raster = Raster.from_numpy(mask)
-
-    # expected to throw an error since the mask size differs from the image size
     return GroundTruth(
         datum=img1.to_datum(),
         annotations=[
