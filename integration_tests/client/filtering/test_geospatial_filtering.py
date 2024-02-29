@@ -125,7 +125,7 @@ def test_geospatial_filter(
         },
     )
     assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
-    assert len(eval_job.metrics) == 9
+    assert len(eval_job.metrics) == 12
 
     # passing in an incorrectly-formatted geojson dict should return a ValueError
     with pytest.raises(NotImplementedError) as e:
@@ -153,7 +153,7 @@ def test_geospatial_filter(
     assert eval_job.datum_filter.datum_metadata["geospatial"] == [
         Constraint(value=geo_dict, operator="intersect")
     ]
-    assert len(eval_job.metrics) == 9
+    assert len(eval_job.metrics) == 12
 
     # filtering by model is allowed, this is the equivalent of requesting..
     # "Give me the dataset that model A has operated over."
