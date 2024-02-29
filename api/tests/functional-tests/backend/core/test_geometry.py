@@ -1,5 +1,5 @@
-import pytest
 import numpy as np
+import pytest
 from sqlalchemy.orm import Session
 
 from valor_api import enums, schemas
@@ -10,16 +10,16 @@ from valor_api.backend.core.geometry import (
 )
 from valor_api.crud import create_dataset, create_groundtruth
 from valor_api.schemas import (
-    Point, 
-    BoundingBox, 
-    BasicPolygon, 
-    Polygon, 
-    MultiPolygon, 
-    Raster,
-    GroundTruth,
-    Prediction,
     Annotation,
+    BasicPolygon,
+    BoundingBox,
     Datum,
+    GroundTruth,
+    MultiPolygon,
+    Point,
+    Polygon,
+    Prediction,
+    Raster,
 )
 
 
