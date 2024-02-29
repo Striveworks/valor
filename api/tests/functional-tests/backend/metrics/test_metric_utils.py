@@ -18,18 +18,16 @@ def _test_failed_computation(db, evaluation_id, *args, **kwargs):
 
 def test_validate_computation(
     db: Session,
-    core_created_dataset: str,
-    core_created_model: str,
+    created_dataset: str,
+    created_model: str,
 ):
     # create evaluation
-    core.set_dataset_status(
-        db, core_created_dataset, enums.TableStatus.FINALIZED
-    )
+    core.set_dataset_status(db, created_dataset, enums.TableStatus.FINALIZED)
     created, _ = core.create_or_get_evaluations(
         db,
         schemas.EvaluationRequest(
-            model_names=[core_created_model],
-            datum_filter=schemas.Filter(dataset_names=[core_created_dataset]),
+            model_names=[created_model],
+            datum_filter=schemas.Filter(dataset_names=[created_dataset]),
             parameters=schemas.EvaluationParameters(
                 task_type=enums.TaskType.CLASSIFICATION,
             ),

@@ -10,24 +10,24 @@ from valor_api.backend.core.evaluation import (
 
 
 @pytest.fixture
-def finalized_dataset(db: Session, core_created_dataset: str) -> str:
+def finalized_dataset(db: Session, created_dataset: str) -> str:
     core.set_dataset_status(
-        db=db, name=core_created_dataset, status=enums.TableStatus.FINALIZED
+        db=db, name=created_dataset, status=enums.TableStatus.FINALIZED
     )
-    return core_created_dataset
+    return created_dataset
 
 
 @pytest.fixture
 def finalized_model(
-    db: Session, core_created_dataset: str, core_created_model: str
+    db: Session, created_dataset: str, created_model: str
 ) -> str:
     core.set_model_status(
         db=db,
-        dataset_name=core_created_dataset,
-        model_name=core_created_model,
+        dataset_name=created_dataset,
+        model_name=created_model,
         status=enums.TableStatus.FINALIZED,
     )
-    return core_created_model
+    return created_model
 
 
 def test__verify_ready_to_evaluate(

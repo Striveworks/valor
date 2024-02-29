@@ -15,31 +15,31 @@ def created_models(db: Session) -> list[str]:
     return ["model1", "model2"]
 
 
-def test_create_model(db: Session, core_created_model):
+def test_create_model(db: Session, created_model):
     model = db.query(
         select(models.Model)
-        .where(models.Model.name == core_created_model)
+        .where(models.Model.name == created_model)
         .subquery()
     ).one_or_none()
     assert model is not None
-    assert model.name == core_created_model
+    assert model.name == created_model
     assert model.meta == {}
 
 
-def test_fetch_model(db: Session, core_created_model):
-    model = core.fetch_model(db, core_created_model)
+def test_fetch_model(db: Session, created_model):
+    model = core.fetch_model(db, created_model)
     assert model is not None
-    assert model.name == core_created_model
+    assert model.name == created_model
     assert model.meta == {}
 
     with pytest.raises(exceptions.ModelDoesNotExistError):
         core.fetch_model(db, "some_nonexistent_model")
 
 
-def test_get_model(db: Session, core_created_model):
-    model = core.get_model(db, core_created_model)
+def test_get_model(db: Session, created_model):
+    model = core.get_model(db, created_model)
     assert model is not None
-    assert model.name == core_created_model
+    assert model.name == created_model
     assert model.metadata == {}
 
     with pytest.raises(exceptions.ModelDoesNotExistError):
@@ -52,13 +52,13 @@ def test_get_models(db: Session, created_models):
         assert model.name in created_models
 
 
-def test_model_status(db: Session, core_created_model, core_created_dataset):
+def test_model_status(db: Session, created_model, created_dataset):
     # creating
     assert (
         core.get_model_status(
             db=db,
-            dataset_name=core_created_dataset,
-            model_name=core_created_model,
+            dataset_name=created_dataset,
+            model_name=created_model,
         )
         == enums.TableStatus.CREATING
     )
@@ -67,15 +67,15 @@ def test_model_status(db: Session, core_created_model, core_created_dataset):
     with pytest.raises(exceptions.DatasetNotFinalizedError):
         core.set_model_status(
             db=db,
-            dataset_name=core_created_dataset,
-            model_name=core_created_model,
+            dataset_name=created_dataset,
+            model_name=created_model,
             status=enums.TableStatus.FINALIZED,
         )
     assert (
         core.get_model_status(
             db=db,
-            dataset_name=core_created_dataset,
-            model_name=core_created_model,
+            dataset_name=created_dataset,
+            model_name=created_model,
         )
         == enums.TableStatus.CREATING
     )
@@ -83,20 +83,20 @@ def test_model_status(db: Session, core_created_model, core_created_dataset):
     # finalize dataset
     core.set_dataset_status(
         db=db,
-        name=core_created_dataset,
+        name=created_dataset,
         status=enums.TableStatus.FINALIZED,
     )
     core.set_model_status(
         db=db,
-        dataset_name=core_created_dataset,
-        model_name=core_created_model,
+        dataset_name=created_dataset,
+        model_name=created_model,
         status=enums.TableStatus.FINALIZED,
     )
     assert (
         core.get_model_status(
             db=db,
-            dataset_name=core_created_dataset,
-            model_name=core_created_model,
+            dataset_name=created_dataset,
+            model_name=created_model,
         )
         == enums.TableStatus.FINALIZED
     )
@@ -104,30 +104,30 @@ def test_model_status(db: Session, core_created_model, core_created_dataset):
     # test others
     core.set_model_status(
         db=db,
-        dataset_name=core_created_dataset,
-        model_name=core_created_model,
+        dataset_name=created_dataset,
+        model_name=created_model,
         status=enums.TableStatus.FINALIZED,
     )
     with pytest.raises(exceptions.ModelStateError):
         core.set_model_status(
             db=db,
-            dataset_name=core_created_dataset,
-            model_name=core_created_model,
+            dataset_name=created_dataset,
+            model_name=created_model,
             status=enums.TableStatus.CREATING,
         )
 
     # deleting
     core.set_model_status(
         db=db,
-        dataset_name=core_created_dataset,
-        model_name=core_created_model,
+        dataset_name=created_dataset,
+        model_name=created_model,
         status=enums.TableStatus.DELETING,
     )
     assert (
         core.get_model_status(
             db=db,
-            dataset_name=core_created_dataset,
-            model_name=core_created_model,
+            dataset_name=created_dataset,
+            model_name=created_model,
         )
         == enums.TableStatus.DELETING
     )
@@ -136,33 +136,31 @@ def test_model_status(db: Session, core_created_model, core_created_dataset):
     with pytest.raises(exceptions.ModelStateError):
         core.set_model_status(
             db=db,
-            dataset_name=core_created_dataset,
-            model_name=core_created_model,
+            dataset_name=created_dataset,
+            model_name=created_model,
             status=enums.TableStatus.CREATING,
         )
     with pytest.raises(exceptions.ModelStateError):
         core.set_model_status(
             db=db,
-            dataset_name=core_created_dataset,
-            model_name=core_created_model,
+            dataset_name=created_dataset,
+            model_name=created_model,
             status=enums.TableStatus.FINALIZED,
         )
 
 
 def test_model_status_with_evaluations(
     db: Session,
-    core_created_dataset: str,
-    core_created_model: str,
+    created_dataset: str,
+    created_model: str,
 ):
     # create an evaluation
-    core.set_dataset_status(
-        db, core_created_dataset, enums.TableStatus.FINALIZED
-    )
+    core.set_dataset_status(db, created_dataset, enums.TableStatus.FINALIZED)
     created, _ = core.create_or_get_evaluations(
         db,
         schemas.EvaluationRequest(
-            model_names=[core_created_model],
-            datum_filter=schemas.Filter(dataset_names=[core_created_dataset]),
+            model_names=[created_model],
+            datum_filter=schemas.Filter(dataset_names=[created_dataset]),
             parameters=schemas.EvaluationParameters(
                 task_type=enums.TaskType.CLASSIFICATION,
             ),
@@ -180,8 +178,8 @@ def test_model_status_with_evaluations(
     with pytest.raises(exceptions.EvaluationRunningError):
         core.set_model_status(
             db,
-            core_created_dataset,
-            core_created_model,
+            created_dataset,
+            created_model,
             enums.TableStatus.DELETING,
         )
 
@@ -191,8 +189,8 @@ def test_model_status_with_evaluations(
     # test that deletion is unblocked when evaluation is DONE
     core.set_model_status(
         db,
-        core_created_dataset,
-        core_created_model,
+        created_dataset,
+        created_model,
         enums.TableStatus.DELETING,
     )
 

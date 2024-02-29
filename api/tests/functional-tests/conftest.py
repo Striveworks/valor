@@ -646,7 +646,7 @@ def dataset_model_create(
 
 
 @pytest.fixture
-def core_created_dataset(db: Session, dataset_name: str) -> str:
+def created_dataset(db: Session, dataset_name: str) -> str:
     dataset = schemas.Dataset(name=dataset_name)
     core.create_dataset(db, dataset=dataset)
     core.create_groundtruth(
@@ -695,16 +695,14 @@ def core_created_dataset(db: Session, dataset_name: str) -> str:
 
 
 @pytest.fixture
-def core_created_model(
-    db: Session, model_name: str, core_created_dataset: str
-) -> str:
+def created_model(db: Session, model_name: str, created_dataset: str) -> str:
     model = schemas.Model(name=model_name)
     core.create_model(db, model=model)
     core.create_prediction(
         db=db,
         prediction=schemas.Prediction(
             model_name=model_name,
-            datum=schemas.Datum(uid="uid1", dataset_name=core_created_dataset),
+            datum=schemas.Datum(uid="uid1", dataset_name=created_dataset),
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.CLASSIFICATION,
@@ -717,7 +715,7 @@ def core_created_model(
         db=db,
         prediction=schemas.Prediction(
             model_name=model_name,
-            datum=schemas.Datum(uid="uid2", dataset_name=core_created_dataset),
+            datum=schemas.Datum(uid="uid2", dataset_name=created_dataset),
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.OBJECT_DETECTION,
@@ -733,7 +731,7 @@ def core_created_model(
             model_name=model_name,
             datum=schemas.Datum(
                 uid="uid3",
-                dataset_name=core_created_dataset,
+                dataset_name=created_dataset,
                 metadata={"height": 10, "width": 10},
             ),
             annotations=[
