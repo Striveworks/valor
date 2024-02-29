@@ -359,8 +359,21 @@ def test_annotation_with_scores(
         )
 
 
-def test_groundtruth(metadata, groundtruth_annotations):
+def test_groundtruth(metadata, groundtruth_annotations, raster):
     # valid
+    schemas.GroundTruth(
+        datum=schemas.Datum(
+            uid="uid",
+            dataset_name="name",
+        ),
+        annotations=[
+            schemas.Annotation(
+                task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+                labels=[schemas.Label(key="k1", value="v1")],
+                raster=raster,
+            )
+        ],
+    )
     gt = schemas.GroundTruth(
         datum=schemas.Datum(
             uid="uid",
