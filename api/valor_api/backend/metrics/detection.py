@@ -78,8 +78,6 @@ def _calculate_ar():
 def _ap(
     sorted_ranked_pairs: dict[int, list[RankedPair]],
     number_of_groundtruths_per_grouper: dict[int, int],
-    # TODO delete if not needed
-    number_of_predictions_per_grouper: dict[int, int],
     grouper_mappings: dict[str, dict],
     iou_thresholds: list[float],
     grouper_ids_associated_with_gts: set[int],
@@ -137,11 +135,6 @@ def _ap(
                     cnt_fn = (
                         number_of_groundtruths_per_grouper[grouper_id] - cnt_tp
                     )
-
-                    # TODO delete if not needed
-                    # cnt_tn = (
-                    #     number_of_predictions_per_grouper[grouper_id] - cnt_fn
-                    # )
 
                     precisions.append(
                         cnt_tp / (cnt_tp + cnt_fp) if (cnt_tp + cnt_fp) else 0
@@ -397,7 +390,6 @@ def _compute_detection_metrics(
 
     # Get the number of groundtruths per grouper_id
     number_of_groundtruths_per_grouper = {}
-    number_of_predictions_per_grouper = {}
 
     groundtruths = db.query(
         Query(
@@ -411,26 +403,11 @@ def _compute_detection_metrics(
         .groundtruths()  # type: ignore - SQLAlchemy type issue
     ).all()  # type: ignore - SQLAlchemy type issue
 
-    predictions = db.query(
-        Query(
-            models.Prediction.id,
-            case(
-                grouper_mappings["label_id_to_grouper_id_mapping"],
-                value=models.Prediction.label_id,
-            ).label("label_id_grouper"),
-        )
-        .filter(prediction_filter)
-        .predictions()  # type: ignore - SQLAlchemy type issue
-    ).all()  # type: ignore - SQLAlchemy type issue
-
     grouper_ids_associated_with_gts = set([row[1] for row in groundtruths])
 
     for grouper_id in ranking.keys():
         number_of_groundtruths_per_grouper[grouper_id] = len(
             set([row[0] for row in groundtruths if row[1] == grouper_id])
-        )
-        number_of_predictions_per_grouper[grouper_id] = len(
-            set([row[0] for row in predictions if row[1] == grouper_id])
         )
 
     # Compute AP
@@ -438,8 +415,6 @@ def _compute_detection_metrics(
     ap_metrics, ar_metrics = _ap(
         sorted_ranked_pairs=ranking,
         number_of_groundtruths_per_grouper=number_of_groundtruths_per_grouper,
-        # TODO delete if not needed
-        number_of_predictions_per_grouper=number_of_predictions_per_grouper,
         iou_thresholds=parameters.iou_thresholds_to_compute,
         grouper_mappings=grouper_mappings,
         grouper_ids_associated_with_gts=grouper_ids_associated_with_gts,
