@@ -925,31 +925,19 @@ def test_evaluate_detection_with_label_maps(
             "type": "AR",
             "parameters": {"ious": [0.1, 0.6]},
             "value": 0.0,
-            "label": {"key": "class_name", "value": "maine coon cat"},
-        },
-        {
-            "type": "AR",
-            "parameters": {"ious": [0.1, 0.6]},
-            "value": 0.5,
-            "label": {"key": "k1", "value": "v1"},
-        },
-        {
-            "type": "AR",
-            "parameters": {"ious": [0.1, 0.6]},
-            "value": 0.0,
             "label": {"key": "class", "value": "british shorthair"},
         },
         {
             "type": "AR",
             "parameters": {"ious": [0.1, 0.6]},
-            "value": 0.0,
+            "value": -1.0,
             "label": {"key": "class_name", "value": "cat"},
         },
         {
             "type": "AR",
             "parameters": {"ious": [0.1, 0.6]},
             "value": 0.0,
-            "label": {"key": "class", "value": "siamese cat"},
+            "label": {"key": "class_name", "value": "maine coon cat"},
         },
         {
             "type": "AR",
@@ -961,6 +949,18 @@ def test_evaluate_detection_with_label_maps(
             "type": "AR",
             "parameters": {"ious": [0.1, 0.6]},
             "value": 0.0,
+            "label": {"key": "class", "value": "siamese cat"},
+        },
+        {
+            "type": "AR",
+            "parameters": {"ious": [0.1, 0.6]},
+            "value": 0.5,
+            "label": {"key": "k1", "value": "v1"},
+        },
+        {
+            "type": "AR",
+            "parameters": {"ious": [0.1, 0.6]},
+            "value": -1.0,
             "label": {"key": "class", "value": "cat"},
         },
         {
@@ -976,7 +976,7 @@ def test_evaluate_detection_with_label_maps(
         {
             "type": "mAR",
             "parameters": {"ious": [0.1, 0.6]},
-            "value": 0.07142857142857142,
+            "value": 0.1,
         },
         {
             "type": "APAveragedOverIOUs",
@@ -1095,7 +1095,7 @@ def test_evaluate_detection_with_label_maps(
         {
             "type": "AR",
             "parameters": {"ious": [0.1, 0.6]},
-            "value": 0.0,
+            "value": -1.0,
             "label": {"key": "class_name", "value": "cat"},
         },
         {
@@ -1111,7 +1111,7 @@ def test_evaluate_detection_with_label_maps(
         {
             "type": "mAR",
             "parameters": {"ious": [0.1, 0.6]},
-            "value": 0.20833333333333331,
+            "value": 0.27777777777777773,
         },
         {
             "type": "APAveragedOverIOUs",
