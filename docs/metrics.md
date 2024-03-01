@@ -1,5 +1,5 @@
 # Metrics
-
+# TODO add AR and mAR docs
 Let's look at the various metrics you can calculate using Valor.
 
 If we're missing an important metric for your particular use case, please [write us a GitHub Issue ticket](https://github.com/Striveworks/valor/issues). We love hearing your suggestions.

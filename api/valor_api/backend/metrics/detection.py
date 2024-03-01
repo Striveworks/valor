@@ -162,12 +162,12 @@ def _ap(
 
         ar_metrics.append(
             schemas.ARMetric(
-                ious=iou_thresholds,
+                ious=set(iou_thresholds),
                 value=(
                     sum(recalls_across_thresholds)
                     / len(recalls_across_thresholds)
                     if recalls_across_thresholds
-                    else 0
+                    else -1
                 ),
                 label=grouper_label,
             )

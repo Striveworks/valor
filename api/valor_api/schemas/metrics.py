@@ -40,7 +40,7 @@ class ARMetric(BaseModel):
         The `Label` for the metric.
     """
 
-    ious: list[float]
+    ious: set[float]
     value: float
     label: Label
 
