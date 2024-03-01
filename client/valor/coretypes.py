@@ -1623,7 +1623,7 @@ class Model:
             Thresholds to return AP for. Must be subset of `iou_thresholds_to_compute`.
         label_map : Dict[Label, Label], optional
             Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
-        recall_score_threshold: float, optional
+        recall_score_threshold: float, default=0
             The confidence score threshold for use when determining whether to count a prediction as a true positive or not while calculating Average Recall.
         Returns
         -------
