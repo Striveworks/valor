@@ -1,6 +1,6 @@
 services:
   db:
-    image: "docker.io/postgis/postgis"
+    image: "ghcr.io/striveworks/valor/pgvalor"
     ports:
       - "5432:5432"
     environment:

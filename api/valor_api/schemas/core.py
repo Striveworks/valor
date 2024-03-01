@@ -1,6 +1,6 @@
 import re
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 from valor_api.enums import TaskType
 from valor_api.schemas.geometry import (
@@ -37,6 +37,90 @@ def _validate_uid_format(uid: str):
             "The provided string contains illegal characters. Please ensure your input consists of only alphanumeric characters, hyphens, underscores, forward slashes, and periods."
         )
     return uid
+
+
+def _check_if_empty_annotation(values):
+    """Checks if the annotation is empty."""
+    return (
+        not values.labels
+        and values.bounding_box is None
+        and values.polygon is None
+        and values.multipolygon is None
+        and values.raster is None
+        and values.embedding is None
+    )
+
+
+def _validate_annotation_by_task_type(values):
+    """Validates the contents of an annotation by task type."""
+    if _check_if_empty_annotation(values):
+        if values.task_type != TaskType.SKIP:
+            values.task_type = TaskType.EMPTY
+    match values.task_type:
+        case TaskType.CLASSIFICATION:
+            if not (
+                values.labels
+                and values.bounding_box is None
+                and values.polygon is None
+                and values.multipolygon is None
+                and values.raster is None
+                and values.embedding is None
+            ):
+                raise ValueError(
+                    "Annotation with task type `classification` does not support geometries or embeddings."
+                )
+        case TaskType.OBJECT_DETECTION:
+            if not (
+                values.labels
+                and (
+                    values.bounding_box is not None
+                    or values.polygon is not None
+                    or values.multipolygon is not None
+                    or values.raster is not None
+                )
+                and values.embedding is None
+            ):
+                raise ValueError(
+                    "Annotation with task type `object-detection` does not support embeddings."
+                )
+        case TaskType.SEMANTIC_SEGMENTATION:
+            if not (
+                values.labels
+                and (
+                    values.raster is not None
+                    or values.multipolygon is not None
+                    or values.polygon is None
+                )
+                and values.bounding_box is None
+                and values.embedding is None
+            ):
+                raise ValueError(
+                    "Annotation with task type `semantic-segmentation` only supports raster and multipolygon geometries."
+                )
+            elif values.polygon is not None:
+                raise NotImplementedError(
+                    "Semantic segmentation does not support polygon annotations. See Issue #465."
+                )
+        case TaskType.EMBEDDING:
+            if not (
+                values.embedding is not None
+                and not values.labels
+                and values.bounding_box is None
+                and values.polygon is None
+                and values.multipolygon is None
+                and values.raster is None
+            ):
+                raise ValueError(
+                    "Annotation with task type `embedding` does not support labels or geometries."
+                )
+        case TaskType.EMPTY | TaskType.SKIP:
+            if not _check_if_empty_annotation(values):
+                raise ValueError("Annotation is not empty.")
+        case _:
+            raise ValueError(
+                f"Task type `{values.task_type}` is not a supported user input."
+            )
+    return values
 
 
 class Dataset(BaseModel):
@@ -190,15 +274,15 @@ class Annotation(BaseModel):
         A list of labels to use for the `Annotation`.
     metadata: MetadataType
         A dictionary of metadata that describes the `Annotation`.
-    bounding_box: BoundingBox
+    bounding_box: BoundingBox, optional
         A bounding box to assign to the `Annotation`.
-    polygon: Polygon
+    polygon: Polygon, optional
         A polygon to assign to the `Annotation`.
-    multipolygon: MultiPolygon
+    multipolygon: MultiPolygon, optional
         A multipolygon to assign to the `Annotation`.
-    raster: Raster
+    raster: Raster, optional
         A raster to assign to the `Annotation`.
-    jsonb: Dict
+    embedding: list[float], optional
         A jsonb to assign to the `Annotation`.
 
     Raises
@@ -209,7 +293,7 @@ class Annotation(BaseModel):
     """
 
     task_type: TaskType
-    labels: list[Label]
+    labels: list[Label] = []
     metadata: MetadataType = {}
 
     # Geometric types
@@ -217,8 +301,15 @@ class Annotation(BaseModel):
     polygon: Polygon | None = None
     multipolygon: MultiPolygon | None = None
     raster: Raster | None = None
+    embedding: list[float] | None = None
 
     model_config = ConfigDict(use_enum_values=True, extra="forbid")
+
+    @model_validator(mode="after")  # type: ignore - pydantic type error
+    @classmethod
+    def _validate_annotation_by_task_type(cls, values):
+        """Validate the annotation by task type."""
+        return _validate_annotation_by_task_type(values)
 
 
 def _check_semantic_segmentations_single_label(
@@ -258,14 +349,17 @@ class GroundTruth(BaseModel):
     """
 
     datum: Datum
-    annotations: list[Annotation]
+    annotations: list[Annotation] = []
     model_config = ConfigDict(extra="forbid")
 
     @field_validator("annotations")
     @classmethod
     def _check_semantic_segmentation_annotations(cls, v: list[Annotation]):
         """Validate that only one label exists."""
-        _check_semantic_segmentations_single_label(v)
+        if len(v) > 0:
+            _check_semantic_segmentations_single_label(v)
+        else:
+            v = [Annotation(task_type=TaskType.EMPTY)]
         return v
 
 
@@ -295,7 +389,7 @@ class Prediction(BaseModel):
 
     model_name: str
     datum: Datum
-    annotations: list[Annotation]
+    annotations: list[Annotation] = []
     model_config = ConfigDict(
         extra="forbid",
         protected_namespaces=("protected_",),
@@ -315,24 +409,26 @@ class Prediction(BaseModel):
     @classmethod
     def _validate_annotation_scores(cls, v: list[Annotation]):
         """Check that we have scores for all the labels if the task type requires it."""
-        for annotation in v:
-            if annotation.task_type in [
-                TaskType.CLASSIFICATION,
-                TaskType.OBJECT_DETECTION,
-            ]:
-                for label in annotation.labels:
-                    if label.score is None:
-                        raise ValueError(
-                            f"Missing score for label in {annotation.task_type} task."
-                        )
-            elif annotation.task_type == TaskType.SEMANTIC_SEGMENTATION:
-                for label in annotation.labels:
-                    if label.score is not None:
-                        raise ValueError(
-                            "Semantic segmentation tasks cannot have scores; only metrics with "
-                            "hard predictions are supported."
-                        )
-
+        if len(v) > 0:
+            for annotation in v:
+                if annotation.task_type in [
+                    TaskType.CLASSIFICATION,
+                    TaskType.OBJECT_DETECTION,
+                ]:
+                    for label in annotation.labels:
+                        if label.score is None:
+                            raise ValueError(
+                                f"Missing score for label in {annotation.task_type} task."
+                            )
+                elif annotation.task_type == TaskType.SEMANTIC_SEGMENTATION:
+                    for label in annotation.labels:
+                        if label.score is not None:
+                            raise ValueError(
+                                "Semantic segmentation tasks cannot have scores; only metrics with "
+                                "hard predictions are supported."
+                            )
+        else:
+            v = [Annotation(task_type=TaskType.EMPTY)]
         return v
 
     @field_validator("annotations")
