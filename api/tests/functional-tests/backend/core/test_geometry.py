@@ -86,7 +86,7 @@ def raster() -> Raster:
 
 
 @pytest.fixture
-def create_clf_dataset(db: Session, dataset_name: str):
+def create_classification_dataset(db: Session, dataset_name: str):
     create_dataset(db=db, dataset=schemas.Dataset(name=dataset_name))
     create_groundtruth(
         db=db,
@@ -103,7 +103,7 @@ def create_clf_dataset(db: Session, dataset_name: str):
 
 
 @pytest.fixture
-def create_objdet_dataset(
+def create_object_detection_dataset(
     db: Session,
     dataset_name: str,
     bbox: BoundingBox,
@@ -149,7 +149,7 @@ def create_objdet_dataset(
 
 
 def test_get_annotation_type(
-    db: Session, dataset_name: str, create_clf_dataset
+    db: Session, dataset_name: str, create_classification_dataset
 ):
     # tests uncovered case where `AnnotationType.NONE` is returned.
     dataset = fetch_dataset(db, dataset_name)
@@ -226,7 +226,7 @@ def _load_box(db: Session, box) -> BoundingBox:
 
 def test_convert_from_raster(
     db: Session,
-    create_objdet_dataset: str,
+    create_object_detection_dataset: str,
     bbox: BoundingBox,
     polygon: Polygon,
 ):
@@ -270,7 +270,7 @@ def test_convert_from_raster(
 
 def test_convert_polygon_to_bbox(
     db: Session,
-    create_objdet_dataset: str,
+    create_object_detection_dataset: str,
     bbox: BoundingBox,
 ):
     annotation_id = db.scalar(
