@@ -206,10 +206,6 @@ class Filter(BaseModel):
         A toggle for filtering by polygons.
     polygon_area : bool, optional
         An optional constraint to filter by polygon area.
-    require_multipolygon : bool, optional
-        A toggle for filtering by multipolygons.
-    multipolygon_area : bool, optional
-        An optional constraint to filter by multipolygon area.
     require_raster : bool, optional
         A toggle for filtering by rasters.
     raster_area : bool, optional
@@ -291,8 +287,6 @@ class Filter(BaseModel):
     bounding_box_area: list[NumericFilter] | None = None
     require_polygon: bool | None = None
     polygon_area: list[NumericFilter] | None = None
-    require_multipolygon: bool | None = None
-    multipolygon_area: list[NumericFilter] | None = None
     require_raster: bool | None = None
     raster_area: list[NumericFilter] | None = None
 

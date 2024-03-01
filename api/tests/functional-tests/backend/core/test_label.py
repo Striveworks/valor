@@ -363,7 +363,6 @@ def test_get_joint_labels(
             task_types=[enums.TaskType.CLASSIFICATION],
             require_bounding_box=False,
             require_polygon=False,
-            require_multipolygon=False,
             require_raster=False,
         ),
         rhs=schemas.Filter(
@@ -371,7 +370,6 @@ def test_get_joint_labels(
             task_types=[enums.TaskType.CLASSIFICATION],
             require_bounding_box=False,
             require_polygon=False,
-            require_multipolygon=False,
             require_raster=False,
         ),
     )
@@ -416,7 +414,6 @@ def test_get_disjoint_labels(
             task_types=[enums.TaskType.CLASSIFICATION],
             require_bounding_box=False,
             require_polygon=False,
-            require_multipolygon=False,
             require_raster=False,
         ),
         rhs=schemas.Filter(
@@ -424,7 +421,6 @@ def test_get_disjoint_labels(
             task_types=[enums.TaskType.CLASSIFICATION],
             require_bounding_box=False,
             require_polygon=False,
-            require_multipolygon=False,
             require_raster=False,
         ),
     )

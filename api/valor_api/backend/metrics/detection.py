@@ -605,9 +605,6 @@ def compute_detection_metrics(
         case AnnotationType.POLYGON:
             groundtruth_filter.require_polygon = True
             prediction_filter.require_polygon = True
-        case AnnotationType.MULTIPOLYGON:
-            groundtruth_filter.require_multipolygon = True
-            prediction_filter.require_multipolygon = True
         case AnnotationType.RASTER:
             groundtruth_filter.require_raster = True
             prediction_filter.require_raster = True

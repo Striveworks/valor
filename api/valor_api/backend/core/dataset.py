@@ -292,23 +292,6 @@ def get_n_groundtruth_polygons_in_dataset(db: Session, name: str) -> int:
     )
 
 
-def get_n_groundtruth_multipolygons_in_dataset(db: Session, name: str) -> int:
-    return (
-        db.query(models.Annotation.id)
-        .join(models.GroundTruth)
-        .join(models.Datum)
-        .join(models.Dataset)
-        .where(
-            and_(
-                models.Dataset.name == name,
-                models.Annotation.multipolygon.isnot(None),
-            )
-        )
-        .distinct()
-        .count()
-    )
-
-
 def get_n_groundtruth_rasters_in_dataset(db: Session, name: str) -> int:
     return (
         db.query(models.Annotation.id)
@@ -385,9 +368,6 @@ def get_dataset_summary(db: Session, name: str) -> schemas.DatasetSummary:
             db, name
         ),
         num_polygons=get_n_groundtruth_polygons_in_dataset(db, name),
-        num_groundtruth_multipolygons=get_n_groundtruth_multipolygons_in_dataset(
-            db, name
-        ),
         num_rasters=get_n_groundtruth_rasters_in_dataset(db, name),
         task_types=get_unique_task_types_in_dataset(db, name),
         labels=list(gt_labels),

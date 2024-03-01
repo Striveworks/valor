@@ -114,7 +114,6 @@ class Annotation(Base):
     # columns - geometric
     box = mapped_column(Geometry("POLYGON"), nullable=True)
     polygon = mapped_column(Geometry("POLYGON"), nullable=True)
-    multipolygon = mapped_column(Geometry("MULTIPOLYGON"), nullable=True)
     raster = mapped_column(GDALRaster, nullable=True)
 
     # relationships
