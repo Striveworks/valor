@@ -1,10 +1,12 @@
 from geoalchemy2 import Geometry
 from geoalchemy2.types import CompositeType
 from sqlalchemy import (
+    BinaryExpression,
     Float,
     Update,
     distinct,
     func,
+    literal_column,
     select,
     type_coerce,
     update,
@@ -91,7 +93,7 @@ def get_annotation_type(
 
 
 def _convert_polygon_to_box(
-    dataset_id: int, model_id: int | None = None
+    where_conditions: list[BinaryExpression],
 ) -> Update:
     """
     Converts annotation column 'polygon' into column 'box'.
@@ -109,19 +111,13 @@ def _convert_polygon_to_box(
         A SQL update to complete the conversion.
     """
 
-    model_expr = (
-        models.Annotation.model_id == model_id
-        if model_id
-        else models.Annotation.model_id.is_(None)
-    )
     subquery = (
         select(models.Annotation.id)
         .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
         .where(
             models.Annotation.box.is_(None),
             models.Annotation.polygon.isnot(None),
-            models.Datum.dataset_id == dataset_id,
-            model_expr,
+            *where_conditions,
         )
         .alias("subquery")
     )
@@ -133,24 +129,22 @@ def _convert_polygon_to_box(
 
 
 def _convert_multipolygon_to_box(
-    dataset_id: int, model_id: int | None = None
+    where_conditions: list[BinaryExpression],
 ) -> Update:
     raise NotImplementedError(
-        "Conversion from multipolygon to box is currently unsupported."
+        "Conversion from multipolygon to box is currently unsupported. See Issue #470."
     )
 
 
 def _convert_multipolygon_to_polygon(
-    dataset_id: int, model_id: int | None = None
+    where_conditions: list[BinaryExpression],
 ) -> Update:
     raise NotImplementedError(
-        "Conversion from multipolygon to polygon is currently unsupported."
+        "Conversion from multipolygon to polygon is currently unsupported. See Issue #470."
     )
 
 
-def _convert_raster_to_box(
-    dataset_id: int, model_id: int | None = None
-) -> Update:
+def _convert_raster_to_box(where_conditions: list[BinaryExpression]) -> Update:
     """
     Converts annotation column 'raster' into column 'box'.
 
@@ -167,52 +161,32 @@ def _convert_raster_to_box(
         A SQL update to complete the conversion.
     """
 
-    model_expr = (
-        models.Annotation.model_id == model_id
-        if model_id
-        else models.Annotation.model_id.is_(None)
-    )
-    subquery1 = (
+    subquery = (
         select(
             models.Annotation.id.label("id"),
-            func.ST_MakeValid(
-                type_coerce(
-                    func.ST_DumpAsPolygons(models.Annotation.raster),
-                    GeometricValueType(),
-                ).geom,
+            func.ST_Envelope(
+                func.ST_Union(models.Annotation.raster),
                 type_=RawGeometry,
-            ).label("geom"),
+            ).label("raster_envelope"),
         )
         .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
         .where(
             models.Annotation.box.is_(None),
             models.Annotation.raster.isnot(None),
-            models.Datum.dataset_id == dataset_id,
-            model_expr,
+            *where_conditions,
         )
-        .alias("subquery1")
-    )
-    subquery2 = (
-        select(
-            subquery1.c.id.label("id"),
-            func.ST_Envelope(
-                func.ST_Union(subquery1.c.geom),
-                type_=RawGeometry,
-            ).label("raster_envelope"),
-        )
-        .group_by(subquery1.c.id)
-        .alias("subquery2")
+        .group_by(models.Annotation.id)
+        .alias("subquery")
     )
     return (
         update(models.Annotation)
-        .where(models.Annotation.id == subquery2.c.id)
-        .values(box=subquery2.c.raster_envelope)
+        .where(models.Annotation.id == subquery.c.id)
+        .values(box=subquery.c.raster_envelope)
     )
 
 
 def _convert_raster_to_polygon(
-    dataset_id: int,
-    model_id: int | None = None,
+    where_conditions: list[BinaryExpression],
 ) -> Update:
     """
     Converts annotation column 'raster' into column 'polygon'.
@@ -230,101 +204,49 @@ def _convert_raster_to_polygon(
         A SQL update to complete the conversion.
     """
 
-    model_expr = (
-        models.Annotation.model_id == model_id
-        if model_id
-        else models.Annotation.model_id.is_(None)
-    )
-    subquery1 = (
+    pixels_subquery = select(
+        type_coerce(
+            func.ST_PixelAsPoints(models.Annotation.raster, 1),
+            type_=GeometricValueType,
+        ).geom.label("geom")
+    ).lateral("pixels")
+
+    subquery = (
         select(
             models.Annotation.id.label("id"),
-            func.ST_MakeValid(
-                type_coerce(
-                    func.ST_DumpAsPolygons(models.Annotation.raster),
-                    GeometricValueType(),
-                ).geom,
-                type_=RawGeometry,
-            ).label("geom"),
+            func.ST_ConvexHull(func.ST_Collect(pixels_subquery.c.geom)).label(
+                "raster_polygon"
+            ),
         )
+        .select_from(models.Annotation)
         .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
+        .join(
+            pixels_subquery,
+            literal_column(
+                "true"
+            ),  # Joining the lateral subquery doesn't require a condition
+        )
         .where(
             models.Annotation.polygon.is_(None),
             models.Annotation.raster.isnot(None),
-            models.Datum.dataset_id == dataset_id,
-            model_expr,
+            *where_conditions,
         )
-        .alias("subquery1")
+        .group_by(models.Annotation.id)
+        .subquery()
     )
-    subquery2 = select(
-        subquery1.c.id.label("id"),
-        func.ST_ConvexHull(
-            func.ST_Collect(subquery1.c.geom),
-            type_=RawGeometry,
-        ).label("raster_polygon"),
-    ).alias("subquery2")
+
     return (
         update(models.Annotation)
-        .where(models.Annotation.id == subquery2.c.id)
-        .values(polygon=subquery2.c.raster_polygon)
+        .where(models.Annotation.id == subquery.c.id)
+        .values(polygon=subquery.c.raster_polygon)
     )
 
 
 def _convert_raster_to_multipolygon(
-    dataset_id: int,
-    model_id: int | None = None,
+    where_conditions: list[BinaryExpression],
 ) -> Update:
-    """
-    Converts annotation column 'raster' into column 'multipolygon'.
-
-    Parameters
-    ----------
-    dataset_id : int
-        A dataset id.
-    model_id : int, optional
-        A model id.
-
-    Returns
-    ----------
-    sqlalchemy.Update
-        A SQL update to complete the conversion.
-    """
-
-    model_expr = (
-        models.Annotation.model_id == model_id
-        if model_id
-        else models.Annotation.model_id.is_(None)
-    )
-    subquery1 = (
-        select(
-            models.Annotation.id.label("id"),
-            func.ST_MakeValid(
-                type_coerce(
-                    func.ST_DumpAsPolygons(models.Annotation.raster),
-                    GeometricValueType(),
-                ).geom,
-                type_=RawGeometry,
-            ).label("geom"),
-        )
-        .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
-        .where(
-            models.Annotation.polygon.is_(None),
-            models.Annotation.raster.isnot(None),
-            models.Datum.dataset_id == dataset_id,
-            model_expr,
-        )
-        .alias("subquery1")
-    )
-    subquery2 = select(
-        subquery1.c.id.label("id"),
-        func.ST_Union(
-            subquery1.c.geom,
-            type_=RawGeometry,
-        ).label("raster_multipolygon"),
-    ).alias("subquery2")
-    return (
-        update(models.Annotation)
-        .where(models.Annotation.id == subquery2.c.id)
-        .values(multipolygon=subquery2.c.raster_multipolygon)
+    raise NotImplementedError(
+        "Conversion from raster to multipolygon is currently unsupported. See Issue #470."
     )
 
 
@@ -334,6 +256,7 @@ def convert_geometry(
     target_type: AnnotationType,
     dataset: models.Dataset,
     model: models.Model | None = None,
+    task_type: TaskType | None = None,
 ):
     """
     Converts geometry into some target type
@@ -348,8 +271,10 @@ def convert_geometry(
         The annotation type we wish to convert to.
     dataset : models.Dataset
         The dataset of the geometry.
-    model : models.Model
+    model : models.Model, optional
         The model of the geometry.
+    task_type : enums.TaskType, optional
+        A task type to stratify the conversion by.
     """
     # Check typing
     valid_geometric_types = [
@@ -387,10 +312,30 @@ def convert_geometry(
         },
     }
 
+    # define model expression
+    model_expr = (
+        models.Annotation.model_id == model.id
+        if model
+        else models.Annotation.model_id.is_(None)
+    )
+
+    # define task type expression
+    task_type_expr = (
+        models.Annotation.task_type == task_type.value
+        if task_type
+        else models.Annotation.task_type.isnot(None)
+    )
+
+    # define where expression
+    where_conditions = [
+        task_type_expr,
+        models.Datum.dataset_id == dataset.id,
+        model_expr,
+    ]
+
     # get update
     update_stmt = source_to_target_conversion[source_type][target_type](
-        dataset_id=dataset.id,
-        model_id=model.id if model else None,
+        where_conditions
     )
 
     try:
