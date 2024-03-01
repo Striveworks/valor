@@ -181,9 +181,9 @@
 </a>
 </li>
 <li class="md-nav__item">
-<a class="md-nav__link" href="#object-detection-and-instance-segmentation-metrics1">
+<a class="md-nav__link" href="#object-detection-and-instance-segmentation-metrics">
 <span class="md-ellipsis">
-      Object Detection and Instance Segmentation Metrics[^1]
+      Object Detection and Instance Segmentation Metrics**
     </span>
 </a>
 </li>
@@ -386,9 +386,9 @@
 </a>
 </li>
 <li class="md-nav__item">
-<a class="md-nav__link" href="#object-detection-and-instance-segmentation-metrics1">
+<a class="md-nav__link" href="#object-detection-and-instance-segmentation-metrics">
 <span class="md-ellipsis">
-      Object Detection and Instance Segmentation Metrics[^1]
+      Object Detection and Instance Segmentation Metrics**
     </span>
 </a>
 </li>
@@ -446,7 +446,7 @@
 </tr>
 </tbody>
 </table>
-<h2 id="object-detection-and-instance-segmentation-metrics1">Object Detection and Instance Segmentation Metrics[^1]</h2>
+<h2 id="object-detection-and-instance-segmentation-metrics">Object Detection and Instance Segmentation Metrics**</h2>
 <table>
 <thead>
 <tr>
@@ -463,22 +463,32 @@
 </tr>
 <tr>
 <td style="text-align: left;">AP Averaged Over IOUs</td>
-<td style="text-align: left;">The average of several AP metrics, calculated at various IOUs, grouped by class.</td>
+<td style="text-align: left;">The average of several AP metrics across IOU thresholds, grouped by class labels.</td>
 <td style="text-align: left;"><span class="arithmatex">\(\dfrac{1}{\text{number of thresholds}} \sum\limits_{iou \in thresholds} AP_{iou}\)</span></td>
 </tr>
 <tr>
 <td style="text-align: left;">Mean Average Precision (mAP)</td>
-<td style="text-align: left;">The mean of several AP scores, calculated over various classes.</td>
+<td style="text-align: left;">The average of several AP metrics across class labels, grouped by IOU thresholds.</td>
 <td style="text-align: left;"><span class="arithmatex">\(\dfrac{1}{\text{number of classes}} \sum\limits_{c \in classes} AP_{c}\)</span></td>
 </tr>
 <tr>
 <td style="text-align: left;">mAP Averaged Over IOUs</td>
-<td style="text-align: left;">The mean of several averaged AP scores, calculated over various classes.</td>
+<td style="text-align: left;">The average of several  mAP metrics across class labels.</td>
 <td style="text-align: left;"><span class="arithmatex">\(\dfrac{1}{\text{number of thresholds}} \sum\limits_{iou \in thresholds} mAP_{iou}\)</span></td>
+</tr>
+<tr>
+<td style="text-align: left;">Average Recall (AR)</td>
+<td style="text-align: left;">The average of several recall metrics across IOU thresholds, grouped by class labels.</td>
+<td style="text-align: left;">See <a href="#average-recall-ar">AR methods</a>.</td>
+</tr>
+<tr>
+<td style="text-align: left;">Mean Average Recall (mAR)</td>
+<td style="text-align: left;">The average of several AR metrics across class labels.</td>
+<td style="text-align: left;"><span class="arithmatex">\(\dfrac{1}{\text{number of classes}} \sum\limits_{class \in classes} AR_{class}\)</span></td>
 </tr>
 </tbody>
 </table>
-<p>[^1]: When calculating IOUs for object detection metrics, Valor handles the necessary conversion between different types of geometric annotations. For example, if your model prediction is a polygon and your groundtruth is a raster, then the raster will be converted to a polygon prior to calculating the IOU.</p>
+<p>**When calculating IOUs for object detection metrics, Valor handles the necessary conversion between different types of geometric annotations. For example, if your model prediction is a polygon and your groundtruth is a raster, then the raster will be converted to a polygon prior to calculating the IOU.</p>
 <h2 id="semantic-segmentation-metrics">Semantic Segmentation Metrics</h2>
 <table>
 <thead>
@@ -630,6 +640,19 @@
 <li><a href="https://cocodataset.org/#detection-eval">MS COCO Detection Evaluation</a></li>
 <li><a href="https://link.springer.com/article/10.1007/s11263-009-0275-4">The PASCAL Visual Object Classes (VOC) Challenge</a></li>
 <li><a href="https://pyimagesearch.com/2022/05/02/mean-average-precision-map-using-the-coco-evaluator/">Mean Average Precision (mAP) Using the COCO Evaluator</a></li>
+</ul>
+<h2 id="average-recall-ar">Average Recall (AR)</h2>
+<p>To calculate Average Recall (AR), we:</p>
+<ol>
+<li>Find the count of true positives above specified IOU and confidence thresholds for all images containing a ground truth of a particular class.</li>
+<li>Divide that count of true positives by the total number of ground truths to get the recall value per class and IOU threshold. Append that recall value to a list.</li>
+<li>Repeat steps 1 &amp; 2 for multiple IOU thresholds (e.g., [.5, .75])</li>
+<li>Take the average of our list of recalls to arrive at the AR value per class.</li>
+</ol>
+<p>Note that this metric differs from COCO's calculation in two ways:</p>
+<ul>
+<li>COCO averages across classes while calculating AR, while we calculate AR separately for each class. Our AR calculations matches the original FAIR definition of AR, while our mAR calculations match what COCO calls AR.</li>
+<li>COCO calculates three different AR metrics (AR@1, AR@5, AR@100)) by considering only the top 1/5/100 most confident predictions during the matching process. Valor, on the other hand, allows users to input a <code>recall_score_threshold</code> value that will prevent low-confidence predictions from being counted as true positives when calculating AR.</li>
 </ul>
 </article>
 </div>
