@@ -151,7 +151,7 @@ $\rho_{interp} = \underset{\tilde{r}:\tilde{r} \ge r}{max \ \rho (\tilde{r})}$
 
 To calculate Average Recall (AR), we:
 
-1. Find the count of true positives above a certain IOU threshold (e.g., .5) for all images containing a ground truth of a particular class.
+1. Find the count of true positives above specified IOU and confidence thresholds for all images containing a ground truth of a particular class.
 2. Divide that count of true positives by the total number of ground truths to get the recall value per class and IOU threshold. Append that recall value to a list.
 3. Repeat steps 1 & 2 for multiple IOU thresholds (e.g., [.5, .75])
 4. Take the average of our list of recalls to arrive at the AR value per class.
@@ -159,4 +159,4 @@ To calculate Average Recall (AR), we:
 Note that this metric differs from COCO's calculation in two ways:
 
 - COCO averages across classes while calculating AR, while we calculate AR separately for each class. Our AR calculations matches the original FAIR definition of AR, while our mAR calculations match what COCO calls AR.
-- COCO calculates three different AR metrics (AR@1, AR@5, AR@100) by limiting the maximum number of detections which are considered during the matching process. Valor doesn't impose any detection limits when creating matched pairs of ground truths and predictions.
+- COCO calculates three different AR metrics (AR@1, AR@5, AR@100) by limiting the maximum number of detections which are considered during the matching process. Valor doesn't impose any detection limits when creating matched pairs of ground truths and predictions. Instead, we allow users to input a `recall_score_threshold` value that will prevent low-confidence predictions from being counted as true positives when calculating AR.

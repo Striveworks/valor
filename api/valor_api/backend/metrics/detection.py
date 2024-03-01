@@ -60,7 +60,7 @@ def _calculate_ap_and_ar(
     grouper_mappings: dict[str, dict],
     iou_thresholds: list[float],
     grouper_ids_associated_with_gts: set[int],
-    score_threshold: float = 0,
+    recall_score_threshold: float,
 ) -> Tuple[list[schemas.APMetric], list[schemas.ARMetric]]:
     """
     Computes the average precision. Return is a dict with keys
@@ -68,9 +68,9 @@ def _calculate_ap_and_ar(
     `f"IoU={min(iou_thresholds)}:{max(iou_thresholds)}"` which is the average
     of the scores across all of the IoU thresholds.
     """
-    if score_threshold < 0 or score_threshold > 1.0:
+    if recall_score_threshold < 0 or recall_score_threshold > 1.0:
         raise ValueError(
-            "Score threshold should exist in the range 0 <= threshold <= 1."
+            "recall_score_threshold should exist in the range 0 <= threshold <= 1."
         )
     if min(iou_thresholds) <= 0 or max(iou_thresholds) > 1.0:
         raise ValueError(
@@ -91,37 +91,75 @@ def _calculate_ap_and_ar(
 
             precisions = []
             recalls = []
-            cnt_tp = 0
-            cnt_fp = 0
+            # recall true positives require a confidence score above recall_score_threshold, while precision
+            # true positives only require a confidence score above 0
+            recall_cnt_tp = 0
+            recall_cnt_fp = 0
+            recall_cnt_fn = 0
+            precision_cnt_tp = 0
+            precision_cnt_fp = 0
 
             if grouper_id in sorted_ranked_pairs:
                 for row in sorted_ranked_pairs[grouper_id]:
-                    score_conditional = row.score > score_threshold or (
-                        math.isclose(row.score, score_threshold)
-                        and score_threshold > 0
+
+                    precision_score_conditional = row.score > 0 or (
+                        math.isclose(row.score, 0)
                     )
+
+                    recall_score_conditional = (
+                        row.score > recall_score_threshold
+                        or (
+                            math.isclose(row.score, recall_score_threshold)
+                            and recall_score_threshold > 0
+                        )
+                    )
+
                     iou_conditional = (
                         row.iou >= iou_threshold and iou_threshold > 0
                     )
 
-                    if score_conditional and iou_conditional:
-                        cnt_tp += 1
+                    if recall_score_conditional and iou_conditional:
+                        recall_cnt_tp += 1
                     else:
-                        cnt_fp += 1
+                        recall_cnt_fp += 1
 
-                    cnt_fn = (
-                        number_of_groundtruths_per_grouper[grouper_id] - cnt_tp
+                    if precision_score_conditional and iou_conditional:
+                        precision_cnt_tp += 1
+                    else:
+                        precision_cnt_fp += 1
+
+                    recall_cnt_fn = (
+                        number_of_groundtruths_per_grouper[grouper_id]
+                        - precision_cnt_tp
+                    )
+
+                    precision_cnt_fn = (
+                        number_of_groundtruths_per_grouper[grouper_id]
+                        - precision_cnt_tp
                     )
 
                     precisions.append(
-                        cnt_tp / (cnt_tp + cnt_fp) if (cnt_tp + cnt_fp) else 0
+                        precision_cnt_tp
+                        / (precision_cnt_tp + precision_cnt_fp)
+                        if (precision_cnt_tp + precision_cnt_fp)
+                        else 0
                     )
                     recalls.append(
-                        cnt_tp / (cnt_tp + cnt_fn) if (cnt_tp + cnt_fn) else 0
+                        precision_cnt_tp
+                        / (precision_cnt_tp + precision_cnt_fn)
+                        if (precision_cnt_tp + precision_cnt_fn)
+                        else 0
                     )
+
+                recalls_across_thresholds.append(
+                    recall_cnt_tp / (recall_cnt_tp + recall_cnt_fn)
+                    if (recall_cnt_tp + recall_cnt_fn)
+                    else 0
+                )
             else:
                 precisions = [0]
                 recalls = [0]
+                recalls_across_thresholds.append(0)
 
             ap_metrics.append(
                 schemas.APMetric(
@@ -132,8 +170,6 @@ def _calculate_ap_and_ar(
                     label=grouper_label,
                 )
             )
-
-            recalls_across_thresholds.append(recalls[-1])
 
         ar_metrics.append(
             schemas.ARMetric(
@@ -209,6 +245,14 @@ def _compute_detection_metrics(
     ):
         raise ValueError(
             "iou_thresholds_to_return and iou_thresholds_to_compute are required attributes of EvaluationParameters when evaluating detections."
+        )
+
+    if (
+        parameters.recall_score_threshold > 1
+        or parameters.recall_score_threshold < 0
+    ):
+        raise ValueError(
+            "recall_score_threshold should exist in the range 0 <= threshold <= 1."
         )
 
     labels = core.fetch_union_of_labels(
@@ -392,6 +436,7 @@ def _compute_detection_metrics(
         iou_thresholds=parameters.iou_thresholds_to_compute,
         grouper_mappings=grouper_mappings,
         grouper_ids_associated_with_gts=grouper_ids_associated_with_gts,
+        recall_score_threshold=parameters.recall_score_threshold,
     )
 
     # calculate averaged metrics
@@ -591,11 +636,7 @@ def _convert_annotations_to_common_type(
 
 
 @validate_computation
-def compute_detection_metrics(
-    *,
-    db: Session,
-    evaluation_id: int,
-):
+def compute_detection_metrics(*, db: Session, evaluation_id: int):
     """
     Create detection metrics. This function is intended to be run using FastAPI's `BackgroundTasks`.
 

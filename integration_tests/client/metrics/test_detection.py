@@ -136,6 +136,7 @@ def test_evaluate_detection(
             "iou_thresholds_to_compute": [0.1, 0.6],
             "iou_thresholds_to_return": [0.1, 0.6],
             "label_map": None,
+            "recall_score_threshold": 0.0,
         },
         "status": EvaluationStatus.DONE.value,
         "metrics": expected_metrics,
@@ -239,6 +240,7 @@ def test_evaluate_detection(
             "iou_thresholds_to_compute": [0.1, 0.6],
             "iou_thresholds_to_return": [0.1, 0.6],
             "label_map": None,
+            "recall_score_threshold": 0.0,
         },
         "status": EvaluationStatus.DONE.value,
         "metrics": expected_metrics,
@@ -285,6 +287,7 @@ def test_evaluate_detection(
             "iou_thresholds_to_compute": [0.1, 0.6],
             "iou_thresholds_to_return": [0.1, 0.6],
             "label_map": None,
+            "recall_score_threshold": 0.0,
         },
         # check metrics below
         "status": EvaluationStatus.DONE.value,
@@ -331,6 +334,7 @@ def test_evaluate_detection(
             "iou_thresholds_to_compute": [0.1, 0.6],
             "iou_thresholds_to_return": [0.1, 0.6],
             "label_map": None,
+            "recall_score_threshold": 0.0,
         },
         # check metrics below
         "status": EvaluationStatus.DONE.value,
@@ -383,6 +387,7 @@ def test_evaluate_detection(
             "iou_thresholds_to_compute": [0.1, 0.6],
             "iou_thresholds_to_return": [0.1, 0.6],
             "label_map": None,
+            "recall_score_threshold": 0.0,
         },
         # check metrics below
         "status": EvaluationStatus.DONE.value,
@@ -542,6 +547,7 @@ def test_evaluate_detection_with_json_filters(
             "iou_thresholds_to_compute": [0.1, 0.6],
             "iou_thresholds_to_return": [0.1, 0.6],
             "label_map": None,
+            "recall_score_threshold": 0.0,
         },
         # check metrics below
         "status": EvaluationStatus.DONE.value,
@@ -1176,7 +1182,7 @@ def test_evaluate_detection_with_label_maps(
         [["class", "british shorthair"], ["class", "cat"]],
     ]
 
-    # finally, we check that the label mapping works when the label is completely foreign
+    # next, we check that the label mapping works when the label is completely foreign
     # to both groundtruths and predictions
     foo_expected_metrics = [
         {
@@ -1311,3 +1317,134 @@ def test_evaluate_detection_with_label_maps(
         [["class", "cat"], ["foo", "bar"]],
         [["class_name", "cat"], ["foo", "bar"]],
     ]
+
+    # finally, let's test using a higher recall_score_threshold
+    # this new threshold will disqualify all of our predictions for img1
+
+    foo_expected_metrics_with_higher_score_threshold = [
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.1},
+            "value": 0.6633663366336634,
+            "label": {"key": "foo", "value": "bar"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.1},
+            "value": 0.0,
+            "label": {"key": "k2", "value": "v2"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.6},
+            "value": 0.6633663366336634,
+            "label": {"key": "foo", "value": "bar"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.6},
+            "value": 0.0,
+            "label": {"key": "k2", "value": "v2"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.1},
+            "value": 0.504950495049505,
+            "label": {"key": "k1", "value": "v1"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.6},
+            "value": 0.504950495049505,
+            "label": {"key": "k1", "value": "v1"},
+        },
+        {
+            "type": "AR",
+            "parameters": {"ious": [0.1, 0.6]},
+            "value": 0.0,
+            "label": {"key": "k1", "value": "v1"},
+        },
+        {
+            "type": "AR",
+            "parameters": {"ious": [0.1, 0.6]},
+            "value": 0.0,
+            "label": {"key": "k2", "value": "v2"},
+        },
+        {
+            "type": "AR",
+            "parameters": {"ious": [0.1, 0.6]},
+            "value": 0.5,  # recall of 0 for the first image, and 1 for the second image
+            "label": {"key": "foo", "value": "bar"},
+        },
+        {
+            "type": "mAR",
+            "parameters": {"ious": [0.1, 0.6]},
+            "value": 0.16666666666666666,
+        },
+        {
+            "type": "mAP",
+            "parameters": {"iou": 0.1},
+            "value": 0.3894389438943895,
+        },
+        {
+            "type": "mAP",
+            "parameters": {"iou": 0.6},
+            "value": 0.3894389438943895,
+        },
+        {
+            "type": "APAveragedOverIOUs",
+            "parameters": {"ious": [0.1, 0.6]},
+            "value": 0.6633663366336634,
+            "label": {"key": "foo", "value": "bar"},
+        },
+        {
+            "type": "APAveragedOverIOUs",
+            "parameters": {"ious": [0.1, 0.6]},
+            "value": 0.0,
+            "label": {"key": "k2", "value": "v2"},
+        },
+        {
+            "type": "APAveragedOverIOUs",
+            "parameters": {"ious": [0.1, 0.6]},
+            "value": 0.504950495049505,
+            "label": {"key": "k1", "value": "v1"},
+        },
+        {
+            "type": "mAPAveragedOverIOUs",
+            "parameters": {"ious": [0.1, 0.6]},
+            "value": 0.3894389438943895,
+        },
+    ]
+
+    eval_job = model.evaluate_detection(
+        dataset,
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_return=[0.1, 0.6],
+        label_map=label_mapping,
+        recall_score_threshold=0.8,
+    )
+
+    assert len(eval_job.ignored_pred_labels) == 0
+    assert len(eval_job.missing_pred_labels) == 0
+    assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
+
+    assert eval_job.to_dict()["parameters"] == {
+        "task_type": "object-detection",
+        "convert_annotations_to_type": None,
+        "iou_thresholds_to_compute": [0.1, 0.6],
+        "iou_thresholds_to_return": [0.1, 0.6],
+        "label_map": [
+            [["class_name", "maine coon cat"], ["foo", "bar"]],
+            [["class", "siamese cat"], ["foo", "bar"]],
+            [["class", "british shorthair"], ["foo", "bar"]],
+            [["class", "cat"], ["foo", "bar"]],
+            [["class_name", "cat"], ["foo", "bar"]],
+        ],
+        "recall_score_threshold": 0.8,
+    }
+
+    metrics = eval_job.metrics
+    for m in metrics:
+        assert m in foo_expected_metrics_with_higher_score_threshold
+    for m in foo_expected_metrics_with_higher_score_threshold:
+        assert m in metrics
