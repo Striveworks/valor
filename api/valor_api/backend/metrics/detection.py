@@ -614,6 +614,7 @@ def _convert_annotations_to_common_type(
             dataset=dataset,
             source_type=source_type,
             target_type=target_type,
+            task_type=enums.TaskType.OBJECT_DETECTION,
         )
         # model
         source_type = core.get_annotation_type(
@@ -628,6 +629,7 @@ def _convert_annotations_to_common_type(
             model=model,
             source_type=source_type,
             target_type=target_type,
+            task_type=enums.TaskType.OBJECT_DETECTION,
         )
 
     return target_type
