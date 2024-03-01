@@ -69,7 +69,9 @@ def _generate_gt_annotation(
         task_type=task_type,
         labels=labels,
         raster=raster,
-        bounding_box=bounding_box,
+        bounding_box=bounding_box
+        if task_type == enums.TaskType.OBJECT_DETECTION
+        else None,
     )
 
 
@@ -257,7 +259,7 @@ def generate_prediction_data(
     Parameters
     ----------
     client : Session
-    The Client object used to access your Valor instance.
+        The Client object used to access your Valor instance.
     dataset : Dataset
         The dataset object to create predictions for.
     model_name : str

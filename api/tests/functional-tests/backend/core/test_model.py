@@ -7,95 +7,6 @@ from valor_api.backend import core, models
 
 
 @pytest.fixture
-def created_dataset(db: Session, dataset_name: str) -> str:
-    dataset = schemas.Dataset(name=dataset_name)
-    core.create_dataset(db, dataset=dataset)
-    core.create_groundtruth(
-        db=db,
-        groundtruth=schemas.GroundTruth(
-            datum=schemas.Datum(uid="uid1", dataset_name=dataset_name),
-            annotations=[
-                schemas.Annotation(
-                    task_type=enums.TaskType.CLASSIFICATION,
-                    labels=[schemas.Label(key="k1", value="v1")],
-                )
-            ],
-        ),
-    )
-    core.create_groundtruth(
-        db=db,
-        groundtruth=schemas.GroundTruth(
-            datum=schemas.Datum(uid="uid2", dataset_name=dataset_name),
-            annotations=[
-                schemas.Annotation(
-                    task_type=enums.TaskType.OBJECT_DETECTION,
-                    labels=[schemas.Label(key="k1", value="v1")],
-                )
-            ],
-        ),
-    )
-    core.create_groundtruth(
-        db=db,
-        groundtruth=schemas.GroundTruth(
-            datum=schemas.Datum(uid="uid3", dataset_name=dataset_name),
-            annotations=[
-                schemas.Annotation(
-                    task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
-                    labels=[schemas.Label(key="k1", value="v1")],
-                )
-            ],
-        ),
-    )
-    return dataset_name
-
-
-@pytest.fixture
-def created_model(db: Session, model_name: str, created_dataset: str) -> str:
-    model = schemas.Model(name=model_name)
-    core.create_model(db, model=model)
-    core.create_prediction(
-        db=db,
-        prediction=schemas.Prediction(
-            model_name=model_name,
-            datum=schemas.Datum(uid="uid1", dataset_name=created_dataset),
-            annotations=[
-                schemas.Annotation(
-                    task_type=enums.TaskType.CLASSIFICATION,
-                    labels=[schemas.Label(key="k1", value="v1", score=1.0)],
-                )
-            ],
-        ),
-    )
-    core.create_prediction(
-        db=db,
-        prediction=schemas.Prediction(
-            model_name=model_name,
-            datum=schemas.Datum(uid="uid2", dataset_name=created_dataset),
-            annotations=[
-                schemas.Annotation(
-                    task_type=enums.TaskType.OBJECT_DETECTION,
-                    labels=[schemas.Label(key="k1", value="v1", score=1.0)],
-                )
-            ],
-        ),
-    )
-    core.create_prediction(
-        db=db,
-        prediction=schemas.Prediction(
-            model_name=model_name,
-            datum=schemas.Datum(uid="uid3", dataset_name=created_dataset),
-            annotations=[
-                schemas.Annotation(
-                    task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
-                    labels=[schemas.Label(key="k1", value="v1")],
-                )
-            ],
-        ),
-    )
-    return model_name
-
-
-@pytest.fixture
 def created_models(db: Session) -> list[str]:
     model1 = schemas.Model(name="model1")
     model2 = schemas.Model(name="model2")
@@ -145,7 +56,9 @@ def test_model_status(db: Session, created_model, created_dataset):
     # creating
     assert (
         core.get_model_status(
-            db=db, dataset_name=created_dataset, model_name=created_model
+            db=db,
+            dataset_name=created_dataset,
+            model_name=created_model,
         )
         == enums.TableStatus.CREATING
     )
@@ -160,7 +73,9 @@ def test_model_status(db: Session, created_model, created_dataset):
         )
     assert (
         core.get_model_status(
-            db=db, dataset_name=created_dataset, model_name=created_model
+            db=db,
+            dataset_name=created_dataset,
+            model_name=created_model,
         )
         == enums.TableStatus.CREATING
     )
@@ -179,7 +94,9 @@ def test_model_status(db: Session, created_model, created_dataset):
     )
     assert (
         core.get_model_status(
-            db=db, dataset_name=created_dataset, model_name=created_model
+            db=db,
+            dataset_name=created_dataset,
+            model_name=created_model,
         )
         == enums.TableStatus.FINALIZED
     )
@@ -208,7 +125,9 @@ def test_model_status(db: Session, created_model, created_dataset):
     )
     assert (
         core.get_model_status(
-            db=db, dataset_name=created_dataset, model_name=created_model
+            db=db,
+            dataset_name=created_dataset,
+            model_name=created_model,
         )
         == enums.TableStatus.DELETING
     )
@@ -258,7 +177,10 @@ def test_model_status_with_evaluations(
     # test that deletion is blocked while evaluation is running
     with pytest.raises(exceptions.EvaluationRunningError):
         core.set_model_status(
-            db, created_dataset, created_model, enums.TableStatus.DELETING
+            db,
+            created_dataset,
+            created_model,
+            enums.TableStatus.DELETING,
         )
 
     # set the evaluation to the done state
@@ -266,7 +188,10 @@ def test_model_status_with_evaluations(
 
     # test that deletion is unblocked when evaluation is DONE
     core.set_model_status(
-        db, created_dataset, created_model, enums.TableStatus.DELETING
+        db,
+        created_dataset,
+        created_model,
+        enums.TableStatus.DELETING,
     )
 
 
