@@ -137,7 +137,7 @@ def _convert_multipolygon_to_box(
     dataset_id: int, model_id: int | None = None
 ) -> Update:
     raise NotImplementedError(
-        "Conversion from multipolygon to box is currently unsupported."
+        "Conversion from multipolygon to box is currently unsupported. See Issue #470."
     )
 
 
@@ -145,7 +145,7 @@ def _convert_multipolygon_to_polygon(
     dataset_id: int, model_id: int | None = None
 ) -> Update:
     raise NotImplementedError(
-        "Conversion from multipolygon to polygon is currently unsupported."
+        "Conversion from multipolygon to polygon is currently unsupported. See Issue #470."
     )
 
 
@@ -267,58 +267,8 @@ def _convert_raster_to_multipolygon(
     dataset_id: int,
     model_id: int | None = None,
 ) -> Update:
-    """
-    Converts annotation column 'raster' into column 'multipolygon'.
-
-    Parameters
-    ----------
-    dataset_id : int
-        A dataset id.
-    model_id : int, optional
-        A model id.
-
-    Returns
-    ----------
-    sqlalchemy.Update
-        A SQL update to complete the conversion.
-    """
-
-    model_expr = (
-        models.Annotation.model_id == model_id
-        if model_id
-        else models.Annotation.model_id.is_(None)
-    )
-    subquery1 = (
-        select(
-            models.Annotation.id.label("id"),
-            func.ST_MakeValid(
-                type_coerce(
-                    func.ST_DumpAsPolygons(models.Annotation.raster),
-                    GeometricValueType(),
-                ).geom,
-                type_=RawGeometry,
-            ).label("geom"),
-        )
-        .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
-        .where(
-            models.Annotation.polygon.is_(None),
-            models.Annotation.raster.isnot(None),
-            models.Datum.dataset_id == dataset_id,
-            model_expr,
-        )
-        .alias("subquery1")
-    )
-    subquery2 = select(
-        subquery1.c.id.label("id"),
-        func.ST_Union(
-            subquery1.c.geom,
-            type_=RawGeometry,
-        ).label("raster_multipolygon"),
-    ).alias("subquery2")
-    return (
-        update(models.Annotation)
-        .where(models.Annotation.id == subquery2.c.id)
-        .values(multipolygon=subquery2.c.raster_multipolygon)
+    raise NotImplementedError(
+        "Conversion from raster to multipolygon is currently unsupported. See Issue #470."
     )
 
 

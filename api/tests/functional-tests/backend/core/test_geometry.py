@@ -9,11 +9,8 @@ from valor_api import enums, schemas
 from valor_api.backend import models
 from valor_api.backend.core import fetch_dataset
 from valor_api.backend.core.geometry import (
-    _convert_multipolygon_to_box,
-    _convert_multipolygon_to_polygon,
     _convert_polygon_to_box,
     _convert_raster_to_box,
-    _convert_raster_to_multipolygon,
     _convert_raster_to_polygon,
     convert_geometry,
     get_annotation_type,
@@ -234,7 +231,6 @@ def test_convert_from_raster(
     polygon: Polygon,
 ):
     dataset = fetch_dataset(db=db, name=create_objdet_dataset)
-
     annotation_id = db.scalar(
         select(models.Annotation.id).where(
             and_(
@@ -252,9 +248,6 @@ def test_convert_from_raster(
 
     q = _convert_raster_to_polygon(dataset_id=dataset.id)
     db.execute(q)
-
-    # # q = _convert_raster_to_multipolygon(dataset_id=dataset.id)
-    # # db.execute(q)
 
     annotation = db.query(
         select(models.Annotation)
@@ -276,9 +269,45 @@ def test_convert_from_raster(
     assert converted_polygon == polygon
 
 
-def test_convert_raster_to_polygon():
-    pass
+def test_convert_polygon_to_bbox(
+    db: Session,
+    create_objdet_dataset: str,
+    bbox: BoundingBox,
+):
+    dataset = fetch_dataset(db=db, name=create_objdet_dataset)
+    annotation_id = db.scalar(
+        select(models.Annotation.id).where(
+            and_(
+                models.Annotation.box.is_(None),
+                models.Annotation.polygon.isnot(None),
+                models.Annotation.multipolygon.is_(None),
+                models.Annotation.raster.is_(None),
+            )
+        )
+    )
+    assert annotation_id is not None
 
+    q = _convert_polygon_to_box(dataset_id=dataset.id)
+    db.execute(q)
 
-def test_convert_polygon_to_bbox():
-    pass
+    annotation = db.query(
+        select(models.Annotation)
+        .where(models.Annotation.id == annotation_id)
+        .subquery()
+    ).one_or_none()
+    assert annotation is not None
+
+    assert annotation.box is not None
+    assert annotation.polygon is not None
+    assert annotation.multipolygon is None
+    assert annotation.raster is None
+
+    converted_box = _load_box(db, annotation.box)
+
+    # rotate points
+    converted_box.polygon.points = converted_box.polygon.points[1:] + [
+        converted_box.polygon.points[0]
+    ]
+
+    # check that points match
+    assert converted_box == bbox
