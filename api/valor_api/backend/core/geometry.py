@@ -1,6 +1,7 @@
 from geoalchemy2 import Geometry
 from geoalchemy2.types import CompositeType
 from sqlalchemy import (
+    BinaryExpression,
     Float,
     Update,
     distinct,
@@ -92,7 +93,7 @@ def get_annotation_type(
 
 
 def _convert_polygon_to_box(
-    dataset_id: int, model_id: int | None = None
+    where_conditions: list[BinaryExpression],
 ) -> Update:
     """
     Converts annotation column 'polygon' into column 'box'.
@@ -110,19 +111,13 @@ def _convert_polygon_to_box(
         A SQL update to complete the conversion.
     """
 
-    model_expr = (
-        models.Annotation.model_id == model_id
-        if model_id
-        else models.Annotation.model_id.is_(None)
-    )
     subquery = (
         select(models.Annotation.id)
         .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
         .where(
             models.Annotation.box.is_(None),
             models.Annotation.polygon.isnot(None),
-            models.Datum.dataset_id == dataset_id,
-            model_expr,
+            *where_conditions,
         )
         .alias("subquery")
     )
@@ -134,7 +129,7 @@ def _convert_polygon_to_box(
 
 
 def _convert_multipolygon_to_box(
-    dataset_id: int, model_id: int | None = None
+    where_conditions: list[BinaryExpression],
 ) -> Update:
     raise NotImplementedError(
         "Conversion from multipolygon to box is currently unsupported. See Issue #470."
@@ -142,16 +137,14 @@ def _convert_multipolygon_to_box(
 
 
 def _convert_multipolygon_to_polygon(
-    dataset_id: int, model_id: int | None = None
+    where_conditions: list[BinaryExpression],
 ) -> Update:
     raise NotImplementedError(
         "Conversion from multipolygon to polygon is currently unsupported. See Issue #470."
     )
 
 
-def _convert_raster_to_box(
-    dataset_id: int, model_id: int | None = None
-) -> Update:
+def _convert_raster_to_box(where_conditions: list[BinaryExpression]) -> Update:
     """
     Converts annotation column 'raster' into column 'box'.
 
@@ -168,11 +161,6 @@ def _convert_raster_to_box(
         A SQL update to complete the conversion.
     """
 
-    model_expr = (
-        models.Annotation.model_id == model_id
-        if model_id
-        else models.Annotation.model_id.is_(None)
-    )
     subquery = (
         select(
             models.Annotation.id.label("id"),
@@ -185,8 +173,7 @@ def _convert_raster_to_box(
         .where(
             models.Annotation.box.is_(None),
             models.Annotation.raster.isnot(None),
-            models.Datum.dataset_id == dataset_id,
-            model_expr,
+            *where_conditions,
         )
         .group_by(models.Annotation.id)
         .alias("subquery")
@@ -199,8 +186,7 @@ def _convert_raster_to_box(
 
 
 def _convert_raster_to_polygon(
-    dataset_id: int,
-    model_id: int | None = None,
+    where_conditions: list[BinaryExpression],
 ) -> Update:
     """
     Converts annotation column 'raster' into column 'polygon'.
@@ -217,12 +203,6 @@ def _convert_raster_to_polygon(
     sqlalchemy.Update
         A SQL update to complete the conversion.
     """
-
-    model_expr = (
-        models.Annotation.model_id == model_id
-        if model_id
-        else models.Annotation.model_id.is_(None)
-    )
 
     pixels_subquery = select(
         type_coerce(
@@ -249,8 +229,7 @@ def _convert_raster_to_polygon(
         .where(
             models.Annotation.polygon.is_(None),
             models.Annotation.raster.isnot(None),
-            models.Datum.dataset_id == dataset_id,
-            model_expr,
+            *where_conditions,
         )
         .group_by(models.Annotation.id)
         .subquery()
@@ -264,8 +243,7 @@ def _convert_raster_to_polygon(
 
 
 def _convert_raster_to_multipolygon(
-    dataset_id: int,
-    model_id: int | None = None,
+    where_conditions: list[BinaryExpression],
 ) -> Update:
     raise NotImplementedError(
         "Conversion from raster to multipolygon is currently unsupported. See Issue #470."
@@ -278,6 +256,7 @@ def convert_geometry(
     target_type: AnnotationType,
     dataset: models.Dataset,
     model: models.Model | None = None,
+    task_type: TaskType | None = None,
 ):
     """
     Converts geometry into some target type
@@ -292,8 +271,10 @@ def convert_geometry(
         The annotation type we wish to convert to.
     dataset : models.Dataset
         The dataset of the geometry.
-    model : models.Model
+    model : models.Model, optional
         The model of the geometry.
+    task_type : enums.TaskType, optional
+        A task type to stratify the conversion by.
     """
     # Check typing
     valid_geometric_types = [
@@ -331,10 +312,30 @@ def convert_geometry(
         },
     }
 
+    # define model expression
+    model_expr = (
+        models.Annotation.model_id == model.id
+        if model
+        else models.Annotation.model_id.is_(None)
+    )
+
+    # define task type expression
+    task_type_expr = (
+        models.Annotation.task_type == task_type.value
+        if task_type
+        else models.Annotation.task_type.isnot(None)
+    )
+
+    # define where expression
+    where_conditions = [
+        task_type_expr,
+        models.Datum.dataset_id == dataset.id,
+        model_expr,
+    ]
+
     # get update
     update_stmt = source_to_target_conversion[source_type][target_type](
-        dataset_id=dataset.id,
-        model_id=model.id if model else None,
+        where_conditions
     )
 
     try:

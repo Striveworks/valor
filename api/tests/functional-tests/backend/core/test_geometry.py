@@ -230,7 +230,6 @@ def test_convert_from_raster(
     bbox: BoundingBox,
     polygon: Polygon,
 ):
-    dataset = fetch_dataset(db=db, name=create_objdet_dataset)
     annotation_id = db.scalar(
         select(models.Annotation.id).where(
             and_(
@@ -243,10 +242,10 @@ def test_convert_from_raster(
     )
     assert annotation_id is not None
 
-    q = _convert_raster_to_box(dataset_id=dataset.id)
+    q = _convert_raster_to_box([])
     db.execute(q)
 
-    q = _convert_raster_to_polygon(dataset_id=dataset.id)
+    q = _convert_raster_to_polygon([])
     db.execute(q)
 
     annotation = db.query(
@@ -274,7 +273,6 @@ def test_convert_polygon_to_bbox(
     create_objdet_dataset: str,
     bbox: BoundingBox,
 ):
-    dataset = fetch_dataset(db=db, name=create_objdet_dataset)
     annotation_id = db.scalar(
         select(models.Annotation.id).where(
             and_(
@@ -287,7 +285,7 @@ def test_convert_polygon_to_bbox(
     )
     assert annotation_id is not None
 
-    q = _convert_polygon_to_box(dataset_id=dataset.id)
+    q = _convert_polygon_to_box([])
     db.execute(q)
 
     annotation = db.query(
