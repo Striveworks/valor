@@ -191,8 +191,10 @@ def create_metric_mappings(
     db: Session,
     metrics: Sequence[
         schemas.APMetric
+        | schemas.ARMetric
         | schemas.APMetricAveragedOverIOUs
         | schemas.mAPMetric
+        | schemas.mARMetric
         | schemas.mAPMetricAveragedOverIOUs
         | schemas.ConfusionMatrix
         | schemas.AccuracyMetric

@@ -1,7 +1,8 @@
 import heapq
 import math
+from collections import defaultdict
 from dataclasses import dataclass
-from typing import Sequence
+from typing import Sequence, Tuple
 
 from geoalchemy2 import functions as gfunc
 from sqlalchemy import and_, case, func, select
@@ -53,71 +54,112 @@ def _calculate_101_pt_interp(precisions, recalls) -> float:
     return ret / 101
 
 
-def _ap(
+def _calculate_ap_and_ar(
     sorted_ranked_pairs: dict[int, list[RankedPair]],
     number_of_groundtruths_per_grouper: dict[int, int],
     grouper_mappings: dict[str, dict],
     iou_thresholds: list[float],
     grouper_ids_associated_with_gts: set[int],
-    score_threshold: float = 0,
-) -> Sequence[schemas.APMetric]:
+    recall_score_threshold: float,
+) -> Tuple[list[schemas.APMetric], list[schemas.ARMetric]]:
     """
     Computes the average precision. Return is a dict with keys
     `f"IoU={iou_thres}"` for each `iou_thres` in `iou_thresholds` as well as
     `f"IoU={min(iou_thresholds)}:{max(iou_thresholds)}"` which is the average
     of the scores across all of the IoU thresholds.
     """
-    if score_threshold < 0 or score_threshold > 1.0:
+    if recall_score_threshold < 0 or recall_score_threshold > 1.0:
         raise ValueError(
-            "Score threshold should exist in the range 0 <= threshold <= 1."
+            "recall_score_threshold should exist in the range 0 <= threshold <= 1."
         )
     if min(iou_thresholds) <= 0 or max(iou_thresholds) > 1.0:
         raise ValueError(
             "IOU thresholds should exist in the range 0 < threshold <= 1."
         )
 
-    detection_metrics = []
-    for iou_threshold in iou_thresholds:
-        for grouper_id, grouper_label in grouper_mappings[
-            "grouper_id_to_grouper_label_mapping"
-        ].items():
+    ap_metrics = []
+    ar_metrics = []
+
+    for grouper_id, grouper_label in grouper_mappings[
+        "grouper_id_to_grouper_label_mapping"
+    ].items():
+        recalls_across_thresholds = []
+
+        for iou_threshold in iou_thresholds:
             if grouper_id not in grouper_ids_associated_with_gts:
                 continue
 
             precisions = []
             recalls = []
-            cnt_tp = 0
-            cnt_fp = 0
+            # recall true positives require a confidence score above recall_score_threshold, while precision
+            # true positives only require a confidence score above 0
+            recall_cnt_tp = 0
+            recall_cnt_fp = 0
+            recall_cnt_fn = 0
+            precision_cnt_tp = 0
+            precision_cnt_fp = 0
 
             if grouper_id in sorted_ranked_pairs:
                 for row in sorted_ranked_pairs[grouper_id]:
-                    score_conditional = row.score > score_threshold or (
-                        math.isclose(row.score, score_threshold)
-                        and score_threshold > 0
+
+                    precision_score_conditional = row.score > 0
+
+                    recall_score_conditional = (
+                        row.score > recall_score_threshold
+                        or (
+                            math.isclose(row.score, recall_score_threshold)
+                            and recall_score_threshold > 0
+                        )
                     )
+
                     iou_conditional = (
                         row.iou >= iou_threshold and iou_threshold > 0
                     )
 
-                    if score_conditional and iou_conditional:
-                        cnt_tp += 1
+                    if recall_score_conditional and iou_conditional:
+                        recall_cnt_tp += 1
                     else:
-                        cnt_fp += 1
-                    cnt_fn = (
-                        number_of_groundtruths_per_grouper[grouper_id] - cnt_tp
+                        recall_cnt_fp += 1
+
+                    if precision_score_conditional and iou_conditional:
+                        precision_cnt_tp += 1
+                    else:
+                        precision_cnt_fp += 1
+
+                    recall_cnt_fn = (
+                        number_of_groundtruths_per_grouper[grouper_id]
+                        - precision_cnt_tp
+                    )
+
+                    precision_cnt_fn = (
+                        number_of_groundtruths_per_grouper[grouper_id]
+                        - precision_cnt_tp
                     )
 
                     precisions.append(
-                        cnt_tp / (cnt_tp + cnt_fp) if (cnt_tp + cnt_fp) else 0
+                        precision_cnt_tp
+                        / (precision_cnt_tp + precision_cnt_fp)
+                        if (precision_cnt_tp + precision_cnt_fp)
+                        else 0
                     )
                     recalls.append(
-                        cnt_tp / (cnt_tp + cnt_fn) if (cnt_tp + cnt_fn) else 0
+                        precision_cnt_tp
+                        / (precision_cnt_tp + precision_cnt_fn)
+                        if (precision_cnt_tp + precision_cnt_fn)
+                        else 0
                     )
+
+                recalls_across_thresholds.append(
+                    recall_cnt_tp / (recall_cnt_tp + recall_cnt_fn)
+                    if (recall_cnt_tp + recall_cnt_fn)
+                    else 0
+                )
             else:
                 precisions = [0]
                 recalls = [0]
+                recalls_across_thresholds.append(0)
 
-            detection_metrics.append(
+            ap_metrics.append(
                 schemas.APMetric(
                     iou=iou_threshold,
                     value=_calculate_101_pt_interp(
@@ -127,7 +169,20 @@ def _ap(
                 )
             )
 
-    return detection_metrics
+        ar_metrics.append(
+            schemas.ARMetric(
+                ious=set(iou_thresholds),
+                value=(
+                    sum(recalls_across_thresholds)
+                    / len(recalls_across_thresholds)
+                    if recalls_across_thresholds
+                    else -1
+                ),
+                label=grouper_label,
+            )
+        )
+
+    return ap_metrics, ar_metrics
 
 
 def _compute_detection_metrics(
@@ -138,8 +193,10 @@ def _compute_detection_metrics(
     target_type: enums.AnnotationType,
 ) -> Sequence[
     schemas.APMetric
+    | schemas.ARMetric
     | schemas.APMetricAveragedOverIOUs
     | schemas.mAPMetric
+    | schemas.mARMetric
     | schemas.mAPMetricAveragedOverIOUs
 ]:
     """
@@ -161,7 +218,7 @@ def _compute_detection_metrics(
 
     Returns
     ----------
-    List[schemas.APMetric | schemas.APMetricAveragedOverIOUs | schemas.mAPMetric | schemas.mAPMetricAveragedOverIOUs]
+    List[schemas.APMetric | schemas.ARMetric | schemas.APMetricAveragedOverIOUs | schemas.mAPMetric | schemas.mARMetric | schemas.mAPMetricAveragedOverIOUs]
         A list of average precision metrics.
 
     """
@@ -186,6 +243,14 @@ def _compute_detection_metrics(
     ):
         raise ValueError(
             "iou_thresholds_to_return and iou_thresholds_to_compute are required attributes of EvaluationParameters when evaluating detections."
+        )
+
+    if (
+        parameters.recall_score_threshold > 1
+        or parameters.recall_score_threshold < 0
+    ):
+        raise ValueError(
+            "recall_score_threshold should exist in the range 0 <= threshold <= 1."
         )
 
     labels = core.fetch_union_of_labels(
@@ -363,48 +428,45 @@ def _compute_detection_metrics(
         )
 
     # Compute AP
-    detection_metrics = _ap(
+    ap_metrics, ar_metrics = _calculate_ap_and_ar(
         sorted_ranked_pairs=ranking,
         number_of_groundtruths_per_grouper=number_of_groundtruths_per_grouper,
         iou_thresholds=parameters.iou_thresholds_to_compute,
         grouper_mappings=grouper_mappings,
         grouper_ids_associated_with_gts=grouper_ids_associated_with_gts,
+        recall_score_threshold=parameters.recall_score_threshold,
     )
 
-    # now extend to the averaged AP metrics and mAP metric
-    mean_detection_metrics = _compute_mean_detection_metrics_from_aps(
-        detection_metrics
+    # calculate averaged metrics
+    mean_ap_metrics = _compute_mean_detection_metrics_from_aps(ap_metrics)
+    mean_ar_metrics = _compute_mean_ar_metrics(ar_metrics)
+
+    ap_metrics_ave_over_ious = list(
+        _compute_detection_metrics_averaged_over_ious_from_aps(ap_metrics)
     )
 
-    detection_metrics_ave_over_ious = list(
-        _compute_detection_metrics_averaged_over_ious_from_aps(
-            detection_metrics
-        )
-    )
-    mean_detection_metrics_ave_over_ious = list(
-        _compute_mean_detection_metrics_from_aps(
-            detection_metrics_ave_over_ious
-        )
+    mean_ap_metrics_ave_over_ious = list(
+        _compute_mean_detection_metrics_from_aps(ap_metrics_ave_over_ious)
     )
 
     # filter out only specified ious
-    detection_metrics = [
-        m
-        for m in detection_metrics
-        if m.iou in parameters.iou_thresholds_to_return
+    ap_metrics = [
+        m for m in ap_metrics if m.iou in parameters.iou_thresholds_to_return
     ]
-    mean_detection_metrics = [
+    mean_ap_metrics = [
         m
-        for m in mean_detection_metrics
+        for m in mean_ap_metrics
         if isinstance(m, schemas.mAPMetric)
         and m.iou in parameters.iou_thresholds_to_return
     ]
 
     return (
-        detection_metrics
-        + mean_detection_metrics
-        + detection_metrics_ave_over_ious
-        + mean_detection_metrics_ave_over_ious
+        ap_metrics
+        + ar_metrics
+        + mean_ap_metrics
+        + mean_ar_metrics
+        + ap_metrics_ave_over_ious
+        + mean_ap_metrics_ave_over_ious
     )
 
 
@@ -448,6 +510,30 @@ def _average_ignore_minus_one(a):
     return -1 if div0_flag else num / denom
 
 
+def _compute_mean_ar_metrics(
+    ar_metrics: Sequence[schemas.ARMetric],
+) -> list[schemas.mARMetric]:
+    """Calculate the mean of a list of AR metrics."""
+
+    if len(ar_metrics) == 0:
+        return []
+
+    ious_to_values = defaultdict(list)
+    for metric in ar_metrics:
+        ious_to_values[frozenset(metric.ious)].append(metric.value)
+
+    mean_metrics = []
+    for ious in ious_to_values.keys():
+        mean_metrics.append(
+            schemas.mARMetric(
+                ious=ious,
+                value=_average_ignore_minus_one(ious_to_values[ious]),
+            )
+        )
+
+    return mean_metrics
+
+
 def _compute_mean_detection_metrics_from_aps(
     ap_scores: Sequence[schemas.APMetric | schemas.APMetricAveragedOverIOUs],
 ) -> Sequence[schemas.mAPMetric | schemas.mAPMetricAveragedOverIOUs]:
@@ -458,7 +544,6 @@ def _compute_mean_detection_metrics_from_aps(
 
     # dictionary for mapping an iou threshold to set of APs
     vals = {}
-    labels: list[schemas.Label] = []
     for ap in ap_scores:
         if hasattr(ap, "iou"):
             iou = ap.iou  # type: ignore - pyright doesn't consider hasattr checks
@@ -468,15 +553,16 @@ def _compute_mean_detection_metrics_from_aps(
             vals[iou] = []
         vals[iou].append(ap.value)
 
-        if ap.label not in labels:
-            labels.append(ap.label)
-
     # get mAP metrics at the individual IOUs
     mean_detection_metrics = [
-        schemas.mAPMetric(iou=iou, value=_average_ignore_minus_one(vals[iou]))
-        if isinstance(iou, float)
-        else schemas.mAPMetricAveragedOverIOUs(
-            ious=iou, value=_average_ignore_minus_one(vals[iou])
+        (
+            schemas.mAPMetric(
+                iou=iou, value=_average_ignore_minus_one(vals[iou])
+            )
+            if isinstance(iou, float)
+            else schemas.mAPMetricAveragedOverIOUs(
+                ious=iou, value=_average_ignore_minus_one(vals[iou])
+            )
         )
         for iou in vals.keys()
     ]
@@ -550,11 +636,7 @@ def _convert_annotations_to_common_type(
 
 
 @validate_computation
-def compute_detection_metrics(
-    *,
-    db: Session,
-    evaluation_id: int,
-):
+def compute_detection_metrics(*, db: Session, evaluation_id: int):
     """
     Create detection metrics. This function is intended to be run using FastAPI's `BackgroundTasks`.
 

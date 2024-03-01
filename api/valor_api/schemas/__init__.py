@@ -36,6 +36,7 @@ from .metrics import (
     AccuracyMetric,
     APMetric,
     APMetricAveragedOverIOUs,
+    ARMetric,
     ConfusionMatrix,
     ConfusionMatrixEntry,
     ConfusionMatrixResponse,
@@ -47,6 +48,7 @@ from .metrics import (
     ROCAUCMetric,
     mAPMetric,
     mAPMetricAveragedOverIOUs,
+    mARMetric,
     mIOUMetric,
 )
 from .status import Health, Readiness
@@ -83,6 +85,8 @@ __all__ = [
     "ROCAUCMetric",
     "ConfusionMatrixResponse",
     "APMetric",
+    "ARMetric",
+    "mARMetric",
     "APMetricAveragedOverIOUs",
     "GeoJSONPoint",
     "GeoJSONPolygon",

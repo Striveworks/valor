@@ -126,6 +126,7 @@ def test_generate_prediction_data(client: Client):
             "iou_thresholds_to_compute": [0.1, 0.9],
             "iou_thresholds_to_return": [0.1, 0.9],
             "label_map": None,
+            "recall_score_threshold": 0.0,
         },
     }
     assert len(eval_job.metrics) > 0

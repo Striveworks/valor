@@ -18,6 +18,8 @@ class EvaluationParameters:
         A list of floats describing which Intersection over Union (IoUs) thresholds to calculate a metric for. Must be a subset of `iou_thresholds_to_compute`.
     label_map: Optional[List[List[List[str]]]]
         Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
+    recall_score_threshold: float, default=0
+        The confidence score threshold for use when determining whether to count a prediction as a true positive or not while calculating Average Recall.
     """
 
     task_type: TaskType
@@ -27,6 +29,7 @@ class EvaluationParameters:
     iou_thresholds_to_compute: Optional[List[float]] = None
     iou_thresholds_to_return: Optional[List[float]] = None
     label_map: Optional[List[List[List[str]]]] = None
+    recall_score_threshold: float = 0
 
 
 @dataclass
