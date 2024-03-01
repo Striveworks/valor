@@ -102,9 +102,7 @@ def _calculate_ap_and_ar(
             if grouper_id in sorted_ranked_pairs:
                 for row in sorted_ranked_pairs[grouper_id]:
 
-                    precision_score_conditional = row.score > 0 or (
-                        math.isclose(row.score, 0)
-                    )
+                    precision_score_conditional = row.score > 0
 
                     recall_score_conditional = (
                         row.score > recall_score_threshold

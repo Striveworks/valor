@@ -131,6 +131,7 @@ def test__calculate_ap_and_ar():
         grouper_mappings=grouper_mappings,
         iou_thresholds=iou_thresholds,
         grouper_ids_associated_with_gts=grouper_ids_associated_with_gts,
+        recall_score_threshold=0.0,
     )
 
     assert len(ap_metrics) == len(reference_ap_metrics)
@@ -153,6 +154,7 @@ def test__calculate_ap_and_ar():
                 grouper_mappings=grouper_mappings,
                 iou_thresholds=iou_thresholds + [0],
                 grouper_ids_associated_with_gts=grouper_ids_associated_with_gts,
+                recall_score_threshold=0.0,
             )
 
     # Test score threshold outside 0 <= t <= 1
