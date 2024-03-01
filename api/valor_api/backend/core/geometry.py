@@ -5,6 +5,7 @@ from sqlalchemy import (
     Update,
     distinct,
     func,
+    literal_column,
     select,
     type_coerce,
     update,
@@ -187,6 +188,7 @@ def _convert_raster_to_box(
             models.Datum.dataset_id == dataset_id,
             model_expr,
         )
+        .group_by(models.Annotation.id)
         .alias("subquery")
     )
     return (
@@ -221,37 +223,43 @@ def _convert_raster_to_polygon(
         if model_id
         else models.Annotation.model_id.is_(None)
     )
-    subquery1 = (
+
+    pixels_subquery = select(
+        type_coerce(
+            func.ST_PixelAsPoints(models.Annotation.raster, 1),
+            type_=GeometricValueType,
+        ).geom.label("geom")
+    ).lateral("pixels")
+
+    subquery = (
         select(
             models.Annotation.id.label("id"),
-            func.ST_MakeValid(
-                type_coerce(
-                    func.ST_DumpAsPolygons(models.Annotation.raster),
-                    GeometricValueType(),
-                ).geom,
-                type_=RawGeometry,
-            ).label("geom"),
+            func.ST_ConvexHull(func.ST_Collect(pixels_subquery.c.geom)).label(
+                "raster_polygon"
+            ),
         )
+        .select_from(models.Annotation)
         .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
+        .join(
+            pixels_subquery,
+            literal_column(
+                "true"
+            ),  # Joining the lateral subquery doesn't require a condition
+        )
         .where(
             models.Annotation.polygon.is_(None),
             models.Annotation.raster.isnot(None),
             models.Datum.dataset_id == dataset_id,
             model_expr,
         )
-        .alias("subquery1")
+        .group_by(models.Annotation.id)
+        .subquery()
     )
-    subquery2 = select(
-        subquery1.c.id.label("id"),
-        func.ST_ConvexHull(
-            func.ST_Collect(subquery1.c.geom),
-            type_=RawGeometry,
-        ).label("raster_polygon"),
-    ).alias("subquery2")
+
     return (
         update(models.Annotation)
-        .where(models.Annotation.id == subquery2.c.id)
-        .values(polygon=subquery2.c.raster_polygon)
+        .where(models.Annotation.id == subquery.c.id)
+        .values(polygon=subquery.c.raster_polygon)
     )
 
 

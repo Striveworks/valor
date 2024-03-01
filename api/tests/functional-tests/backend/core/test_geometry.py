@@ -28,7 +28,6 @@ from valor_api.schemas import (
     MultiPolygon,
     Point,
     Polygon,
-    Prediction,
     Raster,
 )
 
@@ -36,22 +35,29 @@ from valor_api.schemas import (
 @pytest.fixture
 def rotated_box_points() -> list[Point]:
     return [
+        Point(x=4, y=0),
         Point(x=1, y=3),
         Point(x=4, y=6),
         Point(x=7, y=3),
-        Point(x=4, y=0),
-        Point(x=1, y=3),
     ]
 
 
 @pytest.fixture
-def bbox() -> BoundingBox:
+def bbox(rotated_box_points) -> BoundingBox:
     """Defined as the envelope of `rotated_box_points`."""
-    return BoundingBox.from_extrema(
-        xmin=1,
-        xmax=7,
-        ymin=0,
-        ymax=6,
+    minX = min([pt.x for pt in rotated_box_points])
+    maxX = max([pt.x for pt in rotated_box_points])
+    minY = min([pt.y for pt in rotated_box_points])
+    maxY = max([pt.y for pt in rotated_box_points])
+    return BoundingBox(
+        polygon=BasicPolygon(
+            points=[
+                Point(x=minX, y=maxY),
+                Point(x=maxX, y=maxY),
+                Point(x=maxX, y=minY),
+                Point(x=minX, y=minY),
+            ]
+        )
     )
 
 
@@ -73,20 +79,12 @@ def multipolygon(polygon) -> MultiPolygon:
 def raster() -> Raster:
     """Rasterization of `rotated_box_points`."""
     r = np.zeros((10, 10))
-    for y in range(-1, -5, -1):
-        for x in range(5 + y, 4 - y, 1):
+    for y in range(0, 3):
+        for x in range(4 - y, y + 5, 1):
             r[y, x] = 1
-    for y in range(-5, -8, -1):
-
-        # 2 - 6   -5       -3-y           12 + y
-        # 3 - 5   -6       -3-y           12 + y
-        # 4 -     -7       -3-y           12 + y
-
-        for x in range(-3 - y, 12 + y):
-            print(y, x)
+    for y in range(3, 8):
+        for x in range(y - 2, 11 - y):
             r[y, x] = 1
-    print()
-    print(r)
     return Raster.from_numpy(r == 1)
 
 
@@ -220,10 +218,20 @@ def test_convert_geometry_input(
     assert "currently unsupported" in str(e)
 
 
-def test__convert_raster_to_bbox(
+def _load_polygon(db: Session, polygon) -> Polygon:
+    geom = json.loads(db.scalar(func.ST_AsGeoJSON(polygon)))
+    return schemas.metadata.geojson_from_dict(data=geom).geometry()
+
+
+def _load_box(db: Session, box) -> BoundingBox:
+    return schemas.BoundingBox(polygon=_load_polygon(db, box).boundary)
+
+
+def test_convert_from_raster(
     db: Session,
     create_objdet_dataset: str,
     bbox: BoundingBox,
+    polygon: Polygon,
 ):
     dataset = fetch_dataset(db=db, name=create_objdet_dataset)
 
@@ -242,6 +250,12 @@ def test__convert_raster_to_bbox(
     q = _convert_raster_to_box(dataset_id=dataset.id)
     db.execute(q)
 
+    q = _convert_raster_to_polygon(dataset_id=dataset.id)
+    db.execute(q)
+
+    # # q = _convert_raster_to_multipolygon(dataset_id=dataset.id)
+    # # db.execute(q)
+
     annotation = db.query(
         select(models.Annotation)
         .where(models.Annotation.id == annotation_id)
@@ -250,22 +264,16 @@ def test__convert_raster_to_bbox(
     assert annotation is not None
 
     assert annotation.box is not None
-    assert annotation.polygon is None
+    assert annotation.polygon is not None
     assert annotation.multipolygon is None
     assert annotation.raster is not None
 
-    geom = json.loads(
-        db.scalar(func.ST_AsGeoJSON(func.ST_Envelope(annotation.raster)))
-    )
-    converted_box = schemas.BoundingBox(
-        polygon=schemas.metadata.geojson_from_dict(data=geom)
-        .geometry()
-        .boundary,  # type: ignore - this is guaranteed to be a polygon
-    )
+    converted_box = _load_box(db, annotation.box)
+    converted_polygon = _load_polygon(db, annotation.polygon)
 
     # check that points match
-    for original_point in bbox.polygon.points:
-        assert original_point in converted_box.polygon.points
+    assert converted_box == bbox
+    assert converted_polygon == polygon
 
 
 def test_convert_raster_to_polygon():
