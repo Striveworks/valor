@@ -54,28 +54,7 @@ def _calculate_101_pt_interp(precisions, recalls) -> float:
     return ret / 101
 
 
-# TODO
-def _calculate_ar():
-    """
-    To calculate Average Recall (AR):
-    1) Find the count of true positives above a certain IOU threshold (e.g., .5) for all images containing a ground truth of a particular class.
-    2) Divide that count of true positives by the total number of ground truths to get the recall per class and IOU threshold. Append that recall value to a list.
-    3) Repeat steps 1 & 2 for multiple IOU thresholds (e.g., [.5, .75])
-    4) Take the average of your list of recalls
-
-    Note that this metric differs from [COCO's calculation](https://cocodataset.org/#detection-eval) in two ways:
-    - [COCO calculates](https://github.com/cocodataset/cocoapi/blob/8c9bcc3cf640524c4c20a9c40e89cb6a2f2fa0e9/PythonAPI/pycocotools/cocoeval.py#L466) three different AR metrics (AR@1, AR@5, AR@100) by [limiting the maximum number of detections which are considered during the matching process](https://github.com/rafaelpadilla/review_object_detection_metrics/blob/2efe66d2c4b89e4fcc64e490d4caced2096f03aa/src/evaluators/coco_evaluator.py#L138), while Valor doesn't impose any detection limits when creating matched pairs of ground truths and predictions.
-    - COCO averages across classes while calculating AR, while we calculate AR separately for each class (note this holds true for AP as well: COCO's "Average Precision" is the same calculation as what we call "Mean Average Precision"). Our calculations matches the [original FAIR definition](https://arxiv.org/pdf/1502.05082.pdf) of AR.
-
-    References
-    - [Efficient Graph-Friendly COCO Metric Computation for Train-TimeModel Evaluation](https://arxiv.org/pdf/2207.12120.pdf)
-    - [What makes for effective detection proposals?](https://arxiv.org/abs/1502.05082)
-    """
-    pass
-
-
-# TODO _calculate_ap()?
-def _ap(
+def _calculate_ap_and_ar(
     sorted_ranked_pairs: dict[int, list[RankedPair]],
     number_of_groundtruths_per_grouper: dict[int, int],
     grouper_mappings: dict[str, dict],
@@ -101,8 +80,6 @@ def _ap(
     ap_metrics = []
     ar_metrics = []
 
-    # TODO delete if not needed
-    # confusion_matrices = []
     for grouper_id, grouper_label in grouper_mappings[
         "grouper_id_to_grouper_label_mapping"
     ].items():
@@ -411,8 +388,7 @@ def _compute_detection_metrics(
         )
 
     # Compute AP
-    # TODO rename _ap?
-    ap_metrics, ar_metrics = _ap(
+    ap_metrics, ar_metrics = _calculate_ap_and_ar(
         sorted_ranked_pairs=ranking,
         number_of_groundtruths_per_grouper=number_of_groundtruths_per_grouper,
         iou_thresholds=parameters.iou_thresholds_to_compute,
@@ -527,7 +503,6 @@ def _compute_mean_detection_metrics_from_aps(
 
     # dictionary for mapping an iou threshold to set of APs
     vals = {}
-    labels: list[schemas.Label] = []
     for ap in ap_scores:
         if hasattr(ap, "iou"):
             iou = ap.iou  # type: ignore - pyright doesn't consider hasattr checks
@@ -536,10 +511,6 @@ def _compute_mean_detection_metrics_from_aps(
         if iou not in vals:
             vals[iou] = []
         vals[iou].append(ap.value)
-
-        # TODO can we delete labels?
-        if ap.label not in labels:
-            labels.append(ap.label)
 
     # get mAP metrics at the individual IOUs
     mean_detection_metrics = [

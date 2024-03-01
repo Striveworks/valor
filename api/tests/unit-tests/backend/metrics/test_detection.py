@@ -3,8 +3,8 @@ import pytest
 from valor_api import schemas
 from valor_api.backend.metrics.detection import (
     RankedPair,
-    _ap,
     _calculate_101_pt_interp,
+    _calculate_ap_and_ar,
     _compute_mean_detection_metrics_from_aps,
 )
 
@@ -23,7 +23,7 @@ def test__compute_mean_detection_metrics_from_aps():
     assert _compute_mean_detection_metrics_from_aps([]) == list()
 
 
-def test__ap():
+def test__calculate_ap_and_ar():
 
     pairs = {
         "0": [
@@ -125,7 +125,7 @@ def test__ap():
 
     grouper_ids_associated_with_gts = set(["0", "1", "2"])
 
-    ap_metrics, ar_metrics = _ap(
+    ap_metrics, ar_metrics = _calculate_ap_and_ar(
         sorted_ranked_pairs=pairs,
         number_of_groundtruths_per_grouper=number_of_groundtruths_per_grouper,
         grouper_mappings=grouper_mappings,
@@ -147,7 +147,7 @@ def test__ap():
     # Test iou threshold outside 0 < t <= 1
     for illegal_thresh in [-1.1, -0.1, 0, 1.1]:
         with pytest.raises(ValueError):
-            _ap(
+            _calculate_ap_and_ar(
                 sorted_ranked_pairs=pairs,
                 number_of_groundtruths_per_grouper=number_of_groundtruths_per_grouper,
                 grouper_mappings=grouper_mappings,
@@ -158,7 +158,7 @@ def test__ap():
     # Test score threshold outside 0 <= t <= 1
     for illegal_thresh in [-1.1, -0.1, 1.1]:
         with pytest.raises(ValueError):
-            _ap(
+            _calculate_ap_and_ar(
                 sorted_ranked_pairs=pairs,
                 number_of_groundtruths_per_grouper=number_of_groundtruths_per_grouper,
                 grouper_mappings=grouper_mappings,
