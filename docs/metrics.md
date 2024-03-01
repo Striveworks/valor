@@ -21,7 +21,7 @@ If we're missing an important metric for your particular use case, please [write
 | AP Averaged Over IOUs | The average of several AP metrics across IOU thresholds, grouped by class labels. | $\dfrac{1}{\text{number of thresholds}} \sum\limits_{iou \in thresholds} AP_{iou}$ |
 | Mean Average Precision (mAP) 	| The average of several AP metrics across class labels, grouped by IOU thresholds. | $\dfrac{1}{\text{number of classes}} \sum\limits_{c \in classes} AP_{c}$ |
 | mAP Averaged Over IOUs | The average of several  mAP metrics across class labels. | $\dfrac{1}{\text{number of thresholds}} \sum\limits_{iou \in thresholds} mAP_{iou}$ |
-| Average Recall (AR) | The average of several recall metrics across IOU thresholds, grouped by class labels. | $\dfrac{1}{\text{number of thresholds}} \sum\limits_{iou \in thresholds} \dfrac{\|TP\|}{\|TP\|+\|FN\|}$ |
+| Average Recall (AR) | The average of several recall metrics across IOU thresholds, grouped by class labels. | See [AR methods](#average-recall-ar). |
 | Mean Average Recall (mAR) | The average of several AR metrics across class labels. | $\dfrac{1}{\text{number of classes}} \sum\limits_{class \in classes} AR_{class}$ |
 
 **When calculating IOUs for object detection metrics, Valor handles the necessary conversion between different types of geometric annotations. For example, if your model prediction is a polygon and your groundtruth is a raster, then the raster will be converted to a polygon prior to calculating the IOU.
@@ -146,3 +146,17 @@ $\rho_{interp} = \underset{\tilde{r}:\tilde{r} \ge r}{max \ \rho (\tilde{r})}$
 - [MS COCO Detection Evaluation](https://cocodataset.org/#detection-eval)
 - [The PASCAL Visual Object Classes (VOC) Challenge](https://link.springer.com/article/10.1007/s11263-009-0275-4)
 - [Mean Average Precision (mAP) Using the COCO Evaluator](https://pyimagesearch.com/2022/05/02/mean-average-precision-map-using-the-coco-evaluator/)
+
+## Average Recall (AR)
+
+To calculate Average Recall (AR), we:
+
+1. Find the count of true positives above a certain IOU threshold (e.g., .5) for all images containing a ground truth of a particular class.
+2. Divide that count of true positives by the total number of ground truths to get the recall value per class and IOU threshold. Append that recall value to a list.
+3. Repeat steps 1 & 2 for multiple IOU thresholds (e.g., [.5, .75])
+4. Take the average of our list of recalls to arrive at the AR value per class.
+
+Note that this metric differs from COCO's calculation in two ways:
+
+- COCO averages across classes while calculating AR, while we calculate AR separately for each class. Our AR calculations matches the original FAIR definition of AR, while our mAR calculations match what COCO calls AR.
+- COCO calculates three different AR metrics (AR@1, AR@5, AR@100) by limiting the maximum number of detections which are considered during the matching process. Valor doesn't impose any detection limits when creating matched pairs of ground truths and predictions.
