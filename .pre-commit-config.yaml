@@ -50,4 +50,5 @@ repos:
             "GeoAlchemy2",
             "motmetrics",
             "psycopg2-binary",
+            "pgvector",
           ]

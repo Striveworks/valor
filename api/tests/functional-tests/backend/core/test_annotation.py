@@ -92,3 +92,46 @@ def test_create_annotation_already_exists_error(
         core.create_groundtruth(db, empty_groundtruths[0])
     with pytest.raises(exceptions.AnnotationAlreadyExistsError):
         core.create_prediction(db, empty_predictions[0])
+
+
+def test_create_annotation_with_embedding(
+    db: Session,
+    created_dataset: str,
+    created_model: str,
+):
+    gt = schemas.GroundTruth(
+        datum=schemas.Datum(uid="uid123", dataset_name=created_dataset),
+        annotations=[
+            schemas.Annotation(
+                task_type=enums.TaskType.CLASSIFICATION,
+                labels=[schemas.Label(key="class", value="dog")],
+            ),
+        ],
+    )
+
+    pd = schemas.Prediction(
+        model_name=created_model,
+        datum=schemas.Datum(uid="uid123", dataset_name=created_dataset),
+        annotations=[
+            schemas.Annotation(
+                task_type=enums.TaskType.EMBEDDING,
+                embedding=[0.5, 0.5, 0.5],
+            ),
+        ],
+    )
+
+    core.create_groundtruth(db, gt)
+    core.create_prediction(db, pd)
+
+    assert (
+        db.query(
+            select(func.count()).select_from(models.Annotation).subquery()
+        ).scalar()
+        == 2
+    )
+    annotation = db.query(
+        select(models.Annotation)
+        .where(models.Annotation.model_id.isnot(None))
+        .subquery()
+    ).one_or_none()
+    assert annotation.embedding_id is not None

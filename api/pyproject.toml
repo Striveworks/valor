@@ -16,7 +16,8 @@ dependencies = [
     "python-dotenv",
     "pydantic-settings",
     "motmetrics",
-    "structlog"
+    "structlog",
+    "pgvector",
 ]
 
 [build-system]

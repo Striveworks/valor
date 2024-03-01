@@ -11,8 +11,9 @@ unit-tests:
 	python -m pytest -v ./api/tests/unit-tests
 	python -m pytest -v ./client/unit-tests
 
-start-postgis-docker:
-	docker run -p 5432:5432 -e POSTGRES_PASSWORD=password -e POSTGRES_DB=valor -d docker.io/postgis/postgis
+start-postgres-docker:
+	docker build -t pgvalor ./database
+	docker run -p 5432:5432 -e POSTGRES_PASSWORD=password -e POSTGRES_DB=valor -d pgvalor
 
 run-migrations:
 ifeq ($(shell uname -s),Darwin)
@@ -22,7 +23,6 @@ else
 	docker build -f=migrations/Dockerfile ./migrations -t migrations && \
 	docker run -e POSTGRES_PASSWORD=password --network "host" -e POSTGRES_HOST=localhost -e POSTGRES_DB=valor -e POSTGRES_USERNAME=postgres -e POSTGRES_PORT=5432 migrations
 endif
-
 
 functional-tests:
 	POSTGRES_PASSWORD=password POSTGRES_HOST=localhost POSTGRES_DB=valor POSTGRES_USERNAME=postgres POSTGRES_PORT=5432  pytest -v ./api/tests/functional-tests
