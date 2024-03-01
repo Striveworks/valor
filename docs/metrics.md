@@ -159,4 +159,4 @@ To calculate Average Recall (AR), we:
 Note that this metric differs from COCO's calculation in two ways:
 
 - COCO averages across classes while calculating AR, while we calculate AR separately for each class. Our AR calculations matches the original FAIR definition of AR, while our mAR calculations match what COCO calls AR.
-- COCO calculates three different AR metrics (AR@1, AR@5, AR@100) by limiting the maximum number of detections which are considered during the matching process. Valor doesn't impose any detection limits when creating matched pairs of ground truths and predictions. Instead, we allow users to input a `recall_score_threshold` value that will prevent low-confidence predictions from being counted as true positives when calculating AR.
+- COCO calculates three different AR metrics (AR@1, AR@5, AR@100)) by considering only the top 1/5/100 most confident predictions during the matching process. Valor, on the other hand, allows users to input a `recall_score_threshold` value that will prevent low-confidence predictions from being counted as true positives when calculating AR.
