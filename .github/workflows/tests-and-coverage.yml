@@ -25,7 +25,7 @@ jobs:
         run: |
           docker build ./database -t pgvalor
           docker run -p 5432:5432 -e POSTGRES_PASSWORD=password -e POSTGRES_DB=valor -d pgvalor
-          sleep 1
+          sleep 3
           docker build ./migrations -t migrations
           docker run -e POSTGRES_PASSWORD=password -e POSTGRES_HOST=localhost -e POSTGRES_DB=valor -e POSTGRES_USERNAME=postgres -e POSTGRES_PORT=5432 --network "host" migrations
       - name: run functional tests
