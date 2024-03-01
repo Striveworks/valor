@@ -133,9 +133,7 @@ def _calculate_ap_and_ar(
                 )
             )
 
-            recalls_across_thresholds.append(
-                recalls[-1]
-            )  # we only care about the last value in recalls since it considers all true positives
+            recalls_across_thresholds.append(recalls[-1])
 
         ar_metrics.append(
             schemas.ARMetric(

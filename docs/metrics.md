@@ -21,7 +21,7 @@ If we're missing an important metric for your particular use case, please [write
 | AP Averaged Over IOUs | The average of several AP metrics across IOU thresholds, grouped by class labels. | $\dfrac{1}{\text{number of thresholds}} \sum\limits_{iou \in thresholds} AP_{iou}$ |
 | Mean Average Precision (mAP) 	| The average of several AP metrics across class labels, grouped by IOU thresholds. | $\dfrac{1}{\text{number of classes}} \sum\limits_{c \in classes} AP_{c}$ |
 | mAP Averaged Over IOUs | The average of several  mAP metrics across class labels. | $\dfrac{1}{\text{number of thresholds}} \sum\limits_{iou \in thresholds} mAP_{iou}$ |
-| Average Recall (AR) | The average of several recall metrics across IOU thresholds, grouped by class labels. | $\dfrac{1}{\text{number of thresholds}} \sum\limits_{iou \in thresholds} \dfrac{TP}{TP + FN}$ |
+| Average Recall (AR) | The average of several recall metrics across IOU thresholds, grouped by class labels. | $\dfrac{1}{\text{number of thresholds}} \sum\limits_{iou \in thresholds} \dfrac{\|TP\|}{\|TP\|+\|FN\|}$ |
 | Mean Average Recall (mAR) | The average of several AR metrics across class labels. | $\dfrac{1}{\text{number of classes}} \sum\limits_{class \in classes} AR_{class}$ |
 
 **When calculating IOUs for object detection metrics, Valor handles the necessary conversion between different types of geometric annotations. For example, if your model prediction is a polygon and your groundtruth is a raster, then the raster will be converted to a polygon prior to calculating the IOU.

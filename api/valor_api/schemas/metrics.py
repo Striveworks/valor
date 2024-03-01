@@ -32,8 +32,8 @@ class ARMetric(BaseModel):
 
     Attributes
     ----------
-    ious : list[float]
-        A list of intersect-over-union (IOU) values.
+    ious : set[float]
+        A set of intersect-over-union (IOU) values.
     value : float
         The value of the metric.
     label : Label
