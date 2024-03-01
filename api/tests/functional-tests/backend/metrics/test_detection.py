@@ -95,6 +95,42 @@ def test__compute_detection_metrics(
         },
         # mAP METRICS AVERAGED OVER IOUS
         {"ious": iou_thresholds, "value": 0.637},
+        # AR METRICS
+        {
+            "ious": iou_thresholds,
+            "value": 0.45,
+            "label": {"key": "class", "value": "2"},
+        },
+        {
+            "ious": iou_thresholds,
+            "value": -1,
+            "label": {"key": "class", "value": "3"},
+        },
+        {
+            "ious": iou_thresholds,
+            "value": 0.58,
+            "label": {"key": "class", "value": "49"},
+        },
+        {
+            "ious": iou_thresholds,
+            "value": 0.78,
+            "label": {"key": "class", "value": "0"},
+        },
+        {
+            "ious": iou_thresholds,
+            "value": 0.8,
+            "label": {"key": "class", "value": "1"},
+        },
+        {
+            "ious": iou_thresholds,
+            "value": 0.65,
+            "label": {"key": "class", "value": "4"},
+        },
+        # mAR METRICS
+        {
+            "ious": iou_thresholds,
+            "value": 0.652,
+        },
     ]
 
     assert len(metrics) == len(expected)

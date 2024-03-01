@@ -1628,6 +1628,7 @@ class Model:
         iou_thresholds_to_compute: Optional[List[float]] = None,
         iou_thresholds_to_return: Optional[List[float]] = None,
         label_map: Optional[Dict[Label, Label]] = None,
+        recall_score_threshold: float = 0,
     ) -> Evaluation:
         """
         Start an object-detection evaluation job.
@@ -1646,7 +1647,8 @@ class Model:
             Thresholds to return AP for. Must be subset of `iou_thresholds_to_compute`.
         label_map : Dict[Label, Label], optional
             Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
-
+        recall_score_threshold: float, default=0
+            The confidence score threshold for use when determining whether to count a prediction as a true positive or not while calculating Average Recall.
         Returns
         -------
         Evaluation
@@ -1666,6 +1668,7 @@ class Model:
             iou_thresholds_to_compute=iou_thresholds_to_compute,
             iou_thresholds_to_return=iou_thresholds_to_return,
             label_map=self._create_label_map(label_map=label_map),
+            recall_score_threshold=recall_score_threshold,
         )
         datum_filter = self._format_constraints(datasets, filter_by)
         request = EvaluationRequest(

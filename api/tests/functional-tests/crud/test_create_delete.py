@@ -1100,7 +1100,9 @@ def test_create_detection_metrics(
 
     assert set([m.type for m in metrics]) == {
         "AP",
+        "AR",
         "APAveragedOverIOUs",
+        "mAR",
         "mAP",
         "mAPAveragedOverIOUs",
     }
@@ -1110,7 +1112,16 @@ def test_create_detection_metrics(
     ) == {0.2}
 
     # should be five labels (since thats how many are in groundtruth set)
-    assert len(set(m.label_id for m in metrics if m.label_id is not None)) == 5
+    assert (
+        len(
+            set(
+                m.label_id
+                for m in metrics
+                if m.label_id is not None and m.type != "AR"
+            )
+        )
+        == 5
+    )
 
     # test getting metrics from evaluation settings id
     pydantic_metrics = crud.get_evaluations(
@@ -1145,7 +1156,9 @@ def test_create_detection_metrics(
     for m in metrics_pydantic:
         assert m.type in {
             "AP",
+            "AR",
             "APAveragedOverIOUs",
+            "mAR",
             "mAP",
             "mAPAveragedOverIOUs",
         }
@@ -1166,7 +1179,9 @@ def test_create_detection_metrics(
     for m in metrics_pydantic:
         assert m.type in {
             "AP",
+            "AR",
             "APAveragedOverIOUs",
+            "mAR",
             "mAP",
             "mAPAveragedOverIOUs",
         }
