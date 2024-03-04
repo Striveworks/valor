@@ -14,9 +14,7 @@ sns.set_style("whitegrid")
 LOCAL_HOST = "http://localhost:8000"
 DATASET_NAME = "profiling_3"
 
-
-client = Client(LOCAL_HOST)
-
+client = Client.connect(LOCAL_HOST)
 
 results = profile_valor(
     client=client,

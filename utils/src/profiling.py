@@ -4,7 +4,6 @@ import io
 import os
 import pickle
 import pstats
-import time
 import timeit
 import tracemalloc
 from pstats import SortKey
@@ -13,18 +12,16 @@ from typing import List, Tuple
 import memory_profiler
 import pandas as pd
 import yappi
-from data_generation import (
-    generate_prediction_data,
-    generate_segmentation_data,
-)
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
-from valor import Client
-from valor import Dataset as ValorDataset
-from valor import Evaluation as ValorEvaluation
-from valor import Model as ValorModel
-from valor.enums import JobStatus
+from valor import Client, Dataset, Evaluation, Label, Model
+from valor.enums import EvaluationStatus
+
+from .data_generation import (
+    generate_prediction_data,
+    generate_segmentation_data,
+)
 
 """ FastAPI Profiling Decorators """
 
@@ -342,7 +339,7 @@ def _setup_dataset(
     n_images: int,
     n_annotations: int,
     n_labels: int,
-) -> ValorDataset:
+) -> Dataset:
     """Generate a valor dataset with a given number of images, annotations, and labels"""
     assert (
         min(n_images, n_annotations, n_labels) > 0
@@ -362,34 +359,30 @@ def _setup_dataset(
 
 def _get_evaluation_metrics(
     client: Client,
-    dataset: ValorDataset,
+    dataset: Dataset,
     model_name: str,
     n_predictions: int,
     n_annotations: int,
     n_labels: int,
-) -> Tuple[ValorModel, ValorEvaluation]:
+) -> Tuple[Model, Evaluation]:
     """Create arbitrary evaluation metrics based on some dataset"""
 
     model = generate_prediction_data(
         client=client,
         dataset=dataset,
         model_name=model_name,
-        n_predictions=n_predictions,
         n_annotations=n_annotations,
         n_labels=n_labels,
     )
 
     eval_job = model.evaluate_detection(
-        dataset=dataset,
-        iou_thresholds=[0, 1],
-        ious_to_keep=[0, 1],
-        label_key="k1",
-        timeout=30,
+        datasets=dataset,
+        iou_thresholds_to_compute=[0.1, 1],
+        iou_thresholds_to_return=[0.1, 1],
+        filter_by=[Label.key == "k1"],
     )
-
-    # sleep to give the back end time to compute
-    while eval_job.status != JobStatus.DONE:
-        time.sleep(1)
+    if eval_job.wait_for_completion(timeout=30) != EvaluationStatus.DONE:
+        raise TimeoutError
 
     return (model, eval_job)
 
@@ -451,7 +444,7 @@ def profile_valor(
     n_label_grid: List[int],
 ) -> List[dict]:
     """
-    Profile valor while generating ValorDatasets of various sizes
+    Profile valor while generating Datasets of various sizes
 
     Parameters
     ----------
