@@ -12,12 +12,24 @@ from sqlalchemy.orm import Session
 
 from valor import Annotation, Client, GroundTruth, Label, Prediction
 from valor.client import ClientConnection, connect, reset_connection
-from valor.data_generation import _generate_mask
 from valor.enums import TaskType
 from valor.metatypes import ImageMetadata
 from valor.schemas import BoundingBox, MultiPolygon, Polygon, Raster
 from valor_api import exceptions
 from valor_api.backend import models
+
+
+def _generate_mask(
+    height: int,
+    width: int,
+    minimum_mask_percent: float = 0.05,
+    maximum_mask_percent: float = 0.4,
+) -> np.ndarray:
+    """Generate a random mask for an image with a given height and width"""
+    mask_cutoff = np.random.uniform(minimum_mask_percent, maximum_mask_percent)
+    mask = (np.random.random((height, width))) < mask_cutoff
+
+    return mask
 
 
 @pytest.fixture
