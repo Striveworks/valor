@@ -13,6 +13,10 @@ from typing import List, Tuple
 import memory_profiler
 import pandas as pd
 import yappi
+from data_generation import (
+    generate_prediction_data,
+    generate_segmentation_data,
+)
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
@@ -20,10 +24,6 @@ from valor import Client
 from valor import Dataset as ValorDataset
 from valor import Evaluation as ValorEvaluation
 from valor import Model as ValorModel
-from valor.data_generation import (
-    generate_prediction_data,
-    generate_segmentation_data,
-)
 from valor.enums import JobStatus
 
 """ FastAPI Profiling Decorators """
