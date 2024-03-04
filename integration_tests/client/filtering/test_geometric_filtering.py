@@ -136,7 +136,6 @@ def test_filter_by_bounding_box(client, groundtruths_with_areas, areas):
             [
                 Annotation.bounding_box.exists(),
                 Annotation.polygon.is_none(),
-                Annotation.multipolygon.is_none(),
                 Annotation.raster.is_none(),
             ]
         )
@@ -155,7 +154,6 @@ def test_filter_by_bounding_box(client, groundtruths_with_areas, areas):
                 [
                     Annotation.bounding_box.exists(),
                     Annotation.polygon.is_none(),
-                    Annotation.multipolygon.is_none(),
                     Annotation.raster.is_none(),
                     Annotation.bounding_box.area > area,
                 ]
@@ -186,7 +184,6 @@ def test_filter_by_polygon(client, groundtruths_with_areas, areas):
             [
                 Annotation.bounding_box.is_none(),
                 Annotation.polygon.exists(),
-                Annotation.multipolygon.is_none(),
                 Annotation.raster.is_none(),
             ]
         )
@@ -205,7 +202,6 @@ def test_filter_by_polygon(client, groundtruths_with_areas, areas):
                 [
                     Annotation.bounding_box.is_none(),
                     Annotation.polygon.exists(),
-                    Annotation.multipolygon.is_none(),
                     Annotation.raster.is_none(),
                     Annotation.polygon.area > area,
                 ]
@@ -238,7 +234,6 @@ def test_filter_by_multipolygon(client, groundtruths_with_areas, areas):
                 Label.key == label_key,
                 Annotation.bounding_box.is_none(),
                 Annotation.polygon.is_none(),
-                Annotation.multipolygon.is_none(),
                 Annotation.raster.exists(),
             ]
         )
@@ -258,7 +253,6 @@ def test_filter_by_multipolygon(client, groundtruths_with_areas, areas):
                     Label.key == label_key,
                     Annotation.bounding_box.is_none(),
                     Annotation.polygon.is_none(),
-                    Annotation.multipolygon.is_none(),
                     Annotation.raster.exists(),
                     Annotation.raster.area > area,
                 ]
@@ -290,7 +284,6 @@ def test_filter_by_raster(client, groundtruths_with_areas, areas):
                 Label.key == label_key,
                 Annotation.bounding_box.is_none(),
                 Annotation.polygon.is_none(),
-                Annotation.multipolygon.is_none(),
                 Annotation.raster.exists(),
             ]
         )
@@ -310,7 +303,6 @@ def test_filter_by_raster(client, groundtruths_with_areas, areas):
                     Label.key == label_key,
                     Annotation.bounding_box.is_none(),
                     Annotation.polygon.is_none(),
-                    Annotation.multipolygon.is_none(),
                     Annotation.raster.exists(),
                     Annotation.raster.area > area,
                 ]

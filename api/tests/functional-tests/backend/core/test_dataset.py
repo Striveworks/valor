@@ -200,17 +200,6 @@ def test_get_n_groundtruth_polygons_in_dataset(
     )
 
 
-def test_get_n_groundtruth_multipolygons_in_dataset(
-    db: Session, dataset_name: str, dataset_model_create
-):
-    assert (
-        core.get_n_groundtruth_multipolygons_in_dataset(
-            db=db, name=dataset_name
-        )
-        == 0
-    )
-
-
 def test_get_n_groundtruth_rasters_in_dataset(
     db: Session, dataset_name: str, dataset_model_create
 ):

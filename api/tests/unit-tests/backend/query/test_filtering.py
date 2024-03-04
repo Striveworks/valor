@@ -165,38 +165,6 @@ def test_filter_by_annotation_polygon():
     )
 
 
-def test_filter_by_annotation_multipolygon():
-    filter_ = Filter(require_multipolygon=True)
-    assert str(filter_by_annotation(filter_)[0]) == str(
-        models.Annotation.multipolygon.isnot(None)
-    )
-
-    filter_ = Filter(require_multipolygon=False)
-    assert str(filter_by_annotation(filter_)[0]) == str(
-        models.Annotation.multipolygon.is_(None)
-    )
-
-    filter_ = Filter(
-        multipolygon_area=[NumericFilter(value=100.0, operator=">=")]
-    )
-    assert str(filter_by_annotation(filter_)[0]) == str(
-        func.ST_Area(models.Annotation.multipolygon) >= 100.0
-    )
-
-    filter_ = Filter(
-        multipolygon_area=[
-            NumericFilter(value=100.0, operator=">="),
-            NumericFilter(value=200.0, operator="<"),
-        ]
-    )
-    assert str(filter_by_annotation(filter_)[0]) == str(
-        and_(
-            func.ST_Area(models.Annotation.multipolygon) >= 100.0,
-            func.ST_Area(models.Annotation.multipolygon) < 200.0,
-        )
-    )
-
-
 def test_filter_by_annotation_raster():
     filter_ = Filter(require_raster=True)
     assert str(filter_by_annotation(filter_)[0]) == str(

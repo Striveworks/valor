@@ -172,7 +172,7 @@ def test_convert_geometry_input(
             dataset=None,
             model=None,
         )
-    assert "Source type" in str(e)
+    assert "source" in str(e)
 
     with pytest.raises(ValueError) as e:
         convert_geometry(
@@ -182,7 +182,7 @@ def test_convert_geometry_input(
             dataset=None,
             model=None,
         )
-    assert "Target type" in str(e)
+    assert "target" in str(e)
 
     with pytest.raises(ValueError) as e:
         convert_geometry(
@@ -194,7 +194,7 @@ def test_convert_geometry_input(
         )
     assert "not capable of being converted" in str(e)
 
-    with pytest.raises(NotImplementedError) as e:
+    with pytest.raises(ValueError):
         convert_geometry(
             db=db,
             source_type=enums.AnnotationType.MULTIPOLYGON,
@@ -202,9 +202,8 @@ def test_convert_geometry_input(
             dataset=dataset,
             model=None,
         )
-    assert "currently unsupported" in str(e)
 
-    with pytest.raises(NotImplementedError) as e:
+    with pytest.raises(ValueError):
         convert_geometry(
             db=db,
             source_type=enums.AnnotationType.MULTIPOLYGON,
@@ -212,7 +211,6 @@ def test_convert_geometry_input(
             dataset=dataset,
             model=None,
         )
-    assert "currently unsupported" in str(e)
 
 
 def _load_polygon(db: Session, polygon) -> Polygon:
@@ -235,7 +233,6 @@ def test_convert_from_raster(
             and_(
                 models.Annotation.box.is_(None),
                 models.Annotation.polygon.is_(None),
-                models.Annotation.multipolygon.is_(None),
                 models.Annotation.raster.isnot(None),
             )
         )
@@ -257,7 +254,6 @@ def test_convert_from_raster(
 
     assert annotation.box is not None
     assert annotation.polygon is not None
-    assert annotation.multipolygon is None
     assert annotation.raster is not None
 
     converted_box = _load_box(db, annotation.box)
@@ -278,7 +274,6 @@ def test_convert_polygon_to_bbox(
             and_(
                 models.Annotation.box.is_(None),
                 models.Annotation.polygon.isnot(None),
-                models.Annotation.multipolygon.is_(None),
                 models.Annotation.raster.is_(None),
             )
         )
@@ -297,7 +292,6 @@ def test_convert_polygon_to_bbox(
 
     assert annotation.box is not None
     assert annotation.polygon is not None
-    assert annotation.multipolygon is None
     assert annotation.raster is None
 
     converted_box = _load_box(db, annotation.box)

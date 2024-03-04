@@ -128,7 +128,6 @@ create table annotation
     created_at   timestamp not null,
     box          geometry(Polygon),
     polygon      geometry(Polygon),
-    multipolygon geometry(MultiPolygon),
     raster       raster,
     embedding_id integer references embedding
 );
@@ -138,9 +137,6 @@ create index idx_annotation_box
 
 create index idx_annotation_polygon
     on annotation using gist (polygon);
-
-create index idx_annotation_multipolygon
-    on annotation using gist (multipolygon);
 
 create index idx_annotation_raster
     on annotation using gist (st_convexhull(raster));

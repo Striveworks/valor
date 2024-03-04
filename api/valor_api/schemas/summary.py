@@ -12,7 +12,6 @@ class DatasetSummary(BaseModel):
     num_annotations: int
     num_bounding_boxes: int
     num_polygons: int
-    num_groundtruth_multipolygons: int
     num_rasters: int
     task_types: list[TaskType]
     labels: list[Label]
