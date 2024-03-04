@@ -4,11 +4,12 @@ from base64 import b64encode
 
 from geoalchemy2.functions import ST_AsGeoJSON, ST_AsPNG, ST_Envelope
 from PIL import Image
-from sqlalchemy import and_, delete, func, select
+from sqlalchemy import and_, or_, delete, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from valor_api import enums, exceptions, schemas
+from valor_api import exceptions, schemas
+from valor_api.enums import TaskType, ModelStatus, TableStatus
 from valor_api.backend import models
 from valor_api.backend.query import Query
 
@@ -26,15 +27,30 @@ def _get_bounding_box_of_raster(
 
 
 def _raster_to_png_b64(
-    db: Session, raster: Image.Image, height: float, width: float
+    db: Session, 
+    raster: Image.Image, 
 ) -> str:
-    """Convert a raster to a png"""
+    """
+    Convert a raster to a png.
+
+    Parameters
+    ----------
+    db : Session
+        The database session.
+    raster : Image.Image
+        The raster in bytes.
+    
+    Returns
+    -------
+    str
+        The encoded raster.
+    """
     enveloping_box = _get_bounding_box_of_raster(db, raster)
     raster = Image.open(io.BytesIO(db.scalar(ST_AsPNG((raster))).tobytes()))
 
     assert raster.mode == "L"
 
-    ret = Image.new(size=(int(width), int(height)), mode=raster.mode)
+    ret = Image.new(size=raster.size, mode=raster.mode)
 
     ret.paste(raster, box=enveloping_box)
 
@@ -49,15 +65,14 @@ def _raster_to_png_b64(
     return b64encode(mask_bytes).decode()
 
 
-def _wkt_multipolygon_to_raster(wkt: str):
+def _wkt_polygon_to_raster(wkt: str):
     """
-    Convert a multipolygon to a raster using psql.
+    Convert a polygon or multipolygon to a raster using psql.
 
     Parameters
     ----------
     wkt : str
-        A psql multipolygon object in well-known text format.
-
+        A psql polygon or multipolygon object in well-known text format.
 
     Returns
     ----------
@@ -128,18 +143,31 @@ def _create_annotation(
     box = None
     polygon = None
     raster = None
-    embedding_id = None
+    embedding_id = None 
 
-    if annotation.bounding_box:
-        box = annotation.bounding_box.wkt()
-    if annotation.polygon:
-        polygon = annotation.polygon.wkt()
-    if annotation.multipolygon:
-        raster = _wkt_multipolygon_to_raster(annotation.multipolygon.wkt())
-    if annotation.raster:
-        raster = annotation.raster.mask_bytes
-    if annotation.embedding is not None:
-        embedding_id = _create_embedding(db=db, value=annotation.embedding)
+    # task-based conversion
+    match annotation.task_type:
+        case TaskType.OBJECT_DETECTION:
+            if annotation.bounding_box:
+                box = annotation.bounding_box.wkt()
+            if annotation.polygon:
+                polygon = annotation.polygon.wkt()
+            if annotation.raster:
+                raster = annotation.raster.mask_bytes
+            elif annotation.multipolygon:
+                raster = _wkt_polygon_to_raster(annotation.multipolygon.wkt())
+        case TaskType.SEMANTIC_SEGMENTATION:
+            if annotation.raster:
+                raster = annotation.raster.mask_bytes
+            elif annotation.multipolygon:
+                raster = _wkt_polygon_to_raster(annotation.multipolygon.wkt())
+            elif annotation.polygon:
+                raster = _wkt_polygon_to_raster(annotation.polygon.wkt())
+        case TaskType.EMBEDDING:
+            if annotation.embedding:
+                embedding_id = _create_embedding(db=db, value=annotation.embedding)
+        case _:
+            pass
 
     mapping = {
         "datum_id": datum.id,
@@ -238,7 +266,7 @@ def create_skipped_annotations(
     annotation_list = [
         _create_annotation(
             db=db,
-            annotation=schemas.Annotation(task_type=enums.TaskType.SKIP),
+            annotation=schemas.Annotation(task_type=TaskType.SKIP),
             datum=datum,
             model=model,
         )
@@ -330,14 +358,10 @@ def get_annotation(
             raise RuntimeError(
                 "psql unexpectedly returned None instead of a Datum."
             )
-
-        if "height" not in datum.meta or "width" not in datum.meta:
-            raise ValueError("missing height or width")
-        height = datum.meta["height"]
-        width = datum.meta["width"]
         raster = schemas.Raster(
             mask=_raster_to_png_b64(
-                db, raster=annotation.raster, height=height, width=width
+                db=db,
+                raster=annotation.raster
             ),
         )
 
@@ -422,7 +446,7 @@ def delete_dataset_annotations(
         If dataset is not in deletion state.
     """
 
-    if dataset.status != enums.TableStatus.DELETING:
+    if dataset.status != TableStatus.DELETING:
         raise RuntimeError(
             f"Attempted to delete annotations from dataset `{dataset.name}` which has status `{dataset.status}`"
         )
@@ -465,7 +489,7 @@ def delete_model_annotations(
         If dataset is not in deletion state.
     """
 
-    if model.status != enums.ModelStatus.DELETING:
+    if model.status != ModelStatus.DELETING:
         raise RuntimeError(
             f"Attempted to delete annotations from dataset `{model.name}` which is not being deleted."
         )

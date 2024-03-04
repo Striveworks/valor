@@ -89,17 +89,13 @@ def _validate_annotation_by_task_type(values):
                 and (
                     values.raster is not None
                     or values.multipolygon is not None
-                    or values.polygon is None
+                    or values.polygon is not None
                 )
                 and values.bounding_box is None
                 and values.embedding is None
             ):
                 raise ValueError(
                     "Annotation with task type `semantic-segmentation` only supports raster and multipolygon geometries."
-                )
-            elif values.polygon is not None:
-                raise NotImplementedError(
-                    "Semantic segmentation does not support polygon annotations. See Issue #465."
                 )
         case TaskType.EMBEDDING:
             if not (

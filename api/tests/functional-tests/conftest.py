@@ -744,3 +744,59 @@ def created_model(db: Session, model_name: str, created_dataset: str) -> str:
         ),
     )
     return model_name
+
+
+@pytest.fixture
+def rotated_box_points() -> list[schemas.Point]:
+    return [
+        schemas.Point(x=4, y=0),
+        schemas.Point(x=1, y=3),
+        schemas.Point(x=4, y=6),
+        schemas.Point(x=7, y=3),
+    ]
+
+
+@pytest.fixture
+def bbox(rotated_box_points) -> schemas.BoundingBox:
+    """Defined as the envelope of `rotated_box_points`."""
+    minX = min([pt.x for pt in rotated_box_points])
+    maxX = max([pt.x for pt in rotated_box_points])
+    minY = min([pt.y for pt in rotated_box_points])
+    maxY = max([pt.y for pt in rotated_box_points])
+    return schemas.BoundingBox(
+        polygon=schemas.BasicPolygon(
+            points=[
+                schemas.Point(x=minX, y=maxY),
+                schemas.Point(x=maxX, y=maxY),
+                schemas.Point(x=maxX, y=minY),
+                schemas.Point(x=minX, y=minY),
+            ]
+        )
+    )
+
+
+@pytest.fixture
+def polygon(rotated_box_points) -> schemas.Polygon:
+    return schemas.Polygon(
+        boundary=schemas.BasicPolygon(
+            points=rotated_box_points,
+        )
+    )
+
+
+@pytest.fixture
+def multipolygon(polygon) -> schemas.MultiPolygon:
+    return schemas.MultiPolygon(polygons=[polygon])
+
+
+@pytest.fixture
+def raster() -> schemas.Raster:
+    """Rasterization of `rotated_box_points`."""
+    r = np.zeros((10, 10))
+    for y in range(0, 3):
+        for x in range(4 - y, y + 5, 1):
+            r[y, x] = 1
+    for y in range(3, 8):
+        for x in range(y - 2, 11 - y):
+            r[y, x] = 1
+    return schemas.Raster.from_numpy(r == 1)

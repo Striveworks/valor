@@ -30,62 +30,6 @@ from valor_api.schemas import (
 
 
 @pytest.fixture
-def rotated_box_points() -> list[Point]:
-    return [
-        Point(x=4, y=0),
-        Point(x=1, y=3),
-        Point(x=4, y=6),
-        Point(x=7, y=3),
-    ]
-
-
-@pytest.fixture
-def bbox(rotated_box_points) -> BoundingBox:
-    """Defined as the envelope of `rotated_box_points`."""
-    minX = min([pt.x for pt in rotated_box_points])
-    maxX = max([pt.x for pt in rotated_box_points])
-    minY = min([pt.y for pt in rotated_box_points])
-    maxY = max([pt.y for pt in rotated_box_points])
-    return BoundingBox(
-        polygon=BasicPolygon(
-            points=[
-                Point(x=minX, y=maxY),
-                Point(x=maxX, y=maxY),
-                Point(x=maxX, y=minY),
-                Point(x=minX, y=minY),
-            ]
-        )
-    )
-
-
-@pytest.fixture
-def polygon(rotated_box_points) -> Polygon:
-    return Polygon(
-        boundary=schemas.BasicPolygon(
-            points=rotated_box_points,
-        )
-    )
-
-
-@pytest.fixture
-def multipolygon(polygon) -> MultiPolygon:
-    return MultiPolygon(polygons=[polygon])
-
-
-@pytest.fixture
-def raster() -> Raster:
-    """Rasterization of `rotated_box_points`."""
-    r = np.zeros((10, 10))
-    for y in range(0, 3):
-        for x in range(4 - y, y + 5, 1):
-            r[y, x] = 1
-    for y in range(3, 8):
-        for x in range(y - 2, 11 - y):
-            r[y, x] = 1
-    return Raster.from_numpy(r == 1)
-
-
-@pytest.fixture
 def create_classification_dataset(db: Session, dataset_name: str):
     create_dataset(db=db, dataset=schemas.Dataset(name=dataset_name))
     create_groundtruth(
@@ -264,7 +208,7 @@ def test_convert_from_raster(
     assert converted_polygon == polygon
 
 
-def test_convert_polygon_to_bbox(
+def test_convert_polygon_to_box(
     db: Session,
     create_object_detection_dataset: str,
     bbox: BoundingBox,
