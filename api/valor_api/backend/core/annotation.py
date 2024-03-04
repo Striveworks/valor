@@ -4,14 +4,14 @@ from base64 import b64encode
 
 from geoalchemy2.functions import ST_AsGeoJSON, ST_AsPNG, ST_Envelope
 from PIL import Image
-from sqlalchemy import and_, or_, delete, func, select
+from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from valor_api import exceptions, schemas
-from valor_api.enums import TaskType, ModelStatus, TableStatus
 from valor_api.backend import models
 from valor_api.backend.query import Query
+from valor_api.enums import ModelStatus, TableStatus, TaskType
 
 
 def _get_bounding_box_of_raster(
@@ -27,8 +27,8 @@ def _get_bounding_box_of_raster(
 
 
 def _raster_to_png_b64(
-    db: Session, 
-    raster: Image.Image, 
+    db: Session,
+    raster: Image.Image,
 ) -> str:
     """
     Convert a raster to a png.
@@ -39,7 +39,7 @@ def _raster_to_png_b64(
         The database session.
     raster : Image.Image
         The raster in bytes.
-    
+
     Returns
     -------
     str
@@ -143,7 +143,7 @@ def _create_annotation(
     box = None
     polygon = None
     raster = None
-    embedding_id = None 
+    embedding_id = None
 
     # task-based conversion
     match annotation.task_type:
@@ -165,7 +165,9 @@ def _create_annotation(
                 raster = _wkt_polygon_to_raster(annotation.polygon.wkt())
         case TaskType.EMBEDDING:
             if annotation.embedding:
-                embedding_id = _create_embedding(db=db, value=annotation.embedding)
+                embedding_id = _create_embedding(
+                    db=db, value=annotation.embedding
+                )
         case _:
             pass
 
@@ -359,10 +361,7 @@ def get_annotation(
                 "psql unexpectedly returned None instead of a Datum."
             )
         raster = schemas.Raster(
-            mask=_raster_to_png_b64(
-                db=db,
-                raster=annotation.raster
-            ),
+            mask=_raster_to_png_b64(db=db, raster=annotation.raster),
         )
 
     # embedding

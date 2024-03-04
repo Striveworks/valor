@@ -1,9 +1,10 @@
-import pytest
 import json
+
 import numpy as np
-from sqlalchemy import func, select, literal
-from sqlalchemy.orm import Session, aliased
+import pytest
 from geoalchemy2 import Raster
+from sqlalchemy import func, literal, select
+from sqlalchemy.orm import Session, aliased
 
 from valor_api import enums, exceptions, schemas
 from valor_api.backend import core, models
@@ -142,7 +143,8 @@ def test_create_annotation_with_embedding(
 
 
 def _convert_raster_to_polygon():
-    from sqlalchemy import type_coerce, literal_column
+    from sqlalchemy import literal_column, type_coerce
+
     from valor_api.backend.core.geometry import GeometricValueType
 
     pixels_subquery = select(
@@ -183,7 +185,7 @@ def _load_box(db: Session, box) -> schemas.BoundingBox:
     return schemas.BoundingBox(polygon=_load_polygon(db, box).boundary)
 
 
-def test_create_conversion_for_semantic_segmentation(    
+def test_create_conversion_for_semantic_segmentation(
     db: Session,
     created_dataset: str,
     polygon: schemas.Polygon,
@@ -192,7 +194,6 @@ def test_create_conversion_for_semantic_segmentation(
 ):
     print()
     print(raster.to_numpy())
-
 
     gt = schemas.GroundTruth(
         datum=schemas.Datum(uid="uid123", dataset_name=created_dataset),
@@ -226,18 +227,17 @@ def test_create_conversion_for_semantic_segmentation(
         ).scalar()
         == 3
     )
-    annotations = db.scalars(
-        select(models.Annotation)
-    ).all()
+    annotations = db.scalars(select(models.Annotation)).all()
 
-
-
-    x = db.query(
-        select(models.Annotation.raster).subquery()
-    ).all()
+    x = db.query(select(models.Annotation.raster).subquery()).all()
 
     print()
     for xx in x:
-        r = schemas.Raster(mask=_raster_to_png_b64(db, xx[0],))
+        r = schemas.Raster(
+            mask=_raster_to_png_b64(
+                db,
+                xx[0],
+            )
+        )
         print()
         print(r.to_numpy())
