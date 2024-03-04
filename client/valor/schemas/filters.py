@@ -36,10 +36,6 @@ class Filter:
         A toggle for filtering by polygons.
     polygon_area : bool, optional
         An optional constraint to filter by polygon area.
-    require_multipolygon : bool, optional
-        A toggle for filtering by multipolygons.
-    multipolygon_area : bool, optional
-        An optional constraint to filter by multipolygon area.
     require_raster : bool, optional
         A toggle for filtering by rasters.
     raster_area : bool, optional
@@ -82,8 +78,6 @@ class Filter:
     bounding_box_area: Optional[List[Constraint]] = None
     require_polygon: Optional[bool] = None
     polygon_area: Optional[List[Constraint]] = None
-    require_multipolygon: Optional[bool] = None
-    multipolygon_area: Optional[List[Constraint]] = None
     require_raster: Optional[bool] = None
     raster_area: Optional[List[Constraint]] = None
 
@@ -139,9 +133,6 @@ class Filter:
             self.bounding_box_area, Constraint
         )
         self.polygon_area = _unpack_list(self.polygon_area, Constraint)
-        self.multipolygon_area = _unpack_list(
-            self.multipolygon_area, Constraint
-        )
         self.raster_area = _unpack_list(self.raster_area, Constraint)
 
         # scores
@@ -201,7 +192,6 @@ class Filter:
         for attr in [
             "bounding_box_area",
             "polygon_area",
-            "multipolygon_area",
             "raster_area",
             "label_scores",
         ]:
@@ -216,7 +206,6 @@ class Filter:
         for attr in [
             "require_bounding_box",
             "require_polygon",
-            "require_multipolygon",
             "require_raster",
         ]:
             if attr in expression_dict:

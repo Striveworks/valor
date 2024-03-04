@@ -301,11 +301,6 @@ def filter_by_annotation(
             expressions.append([Annotation.polygon.isnot(None)])
         else:
             expressions.append([Annotation.polygon.is_(None)])
-    if filter_.require_multipolygon is not None:
-        if filter_.require_multipolygon:
-            expressions.append([Annotation.multipolygon.isnot(None)])
-        else:
-            expressions.append([Annotation.multipolygon.is_(None)])
     if filter_.require_raster is not None:
         if filter_.require_raster:
             expressions.append([Annotation.raster.isnot(None)])
@@ -339,20 +334,6 @@ def filter_by_annotation(
             area_expr.append(and_(*polygon_area_expr))
         else:
             area_expr.append(polygon_area_expr[0])
-    if filter_.multipolygon_area:
-        multipolygon_area_expr = []
-        for area_filter in filter_.multipolygon_area:
-            op = _get_numeric_op(area_filter.operator)
-            multipolygon_area_expr.append(
-                op(
-                    func.ST_Area(Annotation.multipolygon),
-                    area_filter.value,
-                )
-            )
-        if len(multipolygon_area_expr) > 1:
-            area_expr.append(and_(*multipolygon_area_expr))
-        else:
-            area_expr.append(multipolygon_area_expr[0])
     if filter_.raster_area:
         raster_area_expr = []
         for area_filter in filter_.raster_area:

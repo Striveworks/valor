@@ -129,7 +129,6 @@ class Annotation(Base):
     # columns - linked objects
     box = mapped_column(Geometry("POLYGON"), nullable=True)
     polygon = mapped_column(Geometry("POLYGON"), nullable=True)
-    multipolygon = mapped_column(Geometry("MULTIPOLYGON"), nullable=True)
     raster = mapped_column(GDALRaster, nullable=True)
     embedding_id = mapped_column(ForeignKey("embedding.id"), nullable=True)
 

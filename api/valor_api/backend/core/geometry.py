@@ -69,7 +69,6 @@ def get_annotation_type(
     )
     hierarchy = [
         (AnnotationType.RASTER, models.Annotation.raster),
-        (AnnotationType.MULTIPOLYGON, models.Annotation.multipolygon),
         (AnnotationType.POLYGON, models.Annotation.polygon),
         (AnnotationType.BOX, models.Annotation.box),
     ]
@@ -125,22 +124,6 @@ def _convert_polygon_to_box(
         update(models.Annotation)
         .where(models.Annotation.id == subquery.c.id)
         .values(box=func.ST_Envelope(models.Annotation.polygon))
-    )
-
-
-def _convert_multipolygon_to_box(
-    where_conditions: list[BinaryExpression],
-) -> Update:
-    raise NotImplementedError(
-        "Conversion from multipolygon to box is currently unsupported. See Issue #470."
-    )
-
-
-def _convert_multipolygon_to_polygon(
-    where_conditions: list[BinaryExpression],
-) -> Update:
-    raise NotImplementedError(
-        "Conversion from multipolygon to polygon is currently unsupported. See Issue #470."
     )
 
 
@@ -242,14 +225,6 @@ def _convert_raster_to_polygon(
     )
 
 
-def _convert_raster_to_multipolygon(
-    where_conditions: list[BinaryExpression],
-) -> Update:
-    raise NotImplementedError(
-        "Conversion from raster to multipolygon is currently unsupported. See Issue #470."
-    )
-
-
 def convert_geometry(
     db: Session,
     source_type: AnnotationType,
@@ -280,13 +255,16 @@ def convert_geometry(
     valid_geometric_types = [
         AnnotationType.BOX,
         AnnotationType.POLYGON,
-        AnnotationType.MULTIPOLYGON,
         AnnotationType.RASTER,
     ]
     if source_type not in valid_geometric_types:
-        raise ValueError(f"Source type `{source_type}` not a geometric type.")
+        raise ValueError(
+            f"Annotation source with type `{source_type}` not supported."
+        )
     if target_type not in valid_geometric_types:
-        raise ValueError(f"Target type `{target_type}` not a geometric type.")
+        raise ValueError(
+            f"Annotation target with type `{target_type}` not supported."
+        )
 
     # Check if source type can serve the target type
     if source_type == target_type:
@@ -301,11 +279,6 @@ def convert_geometry(
         AnnotationType.RASTER: {
             AnnotationType.BOX: _convert_raster_to_box,
             AnnotationType.POLYGON: _convert_raster_to_polygon,
-            AnnotationType.MULTIPOLYGON: _convert_raster_to_multipolygon,
-        },
-        AnnotationType.MULTIPOLYGON: {
-            AnnotationType.BOX: _convert_multipolygon_to_box,
-            AnnotationType.POLYGON: _convert_multipolygon_to_polygon,
         },
         AnnotationType.POLYGON: {
             AnnotationType.BOX: _convert_polygon_to_box,

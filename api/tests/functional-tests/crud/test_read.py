@@ -182,7 +182,6 @@ def test_get_dataset_summary(
     assert summary.num_annotations == 6
     assert summary.num_bounding_boxes == 3
     assert summary.num_polygons == 1
-    assert summary.num_groundtruth_multipolygons == 0
     assert summary.num_rasters == 1
     assert set(summary.task_types) == set(
         [

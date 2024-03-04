@@ -370,7 +370,6 @@ def test_get_summary(
     assert summary.num_annotations == 2
     assert summary.num_bounding_boxes == 1
     assert summary.num_polygons == 0
-    assert summary.num_groundtruth_multipolygons == 0
     assert summary.num_rasters == 1
     assert summary.task_types == [
         TaskType.OBJECT_DETECTION,

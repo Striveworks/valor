@@ -287,7 +287,6 @@ class Annotation:
     metadata = DictionaryProperty("annotation_metadata")
     bounding_box = GeometryProperty("bounding_box")
     polygon = GeometryProperty("polygon")
-    multipolygon = GeometryProperty("multipolygon")
     raster = GeometryProperty("raster")
 
     def __init__(
@@ -1020,7 +1019,6 @@ class DatasetSummary:
     num_annotations: int
     num_bounding_boxes: int
     num_polygons: int
-    num_groundtruth_multipolygons: int
     num_rasters: int
     task_types: List[TaskType]
     labels: List[Label]
@@ -1280,8 +1278,6 @@ class Dataset:
             num_bounding_boxes: total number of bounding boxes in the dataset
 
             num_polygons: total number of polygons in the dataset
-
-            num_groundtruth_multipolygons: total number of multipolygons in the dataset
 
             num_rasters: total number of rasters in the dataset
 

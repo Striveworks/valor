@@ -47,7 +47,6 @@ def test_annotation_typing():
     assert type(Annotation.metadata) is DictionaryProperty
     assert type(Annotation.bounding_box) is GeometryProperty
     assert type(Annotation.polygon) is GeometryProperty
-    assert type(Annotation.multipolygon) is GeometryProperty
     assert type(Annotation.raster) is GeometryProperty
 
     annotation = Annotation(
@@ -59,7 +58,6 @@ def test_annotation_typing():
     assert type(annotation.metadata) is dict
     assert annotation.bounding_box is None
     assert annotation.polygon is None
-    assert annotation.multipolygon is None
     assert annotation.raster is None
 
     bbox = geometry.BoundingBox.from_extrema(0, 1, 0, 1)
@@ -80,7 +78,6 @@ def test_annotation_typing():
     assert type(annotation.metadata) is dict
     assert type(annotation.bounding_box) is geometry.BoundingBox
     assert type(annotation.polygon) is geometry.Polygon
-    assert type(annotation.multipolygon) is geometry.MultiPolygon
     assert type(annotation.raster) is geometry.Raster
 
 
