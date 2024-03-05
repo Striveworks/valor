@@ -224,7 +224,7 @@ def get_prediction(
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
     tags=["Labels"],
-    description="Fetch labels. All query parameters are optional and if specified should be JSON strings",
+    description="Fetch labels using optional JSON strings as query parameters.",
 )
 def get_labels(
     filters: schemas.FilterQueryParams = Depends(),
@@ -379,7 +379,7 @@ def create_dataset(dataset: schemas.Dataset, db: Session = Depends(get_db)):
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
     tags=["Datasets"],
-    description="Fetch datasets. All query parameters are optional and if specified should be JSON strings",
+    description="Fetch datasets using optional JSON strings as query parameters.",
 )
 def get_datasets(
     filters: schemas.FilterQueryParams = Depends(),
@@ -393,7 +393,7 @@ def get_datasets(
     Parameters
     ----------
     filters : schemas.FilterQueryParams, optional
-        An optional filter to constrain results by. All of these fields should be json strings
+        An optional filter to constrain results by. All fields should be specified as strings in a JSON.
     db : Session
         The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
 
@@ -599,7 +599,7 @@ def delete_dataset(
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
     tags=["Datums"],
-    description="Fetch datums. All query parameters are optional and if specified should be JSON strings",
+    description="Fetch datums using optional JSON strings as query parameters.",
 )
 def get_datums(
     filters: schemas.FilterQueryParams = Depends(),
@@ -722,7 +722,7 @@ def create_model(model: schemas.Model, db: Session = Depends(get_db)):
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
     tags=["Models"],
-    description="Fetch models. All query parameters are optional and if specified should be JSON strings",
+    description="Fetch models using optional JSON strings as query parameters.",
 )
 def get_models(
     filters: schemas.FilterQueryParams = Depends(),
