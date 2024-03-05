@@ -52,14 +52,14 @@ async def handle_http_exception(
 
 
 async def handle_unhandled_exception(
-    request: Request, exc: RequestValidationError
+    request: Request, exc: Exception
 ) -> Union[JSONResponse, Response]:
     logger.error(
         "Valor unhandled exception",
         method=request.method,
         path=request.url.path,
         hostname=request.url.hostname,
-        exception=str(exc),
+        exc_info=exc,
     )
     return JSONResponse(
         content={"status": 500, "detail": "Internal Server Error"},
