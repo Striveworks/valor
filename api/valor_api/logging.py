@@ -1,7 +1,7 @@
 from typing import Awaitable, Callable, Union
 
 import structlog
-from fastapi import Request, Response
+from fastapi import HTTPException, Request, Response
 from fastapi.exception_handlers import (
     request_validation_exception_handler as fastapi_request_validation_exception_handler,
 )
@@ -32,6 +32,23 @@ async def handle_request_validation_exception(
     response = await fastapi_request_validation_exception_handler(request, exc)
     logger.warn("Valor request validation exception", errors=exc.errors())
     return response
+
+
+async def handle_http_exception(
+    request: Request, exc: HTTPException
+) -> Union[JSONResponse, Response]:
+    if exc.status_code >= 500:
+        logger.error(
+            "Valor HTTP exception",
+            method=request.method,
+            path=request.url.path,
+            hostname=request.url.hostname,
+            exc_info=exc,
+        )
+    return JSONResponse(
+        content={"status": exc.status_code, "detail": exc.detail},
+        status_code=exc.status_code,
+    )
 
 
 async def handle_unhandled_exception(
