@@ -1,8 +1,6 @@
-import io
 import json
-from base64 import b64encode
 
-from geoalchemy2.functions import ST_AsGeoJSON, ST_AsPNG
+from geoalchemy2.functions import ST_AsGeoJSON
 from PIL import Image
 from sqlalchemy import and_, delete, select
 from sqlalchemy.exc import IntegrityError
@@ -11,41 +9,8 @@ from sqlalchemy.orm import Session
 from valor_api import exceptions, schemas
 from valor_api.backend import models
 from valor_api.backend.query import Query
+from valor_api.backend.core.geometry import _raster_to_png_b64
 from valor_api.enums import ModelStatus, TableStatus, TaskType
-
-
-def _raster_to_png_b64(
-    db: Session,
-    raster: Image.Image,
-) -> str:
-    """
-    Convert a raster to a png.
-
-    Parameters
-    ----------
-    db : Session
-        The database session.
-    raster : Image.Image
-        The raster in bytes.
-
-    Returns
-    -------
-    str
-        The encoded raster.
-    """
-    raster = Image.open(io.BytesIO(db.scalar(ST_AsPNG((raster))).tobytes()))
-    if raster.mode != "L":
-        raise RuntimeError
-
-    # mask is greyscale with values 0 and 1. to convert to binary
-    # we first need to map 1 to 255
-    raster = raster.point(lambda x: 255 if x == 1 else 0).convert("1")
-
-    f = io.BytesIO()
-    raster.save(f, format="PNG")
-    f.seek(0)
-    mask_bytes = f.read()
-    return b64encode(mask_bytes).decode()
 
 
 def _create_embedding(

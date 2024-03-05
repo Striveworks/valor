@@ -99,7 +99,11 @@ def groundtruths_with_areas(
                         Annotation(
                             task_type=TaskType.OBJECT_DETECTION,
                             labels=[Label(key="multipolygon", value=str(idx))],
-                            multipolygon=multipolygon,
+                            raster=Raster.from_geometry(
+                                multipolygon,
+                                height=image_height_width[0],
+                                width=image_height_width[1],
+                            )
                         )
                     ],
                 ),

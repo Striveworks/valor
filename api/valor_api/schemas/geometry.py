@@ -10,8 +10,8 @@ from geoalchemy2.functions import (
     ST_GeomFromText,
     ST_MakeEmptyRaster,
     ST_MapAlgebra,
-    ST_SetBandNoDataValue,
     ST_SetSRID,
+    ST_Resize,
 )
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import ScalarSelect, select
@@ -516,6 +516,78 @@ class Polygon(BaseModel):
             for hole in self.holes:
                 polys.append(str(hole))
         return f"({','.join(polys)})"
+    
+    @property
+    def left(self):
+        """
+        Returns the left-most point of the polygon.
+
+        Returns
+        ----------
+        float | int
+            A coordinate.
+        """
+        return self.boundary.left
+
+    @property
+    def right(self):
+        """
+        Returns the right-most point of the polygon.
+
+        Returns
+        ----------
+        float | int
+            A coordinate.
+        """
+        return self.boundary.right
+
+    @property
+    def top(self):
+        """
+        Returns the top-most point of the polygon.
+
+        Returns
+        ----------
+        float | int
+            A coordinate.
+        """
+        return self.boundary.top
+
+    @property
+    def bottom(self):
+        """
+        Returns the bottom-most point of the polygon.
+
+        Returns
+        ----------
+        float | int
+            A coordinate.
+        """
+        return self.boundary.bottom
+
+    @property
+    def width(self):
+        """
+        Returns the width of the polygon.
+
+        Returns
+        ----------
+        float | int
+            The width of the polygon.
+        """
+        return self.boundary.width
+
+    @property
+    def height(self):
+        """
+        Returns the height of the polygon.
+
+        Returns
+        ----------
+        float | int
+            The height of the polygon.
+        """
+        return self.boundary.height
 
     def wkt(self, partial: bool = False) -> str:
         """
@@ -557,6 +629,78 @@ class MultiPolygon(BaseModel):
     """
 
     polygons: list[Polygon]
+
+    @property
+    def left(self):
+        """
+        Returns the left-most point of the polygon.
+
+        Returns
+        ----------
+        float | int
+            A coordinate.
+        """
+        return min([poly.left for poly in self.polygons])
+
+    @property
+    def right(self):
+        """
+        Returns the right-most point of the polygon.
+
+        Returns
+        ----------
+        float | int
+            A coordinate.
+        """
+        return max([poly.right for poly in self.polygons])
+
+    @property
+    def top(self):
+        """
+        Returns the top-most point of the polygon.
+
+        Returns
+        ----------
+        float | int
+            A coordinate.
+        """
+        return max([poly.top for poly in self.polygons])
+
+    @property
+    def bottom(self):
+        """
+        Returns the bottom-most point of the polygon.
+
+        Returns
+        ----------
+        float | int
+            A coordinate.
+        """
+        return min([poly.bottom for poly in self.polygons])
+
+    @property
+    def width(self):
+        """
+        Returns the width of the polygon.
+
+        Returns
+        ----------
+        float | int
+            The width of the polygon.
+        """
+        return self.right - self.left
+
+    @property
+    def height(self):
+        """
+        Returns the height of the polygon.
+
+        Returns
+        ----------
+        float | int
+            The height of the polygon.
+        """
+        return self.top - self.bottom
 
     def wkt(self) -> str:
         """
@@ -966,19 +1110,16 @@ class Raster(BaseModel):
             )
             geom_raster = ST_AsRaster(
                 ST_GeomFromText(self.geometry.wkt()),
-                1.0,
-                1.0,
+                1.0,  # scalex
+                1.0,  # scaley
             )
             return select(
-                ST_SetBandNoDataValue(
-                    ST_MapAlgebra(
-                        empty_raster,
-                        geom_raster,
-                        "[rast2]",
-                        "8BUI",
-                        "UNION",
-                    ),
-                    0,
+                ST_MapAlgebra(
+                    empty_raster,
+                    geom_raster,
+                    "[rast2]",
+                    "8BUI",
+                    "UNION",
                 )
             ).scalar_subquery()
         else:

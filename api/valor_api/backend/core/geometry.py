@@ -1,3 +1,9 @@
+import io
+from base64 import b64encode
+
+from geoalchemy2.functions import ST_AsPNG
+from PIL import Image
+
 from geoalchemy2 import Geometry
 from geoalchemy2.types import CompositeType
 from sqlalchemy import (
@@ -330,3 +336,37 @@ def convert_geometry(
         db.commit()
     except IntegrityError:
         db.rollback()
+
+
+def _raster_to_png_b64(
+    db: Session,
+    raster: Image.Image,
+) -> str:
+    """
+    Convert a raster to a png.
+
+    Parameters
+    ----------
+    db : Session
+        The database session.
+    raster : Image.Image
+        The raster in bytes.
+
+    Returns
+    -------
+    str
+        The encoded raster.
+    """
+    raster = Image.open(io.BytesIO(db.scalar(ST_AsPNG((raster))).tobytes()))
+    if raster.mode != "L":
+        raise RuntimeError
+
+    # mask is greyscale with values 0 and 1. to convert to binary
+    # we first need to map 1 to 255
+    raster = raster.point(lambda x: 255 if x == 1 else 0).convert("1")
+
+    f = io.BytesIO()
+    raster.save(f, format="PNG")
+    f.seek(0)
+    mask_bytes = f.read()
+    return b64encode(mask_bytes).decode()

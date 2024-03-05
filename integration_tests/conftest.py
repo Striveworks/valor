@@ -341,18 +341,26 @@ def gt_segs(
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k1", value="v1")],
-                    multipolygon=MultiPolygon(
-                        polygons=[Polygon(boundary=rect1.polygon)]
-                    ),
+                    raster=Raster.from_geometry(
+                        MultiPolygon(
+                            polygons=[Polygon(boundary=rect1.polygon)]
+                        ),
+                        height=img1.height,
+                        width=img1.width,
+                    )
                 ),
                 Annotation(
                     task_type=TaskType.SEMANTIC_SEGMENTATION,
                     labels=[Label(key="k2", value="v2")],
-                    multipolygon=MultiPolygon(
-                        polygons=[
-                            Polygon(boundary=rect3.polygon),
-                            Polygon(boundary=rect1.polygon),
-                        ]
+                    raster=Raster.from_geometry(
+                        MultiPolygon(
+                            polygons=[
+                                Polygon(boundary=rect3.polygon),
+                                Polygon(boundary=rect1.polygon),
+                            ]
+                        ),
+                        height=img1.height,
+                        width=img1.width,
                     ),
                 ),
             ],
@@ -363,13 +371,17 @@ def gt_segs(
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k1", value="v1")],
-                    multipolygon=MultiPolygon(
-                        polygons=[
-                            Polygon(
-                                boundary=rect2.polygon,
-                                holes=[rect1.polygon],
-                            )
-                        ]
+                    raster=Raster.from_geometry(
+                        MultiPolygon(
+                            polygons=[
+                                Polygon(
+                                    boundary=rect2.polygon,
+                                    holes=[rect1.polygon],
+                                )
+                            ]
+                        ),
+                        height=img2.height,
+                        width=img2.width,
                     ),
                 )
             ],
@@ -388,11 +400,15 @@ def gt_semantic_segs1(
                 Annotation(
                     task_type=TaskType.SEMANTIC_SEGMENTATION,
                     labels=[Label(key="k2", value="v2")],
-                    multipolygon=MultiPolygon(
-                        polygons=[
-                            Polygon(boundary=rect3.polygon),
-                            Polygon(boundary=rect1.polygon),
-                        ]
+                    raster=Raster.from_geometry(
+                        MultiPolygon(
+                            polygons=[
+                                Polygon(boundary=rect3.polygon),
+                                Polygon(boundary=rect1.polygon),
+                            ]
+                        ),
+                        height=img1.height,
+                        width=img1.width,
                     ),
                 )
             ],
@@ -428,8 +444,12 @@ def gt_semantic_segs2(
                 Annotation(
                     task_type=TaskType.SEMANTIC_SEGMENTATION,
                     labels=[Label(key="k3", value="v3")],
-                    multipolygon=MultiPolygon(
-                        polygons=[Polygon(boundary=rect3.polygon)],
+                    raster=Raster.from_geometry(
+                        MultiPolygon(
+                            polygons=[Polygon(boundary=rect3.polygon)],
+                        ),
+                        height=img2.height,
+                        width=img2.width,
                     ),
                 )
             ],

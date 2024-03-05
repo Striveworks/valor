@@ -136,7 +136,11 @@ def test_create_gt_segs_as_polys_or_masks(
                 Annotation(
                     task_type=TaskType.SEMANTIC_SEGMENTATION,
                     labels=[Label(key="k1", value="v1")],
-                    multipolygon=MultiPolygon(polygons=[poly]),
+                    raster=Raster.from_geometry(
+                        MultiPolygon(polygons=[poly]),
+                        height=img1.height,
+                        width=img1.width,
+                    )
                 ),
             ],
         )
@@ -157,7 +161,11 @@ def test_create_gt_segs_as_polys_or_masks(
             Annotation(
                 task_type=TaskType.OBJECT_DETECTION,
                 labels=[Label(key="k1", value="v1")],
-                multipolygon=MultiPolygon(polygons=[poly]),
+                raster=Raster.from_geometry(
+                    MultiPolygon(polygons=[poly]),
+                    height=img1.height,
+                    width=img1.width,
+                )
             ),
         ],
     )

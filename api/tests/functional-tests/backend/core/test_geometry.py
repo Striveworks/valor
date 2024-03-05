@@ -1,6 +1,6 @@
 import json
-
 import pytest
+import numpy as np
 from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session
 
@@ -11,6 +11,7 @@ from valor_api.backend.core.geometry import (
     _convert_polygon_to_box,
     _convert_raster_to_box,
     _convert_raster_to_polygon,
+    _raster_to_png_b64,
     convert_geometry,
     get_annotation_type,
 )
@@ -283,16 +284,36 @@ def test_convert_polygon_to_box(
     assert converted_box == bbox
 
 
-def test_create_segmentations_from_different_types(
+def test_create_segmentations_from_polygons(
     db: Session,
     create_segmentation_dataset_from_geometries: str,
+    bbox: BoundingBox,
     polygon: Polygon,
     multipolygon: MultiPolygon,
     raster: Raster,
 ):
-    q = _convert_raster_to_polygon([])
-    db.execute(q)
+    # verify all rasters are equal
+    raster_arrs = [
+        Raster(mask=_raster_to_png_b64(db, r)).to_numpy()
+        for r in db.scalars(select(models.Annotation.raster)).all()
+    ]
+    assert len(raster_arrs) == 3
+    for r in raster_arrs:
+        print()
+        print(r)
 
+    pts = [
+        schemas.Point(x=4, y=0),
+        schemas.Point(x=1, y=3),
+        schemas.Point(x=4, y=6),
+        schemas.Point(x=7, y=3),
+    ]
+    np.testing.assert_array_equal(raster_arrs[0], raster_arrs[1])
+    np.testing.assert_array_equal(raster_arrs[2], raster.to_numpy())
+    np.testing.assert_array_equal(raster_arrs[0], raster_arrs[2])
+
+    # verify conversion to polygons
+    db.execute(_convert_raster_to_polygon([]))
     polygons = [
         _load_polygon(db, poly)
         for poly in db.scalars(select(models.Annotation.polygon)).all()
@@ -301,3 +322,16 @@ def test_create_segmentations_from_different_types(
     assert polygons[0] == polygons[1]
     assert polygons[0] == polygons[2]
     assert polygons[0] == polygon
+
+    # verify conversion to bbox
+    db.execute(_convert_raster_to_box([]))
+    boxes = [
+        _load_box(db, box)
+        for box in db.scalars(select(models.Annotation.box)).all()
+    ]
+    assert len(boxes) == 3
+    assert boxes[0] == boxes[1]
+    assert boxes[0] == boxes[2]
+    assert boxes[0] == bbox
+
+   
