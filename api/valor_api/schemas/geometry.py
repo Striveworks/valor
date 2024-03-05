@@ -768,6 +768,8 @@ class Raster(BaseModel):
     ----------
     mask : str
         The mask describing the raster.
+    geometry : BoundingBox | Polygon | MultiPolygon, optional
+        Option to define raster by a geometry. Overrides the bitmask.
 
     Raises
     ------
@@ -777,6 +779,7 @@ class Raster(BaseModel):
     """
 
     mask: str = Field(frozen=True)
+    geometry: BoundingBox | Polygon | MultiPolygon | None = None
 
     @field_validator("mask")
     @classmethod
@@ -794,34 +797,6 @@ class Raster(BaseModel):
                 f"Expected image mode to be binary but got mode {img.mode}."
             )
         return v
-
-    @property
-    def mask_bytes(self) -> bytes:
-        """
-        Serialize the mask into bytes.
-
-        Returns
-        ----------
-        bytes
-            A byte object.
-
-        """
-        if not hasattr(self, "_mask_bytes"):
-            self._mask_bytes = b64decode(self.mask)
-        return self._mask_bytes
-
-    @property
-    def array(self) -> np.ndarray:
-        """
-        Convert the mask into an array.
-
-        Returns
-        ----------
-        np.ndarray
-            An array representing a mask.
-
-        """
-        return self.to_numpy()
 
     @classmethod
     def from_numpy(cls, mask: np.ndarray):
@@ -872,3 +847,55 @@ class Raster(BaseModel):
         with io.BytesIO(mask_bytes) as f:
             img = PIL.Image.open(f)
             return np.array(img)
+
+    @property
+    def mask_bytes(self) -> bytes:
+        """
+        Serialize the mask into bytes.
+
+        Returns
+        ----------
+        bytes
+            A byte object.
+
+        """
+        if not hasattr(self, "_mask_bytes"):
+            self._mask_bytes = b64decode(self.mask)
+        return self._mask_bytes
+
+    @property
+    def array(self) -> np.ndarray:
+        """
+        Convert the mask into an array.
+
+        Returns
+        ----------
+        np.ndarray
+            An array representing a mask.
+
+        """
+        return self.to_numpy()
+
+    @property
+    def height(self) -> int:
+        """
+        Get the height of the raster.
+
+        Returns
+        -------
+        int
+            The height of the binary mask.
+        """
+        return self.array.shape[0]
+
+    @property
+    def width(self) -> int:
+        """
+        Get the width of the raster.
+
+        Returns
+        -------
+        int
+            The width of the binary mask.
+        """
+        return self.array.shape[1]

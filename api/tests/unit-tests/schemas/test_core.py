@@ -576,10 +576,12 @@ def test_semantic_segmentation_validation():
                     schemas.Label(key="k1", value="v1"),
                     schemas.Label(key="k2", value="v2"),
                 ],
+                raster=schemas.Raster.from_numpy(np.zeros((10, 10)) == 1),
             ),
             schemas.Annotation(
                 task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
                 labels=[schemas.Label(key="k1", value="v3")],
+                raster=schemas.Raster.from_numpy(np.zeros((10, 10)) == 1),
             ),
         ],
     )
@@ -599,10 +601,12 @@ def test_semantic_segmentation_validation():
                         schemas.Label(key="k1", value="v1"),
                         schemas.Label(key="k1", value="v1"),
                     ],
+                    raster=schemas.Raster.from_numpy(np.zeros((10, 10)) == 1),
                 ),
                 schemas.Annotation(
                     task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
                     labels=[schemas.Label(key="k3", value="v3")],
+                    raster=schemas.Raster.from_numpy(np.zeros((10, 10)) == 1),
                 ),
             ],
         )
@@ -621,10 +625,12 @@ def test_semantic_segmentation_validation():
                         schemas.Label(key="k1", value="v1"),
                         schemas.Label(key="k1", value="v2"),
                     ],
+                    raster=schemas.Raster.from_numpy(np.zeros((10, 10)) == 1),
                 ),
                 schemas.Annotation(
                     task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
                     labels=[schemas.Label(key="k1", value="v1")],
+                    raster=schemas.Raster.from_numpy(np.zeros((10, 10)) == 1),
                 ),
             ],
         )
@@ -645,10 +651,12 @@ def test_semantic_segmentation_validation():
                     schemas.Label(key="k1", value="v1"),
                     schemas.Label(key="k2", value="v2"),
                 ],
+                raster=schemas.Raster.from_numpy(np.zeros((10, 10)) == 1),
             ),
             schemas.Annotation(
                 task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
                 labels=[schemas.Label(key="k1", value="v3")],
+                raster=schemas.Raster.from_numpy(np.zeros((10, 10)) == 1),
             ),
         ],
     )
@@ -667,10 +675,12 @@ def test_semantic_segmentation_validation():
                         schemas.Label(key="k1", value="v1"),
                         schemas.Label(key="k1", value="v1"),
                     ],
+                    raster=schemas.Raster.from_numpy(np.zeros((10, 10)) == 1),
                 ),
                 schemas.Annotation(
                     task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
                     labels=[schemas.Label(key="k3", value="v3")],
+                    raster=schemas.Raster.from_numpy(np.zeros((10, 10)) == 1),
                 ),
             ],
         )

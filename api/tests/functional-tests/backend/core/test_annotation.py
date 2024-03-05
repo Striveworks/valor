@@ -1,10 +1,8 @@
 import json
 
-import numpy as np
 import pytest
-from geoalchemy2 import Raster
-from sqlalchemy import func, literal, select
-from sqlalchemy.orm import Session, aliased
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session
 
 from valor_api import enums, exceptions, schemas
 from valor_api.backend import core, models

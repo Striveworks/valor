@@ -14,7 +14,7 @@ from valor.exceptions import ClientException
 from valor.schemas.constraints import BinaryExpression
 from valor.schemas.evaluation import EvaluationParameters, EvaluationRequest
 from valor.schemas.filters import Filter
-from valor.schemas.geometry import BoundingBox, MultiPolygon, Polygon, Raster
+from valor.schemas.geometry import BoundingBox, Polygon, Raster
 from valor.schemas.metadata import (
     MetadataType,
     dump_metadata,
@@ -212,8 +212,6 @@ class Annotation:
         A bounding box to assign to the `Annotation`.
     polygon: Polygon, optional
         A polygon to assign to the `Annotation`.
-    multipolygon: MultiPolygon, optional
-        A multipolygon to assign to the `Annotation`.
     raster: Raster, optional
         A raster to assign to the `Annotation`.
     embedding: List[float], optional
@@ -250,13 +248,6 @@ class Annotation:
     ...     polygon=polygon1,
     ... )
 
-    Object-Detection Mulitpolygon
-    >>> annotation = Annotation(
-    ...     task_type=TaskType.OBJECT_DETECTION,
-    ...     labels=[Label(key="k1", value="v1")],
-    ...     multipolygon=multipolygon,
-    ... )
-
     Object-Detection Raster
     >>> annotation = Annotation(
     ...     task_type=TaskType.OBJECT_DETECTION,
@@ -277,7 +268,6 @@ class Annotation:
     ...     labels=[Label(key="k1", value="v1")],
     ...     bounding_box=box1,
     ...     polygon=polygon1,
-    ...     multipolygon=multipolygon,
     ...     raster=raster1,
     ... )
     """
@@ -296,7 +286,6 @@ class Annotation:
         metadata: Optional[MetadataType] = None,
         bounding_box: Optional[BoundingBox] = None,
         polygon: Optional[Polygon] = None,
-        multipolygon: Optional[MultiPolygon] = None,
         raster: Optional[Raster] = None,
         embedding: Optional[List[float]] = None,
     ):
@@ -305,7 +294,6 @@ class Annotation:
         self.metadata = metadata if metadata else {}
         self.bounding_box = bounding_box
         self.polygon = polygon
-        self.multipolygon = multipolygon
         self.raster = raster
         self.embedding = embedding
         self._validate()
@@ -337,13 +325,6 @@ class Annotation:
             if not isinstance(self.polygon, Polygon):
                 raise TypeError(
                     "Attribute `polygon` should have type `valor.schemas.Polygon`."
-                )
-
-        # multipolygon
-        if self.multipolygon is not None:
-            if not isinstance(self.multipolygon, MultiPolygon):
-                raise TypeError(
-                    "Attribute `multipolygon` should have type `valor.schemas.MultiPolygon`."
                 )
 
         # raster
@@ -391,7 +372,6 @@ class Annotation:
 
         bounding_box = None
         polygon = None
-        multipolygon = None
         raster = None
         embedding = None
 
@@ -403,12 +383,6 @@ class Annotation:
             )
         if "polygon" in resp:
             polygon = Polygon(**resp["polygon"]) if resp["polygon"] else None
-        if "multipolygon" in resp:
-            multipolygon = (
-                MultiPolygon(**resp["multipolygon"])
-                if resp["multipolygon"]
-                else None
-            )
         if "raster" in resp:
             raster = Raster(**resp["raster"]) if resp["raster"] else None
         if "embedding" in resp:
@@ -420,7 +394,6 @@ class Annotation:
             metadata=metadata,
             bounding_box=bounding_box,
             polygon=polygon,
-            multipolygon=multipolygon,
             raster=raster,
             embedding=embedding,
         )
@@ -442,9 +415,6 @@ class Annotation:
                 asdict(self.bounding_box) if self.bounding_box else None
             ),
             "polygon": asdict(self.polygon) if self.polygon else None,
-            "multipolygon": (
-                asdict(self.multipolygon) if self.multipolygon else None
-            ),
             "raster": asdict(self.raster) if self.raster else None,
             "embedding": self.embedding if self.embedding else None,
         }

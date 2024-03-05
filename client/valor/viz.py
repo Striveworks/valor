@@ -148,13 +148,32 @@ def create_combined_segmentation_mask(
     combined_mask = np.zeros((img_h, img_w, 3), dtype=np.uint8)
     for annotation, color in zip(annotations, seg_colors):
         if annotation.raster is not None:
-            mask = annotation.raster.to_numpy()
-        elif annotation.multipolygon is not None:
-            mask = _polygons_to_binary_mask(
-                annotation.multipolygon.polygons,
-                img_w=img_w,
-                img_h=img_h,
-            )
+            if annotation.raster.geometry is None:
+                mask = annotation.raster.to_numpy()
+            elif isinstance(annotation.raster.geometry, schemas.MultiPolygon):
+                mask = _polygons_to_binary_mask(
+                    annotation.raster.geometry.polygons,
+                    img_w=img_w,
+                    img_h=img_h,
+                )
+            elif isinstance(annotation.raster.geometry, schemas.Polygon):
+                mask = _polygons_to_binary_mask(
+                    [annotation.raster.geometry],
+                    img_w=img_w,
+                    img_h=img_h,
+                )
+            elif isinstance(annotation.raster.geometry, schemas.BoundingBox):
+                mask = _polygons_to_binary_mask(
+                    [
+                        schemas.Polygon(
+                            boundary=annotation.raster.geometry.polygon
+                        )
+                    ],
+                    img_w=img_w,
+                    img_h=img_h,
+                )
+            else:
+                continue
         else:
             continue
 

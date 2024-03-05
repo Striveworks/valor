@@ -1,5 +1,3 @@
-import json
-
 from geoalchemy2 import Geometry
 from geoalchemy2.types import CompositeType
 from sqlalchemy import (
@@ -16,7 +14,6 @@ from sqlalchemy import (
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from valor_api import schemas
 from valor_api.backend import models
 from valor_api.enums import AnnotationType, TaskType
 

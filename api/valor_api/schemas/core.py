@@ -3,12 +3,7 @@ import re
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 from valor_api.enums import TaskType
-from valor_api.schemas.geometry import (
-    BoundingBox,
-    MultiPolygon,
-    Polygon,
-    Raster,
-)
+from valor_api.schemas.geometry import BoundingBox, Polygon, Raster
 from valor_api.schemas.label import Label
 from valor_api.schemas.metadata import DateTimeType, GeoJSONType
 
@@ -45,7 +40,6 @@ def _check_if_empty_annotation(values):
         not values.labels
         and values.bounding_box is None
         and values.polygon is None
-        and values.multipolygon is None
         and values.raster is None
         and values.embedding is None
     )
@@ -62,12 +56,11 @@ def _validate_annotation_by_task_type(values):
                 values.labels
                 and values.bounding_box is None
                 and values.polygon is None
-                and values.multipolygon is None
                 and values.raster is None
                 and values.embedding is None
             ):
                 raise ValueError(
-                    "Annotation with task type `classification` does not support geometries or embeddings."
+                    "Annotations with task type `classification` do not support geometries or embeddings."
                 )
         case TaskType.OBJECT_DETECTION:
             if not (
@@ -75,27 +68,23 @@ def _validate_annotation_by_task_type(values):
                 and (
                     values.bounding_box is not None
                     or values.polygon is not None
-                    or values.multipolygon is not None
                     or values.raster is not None
                 )
                 and values.embedding is None
             ):
                 raise ValueError(
-                    "Annotation with task type `object-detection` does not support embeddings."
+                    "Annotations with task type `object-detection` do not support embeddings."
                 )
         case TaskType.SEMANTIC_SEGMENTATION:
             if not (
                 values.labels
-                and (
-                    values.raster is not None
-                    or values.multipolygon is not None
-                    or values.polygon is not None
-                )
+                and values.raster is not None
                 and values.bounding_box is None
+                and values.polygon is None
                 and values.embedding is None
             ):
                 raise ValueError(
-                    "Annotation with task type `semantic-segmentation` only supports raster and multipolygon geometries."
+                    "Annotations with task type `semantic-segmentation` only supports rasters."
                 )
         case TaskType.EMBEDDING:
             if not (
@@ -103,18 +92,17 @@ def _validate_annotation_by_task_type(values):
                 and not values.labels
                 and values.bounding_box is None
                 and values.polygon is None
-                and values.multipolygon is None
                 and values.raster is None
             ):
                 raise ValueError(
-                    "Annotation with task type `embedding` does not support labels or geometries."
+                    "Annotation with task type `embedding` do not support labels or geometries."
                 )
         case TaskType.EMPTY | TaskType.SKIP:
             if not _check_if_empty_annotation(values):
                 raise ValueError("Annotation is not empty.")
         case _:
-            raise ValueError(
-                f"Task type `{values.task_type}` is not a supported user input."
+            raise NotImplementedError(
+                f"Task type `{values.task_type}` is not supported."
             )
     return values
 
@@ -274,8 +262,6 @@ class Annotation(BaseModel):
         A bounding box to assign to the `Annotation`.
     polygon: Polygon, optional
         A polygon to assign to the `Annotation`.
-    multipolygon: MultiPolygon, optional
-        A multipolygon to assign to the `Annotation`.
     raster: Raster, optional
         A raster to assign to the `Annotation`.
     embedding: list[float], optional
@@ -295,7 +281,6 @@ class Annotation(BaseModel):
     # Geometric types
     bounding_box: BoundingBox | None = None
     polygon: Polygon | None = None
-    multipolygon: MultiPolygon | None = None
     raster: Raster | None = None
     embedding: list[float] | None = None
 

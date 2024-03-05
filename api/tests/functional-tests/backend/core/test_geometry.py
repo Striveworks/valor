@@ -1,6 +1,5 @@
 import json
 
-import numpy as np
 import pytest
 from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session
@@ -18,12 +17,10 @@ from valor_api.backend.core.geometry import (
 from valor_api.crud import create_dataset, create_groundtruth
 from valor_api.schemas import (
     Annotation,
-    BasicPolygon,
     BoundingBox,
     Datum,
     GroundTruth,
     MultiPolygon,
-    Point,
     Polygon,
     Raster,
 )
@@ -77,7 +74,10 @@ def create_object_detection_dataset(
             Annotation(
                 task_type=task_type,
                 labels=labels,
-                multipolygon=multipolygon,
+                raster=Raster(
+                    mask=raster.mask,
+                    geometry=multipolygon,
+                ),
             ),
             Annotation(
                 task_type=task_type,

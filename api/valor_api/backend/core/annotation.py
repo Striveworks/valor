@@ -4,7 +4,7 @@ from base64 import b64encode
 
 from geoalchemy2.functions import ST_AsGeoJSON, ST_AsPNG, ST_Envelope
 from PIL import Image
-from sqlalchemy import and_, delete, func, or_, select
+from sqlalchemy import and_, delete, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -65,27 +65,30 @@ def _raster_to_png_b64(
     return b64encode(mask_bytes).decode()
 
 
-def _wkt_polygon_to_raster(wkt: str):
+def _convert_raster_schema_to_row(raster: schemas.Raster):
     """
-    Convert a polygon or multipolygon to a raster using psql.
+    Converts a raster schema into a postgis-compatible type.
 
     Parameters
     ----------
-    wkt : str
-        A psql polygon or multipolygon object in well-known text format.
+    raster : schemas.Raster
+        A raster in schema format.
 
     Returns
     ----------
-    Query
-        A scalar subquery from psql.
+    Query | bytes
+        A valid input to the models.Annotation.raster column.
     """
-    return select(
-        func.ST_AsRaster(
-            func.ST_GeomFromText(wkt),
-            1.0,
-            1.0,
-        ),
-    ).scalar_subquery()
+    if raster.geometry:
+        return select(
+            func.ST_AsRaster(
+                func.ST_GeomFromText(raster.geometry),
+                width=raster.width,
+                height=raster.height,
+            ),
+        ).scalar_subquery()
+    else:
+        return raster.mask_bytes
 
 
 def _create_embedding(
@@ -153,16 +156,10 @@ def _create_annotation(
             if annotation.polygon:
                 polygon = annotation.polygon.wkt()
             if annotation.raster:
-                raster = annotation.raster.mask_bytes
-            elif annotation.multipolygon:
-                raster = _wkt_polygon_to_raster(annotation.multipolygon.wkt())
+                raster = _convert_raster_schema_to_row(annotation.raster)
         case TaskType.SEMANTIC_SEGMENTATION:
             if annotation.raster:
-                raster = annotation.raster.mask_bytes
-            elif annotation.multipolygon:
-                raster = _wkt_polygon_to_raster(annotation.multipolygon.wkt())
-            elif annotation.polygon:
-                raster = _wkt_polygon_to_raster(annotation.polygon.wkt())
+                raster = _convert_raster_schema_to_row(annotation.raster)
         case TaskType.EMBEDDING:
             if annotation.embedding:
                 embedding_id = _create_embedding(
