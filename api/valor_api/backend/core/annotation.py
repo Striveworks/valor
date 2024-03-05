@@ -2,9 +2,9 @@ import io
 import json
 from base64 import b64encode
 
-from geoalchemy2.functions import ST_AsGeoJSON, ST_AsPNG, ST_Envelope
+from geoalchemy2.functions import ST_AsGeoJSON, ST_AsPNG
 from PIL import Image
-from sqlalchemy import and_, delete, func, select
+from sqlalchemy import and_, delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -12,18 +12,6 @@ from valor_api import exceptions, schemas
 from valor_api.backend import models
 from valor_api.backend.query import Query
 from valor_api.enums import ModelStatus, TableStatus, TaskType
-
-
-def _get_bounding_box_of_raster(
-    db: Session, raster: Image.Image
-) -> tuple[int, int, int, int]:
-    """Get the enveloping bounding box of a raster"""
-    env = json.loads(db.scalar(ST_AsGeoJSON(ST_Envelope(raster))))
-    assert len(env["coordinates"]) == 1
-    xs = [pt[0] for pt in env["coordinates"][0]]
-    ys = [pt[1] for pt in env["coordinates"][0]]
-
-    return min(xs), min(ys), max(xs), max(ys)
 
 
 def _raster_to_png_b64(
@@ -45,50 +33,19 @@ def _raster_to_png_b64(
     str
         The encoded raster.
     """
-    enveloping_box = _get_bounding_box_of_raster(db, raster)
     raster = Image.open(io.BytesIO(db.scalar(ST_AsPNG((raster))).tobytes()))
-
-    assert raster.mode == "L"
-
-    ret = Image.new(size=raster.size, mode=raster.mode)
-
-    ret.paste(raster, box=enveloping_box)
+    if raster.mode != "L":
+        raise RuntimeError
 
     # mask is greyscale with values 0 and 1. to convert to binary
     # we first need to map 1 to 255
-    ret = ret.point(lambda x: 255 if x == 1 else 0).convert("1")
+    raster = raster.point(lambda x: 255 if x == 1 else 0).convert("1")
 
     f = io.BytesIO()
-    ret.save(f, format="PNG")
+    raster.save(f, format="PNG")
     f.seek(0)
     mask_bytes = f.read()
     return b64encode(mask_bytes).decode()
-
-
-def _convert_raster_schema_to_row(raster: schemas.Raster):
-    """
-    Converts a raster schema into a postgis-compatible type.
-
-    Parameters
-    ----------
-    raster : schemas.Raster
-        A raster in schema format.
-
-    Returns
-    ----------
-    Query | bytes
-        A valid input to the models.Annotation.raster column.
-    """
-    if raster.geometry:
-        return select(
-            func.ST_AsRaster(
-                func.ST_GeomFromText(raster.geometry),
-                width=raster.width,
-                height=raster.height,
-            ),
-        ).scalar_subquery()
-    else:
-        return raster.mask_bytes
 
 
 def _create_embedding(
@@ -156,10 +113,10 @@ def _create_annotation(
             if annotation.polygon:
                 polygon = annotation.polygon.wkt()
             if annotation.raster:
-                raster = _convert_raster_schema_to_row(annotation.raster)
+                raster = annotation.raster.wkt()
         case TaskType.SEMANTIC_SEGMENTATION:
             if annotation.raster:
-                raster = _convert_raster_schema_to_row(annotation.raster)
+                raster = annotation.raster.wkt()
         case TaskType.EMBEDDING:
             if annotation.embedding:
                 embedding_id = _create_embedding(

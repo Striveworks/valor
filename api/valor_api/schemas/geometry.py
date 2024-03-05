@@ -4,7 +4,16 @@ from base64 import b64decode, b64encode
 
 import numpy as np
 import PIL.Image
+from geoalchemy2.functions import (
+    ST_AddBand,
+    ST_AsRaster,
+    ST_GeomFromText,
+    ST_MakeEmptyRaster,
+    ST_MapAlgebra,
+    ST_SetSRID,
+)
 from pydantic import BaseModel, Field, field_validator
+from sqlalchemy import ScalarSelect, select
 
 
 class Point(BaseModel):
@@ -899,3 +908,47 @@ class Raster(BaseModel):
             The width of the binary mask.
         """
         return self.array.shape[1]
+
+    def wkt(self) -> ScalarSelect | bytes:
+        """
+        Converts raster schema into a postgis-compatible type.
+
+        Returns
+        ----------
+        ScalarSelect | bytes
+            A valid input to the models.Annotation.raster column.
+        """
+        if self.geometry:
+            empty_raster = ST_SetSRID(
+                ST_AddBand(
+                    ST_MakeEmptyRaster(
+                        self.width,
+                        self.height,
+                        0,  # upperleftx
+                        0,  # upperlefty
+                        1,  # scalex
+                        1,  # scaley
+                        0,  # skewx
+                        0,  # skewy
+                        1,  # pixelsize
+                    ),
+                    "8BUI",
+                ),
+                0,  # SRID
+            )
+            geom_raster = ST_AsRaster(
+                ST_GeomFromText(self.geometry.wkt()),
+                1.0,
+                1.0,
+            )
+            return select(
+                ST_MapAlgebra(
+                    empty_raster,
+                    geom_raster,
+                    "[rast2]",
+                    "8BUI",
+                    "UNION",
+                )
+            ).scalar_subquery()
+        else:
+            return self.mask_bytes

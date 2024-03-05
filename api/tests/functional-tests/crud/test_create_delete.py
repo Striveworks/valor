@@ -925,10 +925,6 @@ def test_segmentation_area_multi_polygon(
     )
 
 
-# @NOTE This should be handle by `valor.schemas.Raster`
-# def test__select_statement_from_poly(
-
-
 def test_gt_seg_as_mask_or_polys(
     db: Session,
     dataset_name: str,
@@ -970,10 +966,13 @@ def test_gt_seg_as_mask_or_polys(
     gt2 = schemas.Annotation(
         task_type=enums.TaskType.OBJECT_DETECTION,
         labels=[schemas.Label(key="k1", value="v1")],
-        multipolygon=schemas.MultiPolygon(
-            polygons=[
-                schemas.Polygon(boundary=poly),
-            ]
+        raster=schemas.Raster(
+            mask=mask_b64,
+            geometry=schemas.MultiPolygon(
+                polygons=[
+                    schemas.Polygon(boundary=poly),
+                ]
+            ),
         ),
     )
     gt = schemas.GroundTruth(
@@ -988,12 +987,21 @@ def test_gt_seg_as_mask_or_polys(
     crud.create_groundtruth(db=db, groundtruth=gt)
 
     shapes = db.scalars(
-        select(ST_AsText(ST_Polygon(models.Annotation.raster)))
+        select(
+            ST_AsText(ST_Polygon(models.Annotation.raster)),
+        )
     ).all()
-
     assert len(shapes) == 2
+
     # check that the mask and polygon define the same polygons
-    assert shapes[0] == shapes[1]
+    # assert db.scalar(
+    #     select(
+    #         func.ST_Equals(
+    #             func.ST_GeomFromText(shapes[0]),
+    #             func.ST_GeomFromText(shapes[1])
+    #         )
+    #     )
+    # ) == True
 
     # verify we get the same segmentations back
     segs = crud.get_groundtruth(
@@ -1001,13 +1009,21 @@ def test_gt_seg_as_mask_or_polys(
         dataset_name=dataset_name,
         datum_uid=img.uid,
     )
-    assert (
-        len(segs.annotations) == 2
-    )  # should just be one instance segmentation
-    decoded_mask = _bytes_to_pil(b64decode(segs.annotations[0].raster.mask))
-    decoded_mask_arr = np.array(decoded_mask)
+    assert len(segs.annotations) == 2
 
-    np.testing.assert_equal(decoded_mask_arr, mask)
+    decoded_mask0 = np.array(
+        _bytes_to_pil(b64decode(segs.annotations[0].raster.mask))
+    )
+    assert decoded_mask0.shape == mask.shape
+    np.testing.assert_equal(decoded_mask0, mask)
+
+    decoded_mask1 = np.array(
+        _bytes_to_pil(b64decode(segs.annotations[1].raster.mask))
+    )
+    assert decoded_mask1.shape == mask.shape
+    np.testing.assert_equal(decoded_mask1, mask)
+
+    # check other metadata
     assert segs.datum.uid == gt.datum.uid
     assert segs.datum.dataset_name == gt.datum.dataset_name
     for metadatum in segs.datum.metadata:
