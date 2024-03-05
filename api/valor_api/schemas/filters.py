@@ -307,11 +307,6 @@ class Filter(BaseModel):
     )
 
 
-def field_to_tuple(field_info):
-    if field_info.annotation in []:
-        pass
-
-
 # we want to pass a Filter as a query parameters instead of a body
 # so we make a new model `FilterQueryParams` where every value is a JSON string
 model_fields = Filter.model_fields
