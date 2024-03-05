@@ -10,6 +10,7 @@ from geoalchemy2.functions import (
     ST_GeomFromText,
     ST_MakeEmptyRaster,
     ST_MapAlgebra,
+    ST_SetBandNoDataValue,
     ST_SetSRID,
 )
 from pydantic import BaseModel, Field, field_validator
@@ -843,6 +844,33 @@ class Raster(BaseModel):
             mask=b64encode(mask_bytes).decode(),
         )
 
+    @classmethod
+    def from_geometry(
+        cls,
+        geometry: BoundingBox | Polygon | MultiPolygon,
+        height: int,
+        width: int,
+    ):
+        """
+        Create a Raster object from a geometry.
+
+        Parameters
+        ----------
+        geometry : BoundingBox | Polygon | MultiPolygon
+            Defines the bitmask as a geometry. Overrides any existing mask.
+        height : int
+            The intended height of the binary mask.
+        width : int
+            The intended width of the binary mask.
+
+        Returns
+        -------
+        schemas.Raster
+        """
+        r = cls.from_numpy(np.full((int(height), int(width)), False))
+        r.geometry = geometry
+        return r
+
     def to_numpy(self) -> np.ndarray:
         """
         Convert the mask into an array.
@@ -914,7 +942,7 @@ class Raster(BaseModel):
         Converts raster schema into a postgis-compatible type.
 
         Returns
-        ----------
+        -------
         ScalarSelect | bytes
             A valid input to the models.Annotation.raster column.
         """
@@ -942,12 +970,15 @@ class Raster(BaseModel):
                 1.0,
             )
             return select(
-                ST_MapAlgebra(
-                    empty_raster,
-                    geom_raster,
-                    "[rast2]",
-                    "8BUI",
-                    "UNION",
+                ST_SetBandNoDataValue(
+                    ST_MapAlgebra(
+                        empty_raster,
+                        geom_raster,
+                        "[rast2]",
+                        "8BUI",
+                        "UNION",
+                    ),
+                    0,
                 )
             ).scalar_subquery()
         else:

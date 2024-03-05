@@ -74,6 +74,45 @@ def create_object_detection_dataset(
             Annotation(
                 task_type=task_type,
                 labels=labels,
+                raster=raster,
+            ),
+        ],
+    )
+    dataset = schemas.Dataset(name=dataset_name)
+    create_dataset(db=db, dataset=dataset)
+    create_groundtruth(db=db, groundtruth=groundtruth)
+    return dataset_name
+
+
+@pytest.fixture
+def create_segmentation_dataset_from_geometries(
+    db: Session,
+    dataset_name: str,
+    bbox: BoundingBox,
+    polygon: Polygon,
+    multipolygon: MultiPolygon,
+    raster: Raster,
+):
+    datum = Datum(
+        uid="uid1",
+        dataset_name=dataset_name,
+    )
+    task_type = enums.TaskType.OBJECT_DETECTION
+    labels = [schemas.Label(key="k1", value="v1")]
+    groundtruth = GroundTruth(
+        datum=datum,
+        annotations=[
+            Annotation(
+                task_type=task_type,
+                labels=labels,
+                raster=Raster(
+                    mask=raster.mask,
+                    geometry=polygon,
+                ),
+            ),
+            Annotation(
+                task_type=task_type,
+                labels=labels,
                 raster=Raster(
                     mask=raster.mask,
                     geometry=multipolygon,
@@ -240,10 +279,25 @@ def test_convert_polygon_to_box(
 
     converted_box = _load_box(db, annotation.box)
 
-    # rotate points
-    converted_box.polygon.points = converted_box.polygon.points[1:] + [
-        converted_box.polygon.points[0]
-    ]
-
     # check that points match
     assert converted_box == bbox
+
+
+def test_create_segmentations_from_different_types(
+    db: Session,
+    create_segmentation_dataset_from_geometries: str,
+    polygon: Polygon,
+    multipolygon: MultiPolygon,
+    raster: Raster,
+):
+    q = _convert_raster_to_polygon([])
+    db.execute(q)
+
+    polygons = [
+        _load_polygon(db, poly)
+        for poly in db.scalars(select(models.Annotation.polygon)).all()
+    ]
+    assert len(polygons) == 3
+    assert polygons[0] == polygons[1]
+    assert polygons[0] == polygons[2]
+    assert polygons[0] == polygon

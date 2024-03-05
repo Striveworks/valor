@@ -1,12 +1,9 @@
-import json
-
 import pytest
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from valor_api import enums, exceptions, schemas
 from valor_api.backend import core, models
-from valor_api.backend.core.annotation import _raster_to_png_b64
 
 
 @pytest.fixture
@@ -172,70 +169,3 @@ def _convert_raster_to_polygon():
     )
 
     return subquery
-
-
-def _load_polygon(db: Session, polygon) -> schemas.Polygon:
-    geom = json.loads(db.scalar(func.ST_AsGeoJSON(polygon)))
-    return schemas.metadata.geojson_from_dict(data=geom).geometry()  # type: ignore - this will always a polygon
-
-
-def _load_box(db: Session, box) -> schemas.BoundingBox:
-    return schemas.BoundingBox(polygon=_load_polygon(db, box).boundary)
-
-
-def test_create_conversion_for_semantic_segmentation(
-    db: Session,
-    created_dataset: str,
-    polygon: schemas.Polygon,
-    multipolygon: schemas.MultiPolygon,
-    raster: schemas.Raster,
-):
-    print()
-    print(raster.to_numpy())
-
-    gt = schemas.GroundTruth(
-        datum=schemas.Datum(uid="uid123", dataset_name=created_dataset),
-        annotations=[
-            schemas.Annotation(
-                task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
-                labels=[schemas.Label(key="class", value="dog")],
-                polygon=polygon,
-                multipolygon=multipolygon,
-                raster=raster,
-            ),
-            schemas.Annotation(
-                task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
-                labels=[schemas.Label(key="class", value="cat")],
-                polygon=polygon,
-                multipolygon=multipolygon,
-            ),
-            schemas.Annotation(
-                task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
-                labels=[schemas.Label(key="class", value="horse")],
-                polygon=polygon,
-            ),
-        ],
-    )
-
-    core.create_groundtruth(db, gt)
-
-    assert (
-        db.query(
-            select(func.count()).select_from(models.Annotation).subquery()
-        ).scalar()
-        == 3
-    )
-    annotations = db.scalars(select(models.Annotation)).all()
-
-    x = db.query(select(models.Annotation.raster).subquery()).all()
-
-    print()
-    for xx in x:
-        r = schemas.Raster(
-            mask=_raster_to_png_b64(
-                db,
-                xx[0],
-            )
-        )
-        print()
-        print(r.to_numpy())

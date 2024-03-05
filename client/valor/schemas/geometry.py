@@ -483,8 +483,8 @@ class Raster:
 
         Parameters
         ----------
-        geometry : Union[BoundingBox, Polygon, MultiPolygon], optional
-            Option to input the raster as a geometry. Overrides the mask.
+        geometry : Union[BoundingBox, Polygon, MultiPolygon]
+            Defines the bitmask as a geometry. Overrides any existing mask.
         height : int
             The intended height of the binary mask.
         width : int
@@ -494,7 +494,7 @@ class Raster:
         -------
         schemas.Raster
         """
-        r = cls.from_numpy(np.zeros((height, width)) == 1)
+        r = cls.from_numpy(np.full((int(height), int(width)), False))
         r.geometry = geometry
         return r
 

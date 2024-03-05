@@ -766,10 +766,10 @@ def bbox(rotated_box_points) -> schemas.BoundingBox:
     return schemas.BoundingBox(
         polygon=schemas.BasicPolygon(
             points=[
+                schemas.Point(x=minX, y=minY),
                 schemas.Point(x=minX, y=maxY),
                 schemas.Point(x=maxX, y=maxY),
                 schemas.Point(x=maxX, y=minY),
-                schemas.Point(x=minX, y=minY),
             ]
         )
     )

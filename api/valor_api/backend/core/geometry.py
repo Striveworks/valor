@@ -144,27 +144,41 @@ def _convert_raster_to_box(where_conditions: list[BinaryExpression]) -> Update:
         A SQL update to complete the conversion.
     """
 
+    pixels_subquery = select(
+        type_coerce(
+            func.ST_PixelAsPoints(models.Annotation.raster, 1),
+            type_=GeometricValueType,
+        ).geom.label("geom")
+    ).lateral("pixels")
+
     subquery = (
         select(
             models.Annotation.id.label("id"),
-            func.ST_Envelope(
-                func.ST_Union(models.Annotation.raster),
-                type_=RawGeometry,
-            ).label("raster_envelope"),
+            func.ST_ConvexHull(func.ST_Collect(pixels_subquery.c.geom)).label(
+                "raster_polygon"
+            ),
         )
+        .select_from(models.Annotation)
         .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
+        .join(
+            pixels_subquery,
+            literal_column(
+                "true"
+            ),  # Joining the lateral subquery doesn't require a condition
+        )
         .where(
             models.Annotation.box.is_(None),
             models.Annotation.raster.isnot(None),
             *where_conditions,
         )
         .group_by(models.Annotation.id)
-        .alias("subquery")
+        .subquery()
     )
+
     return (
         update(models.Annotation)
         .where(models.Annotation.id == subquery.c.id)
-        .values(box=subquery.c.raster_envelope)
+        .values(box=func.ST_Envelope(subquery.c.raster_polygon))
     )
 
 

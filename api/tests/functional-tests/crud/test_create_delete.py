@@ -213,8 +213,12 @@ def groundtruth_instance_segmentations(
                 schemas.Annotation(
                     task_type=enums.TaskType.OBJECT_DETECTION,
                     labels=[schemas.Label(key="k1", value="v1")],
-                    multipolygon=schemas.MultiPolygon(
-                        polygons=[poly_with_hole, poly_without_hole],
+                    raster=schemas.Raster.from_geometry(
+                        schemas.MultiPolygon(
+                            polygons=[poly_with_hole, poly_without_hole],
+                        ),
+                        height=img2.metadata["height"],
+                        width=img2.metadata["width"],
                     ),
                 ),
             ],
@@ -841,8 +845,12 @@ def test_segmentation_area_no_hole(
                 schemas.Annotation(
                     task_type=enums.TaskType.OBJECT_DETECTION,
                     labels=[schemas.Label(key="k1", value="v1")],
-                    multipolygon=schemas.MultiPolygon(
-                        polygons=[poly_without_hole],
+                    raster=schemas.Raster.from_geometry(
+                        schemas.MultiPolygon(
+                            polygons=[poly_without_hole],
+                        ),
+                        height=img1.metadata["height"],
+                        width=img1.metadata["width"],
                     ),
                 )
             ],
@@ -873,8 +881,12 @@ def test_segmentation_area_with_hole(
                 schemas.Annotation(
                     task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
                     labels=[schemas.Label(key="k1", value="v1")],
-                    multipolygon=schemas.MultiPolygon(
-                        polygons=[poly_with_hole],
+                    raster=schemas.Raster.from_geometry(
+                        schemas.MultiPolygon(
+                            polygons=[poly_with_hole],
+                        ),
+                        height=img1.metadata["height"],
+                        width=img1.metadata["width"],
                     ),
                 )
             ],
@@ -907,8 +919,12 @@ def test_segmentation_area_multi_polygon(
                 schemas.Annotation(
                     task_type=enums.TaskType.OBJECT_DETECTION,
                     labels=[schemas.Label(key="k1", value="v1")],
-                    multipolygon=schemas.MultiPolygon(
-                        polygons=[poly_with_hole, poly_without_hole],
+                    raster=schemas.Raster.from_geometry(
+                        schemas.MultiPolygon(
+                            polygons=[poly_with_hole, poly_without_hole],
+                        ),
+                        height=img1.metadata["height"],
+                        width=img1.metadata["width"],
                     ),
                 )
             ],
