@@ -249,7 +249,8 @@ def get_labels(
     """
     try:
         return crud.get_labels(
-            db=db, filters=schemas.filter_query_params_to_filter(filters)
+            db=db,
+            filters=schemas.convert_filter_query_params_to_filter_obj(filters),
         )
     except Exception as e:
         raise exceptions.create_http_error(e)
@@ -404,7 +405,8 @@ def get_datasets(
     """
     try:
         return crud.get_datasets(
-            db=db, filters=schemas.filter_query_params_to_filter(filters)
+            db=db,
+            filters=schemas.convert_filter_query_params_to_filter_obj(filters),
         )
     except Exception as e:
         raise exceptions.create_http_error(e)
@@ -630,7 +632,7 @@ def get_datums(
     try:
         return crud.get_datums(
             db=db,
-            filters=schemas.filter_query_params_to_filter(filters),
+            filters=schemas.convert_filter_query_params_to_filter_obj(filters),
         )
     except Exception as e:
         raise exceptions.create_http_error(e)
@@ -746,7 +748,8 @@ def get_models(
         A list of models.
     """
     return crud.get_models(
-        db=db, filters=schemas.filter_query_params_to_filter(filters)
+        db=db,
+        filters=schemas.convert_filter_query_params_to_filter_obj(filters),
     )
 
 

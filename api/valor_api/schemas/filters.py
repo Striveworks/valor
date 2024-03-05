@@ -318,7 +318,20 @@ FilterQueryParams = create_model(
 )
 
 
-def filter_query_params_to_filter(filter_query_params) -> Filter:
+def convert_filter_query_params_to_filter_obj(filter_query_params) -> Filter:
+    """Converts a `FilterQueryParams` object to a `Filter` object by
+    loading from JSON strings.
+
+    Parameters
+    ----------
+    filter_query_params : FilterQueryParams
+        The `FilterQueryParams` object to convert.
+
+    Returns
+    -------
+    Filter
+        The converted `Filter` object.
+    """
     return Filter(
         **{
             k: json.loads(v if v is not None else "null")

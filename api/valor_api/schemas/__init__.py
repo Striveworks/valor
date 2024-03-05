@@ -13,7 +13,7 @@ from .filters import (
     GeospatialFilter,
     NumericFilter,
     StringFilter,
-    filter_query_params_to_filter,
+    convert_filter_query_params_to_filter_obj,
 )
 from .geometry import (
     BasicPolygon,
@@ -106,7 +106,7 @@ __all__ = [
     "DateTimeFilter",
     "Filter",
     "FilterQueryParams",
-    "filter_query_params_to_filter",
+    "convert_filter_query_params_to_filter_obj",
     "Health",
     "Readiness",
     "DatasetSummary",
