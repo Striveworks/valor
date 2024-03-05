@@ -460,7 +460,7 @@ class ClientConnection:
         """
         kwargs = {}
         if filter_:
-            kwargs["json"] = filter_
+            kwargs["params"] = {k: json.dumps(v) for k, v in filter_.items()}
         return self._requests_get_rel_host("labels", **kwargs).json()
 
     def get_labels_from_dataset(self, name: str) -> List[dict]:
@@ -530,7 +530,7 @@ class ClientConnection:
         """
         kwargs = {}
         if filter_:
-            kwargs["json"] = filter_
+            kwargs["params"] = {k: json.dumps(v) for k, v in filter_.items()}
         return self._requests_get_rel_host("datasets", **kwargs).json()
 
     def get_dataset(self, name: str) -> dict:
@@ -632,7 +632,7 @@ class ClientConnection:
         """
         kwargs = {}
         if filter_:
-            kwargs["json"] = filter_
+            kwargs["params"] = {k: json.dumps(v) for k, v in filter_.items()}
         return self._requests_get_rel_host("data", **kwargs).json()
 
     def get_datum(
@@ -689,7 +689,7 @@ class ClientConnection:
         """
         kwargs = {}
         if filter_:
-            kwargs["json"] = filter_
+            kwargs["params"] = {k: json.dumps(v) for k, v in filter_.items()}
         return self._requests_get_rel_host("models", **kwargs).json()
 
     def get_model(self, name: str) -> dict:

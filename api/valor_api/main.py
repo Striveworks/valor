@@ -224,9 +224,10 @@ def get_prediction(
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
     tags=["Labels"],
+    description="Fetch labels using optional JSON strings as query parameters.",
 )
 def get_labels(
-    filters: schemas.Filter | None = None,
+    filters: schemas.FilterQueryParams = Depends(),
     db: Session = Depends(get_db),
 ) -> list[schemas.Label]:
     """
@@ -236,7 +237,7 @@ def get_labels(
 
     Parameters
     ----------
-    filters : schemas.Filter, optional
+    filters : schemas.FilterQueryParams, optional
         An optional filter to constrain results by.
     db : Session
         The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
@@ -247,7 +248,10 @@ def get_labels(
         A list of all labels in the database.
     """
     try:
-        return crud.get_labels(db=db, filters=filters)
+        return crud.get_labels(
+            db=db,
+            filters=schemas.convert_filter_query_params_to_filter_obj(filters),
+        )
     except Exception as e:
         raise exceptions.create_http_error(e)
 
@@ -376,9 +380,11 @@ def create_dataset(dataset: schemas.Dataset, db: Session = Depends(get_db)):
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
     tags=["Datasets"],
+    description="Fetch datasets using optional JSON strings as query parameters.",
 )
 def get_datasets(
-    filters: schemas.Filter | None = None, db: Session = Depends(get_db)
+    filters: schemas.FilterQueryParams = Depends(),
+    db: Session = Depends(get_db),
 ) -> list[schemas.Dataset]:
     """
     Fetch all datasets from the database.
@@ -387,8 +393,8 @@ def get_datasets(
 
     Parameters
     ----------
-    filters : schemas.Filter, optional
-        An optional filter to constrain results by.
+    filters : schemas.FilterQueryParams, optional
+        An optional filter to constrain results by. All fields should be specified as strings in a JSON.
     db : Session
         The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
 
@@ -398,7 +404,10 @@ def get_datasets(
         A list of all datasets stored in the database.
     """
     try:
-        return crud.get_datasets(db=db, filters=filters)
+        return crud.get_datasets(
+            db=db,
+            filters=schemas.convert_filter_query_params_to_filter_obj(filters),
+        )
     except Exception as e:
         raise exceptions.create_http_error(e)
 
@@ -592,9 +601,11 @@ def delete_dataset(
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
     tags=["Datums"],
+    description="Fetch datums using optional JSON strings as query parameters.",
 )
 def get_datums(
-    filters: schemas.Filter | None = None, db: Session = Depends(get_db)
+    filters: schemas.FilterQueryParams = Depends(),
+    db: Session = Depends(get_db),
 ) -> list[schemas.Datum]:
     """
     Fetch all datums for a particular dataset.
@@ -603,7 +614,7 @@ def get_datums(
 
     Parameters
     ----------
-    filters : schemas.Filter, optional
+    filters : schemas.FilterQueryParams, optional
         An optional filter to constrain results by.
     db : Session
         The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
@@ -621,7 +632,7 @@ def get_datums(
     try:
         return crud.get_datums(
             db=db,
-            filters=filters,
+            filters=schemas.convert_filter_query_params_to_filter_obj(filters),
         )
     except Exception as e:
         raise exceptions.create_http_error(e)
@@ -713,9 +724,11 @@ def create_model(model: schemas.Model, db: Session = Depends(get_db)):
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
     tags=["Models"],
+    description="Fetch models using optional JSON strings as query parameters.",
 )
 def get_models(
-    filters: schemas.Filter | None = None, db: Session = Depends(get_db)
+    filters: schemas.FilterQueryParams = Depends(),
+    db: Session = Depends(get_db),
 ) -> list[schemas.Model]:
     """
     Fetch all models in the database.
@@ -724,7 +737,7 @@ def get_models(
 
     Parameters
     ----------
-    filters : schemas.Filter, optional
+    filters : schemas.FilterQueryParams, optional
         An optional filter to constrain results by.
     db : Session
         The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
@@ -734,7 +747,10 @@ def get_models(
     list[schemas.Model]
         A list of models.
     """
-    return crud.get_models(db=db, filters=filters)
+    return crud.get_models(
+        db=db,
+        filters=schemas.convert_filter_query_params_to_filter_obj(filters),
+    )
 
 
 @app.get(
