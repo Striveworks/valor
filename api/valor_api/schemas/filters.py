@@ -312,6 +312,8 @@ def field_to_tuple(field_info):
         pass
 
 
+# we want to pass a Filter as a query parameters instead of a body
+# so we make a new model `FilterQueryParams` where every value is a JSON string
 model_fields = Filter.model_fields
 model_def_dict = {kwarg: (str | None, None) for kwarg in model_fields}
 FilterQueryParams = create_model(

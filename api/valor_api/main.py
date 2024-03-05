@@ -224,6 +224,7 @@ def get_prediction(
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
     tags=["Labels"],
+    description="Fetch labels. All query parameters are optional and if specified should be JSON strings",
 )
 def get_labels(
     filters: schemas.FilterQueryParams = Depends(),
@@ -378,6 +379,7 @@ def create_dataset(dataset: schemas.Dataset, db: Session = Depends(get_db)):
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
     tags=["Datasets"],
+    description="Fetch datasets. All query parameters are optional and if specified should be JSON strings",
 )
 def get_datasets(
     filters: schemas.FilterQueryParams = Depends(),
@@ -597,6 +599,7 @@ def delete_dataset(
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
     tags=["Datums"],
+    description="Fetch datums. All query parameters are optional and if specified should be JSON strings",
 )
 def get_datums(
     filters: schemas.FilterQueryParams = Depends(),
@@ -719,6 +722,7 @@ def create_model(model: schemas.Model, db: Session = Depends(get_db)):
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
     tags=["Models"],
+    description="Fetch models. All query parameters are optional and if specified should be JSON strings",
 )
 def get_models(
     filters: schemas.FilterQueryParams = Depends(),
