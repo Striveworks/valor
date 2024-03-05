@@ -1,4 +1,6 @@
-from pydantic import BaseModel, ConfigDict, field_validator
+import json
+
+from pydantic import BaseModel, ConfigDict, create_model, field_validator
 
 from valor_api.enums import TaskType
 from valor_api.schemas.metadata import (
@@ -302,4 +304,27 @@ class Filter(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
         protected_namespaces=("protected_",),
+    )
+
+
+def field_to_tuple(field_info):
+    if field_info.annotation in []:
+        pass
+
+
+model_fields = Filter.model_fields
+model_def_dict = {kwarg: (str | None, None) for kwarg in model_fields}
+FilterQueryParams = create_model(
+    "FilterQueryParams",
+    __config__=ConfigDict(extra="forbid"),
+    **model_def_dict,  # type: ignore
+)
+
+
+def filter_query_params_to_filter(filter_query_params) -> Filter:
+    return Filter(
+        **{
+            k: json.loads(v if v is not None else "null")
+            for k, v in filter_query_params.model_dump().items()
+        }
     )

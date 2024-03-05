@@ -378,7 +378,8 @@ def create_dataset(dataset: schemas.Dataset, db: Session = Depends(get_db)):
     tags=["Datasets"],
 )
 def get_datasets(
-    filters: schemas.Filter | None = None, db: Session = Depends(get_db)
+    filters: schemas.FilterQueryParams = Depends(),
+    db: Session = Depends(get_db),
 ) -> list[schemas.Dataset]:
     """
     Fetch all datasets from the database.
@@ -387,8 +388,8 @@ def get_datasets(
 
     Parameters
     ----------
-    filters : schemas.Filter, optional
-        An optional filter to constrain results by.
+    filters : schemas.FilterQueryParams, optional
+        An optional filter to constrain results by. All of these fields should be json strings
     db : Session
         The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
 
@@ -398,7 +399,9 @@ def get_datasets(
         A list of all datasets stored in the database.
     """
     try:
-        return crud.get_datasets(db=db, filters=filters)
+        return crud.get_datasets(
+            db=db, filters=schemas.filter_query_params_to_filter(filters)
+        )
     except Exception as e:
         raise exceptions.create_http_error(e)
 

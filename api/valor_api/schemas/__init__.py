@@ -9,9 +9,11 @@ from .filters import (
     BooleanFilter,
     DateTimeFilter,
     Filter,
+    FilterQueryParams,
     GeospatialFilter,
     NumericFilter,
     StringFilter,
+    filter_query_params_to_filter,
 )
 from .geometry import (
     BasicPolygon,
@@ -103,6 +105,8 @@ __all__ = [
     "BooleanFilter",
     "DateTimeFilter",
     "Filter",
+    "FilterQueryParams",
+    "filter_query_params_to_filter",
     "Health",
     "Readiness",
     "DatasetSummary",
