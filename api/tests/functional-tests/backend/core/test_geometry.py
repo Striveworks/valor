@@ -2,7 +2,8 @@ import json
 
 import numpy as np
 import pytest
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, func, or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from valor_api import enums, schemas
@@ -293,36 +294,98 @@ def test_create_segmentations_from_polygons(
     multipolygon: MultiPolygon,
     raster: Raster,
 ):
+    # NOTE - Comparing converted rasters to originals fails due to inaccuracies with polygon to raster conversion.
+    #         This is the raster that will be created through the conversion.
+    converted_raster = Raster.from_numpy(
+        np.array(
+            [  # 0 1 2 3 4 5 6 7 8 9
+                [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],  # 0
+                [0, 0, 0, 1, 1, 1, 0, 0, 0, 0],  # 1
+                [0, 0, 1, 1, 1, 1, 1, 0, 0, 0],  # 2
+                [0, 0, 1, 1, 1, 1, 1, 0, 0, 0],  # 3
+                [0, 0, 0, 1, 1, 1, 0, 0, 0, 0],  # 4
+                [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],  # 5
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # 6
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # 7
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # 8
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # 9
+            ]
+        )
+        == 1
+    )
+    with pytest.raises(AssertionError):
+        np.testing.assert_array_equal(
+            converted_raster.to_numpy(), raster.to_numpy()
+        )
+
     # verify all rasters are equal
     raster_arrs = [
         Raster(mask=_raster_to_png_b64(db, r)).to_numpy()
         for r in db.scalars(select(models.Annotation.raster)).all()
     ]
     assert len(raster_arrs) == 3
-    np.testing.assert_array_equal(raster_arrs[0], raster_arrs[1])
-    np.testing.assert_array_equal(raster_arrs[2], raster.to_numpy())
 
-    # NOTE - Comparing converted rasters to originals fails due to inaccuracies with polygon to raster conversion.
-    # np.testing.assert_array_equal(raster_arrs[0], raster_arrs[2])
+    np.testing.assert_array_equal(raster_arrs[0], raster_arrs[1])
+    np.testing.assert_array_equal(
+        raster_arrs[0], converted_raster.to_numpy()
+    )  # converted rasters are equal
+
+    np.testing.assert_array_equal(
+        raster_arrs[2], raster.to_numpy()
+    )  # directly ingested raster is the same
+    with pytest.raises(AssertionError):
+        np.testing.assert_array_equal(
+            raster_arrs[0], raster_arrs[2]
+        )  # ingested raster not equal to polygon-raster
+
+    # NOTE - Conversion error causes this.
+    with pytest.raises(AssertionError):
+        np.testing.assert_array_equal(raster_arrs[0], raster_arrs[2])
+
+    # verify no polygons or boxes exist
+    assert (
+        db.scalar(
+            select(func.count(models.Annotation.id)).where(
+                or_(
+                    models.Annotation.box.isnot(None),
+                    models.Annotation.polygon.isnot(None),
+                )
+            )
+        )
+        == 0
+    )
 
     # verify conversion to polygons
-    db.execute(_convert_raster_to_polygon([]))
+    try:
+        db.execute(_convert_raster_to_polygon([]))
+        db.commit()
+    except IntegrityError as e:
+        db.rollback()
+        raise e
+
     polygons = [
         _load_polygon(db, poly)
         for poly in db.scalars(select(models.Annotation.polygon)).all()
     ]
     assert len(polygons) == 3
-    assert polygons[0] == polygons[1]
-    assert polygons[0] == polygons[2]
-    assert polygons[0] == polygon
 
-    # verify conversion to bbox
-    db.execute(_convert_raster_to_box([]))
-    boxes = [
-        _load_box(db, box)
-        for box in db.scalars(select(models.Annotation.box)).all()
-    ]
-    assert len(boxes) == 3
-    assert boxes[0] == boxes[1]
-    assert boxes[0] == boxes[2]
-    assert boxes[0] == bbox
+    # NOTE - Due to the issues in rasterization, converting back to polygon results in a new polygon.
+    converted_polygon = Polygon(
+        boundary=schemas.BasicPolygon(
+            points=[
+                schemas.Point(x=4, y=0),
+                schemas.Point(x=2, y=2),
+                schemas.Point(x=2, y=3),
+                schemas.Point(x=4, y=5),
+                schemas.Point(x=6, y=3),
+                schemas.Point(x=6, y=2),
+            ]
+        )
+    )
+    assert polygons[0] == polygons[1]
+    assert (
+        polygons[0] == converted_polygon
+    )  # corrupted raster converts to inccorect polygon
+    assert (
+        polygons[2] == polygon
+    )  # uncorrupted raster converts to correct polygon

@@ -8,10 +8,10 @@ from PIL import Image
 from sqlalchemy import (
     BinaryExpression,
     Float,
+    Subquery,
     Update,
     distinct,
     func,
-    literal_column,
     select,
     type_coerce,
     update,
@@ -132,6 +132,41 @@ def _convert_polygon_to_box(
     )
 
 
+def _convert_from_raster(where_conditions: list[BinaryExpression]) -> Subquery:
+    """Returns a subquery to convert a raster to a polygon."""
+    pixels_subquery = select(
+        models.Annotation.id.label("id"),
+        type_coerce(
+            func.ST_PixelAsPoints(models.Annotation.raster, 1),
+            type_=GeometricValueType,
+        ).geom.label("geom"),
+    ).lateral("pixels")
+    return (
+        select(
+            models.Annotation.id.label("id"),
+            func.ST_ConvexHull(func.ST_Collect(pixels_subquery.c.geom)).label(
+                "raster_polygon"
+            ),
+        )
+        .select_from(models.Annotation)
+        .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
+        .join(
+            pixels_subquery,
+            pixels_subquery.c.id == models.Annotation.id
+            # literal_column(
+            #     "true"
+            # ),  # Joining the lateral subquery doesn't require a condition
+        )
+        .where(
+            models.Annotation.polygon.is_(None),
+            models.Annotation.raster.isnot(None),
+            *where_conditions,
+        )
+        .group_by(models.Annotation.id)
+        .subquery()
+    )
+
+
 def _convert_raster_to_box(where_conditions: list[BinaryExpression]) -> Update:
     """
     Converts annotation column 'raster' into column 'box'.
@@ -149,37 +184,7 @@ def _convert_raster_to_box(where_conditions: list[BinaryExpression]) -> Update:
         A SQL update to complete the conversion.
     """
 
-    pixels_subquery = select(
-        type_coerce(
-            func.ST_PixelAsPoints(models.Annotation.raster, 1),
-            type_=GeometricValueType,
-        ).geom.label("geom")
-    ).lateral("pixels")
-
-    subquery = (
-        select(
-            models.Annotation.id.label("id"),
-            func.ST_ConvexHull(func.ST_Collect(pixels_subquery.c.geom)).label(
-                "raster_polygon"
-            ),
-        )
-        .select_from(models.Annotation)
-        .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
-        .join(
-            pixels_subquery,
-            literal_column(
-                "true"
-            ),  # Joining the lateral subquery doesn't require a condition
-        )
-        .where(
-            models.Annotation.box.is_(None),
-            models.Annotation.raster.isnot(None),
-            *where_conditions,
-        )
-        .group_by(models.Annotation.id)
-        .subquery()
-    )
-
+    subquery = _convert_from_raster(where_conditions)
     return (
         update(models.Annotation)
         .where(models.Annotation.id == subquery.c.id)
@@ -206,37 +211,7 @@ def _convert_raster_to_polygon(
         A SQL update to complete the conversion.
     """
 
-    pixels_subquery = select(
-        type_coerce(
-            func.ST_PixelAsPoints(models.Annotation.raster, 1),
-            type_=GeometricValueType,
-        ).geom.label("geom")
-    ).lateral("pixels")
-
-    subquery = (
-        select(
-            models.Annotation.id.label("id"),
-            func.ST_ConvexHull(func.ST_Collect(pixels_subquery.c.geom)).label(
-                "raster_polygon"
-            ),
-        )
-        .select_from(models.Annotation)
-        .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
-        .join(
-            pixels_subquery,
-            literal_column(
-                "true"
-            ),  # Joining the lateral subquery doesn't require a condition
-        )
-        .where(
-            models.Annotation.polygon.is_(None),
-            models.Annotation.raster.isnot(None),
-            *where_conditions,
-        )
-        .group_by(models.Annotation.id)
-        .subquery()
-    )
-
+    subquery = _convert_from_raster(where_conditions)
     return (
         update(models.Annotation)
         .where(models.Annotation.id == subquery.c.id)

@@ -792,11 +792,18 @@ def multipolygon(polygon) -> schemas.MultiPolygon:
 @pytest.fixture
 def raster() -> schemas.Raster:
     """Rasterization of `rotated_box_points`."""
-    r = np.zeros((10, 10))
-    for y in range(0, 3):
-        for x in range(4 - y, y + 5, 1):
-            r[y, x] = 1
-    for y in range(3, 8):
-        for x in range(y - 2, 11 - y):
-            r[y, x] = 1
+    r = np.array(
+        [  # 0 1 2 3 4 5 6 7 8 9
+            [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],  # 0
+            [0, 0, 0, 1, 1, 1, 0, 0, 0, 0],  # 1
+            [0, 0, 1, 1, 1, 1, 1, 0, 0, 0],  # 2
+            [0, 1, 1, 1, 1, 1, 1, 1, 0, 0],  # 3
+            [0, 0, 1, 1, 1, 1, 1, 0, 0, 0],  # 4
+            [0, 0, 0, 1, 1, 1, 0, 0, 0, 0],  # 5
+            [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],  # 6
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # 7
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # 8
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # 9
+        ]
+    )
     return schemas.Raster.from_numpy(r == 1)
