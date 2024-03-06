@@ -744,3 +744,66 @@ def created_model(db: Session, model_name: str, created_dataset: str) -> str:
         ),
     )
     return model_name
+
+
+@pytest.fixture
+def rotated_box_points() -> list[schemas.Point]:
+    return [
+        schemas.Point(x=4, y=0),
+        schemas.Point(x=1, y=3),
+        schemas.Point(x=4, y=6),
+        schemas.Point(x=7, y=3),
+    ]
+
+
+@pytest.fixture
+def bbox(rotated_box_points) -> schemas.BoundingBox:
+    """Defined as the envelope of `rotated_box_points`."""
+    minX = min([pt.x for pt in rotated_box_points])
+    maxX = max([pt.x for pt in rotated_box_points])
+    minY = min([pt.y for pt in rotated_box_points])
+    maxY = max([pt.y for pt in rotated_box_points])
+    return schemas.BoundingBox(
+        polygon=schemas.BasicPolygon(
+            points=[
+                schemas.Point(x=minX, y=minY),
+                schemas.Point(x=minX, y=maxY),
+                schemas.Point(x=maxX, y=maxY),
+                schemas.Point(x=maxX, y=minY),
+            ]
+        )
+    )
+
+
+@pytest.fixture
+def polygon(rotated_box_points) -> schemas.Polygon:
+    return schemas.Polygon(
+        boundary=schemas.BasicPolygon(
+            points=rotated_box_points,
+        )
+    )
+
+
+@pytest.fixture
+def multipolygon(polygon) -> schemas.MultiPolygon:
+    return schemas.MultiPolygon(polygons=[polygon])
+
+
+@pytest.fixture
+def raster() -> schemas.Raster:
+    """Rasterization of `rotated_box_points`."""
+    r = np.array(
+        [  # 0 1 2 3 4 5 6 7 8 9
+            [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],  # 0
+            [0, 0, 0, 1, 1, 1, 0, 0, 0, 0],  # 1
+            [0, 0, 1, 1, 1, 1, 1, 0, 0, 0],  # 2
+            [0, 1, 1, 1, 1, 1, 1, 1, 0, 0],  # 3
+            [0, 0, 1, 1, 1, 1, 1, 0, 0, 0],  # 4
+            [0, 0, 0, 1, 1, 1, 0, 0, 0, 0],  # 5
+            [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],  # 6
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # 7
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # 8
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # 9
+        ]
+    )
+    return schemas.Raster.from_numpy(r == 1)

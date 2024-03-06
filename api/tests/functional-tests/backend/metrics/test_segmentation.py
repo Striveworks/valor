@@ -282,7 +282,7 @@ def test_count_groundtruths(
             db,
             _generate_groundtruth_query(groundtruth_filter),
         )
-        is None
+        == 0
     )
 
 

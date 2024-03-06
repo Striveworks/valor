@@ -62,7 +62,6 @@ def test_annotation_typing():
 
     bbox = geometry.BoundingBox.from_extrema(0, 1, 0, 1)
     polygon = geometry.Polygon(boundary=bbox.polygon)
-    multipolygon = geometry.MultiPolygon(polygons=[polygon])
     raster = geometry.Raster.from_numpy(np.zeros((10, 10)) == 0)
     annotation = Annotation(
         task_type=enums.TaskType.CLASSIFICATION,
@@ -70,7 +69,6 @@ def test_annotation_typing():
         metadata={},
         bounding_box=bbox,
         polygon=polygon,
-        multipolygon=multipolygon,
         raster=raster,
     )
     assert type(annotation.task_type) is enums.TaskType

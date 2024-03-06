@@ -4,7 +4,15 @@ from base64 import b64decode, b64encode
 
 import numpy as np
 import PIL.Image
+from geoalchemy2.functions import (
+    ST_AddBand,
+    ST_AsRaster,
+    ST_GeomFromText,
+    ST_MakeEmptyRaster,
+    ST_MapAlgebra,
+)
 from pydantic import BaseModel, Field, field_validator
+from sqlalchemy import ScalarSelect, select
 
 
 class Point(BaseModel):
@@ -338,7 +346,7 @@ class BasicPolygon(BaseModel):
     Attributes
     ----------
     points: Tuple[Point, Point]
-        The coordinates of the polygon.
+        The coordinates of the geometry.
 
     Raises
     ------
@@ -365,7 +373,7 @@ class BasicPolygon(BaseModel):
     @property
     def left(self):
         """
-        Returns the left-most point of the polygon.
+        Returns the left-most point of the geometry.
 
         Returns
         ----------
@@ -377,7 +385,7 @@ class BasicPolygon(BaseModel):
     @property
     def right(self):
         """
-        Returns the right-most point of the polygon.
+        Returns the right-most point of the geometry.
 
         Returns
         ----------
@@ -389,7 +397,7 @@ class BasicPolygon(BaseModel):
     @property
     def top(self):
         """
-        Returns the top-most point of the polygon.
+        Returns the top-most point of the geometry.
 
         Returns
         ----------
@@ -401,7 +409,7 @@ class BasicPolygon(BaseModel):
     @property
     def bottom(self):
         """
-        Returns the bottom-most point of the polygon.
+        Returns the bottom-most point of the geometry.
 
         Returns
         ----------
@@ -413,24 +421,24 @@ class BasicPolygon(BaseModel):
     @property
     def width(self):
         """
-        Returns the width of the polygon.
+        Returns the width of the geometry.
 
         Returns
         ----------
         float | int
-            The width of the polygon.
+            The width of the geometry.
         """
         return self.right - self.left
 
     @property
     def height(self):
         """
-        Returns the height of the polygon.
+        Returns the height of the geometry.
 
         Returns
         ----------
         float | int
-            The height of the polygon.
+            The height of the geometry.
         """
         return self.top - self.bottom
 
@@ -483,6 +491,19 @@ class BasicPolygon(BaseModel):
             return wkt_format
         return f"POLYGON ({wkt_format})"
 
+    def offset(self, x: float = 0, y: float = 0):
+        """
+        Translates the geometry by an offset.
+
+        Parameters
+        ----------
+        x : int, default=0
+            The x-axis offset.
+        y : int, default=0
+            The y-axis offset.
+        """
+        self.points = [Point(x=pt.x + x, y=pt.y + y) for pt in self.points]
+
 
 class Polygon(BaseModel):
     """
@@ -507,6 +528,78 @@ class Polygon(BaseModel):
                 polys.append(str(hole))
         return f"({','.join(polys)})"
 
+    @property
+    def left(self):
+        """
+        Returns the left-most point of the geometry.
+
+        Returns
+        ----------
+        float | int
+            A coordinate.
+        """
+        return self.boundary.left
+
+    @property
+    def right(self):
+        """
+        Returns the right-most point of the geometry.
+
+        Returns
+        ----------
+        float | int
+            A coordinate.
+        """
+        return self.boundary.right
+
+    @property
+    def top(self):
+        """
+        Returns the top-most point of the geometry.
+
+        Returns
+        ----------
+        float | int
+            A coordinate.
+        """
+        return self.boundary.top
+
+    @property
+    def bottom(self):
+        """
+        Returns the bottom-most point of the geometry.
+
+        Returns
+        ----------
+        float | int
+            A coordinate.
+        """
+        return self.boundary.bottom
+
+    @property
+    def width(self):
+        """
+        Returns the width of the geometry.
+
+        Returns
+        ----------
+        float | int
+            The width of the geometry.
+        """
+        return self.boundary.width
+
+    @property
+    def height(self):
+        """
+        Returns the height of the geometry.
+
+        Returns
+        ----------
+        float | int
+            The height of the geometry.
+        """
+        return self.boundary.height
+
     def wkt(self, partial: bool = False) -> str:
         """
         Returns the well-known text (WKT) representation of the object.
@@ -530,6 +623,22 @@ class Polygon(BaseModel):
             return wkt_format
         return f"POLYGON {wkt_format}"
 
+    def offset(self, x: float = 0, y: float = 0):
+        """
+        Translates the geometry by an offset.
+
+        Parameters
+        ----------
+        x : int, default=0
+            The x-axis offset.
+        y : int, default=0
+            The y-axis offset.
+        """
+        self.boundary.offset(x, y)
+        if self.holes:
+            for idx in range(len(self.holes)):
+                self.holes[idx].offset(x, y)
+
 
 class MultiPolygon(BaseModel):
     """
@@ -548,6 +657,78 @@ class MultiPolygon(BaseModel):
 
     polygons: list[Polygon]
 
+    @property
+    def left(self):
+        """
+        Returns the left-most point of the geometry.
+
+        Returns
+        ----------
+        float | int
+            A coordinate.
+        """
+        return min([poly.left for poly in self.polygons])
+
+    @property
+    def right(self):
+        """
+        Returns the right-most point of the geometry.
+
+        Returns
+        ----------
+        float | int
+            A coordinate.
+        """
+        return max([poly.right for poly in self.polygons])
+
+    @property
+    def top(self):
+        """
+        Returns the top-most point of the geometry.
+
+        Returns
+        ----------
+        float | int
+            A coordinate.
+        """
+        return max([poly.top for poly in self.polygons])
+
+    @property
+    def bottom(self):
+        """
+        Returns the bottom-most point of the geometry.
+
+        Returns
+        ----------
+        float | int
+            A coordinate.
+        """
+        return min([poly.bottom for poly in self.polygons])
+
+    @property
+    def width(self):
+        """
+        Returns the width of the geometry.
+
+        Returns
+        ----------
+        float | int
+            The width of the geometry.
+        """
+        return self.right - self.left
+
+    @property
+    def height(self):
+        """
+        Returns the height of the geometry.
+
+        Returns
+        ----------
+        float | int
+            The height of the geometry.
+        """
+        return self.top - self.bottom
+
     def wkt(self) -> str:
         """
         Returns the well-known text (WKT) representation of the object`.
@@ -559,6 +740,20 @@ class MultiPolygon(BaseModel):
         """
         plist = [polygon.wkt(partial=True) for polygon in self.polygons]
         return f"MULTIPOLYGON ({', '.join(plist)})"
+
+    def offset(self, x: float = 0, y: float = 0):
+        """
+        Translates the geometry by an offset.
+
+        Parameters
+        ----------
+        x : int, default=0
+            The x-axis offset.
+        y : int, default=0
+            The y-axis offset.
+        """
+        for idx in range(len(self.polygons)):
+            self.polygons[idx].offset(x, y)
 
 
 class BoundingBox(BaseModel):
@@ -624,7 +819,7 @@ class BoundingBox(BaseModel):
     @property
     def left(self):
         """
-        Returns the left-most point of the polygon.
+        Returns the left-most point of the geometry.
 
         Returns
         ----------
@@ -636,7 +831,7 @@ class BoundingBox(BaseModel):
     @property
     def right(self):
         """
-        Returns the right-most point of the polygon.
+        Returns the right-most point of the geometry.
 
         Returns
         ----------
@@ -648,7 +843,7 @@ class BoundingBox(BaseModel):
     @property
     def top(self):
         """
-        Returns the top-most point of the polygon.
+        Returns the top-most point of the geometry.
 
         Returns
         ----------
@@ -660,7 +855,7 @@ class BoundingBox(BaseModel):
     @property
     def bottom(self):
         """
-        Returns the bottom-most point of the polygon.
+        Returns the bottom-most point of the geometry.
 
         Returns
         ----------
@@ -672,24 +867,24 @@ class BoundingBox(BaseModel):
     @property
     def width(self):
         """
-        Returns the width of the polygon.
+        Returns the width of the geometry.
 
         Returns
         ----------
         float | int
-            The width of the polygon.
+            The width of the geometry.
         """
         return self.polygon.width
 
     @property
     def height(self):
         """
-        Returns the height of the polygon.
+        Returns the height of the geometry.
 
         Returns
         ----------
         float | int
-            The height of the polygon.
+            The height of the geometry.
         """
         return self.polygon.height
 
@@ -759,6 +954,19 @@ class BoundingBox(BaseModel):
         """
         return self.polygon.wkt()
 
+    def offset(self, x: float = 0, y: float = 0):
+        """
+        Translates the geometry by an offset.
+
+        Parameters
+        ----------
+        x : int, default=0
+            The x-axis offset.
+        y : int, default=0
+            The y-axis offset.
+        """
+        self.polygon.offset(x, y)
+
 
 class Raster(BaseModel):
     """
@@ -768,6 +976,8 @@ class Raster(BaseModel):
     ----------
     mask : str
         The mask describing the raster.
+    geometry : BoundingBox | Polygon | MultiPolygon, optional
+        Option to define raster by a geometry. Overrides the bitmask.
 
     Raises
     ------
@@ -777,6 +987,7 @@ class Raster(BaseModel):
     """
 
     mask: str = Field(frozen=True)
+    geometry: BoundingBox | Polygon | MultiPolygon | None = None
 
     @field_validator("mask")
     @classmethod
@@ -794,34 +1005,6 @@ class Raster(BaseModel):
                 f"Expected image mode to be binary but got mode {img.mode}."
             )
         return v
-
-    @property
-    def mask_bytes(self) -> bytes:
-        """
-        Serialize the mask into bytes.
-
-        Returns
-        ----------
-        bytes
-            A byte object.
-
-        """
-        if not hasattr(self, "_mask_bytes"):
-            self._mask_bytes = b64decode(self.mask)
-        return self._mask_bytes
-
-    @property
-    def array(self) -> np.ndarray:
-        """
-        Convert the mask into an array.
-
-        Returns
-        ----------
-        np.ndarray
-            An array representing a mask.
-
-        """
-        return self.to_numpy()
 
     @classmethod
     def from_numpy(cls, mask: np.ndarray):
@@ -859,6 +1042,33 @@ class Raster(BaseModel):
             mask=b64encode(mask_bytes).decode(),
         )
 
+    @classmethod
+    def from_geometry(
+        cls,
+        geometry: BoundingBox | Polygon | MultiPolygon,
+        height: int,
+        width: int,
+    ):
+        """
+        Create a Raster object from a geometry.
+
+        Parameters
+        ----------
+        geometry : BoundingBox | Polygon | MultiPolygon
+            Defines the bitmask as a geometry. Overrides any existing mask.
+        height : int
+            The intended height of the binary mask.
+        width : int
+            The intended width of the binary mask.
+
+        Returns
+        -------
+        schemas.Raster
+        """
+        r = cls.from_numpy(np.full((int(height), int(width)), False))
+        r.geometry = geometry
+        return r
+
     def to_numpy(self) -> np.ndarray:
         """
         Convert the mask into an array.
@@ -872,3 +1082,100 @@ class Raster(BaseModel):
         with io.BytesIO(mask_bytes) as f:
             img = PIL.Image.open(f)
             return np.array(img)
+
+    @property
+    def mask_bytes(self) -> bytes:
+        """
+        Serialize the mask into bytes.
+
+        Returns
+        ----------
+        bytes
+            A byte object.
+
+        """
+        if not hasattr(self, "_mask_bytes"):
+            self._mask_bytes = b64decode(self.mask)
+        return self._mask_bytes
+
+    @property
+    def array(self) -> np.ndarray:
+        """
+        Convert the mask into an array.
+
+        Returns
+        ----------
+        np.ndarray
+            An array representing a mask.
+
+        """
+        return self.to_numpy()
+
+    @property
+    def height(self) -> int:
+        """
+        Get the height of the raster.
+
+        Returns
+        -------
+        int
+            The height of the binary mask.
+        """
+        return self.array.shape[0]
+
+    @property
+    def width(self) -> int:
+        """
+        Get the width of the raster.
+
+        Returns
+        -------
+        int
+            The width of the binary mask.
+        """
+        return self.array.shape[1]
+
+    def wkt(self) -> ScalarSelect | bytes:
+        """
+        Converts raster schema into a postgis-compatible type.
+
+        Returns
+        -------
+        ScalarSelect | bytes
+            A valid input to the models.Annotation.raster column.
+        """
+        if self.geometry:
+            empty_raster = ST_AddBand(
+                ST_MakeEmptyRaster(
+                    self.width,
+                    self.height,
+                    0,  # upperleftx
+                    0,  # upperlefty
+                    1,  # scalex
+                    1,  # scaley
+                    0,  # skewx
+                    0,  # skewy
+                    0,  # srid
+                ),
+                "8BUI",
+            )
+            geom_raster = ST_AsRaster(
+                ST_GeomFromText(self.geometry.wkt()),
+                1.0,  # scalex
+                1.0,  # scaley
+                "8BUI",  # pixeltype
+                1,  # value
+                0,  # nodataval
+            )
+            return select(
+                # geom_raster,
+                ST_MapAlgebra(
+                    empty_raster,
+                    geom_raster,
+                    "[rast2]",
+                    "8BUI",
+                    "UNION",
+                )
+            ).scalar_subquery()
+        else:
+            return self.mask_bytes

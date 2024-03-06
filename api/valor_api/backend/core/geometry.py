@@ -1,12 +1,17 @@
+import io
+from base64 import b64encode
+
 from geoalchemy2 import Geometry
+from geoalchemy2.functions import ST_AsPNG
 from geoalchemy2.types import CompositeType
+from PIL import Image
 from sqlalchemy import (
     BinaryExpression,
     Float,
+    Subquery,
     Update,
     distinct,
     func,
-    literal_column,
     select,
     type_coerce,
     update,
@@ -127,6 +132,35 @@ def _convert_polygon_to_box(
     )
 
 
+def _convert_from_raster(where_conditions: list[BinaryExpression]) -> Subquery:
+    """Returns a subquery to convert a raster to a polygon."""
+    pixels_subquery = select(
+        models.Annotation.id.label("id"),
+        type_coerce(
+            func.ST_PixelAsPoints(models.Annotation.raster, 1),
+            type_=GeometricValueType,
+        ).geom.label("geom"),
+    ).lateral("pixels")
+    return (
+        select(
+            models.Annotation.id.label("id"),
+            func.ST_ConvexHull(func.ST_Collect(pixels_subquery.c.geom)).label(
+                "raster_polygon"
+            ),
+        )
+        .select_from(models.Annotation)
+        .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
+        .join(pixels_subquery, pixels_subquery.c.id == models.Annotation.id)
+        .where(
+            models.Annotation.polygon.is_(None),
+            models.Annotation.raster.isnot(None),
+            *where_conditions,
+        )
+        .group_by(models.Annotation.id)
+        .subquery()
+    )
+
+
 def _convert_raster_to_box(where_conditions: list[BinaryExpression]) -> Update:
     """
     Converts annotation column 'raster' into column 'box'.
@@ -144,27 +178,11 @@ def _convert_raster_to_box(where_conditions: list[BinaryExpression]) -> Update:
         A SQL update to complete the conversion.
     """
 
-    subquery = (
-        select(
-            models.Annotation.id.label("id"),
-            func.ST_Envelope(
-                func.ST_Union(models.Annotation.raster),
-                type_=RawGeometry,
-            ).label("raster_envelope"),
-        )
-        .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
-        .where(
-            models.Annotation.box.is_(None),
-            models.Annotation.raster.isnot(None),
-            *where_conditions,
-        )
-        .group_by(models.Annotation.id)
-        .alias("subquery")
-    )
+    subquery = _convert_from_raster(where_conditions)
     return (
         update(models.Annotation)
         .where(models.Annotation.id == subquery.c.id)
-        .values(box=subquery.c.raster_envelope)
+        .values(box=func.ST_Envelope(subquery.c.raster_polygon))
     )
 
 
@@ -187,37 +205,7 @@ def _convert_raster_to_polygon(
         A SQL update to complete the conversion.
     """
 
-    pixels_subquery = select(
-        type_coerce(
-            func.ST_PixelAsPoints(models.Annotation.raster, 1),
-            type_=GeometricValueType,
-        ).geom.label("geom")
-    ).lateral("pixels")
-
-    subquery = (
-        select(
-            models.Annotation.id.label("id"),
-            func.ST_ConvexHull(func.ST_Collect(pixels_subquery.c.geom)).label(
-                "raster_polygon"
-            ),
-        )
-        .select_from(models.Annotation)
-        .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
-        .join(
-            pixels_subquery,
-            literal_column(
-                "true"
-            ),  # Joining the lateral subquery doesn't require a condition
-        )
-        .where(
-            models.Annotation.polygon.is_(None),
-            models.Annotation.raster.isnot(None),
-            *where_conditions,
-        )
-        .group_by(models.Annotation.id)
-        .subquery()
-    )
-
+    subquery = _convert_from_raster(where_conditions)
     return (
         update(models.Annotation)
         .where(models.Annotation.id == subquery.c.id)
@@ -316,3 +304,37 @@ def convert_geometry(
         db.commit()
     except IntegrityError:
         db.rollback()
+
+
+def _raster_to_png_b64(
+    db: Session,
+    raster: Image.Image,
+) -> str:
+    """
+    Convert a raster to a png.
+
+    Parameters
+    ----------
+    db : Session
+        The database session.
+    raster : Image.Image
+        The raster in bytes.
+
+    Returns
+    -------
+    str
+        The encoded raster.
+    """
+    raster = Image.open(io.BytesIO(db.scalar(ST_AsPNG((raster))).tobytes()))
+    if raster.mode != "L":
+        raise RuntimeError
+
+    # mask is greyscale with values 0 and 1. to convert to binary
+    # we first need to map 1 to 255
+    raster = raster.point(lambda x: 255 if x == 1 else 0).convert("1")
+
+    f = io.BytesIO()
+    raster.save(f, format="PNG")
+    f.seek(0)
+    mask_bytes = f.read()
+    return b64encode(mask_bytes).decode()

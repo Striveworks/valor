@@ -78,9 +78,7 @@ def _count_true_positives(
     return int(ret)
 
 
-def _count_groundtruths(
-    db: Session, groundtruth_subquery: Select
-) -> int | None:
+def _count_groundtruths(db: Session, groundtruth_subquery: Select) -> int:
     """Total number of ground truth pixels for the given dataset and label"""
     ret = db.scalar(
         select(func.sum(ST_Count(models.Annotation.raster)))
@@ -90,10 +88,8 @@ def _count_groundtruths(
             models.Annotation.id == groundtruth_subquery.c.annotation_id,
         )
     )
-
     if ret is None:
-        return None
-
+        return 0
     return int(ret)
 
 
@@ -125,18 +121,20 @@ def _compute_iou(
     groundtruth_subquery = _generate_groundtruth_query(groundtruth_filter)
     prediction_subquery = _generate_prediction_query(prediction_filter)
 
-    tp = _count_true_positives(db, groundtruth_subquery, prediction_subquery)
-    gt = _count_groundtruths(
+    tp_count = _count_true_positives(
+        db, groundtruth_subquery, prediction_subquery
+    )
+    gt_count = _count_groundtruths(
         db,
         groundtruth_subquery=groundtruth_subquery,
     )
+    pd_count = _count_predictions(db, prediction_subquery)
 
-    if gt is None:
+    if gt_count == 0:
         return None
-
-    pred = _count_predictions(db, prediction_subquery)
-
-    return tp / (gt + pred - tp)
+    elif pd_count == 0:
+        return 0
+    return tp_count / (gt_count + pd_count - tp_count)
 
 
 def _compute_segmentation_metrics(
@@ -159,12 +157,10 @@ def _compute_segmentation_metrics(
     groundtruth_filter : schemas.Filter
         The filter to be used to query groundtruths.
 
-
     Returns
     ----------
     List[schemas.IOUMetric | mIOUMetric]
         A list containing one `IOUMetric` for each label in ground truth and one `mIOUMetric` for the mean _compute_IOU over all labels.
-
     """
 
     labels = core.fetch_union_of_labels(

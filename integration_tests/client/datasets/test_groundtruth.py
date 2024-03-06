@@ -8,10 +8,9 @@ from geoalchemy2.functions import ST_AsText, ST_Polygon
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from valor import Annotation, Client, Dataset, GroundTruth, Label
+from valor import Annotation, Client, Dataset, Datum, GroundTruth, Label
 from valor.enums import TaskType
 from valor.exceptions import ClientException
-from valor.metatypes import ImageMetadata
 from valor.schemas import (
     BasicPolygon,
     BoundingBox,
@@ -32,7 +31,13 @@ def test_create_gt_detections_as_bbox_or_poly(
     or a polygon
     """
     xmin, ymin, xmax, ymax = 10, 25, 30, 50
-    image = ImageMetadata(uid="uid", height=200, width=150).to_datum()
+    image = Datum(
+        uid="uid",
+        metadata={
+            "height": 200,
+            "width": 150,
+        },
+    )
 
     dataset = Dataset.create(dataset_name)
     gt = GroundTruth(
@@ -100,13 +105,15 @@ def test_create_gt_segs_as_polys_or_masks(
     db: Session,
     client: Client,
     dataset_name: str,
-    img1: ImageMetadata,
+    img1: Datum,
+    image_height: int,
+    image_width: int,
 ):
     """Test that we can create a dataset with ground truth segmentations that are defined
     both my polygons and mask arrays
     """
     xmin, xmax, ymin, ymax = 11, 45, 37, 102
-    h, w = img1.height, img1.width
+    h, w = image_height, image_width
     mask = np.zeros((h, w), dtype=bool)
     mask[ymin:ymax, xmin:xmax] = True
 
@@ -126,7 +133,7 @@ def test_create_gt_segs_as_polys_or_masks(
     # check we get an error for adding semantic segmentation with duplicate labels
     with pytest.raises(ClientException) as exc_info:
         gts = GroundTruth(
-            datum=img1.to_datum(),
+            datum=img1,
             annotations=[
                 Annotation(
                     task_type=TaskType.SEMANTIC_SEGMENTATION,
@@ -136,7 +143,11 @@ def test_create_gt_segs_as_polys_or_masks(
                 Annotation(
                     task_type=TaskType.SEMANTIC_SEGMENTATION,
                     labels=[Label(key="k1", value="v1")],
-                    multipolygon=MultiPolygon(polygons=[poly]),
+                    raster=Raster.from_geometry(
+                        MultiPolygon(polygons=[poly]),
+                        height=image_height,
+                        width=image_width,
+                    ),
                 ),
             ],
         )
@@ -147,7 +158,7 @@ def test_create_gt_segs_as_polys_or_masks(
 
     # fine with instance segmentation though
     gts = GroundTruth(
-        datum=img1.to_datum(),
+        datum=img1,
         annotations=[
             Annotation(
                 task_type=TaskType.SEMANTIC_SEGMENTATION,
@@ -157,7 +168,11 @@ def test_create_gt_segs_as_polys_or_masks(
             Annotation(
                 task_type=TaskType.OBJECT_DETECTION,
                 labels=[Label(key="k1", value="v1")],
-                multipolygon=MultiPolygon(polygons=[poly]),
+                raster=Raster.from_geometry(
+                    MultiPolygon(polygons=[poly]),
+                    height=image_height,
+                    width=image_width,
+                ),
             ),
         ],
     )
@@ -190,9 +205,13 @@ def test_add_groundtruth(
     with pytest.warns(UserWarning):
         dataset.add_groundtruth(
             GroundTruth(
-                datum=ImageMetadata(
-                    uid="uid", height=200, width=150
-                ).to_datum(),
+                datum=Datum(
+                    uid="uid",
+                    metadata={
+                        "height": 200,
+                        "width": 150,
+                    },
+                ),
                 annotations=[],
             )
         )
