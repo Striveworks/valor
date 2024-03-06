@@ -1,4 +1,6 @@
-from pydantic import BaseModel, ConfigDict, field_validator
+import json
+
+from pydantic import BaseModel, ConfigDict, create_model, field_validator
 
 from valor_api.enums import TaskType
 from valor_api.schemas.metadata import (
@@ -302,4 +304,37 @@ class Filter(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
         protected_namespaces=("protected_",),
+    )
+
+
+# we want to pass a Filter as a query parameters instead of a body
+# so we make a new model `FilterQueryParams` where every value is a JSON string
+model_fields = Filter.model_fields
+model_def_dict = {kwarg: (str | None, None) for kwarg in model_fields}
+FilterQueryParams = create_model(
+    "FilterQueryParams",
+    __config__=ConfigDict(extra="forbid"),
+    **model_def_dict,  # type: ignore
+)
+
+
+def convert_filter_query_params_to_filter_obj(filter_query_params) -> Filter:
+    """Converts a `FilterQueryParams` object to a `Filter` object by
+    loading from JSON strings.
+
+    Parameters
+    ----------
+    filter_query_params : FilterQueryParams
+        The `FilterQueryParams` object to convert.
+
+    Returns
+    -------
+    Filter
+        The converted `Filter` object.
+    """
+    return Filter(
+        **{
+            k: json.loads(v if v is not None else "null")
+            for k, v in filter_query_params.model_dump().items()
+        }
     )
