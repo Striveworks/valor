@@ -135,37 +135,3 @@ def test_create_annotation_with_embedding(
         .subquery()
     ).one_or_none()
     assert annotation.embedding_id is not None
-
-
-def _convert_raster_to_polygon():
-    from sqlalchemy import literal_column, type_coerce
-
-    from valor_api.backend.core.geometry import GeometricValueType
-
-    pixels_subquery = select(
-        type_coerce(
-            func.ST_PixelAsPoints(models.Annotation.raster, 1),
-            type_=GeometricValueType,
-        ).geom.label("geom")
-    ).lateral("pixels")
-
-    subquery = (
-        select(
-            models.Annotation.id.label("id"),
-            func.ST_ConvexHull(func.ST_Collect(pixels_subquery.c.geom)).label(
-                "raster_polygon"
-            ),
-        )
-        .select_from(models.Annotation)
-        .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
-        .join(
-            pixels_subquery,
-            literal_column(
-                "true"
-            ),  # Joining the lateral subquery doesn't require a condition
-        )
-        .group_by(models.Annotation.id)
-        .subquery()
-    )
-
-    return subquery
