@@ -105,3 +105,12 @@ def test_get_datums(
         )
         == 0
     )
+
+    with pytest.raises(ValueError) as exc_info:
+        dataset_with_metadata.get_datums(
+            filter_by=[Dataset.name == "dataset name"]
+        )
+    assert (
+        "Cannot filter by dataset_names when calling `Dataset.get_datums`"
+        in str(exc_info)
+    )
