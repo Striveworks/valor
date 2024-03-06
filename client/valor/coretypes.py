@@ -1253,7 +1253,7 @@ class Dataset:
         if isinstance(filter_, Filter):
             filter_ = asdict(filter_)
 
-        if "dataset_names" in filter_:
+        if filter_.get("dataset_names"):
             raise ValueError(
                 "Cannot filter by dataset_names when calling `Dataset.get_datums`."
             )
