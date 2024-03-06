@@ -6,7 +6,7 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from valor import Annotation, Client, Dataset, GroundTruth, Label
+from valor import Annotation, Client, Dataset, Datum, GroundTruth, Label
 from valor.enums import TaskType
 from valor.metatypes import ImageMetadata
 from valor.schemas import BoundingBox
@@ -81,3 +81,27 @@ def test_create_images_with_metadata(
     assert data[1].meta["metadatum3"] == metadata["metadatum3"]
     assert data[1].meta["height"] == 200
     assert data[1].meta["width"] == 100
+
+
+def test_get_datums(
+    db: Session, dataset_with_metadata: Dataset, metadata: dict
+):
+    assert len(dataset_with_metadata.get_datums()) == 2
+    assert (
+        len(
+            dataset_with_metadata.get_datums(
+                filter_by=[
+                    Datum.metadata["metadatum1"] == metadata["metadatum1"]
+                ]
+            )
+        )
+        == 1
+    )
+    assert (
+        len(
+            dataset_with_metadata.get_datums(
+                filter_by=[Datum.metadata["metadatum1"] == "nonexistent value"]
+            )
+        )
+        == 0
+    )
