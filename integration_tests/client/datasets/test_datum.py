@@ -2,6 +2,7 @@
 that is no auth
 """
 
+import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -12,13 +13,13 @@ from valor.schemas import BoundingBox
 from valor_api.backend import models
 
 
-def test_create_images_with_metadata(
+@pytest.fixture
+def dataset_with_metadata(
     client: Client,
-    db: Session,
     dataset_name: str,
     metadata: dict,
     rect1: BoundingBox,
-):
+) -> Dataset:
     # split metadata
     md1 = {
         "metadatum1": metadata["metadatum1"],
@@ -62,6 +63,12 @@ def test_create_images_with_metadata(
         )
     )
 
+    return dataset
+
+
+def test_create_images_with_metadata(
+    db: Session, dataset_with_metadata: Dataset, metadata: dict
+):
     data = db.scalars(select(models.Datum)).all()
     assert len(data) == 2
     assert set(d.uid for d in data) == {"uid1", "uid2"}
