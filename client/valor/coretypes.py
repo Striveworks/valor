@@ -1203,18 +1203,32 @@ class Dataset:
         """
         return Client(self.conn).get_labels_from_dataset(self)
 
-    def get_datums(self) -> List[Datum]:
+    def get_datums(
+        self, filter_by: Optional[FilterType] = None
+    ) -> List[Datum]:
         """
         Get all datums associated with a given dataset.
+
+        Parameters
+        ----------
+        filter_by
+            Optional constraints to filter by.
 
         Returns
         ----------
         List[Datum]
             A list of `Datums` associated with the dataset.
         """
-        return Client(self.conn).get_datums(
-            filter_by=Filter(dataset_names=[self.name])
-        )
+        filter_ = _format_filter(filter_by)
+        if isinstance(filter_, Filter):
+            filter_ = asdict(filter_)
+
+        if filter_.get("dataset_names"):
+            raise ValueError(
+                "Cannot filter by dataset_names when calling `Dataset.get_datums`."
+            )
+        filter_["dataset_names"] = [self.name]
+        return Client(self.conn).get_datums(filter_by=filter_)
 
     def get_evaluations(
         self,

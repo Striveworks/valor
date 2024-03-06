@@ -8,14 +8,5 @@
     "integration_tests",
     "docs",
     "migrations"
-  ],
-  "ignore": [
-    "client/unit-tests",
-    "utils",
-    "api/tests",
-    "examples",
-    "integration_tests",
-    "docs",
-    "migrations"
   ]
 }
