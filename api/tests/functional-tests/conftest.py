@@ -754,6 +754,20 @@ def rotated_box_points() -> list[schemas.Point]:
         schemas.Point(x=4, y=6),
         schemas.Point(x=7, y=3),
     ]
+    # return [
+    #     schemas.Point(x=0, y=0),
+    #     schemas.Point(x=0, y=4),
+    #     schemas.Point(x=1, y=4),
+    #     schemas.Point(x=1, y=3),
+    #     schemas.Point(x=2, y=3),
+    #     schemas.Point(x=2, y=4),
+    #     schemas.Point(x=4, y=4),
+    #     schemas.Point(x=4, y=3),
+    #     schemas.Point(x=3, y=3),
+    #     schemas.Point(x=3, y=2),
+    #     schemas.Point(x=4, y=2),
+    #     schemas.Point(x=4, y=0),
+    # ]
 
 
 @pytest.fixture

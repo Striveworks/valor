@@ -34,7 +34,7 @@ def test_create_pred_detections_as_bbox_or_poly(
 
     model = Model.create(model_name)
     pd = Prediction(
-        datum=img1.to_datum(),
+        datum=img1,
         annotations=[
             Annotation(
                 task_type=TaskType.OBJECT_DETECTION,

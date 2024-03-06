@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from valor import Annotation, Client, GroundTruth, Label, Prediction
 from valor.client import ClientConnection, connect, reset_connection
 from valor.enums import TaskType
-from valor.metatypes import ImageMetadata
+from valor.metatypes import Datum
 from valor.schemas import BoundingBox, MultiPolygon, Polygon, Raster
 from valor_api import exceptions
 from valor_api.backend import models
@@ -126,7 +126,20 @@ def metadata():
 
 
 @pytest.fixture
-def img1() -> ImageMetadata:
+def image_height():
+    return 900
+
+
+@pytest.fixture
+def image_width():
+    return 300
+
+
+@pytest.fixture
+def img1(
+    image_height: int,
+    image_width: int,
+) -> Datum:
     coordinates = [
         [
             [125.2750725, 38.760525],
@@ -140,43 +153,88 @@ def img1() -> ImageMetadata:
             [125.2750725, 38.760525],
         ]
     ]
-
     geo_dict = {"type": "Polygon", "coordinates": coordinates}
-
-    return ImageMetadata(
-        uid="uid1", height=900, width=300, metadata={"geospatial": geo_dict}
+    return Datum(
+        uid="uid1",
+        metadata={
+            "geospatial": geo_dict,
+            "height": image_height,
+            "width": image_width,
+        },
     )
 
 
 @pytest.fixture
-def img2() -> ImageMetadata:
+def img2(
+    image_height: int,
+    image_width: int,
+) -> Datum:
     coordinates = [44.1, 22.4]
-
     geo_dict = {"type": "Point", "coordinates": coordinates}
-
-    return ImageMetadata(
-        uid="uid2", height=40, width=30, metadata={"geospatial": geo_dict}
+    return Datum(
+        uid="uid2",
+        metadata={
+            "geospatial": geo_dict,
+            "height": image_height,
+            "width": image_width,
+        },
     )
 
 
 @pytest.fixture
-def img5(dataset_name) -> ImageMetadata:
-    return ImageMetadata(uid="uid5", height=40, width=30)
+def img5(
+    image_height: int,
+    image_width: int,
+) -> Datum:
+    return Datum(
+        uid="uid5",
+        metadata={
+            "height": image_height,
+            "width": image_width,
+        },
+    )
 
 
 @pytest.fixture
-def img6() -> ImageMetadata:
-    return ImageMetadata(uid="uid6", height=40, width=30)
+def img6(
+    image_height: int,
+    image_width: int,
+) -> Datum:
+    return Datum(
+        uid="uid6",
+        metadata={
+            "height": image_height,
+            "width": image_width,
+        },
+    )
 
 
 @pytest.fixture
-def img8() -> ImageMetadata:
-    return ImageMetadata(uid="uid8", height=40, width=30)
+def img8(
+    image_height: int,
+    image_width: int,
+) -> Datum:
+    return Datum(
+        uid="uid8",
+        metadata={
+            "height": image_height,
+            "width": image_width,
+        },
+    )
 
 
 @pytest.fixture
-def img9() -> ImageMetadata:
-    return ImageMetadata(uid="uid9", height=40, width=30)
+def img9(
+    image_height: int,
+    image_width: int,
+) -> Datum:
+    return Datum(
+        uid="uid9",
+        metadata={
+            "height": image_height,
+            "width": image_width,
+        },
+    )
 
 
 """Geometrys"""
@@ -214,12 +272,12 @@ def gt_dets1(
     rect1: BoundingBox,
     rect2: BoundingBox,
     rect3: BoundingBox,
-    img1: ImageMetadata,
-    img2: ImageMetadata,
+    img1: Datum,
+    img2: Datum,
 ) -> list[GroundTruth]:
     return [
         GroundTruth(
-            datum=img1.to_datum(),
+            datum=img1,
             annotations=[
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
@@ -234,7 +292,7 @@ def gt_dets1(
             ],
         ),
         GroundTruth(
-            datum=img2.to_datum(),
+            datum=img2,
             annotations=[
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
@@ -251,13 +309,13 @@ def gt_dets2(
     rect1: BoundingBox,
     rect2: BoundingBox,
     rect3: BoundingBox,
-    img5: ImageMetadata,
-    img6: ImageMetadata,
-    img8: ImageMetadata,
+    img5: Datum,
+    img6: Datum,
+    img8: Datum,
 ) -> list[GroundTruth]:
     return [
         GroundTruth(
-            datum=img5.to_datum(),
+            datum=img5,
             annotations=[
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
@@ -272,7 +330,7 @@ def gt_dets2(
             ],
         ),
         GroundTruth(
-            datum=img6.to_datum(),
+            datum=img6,
             annotations=[
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
@@ -282,7 +340,7 @@ def gt_dets2(
             ],
         ),
         GroundTruth(
-            datum=img8.to_datum(),
+            datum=img8,
             annotations=[
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
@@ -296,15 +354,15 @@ def gt_dets2(
 
 @pytest.fixture
 def gt_poly_dets1(
-    img1: ImageMetadata,
-    img2: ImageMetadata,
+    img1: Datum,
+    img2: Datum,
     rect1: BoundingBox,
     rect2: BoundingBox,
 ):
     """Same thing as gt_dets1 but represented as a polygon instead of bounding box"""
     return [
         GroundTruth(
-            datum=img1.to_datum(),
+            datum=img1,
             annotations=[
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
@@ -314,7 +372,7 @@ def gt_poly_dets1(
             ],
         ),
         GroundTruth(
-            datum=img2.to_datum(),
+            datum=img2,
             annotations=[
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
@@ -331,12 +389,14 @@ def gt_segs(
     rect1: BoundingBox,
     rect2: BoundingBox,
     rect3: BoundingBox,
-    img1: ImageMetadata,
-    img2: ImageMetadata,
+    img1: Datum,
+    img2: Datum,
+    image_height: int,
+    image_width: int,
 ) -> list[GroundTruth]:
     return [
         GroundTruth(
-            datum=img1.to_datum(),
+            datum=img1,
             annotations=[
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
@@ -345,9 +405,9 @@ def gt_segs(
                         MultiPolygon(
                             polygons=[Polygon(boundary=rect1.polygon)]
                         ),
-                        height=img1.height,
-                        width=img1.width,
-                    )
+                        height=image_height,
+                        width=image_width,
+                    ),
                 ),
                 Annotation(
                     task_type=TaskType.SEMANTIC_SEGMENTATION,
@@ -359,14 +419,14 @@ def gt_segs(
                                 Polygon(boundary=rect1.polygon),
                             ]
                         ),
-                        height=img1.height,
-                        width=img1.width,
+                        height=image_height,
+                        width=image_width,
                     ),
                 ),
             ],
         ),
         GroundTruth(
-            datum=img2.to_datum(),
+            datum=img2,
             annotations=[
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
@@ -380,8 +440,8 @@ def gt_segs(
                                 )
                             ]
                         ),
-                        height=img2.height,
-                        width=img2.width,
+                        height=image_height,
+                        width=image_width,
                     ),
                 )
             ],
@@ -391,11 +451,15 @@ def gt_segs(
 
 @pytest.fixture
 def gt_semantic_segs1(
-    rect1: BoundingBox, rect3: BoundingBox, img1: ImageMetadata
+    rect1: BoundingBox,
+    rect3: BoundingBox,
+    img1: Datum,
+    image_height: int,
+    image_width: int,
 ) -> list[GroundTruth]:
     return [
         GroundTruth(
-            datum=img1.to_datum(),
+            datum=img1,
             annotations=[
                 Annotation(
                     task_type=TaskType.SEMANTIC_SEGMENTATION,
@@ -407,8 +471,8 @@ def gt_semantic_segs1(
                                 Polygon(boundary=rect1.polygon),
                             ]
                         ),
-                        height=img1.height,
-                        width=img1.width,
+                        height=image_height,
+                        width=image_width,
                     ),
                 )
             ],
@@ -417,12 +481,16 @@ def gt_semantic_segs1(
 
 
 @pytest.fixture
-def gt_semantic_segs1_mask(img1: ImageMetadata) -> GroundTruth:
-    mask = _generate_mask(height=900, width=300)
+def gt_semantic_segs1_mask(
+    img1: Datum,
+    image_height: int,
+    image_width: int,
+) -> GroundTruth:
+    mask = _generate_mask(height=image_height, width=image_width)
     raster = Raster.from_numpy(mask)
 
     return GroundTruth(
-        datum=img1.to_datum(),
+        datum=img1,
         annotations=[
             Annotation(
                 task_type=TaskType.SEMANTIC_SEGMENTATION,
@@ -435,11 +503,14 @@ def gt_semantic_segs1_mask(img1: ImageMetadata) -> GroundTruth:
 
 @pytest.fixture
 def gt_semantic_segs2(
-    rect3: BoundingBox, img2: ImageMetadata
+    rect3: BoundingBox,
+    img2: Datum,
+    image_height: int,
+    image_width: int,
 ) -> list[GroundTruth]:
     return [
         GroundTruth(
-            datum=img2.to_datum(),
+            datum=img2,
             annotations=[
                 Annotation(
                     task_type=TaskType.SEMANTIC_SEGMENTATION,
@@ -448,8 +519,8 @@ def gt_semantic_segs2(
                         MultiPolygon(
                             polygons=[Polygon(boundary=rect3.polygon)],
                         ),
-                        height=img2.height,
-                        width=img2.width,
+                        height=image_height,
+                        width=image_width,
                     ),
                 )
             ],
@@ -458,12 +529,16 @@ def gt_semantic_segs2(
 
 
 @pytest.fixture
-def gt_semantic_segs2_mask(img2: ImageMetadata) -> GroundTruth:
-    mask = _generate_mask(height=40, width=30)
+def gt_semantic_segs2_mask(
+    img2: Datum,
+    image_height: int,
+    image_width: int,
+) -> GroundTruth:
+    mask = _generate_mask(height=image_height, width=image_width)
     raster = Raster.from_numpy(mask)
 
     return GroundTruth(
-        datum=img2.to_datum(),
+        datum=img2,
         annotations=[
             Annotation(
                 task_type=TaskType.SEMANTIC_SEGMENTATION,
@@ -475,11 +550,11 @@ def gt_semantic_segs2_mask(img2: ImageMetadata) -> GroundTruth:
 
 
 @pytest.fixture
-def gt_semantic_segs_mismatch(img1: ImageMetadata) -> GroundTruth:
+def gt_semantic_segs_mismatch(img1: Datum) -> GroundTruth:
     mask = _generate_mask(height=100, width=100)
     raster = Raster.from_numpy(mask)
     return GroundTruth(
-        datum=img1.to_datum(),
+        datum=img1,
         annotations=[
             Annotation(
                 task_type=TaskType.SEMANTIC_SEGMENTATION,
@@ -492,13 +567,13 @@ def gt_semantic_segs_mismatch(img1: ImageMetadata) -> GroundTruth:
 
 @pytest.fixture
 def gt_clfs(
-    img5: ImageMetadata,
-    img6: ImageMetadata,
-    img8: ImageMetadata,
+    img5: Datum,
+    img6: Datum,
+    img8: Datum,
 ) -> list[GroundTruth]:
     return [
         GroundTruth(
-            datum=img5.to_datum(),
+            datum=img5,
             annotations=[
                 Annotation(
                     task_type=TaskType.CLASSIFICATION,
@@ -510,7 +585,7 @@ def gt_clfs(
             ],
         ),
         GroundTruth(
-            datum=img6.to_datum(),
+            datum=img6,
             annotations=[
                 Annotation(
                     task_type=TaskType.CLASSIFICATION,
@@ -519,7 +594,7 @@ def gt_clfs(
             ],
         ),
         GroundTruth(
-            datum=img8.to_datum(),
+            datum=img8,
             annotations=[
                 Annotation(
                     task_type=TaskType.CLASSIFICATION,
@@ -544,12 +619,12 @@ def pred_dets(
     model_name: str,
     rect1: BoundingBox,
     rect2: BoundingBox,
-    img1: ImageMetadata,
-    img2: ImageMetadata,
+    img1: Datum,
+    img2: Datum,
 ) -> list[Prediction]:
     return [
         Prediction(
-            datum=img1.to_datum(),
+            datum=img1,
             annotations=[
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
@@ -559,7 +634,7 @@ def pred_dets(
             ],
         ),
         Prediction(
-            datum=img2.to_datum(),
+            datum=img2,
             annotations=[
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
@@ -575,12 +650,12 @@ def pred_dets(
 def pred_dets2(
     rect3: BoundingBox,
     rect4: BoundingBox,
-    img1: ImageMetadata,
-    img2: ImageMetadata,
+    img1: Datum,
+    img2: Datum,
 ) -> list[Prediction]:
     return [
         Prediction(
-            datum=img1.to_datum(),
+            datum=img1,
             annotations=[
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
@@ -590,7 +665,7 @@ def pred_dets2(
             ],
         ),
         Prediction(
-            datum=img2.to_datum(),
+            datum=img2,
             annotations=[
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
@@ -624,21 +699,27 @@ def pred_poly_dets(pred_dets: list[Prediction]) -> list[Prediction]:
     ]
 
 
-def _random_mask(img: ImageMetadata) -> np.ndarray:
-    return np.random.randint(0, 2, size=(img.height, img.width), dtype=bool)
+def _random_mask(
+    img: Datum, image_height: int, image_width: int
+) -> np.ndarray:
+    return np.random.randint(
+        0, 2, size=(image_height, image_width), dtype=bool
+    )
 
 
 @pytest.fixture
 def pred_instance_segs(
     model_name: str,
-    img1: ImageMetadata,
-    img2: ImageMetadata,
+    img1: Datum,
+    img2: Datum,
+    image_height: int,
+    image_width: int,
 ) -> list[Prediction]:
-    mask_1 = _random_mask(img1)
-    mask_2 = _random_mask(img2)
+    mask_1 = _random_mask(img1, image_height, image_width)
+    mask_2 = _random_mask(img2, image_height, image_width)
     return [
         Prediction(
-            datum=img1.to_datum(),
+            datum=img1,
             annotations=[
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
@@ -648,7 +729,7 @@ def pred_instance_segs(
             ],
         ),
         Prediction(
-            datum=img2.to_datum(),
+            datum=img2,
             annotations=[
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
@@ -663,14 +744,16 @@ def pred_instance_segs(
 @pytest.fixture
 def pred_semantic_segs(
     model_name: str,
-    img1: ImageMetadata,
-    img2: ImageMetadata,
+    img1: Datum,
+    img2: Datum,
+    image_height: int,
+    image_width: int,
 ) -> list[Prediction]:
-    mask_1 = _random_mask(img1)
-    mask_2 = _random_mask(img2)
+    mask_1 = _random_mask(img1, image_height, image_width)
+    mask_2 = _random_mask(img2, image_height, image_width)
     return [
         Prediction(
-            datum=img1.to_datum(),
+            datum=img1,
             annotations=[
                 Annotation(
                     task_type=TaskType.SEMANTIC_SEGMENTATION,
@@ -680,7 +763,7 @@ def pred_semantic_segs(
             ],
         ),
         Prediction(
-            datum=img2.to_datum(),
+            datum=img2,
             annotations=[
                 Annotation(
                     task_type=TaskType.SEMANTIC_SEGMENTATION,
@@ -693,12 +776,10 @@ def pred_semantic_segs(
 
 
 @pytest.fixture
-def pred_clfs(
-    model_name: str, img5: ImageMetadata, img6: ImageMetadata
-) -> list[Prediction]:
+def pred_clfs(model_name: str, img5: Datum, img6: Datum) -> list[Prediction]:
     return [
         Prediction(
-            datum=img5.to_datum(),
+            datum=img5,
             annotations=[
                 Annotation(
                     task_type=TaskType.CLASSIFICATION,
@@ -711,7 +792,7 @@ def pred_clfs(
             ],
         ),
         Prediction(
-            datum=img6.to_datum(),
+            datum=img6,
             annotations=[
                 Annotation(
                     task_type=TaskType.CLASSIFICATION,

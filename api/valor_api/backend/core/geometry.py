@@ -1,11 +1,10 @@
 import io
 from base64 import b64encode
 
-from geoalchemy2.functions import ST_AsPNG
-from PIL import Image
-
 from geoalchemy2 import Geometry
+from geoalchemy2.functions import ST_AsPNG
 from geoalchemy2.types import CompositeType
+from PIL import Image
 from sqlalchemy import (
     BinaryExpression,
     Float,

@@ -10,8 +10,6 @@ from geoalchemy2.functions import (
     ST_GeomFromText,
     ST_MakeEmptyRaster,
     ST_MapAlgebra,
-    ST_SetSRID,
-    ST_Resize,
 )
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import ScalarSelect, select
@@ -348,7 +346,7 @@ class BasicPolygon(BaseModel):
     Attributes
     ----------
     points: Tuple[Point, Point]
-        The coordinates of the polygon.
+        The coordinates of the geometry.
 
     Raises
     ------
@@ -375,7 +373,7 @@ class BasicPolygon(BaseModel):
     @property
     def left(self):
         """
-        Returns the left-most point of the polygon.
+        Returns the left-most point of the geometry.
 
         Returns
         ----------
@@ -387,7 +385,7 @@ class BasicPolygon(BaseModel):
     @property
     def right(self):
         """
-        Returns the right-most point of the polygon.
+        Returns the right-most point of the geometry.
 
         Returns
         ----------
@@ -399,7 +397,7 @@ class BasicPolygon(BaseModel):
     @property
     def top(self):
         """
-        Returns the top-most point of the polygon.
+        Returns the top-most point of the geometry.
 
         Returns
         ----------
@@ -411,7 +409,7 @@ class BasicPolygon(BaseModel):
     @property
     def bottom(self):
         """
-        Returns the bottom-most point of the polygon.
+        Returns the bottom-most point of the geometry.
 
         Returns
         ----------
@@ -423,24 +421,24 @@ class BasicPolygon(BaseModel):
     @property
     def width(self):
         """
-        Returns the width of the polygon.
+        Returns the width of the geometry.
 
         Returns
         ----------
         float | int
-            The width of the polygon.
+            The width of the geometry.
         """
         return self.right - self.left
 
     @property
     def height(self):
         """
-        Returns the height of the polygon.
+        Returns the height of the geometry.
 
         Returns
         ----------
         float | int
-            The height of the polygon.
+            The height of the geometry.
         """
         return self.top - self.bottom
 
@@ -493,6 +491,19 @@ class BasicPolygon(BaseModel):
             return wkt_format
         return f"POLYGON ({wkt_format})"
 
+    def offset(self, x: float = 0, y: float = 0):
+        """
+        Translates the geometry by an offset.
+
+        Parameters
+        ----------
+        x : int, default=0
+            The x-axis offset.
+        y : int, default=0
+            The y-axis offset.
+        """
+        self.points = [Point(x=pt.x + x, y=pt.y + y) for pt in self.points]
+
 
 class Polygon(BaseModel):
     """
@@ -516,11 +527,11 @@ class Polygon(BaseModel):
             for hole in self.holes:
                 polys.append(str(hole))
         return f"({','.join(polys)})"
-    
+
     @property
     def left(self):
         """
-        Returns the left-most point of the polygon.
+        Returns the left-most point of the geometry.
 
         Returns
         ----------
@@ -532,7 +543,7 @@ class Polygon(BaseModel):
     @property
     def right(self):
         """
-        Returns the right-most point of the polygon.
+        Returns the right-most point of the geometry.
 
         Returns
         ----------
@@ -544,7 +555,7 @@ class Polygon(BaseModel):
     @property
     def top(self):
         """
-        Returns the top-most point of the polygon.
+        Returns the top-most point of the geometry.
 
         Returns
         ----------
@@ -556,7 +567,7 @@ class Polygon(BaseModel):
     @property
     def bottom(self):
         """
-        Returns the bottom-most point of the polygon.
+        Returns the bottom-most point of the geometry.
 
         Returns
         ----------
@@ -568,24 +579,24 @@ class Polygon(BaseModel):
     @property
     def width(self):
         """
-        Returns the width of the polygon.
+        Returns the width of the geometry.
 
         Returns
         ----------
         float | int
-            The width of the polygon.
+            The width of the geometry.
         """
         return self.boundary.width
 
     @property
     def height(self):
         """
-        Returns the height of the polygon.
+        Returns the height of the geometry.
 
         Returns
         ----------
         float | int
-            The height of the polygon.
+            The height of the geometry.
         """
         return self.boundary.height
 
@@ -612,6 +623,22 @@ class Polygon(BaseModel):
             return wkt_format
         return f"POLYGON {wkt_format}"
 
+    def offset(self, x: float = 0, y: float = 0):
+        """
+        Translates the geometry by an offset.
+
+        Parameters
+        ----------
+        x : int, default=0
+            The x-axis offset.
+        y : int, default=0
+            The y-axis offset.
+        """
+        self.boundary.offset(x, y)
+        if self.holes:
+            for idx in range(len(self.holes)):
+                self.holes[idx].offset(x, y)
+
 
 class MultiPolygon(BaseModel):
     """
@@ -633,7 +660,7 @@ class MultiPolygon(BaseModel):
     @property
     def left(self):
         """
-        Returns the left-most point of the polygon.
+        Returns the left-most point of the geometry.
 
         Returns
         ----------
@@ -645,7 +672,7 @@ class MultiPolygon(BaseModel):
     @property
     def right(self):
         """
-        Returns the right-most point of the polygon.
+        Returns the right-most point of the geometry.
 
         Returns
         ----------
@@ -657,7 +684,7 @@ class MultiPolygon(BaseModel):
     @property
     def top(self):
         """
-        Returns the top-most point of the polygon.
+        Returns the top-most point of the geometry.
 
         Returns
         ----------
@@ -669,7 +696,7 @@ class MultiPolygon(BaseModel):
     @property
     def bottom(self):
         """
-        Returns the bottom-most point of the polygon.
+        Returns the bottom-most point of the geometry.
 
         Returns
         ----------
@@ -681,24 +708,24 @@ class MultiPolygon(BaseModel):
     @property
     def width(self):
         """
-        Returns the width of the polygon.
+        Returns the width of the geometry.
 
         Returns
         ----------
         float | int
-            The width of the polygon.
+            The width of the geometry.
         """
         return self.right - self.left
 
     @property
     def height(self):
         """
-        Returns the height of the polygon.
+        Returns the height of the geometry.
 
         Returns
         ----------
         float | int
-            The height of the polygon.
+            The height of the geometry.
         """
         return self.top - self.bottom
 
@@ -713,6 +740,20 @@ class MultiPolygon(BaseModel):
         """
         plist = [polygon.wkt(partial=True) for polygon in self.polygons]
         return f"MULTIPOLYGON ({', '.join(plist)})"
+
+    def offset(self, x: float = 0, y: float = 0):
+        """
+        Translates the geometry by an offset.
+
+        Parameters
+        ----------
+        x : int, default=0
+            The x-axis offset.
+        y : int, default=0
+            The y-axis offset.
+        """
+        for idx in range(len(self.polygons)):
+            self.polygons[idx].offset(x, y)
 
 
 class BoundingBox(BaseModel):
@@ -778,7 +819,7 @@ class BoundingBox(BaseModel):
     @property
     def left(self):
         """
-        Returns the left-most point of the polygon.
+        Returns the left-most point of the geometry.
 
         Returns
         ----------
@@ -790,7 +831,7 @@ class BoundingBox(BaseModel):
     @property
     def right(self):
         """
-        Returns the right-most point of the polygon.
+        Returns the right-most point of the geometry.
 
         Returns
         ----------
@@ -802,7 +843,7 @@ class BoundingBox(BaseModel):
     @property
     def top(self):
         """
-        Returns the top-most point of the polygon.
+        Returns the top-most point of the geometry.
 
         Returns
         ----------
@@ -814,7 +855,7 @@ class BoundingBox(BaseModel):
     @property
     def bottom(self):
         """
-        Returns the bottom-most point of the polygon.
+        Returns the bottom-most point of the geometry.
 
         Returns
         ----------
@@ -826,24 +867,24 @@ class BoundingBox(BaseModel):
     @property
     def width(self):
         """
-        Returns the width of the polygon.
+        Returns the width of the geometry.
 
         Returns
         ----------
         float | int
-            The width of the polygon.
+            The width of the geometry.
         """
         return self.polygon.width
 
     @property
     def height(self):
         """
-        Returns the height of the polygon.
+        Returns the height of the geometry.
 
         Returns
         ----------
         float | int
-            The height of the polygon.
+            The height of the geometry.
         """
         return self.polygon.height
 
@@ -912,6 +953,19 @@ class BoundingBox(BaseModel):
             The WKT representation of the shape.
         """
         return self.polygon.wkt()
+
+    def offset(self, x: float = 0, y: float = 0):
+        """
+        Translates the geometry by an offset.
+
+        Parameters
+        ----------
+        x : int, default=0
+            The x-axis offset.
+        y : int, default=0
+            The y-axis offset.
+        """
+        self.polygon.offset(x, y)
 
 
 class Raster(BaseModel):
@@ -1091,29 +1145,30 @@ class Raster(BaseModel):
             A valid input to the models.Annotation.raster column.
         """
         if self.geometry:
-            empty_raster = ST_SetSRID(
-                ST_AddBand(
-                    ST_MakeEmptyRaster(
-                        self.width,
-                        self.height,
-                        0,  # upperleftx
-                        0,  # upperlefty
-                        1,  # scalex
-                        1,  # scaley
-                        0,  # skewx
-                        0,  # skewy
-                        1,  # pixelsize
-                    ),
-                    "8BUI",
+            empty_raster = ST_AddBand(
+                ST_MakeEmptyRaster(
+                    self.width,
+                    self.height,
+                    0,  # upperleftx
+                    0,  # upperlefty
+                    1,  # scalex
+                    1,  # scaley
+                    0,  # skewx
+                    0,  # skewy
+                    0,  # srid
                 ),
-                0,  # SRID
+                "8BUI",
             )
             geom_raster = ST_AsRaster(
                 ST_GeomFromText(self.geometry.wkt()),
                 1.0,  # scalex
                 1.0,  # scaley
+                "8BUI",  # pixeltype
+                1,  # value
+                0,  # nodataval
             )
             return select(
+                # geom_raster,
                 ST_MapAlgebra(
                     empty_raster,
                     geom_raster,

@@ -103,7 +103,7 @@ def groundtruths_with_areas(
                                 multipolygon,
                                 height=image_height_width[0],
                                 width=image_height_width[1],
-                            )
+                            ),
                         )
                     ],
                 ),

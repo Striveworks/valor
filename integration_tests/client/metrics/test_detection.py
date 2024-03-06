@@ -13,6 +13,7 @@ from valor import (
     Annotation,
     Client,
     Dataset,
+    Datum,
     Filter,
     GroundTruth,
     Label,
@@ -21,7 +22,6 @@ from valor import (
 )
 from valor.enums import AnnotationType, EvaluationStatus, TaskType
 from valor.exceptions import ClientException
-from valor.metatypes import ImageMetadata
 from valor.schemas import BoundingBox
 from valor_api.backend import models
 
@@ -753,12 +753,12 @@ def gts_det_with_label_maps(
     rect1: BoundingBox,
     rect2: BoundingBox,
     rect3: BoundingBox,
-    img1: ImageMetadata,
-    img2: ImageMetadata,
+    img1: Datum,
+    img2: Datum,
 ) -> list[GroundTruth]:
     return [
         GroundTruth(
-            datum=img1.to_datum(),
+            datum=img1,
             annotations=[
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
@@ -783,7 +783,7 @@ def gts_det_with_label_maps(
             ],
         ),
         GroundTruth(
-            datum=img2.to_datum(),
+            datum=img2,
             annotations=[
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
@@ -804,12 +804,12 @@ def gts_det_with_label_maps(
 def preds_det_with_label_maps(
     rect1: BoundingBox,
     rect2: BoundingBox,
-    img1: ImageMetadata,
-    img2: ImageMetadata,
+    img1: Datum,
+    img2: Datum,
 ) -> list[Prediction]:
     return [
         Prediction(
-            datum=img1.to_datum(),
+            datum=img1,
             annotations=[
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
@@ -824,7 +824,7 @@ def preds_det_with_label_maps(
             ],
         ),
         Prediction(
-            datum=img2.to_datum(),
+            datum=img2,
             annotations=[
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,

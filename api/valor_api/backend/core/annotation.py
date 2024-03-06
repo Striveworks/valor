@@ -1,15 +1,14 @@
 import json
 
 from geoalchemy2.functions import ST_AsGeoJSON
-from PIL import Image
 from sqlalchemy import and_, delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from valor_api import exceptions, schemas
 from valor_api.backend import models
-from valor_api.backend.query import Query
 from valor_api.backend.core.geometry import _raster_to_png_b64
+from valor_api.backend.query import Query
 from valor_api.enums import ModelStatus, TableStatus, TaskType
 
 

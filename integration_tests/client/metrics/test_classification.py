@@ -589,7 +589,7 @@ def gt_clfs_with_label_maps(
 ) -> list[GroundTruth]:
     return [
         GroundTruth(
-            datum=img5.to_datum(),
+            datum=img5,
             annotations=[
                 Annotation(
                     task_type=TaskType.CLASSIFICATION,
@@ -602,7 +602,7 @@ def gt_clfs_with_label_maps(
             ],
         ),
         GroundTruth(
-            datum=img6.to_datum(),
+            datum=img6,
             annotations=[
                 Annotation(
                     task_type=TaskType.CLASSIFICATION,
@@ -614,7 +614,7 @@ def gt_clfs_with_label_maps(
             ],
         ),
         GroundTruth(
-            datum=img8.to_datum(),
+            datum=img8,
             annotations=[
                 Annotation(
                     task_type=TaskType.CLASSIFICATION,
@@ -634,7 +634,7 @@ def pred_clfs_with_label_maps(
 ) -> list[Prediction]:
     return [
         Prediction(
-            datum=img5.to_datum(),
+            datum=img5,
             annotations=[
                 Annotation(
                     task_type=TaskType.CLASSIFICATION,
@@ -648,7 +648,7 @@ def pred_clfs_with_label_maps(
             ],
         ),
         Prediction(
-            datum=img6.to_datum(),
+            datum=img6,
             annotations=[
                 Annotation(
                     task_type=TaskType.CLASSIFICATION,
