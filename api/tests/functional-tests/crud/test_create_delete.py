@@ -1010,14 +1010,17 @@ def test_gt_seg_as_mask_or_polys(
     assert len(shapes) == 2
 
     # check that the mask and polygon define the same polygons
-    # assert db.scalar(
-    #     select(
-    #         func.ST_Equals(
-    #             func.ST_GeomFromText(shapes[0]),
-    #             func.ST_GeomFromText(shapes[1])
-    #         )
-    #     )
-    # ) == True
+    assert (
+        db.scalar(
+            select(
+                func.ST_Equals(
+                    func.ST_GeomFromText(shapes[0]),
+                    func.ST_GeomFromText(shapes[1]),
+                )
+            )
+        )
+        is True
+    )
 
     # verify we get the same segmentations back
     segs = crud.get_groundtruth(
