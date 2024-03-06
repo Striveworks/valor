@@ -21,9 +21,7 @@ def dataset_with_metadata(
     rect1: BoundingBox,
 ) -> Dataset:
     # split metadata
-    md1 = {
-        "metadatum1": metadata["metadatum1"],
-    }
+    md1 = {"metadatum1": metadata["metadatum1"]}
     md23 = {
         "metadatum2": metadata["metadatum2"],
         "metadatum3": metadata["metadatum3"],
