@@ -150,13 +150,7 @@ def _convert_from_raster(where_conditions: list[BinaryExpression]) -> Subquery:
         )
         .select_from(models.Annotation)
         .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
-        .join(
-            pixels_subquery,
-            pixels_subquery.c.id == models.Annotation.id
-            # literal_column(
-            #     "true"
-            # ),  # Joining the lateral subquery doesn't require a condition
-        )
+        .join(pixels_subquery, pixels_subquery.c.id == models.Annotation.id)
         .where(
             models.Annotation.polygon.is_(None),
             models.Annotation.raster.isnot(None),
