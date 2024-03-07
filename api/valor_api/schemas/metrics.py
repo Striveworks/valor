@@ -1,3 +1,5 @@
+import json
+
 import numpy as np
 from pydantic import BaseModel, ConfigDict, field_validator
 
@@ -397,6 +399,42 @@ class AccuracyMetric(BaseModel):
         return {
             "value": self.value,
             "type": "Accuracy",
+            "evaluation_id": evaluation_id,
+            "parameters": {"label_key": self.label_key},
+        }
+
+
+class PrecisionRecallCurve(BaseModel):
+    """
+    Describes a precision-recall curve.
+
+    Attributes
+    ----------
+    label_key: str
+        A label for the metric.
+    value: dict
+        A nested dictionary where the first key is the class label, the second key is the confidence threshold (e.g., 0.05), the third key is the metric name (e.g., "precision"), and the final key is the value.
+    """
+
+    label_key: str
+    value: dict[str, dict[float, dict[str, int | float | None]]]
+
+    def db_mapping(self, evaluation_id: int) -> dict:
+        """
+        Creates a mapping for use when uploading the curves to the database.
+
+        Parameters
+        ----------
+        evaluation_id : int
+            The evaluation id.
+
+        Returns
+        ----------
+        A mapping dictionary.
+        """
+        return {
+            "value": json.dumps(self.value),
+            "type": "PrecisionRecallCurve",
             "evaluation_id": evaluation_id,
             "parameters": {"label_key": self.label_key},
         }

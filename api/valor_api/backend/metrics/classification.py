@@ -1,9 +1,11 @@
+from collections import defaultdict
 from typing import Sequence
 
 import numpy as np
-from sqlalchemy import Float, Integer
+from sqlalchemy import Float, Integer, Subquery
 from sqlalchemy.orm import Bundle, Session
 from sqlalchemy.sql import and_, case, func, select
+from sqlalchemy.sql.selectable import NamedFromClause
 
 from valor_api import enums, schemas
 from valor_api.backend import core, models
@@ -16,6 +18,127 @@ from valor_api.backend.metrics.metric_utils import (
 from valor_api.backend.query import Query
 
 LabelMapType = list[list[list[str]]]
+
+
+def _compute_curves(
+    db: Session,
+    predictions: Subquery | NamedFromClause,
+    groundtruths: Subquery | NamedFromClause,
+    grouper_key: str,
+    grouper_mappings: dict[str, dict[str, dict]],
+) -> dict[str, dict[float, dict[str, int | float | None]]]:
+    """
+    Calculates precision-recall curves and ROCs for each class.
+
+    Parameters
+    ----------
+    db: Session
+        The database Session to query against.
+    prediction_filter: schemas.Filter
+        The filter to be used to query predictions.
+    groundtruth_filter: schemas.Filter
+        The filter to be used to query groundtruths.
+    grouper_key: str
+        The key of the grouper used to calculate the confusion matrix.
+    grouper_mappings: dict[str, dict[str | int, any]]
+        A dictionary of mappings that connect groupers to their related labels.
+
+    Returns
+    -------
+    dict
+        A nested dictionary where the first key is the class label, the second key is the confidence threshold (e.g., 0.05), the third key is the metric name (e.g., "precision"), and the final key is the value.
+    """
+
+    output = defaultdict(lambda: defaultdict(dict))
+
+    for threshold in [x / 100 for x in range(5, 95, 5)]:
+        predictions_that_meet_criteria = (
+            select(
+                models.Label.value.label("pred_label_value"),
+                models.Annotation.datum_id.label("datum_id"),
+                predictions.c.score,
+            )
+            .select_from(predictions)
+            .join(
+                models.Annotation,
+                models.Annotation.id == predictions.c.annotation_id,
+            )
+            .join(
+                models.Label,
+                models.Label.id == predictions.c.label_id,
+            )
+            .where(predictions.c.score > threshold)
+            .alias()
+        )
+
+        b = Bundle(
+            "cols",
+            case(
+                grouper_mappings["label_value_to_grouper_value"],
+                value=predictions_that_meet_criteria.c.pred_label_value,
+            ),
+            case(
+                grouper_mappings["label_value_to_grouper_value"],
+                value=models.Label.value,
+            ),
+        )
+
+        total_query = (
+            select(b, func.count())
+            .select_from(groundtruths)
+            .join(
+                predictions_that_meet_criteria,  # type: ignore
+                groundtruths.c.datum_id
+                == predictions_that_meet_criteria.c.datum_id,
+                isouter=True,
+            )
+            .join(
+                models.Label,
+                models.Label.id == groundtruths.c.label_id,
+            )
+            .group_by(b)  # type: ignore - SQLAlchemy Bundle not compatible with _first
+        )
+
+        res = db.execute(total_query).all()
+
+        for grouper_value in grouper_mappings["grouper_key_to_labels_mapping"][
+            grouper_key
+        ].keys():
+            tp, fp, fn = [0] * 3
+            for row in res:
+                predicted_label, actual_label, count = (
+                    row[0][0],
+                    row[0][1],
+                    row[1],
+                )
+
+                if (
+                    predicted_label == grouper_value
+                    and actual_label == grouper_value
+                ):
+                    tp += count
+                elif predicted_label == grouper_value:
+                    fp += count
+                elif actual_label == grouper_value:
+                    fn += count
+
+            # calculate metrics
+            precision = tp / (tp + fp) if (tp + fp) > 0 else None
+            recall = tp / (tp + fn) if (tp + fn) > 0 else None
+            f1_score = (
+                (2 * precision * recall) / (precision + recall)
+                if precision and recall
+                else None
+            )
+
+            output[grouper_value][threshold] = {
+                "tp": tp,
+                "fp": fp,
+                "fn": fn,
+                "f1_score": f1_score,
+            }
+
+    return dict(output)
 
 
 def _compute_binary_roc_auc(
@@ -207,8 +330,8 @@ def _compute_roc_auc(
 
 def _compute_confusion_matrix_at_grouper_key(
     db: Session,
-    prediction_filter: schemas.Filter,
-    groundtruth_filter: schemas.Filter,
+    predictions: Subquery | NamedFromClause,
+    groundtruths: Subquery | NamedFromClause,
     grouper_key: str,
     grouper_mappings: dict[str, dict[str, dict]],
 ) -> schemas.ConfusionMatrix | None:
@@ -235,38 +358,8 @@ def _compute_confusion_matrix_at_grouper_key(
         that have both a ground truth and prediction with label key `label_key`. Otherwise
         returns the confusion matrix.
     """
-    label_key_filter = list(
-        grouper_mappings["grouper_key_to_label_keys_mapping"][grouper_key]
-    )
 
-    # groundtruths filter
-    gFilter = groundtruth_filter.model_copy()
-    gFilter.label_keys = label_key_filter
-
-    # predictions filter
-    pFilter = prediction_filter.model_copy()
-    pFilter.label_keys = label_key_filter
-
-    # 0. Get groundtruths that conform to gFilter
-    groundtruths = (
-        Query(
-            models.GroundTruth,
-            models.Annotation.datum_id.label("datum_id"),
-        )
-        .filter(gFilter)
-        .groundtruths(as_subquery=False)
-        .alias()
-    )
-
-    # 1. Get predictions that conform to pFilter
-    predictions = (
-        Query(models.Prediction)
-        .filter(pFilter)
-        .predictions(as_subquery=False)
-        .alias()
-    )
-
-    # 2. Get the max prediction scores by datum
+    # 1. Get the max prediction scores by datum
     max_scores_by_datum_id = (
         select(
             func.max(predictions.c.score).label("max_score"),
@@ -280,7 +373,7 @@ def _compute_confusion_matrix_at_grouper_key(
         .alias()
     )
 
-    # 3. Remove duplicate scores per datum
+    # 2. Remove duplicate scores per datum
     # used for the edge case where the max confidence appears twice
     # the result of this query is all of the hard predictions
     min_id_query = (
@@ -305,7 +398,7 @@ def _compute_confusion_matrix_at_grouper_key(
         .alias()
     )
 
-    # 4. Get labels for hard predictions, organize per datum
+    # 3. Get labels for hard predictions, organize per datum
     hard_preds_query = (
         select(
             models.Label.value.label("pred_label_value"),
@@ -323,7 +416,7 @@ def _compute_confusion_matrix_at_grouper_key(
         .alias()
     )
 
-    # 5. Link each label value to its corresponding grouper value
+    # 4. Link each label value to its corresponding grouper value
     b = Bundle(
         "cols",
         case(
@@ -336,7 +429,7 @@ def _compute_confusion_matrix_at_grouper_key(
         ),
     )
 
-    # 6. Generate confusion matrix
+    # 5. Generate confusion matrix
     total_query = (
         select(b, func.count())
         .select_from(hard_preds_query)
@@ -468,10 +561,38 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
         matrix and the second a list of all metrics (accuracy, ROC AUC, precisions, recalls, and f1s).
     """
 
+    label_key_filter = list(
+        grouper_mappings["grouper_key_to_label_keys_mapping"][grouper_key]
+    )
+
+    # get groundtruths and predictions that conform to filters
+    gFilter = groundtruth_filter.model_copy()
+    gFilter.label_keys = label_key_filter
+
+    pFilter = prediction_filter.model_copy()
+    pFilter.label_keys = label_key_filter
+
+    groundtruths = (
+        Query(
+            models.GroundTruth,
+            models.Annotation.datum_id.label("datum_id"),
+        )
+        .filter(gFilter)
+        .groundtruths(as_subquery=False)
+        .alias()
+    )
+
+    predictions = (
+        Query(models.Prediction)
+        .filter(pFilter)
+        .predictions(as_subquery=False)
+        .alias()
+    )
+
     confusion_matrix = _compute_confusion_matrix_at_grouper_key(
         db=db,
-        prediction_filter=prediction_filter,
-        groundtruth_filter=groundtruth_filter,
+        groundtruths=groundtruths,
+        predictions=predictions,
         grouper_key=grouper_key,
         grouper_mappings=grouper_mappings,
     )
@@ -479,7 +600,16 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
     if confusion_matrix is None:
         return None
 
+    pr_roc_curves = _compute_curves(
+        db=db,
+        groundtruths=groundtruths,
+        predictions=predictions,
+        grouper_key=grouper_key,
+        grouper_mappings=grouper_mappings,
+    )
+
     # aggregate metrics (over all label values)
+    # TODO fix the SQL table to accept both JSON and floats
     metrics = [
         schemas.AccuracyMetric(
             label_key=grouper_key,
@@ -494,6 +624,9 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
                 grouper_key=grouper_key,
                 grouper_mappings=grouper_mappings,
             ),
+        ),
+        schemas.PrecisionRecallCurve(
+            label_key=grouper_key, value=pr_roc_curves
         ),
     ]
 
