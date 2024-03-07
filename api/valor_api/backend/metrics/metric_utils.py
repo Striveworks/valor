@@ -4,7 +4,7 @@ from typing import Callable, Sequence
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from valor_api import enums, schemas
+from valor_api import enums, logger, schemas
 from valor_api.backend import core, models
 
 LabelMapType = list[list[list[str]]]
@@ -292,6 +292,9 @@ def validate_computation(fn: Callable) -> Callable:
         except Exception as e:
             core.set_evaluation_status(
                 db, evaluation_id, enums.EvaluationStatus.FAILED
+            )
+            logger.info(
+                f"Evaluation `{evaluation_id}` failed with error: {str(e)}"
             )
             raise e
         core.set_evaluation_status(

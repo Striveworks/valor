@@ -97,7 +97,7 @@ def test_boundary(
     rect1_poly = bbox_to_poly(rect1)
     dataset.add_groundtruth(
         GroundTruth(
-            datum=img1.to_datum(),
+            datum=img1,
             annotations=[
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
@@ -132,7 +132,7 @@ def test_iou(
     dataset = Dataset.create(dataset_name)
     dataset.add_groundtruth(
         GroundTruth(
-            datum=img1.to_datum(),
+            datum=img1,
             annotations=[
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
@@ -151,7 +151,7 @@ def test_iou(
     model.add_prediction(
         dataset,
         Prediction(
-            datum=img1.to_datum(),
+            datum=img1,
             annotations=[
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
@@ -186,7 +186,7 @@ def test_add_raster_and_boundary_box(
     raster = Raster.from_numpy(mask)
 
     gt = GroundTruth(
-        datum=img1.to_datum(),
+        datum=img1,
         annotations=[
             Annotation(
                 task_type=TaskType.OBJECT_DETECTION,

@@ -2,7 +2,8 @@ import json
 
 import numpy as np
 import pytest
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, func, or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from valor_api import enums, schemas
@@ -12,77 +13,20 @@ from valor_api.backend.core.geometry import (
     _convert_polygon_to_box,
     _convert_raster_to_box,
     _convert_raster_to_polygon,
+    _raster_to_png_b64,
     convert_geometry,
     get_annotation_type,
 )
 from valor_api.crud import create_dataset, create_groundtruth
 from valor_api.schemas import (
     Annotation,
-    BasicPolygon,
     BoundingBox,
     Datum,
     GroundTruth,
     MultiPolygon,
-    Point,
     Polygon,
     Raster,
 )
-
-
-@pytest.fixture
-def rotated_box_points() -> list[Point]:
-    return [
-        Point(x=4, y=0),
-        Point(x=1, y=3),
-        Point(x=4, y=6),
-        Point(x=7, y=3),
-    ]
-
-
-@pytest.fixture
-def bbox(rotated_box_points) -> BoundingBox:
-    """Defined as the envelope of `rotated_box_points`."""
-    minX = min([pt.x for pt in rotated_box_points])
-    maxX = max([pt.x for pt in rotated_box_points])
-    minY = min([pt.y for pt in rotated_box_points])
-    maxY = max([pt.y for pt in rotated_box_points])
-    return BoundingBox(
-        polygon=BasicPolygon(
-            points=[
-                Point(x=minX, y=maxY),
-                Point(x=maxX, y=maxY),
-                Point(x=maxX, y=minY),
-                Point(x=minX, y=minY),
-            ]
-        )
-    )
-
-
-@pytest.fixture
-def polygon(rotated_box_points) -> Polygon:
-    return Polygon(
-        boundary=schemas.BasicPolygon(
-            points=rotated_box_points,
-        )
-    )
-
-
-@pytest.fixture
-def multipolygon(polygon) -> MultiPolygon:
-    return MultiPolygon(polygons=[polygon])
-
-
-@pytest.fixture
-def raster() -> Raster:
-    """Rasterization of `rotated_box_points`."""
-    r = np.zeros((10, 10))
-    for y in range(0, 3):
-        for x in range(4 - y, y + 5, 1):
-            r[y, x] = 1
-    for y in range(3, 8):
-        for x in range(y - 2, 11 - y):
-            r[y, x] = 1
-    return Raster.from_numpy(r == 1)
 
 
 @pytest.fixture
@@ -133,7 +77,49 @@ def create_object_detection_dataset(
             Annotation(
                 task_type=task_type,
                 labels=labels,
-                multipolygon=multipolygon,
+                raster=raster,
+            ),
+        ],
+    )
+    dataset = schemas.Dataset(name=dataset_name)
+    create_dataset(db=db, dataset=dataset)
+    create_groundtruth(db=db, groundtruth=groundtruth)
+    return dataset_name
+
+
+@pytest.fixture
+def create_segmentation_dataset_from_geometries(
+    db: Session,
+    dataset_name: str,
+    bbox: BoundingBox,
+    polygon: Polygon,
+    multipolygon: MultiPolygon,
+    raster: Raster,
+):
+    datum = Datum(
+        uid="uid1",
+        dataset_name=dataset_name,
+    )
+    task_type = enums.TaskType.OBJECT_DETECTION
+    labels = [schemas.Label(key="k1", value="v1")]
+    groundtruth = GroundTruth(
+        datum=datum,
+        annotations=[
+            Annotation(
+                task_type=task_type,
+                labels=labels,
+                raster=Raster(
+                    mask=raster.mask,
+                    geometry=polygon,
+                ),
+            ),
+            Annotation(
+                task_type=task_type,
+                labels=labels,
+                raster=Raster(
+                    mask=raster.mask,
+                    geometry=multipolygon,
+                ),
             ),
             Annotation(
                 task_type=task_type,
@@ -264,7 +250,7 @@ def test_convert_from_raster(
     assert converted_polygon == polygon
 
 
-def test_convert_polygon_to_bbox(
+def test_convert_polygon_to_box(
     db: Session,
     create_object_detection_dataset: str,
     bbox: BoundingBox,
@@ -296,10 +282,110 @@ def test_convert_polygon_to_bbox(
 
     converted_box = _load_box(db, annotation.box)
 
-    # rotate points
-    converted_box.polygon.points = converted_box.polygon.points[1:] + [
-        converted_box.polygon.points[0]
-    ]
-
     # check that points match
     assert converted_box == bbox
+
+
+def test_create_segmentations_from_polygons(
+    db: Session,
+    create_segmentation_dataset_from_geometries: str,
+    bbox: BoundingBox,
+    polygon: Polygon,
+    multipolygon: MultiPolygon,
+    raster: Raster,
+):
+    # NOTE - Comparing converted rasters to originals fails due to inaccuracies with polygon to raster conversion.
+    #         This is the raster that will be created through the conversion.
+    converted_raster = Raster.from_numpy(
+        np.array(
+            [  # 0 1 2 3 4 5 6 7 8 9
+                [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],  # 0
+                [0, 0, 0, 1, 1, 1, 0, 0, 0, 0],  # 1
+                [0, 0, 1, 1, 1, 1, 1, 0, 0, 0],  # 2
+                [0, 0, 1, 1, 1, 1, 1, 0, 0, 0],  # 3
+                [0, 0, 0, 1, 1, 1, 0, 0, 0, 0],  # 4
+                [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],  # 5
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # 6
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # 7
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # 8
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # 9
+            ]
+        )
+        == 1
+    )
+    with pytest.raises(AssertionError):
+        np.testing.assert_array_equal(
+            converted_raster.to_numpy(), raster.to_numpy()
+        )
+
+    # verify all rasters are equal
+    raster_arrs = [
+        Raster(mask=_raster_to_png_b64(db, r)).to_numpy()
+        for r in db.scalars(select(models.Annotation.raster)).all()
+    ]
+    assert len(raster_arrs) == 3
+
+    np.testing.assert_array_equal(raster_arrs[0], raster_arrs[1])
+    np.testing.assert_array_equal(
+        raster_arrs[0], converted_raster.to_numpy()
+    )  # converted rasters are equal
+
+    np.testing.assert_array_equal(
+        raster_arrs[2], raster.to_numpy()
+    )  # directly ingested raster is the same
+    with pytest.raises(AssertionError):
+        np.testing.assert_array_equal(
+            raster_arrs[0], raster_arrs[2]
+        )  # ingested raster not equal to polygon-raster
+
+    # NOTE - Conversion error causes this.
+    with pytest.raises(AssertionError):
+        np.testing.assert_array_equal(raster_arrs[0], raster_arrs[2])
+
+    # verify no polygons or boxes exist
+    assert (
+        db.scalar(
+            select(func.count(models.Annotation.id)).where(
+                or_(
+                    models.Annotation.box.isnot(None),
+                    models.Annotation.polygon.isnot(None),
+                )
+            )
+        )
+        == 0
+    )
+
+    # verify conversion to polygons
+    try:
+        db.execute(_convert_raster_to_polygon([]))
+        db.commit()
+    except IntegrityError as e:
+        db.rollback()
+        raise e
+
+    polygons = [
+        _load_polygon(db, poly)
+        for poly in db.scalars(select(models.Annotation.polygon)).all()
+    ]
+    assert len(polygons) == 3
+
+    # NOTE - Due to the issues in rasterization, converting back to polygon results in a new polygon.
+    converted_polygon = Polygon(
+        boundary=schemas.BasicPolygon(
+            points=[
+                schemas.Point(x=4, y=0),
+                schemas.Point(x=2, y=2),
+                schemas.Point(x=2, y=3),
+                schemas.Point(x=4, y=5),
+                schemas.Point(x=6, y=3),
+                schemas.Point(x=6, y=2),
+            ]
+        )
+    )
+    assert polygons[0] == polygons[1]
+    assert (
+        polygons[0] == converted_polygon
+    )  # corrupted raster converts to inccorect polygon
+    assert (
+        polygons[2] == polygon
+    )  # uncorrupted raster converts to correct polygon

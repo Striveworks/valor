@@ -358,6 +358,8 @@ def test_get_summary(
     dataset_name: str,
     gt_semantic_segs1_mask: GroundTruth,
     gt_dets1: list[GroundTruth],
+    image_height: int,
+    image_width: int,
 ):
     dataset = Dataset.create(dataset_name)
     dataset.add_groundtruth(gt_semantic_segs1_mask)
@@ -406,8 +408,8 @@ def test_get_summary(
         },
     } in summary.datum_metadata  # uid1
     assert {
-        "height": 40,
-        "width": 30,
+        "height": image_height,
+        "width": image_width,
         "geospatial": {
             "geojson": {"coordinates": [44.1, 22.4], "type": "Point"}
         },

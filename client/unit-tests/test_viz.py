@@ -86,7 +86,11 @@ def test_create_combined_segmentation_mask(poly1: Polygon):
                     Label(key="k2", value="v2"),
                     Label(key="k3", value="v3"),
                 ],
-                multipolygon=MultiPolygon(polygons=[poly1]),
+                raster=Raster.from_geometry(
+                    MultiPolygon(polygons=[poly1]),
+                    height=200,
+                    width=200,
+                ),
             ),
         ],
     )

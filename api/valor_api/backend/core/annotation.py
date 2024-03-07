@@ -1,76 +1,15 @@
-import io
 import json
-from base64 import b64encode
 
-from geoalchemy2.functions import ST_AsGeoJSON, ST_AsPNG, ST_Envelope
-from PIL import Image
-from sqlalchemy import and_, delete, func, select
+from geoalchemy2.functions import ST_AsGeoJSON
+from sqlalchemy import and_, delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from valor_api import enums, exceptions, schemas
+from valor_api import exceptions, schemas
 from valor_api.backend import models
+from valor_api.backend.core.geometry import _raster_to_png_b64
 from valor_api.backend.query import Query
-
-
-def _get_bounding_box_of_raster(
-    db: Session, raster: Image.Image
-) -> tuple[int, int, int, int]:
-    """Get the enveloping bounding box of a raster"""
-    env = json.loads(db.scalar(ST_AsGeoJSON(ST_Envelope(raster))))
-    assert len(env["coordinates"]) == 1
-    xs = [pt[0] for pt in env["coordinates"][0]]
-    ys = [pt[1] for pt in env["coordinates"][0]]
-
-    return min(xs), min(ys), max(xs), max(ys)
-
-
-def _raster_to_png_b64(
-    db: Session, raster: Image.Image, height: float, width: float
-) -> str:
-    """Convert a raster to a png"""
-    enveloping_box = _get_bounding_box_of_raster(db, raster)
-    raster = Image.open(io.BytesIO(db.scalar(ST_AsPNG((raster))).tobytes()))
-
-    assert raster.mode == "L"
-
-    ret = Image.new(size=(int(width), int(height)), mode=raster.mode)
-
-    ret.paste(raster, box=enveloping_box)
-
-    # mask is greyscale with values 0 and 1. to convert to binary
-    # we first need to map 1 to 255
-    ret = ret.point(lambda x: 255 if x == 1 else 0).convert("1")
-
-    f = io.BytesIO()
-    ret.save(f, format="PNG")
-    f.seek(0)
-    mask_bytes = f.read()
-    return b64encode(mask_bytes).decode()
-
-
-def _wkt_multipolygon_to_raster(wkt: str):
-    """
-    Convert a multipolygon to a raster using psql.
-
-    Parameters
-    ----------
-    wkt : str
-        A psql multipolygon object in well-known text format.
-
-
-    Returns
-    ----------
-    Query
-        A scalar subquery from psql.
-    """
-    return select(
-        func.ST_AsRaster(
-            func.ST_GeomFromText(wkt),
-            1.0,
-            1.0,
-        ),
-    ).scalar_subquery()
+from valor_api.enums import ModelStatus, TableStatus, TaskType
 
 
 def _create_embedding(
@@ -130,16 +69,25 @@ def _create_annotation(
     raster = None
     embedding_id = None
 
-    if annotation.bounding_box:
-        box = annotation.bounding_box.wkt()
-    if annotation.polygon:
-        polygon = annotation.polygon.wkt()
-    if annotation.multipolygon:
-        raster = _wkt_multipolygon_to_raster(annotation.multipolygon.wkt())
-    if annotation.raster:
-        raster = annotation.raster.mask_bytes
-    if annotation.embedding is not None:
-        embedding_id = _create_embedding(db=db, value=annotation.embedding)
+    # task-based conversion
+    match annotation.task_type:
+        case TaskType.OBJECT_DETECTION:
+            if annotation.bounding_box:
+                box = annotation.bounding_box.wkt()
+            if annotation.polygon:
+                polygon = annotation.polygon.wkt()
+            if annotation.raster:
+                raster = annotation.raster.wkt()
+        case TaskType.SEMANTIC_SEGMENTATION:
+            if annotation.raster:
+                raster = annotation.raster.wkt()
+        case TaskType.EMBEDDING:
+            if annotation.embedding:
+                embedding_id = _create_embedding(
+                    db=db, value=annotation.embedding
+                )
+        case _:
+            pass
 
     mapping = {
         "datum_id": datum.id,
@@ -238,7 +186,7 @@ def create_skipped_annotations(
     annotation_list = [
         _create_annotation(
             db=db,
-            annotation=schemas.Annotation(task_type=enums.TaskType.SKIP),
+            annotation=schemas.Annotation(task_type=TaskType.SKIP),
             datum=datum,
             model=model,
         )
@@ -330,15 +278,8 @@ def get_annotation(
             raise RuntimeError(
                 "psql unexpectedly returned None instead of a Datum."
             )
-
-        if "height" not in datum.meta or "width" not in datum.meta:
-            raise ValueError("missing height or width")
-        height = datum.meta["height"]
-        width = datum.meta["width"]
         raster = schemas.Raster(
-            mask=_raster_to_png_b64(
-                db, raster=annotation.raster, height=height, width=width
-            ),
+            mask=_raster_to_png_b64(db=db, raster=annotation.raster),
         )
 
     # embedding
@@ -422,7 +363,7 @@ def delete_dataset_annotations(
         If dataset is not in deletion state.
     """
 
-    if dataset.status != enums.TableStatus.DELETING:
+    if dataset.status != TableStatus.DELETING:
         raise RuntimeError(
             f"Attempted to delete annotations from dataset `{dataset.name}` which has status `{dataset.status}`"
         )
@@ -465,7 +406,7 @@ def delete_model_annotations(
         If dataset is not in deletion state.
     """
 
-    if model.status != enums.ModelStatus.DELETING:
+    if model.status != ModelStatus.DELETING:
         raise RuntimeError(
             f"Attempted to delete annotations from dataset `{model.name}` which is not being deleted."
         )

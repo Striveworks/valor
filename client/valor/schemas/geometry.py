@@ -1,7 +1,7 @@
 import io
 from base64 import b64decode, b64encode
 from dataclasses import dataclass, field
-from typing import List, Tuple
+from typing import List, Tuple, Union
 
 import numpy as np
 import PIL.Image
@@ -372,7 +372,7 @@ class MultiPolygon:
     ... )
     """
 
-    polygons: List[Polygon] = field(default_factory=list)
+    polygons: List[Polygon]
 
     def __post_init__(self):
         # unpack & validate
@@ -392,17 +392,19 @@ class MultiPolygon:
 @dataclass
 class Raster:
     """
-    Represents a raster image or binary mask.
+    Represents a binary mask.
 
     Parameters
     ----------
     mask : str
         Base64-encoded string representing the raster mask.
+    geometry : Union[BoundingBox, Polygon, MultiPolygon], optional
+        Option to input the raster as a geometry. Overrides the mask.
 
     Raises
     ------
     TypeError
-        If `mask` is not a string.
+        If `encoding` is not a string.
 
     Examples
     --------
@@ -420,10 +422,20 @@ class Raster:
     """
 
     mask: str
+    geometry: Union[BoundingBox, Polygon, MultiPolygon, None] = None
 
     def __post_init__(self):
         if not isinstance(self.mask, str):
             raise TypeError("mask should be of type `str`")
+        if isinstance(self.geometry, dict):
+            if "polygons" in self.geometry:
+                self.geometry = MultiPolygon(**self.geometry)
+            elif "boundary" in self.geometry:
+                self.geometry = Polygon(**self.geometry)
+            elif "polygon" in self.geometry:
+                self.geometry = BoundingBox(**self.geometry)
+            else:
+                raise ValueError("Invalid dictionary structure.")
 
     @classmethod
     def from_numpy(cls, mask: np.ndarray):
@@ -437,8 +449,7 @@ class Raster:
 
         Returns
         -------
-        Raster
-            A Raster object created from the provided NumPy array.
+        schemas.Raster
 
         Raises
         ------
@@ -460,6 +471,33 @@ class Raster:
             mask=b64encode(mask_bytes).decode(),
         )
 
+    @classmethod
+    def from_geometry(
+        cls,
+        geometry: Union[BoundingBox, Polygon, MultiPolygon],
+        height: int,
+        width: int,
+    ):
+        """
+        Create a Raster object from a geometry.
+
+        Parameters
+        ----------
+        geometry : Union[BoundingBox, Polygon, MultiPolygon]
+            Defines the bitmask as a geometry. Overrides any existing mask.
+        height : int
+            The intended height of the binary mask.
+        width : int
+            The intended width of the binary mask.
+
+        Returns
+        -------
+        schemas.Raster
+        """
+        r = cls.from_numpy(np.full((int(height), int(width)), False))
+        r.geometry = geometry
+        return r
+
     def to_numpy(self) -> np.ndarray:
         """
         Convert the base64-encoded mask to a NumPy array.
@@ -469,6 +507,10 @@ class Raster:
         np.ndarray
             A 2D binary array representing the mask.
         """
+        if self.geometry is not None:
+            raise ValueError(
+                "NumPy conversion is not supported for shape-based rasters."
+            )
         mask_bytes = b64decode(self.mask)
         with io.BytesIO(mask_bytes) as f:
             img = PIL.Image.open(f)

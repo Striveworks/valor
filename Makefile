@@ -25,7 +25,7 @@ else
 endif
 
 functional-tests:
-	POSTGRES_PASSWORD=password POSTGRES_HOST=localhost POSTGRES_DB=valor POSTGRES_USERNAME=postgres POSTGRES_PORT=5432  pytest -v ./api/tests/functional-tests
+	POSTGRES_PASSWORD=password POSTGRES_HOST=localhost POSTGRES_DB=valor POSTGRES_USERNAME=postgres POSTGRES_PORT=5432  pytest ./api/tests/functional-tests
 
 start-server:
 	POSTGRES_PASSWORD=password POSTGRES_HOST=localhost POSTGRES_DB=valor uvicorn valor_api.main:app --host 0.0.0.0

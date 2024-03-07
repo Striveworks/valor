@@ -2,27 +2,26 @@
 that is no auth
 """
 
+import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from valor import Annotation, Client, Dataset, GroundTruth, Label
+from valor import Annotation, Client, Dataset, Datum, GroundTruth, Label
 from valor.enums import TaskType
 from valor.metatypes import ImageMetadata
 from valor.schemas import BoundingBox
 from valor_api.backend import models
 
 
-def test_create_images_with_metadata(
+@pytest.fixture
+def dataset_with_metadata(
     client: Client,
-    db: Session,
     dataset_name: str,
     metadata: dict,
     rect1: BoundingBox,
-):
+) -> Dataset:
     # split metadata
-    md1 = {
-        "metadatum1": metadata["metadatum1"],
-    }
+    md1 = {"metadatum1": metadata["metadatum1"]}
     md23 = {
         "metadatum2": metadata["metadatum2"],
         "metadatum3": metadata["metadatum3"],
@@ -62,6 +61,12 @@ def test_create_images_with_metadata(
         )
     )
 
+    return dataset
+
+
+def test_create_images_with_metadata(
+    db: Session, dataset_with_metadata: Dataset, metadata: dict
+):
     data = db.scalars(select(models.Datum)).all()
     assert len(data) == 2
     assert set(d.uid for d in data) == {"uid1", "uid2"}
@@ -76,3 +81,36 @@ def test_create_images_with_metadata(
     assert data[1].meta["metadatum3"] == metadata["metadatum3"]
     assert data[1].meta["height"] == 200
     assert data[1].meta["width"] == 100
+
+
+def test_get_datums(
+    db: Session, dataset_with_metadata: Dataset, metadata: dict
+):
+    assert len(dataset_with_metadata.get_datums()) == 2
+    assert (
+        len(
+            dataset_with_metadata.get_datums(
+                filter_by=[
+                    Datum.metadata["metadatum1"] == metadata["metadatum1"]
+                ]
+            )
+        )
+        == 1
+    )
+    assert (
+        len(
+            dataset_with_metadata.get_datums(
+                filter_by=[Datum.metadata["metadatum1"] == "nonexistent value"]
+            )
+        )
+        == 0
+    )
+
+    with pytest.raises(ValueError) as exc_info:
+        dataset_with_metadata.get_datums(
+            filter_by=[Dataset.name == "dataset name"]
+        )
+    assert (
+        "Cannot filter by dataset_names when calling `Dataset.get_datums`"
+        in str(exc_info)
+    )
