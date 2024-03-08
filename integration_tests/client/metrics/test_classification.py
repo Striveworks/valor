@@ -848,6 +848,11 @@ def test_evaluate_classification_with_label_maps(
             "value": 0.5,
             "label": {"key": "special_class", "value": "cat_type1"},
         },
+        # TODO note that recall here is 1, while the recall values for the precision-recall curves are 0.5
+        # when recall is calculated here, we don't consider the false negative for img8
+        # the output from psql in this calculation is [(('cat_type1', 'cat_type1'), 1), (('cat_type1', 'cat_type2'), 1)]
+        # when it should be [(('cat_type1', 'cat_type1'), 1), (('cat_type1', 'cat_type2'), 1), ((None, 'cat_type1'), 1)]
+        # next step: check if this error holds true without using labels maps, then ask Eric
         {
             "type": "Recall",
             "value": 1.0,
@@ -897,6 +902,634 @@ def test_evaluate_classification_with_label_maps(
             "label": {"key": "k4", "value": "v4"},
         },
         {"type": "F1", "value": 1.0, "label": {"key": "k4", "value": "v4"}},
+        {
+            "type": "PrecisionRecallCurve",
+            "parameters": {"label_key": "special_class"},
+            "value": {
+                "cat_type1": {
+                    "0.1": {
+                        "fn": 1,  # img8
+                        "fp": 1,  # img6, since we predicted it was cat_type1 but it was actually assigned to cat_type2
+                        "tp": 1,  # img5
+                        "recall": 0.5,
+                        "f1_score": 0.5,
+                        "precision": 0.5,
+                    },
+                    "0.2": {
+                        "fn": 1,
+                        "fp": 1,
+                        "tp": 1,
+                        "recall": 0.5,
+                        "f1_score": 0.5,
+                        "precision": 0.5,
+                    },
+                    "0.3": {
+                        "fn": 1,
+                        "fp": 1,
+                        "tp": 1,
+                        "recall": 0.5,
+                        "f1_score": 0.5,
+                        "precision": 0.5,
+                    },
+                    "0.4": {
+                        "fn": 1,
+                        "fp": 1,
+                        "tp": 1,
+                        "recall": 0.5,
+                        "f1_score": 0.5,
+                        "precision": 0.5,
+                    },
+                    "0.5": {
+                        "fn": 1,
+                        "fp": 1,
+                        "tp": 1,
+                        "recall": 0.5,
+                        "f1_score": 0.5,
+                        "precision": 0.5,
+                    },
+                    "0.6": {
+                        "fn": 1,
+                        "fp": 1,
+                        "tp": 1,
+                        "recall": 0.5,
+                        "f1_score": 0.5,
+                        "precision": 0.5,
+                    },
+                    "0.7": {
+                        "fn": 1,
+                        "fp": 1,
+                        "tp": 1,
+                        "recall": 0.5,
+                        "f1_score": 0.5,
+                        "precision": 0.5,
+                    },
+                    "0.8": {
+                        "fn": 1,
+                        "fp": 1,
+                        "tp": 1,
+                        "recall": 0.5,
+                        "f1_score": 0.5,
+                        "precision": 0.5,
+                    },
+                    "0.9": {
+                        "fn": 1,
+                        "fp": 1,
+                        "tp": 1,
+                        "recall": 0.5,
+                        "f1_score": 0.5,
+                        "precision": 0.5,
+                    },
+                    "0.05": {
+                        "fn": 1,
+                        "fp": 1,
+                        "tp": 1,
+                        "recall": 0.5,
+                        "f1_score": 0.5,
+                        "precision": 0.5,
+                    },
+                    "0.15": {
+                        "fn": 1,
+                        "fp": 1,
+                        "tp": 1,
+                        "recall": 0.5,
+                        "f1_score": 0.5,
+                        "precision": 0.5,
+                    },
+                    "0.25": {
+                        "fn": 1,
+                        "fp": 1,
+                        "tp": 1,
+                        "recall": 0.5,
+                        "f1_score": 0.5,
+                        "precision": 0.5,
+                    },
+                    "0.35": {
+                        "fn": 1,
+                        "fp": 1,
+                        "tp": 1,
+                        "recall": 0.5,
+                        "f1_score": 0.5,
+                        "precision": 0.5,
+                    },
+                    "0.45": {
+                        "fn": 1,
+                        "fp": 1,
+                        "tp": 1,
+                        "recall": 0.5,
+                        "f1_score": 0.5,
+                        "precision": 0.5,
+                    },
+                    "0.55": {
+                        "fn": 1,
+                        "fp": 1,
+                        "tp": 1,
+                        "recall": 0.5,
+                        "f1_score": 0.5,
+                        "precision": 0.5,
+                    },
+                    "0.65": {
+                        "fn": 1,
+                        "fp": 1,
+                        "tp": 1,
+                        "recall": 0.5,
+                        "f1_score": 0.5,
+                        "precision": 0.5,
+                    },
+                    "0.75": {
+                        "fn": 1,
+                        "fp": 1,
+                        "tp": 1,
+                        "recall": 0.5,
+                        "f1_score": 0.5,
+                        "precision": 0.5,
+                    },
+                    "0.85": {
+                        "fn": 1,
+                        "fp": 1,
+                        "tp": 1,
+                        "recall": 0.5,
+                        "f1_score": 0.5,
+                        "precision": 0.5,
+                    },
+                    "0.95": {
+                        "fn": 1,
+                        "fp": 1,
+                        "tp": 1,
+                        "recall": 0.5,
+                        "f1_score": 0.5,
+                        "precision": 0.5,
+                    },
+                },
+                "cat_type2": {
+                    "0.1": {
+                        "fn": 1,  # we failed to classify img 6
+                        "fp": 0,
+                        "tp": 0,
+                        "recall": 0.0,
+                        "f1_score": -1,
+                        "precision": -1,
+                    },
+                    "0.2": {
+                        "fn": 1,
+                        "fp": 0,
+                        "tp": 0,
+                        "recall": 0.0,
+                        "f1_score": -1,
+                        "precision": -1,
+                    },
+                    "0.3": {
+                        "fn": 1,
+                        "fp": 0,
+                        "tp": 0,
+                        "recall": 0.0,
+                        "f1_score": -1,
+                        "precision": -1,
+                    },
+                    "0.4": {
+                        "fn": 1,
+                        "fp": 0,
+                        "tp": 0,
+                        "recall": 0.0,
+                        "f1_score": -1,
+                        "precision": -1,
+                    },
+                    "0.5": {
+                        "fn": 1,
+                        "fp": 0,
+                        "tp": 0,
+                        "recall": 0.0,
+                        "f1_score": -1,
+                        "precision": -1,
+                    },
+                    "0.6": {
+                        "fn": 1,
+                        "fp": 0,
+                        "tp": 0,
+                        "recall": 0.0,
+                        "f1_score": -1,
+                        "precision": -1,
+                    },
+                    "0.7": {
+                        "fn": 1,
+                        "fp": 0,
+                        "tp": 0,
+                        "recall": 0.0,
+                        "f1_score": -1,
+                        "precision": -1,
+                    },
+                    "0.8": {
+                        "fn": 1,
+                        "fp": 0,
+                        "tp": 0,
+                        "recall": 0.0,
+                        "f1_score": -1,
+                        "precision": -1,
+                    },
+                    "0.9": {
+                        "fn": 1,
+                        "fp": 0,
+                        "tp": 0,
+                        "recall": 0.0,
+                        "f1_score": -1,
+                        "precision": -1,
+                    },
+                    "0.05": {
+                        "fn": 1,
+                        "fp": 0,
+                        "tp": 0,
+                        "recall": 0.0,
+                        "f1_score": -1,
+                        "precision": -1,
+                    },
+                    "0.15": {
+                        "fn": 1,
+                        "fp": 0,
+                        "tp": 0,
+                        "recall": 0.0,
+                        "f1_score": -1,
+                        "precision": -1,
+                    },
+                    "0.25": {
+                        "fn": 1,
+                        "fp": 0,
+                        "tp": 0,
+                        "recall": 0.0,
+                        "f1_score": -1,
+                        "precision": -1,
+                    },
+                    "0.35": {
+                        "fn": 1,
+                        "fp": 0,
+                        "tp": 0,
+                        "recall": 0.0,
+                        "f1_score": -1,
+                        "precision": -1,
+                    },
+                    "0.45": {
+                        "fn": 1,
+                        "fp": 0,
+                        "tp": 0,
+                        "recall": 0.0,
+                        "f1_score": -1,
+                        "precision": -1,
+                    },
+                    "0.55": {
+                        "fn": 1,
+                        "fp": 0,
+                        "tp": 0,
+                        "recall": 0.0,
+                        "f1_score": -1,
+                        "precision": -1,
+                    },
+                    "0.65": {
+                        "fn": 1,
+                        "fp": 0,
+                        "tp": 0,
+                        "recall": 0.0,
+                        "f1_score": -1,
+                        "precision": -1,
+                    },
+                    "0.75": {
+                        "fn": 1,
+                        "fp": 0,
+                        "tp": 0,
+                        "recall": 0.0,
+                        "f1_score": -1,
+                        "precision": -1,
+                    },
+                    "0.85": {
+                        "fn": 1,
+                        "fp": 0,
+                        "tp": 0,
+                        "recall": 0.0,
+                        "f1_score": -1,
+                        "precision": -1,
+                    },
+                    "0.95": {
+                        "fn": 1,
+                        "fp": 0,
+                        "tp": 0,
+                        "recall": 0.0,
+                        "f1_score": -1,
+                        "precision": -1,
+                    },
+                },
+            },
+        },
+        {
+            "type": "PrecisionRecallCurve",
+            "parameters": {"label_key": "k4"},
+            "value": {
+                "v4": {
+                    "0.1": {
+                        "fn": 1,  # fail to classify img5
+                        "fp": 0,
+                        "tp": 1,  # correctly classify img6
+                        "recall": 0.5,
+                        "f1_score": 0.6666666666666666,
+                        "precision": 1.0,
+                    },
+                    "0.2": {
+                        "fn": 1,
+                        "fp": 0,
+                        "tp": 1,
+                        "recall": 0.5,
+                        "f1_score": 0.6666666666666666,
+                        "precision": 1.0,
+                    },
+                    "0.3": {
+                        "fn": 1,
+                        "fp": 0,
+                        "tp": 1,
+                        "recall": 0.5,
+                        "f1_score": 0.6666666666666666,
+                        "precision": 1.0,
+                    },
+                    "0.4": {
+                        "fn": 1,
+                        "fp": 0,
+                        "tp": 1,
+                        "recall": 0.5,
+                        "f1_score": 0.6666666666666666,
+                        "precision": 1.0,
+                    },
+                    "0.5": {
+                        "fn": 1,
+                        "fp": 0,
+                        "tp": 1,
+                        "recall": 0.5,
+                        "f1_score": 0.6666666666666666,
+                        "precision": 1.0,
+                    },
+                    "0.6": {
+                        "fn": 1,
+                        "fp": 0,
+                        "tp": 1,
+                        "recall": 0.5,
+                        "f1_score": 0.6666666666666666,
+                        "precision": 1.0,
+                    },
+                    "0.7": {
+                        "fn": 1,
+                        "fp": 0,
+                        "tp": 1,
+                        "recall": 0.5,
+                        "f1_score": 0.6666666666666666,
+                        "precision": 1.0,
+                    },
+                    "0.8": {
+                        "fn": 2,
+                        "fp": 0,
+                        "tp": 0,
+                        "recall": 0.0,
+                        "f1_score": -1,
+                        "precision": -1,
+                    },
+                    "0.9": {
+                        "fn": 2,
+                        "fp": 0,
+                        "tp": 0,
+                        "recall": 0.0,
+                        "f1_score": -1,
+                        "precision": -1,
+                    },
+                    "0.05": {
+                        "fn": 1,
+                        "fp": 0,
+                        "tp": 1,
+                        "recall": 0.5,
+                        "f1_score": 0.6666666666666666,
+                        "precision": 1.0,
+                    },
+                    "0.15": {
+                        "fn": 1,
+                        "fp": 0,
+                        "tp": 1,
+                        "recall": 0.5,
+                        "f1_score": 0.6666666666666666,
+                        "precision": 1.0,
+                    },
+                    "0.25": {
+                        "fn": 1,
+                        "fp": 0,
+                        "tp": 1,
+                        "recall": 0.5,
+                        "f1_score": 0.6666666666666666,
+                        "precision": 1.0,
+                    },
+                    "0.35": {
+                        "fn": 1,
+                        "fp": 0,
+                        "tp": 1,
+                        "recall": 0.5,
+                        "f1_score": 0.6666666666666666,
+                        "precision": 1.0,
+                    },
+                    "0.45": {
+                        "fn": 1,
+                        "fp": 0,
+                        "tp": 1,
+                        "recall": 0.5,
+                        "f1_score": 0.6666666666666666,
+                        "precision": 1.0,
+                    },
+                    "0.55": {
+                        "fn": 1,
+                        "fp": 0,
+                        "tp": 1,
+                        "recall": 0.5,
+                        "f1_score": 0.6666666666666666,
+                        "precision": 1.0,
+                    },
+                    "0.65": {
+                        "fn": 1,
+                        "fp": 0,
+                        "tp": 1,
+                        "recall": 0.5,
+                        "f1_score": 0.6666666666666666,
+                        "precision": 1.0,
+                    },
+                    "0.75": {
+                        "fn": 2,
+                        "fp": 0,
+                        "tp": 0,
+                        "recall": 0.0,
+                        "f1_score": -1,
+                        "precision": -1,
+                    },
+                    "0.85": {
+                        "fn": 2,
+                        "fp": 0,
+                        "tp": 0,
+                        "recall": 0.0,
+                        "f1_score": -1,
+                        "precision": -1,
+                    },
+                    "0.95": {
+                        "fn": 2,
+                        "fp": 0,
+                        "tp": 0,
+                        "recall": 0.0,
+                        "f1_score": -1,
+                        "precision": -1,
+                    },
+                },
+                "v5": {
+                    "0.1": {
+                        "fn": 0,
+                        "fp": 1,
+                        "tp": 0,
+                        "recall": -1,
+                        "f1_score": -1,
+                        "precision": 0.0,
+                    },
+                    "0.2": {
+                        "fn": 0,
+                        "fp": 1,
+                        "tp": 0,
+                        "recall": -1,
+                        "f1_score": -1,
+                        "precision": 0.0,
+                    },
+                    "0.3": {
+                        "fn": 0,
+                        "fp": 0,
+                        "tp": 0,
+                        "recall": -1,
+                        "f1_score": -1.0,
+                        "precision": -1,
+                    },
+                    "0.4": {
+                        "fn": 0,
+                        "fp": 0,
+                        "tp": 0,
+                        "recall": -1,
+                        "f1_score": -1.0,
+                        "precision": -1,
+                    },
+                    "0.5": {
+                        "fn": 0,
+                        "fp": 0,
+                        "tp": 0,
+                        "recall": -1,
+                        "f1_score": -1.0,
+                        "precision": -1,
+                    },
+                    "0.6": {
+                        "fn": 0,
+                        "fp": 0,
+                        "tp": 0,
+                        "recall": -1,
+                        "f1_score": -1.0,
+                        "precision": -1,
+                    },
+                    "0.7": {
+                        "fn": 0,
+                        "fp": 0,
+                        "tp": 0,
+                        "recall": -1,
+                        "f1_score": -1,
+                        "precision": -1,
+                    },
+                    "0.8": {
+                        "fn": 0,
+                        "fp": 0,
+                        "tp": 0,
+                        "recall": -1,
+                        "f1_score": -1,
+                        "precision": -1,
+                    },
+                    "0.9": {
+                        "fn": 0,
+                        "fp": 0,
+                        "tp": 0,
+                        "recall": -1,
+                        "f1_score": -1,
+                        "precision": -1,
+                    },
+                    "0.05": {
+                        "fn": 0,
+                        "fp": 1,
+                        "tp": 0,
+                        "recall": -1,
+                        "f1_score": -1,
+                        "precision": 0.0,
+                    },
+                    "0.15": {
+                        "fn": 0,
+                        "fp": 1,
+                        "tp": 0,
+                        "recall": -1,
+                        "f1_score": -1,
+                        "precision": 0.0,
+                    },
+                    "0.25": {
+                        "fn": 0,
+                        "fp": 1,
+                        "tp": 0,
+                        "recall": -1,
+                        "f1_score": -1,
+                        "precision": 0.0,
+                    },
+                    "0.35": {
+                        "fn": 0,
+                        "fp": 0,
+                        "tp": 0,
+                        "recall": -1,
+                        "f1_score": -1,
+                        "precision": -1,
+                    },
+                    "0.45": {
+                        "fn": 0,
+                        "fp": 0,
+                        "tp": 0,
+                        "recall": -1,
+                        "f1_score": -1,
+                        "precision": -1,
+                    },
+                    "0.55": {
+                        "fn": 0,
+                        "fp": 0,
+                        "tp": 0,
+                        "recall": -1,
+                        "f1_score": -1,
+                        "precision": -1,
+                    },
+                    "0.65": {
+                        "fn": 0,
+                        "fp": 0,
+                        "tp": 0,
+                        "recall": -1,
+                        "f1_score": -1.0,
+                        "precision": -1,
+                    },
+                    "0.75": {
+                        "fn": 0,
+                        "fp": 0,
+                        "tp": 0,
+                        "recall": -1,
+                        "f1_score": -1,
+                        "precision": -1,
+                    },
+                    "0.85": {
+                        "fn": 0,
+                        "fp": 0,
+                        "tp": 0,
+                        "recall": -1,
+                        "f1_score": -1,
+                        "precision": -1,
+                    },
+                    "0.95": {
+                        "fn": 0,
+                        "fp": 0,
+                        "tp": 0,
+                        "recall": -1,
+                        "f1_score": -1,
+                        "precision": -1,
+                    },
+                },
+            },
+        },
     ]
 
     cat_expected_cm = [
@@ -920,7 +1553,9 @@ def test_evaluate_classification_with_label_maps(
             "entries": [{"prediction": "v4", "groundtruth": "v4", "count": 1}],
         },
     ]
-    eval_job = model.evaluate_classification(dataset, label_map=label_mapping)
+    eval_job = model.evaluate_classification(
+        dataset, label_map=label_mapping, compute_pr_curves=True
+    )
 
     assert eval_job.id
     assert set(eval_job.ignored_pred_keys) == {"k12", "k13"}
@@ -961,3 +1596,137 @@ def test_evaluate_classification_with_label_maps(
                 ]
             ],
         )
+
+
+@pytest.fixture
+def gt_clfs_bug_check(
+    img5: Datum,
+    img6: Datum,
+    img8: Datum,
+) -> list[GroundTruth]:
+    return [
+        GroundTruth(
+            datum=img5,
+            annotations=[
+                Annotation(
+                    task_type=TaskType.CLASSIFICATION,
+                    labels=[
+                        Label(key="k4", value="v4"),
+                        Label(key="k5", value="v5"),
+                    ],
+                ),
+            ],
+        ),
+        GroundTruth(
+            datum=img6,
+            annotations=[
+                Annotation(
+                    task_type=TaskType.CLASSIFICATION,
+                    labels=[Label(key="k3", value="v3")],
+                )
+            ],
+        ),
+        GroundTruth(
+            datum=img8,
+            annotations=[
+                Annotation(
+                    task_type=TaskType.CLASSIFICATION,
+                    labels=[Label(key="k4", value="v4")],
+                )
+            ],
+        ),
+    ]
+
+
+@pytest.fixture
+def pred_clfs_bug_check(
+    model_name: str, img5: Datum, img6: Datum
+) -> list[Prediction]:
+    return [
+        Prediction(
+            datum=img5,
+            annotations=[
+                Annotation(
+                    task_type=TaskType.CLASSIFICATION,
+                    labels=[
+                        Label(key="k4", value="v4", score=1.0),
+                    ],
+                )
+            ],
+        ),
+        Prediction(
+            datum=img6,
+            annotations=[
+                Annotation(
+                    task_type=TaskType.CLASSIFICATION,
+                    labels=[
+                        Label(key="k4", value="v4", score=1.0),
+                    ],
+                )
+            ],
+        ),
+    ]
+
+
+def test_evaluate_image_clf_bug_check(
+    client: Client,
+    gt_clfs_bug_check: list[GroundTruth],
+    pred_clfs_bug_check: list[Prediction],
+    dataset_name: str,
+    model_name: str,
+):
+    dataset = Dataset.create(dataset_name)
+    for gt in gt_clfs_bug_check:
+        dataset.add_groundtruth(gt)
+    dataset.finalize()
+
+    model = Model.create(model_name)
+    for pd in pred_clfs_bug_check:
+        model.add_prediction(dataset, pd)
+    model.finalize_inferences(dataset)
+
+    eval_job = model.evaluate_classification(dataset)
+
+    assert eval_job.id
+    assert eval_job.ignored_pred_keys is not None
+    assert eval_job.missing_pred_keys is not None
+    assert set(eval_job.ignored_pred_keys) == set()
+    assert set(eval_job.missing_pred_keys) == {"k3", "k5"}
+
+    assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
+
+    metrics = eval_job.metrics
+
+    # TODO add functional tests for _compute_pr_curves
+    expected_metrics = [
+        {"type": "Accuracy", "parameters": {"label_key": "k4"}, "value": 1.0},
+        {"type": "ROCAUC", "parameters": {"label_key": "k4"}, "value": 1.0},
+        # for our groundtruths, img5 and img8 both have the label (k4, v4)
+        # in terms of predictions: we correctly predict this label on img5, but not on img8
+        # thus we should see tp=1 and fn=1, and recall should be (1) / (1 + 1) = .5.
+        {
+            "type": "Recall",
+            "value": 0.5,
+            "label": {"key": "k4", "value": "v4"},
+        },
+        # for precision, we have one false positive (we predict (k4, v4) on img6, but that datum only has the label (k3, v3))
+        # precision should thus be (1) / (1 + 1) = .5
+        {
+            "type": "Precision",
+            "value": 0.5,
+            "label": {"key": "k4", "value": "v4"},
+        },
+        {"type": "F1", "value": 1.0, "label": {"key": "k4", "value": "v4"}},
+    ]
+    for m in metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in metrics
+
+    confusion_matrices = eval_job.confusion_matrices
+    assert confusion_matrices == [
+        {
+            "label_key": "k4",
+            "entries": [{"prediction": "v4", "groundtruth": "v4", "count": 1}],
+        }
+    ]

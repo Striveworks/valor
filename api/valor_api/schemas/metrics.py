@@ -1,5 +1,3 @@
-import json
-
 import numpy as np
 from pydantic import BaseModel, ConfigDict, field_validator
 
@@ -433,7 +431,7 @@ class PrecisionRecallCurve(BaseModel):
         A mapping dictionary.
         """
         return {
-            "value": json.dumps(self.value),
+            "value": self.value,
             "type": "PrecisionRecallCurve",
             "evaluation_id": evaluation_id,
             "parameters": {"label_key": self.label_key},

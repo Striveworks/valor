@@ -15,14 +15,16 @@ class EvaluationParameters(BaseModel):
     ----------
     convert_annotations_to_type: AnnotationType | None = None
         The type to convert all annotations to.
-    iou_thresholds_to_compute : List[float], optional
+    iou_thresholds_to_compute: List[float], optional
         A list of floats describing which Intersection over Unions (IoUs) to use when calculating metrics (i.e., mAP).
     iou_thresholds_to_return: List[float], optional
         A list of floats describing which Intersection over Union (IoUs) thresholds to calculate a metric for. Must be a subset of `iou_thresholds_to_compute`.
-    label_map : LabelMapType, optional
+    label_map: LabelMapType, optional
         Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
     recall_score_threshold: float, default=0
         The confidence score threshold for use when determining whether to count a prediction as a true positive or not while calculating Average Recall.
+    compute_pr_curves: bool
+        A boolean which determines whether we calculate precision-recall curves or not.
     """
 
     task_type: TaskType
@@ -33,6 +35,7 @@ class EvaluationParameters(BaseModel):
     iou_thresholds_to_return: list[float] | None = None
     label_map: LabelMapType | None = None
     recall_score_threshold: float = 0
+    compute_pr_curves: bool = False
 
     # pydantic setting
     model_config = ConfigDict(extra="forbid")

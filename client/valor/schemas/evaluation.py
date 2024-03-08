@@ -20,6 +20,8 @@ class EvaluationParameters:
         Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
     recall_score_threshold: float, default=0
         The confidence score threshold for use when determining whether to count a prediction as a true positive or not while calculating Average Recall.
+    compute_pr_curves: bool
+        A boolean which determines whether we calculate precision-recall curves or not.
     """
 
     task_type: TaskType
@@ -30,6 +32,7 @@ class EvaluationParameters:
     iou_thresholds_to_return: Optional[List[float]] = None
     label_map: Optional[List[List[List[str]]]] = None
     recall_score_threshold: float = 0
+    compute_pr_curves: bool = False
 
 
 @dataclass

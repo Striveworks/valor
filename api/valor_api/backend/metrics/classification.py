@@ -51,7 +51,7 @@ def _compute_curves(
 
     output = defaultdict(lambda: defaultdict(dict))
 
-    for threshold in [x / 100 for x in range(5, 95, 5)]:
+    for threshold in [x / 100 for x in range(5, 100, 5)]:
         predictions_that_meet_criteria = (
             select(
                 models.Label.value.label("pred_label_value"),
@@ -84,7 +84,7 @@ def _compute_curves(
         )
 
         total_query = (
-            select(b, func.count())
+            select(b, predictions_that_meet_criteria.c.datum_id, func.count())
             .select_from(groundtruths)
             .join(
                 predictions_that_meet_criteria,  # type: ignore
@@ -96,20 +96,29 @@ def _compute_curves(
                 models.Label,
                 models.Label.id == groundtruths.c.label_id,
             )
-            .group_by(b)  # type: ignore - SQLAlchemy Bundle not compatible with _first
+            .group_by(b, predictions_that_meet_criteria.c.datum_id)  # type: ignore - SQLAlchemy Bundle not compatible with _first
         )
 
-        res = db.execute(total_query).all()
+        res = list(db.execute(total_query).all())
+
+        # handle edge case where there were multiple prediction labels for a single datum
+        # first we sort, then we only increment fn below if the datum_id wasn't counted as a tp or fp
+        res.sort(
+            key=lambda x: ((x[1] is None, x[0][0] != x[0][1], x[1], x[2]))
+        )
 
         for grouper_value in grouper_mappings["grouper_key_to_labels_mapping"][
             grouper_key
         ].keys():
             tp, fp, fn = [0] * 3
+            seen_datums = set()
+
             for row in res:
-                predicted_label, actual_label, count = (
+                predicted_label, actual_label, datum_id, count = (
                     row[0][0],
                     row[0][1],
                     row[1],
+                    row[2],
                 )
 
                 if (
@@ -117,24 +126,31 @@ def _compute_curves(
                     and actual_label == grouper_value
                 ):
                     tp += count
+                    seen_datums.add(datum_id)
                 elif predicted_label == grouper_value:
                     fp += count
-                elif actual_label == grouper_value:
+                    seen_datums.add(datum_id)
+                elif (
+                    actual_label == grouper_value
+                    and datum_id not in seen_datums
+                ):
                     fn += count
 
             # calculate metrics
-            precision = tp / (tp + fp) if (tp + fp) > 0 else None
-            recall = tp / (tp + fn) if (tp + fn) > 0 else None
+            precision = tp / (tp + fp) if (tp + fp) > 0 else -1
+            recall = tp / (tp + fn) if (tp + fn) > 0 else -1
             f1_score = (
                 (2 * precision * recall) / (precision + recall)
                 if precision and recall
-                else None
+                else -1
             )
 
             output[grouper_value][threshold] = {
                 "tp": tp,
                 "fp": fp,
                 "fn": fn,
+                "precision": precision,
+                "recall": recall,
                 "f1_score": f1_score,
             }
 
@@ -524,6 +540,7 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
     groundtruth_filter: schemas.Filter,
     grouper_key: str,
     grouper_mappings: dict[str, dict[str, dict]],
+    compute_pr_curves: bool,
 ) -> (
     tuple[
         schemas.ConfusionMatrix,
@@ -550,7 +567,8 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
         The filter to be used to query groundtruths.
     grouper_mappings: dict[str, dict[str | int, any]]
         A dictionary of mappings that connect groupers to their related labels.
-
+    compute_pr_curves: bool
+        A boolean which determines whether we calculate precision-recall curves or not.
 
     Returns
     -------
@@ -600,16 +618,7 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
     if confusion_matrix is None:
         return None
 
-    pr_roc_curves = _compute_curves(
-        db=db,
-        groundtruths=groundtruths,
-        predictions=predictions,
-        grouper_key=grouper_key,
-        grouper_mappings=grouper_mappings,
-    )
-
     # aggregate metrics (over all label values)
-    # TODO fix the SQL table to accept both JSON and floats
     metrics = [
         schemas.AccuracyMetric(
             label_key=grouper_key,
@@ -625,10 +634,20 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
                 grouper_mappings=grouper_mappings,
             ),
         ),
-        schemas.PrecisionRecallCurve(
-            label_key=grouper_key, value=pr_roc_curves
-        ),
     ]
+
+    if compute_pr_curves:
+        pr_curves = _compute_curves(
+            db=db,
+            groundtruths=groundtruths,
+            predictions=predictions,
+            grouper_key=grouper_key,
+            grouper_mappings=grouper_mappings,
+        )
+        output = schemas.PrecisionRecallCurve(
+            label_key=grouper_key, value=pr_curves
+        )
+        metrics.append(output)
 
     # metrics that are per label
     for grouper_value in grouper_mappings["grouper_key_to_labels_mapping"][
@@ -669,6 +688,7 @@ def _compute_clf_metrics(
     db: Session,
     prediction_filter: schemas.Filter,
     groundtruth_filter: schemas.Filter,
+    compute_pr_curves: bool,
     label_map: LabelMapType | None = None,
 ) -> tuple[
     list[schemas.ConfusionMatrix],
@@ -692,6 +712,8 @@ def _compute_clf_metrics(
         The filter to be used to query predictions.
     groundtruth_filter : schemas.Filter
         The filter to be used to query groundtruths.
+    compute_pr_curves: bool
+        A boolean which determines whether we calculate precision-recall curves or not.
     label_map: LabelMapType, optional
         Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
 
@@ -724,6 +746,7 @@ def _compute_clf_metrics(
             groundtruth_filter=groundtruth_filter,
             grouper_key=grouper_key,
             grouper_mappings=grouper_mappings,
+            compute_pr_curves=compute_pr_curves,
         )
         if cm_and_metrics is not None:
             confusion_matrices.append(cm_and_metrics[0])
@@ -772,6 +795,7 @@ def compute_clf_metrics(
         prediction_filter=prediction_filter,
         groundtruth_filter=groundtruth_filter,
         label_map=parameters.label_map,
+        compute_pr_curves=parameters.compute_pr_curves,
     )
 
     confusion_matrices_mappings = create_metric_mappings(

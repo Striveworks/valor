@@ -1564,6 +1564,7 @@ class Model:
         datasets: Optional[Union[Dataset, List[Dataset]]] = None,
         filter_by: Optional[FilterType] = None,
         label_map: Optional[Dict[Label, Label]] = None,
+        compute_pr_curves: bool = False,
     ) -> Evaluation:
         """
         Start a classification evaluation job.
@@ -1576,6 +1577,8 @@ class Model:
             Optional set of constraints to filter evaluation by.
         label_map : Dict[Label, Label], optional
             Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
+        compute_pr_curves: bool
+            A boolean which determines whether we calculate precision-recall curves or not.
 
         Returns
         -------
@@ -1595,6 +1598,7 @@ class Model:
             parameters=EvaluationParameters(
                 task_type=TaskType.CLASSIFICATION,
                 label_map=self._create_label_map(label_map=label_map),
+                compute_pr_curves=compute_pr_curves,
             ),
         )
 
