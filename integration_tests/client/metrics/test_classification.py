@@ -60,7 +60,7 @@ def test_evaluate_image_clf(
         },
         {
             "type": "Recall",
-            "value": 1.0,
+            "value": 1.0,  # this answer seems wrong: (k4, v4) exists on img5 and img6, but is only predicted on img6
             "label": {"key": "k4", "value": "v4"},
         },
         {"type": "F1", "value": 1.0, "label": {"key": "k4", "value": "v4"}},
@@ -996,8 +996,10 @@ def gt_clfs_bug_check(
             annotations=[
                 Annotation(
                     task_type=TaskType.CLASSIFICATION,
-                    labels=[Label(key="k4", value="v4")],
-                )
+                    labels=[
+                        Label(key="k4", value="v4"),
+                    ],
+                ),
             ],
         ),
     ]
