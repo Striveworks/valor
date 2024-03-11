@@ -961,3 +961,137 @@ def test_evaluate_classification_with_label_maps(
                 ]
             ],
         )
+
+
+# in this scenario, we have two images with the (k4, v4) label (img 5 and 8)
+@pytest.fixture
+def gt_clfs_bug_check(
+    img5: Datum,
+    img6: Datum,
+    img8: Datum,
+) -> list[GroundTruth]:
+    return [
+        GroundTruth(
+            datum=img5,
+            annotations=[
+                Annotation(
+                    task_type=TaskType.CLASSIFICATION,
+                    labels=[
+                        Label(key="k4", value="v4"),
+                    ],
+                ),
+            ],
+        ),
+        GroundTruth(
+            datum=img6,
+            annotations=[
+                Annotation(
+                    task_type=TaskType.CLASSIFICATION,
+                    labels=[Label(key="k3", value="v3")],
+                )
+            ],
+        ),
+        GroundTruth(
+            datum=img8,
+            annotations=[
+                Annotation(
+                    task_type=TaskType.CLASSIFICATION,
+                    labels=[Label(key="k4", value="v4")],
+                )
+            ],
+        ),
+    ]
+
+
+# we only predict img5 correctly
+@pytest.fixture
+def pred_clfs_bug_check(
+    model_name: str, img5: Datum, img6: Datum
+) -> list[Prediction]:
+    return [
+        Prediction(
+            datum=img5,
+            annotations=[
+                Annotation(
+                    task_type=TaskType.CLASSIFICATION,
+                    labels=[
+                        Label(key="k4", value="v4", score=1.0),
+                    ],
+                )
+            ],
+        ),
+        Prediction(
+            datum=img6,
+            annotations=[
+                Annotation(
+                    task_type=TaskType.CLASSIFICATION,
+                    labels=[
+                        Label(key="k4", value="v4", score=1.0),
+                    ],
+                )
+            ],
+        ),
+    ]
+
+
+def test_evaluate_image_clf_bug_check(
+    client: Client,
+    gt_clfs_bug_check: list[GroundTruth],
+    pred_clfs_bug_check: list[Prediction],
+    dataset_name: str,
+    model_name: str,
+):
+    dataset = Dataset.create(dataset_name)
+    for gt in gt_clfs_bug_check:
+        dataset.add_groundtruth(gt)
+    dataset.finalize()
+
+    model = Model.create(model_name)
+    for pd in pred_clfs_bug_check:
+        model.add_prediction(dataset, pd)
+    model.finalize_inferences(dataset)
+
+    eval_job = model.evaluate_classification(dataset)
+
+    assert eval_job.id
+    assert eval_job.ignored_pred_keys is not None
+    assert eval_job.missing_pred_keys is not None
+    assert set(eval_job.ignored_pred_keys) == set()
+
+    assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
+
+    metrics = eval_job.metrics
+
+    expected_metrics = [
+        {"type": "Accuracy", "parameters": {"label_key": "k4"}, "value": 1.0},
+        {"type": "ROCAUC", "parameters": {"label_key": "k4"}, "value": 1.0},
+        # NOTE - test fails here. img5 and img8 both have the label (k4, v4).
+        # we correctly predict this label on img5, but not on img8
+        # thus we should see tp=1 and fn=1, and recall should be (1) / (1 + 1) = .5.
+        # Valor returns recall == 1 here, which is incorrect
+        {
+            "type": "Recall",
+            "value": 0.5,
+            "label": {"key": "k4", "value": "v4"},
+        },
+        # for precision, we have one false positive (we predict (k4, v4) on img6, but that datum only has the label (k3, v3))
+        # precision should thus be (1) / (1 + 1) = .5, but Valor returns 1
+        {
+            "type": "Precision",
+            "value": 0.5,
+            "label": {"key": "k4", "value": "v4"},
+        },
+        {"type": "F1", "value": 1.0, "label": {"key": "k4", "value": "v4"}},
+    ]
+    for m in metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in metrics
+
+    confusion_matrices = eval_job.confusion_matrices
+    assert confusion_matrices == [
+        {
+            "label_key": "k4",
+            "entries": [{"prediction": "v4", "groundtruth": "v4", "count": 1}],
+        }
+    ]
