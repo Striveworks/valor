@@ -1008,7 +1008,7 @@ def gt_clfs_bug_check(
 # we only predict img5 correctly
 @pytest.fixture
 def pred_clfs_bug_check(
-    model_name: str, img5: Datum, img6: Datum
+    model_name: str, img5: Datum, img6: Datum, img8: Datum
 ) -> list[Prediction]:
     return [
         Prediction(
@@ -1029,6 +1029,18 @@ def pred_clfs_bug_check(
                     task_type=TaskType.CLASSIFICATION,
                     labels=[
                         Label(key="k4", value="v4", score=1.0),
+                    ],
+                )
+            ],
+        ),
+        # key is the same, value is different
+        Prediction(
+            datum=img8,
+            annotations=[
+                Annotation(
+                    task_type=TaskType.CLASSIFICATION,
+                    labels=[
+                        Label(key="k4", value="v1", score=1.0),
                     ],
                 )
             ],
