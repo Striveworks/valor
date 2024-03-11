@@ -29,13 +29,12 @@ class EvaluationParameters(BaseModel):
 
     task_type: TaskType
 
-    # object detection
     convert_annotations_to_type: AnnotationType | None = None
     iou_thresholds_to_compute: list[float] | None = None
     iou_thresholds_to_return: list[float] | None = None
     label_map: LabelMapType | None = None
     recall_score_threshold: float = 0
-    compute_pr_curves: bool = False
+    compute_pr_curves: bool | None = None
 
     # pydantic setting
     model_config = ConfigDict(extra="forbid")
@@ -60,6 +59,10 @@ class EvaluationParameters(BaseModel):
                         "`iou_thresholds_to_return` should only be used for object detection evaluations."
                     )
             case TaskType.OBJECT_DETECTION:
+                if values.compute_pr_curves:
+                    raise ValueError(
+                        "Precision-recall curves aren't available for object detection tasks."
+                    )
                 if values.iou_thresholds_to_return:
                     if not values.iou_thresholds_to_compute:
                         raise ValueError(
