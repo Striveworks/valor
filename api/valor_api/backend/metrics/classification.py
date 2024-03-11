@@ -795,7 +795,9 @@ def compute_clf_metrics(
         prediction_filter=prediction_filter,
         groundtruth_filter=groundtruth_filter,
         label_map=parameters.label_map,
-        compute_pr_curves=parameters.compute_pr_curves,
+        compute_pr_curves=parameters.compute_pr_curves
+        if parameters.compute_pr_curves is not None
+        else False,
     )
 
     confusion_matrices_mappings = create_metric_mappings(

@@ -15,6 +15,7 @@ from valor_api.backend.metrics.classification import (
     compute_clf_metrics,
 )
 from valor_api.backend.metrics.metric_utils import create_grouper_mappings
+from valor_api.backend.query import Query
 
 
 @pytest.fixture
@@ -154,10 +155,39 @@ def test_compute_confusion_matrix_at_grouper_key(
         evaluation_type=enums.TaskType.CLASSIFICATION,
     )
 
+    label_key_filter = list(
+        grouper_mappings["grouper_key_to_label_keys_mapping"]["animal"]
+    )
+
+    # groundtruths filter
+    gFilter = groundtruth_filter.model_copy()
+    gFilter.label_keys = label_key_filter
+
+    # predictions filter
+    pFilter = prediction_filter.model_copy()
+    pFilter.label_keys = label_key_filter
+
+    groundtruths = (
+        Query(
+            models.GroundTruth,
+            models.Annotation.datum_id.label("datum_id"),
+        )
+        .filter(gFilter)
+        .groundtruths(as_subquery=False)
+        .alias()
+    )
+
+    predictions = (
+        Query(models.Prediction)
+        .filter(pFilter)
+        .predictions(as_subquery=False)
+        .alias()
+    )
+
     cm = _compute_confusion_matrix_at_grouper_key(
         db=db,
-        prediction_filter=prediction_filter,
-        groundtruth_filter=groundtruth_filter,
+        predictions=predictions,
+        groundtruths=groundtruths,
         grouper_key="animal",
         grouper_mappings=grouper_mappings,
     )
@@ -185,10 +215,40 @@ def test_compute_confusion_matrix_at_grouper_key(
         assert entry in cm.entries
     assert _compute_accuracy_from_cm(cm) == 2 / 6
 
+    # test for color
+    label_key_filter = list(
+        grouper_mappings["grouper_key_to_label_keys_mapping"]["color"]
+    )
+
+    # groundtruths filter
+    gFilter = groundtruth_filter.model_copy()
+    gFilter.label_keys = label_key_filter
+
+    # predictions filter
+    pFilter = prediction_filter.model_copy()
+    pFilter.label_keys = label_key_filter
+
+    groundtruths = (
+        Query(
+            models.GroundTruth,
+            models.Annotation.datum_id.label("datum_id"),
+        )
+        .filter(gFilter)
+        .groundtruths(as_subquery=False)
+        .alias()
+    )
+
+    predictions = (
+        Query(models.Prediction)
+        .filter(pFilter)
+        .predictions(as_subquery=False)
+        .alias()
+    )
+
     cm = _compute_confusion_matrix_at_grouper_key(
         db=db,
-        prediction_filter=prediction_filter,
-        groundtruth_filter=groundtruth_filter,
+        predictions=predictions,
+        groundtruths=groundtruths,
         grouper_key="color",
         grouper_mappings=grouper_mappings,
     )
@@ -250,10 +310,39 @@ def test_compute_confusion_matrix_at_grouper_key_and_filter(
         evaluation_type=enums.TaskType.CLASSIFICATION,
     )
 
+    label_key_filter = list(
+        grouper_mappings["grouper_key_to_label_keys_mapping"]["animal"]
+    )
+
+    # groundtruths filter
+    gFilter = groundtruth_filter.model_copy()
+    gFilter.label_keys = label_key_filter
+
+    # predictions filter
+    pFilter = prediction_filter.model_copy()
+    pFilter.label_keys = label_key_filter
+
+    groundtruths = (
+        Query(
+            models.GroundTruth,
+            models.Annotation.datum_id.label("datum_id"),
+        )
+        .filter(gFilter)
+        .groundtruths(as_subquery=False)
+        .alias()
+    )
+
+    predictions = (
+        Query(models.Prediction)
+        .filter(pFilter)
+        .predictions(as_subquery=False)
+        .alias()
+    )
+
     cm = _compute_confusion_matrix_at_grouper_key(
         db,
-        prediction_filter=prediction_filter,
-        groundtruth_filter=groundtruth_filter,
+        predictions=predictions,
+        groundtruths=groundtruths,
         grouper_key="animal",
         grouper_mappings=grouper_mappings,
     )
@@ -314,10 +403,39 @@ def test_compute_confusion_matrix_at_grouper_key_using_label_map(
         evaluation_type=enums.TaskType.CLASSIFICATION,
     )
 
+    label_key_filter = list(
+        grouper_mappings["grouper_key_to_label_keys_mapping"]["animal"]
+    )
+
+    # groundtruths filter
+    gFilter = groundtruth_filter.model_copy()
+    gFilter.label_keys = label_key_filter
+
+    # predictions filter
+    pFilter = prediction_filter.model_copy()
+    pFilter.label_keys = label_key_filter
+
+    groundtruths = (
+        Query(
+            models.GroundTruth,
+            models.Annotation.datum_id.label("datum_id"),
+        )
+        .filter(gFilter)
+        .groundtruths(as_subquery=False)
+        .alias()
+    )
+
+    predictions = (
+        Query(models.Prediction)
+        .filter(pFilter)
+        .predictions(as_subquery=False)
+        .alias()
+    )
+
     cm = _compute_confusion_matrix_at_grouper_key(
         db,
-        prediction_filter=prediction_filter,
-        groundtruth_filter=groundtruth_filter,
+        predictions=predictions,
+        groundtruths=groundtruths,
         grouper_key="animal",
         grouper_mappings=grouper_mappings,
     )
@@ -582,7 +700,7 @@ def test_compute_classification(
     )
 
     confusion, metrics = _compute_clf_metrics(
-        db, model_filter, datum_filter, label_map=None
+        db, model_filter, datum_filter, label_map=None, compute_pr_curves=False
     )
 
     # Make matrices accessible by label_key
