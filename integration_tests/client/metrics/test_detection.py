@@ -137,6 +137,7 @@ def test_evaluate_detection(
             "iou_thresholds_to_return": [0.1, 0.6],
             "label_map": None,
             "recall_score_threshold": 0.0,
+            "compute_pr_curves": False,
         },
         "status": EvaluationStatus.DONE.value,
         "metrics": expected_metrics,
@@ -241,6 +242,7 @@ def test_evaluate_detection(
             "iou_thresholds_to_return": [0.1, 0.6],
             "label_map": None,
             "recall_score_threshold": 0.0,
+            "compute_pr_curves": False,
         },
         "status": EvaluationStatus.DONE.value,
         "metrics": expected_metrics,
@@ -288,6 +290,7 @@ def test_evaluate_detection(
             "iou_thresholds_to_return": [0.1, 0.6],
             "label_map": None,
             "recall_score_threshold": 0.0,
+            "compute_pr_curves": False,
         },
         # check metrics below
         "status": EvaluationStatus.DONE.value,
@@ -335,6 +338,7 @@ def test_evaluate_detection(
             "iou_thresholds_to_return": [0.1, 0.6],
             "label_map": None,
             "recall_score_threshold": 0.0,
+            "compute_pr_curves": False,
         },
         # check metrics below
         "status": EvaluationStatus.DONE.value,
@@ -388,6 +392,7 @@ def test_evaluate_detection(
             "iou_thresholds_to_return": [0.1, 0.6],
             "label_map": None,
             "recall_score_threshold": 0.0,
+            "compute_pr_curves": False,
         },
         # check metrics below
         "status": EvaluationStatus.DONE.value,
@@ -548,6 +553,7 @@ def test_evaluate_detection_with_json_filters(
             "iou_thresholds_to_return": [0.1, 0.6],
             "label_map": None,
             "recall_score_threshold": 0.0,
+            "compute_pr_curves": False,
         },
         # check metrics below
         "status": EvaluationStatus.DONE.value,
@@ -1441,6 +1447,7 @@ def test_evaluate_detection_with_label_maps(
             [["class_name", "cat"], ["foo", "bar"]],
         ],
         "recall_score_threshold": 0.8,
+        "compute_pr_curves": False,
     }
 
     metrics = eval_job.metrics
