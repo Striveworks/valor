@@ -21,12 +21,16 @@ from valor import (
 )
 
 dset_name = "MedQA"
-n_egs = 10
+n_egs = 100
 answer_choices = ["A", "B", "C", "D", "E"]
 instructions = [
-    "Please answer with only the letter of the correct option in the bracket",
+    "Please answer the following question with only the letter of the correct option in the bracket",
     "You are a medical professional, please answer the following question with only the letter of the correct option in the bracket.",
     "You are impersonating the amazing, never wrong doctor from the show House MD, please answer the following question as he would with the letter of the correct option in the bracket.",
+    "You are a medical professional who always thinks through and finds justification in your answers, please answer the following question with only the letter of the correct option in the bracket.",
+    "Considering the perspective of a patient looking for clear and authoritative advice, please answer the following question with only the letter of the correct option in the bracket.",
+    "Channeling the wisdom of a Nobel Prize-winning physician who has significantly contributed to medical science, please answer the following question with only the letter of the correct option in the bracket.",
+    "As a clinician renowned for your diagnostic acumen and treatment precision, please answer the following question with only the letter of the correct option in the bracket.",
 ]
 
 
@@ -78,7 +82,7 @@ def get_openai_outlines_model(model_name: str) -> models.OpenAI:
 
 
 def get_llama_cpp_outlines_model(model_path: PosixPath) -> models.LlamaCpp:
-    return models.llamacpp(str(model_path))
+    return models.llamacpp(str(model_path), model_kwargs={"n_ctx": 2048})
 
 
 def maybe_run_inference(
