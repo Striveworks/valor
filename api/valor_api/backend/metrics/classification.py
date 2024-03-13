@@ -121,10 +121,7 @@ def _compute_curves(
                     row[2],
                 )
 
-                if (
-                    predicted_label == grouper_value
-                    and actual_label == grouper_value
-                ):
+                if predicted_label == grouper_value == actual_label:
                     tp += count
                     seen_datums.add(datum_id)
                 elif predicted_label == grouper_value:
@@ -135,6 +132,7 @@ def _compute_curves(
                     and datum_id not in seen_datums
                 ):
                     fn += count
+                    seen_datums.add(datum_id)
 
             # calculate metrics
             precision = tp / (tp + fp) if (tp + fp) > 0 else -1
@@ -157,6 +155,7 @@ def _compute_curves(
     return dict(output)
 
 
+# TODO check functional test
 def _compute_binary_roc_auc(
     db: Session,
     prediction_filter: schemas.Filter,

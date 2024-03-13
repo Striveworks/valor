@@ -766,7 +766,6 @@ def test_classification(
     model_name: str,
     classification_test_data,
 ):
-    """Test that _compute_curves correctly returns precision-recall curves for our animal ground truths."""
     # default request
     job_request = schemas.EvaluationRequest(
         model_names=[model_name],
@@ -861,6 +860,8 @@ def test__compute_curves(
     model_name: str,
     classification_test_data,
 ):
+    """Test that _compute_curves correctly returns precision-recall curves for our animal ground truths."""
+
     prediction_filter = schemas.Filter(
         model_names=[model_name],
         task_types=[enums.TaskType.CLASSIFICATION],
