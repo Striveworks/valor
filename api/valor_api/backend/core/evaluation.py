@@ -322,8 +322,8 @@ def _create_responses(
             case enums.TaskType.CLASSIFICATION:
                 # classification tasks have to have matching sets of prediction label keys and ground truth label keys
                 kwargs = {
-                    "missing_pred_labels": [],
-                    "ignored_pred_labels": [],
+                    "missing_pred_keys": [],
+                    "ignored_pred_keys": [],
                 }
             case (
                 enums.TaskType.OBJECT_DETECTION
