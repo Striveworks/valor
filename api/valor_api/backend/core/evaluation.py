@@ -321,11 +321,6 @@ def _create_responses(
         match parameters.task_type:
             case enums.TaskType.CLASSIFICATION:
                 # classification tasks have to have matching sets of prediction label keys and ground truth label keys
-                core.validate_matching_label_keys(
-                    db=db,
-                    groundtruth_filter=datum_filter,
-                    prediction_filter=model_filter,
-                )
                 kwargs = {
                     "missing_pred_labels": [],
                     "ignored_pred_labels": [],

@@ -330,7 +330,7 @@ def pred_clfs_create(
                     labels=[
                         schemas.Label(key="k1", value="v1", score=0.2),
                         schemas.Label(key="k1", value="v2", score=0.8),
-                        schemas.Label(key="k4", value="v4", score=1.0),
+                        schemas.Label(key="k2", value="v4", score=1.0),
                     ],
                 ),
             ],
@@ -342,9 +342,9 @@ def pred_clfs_create(
                 schemas.Annotation(
                     task_type=enums.TaskType.CLASSIFICATION,
                     labels=[
-                        schemas.Label(key="k2", value="v2", score=1.0),
-                        schemas.Label(key="k3", value="v3", score=0.87),
-                        schemas.Label(key="k3", value="v0", score=0.13),
+                        schemas.Label(key="k2", value="v2", score=0.8),
+                        schemas.Label(key="k2", value="v3", score=0.1),
+                        schemas.Label(key="k2", value="v0", score=0.1),
                     ],
                 ),
             ],
@@ -1316,13 +1316,8 @@ def test_create_clf_metrics(
     )
     assert len(resp) == 1
     resp = resp[0]
-    missing_pred_keys = resp.missing_pred_keys
-    ignored_pred_keys = resp.ignored_pred_keys
+
     evaluation_id = resp.id
-
-    assert missing_pred_keys == []
-    assert set(ignored_pred_keys) == {"k3", "k4"}
-
     # check we have one evaluation
     assert db.scalar(select(func.count()).select_from(models.Evaluation)) == 1
 
@@ -1348,12 +1343,14 @@ def test_create_clf_metrics(
 
     for t in ["Precision", "Recall", "F1"]:
         ms = [m for m in metrics if m.type == t]
-        assert len(ms) == 4
+        assert len(ms) == 6
         assert set([(m.label.key, m.label.value) for m in ms]) == {
             ("k1", "v1"),
-            ("k1", "v2"),
-            ("k2", "v2"),
+            ("k2", "v0"),
             ("k2", "v3"),
+            ("k2", "v2"),
+            ("k1", "v2"),
+            ("k2", "v4"),
         }
 
     confusion_matrices = db.scalars(
@@ -1387,7 +1384,10 @@ def test_create_clf_metrics(
     assert cms[1].entries == [
         schemas.ConfusionMatrixEntry(
             prediction="v2", groundtruth="v3", count=1
-        )
+        ),
+        schemas.ConfusionMatrixEntry(
+            prediction="v4", groundtruth="v2", count=1
+        ),
     ]
 
     # attempting to run again should just return the existing job id
@@ -1401,7 +1401,7 @@ def test_create_clf_metrics(
     metrics = db.scalar(
         select(models.Evaluation).where(models.Evaluation.id == evaluation_id)
     ).metrics
-    assert len(metrics) == 2 + 2 + 4 + 4 + 4
+    assert len(metrics) == 2 + 2 + 6 + 6 + 6
     confusion_matrices = db.scalars(
         select(models.ConfusionMatrix).where(
             models.ConfusionMatrix.evaluation_id == evaluation_id
