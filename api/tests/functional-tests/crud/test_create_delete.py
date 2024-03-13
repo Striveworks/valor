@@ -1316,12 +1316,7 @@ def test_create_clf_metrics(
     )
     assert len(resp) == 1
     resp = resp[0]
-    missing_pred_keys = resp.missing_pred_keys
-    ignored_pred_keys = resp.ignored_pred_keys
     evaluation_id = resp.id
-
-    assert missing_pred_keys == []
-    assert ignored_pred_keys == []
 
     evaluation_id = resp.id
     # check we have one evaluation

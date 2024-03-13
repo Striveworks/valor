@@ -979,8 +979,6 @@ def test_post_clf_metrics(client: TestClient):
         status=EvaluationStatus.PENDING,
         metrics=[],
         confusion_matrices=[],
-        missing_pred_keys=[],
-        ignored_pred_keys=[],
     ).model_dump()
 
     example_json = schemas.EvaluationRequest(

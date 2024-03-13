@@ -41,8 +41,6 @@ def test_evaluate_image_clf(
     eval_job = model.evaluate_classification(dataset)
 
     assert eval_job.id
-    assert eval_job.ignored_pred_keys == []
-    assert eval_job.missing_pred_keys == []
 
     assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
 
@@ -245,8 +243,6 @@ def test_evaluate_tabular_clf(
 
     # evaluate
     eval_job = model.evaluate_classification(dataset)
-    assert eval_job.ignored_pred_keys == []
-    assert eval_job.missing_pred_keys == []
 
     assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
 
@@ -955,10 +951,6 @@ def test_evaluate_classification_with_label_maps(
     eval_job = model.evaluate_classification(dataset, label_map=label_mapping)
 
     assert eval_job.id
-
-    assert eval_job.ignored_pred_keys == []
-    assert eval_job.missing_pred_keys == []
-
     assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
 
     metrics = eval_job.metrics
