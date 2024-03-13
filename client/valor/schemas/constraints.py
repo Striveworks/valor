@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from typing import Any, List, Optional, Set, Union
 
 import numpy as np
+from sympy import And, Eq, Ne, Or, Symbol
 
 from valor.schemas.geometry import (
     BoundingBox,
