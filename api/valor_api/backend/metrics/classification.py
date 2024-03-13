@@ -580,6 +580,14 @@ def _compute_clf_metrics(
         evaluation_type=enums.TaskType.CLASSIFICATION,
     )
 
+    # check that prediction label keys match ground truth label keys
+    core.validate_matching_label_keys(
+        db=db,
+        label_map=label_map,
+        groundtruth_filter=groundtruth_filter,
+        prediction_filter=prediction_filter,
+    )
+
     # compute metrics and confusion matrix for each grouper id
     confusion_matrices, metrics = [], []
     for grouper_key in grouper_mappings[

@@ -1,4 +1,4 @@
-from sqlalchemy import Subquery, and_, or_, select
+from sqlalchemy import Subquery, and_, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.selectable import Select
@@ -8,6 +8,134 @@ from valor_api.backend import models
 from valor_api.backend.query import Query
 
 LabelMapType = list[list[list[str]]]
+
+
+def validate_matching_label_keys(
+    db: Session,
+    label_map: LabelMapType | None,
+    prediction_filter: schemas.Filter,
+    groundtruth_filter: schemas.Filter,
+) -> None:
+    """
+    Validates that every datum has the same set of label keys for both ground truths and predictions. This check is only needed for classification tasks.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    prediction_filter : schemas.Filter
+        The filter to be used to query predictions.
+    groundtruth_filter : schemas.Filter
+        The filter to be used to query groundtruths.
+    label_map: LabelMapType, optional
+        Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
+
+
+    Raises
+    -------
+    ValueError
+        If the distinct ground truth label keys don't match the distinct prediction label keys for any datum.
+    """
+
+    gts = (
+        Query(
+            models.Annotation.datum_id.label("datum_id"),
+            models.Label.key.label("label_key"),
+            models.Label.value.label("label_value"),
+        )
+        .filter(groundtruth_filter)
+        .groundtruths(as_subquery=False)
+        .alias()
+    )
+
+    gt_label_keys_by_datum = (
+        select(
+            gts.c.datum_id,
+            func.array_agg(gts.c.label_key + ", " + gts.c.label_value).label(
+                "gt_labels"
+            ),
+        )
+        .select_from(gts)
+        .group_by(gts.c.datum_id)
+        .subquery()
+    )
+
+    preds = (
+        Query(
+            models.Annotation.datum_id.label("datum_id"),
+            models.Label.key.label("label_key"),
+            models.Label.value.label("label_value"),
+        )
+        .filter(prediction_filter)
+        .predictions(as_subquery=False)
+        .alias()
+    )
+
+    preds_label_keys_by_datum = (
+        select(
+            preds.c.datum_id,
+            func.array_agg(
+                preds.c.label_key + ", " + preds.c.label_value
+            ).label("pred_labels"),
+        )
+        .select_from(preds)
+        .group_by(preds.c.datum_id)
+        .subquery()
+    )
+
+    joined = (
+        select(
+            preds_label_keys_by_datum.c.datum_id,
+            preds_label_keys_by_datum.c.pred_labels,
+            gt_label_keys_by_datum.c.gt_labels,
+        )
+        .select_from(preds_label_keys_by_datum)
+        .join(
+            gt_label_keys_by_datum,
+            gt_label_keys_by_datum.c.datum_id
+            == preds_label_keys_by_datum.c.datum_id,
+        )
+        .subquery()
+    )
+
+    # map the keys to the using the label_map if necessary
+    label_map_lookup = {}
+    if label_map:
+        for entry in label_map:
+            label_map_lookup[tuple(entry[0])] = tuple(entry[1])
+
+    results = [
+        {
+            "datum_id": datum_id,
+            "pred_keys": set(
+                [
+                    (
+                        label_map_lookup[tuple(entry.split(", "))][0]
+                        if tuple(entry.split(", ")) in label_map_lookup
+                        else tuple(entry.split(", "))[0]
+                    )
+                    for entry in pred_labels
+                ]
+            ),
+            "gt_keys": set(
+                [
+                    (
+                        label_map_lookup[tuple(entry.split(", "))][0]
+                        if tuple(entry.split(", ")) in label_map_lookup
+                        else tuple(entry.split(", "))[0]
+                    )
+                    for entry in gt_labels
+                ]
+            ),
+        }
+        for datum_id, pred_labels, gt_labels in db.query(joined).all()
+    ]
+
+    for entry in results:
+        if not entry["pred_keys"] == entry["gt_keys"]:
+            raise ValueError(
+                f"Ground truth label keys must match prediction label keys for classification tasks. Found the following mismatch: {entry}."
+            )
 
 
 def fetch_label(

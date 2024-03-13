@@ -41,29 +41,40 @@ def test_evaluate_image_clf(
     eval_job = model.evaluate_classification(dataset)
 
     assert eval_job.id
-    assert eval_job.ignored_pred_keys is not None
-    assert eval_job.missing_pred_keys is not None
-    assert set(eval_job.ignored_pred_keys) == {"k12", "k13"}
-    assert set(eval_job.missing_pred_keys) == {"k3", "k5"}
 
     assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
 
     metrics = eval_job.metrics
 
     expected_metrics = [
-        {"type": "Accuracy", "parameters": {"label_key": "k4"}, "value": 1.0},
+        {"type": "Accuracy", "parameters": {"label_key": "k4"}, "value": 0.5},
         {"type": "ROCAUC", "parameters": {"label_key": "k4"}, "value": 1.0},
         {
             "type": "Precision",
-            "value": 1.0,
+            "value": 1.0,  # no false predictions
             "label": {"key": "k4", "value": "v4"},
         },
         {
             "type": "Recall",
-            "value": 1.0,
+            "value": 0.5,  # img5 had the correct prediction, but not img6
             "label": {"key": "k4", "value": "v4"},
         },
-        {"type": "F1", "value": 1.0, "label": {"key": "k4", "value": "v4"}},
+        {
+            "type": "F1",
+            "value": 0.6666666666666666,
+            "label": {"key": "k4", "value": "v4"},
+        },
+        {
+            "type": "Precision",
+            "value": 0.0,
+            "label": {"key": "k4", "value": "v8"},
+        },
+        {
+            "type": "Recall",
+            "value": 0.0,
+            "label": {"key": "k4", "value": "v8"},
+        },
+        {"type": "F1", "value": 0.0, "label": {"key": "k4", "value": "v8"}},
         {
             "type": "Precision",
             "value": -1.0,
@@ -75,19 +86,95 @@ def test_evaluate_image_clf(
             "label": {"key": "k4", "value": "v5"},
         },
         {"type": "F1", "value": -1.0, "label": {"key": "k4", "value": "v5"}},
+        {
+            "type": "Precision",
+            "value": -1.0,  # this value is -1 (not 0) because this label is never used anywhere; (k4, v8) has the higher score for img5, so it's chosen over (k4, v1)
+            "label": {"key": "k4", "value": "v1"},
+        },
+        {
+            "type": "Recall",
+            "value": -1.0,
+            "label": {"key": "k4", "value": "v1"},
+        },
+        {"type": "F1", "value": -1.0, "label": {"key": "k4", "value": "v1"}},
+        {"type": "Accuracy", "parameters": {"label_key": "k5"}, "value": 0.0},
+        {"type": "ROCAUC", "parameters": {"label_key": "k5"}, "value": 1.0},
+        {
+            "type": "Precision",
+            "value": 0.0,
+            "label": {"key": "k5", "value": "v1"},
+        },
+        {
+            "type": "Recall",
+            "value": 0.0,
+            "label": {"key": "k5", "value": "v1"},
+        },
+        {"type": "F1", "value": 0.0, "label": {"key": "k5", "value": "v1"}},
+        {
+            "type": "Precision",
+            "value": 0.0,
+            "label": {"key": "k5", "value": "v5"},
+        },
+        {
+            "type": "Recall",
+            "value": 0.0,
+            "label": {"key": "k5", "value": "v5"},
+        },
+        {"type": "F1", "value": 0.0, "label": {"key": "k5", "value": "v5"}},
+        {"type": "Accuracy", "parameters": {"label_key": "k3"}, "value": 0.0},
+        {"type": "ROCAUC", "parameters": {"label_key": "k3"}, "value": 1.0},
+        {
+            "type": "Precision",
+            "value": 0.0,
+            "label": {"key": "k3", "value": "v1"},
+        },
+        {
+            "type": "Recall",
+            "value": 0.0,
+            "label": {"key": "k3", "value": "v1"},
+        },
+        {"type": "F1", "value": 0.0, "label": {"key": "k3", "value": "v1"}},
+        {
+            "type": "Precision",
+            "value": 0.0,
+            "label": {"key": "k3", "value": "v3"},
+        },
+        {
+            "type": "Recall",
+            "value": 0.0,
+            "label": {"key": "k3", "value": "v3"},
+        },
+        {"type": "F1", "value": 0.0, "label": {"key": "k3", "value": "v3"}},
     ]
+
+    expected_confusion_matrices = [
+        {
+            "label_key": "k5",
+            "entries": [{"prediction": "v1", "groundtruth": "v5", "count": 1}],
+        },
+        {
+            "label_key": "k4",
+            "entries": [
+                {"prediction": "v4", "groundtruth": "v4", "count": 1},
+                {"prediction": "v8", "groundtruth": "v4", "count": 1},
+            ],
+        },
+        {
+            "label_key": "k3",
+            "entries": [{"prediction": "v1", "groundtruth": "v3", "count": 1}],
+        },
+    ]
+
     for m in metrics:
         assert m in expected_metrics
     for m in expected_metrics:
         assert m in metrics
 
     confusion_matrices = eval_job.confusion_matrices
-    assert confusion_matrices == [
-        {
-            "label_key": "k4",
-            "entries": [{"prediction": "v4", "groundtruth": "v4", "count": 1}],
-        }
-    ]
+    for m in confusion_matrices:
+        assert m in expected_confusion_matrices
+    for m in expected_confusion_matrices:
+        assert m in confusion_matrices
 
 
 def test_evaluate_tabular_clf(
@@ -156,8 +243,6 @@ def test_evaluate_tabular_clf(
 
     # evaluate
     eval_job = model.evaluate_classification(dataset)
-    assert eval_job.ignored_pred_keys == []
-    assert eval_job.missing_pred_keys == []
 
     assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
 
@@ -630,7 +715,10 @@ def gt_clfs_with_label_maps(
 
 @pytest.fixture
 def pred_clfs_with_label_maps(
-    model_name: str, img5: ImageMetadata, img6: ImageMetadata
+    model_name: str,
+    img5: ImageMetadata,
+    img6: ImageMetadata,
+    img8: ImageMetadata,
 ) -> list[Prediction]:
     return [
         Prediction(
@@ -639,9 +727,9 @@ def pred_clfs_with_label_maps(
                 Annotation(
                     task_type=TaskType.CLASSIFICATION,
                     labels=[
-                        Label(key="k12", value="v12", score=0.47),
-                        Label(key="k12", value="v16", score=0.53),
-                        Label(key="k13", value="v13", score=1.0),
+                        Label(key="k4", value="v1", score=0.47),
+                        Label(key="k4", value="v8", score=0.53),
+                        Label(key="k5", value="v1", score=1.0),
                         Label(key="class", value="cat", score=1.0),
                     ],
                 )
@@ -656,6 +744,18 @@ def pred_clfs_with_label_maps(
                         Label(key="k4", value="v4", score=0.71),
                         Label(key="k4", value="v5", score=0.29),
                         Label(key="class_name", value="cat", score=1.0),
+                    ],
+                )
+            ],
+        ),
+        Prediction(
+            datum=img8,
+            annotations=[
+                Annotation(
+                    task_type=TaskType.CLASSIFICATION,
+                    labels=[
+                        Label(key="k3", value="v1", score=1.0),
+                        Label(key="class", value="cat", score=1.0),
                     ],
                 )
             ],
@@ -680,135 +780,12 @@ def test_evaluate_classification_with_label_maps(
         model.add_prediction(dataset, pd)
     model.finalize_inferences(dataset)
 
-    # check baseline case
+    # check baseline case, where we have mismatched ground truth and prediction label keys
+    result = model.evaluate_classification(dataset).wait_for_completion(
+        timeout=30
+    )
 
-    baseline_expected_metrics = [
-        {"type": "Accuracy", "parameters": {"label_key": "k4"}, "value": 1.0},
-        {"type": "ROCAUC", "parameters": {"label_key": "k4"}, "value": 1.0},
-        {
-            "type": "Precision",
-            "value": -1.0,
-            "label": {"key": "k4", "value": "v5"},
-        },
-        {
-            "type": "Recall",
-            "value": -1.0,
-            "label": {"key": "k4", "value": "v5"},
-        },
-        {"type": "F1", "value": -1.0, "label": {"key": "k4", "value": "v5"}},
-        {
-            "type": "Precision",
-            "value": 1.0,
-            "label": {"key": "k4", "value": "v4"},
-        },
-        {
-            "type": "Recall",
-            "value": 1.0,
-            "label": {"key": "k4", "value": "v4"},
-        },
-        {"type": "F1", "value": 1.0, "label": {"key": "k4", "value": "v4"}},
-        {
-            "type": "Accuracy",
-            "parameters": {"label_key": "class"},
-            "value": 0.0,
-        },
-        {
-            "type": "ROCAUC",
-            "parameters": {"label_key": "class"},
-            "value": -1.0,
-        },
-        {
-            "type": "Precision",
-            "value": 0.0,
-            "label": {"key": "class", "value": "siamese cat"},
-        },
-        {
-            "type": "Recall",
-            "value": 0.0,
-            "label": {"key": "class", "value": "siamese cat"},
-        },
-        {
-            "type": "F1",
-            "value": 0.0,
-            "label": {"key": "class", "value": "siamese cat"},
-        },
-        {
-            "type": "Precision",
-            "value": 0.0,
-            "label": {"key": "class", "value": "cat"},
-        },
-        {
-            "type": "Recall",
-            "value": 0.0,
-            "label": {"key": "class", "value": "cat"},
-        },
-        {
-            "type": "F1",
-            "value": 0.0,
-            "label": {"key": "class", "value": "cat"},
-        },
-        {
-            "type": "Precision",
-            "value": -1.0,
-            "label": {"key": "class", "value": "tabby cat"},
-        },
-        {
-            "type": "Recall",
-            "value": -1.0,
-            "label": {"key": "class", "value": "tabby cat"},
-        },
-        {
-            "type": "F1",
-            "value": -1.0,
-            "label": {"key": "class", "value": "tabby cat"},
-        },
-        {
-            "type": "Precision",
-            "value": -1.0,
-            "label": {"key": "class", "value": "british shorthair"},
-        },
-        {
-            "type": "Recall",
-            "value": -1.0,
-            "label": {"key": "class", "value": "british shorthair"},
-        },
-        {
-            "type": "F1",
-            "value": -1.0,
-            "label": {"key": "class", "value": "british shorthair"},
-        },
-    ]
-
-    baseline_cm = [
-        {
-            "label_key": "class",
-            "entries": [
-                {"prediction": "cat", "groundtruth": "siamese cat", "count": 1}
-            ],
-        },
-        {
-            "label_key": "k4",
-            "entries": [{"prediction": "v4", "groundtruth": "v4", "count": 1}],
-        },
-    ]
-
-    eval_job = model.evaluate_classification(dataset)
-
-    assert eval_job.id
-    assert set(eval_job.ignored_pred_keys) == {"class_name", "k12", "k13"}
-    assert set(eval_job.missing_pred_keys) == {"k3", "k5"}
-
-    assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
-
-    metrics = eval_job.metrics
-
-    for m in metrics:
-        assert m in baseline_expected_metrics
-    for m in baseline_expected_metrics:
-        assert m in metrics
-
-    confusion_matrices = eval_job.confusion_matrices
-    assert all([entry in baseline_cm for entry in confusion_matrices])
+    assert result.value == "failed"
 
     # now try using a label map to connect all the cats
 
@@ -821,7 +798,7 @@ def test_evaluate_classification_with_label_maps(
             key="special_class", value="cat_type1"
         ),
         Label(key="class", value="british shorthair"): Label(
-            key="special_class", value="cat_type2"
+            key="special_class", value="cat_type1"
         ),
         # map the predictions
         Label(key="class", value="cat"): Label(
@@ -833,48 +810,47 @@ def test_evaluate_classification_with_label_maps(
     }
 
     cat_expected_metrics = [
-        {
-            "type": "Accuracy",
-            "parameters": {"label_key": "special_class"},
-            "value": 0.5,
-        },
-        {
-            "type": "ROCAUC",
-            "parameters": {"label_key": "special_class"},
-            "value": -1,
-        },
+        {"type": "Accuracy", "parameters": {"label_key": "k5"}, "value": 0.0},
+        {"type": "ROCAUC", "parameters": {"label_key": "k5"}, "value": 1.0},
         {
             "type": "Precision",
-            "value": 0.5,
-            "label": {"key": "special_class", "value": "cat_type1"},
+            "value": 0.0,
+            "label": {"key": "k5", "value": "v5"},
         },
         {
             "type": "Recall",
+            "value": 0.0,
+            "label": {"key": "k5", "value": "v5"},
+        },
+        {"type": "F1", "value": 0.0, "label": {"key": "k5", "value": "v5"}},
+        {
+            "type": "Precision",
+            "value": 0.0,
+            "label": {"key": "k5", "value": "v1"},
+        },
+        {
+            "type": "Recall",
+            "value": 0.0,
+            "label": {"key": "k5", "value": "v1"},
+        },
+        {"type": "F1", "value": 0.0, "label": {"key": "k5", "value": "v1"}},
+        {"type": "Accuracy", "parameters": {"label_key": "k4"}, "value": 0.5},
+        {"type": "ROCAUC", "parameters": {"label_key": "k4"}, "value": 1.0},
+        {
+            "type": "Precision",
             "value": 1.0,
-            "label": {"key": "special_class", "value": "cat_type1"},
+            "label": {"key": "k4", "value": "v4"},
+        },
+        {
+            "type": "Recall",
+            "value": 0.5,
+            "label": {"key": "k4", "value": "v4"},
         },
         {
             "type": "F1",
             "value": 0.6666666666666666,
-            "label": {"key": "special_class", "value": "cat_type1"},
+            "label": {"key": "k4", "value": "v4"},
         },
-        {
-            "type": "Precision",
-            "value": 0.0,
-            "label": {"key": "special_class", "value": "cat_type2"},
-        },
-        {
-            "type": "Recall",
-            "value": 0.0,
-            "label": {"key": "special_class", "value": "cat_type2"},
-        },
-        {
-            "type": "F1",
-            "value": 0.0,
-            "label": {"key": "special_class", "value": "cat_type2"},
-        },
-        {"type": "Accuracy", "parameters": {"label_key": "k4"}, "value": 1.0},
-        {"type": "ROCAUC", "parameters": {"label_key": "k4"}, "value": 1.0},
         {
             "type": "Precision",
             "value": -1.0,
@@ -888,15 +864,75 @@ def test_evaluate_classification_with_label_maps(
         {"type": "F1", "value": -1.0, "label": {"key": "k4", "value": "v5"}},
         {
             "type": "Precision",
+            "value": -1.0,
+            "label": {"key": "k4", "value": "v1"},
+        },
+        {
+            "type": "Recall",
+            "value": -1.0,
+            "label": {"key": "k4", "value": "v1"},
+        },
+        {"type": "F1", "value": -1.0, "label": {"key": "k4", "value": "v1"}},
+        {
+            "type": "Precision",
+            "value": 0.0,
+            "label": {"key": "k4", "value": "v8"},
+        },
+        {
+            "type": "Recall",
+            "value": 0.0,
+            "label": {"key": "k4", "value": "v8"},
+        },
+        {"type": "F1", "value": 0.0, "label": {"key": "k4", "value": "v8"}},
+        {"type": "Accuracy", "parameters": {"label_key": "k3"}, "value": 0.0},
+        {"type": "ROCAUC", "parameters": {"label_key": "k3"}, "value": 1.0},
+        {
+            "type": "Precision",
+            "value": 0.0,
+            "label": {"key": "k3", "value": "v1"},
+        },
+        {
+            "type": "Recall",
+            "value": 0.0,
+            "label": {"key": "k3", "value": "v1"},
+        },
+        {"type": "F1", "value": 0.0, "label": {"key": "k3", "value": "v1"}},
+        {
+            "type": "Precision",
+            "value": 0.0,
+            "label": {"key": "k3", "value": "v3"},
+        },
+        {
+            "type": "Recall",
+            "value": 0.0,
+            "label": {"key": "k3", "value": "v3"},
+        },
+        {"type": "F1", "value": 0.0, "label": {"key": "k3", "value": "v3"}},
+        {
+            "type": "Accuracy",
+            "parameters": {"label_key": "special_class"},
             "value": 1.0,
-            "label": {"key": "k4", "value": "v4"},
+        },
+        {
+            "type": "ROCAUC",
+            "parameters": {"label_key": "special_class"},
+            "value": -1.0,
+        },
+        {
+            "type": "Precision",
+            "value": 1.0,
+            "label": {"key": "special_class", "value": "cat_type1"},
         },
         {
             "type": "Recall",
             "value": 1.0,
-            "label": {"key": "k4", "value": "v4"},
+            "label": {"key": "special_class", "value": "cat_type1"},
         },
-        {"type": "F1", "value": 1.0, "label": {"key": "k4", "value": "v4"}},
+        {
+            "type": "F1",
+            "value": 1.0,
+            "label": {"key": "special_class", "value": "cat_type1"},
+        },
     ]
 
     cat_expected_cm = [
@@ -906,26 +942,15 @@ def test_evaluate_classification_with_label_maps(
                 {
                     "prediction": "cat_type1",
                     "groundtruth": "cat_type1",
-                    "count": 1,
-                },
-                {
-                    "prediction": "cat_type1",
-                    "groundtruth": "cat_type2",
-                    "count": 1,
-                },
+                    "count": 3,
+                }
             ],
         },
-        {
-            "label_key": "k4",
-            "entries": [{"prediction": "v4", "groundtruth": "v4", "count": 1}],
-        },
+        # other label keys not included for testing purposes
     ]
     eval_job = model.evaluate_classification(dataset, label_map=label_mapping)
 
     assert eval_job.id
-    assert set(eval_job.ignored_pred_keys) == {"k12", "k13"}
-    assert set(eval_job.missing_pred_keys) == {"k3", "k5"}
-
     assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
 
     metrics = eval_job.metrics
@@ -942,11 +967,6 @@ def test_evaluate_classification_with_label_maps(
                 assert entry in row["entries"]
             for entry in row["entries"]:
                 assert entry in cat_expected_cm[0]["entries"]
-        else:  # check k4, v4 entry
-            for entry in cat_expected_cm[1]["entries"]:
-                assert entry in row["entries"]
-            for entry in row["entries"]:
-                assert entry in cat_expected_cm[1]["entries"]
 
     # finally, check invalid label_map
     with pytest.raises(TypeError):
@@ -961,3 +981,103 @@ def test_evaluate_classification_with_label_maps(
                 ]
             ],
         )
+
+
+@pytest.fixture
+def gt_clfs_label_key_mismatch(
+    img5: Datum,
+    img6: Datum,
+    img8: Datum,
+) -> list[GroundTruth]:
+    return [
+        GroundTruth(
+            datum=img5,
+            annotations=[
+                Annotation(
+                    task_type=TaskType.CLASSIFICATION,
+                    labels=[
+                        Label(key="k4", value="v4"),
+                        Label(key="k5", value="v5"),
+                    ],
+                ),
+            ],
+        ),
+        GroundTruth(
+            datum=img6,
+            annotations=[
+                Annotation(
+                    task_type=TaskType.CLASSIFICATION,
+                    labels=[Label(key="k4", value="v4")],
+                )
+            ],
+        ),
+        GroundTruth(
+            datum=img8,
+            annotations=[
+                Annotation(
+                    task_type=TaskType.CLASSIFICATION,
+                    labels=[Label(key="k3", value="v3")],
+                )
+            ],
+        ),
+    ]
+
+
+@pytest.fixture
+def pred_clfs_label_key_mismatch(
+    model_name: str, img5: Datum, img6: Datum
+) -> list[Prediction]:
+    return [
+        Prediction(
+            datum=img5,
+            annotations=[
+                Annotation(
+                    task_type=TaskType.CLASSIFICATION,
+                    labels=[
+                        Label(key="k12", value="v12", score=0.47),
+                        Label(key="k12", value="v16", score=0.53),
+                        Label(key="k13", value="v13", score=1.0),
+                    ],
+                )
+            ],
+        ),
+        Prediction(
+            datum=img6,
+            annotations=[
+                Annotation(
+                    task_type=TaskType.CLASSIFICATION,
+                    labels=[
+                        Label(key="k4", value="v4", score=0.71),
+                        Label(key="k4", value="v5", score=0.29),
+                    ],
+                )
+            ],
+        ),
+    ]
+
+
+def test_evaluate_classification_mismatched_label_keys(
+    client: Client,
+    gt_clfs_label_key_mismatch: list[GroundTruth],
+    pred_clfs_label_key_mismatch: list[Prediction],
+    dataset_name: str,
+    model_name: str,
+):
+    """Check that we get an error when trying to evaluate over ground truths and predictions with different sets of label keys."""
+
+    dataset = Dataset.create(dataset_name)
+    for gt in gt_clfs_label_key_mismatch:
+        dataset.add_groundtruth(gt)
+    dataset.finalize()
+
+    model = Model.create(model_name)
+    for pd in pred_clfs_label_key_mismatch:
+        model.add_prediction(dataset, pd)
+
+    model.finalize_inferences(dataset)
+
+    result = model.evaluate_classification(dataset).wait_for_completion(
+        timeout=30
+    )
+
+    assert result.value == "failed"
