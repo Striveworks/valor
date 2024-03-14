@@ -25,6 +25,8 @@ class EvaluationParameters(BaseModel):
         The confidence score threshold for use when determining whether to count a prediction as a true positive or not while calculating Average Recall.
     compute_pr_curves: bool
         A boolean which determines whether we calculate precision-recall curves or not.
+    pr_curve_iou_threshold: float, optional
+            The IOU threshold to use when calculating precision-recall curves for object detection tasks. Defaults to 0.5. Does nothing when compute_pr_curves is set to False.
     """
 
     task_type: TaskType
@@ -35,6 +37,7 @@ class EvaluationParameters(BaseModel):
     label_map: LabelMapType | None = None
     recall_score_threshold: float = 0
     compute_pr_curves: bool | None = None
+    pr_curve_iou_threshold: float = 0.5
 
     # pydantic setting
     model_config = ConfigDict(extra="forbid")
@@ -59,9 +62,9 @@ class EvaluationParameters(BaseModel):
                         "`iou_thresholds_to_return` should only be used for object detection evaluations."
                     )
             case TaskType.OBJECT_DETECTION:
-                if values.compute_pr_curves:
+                if not 0 <= values.pr_curve_iou_threshold <= 1:
                     raise ValueError(
-                        "Precision-recall curves aren't available for object detection tasks."
+                        "`pr_curve_iou_threshold` should be a float between 0 and 1 (inclusive)."
                     )
                 if values.iou_thresholds_to_return:
                     if not values.iou_thresholds_to_compute:

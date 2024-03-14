@@ -7,7 +7,7 @@ from typing import Sequence, Tuple
 from geoalchemy2 import functions as gfunc
 
 # TODO
-from sqlalchemy import and_, case, func, select
+from sqlalchemy import and_, case, func, or_, select
 
 # from sqlalchemy import and_, case, func, or_, select
 from sqlalchemy.orm import Session, aliased
@@ -61,11 +61,11 @@ def _calculate_101_pt_interp(precisions, recalls) -> float:
 
 def _compute_curves(
     sorted_ranked_pairs: dict[int, list[RankedPair]],
-    grouper_mappings: dict[str, dict[str, dict]],
+    grouper_mappings: dict[str, dict[str, schemas.Label]],
     number_of_groundtruths_per_grouper: dict[int, int],
-    mismatched_entries: list[tuple],
-    iou_threshold: float = 0.5,
-) -> dict[str, dict[float, dict[str, int | float | None]]]:
+    false_positive_entries: list[tuple],
+    iou_threshold: float,
+) -> list[schemas.PrecisionRecallCurve]:
     """
     Calculates precision-recall curves and ROCs for each class.
 
@@ -73,13 +73,13 @@ def _compute_curves(
     ----------
     sorted_ranked_pairs: dict[int, list[RankedPair]]
         The ground truth-prediction matches from psql, grouped by grouper_id.
-    grouper_mappings: dict[str, dict[str, dict]]
+    grouper_mappings: dict[str, dict[str, schemas.Label]]
         A dictionary of mappings that connect groupers to their related labels.
     number_of_groundtruths_per_grouper: dict[int, int]
         A dictionary containing the number of ground truths associated with each grouper_id.
-    mismatched_entries: list[tuple]
+    false_positive_entries: list[tuple]
         A list of predictions that don't have an associated ground truth. Used to calculate false positives.
-    iou_threshold: float = 0.5
+    iou_threshold: float
         The IOU threshold to use as a cut-off for our predictions.
 
     Returns
@@ -88,16 +88,26 @@ def _compute_curves(
         A nested dictionary where the first key is the class label, the second key is the confidence threshold (e.g., 0.05), the third key is the metric name (e.g., "precision"), and the final key is the value.
     """
 
-    output = defaultdict(lambda: defaultdict(dict))
+    output = defaultdict(dict)
 
     for grouper_id, grouper_label in grouper_mappings[
         "grouper_id_to_grouper_label_mapping"
     ].items():
+
+        curves = defaultdict(lambda: defaultdict(dict))
+
+        label_key = grouper_label.key
+        label_value = grouper_label.value
+
         for confidence_threshold in [x / 100 for x in range(5, 100, 5)]:
             if grouper_id not in sorted_ranked_pairs:
                 # happens when there are no ground truths for a label
                 tp = 0
-                fn = 0
+                fn = (
+                    number_of_groundtruths_per_grouper[grouper_id]
+                    if grouper_id in number_of_groundtruths_per_grouper
+                    else 0
+                )
             else:
                 tp, fp, fn = [0] * 3
 
@@ -113,7 +123,7 @@ def _compute_curves(
             fp = len(
                 [
                     pred_label_id
-                    for gt_label_id, pred_label_id, pred_score in mismatched_entries
+                    for gt_label_id, pred_label_id, pred_score in false_positive_entries
                     if pred_score >= confidence_threshold
                     and pred_label_id == grouper_id
                     and gt_label_id is None
@@ -129,7 +139,7 @@ def _compute_curves(
                 else -1
             )
 
-            output[grouper_label][confidence_threshold] = {
+            curves[label_value][confidence_threshold] = {
                 "tp": tp,
                 "fp": fp,
                 "fn": fn,
@@ -138,13 +148,22 @@ def _compute_curves(
                 "f1_score": f1_score,
             }
 
-    return dict(output)
+        output[label_key].update(dict(curves))
+
+    return [
+        schemas.PrecisionRecallCurve(
+            label_key=key,
+            value=value,
+            pr_curve_iou_threshold=iou_threshold,
+        )
+        for key, value in output.items()
+    ]
 
 
 def _calculate_ap_and_ar(
     sorted_ranked_pairs: dict[int, list[RankedPair]],
     number_of_groundtruths_per_grouper: dict[int, int],
-    grouper_mappings: dict[str, dict],
+    grouper_mappings: dict[str, dict[str, schemas.Label]],
     iou_thresholds: list[float],
     grouper_ids_associated_with_gts: set[
         int
@@ -287,6 +306,7 @@ def _compute_detection_metrics(
     | schemas.mAPMetric
     | schemas.mARMetric
     | schemas.mAPMetricAveragedOverIOUs
+    | schemas.PrecisionRecallCurve
 ]:
     """
     Compute detection metrics.
@@ -307,7 +327,7 @@ def _compute_detection_metrics(
 
     Returns
     ----------
-    List[schemas.APMetric | schemas.ARMetric | schemas.APMetricAveragedOverIOUs | schemas.mAPMetric | schemas.mARMetric | schemas.mAPMetricAveragedOverIOUs]
+    List[schemas.APMetric | schemas.ARMetric | schemas.APMetricAveragedOverIOUs | schemas.mAPMetric | schemas.mARMetric | schemas.mAPMetricAveragedOverIOUs | schemas.PrecisionRecallCurve]
         A list of average precision metrics.
 
     """
@@ -457,24 +477,6 @@ def _compute_detection_metrics(
         .subquery()
     )
 
-    # Get false positive predictions for precision-recall curves
-    # TODO add conditional and enable this function
-    # mismatched_entries = db.query(
-    #     select(
-    #         joint.c.gt_label_id_grouper.label("gt_label_id_grouper"),
-    #         joint.c.pd_label_id_grouper.label("pd_label_id_grouper"),
-    #         joint.c.score.label("score"),
-    #     )
-    #     .select_from(joint)
-    #     .where(
-    #         or_(
-    #             joint.c.gt_id.is_(None),
-    #             joint.c.pd_id.is_(None),
-    #         )
-    #     )
-    #     .subquery()
-    # ).all()
-
     # Order by score, iou
     ordered_ious = (
         db.query(ious).order_by(-ious.c.score, -ious.c.iou, ious.c.gt_id).all()
@@ -513,7 +515,7 @@ def _compute_detection_metrics(
             )
 
     # Get the number of groundtruths per grouper_id
-    number_of_groundtruths_per_grouper = {}
+    number_of_groundtruths_per_grouper = defaultdict(int)
 
     groundtruths = db.query(
         Query(
@@ -529,10 +531,42 @@ def _compute_detection_metrics(
 
     grouper_ids_associated_with_gts = set([row[1] for row in groundtruths])
 
-    for grouper_id in ranking.keys():
-        number_of_groundtruths_per_grouper[grouper_id] = len(
-            set([row[0] for row in groundtruths if row[1] == grouper_id])
+    for gt_id, grouper_id in groundtruths:
+        number_of_groundtruths_per_grouper[grouper_id] += 1
+
+    # TODO delete after checking tests
+    # for grouper_id in ranking.keys():
+    #     number_of_groundtruths_per_grouper[grouper_id] = len(
+    #         set([row[0] for row in groundtruths if row[1] == grouper_id])
+    #     )
+
+    # Optionally compute precision-recall curves
+    if parameters.compute_pr_curves:
+        false_positive_entries = db.query(
+            select(
+                joint.c.gt_label_id_grouper.label("gt_label_id_grouper"),
+                joint.c.pd_label_id_grouper.label("pd_label_id_grouper"),
+                joint.c.score.label("score"),
+            )
+            .select_from(joint)
+            .where(
+                or_(
+                    joint.c.gt_id.is_(None),
+                    joint.c.pd_id.is_(None),
+                )
+            )
+            .subquery()
+        ).all()
+
+        pr_curves = _compute_curves(
+            sorted_ranked_pairs=ranking,
+            grouper_mappings=grouper_mappings,
+            number_of_groundtruths_per_grouper=number_of_groundtruths_per_grouper,
+            false_positive_entries=false_positive_entries,
+            iou_threshold=parameters.pr_curve_iou_threshold,
         )
+    else:
+        pr_curves = []
 
     # Compute AP
     ap_metrics, ar_metrics = _calculate_ap_and_ar(
@@ -574,6 +608,7 @@ def _compute_detection_metrics(
         + mean_ar_metrics
         + ap_metrics_ave_over_ious
         + mean_ap_metrics_ave_over_ious
+        + pr_curves
     )
 
 

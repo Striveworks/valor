@@ -40,7 +40,7 @@ def _compute_curves(
         The filter to be used to query groundtruths.
     grouper_key: str
         The key of the grouper used to calculate the confusion matrix.
-    grouper_mappings: dict[str, dict[str | int, any]]
+    grouper_mappings: dict[str, dict[str, dict]]
         A dictionary of mappings that connect groupers to their related labels.
 
     Returns
@@ -295,7 +295,7 @@ def _compute_roc_auc(
         The filter to be used to query groundtruths.
     grouper_key : str
         The key of the grouper to calculate the ROCAUC for.
-    grouper_mappings: dict[str, dict[str | int, any]]
+    grouper_mappings: dict[str, dict[str, dict]]
         A dictionary of mappings that connect groupers to their related labels.
 
     Returns
@@ -362,7 +362,7 @@ def _compute_confusion_matrix_at_grouper_key(
         The filter to be used to query groundtruths.
     grouper_key: str
         The key of the grouper used to calculate the confusion matrix.
-    grouper_mappings: dict[str, dict[str | int, any]]
+    grouper_mappings: dict[str, dict[str, dict]]
         A dictionary of mappings that connect groupers to their related labels.
 
     Returns
@@ -563,7 +563,7 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
         The filter to be used to query predictions.
     groundtruth_filter : schemas.Filter
         The filter to be used to query groundtruths.
-    grouper_mappings: dict[str, dict[str | int, any]]
+    grouper_mappings: dict[str, dict[str, dict]]
         A dictionary of mappings that connect groupers to their related labels.
     compute_pr_curves: bool
         A boolean which determines whether we calculate precision-recall curves or not.

@@ -22,6 +22,9 @@ class EvaluationParameters:
         The confidence score threshold for use when determining whether to count a prediction as a true positive or not while calculating Average Recall.
     compute_pr_curves: bool
         A boolean which determines whether we calculate precision-recall curves or not.
+    pr_curve_iou_threshold: float, optional
+            The IOU threshold to use when calculating precision-recall curves for object detection tasks. Defaults to 0.5. Does nothing when compute_pr_curves is set to False.
+
     """
 
     task_type: TaskType
@@ -33,6 +36,7 @@ class EvaluationParameters:
     label_map: Optional[List[List[List[str]]]] = None
     recall_score_threshold: float = 0
     compute_pr_curves: bool = False
+    pr_curve_iou_threshold: float = 0.5
 
 
 @dataclass
