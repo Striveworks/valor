@@ -106,7 +106,13 @@ def get_prediction(
     model = core.fetch_model(db, name=model_name)
     dataset = core.fetch_dataset(db, name=dataset_name)
     datum = core.fetch_datum(db, dataset_id=dataset.id, uid=datum_uid)
-
+    annotations = core.get_annotations(db, datum=datum, model=model)
+    if len(annotations) == 0:
+        raise exceptions.PredictionDoesNotExistError(
+            model_name=model_name,
+            dataset_name=dataset_name,
+            datum_uid=datum_uid,
+        )
     return schemas.Prediction(
         model_name=model_name,
         datum=schemas.Datum(
@@ -114,7 +120,7 @@ def get_prediction(
             dataset_name=dataset.name,
             metadata=datum.meta,
         ),
-        annotations=core.get_annotations(db, datum=datum, model=model),
+        annotations=annotations,
     )
 
 

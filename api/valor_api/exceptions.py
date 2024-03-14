@@ -339,6 +339,17 @@ class PredictionAlreadyExistsError(Exception):
         )
 
 
+class PredictionDoesNotExistError(Exception):
+    """
+    Raises an exception if a prediction does not exist for a given model, dataset, and datum
+    """
+
+    def __init__(self, model_name: str, dataset_name: str, datum_uid: str):
+        super().__init__(
+            f"A prediction for model `{model_name}` on dataset `{dataset_name}` and datum `{datum_uid}` does not exist."
+        )
+
+
 """ Evaluation """
 
 
@@ -428,6 +439,7 @@ error_to_status_code = {
     ModelDoesNotExistError: 404,
     ModelInferencesDoNotExist: 404,
     EvaluationDoesNotExistError: 404,
+    PredictionDoesNotExistError: 404,
     # 409
     DatasetAlreadyExistsError: 409,
     DatasetIsEmptyError: 409,
