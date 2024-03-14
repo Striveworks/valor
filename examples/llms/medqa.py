@@ -1,5 +1,5 @@
+import argparse
 import random
-import sys
 import time
 from pathlib import Path, PosixPath
 
@@ -74,7 +74,11 @@ def maybe_create_dataset():
 
 
 def get_prompt(model: Model, datum: Datum) -> str:
-    return f"{model.metadata['instruction']}\n{datum.metadata['input']}"
+    template = get_prompt_template(model.name)
+
+    return template.format(
+        prompt=f"{model.metadata['instruction']}\n{datum.metadata['input']}"
+    )
 
 
 def get_openai_outlines_model(model_name: str) -> models.OpenAI:
@@ -82,7 +86,27 @@ def get_openai_outlines_model(model_name: str) -> models.OpenAI:
 
 
 def get_llama_cpp_outlines_model(model_path: PosixPath) -> models.LlamaCpp:
-    return models.llamacpp(str(model_path), model_kwargs={"n_ctx": 2048})
+    return models.llamacpp(str(model_path), n_ctx=2048)
+
+
+def get_prompt_template(name: str):
+    if "mixtral" in name:
+        return "[INST] {prompt} [/INST]"
+    if "mistral" in name:
+        return "<s>[INST] {prompt} [/INST]"
+    if "openai" in name:
+        return "{prompt}"
+    else:
+        raise ValueError(f"unknown model name {name}")
+
+
+def create_valor_model(
+    name: str, instruction: str, valor_model_metadata: dict | None = None
+) -> Model:
+    valor_model_metadata = valor_model_metadata or {}
+    valor_model_metadata["instruction"] = instruction
+    model = Model.create(name=name, metadata=valor_model_metadata)
+    return model
 
 
 def maybe_run_inference(
@@ -93,17 +117,23 @@ def maybe_run_inference(
     valor_model_metadata: dict | None = None,
 ):
     model = Model.get(name=name)
-    if model is not None:
-        print("model already exists, skipping inference")
-        return
+    if model is None:
+        model = create_valor_model(name, instruction, valor_model_metadata)
+    else:
+        # check if we already have an evaluation and if so, don't run again
+        evals = model.get_evaluations()
+        for ev in evals:
+            if ev.datum_filter.dataset_names == [dset.name]:
+                print(f"evaluation already exists for {name}, skipping")
+                return
 
-    valor_model_metadata = valor_model_metadata or {}
-    valor_model_metadata["instruction"] = instruction
-    model = Model.create(name=name, metadata=valor_model_metadata)
-
+    print(f"running inference for {name}")
     generator = generate.choice(outlines_model, answer_choices)
 
     for datum in tqdm(dset.get_datums()):
+        if model.get_prediction(dset, datum):
+            continue
+
         answer = generator(get_prompt(model, datum))
 
         model.add_prediction(
@@ -122,51 +152,44 @@ def maybe_run_inference(
     model.evaluate_classification(datasets=dset).wait_for_completion()
 
 
-base_path = Path("/Users/eric/Downloads/")
-
-
-def delete_everything():
-    y_or_n = input("Are you sure you want to delete everything? (y/n): ")
-    if y_or_n.lower() == "y":
-        for obj in client.get_models() + client.get_datasets():
-            obj.delete()
-
-
 if __name__ == "__main__":
-    connect(
-        "https://valor.striveworks.com/api/v1",
-        username="user",
-        password="bkhiRuzcIfUT",
-    )
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--host", type=str, required=True)
+    parser.add_argument("--base_path", type=Path, required=True)
+    parser.add_argument("--model_files", type=str, required=True)
 
+    args = parser.parse_args()
+    base_path = args.base_path
+    fnames = args.model_files.split(",")
+
+    connect(args.host)
     client = Client()
-
-    if len(sys.argv) > 1 and sys.argv[1] == "delete":
-        delete_everything()
-        sys.exit()
 
     maybe_create_dataset()
 
-    fname = "dolphin-2.1-mistral-7b.Q4_K_M.gguf"
     openai_model_name = "gpt-3.5-turbo"
-    for i, instruction in enumerate(instructions):
-        print("Running inference through OpenAI")
-        maybe_run_inference(
-            name=f"{openai_model_name.replace('.', '')}_prompt{i}",
-            instruction=instruction,
-            outlines_model=get_openai_outlines_model(openai_model_name),
-            dset=client.get_dataset(dset_name),
-            valor_model_metadata={
-                "model_name": openai_model_name,
-                "runtime": "openai",
-            },
-        )
 
-        print("Running inference through LlamaCpp")
-        maybe_run_inference(
-            name=f"{fname.replace('.', '')}_prompt{i}",
-            instruction=instruction,
-            outlines_model=get_llama_cpp_outlines_model(base_path / fname),
-            dset=client.get_dataset(dset_name),
-            valor_model_metadata={"model_file": fname, "runtime": "llama_cpp"},
+    names_models_and_metadata = [
+        (
+            openai_model_name,
+            get_openai_outlines_model(openai_model_name),
+            {"model_name": openai_model_name, "runtime": "openai"},
         )
+    ] + [
+        (
+            fname,
+            get_llama_cpp_outlines_model(base_path / fname),
+            {"model_file": fname, "runtime": "llama_cpp"},
+        )
+        for fname in fnames
+    ]
+
+    for name, outlines_model, valor_metadata in names_models_and_metadata:
+        for i, instruction in enumerate(instructions):
+            maybe_run_inference(
+                name=f"{name.replace('.', '')}_prompt{i}",
+                instruction=instruction,
+                outlines_model=outlines_model,
+                dset=client.get_dataset(dset_name),
+                valor_model_metadata=valor_metadata,
+            )
