@@ -418,7 +418,7 @@ class PrecisionRecallCurve(BaseModel):
 
     label_key: str
     value: dict[str, dict[float, dict[str, int | float | None]]]
-    pr_curve_iou_threshold: float = 0.5
+    pr_curve_iou_threshold: float | None = None
 
     def db_mapping(self, evaluation_id: int) -> dict:
         """
@@ -433,13 +433,14 @@ class PrecisionRecallCurve(BaseModel):
         ----------
         A mapping dictionary.
         """
+
         return {
             "value": self.value,
             "type": "PrecisionRecallCurve",
             "evaluation_id": evaluation_id,
             "parameters": {
                 "label_key": self.label_key,
-                "iou_threshold": self.pr_curve_iou_threshold,
+                "pr_curve_iou_threshold": self.pr_curve_iou_threshold,
             },
         }
 

@@ -814,7 +814,7 @@ def test_evaluate_classification_with_label_maps(
         {"type": "ROCAUC", "parameters": {"label_key": "k3"}, "value": 1.0},
         {
             "type": "PrecisionRecallCurve",
-            "parameters": {"label_key": "k3"},
+            "parameters": {"label_key": "k3", "pr_curve_iou_threshold": None},
             "value": {
                 "v1": {
                     "0.1": {
@@ -1152,7 +1152,7 @@ def test_evaluate_classification_with_label_maps(
         {"type": "ROCAUC", "parameters": {"label_key": "k5"}, "value": 1.0},
         {
             "type": "PrecisionRecallCurve",
-            "parameters": {"label_key": "k5"},
+            "parameters": {"label_key": "k5", "pr_curve_iou_threshold": None},
             "value": {
                 "v1": {
                     "0.1": {
@@ -1498,7 +1498,10 @@ def test_evaluate_classification_with_label_maps(
         },
         {
             "type": "PrecisionRecallCurve",
-            "parameters": {"label_key": "special_class"},
+            "parameters": {
+                "label_key": "special_class",
+                "pr_curve_iou_threshold": None,
+            },
             "value": {
                 "cat_type1": {
                     "0.1": {
@@ -1672,10 +1675,16 @@ def test_evaluate_classification_with_label_maps(
             "label": {"key": "special_class", "value": "cat_type1"},
         },
         {"type": "Accuracy", "parameters": {"label_key": "k4"}, "value": 0.5},
-        {"type": "ROCAUC", "parameters": {"label_key": "k4"}, "value": 1.0},
+        {
+            "type": "ROCAUC",
+            "parameters": {
+                "label_key": "k4",
+            },
+            "value": 1.0,
+        },
         {
             "type": "PrecisionRecallCurve",
-            "parameters": {"label_key": "k4"},
+            "parameters": {"label_key": "k4", "pr_curve_iou_threshold": None},
             "value": {
                 "v1": {
                     "0.1": {

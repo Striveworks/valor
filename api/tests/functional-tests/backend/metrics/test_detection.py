@@ -1099,7 +1099,7 @@ def test__compute_curves(db: Session):
     )
     assert (
         second_output[0].value["3"][0.05]["fp"] == 1
-    )  # TODO not affected when it should be; fp should consider iou threshold
+    )  # not affected since iou_threshold doesn't matter without a ground truth to compare against
     assert (
         second_output[0].value["0"][0.05]["tp"]
         == 1  # all predictions except for one are disqualified by iou_threshold

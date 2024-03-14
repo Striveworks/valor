@@ -5,11 +5,7 @@ from dataclasses import dataclass
 from typing import Sequence, Tuple
 
 from geoalchemy2 import functions as gfunc
-
-# TODO
 from sqlalchemy import and_, case, func, or_, select
-
-# from sqlalchemy import and_, case, func, or_, select
 from sqlalchemy.orm import Session, aliased
 
 from valor_api import enums, schemas
@@ -165,9 +161,7 @@ def _calculate_ap_and_ar(
     number_of_groundtruths_per_grouper: dict[int, int],
     grouper_mappings: dict[str, dict[str, schemas.Label]],
     iou_thresholds: list[float],
-    grouper_ids_associated_with_gts: set[
-        int
-    ],  # TODO is this needed? why not just use the keys from number_of_groundtruths_per_grouper
+    grouper_ids_associated_with_gts: set[int],
     recall_score_threshold: float,
 ) -> Tuple[list[schemas.APMetric], list[schemas.ARMetric]]:
     """
@@ -236,7 +230,7 @@ def _calculate_ap_and_ar(
 
                     recall_cnt_fn = (
                         number_of_groundtruths_per_grouper[grouper_id]
-                        - precision_cnt_tp  # TODO is this a typo?
+                        - precision_cnt_tp
                     )
 
                     precision_cnt_fn = (
@@ -533,12 +527,6 @@ def _compute_detection_metrics(
 
     for gt_id, grouper_id in groundtruths:
         number_of_groundtruths_per_grouper[grouper_id] += 1
-
-    # TODO delete after checking tests
-    # for grouper_id in ranking.keys():
-    #     number_of_groundtruths_per_grouper[grouper_id] = len(
-    #         set([row[0] for row in groundtruths if row[1] == grouper_id])
-    #     )
 
     # Optionally compute precision-recall curves
     if parameters.compute_pr_curves:

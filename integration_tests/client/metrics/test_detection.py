@@ -1029,7 +1029,10 @@ def test_evaluate_detection_with_label_maps(
         },
         {
             "type": "PrecisionRecallCurve",
-            "parameters": {"label_key": "class", "iou_threshold": 0.5},
+            "parameters": {
+                "label_key": "class",
+                "pr_curve_iou_threshold": 0.5,
+            },
             "value": {
                 "cat": {
                     "0.1": {
@@ -1497,7 +1500,7 @@ def test_evaluate_detection_with_label_maps(
         },
         {
             "type": "PrecisionRecallCurve",
-            "parameters": {"label_key": "k1", "iou_threshold": 0.5},
+            "parameters": {"label_key": "k1", "pr_curve_iou_threshold": 0.5},
             "value": {
                 "v1": {
                     "0.1": {
@@ -1657,7 +1660,7 @@ def test_evaluate_detection_with_label_maps(
         },
         {
             "type": "PrecisionRecallCurve",
-            "parameters": {"label_key": "k2", "iou_threshold": 0.5},
+            "parameters": {"label_key": "k2", "pr_curve_iou_threshold": 0.5},
             "value": {
                 "v2": {
                     "0.1": {
@@ -1817,7 +1820,10 @@ def test_evaluate_detection_with_label_maps(
         },
         {
             "type": "PrecisionRecallCurve",
-            "parameters": {"label_key": "class_name", "iou_threshold": 0.5},
+            "parameters": {
+                "label_key": "class_name",
+                "pr_curve_iou_threshold": 0.5,
+            },
             "value": {
                 "cat": {
                     "0.1": {
@@ -2527,7 +2533,7 @@ def test_evaluate_detection_with_label_maps(
         },
         {
             "type": "PrecisionRecallCurve",
-            "parameters": {"label_key": "k2", "iou_threshold": 0.5},
+            "parameters": {"label_key": "k2", "pr_curve_iou_threshold": 0.5},
             "value": {
                 "v2": {
                     "0.1": {
@@ -2687,7 +2693,7 @@ def test_evaluate_detection_with_label_maps(
         },
         {
             "type": "PrecisionRecallCurve",
-            "parameters": {"label_key": "foo", "iou_threshold": 0.5},
+            "parameters": {"label_key": "foo", "pr_curve_iou_threshold": 0.5},
             "value": {
                 "bar": {
                     "0.1": {
@@ -2847,7 +2853,7 @@ def test_evaluate_detection_with_label_maps(
         },
         {
             "type": "PrecisionRecallCurve",
-            "parameters": {"label_key": "k1", "iou_threshold": 0.5},
+            "parameters": {"label_key": "k1", "pr_curve_iou_threshold": 0.5},
             "value": {
                 "v1": {
                     "0.1": {
