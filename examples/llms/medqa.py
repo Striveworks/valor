@@ -172,24 +172,24 @@ if __name__ == "__main__":
     names_models_and_metadata = [
         (
             openai_model_name,
-            get_openai_outlines_model(openai_model_name),
+            lambda: get_openai_outlines_model(openai_model_name),
             {"model_name": openai_model_name, "runtime": "openai"},
         )
     ] + [
         (
             fname,
-            get_llama_cpp_outlines_model(base_path / fname),
+            lambda: get_llama_cpp_outlines_model(base_path / fname),
             {"model_file": fname, "runtime": "llama_cpp"},
         )
         for fname in fnames
     ]
 
-    for name, outlines_model, valor_metadata in names_models_and_metadata:
+    for name, get_outlines_model, valor_metadata in names_models_and_metadata:
         for i, instruction in enumerate(instructions):
             maybe_run_inference(
                 name=f"{name.replace('.', '')}_prompt{i}",
                 instruction=instruction,
-                outlines_model=outlines_model,
+                outlines_model=get_outlines_model(),
                 dset=client.get_dataset(dset_name),
                 valor_model_metadata=valor_metadata,
             )
