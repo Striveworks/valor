@@ -172,13 +172,13 @@ if __name__ == "__main__":
     names_models_and_metadata = [
         (
             openai_model_name,
-            lambda: get_openai_outlines_model(openai_model_name),
+            lambda x=openai_model_name: get_openai_outlines_model(x),
             {"model_name": openai_model_name, "runtime": "openai"},
         )
     ] + [
         (
             fname,
-            lambda: get_llama_cpp_outlines_model(base_path / fname),
+            lambda x=base_path / fname: get_llama_cpp_outlines_model(x),
             {"model_file": fname, "runtime": "llama_cpp"},
         )
         for fname in fnames
