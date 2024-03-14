@@ -408,7 +408,7 @@ def test_generate_prediction_data(client: Client):
             "label_map": None,
             "recall_score_threshold": 0.0,
             "compute_pr_curves": False,
-            "pr_curve_iou_threshold": None,
+            "pr_curve_iou_threshold": 0.5,
         },
     }
     assert len(eval_job.metrics) > 0
