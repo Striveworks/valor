@@ -155,7 +155,6 @@ def _compute_curves(
     return dict(output)
 
 
-# TODO check functional test
 def _compute_binary_roc_auc(
     db: Session,
     prediction_filter: schemas.Filter,

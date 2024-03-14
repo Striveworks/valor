@@ -5,7 +5,11 @@ from dataclasses import dataclass
 from typing import Sequence, Tuple
 
 from geoalchemy2 import functions as gfunc
+
+# TODO
 from sqlalchemy import and_, case, func, select
+
+# from sqlalchemy import and_, case, func, or_, select
 from sqlalchemy.orm import Session, aliased
 
 from valor_api import enums, schemas
@@ -51,7 +55,90 @@ def _calculate_101_pt_interp(precisions, recalls) -> float:
         if cutoff_idx >= len(data):
             continue
         ret -= prec_heap[0][0]
+
     return ret / 101
+
+
+def _compute_curves(
+    sorted_ranked_pairs: dict[int, list[RankedPair]],
+    grouper_mappings: dict[str, dict[str, dict]],
+    number_of_groundtruths_per_grouper: dict[int, int],
+    mismatched_entries: list[tuple],
+    iou_threshold: float = 0.5,
+) -> dict[str, dict[float, dict[str, int | float | None]]]:
+    """
+    Calculates precision-recall curves and ROCs for each class.
+
+    Parameters
+    ----------
+    sorted_ranked_pairs: dict[int, list[RankedPair]]
+        The ground truth-prediction matches from psql, grouped by grouper_id.
+    grouper_mappings: dict[str, dict[str, dict]]
+        A dictionary of mappings that connect groupers to their related labels.
+    number_of_groundtruths_per_grouper: dict[int, int]
+        A dictionary containing the number of ground truths associated with each grouper_id.
+    mismatched_entries: list[tuple]
+        A list of predictions that don't have an associated ground truth. Used to calculate false positives.
+    iou_threshold: float = 0.5
+        The IOU threshold to use as a cut-off for our predictions.
+
+    Returns
+    -------
+    dict
+        A nested dictionary where the first key is the class label, the second key is the confidence threshold (e.g., 0.05), the third key is the metric name (e.g., "precision"), and the final key is the value.
+    """
+
+    output = defaultdict(lambda: defaultdict(dict))
+
+    for grouper_id, grouper_label in grouper_mappings[
+        "grouper_id_to_grouper_label_mapping"
+    ].items():
+        for confidence_threshold in [x / 100 for x in range(5, 100, 5)]:
+            if grouper_id not in sorted_ranked_pairs:
+                # happens when there are no ground truths for a label
+                tp = 0
+                fn = 0
+            else:
+                tp, fp, fn = [0] * 3
+
+                for row in sorted_ranked_pairs[grouper_id]:
+                    if (
+                        row.score >= confidence_threshold
+                        and row.iou >= iou_threshold
+                    ):
+                        tp += 1
+
+                fn = number_of_groundtruths_per_grouper[grouper_id] - tp
+
+            fp = len(
+                [
+                    pred_label_id
+                    for gt_label_id, pred_label_id, pred_score in mismatched_entries
+                    if pred_score >= confidence_threshold
+                    and pred_label_id == grouper_id
+                    and gt_label_id is None
+                ]
+            )
+
+            # calculate metrics
+            precision = tp / (tp + fp) if (tp + fp) > 0 else -1
+            recall = tp / (tp + fn) if (tp + fn) > 0 else -1
+            f1_score = (
+                (2 * precision * recall) / (precision + recall)
+                if precision and recall
+                else -1
+            )
+
+            output[grouper_label][confidence_threshold] = {
+                "tp": tp,
+                "fp": fp,
+                "fn": fn,
+                "precision": precision,
+                "recall": recall,
+                "f1_score": f1_score,
+            }
+
+    return dict(output)
 
 
 def _calculate_ap_and_ar(
@@ -59,7 +146,9 @@ def _calculate_ap_and_ar(
     number_of_groundtruths_per_grouper: dict[int, int],
     grouper_mappings: dict[str, dict],
     iou_thresholds: list[float],
-    grouper_ids_associated_with_gts: set[int],
+    grouper_ids_associated_with_gts: set[
+        int
+    ],  # TODO is this needed? why not just use the keys from number_of_groundtruths_per_grouper
     recall_score_threshold: float,
 ) -> Tuple[list[schemas.APMetric], list[schemas.ARMetric]]:
     """
@@ -128,7 +217,7 @@ def _calculate_ap_and_ar(
 
                     recall_cnt_fn = (
                         number_of_groundtruths_per_grouper[grouper_id]
-                        - precision_cnt_tp
+                        - precision_cnt_tp  # TODO is this a typo?
                     )
 
                     precision_cnt_fn = (
@@ -312,9 +401,9 @@ def _compute_detection_metrics(
             pd.c.annotation_id.label("pd_ann_id"),
             pd.c.score.label("score"),
         )
-        .select_from(gt)  # type: ignore - SQLAlchemy type issue
-        .join(
-            pd,  # type: ignore - SQLAlchemy type issue
+        .select_from(pd)  # type: ignore - SQLAlchemy type issue
+        .outerjoin(
+            gt,  # type: ignore - SQLAlchemy type issue
             and_(
                 pd.c.datum_id == gt.c.datum_id,
                 pd.c.label_id_grouper == gt.c.label_id_grouper,
@@ -367,6 +456,24 @@ def _compute_detection_metrics(
         )
         .subquery()
     )
+
+    # Get false positive predictions for precision-recall curves
+    # TODO add conditional and enable this function
+    # mismatched_entries = db.query(
+    #     select(
+    #         joint.c.gt_label_id_grouper.label("gt_label_id_grouper"),
+    #         joint.c.pd_label_id_grouper.label("pd_label_id_grouper"),
+    #         joint.c.score.label("score"),
+    #     )
+    #     .select_from(joint)
+    #     .where(
+    #         or_(
+    #             joint.c.gt_id.is_(None),
+    #             joint.c.pd_id.is_(None),
+    #         )
+    #     )
+    #     .subquery()
+    # ).all()
 
     # Order by score, iou
     ordered_ious = (
