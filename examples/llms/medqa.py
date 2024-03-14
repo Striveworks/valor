@@ -94,7 +94,7 @@ def get_prompt_template(name: str):
         return "[INST] {prompt} [/INST]"
     if "mistral" in name:
         return "<s>[INST] {prompt} [/INST]"
-    if "openai" in name:
+    if "openai" or "gemma" in name:
         return "{prompt}"
     else:
         raise ValueError(f"unknown model name {name}")
