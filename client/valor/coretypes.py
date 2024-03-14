@@ -11,28 +11,18 @@ import numpy as np
 from valor.client import ClientConnection, connect, get_connection
 from valor.enums import AnnotationType, EvaluationStatus, TableStatus, TaskType
 from valor.exceptions import ClientException
-from valor.schemas.constraints import BinaryExpression
 from valor.schemas.evaluation import EvaluationParameters, EvaluationRequest
 from valor.schemas.filters import Filter
-from valor.schemas.geometry import BoundingBox, Polygon, Raster
-from valor.schemas.metadata import (
-    MetadataType,
-    dump_metadata,
-    load_metadata,
-    validate_metadata,
-)
-from valor.schemas.properties import (
-    DictionaryProperty,
-    GeometryProperty,
-    LabelProperty,
-    NumericProperty,
-    StringProperty,
+from valor.symbolic import (
+    String,
+    Label,
+    BoundingBox,
+    BoundingPolygon,
+    Raster,
+    Embedding,
+    Metadata,
 )
 from valor.typing import is_float
-
-FilterType = Union[
-    Filter, List[Union[BinaryExpression, List[BinaryExpression]]], dict
-]
 
 
 def _format_filter(filter_by: Optional[FilterType]) -> Filter:
@@ -60,140 +50,140 @@ def _format_filter(filter_by: Optional[FilterType]) -> Filter:
         raise TypeError
 
 
-class Label:
-    """
-    An object for labeling datasets, models, and annotations.
+# class Label:
+#     """
+#     An object for labeling datasets, models, and annotations.
 
-    Parameters
-    ----------
-    key : str
-        The class key of the label.
-    value : str
-        The class value of the label.
-    score : float, optional
-        The score associated with the label (if applicable).
+#     Parameters
+#     ----------
+#     key : str
+#         The class key of the label.
+#     value : str
+#         The class value of the label.
+#     score : float, optional
+#         The score associated with the label (if applicable).
 
-    Attributes
-    ----------
-    filter_by : filter_factory
-        Declarative mappers used to create filters.
-    """
+#     Attributes
+#     ----------
+#     filter_by : filter_factory
+#         Declarative mappers used to create filters.
+#     """
 
-    value = StringProperty("label_values")
-    key = StringProperty("label_keys")
-    score = NumericProperty("label_scores")
+#     value = StringProperty("label_values")
+#     key = StringProperty("label_keys")
+#     score = NumericProperty("label_scores")
 
-    def __init__(
-        self,
-        key: str,
-        value: str,
-        score: Union[float, np.floating, None] = None,
-    ):
-        if not isinstance(key, str):
-            raise TypeError("Attribute `key` should have type `str`.")
-        if not isinstance(value, str):
-            raise TypeError("Attribute `value` should have type `str`.")
-        if score is not None:
-            if not is_float(score):
-                raise TypeError(
-                    "Attribute `score` should be a floating-point number or `None`."
-                )
+#     def __init__(
+#         self,
+#         key: str,
+#         value: str,
+#         score: Union[float, np.floating, None] = None,
+#     ):
+#         if not isinstance(key, str):
+#             raise TypeError("Attribute `key` should have type `str`.")
+#         if not isinstance(value, str):
+#             raise TypeError("Attribute `value` should have type `str`.")
+#         if score is not None:
+#             if not is_float(score):
+#                 raise TypeError(
+#                     "Attribute `score` should be a floating-point number or `None`."
+#                 )
 
-        self.key = key
-        self.value = value
-        self.score = score
+#         self.key = key
+#         self.value = value
+#         self.score = score
 
-    def __str__(self) -> str:
-        """Dumps the object into a JSON formatted string."""
-        return json.dumps(self.to_dict(), indent=4)
+#     def __str__(self) -> str:
+#         """Dumps the object into a JSON formatted string."""
+#         return json.dumps(self.to_dict(), indent=4)
 
-    def __repr__(self) -> str:
-        return str(self.tuple())
+#     def __repr__(self) -> str:
+#         return str(self.tuple())
 
-    def to_dict(self) -> Dict[str, Union[str, float, np.floating, None]]:
-        """
-        Defines how a `valor.Label` object is serialized into a dictionary.
+#     def to_dict(self) -> Dict[str, Union[str, float, np.floating, None]]:
+#         """
+#         Defines how a `valor.Label` object is serialized into a dictionary.
 
-        Returns
-        ----------
-        dict
-            A dictionary describing a label.
-        """
-        return {
-            "key": self.key,
-            "value": self.value,
-            "score": self.score,
-        }
+#         Returns
+#         ----------
+#         dict
+#             A dictionary describing a label.
+#         """
+#         return {
+#             "key": self.key,
+#             "value": self.value,
+#             "score": self.score,
+#         }
 
-    @classmethod
-    def from_dict(cls, resp) -> Label:
-        """
-        Construct a label from a dictionary.
+#     @classmethod
+#     def from_dict(cls, resp) -> Label:
+#         """
+#         Construct a label from a dictionary.
 
-        Parameters
-        ----------
-        resp : dict
-            The dictionary containing a label.
+#         Parameters
+#         ----------
+#         resp : dict
+#             The dictionary containing a label.
 
-        Returns
-        -------
-        valor.Label
-        """
-        return cls(**resp)
+#         Returns
+#         -------
+#         valor.Label
+#         """
+#         return cls(**resp)
 
-    def __eq__(self, other) -> bool:
-        """
-        Defines how `Labels` are compared to one another.
+#     def __eq__(self, other) -> bool:
+#         """
+#         Defines how `Labels` are compared to one another.
 
-        Parameters
-        ----------
-        other : Label
-            The object to compare with the `Label`.
+#         Parameters
+#         ----------
+#         other : Label
+#             The object to compare with the `Label`.
 
-        Returns
-        ----------
-        boolean
-            A boolean describing whether the two objects are equal.
-        """
-        # type mismatch
-        if type(other) is not type(self):
-            return False
+#         Returns
+#         ----------
+#         boolean
+#             A boolean describing whether the two objects are equal.
+#         """
+#         # type mismatch
+#         if type(other) is not type(self):
+#             return False
 
-        # k,v mismatch
-        if self.key != other.key or self.value != other.value:
-            return False
+#         # k,v mismatch
+#         if self.key != other.key or self.value != other.value:
+#             return False
 
-        # score is None
-        if self.score is None or other.score is None:
-            return (other.score is None) == (self.score is None)
+#         # score is None
+#         if self.score is None or other.score is None:
+#             return (other.score is None) == (self.score is None)
 
-        # scores not equal
-        if is_float(self.score) and is_float(other.score):
-            return bool(np.isclose(self.score, other.score))
+#         # scores not equal
+#         if is_float(self.score) and is_float(other.score):
+#             return bool(np.isclose(self.score, other.score))
 
-        return False
+#         return False
 
-    def __hash__(self) -> int:
-        """
-        Defines how a `Label` is hashed.
+#     def __hash__(self) -> int:
+#         """
+#         Defines how a `Label` is hashed.
 
-        Returns
-        ----------
-        int
-            The hashed 'Label`.
-        """
-        return hash(f"key:{self.key},value:{self.value},score:{self.score}")
+#         Returns
+#         ----------
+#         int
+#             The hashed 'Label`.
+#         """
+#         return hash(f"key:{self.key},value:{self.value},score:{self.score}")
 
-    def tuple(self) -> Tuple[str, str, Union[float, np.floating, None]]:
-        """
-        Defines how the `Label` is turned into a tuple.
+#     def tuple(self) -> Tuple[str, str, Union[float, np.floating, None]]:
+#         """
+#         Defines how the `Label` is turned into a tuple.
 
-        Returns
-        ----------
-        tuple
-            A tuple of the `Label's` arguments.
-        """
-        return (self.key, self.value, self.score)
+#         Returns
+#         ----------
+#         tuple
+#             A tuple of the `Label's` arguments.
+#         """
+#         return (self.key, self.value, self.score)
 
 
 class Annotation:
@@ -272,26 +262,27 @@ class Annotation:
     ... )
     """
 
-    task_type = StringProperty("task_types")
-    labels = LabelProperty("labels")
-    metadata = DictionaryProperty("annotation_metadata")
-    bounding_box = GeometryProperty("bounding_box")
-    polygon = GeometryProperty("polygon")
-    raster = GeometryProperty("raster")
+    task_type = String(name="annotation_task_type")
+    labels = [Label(name="annotation_label")]
+    metadata = Metadata(name="annotation_metadata")
+    bounding_box = BoundingBox(name="annotation_box")
+    polygon = BoundingPolygon(name="annotation_polygon")
+    raster = Raster(name="annotation_raster")
+    embedding = Embedding(name="annotation_embedding")
 
     def __init__(
         self,
         task_type: TaskType,
         labels: Optional[List[Label]] = None,
-        metadata: Optional[MetadataType] = None,
+        metadata: Optional[Metadata] = None,
         bounding_box: Optional[BoundingBox] = None,
-        polygon: Optional[Polygon] = None,
+        polygon: Optional[BoundingPolygon] = None,
         raster: Optional[Raster] = None,
-        embedding: Optional[List[float]] = None,
+        embedding: Optional[List[Embedding]] = None,
     ):
-        self.task_type = TaskType(task_type)
+        self.task_type = String(value=task_type.value)
         self.labels = labels if labels else []
-        self.metadata = metadata if metadata else {}
+        self.metadata = metadata if metadata else Metadata(value={})
         self.bounding_box = bounding_box
         self.polygon = polygon
         self.raster = raster
@@ -322,9 +313,9 @@ class Annotation:
 
         # polygon
         if self.polygon is not None:
-            if not isinstance(self.polygon, Polygon):
+            if not isinstance(self.polygon, BoundingPolygon):
                 raise TypeError(
-                    "Attribute `polygon` should have type `valor.schemas.Polygon`."
+                    "Attribute `polygon` should have type `valor.schemas.BoundingPolygon`."
                 )
 
         # raster
@@ -347,10 +338,12 @@ class Annotation:
                     )
 
         # metadata
-        if not isinstance(self.metadata, dict):
-            raise TypeError("Attribute `metadata` should have type `dict`.")
-        validate_metadata(self.metadata)
-
+        if self.metadata is not None:
+            if not isinstance(self.metadata, Metadata):
+                raise TypeError(
+                    "Attribute `metadata` should have type `Metadata`."
+                )
+            
     @classmethod
     def from_dict(cls, resp: dict) -> Annotation:
         """
@@ -456,8 +449,8 @@ class Datum:
         A dictionary of metadata that describes the `Datum`.
     """
 
-    uid = StringProperty("datum_uids")
-    metadata = DictionaryProperty("datum_metadata")
+    uid = String(name="datum_uid")
+    metadata = Metadata(name="datum_metadata")
 
     def __init__(
         self,
@@ -1016,8 +1009,8 @@ class Dataset:
         A dictionary of metadata that describes the dataset.
     """
 
-    name = StringProperty("dataset_names")
-    metadata = DictionaryProperty("dataset_metadata")
+    name = String(name="dataset_name")
+    metadata = Metadata(name="dataset_metadata")
 
     def __init__(
         self,
@@ -1312,8 +1305,8 @@ class Model:
         A dictionary of metadata that describes the model.
     """
 
-    name = StringProperty("model_names")
-    metadata = DictionaryProperty("model_metadata")
+    name = String(name="model_name")
+    metadata = Metadata(name="model_metadata")
 
     def __init__(
         self,

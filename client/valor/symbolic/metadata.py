@@ -1,6 +1,6 @@
-from typing import Any
+from typing import Any, Optional, Dict
 
-from symbolic.modifiers import Variable
+from valor.symbolic.modifiers import Variable
 from valor.symbolic.atomics import (
     Integer,
     Float,
@@ -113,6 +113,14 @@ class MetadataValue():
 
 
 class Metadata(Variable):
+
+    def __init__(
+        self,
+        value: Optional[Dict[str, Any]] = None,
+        name: Optional[str] = None,
+    ):
+        super().__init__(value=value, name=name)
+
     @staticmethod
     def supports(value: Any) -> bool:
         return type(value) in {dict, Metadata}

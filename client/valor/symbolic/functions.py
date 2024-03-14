@@ -36,10 +36,8 @@ class Function:
 
 
 class OneArgumentFunction(Function):
-    def __init__(self, *args, **kwargs) -> None:
-        if len(args) != 1:
-            raise ValueError
-        super().__init__(*args, **kwargs)
+    def __init__(self, arg, **kwargs) -> None:
+        super().__init__(arg, **kwargs)
 
     @property
     def arg(self):
@@ -47,12 +45,10 @@ class OneArgumentFunction(Function):
 
 
 class TwoArgumentFunction(Function):
-    def __init__(self, *args, **kwargs) -> None:
-        if len(args) != 2:
-            raise ValueError
-        self._lhs = args[0]
-        self._rhs = args[1]
-        super().__init__(*args, **kwargs)
+    def __init__(self, lhs: Any, rhs: Any, **kwargs) -> None:
+        self._lhs = lhs
+        self._rhs = rhs
+        super().__init__(lhs, rhs, **kwargs)
 
     @property
     def lhs(self):

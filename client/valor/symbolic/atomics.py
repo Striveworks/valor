@@ -41,24 +41,7 @@ class String(Equatable):
     @staticmethod
     def supports(value: Any) -> bool:
         return type(value) in {str, String}
-
-
-class Label(Equatable):
-    
-    @staticmethod
-    def supports(value: Any) -> bool:
-        return type(value) in {coretypes.Label, Label}
-
-    @staticmethod
-    def encode(value: coretypes.Label):
-        return Label(value={value.key: value.value})
-
-    def decode(self) -> Any:
-        if type(self._value) is not dict:
-            return self._value
-        k, v = list(self._value.items())[0]
-        return coretypes.Label(key=k, value=v)
-
+        
 
 class DateTime(Quantifiable):
     @staticmethod
@@ -120,3 +103,12 @@ class Duration(Quantifiable):
         if type(self._value) is not float:
             return self._value
         return datetime.timedelta(seconds=self._value)
+
+
+
+l1 = Label.create(key="k1", value="v1", score=0.1)
+l2 = Label.create(key="k1", value="v2")
+
+print(l1.key, l1.value, l1.score, l1.decode())
+
+print(l1)
