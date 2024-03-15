@@ -166,7 +166,7 @@ Note that this metric differs from COCO's calculation in two ways:
 
 ## Precision-Recall Curves
 
-Precision-recall curves offer insight into which confidence threshold you should pick for your production pipeline. To compute these curves for your classification or object detection workflow, simply set the `compute_pr_curves` parameter to `True` when initiating your evaluation. Valor will then tabulate the true positives, false positives, true negatives, false negatives, precision, recall, and F1 score for each (label key, label value, confidence threshold) combination, and store them in a nested dictionary for your use. In our Python client, the output will be formatted as follows:
+Precision-recall curves offer insight into which confidence threshold you should pick for your production pipeline. To compute these curves for your classification or object detection workflow, simply set the `compute_pr_curves` parameter to `True` when initiating your evaluation. Valor will then tabulate the true positives, false positives, true negatives, false negatives, precision, recall, and F1 score for each (label key, label value, confidence threshold) combination, and store them in a nested dictionary for your use. When using the Valor Python client, the output will be formatted as follows:
 
 ```python
 {
