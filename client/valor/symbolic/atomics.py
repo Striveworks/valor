@@ -1,16 +1,16 @@
-import json
 import datetime
+import json
 from dataclasses import asdict, dataclass, is_dataclass
-from typing import Any, Optional, Set, Dict, Union
+from typing import Any, Dict, Optional, Set, Union
 
 import numpy as np
 
 from valor.symbolic.modifiers import (
-    Symbol,
-    Value,
     Equatable,
     Quantifiable,
     Spatial,
+    Symbol,
+    Value,
 )
 
 
@@ -18,38 +18,31 @@ class Bool(Equatable):
     """
     Bool wrapper.
     """
-    
+
     @staticmethod
     def supports(value: Any) -> bool:
         return type(value) is bool
 
 
 class Integer(Quantifiable):
-    
     @staticmethod
     def supports(value: Any) -> bool:
         return type(value) in {int, np.integer}
-    
+
 
 class Float(Quantifiable):
-    
     @staticmethod
     def supports(value: Any) -> bool:
-        return (
-            type(value) in {float, np.floating}
-            or Integer.supports(value)
-        )
+        return type(value) in {float, np.floating} or Integer.supports(value)
 
 
 class String(Equatable):
-    
     @staticmethod
     def supports(value: Any) -> bool:
         return type(value) is str
-        
+
 
 class DateTime(Quantifiable):
-
     @staticmethod
     def supports(value: Any) -> bool:
         return type(value) is datetime.datetime
@@ -65,7 +58,6 @@ class DateTime(Quantifiable):
 
 
 class Date(Quantifiable):
-
     @staticmethod
     def supports(value: Any) -> bool:
         return type(value) is datetime.date
@@ -81,7 +73,6 @@ class Date(Quantifiable):
 
 
 class Time(Quantifiable):
-
     @staticmethod
     def supports(value: Any) -> bool:
         return type(value) is datetime.time
@@ -97,7 +88,6 @@ class Time(Quantifiable):
 
 
 class Duration(Quantifiable):
-
     @staticmethod
     def supports(value: Any) -> bool:
         return type(value) is datetime.timedelta
@@ -113,13 +103,22 @@ class Duration(Quantifiable):
 
 
 class StaticCollection(Equatable):
-        
+    def __init__(self, value: dict):
+        if type(value) is not Symbol:
+            pass
+            # check if value dict matches vars
+            # if it does, insert values with definites.
+
+        super().__init__(value=value)
+
     @staticmethod
     def search_for_values(obj):
         if issubclass(type(obj), StaticCollection):
             retval = dict()
             for name in vars(obj):
-                if value := StaticCollection.search_for_values(obj.__getattribute__(name)):
+                if value := StaticCollection.search_for_values(
+                    obj.__getattribute__(name)
+                ):
                     retval[name] = value
             return retval
         elif issubclass(type(obj), Value) and obj.is_value():
@@ -130,7 +129,7 @@ class StaticCollection(Equatable):
                 if value := StaticCollection.search_for_values(element):
                     retval.append(value)
         return None
-    
+
     def to_dict(self) -> Dict[str, Any]:
         if self.is_symbolic():
             return super().to_dict()
@@ -138,25 +137,24 @@ class StaticCollection(Equatable):
         if not isinstance(ret, dict):
             raise ValueError  # This is just to avoid typing errors.
         return ret
-    
+
     @staticmethod
     def supports(value: Any) -> bool:
         return type(value) is dict
-    
+
     @staticmethod
     def encode(value: Value):
         return StaticCollection.search_for_values(value)
-        
+
     def decode(self):
         return self
-    
+
     def __repr__(self):
         if self.is_symbolic():
             return super().__repr__()
         return self.encode(self).__repr__()
-    
+
     def __str__(self):
         if self.is_symbolic():
             return super().__str__()
         return str(self.encode(self))
-

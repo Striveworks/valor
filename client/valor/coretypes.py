@@ -4,7 +4,7 @@ import json
 import time
 import warnings
 from dataclasses import asdict, dataclass
-from typing import Dict, List, Optional, Tuple, Union, Any
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 
@@ -14,21 +14,20 @@ from valor.exceptions import ClientException
 from valor.schemas.evaluation import EvaluationParameters, EvaluationRequest
 from valor.schemas.filters import Filter
 from valor.symbolic import (
-    Symbol,
-    Equatable,
-    Nullable,
-    Value,
-    String,
-    Score,
     BoundingBox,
     BoundingPolygon,
-    Raster,
     Embedding,
+    Equatable,
     Metadata,
+    Nullable,
+    Raster,
+    Score,
     StaticCollection,
+    String,
+    Symbol,
+    Value,
     jsonify,
 )
-
 
 FilterType = Union[list, dict]  # TODO - Remove this
 
@@ -93,7 +92,7 @@ class Label(StaticCollection):
         ret.value = String.definite(value)
         ret.score = Score.definite(score)
         return ret
-    
+
     @staticmethod
     def supports(value: Any) -> bool:
         return type(value) is dict
@@ -118,7 +117,7 @@ class Label(StaticCollection):
 
     #     # k,v mismatch
     #     if (
-    #         self.key._value != other.key._value 
+    #         self.key._value != other.key._value
     #         or self.value._value != other.value._value
     #     ):
     #         return False
@@ -157,26 +156,19 @@ class Label(StaticCollection):
 
 
 class LabelList(Equatable, Nullable):
-
     @staticmethod
     def supports(value: Any) -> bool:
         if type(value) is not list:
             return False
         for element in value:
-            if (
-                type(element) is not Label
-                or not element.is_value()
-            ):
+            if type(element) is not Label or not element.is_value():
                 return False
         return True
-    
+
     @staticmethod
     def encode(value: List[Label]):
-        return [
-            label.encode(label)
-            for label in value
-        ]
-    
+        return [label.encode(label) for label in value]
+
     def decode(self):
         pass
 
@@ -260,8 +252,12 @@ class Annotation(StaticCollection):
     task_type = String.symbolic(name="annotation", attribute="task_type")
     labels = LabelList.symbolic(name="annotation", attribute="labels")
     metadata = Metadata.symbolic(name="annotation", attribute="metadata")
-    bounding_box = BoundingBox.symbolic(name="annotation", attribute="bounding_box")
-    polygon = BoundingPolygon.symbolic(name="annotation", attribute="bounding_polygon")
+    bounding_box = BoundingBox.symbolic(
+        name="annotation", attribute="bounding_box"
+    )
+    polygon = BoundingPolygon.symbolic(
+        name="annotation", attribute="bounding_polygon"
+    )
     raster = Raster.symbolic(name="annotation", attribute="raster")
     embedding = Embedding.symbolic(name="annotation", attribute="embedding")
 
@@ -288,16 +284,12 @@ class Annotation(StaticCollection):
 
 
 class AnnotationList(Value):
-
     @staticmethod
     def supports(value: Any) -> bool:
         if type(value) is not list:
             return False
         for element in value:
-            if (
-                type(element) is not Label
-                or not element.is_value()
-            ):
+            if type(element) is not Label or not element.is_value():
                 return False
         return True
 
@@ -335,7 +327,7 @@ class Datum(StaticCollection):
             raise ValueError("Datum uid is symbolic and has no value.")
         else:
             return self.uid._value
-        
+
 
 if __name__ == "__main__":
     l = Label.symbolic()
@@ -344,14 +336,11 @@ if __name__ == "__main__":
     print(str(l))
     print(str(label))
 
-    Label()
-
     cond = (
-        Annotation.labels.is_none() 
-        | (Annotation.bounding_box.area > 200) 
+        Annotation.labels.is_none()
+        | (Annotation.bounding_box.area > 200)
         | (Label.symbolic() == Label.create(key="k1", value="v1"))
-        | (Datum.uid == "1234")
-        & (Annotation.labels == [label])
+        | (Datum.uid == "1234") & (Annotation.labels == [label])
     )
     print(cond)
 
@@ -371,9 +360,11 @@ class GroundTruth(StaticCollection):
     annotations : List[Annotation]
         The list of `Annotations` associated with the `GroundTruth`.
     """
-    
+
     datum = Datum.symbolic(name="groundtruth", attribute="datum")
-    annotations = AnnotationList.symbolic(name="groundtruth", attribute="annotations")
+    annotations = AnnotationList.symbolic(
+        name="groundtruth", attribute="annotations"
+    )
 
     def __init__(self, datum: Datum, annotations: List[Annotation], **kwargs):
         self.datum = Datum.definite(datum)
@@ -400,7 +391,9 @@ class Prediction(StaticCollection):
     """
 
     datum = Datum.symbolic(name="prediction", attribute="datum")
-    annotations = AnnotationList.symbolic(name="prediction", attribute="annotations")
+    annotations = AnnotationList.symbolic(
+        name="prediction", attribute="annotations"
+    )
 
     def __init__(self, datum: Datum, annotations: List[Annotation], **kwargs):
         self.datum = Datum.definite(datum)
@@ -415,7 +408,7 @@ class Prediction(StaticCollection):
         """
         if type(self.annotations._value) is not list:
             raise TypeError  # NOTE - This exists only for typing.
-        
+
         for annotation in self.annotations._value:
             task_type = annotation.task_type._value
             if task_type in [
@@ -1094,8 +1087,7 @@ class Model(StaticCollection):
         dataset_names_from_obj = []
         if isinstance(datasets, list):
             dataset_names_from_obj = [
-                dataset.get_name() 
-                for dataset in datasets
+                dataset.get_name() for dataset in datasets
             ]
         elif isinstance(datasets, Dataset):
             dataset_names_from_obj = [datasets.get_name()]
@@ -1145,8 +1137,8 @@ class Model(StaticCollection):
                 raise TypeError
             return_value.append(
                 [
-                    [key.key._value, key.value._value], 
-                    [value.key._value, value.value._value]
+                    [key.key._value, key.value._value],
+                    [value.key._value, value.value._value],
                 ]
             )
         return return_value
@@ -1229,7 +1221,7 @@ class Model(StaticCollection):
         -------
         Evaluation
             A job object that can be used to track the status of the job and get the metrics of it upon completion.
-        """        
+        """
         if iou_thresholds_to_compute is None:
             iou_thresholds_to_compute = [
                 round(0.5 + 0.05 * i, 2) for i in range(10)
@@ -1411,7 +1403,9 @@ class Client:
         List[valor.Label]
             A list of labels.
         """
-        dataset_name = dataset.get_name() if isinstance(dataset, Dataset) else dataset
+        dataset_name = (
+            dataset.get_name() if isinstance(dataset, Dataset) else dataset
+        )
         return [
             Label.create(**label)
             for label in self.conn.get_labels_from_dataset(dataset_name)
@@ -1506,7 +1500,9 @@ class Client:
         Union[GroundTruth, None]
             The matching ground truth or 'None' if it doesn't exist.
         """
-        dataset_name = dataset.get_name() if isinstance(dataset, Dataset) else dataset
+        dataset_name = (
+            dataset.get_name() if isinstance(dataset, Dataset) else dataset
+        )
         datum_uid = datum.get_uid() if isinstance(datum, Datum) else datum
         try:
             resp = self.conn.get_groundtruth(
@@ -1527,7 +1523,9 @@ class Client:
         dataset : str
             The dataset to be finalized.
         """
-        dataset_name = dataset.get_name() if isinstance(dataset, Dataset) else dataset
+        dataset_name = (
+            dataset.get_name() if isinstance(dataset, Dataset) else dataset
+        )
         return self.conn.finalize_dataset(name=dataset_name)
 
     def get_dataset(
@@ -1625,7 +1623,9 @@ class Client:
         valor.Datum
             The requested datum or 'None' if it doesn't exist.
         """
-        dataset_name = dataset.get_name() if isinstance(dataset, Dataset) else dataset
+        dataset_name = (
+            dataset.get_name() if isinstance(dataset, Dataset) else dataset
+        )
         try:
             resp = self.conn.get_datum(dataset_name=dataset_name, uid=uid)
             return Datum.create(**resp)
@@ -1772,7 +1772,9 @@ class Client:
         Union[Prediction, None]
             The matching prediction or 'None' if it doesn't exist.
         """
-        dataset_name = dataset.get_name() if isinstance(dataset, Dataset) else dataset
+        dataset_name = (
+            dataset.get_name() if isinstance(dataset, Dataset) else dataset
+        )
         model_name = model.get_name() if isinstance(model, Model) else model
         datum_uid = datum.get_uid() if isinstance(datum, Datum) else datum
         try:
@@ -1793,7 +1795,9 @@ class Client:
         """
         Finalizes a model-dataset pairing such that new predictions cannot be added to it.
         """
-        dataset_name = dataset.get_name() if isinstance(dataset, Dataset) else dataset
+        dataset_name = (
+            dataset.get_name() if isinstance(dataset, Dataset) else dataset
+        )
         model_name = model.get_name() if isinstance(model, Model) else model
         return self.conn.finalize_inferences(
             dataset_name=dataset_name,
@@ -1818,10 +1822,7 @@ class Client:
             A Model with matching name or 'None' if one doesn't exist.
         """
         try:
-            return Model(
-                connection=self.conn,
-                **self.conn.get_model(name)
-            )
+            return Model(connection=self.conn, **self.conn.get_model(name))
         except ClientException as e:
             if e.status_code == 404:
                 return None
@@ -1961,7 +1962,6 @@ class Client:
             models = [
                 element.get_name() if isinstance(element, Model) else element
                 for element in models
-
             ]
         return [
             Evaluation(connection=self.conn, **evaluation)
