@@ -1,0 +1,1 @@
+-- if there's an error in altering the column, then we don't need to revert any changes
