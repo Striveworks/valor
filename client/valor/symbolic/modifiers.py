@@ -1,6 +1,6 @@
-import numpy as np
-
 from typing import Any, Optional
+
+import numpy as np
 
 from valor.symbolic.functions import (
     Eq,
@@ -37,7 +37,7 @@ class Symbol:
             ret += f", attribute={self._attribute}"
         ret += ")"
         return ret
-    
+
     def __str__(self):
         ret = self._name
         if self._key is not None:
@@ -60,7 +60,7 @@ class Value:
     def __init__(
         self,
         value: Any,
-    ): 
+    ):
         if value is not None:
             self.validate_type(value)
         self._value = value if value else None
@@ -102,10 +102,7 @@ class Value:
 
     @classmethod
     def validate_type(cls, value: Any):
-        if (
-            type(value) not in {cls, Symbol}
-            and not cls.supports(value)
-        ):
+        if type(value) not in {cls, Symbol} and not cls.supports(value):
             raise TypeError(
                 f"Value with `{str(value)}` with type `{type(value)}` is not in supported types."
             )
@@ -132,23 +129,21 @@ class Value:
             return self._value.to_dict()
         else:
             return {
-                "type" : type(self).__name__.lower(),
-                "value" : self._value,
+                "type": type(self).__name__.lower(),
+                "value": self._value,
             }
-        
+
     def get_value(self):
         if type(self._value) is not Symbol:
             return self.decode()
-        
+
     def get_symbol(self) -> Symbol:
         if type(self._value) is not Symbol:
             raise ValueError
         return self._value
-        
 
 
 class Equatable(Value):
-
     def __eq__(self, value: Any):
         other = self.encode(value)
         if self.is_value() and other.is_value():
@@ -163,7 +158,6 @@ class Equatable(Value):
 
 
 class Quantifiable(Equatable):
-
     def __gt__(self, value: Any):
         other = self.encode(value)
         if self.is_value() and other.is_value():
@@ -190,7 +184,6 @@ class Quantifiable(Equatable):
 
 
 class Nullable(Value):
-
     def is_none(self):
         return IsNull(self)
 
@@ -199,7 +192,6 @@ class Nullable(Value):
 
 
 class Spatial(Value):
-
     def intersects(self, other: Any):
         return Intersects(self, self.encode(other))
 

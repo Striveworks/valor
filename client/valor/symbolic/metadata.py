@@ -1,26 +1,27 @@
-from typing import Any, Optional, Dict
+from typing import Any, Dict, Optional
 
-from valor.symbolic.modifiers import Value, Symbol
 from valor.symbolic.atomics import (
-    Integer,
-    Float,
-    String,
     Bool,
-    DateTime,
     Date,
-    Time,
+    DateTime,
     Duration,
+    Float,
+    Integer,
+    String,
+    Time,
 )
 from valor.symbolic.geojson import (
-    Point,
-    MultiPoint,
     LineString,
     MultiLineString,
-    Polygon,
+    MultiPoint,
     MultiPolygon,
+    Point,
+    Polygon,
 )
+from valor.symbolic.modifiers import Symbol, Value
 
-class MetadataValue():
+
+class MetadataValue:
     def __init__(self, name: str, key: str, attribute: Optional[str] = None):
         self._name = name
         self._key = key
@@ -60,11 +61,7 @@ class MetadataValue():
 
     @property
     def area(self):
-        return Float.symbolic(
-            name=self._name,
-            key=self._key,
-            attribute="area"
-        )
+        return Float.symbolic(name=self._name, key=self._key, attribute="area")
 
     def _router(self, fn: str, other: Any):
         type_ = type(other)
@@ -75,7 +72,7 @@ class MetadataValue():
         elif Integer.supports(other):
             obj = Integer
         elif Float.supports(other):
-            obj = Float        
+            obj = Float
         elif DateTime.supports(other):
             obj = DateTime
         elif Date.supports(other):
@@ -99,14 +96,12 @@ class MetadataValue():
         else:
             raise NotImplementedError(str(other))
 
-        return obj.symbolic(
-            name=self._name,
-            key=self._key,
-        ).__getattribute__(fn)(other)
+        return obj.symbolic(name=self._name, key=self._key,).__getattribute__(
+            fn
+        )(other)
 
 
 class Metadata(Value):
-
     def __init__(
         self,
         value: Optional[Dict[str, Any]],

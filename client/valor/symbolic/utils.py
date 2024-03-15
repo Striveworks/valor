@@ -1,13 +1,13 @@
-import numpy as np
-
 from typing import Any
+
+import numpy as np
 
 from valor.symbolic.functions import (
     AppendableFunction,
     OneArgumentFunction,
     TwoArgumentFunction,
 )
-from valor.symbolic.modifiers import Value, Equatable, Nullable
+from valor.symbolic.modifiers import Equatable, Nullable, Value
 
 
 def jsonify(expr):
@@ -25,7 +25,9 @@ def jsonify(expr):
         }
     elif issubclass(type_, AppendableFunction):
         return {"op": type_name, "args": [jsonify(arg) for arg in expr._args]}
-    elif isinstance(expr, (int, float, np.floating, str, dict, list)):  # TODO - Remove dict, list, dangerous to have here
+    elif isinstance(
+        expr, (int, float, np.floating, str, dict, list)
+    ):  # TODO - Remove dict, list, dangerous to have here
         if isinstance(expr, np.floating):
             expr = float(expr)
         return {type(expr).__name__.lower(): expr}

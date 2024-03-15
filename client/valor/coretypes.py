@@ -165,8 +165,8 @@ class LabelList(Equatable, Nullable):
                 return False
         return True
 
-    @staticmethod
-    def encode(value: List[Label]):
+    @classmethod
+    def encode(cls, value: List[Label]):
         return [label.encode(label) for label in value]
 
     def decode(self):
@@ -370,7 +370,7 @@ class GroundTruth(StaticCollection):
         self.datum = Datum.definite(datum)
         self.annotations = AnnotationList.definite(annotations)
         self.kwargs = kwargs
-        super().__init__(value=Symbol)
+        super().__init__(value=Symbol())
 
 
 class Prediction(StaticCollection):

@@ -1,12 +1,12 @@
-import numpy as np
-from typing import Any, List, Tuple, Optional
+from typing import Any, List, Optional, Tuple
 
-from valor.symbolic.modifiers import Symbol, Value, Spatial
+import numpy as np
+
 from valor.symbolic.atomics import Float
+from valor.symbolic.modifiers import Spatial, Symbol, Value
 
 
 class Point(Spatial):
-
     def __init__(
         self,
         value: Optional[Tuple[float, float]] = None,
@@ -23,10 +23,9 @@ class Point(Spatial):
             )
         else:
             return issubclass(type(value), Point)
-        
+
 
 class MultiPoint(Spatial):
-
     def __init__(
         self,
         value: Optional[List[Tuple[float, float]]] = None,
@@ -45,7 +44,6 @@ class MultiPoint(Spatial):
 
 
 class LineString(Spatial):
-
     def __init__(
         self,
         value: Optional[List[Tuple[float, float]]] = None,
@@ -58,10 +56,9 @@ class LineString(Spatial):
             return len(value) >= 2
         else:
             return issubclass(type(value), LineString)
-        
+
 
 class MultiLineString(Spatial):
-
     def __init__(
         self,
         value: Optional[List[List[Tuple[float, float]]]] = None,
@@ -80,7 +77,6 @@ class MultiLineString(Spatial):
 
 
 class Polygon(Spatial):
-
     def __init__(
         self,
         value: Optional[List[List[Tuple[float, float]]]] = None,
@@ -91,15 +87,12 @@ class Polygon(Spatial):
     def supports(value: Any) -> bool:
         if MultiLineString.supports(value):
             for line in value:
-                if not (
-                    len(line) >= 4
-                    and line[0] == line[-1]
-                ):
+                if not (len(line) >= 4 and line[0] == line[-1]):
                     return False
             return True
         else:
             return issubclass(type(value), Polygon)
-        
+
     @property
     def area(self):
         if not isinstance(self._value, Symbol):
@@ -108,7 +101,6 @@ class Polygon(Spatial):
 
 
 class MultiPolygon(Spatial):
-
     def __init__(
         self,
         value: Optional[List[List[List[Tuple[float, float]]]]] = None,
@@ -124,7 +116,7 @@ class MultiPolygon(Spatial):
             return True
         else:
             return issubclass(type(value), MultiPolygon)
-        
+
     @property
     def area(self):
         if not isinstance(self._value, Symbol):
@@ -133,7 +125,6 @@ class MultiPolygon(Spatial):
 
 
 class GeoJSON(Value):
-
     @staticmethod
     def supports(value: Any) -> bool:
         match value["geometry"]["type"]:
@@ -154,4 +145,3 @@ class GeoJSON(Value):
         if not geometry_type.supports(value["geometry"]["coordinates"]):
             return False
         return True
-    

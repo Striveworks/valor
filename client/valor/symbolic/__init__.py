@@ -1,3 +1,15 @@
+from .annotations import BoundingBox, BoundingPolygon, Embedding, Raster, Score
+from .atomics import (
+    Bool,
+    Date,
+    DateTime,
+    Duration,
+    Float,
+    Integer,
+    StaticCollection,
+    String,
+    Time,
+)
 from .functions import (
     And,
     Eq,
@@ -13,44 +25,26 @@ from .functions import (
     Negate,
     Or,
     Outside,
-    Xor,
     Where,
-)
-from .modifiers import (
-    Symbol,
-    Value,
-    Equatable,
-    Quantifiable,
-    Nullable,
-    Spatial,
-)
-from .atomics import (
-    Bool,
-    Integer,
-    Float,
-    String,
-    DateTime,
-    Date,
-    Time,
-    Duration,
-    StaticCollection,
+    Xor,
 )
 from .geojson import (
-    Point,
-    MultiPoint,
     LineString,
     MultiLineString,
-    Polygon,
+    MultiPoint,
     MultiPolygon,
-)
-from .annotations import (
-    Score,
-    BoundingBox,
-    BoundingPolygon,
-    Raster,
-    Embedding,
+    Point,
+    Polygon,
 )
 from .metadata import Metadata
+from .modifiers import (
+    Equatable,
+    Nullable,
+    Quantifiable,
+    Spatial,
+    Symbol,
+    Value,
+)
 from .utils import jsonify
 
 __all__ = [
