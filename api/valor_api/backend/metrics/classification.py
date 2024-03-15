@@ -28,7 +28,7 @@ def _compute_curves(
     grouper_mappings: dict[str, dict[str, dict]],
 ) -> dict[str, dict[float, dict[str, int | float | None]]]:
     """
-    Calculates precision-recall curves and ROCs for each class.
+    Calculates precision-recall curves for each class.
 
     Parameters
     ----------
@@ -39,13 +39,13 @@ def _compute_curves(
     groundtruth_filter: schemas.Filter
         The filter to be used to query groundtruths.
     grouper_key: str
-        The key of the grouper used to calculate the confusion matrix.
+        The key of the grouper used to calculate the PR curves.
     grouper_mappings: dict[str, dict[str, dict]]
         A dictionary of mappings that connect groupers to their related labels.
 
     Returns
     -------
-    dict
+    dict[str, dict[float, dict[str, int | float | None]]]
         A nested dictionary where the first key is the class label, the second key is the confidence threshold (e.g., 0.05), the third key is the metric name (e.g., "precision"), and the final key is the value.
     """
 

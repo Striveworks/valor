@@ -63,7 +63,7 @@ def _compute_curves(
     iou_threshold: float,
 ) -> list[schemas.PrecisionRecallCurve]:
     """
-    Calculates precision-recall curves and ROCs for each class.
+    Calculates precision-recall curves for each class.
 
     Parameters
     ----------

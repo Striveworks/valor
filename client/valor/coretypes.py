@@ -1640,7 +1640,7 @@ class Model:
         compute_pr_curves: bool, optional
             A boolean which determines whether we calculate precision-recall curves or not.
         pr_curve_iou_threshold: float, optional
-            The IOU threshold to use when calculating precision-recall curves. Defaults to 0.5. Does nothing when compute_pr_curves is set to False.
+            The IOU threshold to use when calculating precision-recall curves. Defaults to 0.5. Does nothing when compute_pr_curves is set to False or None.
 
 
         Returns
