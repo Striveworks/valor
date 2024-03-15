@@ -18,17 +18,15 @@ from .coretypes import (
     Datum,
     Evaluation,
     GroundTruth,
-    Label,
     Model,
     Prediction,
 )
-from .schemas import Constraint, Filter
+from .schemas import Filter
 
 __all__ = [
     "connect",
     "Client",
     "ClientConnection",
-    "Label",
     "Evaluation",
     "Dataset",
     "Model",
@@ -37,5 +35,4 @@ __all__ = [
     "GroundTruth",
     "Prediction",
     "Filter",
-    "Constraint",
 ]

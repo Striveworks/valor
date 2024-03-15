@@ -16,16 +16,24 @@ from .functions import (
     Xor,
     Where,
 )
+from .modifiers import (
+    Symbol,
+    Value,
+    Equatable,
+    Quantifiable,
+    Nullable,
+    Spatial,
+)
 from .atomics import (
     Bool,
     Integer,
     Float,
     String,
-    Label,
     DateTime,
     Date,
     Time,
     Duration,
+    StaticCollection,
 )
 from .geojson import (
     Point,
@@ -36,6 +44,7 @@ from .geojson import (
     MultiPolygon,
 )
 from .annotations import (
+    Score,
     BoundingBox,
     BoundingPolygon,
     Raster,
@@ -61,15 +70,22 @@ __all__ = [
     "Outside",
     "Xor",
     "Where",
+    "Symbol",
+    "Value",
+    "Equatable",
+    "Quantifiable",
+    "Nullable",
+    "Spatial",
     "Bool",
     "Integer",
     "Float",
     "String",
-    "Label",
+    "Score",
     "DateTime",
     "Date",
     "Time",
     "Duration",
+    "StaticCollection",
     "Point",
     "MultiPoint",
     "LineString",

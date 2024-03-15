@@ -1,6 +1,6 @@
 from typing import Any, Optional, Dict
 
-from valor.symbolic.modifiers import Variable
+from valor.symbolic.modifiers import Value, Symbol
 from valor.symbolic.atomics import (
     Integer,
     Float,
@@ -19,14 +19,9 @@ from valor.symbolic.geojson import (
     Polygon,
     MultiPolygon,
 )
-from valor.symbolic.annotations import (
-    BoundingBox,
-    BoundingPolygon,
-    Raster,
-)
 
 class MetadataValue():
-    def __init__(self, name: str, key: str):
+    def __init__(self, name: str, key: str, attribute: Optional[str] = None):
         self._name = name
         self._key = key
 
@@ -65,7 +60,11 @@ class MetadataValue():
 
     @property
     def area(self):
-        return Float(name=self._name, key=self._key, attribute="area")
+        return Float.symbolic(
+            name=self._name,
+            key=self._key,
+            attribute="area"
+        )
 
     def _router(self, fn: str, other: Any):
         type_ = type(other)
@@ -97,37 +96,30 @@ class MetadataValue():
             obj = Polygon
         elif MultiPolygon.supports(other):
             obj = MultiPolygon
-        elif BoundingBox.supports(other):
-            obj = BoundingBox
-        elif BoundingPolygon.supports(other):
-            obj = BoundingPolygon
-        elif Raster.supports(other):
-            obj = Raster
         else:
             raise NotImplementedError(str(other))
 
-        return obj(
+        return obj.symbolic(
             name=self._name,
             key=self._key,
         ).__getattribute__(fn)(other)
 
 
-class Metadata(Variable):
+class Metadata(Value):
 
     def __init__(
         self,
-        value: Optional[Dict[str, Any]] = None,
-        name: Optional[str] = None,
+        value: Optional[Dict[str, Any]],
     ):
-        super().__init__(value=value, name=name)
+        super().__init__(value)
 
     @staticmethod
     def supports(value: Any) -> bool:
         return type(value) in {dict, Metadata}
 
     def __getitem__(self, key: str):
-        if self.is_symbolic():
-            return MetadataValue(name=self._name, key=key)
+        if type(self._value) is Symbol:
+            return MetadataValue(name=self._value._name, key=key)
         return self.value[key]
 
     def __setitem__(self, key: str, value: Any):
@@ -136,7 +128,7 @@ class Metadata(Variable):
         self.value[key] = value
 
     def to_dict(self):
-        if self.is_symbolic:
-            return {"symbol": self._name}
+        if type(self._value) is Symbol:
+            return {"symbol": self._value._name}
         else:
-            return {self._name: self.value}
+            return self._value

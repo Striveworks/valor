@@ -1,62 +1,20 @@
+import numpy as np
+
 from typing import Union, Optional, Any
 
-from valor.symbolic.modifiers import Equatable, Spatial, Nullable
-from valor.symbolic.attributes import Area
+from valor.symbolic.modifiers import Symbol, Spatial, Nullable
 from valor.symbolic.atomics import String, Float
 from valor.symbolic.geojson import Polygon, MultiPolygon
 
-
-class Label(Equatable):
-
-    @classmethod
-    def create(cls, key: str, value: str, score: Optional[float] = None):
-        label = {
-            "key": key,
-            "value": value,
-            "score": score,
-        }
-        return cls(value=label)
+    
+class Score(Float, Nullable):
     
     @staticmethod
     def supports(value: Any) -> bool:
-        if isinstance(value, dict):
-            return (
-                set(value.keys()) == {"key", "value", "score"}
-                and String.supports(value["key"])
-                and String.supports(value["value"])
-                and (
-                    Float.supports(value["score"])
-                    or value["score"] is None
-                )
-            )
-        return type(value) is Label
-    
-    def __repr__(self):
-        return f"Label(value={self._value})" if self._value else super().__repr__()
-        
-    def __str__(self):
-        return f"Label(value={self._value})" if self._value else super().__str__()
-    
-    @property
-    def key(self):
-        if self.is_value():
-            return self._value["key"] if self._value else None
-        else:
-            return String(name=self._name, attribute="key")
-    
-    @property
-    def value(self):
-        if self.is_value():
-            return self._value["value"] if self._value else None
-        else:
-            return String(name=self._name, attribute="value")
-
-    @property
-    def score(self):
-        if self.is_value():
-            return self._value["score"] if self._value else None
-        else:
-            return String(name=self._name, attribute="score")
+        return (
+            Float.supports(value)
+            or value is None
+        )
 
 
 class BoundingBox(Polygon, Nullable):
@@ -79,17 +37,58 @@ class BoundingBox(Polygon, Nullable):
             ]
         ]
         return cls(value=points)
+    
+    @staticmethod
+    def supports(value: Any) -> bool:
+        return (
+            Polygon.supports(value)
+            or value is None
+        )
 
 
 class BoundingPolygon(Polygon, Nullable):
-    pass
+    
+    @staticmethod
+    def supports(value: Any) -> bool:
+        return (
+            Polygon.supports(value)
+            or value is None
+        )
 
 
-class Raster(Spatial, Nullable, Area):
+class Raster(Spatial, Nullable):
+
+    @classmethod
+    def from_numpy(cls, array: np.ndarray):
+        pass
     
     @classmethod
     def from_geometry(cls, geometry: Union[Polygon, MultiPolygon]):
         pass
+
+    @staticmethod
+    def supports(value: Any) -> bool:
+        return (
+            String.supports(value)
+            or value is None
+        )
+    
+    @staticmethod
+    def encode(value: Any):
+        pass
+
+    def decode(self):
+        pass
+
+    @property
+    def area(self):
+        if not isinstance(self._value, Symbol):
+            raise ValueError
+        return Float.symbolic(name=self._value._name, attribute="area")
+    
+    @property
+    def array(self) -> np.ndarray:
+        raise ValueError
 
 
 class Embedding(Spatial, Nullable):

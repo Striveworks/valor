@@ -1,17 +1,19 @@
 import numpy as np
 
+from typing import Any
+
 from valor.symbolic.functions import (
     AppendableFunction,
     OneArgumentFunction,
     TwoArgumentFunction,
 )
-from valor.symbolic.modifiers import Variable
+from valor.symbolic.modifiers import Value, Equatable, Nullable
 
 
 def jsonify(expr):
     type_ = type(expr)
     type_name = type_.__name__.lower()
-    if issubclass(type_, Variable):
+    if issubclass(type_, (Value)):
         return expr.to_dict()
     elif issubclass(type_, OneArgumentFunction):
         return {"op": type_name, "arg": jsonify(expr.arg)}
@@ -23,9 +25,9 @@ def jsonify(expr):
         }
     elif issubclass(type_, AppendableFunction):
         return {"op": type_name, "args": [jsonify(arg) for arg in expr._args]}
-    elif isinstance(expr, (int, float, np.floating, str)):
+    elif isinstance(expr, (int, float, np.floating, str, dict, list)):  # TODO - Remove dict, list, dangerous to have here
         if isinstance(expr, np.floating):
             expr = float(expr)
         return {type(expr).__name__.lower(): expr}
     else:
-        raise TypeError(type_.__name__)
+        raise TypeError(expr, type_.__name__)
