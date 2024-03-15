@@ -1,17 +1,9 @@
 import datetime
-import json
-from dataclasses import asdict, dataclass, is_dataclass
-from typing import Any, Dict, Optional, Set, Union
+from typing import Any, Dict
 
 import numpy as np
 
-from valor.symbolic.modifiers import (
-    Equatable,
-    Quantifiable,
-    Spatial,
-    Symbol,
-    Value,
-)
+from valor.symbolic.modifiers import Equatable, Quantifiable, Symbol, Value
 
 
 class Bool(Equatable):
@@ -47,8 +39,8 @@ class DateTime(Quantifiable):
     def supports(value: Any) -> bool:
         return type(value) is datetime.datetime
 
-    @staticmethod
-    def encode(value: datetime.datetime):
+    @classmethod
+    def encode(cls, value: datetime.datetime):
         return DateTime(value=value.isoformat())
 
     def decode(self) -> Any:
@@ -62,8 +54,8 @@ class Date(Quantifiable):
     def supports(value: Any) -> bool:
         return type(value) is datetime.date
 
-    @staticmethod
-    def encode(value: datetime.date):
+    @classmethod
+    def encode(cls, value: datetime.date):
         return Date(value=value.isoformat())
 
     def decode(self) -> Any:
@@ -77,8 +69,8 @@ class Time(Quantifiable):
     def supports(value: Any) -> bool:
         return type(value) is datetime.time
 
-    @staticmethod
-    def encode(value: datetime.time):
+    @classmethod
+    def encode(cls, value: datetime.time):
         return Time(value=value.isoformat())
 
     def decode(self) -> Any:
@@ -92,8 +84,8 @@ class Duration(Quantifiable):
     def supports(value: Any) -> bool:
         return type(value) is datetime.timedelta
 
-    @staticmethod
-    def encode(value: Any) -> Any:
+    @classmethod
+    def encode(cls, value: Any) -> Any:
         return Duration(value=value.total_seconds())
 
     def decode(self) -> Any:
@@ -142,8 +134,8 @@ class StaticCollection(Equatable):
     def supports(value: Any) -> bool:
         return type(value) is dict
 
-    @staticmethod
-    def encode(value: Value):
+    @classmethod
+    def encode(cls, value: Value):
         return StaticCollection.search_for_values(value)
 
     def decode(self):
