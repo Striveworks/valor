@@ -204,6 +204,7 @@ def create_metric_mappings(
         | schemas.F1Metric
         | schemas.IOUMetric
         | schemas.mIOUMetric
+        | schemas.PrecisionRecallCurve
     ],
     evaluation_id: int,
 ) -> list[dict]:

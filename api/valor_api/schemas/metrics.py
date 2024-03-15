@@ -402,6 +402,49 @@ class AccuracyMetric(BaseModel):
         }
 
 
+class PrecisionRecallCurve(BaseModel):
+    """
+    Describes a precision-recall curve.
+
+    Attributes
+    ----------
+    label_key: str
+        A label for the metric.
+    value: dict
+        A nested dictionary where the first key is the class label, the second key is the confidence threshold (e.g., 0.05), the third key is the metric name (e.g., "precision"), and the final key is the value.
+    pr_curve_iou_threshold: float, optional
+        The IOU threshold to use when calculating precision-recall curves. Defaults to 0.5. Does nothing when compute_pr_curves is set to False or None.
+    """
+
+    label_key: str
+    value: dict[str, dict[float, dict[str, int | float | None]]]
+    pr_curve_iou_threshold: float | None = None
+
+    def db_mapping(self, evaluation_id: int) -> dict:
+        """
+        Creates a mapping for use when uploading the curves to the database.
+
+        Parameters
+        ----------
+        evaluation_id : int
+            The evaluation id.
+
+        Returns
+        ----------
+        A mapping dictionary.
+        """
+
+        return {
+            "value": self.value,
+            "type": "PrecisionRecallCurve",
+            "evaluation_id": evaluation_id,
+            "parameters": {
+                "label_key": self.label_key,
+                "pr_curve_iou_threshold": self.pr_curve_iou_threshold,
+            },
+        }
+
+
 class _PrecisionRecallF1Base(BaseModel):
     """
     Describes an accuracy metric.
