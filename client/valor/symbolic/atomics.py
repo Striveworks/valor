@@ -1,9 +1,9 @@
 import datetime
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 import numpy as np
 
-from valor.symbolic.modifiers import Equatable, Quantifiable, Symbol, Value
+from valor.symbolic.modifiers import Equatable, Quantifiable, Variable
 
 
 class Bool(Equatable):
@@ -11,32 +11,32 @@ class Bool(Equatable):
     Bool wrapper.
     """
 
-    @staticmethod
-    def supports(value: Any) -> bool:
+    @classmethod
+    def supports(cls, value: Any) -> bool:
         return type(value) is bool
 
 
 class Integer(Quantifiable):
-    @staticmethod
-    def supports(value: Any) -> bool:
+    @classmethod
+    def supports(cls, value: Any) -> bool:
         return type(value) in {int, np.integer}
 
 
 class Float(Quantifiable):
-    @staticmethod
-    def supports(value: Any) -> bool:
+    @classmethod
+    def supports(cls, value: Any) -> bool:
         return type(value) in {float, np.floating} or Integer.supports(value)
 
 
 class String(Equatable):
-    @staticmethod
-    def supports(value: Any) -> bool:
+    @classmethod
+    def supports(cls, value: Any) -> bool:
         return type(value) is str
 
 
 class DateTime(Quantifiable):
-    @staticmethod
-    def supports(value: Any) -> bool:
+    @classmethod
+    def supports(cls, value: Any) -> bool:
         return type(value) is datetime.datetime
 
     @classmethod
@@ -50,8 +50,8 @@ class DateTime(Quantifiable):
 
 
 class Date(Quantifiable):
-    @staticmethod
-    def supports(value: Any) -> bool:
+    @classmethod
+    def supports(cls, value: Any) -> bool:
         return type(value) is datetime.date
 
     @classmethod
@@ -65,8 +65,8 @@ class Date(Quantifiable):
 
 
 class Time(Quantifiable):
-    @staticmethod
-    def supports(value: Any) -> bool:
+    @classmethod
+    def supports(cls, value: Any) -> bool:
         return type(value) is datetime.time
 
     @classmethod
@@ -80,8 +80,8 @@ class Time(Quantifiable):
 
 
 class Duration(Quantifiable):
-    @staticmethod
-    def supports(value: Any) -> bool:
+    @classmethod
+    def supports(cls, value: Any) -> bool:
         return type(value) is datetime.timedelta
 
     @classmethod
@@ -94,12 +94,77 @@ class Duration(Quantifiable):
         return datetime.timedelta(seconds=self._value)
 
 
+class ValueList(Equatable):
+    @staticmethod
+    def supported_type():
+        return Variable
+
+    @classmethod
+    def supports(cls, value: List[Any]) -> bool:
+        return type(value) is list and all(
+            [
+                type(element) is cls.supported_type() and element.is_value()
+                for element in value
+            ]
+        )
+
+    @classmethod
+    def encode(cls, value: List[Variable]):
+        return [element.encode(element) for element in value]
+
+    def decode(self):
+        if self._value is None:
+            return None
+        if issubclass(self.supported_type(), Variable):
+            return [
+                self.supported_type().decode(element)
+                for element in self._value
+            ]
+
+    def __getitem__(self, __key: int):
+        if self.is_symbolic():
+            raise ValueError("Variable is a symbol.")
+        elif value := self.get_value():
+            return value[__key]
+        else:
+            raise ValueError(f"Variable has value '{None}'")
+
+    def __setitem__(self, __key: int, __value: Any):
+        if self.is_symbolic():
+            raise ValueError("Variable is a symbol.")
+        elif self._value:
+            if isinstance(__value, self.supported_type()):
+                self._value[__key] = __value
+            else:
+                raise ValueError("values is not supported")
+        else:
+            raise ValueError(f"Variable has value '{None}'")
+
+
 class StaticCollection(Equatable):
-    def __init__(self, value: dict):
-        if type(value) is not Symbol:
-            pass
-            # check if value dict matches vars
-            # if it does, insert values with definites.
+    def __init__(self, **kwargs):
+        if len(kwargs) == 1:
+            value = list(kwargs.values())[0]
+        else:
+            attribute_names = {
+                name
+                for name in vars(type(self))
+                if issubclass(type(self.__getattribute__(name)), Variable)
+            }
+            kwargs_keys = set(kwargs.keys())
+            if kwargs_keys.issubset(attribute_names):
+                for name in attribute_names:
+                    self.__setattr__(
+                        name,
+                        type(self.__getattribute__(name)).definite(
+                            kwargs[name] if name in kwargs else None
+                        ),
+                    )
+                value = self.encode(self)
+            else:
+                raise TypeError(
+                    f"{type(self)}() does not take the following keyword arguments '{attribute_names - kwargs_keys}'"
+                )
 
         super().__init__(value=value)
 
@@ -113,7 +178,7 @@ class StaticCollection(Equatable):
                 ):
                     retval[name] = value
             return retval
-        elif issubclass(type(obj), Value) and obj.is_value():
+        elif issubclass(type(obj), Variable) and obj.is_value():
             return obj._value
         elif type(obj) is list:
             retval = list()
@@ -130,12 +195,12 @@ class StaticCollection(Equatable):
             raise ValueError  # This is just to avoid typing errors.
         return ret
 
-    @staticmethod
-    def supports(value: Any) -> bool:
+    @classmethod
+    def supports(cls, value: Any) -> bool:
         return type(value) is dict
 
     @classmethod
-    def encode(cls, value: Value):
+    def encode(cls, value: Variable):
         return StaticCollection.search_for_values(value)
 
     def decode(self):

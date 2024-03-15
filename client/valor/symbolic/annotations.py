@@ -1,4 +1,4 @@
-from typing import Any, Optional, Union
+from typing import Any, Union
 
 import numpy as np
 
@@ -8,8 +8,8 @@ from valor.symbolic.modifiers import Nullable, Spatial, Symbol
 
 
 class Score(Float, Nullable):
-    @staticmethod
-    def supports(value: Any) -> bool:
+    @classmethod
+    def supports(cls, value: Any) -> bool:
         return Float.supports(value) or value is None
 
 
@@ -33,14 +33,14 @@ class BoundingBox(Polygon, Nullable):
         ]
         return cls(value=points)
 
-    @staticmethod
-    def supports(value: Any) -> bool:
+    @classmethod
+    def supports(cls, value: Any) -> bool:
         return Polygon.supports(value) or value is None
 
 
 class BoundingPolygon(Polygon, Nullable):
-    @staticmethod
-    def supports(value: Any) -> bool:
+    @classmethod
+    def supports(cls, value: Any) -> bool:
         return Polygon.supports(value) or value is None
 
 
@@ -53,12 +53,12 @@ class Raster(Spatial, Nullable):
     def from_geometry(cls, geometry: Union[Polygon, MultiPolygon]):
         pass
 
-    @staticmethod
-    def supports(value: Any) -> bool:
+    @classmethod
+    def supports(cls, value: Any) -> bool:
         return String.supports(value) or value is None
 
-    @staticmethod
-    def encode(value: Any):
+    @classmethod
+    def encode(cls, value: Any):
         pass
 
     def decode(self):

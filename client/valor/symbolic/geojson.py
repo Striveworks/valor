@@ -3,7 +3,7 @@ from typing import Any, List, Optional, Tuple
 import numpy as np
 
 from valor.symbolic.atomics import Float
-from valor.symbolic.modifiers import Spatial, Symbol, Value
+from valor.symbolic.modifiers import Spatial, Symbol, Variable
 
 
 class Point(Spatial):
@@ -13,8 +13,8 @@ class Point(Spatial):
     ):
         super().__init__(value=value)
 
-    @staticmethod
-    def supports(value: Any) -> bool:
+    @classmethod
+    def supports(cls, value: Any) -> bool:
         if isinstance(value, tuple):
             return (
                 len(value) == 2
@@ -32,8 +32,8 @@ class MultiPoint(Spatial):
     ):
         super().__init__(value=value)
 
-    @staticmethod
-    def supports(value: Any) -> bool:
+    @classmethod
+    def supports(cls, value: Any) -> bool:
         if isinstance(value, list):
             for point in value:
                 if not Point.supports(point):
@@ -50,8 +50,8 @@ class LineString(Spatial):
     ):
         super().__init__(value=value)
 
-    @staticmethod
-    def supports(value: Any) -> bool:
+    @classmethod
+    def supports(cls, value: Any) -> bool:
         if MultiPoint.supports(value):
             return len(value) >= 2
         else:
@@ -65,8 +65,8 @@ class MultiLineString(Spatial):
     ):
         super().__init__(value=value)
 
-    @staticmethod
-    def supports(value: Any) -> bool:
+    @classmethod
+    def supports(cls, value: Any) -> bool:
         if isinstance(value, list):
             for line in value:
                 if not LineString.supports(line):
@@ -83,8 +83,8 @@ class Polygon(Spatial):
     ):
         super().__init__(value=value)
 
-    @staticmethod
-    def supports(value: Any) -> bool:
+    @classmethod
+    def supports(cls, value: Any) -> bool:
         if MultiLineString.supports(value):
             for line in value:
                 if not (len(line) >= 4 and line[0] == line[-1]):
@@ -107,8 +107,8 @@ class MultiPolygon(Spatial):
     ):
         super().__init__(value)
 
-    @staticmethod
-    def supports(value: Any) -> bool:
+    @classmethod
+    def supports(cls, value: Any) -> bool:
         if isinstance(value, list):
             for poly in value:
                 if not Polygon.supports(poly):
@@ -124,9 +124,9 @@ class MultiPolygon(Spatial):
         return Float.symbolic(name=self._value._name, attribute="area")
 
 
-class GeoJSON(Value):
-    @staticmethod
-    def supports(value: Any) -> bool:
+class GeoJSON(Variable):
+    @classmethod
+    def supports(cls, value: Any) -> bool:
         match value["geometry"]["type"]:
             case "Point":
                 geometry_type = Point

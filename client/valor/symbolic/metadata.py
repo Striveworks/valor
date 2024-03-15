@@ -18,7 +18,7 @@ from valor.symbolic.geojson import (
     Point,
     Polygon,
 )
-from valor.symbolic.modifiers import Symbol, Value
+from valor.symbolic.modifiers import Symbol, Variable
 
 
 class MetadataValue:
@@ -64,7 +64,6 @@ class MetadataValue:
         return Float.symbolic(name=self._name, key=self._key, attribute="area")
 
     def _router(self, fn: str, other: Any):
-        type_ = type(other)
         if Bool.supports(other):
             obj = Bool
         elif String.supports(other):
@@ -101,26 +100,30 @@ class MetadataValue:
         )(other)
 
 
-class Metadata(Value):
+class Metadata(Variable):
     def __init__(
         self,
         value: Optional[Dict[str, Any]],
     ):
         super().__init__(value)
 
-    @staticmethod
-    def supports(value: Any) -> bool:
+    @classmethod
+    def supports(cls, value: Any) -> bool:
         return type(value) in {dict, Metadata}
 
     def __getitem__(self, key: str):
         if type(self._value) is Symbol:
             return MetadataValue(name=self._value._name, key=key)
-        return self.value[key]
+        elif value := self.get_value():
+            return value[key]
+        raise ValueError
 
     def __setitem__(self, key: str, value: Any):
         if self.is_symbolic():
             raise NotImplementedError("Cannot set symbolic value.")
-        self.value[key] = value
+        elif self._value:
+            self._value[key] = value
+        raise ValueError
 
     def to_dict(self):
         if type(self._value) is Symbol:

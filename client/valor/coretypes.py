@@ -4,9 +4,7 @@ import json
 import time
 import warnings
 from dataclasses import asdict, dataclass
-from typing import Any, Dict, List, Optional, Tuple, Union
-
-import numpy as np
+from typing import Dict, List, Optional, Tuple, Union
 
 from valor.client import ClientConnection, connect, get_connection
 from valor.enums import AnnotationType, EvaluationStatus, TableStatus, TaskType
@@ -17,16 +15,13 @@ from valor.symbolic import (
     BoundingBox,
     BoundingPolygon,
     Embedding,
-    Equatable,
     Metadata,
     Nullable,
     Raster,
     Score,
     StaticCollection,
     String,
-    Symbol,
-    Value,
-    jsonify,
+    ValueList,
 )
 
 FilterType = Union[list, dict]  # TODO - Remove this
@@ -80,69 +75,6 @@ class Label(StaticCollection):
     value = String.symbolic(name="label", attribute="value")
     score = Score.symbolic(name="label", attribute="score")
 
-    @classmethod
-    def create(
-        cls,
-        key: str,
-        value: str,
-        score: Union[float, np.floating, None] = None,
-    ):
-        ret = cls(value={})
-        ret.key = String.definite(key)
-        ret.value = String.definite(value)
-        ret.score = Score.definite(score)
-        return ret
-
-    @staticmethod
-    def supports(value: Any) -> bool:
-        return type(value) is dict
-
-    # def __eq__(self, other) -> bool:
-    #     """
-    #     Defines how `Labels` are compared to one another.
-
-    #     Parameters
-    #     ----------
-    #     other : Label
-    #         The object to compare with the `Label`.
-
-    #     Returns
-    #     ----------
-    #     boolean
-    #         A boolean describing whether the two objects are equal.
-    #     """
-    #     # type mismatch
-    #     if type(other) is not type(self):
-    #         return False
-
-    #     # k,v mismatch
-    #     if (
-    #         self.key._value != other.key._value
-    #         or self.value._value != other.value._value
-    #     ):
-    #         return False
-
-    #     # score is None
-    #     if self.score._value is None or other.score._value is None:
-    #         return (other.score._value is None) == (self.score._value is None)
-
-    #     # scores not equal
-    #     if self.score._value is not None and other.score._value is not None:
-    #         return bool(np.isclose(self.score._value, other.score._value))
-
-    #     return False
-
-    def __hash__(self) -> int:
-        """
-        Defines how a `Label` is hashed.
-
-        Returns
-        ----------
-        int
-            The hashed 'Label`.
-        """
-        return hash(self.tuple())
-
     def tuple(self):
         """
         Defines how the `Label` is turned into a tuple.
@@ -152,25 +84,17 @@ class Label(StaticCollection):
         tuple
             A tuple of the `Label's` arguments.
         """
-        return (self.key._value, self.value._value, self.score._value)
+        return (
+            self.key.get_value(),
+            self.value.get_value(),
+            self.score.get_value(),
+        )
 
 
-class LabelList(Equatable, Nullable):
+class LabelList(ValueList, Nullable):
     @staticmethod
-    def supports(value: Any) -> bool:
-        if type(value) is not list:
-            return False
-        for element in value:
-            if type(element) is not Label or not element.is_value():
-                return False
-        return True
-
-    @classmethod
-    def encode(cls, value: List[Label]):
-        return [label.encode(label) for label in value]
-
-    def decode(self):
-        pass
+    def supported_type():
+        return Label
 
 
 class Annotation(StaticCollection):
@@ -206,43 +130,43 @@ class Annotation(StaticCollection):
     >>> Annotation.create(
     ...     task_type=TaskType.CLASSIFICATION,
     ...     labels=[
-    ...         Label.create(key="class", value="dog"),
-    ...         Label.create(key="category", value="animal"),
+    ...         Label(key="class", value="dog"),
+    ...         Label(key="category", value="animal"),
     ...     ]
     ... )
 
     Object-Detection BoundingBox
     >>> annotation = Annotation.create(
     ...     task_type=TaskType.OBJECT_DETECTION,
-    ...     labels=[Label.create(key="k1", value="v1")],
+    ...     labels=[Label(key="k1", value="v1")],
     ...     bounding_box=box2,
     ... )
 
     Object-Detection Polygon
     >>> annotation = Annotation.create(
     ...     task_type=TaskType.OBJECT_DETECTION,
-    ...     labels=[Label.create(key="k1", value="v1")],
+    ...     labels=[Label(key="k1", value="v1")],
     ...     polygon=polygon1,
     ... )
 
     Object-Detection Raster
     >>> annotation = Annotation.create(
     ...     task_type=TaskType.OBJECT_DETECTION,
-    ...     labels=[Label.create(key="k1", value="v1")],
+    ...     labels=[Label(key="k1", value="v1")],
     ...     raster=raster1,
     ... )
 
     Semantic-Segmentation Raster
     >>> annotation = Annotation.create(
     ...     task_type=TaskType.SEMANTIC_SEGMENTATION,
-    ...     labels=[Label.create(key="k1", value="v1")],
+    ...     labels=[Label(key="k1", value="v1")],
     ...     raster=raster1,
     ... )
 
     Defining all supported annotation types for a given `task_type` is allowed!
     >>> Annotation.create(
     ...     task_type=TaskType.OBJECT_DETECTION,
-    ...     labels=[Label.create(key="k1", value="v1")],
+    ...     labels=[Label(key="k1", value="v1")],
     ...     bounding_box=box1,
     ...     polygon=polygon1,
     ...     raster=raster1,
@@ -283,15 +207,10 @@ class Annotation(StaticCollection):
         return ret
 
 
-class AnnotationList(Value):
+class AnnotationList(ValueList):
     @staticmethod
-    def supports(value: Any) -> bool:
-        if type(value) is not list:
-            return False
-        for element in value:
-            if type(element) is not Label or not element.is_value():
-                return False
-        return True
+    def supported_type():
+        return Annotation
 
 
 class Datum(StaticCollection):
@@ -330,23 +249,19 @@ class Datum(StaticCollection):
 
 
 if __name__ == "__main__":
-    l = Label.symbolic()
-    label = Label.create(key="k1", value="v2")
-
-    print(str(l))
-    print(str(label))
 
     cond = (
         Annotation.labels.is_none()
         | (Annotation.bounding_box.area > 200)
-        | (Label.symbolic() == Label.create(key="k1", value="v1"))
-        | (Datum.uid == "1234") & (Annotation.labels == [label])
+        | (Label.symbolic() == Label(key="k1", value="v1"))
+        | (Datum.uid == "1234")
+        & (Annotation.labels == [Label(key="k1", value="v1")])
     )
     print(cond)
 
     # TODO - list and dict types should be replaced by their proper titles of LabelList or Label
 
-    print(json.dumps(jsonify(cond), indent=2))
+    # print(json.dumps(jsonify(cond), indent=2))
 
 
 class GroundTruth(StaticCollection):
@@ -365,12 +280,6 @@ class GroundTruth(StaticCollection):
     annotations = AnnotationList.symbolic(
         name="groundtruth", attribute="annotations"
     )
-
-    def __init__(self, datum: Datum, annotations: List[Annotation], **kwargs):
-        self.datum = Datum.definite(datum)
-        self.annotations = AnnotationList.definite(annotations)
-        self.kwargs = kwargs
-        super().__init__(value=Symbol())
 
 
 class Prediction(StaticCollection):
@@ -394,13 +303,6 @@ class Prediction(StaticCollection):
     annotations = AnnotationList.symbolic(
         name="prediction", attribute="annotations"
     )
-
-    def __init__(self, datum: Datum, annotations: List[Annotation], **kwargs):
-        self.datum = Datum.definite(datum)
-        self.annotations = Annotation.definite(annotations)
-        self.kwargs = kwargs
-        self._validate()
-        super().__init__(value=Symbol())
 
     def _validate(self):
         """
@@ -648,7 +550,7 @@ class DatasetSummary:
                 self.task_types[i] = TaskType(tt)
         for i, label in enumerate(self.labels):
             if isinstance(label, dict):
-                self.labels[i] = Label.create(**label)
+                self.labels[i] = Label(**label)
 
 
 class Dataset(StaticCollection):
@@ -1383,9 +1285,7 @@ class Client:
         """
         filter_ = _format_filter(filter_by)
         filter_ = asdict(filter_)
-        return [
-            Label.create(**label) for label in self.conn.get_labels(filter_)
-        ]
+        return [Label(**label) for label in self.conn.get_labels(filter_)]
 
     def get_labels_from_dataset(
         self, dataset: Union[Dataset, str]
@@ -1407,7 +1307,7 @@ class Client:
             dataset.get_name() if isinstance(dataset, Dataset) else dataset
         )
         return [
-            Label.create(**label)
+            Label(**label)
             for label in self.conn.get_labels_from_dataset(dataset_name)
         ]
 
@@ -1427,7 +1327,7 @@ class Client:
         """
         model_name = model.get_name() if isinstance(model, Model) else model
         return [
-            Label.create(**label)
+            Label(**label)
             for label in self.conn.get_labels_from_model(model_name)
         ]
 

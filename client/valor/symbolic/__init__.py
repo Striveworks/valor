@@ -9,6 +9,7 @@ from .atomics import (
     StaticCollection,
     String,
     Time,
+    ValueList,
 )
 from .functions import (
     And,
@@ -43,7 +44,7 @@ from .modifiers import (
     Quantifiable,
     Spatial,
     Symbol,
-    Value,
+    Variable,
 )
 from .utils import jsonify
 
@@ -65,7 +66,7 @@ __all__ = [
     "Xor",
     "Where",
     "Symbol",
-    "Value",
+    "Variable",
     "Equatable",
     "Quantifiable",
     "Nullable",
@@ -80,6 +81,7 @@ __all__ = [
     "Time",
     "Duration",
     "StaticCollection",
+    "ValueList",
     "Point",
     "MultiPoint",
     "LineString",

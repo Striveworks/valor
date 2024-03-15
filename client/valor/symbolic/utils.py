@@ -1,5 +1,3 @@
-from typing import Any
-
 import numpy as np
 
 from valor.symbolic.functions import (
@@ -7,13 +5,13 @@ from valor.symbolic.functions import (
     OneArgumentFunction,
     TwoArgumentFunction,
 )
-from valor.symbolic.modifiers import Equatable, Nullable, Value
+from valor.symbolic.modifiers import Variable
 
 
 def jsonify(expr):
     type_ = type(expr)
     type_name = type_.__name__.lower()
-    if issubclass(type_, (Value)):
+    if issubclass(type_, (Variable)):
         return expr.to_dict()
     elif issubclass(type_, OneArgumentFunction):
         return {"op": type_name, "arg": jsonify(expr.arg)}

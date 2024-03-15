@@ -1,7 +1,5 @@
 from typing import Any, Optional
 
-import numpy as np
-
 from valor.symbolic.functions import (
     Eq,
     Ge,
@@ -56,7 +54,7 @@ class Symbol:
         return ret
 
 
-class Value:
+class Variable:
     def __init__(
         self,
         value: Any,
@@ -96,27 +94,30 @@ class Value:
     def __str__(self) -> str:
         return str(self._value)
 
-    @staticmethod
-    def supports(value: Any) -> bool:
+    @classmethod
+    def supports(cls, value: Any) -> bool:
         raise NotImplementedError
 
     @classmethod
     def validate_type(cls, value: Any):
         if type(value) not in {cls, Symbol} and not cls.supports(value):
             raise TypeError(
-                f"Value with `{str(value)}` with type `{type(value)}` is not in supported types."
+                f"Variable with `{str(value)}` of type `{type(value)}` is not supported."
             )
 
     @classmethod
     def encode(cls, value: Any) -> Any:
-        if type(value) in {cls, Symbol}:
-            return value
-        elif cls.supports(value):
-            return cls(value)
-        raise TypeError
+        return value
 
     def decode(self) -> Any:
         return self._value
+
+    def preprocess(self, value: Any):
+        if type(value) in {type(self), Symbol}:
+            return value
+        elif self.supports(value):
+            return self.encode(value)
+        raise TypeError
 
     def is_symbolic(self):
         return type(self._value) is Symbol
@@ -143,47 +144,52 @@ class Value:
         return self._value
 
 
-class Equatable(Value):
+class Equatable(Variable):
     def __eq__(self, value: Any):
-        other = self.encode(value)
+        other = self.preprocess(value)
         if self.is_value() and other.is_value():
             return self._value == other._value
         return Eq(self, other)
 
     def __ne__(self, value: Any):
-        other = self.encode(value)
+        other = self.preprocess(value)
         if self.is_value() and other.is_value():
             return self._value != other._value
         return Ne(self, other)
 
+    def __hash__(self):
+        if self.is_symbolic():
+            raise ValueError("Variable is symbolic.")
+        return hash(str(self))
+
 
 class Quantifiable(Equatable):
     def __gt__(self, value: Any):
-        other = self.encode(value)
+        other = self.preprocess(value)
         if self.is_value() and other.is_value():
             return self._value > other._value
         return Gt(self, self.encode(other))
 
     def __ge__(self, value: Any):
-        other = self.encode(value)
+        other = self.preprocess(value)
         if self.is_value() and other.is_value():
             return self._value >= other._value
         return Ge(self, self.encode(other))
 
     def __lt__(self, value: Any):
-        other = self.encode(value)
+        other = self.preprocess(value)
         if self.is_value() and other.is_value():
             return self._value < other._value
         return Lt(self, self.encode(other))
 
     def __le__(self, value: Any):
-        other = self.encode(value)
+        other = self.preprocess(value)
         if self.is_value() and other.is_value():
             return self._value <= other._value
         return Le(self, self.encode(other))
 
 
-class Nullable(Value):
+class Nullable(Variable):
     def is_none(self):
         return IsNull(self)
 
@@ -191,12 +197,12 @@ class Nullable(Value):
         return IsNotNull(self)
 
 
-class Spatial(Value):
+class Spatial(Variable):
     def intersects(self, other: Any):
-        return Intersects(self, self.encode(other))
+        return Intersects(self, self.preprocess(other))
 
     def inside(self, other: Any):
-        return Inside(self, self.encode(other))
+        return Inside(self, self.preprocess(other))
 
     def outside(self, other: Any):
-        return Outside(self, self.encode(other))
+        return Outside(self, self.preprocess(other))
