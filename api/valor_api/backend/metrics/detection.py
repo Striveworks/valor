@@ -161,7 +161,6 @@ def _calculate_ap_and_ar(
     number_of_groundtruths_per_grouper: dict[int, int],
     grouper_mappings: dict[str, dict[str, schemas.Label]],
     iou_thresholds: list[float],
-    grouper_ids_associated_with_gts: set[int],
     recall_score_threshold: float,
 ) -> Tuple[list[schemas.APMetric], list[schemas.ARMetric]]:
     """
@@ -188,7 +187,7 @@ def _calculate_ap_and_ar(
         recalls_across_thresholds = []
 
         for iou_threshold in iou_thresholds:
-            if grouper_id not in grouper_ids_associated_with_gts:
+            if grouper_id not in number_of_groundtruths_per_grouper.keys():
                 continue
 
             precisions = []
@@ -523,8 +522,6 @@ def _compute_detection_metrics(
         .groundtruths()  # type: ignore - SQLAlchemy type issue
     ).all()  # type: ignore - SQLAlchemy type issue
 
-    grouper_ids_associated_with_gts = set([row[1] for row in groundtruths])
-
     for gt_id, grouper_id in groundtruths:
         number_of_groundtruths_per_grouper[grouper_id] += 1
 
@@ -562,7 +559,6 @@ def _compute_detection_metrics(
         number_of_groundtruths_per_grouper=number_of_groundtruths_per_grouper,
         iou_thresholds=parameters.iou_thresholds_to_compute,
         grouper_mappings=grouper_mappings,
-        grouper_ids_associated_with_gts=grouper_ids_associated_with_gts,
         recall_score_threshold=parameters.recall_score_threshold,
     )
 
