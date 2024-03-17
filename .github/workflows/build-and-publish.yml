@@ -6,7 +6,7 @@ on:
       - "v*"
 
 jobs:
-  build-and-publish:
+  build-and-publish-py-package:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -23,3 +23,23 @@ jobs:
         with:
           password: ${{ secrets.PYPI_API_TOKEN }}
           packages-dir: ./client/dist
+  build-and-publish-ts-package:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./ts-client
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v2
+        with:
+          node-version: "16"
+      - name: Set version from the gittag
+        run: npm version ${{ github.ref_name }}
+      - name: Install dependencies
+        run: npm install
+      - name: Build package
+        run: npm run build
+      - name: Publish to npm
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_API_TOKEN }}

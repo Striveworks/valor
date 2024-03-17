@@ -45,7 +45,7 @@ jobs:
           name: ${{ env.COVERAGE_FILE }}
           path: api/${{ env.COVERAGE_FILE }}
 
-  integration-tests:
+  py-client-integration-tests:
     env:
       COVERAGE_FILE: .coverage.integration-tests
     runs-on: ubuntu-latest
@@ -85,6 +85,9 @@ jobs:
         env:
           VALOR_USERNAME_FOR_TESTING: ${{ vars.USERNAME }}
           VALOR_PASSWORD_FOR_TESTING: ${{ vars.PASSWORD }}
+
+  ts-client-integration-tests:
+    runs-on: ubuntu-latest
 
   backend-unit-tests:
     env:
