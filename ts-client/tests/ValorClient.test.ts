@@ -1,3 +1,5 @@
+// integration tests against a live valor instance running on http://localhost:8000
+
 import { ValorClient } from '../src/ValorClient';
 
 const baseURL = 'http://localhost:8000';
@@ -14,6 +16,8 @@ beforeEach(async () => {
 
 afterEach(async () => {
   // delete any datasets or models in the backend
+  // sleep
+  await new Promise((resolve) => setTimeout(resolve, 500));
   const datasets = await client.getDatasets({});
   datasets.forEach(async (dataset) => {
     await client.deleteDataset(dataset.name);
@@ -67,4 +71,34 @@ test('model methods', async () => {
 
   const modelsByMetadata2 = await client.getModelsByMetadata({ k1: 'v3' });
   expect(modelsByMetadata2.length).toBe(0);
+});
+
+test('evaluation methods', async () => {
+  await client.createDataset('test-dataset1', {});
+  await client.createModel('test-model1', {});
+
+  await client.addGroundTruth('test-dataset1', 'uid1', [
+    { task_type: 'classification', labels: [{ key: 'label-key', value: 'label-value' }] }
+  ]);
+  await client.finalizeDataset('test-dataset1');
+  await client.addPredictions('test-model1', 'test-dataset1', 'uid1', [
+    {
+      task_type: 'classification',
+      labels: [{ key: 'label-key', value: 'label-value', score: 1.0 }]
+    }
+  ]);
+
+  let evaluation = await client.createOrGetEvaluation(
+    'test-model1',
+    'test-dataset1',
+    'classification'
+  );
+  expect(['running', 'pending', 'done']).toContain(evaluation.status);
+
+  // poll until the evaluation is done
+  while (evaluation.status !== 'done') {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    evaluation = await client.getEvaluationById(evaluation.id);
+  }
+  expect(evaluation.metrics.length).toBeGreaterThan(0);
 });

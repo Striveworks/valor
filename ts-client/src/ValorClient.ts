@@ -20,6 +20,16 @@ type TaskType =
   | 'semantic-segmentation'
   | 'embedding';
 
+type Evaluation = {
+  id: number;
+  model_name: string;
+  datum_filter: Dataset;
+  parameters: { task_type: TaskType; any };
+  status: 'pending' | 'running' | 'done' | 'failed' | 'deleting';
+  metrics: object[];
+  confusion_matrices: object[];
+};
+
 const metadataDictToString = (input: { [key: string]: string | number }): string => {
   const result: { [key: string]: Array<{ value: string | number; operator: string }> } =
     {};
@@ -95,21 +105,27 @@ export class ValorClient {
     await this.client.delete(`/models/${name}`);
   }
 
-  public async createEvaluation(
+  public async createOrGetEvaluation(
     model: string,
     dataset: string,
     taskType: TaskType
-  ): Promise<void> {
-    await this.client.post('/evaluations', {
+  ): Promise<Evaluation> {
+    const response = await this.client.post('/evaluations', {
       model_names: [model],
       datum_filter: { dataset_names: [dataset] },
       parameters: { task_type: taskType }
     });
+    return response.data[0];
   }
 
-  public async getEvaluations(queryParams: object): Promise<object[]> {
+  public async getEvaluations(queryParams: object): Promise<Evaluation[]> {
     const response = await this.client.get('/evaluations', { params: queryParams });
     return response.data;
+  }
+
+  public async getEvaluationById(id: number): Promise<Evaluation> {
+    const response = await this.getEvaluations({ evaluation_ids: JSON.stringify(id) });
+    return response[0];
   }
 
   public async addGroundTruth(
@@ -128,17 +144,12 @@ export class ValorClient {
     datumUid: string,
     annotations: object[]
   ): Promise<void> {
-    try {
-      await this.client.post('/predictions', [
-        {
-          model_name: modelName,
-          datum: { uid: datumUid, dataset_name: datasetName },
-          annotations: annotations
-        }
-      ]);
-    } catch (error) {
-      console.log(error);
-      throw error;
-    }
+    await this.client.post('/predictions', [
+      {
+        model_name: modelName,
+        datum: { uid: datumUid, dataset_name: datasetName },
+        annotations: annotations
+      }
+    ]);
   }
 }
