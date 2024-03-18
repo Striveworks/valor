@@ -12,6 +12,14 @@ type Model = {
   metadata: object;
 };
 
+type TaskType =
+  | 'skip'
+  | 'empty'
+  | 'classification'
+  | 'object-detection'
+  | 'semantic-segmentation'
+  | 'embedding';
+
 const metadataDictToString = (input: { [key: string]: string | number }): string => {
   const result: { [key: string]: Array<{ value: string | number; operator: string }> } =
     {};
@@ -55,6 +63,10 @@ export class ValorClient {
     await this.client.post('/datasets', { name, metadata });
   }
 
+  public async finalizeDataset(name: string): Promise<void> {
+    await this.client.put(`/datasets/${name}/finalize`);
+  }
+
   public async deleteDataset(name: string): Promise<void> {
     await this.client.delete(`/datasets/${name}`);
   }
@@ -81,5 +93,52 @@ export class ValorClient {
 
   public async deleteModel(name: string): Promise<void> {
     await this.client.delete(`/models/${name}`);
+  }
+
+  public async createEvaluation(
+    model: string,
+    dataset: string,
+    taskType: TaskType
+  ): Promise<void> {
+    await this.client.post('/evaluations', {
+      model_names: [model],
+      datum_filter: { dataset_names: [dataset] },
+      parameters: { task_type: taskType }
+    });
+  }
+
+  public async getEvaluations(queryParams: object): Promise<object[]> {
+    const response = await this.client.get('/evaluations', { params: queryParams });
+    return response.data;
+  }
+
+  public async addGroundTruth(
+    datasetName: string,
+    datumUid: string,
+    annotations: object[]
+  ): Promise<void> {
+    await this.client.post('/groundtruths', [
+      { datum: { uid: datumUid, dataset_name: datasetName }, annotations: annotations }
+    ]);
+  }
+
+  public async addPredictions(
+    modelName: string,
+    datasetName: string,
+    datumUid: string,
+    annotations: object[]
+  ): Promise<void> {
+    try {
+      await this.client.post('/predictions', [
+        {
+          model_name: modelName,
+          datum: { uid: datumUid, dataset_name: datasetName },
+          annotations: annotations
+        }
+      ]);
+    } catch (error) {
+      console.log(error);
+      throw error;
+    }
   }
 }
