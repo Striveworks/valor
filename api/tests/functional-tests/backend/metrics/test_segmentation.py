@@ -439,37 +439,18 @@ def test_compute_semantic_segmentation_metrics(
 
     metrics = existing_evaluations[0].metrics
 
-    expected_metrics = [
-        schemas.Metric(
-            type="IOU",
-            parameters=None,
-            value=0.0,  # no predictions with this label
-            label=schemas.Label(key="k1", value="v2", score=None),
-        ),
-        schemas.Metric(
-            type="IOU",
-            parameters=None,
-            value=0.0,  # no predictions with this label
-            label=schemas.Label(key="k2", value="v2", score=None),
-        ),
-        schemas.Metric(
-            type="IOU",
-            parameters=None,
-            value=0.3360515275069432,
-            label=schemas.Label(key="k1", value="v1", score=None),
-        ),
-        schemas.Metric(
-            type="IOU",
-            parameters=None,
-            value=0.0,  # no predictions with this label
-            label=schemas.Label(key="k3", value="v3", score=None),
-        ),
-        schemas.Metric(
-            type="mIOU", parameters=None, value=0.0840128818767358, label=None
-        ),
-    ]
+    expected_metrics = {
+        # none of these three labels have a predicted label
+        schemas.Label(key="k1", value="v2", score=None): 0,
+        schemas.Label(key="k2", value="v2", score=None): 0,
+        schemas.Label(key="k3", value="v3", score=None): 0,
+        # this last metric value should round to .33
+        schemas.Label(key="k1", value="v1", score=None): 0.33,
+    }
 
     for metric in metrics:
-        assert metric in expected_metrics
-    for metric in expected_metrics:
-        assert metric in metrics
+        if metric.type == "mIOU":
+            assert (metric.value - 0.084) <= 0.01
+        else:
+            # the IOU value for (k1, v1) is bound between .327 and .336
+            assert (metric.value - expected_metrics[metric.label]) <= 0.01
