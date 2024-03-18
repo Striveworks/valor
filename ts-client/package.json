@@ -1,5 +1,5 @@
 {
-  "name": "valor",
+  "name": "@striveworks/valor",
   "description": "A TypeScript API client for Valor.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
