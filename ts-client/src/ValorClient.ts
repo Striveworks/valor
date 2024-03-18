@@ -124,8 +124,12 @@ export class ValorClient {
   }
 
   public async getEvaluationById(id: number): Promise<Evaluation> {
-    const response = await this.getEvaluations({ evaluation_ids: JSON.stringify(id) });
-    return response[0];
+    const evaluations = await this.getEvaluations({ evaluation_ids: id });
+    return evaluations[0];
+  }
+
+  public async getEvaluationByModelName(modelName: string): Promise<Evaluation[]> {
+    return this.getEvaluations({ models: modelName });
   }
 
   public async addGroundTruth(

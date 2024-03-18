@@ -101,4 +101,11 @@ test('evaluation methods', async () => {
     evaluation = await client.getEvaluationById(evaluation.id);
   }
   expect(evaluation.metrics.length).toBeGreaterThan(0);
+
+  // check we can get my model name
+  const modelEvaluations = await client.getEvaluationByModelName('test-model1');
+  expect(modelEvaluations.length).toBe(1);
+
+  const noModelEvaluations = await client.getEvaluationByModelName('no-such-model');
+  expect(noModelEvaluations.length).toBe(0);
 });
