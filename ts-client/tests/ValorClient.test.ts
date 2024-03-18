@@ -7,8 +7,8 @@ const client = new ValorClient(baseURL);
 
 beforeEach(async () => {
   // make sure there are no datasets or models in the backend
-  const datasets = await client.getDatasets({});
-  const models = await client.getModels({});
+  const datasets = await client.getAllDatasets();
+  const models = await client.getAllModels();
   if (datasets.length > 0 || models.length > 0) {
     throw new Error('Valor backend is not empty');
   }
@@ -18,11 +18,11 @@ afterEach(async () => {
   // delete any datasets or models in the backend
   // sleep
   await new Promise((resolve) => setTimeout(resolve, 500));
-  const datasets = await client.getDatasets({});
+  const datasets = await client.getAllDatasets();
   datasets.forEach(async (dataset) => {
     await client.deleteDataset(dataset.name);
   });
-  const models = await client.getModels({});
+  const models = await client.getAllModels();
   models.forEach(async (model) => {
     await client.deleteModel(model.name);
   });
@@ -36,7 +36,7 @@ test('dataset methods', async () => {
   await client.createDataset('test-dataset2', { k1: 'v2', k3: 'v3' });
 
   // check we can get all datasets
-  const allDatasets = await client.getDatasets({});
+  const allDatasets = await client.getAllDatasets();
   expect(Array.isArray(allDatasets)).toBe(true);
   expect(allDatasets.length).toBe(2);
   const datasetNames = allDatasets.map((dataset) => dataset.name);
@@ -58,7 +58,7 @@ test('model methods', async () => {
   await client.createModel('test-model2', { k1: 'v2', k3: 'v3' });
 
   // check we can get all models
-  const allModels = await client.getModels({});
+  const allModels = await client.getAllModels();
   expect(Array.isArray(allModels)).toBe(true);
   expect(allModels.length).toBe(2);
   const modelNames = allModels.map((model) => model.name);

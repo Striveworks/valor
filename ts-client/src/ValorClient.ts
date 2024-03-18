@@ -44,6 +44,10 @@ const metadataDictToString = (input: { [key: string]: string | number }): string
 export class ValorClient {
   private client: AxiosInstance;
 
+  /**
+   *
+   * @param baseURL - The base URL of the Valor server to connect to.
+   */
   constructor(baseURL: string) {
     this.client = axios.create({
       baseURL,
@@ -53,58 +57,177 @@ export class ValorClient {
     });
   }
 
-  public async getDatasets(queryParams: object): Promise<Dataset[]> {
+  /**
+   * Fetches datasets matching the filters defined by queryParams. This is private
+   * because we define higher-level methods that use this.
+   *
+   * @param queryParams An object containing query parameters to filter datasets by.
+   *
+   * @returns {Promise<Dataset[]>}
+   *
+   */
+  private async getDatasets(queryParams: object): Promise<Dataset[]> {
     const response = await this.client.get('/datasets', { params: queryParams });
     return response.data;
   }
 
+  /**
+   * Fetches all datasets
+   *
+   * @returns {Promise<Dataset[]>}
+   */
+  public async getAllDatasets(): Promise<Dataset[]> {
+    return this.getDatasets({});
+  }
+
+  /**
+   * Fetches datasets matching a metadata object
+   *
+   * @param {{[key: string]: string | number}} metadata A metadata object to filter datasets by.
+   *
+   * @returns {Promise<Dataset[]>}
+   *
+   * @example
+   * const client = new ValorClient('http://localhost:8000/');
+   * client.getDatasetsByMetadata({ some_key: some_value }) // returns all datasets that have a metadata field `some_key` with value `some_value`
+   *
+   */
   public async getDatasetsByMetadata(metadata: {
     [key: string]: string | number;
   }): Promise<Dataset[]> {
     return this.getDatasets({ dataset_metadata: metadataDictToString(metadata) });
   }
 
+  /**
+   * Fetches a dataset given its name
+   *
+   * @param name name of the dataset
+   *
+   * @returns {Promise<Dataset>}
+   */
   public async getDatasetByName(name: string): Promise<Dataset> {
     const response = await this.client.get(`/datasets/${name}`);
     return response.data;
   }
 
+  /**
+   * Creates a new dataset
+   *
+   * @param name name of the dataset
+   * @param metadata metadata of the dataset
+   *
+   * @returns {Promise<void>}
+   */
   public async createDataset(name: string, metadata: object): Promise<void> {
     await this.client.post('/datasets', { name, metadata });
   }
 
+  /**
+   * Finalizes a dataset (which is necessary to run an evaluation)
+   *
+   * @param name name of the dataset to finalize
+   *
+   * @returns {Promise<void>}
+   */
   public async finalizeDataset(name: string): Promise<void> {
     await this.client.put(`/datasets/${name}/finalize`);
   }
 
+  /**
+   * Deletes a dataset
+   *
+   * @param name name of the dataset to delete
+   *
+   * @returns {Promise<void>}
+   */
   public async deleteDataset(name: string): Promise<void> {
     await this.client.delete(`/datasets/${name}`);
   }
 
-  public async getModels(queryParams: object): Promise<Model[]> {
+  /**
+   * Fetches models matching the filters defined by queryParams. This is
+   * private because we define higher-level methods that use this.
+   *
+   * @param queryParams An object containing query parameters to filter models by.
+   *
+   * @returns {Promise<Model[]>}
+   */
+  private async getModels(queryParams: object): Promise<Model[]> {
     const response = await this.client.get('/models', { params: queryParams });
     return response.data;
   }
 
+  /**
+   * Fetches all models
+   *
+   * @returns {Promise<Model[]>}
+   */
+  public async getAllModels(): Promise<Dataset[]> {
+    return this.getModels({});
+  }
+
+  /**
+   * Fetches models matching a metadata object
+   *
+   * @param {{[key: string]: string | number}} metadata A metadata object to filter models by.
+   *
+   * @returns {Promise<Model[]>}
+   *
+   * @example
+   * const client = new ValorClient('http://localhost:8000/');
+   * client.getModelsByMetadata({ some_key: some_value }) // returns all models that have a metadata field `some_key` with value `some_value`
+   */
   public async getModelsByMetadata(metadata: {
     [key: string]: string | number;
   }): Promise<Model[]> {
     return this.getModels({ model_metadata: metadataDictToString(metadata) });
   }
 
+  /**
+   * Fetches a model given its name
+   *
+   * @param name name of the model
+   *
+   * @returns {Promise<Model>}
+   */
   public async getModelByName(name: string): Promise<Model> {
     const response = await this.client.get(`/models/${name}`);
     return response.data;
   }
 
+  /**
+   * Creates a new model
+   *
+   * @param name name of the model
+   * @param metadata metadata of the model
+   *
+   * @returns {Promise<void>}
+   */
   public async createModel(name: string, metadata: object): Promise<void> {
     await this.client.post('/models', { name, metadata });
   }
 
+  /**
+   * Deletes a model
+   *
+   * @param name name of the model to delete
+   *
+   * @returns {Promise<void>}
+   */
   public async deleteModel(name: string): Promise<void> {
     await this.client.delete(`/models/${name}`);
   }
 
+  /**
+   * Creates a new evaluation or gets an existing one if an evaluation with the
+   * same parameters already exists.
+   *
+   * @param model name of the model
+   * @param dataset name of the dataset
+   * @param taskType type of task
+   *
+   * @returns {Promise<Evaluation>}
+   */
   public async createOrGetEvaluation(
     model: string,
     dataset: string,
@@ -118,24 +241,62 @@ export class ValorClient {
     return response.data[0];
   }
 
-  public async getEvaluations(queryParams: object): Promise<Evaluation[]> {
+  /**
+   * Fetches evaluations matching the filters defined by queryParams. This is
+   * private because we define higher-level methods that use this.
+   *
+   * @param queryParams An object containing query parameters to filter evaluations by.
+   *
+   * @returns {Promise<Evaluation[]>}
+   */
+  private async getEvaluations(queryParams: object): Promise<Evaluation[]> {
     const response = await this.client.get('/evaluations', { params: queryParams });
     return response.data;
   }
 
+  /**
+   * Fetches an evaluation by id
+   *
+   * @param id id of the evaluation
+   *
+   * @returns {Promise<Evaluation>}
+   */
   public async getEvaluationById(id: number): Promise<Evaluation> {
     const evaluations = await this.getEvaluations({ evaluation_ids: id });
     return evaluations[0];
   }
 
+  /**
+   * Fetches all evaluations associated to a given model
+   *
+   * @param modelName name of the model
+   *
+   * @returns {Promise<Evaluation[]>}
+   */
   public async getEvaluationsByModelName(modelName: string): Promise<Evaluation[]> {
     return this.getEvaluations({ models: modelName });
   }
 
+  /**
+   * Fetches all evaluations associated to a given dataset
+   *
+   * @param datasetName name of the dataset
+   *
+   * @returns {Promise<Evaluation[]>}
+   */
   public async getEvaluationsByDatasetName(datasetName: string): Promise<Evaluation[]> {
     return this.getEvaluations({ datasets: datasetName });
   }
 
+  /**
+   * Adds ground truth annotations to a dataset
+   *
+   * @param datasetName name of the dataset
+   * @param datumUid uid of the datum
+   * @param annotations annotations to add
+   *
+   * @returns {Promise<void>}
+   */
   public async addGroundTruth(
     datasetName: string,
     datumUid: string,
@@ -146,6 +307,16 @@ export class ValorClient {
     ]);
   }
 
+  /**
+   * Adds predictions from a model
+   *
+   * @param modelName name of the model
+   * @param datasetName name of the dataset
+   * @param datumUid uid of the datum
+   * @param annotations annotations to add
+   *
+   * @returns {Promise<void>}
+   */
   public async addPredictions(
     modelName: string,
     datasetName: string,
