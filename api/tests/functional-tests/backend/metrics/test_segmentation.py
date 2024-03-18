@@ -443,36 +443,33 @@ def test_compute_semantic_segmentation_metrics(
         schemas.Metric(
             type="IOU",
             parameters=None,
-            value=0.0,
-            label=schemas.Label(key="k3", value="v3", score=None),
-        ),
-        schemas.Metric(
-            type="IOU",
-            parameters=None,
-            value=0.0,
+            value=0.0,  # no predictions with this label
             label=schemas.Label(key="k1", value="v2", score=None),
         ),
         schemas.Metric(
             type="IOU",
             parameters=None,
-            value=0.3360515275069432,  # perfect overlap on img1, lower IOU on img2
+            value=0.0,  # no predictions with this label
+            label=schemas.Label(key="k2", value="v2", score=None),
+        ),
+        schemas.Metric(
+            type="IOU",
+            parameters=None,
+            value=0.3360515275069432,
             label=schemas.Label(key="k1", value="v1", score=None),
         ),
         schemas.Metric(
             type="IOU",
             parameters=None,
-            value=0.0,
-            label=schemas.Label(key="k2", value="v2", score=None),
+            value=0.0,  # no predictions with this label
+            label=schemas.Label(key="k3", value="v3", score=None),
         ),
         schemas.Metric(
             type="mIOU", parameters=None, value=0.0840128818767358, label=None
-        ),  # .336 / 4
+        ),
     ]
 
-    # should have five metrics (one IOU for each of the four labels, and one mIOU)
-    assert len(metrics) == 5
     for metric in metrics:
         assert metric in expected_metrics
-
     for metric in expected_metrics:
         assert metric in metrics
