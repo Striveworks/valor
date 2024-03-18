@@ -98,7 +98,7 @@ create table metric
     evaluation_id integer not null references evaluation,
     label_id      integer references label,
     type          varchar not null,
-    value         jsonb,
+    value         double precision,
     parameters    jsonb,
     created_at    timestamp not null
 );
