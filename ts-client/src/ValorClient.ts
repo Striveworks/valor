@@ -1,56 +1,20 @@
 import axios, { AxiosInstance } from 'axios';
 
-type Point = {
-  x: number;
-  y: number;
+type Dataset = {
+  id: number;
+  name: string;
+  metadata: object;
 };
 
-type BasicPolygon = {
-  points: Point[];
-};
+const metadataDictToString = (input: { [key: string]: string | number }): string => {
+  const result: { [key: string]: Array<{ value: string | number; operator: string }> } =
+    {};
 
-type Polygon = {
-  boundary: BasicPolygon;
-  holes: BasicPolygon[];
-};
+  Object.entries(input).forEach(([key, value]) => {
+    result[key] = [{ value: value, operator: '==' }];
+  });
 
-type MultiPolygon = {
-  polygons: Polygon[];
-};
-
-type BoundingBox = {
-  polygon: BasicPolygon;
-};
-
-type Raster = {
-  mask?: string;
-  geometry?: BoundingBox | Polygon | MultiPolygon;
-};
-
-type Datum = {
-  uid: string;
-  dataset_name: string;
-  metadata: any;
-};
-
-type Label = {
-  key: string;
-  value: string;
-};
-
-type Annotation = {
-  task_type: string;
-  labels: Label[];
-  metadata?: any;
-  bounding_box?: BoundingBox;
-  polygon?: Polygon;
-  raster?: Raster;
-  embedding?: number[];
-};
-
-type GroundTruth = {
-  datum: Datum;
-  annotations: Annotation[];
+  return JSON.stringify(result);
 };
 
 export class ValorClient {
@@ -65,7 +29,27 @@ export class ValorClient {
     });
   }
 
-  public async createGroundTruths(groundTruths: GroundTruth[]): Promise<void> {
-    await this.client.post('/groundtruths', groundTruths);
+  public async getDatasets(queryParams: object): Promise<Dataset[]> {
+    const response = await this.client.get('/datasets', { params: queryParams });
+    return response.data;
+  }
+
+  public async getDatasetsByMetadata(metadata: {
+    [key: string]: string | number;
+  }): Promise<Dataset[]> {
+    return this.getDatasets({ dataset_metadata: metadataDictToString(metadata) });
+  }
+
+  public async getDatasetByName(name: string): Promise<Dataset> {
+    const response = await this.client.get(`/datasets/${name}`);
+    return response.data;
+  }
+
+  public async createDataset(name: string, metadata: object): Promise<void> {
+    await this.client.post('/datasets', { name, metadata });
+  }
+
+  public async deleteDataset(name: string): Promise<void> {
+    await this.client.delete(`/datasets/${name}`);
   }
 }
