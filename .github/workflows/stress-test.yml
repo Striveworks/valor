@@ -1,0 +1,81 @@
+name: Run stress tests manually via the GitHub Actions UI
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_ROLE: arn:aws:iam::724664234782:role/Striveworks-Role-github_runner_npe
+  AWS_REGION: us-east-1
+
+jobs:
+  integration-stress-tests:
+    env:
+      COVERAGE_FILE: .coverage.integration-stress-tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: build postgres
+        run: |
+          docker build ./database -t pgvalor
+      - name: setup back end test env
+        run: docker compose -p valor -f docker-compose.yml -f docker-compose.cicd-override.yml --env-file ./api/.env.testing up --build -d
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+      - name: install api
+        run: pip install -e ".[test]"
+        working-directory: ./api
+      - name: install client
+        run: pip install -e ".[test]"
+        working-directory: ./client
+      - run: coverage run --source="api/valor_api,client/valor" -m pytest -v integration_tests/stress_test.py
+      - run: coverage report
+      - name: upload coverage report as artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ env.COVERAGE_FILE }}
+          path: ${{ env.COVERAGE_FILE }}
+      - run: make stop-env
+      - run: docker compose -p valor -f docker-compose.yml -f docker-compose.cicd-override.yml --env-file ./api/.env.testing up --build -d
+        env:
+          VALOR_SECRET_KEY: ${{ vars.SECRET_KEY }}
+          VALOR_USERNAME: ${{ vars.USERNAME }}
+          VALOR_PASSWORD: ${{ vars.PASSWORD }}
+      - name: sleep to give back end time to spin up
+        run: sleep 15
+
+  combine-coverage-report:
+    needs: [integration-stress-tests]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+      - run: pip install coverage
+      - uses: actions/download-artifact@v3
+        with:
+          name: .coverage.integration-stress-tests
+      - run: coverage combine
+      - run: coverage report
+      # https://nedbatchelder.com/blog/202209/making_a_coverage_badge.html
+      - run: |
+          coverage json
+          export TOTAL=$(python -c "import json;print(json.load(open('coverage.json'))['totals']['percent_covered_display'])")
+          echo "total=$TOTAL" >> $GITHUB_ENV
+      - name: "Make badge"
+        if: github.ref == 'refs/heads/main'
+        uses: schneegans/dynamic-badges-action@v1.4.0
+        with:
+          auth: ${{ secrets.GIST_SECRET }}
+          gistID: 501428c92df8d0de6805f40fb78b1363
+          filename: valor-coverage.json
+          label: Coverage
+          message: ${{ env.total }}%
+          minColorRange: 50
+          maxColorRange: 90
+          valColorRange: ${{ env.total }}

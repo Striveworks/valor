@@ -1,0 +1,184 @@
+name: Unit, functional, integration tests and code coverage
+
+on:
+  push:
+    branches: "**"
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  backend-functional-tests:
+    env:
+      COVERAGE_FILE: .coverage.backend-functional-tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+      - name: set up postgres
+        run: |
+          docker build ./database -t pgvalor
+          docker run -p 5432:5432 -e POSTGRES_PASSWORD=password -e POSTGRES_DB=valor -d pgvalor
+          sleep 3
+          docker build ./migrations -t migrations
+          docker run -e POSTGRES_PASSWORD=password -e POSTGRES_HOST=localhost -e POSTGRES_DB=valor -e POSTGRES_USERNAME=postgres -e POSTGRES_PORT=5432 --network "host" migrations
+      - name: run functional tests
+        run: |
+          cd api && pip install ".[test]"
+          POSTGRES_PASSWORD=password POSTGRES_HOST=localhost POSTGRES_DB=valor POSTGRES_USERNAME=postgres POSTGRES_PORT=5432 coverage run --source=valor_api -m pytest -v tests/functional-tests
+        env:
+          POSTGRES_PASSWORD: password
+          POSTGRES_HOST: localhost
+          POSTGRES_DB: valor
+          POSTGRES_USERNAME: postgres
+          POSTGRES_PORT: 5432
+      - run: cd api && coverage report
+      - name: upload coverage report as artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ env.COVERAGE_FILE }}
+          path: api/${{ env.COVERAGE_FILE }}
+
+  integration-tests:
+    env:
+      COVERAGE_FILE: .coverage.integration-tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: build postgres
+        run: |
+          docker build ./database -t pgvalor
+      - name: setup back end test env
+        run: docker compose -p valor -f docker-compose.yml -f docker-compose.cicd-override.yml --env-file ./api/.env.testing up --build -d
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+      - name: install api
+        run: pip install -e ".[test]"
+        working-directory: ./api
+      - name: install client
+        run: pip install -e ".[test]"
+        working-directory: ./client
+      - run: coverage run --source="api/valor_api,client/valor" -m pytest -v integration_tests/client/*
+      - run: coverage report
+      - name: upload coverage report as artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ env.COVERAGE_FILE }}
+          path: ${{ env.COVERAGE_FILE }}
+      - name: install javascript client
+        run: npm install
+        working-directory: ./ts-client
+      - name: run javascript client tests
+        run: npm run test
+        working-directory: ./ts-client
+      - run: make stop-env
+      - run: docker compose -p valor -f docker-compose.yml -f docker-compose.cicd-override.yml --env-file ./api/.env.testing up --build -d
+        env:
+          VALOR_SECRET_KEY: ${{ vars.SECRET_KEY }}
+          VALOR_USERNAME: ${{ vars.USERNAME }}
+          VALOR_PASSWORD: ${{ vars.PASSWORD }}
+      - name: sleep to give back end time to spin up
+        run: sleep 15
+      - name: test auth
+        run: pytest -v integration_tests/auth/*
+        env:
+          VALOR_USERNAME_FOR_TESTING: ${{ vars.USERNAME }}
+          VALOR_PASSWORD_FOR_TESTING: ${{ vars.PASSWORD }}
+
+  backend-unit-tests:
+    env:
+      COVERAGE_FILE: .coverage.backend-unit-tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./api
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+      - run: pip install ".[test]"
+      - run: coverage run --source=valor_api -m pytest -v tests/unit-tests
+      - run: coverage report
+      - name: upload coverage report as artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ env.COVERAGE_FILE }}
+          path: api/${{ env.COVERAGE_FILE }}
+
+  client-unit-tests:
+    env:
+      COVERAGE_FILE: .coverage.client-unit-tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ["3.7", "3.8", "3.9", "3.10", "3.11"]
+    defaults:
+      run:
+        working-directory: ./client
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python }}
+      - run: pip install tox
+      - run: tox -e py
+      - name: upload coverage report as artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ env.COVERAGE_FILE }}
+          path: client/${{ env.COVERAGE_FILE }}
+
+  combine-coverage-report:
+    needs:
+      [
+        backend-functional-tests,
+        integration-tests,
+        backend-unit-tests,
+        client-unit-tests,
+      ]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+      - run: pip install coverage
+      - uses: actions/download-artifact@v3
+        with:
+          name: .coverage.backend-unit-tests
+      - uses: actions/download-artifact@v3
+        with:
+          name: .coverage.client-unit-tests
+      - uses: actions/download-artifact@v3
+        with:
+          name: .coverage.integration-tests
+      - uses: actions/download-artifact@v3
+        with:
+          name: .coverage.backend-functional-tests
+      - run: coverage combine
+      - run: coverage report -m
+      # https://nedbatchelder.com/blog/202209/making_a_coverage_badge.html
+      - run: |
+          coverage json
+          export TOTAL=$(python -c "import json;print(json.load(open('coverage.json'))['totals']['percent_covered_display'])")
+          echo "total=$TOTAL" >> $GITHUB_ENV
+      - name: "Make badge"
+        if: github.ref == 'refs/heads/main'
+        uses: schneegans/dynamic-badges-action@v1.4.0
+        with:
+          auth: ${{ secrets.GIST_SECRET }}
+          gistID: c002bbe8c0e479921401b884f4b9fc53
+          filename: valor-coverage.json
+          label: Coverage
+          message: ${{ env.total }}%
+          minColorRange: 50
+          maxColorRange: 90
+          valColorRange: ${{ env.total }}
