@@ -6,7 +6,8 @@ const client = new ValorClient(baseURL);
 beforeEach(async () => {
   // make sure there are no datasets or models in the backend
   const datasets = await client.getDatasets({});
-  if (datasets.length > 0) {
+  const models = await client.getModels({});
+  if (datasets.length > 0 || models.length > 0) {
     throw new Error('Valor backend is not empty');
   }
 });
@@ -17,6 +18,13 @@ afterEach(async () => {
   datasets.forEach(async (dataset) => {
     await client.deleteDataset(dataset.name);
   });
+  const models = await client.getModels({});
+  models.forEach(async (model) => {
+    await client.deleteModel(model.name);
+  });
+
+  // sleep for a bit to allow the backend to delete the datasets and models
+  await new Promise((resolve) => setTimeout(resolve, 100));
 });
 
 test('dataset methods', async () => {
@@ -39,4 +47,24 @@ test('dataset methods', async () => {
 
   const datasetsByMetadata2 = await client.getDatasetsByMetadata({ k1: 'v3' });
   expect(datasetsByMetadata2.length).toBe(0);
+});
+
+test('model methods', async () => {
+  await client.createModel('test-model1', { k1: 'v1', k2: 'v2' });
+  await client.createModel('test-model2', { k1: 'v2', k3: 'v3' });
+
+  // check we can get all models
+  const allModels = await client.getModels({});
+  expect(Array.isArray(allModels)).toBe(true);
+  expect(allModels.length).toBe(2);
+  const modelNames = allModels.map((model) => model.name);
+  expect(modelNames).toEqual(expect.arrayContaining(['test-model1', 'test-model2']));
+
+  // check we can get a model by metadata
+  const modelsByMetadata1 = await client.getModelsByMetadata({ k1: 'v1' });
+  expect(modelsByMetadata1.length).toBe(1);
+  expect(modelsByMetadata1[0].name).toBe('test-model1');
+
+  const modelsByMetadata2 = await client.getModelsByMetadata({ k1: 'v3' });
+  expect(modelsByMetadata2.length).toBe(0);
 });

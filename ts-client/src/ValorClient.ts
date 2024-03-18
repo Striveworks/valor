@@ -6,6 +6,12 @@ type Dataset = {
   metadata: object;
 };
 
+type Model = {
+  id: number;
+  name: string;
+  metadata: object;
+};
+
 const metadataDictToString = (input: { [key: string]: string | number }): string => {
   const result: { [key: string]: Array<{ value: string | number; operator: string }> } =
     {};
@@ -51,5 +57,29 @@ export class ValorClient {
 
   public async deleteDataset(name: string): Promise<void> {
     await this.client.delete(`/datasets/${name}`);
+  }
+
+  public async getModels(queryParams: object): Promise<Model[]> {
+    const response = await this.client.get('/models', { params: queryParams });
+    return response.data;
+  }
+
+  public async getModelsByMetadata(metadata: {
+    [key: string]: string | number;
+  }): Promise<Model[]> {
+    return this.getModels({ model_metadata: metadataDictToString(metadata) });
+  }
+
+  public async getModelByName(name: string): Promise<Model> {
+    const response = await this.client.get(`/models/${name}`);
+    return response.data;
+  }
+
+  public async createModel(name: string, metadata: object): Promise<void> {
+    await this.client.post('/models', { name, metadata });
+  }
+
+  public async deleteModel(name: string): Promise<void> {
+    await this.client.delete(`/models/${name}`);
   }
 }
