@@ -1,1 +1,3 @@
--- if there's an error in altering the column, then we don't need to revert any changes
+-- note: if you've already created a PrecisionRecallCurve metric in your db, the line below will fail with ERROR:  cannot cast jsonb object to type double precision
+-- you'll have to delete all metrics with type = "PrecisionRecallCurve" before running this line
+ALTER TABLE if exists metric ALTER COLUMN value TYPE double precision USING value::double precision
