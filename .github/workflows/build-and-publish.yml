@@ -1,4 +1,4 @@
-name: Build and publish python package
+name: Build and publish python and typescript packages
 
 on:
   push:
@@ -30,15 +30,13 @@ jobs:
         working-directory: ./ts-client
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-node@v2
+      - uses: actions/setup-node@v4
         with:
           node-version: "16"
-      - name: Set version from the gittag
+          registry-url: "https://registry.npmjs.org"
+      - name: Set version from the git tag
         run: npm version ${{ github.ref_name }}
-      - name: Install dependencies
-        run: npm install
-      - name: Build package
-        run: npm run build
+      - run: npm ci
       - name: Publish to npm
         run: npm publish
         env:
