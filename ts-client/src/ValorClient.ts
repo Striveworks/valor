@@ -23,8 +23,8 @@ type TaskType =
 type Evaluation = {
   id: number;
   model_name: string;
-  datum_filter: Dataset;
-  parameters: { task_type: TaskType; any };
+  datum_filter: object;
+  parameters: { task_type: TaskType; object };
   status: 'pending' | 'running' | 'done' | 'failed' | 'deleting';
   metrics: object[];
   confusion_matrices: object[];
