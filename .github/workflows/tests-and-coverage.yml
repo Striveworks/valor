@@ -45,7 +45,7 @@ jobs:
           name: ${{ env.COVERAGE_FILE }}
           path: api/${{ env.COVERAGE_FILE }}
 
-  py-client-integration-tests:
+  integration-tests:
     env:
       COVERAGE_FILE: .coverage.integration-tests
     runs-on: ubuntu-latest
@@ -72,6 +72,12 @@ jobs:
         with:
           name: ${{ env.COVERAGE_FILE }}
           path: ${{ env.COVERAGE_FILE }}
+      - name: install javascript client
+        run: npm install
+        working-directory: ./ts-client
+      - name: run javascript client tests
+        run: npm run test
+        working-directory: ./ts-client
       - run: make stop-env
       - run: docker compose -p valor -f docker-compose.yml -f docker-compose.cicd-override.yml --env-file ./api/.env.testing up --build -d
         env:
@@ -85,9 +91,6 @@ jobs:
         env:
           VALOR_USERNAME_FOR_TESTING: ${{ vars.USERNAME }}
           VALOR_PASSWORD_FOR_TESTING: ${{ vars.PASSWORD }}
-
-  ts-client-integration-tests:
-    runs-on: ubuntu-latest
 
   backend-unit-tests:
     env:
