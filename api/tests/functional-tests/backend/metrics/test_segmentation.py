@@ -2,6 +2,7 @@ from sqlalchemy import and_, select
 from sqlalchemy.orm import Session
 
 from valor_api import crud, enums, schemas
+from valor_api.backend.core import create_or_get_evaluations
 from valor_api.backend.metrics.segmentation import (
     _compute_segmentation_metrics,
     _count_groundtruths,
@@ -9,6 +10,7 @@ from valor_api.backend.metrics.segmentation import (
     _count_true_positives,
     _generate_groundtruth_query,
     _generate_prediction_query,
+    compute_semantic_segmentation_metrics,
 )
 from valor_api.backend.models import Label
 
@@ -172,7 +174,7 @@ def _help_count_true_positives(
     return ret
 
 
-def test_count_true_positives(
+def test__count_true_positives(
     db: Session,
     dataset_name: str,
     model_name: str,
@@ -349,7 +351,7 @@ def test_count_predictions(
     )
 
 
-def test_compute_segmentation_metrics(
+def test__compute_segmentation_metrics(
     db: Session,
     dataset_name: str,
     model_name: str,
@@ -392,3 +394,85 @@ def test_compute_segmentation_metrics(
         assert metric.value < 1.0
     assert isinstance(metrics[-1], schemas.mIOUMetric)
     assert metrics[-1].value < 1.0
+
+
+def test_compute_semantic_segmentation_metrics(
+    db: Session,
+    dataset_name: str,
+    model_name: str,
+    gt_semantic_segs_create: list[schemas.GroundTruth],
+    pred_semantic_segs_img1_create: schemas.Prediction,
+    pred_semantic_segs_img2_create: schemas.Prediction,
+):
+    _create_data(
+        db=db,
+        dataset_name=dataset_name,
+        model_name=model_name,
+        gt_semantic_segs_create=gt_semantic_segs_create,
+        pred_semantic_segs_img1_create=pred_semantic_segs_img1_create,
+        pred_semantic_segs_img2_create=pred_semantic_segs_img2_create,
+    )
+
+    job_request = schemas.EvaluationRequest(
+        model_names=[model_name],
+        datum_filter=schemas.Filter(dataset_names=[dataset_name]),
+        parameters=schemas.EvaluationParameters(
+            task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+        ),
+    )
+
+    created_evaluations, existing_evaluations = create_or_get_evaluations(
+        db=db, job_request=job_request
+    )
+    assert len(created_evaluations) == 1
+    assert len(existing_evaluations) == 0
+
+    _ = compute_semantic_segmentation_metrics(
+        db=db, evaluation_id=created_evaluations[0].id
+    )
+
+    created_evaluations, existing_evaluations = create_or_get_evaluations(
+        db=db, job_request=job_request
+    )
+    assert len(created_evaluations) == 0
+    assert len(existing_evaluations) == 1
+
+    metrics = existing_evaluations[0].metrics
+
+    expected_metrics = [
+        schemas.Metric(
+            type="IOU",
+            parameters=None,
+            value=0.0,
+            label=schemas.Label(key="k3", value="v3", score=None),
+        ),
+        schemas.Metric(
+            type="IOU",
+            parameters=None,
+            value=0.0,
+            label=schemas.Label(key="k1", value="v2", score=None),
+        ),
+        schemas.Metric(
+            type="IOU",
+            parameters=None,
+            value=0.3360515275069432,  # perfect overlap on img1, lower IOU on img2
+            label=schemas.Label(key="k1", value="v1", score=None),
+        ),
+        schemas.Metric(
+            type="IOU",
+            parameters=None,
+            value=0.0,
+            label=schemas.Label(key="k2", value="v2", score=None),
+        ),
+        schemas.Metric(
+            type="mIOU", parameters=None, value=0.0840128818767358, label=None
+        ),  # .336 / 4
+    ]
+
+    # should have five metrics (one IOU for each of the four labels, and one mIOU)
+    assert len(metrics) == 5
+    for metric in metrics:
+        assert metric in expected_metrics
+
+    for metric in expected_metrics:
+        assert metric in metrics
