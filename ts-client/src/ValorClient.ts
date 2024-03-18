@@ -128,8 +128,12 @@ export class ValorClient {
     return evaluations[0];
   }
 
-  public async getEvaluationByModelName(modelName: string): Promise<Evaluation[]> {
+  public async getEvaluationsByModelName(modelName: string): Promise<Evaluation[]> {
     return this.getEvaluations({ models: modelName });
+  }
+
+  public async getEvaluationsByDatasetName(datasetName: string): Promise<Evaluation[]> {
+    return this.getEvaluations({ datasets: datasetName });
   }
 
   public async addGroundTruth(

@@ -103,9 +103,18 @@ test('evaluation methods', async () => {
   expect(evaluation.metrics.length).toBeGreaterThan(0);
 
   // check we can get my model name
-  const modelEvaluations = await client.getEvaluationByModelName('test-model1');
+  const modelEvaluations = await client.getEvaluationsByModelName('test-model1');
   expect(modelEvaluations.length).toBe(1);
 
-  const noModelEvaluations = await client.getEvaluationByModelName('no-such-model');
+  const noModelEvaluations = await client.getEvaluationsByModelName('no-such-model');
   expect(noModelEvaluations.length).toBe(0);
+
+  // check we can get my dataset name
+  const datasetEvaluations = await client.getEvaluationsByDatasetName('test-dataset1');
+  expect(datasetEvaluations.length).toBe(1);
+
+  const noDatasetEvaluations = await client.getEvaluationsByDatasetName(
+    'no-such-dataset'
+  );
+  expect(noDatasetEvaluations.length).toBe(0);
 });
