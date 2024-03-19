@@ -6,10 +6,9 @@ from .atomics import (
     Duration,
     Float,
     Integer,
-    StaticCollection,
     String,
+    StringEnum,
     Time,
-    ValueList,
 )
 from .functions import (
     And,
@@ -37,7 +36,7 @@ from .geojson import (
     Point,
     Polygon,
 )
-from .metadata import Metadata
+from .data_structures import Dictionary, StaticCollection, ValueList
 from .modifiers import (
     Equatable,
     Nullable,
@@ -46,7 +45,7 @@ from .modifiers import (
     Symbol,
     Variable,
 )
-from .utils import jsonify
+from .utils import jsonify, get_type_by_name, get_type_by_value
 
 __all__ = [
     "And",
@@ -75,6 +74,7 @@ __all__ = [
     "Integer",
     "Float",
     "String",
+    "StringEnum",
     "Score",
     "DateTime",
     "Date",
@@ -92,6 +92,8 @@ __all__ = [
     "BoundingPolygon",
     "Raster",
     "Embedding",
-    "Metadata",
+    "Dictionary",
     "jsonify",
+    "get_type_by_name",
+    "get_type_by_value",
 ]

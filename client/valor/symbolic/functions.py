@@ -12,11 +12,15 @@ class Function:
         return f"{type(self).__name__}({args})"
 
     def __str__(self):
+        values = [
+            f"'{arg}'" if isinstance(arg, str) else str(arg)
+            for arg in self._args
+        ]
         if self.operator is None:
-            args = ", ".join([str(arg) for arg in self._args])
+            args = ", ".join(values)
             return f"{type(self).__name__}({args})"
         else:
-            args = f" {self.operator} ".join([str(arg) for arg in self._args])
+            args = f" {self.operator} ".join(values)
             return f"({args})"
 
     def __and__(self, other: Any):

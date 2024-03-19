@@ -4,7 +4,7 @@ import json
 import time
 import warnings
 from dataclasses import asdict, dataclass
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union, Iterator
 
 from valor.client import ClientConnection, connect, get_connection
 from valor.enums import AnnotationType, EvaluationStatus, TableStatus, TaskType
@@ -12,16 +12,18 @@ from valor.exceptions import ClientException
 from valor.schemas.evaluation import EvaluationParameters, EvaluationRequest
 from valor.schemas.filters import Filter
 from valor.symbolic import (
+    Symbol,
     BoundingBox,
     BoundingPolygon,
     Embedding,
-    Metadata,
-    Nullable,
+    Dictionary,
     Raster,
     Score,
     StaticCollection,
     String,
+    StringEnum,
     ValueList,
+    jsonify,
 )
 
 FilterType = Union[list, dict]  # TODO - Remove this
@@ -71,9 +73,22 @@ class Label(StaticCollection):
         Declarative mappers used to create filters.
     """
 
-    key = String.symbolic(name="label", attribute="key")
-    value = String.symbolic(name="label", attribute="value")
-    score = Score.symbolic(name="label", attribute="score")
+    key = String.symbolic(owner="label", name="key")
+    value = String.symbolic(owner="label", name="value")
+    score = Score.symbolic(owner="label", name="score")
+
+    @classmethod
+    def create(
+        cls,
+        key: str,
+        value: str,
+        score: Optional[float] = None,
+    ):
+        return cls.definite(
+            key=key,
+            value=value,
+            score=score,
+        )
 
     def tuple(self):
         """
@@ -91,10 +106,14 @@ class Label(StaticCollection):
         )
 
 
-class LabelList(ValueList, Nullable):
-    @staticmethod
-    def supported_type():
-        return Label
+class LabelList(ValueList):
+    _supported_type = Label
+
+    def __getitem__(self, __key: int) -> Label:
+        return super().__getitem__(__key)
+    
+    def __iter__(self) -> Iterator[Label]:
+        return super().__iter__()
 
 
 class Annotation(StaticCollection):
@@ -173,17 +192,17 @@ class Annotation(StaticCollection):
     ... )
     """
 
-    task_type = String.symbolic(name="annotation", attribute="task_type")
-    labels = LabelList.symbolic(name="annotation", attribute="labels")
-    metadata = Metadata.symbolic(name="annotation", attribute="metadata")
+    task_type = StringEnum.symbolic(owner="annotation", name="task_type")
+    labels = LabelList.symbolic(owner="annotation", name="labels")
+    metadata = Dictionary.symbolic(owner="annotation", name="metadata")
     bounding_box = BoundingBox.symbolic(
-        name="annotation", attribute="bounding_box"
+        owner="annotation", name="bounding_box"
     )
     polygon = BoundingPolygon.symbolic(
-        name="annotation", attribute="bounding_polygon"
+        owner="annotation", name="bounding_polygon"
     )
-    raster = Raster.symbolic(name="annotation", attribute="raster")
-    embedding = Embedding.symbolic(name="annotation", attribute="embedding")
+    raster = Raster.symbolic(owner="annotation", name="raster")
+    embedding = Embedding.symbolic(owner="annotation", name="embedding")
 
     @classmethod
     def create(
@@ -196,22 +215,26 @@ class Annotation(StaticCollection):
         raster: Optional[Raster] = None,
         embedding: Optional[List[Embedding]] = None,
     ):
-        ret = cls(value={})
-        ret.task_type = String.definite(task_type.value)
-        ret.labels = LabelList.definite(labels if labels else [])
-        ret.metadata = Metadata.definite(metadata if metadata else {})
-        ret.bounding_box = BoundingBox.definite(bounding_box)
-        ret.polygon = BoundingPolygon.definite(polygon)
-        ret.raster = Raster.definite(raster)
-        ret.embedding = Embedding.definite(embedding)
-        return ret
+        return cls.definite(
+            task_type=task_type,
+            labels=labels,
+            metadata=metadata,
+            bounding_box=bounding_box,
+            polygon=polygon,
+            raster=raster,
+            embedding=embedding,
+        )
 
 
 class AnnotationList(ValueList):
-    @staticmethod
-    def supported_type():
-        return Annotation
+    _supported_type = Annotation
 
+    def __getitem__(self, __key: int) -> Annotation:
+        return super().__getitem__(__key)
+    
+    def __iter__(self) -> Iterator[Annotation]:
+        return super().__iter__()
+    
 
 class Datum(StaticCollection):
     """
@@ -225,43 +248,22 @@ class Datum(StaticCollection):
         A dictionary of metadata that describes the `Datum`.
     """
 
-    uid = String.symbolic(name="uid")
-    metadata = Metadata.symbolic(name="datum", attribute="metadata")
+    uid = String.symbolic(owner="datum", name="uid")
+    metadata = Dictionary.symbolic(owner="datum", name="metadata")
 
     @classmethod
     def create(
         cls,
-        uid: Optional[str],
+        uid: str,
         metadata: Optional[dict] = None,
     ):
-        ret = cls.symbolic()
-        ret.uid = String.definite(uid)
-        ret.metadata = Metadata.definite(metadata if metadata else {})
-        return ret
+        return cls.definite(
+            uid=uid,
+            metadata=metadata,
+        )
 
-    def get_uid(self):
-        if not self.uid._value:
-            raise ValueError
-        elif not self.uid.is_value():
-            raise ValueError("Datum uid is symbolic and has no value.")
-        else:
-            return self.uid._value
-
-
-if __name__ == "__main__":
-
-    cond = (
-        Annotation.labels.is_none()
-        | (Annotation.bounding_box.area > 200)
-        | (Label.symbolic() == Label(key="k1", value="v1"))
-        | (Datum.uid == "1234")
-        & (Annotation.labels == [Label(key="k1", value="v1")])
-    )
-    print(cond)
-
-    # TODO - list and dict types should be replaced by their proper titles of LabelList or Label
-
-    # print(json.dumps(jsonify(cond), indent=2))
+    def get_uid(self) -> str:
+        return self.uid.get_value()
 
 
 class GroundTruth(StaticCollection):
@@ -276,10 +278,27 @@ class GroundTruth(StaticCollection):
         The list of `Annotations` associated with the `GroundTruth`.
     """
 
-    datum = Datum.symbolic(name="groundtruth", attribute="datum")
+    datum = Datum.symbolic(owner="groundtruth", name="datum")
     annotations = AnnotationList.symbolic(
-        name="groundtruth", attribute="annotations"
+        owner="groundtruth", name="annotations"
     )
+
+    @classmethod
+    def create(
+        cls,
+        datum: Datum,
+        annotations: List[Annotation],
+    ):
+        return cls.definite(
+            datum=datum,
+            annotations=annotations,
+        )
+
+    def __validate__(self):
+        for annotation in self.annotations:
+            for label in annotation.labels:
+                if label.score.get_value() is not None:
+                    raise ValueError("GroundTruth labels should not have scores.")
 
 
 class Prediction(StaticCollection):
@@ -299,26 +318,33 @@ class Prediction(StaticCollection):
         The score assigned to the `Prediction`.
     """
 
-    datum = Datum.symbolic(name="prediction", attribute="datum")
+    datum = Datum.symbolic(owner="prediction", name="datum")
     annotations = AnnotationList.symbolic(
-        name="prediction", attribute="annotations"
+        owner="prediction", name="annotations"
     )
 
-    def _validate(self):
+    @classmethod
+    def create(
+        cls,
+        datum: Datum,
+        annotations: List[Annotation],
+    ):
+        return cls.definite(
+            datum=datum,
+            annotations=annotations,
+        )
+
+    def __validate__(self):
         """
         Validate the inputs of the `Prediction` based on task type.
         """
-        if type(self.annotations._value) is not list:
-            raise TypeError  # NOTE - This exists only for typing.
-
-        for annotation in self.annotations._value:
-            task_type = annotation.task_type._value
+        for annotation in self.annotations:
+            task_type = annotation.task_type.get_value()
             if task_type in [
                 TaskType.CLASSIFICATION,
                 TaskType.OBJECT_DETECTION,
             ]:
-                labels = annotation.labels._value
-                for label in labels:
+                for label in annotation.labels:
                     label_score = label.score._value
                     if label_score is None:
                         raise ValueError(
@@ -326,10 +352,9 @@ class Prediction(StaticCollection):
                         )
             elif task_type == TaskType.CLASSIFICATION:
                 label_keys_to_sum = {}
-                labels = annotation.labels._value
-                for scored_label in labels:
-                    label_key = scored_label.key._value
-                    label_score = scored_label.score._value
+                for scored_label in annotation.labels:
+                    label_key = scored_label.key.get_value()
+                    label_score = scored_label.score.get_value()
                     if label_key not in label_keys_to_sum:
                         label_keys_to_sum[label_key] = 0.0
                     label_keys_to_sum[label_key] += label_score
@@ -565,38 +590,15 @@ class Dataset(StaticCollection):
         A dictionary of metadata that describes the dataset.
     """
 
-    name = String.symbolic(name="dataset", attribute="name")
-    metadata = Metadata.symbolic(name="dataset", attribute="metadata")
-
-    def __init__(
-        self,
-        name: str,
-        metadata: Optional[dict] = None,
-        connection: Optional[ClientConnection] = None,
-        **kwargs,
-    ):
-        """
-        Create or get a `Dataset` object.
-
-        Parameters
-        ----------
-        name : str
-            The name of the dataset.
-        metadata : dict
-            An optional dictionary of metadata that describes the dataset.
-        connection : ClientConnnetion
-            An optional Valor client object for interacting with the API.
-        """
-        self.conn = connection
-        self.name = String.definite(name)
-        self.metadata = Metadata.definite(metadata if metadata else {})
-        self.kwargs = kwargs
+    name = String.symbolic(owner="dataset", name="name")
+    metadata = Dictionary.symbolic(owner="dataset", name="metadata")
 
     @classmethod
     def create(
         cls,
         name: str,
         metadata: Optional[dict] = None,
+        connection: Optional[ClientConnection] = None,
     ) -> Dataset:
         """
         Creates a dataset that persists in the back end.
@@ -613,10 +615,11 @@ class Dataset(StaticCollection):
         valor.Dataset
             The created dataset.
         """
-        dataset = cls(
+        dataset = cls.definite(
             name=name,
             metadata=metadata,
         )
+        dataset.add_connection(connection)
         Client(dataset.conn).create_dataset(dataset)
         return dataset
 
@@ -624,6 +627,7 @@ class Dataset(StaticCollection):
     def get(
         cls,
         name: str,
+        connection: Optional[ClientConnection] = None,
     ) -> Union[Dataset, None]:
         """
         Retrieves a dataset from the back end database.
@@ -638,7 +642,21 @@ class Dataset(StaticCollection):
         Union[valor.Dataset, None]
             The dataset or 'None' if it doesn't exist.
         """
-        return Client().get_dataset(name)
+        return Client(connection).get_dataset(name)
+    
+    def add_connection(
+        self,
+        connection: Optional[ClientConnection],
+    ):
+        """
+        Stores a pre-existing connection.
+
+        Parameters
+        ----------
+        connection : ClientConnnetion, optional
+            An optional Valor client object for interacting with the API.
+        """
+        self.conn = connection
 
     def add_groundtruth(
         self,
@@ -694,12 +712,7 @@ class Dataset(StaticCollection):
         return Client(self.conn).get_groundtruth(dataset=self, datum=datum)
 
     def get_name(self) -> str:
-        if not self.name._value:
-            raise ValueError
-        elif not self.name.is_value():
-            raise ValueError("Dataset name is symbolic and has no value.")
-        else:
-            return self.name._value
+        return self.name.get_value()
 
     def get_labels(
         self,
@@ -823,38 +836,15 @@ class Model(StaticCollection):
         A dictionary of metadata that describes the model.
     """
 
-    name = String.symbolic(name="model", attribute="name")
-    metadata = Metadata.symbolic(name="model", attribute="metadata")
-
-    def __init__(
-        self,
-        name: str,
-        metadata: Optional[dict] = None,
-        connection: Optional[ClientConnection] = None,
-        **kwargs,
-    ):
-        """
-        Create or get a `Model` object.
-
-        Parameters
-        ----------
-        name : str
-            The name of the model.
-        metadata : dict
-            An optional dictionary of metadata that describes the dataset.
-        connection : ClientConnnetion
-            An optional Valor client object for interacting with the API.
-        """
-        self.conn = connection
-        self.name = String.definite(name)
-        self.metadata = Metadata.definite(metadata if metadata else {})
-        self.kwargs = kwargs
+    name = String.symbolic(owner="model", name="name")
+    metadata = Dictionary.symbolic(owner="model", name="metadata")
 
     @classmethod
     def create(
         cls,
         name: str,
         metadata: Optional[dict] = None,
+        connection: Optional[ClientConnection] = None,
     ) -> Model:
         """
         Creates a model that persists in the back end.
@@ -865,23 +855,27 @@ class Model(StaticCollection):
             The name of the model.
         metadata : dict
             A dictionary of metadata that describes the model.
+        connection : ClientConnnetion, optional
+            An optional Valor client object for interacting with the API.
 
         Returns
         -------
         valor.Model
             The created model.
         """
-        model = cls(
+        model = cls.definite(
             name=name,
             metadata=metadata,
         )
-        Client(model.conn).create_model(model)
+        model.add_connection(connection)
+        Client(connection).create_model(model)
         return model
 
     @classmethod
     def get(
         cls,
         name: str,
+        connection: Optional[ClientConnection] = None,
     ) -> Union[Model, None]:
         """
         Retrieves a model from the back end database.
@@ -890,13 +884,26 @@ class Model(StaticCollection):
         ----------
         name : str
             The name of the model.
+        connection : ClientConnnetion, optional
+            An optional Valor client object for interacting with the API.
 
         Returns
         -------
         Union[valor.Model, None]
             The model or 'None' if it doesn't exist.
         """
-        return Client().get_model(name)
+        return Client(connection).get_model(name)
+    
+    def add_connection(self, connection: Optional[ClientConnection]):
+        """
+        Stores a pre-existing connection.
+
+        Parameters
+        ----------
+        connection : ClientConnnetion, optional
+            An optional Valor client object for interacting with the API.
+        """
+        self.conn = connection
 
     def add_prediction(
         self,
@@ -941,12 +948,7 @@ class Model(StaticCollection):
         )
 
     def get_name(self) -> str:
-        if not self.name._value:
-            raise ValueError
-        elif not self.name.is_value():
-            raise ValueError("Model name is symbolic and has no value.")
-        else:
-            return self.name._value
+        return self.name.get_value()
 
     def get_prediction(
         self, dataset: Union[Dataset, str], datum: Union[Datum, str]
@@ -1446,10 +1448,11 @@ class Client:
             A Dataset with a matching name, or 'None' if one doesn't exist.
         """
         try:
-            return Dataset(
-                connection=self.conn,
+            dataset = Dataset(
                 **self.conn.get_dataset(name),
             )
+            dataset.add_connection(self.conn)
+            return dataset
         except ClientException as e:
             if e.status_code == 404:
                 return None
@@ -1475,10 +1478,12 @@ class Client:
         filter_ = _format_filter(filter_by)
         if isinstance(filter_, Filter):
             filter_ = asdict(filter_)
-        return [
-            Dataset(connection=self.conn, **dataset)
-            for dataset in self.conn.get_datasets(filter_)
-        ]
+        dataset_list = []
+        for kwargs in self.conn.get_datasets(filter_):
+            dataset = Dataset(**kwargs)
+            dataset.add_connection(self.conn)
+            dataset_list.append(dataset)
+        return dataset_list
 
     def get_datums(
         self,
@@ -1722,7 +1727,9 @@ class Client:
             A Model with matching name or 'None' if one doesn't exist.
         """
         try:
-            return Model(connection=self.conn, **self.conn.get_model(name))
+            model = Model(**self.conn.get_model(name))
+            model.add_connection(self.conn)
+            return model
         except ClientException as e:
             if e.status_code == 404:
                 return None
@@ -1748,10 +1755,12 @@ class Client:
         filter_ = _format_filter(filter_by)
         if isinstance(filter_, Filter):
             filter_ = asdict(filter_)
-        return [
-            Model(connection=self.conn, **model)
-            for model in self.conn.get_models(filter_)
-        ]
+        model_list = []
+        for kwargs in self.conn.get_models(filter_):
+            model = Model(**kwargs)
+            model.add_connection(self.conn)
+            model_list.append(model)
+        return model_list
 
     def get_model_status(
         self,
@@ -1890,3 +1899,25 @@ class Client:
             Evaluation(**evaluation)
             for evaluation in self.conn.evaluate(request)
         ]
+
+
+if __name__ == "__main__":
+
+    gt = GroundTruth.create(
+        datum=Datum.create(uid="uid1", metadata={"hello": "world"}),
+        annotations=[
+            Annotation.create(
+                task_type=TaskType.OBJECT_DETECTION,
+                labels=[Label.create(key="k1", value="v1")],
+                bounding_box=BoundingBox.from_extrema(0,1,0,1)
+            )
+        ]
+    )
+    print(json.dumps(gt.to_dict(), indent=2))
+
+    print(Label.create(key="k1", value="v1").key.encode())
+
+    cond = (GroundTruth.symbolic() == gt)
+    # cond = Label.key == "hello"
+    cond = (BoundingBox.symbolic().intersects(BoundingBox.from_extrema(0,1,0,1)))
+    print(json.dumps(jsonify(cond), indent=2))

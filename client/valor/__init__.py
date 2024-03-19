@@ -20,6 +20,7 @@ from .coretypes import (
     GroundTruth,
     Model,
     Prediction,
+    Label,
 )
 from .schemas import Filter
 
@@ -35,4 +36,5 @@ __all__ = [
     "GroundTruth",
     "Prediction",
     "Filter",
+    "Label",
 ]
