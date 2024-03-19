@@ -83,7 +83,7 @@ test('model methods', async () => {
   expect(modelsByMetadata2.length).toBe(0);
 });
 
-test('evaluation methods', async () => {
+test('evaluation methods', async (done) => {
   const datasetNames = ['test-dataset1', 'test-dataset2'];
   const modelNames = ['test-model1', 'test-model2'];
 
@@ -156,4 +156,6 @@ test('evaluation methods', async () => {
   expect((await client.getEvaluationsByDatasetNames([datasetNames[0]])).length).toBe(2);
   expect((await client.getEvaluationsByDatasetNames(datasetNames)).length).toBe(4);
   expect((await client.getEvaluationsByDatasetNames(['no-such-dataset'])).length).toBe(0);
+
+  done();
 });
