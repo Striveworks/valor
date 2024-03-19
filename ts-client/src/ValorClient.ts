@@ -37,7 +37,7 @@ type Evaluation = {
   id: number;
   model_name: string;
   datum_filter: object;
-  parameters: { task_type: TaskType; any };
+  parameters: { task_type: TaskType; object: any };
   status: 'pending' | 'running' | 'done' | 'failed' | 'deleting';
   metrics: Metric[];
   confusion_matrices: any[];

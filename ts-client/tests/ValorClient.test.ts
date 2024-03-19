@@ -26,7 +26,7 @@ afterEach(async () => {
   );
 
   // theres a race condition bug in the backend so sleep here
-  await new Promise((resolve) => setTimeout(resolve, 500));
+  await new Promise((resolve) => setTimeout(resolve, 1000));
 
   const models = await client.getAllModels();
   await Promise.all(
