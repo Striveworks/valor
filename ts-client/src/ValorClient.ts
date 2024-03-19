@@ -3,7 +3,7 @@ import axios, { AxiosInstance } from 'axios';
 type Dataset = {
   id: number;
   name: string;
-  metadata: object;
+  metadata: Partial<Record<string, any>>;
 };
 
 type Model = {
