@@ -29,7 +29,7 @@ type Label = {
 type Metric = {
   type: string;
   parameters?: Partial<Record<string, any>>;
-  value: number | object;
+  value: number | any;
   labe?: Label;
 };
 
@@ -37,10 +37,10 @@ type Evaluation = {
   id: number;
   model_name: string;
   datum_filter: object;
-  parameters: { task_type: TaskType; object };
+  parameters: { task_type: TaskType; any };
   status: 'pending' | 'running' | 'done' | 'failed' | 'deleting';
   metrics: Metric[];
-  confusion_matrices: object[];
+  confusion_matrices: any[];
 };
 
 const metadataDictToString = (input: { [key: string]: string | number }): string => {
