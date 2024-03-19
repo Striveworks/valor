@@ -72,10 +72,10 @@ jobs:
         with:
           name: ${{ env.COVERAGE_FILE }}
           path: ${{ env.COVERAGE_FILE }}
-      - name: install javascript client
+      - name: install typescript client
         run: npm install
         working-directory: ./ts-client
-      - name: run javascript client tests
+      - name: run typescript client tests
         run: npm run test
         working-directory: ./ts-client
       - run: make stop-env
