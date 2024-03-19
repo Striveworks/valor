@@ -15,7 +15,7 @@
     "valor",
     "striveworks"
   ],
-  "author": "Striveworks <valor@striveworks.com>",
+  "author": "Striveworks <valor@striveworks.com> (https://www.striveworks.com/)",
   "license": "MIT",
   "dependencies": {
     "axios": "^0.21.1"
