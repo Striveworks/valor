@@ -18,11 +18,9 @@ beforeEach(async (done) => {
 afterEach(async (done) => {
   // delete any datasets or models in the backend
   const datasets = await client.getAllDatasets();
-  await Promise.all(
-    datasets.map(async (dataset) => {
-      await client.deleteDataset(dataset.name);
-    })
-  );
+  for (const dataset of datasets) {
+    await client.deleteDataset(dataset.name);
+  }
 
   // theres a race condition bug in the backend so wait
   // until all datasets are deleted
@@ -31,11 +29,9 @@ afterEach(async (done) => {
   }
 
   const models = await client.getAllModels();
-  await Promise.all(
-    models.map(async (model) => {
-      await client.deleteModel(model.name);
-    })
-  );
+  for (const model of models) {
+    await client.deleteModel(model.name);
+  }
 
   // wait for all models to be deleted
   while ((await client.getAllModels()).length > 0) {
