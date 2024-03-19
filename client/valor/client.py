@@ -123,11 +123,9 @@ def _chunk_list(
     avg_element_size = get_json_size(json_list) / n_elements
     n_elements_per_chunk = int(chunk_size_bytes / avg_element_size)
 
-    # handle division by zero error:
+    # return a list of individual elements if n_elements_per_chunk is zero
     if n_elements_per_chunk == 0:
-        raise ValueError(
-            "Divison by zero error. Please increase your chunk_size_bytes parameter."
-        )
+        return [[element] for element in json_list]
 
     n_chunks = math.ceil(n_elements / n_elements_per_chunk)
 

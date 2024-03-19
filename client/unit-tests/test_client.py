@@ -27,6 +27,10 @@ def test__chunk_list():
     )  # recursively chunked once, which added an extra split
     assert [len(x) for x in results] == [42, 41, 1, 16]
 
+    # edge case with small chunk size
+    results = _chunk_list(json_list=data, chunk_size_bytes=1)
+    assert results == [[x] for x in data]
+
 
 @patch("valor.client.ClientConnection")
 def test_connect(ClientConnection):
