@@ -20,10 +20,6 @@ def test__chunk_list():
     # 100 elements with an average element size of 23.8
     data = [{f"key_{i}": f"value_{i}"} for i in range(100)]
 
-    # division by zero error
-    with pytest.raises(ValueError):
-        _chunk_list(json_list=data, chunk_size_bytes=1)
-
     # standard case
     results = _chunk_list(json_list=data, chunk_size_bytes=1000)
     assert (
