@@ -1,8 +1,7 @@
 import datetime
+import numpy as np
 from enum import Enum
 from typing import Any
-
-import numpy as np
 
 from valor.symbolic.modifiers import Equatable, Quantifiable
 

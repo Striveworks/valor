@@ -22,7 +22,6 @@ from valor.symbolic import (
     String,
     StringEnum,
     ValueList,
-    jsonify,
 )
 
 FilterType = Union[list, dict]  # TODO - Remove this

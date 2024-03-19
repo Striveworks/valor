@@ -1,6 +1,13 @@
 import pytest
 
-from valor.symbolic.modifiers import Symbol, Variable
+from valor.symbolic.modifiers import (
+    Symbol,
+    Variable,
+    Equatable,
+    Quantifiable,
+    Nullable,
+    Spatial,
+)
 
 
 def test_symbol():
@@ -39,17 +46,19 @@ def test_symbol():
     }
 
 
+def _test_symbolic_outputs(v, s=Symbol(name="test")):
+    assert s.to_dict() == v.to_dict()
+    assert s.to_dict() == v.get_symbol().to_dict()
+    assert s.__repr__() == v.__repr__()
+    assert s.__str__() == v.__str__()
+    assert v.is_symbolic and not v.is_value
+
+    with pytest.raises(TypeError):
+        v.get_value()
+
+
 def test_variable():
     # test symbolic variables
-    def _test_symbolic_outputs(v, s=Symbol(name="test")):
-        assert s.to_dict() == v.to_dict()
-        assert s.to_dict() == v.get_symbol().to_dict()
-        assert s.__repr__() == v.__repr__()
-        assert s.__str__() == v.__str__()
-        assert v.is_symbolic and not v.is_value
-
-        with pytest.raises(TypeError):
-            v.get_value()
 
     var_method1 = Variable.symbolic(name="test")
     var_method2 = Variable(symbol=Symbol(name="test"))
@@ -63,3 +72,122 @@ def test_variable():
         Variable(value="hello")
     with pytest.raises(NotImplementedError):
         Variable.definite("hello")
+
+
+def test_equatable():
+    varA = Equatable.symbolic(name="A")
+    varB = Equatable.symbolic(name="B")
+    varC = Equatable.symbolic(name="C")
+
+    # Equals
+    assert (varA == varB).to_dict() == {
+        "op": "eq",
+        "lhs": {
+            "type": "symbol",
+            "value": {
+                "owner": None,
+                "name": "A",
+                "key": None,
+                "attribute": None,
+            }
+        },
+        "rhs": {
+            "type": "symbol",
+            "value": {
+                "owner": None,
+                "name": "B",
+                "key": None,
+                "attribute": None,
+            }
+        }
+    }
+    assert (varA == varB).to_dict() == (varA == Symbol("B")).to_dict()
+
+    # Not Equals
+    assert (varA != varB).to_dict() == {
+        "op": "ne",
+        "lhs": {
+            "type": "symbol",
+            "value": {
+                "owner": None,
+                "name": "A",
+                "key": None,
+                "attribute": None,
+            }
+        },
+        "rhs": {
+            "type": "symbol",
+            "value": {
+                "owner": None,
+                "name": "B",
+                "key": None,
+                "attribute": None,
+            }
+        }
+    }
+    assert (varA != varB).to_dict() == (varA != Symbol("B")).to_dict()
+
+    # In (exists within list)
+    assert varA.in_([varB, varC]).to_dict() == {
+        "op": "or",
+        "args": [
+            {
+                "op": "eq",
+                "lhs": {
+                    "type": "symbol",
+                    "value": {
+                        "owner": None,
+                        "name": "A",
+                        "key": None,
+                        "attribute": None,
+                    }
+                },
+                "rhs": {
+                    "type": "symbol",
+                    "value": {
+                        "owner": None,
+                        "name": "B",
+                        "key": None,
+                        "attribute": None,
+                    }
+                }
+            },
+            {
+                "op": "eq",
+                "lhs": {
+                    "type": "symbol",
+                    "value": {
+                        "owner": None,
+                        "name": "A",
+                        "key": None,
+                        "attribute": None,
+                    }
+                },
+                "rhs": {
+                    "type": "symbol",
+                    "value": {
+                        "owner": None,
+                        "name": "C",
+                        "key": None,
+                        "attribute": None,
+                    }
+                }
+            }
+        ]
+    }
+    assert (
+        varA.in_([varB, varC]).to_dict() 
+        == varA.in_([Symbol("B"), Symbol("C")]).to_dict()
+    )
+
+
+def test_quantifiable():
+    pass
+
+
+def test_nullable():
+    pass
+
+
+def test_spatial():
+    pass

@@ -45,7 +45,7 @@ from .modifiers import (
     Symbol,
     Variable,
 )
-from .utils import get_type_by_name, get_type_by_value, jsonify
+from .utils import get_type_by_name, get_type_by_value
 
 __all__ = [
     "And",
@@ -93,7 +93,6 @@ __all__ = [
     "Raster",
     "Embedding",
     "Dictionary",
-    "jsonify",
     "get_type_by_name",
     "get_type_by_value",
 ]

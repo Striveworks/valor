@@ -12,6 +12,7 @@ from valor.symbolic.functions import (
     Lt,
     Ne,
     Outside,
+    Or,
 )
 
 
@@ -209,7 +210,12 @@ class Equatable(Variable):
         return Ne(self, other)
 
     def in_(self, vlist: List[Any]):
-        return Eq(*[self.preprocess(v) for v in vlist])
+        return Or(
+            *[
+                Eq(self, self.preprocess(v))
+                for v in vlist
+            ]
+        )
 
     def __hash__(self):
         if self.is_symbolic:

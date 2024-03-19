@@ -38,6 +38,12 @@ class Function:
     def reduce(self):
         return self
 
+    def to_dict(self):
+        return {
+            "op": type(self).__name__.lower(), 
+            "args": [arg.to_dict() for arg in self._args]
+        }
+
 
 class OneArgumentFunction(Function):
     def __init__(self, arg, **kwargs) -> None:
@@ -46,6 +52,12 @@ class OneArgumentFunction(Function):
     @property
     def arg(self):
         return self._args[0]
+    
+    def to_dict(self):
+        return {
+            "op": type(self).__name__.lower(),
+            "arg": self.arg.to_dict()
+        }
 
 
 class TwoArgumentFunction(Function):
@@ -61,6 +73,13 @@ class TwoArgumentFunction(Function):
     @property
     def rhs(self):
         return self._rhs
+    
+    def to_dict(self):
+        return {
+            "op": type(self).__name__.lower(),
+            "lhs": self.lhs.to_dict(),
+            "rhs": self.rhs.to_dict(),
+        }
 
 
 class AppendableFunction(Function):
