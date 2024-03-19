@@ -24,7 +24,7 @@ afterEach(async () => {
   );
 
   // theres a race condition bug in the backend so wait
-  // until all models are deleted
+  // until all datasets are deleted
   while ((await client.getAllDatasets()).length > 0) {
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
