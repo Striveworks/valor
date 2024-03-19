@@ -5,16 +5,17 @@ import { ValorClient } from '../src/ValorClient';
 const baseURL = 'http://localhost:8000';
 const client = new ValorClient(baseURL);
 
-beforeEach(async () => {
+beforeEach(async (done) => {
   // make sure there are no datasets or models in the backend
   const datasets = await client.getAllDatasets();
   const models = await client.getAllModels();
   if (datasets.length > 0 || models.length > 0) {
     throw new Error('Valor backend is not empty');
   }
+  done();
 });
 
-afterEach(async () => {
+afterEach(async (done) => {
   // delete any datasets or models in the backend
   const datasets = await client.getAllDatasets();
   await Promise.all(
@@ -40,6 +41,8 @@ afterEach(async () => {
   while ((await client.getAllModels()).length > 0) {
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
+
+  done();
 });
 
 test('dataset methods', async () => {
