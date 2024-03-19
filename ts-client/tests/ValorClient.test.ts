@@ -25,8 +25,11 @@ afterEach(async () => {
     })
   );
 
-  // theres a race condition bug in the backend so sleep here
-  await new Promise((resolve) => setTimeout(resolve, 1000));
+  // theres a race condition bug in the backend so wait
+  // until all models are deleted
+  while ((await client.getAllDatasets()).length > 0) {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
 
   const models = await client.getAllModels();
   await Promise.all(
@@ -35,8 +38,10 @@ afterEach(async () => {
     })
   );
 
-  // sleep for a bit to allow the backend to delete the datasets and models
-  await new Promise((resolve) => setTimeout(resolve, 500));
+  // wait for all models to be deleted
+  while ((await client.getAllModels()).length > 0) {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
 });
 
 test('dataset methods', async () => {
