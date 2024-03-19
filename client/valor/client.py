@@ -91,7 +91,7 @@ def get_json_size(json_obj: object, encoding: str = "utf-8") -> int:
     )
 
 
-def chunk_list(
+def _chunk_list(
     json_list: list, chunk_size_bytes: int, encoding: str = "utf-8"
 ) -> List[list]:
     """
@@ -122,6 +122,13 @@ def chunk_list(
     n_elements = len(json_list)
     avg_element_size = get_json_size(json_list) / n_elements
     n_elements_per_chunk = int(chunk_size_bytes / avg_element_size)
+
+    # handle division by zero error:
+    if n_elements_per_chunk == 0:
+        raise ValueError(
+            "Divison by zero error. Please increase your chunk_size_bytes parameter."
+        )
+
     n_chunks = math.ceil(n_elements / n_elements_per_chunk)
 
     chunks = []
@@ -135,7 +142,7 @@ def chunk_list(
             new_chunk_size > chunk_size_bytes
         ):  # Recursively chunk if still too large.
             chunks.extend(
-                chunk_list(
+                _chunk_list(
                     json_list=json_list[lhi:rhi],
                     chunk_size_bytes=chunk_size_bytes,
                     encoding=encoding,
@@ -357,7 +364,7 @@ class ClientConnection:
         chunk_size_bytes : int, default=1e7
             Maximum size of a POST'ed json in bytes. Defaults to 10MB.
         """
-        chunked_groundtruths = chunk_list(
+        chunked_groundtruths = _chunk_list(
             json_list=groundtruths,
             chunk_size_bytes=chunk_size_bytes,
         )
@@ -410,7 +417,7 @@ class ClientConnection:
         chunk_size_bytes : int, default=1e7
             Maximum size of a POST'ed json in bytes. Defaults to 10MB.
         """
-        chunked_predictions = chunk_list(
+        chunked_predictions = _chunk_list(
             json_list=predictions,
             chunk_size_bytes=chunk_size_bytes,
         )
