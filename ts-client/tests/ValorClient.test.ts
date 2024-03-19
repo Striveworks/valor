@@ -36,7 +36,7 @@ afterEach(async () => {
   );
 
   // sleep for a bit to allow the backend to delete the datasets and models
-  await new Promise((resolve) => setTimeout(resolve, 200));
+  await new Promise((resolve) => setTimeout(resolve, 500));
 });
 
 test('dataset methods', async () => {
