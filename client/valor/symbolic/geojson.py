@@ -34,6 +34,7 @@ class Point(Spatial):
     >>> Point(value=(1,2))
     Point(x=1.0, y=2.0)
     """
+
     def __init__(
         self,
         value: Optional[Tuple[float, float]] = None,
@@ -143,6 +144,7 @@ class Polygon(Spatial):
     ...     holes=[basic_polygon2, basic_polygon3],
     ... )
     """
+
     def __init__(
         self,
         value: Optional[List[List[Tuple[float, float]]]] = None,

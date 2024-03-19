@@ -1,31 +1,29 @@
-import numpy as np
-
 from typing import Any
 
+from valor.symbolic.atomics import (
+    Bool,
+    Date,
+    DateTime,
+    Duration,
+    Float,
+    Integer,
+    String,
+    Time,
+)
 from valor.symbolic.functions import (
     AppendableFunction,
     OneArgumentFunction,
     TwoArgumentFunction,
 )
-from valor.symbolic.modifiers import Variable
-from valor.symbolic.atomics import (
-    Bool,
-    String,
-    Integer,
-    Float,
-    DateTime,
-    Date,
-    Time,
-    Duration,
-)
 from valor.symbolic.geojson import (
-    MultiPolygon,
-    Polygon,
-    MultiLineString,
     LineString,
+    MultiLineString,
     MultiPoint,
+    MultiPolygon,
     Point,
+    Polygon,
 )
+from valor.symbolic.modifiers import Variable
 
 
 def get_type_by_value(other: Any):

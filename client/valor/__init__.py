@@ -18,9 +18,9 @@ from .coretypes import (
     Datum,
     Evaluation,
     GroundTruth,
+    Label,
     Model,
     Prediction,
-    Label,
 )
 from .schemas import Filter
 

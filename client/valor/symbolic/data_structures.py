@@ -1,19 +1,21 @@
 from typing import Any, Dict, List, Optional
 
-from valor.symbolic.modifiers import Symbol, Variable, Equatable
 from valor.symbolic.atomics import Float
+from valor.symbolic.modifiers import Equatable, Symbol, Variable
 from valor.symbolic.utils import get_type_by_name, get_type_by_value
 
 
 class StaticCollection(Equatable):
     """
-    A static collection is a Variable that stores its contents as static attributes.    
+    A static collection is a Variable that stores its contents as static attributes.
     """
+
     @classmethod
     def definite(cls, **kwargs):
         instance = cls()
         _static_variables = {
-            name for name in vars(cls)
+            name
+            for name in vars(cls)
             if issubclass(type(instance.__getattribute__(name)), Variable)
         }
         if set(kwargs.keys()).issubset(_static_variables):
@@ -28,7 +30,9 @@ class StaticCollection(Equatable):
                 try:
                     instance.__setattr__(name, objval)
                 except TypeError as e:
-                    raise TypeError(f"Attribute `{cls.__name__}.{name}` raised: {str(e)}")
+                    raise TypeError(
+                        f"Attribute `{cls.__name__}.{name}` raised: {str(e)}"
+                    )
         else:
             raise TypeError(
                 f"{cls.__name__}() does not take the following keyword arguments '{_static_variables - set(kwargs.keys())}'"
@@ -56,21 +60,18 @@ class StaticCollection(Equatable):
             if issubclass(type(objval), Variable):
                 retval[name] = objval
         return retval
-    
+
     @classmethod
     def supports(cls, value: Any) -> bool:
         return value is None
-    
+
     @classmethod
     def decode(cls, value: dict):
         return cls(**value)
-    
+
     def encode(self):
-        return {
-            k : v.encode()
-            for k,v in self._parse_object().items()
-        }
-    
+        return {k: v.encode() for k, v in self._parse_object().items()}
+
 
 class ValueList(Equatable):
     _supported_type = Variable
@@ -96,17 +97,11 @@ class ValueList(Equatable):
         if not value:
             return []
         if issubclass(type(value), Variable):
-            return [
-                cls._supported_type.decode(element)
-                for element in value
-            ]
-        
+            return [cls._supported_type.decode(element) for element in value]
+
     def encode(self):
-        return [
-            element.encode()
-            for element in self.get_value()
-        ]
-    
+        return [element.encode() for element in self.get_value()]
+
     def __getitem__(self, __key: int):
         return self.get_value()[__key]
 
@@ -115,14 +110,14 @@ class ValueList(Equatable):
         if value is None:
             raise TypeError
         value[__key] = __value
-        
+
     def __iter__(self):
         return iter([element for element in self.get_value()])
 
 
 class DictionaryValue:
     def __init__(
-        self, 
+        self,
         symbol: Symbol,
         key: str,
     ):
@@ -169,7 +164,9 @@ class DictionaryValue:
 
     @property
     def area(self):
-        return Float.symbolic(owner=self._owner, name=self._name, key=self._key, attribute="area")
+        return Float.symbolic(
+            owner=self._owner, name=self._name, key=self._key, attribute="area"
+        )
 
     def generate(self, other: Any, fn: str):
         obj = get_type_by_value(other)
@@ -178,35 +175,28 @@ class DictionaryValue:
 
 
 class Dictionary(Equatable):
-
     @classmethod
     def definite(
         cls,
         value: Optional[Dict[str, Any]] = None,
     ):
         value = value if value else dict()
-        value = {
-            k : get_type_by_value(v).definite(v)
-            for k,v in value.items()
-        }
+        value = {k: get_type_by_value(v).definite(v) for k, v in value.items()}
         return super().definite(value)
 
     @classmethod
     def supports(cls, value: Any) -> bool:
         return type(value) in {dict, Dictionary}
-    
+
     @classmethod
     def decode(cls, value: dict) -> Any:
         return {
-            k : get_type_by_name(v["type"]).decode(v["value"])
-            for k,v in value.items()
+            k: get_type_by_name(v["type"]).decode(v["value"])
+            for k, v in value.items()
         }
-    
+
     def encode(self) -> dict:
-        return {
-            k : v.to_dict()
-            for k,v in self.items()
-        }
+        return {k: v.to_dict() for k, v in self.items()}
 
     def __getitem__(self, key: str):
         if isinstance(self._value, Symbol):
@@ -215,9 +205,11 @@ class Dictionary(Equatable):
 
     def __setitem__(self, key: str, value: Any):
         if isinstance(self._value, Symbol):
-            raise NotImplementedError("Symbols do not support the setting of values.")
+            raise NotImplementedError(
+                "Symbols do not support the setting of values."
+            )
         self.get_value()[key] = value
-    
+
     def items(self):
         if isinstance(self._value, Symbol):
             raise NotImplementedError("Variable is symbolic")

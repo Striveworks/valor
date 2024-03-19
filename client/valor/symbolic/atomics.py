@@ -1,10 +1,10 @@
 import datetime
+from enum import Enum
+from typing import Any
+
 import numpy as np
 
-from typing import Any, Dict, List, Optional
-from enum import Enum
-
-from valor.symbolic.modifiers import Equatable, Quantifiable, Variable, Symbol
+from valor.symbolic.modifiers import Equatable, Quantifiable
 
 
 class Bool(Equatable):
@@ -26,20 +26,22 @@ class Integer(Quantifiable):
 class Float(Quantifiable):
     @classmethod
     def supports(cls, value: Any) -> bool:
-        return isinstance(value, (float, np.floating)) or Integer.supports(value)
+        return isinstance(value, (float, np.floating)) or Integer.supports(
+            value
+        )
 
 
 class String(Equatable):
     @classmethod
     def supports(cls, value: Any) -> bool:
         return isinstance(value, str)
-    
+
 
 class StringEnum(String):
     @classmethod
     def supports(cls, value: Any) -> bool:
         return issubclass(type(value), str) and issubclass(type(value), Enum)
-    
+
     def encode(self):
         return self.get_value().value
 
@@ -52,7 +54,7 @@ class DateTime(Quantifiable):
     @classmethod
     def decode(cls, value: str):
         return cls(value=datetime.datetime.fromisoformat(value))
-    
+
     def encode(self):
         return self.get_value().isoformat()
 
@@ -78,7 +80,7 @@ class Time(Quantifiable):
     @classmethod
     def decode(cls, value: str):
         return cls(value=datetime.time.fromisoformat(value))
-    
+
     def encode(self):
         return self.get_value().isoformat()
 
@@ -87,7 +89,7 @@ class Duration(Quantifiable):
     @classmethod
     def supports(cls, value: Any) -> bool:
         return type(value) is datetime.timedelta
-    
+
     @classmethod
     def decode(cls, value: int):
         return cls(value=datetime.timedelta(seconds=value))

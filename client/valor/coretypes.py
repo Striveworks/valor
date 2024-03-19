@@ -4,7 +4,7 @@ import json
 import time
 import warnings
 from dataclasses import asdict, dataclass
-from typing import Any, Dict, List, Optional, Tuple, Union, Iterator
+from typing import Dict, Iterator, List, Optional, Tuple, Union
 
 from valor.client import ClientConnection, connect, get_connection
 from valor.enums import AnnotationType, EvaluationStatus, TableStatus, TaskType
@@ -12,11 +12,10 @@ from valor.exceptions import ClientException
 from valor.schemas.evaluation import EvaluationParameters, EvaluationRequest
 from valor.schemas.filters import Filter
 from valor.symbolic import (
-    Symbol,
     BoundingBox,
     BoundingPolygon,
-    Embedding,
     Dictionary,
+    Embedding,
     Raster,
     Score,
     StaticCollection,
@@ -111,7 +110,7 @@ class LabelList(ValueList):
 
     def __getitem__(self, __key: int) -> Label:
         return super().__getitem__(__key)
-    
+
     def __iter__(self) -> Iterator[Label]:
         return super().__iter__()
 
@@ -231,10 +230,10 @@ class AnnotationList(ValueList):
 
     def __getitem__(self, __key: int) -> Annotation:
         return super().__getitem__(__key)
-    
+
     def __iter__(self) -> Iterator[Annotation]:
         return super().__iter__()
-    
+
 
 class Datum(StaticCollection):
     """
@@ -298,7 +297,9 @@ class GroundTruth(StaticCollection):
         for annotation in self.annotations:
             for label in annotation.labels:
                 if label.score.get_value() is not None:
-                    raise ValueError("GroundTruth labels should not have scores.")
+                    raise ValueError(
+                        "GroundTruth labels should not have scores."
+                    )
 
 
 class Prediction(StaticCollection):
@@ -643,7 +644,7 @@ class Dataset(StaticCollection):
             The dataset or 'None' if it doesn't exist.
         """
         return Client(connection).get_dataset(name)
-    
+
     def add_connection(
         self,
         connection: Optional[ClientConnection],
@@ -893,7 +894,7 @@ class Model(StaticCollection):
             The model or 'None' if it doesn't exist.
         """
         return Client(connection).get_model(name)
-    
+
     def add_connection(self, connection: Optional[ClientConnection]):
         """
         Stores a pre-existing connection.
@@ -1909,15 +1910,17 @@ if __name__ == "__main__":
             Annotation.create(
                 task_type=TaskType.OBJECT_DETECTION,
                 labels=[Label.create(key="k1", value="v1")],
-                bounding_box=BoundingBox.from_extrema(0,1,0,1)
+                bounding_box=BoundingBox.from_extrema(0, 1, 0, 1),
             )
-        ]
+        ],
     )
     print(json.dumps(gt.to_dict(), indent=2))
 
     print(Label.create(key="k1", value="v1").key.encode())
 
-    cond = (GroundTruth.symbolic() == gt)
+    cond = GroundTruth.symbolic() == gt
     # cond = Label.key == "hello"
-    cond = (BoundingBox.symbolic().intersects(BoundingBox.from_extrema(0,1,0,1)))
+    cond = BoundingBox.symbolic().intersects(
+        BoundingBox.from_extrema(0, 1, 0, 1)
+    )
     print(json.dumps(jsonify(cond), indent=2))

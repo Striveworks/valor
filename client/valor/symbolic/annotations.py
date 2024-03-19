@@ -1,14 +1,14 @@
 import io
 from base64 import b64decode, b64encode
-from dataclasses import dataclass, field
-from typing import List, Tuple, Union, Any
+from typing import Any, Union
 
 import numpy as np
 import PIL.Image
 
-from valor.symbolic.atomics import Float, String
+from valor.symbolic.atomics import Float
 from valor.symbolic.geojson import MultiPolygon, Polygon
 from valor.symbolic.modifiers import Nullable, Spatial, Symbol
+
 
 class Score(Float, Nullable):
     @classmethod
@@ -54,6 +54,7 @@ class BoundingBox(Polygon, Nullable):
     ...     ymin=0, ymax=1,
     ... )
     """
+
     @classmethod
     def from_extrema(
         cls,
@@ -80,7 +81,7 @@ class BoundingBox(Polygon, Nullable):
         -------
         BoundingBox
             A BoundingBox created from the provided extrema values.
-        """  
+        """
         points = [
             [
                 (xmin, ymin),
@@ -142,6 +143,7 @@ class BoundingPolygon(Polygon, Nullable):
     ...     ]],
     ... )
     """
+
     @classmethod
     def supports(cls, value: Any) -> bool:
         return Polygon.supports(value) or value is None
@@ -243,7 +245,6 @@ class Raster(Spatial, Nullable):
         r._value["geometry"] = mask
         return r
 
-
     @classmethod
     def supports(cls, value: Any) -> bool:
         return (value is None) or (
@@ -277,7 +278,7 @@ class Raster(Spatial, Nullable):
         """
         if self.is_symbolic or not self._value:
             raise ValueError
-        if self._value['geometry'] is not None:
+        if self._value["geometry"] is not None:
             raise ValueError(
                 "NumPy conversion is not supported for geometry-based rasters."
             )
@@ -285,13 +286,9 @@ class Raster(Spatial, Nullable):
         with io.BytesIO(mask_bytes) as f:
             img = PIL.Image.open(f)
             return np.array(img)
-    
+
 
 class Embedding(Spatial, Nullable):
-    
     @classmethod
     def supports(cls, value: Any) -> bool:
-        return (
-            isinstance(value, list)
-            and len(value) > 0
-        ) or value is None
+        return (isinstance(value, list) and len(value) > 0) or value is None

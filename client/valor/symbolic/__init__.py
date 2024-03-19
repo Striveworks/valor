@@ -10,6 +10,7 @@ from .atomics import (
     StringEnum,
     Time,
 )
+from .data_structures import Dictionary, StaticCollection, ValueList
 from .functions import (
     And,
     Eq,
@@ -36,7 +37,6 @@ from .geojson import (
     Point,
     Polygon,
 )
-from .data_structures import Dictionary, StaticCollection, ValueList
 from .modifiers import (
     Equatable,
     Nullable,
@@ -45,7 +45,7 @@ from .modifiers import (
     Symbol,
     Variable,
 )
-from .utils import jsonify, get_type_by_name, get_type_by_value
+from .utils import get_type_by_name, get_type_by_value, jsonify
 
 __all__ = [
     "And",

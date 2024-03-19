@@ -1,4 +1,4 @@
-from typing import Any, Optional, List
+from typing import Any, List, Optional
 
 from valor.symbolic.functions import (
     Eq,
@@ -29,14 +29,14 @@ class Symbol:
         self._attribute = attribute
 
     def __repr__(self):
-        ret = type(self).__name__
-        ret += f"(name='{self._name}'"
+        ret = f"{type(self).__name__}("
+        if self._owner:
+            ret += f"owner='{self._owner}', "
+        ret += f"name='{self._name}'"
         if self._key:
             ret += f", key='{self._key}'"
         if self._attribute:
             ret += f", attribute='{self._attribute}'"
-        if self._owner:
-            ret += f", owner='{self._owner}'"
         ret += ")"
         return ret
 
@@ -59,7 +59,7 @@ class Symbol:
                 "name": self._name,
                 "key": self._key,
                 "attribute": self._attribute,
-            }
+            },
         }
 
 
@@ -68,13 +68,19 @@ class Variable:
         self,
         value: Optional[Any] = None,
         symbol: Optional[Symbol] = None,
-    ):        
+    ):
         if (value is not None) and (symbol is not None):
-            raise TypeError(f"{type(self).__name__} cannot be symbolic and contain a value at the same time.")
+            raise TypeError(
+                f"{type(self).__name__} cannot be symbolic and contain a value at the same time."
+            )
         elif symbol is not None and not isinstance(symbol, Symbol):
-            raise TypeError(f"{type(self).__name__} symbol should have type 'Symbol' or be set to 'None'")
+            raise TypeError(
+                f"{type(self).__name__} symbol should have type 'Symbol' or be set to 'None'"
+            )
         elif value is not None and not self.supports(value):
-            raise TypeError(f"{type(self).__name__} value with type '{type(value).__name__}' is not supported.")
+            raise TypeError(
+                f"{type(self).__name__} value with type '{type(value).__name__}' is not supported."
+            )
         self._value = symbol if symbol else value
 
     def __repr__(self) -> str:
@@ -90,7 +96,9 @@ class Variable:
     ):
         """Initialize variable with a value."""
         if not cls.supports(value):
-            raise TypeError(f"Value `{value}` with type `{type(value).__name__}` is not a supported type for `{cls.__name__}`")
+            raise TypeError(
+                f"Value `{value}` with type `{type(value).__name__}` is not a supported type for `{cls.__name__}`"
+            )
         return cls(value=value)
 
     @classmethod
@@ -111,29 +119,47 @@ class Variable:
                 owner=owner,
             )
         )
-    
+
+    @classmethod
+    def preprocess(cls, value: Any):
+        """
+        This method converts any type to an instance of the variable class.
+
+        It will raise an error if a value is unsupported.
+
+        Parameters
+        ----------
+        value : Any
+            An instance of a variable, value, or symbol.
+
+        Raises
+        ------
+        TypeError
+            If a value or variable instance is of an incompatible type.
+        """
+        if isinstance(value, cls):
+            return value
+        elif isinstance(value, Symbol):
+            return cls(symbol=value)
+        elif cls.supports(value):
+            return cls(value=value)
+        raise TypeError("Incompatible type.")
+
     @classmethod
     def supports(cls, value: Any) -> bool:
         """Checks if value is a supported type."""
-        raise NotImplementedError(f"Variable of type `{cls.__name__}` cannot be assigned a value.")
+        raise NotImplementedError(
+            f"Variable of type `{cls.__name__}` cannot be assigned a value."
+        )
 
     @classmethod
-    def decode(cls, value: Any):
+    def decode_value(cls, value: Any):
         """Decode object value from JSON compatible dictionary."""
         return cls(value=value)
-    
-    def encode(self) -> Any:
+
+    def encode_value(self) -> Any:
         """Encode object value to JSON compatible dictionary."""
         return self.get_value()
-    
-    def preprocess(self, value: Any) -> Any:
-        if isinstance(value, type(self)):
-            return value
-        elif isinstance(value, Symbol):
-            return type(self)(symbol=value)
-        elif self.supports(value):
-            return type(self)(value=value)
-        raise TypeError
 
     def to_dict(self) -> dict:
         if isinstance(self._value, Symbol):
@@ -141,14 +167,14 @@ class Variable:
         else:
             return {
                 "type": type(self).__name__.lower(),
-                "value": self.encode(),
+                "value": self.encode_value(),
             }
-    
+
     @property
     def is_symbolic(self) -> bool:
         """Returns whether variable is symbolic."""
         return isinstance(self._value, Symbol)
-    
+
     @property
     def is_value(self) -> bool:
         """Returns whether variable contains a value."""
@@ -157,36 +183,33 @@ class Variable:
     def get_value(self) -> Any:
         """Retrieve value, if it exists."""
         if isinstance(self._value, Symbol):
-            raise TypeError(f"{type(self).__name__} is symbolic and does not contain a value.")
+            raise TypeError(
+                f"{type(self).__name__} is symbolic and does not contain a value."
+            )
         return self._value
-            
+
     def get_symbol(self) -> Symbol:
         """Retrieve symbol, if it exists."""
         if not isinstance(self._value, Symbol):
             raise TypeError(f"{type(self).__name__} is a valued object.")
         return self._value
-    
+
 
 class Equatable(Variable):
     def __eq__(self, value: Any):
         other = self.preprocess(value)
         if self.is_value and other.is_value:
-            return self._value == other._value
+            return self.get_value() == other.get_value()
         return Eq(self, other)
 
     def __ne__(self, value: Any):
         other = self.preprocess(value)
         if self.is_value and other.is_value:
-            return self._value != other._value
+            return self.get_value() != other.get_value()
         return Ne(self, other)
 
     def in_(self, vlist: List[Any]):
-        return Eq(
-            *[
-                self.preprocess(v)
-                for v in vlist
-            ]
-        )
+        return Eq(*[self.preprocess(v) for v in vlist])
 
     def __hash__(self):
         if self.is_symbolic:
@@ -198,25 +221,25 @@ class Quantifiable(Equatable):
     def __gt__(self, value: Any):
         other = self.preprocess(value)
         if self.is_value and other.is_value:
-            return self._value > other._value
+            return self.get_value() > other.get_value()
         return Gt(self, other)
 
     def __ge__(self, value: Any):
         other = self.preprocess(value)
         if self.is_value and other.is_value:
-            return self._value >= other._value
+            return self.get_value() >= other.get_value()
         return Ge(self, other)
 
     def __lt__(self, value: Any):
         other = self.preprocess(value)
         if self.is_value and other.is_value:
-            return self._value < other._value
+            return self.get_value() < other.get_value()
         return Lt(self, other)
 
     def __le__(self, value: Any):
         other = self.preprocess(value)
         if self.is_value and other.is_value:
-            return self._value <= other._value
+            return self.get_value() <= other.get_value()
         return Le(self, other)
 
 
@@ -226,6 +249,9 @@ class Nullable(Variable):
 
     def is_not_none(self):
         return IsNotNull(self)
+
+    def get_value(self) -> Optional[Any]:
+        return super().get_value()
 
 
 class Spatial(Variable):

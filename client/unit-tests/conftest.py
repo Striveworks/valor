@@ -18,10 +18,10 @@ def labels() -> List[Label]:
 @pytest.fixture
 def box_points() -> List[Tuple[float, float]]:
     return [
-        (0,0),
-        (10,0),
-        (10,10),
-        (0,10),
+        (0, 0),
+        (10, 0),
+        (10, 10),
+        (0, 10),
     ]
 
 
