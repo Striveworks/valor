@@ -16,8 +16,6 @@ beforeEach(async () => {
 
 afterEach(async () => {
   // delete any datasets or models in the backend
-  // sleep
-  await new Promise((resolve) => setTimeout(resolve, 500));
   const datasets = await client.getAllDatasets();
   await Promise.all(
     datasets.map(async (dataset) => {
