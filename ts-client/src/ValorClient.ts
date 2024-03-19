@@ -267,25 +267,28 @@ export class ValorClient {
   }
 
   /**
-   * Fetches all evaluations associated to a given model
+   * Fetches all evaluations associated to given models
    *
-   * @param modelName name of the model
+   * @param modelNames names of the models
    *
    * @returns {Promise<Evaluation[]>}
    */
-  public async getEvaluationsByModelName(modelName: string): Promise<Evaluation[]> {
-    return this.getEvaluations({ models: modelName });
+  public async getEvaluationsByModelNames(modelNames: string[]): Promise<Evaluation[]> {
+    // turn modelNames into a comma-separated string
+    return this.getEvaluations({ models: modelNames.join(',') });
   }
 
   /**
-   * Fetches all evaluations associated to a given dataset
+   * Fetches all evaluations associated to given datasets
    *
-   * @param datasetName name of the dataset
+   * @param datasetNames names of the datasets
    *
    * @returns {Promise<Evaluation[]>}
    */
-  public async getEvaluationsByDatasetName(datasetName: string): Promise<Evaluation[]> {
-    return this.getEvaluations({ datasets: datasetName });
+  public async getEvaluationsByDatasetNames(
+    datasetNames: string[]
+  ): Promise<Evaluation[]> {
+    return this.getEvaluations({ datasets: datasetNames.join(',') });
   }
 
   /**

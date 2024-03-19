@@ -19,16 +19,21 @@ afterEach(async () => {
   // sleep
   await new Promise((resolve) => setTimeout(resolve, 500));
   const datasets = await client.getAllDatasets();
-  datasets.forEach(async (dataset) => {
-    await client.deleteDataset(dataset.name);
-  });
+  await Promise.all(
+    datasets.map(async (dataset) => {
+      await client.deleteDataset(dataset.name);
+    })
+  );
+
   const models = await client.getAllModels();
-  models.forEach(async (model) => {
-    await client.deleteModel(model.name);
-  });
+  await Promise.all(
+    models.map(async (model) => {
+      await client.deleteModel(model.name);
+    })
+  );
 
   // sleep for a bit to allow the backend to delete the datasets and models
-  await new Promise((resolve) => setTimeout(resolve, 100));
+  await new Promise((resolve) => setTimeout(resolve, 200));
 });
 
 test('dataset methods', async () => {
@@ -74,47 +79,75 @@ test('model methods', async () => {
 });
 
 test('evaluation methods', async () => {
-  await client.createDataset('test-dataset1', {});
-  await client.createModel('test-model1', {});
+  const datasetNames = ['test-dataset1', 'test-dataset2'];
+  const modelNames = ['test-model1', 'test-model2'];
 
-  await client.addGroundTruth('test-dataset1', 'uid1', [
-    { task_type: 'classification', labels: [{ key: 'label-key', value: 'label-value' }] }
-  ]);
-  await client.finalizeDataset('test-dataset1');
-  await client.addPredictions('test-model1', 'test-dataset1', 'uid1', [
-    {
-      task_type: 'classification',
-      labels: [{ key: 'label-key', value: 'label-value', score: 1.0 }]
+  // create datasets and add groundtruths
+  await Promise.all(
+    datasetNames.map(async (datasetName) => {
+      await client.createDataset(datasetName, {});
+      await client.addGroundTruth(datasetName, 'uid1', [
+        {
+          task_type: 'classification',
+          labels: [{ key: 'label-key', value: 'label-value' }]
+        }
+      ]);
+      await client.finalizeDataset(datasetName);
+    })
+  );
+
+  // create models and add predictions
+  await Promise.all(
+    modelNames.map(async (modelName) => {
+      await client.createModel(modelName, {});
+
+      await Promise.all(
+        datasetNames.map(async (datasetName) => {
+          await client.addPredictions(modelName, datasetName, 'uid1', [
+            {
+              task_type: 'classification',
+              labels: [{ key: 'label-key', value: 'label-value', score: 1.0 }]
+            }
+          ]);
+        })
+      );
+    })
+  );
+
+  // evals a model against a dataset and polls the status
+  const evalAndWaitForCompletion = async (modelName: string, datasetName: string) => {
+    let evaluation = await client.createOrGetEvaluation(
+      modelName,
+      datasetName,
+      'classification'
+    );
+    expect(['running', 'pending', 'done']).toContain(evaluation.status);
+
+    while (evaluation.status !== 'done') {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      evaluation = await client.getEvaluationById(evaluation.id);
     }
-  ]);
+    expect(evaluation.metrics.length).toBeGreaterThan(0);
+  };
 
-  let evaluation = await client.createOrGetEvaluation(
-    'test-model1',
-    'test-dataset1',
-    'classification'
+  // evaluate against all models and datasets
+  await Promise.all(
+    modelNames.map(async (modelName) => {
+      await Promise.all(
+        datasetNames.map(async (datasetName) => {
+          await evalAndWaitForCompletion(modelName, datasetName);
+        })
+      );
+    })
   );
-  expect(['running', 'pending', 'done']).toContain(evaluation.status);
 
-  // poll until the evaluation is done
-  while (evaluation.status !== 'done') {
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    evaluation = await client.getEvaluationById(evaluation.id);
-  }
-  expect(evaluation.metrics.length).toBeGreaterThan(0);
+  // check we can get evaluations by model names
+  expect((await client.getEvaluationsByModelNames([modelNames[0]])).length).toBe(2);
+  expect((await client.getEvaluationsByModelNames(modelNames)).length).toBe(4);
+  expect((await client.getEvaluationsByModelNames(['no-such-model'])).length).toBe(0);
 
-  // check we can get my model name
-  const modelEvaluations = await client.getEvaluationsByModelName('test-model1');
-  expect(modelEvaluations.length).toBe(1);
-
-  const noModelEvaluations = await client.getEvaluationsByModelName('no-such-model');
-  expect(noModelEvaluations.length).toBe(0);
-
-  // check we can get my dataset name
-  const datasetEvaluations = await client.getEvaluationsByDatasetName('test-dataset1');
-  expect(datasetEvaluations.length).toBe(1);
-
-  const noDatasetEvaluations = await client.getEvaluationsByDatasetName(
-    'no-such-dataset'
-  );
-  expect(noDatasetEvaluations.length).toBe(0);
+  // check we can get evaluations my dataset name
+  expect((await client.getEvaluationsByDatasetNames([datasetNames[0]])).length).toBe(2);
+  expect((await client.getEvaluationsByDatasetNames(datasetNames)).length).toBe(4);
+  expect((await client.getEvaluationsByDatasetNames(['no-such-dataset'])).length).toBe(0);
 });
