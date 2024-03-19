@@ -318,7 +318,7 @@ export class ValorClient {
     datumUid: string,
     annotations: object[]
   ): Promise<void> {
-    await this.client.post('/groundtruths', [
+    return this.client.post('/groundtruths', [
       { datum: { uid: datumUid, dataset_name: datasetName }, annotations: annotations }
     ]);
   }
@@ -339,7 +339,7 @@ export class ValorClient {
     datumUid: string,
     annotations: object[]
   ): Promise<void> {
-    await this.client.post('/predictions', [
+    return this.client.post('/predictions', [
       {
         model_name: modelName,
         datum: { uid: datumUid, dataset_name: datasetName },
