@@ -175,7 +175,7 @@ export class ValorClient {
    *
    * @returns {Promise<Model[]>}
    */
-  public async getAllModels(): Promise<Dataset[]> {
+  public async getAllModels(): Promise<Model[]> {
     return this.getModels({});
   }
 
