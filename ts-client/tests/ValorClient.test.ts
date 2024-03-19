@@ -97,18 +97,16 @@ test('evaluation methods', async (done) => {
 
   console.log('F');
   // create datasets and add groundtruths
-  await Promise.all(
-    datasetNames.map(async (datasetName) => {
-      await client.createDataset(datasetName, {});
-      await client.addGroundTruth(datasetName, 'uid1', [
-        {
-          task_type: 'classification',
-          labels: [{ key: 'label-key', value: 'label-value' }]
-        }
-      ]);
-      await client.finalizeDataset(datasetName);
-    })
-  );
+  for (const datasetName of datasetNames) {
+    await client.createDataset(datasetName, {});
+    await client.addGroundTruth(datasetName, 'uid1', [
+      {
+        task_type: 'classification',
+        labels: [{ key: 'label-key', value: 'label-value' }]
+      }
+    ]);
+    await client.finalizeDataset(datasetName);
+  }
 
   console.log('G');
   // create models and add predictions
