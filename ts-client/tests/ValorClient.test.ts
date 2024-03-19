@@ -41,7 +41,7 @@ afterEach(async (done) => {
   done();
 });
 
-test('dataset methods', async () => {
+test('dataset methods', async (done) => {
   await client.createDataset('test-dataset1', { k1: 'v1', k2: 'v2' });
   await client.createDataset('test-dataset2', { k1: 'v2', k3: 'v3' });
 
@@ -61,9 +61,11 @@ test('dataset methods', async () => {
 
   const datasetsByMetadata2 = await client.getDatasetsByMetadata({ k1: 'v3' });
   expect(datasetsByMetadata2.length).toBe(0);
+
+  done();
 });
 
-test('model methods', async () => {
+test('model methods', async (done) => {
   await client.createModel('test-model1', { k1: 'v1', k2: 'v2' });
   await client.createModel('test-model2', { k1: 'v2', k3: 'v3' });
 
@@ -81,6 +83,8 @@ test('model methods', async () => {
 
   const modelsByMetadata2 = await client.getModelsByMetadata({ k1: 'v3' });
   expect(modelsByMetadata2.length).toBe(0);
+
+  done();
 });
 
 test('evaluation methods', async (done) => {
