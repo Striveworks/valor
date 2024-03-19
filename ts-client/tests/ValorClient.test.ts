@@ -91,9 +91,11 @@ test('model methods', async (done) => {
 });
 
 test('evaluation methods', async (done) => {
+  console.log('in evaluation methods test');
   const datasetNames = ['test-dataset1', 'test-dataset2'];
   const modelNames = ['test-model1', 'test-model2'];
 
+  console.log('F');
   // create datasets and add groundtruths
   await Promise.all(
     datasetNames.map(async (datasetName) => {
@@ -108,6 +110,7 @@ test('evaluation methods', async (done) => {
     })
   );
 
+  console.log('G');
   // create models and add predictions
   await Promise.all(
     modelNames.map(async (modelName) => {
@@ -142,7 +145,7 @@ test('evaluation methods', async (done) => {
     expect(evaluation.metrics.length).toBeGreaterThan(0);
     expect(evaluation.datum_filter).toStrictEqual({ dataset_names: [datasetName] });
   };
-
+  console.log('H');
   // evaluate against all models and datasets
   await Promise.all(
     modelNames.map(async (modelName) => {
@@ -153,17 +156,17 @@ test('evaluation methods', async (done) => {
       );
     })
   );
-  console.log('F');
+  console.log('I');
   // check we can get evaluations by model names
   expect((await client.getEvaluationsByModelNames([modelNames[0]])).length).toBe(2);
   expect((await client.getEvaluationsByModelNames(modelNames)).length).toBe(4);
   expect((await client.getEvaluationsByModelNames(['no-such-model'])).length).toBe(0);
-  console.log('G');
+  console.log('J');
   // check we can get evaluations my dataset name
   expect((await client.getEvaluationsByDatasetNames([datasetNames[0]])).length).toBe(2);
   expect((await client.getEvaluationsByDatasetNames(datasetNames)).length).toBe(4);
   expect((await client.getEvaluationsByDatasetNames(['no-such-dataset'])).length).toBe(0);
 
   done();
-  console.log('H');
+  console.log('K');
 });
