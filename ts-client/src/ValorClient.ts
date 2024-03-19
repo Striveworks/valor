@@ -20,13 +20,26 @@ type TaskType =
   | 'semantic-segmentation'
   | 'embedding';
 
+type Label = {
+  key: string;
+  value: string;
+  score?: number;
+};
+
+type Metric = {
+  type: string;
+  parameters?: Partial<Record<string, any>>;
+  value: number | object;
+  labe?: Label;
+};
+
 type Evaluation = {
   id: number;
   model_name: string;
   datum_filter: object;
   parameters: { task_type: TaskType; object };
   status: 'pending' | 'running' | 'done' | 'failed' | 'deleting';
-  metrics: object[];
+  metrics: Metric[];
   confusion_matrices: object[];
 };
 
