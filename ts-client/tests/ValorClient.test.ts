@@ -7,6 +7,7 @@ const client = new ValorClient(baseURL);
 
 beforeEach(async (done) => {
   // make sure there are no datasets or models in the backend
+  console.log('in beforeEach');
   const datasets = await client.getAllDatasets();
   const models = await client.getAllModels();
   if (datasets.length > 0 || models.length > 0) {
@@ -17,27 +18,29 @@ beforeEach(async (done) => {
 
 afterEach(async (done) => {
   // delete any datasets or models in the backend
+  console.log('A');
   const datasets = await client.getAllDatasets();
   for (const dataset of datasets) {
     await client.deleteDataset(dataset.name);
   }
+  console.log('B');
 
   // theres a race condition bug in the backend so wait
   // until all datasets are deleted
   while ((await client.getAllDatasets()).length > 0) {
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
-
+  console.log('C');
   const models = await client.getAllModels();
   for (const model of models) {
     await client.deleteModel(model.name);
   }
-
+  console.log('D');
   // wait for all models to be deleted
   while ((await client.getAllModels()).length > 0) {
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
-
+  console.log('E');
   done();
 });
 
@@ -150,16 +153,17 @@ test('evaluation methods', async (done) => {
       );
     })
   );
-
+  console.log('F');
   // check we can get evaluations by model names
   expect((await client.getEvaluationsByModelNames([modelNames[0]])).length).toBe(2);
   expect((await client.getEvaluationsByModelNames(modelNames)).length).toBe(4);
   expect((await client.getEvaluationsByModelNames(['no-such-model'])).length).toBe(0);
-
+  console.log('G');
   // check we can get evaluations my dataset name
   expect((await client.getEvaluationsByDatasetNames([datasetNames[0]])).length).toBe(2);
   expect((await client.getEvaluationsByDatasetNames(datasetNames)).length).toBe(4);
   expect((await client.getEvaluationsByDatasetNames(['no-such-dataset'])).length).toBe(0);
 
   done();
+  console.log('H');
 });
