@@ -5,46 +5,38 @@ import { ValorClient } from '../src/ValorClient';
 const baseURL = 'http://localhost:8000';
 const client = new ValorClient(baseURL);
 
-beforeEach(async (done) => {
+beforeEach(async () => {
   // make sure there are no datasets or models in the backend
-  console.log('in beforeEach');
   const datasets = await client.getAllDatasets();
   const models = await client.getAllModels();
   if (datasets.length > 0 || models.length > 0) {
     throw new Error('Valor backend is not empty');
   }
-  done();
 });
 
-afterEach(async (done) => {
+afterEach(async () => {
   // delete any datasets or models in the backend
-  console.log('A');
   const datasets = await client.getAllDatasets();
   for (const dataset of datasets) {
     await client.deleteDataset(dataset.name);
   }
-  console.log('B');
 
   // theres a race condition bug in the backend so wait
   // until all datasets are deleted
   while ((await client.getAllDatasets()).length > 0) {
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
-  console.log('C');
   const models = await client.getAllModels();
   for (const model of models) {
     await client.deleteModel(model.name);
   }
-  console.log('D');
   // wait for all models to be deleted
   while ((await client.getAllModels()).length > 0) {
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
-  console.log('E');
-  done();
 });
 
-test('dataset methods', async (done) => {
+test('dataset methods', async () => {
   await client.createDataset('test-dataset1', { k1: 'v1', k2: 'v2' });
   await client.createDataset('test-dataset2', { k1: 'v2', k3: 'v3' });
 
@@ -64,11 +56,9 @@ test('dataset methods', async (done) => {
 
   const datasetsByMetadata2 = await client.getDatasetsByMetadata({ k1: 'v3' });
   expect(datasetsByMetadata2.length).toBe(0);
-
-  done();
 });
 
-test('model methods', async (done) => {
+test('model methods', async () => {
   await client.createModel('test-model1', { k1: 'v1', k2: 'v2' });
   await client.createModel('test-model2', { k1: 'v2', k3: 'v3' });
 
@@ -86,16 +76,12 @@ test('model methods', async (done) => {
 
   const modelsByMetadata2 = await client.getModelsByMetadata({ k1: 'v3' });
   expect(modelsByMetadata2.length).toBe(0);
-
-  done();
 });
 
-test('evaluation methods', async (done) => {
-  console.log('in evaluation methods test');
+test('evaluation methods', async () => {
   const datasetNames = ['test-dataset1', 'test-dataset2'];
   const modelNames = ['test-model1', 'test-model2'];
 
-  console.log('F');
   // create datasets and add groundtruths
   for (const datasetName of datasetNames) {
     await client.createDataset(datasetName, {});
@@ -108,7 +94,6 @@ test('evaluation methods', async (done) => {
     await client.finalizeDataset(datasetName);
   }
 
-  console.log('G');
   // create models and add predictions
   await Promise.all(
     modelNames.map(async (modelName) => {
@@ -143,7 +128,6 @@ test('evaluation methods', async (done) => {
     expect(evaluation.metrics.length).toBeGreaterThan(0);
     expect(evaluation.datum_filter).toStrictEqual({ dataset_names: [datasetName] });
   };
-  console.log('H');
   // evaluate against all models and datasets
   await Promise.all(
     modelNames.map(async (modelName) => {
@@ -154,17 +138,12 @@ test('evaluation methods', async (done) => {
       );
     })
   );
-  console.log('I');
   // check we can get evaluations by model names
   expect((await client.getEvaluationsByModelNames([modelNames[0]])).length).toBe(2);
   expect((await client.getEvaluationsByModelNames(modelNames)).length).toBe(4);
   expect((await client.getEvaluationsByModelNames(['no-such-model'])).length).toBe(0);
-  console.log('J');
   // check we can get evaluations my dataset name
   expect((await client.getEvaluationsByDatasetNames([datasetNames[0]])).length).toBe(2);
   expect((await client.getEvaluationsByDatasetNames(datasetNames)).length).toBe(4);
   expect((await client.getEvaluationsByDatasetNames(['no-such-dataset'])).length).toBe(0);
-
-  done();
-  console.log('K');
 });
