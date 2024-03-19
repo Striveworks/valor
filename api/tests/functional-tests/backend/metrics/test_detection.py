@@ -1231,6 +1231,7 @@ def test__compute_detection_metrics(
             "value": 0.652,
         },
         # PRECISION-RECALL CURVES
+        # note: matches the output in test__compute_curves
         {
             "label_key": "class",
             "value": {
