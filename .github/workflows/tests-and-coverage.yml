@@ -170,6 +170,10 @@ jobs:
           coverage json
           export TOTAL=$(python -c "import json;print(json.load(open('coverage.json'))['totals']['percent_covered_display'])")
           echo "total=$TOTAL" >> $GITHUB_ENV
+          if (( $TOTAL < 90 )); then
+            echo "Coverage is below 90%"
+            exit 1
+          fi
       - name: "Make badge"
         if: github.ref == 'refs/heads/main'
         uses: schneegans/dynamic-badges-action@v1.4.0
