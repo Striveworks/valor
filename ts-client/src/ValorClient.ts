@@ -1,18 +1,18 @@
 import axios, { AxiosInstance } from 'axios';
 
-type Dataset = {
+export type Dataset = {
   id: number;
   name: string;
   metadata: Partial<Record<string, any>>;
 };
 
-type Model = {
+export type Model = {
   id: number;
   name: string;
   metadata: object;
 };
 
-type TaskType =
+export type TaskType =
   | 'skip'
   | 'empty'
   | 'classification'
@@ -20,20 +20,20 @@ type TaskType =
   | 'semantic-segmentation'
   | 'embedding';
 
-type Label = {
+export type Label = {
   key: string;
   value: string;
   score?: number;
 };
 
-type Metric = {
+export type Metric = {
   type: string;
   parameters?: Partial<Record<string, any>>;
   value: number | any;
   labe?: Label;
 };
 
-type Evaluation = {
+export type Evaluation = {
   id: number;
   model_name: string;
   datum_filter: object;
