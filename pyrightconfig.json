@@ -1,7 +1,6 @@
 {
   "include": ["client/valor", "api"],
   "exclude": [
-    "client/unit-tests",
     "utils",
     "api/tests",
     "examples",
