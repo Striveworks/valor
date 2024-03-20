@@ -36,7 +36,7 @@ export type Metric = {
 export type Evaluation = {
   id: number;
   model_name: string;
-  datum_filter: object;
+  datum_filter: { dataset_names: string[]; object: any };
   parameters: { task_type: TaskType; object: any };
   status: 'pending' | 'running' | 'done' | 'failed' | 'deleting';
   metrics: Metric[];

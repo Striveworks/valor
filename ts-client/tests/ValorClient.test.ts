@@ -126,7 +126,7 @@ test('evaluation methods', async () => {
       evaluation = await client.getEvaluationById(evaluation.id);
     }
     expect(evaluation.metrics.length).toBeGreaterThan(0);
-    expect(evaluation.datum_filter).toStrictEqual({ dataset_names: [datasetName] });
+    expect(evaluation.datum_filter.dataset_names).toStrictEqual([datasetName]);
   };
   // evaluate against all models and datasets
   await Promise.all(
