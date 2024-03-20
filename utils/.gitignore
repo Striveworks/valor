@@ -1,8 +1,0 @@
-!*.ipynb
-*.prof
-*.out
-*.cprofile
-*.pkl
-*.svg
-*.yappi
-*.tracemalloc
