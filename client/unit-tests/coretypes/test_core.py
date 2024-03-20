@@ -192,6 +192,21 @@ def test_groundtruth():
         )
     assert "valor.Annotation" in str(e)
 
+    # test equalities
+    with pytest.raises(TypeError):
+        _ = (
+            GroundTruth(
+                datum=datum,
+                annotations=gts,
+            )
+            == 1
+        )
+
+    assert GroundTruth(datum=datum, annotations=gts,) == GroundTruth(
+        datum=datum,
+        annotations=gts,
+    )
+
 
 def test_prediction():
     scored_label = Label(key="test", value="value", score=1.0)
@@ -209,6 +224,13 @@ def test_prediction():
 
     # valid
     Prediction(datum=datum, annotations=pds)
+
+    string = str(Prediction(datum=datum, annotations=pds))
+    assert (
+        string
+        == '{\n    "datum": {\n        "uid": "somefile",\n        "metadata": {}\n    },\n    "annotations": [\n        {\n            "task_type": "classification",\n            "labels": [\n                {\n                    "key": "test",\n                    "value": "value",\n                    "score": 1.0\n                }\n            ],\n            "metadata": {},\n            "bounding_box": null,\n            "polygon": null,\n            "raster": null,\n            "embedding": null\n        },\n        {\n            "task_type": "classification",\n            "labels": [\n                {\n                    "key": "test",\n                    "value": "value",\n                    "score": 1.0\n                }\n            ],\n            "metadata": {},\n            "bounding_box": null,\n            "polygon": null,\n            "raster": null,\n            "embedding": null\n        }\n    ]\n}'
+    )
+    assert "dataset_name" not in string
 
     # test `__post_init__`
     with pytest.raises(TypeError) as e:
@@ -241,3 +263,11 @@ def test_prediction():
             ],
         )
     assert "for label key test got scores summing to 0.9" in str(e)
+
+    # test equalities
+    with pytest.raises(TypeError):
+        Prediction(datum=datum, annotations=pds) == 1
+
+    assert Prediction(datum=datum, annotations=pds) == Prediction(
+        datum=datum, annotations=pds
+    )

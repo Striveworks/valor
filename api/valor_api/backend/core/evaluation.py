@@ -320,16 +320,7 @@ def _create_responses(
 
         match parameters.task_type:
             case enums.TaskType.CLASSIFICATION:
-                missing_pred_keys, ignored_pred_keys = core.get_disjoint_keys(
-                    db,
-                    datum_filter,
-                    model_filter,
-                    label_map=parameters.label_map,
-                )
-                kwargs = {
-                    "missing_pred_keys": missing_pred_keys,
-                    "ignored_pred_keys": ignored_pred_keys,
-                }
+                kwargs = {}
             case (
                 enums.TaskType.OBJECT_DETECTION
                 | enums.TaskType.SEMANTIC_SEGMENTATION

@@ -15,24 +15,29 @@ class EvaluationParameters(BaseModel):
     ----------
     convert_annotations_to_type: AnnotationType | None = None
         The type to convert all annotations to.
-    iou_thresholds_to_compute : List[float], optional
+    iou_thresholds_to_compute: List[float], optional
         A list of floats describing which Intersection over Unions (IoUs) to use when calculating metrics (i.e., mAP).
     iou_thresholds_to_return: List[float], optional
         A list of floats describing which Intersection over Union (IoUs) thresholds to calculate a metric for. Must be a subset of `iou_thresholds_to_compute`.
-    label_map : LabelMapType, optional
+    label_map: LabelMapType, optional
         Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
     recall_score_threshold: float, default=0
         The confidence score threshold for use when determining whether to count a prediction as a true positive or not while calculating Average Recall.
+    compute_pr_curves: bool
+        A boolean which determines whether we calculate precision-recall curves or not.
+    pr_curve_iou_threshold: float, optional
+            The IOU threshold to use when calculating precision-recall curves for object detection tasks. Defaults to 0.5. Does nothing when compute_pr_curves is set to False or None.
     """
 
     task_type: TaskType
 
-    # object detection
     convert_annotations_to_type: AnnotationType | None = None
     iou_thresholds_to_compute: list[float] | None = None
     iou_thresholds_to_return: list[float] | None = None
     label_map: LabelMapType | None = None
     recall_score_threshold: float = 0
+    compute_pr_curves: bool | None = None
+    pr_curve_iou_threshold: float = 0.5
 
     # pydantic setting
     model_config = ConfigDict(extra="forbid")
@@ -57,6 +62,10 @@ class EvaluationParameters(BaseModel):
                         "`iou_thresholds_to_return` should only be used for object detection evaluations."
                     )
             case TaskType.OBJECT_DETECTION:
+                if not 0 <= values.pr_curve_iou_threshold <= 1:
+                    raise ValueError(
+                        "`pr_curve_iou_threshold` should be a float between 0 and 1 (inclusive)."
+                    )
                 if values.iou_thresholds_to_return:
                     if not values.iou_thresholds_to_compute:
                         raise ValueError(

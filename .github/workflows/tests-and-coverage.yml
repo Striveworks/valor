@@ -72,6 +72,12 @@ jobs:
         with:
           name: ${{ env.COVERAGE_FILE }}
           path: ${{ env.COVERAGE_FILE }}
+      - name: install typescript client
+        run: npm install
+        working-directory: ./ts-client
+      - name: run typescript client tests
+        run: npm run test
+        working-directory: ./ts-client
       - run: make stop-env
       - run: docker compose -p valor -f docker-compose.yml -f docker-compose.cicd-override.yml --env-file ./api/.env.testing up --build -d
         env:
@@ -164,6 +170,10 @@ jobs:
           coverage json
           export TOTAL=$(python -c "import json;print(json.load(open('coverage.json'))['totals']['percent_covered_display'])")
           echo "total=$TOTAL" >> $GITHUB_ENV
+          if (( $TOTAL < 90 )); then
+            echo "Coverage is below 90%"
+            exit 1
+          fi
       - name: "Make badge"
         if: github.ref == 'refs/heads/main'
         uses: schneegans/dynamic-badges-action@v1.4.0

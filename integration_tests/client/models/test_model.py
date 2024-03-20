@@ -265,13 +265,14 @@ def test_create_image_model_with_predicted_classifications(
         gts=gt_clfs,
         preds=pred_clfs,
         preds_model_class=models.Prediction,
-        preds_expected_number=5,
+        preds_expected_number=6,
         expected_labels_tuples={
-            ("k12", "v12"),
-            ("k12", "v16"),
-            ("k13", "v13"),
-            ("k4", "v4"),
+            ("k5", "v1"),
+            ("k3", "v1"),
             ("k4", "v5"),
+            ("k4", "v1"),
+            ("k4", "v8"),
+            ("k4", "v4"),
         },
         expected_scores={0.47, 0.53, 1.0, 0.71, 0.29},
         db=db,
@@ -516,3 +517,22 @@ def test_validate_model(client: Client, model_name: str):
 
     with pytest.raises(TypeError):
         Model.create(name=model_name, id="not an int")  # type: ignore
+
+
+def test_get_prediction(client: Client, model_name: str, dataset_name: str):
+    dataset = Dataset.create(dataset_name)
+    model = Model.create(model_name)
+
+    datum = Datum(uid="uid1")
+    dataset.add_groundtruth(GroundTruth(datum=datum, annotations=[]))
+    dataset.finalize()
+
+    # check we get None if the datum does not exist
+    assert model.get_prediction(dataset, Datum(uid="does not exist")) is None
+
+    # check that we also get None if the datum does exist but there is no prediction
+    assert model.get_prediction(dataset, datum) is None
+
+    # add a prediction with no annotaitons and check we get a prediction back
+    model.add_prediction(dataset, Prediction(datum=datum, annotations=[]))
+    assert model.get_prediction(dataset, datum) is not None
