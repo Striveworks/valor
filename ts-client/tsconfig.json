@@ -1,3 +1,10 @@
 {
-  "include": ["src/**/*.ts", "tests/*.ts"]
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "module": "CommonJS",
+    "target": "ES5",
+    "declaration": true
+  },
+  "include": ["src/**/*.ts"]
 }
