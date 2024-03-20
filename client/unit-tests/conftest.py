@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 from valor import Label
-from valor.symbolic.annotations import BoundingBox, BoundingPolygon, Raster
+from valor.symbolic.schemas import BoundingBox, BoundingPolygon, Raster
 
 
 @pytest.fixture

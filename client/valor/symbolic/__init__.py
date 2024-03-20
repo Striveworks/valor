@@ -1,16 +1,20 @@
-from .annotations import BoundingBox, BoundingPolygon, Embedding, Raster, Score
 from .atomics import (
     Bool,
     Date,
     DateTime,
+    Dictionary,
     Duration,
     Float,
     Integer,
+    LineString,
+    MultiLineString,
+    MultiPoint,
+    MultiPolygon,
+    Point,
+    Polygon,
     String,
-    StringEnum,
     Time,
 )
-from .data_structures import Dictionary, StaticCollection, ValueList
 from .functions import (
     And,
     Eq,
@@ -29,23 +33,26 @@ from .functions import (
     Where,
     Xor,
 )
-from .geojson import (
-    LineString,
-    MultiLineString,
-    MultiPoint,
-    MultiPolygon,
-    Point,
-    Polygon,
-)
 from .modifiers import (
     Equatable,
+    Listable,
     Nullable,
     Quantifiable,
     Spatial,
     Symbol,
     Variable,
 )
-from .utils import get_type_by_name, get_type_by_value
+from .schemas import (
+    Annotation,
+    BoundingBox,
+    BoundingPolygon,
+    Datum,
+    Embedding,
+    Label,
+    Raster,
+    Score,
+    StaticCollection,
+)
 
 __all__ = [
     "And",
@@ -74,14 +81,13 @@ __all__ = [
     "Integer",
     "Float",
     "String",
-    "StringEnum",
     "Score",
     "DateTime",
     "Date",
     "Time",
     "Duration",
     "StaticCollection",
-    "ValueList",
+    "Listable",
     "Point",
     "MultiPoint",
     "LineString",
@@ -93,6 +99,7 @@ __all__ = [
     "Raster",
     "Embedding",
     "Dictionary",
-    "get_type_by_name",
-    "get_type_by_value",
+    "Label",
+    "Annotation",
+    "Datum",
 ]

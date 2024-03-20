@@ -4,7 +4,7 @@ import json
 import time
 import warnings
 from dataclasses import asdict, dataclass
-from typing import Dict, Iterator, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 from valor.client import ClientConnection, connect, get_connection
 from valor.enums import AnnotationType, EvaluationStatus, TableStatus, TaskType
@@ -12,16 +12,13 @@ from valor.exceptions import ClientException
 from valor.schemas.evaluation import EvaluationParameters, EvaluationRequest
 from valor.schemas.filters import Filter
 from valor.symbolic import (
+    Annotation,
     BoundingBox,
-    BoundingPolygon,
+    Datum,
     Dictionary,
-    Embedding,
-    Raster,
-    Score,
+    Label,
     StaticCollection,
     String,
-    StringEnum,
-    ValueList,
 )
 
 FilterType = Union[list, dict]  # TODO - Remove this
@@ -52,218 +49,6 @@ def _format_filter(filter_by: Optional[FilterType]) -> Filter:
         raise TypeError
 
 
-class Label(StaticCollection):
-    """
-    An object for labeling datasets, models, and annotations.
-
-    Parameters
-    ----------
-    key : str
-        The class key of the label.
-    value : str
-        The class value of the label.
-    score : float, optional
-        The score associated with the label (if applicable).
-
-    Attributes
-    ----------
-    filter_by : filter_factory
-        Declarative mappers used to create filters.
-    """
-
-    key = String.symbolic(owner="label", name="key")
-    value = String.symbolic(owner="label", name="value")
-    score = Score.symbolic(owner="label", name="score")
-
-    @classmethod
-    def create(
-        cls,
-        key: str,
-        value: str,
-        score: Optional[float] = None,
-    ):
-        return cls.definite(
-            key=key,
-            value=value,
-            score=score,
-        )
-
-    def tuple(self):
-        """
-        Defines how the `Label` is turned into a tuple.
-
-        Returns
-        ----------
-        tuple
-            A tuple of the `Label's` arguments.
-        """
-        return (
-            self.key.get_value(),
-            self.value.get_value(),
-            self.score.get_value(),
-        )
-
-
-class LabelList(ValueList):
-    _supported_type = Label
-
-    def __getitem__(self, __key: int) -> Label:
-        return super().__getitem__(__key)
-
-    def __iter__(self) -> Iterator[Label]:
-        return super().__iter__()
-
-
-class Annotation(StaticCollection):
-    """
-    A class used to annotate `GroundTruths` and `Predictions`.
-
-    Parameters
-    ----------
-    task_type: TaskType
-        The task type associated with the `Annotation`.
-    labels: List[Label], optional
-        A list of labels to use for the `Annotation`.
-    metadata: Dict[str, Union[int, float, str, bool, datetime.datetime, datetime.date, datetime.time]]
-        A dictionary of metadata that describes the `Annotation`.
-    bounding_box: BoundingBox, optional
-        A bounding box to assign to the `Annotation`.
-    polygon: Polygon, optional
-        A polygon to assign to the `Annotation`.
-    raster: Raster, optional
-        A raster to assign to the `Annotation`.
-    embedding: List[float], optional
-        An embedding, described by a list of values with type float and a maximum length of 16,000.
-
-    Attributes
-    ----------
-    geometric_area : float
-        The area of the annotation.
-
-    Examples
-    --------
-
-    Classification
-    >>> Annotation.create(
-    ...     task_type=TaskType.CLASSIFICATION,
-    ...     labels=[
-    ...         Label(key="class", value="dog"),
-    ...         Label(key="category", value="animal"),
-    ...     ]
-    ... )
-
-    Object-Detection BoundingBox
-    >>> annotation = Annotation.create(
-    ...     task_type=TaskType.OBJECT_DETECTION,
-    ...     labels=[Label(key="k1", value="v1")],
-    ...     bounding_box=box2,
-    ... )
-
-    Object-Detection Polygon
-    >>> annotation = Annotation.create(
-    ...     task_type=TaskType.OBJECT_DETECTION,
-    ...     labels=[Label(key="k1", value="v1")],
-    ...     polygon=polygon1,
-    ... )
-
-    Object-Detection Raster
-    >>> annotation = Annotation.create(
-    ...     task_type=TaskType.OBJECT_DETECTION,
-    ...     labels=[Label(key="k1", value="v1")],
-    ...     raster=raster1,
-    ... )
-
-    Semantic-Segmentation Raster
-    >>> annotation = Annotation.create(
-    ...     task_type=TaskType.SEMANTIC_SEGMENTATION,
-    ...     labels=[Label(key="k1", value="v1")],
-    ...     raster=raster1,
-    ... )
-
-    Defining all supported annotation types for a given `task_type` is allowed!
-    >>> Annotation.create(
-    ...     task_type=TaskType.OBJECT_DETECTION,
-    ...     labels=[Label(key="k1", value="v1")],
-    ...     bounding_box=box1,
-    ...     polygon=polygon1,
-    ...     raster=raster1,
-    ... )
-    """
-
-    task_type = StringEnum.symbolic(owner="annotation", name="task_type")
-    labels = LabelList.symbolic(owner="annotation", name="labels")
-    metadata = Dictionary.symbolic(owner="annotation", name="metadata")
-    bounding_box = BoundingBox.symbolic(
-        owner="annotation", name="bounding_box"
-    )
-    polygon = BoundingPolygon.symbolic(
-        owner="annotation", name="bounding_polygon"
-    )
-    raster = Raster.symbolic(owner="annotation", name="raster")
-    embedding = Embedding.symbolic(owner="annotation", name="embedding")
-
-    @classmethod
-    def create(
-        cls,
-        task_type: TaskType,
-        labels: Optional[List[Label]] = None,
-        metadata: Optional[dict] = None,
-        bounding_box: Optional[BoundingBox] = None,
-        polygon: Optional[BoundingPolygon] = None,
-        raster: Optional[Raster] = None,
-        embedding: Optional[List[Embedding]] = None,
-    ):
-        return cls.definite(
-            task_type=task_type,
-            labels=labels,
-            metadata=metadata,
-            bounding_box=bounding_box,
-            polygon=polygon,
-            raster=raster,
-            embedding=embedding,
-        )
-
-
-class AnnotationList(ValueList):
-    _supported_type = Annotation
-
-    def __getitem__(self, __key: int) -> Annotation:
-        return super().__getitem__(__key)
-
-    def __iter__(self) -> Iterator[Annotation]:
-        return super().__iter__()
-
-
-class Datum(StaticCollection):
-    """
-    A class used to store datum about `GroundTruths` and `Predictions`.
-
-    Parameters
-    ----------
-    uid : str
-        The UID of the `Datum`.
-    metadata : dict
-        A dictionary of metadata that describes the `Datum`.
-    """
-
-    uid = String.symbolic(owner="datum", name="uid")
-    metadata = Dictionary.symbolic(owner="datum", name="metadata")
-
-    @classmethod
-    def create(
-        cls,
-        uid: str,
-        metadata: Optional[dict] = None,
-    ):
-        return cls.definite(
-            uid=uid,
-            metadata=metadata,
-        )
-
-    def get_uid(self) -> str:
-        return self.uid.get_value()
-
-
 class GroundTruth(StaticCollection):
     """
     An object describing a ground truth (e.g., a human-drawn bounding box on an image).
@@ -276,10 +61,8 @@ class GroundTruth(StaticCollection):
         The list of `Annotations` associated with the `GroundTruth`.
     """
 
-    datum = Datum.symbolic(owner="groundtruth", name="datum")
-    annotations = AnnotationList.symbolic(
-        owner="groundtruth", name="annotations"
-    )
+    datum: Datum
+    annotations: List[Annotation]
 
     @classmethod
     def create(
@@ -318,10 +101,8 @@ class Prediction(StaticCollection):
         The score assigned to the `Prediction`.
     """
 
-    datum = Datum.symbolic(owner="prediction", name="datum")
-    annotations = AnnotationList.symbolic(
-        owner="prediction", name="annotations"
-    )
+    datum: Datum
+    annotations: List[Annotation]
 
     @classmethod
     def create(
@@ -590,8 +371,8 @@ class Dataset(StaticCollection):
         A dictionary of metadata that describes the dataset.
     """
 
-    name = String.symbolic(owner="dataset", name="name")
-    metadata = Dictionary.symbolic(owner="dataset", name="metadata")
+    name: String
+    metadata: Dictionary
 
     @classmethod
     def create(
@@ -836,8 +617,8 @@ class Model(StaticCollection):
         A dictionary of metadata that describes the model.
     """
 
-    name = String.symbolic(owner="model", name="name")
-    metadata = Dictionary.symbolic(owner="model", name="metadata")
+    name: String
+    metadata: Dictionary
 
     @classmethod
     def create(
@@ -1913,13 +1694,12 @@ if __name__ == "__main__":
             )
         ],
     )
-    print(json.dumps(gt.to_dict(), indent=2))
 
-    print(Label.create(key="k1", value="v1").key.encode())
+    print(json.dumps(gt.to_dict(), indent=2))
 
     cond = GroundTruth.symbolic() == gt
     # cond = Label.key == "hello"
     cond = BoundingBox.symbolic().intersects(
         BoundingBox.from_extrema(0, 1, 0, 1)
     )
-    print(json.dumps(jsonify(cond), indent=2))
+    print(json.dumps(cond.to_dict(), indent=2))

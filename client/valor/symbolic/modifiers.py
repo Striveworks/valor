@@ -1,4 +1,4 @@
-from typing import Any, List, Optional
+from typing import Any, Iterator, List, Optional
 
 from valor.symbolic.functions import (
     Eq,
@@ -11,8 +11,8 @@ from valor.symbolic.functions import (
     Le,
     Lt,
     Ne,
-    Outside,
     Or,
+    Outside,
 )
 
 
@@ -24,10 +24,10 @@ class Symbol:
         attribute: Optional[str] = None,
         owner: Optional[str] = None,
     ):
-        self._owner = owner
-        self._name = name
-        self._key = key
-        self._attribute = attribute
+        self._owner = owner.lower() if owner else None
+        self._name = name.lower()
+        self._key = key.lower() if key else None
+        self._attribute = attribute.lower() if attribute else None
 
     def __repr__(self):
         ret = f"{type(self).__name__}("
@@ -111,7 +111,7 @@ class Variable:
         owner: Optional[str] = None,
     ):
         """Initialize variable as a symbol."""
-        name = cls.__name__.lower() if not name else name
+        name = cls.__name__ if not name else name
         return cls(
             symbol=Symbol(
                 name=name,
@@ -144,7 +144,9 @@ class Variable:
             return cls(symbol=value)
         elif cls.supports(value):
             return cls(value=value)
-        raise TypeError("Incompatible type.")
+        raise TypeError(
+            f"{cls.__name__} does not support operations with value '{value}' of type '{type(value).__name__}'."
+        )
 
     @classmethod
     def supports(cls, value: Any) -> bool:
@@ -195,6 +197,36 @@ class Variable:
             raise TypeError(f"{type(self).__name__} is a valued object.")
         return self._value
 
+    def __eq__(self, value: Any):
+        raise AttributeError(
+            f"'{type(self).__name__}' object has no attribute '__eq__'"
+        )
+
+    def __ne__(self, value: Any):
+        raise AttributeError(
+            f"'{type(self).__name__}' object has no attribute '__ne__'"
+        )
+
+    def __gt__(self, value: Any):
+        raise AttributeError(
+            f"'{type(self).__name__}' object has no attribute '__gt__'"
+        )
+
+    def __ge__(self, value: Any):
+        raise AttributeError(
+            f"'{type(self).__name__}' object has no attribute '__ge__'"
+        )
+
+    def __lt__(self, value: Any):
+        raise AttributeError(
+            f"'{type(self).__name__}' object has no attribute '__lt__'"
+        )
+
+    def __le__(self, value: Any):
+        raise AttributeError(
+            f"'{type(self).__name__}' object has no attribute '__le__'"
+        )
+
 
 class Equatable(Variable):
     def __eq__(self, value: Any):
@@ -210,16 +242,9 @@ class Equatable(Variable):
         return Ne(self, other)
 
     def in_(self, vlist: List[Any]):
-        return Or(
-            *[
-                Eq(self, self.preprocess(v))
-                for v in vlist
-            ]
-        )
+        return Or(*[Eq(self, self.preprocess(v)) for v in vlist])
 
     def __hash__(self):
-        if self.is_symbolic:
-            raise ValueError("Variable is symbolic.")
         return hash(str(self))
 
 
@@ -257,6 +282,7 @@ class Nullable(Variable):
         return IsNotNull(self)
 
     def get_value(self) -> Optional[Any]:
+        """Re-typed to output 'Optional[Any]'"""
         return super().get_value()
 
 
@@ -269,3 +295,52 @@ class Spatial(Variable):
 
     def outside(self, other: Any):
         return Outside(self, self.preprocess(other))
+
+
+class Listable(Variable):
+    @classmethod
+    def list(cls):
+
+        item_class = cls
+
+        class ValueList(Variable):
+            @classmethod
+            def definite(cls, value: Any):
+                if value is None:
+                    value = list()
+                return cls(value=value)
+
+            @classmethod
+            def supports(cls, value: List[Any]) -> bool:
+                return isinstance(value, list) and all(
+                    [
+                        isinstance(element, item_class) and element.is_value
+                        for element in value
+                    ]
+                )
+
+            @classmethod
+            def decode_value(cls, value: Any):
+                if not value:
+                    return []
+                if issubclass(type(value), Variable):
+                    return [
+                        item_class.decode_value(element) for element in value
+                    ]
+
+            def encode_value(self):
+                return [element.encode_value() for element in self.get_value()]
+
+            def __getitem__(self, __key: int) -> cls:
+                return self.get_value()[__key]
+
+            def __setitem__(self, __key: int, __value: cls):
+                value = self.get_value()
+                if value is None:
+                    raise TypeError
+                value[__key] = __value
+
+            def __iter__(self) -> Iterator[cls]:
+                return iter([element for element in self.get_value()])
+
+        return ValueList
