@@ -9,7 +9,7 @@ export type Dataset = {
 export type Model = {
   id: number;
   name: string;
-  metadata: object;
+  metadata: Partial<Record<string, any>>;
 };
 
 export type TaskType =
