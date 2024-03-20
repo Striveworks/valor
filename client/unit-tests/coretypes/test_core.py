@@ -1,6 +1,6 @@
 import copy
 
-import pytest  # type: ignore - pytest not resolved
+import pytest
 
 from valor import Annotation, Datum, GroundTruth, Label, Prediction, enums
 

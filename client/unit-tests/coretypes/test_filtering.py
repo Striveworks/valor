@@ -1,6 +1,6 @@
 import datetime
 
-import pytest  # type: ignore - pytest not resolved
+import pytest
 
 from valor import Annotation, Constraint, Dataset, Filter, Label, Model
 from valor.coretypes import _format_filter
