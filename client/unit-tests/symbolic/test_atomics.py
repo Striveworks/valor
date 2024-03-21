@@ -1,36 +1,33 @@
-import pytest
 import datetime
 
-from typing import Set
+import pytest
 
 from valor.symbolic.atomics import (
-    Symbol,
-    Variable,
-    Equatable,
-    Quantifiable,
-    Nullable,
-    Spatial,
-    Listable,
     Bool,
     Date,
     DateTime,
+    Dictionary,
+    DictionaryValue,
     Duration,
+    Equatable,
     Float,
     Integer,
-    String,
-    Time,
-    Point,
-    MultiPoint,
     LineString,
+    Listable,
     MultiLineString,
-    Polygon,
+    MultiPoint,
     MultiPolygon,
-    _get_atomic_type_by_name,
-    _get_atomic_type_by_value,
-    DictionaryValue,
-    Dictionary,
+    Nullable,
+    Point,
+    Polygon,
+    Quantifiable,
+    Spatial,
+    String,
+    Symbol,
+    Time,
+    Variable,
 )
-from valor.symbolic.functions import OneArgumentFunction, TwoArgumentFunction, AppendableFunction
+from valor.symbolic.functions import AppendableFunction, TwoArgumentFunction
 
 
 def test_symbol():
@@ -491,26 +488,28 @@ def test_modifiers():
 
 def get_function_name(fn: str) -> str:
     fns = {
-        '__eq__' : 'eq',
-        '__ne__' : 'ne',
-        '__and__' : 'and',
-        '__or__' : 'or',
-        '__xor__' : 'xor',
-        '__gt__' : 'gt',
-        '__ge__' : 'ge',
-        '__lt__' : 'lt',
-        '__le__' : 'le',
-        'is_none' : 'isnull',
-        'is_not_none' : 'isnotnull',
-        'intersects' : 'intersects',
-        'inside' : 'inside',
-        'outside' : 'outside',
+        "__eq__": "eq",
+        "__ne__": "ne",
+        "__and__": "and",
+        "__or__": "or",
+        "__xor__": "xor",
+        "__gt__": "gt",
+        "__ge__": "ge",
+        "__lt__": "lt",
+        "__le__": "le",
+        "is_none": "isnull",
+        "is_not_none": "isnotnull",
+        "intersects": "intersects",
+        "inside": "inside",
+        "outside": "outside",
     }
     return fns[fn]
 
 
 def _test_encoding(objcls, value, encoded_value):
-    assert objcls(value).to_dict() == objcls.decode_value(encoded_value).to_dict()
+    assert (
+        objcls(value).to_dict() == objcls.decode_value(encoded_value).to_dict()
+    )
     assert encoded_value == objcls(value).encode_value()
 
 
@@ -533,7 +532,7 @@ def _test_to_dict(objcls, value):
             "name": objcls.__name__.lower(),
             "key": None,
             "attribute": None,
-        }
+        },
     }
 
 
@@ -543,7 +542,10 @@ def _test_generic(objcls, permutations, op):
         A = objcls(a)
         C = objcls.symbolic()
         # test variable -> builtin against variable -> variable
-        assert C.__getattribute__(op)(a).to_dict() == C.__getattribute__(op)(A).to_dict()
+        assert (
+            C.__getattribute__(op)(a).to_dict()
+            == C.__getattribute__(op)(A).to_dict()
+        )
         # test commutative propery (this will fail)
         with pytest.raises(AssertionError):
             try:
@@ -581,9 +583,13 @@ def _test_resolvable(objcls, permutations, op):
         A = objcls(a)
         B = objcls(b)
         # test variable -> builtin against truth
-        assert A.__getattribute__(op)(b).get_value() is a.__getattribute__(op)(b)
+        assert A.__getattribute__(op)(b).get_value() is a.__getattribute__(op)(
+            b
+        )
         # test variable -> variable against truth
-        assert A.__getattribute__(op)(B).get_value() is a.__getattribute__(op)(b)
+        assert A.__getattribute__(op)(B).get_value() is a.__getattribute__(op)(
+            b
+        )
         # test commutative propery (this will fail)
         assert type(b.__getattribute__(op)(A)) not in {objcls, type(b)}
         # test dictionary generation
@@ -611,17 +617,28 @@ def test_bool():
         (False, False),
         (False, True),
     ]
-    for op in ['__eq__', '__ne__', '__and__', '__or__', '__xor__']:
+    for op in ["__eq__", "__ne__", "__and__", "__or__", "__xor__"]:
         _test_resolvable(objcls, permutations, op)
-    for op in ['__gt__', '__ge__', '__lt__', '__le__', 'is_none', 'is_not_none', 'intersects', 'inside', 'outside']:
+    for op in [
+        "__gt__",
+        "__ge__",
+        "__lt__",
+        "__le__",
+        "is_none",
+        "is_not_none",
+        "intersects",
+        "inside",
+        "outside",
+    ]:
         _test_unsupported(objcls, permutations, op)
-    assert (~Bool(True)) == False
-    assert (~Bool(False)) == True
+
+    assert (~Bool(True)).get_value() is False  # type: ignore - this will always return a bool
+    assert (~Bool(False)).get_value() is True  # type: ignore - this will always return a bool
 
     # test encoding
     _test_encoding(objcls, True, True)
     _test_encoding(objcls, False, False)
-    
+
 
 def test_integer():
     # interoperable with builtin 'int'
@@ -632,9 +649,18 @@ def test_integer():
         (-100, -100),
         (-100, 100),
     ]
-    for op in ['__eq__', '__ne__', '__gt__', '__ge__', '__lt__', '__le__']:
+    for op in ["__eq__", "__ne__", "__gt__", "__ge__", "__lt__", "__le__"]:
         _test_resolvable(objcls, permutations, op)
-    for op in ['__and__', '__or__', '__xor__', 'is_none', 'is_not_none', 'intersects', 'inside', 'outside']:
+    for op in [
+        "__and__",
+        "__or__",
+        "__xor__",
+        "is_none",
+        "is_not_none",
+        "intersects",
+        "inside",
+        "outside",
+    ]:
         _test_unsupported(objcls, permutations, op)
 
     # test encoding
@@ -650,9 +676,18 @@ def test_float():
         (-1.23, -3.21),
         (-1.23, 3.21),
     ]
-    for op in ['__eq__', '__ne__', '__gt__', '__ge__', '__lt__', '__le__']:
+    for op in ["__eq__", "__ne__", "__gt__", "__ge__", "__lt__", "__le__"]:
         _test_resolvable(objcls, permutations, op)
-    for op in ['__and__', '__or__', '__xor__', 'is_none', 'is_not_none', 'intersects', 'inside', 'outside']:
+    for op in [
+        "__and__",
+        "__or__",
+        "__xor__",
+        "is_none",
+        "is_not_none",
+        "intersects",
+        "inside",
+        "outside",
+    ]:
         _test_unsupported(objcls, permutations, op)
 
     # test encoding
@@ -668,11 +703,24 @@ def test_string():
         ("world", "hello"),
         ("world", "world"),
     ]
-    for op in ['__eq__', '__ne__']:
+    for op in ["__eq__", "__ne__"]:
         _test_resolvable(objcls, permutations, op)
-    for op in ['__gt__', '__ge__', '__lt__', '__le__', '__and__', '__or__', '__xor__', 'is_none', 'is_not_none', 'intersects', 'inside', 'outside']:
+    for op in [
+        "__gt__",
+        "__ge__",
+        "__lt__",
+        "__le__",
+        "__and__",
+        "__or__",
+        "__xor__",
+        "is_none",
+        "is_not_none",
+        "intersects",
+        "inside",
+        "outside",
+    ]:
         _test_unsupported(objcls, permutations, op)
-    
+
     # test encoding
     _test_encoding(objcls, "hello", "hello")
 
@@ -681,36 +729,84 @@ def test_datetime():
     # interoperable with 'datetime.datetime'
     objcls = DateTime
     permutations = [
-        (datetime.datetime(year=2024, month=1, day=1), datetime.datetime(year=2024, month=1, day=1)),
-        (datetime.datetime(year=2024, month=1, day=1), datetime.datetime(year=2024, month=1, day=2)),
-        (datetime.datetime(year=2024, month=1, day=2), datetime.datetime(year=2024, month=1, day=2)),
-        (datetime.datetime(year=2024, month=1, day=2), datetime.datetime(year=2024, month=1, day=1)),
+        (
+            datetime.datetime(year=2024, month=1, day=1),
+            datetime.datetime(year=2024, month=1, day=1),
+        ),
+        (
+            datetime.datetime(year=2024, month=1, day=1),
+            datetime.datetime(year=2024, month=1, day=2),
+        ),
+        (
+            datetime.datetime(year=2024, month=1, day=2),
+            datetime.datetime(year=2024, month=1, day=2),
+        ),
+        (
+            datetime.datetime(year=2024, month=1, day=2),
+            datetime.datetime(year=2024, month=1, day=1),
+        ),
     ]
-    for op in ['__eq__', '__ne__', '__gt__', '__ge__', '__lt__', '__le__']:
+    for op in ["__eq__", "__ne__", "__gt__", "__ge__", "__lt__", "__le__"]:
         _test_resolvable(objcls, permutations, op)
-    for op in ['__and__', '__or__', '__xor__', 'is_none', 'is_not_none', 'intersects', 'inside', 'outside']:
+    for op in [
+        "__and__",
+        "__or__",
+        "__xor__",
+        "is_none",
+        "is_not_none",
+        "intersects",
+        "inside",
+        "outside",
+    ]:
         _test_unsupported(objcls, permutations, op)
 
     # test encoding
-    _test_encoding(objcls, datetime.datetime(year=2024, month=1, day=1), "2024-01-01T00:00:00")
+    _test_encoding(
+        objcls,
+        datetime.datetime(year=2024, month=1, day=1),
+        "2024-01-01T00:00:00",
+    )
 
 
 def test_date():
     # interoperable with 'datetime.date'
     objcls = Date
     permutations = [
-        (datetime.date(year=2024, month=1, day=1), datetime.date(year=2024, month=1, day=1)),
-        (datetime.date(year=2024, month=1, day=1), datetime.date(year=2024, month=1, day=2)),
-        (datetime.date(year=2024, month=1, day=2), datetime.date(year=2024, month=1, day=2)),
-        (datetime.date(year=2024, month=1, day=2), datetime.date(year=2024, month=1, day=1)),
+        (
+            datetime.date(year=2024, month=1, day=1),
+            datetime.date(year=2024, month=1, day=1),
+        ),
+        (
+            datetime.date(year=2024, month=1, day=1),
+            datetime.date(year=2024, month=1, day=2),
+        ),
+        (
+            datetime.date(year=2024, month=1, day=2),
+            datetime.date(year=2024, month=1, day=2),
+        ),
+        (
+            datetime.date(year=2024, month=1, day=2),
+            datetime.date(year=2024, month=1, day=1),
+        ),
     ]
-    for op in ['__eq__', '__ne__', '__gt__', '__ge__', '__lt__', '__le__']:
+    for op in ["__eq__", "__ne__", "__gt__", "__ge__", "__lt__", "__le__"]:
         _test_resolvable(objcls, permutations, op)
-    for op in ['__and__', '__or__', '__xor__', 'is_none', 'is_not_none', 'intersects', 'inside', 'outside']:
+    for op in [
+        "__and__",
+        "__or__",
+        "__xor__",
+        "is_none",
+        "is_not_none",
+        "intersects",
+        "inside",
+        "outside",
+    ]:
         _test_unsupported(objcls, permutations, op)
 
     # test encoding
-    _test_encoding(objcls, datetime.date(year=2024, month=1, day=1), "2024-01-01")
+    _test_encoding(
+        objcls, datetime.date(year=2024, month=1, day=1), "2024-01-01"
+    )
 
 
 def test_time():
@@ -722,9 +818,18 @@ def test_time():
         (datetime.time(hour=2), datetime.time(hour=2)),
         (datetime.time(hour=2), datetime.time(hour=1)),
     ]
-    for op in ['__eq__', '__ne__', '__gt__', '__ge__', '__lt__', '__le__']:
+    for op in ["__eq__", "__ne__", "__gt__", "__ge__", "__lt__", "__le__"]:
         _test_resolvable(objcls, permutations, op)
-    for op in ['__and__', '__or__', '__xor__', 'is_none', 'is_not_none', 'intersects', 'inside', 'outside']:
+    for op in [
+        "__and__",
+        "__or__",
+        "__xor__",
+        "is_none",
+        "is_not_none",
+        "intersects",
+        "inside",
+        "outside",
+    ]:
         _test_unsupported(objcls, permutations, op)
 
     # test encoding
@@ -740,9 +845,18 @@ def test_duration():
         (datetime.timedelta(seconds=2), datetime.timedelta(seconds=2)),
         (datetime.timedelta(seconds=2), datetime.timedelta(seconds=1)),
     ]
-    for op in ['__eq__', '__ne__', '__gt__', '__ge__', '__lt__', '__le__']:
+    for op in ["__eq__", "__ne__", "__gt__", "__ge__", "__lt__", "__le__"]:
         _test_resolvable(objcls, permutations, op)
-    for op in ['__and__', '__or__', '__xor__', 'is_none', 'is_not_none', 'intersects', 'inside', 'outside']:
+    for op in [
+        "__and__",
+        "__or__",
+        "__xor__",
+        "is_none",
+        "is_not_none",
+        "intersects",
+        "inside",
+        "outside",
+    ]:
         _test_unsupported(objcls, permutations, op)
 
     # test encoding
@@ -752,52 +866,76 @@ def test_duration():
 def test_point():
     # interoperable with GeoJSON-style 'point' geometry
     objcls = Point
-    permutations = [
-        ((0,0), (1,1))
-    ]
-    for op in ['intersects', 'inside', 'outside']:
+    permutations = [((0, 0), (1, 1))]
+    for op in ["intersects", "inside", "outside"]:
         _test_generic(objcls, permutations, op)
-    for op in ['__eq__', '__ne__', '__gt__', '__ge__', '__lt__', '__le__', '__and__', '__or__', '__xor__', 'is_none', 'is_not_none']:
+    for op in [
+        "__eq__",
+        "__ne__",
+        "__gt__",
+        "__ge__",
+        "__lt__",
+        "__le__",
+        "__and__",
+        "__or__",
+        "__xor__",
+        "is_none",
+        "is_not_none",
+    ]:
         _test_unsupported(objcls, permutations, op)
 
     # test encoding
-    _test_encoding(objcls, (1,-1), (1,-1))
-    
+    _test_encoding(objcls, (1, -1), (1, -1))
+
 
 def test_multipoint():
     # interoperable with GeoJSON-style 'multipoint' geometry
     objcls = MultiPoint
-    permutations = [
-        (
-            [(0,0), (1,1)], 
-            [(1,0), (0,1)]
-        )
-    ]
-    for op in ['intersects', 'inside', 'outside']:
+    permutations = [([(0, 0), (1, 1)], [(1, 0), (0, 1)])]
+    for op in ["intersects", "inside", "outside"]:
         _test_generic(objcls, permutations, op)
-    for op in ['__eq__', '__ne__', '__gt__', '__ge__', '__lt__', '__le__', '__and__', '__or__', '__xor__', 'is_none', 'is_not_none']:
+    for op in [
+        "__eq__",
+        "__ne__",
+        "__gt__",
+        "__ge__",
+        "__lt__",
+        "__le__",
+        "__and__",
+        "__or__",
+        "__xor__",
+        "is_none",
+        "is_not_none",
+    ]:
         _test_unsupported(objcls, permutations, op)
 
     # test encoding
-    _test_encoding(objcls, [(0,0), (1,1)], [(0,0), (1,1)])
+    _test_encoding(objcls, [(0, 0), (1, 1)], [(0, 0), (1, 1)])
 
 
 def test_linestring():
     # interoperable with GeoJSON-style 'linestring' geometry
     objcls = LineString
-    permutations = [
-        (
-            [(0,0), (1,1)], 
-            [(1,0), (0,1)]
-        )
-    ]
-    for op in ['intersects', 'inside', 'outside']:
+    permutations = [([(0, 0), (1, 1)], [(1, 0), (0, 1)])]
+    for op in ["intersects", "inside", "outside"]:
         _test_generic(objcls, permutations, op)
-    for op in ['__eq__', '__ne__', '__gt__', '__ge__', '__lt__', '__le__', '__and__', '__or__', '__xor__', 'is_none', 'is_not_none']:
+    for op in [
+        "__eq__",
+        "__ne__",
+        "__gt__",
+        "__ge__",
+        "__lt__",
+        "__le__",
+        "__and__",
+        "__or__",
+        "__xor__",
+        "is_none",
+        "is_not_none",
+    ]:
         _test_unsupported(objcls, permutations, op)
 
     # test encoding
-    _test_encoding(objcls, [(0,0), (1,1)], [(0,0), (1,1)])
+    _test_encoding(objcls, [(0, 0), (1, 1)], [(0, 0), (1, 1)])
 
 
 def test_multilinestring():
@@ -805,17 +943,29 @@ def test_multilinestring():
     objcls = MultiLineString
     permutations = [
         (
-            [[(0,0), (1,1)], [(1,0), (0,1)]],
-            [[(-1,1), (1,1)], [(1,0), (0,1)]]
+            [[(0, 0), (1, 1)], [(1, 0), (0, 1)]],
+            [[(-1, 1), (1, 1)], [(1, 0), (0, 1)]],
         )
     ]
-    for op in ['intersects', 'inside', 'outside']:
+    for op in ["intersects", "inside", "outside"]:
         _test_generic(objcls, permutations, op)
-    for op in ['__eq__', '__ne__', '__gt__', '__ge__', '__lt__', '__le__', '__and__', '__or__', '__xor__', 'is_none', 'is_not_none']:
+    for op in [
+        "__eq__",
+        "__ne__",
+        "__gt__",
+        "__ge__",
+        "__lt__",
+        "__le__",
+        "__and__",
+        "__or__",
+        "__xor__",
+        "is_none",
+        "is_not_none",
+    ]:
         _test_unsupported(objcls, permutations, op)
 
     # test encoding
-    _test_encoding(objcls, [[(0,0), (1,1)]], [[(0,0), (1,1)]])
+    _test_encoding(objcls, [[(0, 0), (1, 1)]], [[(0, 0), (1, 1)]])
 
 
 def test_polygon():
@@ -823,17 +973,36 @@ def test_polygon():
     objcls = Polygon
     permutations = [
         (
-            [[(0,0), (1,1), (0,1), (0,0)]],  # regular polygon
-            [[(0,0), (1,1), (0,1), (0,0)], [(0.1,0.1), (0.9,0.9), (0.1,0.9), (0.1,0.1)]],  # polygon w/ hole
+            [[(0, 0), (1, 1), (0, 1), (0, 0)]],  # regular polygon
+            [
+                [(0, 0), (1, 1), (0, 1), (0, 0)],
+                [(0.1, 0.1), (0.9, 0.9), (0.1, 0.9), (0.1, 0.1)],
+            ],  # polygon w/ hole
         )
     ]
-    for op in ['intersects', 'inside', 'outside']:
+    for op in ["intersects", "inside", "outside"]:
         _test_generic(objcls, permutations, op)
-    for op in ['__eq__', '__ne__', '__gt__', '__ge__', '__lt__', '__le__', '__and__', '__or__', '__xor__', 'is_none', 'is_not_none']:
+    for op in [
+        "__eq__",
+        "__ne__",
+        "__gt__",
+        "__ge__",
+        "__lt__",
+        "__le__",
+        "__and__",
+        "__or__",
+        "__xor__",
+        "is_none",
+        "is_not_none",
+    ]:
         _test_unsupported(objcls, permutations, op)
 
     # test encoding
-    _test_encoding(objcls, [[(0,0), (1,1), (0,1), (0,0)]], [[(0,0), (1,1), (0,1), (0,0)]])
+    _test_encoding(
+        objcls,
+        [[(0, 0), (1, 1), (0, 1), (0, 0)]],
+        [[(0, 0), (1, 1), (0, 1), (0, 0)]],
+    )
 
 
 def test_multipolygon():
@@ -841,46 +1010,61 @@ def test_multipolygon():
     objcls = MultiPolygon
     permutations = [
         (
-            [[[(0,0), (1,1), (0,1), (0,0)]], [[(0,0), (1,1), (0,1), (0,0)], [(0.1,0.1), (0.9,0.9), (0.1,0.9), (0.1,0.1)]]],
-            [[[(0,0), (1,1), (0,1), (0,0)]], [[(0,0), (1,1), (0,1), (0,0)], [(0.1,0.1), (0.9,0.9), (0.1,0.9), (0.1,0.1)]]],
+            [
+                [[(0, 0), (1, 1), (0, 1), (0, 0)]],
+                [
+                    [(0, 0), (1, 1), (0, 1), (0, 0)],
+                    [(0.1, 0.1), (0.9, 0.9), (0.1, 0.9), (0.1, 0.1)],
+                ],
+            ],
+            [
+                [[(0, 0), (1, 1), (0, 1), (0, 0)]],
+                [
+                    [(0, 0), (1, 1), (0, 1), (0, 0)],
+                    [(0.1, 0.1), (0.9, 0.9), (0.1, 0.9), (0.1, 0.1)],
+                ],
+            ],
         )
     ]
-    for op in ['intersects', 'inside', 'outside']:
+    for op in ["intersects", "inside", "outside"]:
         _test_generic(objcls, permutations, op)
-    for op in ['__eq__', '__ne__', '__gt__', '__ge__', '__lt__', '__le__', '__and__', '__or__', '__xor__', 'is_none', 'is_not_none']:
+    for op in [
+        "__eq__",
+        "__ne__",
+        "__gt__",
+        "__ge__",
+        "__lt__",
+        "__le__",
+        "__and__",
+        "__or__",
+        "__xor__",
+        "is_none",
+        "is_not_none",
+    ]:
         _test_unsupported(objcls, permutations, op)
 
     # test encoding
-    _test_encoding(objcls, [[[(0,0), (1,1), (0,1), (0,0)]]], [[[(0,0), (1,1), (0,1), (0,0)]]])
+    _test_encoding(
+        objcls,
+        [[[(0, 0), (1, 1), (0, 1), (0, 0)]]],
+        [[[(0, 0), (1, 1), (0, 1), (0, 0)]]],
+    )
 
 
 def test_dictionary_value():
-    # test 
-
-
     # test symbol cannot already have key or attribute
     with pytest.raises(ValueError) as e:
         DictionaryValue(
-            symbol=Symbol(
-                name="a", 
-                key="b", 
-                attribute="c", 
-                owner="d"
-            ), 
+            symbol=Symbol(name="a", key="b", attribute="c", owner="d"),
             key="k",
         )
     assert "key" in str(e)
     with pytest.raises(ValueError) as e:
         DictionaryValue(
-            symbol=Symbol(
-                name="a",
-                attribute="c", 
-                owner="d"
-            ), 
+            symbol=Symbol(name="a", attribute="c", owner="d"),
             key="k",
         )
     assert "attribute" in str(e)
-    
 
 
 def test_dictionary():
@@ -893,40 +1077,47 @@ def test_dictionary():
         "k5": datetime.date(year=2024, month=1, day=1),
         "k6": datetime.time(hour=1),
         "k7": datetime.timedelta(seconds=100),
-        "k8": Point((1,-1)),
-        "k9": MultiPoint([(0,0), (1,1)]),
-        "k10": LineString([(0,0), (1,1)]),
-        "k11": MultiLineString([[(0,0), (1,1)]]),
-        "k12": Polygon([[(0,0), (1,1), (0,1), (0,0)]]),
-        "k13": MultiPolygon([[[(0,0), (1,1), (0,1), (0,0)]]]),
+        "k8": Point((1, -1)),
+        "k9": MultiPoint([(0, 0), (1, 1)]),
+        "k10": LineString([(0, 0), (1, 1)]),
+        "k11": MultiLineString([[(0, 0), (1, 1)]]),
+        "k12": Polygon([[(0, 0), (1, 1), (0, 1), (0, 0)]]),
+        "k13": MultiPolygon([[[(0, 0), (1, 1), (0, 1), (0, 0)]]]),
     }
     y = {
         "k0": False,
         "k1": "v2",
         "k2": 321,
         "k3": 1.24,
-        "k4": datetime.datetime(year=2024, month=1, day=1),
-        "k5": datetime.date(year=2024, month=1, day=1),
-        "k6": datetime.time(hour=1),
-        "k7": datetime.timedelta(seconds=100),
-        "k8": Point((1,-1))
     }
 
     # interoperable with built-in 'dict'
     objcls = Dictionary
     permutations = [
-        (x,x),
-        (x,y),
-        (y,y),
-        (y,x),
+        (x, x),
+        (x, y),
+        (y, y),
+        (y, x),
     ]
-    for op in ['__eq__', '__ne__']:
+    for op in ["__eq__", "__ne__"]:
         _test_generic(objcls, permutations, op)
-    for op in ['__gt__', '__ge__', '__lt__', '__le__', '__and__', '__or__', '__xor__', 'is_none', 'is_not_none', 'intersects', 'inside', 'outside']:
+    for op in [
+        "__gt__",
+        "__ge__",
+        "__lt__",
+        "__le__",
+        "__and__",
+        "__or__",
+        "__xor__",
+        "is_none",
+        "is_not_none",
+        "intersects",
+        "inside",
+        "outside",
+    ]:
         _test_unsupported(objcls, permutations, op)
 
     # test encoding
-    print(type(Dictionary(x).encode_value()['k8']['value']))
     assert {
         "k0": {"type": "bool", "value": True},
         "k1": {"type": "string", "value": "v1"},
@@ -937,9 +1128,15 @@ def test_dictionary():
         "k6": {"type": "time", "value": "01:00:00"},
         "k7": {"type": "duration", "value": 100.0},
         "k8": {"type": "point", "value": (1, -1)},
-        "k9": {"type": "multipoint", "value": [(0,0), (1,1)]},
-        "k10": {"type": "linestring", "value": [(0,0), (1,1)]},
-        "k11": {"type": "multilinestring", "value": [[(0,0), (1,1)]]},
-        "k12": {"type": "polygon", "value": [[(0,0), (1,1), (0,1), (0,0)]]},
-        "k13": {"type": "multipolygon", "value": [[[(0,0), (1,1), (0,1), (0,0)]]]},
+        "k9": {"type": "multipoint", "value": [(0, 0), (1, 1)]},
+        "k10": {"type": "linestring", "value": [(0, 0), (1, 1)]},
+        "k11": {"type": "multilinestring", "value": [[(0, 0), (1, 1)]]},
+        "k12": {
+            "type": "polygon",
+            "value": [[(0, 0), (1, 1), (0, 1), (0, 0)]],
+        },
+        "k13": {
+            "type": "multipolygon",
+            "value": [[[(0, 0), (1, 1), (0, 1), (0, 0)]]],
+        },
     } == Dictionary(x).encode_value()

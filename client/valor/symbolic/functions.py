@@ -2,9 +2,14 @@ from typing import Any
 
 
 class Function:
-    operator = None
+    _operator = None
 
     def __init__(self, *args) -> None:
+        for arg in args:
+            if not hasattr(arg, "to_dict"):
+                raise ValueError(
+                    "Functions can only take arguments that have a 'to_dict' method defined."
+                )
         self._args = list(args)
 
     def __repr__(self):
@@ -12,15 +17,12 @@ class Function:
         return f"{type(self).__name__}({args})"
 
     def __str__(self):
-        values = [
-            f"'{arg}'" if isinstance(arg, str) else str(arg)
-            for arg in self._args
-        ]
-        if self.operator is None:
+        values = [arg.__repr__() for arg in self._args]
+        if self._operator is None:
             args = ", ".join(values)
             return f"{type(self).__name__}({args})"
         else:
-            args = f" {self.operator} ".join(values)
+            args = f" {self._operator} ".join(values)
             return f"({args})"
 
     def __and__(self, other: Any):
@@ -35,36 +37,30 @@ class Function:
     def __invert__(self):
         return Negate(self)
 
-    def reduce(self):
-        return self
-
     def to_dict(self):
         return {
-            "op": type(self).__name__.lower(), 
-            "args": [arg.to_dict() for arg in self._args]
+            "op": type(self).__name__.lower(),
+            "args": [arg.to_dict() for arg in self._args],
         }
 
 
 class OneArgumentFunction(Function):
-    def __init__(self, arg, **kwargs) -> None:
-        super().__init__(arg, **kwargs)
+    def __init__(self, arg) -> None:
+        super().__init__(arg)
 
     @property
     def arg(self):
         return self._args[0]
-    
+
     def to_dict(self):
-        return {
-            "op": type(self).__name__.lower(),
-            "arg": self.arg.to_dict()
-        }
+        return {"op": type(self).__name__.lower(), "arg": self.arg.to_dict()}
 
 
 class TwoArgumentFunction(Function):
-    def __init__(self, lhs: Any, rhs: Any, **kwargs) -> None:
+    def __init__(self, lhs: Any, rhs: Any) -> None:
         self._lhs = lhs
         self._rhs = rhs
-        super().__init__(lhs, rhs, **kwargs)
+        super().__init__(lhs, rhs)
 
     @property
     def lhs(self):
@@ -73,7 +69,7 @@ class TwoArgumentFunction(Function):
     @property
     def rhs(self):
         return self._rhs
-    
+
     def to_dict(self):
         return {
             "op": type(self).__name__.lower(),
@@ -83,37 +79,41 @@ class TwoArgumentFunction(Function):
 
 
 class AppendableFunction(Function):
-    overload = None
+    _function = None
 
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args) -> None:
         if len(args) < 2:
-            raise ValueError
-        if self.overload is None:
-            raise NotImplementedError
-        self.__setattr__(self.overload, self.append)
-        super().__init__(*args, **kwargs)
+            raise TypeError(
+                f"missing {2 - len(args)} required positional argument"
+            )
+        if self._function is None:
+            raise NotImplementedError(
+                "No function was defined as the appending operator."
+            )
+        self.__setattr__(self._function, self.append)
+        super().__init__(*args)
 
     def append(self, value: Any):
         self._args.append(value)
 
 
 class And(AppendableFunction):
-    operator = "&"
-    overload = "__and__"
+    _operator = "&"
+    _function = "__and__"
 
 
 class Or(AppendableFunction):
-    operator = "|"
-    overload = "__or__"
+    _operator = "|"
+    _function = "__or__"
 
 
 class Xor(AppendableFunction):
-    operator = "^"
-    overload = "__xor__"
+    _operator = "^"
+    _function = "__xor__"
 
 
 class Negate(OneArgumentFunction):
-    operator = "~"
+    _operator = "~"
 
 
 class IsNull(OneArgumentFunction):
@@ -125,27 +125,27 @@ class IsNotNull(OneArgumentFunction):
 
 
 class Eq(TwoArgumentFunction):
-    operator = "=="
+    _operator = "=="
 
 
 class Ne(TwoArgumentFunction):
-    operator = "!="
+    _operator = "!="
 
 
 class Gt(TwoArgumentFunction):
-    operator = ">"
+    _operator = ">"
 
 
 class Ge(TwoArgumentFunction):
-    operator = ">="
+    _operator = ">="
 
 
 class Lt(TwoArgumentFunction):
-    operator = "<"
+    _operator = "<"
 
 
 class Le(TwoArgumentFunction):
-    operator = "<="
+    _operator = "<="
 
 
 class Intersects(TwoArgumentFunction):
