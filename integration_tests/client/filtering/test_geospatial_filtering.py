@@ -4,7 +4,7 @@ that is no auth
 
 import pytest
 
-from client.valor import (
+from valor import (
     Client,
     Constraint,
     Dataset,
@@ -13,7 +13,7 @@ from client.valor import (
     Model,
     Prediction,
 )
-from client.valor.enums import EvaluationStatus
+from valor.enums import EvaluationStatus
 
 
 def test_set_and_get_geospatial(
@@ -129,14 +129,13 @@ def test_geospatial_filter(
 
     # passing in an incorrectly-formatted geojson dict should return a ValueError
     geospatial_metadata = Datum.metadata["geospatial"]
-    assert geospatial_metadata is set
     with pytest.raises(NotImplementedError) as e:
         model.evaluate_detection(
             dataset,
             iou_thresholds_to_compute=[0.1, 0.6],
             iou_thresholds_to_return=[0.1, 0.6],
             filter_by=[
-                geospatial_metadata.inside({"incorrectly_formatted_dict": {}})
+                geospatial_metadata.inside({"incorrectly_formatted_dict": {}})  # type: ignore - filter type error
             ],
         )
     assert "is not supported" in str(e)
@@ -145,7 +144,7 @@ def test_geospatial_filter(
         dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
-        filter_by=[geospatial_metadata.intersect(geo_dict)],
+        filter_by=[geospatial_metadata.intersect(geo_dict)],  # type: ignore - filter type error
     )
     assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
 

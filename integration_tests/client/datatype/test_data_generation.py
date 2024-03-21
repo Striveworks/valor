@@ -9,7 +9,7 @@ from numpy.typing import NDArray
 from PIL import Image
 from tqdm import tqdm
 
-from client.valor import (
+from valor import (
     Annotation,
     Client,
     Dataset,
@@ -20,9 +20,9 @@ from client.valor import (
     Model,
     Prediction,
 )
-from client.valor.enums import AnnotationType, EvaluationStatus, TaskType
-from client.valor.metatypes import ImageMetadata
-from client.valor.schemas import BoundingBox, Raster
+from valor.enums import AnnotationType, EvaluationStatus, TaskType
+from valor.metatypes import ImageMetadata
+from valor.schemas import BoundingBox, Raster
 
 
 def _sample_without_replacement(array: list, n: int) -> list:

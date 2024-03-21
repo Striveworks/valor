@@ -6,11 +6,11 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from api.valor_api.backend import models
-from client.valor import Annotation, Client, Dataset, Datum, GroundTruth, Label
-from client.valor.enums import TaskType
-from client.valor.metatypes import ImageMetadata
-from client.valor.schemas import BoundingBox
+from valor import Annotation, Client, Dataset, Datum, GroundTruth, Label
+from valor.enums import TaskType
+from valor.metatypes import ImageMetadata
+from valor.schemas import BoundingBox
+from valor_api.backend import models
 
 
 @pytest.fixture

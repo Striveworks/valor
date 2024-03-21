@@ -8,11 +8,11 @@ import pytest
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from api.valor_api.backend import models
-from client.valor import Annotation, Client, Dataset, Datum, GroundTruth, Label
-from client.valor.enums import TableStatus, TaskType
-from client.valor.exceptions import ClientException
-from client.valor.metatypes import ImageMetadata
+from valor import Annotation, Client, Dataset, Datum, GroundTruth, Label
+from valor.enums import TableStatus, TaskType
+from valor.exceptions import ClientException
+from valor.metatypes import ImageMetadata
+from valor_api.backend import models
 
 
 def _test_create_image_dataset_with_gts(

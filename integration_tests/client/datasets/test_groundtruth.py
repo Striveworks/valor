@@ -8,11 +8,10 @@ from geoalchemy2.functions import ST_AsText, ST_Polygon
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from api.valor_api.backend import models
-from client.valor import Annotation, Client, Dataset, Datum, GroundTruth, Label
-from client.valor.enums import TaskType
-from client.valor.exceptions import ClientException
-from client.valor.schemas import (
+from valor import Annotation, Client, Dataset, Datum, GroundTruth, Label
+from valor.enums import TaskType
+from valor.exceptions import ClientException
+from valor.schemas import (
     BasicPolygon,
     BoundingBox,
     MultiPolygon,
@@ -20,6 +19,7 @@ from client.valor.schemas import (
     Polygon,
     Raster,
 )
+from valor_api.backend import models
 
 
 def test_create_gt_detections_as_bbox_or_poly(

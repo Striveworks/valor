@@ -10,13 +10,13 @@ import pytest
 from sqlalchemy import create_engine, select, text
 from sqlalchemy.orm import Session
 
-from api.valor_api import exceptions
-from api.valor_api.backend import models
-from client.valor import Annotation, Client, GroundTruth, Label, Prediction
-from client.valor.client import ClientConnection, connect, reset_connection
-from client.valor.enums import TaskType
-from client.valor.metatypes import Datum
-from client.valor.schemas import BoundingBox, MultiPolygon, Polygon, Raster
+from valor import Annotation, Client, GroundTruth, Label, Prediction
+from valor.client import ClientConnection, connect, reset_connection
+from valor.enums import TaskType
+from valor.metatypes import Datum
+from valor.schemas import BoundingBox, MultiPolygon, Polygon, Raster
+from valor_api import exceptions
+from valor_api.backend import models
 
 
 def _generate_mask(
@@ -33,7 +33,7 @@ def _generate_mask(
 
 
 @pytest.fixture
-def connection() -> None:
+def connection() -> ClientConnection:  # type: ignore - this functional technically doesn't return anything, but downstream tests will throw errors if we change the return type to None
     reset_connection()
     connect(host="http://localhost:8000")
 

@@ -3,9 +3,9 @@ from typing import List, Tuple
 import numpy as np
 import pytest
 
-from client.valor import Annotation, Dataset, Datum, Filter, GroundTruth, Label
-from client.valor.enums import TaskType
-from client.valor.schemas import BoundingBox, MultiPolygon, Polygon, Raster
+from valor import Annotation, Dataset, Datum, Filter, GroundTruth, Label
+from valor.enums import TaskType
+from valor.schemas import BoundingBox, MultiPolygon, Polygon, Raster
 
 
 @pytest.fixture

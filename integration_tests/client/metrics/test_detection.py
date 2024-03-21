@@ -9,8 +9,7 @@ from geoalchemy2.functions import ST_Area
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from api.valor_api.backend import models
-from client.valor import (
+from valor import (
     Annotation,
     Client,
     Dataset,
@@ -21,9 +20,10 @@ from client.valor import (
     Model,
     Prediction,
 )
-from client.valor.enums import AnnotationType, EvaluationStatus, TaskType
-from client.valor.exceptions import ClientException
-from client.valor.schemas import BoundingBox
+from valor.enums import AnnotationType, EvaluationStatus, TaskType
+from valor.exceptions import ClientException
+from valor.schemas import BoundingBox
+from valor_api.backend import models
 
 default_filter_properties = asdict(Filter())
 
@@ -2144,7 +2144,10 @@ def test_evaluate_detection_with_label_maps(
         compute_pr_curves=True,
     )
 
-    assert eval_job.ignored_pred_labels and eval_job.missing_pred_labels
+    assert (
+        eval_job.ignored_pred_labels is not None
+        and eval_job.missing_pred_labels is not None
+    )
     assert (
         len(eval_job.ignored_pred_labels) == 2
     )  # we're ignoring the two "cat" model predictions
@@ -2280,7 +2283,9 @@ def test_evaluate_detection_with_label_maps(
         iou_thresholds_to_return=[0.1, 0.6],
         label_map=label_mapping,
     )
-    assert eval_job.ignored_pred_labels and eval_job.missing_pred_labels
+    assert eval_job.ignored_pred_labels is not None
+    assert eval_job.missing_pred_labels is not None
+
     assert (
         len(eval_job.ignored_pred_labels) == 1
     )  # Label(key='class_name', value='cat', score=None) is still never used
@@ -2417,7 +2422,10 @@ def test_evaluate_detection_with_label_maps(
         iou_thresholds_to_return=[0.1, 0.6],
         label_map=label_mapping,
     )
-    assert eval_job.ignored_pred_labels and eval_job.missing_pred_labels
+    assert (
+        eval_job.ignored_pred_labels is not None
+        and eval_job.missing_pred_labels is not None
+    )
     assert len(eval_job.ignored_pred_labels) == 0
     assert len(eval_job.missing_pred_labels) == 0
     assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
@@ -3022,7 +3030,10 @@ def test_evaluate_detection_with_label_maps(
         recall_score_threshold=0.8,
         compute_pr_curves=True,
     )
-    assert eval_job.ignored_pred_labels and eval_job.missing_pred_labels
+    assert (
+        eval_job.ignored_pred_labels is not None
+        and eval_job.missing_pred_labels is not None
+    )
     assert len(eval_job.ignored_pred_labels) == 0
     assert len(eval_job.missing_pred_labels) == 0
     assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE

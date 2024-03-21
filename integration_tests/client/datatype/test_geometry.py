@@ -9,8 +9,7 @@ from geoalchemy2.functions import ST_Area, ST_Intersection, ST_Union
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from api.valor_api.backend import models
-from client.valor import (
+from valor import (
     Annotation,
     Client,
     Dataset,
@@ -19,9 +18,10 @@ from client.valor import (
     Model,
     Prediction,
 )
-from client.valor.enums import TaskType
-from client.valor.metatypes import Datum
-from client.valor.schemas import BoundingBox, Point, Polygon, Raster
+from valor.enums import TaskType
+from valor.metatypes import Datum
+from valor.schemas import BoundingBox, Point, Polygon, Raster
+from valor_api.backend import models
 
 
 def _generate_mask(
@@ -168,7 +168,7 @@ def test_iou(
     assert annotation2 is not None
     db_pred = annotation2.polygon
 
-    # scraped from api.valor_api back end
+    # scraped from valor_api back end
     gintersection = ST_Intersection(db_gt, db_pred)
     gunion = ST_Union(db_gt, db_pred)
     iou_computation = ST_Area(gintersection) / ST_Area(gunion)

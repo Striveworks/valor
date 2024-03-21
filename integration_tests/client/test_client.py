@@ -6,7 +6,7 @@ from typing import List
 
 import pytest
 
-from client.valor import (
+from valor import (
     Annotation,
     Client,
     Dataset,
@@ -16,10 +16,10 @@ from client.valor import (
     Model,
     Prediction,
 )
-from client.valor.client import connect
-from client.valor.enums import TaskType
-from client.valor.exceptions import ClientException
-from client.valor.schemas import Constraint, Filter
+from valor.client import connect
+from valor.enums import TaskType
+from valor.exceptions import ClientException
+from valor.schemas import Constraint, Filter
 
 
 @pytest.fixture

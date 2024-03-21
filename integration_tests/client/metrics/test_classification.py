@@ -6,7 +6,7 @@ from datetime import date, datetime
 
 import pytest
 
-from client.valor import (
+from valor import (
     Annotation,
     Client,
     Dataset,
@@ -16,8 +16,8 @@ from client.valor import (
     Model,
     Prediction,
 )
-from client.valor.enums import EvaluationStatus, TaskType
-from client.valor.exceptions import ClientException
+from valor.enums import EvaluationStatus, TaskType
+from valor.exceptions import ClientException
 
 
 def test_evaluate_image_clf(
@@ -457,7 +457,7 @@ def test_stratify_clf_metrics(
     # should get the same thing if we use the boolean filter
     eval_results_bool = model.evaluate_classification(
         dataset,
-        filter_by=[Datum.metadata["md3"] is True],  # type: ignore - filter error
+        filter_by=[Datum.metadata["md3"] == True],  # type: ignore - filter type error # noqa 712
     )
     assert (
         eval_results_bool.wait_for_completion(timeout=30)

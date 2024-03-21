@@ -13,8 +13,7 @@ from geoalchemy2.functions import ST_AsPNG
 from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session
 
-from api.valor_api.backend import models
-from client.valor import (
+from valor import (
     Annotation,
     Client,
     Dataset,
@@ -24,10 +23,11 @@ from client.valor import (
     Model,
     Prediction,
 )
-from client.valor.enums import TaskType
-from client.valor.exceptions import ClientException
-from client.valor.metatypes import ImageMetadata
-from client.valor.schemas import Point
+from valor.enums import TaskType
+from valor.exceptions import ClientException
+from valor.metatypes import ImageMetadata
+from valor.schemas import Point
+from valor_api.backend import models
 
 
 def _list_of_points_from_wkt_polygon(
