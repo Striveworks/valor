@@ -573,7 +573,16 @@ def get_evaluations(
         dataset_names=dataset_names,
         model_names=model_names,
     )
-    evaluations = db.query(models.Evaluation).where(*expr).all()
+    evaluations = (
+        db.query(models.Evaluation)
+        .where(
+            and_(
+                *expr,
+                models.Evaluation.status != enums.EvaluationStatus.DELETING,
+            )
+        )
+        .all()
+    )
     return _create_responses(db, evaluations)
 
 
@@ -597,7 +606,12 @@ def get_evaluation_requests_from_model(
     """
     evaluations = (
         db.query(models.Evaluation)
-        .where(models.Evaluation.model_name == model_name)
+        .where(
+            and_(
+                models.Evaluation.model_name == model_name,
+                models.Evaluation.status != enums.EvaluationStatus.DELETING,
+            )
+        )
         .all()
     )
     return [
