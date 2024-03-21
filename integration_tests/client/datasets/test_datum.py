@@ -100,7 +100,7 @@ def test_get_datums(
     assert (
         len(
             dataset_with_metadata.get_datums(
-                filter_by=[Datum.metadata["metadatum1"] == "nonexistent value"]  # type: ignore - purposefully using bad filter criteria
+                filter_by=[Datum.metadata["metadatum1"] == "nonexistent value"]  # type: ignore - filter type error
             )
         )
         == 0

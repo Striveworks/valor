@@ -33,7 +33,7 @@ def _generate_mask(
 
 
 @pytest.fixture
-def connection() -> ClientConnection:  # type: ignore - this functional technically doesn't return anything, but downstream tests will throw errors if we change the return type to None
+def connection() -> ClientConnection:  # type: ignore - this function technically doesn't return anything, but downstream tests will throw errors if we change the return type to None
     reset_connection()
     connect(host="http://localhost:8000")
 
