@@ -567,26 +567,13 @@ def test_evaluation_status(
         db, evaluation_id, enums.EvaluationStatus.DELETING
     )
 
-    # test
-    assert (
+    # test an evaluation marked as DELETING is basically non-existent
+    with pytest.raises(exceptions.EvaluationDoesNotExistError):
         core.get_evaluation_status(db, evaluation_id)
-        == enums.EvaluationStatus.DELETING
-    )
-    with pytest.raises(exceptions.EvaluationStateError):
+
+    with pytest.raises(exceptions.EvaluationDoesNotExistError):
         core.set_evaluation_status(
             db, evaluation_id, enums.EvaluationStatus.PENDING
-        )
-    with pytest.raises(exceptions.EvaluationStateError):
-        core.set_evaluation_status(
-            db, evaluation_id, enums.EvaluationStatus.RUNNING
-        )
-    with pytest.raises(exceptions.EvaluationStateError):
-        core.set_evaluation_status(
-            db, evaluation_id, enums.EvaluationStatus.DONE
-        )
-    with pytest.raises(exceptions.EvaluationStateError):
-        core.set_evaluation_status(
-            db, evaluation_id, enums.EvaluationStatus.FAILED
         )
 
 
