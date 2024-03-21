@@ -36,6 +36,7 @@ jobs:
           registry-url: "https://registry.npmjs.org"
       - name: Set version from the git tag
         run: npm version ${{ github.ref_name }}
+      - run: npm run build
       - run: npm ci
       - name: Publish to npm
         run: npm publish --access public
