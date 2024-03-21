@@ -535,7 +535,12 @@ def fetch_evaluation_from_id(
     """
     evaluation = (
         db.query(models.Evaluation)
-        .where(models.Evaluation.id == evaluation_id)
+        .where(
+            and_(
+                models.Evaluation.id == evaluation_id,
+                models.Evaluation.status != enums.EvaluationStatus.DELETING,
+            )
+        )
         .one_or_none()
     )
     if evaluation is None:
