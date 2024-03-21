@@ -5,6 +5,7 @@ from valor_api import enums, exceptions, schemas
 from valor_api.backend import core, models
 from valor_api.backend.core.evaluation import (
     _fetch_evaluation_from_subrequest,
+    _fetch_evaluations_and_mark_for_deletion,
     _verify_ready_to_evaluate,
 )
 
@@ -566,26 +567,13 @@ def test_evaluation_status(
         db, evaluation_id, enums.EvaluationStatus.DELETING
     )
 
-    # test
-    assert (
+    # test an evaluation marked as DELETING is basically non-existent
+    with pytest.raises(exceptions.EvaluationDoesNotExistError):
         core.get_evaluation_status(db, evaluation_id)
-        == enums.EvaluationStatus.DELETING
-    )
-    with pytest.raises(exceptions.EvaluationStateError):
+
+    with pytest.raises(exceptions.EvaluationDoesNotExistError):
         core.set_evaluation_status(
             db, evaluation_id, enums.EvaluationStatus.PENDING
-        )
-    with pytest.raises(exceptions.EvaluationStateError):
-        core.set_evaluation_status(
-            db, evaluation_id, enums.EvaluationStatus.RUNNING
-        )
-    with pytest.raises(exceptions.EvaluationStateError):
-        core.set_evaluation_status(
-            db, evaluation_id, enums.EvaluationStatus.DONE
-        )
-    with pytest.raises(exceptions.EvaluationStateError):
-        core.set_evaluation_status(
-            db, evaluation_id, enums.EvaluationStatus.FAILED
         )
 
 
@@ -752,3 +740,50 @@ def test_count_active_evaluations(
         )
         == 0
     )
+
+
+def test__fetch_evaluations_and_mark_for_deletion(
+    db: Session, finalized_dataset: str, finalized_model: str
+):
+    # create two evaluations
+    for pr_curves in [True, False]:
+        core.create_or_get_evaluations(
+            db,
+            schemas.EvaluationRequest(
+                model_names=[finalized_model],
+                datum_filter=schemas.Filter(dataset_names=[finalized_dataset]),
+                parameters=schemas.EvaluationParameters(
+                    task_type=enums.TaskType.CLASSIFICATION,
+                    compute_pr_curves=pr_curves,
+                ),
+            ),
+        )
+
+    # sanity check no evals are in deleting state
+    evals = db.query(models.Evaluation).all()
+    assert len(evals) == 2
+    assert all([e.status != enums.EvaluationStatus.DELETING for e in evals])
+
+    eval_ids = [e.id for e in evals]
+    # fetch and update all evaluations, check they're in deleting status
+    evals = _fetch_evaluations_and_mark_for_deletion(
+        db, evaluation_ids=[eval_ids[0]]
+    )
+    assert len(evals) == 1
+    assert evals[0].status == enums.EvaluationStatus.DELETING
+
+    # check the other evaluation is not in deleting status
+    assert (
+        db.query(models.Evaluation.status)
+        .where(models.Evaluation.id == eval_ids[1])
+        .scalar()
+        != enums.EvaluationStatus.DELETING
+    )
+    # now call _fetch_evaluations_and_mark_for_deletion with dataset name so expression (ignoring status) will match all evaluations
+    # but check only the second one was updated
+    evals = _fetch_evaluations_and_mark_for_deletion(
+        db, dataset_names=[finalized_dataset]
+    )
+    assert len(evals) == 1
+    assert evals[0].status == enums.EvaluationStatus.DELETING
+    assert evals[0].id == eval_ids[1]
