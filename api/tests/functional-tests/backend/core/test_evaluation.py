@@ -5,8 +5,8 @@ from valor_api import enums, exceptions, schemas
 from valor_api.backend import core, models
 from valor_api.backend.core.evaluation import (
     _fetch_evaluation_from_subrequest,
+    _fetch_evaluations_and_mark_for_deletion,
     _verify_ready_to_evaluate,
-    fetch_evaluations_and_mark_for_deletion,
 )
 
 
@@ -755,9 +755,10 @@ def test_count_active_evaluations(
     )
 
 
-def test_fetch_evaluations_and_mark_for_deletion(
+def test__fetch_evaluations_and_mark_for_deletion(
     db: Session, finalized_dataset: str, finalized_model: str
 ):
+    # create two evaluations
     for pr_curves in [True, False]:
         core.create_or_get_evaluations(
             db,
@@ -773,11 +774,12 @@ def test_fetch_evaluations_and_mark_for_deletion(
 
     # sanity check no evals are in deleting state
     evals = db.query(models.Evaluation).all()
+    assert len(evals) == 2
     assert all([e.status != enums.EvaluationStatus.DELETING for e in evals])
 
     eval_ids = [e.id for e in evals]
     # fetch and update all evaluations, check they're in deleting status
-    evals = fetch_evaluations_and_mark_for_deletion(
+    evals = _fetch_evaluations_and_mark_for_deletion(
         db, evaluation_ids=[eval_ids[0]]
     )
     assert len(evals) == 1
@@ -790,9 +792,9 @@ def test_fetch_evaluations_and_mark_for_deletion(
         .scalar()
         != enums.EvaluationStatus.DELETING
     )
-    # now call fetch_evaluations_and_mark_for_deletion with dataset name so expression (ignoring status) will match all evaluations
+    # now call _fetch_evaluations_and_mark_for_deletion with dataset name so expression (ignoring status) will match all evaluations
     # but check only the second one was updated
-    evals = fetch_evaluations_and_mark_for_deletion(
+    evals = _fetch_evaluations_and_mark_for_deletion(
         db, dataset_names=[finalized_dataset]
     )
     assert len(evals) == 1

@@ -461,7 +461,7 @@ def create_or_get_evaluations(
     )
 
 
-def fetch_evaluations_and_mark_for_deletion(
+def _fetch_evaluations_and_mark_for_deletion(
     db: Session,
     evaluation_ids: list[int] | None = None,
     dataset_names: list[str] | None = None,
@@ -751,7 +751,7 @@ def delete_evaluations(
     ):
         raise exceptions.EvaluationRunningError
 
-    evaluations = fetch_evaluations_and_mark_for_deletion(
+    evaluations = _fetch_evaluations_and_mark_for_deletion(
         db=db,
         evaluation_ids=evaluation_ids,
         dataset_names=dataset_names,
