@@ -1,4 +1,11 @@
 from .atomics import (
+    Equatable,
+    Listable,
+    Nullable,
+    Quantifiable,
+    Spatial,
+    Symbol,
+    Variable,
     Bool,
     Date,
     DateTime,
@@ -32,15 +39,6 @@ from .functions import (
     Outside,
     Where,
     Xor,
-)
-from .modifiers import (
-    Equatable,
-    Listable,
-    Nullable,
-    Quantifiable,
-    Spatial,
-    Symbol,
-    Variable,
 )
 from .schemas import (
     Annotation,

@@ -14,8 +14,6 @@ from valor.symbolic.atomics import (
     Polygon,
     String,
     _get_atomic_type_by_name,
-)
-from valor.symbolic.modifiers import (
     Equatable,
     Listable,
     Nullable,
@@ -123,7 +121,14 @@ class BoundingBox(Polygon, Nullable):
 
     @classmethod
     def supports(cls, value: Any) -> bool:
-        return Polygon.supports(value) or value is None
+        return (
+            (
+                Polygon.supports(value)
+                and len(value) == 1 
+                and len(value[0]) == 5
+            )
+            or value is None
+        )
 
 
 class BoundingPolygon(Polygon, Nullable):
