@@ -1,4 +1,5 @@
 {
   "include": ["client/valor", "api"],
-  "exclude": ["examples", "integration_tests", "docs", "migrations"]
+  "exclude": ["examples", "docs", "migrations"],
+  "python.analysis.extraPaths": ["./client/*", "./api/*"]
 }

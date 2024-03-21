@@ -1,6 +1,6 @@
 import numpy as np
 
-from valor import (
+from client.valor import (
     Annotation,
     Dataset,
     Datum,
@@ -10,8 +10,8 @@ from valor import (
     Prediction,
     enums,
 )
-from valor.schemas import geometry
-from valor.schemas.properties import (
+from client.valor.schemas import geometry
+from client.valor.schemas.properties import (
     DictionaryProperty,
     GeometryProperty,
     LabelProperty,

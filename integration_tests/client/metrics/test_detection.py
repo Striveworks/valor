@@ -9,7 +9,8 @@ from geoalchemy2.functions import ST_Area
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from valor import (
+from api.valor_api.backend import models
+from client.valor import (
     Annotation,
     Client,
     Dataset,
@@ -20,10 +21,9 @@ from valor import (
     Model,
     Prediction,
 )
-from valor.enums import AnnotationType, EvaluationStatus, TaskType
-from valor.exceptions import ClientException
-from valor.schemas import BoundingBox
-from valor_api.backend import models
+from client.valor.enums import AnnotationType, EvaluationStatus, TaskType
+from client.valor.exceptions import ClientException
+from client.valor.schemas import BoundingBox
 
 default_filter_properties = asdict(Filter())
 
@@ -111,7 +111,7 @@ def test_evaluate_detection(
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
         filter_by=[
-            Label.key == "k1",
+            Label.key == "k1",  # type: ignore - filter type error
         ],
         convert_annotations_to_type=AnnotationType.BOX,
     )
@@ -153,8 +153,8 @@ def test_evaluate_detection(
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
         filter_by=[
-            Annotation.labels.in_([Label(key="k1", value="v1")]),
-            Annotation.bounding_box.exists(),
+            Annotation.labels.in_([Label(key="k1", value="v1")]),  # type: ignore - filter type error
+            Annotation.bounding_box.exists(),  # type: ignore - filter type error
         ],
     )
     assert (
@@ -169,7 +169,7 @@ def test_evaluate_detection(
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
         filter_by=[
-            Annotation.labels == Label(key="k1", value="v1"),
+            Annotation.labels == Label(key="k1", value="v1"),  # type: ignore - filter type error
         ],
         convert_annotations_to_type=AnnotationType.BOX,
     )
@@ -187,7 +187,7 @@ def test_evaluate_detection(
             iou_thresholds_to_compute=[0.1, 0.6],
             iou_thresholds_to_return=[0.1, 0.6],
             filter_by=[
-                Annotation.labels.in_([Label(key="k1", value="v2")]),
+                Annotation.labels.in_([Label(key="k1", value="v2")]),  # type: ignore - filter type error
             ],
             convert_annotations_to_type=AnnotationType.BOX,
         )
@@ -207,9 +207,9 @@ def test_evaluate_detection(
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
         filter_by=[
-            Label.key == "k1",
-            Annotation.bounding_box.area >= 10,
-            Annotation.bounding_box.area <= 2000,
+            Label.key == "k1",  # type: ignore - filter type error
+            Annotation.bounding_box.area >= 10,  # type: ignore - filter type error
+            Annotation.bounding_box.area <= 2000,  # type: ignore - filter type error
         ],
         convert_annotations_to_type=AnnotationType.BOX,
     )
@@ -260,8 +260,8 @@ def test_evaluate_detection(
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
         filter_by=[
-            Label.key == "k1",
-            Annotation.bounding_box.area >= 1200,
+            Label.key == "k1",  # type: ignore - filter type error
+            Annotation.bounding_box.area >= 1200,  # type: ignore - filter type error
         ],
         convert_annotations_to_type=AnnotationType.BOX,
     )
@@ -309,8 +309,8 @@ def test_evaluate_detection(
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
         filter_by=[
-            Label.key == "k1",
-            Annotation.bounding_box.area <= 1200,
+            Label.key == "k1",  # type: ignore - filter type error
+            Annotation.bounding_box.area <= 1200,  # type: ignore - filter type error
         ],
         convert_annotations_to_type=AnnotationType.BOX,
     )
@@ -359,9 +359,9 @@ def test_evaluate_detection(
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
         filter_by=[
-            Label.key == "k1",
-            Annotation.bounding_box.area >= 1200,
-            Annotation.bounding_box.area <= 1800,
+            Label.key == "k1",  # type: ignore - filter type error
+            Annotation.bounding_box.area >= 1200,  # type: ignore - filter type error
+            Annotation.bounding_box.area <= 1800,  # type: ignore - filter type error
         ],
         convert_annotations_to_type=AnnotationType.BOX,
     )
@@ -434,8 +434,8 @@ def test_evaluate_detection_with_json_filters(
     eval_results = model.evaluate_detection(
         dataset,
         filter_by=[
-            Label.key == "k1",
-            Annotation.bounding_box.exists(),
+            Label.key == "k1",  # type: ignore - filter type error
+            Annotation.bounding_box.exists(),  # type: ignore - filter type error
         ],
     )
     assert (
@@ -494,8 +494,8 @@ def test_evaluate_detection_with_json_filters(
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
         filter_by=[
-            Label.key == "k1",
-            Annotation.bounding_box.area >= 1200,
+            Label.key == "k1",  # type: ignore - filter type error
+            Annotation.bounding_box.area >= 1200,  # type: ignore - filter type error
         ],
         convert_annotations_to_type=AnnotationType.BOX,
     )
@@ -597,8 +597,8 @@ def test_get_evaluations(
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
         filter_by=[
-            Label.key == "k1",
-            Annotation.bounding_box.exists(),
+            Label.key == "k1",  # type: ignore - filter type error
+            Annotation.bounding_box.exists(),  # type: ignore - filter type error
         ],
     )
     eval_job.wait_for_completion(timeout=30)
@@ -686,7 +686,7 @@ def test_get_evaluations(
         client.get_evaluations()
 
     evaluations = client.get_evaluations(
-        datasets=dataset_name, models=model_name
+        datasets=dataset_name, models=model_name  # type: ignore - purposefully throwing errors
     )
 
     assert len(evaluations) == 1
@@ -694,7 +694,7 @@ def test_get_evaluations(
     assert evaluations[0].metrics == expected_metrics
 
     evaluations_by_evaluation_id = client.get_evaluations(
-        evaluation_ids=eval_job.id
+        evaluation_ids=eval_job.id  # type: ignore - purposefully throwing an error
     )
     assert len(evaluations_by_evaluation_id) == 1
     assert (
@@ -702,8 +702,8 @@ def test_get_evaluations(
     )
 
     # test incorrect names
-    assert len(client.get_evaluations(datasets="wrong_dataset_name")) == 0
-    assert len(client.get_evaluations(models="wrong_model_name")) == 0
+    assert len(client.get_evaluations(datasets="wrong_dataset_name")) == 0  # type: ignore - purposefully throwing an error
+    assert len(client.get_evaluations(models="wrong_model_name")) == 0  # type: ignore - purposefully throwing an error
 
     # test with multiple models
     second_model = Model.create("second_model")
@@ -716,13 +716,13 @@ def test_get_evaluations(
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
         filter_by=[
-            Label.key == "k1",
-            Annotation.bounding_box.exists(),
+            Label.key == "k1",  # type: ignore - filter type error
+            Annotation.bounding_box.exists(),  # type: ignore - filter type error
         ],
     )
     eval_job2.wait_for_completion(timeout=30)
 
-    second_model_evaluations = client.get_evaluations(models="second_model")
+    second_model_evaluations = client.get_evaluations(models=["second_model"])
 
     assert len(second_model_evaluations) == 1
     assert second_model_evaluations[0].metrics == second_model_expected_metrics
@@ -2144,6 +2144,7 @@ def test_evaluate_detection_with_label_maps(
         compute_pr_curves=True,
     )
 
+    assert eval_job.ignored_pred_labels and eval_job.missing_pred_labels
     assert (
         len(eval_job.ignored_pred_labels) == 2
     )  # we're ignoring the two "cat" model predictions
@@ -2279,7 +2280,7 @@ def test_evaluate_detection_with_label_maps(
         iou_thresholds_to_return=[0.1, 0.6],
         label_map=label_mapping,
     )
-
+    assert eval_job.ignored_pred_labels and eval_job.missing_pred_labels
     assert (
         len(eval_job.ignored_pred_labels) == 1
     )  # Label(key='class_name', value='cat', score=None) is still never used
@@ -2416,7 +2417,7 @@ def test_evaluate_detection_with_label_maps(
         iou_thresholds_to_return=[0.1, 0.6],
         label_map=label_mapping,
     )
-
+    assert eval_job.ignored_pred_labels and eval_job.missing_pred_labels
     assert len(eval_job.ignored_pred_labels) == 0
     assert len(eval_job.missing_pred_labels) == 0
     assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
@@ -3021,7 +3022,7 @@ def test_evaluate_detection_with_label_maps(
         recall_score_threshold=0.8,
         compute_pr_curves=True,
     )
-
+    assert eval_job.ignored_pred_labels and eval_job.missing_pred_labels
     assert len(eval_job.ignored_pred_labels) == 0
     assert len(eval_job.missing_pred_labels) == 0
     assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE

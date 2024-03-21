@@ -6,12 +6,12 @@ from geoalchemy2.functions import ST_AsText
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from valor import Annotation, Client, Dataset, Label, Model, Prediction
-from valor.coretypes import GroundTruth
-from valor.enums import TaskType
-from valor.metatypes import ImageMetadata
-from valor.schemas import BasicPolygon, BoundingBox, Point, Polygon
-from valor_api.backend import models
+from api.valor_api.backend import models
+from client.valor import Annotation, Client, Dataset, Label, Model, Prediction
+from client.valor.coretypes import GroundTruth
+from client.valor.enums import TaskType
+from client.valor.metatypes import Datum
+from client.valor.schemas import BasicPolygon, BoundingBox, Point, Polygon
 
 
 def test_create_pred_detections_as_bbox_or_poly(
@@ -20,7 +20,7 @@ def test_create_pred_detections_as_bbox_or_poly(
     dataset_name: str,
     model_name: str,
     gt_dets1: list[GroundTruth],
-    img1: ImageMetadata,
+    img1: Datum,
 ):
     """Test that a predicted detection can be created as either a bounding box
     or a polygon

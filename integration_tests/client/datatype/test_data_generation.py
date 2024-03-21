@@ -9,7 +9,7 @@ from numpy.typing import NDArray
 from PIL import Image
 from tqdm import tqdm
 
-from valor import (
+from client.valor import (
     Annotation,
     Client,
     Dataset,
@@ -20,9 +20,9 @@ from valor import (
     Model,
     Prediction,
 )
-from valor.enums import AnnotationType, EvaluationStatus, TaskType
-from valor.metatypes import ImageMetadata
-from valor.schemas import BoundingBox, Raster
+from client.valor.enums import AnnotationType, EvaluationStatus, TaskType
+from client.valor.metatypes import ImageMetadata
+from client.valor.schemas import BoundingBox, Raster
 
 
 def _sample_without_replacement(array: list, n: int) -> list:
@@ -325,6 +325,7 @@ def test_generate_segmentation_data(
         uid = image.uid
         sample_gt = dataset.get_groundtruth(uid)
 
+        assert sample_gt
         sample_annotations = sample_gt.annotations
         assert sample_annotations[0].raster is not None
         sample_mask_size = _mask_bytes_to_pil(
@@ -375,7 +376,7 @@ def test_generate_prediction_data(client: Client):
         dataset,
         iou_thresholds_to_compute=[0.1, 0.9],
         iou_thresholds_to_return=[0.1, 0.9],
-        filter_by=[Label.key == "k1"],
+        filter_by=[Label.key == "k1"],  # type: ignore - filter type issue
         convert_annotations_to_type=AnnotationType.BOX,
     )
     assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE

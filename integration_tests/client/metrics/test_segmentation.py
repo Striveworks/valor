@@ -2,8 +2,16 @@
 that is no auth
 """
 
-from valor import Client, Dataset, Datum, GroundTruth, Label, Model, Prediction
-from valor.enums import EvaluationStatus
+from client.valor import (
+    Client,
+    Dataset,
+    Datum,
+    GroundTruth,
+    Label,
+    Model,
+    Prediction,
+)
+from client.valor.enums import EvaluationStatus
 
 
 def test_evaluate_segmentation(
@@ -72,10 +80,12 @@ def test_evaluate_segmentation_with_filter(
 
     model.finalize_inferences(dataset)
 
+    color = Datum.metadata["color"]
+    assert color is str
     eval_job = model.evaluate_segmentation(
         dataset,
         filter_by=[
-            Datum.metadata["color"] == "red",
+            color == "red",
         ],
     )
     assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE

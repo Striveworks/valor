@@ -6,11 +6,11 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from valor import Annotation, Client, Dataset, Datum, GroundTruth, Label
-from valor.enums import TaskType
-from valor.metatypes import ImageMetadata
-from valor.schemas import BoundingBox
-from valor_api.backend import models
+from api.valor_api.backend import models
+from client.valor import Annotation, Client, Dataset, Datum, GroundTruth, Label
+from client.valor.enums import TaskType
+from client.valor.metatypes import ImageMetadata
+from client.valor.schemas import BoundingBox
 
 
 @pytest.fixture
@@ -100,7 +100,7 @@ def test_get_datums(
     assert (
         len(
             dataset_with_metadata.get_datums(
-                filter_by=[Datum.metadata["metadatum1"] == "nonexistent value"]
+                filter_by=[Datum.metadata["metadatum1"] == "nonexistent value"]  # type: ignore - purposefully using bad filter criteria
             )
         )
         == 0
@@ -108,7 +108,7 @@ def test_get_datums(
 
     with pytest.raises(ValueError) as exc_info:
         dataset_with_metadata.get_datums(
-            filter_by=[Dataset.name == "dataset name"]
+            filter_by=[Dataset.name == "dataset name"]  # type: ignore - purposefully throwing error
         )
     assert (
         "Cannot filter by dataset_names when calling `Dataset.get_datums`"

@@ -11,8 +11,8 @@ import os
 import pytest
 import requests
 
-from valor.client import ClientConnection
-from valor.exceptions import ClientConnectionFailed, ClientException
+from client.valor.client import ClientConnection
+from client.valor.exceptions import ClientConnectionFailed, ClientException
 
 
 # the environment variables for these fixtures have the suffix

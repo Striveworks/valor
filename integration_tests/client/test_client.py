@@ -6,7 +6,7 @@ from typing import List
 
 import pytest
 
-from valor import (
+from client.valor import (
     Annotation,
     Client,
     Dataset,
@@ -16,10 +16,10 @@ from valor import (
     Model,
     Prediction,
 )
-from valor.client import connect
-from valor.enums import TaskType
-from valor.exceptions import ClientException
-from valor.schemas import Constraint, Filter
+from client.valor.client import connect
+from client.valor.enums import TaskType
+from client.valor.exceptions import ClientException
+from client.valor.schemas import Constraint, Filter
 
 
 @pytest.fixture
@@ -131,7 +131,7 @@ def test_version_mismatch_warning(caplog):
     caplog.clear()
 
     # test missing client or API versions
-    Client().conn._validate_version(client_version=None, api_version="1.1.1")
+    Client().conn._validate_version(client_version=None, api_version="1.1.1")  # type: ignore - purposefully throwing error
 
     assert all(
         record.levelname == "WARNING"
@@ -140,7 +140,7 @@ def test_version_mismatch_warning(caplog):
     )
     caplog.clear()
 
-    Client().conn._validate_version(client_version="1.1.1", api_version=None)
+    Client().conn._validate_version(client_version="1.1.1", api_version=None)  # type: ignore - purposefully throwing error
 
     assert all(
         record.levelname == "WARNING"

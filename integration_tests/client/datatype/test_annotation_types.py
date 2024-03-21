@@ -1,4 +1,4 @@
-from valor import (
+from client.valor import (
     Annotation,
     Client,
     Dataset,
@@ -8,7 +8,7 @@ from valor import (
     Model,
     Prediction,
 )
-from valor.enums import TaskType
+from client.valor.enums import TaskType
 
 
 def test_create_read_embedding_annotation(
@@ -41,6 +41,6 @@ def test_create_read_embedding_annotation(
         ),
     )
 
-    assert model.get_prediction(dataset=dataset, datum="uid123").annotations[
-        0
-    ].embedding == [1, 2, 3, 4, 5]
+    predictions = model.get_prediction(dataset=dataset, datum="uid123")
+    assert predictions
+    assert predictions.annotations[0].embedding == [1, 2, 3, 4, 5]

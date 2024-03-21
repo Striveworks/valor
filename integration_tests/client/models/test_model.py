@@ -13,7 +13,8 @@ from geoalchemy2.functions import ST_AsPNG
 from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session
 
-from valor import (
+from api.valor_api.backend import models
+from client.valor import (
     Annotation,
     Client,
     Dataset,
@@ -23,11 +24,10 @@ from valor import (
     Model,
     Prediction,
 )
-from valor.enums import TaskType
-from valor.exceptions import ClientException
-from valor.metatypes import ImageMetadata
-from valor.schemas import Point
-from valor_api.backend import models
+from client.valor.enums import TaskType
+from client.valor.exceptions import ClientException
+from client.valor.metatypes import ImageMetadata
+from client.valor.schemas import Point
 
 
 def _list_of_points_from_wkt_polygon(
@@ -419,6 +419,7 @@ def test_add_prediction(
 
     # test get predictions
     pred = model.get_prediction(dataset, img1.to_datum())
+    assert pred
     assert pred.annotations == pred_dets[0].annotations
 
     client.delete_dataset(dataset_name, timeout=30)
@@ -469,6 +470,7 @@ def test_add_empty_prediction(
 
     # test get predictions
     pred = model.get_prediction(dataset, extra_datum)
+    assert pred
     assert len(pred.annotations) == 1
     assert pred.annotations[0].task_type == TaskType.EMPTY
 
@@ -505,6 +507,7 @@ def test_add_skipped_prediction(
 
     # test get predictions
     pred = model.get_prediction(dataset, extra_datum)
+    assert pred
     assert len(pred.annotations) == 1
     assert pred.annotations[0].task_type == TaskType.SKIP
 

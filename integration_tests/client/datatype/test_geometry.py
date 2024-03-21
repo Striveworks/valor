@@ -9,7 +9,8 @@ from geoalchemy2.functions import ST_Area, ST_Intersection, ST_Union
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from valor import (
+from api.valor_api.backend import models
+from client.valor import (
     Annotation,
     Client,
     Dataset,
@@ -18,10 +19,9 @@ from valor import (
     Model,
     Prediction,
 )
-from valor.enums import TaskType
-from valor.metatypes import ImageMetadata
-from valor.schemas import BoundingBox, Point, Polygon, Raster
-from valor_api.backend import models
+from client.valor.enums import TaskType
+from client.valor.metatypes import Datum
+from client.valor.schemas import BoundingBox, Point, Polygon, Raster
 
 
 def _generate_mask(
@@ -90,7 +90,7 @@ def test_boundary(
     client: Client,
     dataset_name: str,
     rect1: BoundingBox,
-    img1: ImageMetadata,
+    img1: Datum,
 ):
     """Test consistency of boundary in back end and client"""
     dataset = Dataset.create(dataset_name)
@@ -124,7 +124,7 @@ def test_iou(
     model_name: str,
     rect1: BoundingBox,
     rect2: BoundingBox,
-    img1: ImageMetadata,
+    img1: Datum,
 ):
     rect1_poly = bbox_to_poly(rect1)
     rect2_poly = bbox_to_poly(rect2)
@@ -168,7 +168,7 @@ def test_iou(
     assert annotation2 is not None
     db_pred = annotation2.polygon
 
-    # scraped from valor_api back end
+    # scraped from api.valor_api back end
     gintersection = ST_Intersection(db_gt, db_pred)
     gunion = ST_Union(db_gt, db_pred)
     iou_computation = ST_Area(gintersection) / ST_Area(gunion)
@@ -179,7 +179,7 @@ def test_iou(
 def test_add_raster_and_boundary_box(
     client: Client,
     dataset_name: str,
-    img1: ImageMetadata,
+    img1: Datum,
 ):
     img_size = [900, 300]
     mask = _generate_mask(height=img_size[0], width=img_size[1])
@@ -205,6 +205,7 @@ def test_add_raster_and_boundary_box(
 
     fetched_gt = dataset.get_groundtruth("uid1")
 
+    assert fetched_gt
     assert (
         fetched_gt.annotations[0].raster is not None
     ), "Raster doesn't exist on fetched gt"

@@ -1008,7 +1008,7 @@ class Dataset:
 
     Parameters
     ----------
-    name : StringProperty
+    name : str
         The name of the dataset.
     metadata : dict
         A dictionary of metadata that describes the dataset.
@@ -1019,7 +1019,7 @@ class Dataset:
 
     def __init__(
         self,
-        name: StringProperty,
+        name: str,
         metadata: Optional[MetadataType] = None,
         connection: Optional[ClientConnection] = None,
     ):
@@ -1047,7 +1047,7 @@ class Dataset:
     @classmethod
     def create(
         cls,
-        name: StringProperty,
+        name: str,
         metadata: Optional[MetadataType] = None,
     ) -> Dataset:
         """
@@ -1055,7 +1055,7 @@ class Dataset:
 
         Parameters
         ----------
-        name : StringProperty
+        name : str
             The name of the dataset.
         metadata : dict
             A dictionary of metadata that describes the dataset.
@@ -1304,7 +1304,7 @@ class Model:
 
     Parameters
     ----------
-    name : StringProperty
+    name : str
         The name of the model.
     metadata : dict
         A dictionary of metadata that describes the model.
@@ -1315,7 +1315,7 @@ class Model:
 
     def __init__(
         self,
-        name: StringProperty,
+        name: str,
         metadata: Optional[MetadataType] = None,
         connection: Optional[ClientConnection] = None,
     ):
@@ -1343,7 +1343,7 @@ class Model:
     @classmethod
     def create(
         cls,
-        name: StringProperty,
+        name: str,
         metadata: Optional[MetadataType] = None,
     ) -> Model:
         """
@@ -1351,7 +1351,7 @@ class Model:
 
         Parameters
         ----------
-        name : StringProperty
+        name : str
             The name of the model.
         metadata : dict
             A dictionary of metadata that describes the model.
