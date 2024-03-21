@@ -63,13 +63,13 @@ def test_geometry_Point():
     assert p1 + p3 == schemas.geometry.Point(x=0, y=0)
 
     with pytest.raises(TypeError):
-        p1 + "not_a_point"
+        _ = p1 + "not_a_point"
 
     # test member fn `__sub__`
     assert p1 - p2 == schemas.geometry.Point(x=0, y=0)
 
     with pytest.raises(TypeError):
-        p1 - "not_a_point"
+        _ = p1 - "not_a_point"
 
     # test member fn `__iadd__`
     p4 = p3

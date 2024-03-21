@@ -58,15 +58,15 @@ def test__format_filter(geojson):
 
     filter_from_constraints = _format_filter(
         [
-            Dataset.name.in_(["a", "b", "c"]),
-            Model.name.in_(["x", "y", "z"]),
-            Label.score > 0.75,  # type: ignore - > not compatible with type None
-            Annotation.polygon.area > 1000,  # type: ignore - "area" is not a property of None
-            Annotation.polygon.area < 5000,  # type: ignore - "area" is not a property of None
-            Dataset.metadata["some_str"] == "foobar",  # type: ignore - metadata dict not compatible with type checking
-            Dataset.metadata["some_float"] >= 0.123,  # type: ignore - metadata dict not compatible with type checking
-            Dataset.metadata["some_datetime"] > datetime.timedelta(days=1),  # type: ignore - metadata dict not compatible with type checking
-            Dataset.metadata["some_geospatial"].intersect(geojson),  # type: ignore - metadata dict not compatible with type checking
+            Dataset.name.in_(["a", "b", "c"]),  # type: ignore - filter type error
+            Model.name.in_(["x", "y", "z"]),  # type: ignore - filter type error
+            Label.score > 0.75,  # type: ignore - filter type error
+            Annotation.polygon.area > 1000,  # type: ignore - filter type error
+            Annotation.polygon.area < 5000,  # type: ignore - filter type error
+            Dataset.metadata["some_str"] == "foobar",  # type: ignore - filter type error
+            Dataset.metadata["some_float"] >= 0.123,  # type: ignore - filter type error
+            Dataset.metadata["some_datetime"] > datetime.timedelta(days=1),  # type: ignore - filter type error
+            Dataset.metadata["some_geospatial"].intersect(geojson),  # type: ignore - filter type error
         ]
     )
 
