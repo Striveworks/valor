@@ -6,6 +6,7 @@ from valor_api.backend import core, models
 from valor_api.backend.core.evaluation import (
     _fetch_evaluation_from_subrequest,
     _verify_ready_to_evaluate,
+    fetch_evaluations_and_mark_for_deletion,
 )
 
 
@@ -752,3 +753,48 @@ def test_count_active_evaluations(
         )
         == 0
     )
+
+
+def test_fetch_evaluations_and_mark_for_deletion(
+    db: Session, finalized_dataset: str, finalized_model: str
+):
+    for pr_curves in [True, False]:
+        core.create_or_get_evaluations(
+            db,
+            schemas.EvaluationRequest(
+                model_names=[finalized_model],
+                datum_filter=schemas.Filter(dataset_names=[finalized_dataset]),
+                parameters=schemas.EvaluationParameters(
+                    task_type=enums.TaskType.CLASSIFICATION,
+                    compute_pr_curves=pr_curves,
+                ),
+            ),
+        )
+
+    # sanity check no evals are in deleting state
+    evals = db.query(models.Evaluation).all()
+    assert all([e.status != enums.EvaluationStatus.DELETING for e in evals])
+
+    eval_ids = [e.id for e in evals]
+    # fetch and update all evaluations, check they're in deleting status
+    evals = fetch_evaluations_and_mark_for_deletion(
+        db, evaluation_ids=[eval_ids[0]]
+    )
+    assert len(evals) == 1
+    assert evals[0].status == enums.EvaluationStatus.DELETING
+
+    # check the other evaluation is not in deleting status
+    assert (
+        db.query(models.Evaluation.status)
+        .where(models.Evaluation.id == eval_ids[1])
+        .scalar()
+        != enums.EvaluationStatus.DELETING
+    )
+    # now call fetch_evaluations_and_mark_for_deletion with dataset name so expression (ignoring status) will match all evaluations
+    # but check only the second one was updated
+    evals = fetch_evaluations_and_mark_for_deletion(
+        db, dataset_names=[finalized_dataset]
+    )
+    assert len(evals) == 1
+    assert evals[0].status == enums.EvaluationStatus.DELETING
+    assert evals[0].id == eval_ids[1]

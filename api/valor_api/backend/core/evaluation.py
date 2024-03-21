@@ -1,4 +1,6 @@
-from sqlalchemy import and_, func, or_, select
+from typing import Sequence
+
+from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.elements import BinaryExpression
@@ -459,14 +461,15 @@ def create_or_get_evaluations(
     )
 
 
-def fetch_evaluations(
+def fetch_evaluations_and_mark_for_deletion(
     db: Session,
     evaluation_ids: list[int] | None = None,
     dataset_names: list[str] | None = None,
     model_names: list[str] | None = None,
-) -> list[models.Evaluation]:
+) -> Sequence[models.Evaluation]:
     """
-    Returns all evaluations that conform to user-supplied constraints.
+    Gets all evaluations that conform to user-supplied constraints and that are not already marked
+    for deletion. Then marks them for deletion and returns them.
 
     Parameters
     ----------
@@ -489,7 +492,21 @@ def fetch_evaluations(
         dataset_names=dataset_names,
         model_names=model_names,
     )
-    return db.query(models.Evaluation).where(*expr).all()
+
+    stmt = (
+        update(models.Evaluation)
+        .returning(models.Evaluation)
+        .where(
+            and_(
+                *expr,
+                models.Evaluation.status != enums.EvaluationStatus.DELETING,
+            )
+        )
+        .values(status=enums.EvaluationStatus.DELETING)
+        .execution_options(synchronize_session="fetch")
+    )
+
+    return db.execute(stmt).scalars().all()
 
 
 def fetch_evaluation_from_id(
@@ -734,7 +751,7 @@ def delete_evaluations(
     ):
         raise exceptions.EvaluationRunningError
 
-    evaluations = fetch_evaluations(
+    evaluations = fetch_evaluations_and_mark_for_deletion(
         db=db,
         evaluation_ids=evaluation_ids,
         dataset_names=dataset_names,
