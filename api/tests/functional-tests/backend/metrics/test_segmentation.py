@@ -97,12 +97,12 @@ def test_query_generators(
 
         groundtruth_filter.label_ids = [label_id]
         q = _generate_groundtruth_query(groundtruth_filter)
-        data = db.query(q).all()
+        data = db.query(q).all()  # type: ignore - sqlalchemy typing issue
         assert len(data) == expected_number
 
     groundtruth_filter.label_ids = [10000000]
     q = _generate_groundtruth_query(groundtruth_filter)
-    data = db.query(q).all()
+    data = db.query(q).all()  # type: ignore - sqlalchemy typing issue
     assert len(data) == 0
 
     for label_key, label_value, expected_number in [
@@ -121,20 +121,29 @@ def test_query_generators(
 
         prediction_filter.label_ids = [label_id]
         q = _generate_prediction_query(prediction_filter)
-        data = db.query(q).all()
+        data = db.query(q).all()  # type: ignore - sqlalchemy typing issue
         assert len(data) == expected_number
 
     prediction_filter.label_ids = [10000000]
     q = _generate_prediction_query(prediction_filter)
-    data = db.query(q).all()
+    data = db.query(q).all()  # type: ignore - sqlalchemy typing issue
     assert len(data) == 0
 
 
 def _create_groundtruth_tuples(
     gts: list[schemas.GroundTruth], label: schemas.Label
 ):
+    assert all(
+        [
+            ann.raster is not None
+            for gt in gts
+            for ann in gt.annotations
+            if label in ann.labels
+        ]
+    )
+
     return [
-        (gt.datum.uid, ann.raster.array)
+        (gt.datum.uid, ann.raster.array)  # type: ignore - handled by the assertion above
         for gt in gts
         for ann in gt.annotations
         if label in ann.labels
@@ -144,8 +153,16 @@ def _create_groundtruth_tuples(
 def _create_prediction_tuples(
     preds: list[schemas.Prediction], label: schemas.Label
 ):
+    assert all(
+        [
+            isinstance(ann.raster, schemas.Raster)
+            for pred in preds
+            for ann in pred.annotations
+            if label in ann.labels
+        ]
+    )
     return [
-        (pred.datum.uid, ann.raster.array)
+        (pred.datum.uid, ann.raster.array)  # type: ignore - handled by the assertion above
         for pred in preds
         for ann in pred.annotations
         if label in ann.labels
@@ -157,17 +174,17 @@ def _help_count_true_positives(
     preds: list[schemas.Prediction],
     label: schemas.Label,
 ) -> int:
-    gts = _create_groundtruth_tuples(gts, label)
-    preds = _create_prediction_tuples(preds, label)
+    groundtruths = _create_groundtruth_tuples(gts, label)
+    predictions = _create_prediction_tuples(preds, label)
 
-    datum_ids = set([gt[0] for gt in gts]).intersection(
-        [pred[0] for pred in preds]
+    datum_ids = set([gt[0] for gt in groundtruths]).intersection(
+        [pred[0] for pred in predictions]
     )
 
     ret = 0
     for datum_id in datum_ids:
-        gt_mask = [gt[1] for gt in gts if gt[0] == datum_id][0]
-        pred_mask = [pred[1] for pred in preds if pred[0] == datum_id][0]
+        gt_mask = [gt[1] for gt in groundtruths if gt[0] == datum_id][0]
+        pred_mask = [pred[1] for pred in predictions if pred[0] == datum_id][0]
 
         ret += (gt_mask * pred_mask).sum()
 
@@ -207,9 +224,12 @@ def test__count_true_positives(
     )
 
     for k, v in [("k1", "v1"), ("k2", "v2")]:
-        label_id = db.scalar(
+        label = db.scalar(
             select(Label).where(and_(Label.key == k, Label.value == v))
-        ).id
+        )
+
+        assert label is not None
+        label_id = label.id
 
         expected = _help_count_true_positives(
             gt_semantic_segs_create,
@@ -233,10 +253,10 @@ def test__count_true_positives(
 def _help_count_groundtruths(
     gts: list[schemas.GroundTruth], label: schemas.Label
 ) -> int:
-    gts = _create_groundtruth_tuples(gts, label)
+    groundtruths = _create_groundtruth_tuples(gts, label)
 
     ret = 0
-    for gt in gts:
+    for gt in groundtruths:
         ret += gt[1].sum()
 
     return ret
@@ -261,9 +281,12 @@ def test_count_groundtruths(
     )
 
     for k, v in [("k1", "v1"), ("k1", "v2"), ("k3", "v3"), ("k2", "v2")]:
-        label_id = db.scalar(
+        label = db.scalar(
             select(Label).where(and_(Label.key == k, Label.value == v))
-        ).id
+        )
+
+        assert label is not None
+        label_id = label.id
 
         expected = _help_count_groundtruths(
             gt_semantic_segs_create, schemas.Label(key=k, value=v)
@@ -291,10 +314,10 @@ def test_count_groundtruths(
 def _help_count_predictions(
     preds: list[schemas.Prediction], label: schemas.Label
 ) -> int:
-    preds = _create_prediction_tuples(preds, label)
+    predictions = _create_prediction_tuples(preds, label)
 
     ret = 0
-    for pred in preds:
+    for pred in predictions:
         ret += pred[1].sum()
 
     return ret
@@ -326,9 +349,11 @@ def test_count_predictions(
     )
 
     for k, v in [("k1", "v1"), ("k1", "v2"), ("k2", "v3"), ("k2", "v2")]:
-        label_id = db.scalar(
+        label = db.scalar(
             select(Label).where(and_(Label.key == k, Label.value == v))
-        ).id
+        )
+        assert label
+        label_id = label.id
 
         expected = _help_count_predictions(
             [pred_semantic_segs_img1_create, pred_semantic_segs_img2_create],
@@ -448,9 +473,12 @@ def test_compute_semantic_segmentation_metrics(
         schemas.Label(key="k1", value="v1", score=None): 0.33,
     }
 
+    assert metrics
     for metric in metrics:
+        assert isinstance(metric.value, float)
         if metric.type == "mIOU":
             assert (metric.value - 0.084) <= 0.01
         else:
             # the IOU value for (k1, v1) is bound between .327 and .336
+            assert metric.label
             assert (metric.value - expected_metrics[metric.label]) <= 0.01

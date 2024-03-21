@@ -55,22 +55,22 @@ def test_EvaluationParameters():
         schemas.EvaluationParameters(
             task_type=enums.TaskType.OBJECT_DETECTION,
             iou_thresholds_to_compute=None,
-            iou_thresholds_to_return=0.2,
+            iou_thresholds_to_return=0.2,  # type: ignore - purposefully throwing error
         )
 
     with pytest.raises(ValidationError):
         schemas.EvaluationParameters(
             task_type=enums.TaskType.OBJECT_DETECTION,
-            iou_thresholds_to_compute=[0.2, "test"],
+            iou_thresholds_to_compute=[0.2, "test"],  # type: ignore - purposefully throwing error
             iou_thresholds_to_return=[],
         )
 
     with pytest.raises(ValidationError):
         schemas.EvaluationParameters(
             task_type=enums.TaskType.OBJECT_DETECTION,
-            iou_thresholds_to_compute=[0.2, "test"],
+            iou_thresholds_to_compute=[0.2, "test"],  # type: ignore - purposefully throwing error
             iou_thresholds_to_return=[],
-            label_map={"not a": "valid grouper"},
+            label_map={"not a": "valid grouper"},  # type: ignore - purposefully throwing error
         )
 
 
@@ -100,7 +100,7 @@ def test_EvaluationRequest():
     # test missing args
     with pytest.raises(ValidationError):
         schemas.EvaluationRequest(
-            model_filter=None,
+            model_filter=None,  # type: ignore - purposefully throwing error
             datum_filter=schemas.Filter(),
             parameters=schemas.EvaluationParameters(
                 task_type=enums.TaskType.CLASSIFICATION
@@ -109,7 +109,7 @@ def test_EvaluationRequest():
     with pytest.raises(ValidationError):
         schemas.EvaluationRequest(
             model_names=["name"],
-            datum_filter=None,
+            datum_filter=None,  # type: ignore - purposefully throwing error
             parameters=schemas.EvaluationParameters(
                 task_type=enums.TaskType.CLASSIFICATION
             ),
@@ -118,7 +118,7 @@ def test_EvaluationRequest():
         schemas.EvaluationRequest(
             model_names=["name"],
             datum_filter=schemas.Filter(),
-            parameters=None,
+            parameters=None,  # type: ignore - purposefully throwing error
         )
 
     # test `model_names` validator
@@ -134,7 +134,7 @@ def test_EvaluationRequest():
     # test `datum_filter` validator
     with pytest.raises(ValidationError):
         schemas.EvaluationRequest(
-            model_filter=schemas.Filter(),
+            model_filter=schemas.Filter(),  # type: ignore - purposefully throwing error
             datum_filter=schemas.Filter(
                 task_types=[enums.TaskType.CLASSIFICATION]
             ),
@@ -160,7 +160,7 @@ def test_EvaluationResponse():
     # test missing evaluation_id
     with pytest.raises(ValidationError):
         schemas.EvaluationResponse(
-            id=None,
+            id=None,  # type: ignore - purposefully throwing error
             model_name="test",
             datum_filter=schemas.Filter(),
             parameters=schemas.EvaluationParameters(
@@ -175,7 +175,7 @@ def test_EvaluationResponse():
     with pytest.raises(ValidationError):
         schemas.EvaluationResponse(
             id=1,
-            model_name=None,
+            model_name=None,  # type: ignore - purposefully throwing error
             datum_filter=schemas.Filter(),
             parameters=schemas.EvaluationParameters(
                 task_type=enums.TaskType.CLASSIFICATION
@@ -191,7 +191,7 @@ def test_EvaluationResponse():
             id=1,
             model_name="name",
             datum_filter=schemas.Filter(),
-            parameters=None,
+            parameters=None,  # type: ignore - purposefully throwing error
             status=enums.EvaluationStatus.DONE,
             metrics=[],
             confusion_matrices=[],
@@ -206,7 +206,7 @@ def test_EvaluationResponse():
             parameters=schemas.EvaluationParameters(
                 task_type=enums.TaskType.CLASSIFICATION
             ),
-            status=None,
+            status=None,  # type: ignore - purposefully throwing error
             metrics=[],
             confusion_matrices=[],
         )

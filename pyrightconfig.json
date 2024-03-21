@@ -1,11 +1,4 @@
 {
   "include": ["client/valor", "api"],
-  "exclude": [
-    "utils",
-    "api/tests",
-    "examples",
-    "integration_tests",
-    "docs",
-    "migrations"
-  ]
+  "exclude": ["examples", "integration_tests", "docs", "migrations"]
 }

@@ -30,7 +30,7 @@ def cm() -> schemas.ConfusionMatrix:
 
 
 @pytest.fixture
-def metadata() -> dict[float, str]:
+def metadata() -> dict[str, str | float]:
     return {
         "m1": "v1",
         "m2": 0.1,
@@ -115,9 +115,7 @@ def raster() -> schemas.Raster:
     | F  T |
     """
     mask = "iVBORw0KGgoAAAANSUhEUgAAABQAAAAUAQAAAACl8iCgAAAAF0lEQVR4nGP4f4CBiYGBIGZgsP9AjDoAuysDE0GVDN8AAAAASUVORK5CYII="
-    height = 20
-    width = 20
-    return schemas.Raster(mask=mask, height=height, width=width)
+    return schemas.Raster(mask=mask)
 
 
 @pytest.fixture

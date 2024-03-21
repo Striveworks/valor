@@ -155,7 +155,7 @@ def test_convert_geometry_input(
             db=db,
             source_type=enums.AnnotationType.NONE,
             target_type=enums.AnnotationType.BOX,
-            dataset=None,
+            dataset=None,  # type: ignore - purposefully throwing error
             model=None,
         )
     assert "source" in str(e)
@@ -165,7 +165,7 @@ def test_convert_geometry_input(
             db=db,
             source_type=enums.AnnotationType.BOX,
             target_type=enums.AnnotationType.NONE,
-            dataset=None,
+            dataset=None,  # type: ignore - purposefully throwing error
             model=None,
         )
     assert "target" in str(e)
@@ -175,7 +175,7 @@ def test_convert_geometry_input(
             db=db,
             source_type=enums.AnnotationType.BOX,
             target_type=enums.AnnotationType.RASTER,
-            dataset=None,
+            dataset=None,  # type: ignore - purposefully throwing error
             model=None,
         )
     assert "not capable of being converted" in str(e)
@@ -199,9 +199,9 @@ def test_convert_geometry_input(
         )
 
 
-def _load_polygon(db: Session, polygon) -> Polygon:
+def _load_polygon(db: Session, polygon: Polygon) -> Polygon:
     geom = json.loads(db.scalar(func.ST_AsGeoJSON(polygon)))
-    return schemas.metadata.geojson_from_dict(data=geom).geometry()
+    return schemas.metadata.geojson_from_dict(data=geom).geometry()  # type: ignore - type can't infer this is a polygon
 
 
 def _load_box(db: Session, box) -> BoundingBox:

@@ -157,8 +157,8 @@ def _compute_curves(
 
 
 def _calculate_ap_and_ar(
-    sorted_ranked_pairs: dict[int, list[RankedPair]],
-    number_of_groundtruths_per_grouper: dict[int, int],
+    sorted_ranked_pairs: dict[str, list[RankedPair]],
+    number_of_groundtruths_per_grouper: dict[str, int],
     grouper_mappings: dict[str, dict[str, schemas.Label]],
     iou_thresholds: list[float],
     recall_score_threshold: float,
@@ -414,9 +414,9 @@ def _compute_detection_metrics(
             pd.c.annotation_id.label("pd_ann_id"),
             pd.c.score.label("score"),
         )
-        .select_from(pd)  # type: ignore - SQLAlchemy type issue
+        .select_from(pd)  # type: ignore - sqlalchemy typing issue
         .outerjoin(
-            gt,  # type: ignore - SQLAlchemy type issue
+            gt,  # type: ignore - sqlalchemy typing issue
             and_(
                 pd.c.datum_id == gt.c.datum_id,
                 pd.c.label_id_grouper == gt.c.label_id_grouper,
@@ -519,8 +519,8 @@ def _compute_detection_metrics(
             ).label("label_id_grouper"),
         )
         .filter(groundtruth_filter)
-        .groundtruths()  # type: ignore - SQLAlchemy type issue
-    ).all()  # type: ignore - SQLAlchemy type issue
+        .groundtruths()  # type: ignore - sqlalchemy typing issue
+    ).all()  # type: ignore - sqlalchemy typing issue
 
     for gt_id, grouper_id in groundtruths:
         number_of_groundtruths_per_grouper[grouper_id] += 1
@@ -789,12 +789,12 @@ def compute_detection_metrics(*, db: Session, evaluation_id: int):
 
     # fetch model and datasets
     datasets = (
-        db.query(Query(models.Dataset).filter(groundtruth_filter).any())  # type: ignore - SQLAlchemy type issue
+        db.query(Query(models.Dataset).filter(groundtruth_filter).any())  # type: ignore - sqlalchemy typing issue
         .distinct()
         .all()
     )
     model = (
-        db.query(Query(models.Model).filter(prediction_filter).any())  # type: ignore - SQLAlchemy type issue
+        db.query(Query(models.Model).filter(prediction_filter).any())  # type: ignore - sqlalchemy typing issue
         .distinct()
         .one_or_none()
     )

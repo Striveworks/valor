@@ -319,7 +319,7 @@ def get_unique_task_types_in_dataset(
         .join(models.Dataset)
         .where(models.Dataset.name == name)
         .distinct()
-    ).all()  # type: ignore - SQLAlchemy type issue
+    ).all()  # type: ignore - sqlalchemy typing issue
 
 
 def get_unique_datum_metadata_in_dataset(

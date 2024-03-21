@@ -38,7 +38,7 @@ def _create_dataset_expr_from_list(
                 models.Evaluation.datum_filter["dataset_names"].op("?")(name)
                 for name in dataset_names
             ]
-        )  # type: ignore - SQLAlchemy type issue
+        )  # type: ignore - sqlalchemy typing issue
 
 
 def _create_model_expr_from_list(
@@ -62,11 +62,11 @@ def _create_model_expr_from_list(
     if not model_names:
         return None
     elif len(model_names) == 1:
-        return models.Evaluation.model_name == model_names[0]  # type: ignore - SQLAlchemy type issue
+        return models.Evaluation.model_name == model_names[0]  # type: ignore - sqlalchemy typing issue
     else:
         return or_(
             *[models.Evaluation.model_name == name for name in model_names]
-        )  # type: ignore - SQLAlchemy type issue
+        )  # type: ignore - sqlalchemy typing issue
 
 
 def _create_eval_expr_from_list(ids: list[int]) -> BinaryExpression | None:
@@ -88,9 +88,9 @@ def _create_eval_expr_from_list(ids: list[int]) -> BinaryExpression | None:
     if not ids:
         return None
     elif len(ids) == 1:
-        return models.Evaluation.id == ids[0]  # type: ignore - SQLAlchemy type issue
+        return models.Evaluation.id == ids[0]  # type: ignore - sqlalchemy typing issue
     else:
-        return or_(*[models.Evaluation.id == id_ for id_ in ids])  # type: ignore - SQLAlchemy type issue
+        return or_(*[models.Evaluation.id == id_ for id_ in ids])  # type: ignore - sqlalchemy typing issue
 
 
 def _create_bulk_expression(
@@ -201,7 +201,7 @@ def _split_request(
 
     # 1.a - get all datasets, note this uses the unmodified filter
     datasets_to_evaluate = (
-        db.query(Query(models.Dataset).filter(job_request.datum_filter).any())  # type: ignore - SQLAlchemy type issue
+        db.query(Query(models.Dataset).filter(job_request.datum_filter).any())  # type: ignore - sqlalchemy typing issue
         .distinct()
         .all()
     )
@@ -213,7 +213,7 @@ def _split_request(
     # 1.b - get all models, note this uses the unmodified filter
     model_filter = schemas.Filter(model_names=job_request.model_names)
     model_to_evaluate = (
-        db.query(Query(models.Model).filter(model_filter).any())  # type: ignore - SQLAlchemy type issue
+        db.query(Query(models.Model).filter(model_filter).any())  # type: ignore - sqlalchemy typing issue
         .distinct()
         .all()
     )

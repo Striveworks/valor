@@ -234,7 +234,7 @@ def groundtruths(
         )
     crud.finalize(db=db, dataset_name=dataset_name)
 
-    return db.query(models.GroundTruth).all()
+    return db.query(models.GroundTruth).all()  # type: ignore - sqlalchemy typing issue
 
 
 # predictions to use for testing AP
@@ -347,7 +347,7 @@ def predictions(
         )
     crud.finalize(db=db, dataset_name=dataset_name, model_name=model_name)
 
-    return db.query(models.Prediction).all()
+    return db.query(models.Prediction).all()  # type: ignore - sqlalchemy typing issue
 
 
 @pytest.fixture

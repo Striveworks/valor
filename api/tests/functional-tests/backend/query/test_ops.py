@@ -1,7 +1,10 @@
+from typing import Sequence
+
 import numpy
 import pytest
 from sqlalchemy import distinct, func
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.attributes import InstrumentedAttribute
 
 from valor_api import crud, enums, schemas
 from valor_api.backend import Query, models
@@ -17,14 +20,10 @@ datum_uid4 = "uid4"
 
 
 @pytest.fixture
-def geospatial_coordinates() -> (
-    dict[
-        str,
-        schemas.GeoJSONPoint
-        | schemas.GeoJSONPolygon
-        | schemas.GeoJSONMultiPolygon,
-    ]
-):
+def geospatial_coordinates() -> dict[
+    str,
+    dict,
+]:
     return {
         "point": {"type": "Point", "coordinates": [125.2750725, 38.760525]},
         "polygon1": {
@@ -96,7 +95,7 @@ def geospatial_coordinates() -> (
 
 
 @pytest.fixture
-def metadata_1(geospatial_coordinates) -> dict[str, int | float | str]:
+def metadata_1(geospatial_coordinates) -> dict[str, int | float | str | dict]:
     return {
         "some_numeric_attribute": 0.4,
         "some_str_attribute": "abc",
@@ -110,7 +109,7 @@ def metadata_1(geospatial_coordinates) -> dict[str, int | float | str]:
 
 
 @pytest.fixture
-def metadata_2(geospatial_coordinates) -> dict[str, int | float | str]:
+def metadata_2(geospatial_coordinates) -> dict[str, int | float | str | dict]:
     return {
         "some_numeric_attribute": 0.6,
         "some_str_attribute": "abc",
@@ -124,7 +123,7 @@ def metadata_2(geospatial_coordinates) -> dict[str, int | float | str]:
 
 
 @pytest.fixture
-def metadata_3(geospatial_coordinates) -> dict[str, int | float | str]:
+def metadata_3(geospatial_coordinates) -> dict[str, int | float | str | dict]:
     return {
         "some_numeric_attribute": 0.4,
         "some_str_attribute": "xyz",
@@ -138,7 +137,7 @@ def metadata_3(geospatial_coordinates) -> dict[str, int | float | str]:
 
 
 @pytest.fixture
-def metadata_4(geospatial_coordinates) -> dict[str, int | float | str]:
+def metadata_4(geospatial_coordinates) -> dict[str, int | float | str | dict]:
     return {
         "some_numeric_attribute": 0.6,
         "some_str_attribute": "xyz",
@@ -616,7 +615,7 @@ def test_query_datasets(
     model_sim,
 ):
     # Check that passing a non-InstrumentedAttribute returns None
-    with pytest.raises(NotImplementedError):
+    with pytest.raises(NotImplementedError):  # type: ignore
         Query("not_a_valid_attribute")
 
     # Q: Get names for datasets where label class=cat exists in groundtruths.
@@ -625,14 +624,14 @@ def test_query_datasets(
     assert len(query_obj._selected) == 1
     q = query_obj.filter(f).groundtruths()
 
-    dataset_names = db.query(q).all()
+    dataset_names = db.query(q).all()  # type: ignore - sqlalchemy typing issue
     assert len(dataset_names) == 1
     assert (dset_name,) in dataset_names
 
     # Q: Get names for datasets where label=tree exists in groundtruths
     f = schemas.Filter(labels=[{"class": "tree"}])
     q = Query(models.Dataset.name).filter(f).groundtruths()
-    dataset_names = db.query(q).all()
+    dataset_names = db.query(q).all()  # type: ignore - sqlalchemy typing issue
     assert len(dataset_names) == 0
 
 
@@ -645,7 +644,7 @@ def test_query_models(
         dataset_names=[dset_name],
     )
     q = Query(models.Model.name).filter(f).any()
-    model_names = db.query(q).distinct().all()
+    model_names = db.query(q).distinct().all()  # type: ignore - sqlalchemy typing issue
     assert len(model_names) == 2
     assert (model_name1,) in model_names
     assert (model_name2,) in model_names
@@ -653,7 +652,7 @@ def test_query_models(
     # Q: Get names for models where label=cat exists in predictions
     f = schemas.Filter(labels=[{"class": "cat"}])
     q = Query(models.Model.name).filter(f).predictions()
-    model_names = db.query(q).distinct().all()
+    model_names = db.query(q).distinct().all()  # type: ignore - sqlalchemy typing issue
     assert len(model_names) == 2
     assert (model_name1,) in model_names
     assert (model_name2,) in model_names
@@ -661,13 +660,13 @@ def test_query_models(
     # Q: Get names for models where label=tree exists in predictions
     f = schemas.Filter(labels=[{"class": "tree"}])
     q = Query(models.Model.name).filter(f).predictions()
-    model_names = db.query(q).distinct().all()
+    model_names = db.query(q).distinct().all()  # type: ignore - sqlalchemy typing issue
     assert len(model_names) == 0
 
     # Q: Get names for models that operate over dataset.
     f = schemas.Filter(dataset_names=[dset_name])
     q = Query(models.Model.name).filter(f).any()
-    model_names = db.query(q).distinct().all()
+    model_names = db.query(q).distinct().all()  # type: ignore - sqlalchemy typing issue
     assert len(model_names) == 2
     assert (model_name1,) in model_names
     assert (model_name2,) in model_names
@@ -675,7 +674,7 @@ def test_query_models(
     # Q: Get names for models that operate over dataset that doesn't exist.
     f = schemas.Filter(dataset_names=["invalid"])
     q = Query(models.Model.name).filter(f).any()
-    model_names = db.query(q).distinct().all()
+    model_names = db.query(q).distinct().all()  # type: ignore - sqlalchemy typing issue
     assert len(model_names) == 0
 
     # Q: Get models with metadatum with `numeric` > 0.5.
@@ -690,7 +689,7 @@ def test_query_models(
         }
     )
     q = Query(models.Model.name).filter(f).any()
-    model_names = db.query(q).distinct().all()
+    model_names = db.query(q).distinct().all()  # type: ignore - sqlalchemy typing issue
     assert len(model_names) == 1
     assert (model_name2,) in model_names
 
@@ -706,7 +705,7 @@ def test_query_models(
         }
     )
     q = Query(models.Model.name).filter(f).any()
-    model_names = db.query(q).distinct().all()
+    model_names = db.query(q).distinct().all()  # type: ignore - sqlalchemy typing issue
     assert len(model_names) == 1
     assert (model_name1,) in model_names
 
@@ -739,7 +738,7 @@ def test_query_by_metadata(
         }
     )
     q = Query(models.Datum.uid).filter(f).any()
-    datum_uids = db.query(q).distinct().all()
+    datum_uids = db.query(q).distinct().all()  # type: ignore - sqlalchemy typing issue
     assert len(datum_uids) == 1
     assert (datum_uid1,) in datum_uids
 
@@ -768,7 +767,7 @@ def test_query_by_metadata(
             }
         )
         q = Query(models.Datum.uid).filter(f).any()
-        datum_uids = db.query(q).distinct().all()
+        datum_uids = db.query(q).distinct().all()  # type: ignore - sqlalchemy typing issue
         assert len(datum_uids) == 0
 
     # Q: Get datums with metadatum with `numeric` > 0.5 and `str` == 'abc'.
@@ -789,7 +788,7 @@ def test_query_by_metadata(
         }
     )
     q = Query(models.Datum.uid).filter(f).any()
-    datum_uids = db.query(q).distinct().all()
+    datum_uids = db.query(q).distinct().all()  # type: ignore - sqlalchemy typing issue
     assert len(datum_uids) == 1
     assert (datum_uid2,) in datum_uids
 
@@ -811,7 +810,7 @@ def test_query_by_metadata(
         }
     )
     q = Query(models.Datum.uid).filter(f).any()
-    datum_uids = db.query(q).distinct().all()
+    datum_uids = db.query(q).distinct().all()  # type: ignore - sqlalchemy typing issue
     assert len(datum_uids) == 1
     assert (datum_uid3,) in datum_uids
 
@@ -833,7 +832,7 @@ def test_query_by_metadata(
         }
     )
     q = Query(models.Datum.uid).filter(f).any()
-    datum_uids = db.query(q).distinct().all()
+    datum_uids = db.query(q).distinct().all()  # type: ignore - sqlalchemy typing issue
     assert len(datum_uids) == 1
     assert (datum_uid4,) in datum_uids
 
@@ -845,7 +844,7 @@ def test_query_datums(
     # Q: Get datums with groundtruth labels of "cat"
     f = schemas.Filter(labels=[{"class": "cat"}])
     q = Query(models.Datum.uid).filter(f).groundtruths()
-    datum_uids = db.query(q).distinct().all()
+    datum_uids = db.query(q).distinct().all()  # type: ignore - sqlalchemy typing issue
     assert len(datum_uids) == 2
     assert (datum_uid1,) in datum_uids
     assert (datum_uid2,) in datum_uids
@@ -853,7 +852,7 @@ def test_query_datums(
     # Q: Get datums with groundtruth labels of "dog"
     f = schemas.Filter(labels=[{"class": "dog"}])
     q = Query(models.Datum.uid).filter(f).groundtruths()
-    datum_uids = db.query(q).distinct().all()
+    datum_uids = db.query(q).distinct().all()  # type: ignore - sqlalchemy typing issue
     assert len(datum_uids) == 2
     assert (datum_uid3,) in datum_uids
     assert (datum_uid4,) in datum_uids
@@ -861,7 +860,7 @@ def test_query_datums(
     # Q: Get datums with prediction labels of "cat"
     f = schemas.Filter(labels=[{"class": "cat"}])
     q = Query(models.Datum.uid).filter(f).predictions()
-    datum_uids = db.query(q).distinct().all()
+    datum_uids = db.query(q).distinct().all()  # type: ignore - sqlalchemy typing issue
     assert len(datum_uids) == 4
     assert (datum_uid1,) in datum_uids
     assert (datum_uid2,) in datum_uids
@@ -885,7 +884,7 @@ def test_complex_queries(
         ],
     )
     q = Query(models.Datum.uid).filter(f).predictions()
-    datum_uids = db.query(q).distinct().all()
+    datum_uids = db.query(q).distinct().all()  # type: ignore - sqlalchemy typing issue
     assert len(datum_uids) == 2
     assert (datum_uid3,) in datum_uids
     assert (datum_uid4,) in datum_uids
@@ -903,7 +902,7 @@ def test_complex_queries(
         require_bounding_box=True,
     )
     q = Query(models.Datum.uid).filter(f).predictions()
-    datum_uids = db.query(q).distinct().all()
+    datum_uids = db.query(q).distinct().all()  # type: ignore - sqlalchemy typing issue
     assert len(datum_uids) == 2
     assert (datum_uid3,) in datum_uids
     assert (datum_uid4,) in datum_uids
@@ -924,13 +923,13 @@ def test_query_by_annotation_geometry(
 
     # Q: Get `bounding_box` annotations that have an area > 75.
     q = Query(models.Annotation).filter(f).any()
-    annotations = db.query(q).all()
+    annotations = db.query(q).all()  # type: ignore - sqlalchemy typing issue
     assert len(annotations) == 12
 
     # Q: Get `bounding_box` annotations from `model1` that have an area > 75.
     f.model_names = [model_name1]
     q = Query(models.Annotation).filter(f).any()
-    annotations = db.query(q).all()
+    annotations = db.query(q).all()  # type: ignore - sqlalchemy typing issue
     assert len(annotations) == 4
 
 
@@ -944,7 +943,7 @@ def test_multiple_tables_in_args(
 
     # Q: Get model + dataset name pairings for a datum with `uid1` using the full tables
     name_pairings = (
-        db.query(Query(models.Model.name, models.Dataset.name).filter(f).any())
+        db.query(Query(models.Model.name, models.Dataset.name).filter(f).any())  # type: ignore - sqlalchemy typing issue
         .distinct()
         .all()
     )
@@ -960,7 +959,7 @@ def test_multiple_tables_in_args(
 
     # Q: Get model + dataset name pairings for a datum with `uid1` using the table attributes directly
     q = Query(models.Model.name, models.Dataset.name).filter(f).any()
-    name_pairings = db.query(q).distinct().all()
+    name_pairings = db.query(q).distinct().all()  # type: ignore - sqlalchemy typing issue
     assert len(name_pairings) == 2
     assert (
         model_name1,
@@ -978,7 +977,7 @@ def test_multiple_tables_in_args(
             pair[0],
             pair[2],
         )
-        for pair in db.query(q).distinct().all()
+        for pair in db.query(q).distinct().all()  # type: ignore - sqlalchemy typing issue
     ]
     assert len(name_pairings) == 2
     assert (
@@ -991,41 +990,43 @@ def test_multiple_tables_in_args(
     ) in name_pairings
 
 
+def _get_geospatial_names_from_filter(
+    db: Session,
+    geodict: dict[
+        str,
+        list[list[list[list[float | int]]]]
+        | list[list[list[float | int]]]
+        | list[float | int]
+        | str,
+    ],
+    operator: str,
+    model_object: models.Datum | InstrumentedAttribute,
+    arg_name: str,
+):
+    f = schemas.Filter(
+        **{
+            arg_name: {
+                "some_geo_attribute": [
+                    schemas.GeospatialFilter(
+                        value=schemas.metadata.geojson_from_dict(geodict),
+                        operator=operator,
+                    ),
+                ]
+            }
+        }  # type: ignore
+    )
+
+    q = Query(model_object).filter(f).any()
+    names = db.query(q).distinct().all()  # type: ignore - sqlalchemy typing issue
+    return names
+
+
 def test_datum_geospatial_filters(
     db: Session,
     model_sim,
     model_object=models.Datum.uid,
     arg_name: str = "datum_metadata",
 ):
-    def _get_geospatial_names_from_filter(
-        db: Session,
-        geodict: dict[
-            str,
-            list[list[list[list[float | int]]]]
-            | list[list[list[float | int]]]
-            | list[float | int]
-            | str,
-        ],
-        operator: str,
-        model_object: models.Datum,
-        arg_name: str,
-    ):
-        f = schemas.Filter(
-            **{
-                arg_name: {
-                    "some_geo_attribute": [
-                        schemas.GeospatialFilter(
-                            value=schemas.metadata.geojson_from_dict(geodict),
-                            operator=operator,
-                        ),
-                    ]
-                }
-            }
-        )
-
-        q = Query(model_object).filter(f).any()
-        names = db.query(q).distinct().all()
-        return names
 
     # test inside filters
     names = _get_geospatial_names_from_filter(
@@ -1188,35 +1189,6 @@ def test_dataset_geospatial_filters(
     model_object=models.Dataset.name,
     arg_name: str = "dataset_metadata",
 ):
-    def _get_geospatial_names_from_filter(
-        db: Session,
-        geodict: dict[
-            str,
-            list[list[list[list[float | int]]]]
-            | list[list[list[float | int]]]
-            | list[float | int]
-            | str,
-        ],
-        operator: str,
-        model_object: models.Datum,
-        arg_name: str,
-    ):
-        f = schemas.Filter(
-            **{
-                arg_name: {
-                    "some_geo_attribute": [
-                        schemas.GeospatialFilter(
-                            value=schemas.metadata.geojson_from_dict(geodict),
-                            operator=operator,
-                        ),
-                    ]
-                }
-            }
-        )
-
-        q = Query(model_object).filter(f).any()
-        names = db.query(q).distinct().all()
-        return names
 
     # test inside filters
     names = _get_geospatial_names_from_filter(
@@ -1326,35 +1298,6 @@ def test_model_geospatial_filters(
     model_object=models.Model.name,
     arg_name: str = "model_metadata",
 ):
-    def _get_geospatial_names_from_filter(
-        db: Session,
-        geodict: dict[
-            str,
-            list[list[list[list[float | int]]]]
-            | list[list[list[float | int]]]
-            | list[float | int]
-            | str,
-        ],
-        operator: str,
-        model_object: models.Datum,
-        arg_name: str,
-    ):
-        f = schemas.Filter(
-            **{
-                arg_name: {
-                    "some_geo_attribute": [
-                        schemas.GeospatialFilter(
-                            value=schemas.metadata.geojson_from_dict(geodict),
-                            operator=operator,
-                        ),
-                    ]
-                }
-            }
-        )
-
-        q = Query(model_object).filter(f).any()
-        names = db.query(q).distinct().all()
-        return names
 
     # test inside filters
     names = _get_geospatial_names_from_filter(
@@ -1541,7 +1484,7 @@ def duration_metadata() -> list[schemas.Duration]:
 def _test_dataset_datetime_query(
     db: Session,
     key: str,
-    metadata_: list[
+    metadata_: Sequence[
         schemas.DateTime | schemas.Date | schemas.Time | schemas.Duration
     ],
 ):
@@ -1568,45 +1511,45 @@ def _test_dataset_datetime_query(
     # Check equality operator
     op = "=="
 
-    results = db.query(time_filter(0, op)).all()
+    results = db.query(time_filter(0, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 0
 
-    results = db.query(time_filter(1, op)).all()
+    results = db.query(time_filter(1, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 1
     assert results[0].name == "dataset1"
 
-    results = db.query(time_filter(2, op)).all()
+    results = db.query(time_filter(2, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 0
 
-    results = db.query(time_filter(3, op)).all()
+    results = db.query(time_filter(3, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 1
     assert results[0].name == "dataset2"
 
-    results = db.query(time_filter(4, op)).all()
+    results = db.query(time_filter(4, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 0
 
     # Check inequality operator
     op = "!="
 
-    results = db.query(time_filter(0, op)).all()
+    results = db.query(time_filter(0, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 2
     assert "dataset1" in [result.name for result in results]
     assert "dataset2" in [result.name for result in results]
 
-    results = db.query(time_filter(1, op)).all()
+    results = db.query(time_filter(1, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 1
     assert results[0].name == "dataset2"
 
-    results = db.query(time_filter(2, op)).all()
+    results = db.query(time_filter(2, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 2
     assert "dataset1" in [result.name for result in results]
     assert "dataset2" in [result.name for result in results]
 
-    results = db.query(time_filter(3, op)).all()
+    results = db.query(time_filter(3, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 1
     assert results[0].name == "dataset1"
 
-    results = db.query(time_filter(4, op)).all()
+    results = db.query(time_filter(4, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 2
     assert "dataset1" in [result.name for result in results]
     assert "dataset2" in [result.name for result in results]
@@ -1614,21 +1557,21 @@ def _test_dataset_datetime_query(
     # Check less-than operator
     op = "<"
 
-    results = db.query(time_filter(0, op)).all()
+    results = db.query(time_filter(0, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 0
 
-    results = db.query(time_filter(1, op)).all()
+    results = db.query(time_filter(1, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 0
 
-    results = db.query(time_filter(2, op)).all()
+    results = db.query(time_filter(2, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 1
     assert results[0].name == "dataset1"
 
-    results = db.query(time_filter(3, op)).all()
+    results = db.query(time_filter(3, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 1
     assert results[0].name == "dataset1"
 
-    results = db.query(time_filter(4, op)).all()
+    results = db.query(time_filter(4, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 2
     assert "dataset1" in [result.name for result in results]
     assert "dataset2" in [result.name for result in results]
@@ -1636,45 +1579,45 @@ def _test_dataset_datetime_query(
     # Check greater-than operator
     op = ">"
 
-    results = db.query(time_filter(0, op)).all()
+    results = db.query(time_filter(0, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 2
     assert "dataset1" in [result.name for result in results]
     assert "dataset2" in [result.name for result in results]
 
-    results = db.query(time_filter(1, op)).all()
+    results = db.query(time_filter(1, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 1
     assert results[0].name == "dataset2"
 
-    results = db.query(time_filter(2, op)).all()
+    results = db.query(time_filter(2, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 1
     assert results[0].name == "dataset2"
 
-    results = db.query(time_filter(3, op)).all()
+    results = db.query(time_filter(3, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 0
 
-    results = db.query(time_filter(4, op)).all()
+    results = db.query(time_filter(4, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 0
 
     # Check less-than or equal operator
     op = "<="
 
-    results = db.query(time_filter(0, op)).all()
+    results = db.query(time_filter(0, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 0
 
-    results = db.query(time_filter(1, op)).all()
+    results = db.query(time_filter(1, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 1
     assert results[0].name == "dataset1"
 
-    results = db.query(time_filter(2, op)).all()
+    results = db.query(time_filter(2, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 1
     assert results[0].name == "dataset1"
 
-    results = db.query(time_filter(3, op)).all()
+    results = db.query(time_filter(3, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 2
     assert "dataset1" in [result.name for result in results]
     assert "dataset2" in [result.name for result in results]
 
-    results = db.query(time_filter(4, op)).all()
+    results = db.query(time_filter(4, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 2
     assert "dataset1" in [result.name for result in results]
     assert "dataset2" in [result.name for result in results]
@@ -1682,25 +1625,25 @@ def _test_dataset_datetime_query(
     # Check greater-than or equal operator
     op = ">="
 
-    results = db.query(time_filter(0, op)).all()
+    results = db.query(time_filter(0, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 2
     assert "dataset1" in [result.name for result in results]
     assert "dataset2" in [result.name for result in results]
 
-    results = db.query(time_filter(1, op)).all()
+    results = db.query(time_filter(1, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 2
     assert "dataset1" in [result.name for result in results]
     assert "dataset2" in [result.name for result in results]
 
-    results = db.query(time_filter(2, op)).all()
+    results = db.query(time_filter(2, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 1
     assert results[0].name == "dataset2"
 
-    results = db.query(time_filter(3, op)).all()
+    results = db.query(time_filter(3, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 1
     assert results[0].name == "dataset2"
 
-    results = db.query(time_filter(4, op)).all()
+    results = db.query(time_filter(4, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 0
 
 
@@ -1750,7 +1693,7 @@ def test_dataset_datetime_queries(
 def _test_model_datetime_query(
     db: Session,
     key: str,
-    metadata_: list[
+    metadata_: Sequence[
         schemas.DateTime | schemas.Date | schemas.Time | schemas.Duration
     ],
 ):
@@ -1777,45 +1720,45 @@ def _test_model_datetime_query(
     # Check equality operator
     op = "=="
 
-    results = db.query(time_filter(0, op)).all()
+    results = db.query(time_filter(0, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 0
 
-    results = db.query(time_filter(1, op)).all()
+    results = db.query(time_filter(1, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 1
     assert results[0].name == "model1"
 
-    results = db.query(time_filter(2, op)).all()
+    results = db.query(time_filter(2, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 0
 
-    results = db.query(time_filter(3, op)).all()
+    results = db.query(time_filter(3, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 1
     assert results[0].name == "model2"
 
-    results = db.query(time_filter(4, op)).all()
+    results = db.query(time_filter(4, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 0
 
     # Check inequality operator
     op = "!="
 
-    results = db.query(time_filter(0, op)).all()
+    results = db.query(time_filter(0, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 2
     assert "model1" in [result.name for result in results]
     assert "model2" in [result.name for result in results]
 
-    results = db.query(time_filter(1, op)).all()
+    results = db.query(time_filter(1, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 1
     assert results[0].name == "model2"
 
-    results = db.query(time_filter(2, op)).all()
+    results = db.query(time_filter(2, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 2
     assert "model1" in [result.name for result in results]
     assert "model2" in [result.name for result in results]
 
-    results = db.query(time_filter(3, op)).all()
+    results = db.query(time_filter(3, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 1
     assert results[0].name == "model1"
 
-    results = db.query(time_filter(4, op)).all()
+    results = db.query(time_filter(4, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 2
     assert "model1" in [result.name for result in results]
     assert "model2" in [result.name for result in results]
@@ -1823,21 +1766,21 @@ def _test_model_datetime_query(
     # Check less-than operator
     op = "<"
 
-    results = db.query(time_filter(0, op)).all()
+    results = db.query(time_filter(0, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 0
 
-    results = db.query(time_filter(1, op)).all()
+    results = db.query(time_filter(1, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 0
 
-    results = db.query(time_filter(2, op)).all()
+    results = db.query(time_filter(2, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 1
     assert results[0].name == "model1"
 
-    results = db.query(time_filter(3, op)).all()
+    results = db.query(time_filter(3, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 1
     assert results[0].name == "model1"
 
-    results = db.query(time_filter(4, op)).all()
+    results = db.query(time_filter(4, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 2
     assert "model1" in [result.name for result in results]
     assert "model2" in [result.name for result in results]
@@ -1845,45 +1788,45 @@ def _test_model_datetime_query(
     # Check greater-than operator
     op = ">"
 
-    results = db.query(time_filter(0, op)).all()
+    results = db.query(time_filter(0, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 2
     assert "model1" in [result.name for result in results]
     assert "model2" in [result.name for result in results]
 
-    results = db.query(time_filter(1, op)).all()
+    results = db.query(time_filter(1, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 1
     assert results[0].name == "model2"
 
-    results = db.query(time_filter(2, op)).all()
+    results = db.query(time_filter(2, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 1
     assert results[0].name == "model2"
 
-    results = db.query(time_filter(3, op)).all()
+    results = db.query(time_filter(3, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 0
 
-    results = db.query(time_filter(4, op)).all()
+    results = db.query(time_filter(4, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 0
 
     # Check less-than or equal operator
     op = "<="
 
-    results = db.query(time_filter(0, op)).all()
+    results = db.query(time_filter(0, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 0
 
-    results = db.query(time_filter(1, op)).all()
+    results = db.query(time_filter(1, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 1
     assert results[0].name == "model1"
 
-    results = db.query(time_filter(2, op)).all()
+    results = db.query(time_filter(2, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 1
     assert results[0].name == "model1"
 
-    results = db.query(time_filter(3, op)).all()
+    results = db.query(time_filter(3, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 2
     assert "model1" in [result.name for result in results]
     assert "model2" in [result.name for result in results]
 
-    results = db.query(time_filter(4, op)).all()
+    results = db.query(time_filter(4, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 2
     assert "model1" in [result.name for result in results]
     assert "model2" in [result.name for result in results]
@@ -1891,25 +1834,25 @@ def _test_model_datetime_query(
     # Check greater-than or equal operator
     op = ">="
 
-    results = db.query(time_filter(0, op)).all()
+    results = db.query(time_filter(0, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 2
     assert "model1" in [result.name for result in results]
     assert "model2" in [result.name for result in results]
 
-    results = db.query(time_filter(1, op)).all()
+    results = db.query(time_filter(1, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 2
     assert "model1" in [result.name for result in results]
     assert "model2" in [result.name for result in results]
 
-    results = db.query(time_filter(2, op)).all()
+    results = db.query(time_filter(2, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 1
     assert results[0].name == "model2"
 
-    results = db.query(time_filter(3, op)).all()
+    results = db.query(time_filter(3, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 1
     assert results[0].name == "model2"
 
-    results = db.query(time_filter(4, op)).all()
+    results = db.query(time_filter(4, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 0
 
 
@@ -1959,7 +1902,7 @@ def test_model_datetime_queries(
 def _test_datum_datetime_query(
     db: Session,
     key: str,
-    metadata_: list[
+    metadata_: Sequence[
         schemas.DateTime | schemas.Date | schemas.Time | schemas.Duration
     ],
 ):
@@ -1988,53 +1931,53 @@ def _test_datum_datetime_query(
     # Check equality operator
     op = "=="
 
-    results = db.query(time_filter(0, op)).all()
+    results = db.query(time_filter(0, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 0
 
-    results = db.query(time_filter(1, op)).all()
+    results = db.query(time_filter(1, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 1
     assert results[0].uid == datum_uid1
 
-    results = db.query(time_filter(2, op)).all()
+    results = db.query(time_filter(2, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 2
     assert datum_uid2 in [result.uid for result in results]
     assert datum_uid3 in [result.uid for result in results]
 
-    results = db.query(time_filter(3, op)).all()
+    results = db.query(time_filter(3, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 1
     assert results[0].uid == datum_uid4
 
-    results = db.query(time_filter(4, op)).all()
+    results = db.query(time_filter(4, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 0
 
     # Check inequality operator
     op = "!="
 
-    results = db.query(time_filter(0, op)).all()
+    results = db.query(time_filter(0, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 4
     assert datum_uid1 in [result.uid for result in results]
     assert datum_uid2 in [result.uid for result in results]
     assert datum_uid3 in [result.uid for result in results]
     assert datum_uid4 in [result.uid for result in results]
 
-    results = db.query(time_filter(1, op)).all()
+    results = db.query(time_filter(1, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 3
     assert datum_uid2 in [result.uid for result in results]
     assert datum_uid3 in [result.uid for result in results]
     assert datum_uid4 in [result.uid for result in results]
 
-    results = db.query(time_filter(2, op)).all()
+    results = db.query(time_filter(2, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 2
     assert datum_uid1 in [result.uid for result in results]
     assert datum_uid4 in [result.uid for result in results]
 
-    results = db.query(time_filter(3, op)).all()
+    results = db.query(time_filter(3, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 3
     assert datum_uid1 in [result.uid for result in results]
     assert datum_uid2 in [result.uid for result in results]
     assert datum_uid3 in [result.uid for result in results]
 
-    results = db.query(time_filter(4, op)).all()
+    results = db.query(time_filter(4, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 4
     assert datum_uid1 in [result.uid for result in results]
     assert datum_uid2 in [result.uid for result in results]
@@ -2044,23 +1987,23 @@ def _test_datum_datetime_query(
     # Check less-than operator
     op = "<"
 
-    results = db.query(time_filter(0, op)).all()
+    results = db.query(time_filter(0, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 0
 
-    results = db.query(time_filter(1, op)).all()
+    results = db.query(time_filter(1, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 0
 
-    results = db.query(time_filter(2, op)).all()
+    results = db.query(time_filter(2, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 1
     assert results[0].uid == datum_uid1
 
-    results = db.query(time_filter(3, op)).all()
+    results = db.query(time_filter(3, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 3
     assert datum_uid1 in [result.uid for result in results]
     assert datum_uid2 in [result.uid for result in results]
     assert datum_uid3 in [result.uid for result in results]
 
-    results = db.query(time_filter(4, op)).all()
+    results = db.query(time_filter(4, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 4
     assert datum_uid1 in [result.uid for result in results]
     assert datum_uid2 in [result.uid for result in results]
@@ -2070,53 +2013,53 @@ def _test_datum_datetime_query(
     # Check greater-than operator
     op = ">"
 
-    results = db.query(time_filter(0, op)).all()
+    results = db.query(time_filter(0, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 4
     assert datum_uid1 in [result.uid for result in results]
     assert datum_uid2 in [result.uid for result in results]
     assert datum_uid3 in [result.uid for result in results]
     assert datum_uid4 in [result.uid for result in results]
 
-    results = db.query(time_filter(1, op)).all()
+    results = db.query(time_filter(1, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 3
     assert datum_uid2 in [result.uid for result in results]
     assert datum_uid3 in [result.uid for result in results]
     assert datum_uid4 in [result.uid for result in results]
 
-    results = db.query(time_filter(2, op)).all()
+    results = db.query(time_filter(2, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 1
     assert results[0].uid == datum_uid4
 
-    results = db.query(time_filter(3, op)).all()
+    results = db.query(time_filter(3, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 0
 
-    results = db.query(time_filter(4, op)).all()
+    results = db.query(time_filter(4, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 0
 
     # Check less-than or equal operator
     op = "<="
 
-    results = db.query(time_filter(0, op)).all()
+    results = db.query(time_filter(0, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 0
 
-    results = db.query(time_filter(1, op)).all()
+    results = db.query(time_filter(1, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 1
     assert results[0].uid == datum_uid1
 
-    results = db.query(time_filter(2, op)).all()
+    results = db.query(time_filter(2, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 3
     assert datum_uid1 in [result.uid for result in results]
     assert datum_uid2 in [result.uid for result in results]
     assert datum_uid3 in [result.uid for result in results]
 
-    results = db.query(time_filter(3, op)).all()
+    results = db.query(time_filter(3, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 4
     assert datum_uid1 in [result.uid for result in results]
     assert datum_uid2 in [result.uid for result in results]
     assert datum_uid3 in [result.uid for result in results]
     assert datum_uid4 in [result.uid for result in results]
 
-    results = db.query(time_filter(4, op)).all()
+    results = db.query(time_filter(4, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 4
     assert datum_uid1 in [result.uid for result in results]
     assert datum_uid2 in [result.uid for result in results]
@@ -2126,31 +2069,31 @@ def _test_datum_datetime_query(
     # Check greater-than or equal operator
     op = ">="
 
-    results = db.query(time_filter(0, op)).all()
+    results = db.query(time_filter(0, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 4
     assert datum_uid1 in [result.uid for result in results]
     assert datum_uid2 in [result.uid for result in results]
     assert datum_uid3 in [result.uid for result in results]
     assert datum_uid4 in [result.uid for result in results]
 
-    results = db.query(time_filter(1, op)).all()
+    results = db.query(time_filter(1, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 4
     assert datum_uid1 in [result.uid for result in results]
     assert datum_uid2 in [result.uid for result in results]
     assert datum_uid3 in [result.uid for result in results]
     assert datum_uid4 in [result.uid for result in results]
 
-    results = db.query(time_filter(2, op)).all()
+    results = db.query(time_filter(2, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 3
     assert datum_uid2 in [result.uid for result in results]
     assert datum_uid3 in [result.uid for result in results]
     assert datum_uid4 in [result.uid for result in results]
 
-    results = db.query(time_filter(3, op)).all()
+    results = db.query(time_filter(3, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 1
     assert results[0].uid == datum_uid4
 
-    results = db.query(time_filter(4, op)).all()
+    results = db.query(time_filter(4, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 0
 
 
@@ -2259,7 +2202,7 @@ def test_datum_datetime_queries(
 def _test_annotation_datetime_query(
     db: Session,
     key: str,
-    metadata_: list[
+    metadata_: Sequence[
         schemas.DateTime | schemas.Date | schemas.Time | schemas.Duration
     ],
 ):
@@ -2288,109 +2231,109 @@ def _test_annotation_datetime_query(
     # Check equality operator
     op = "=="
 
-    results = db.query(time_filter(0, op)).all()
+    results = db.query(time_filter(0, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 0
 
-    results = db.query(time_filter(1, op)).all()
+    results = db.query(time_filter(1, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 1
 
-    results = db.query(time_filter(2, op)).all()
+    results = db.query(time_filter(2, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 2
 
-    results = db.query(time_filter(3, op)).all()
+    results = db.query(time_filter(3, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 1
 
-    results = db.query(time_filter(4, op)).all()
+    results = db.query(time_filter(4, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 0
 
     # Check inequality operator
     op = "!="
 
-    results = db.query(time_filter(0, op)).all()
+    results = db.query(time_filter(0, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 4
 
-    results = db.query(time_filter(1, op)).all()
+    results = db.query(time_filter(1, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 3
 
-    results = db.query(time_filter(2, op)).all()
+    results = db.query(time_filter(2, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 2
 
-    results = db.query(time_filter(3, op)).all()
+    results = db.query(time_filter(3, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 3
 
-    results = db.query(time_filter(4, op)).all()
+    results = db.query(time_filter(4, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 4
 
     # Check less-than operator
     op = "<"
 
-    results = db.query(time_filter(0, op)).all()
+    results = db.query(time_filter(0, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 0
 
-    results = db.query(time_filter(1, op)).all()
+    results = db.query(time_filter(1, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 0
 
-    results = db.query(time_filter(2, op)).all()
+    results = db.query(time_filter(2, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 1
 
-    results = db.query(time_filter(3, op)).all()
+    results = db.query(time_filter(3, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 3
 
-    results = db.query(time_filter(4, op)).all()
+    results = db.query(time_filter(4, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 4
 
     # Check greater-than operator
     op = ">"
 
-    results = db.query(time_filter(0, op)).all()
+    results = db.query(time_filter(0, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 4
 
-    results = db.query(time_filter(1, op)).all()
+    results = db.query(time_filter(1, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 3
 
-    results = db.query(time_filter(2, op)).all()
+    results = db.query(time_filter(2, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 1
 
-    results = db.query(time_filter(3, op)).all()
+    results = db.query(time_filter(3, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 0
 
-    results = db.query(time_filter(4, op)).all()
+    results = db.query(time_filter(4, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 0
 
     # Check less-than or equal operator
     op = "<="
 
-    results = db.query(time_filter(0, op)).all()
+    results = db.query(time_filter(0, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 0
 
-    results = db.query(time_filter(1, op)).all()
+    results = db.query(time_filter(1, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 1
 
-    results = db.query(time_filter(2, op)).all()
+    results = db.query(time_filter(2, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 3
 
-    results = db.query(time_filter(3, op)).all()
+    results = db.query(time_filter(3, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 4
 
-    results = db.query(time_filter(4, op)).all()
+    results = db.query(time_filter(4, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 4
 
     # Check greater-than or equal operator
     op = ">="
 
-    results = db.query(time_filter(0, op)).all()
+    results = db.query(time_filter(0, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 4
 
-    results = db.query(time_filter(1, op)).all()
+    results = db.query(time_filter(1, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 4
 
-    results = db.query(time_filter(2, op)).all()
+    results = db.query(time_filter(2, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 3
 
-    results = db.query(time_filter(3, op)).all()
+    results = db.query(time_filter(3, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 1
 
-    results = db.query(time_filter(4, op)).all()
+    results = db.query(time_filter(4, op)).all()  # type: ignore - sqlalchemy typing issue
     assert len(results) == 0
 
 
@@ -2481,7 +2424,7 @@ def test_query_expression_types(
     # Test `distinct`
     f = schemas.Filter(labels=[{"class": "cat"}])
     q = Query(distinct(models.Dataset.name)).filter(f).groundtruths()
-    dataset_names = db.query(q).all()
+    dataset_names = db.query(q).all()  # type: ignore - sqlalchemy typing issue
     assert len(dataset_names) == 1
     assert (dset_name,) in dataset_names
 
@@ -2492,7 +2435,7 @@ def test_query_expression_types(
         .filter(f)
         .groundtruths(as_subquery=False)
     )
-    assert db.scalar(q) == 10
+    assert db.scalar(q) == 10  # type: ignore - sqlalchemy typing issue
 
     # Test `func.count` with nested distinct.
     f = schemas.Filter(labels=[{"class": "cat"}])
@@ -2501,7 +2444,7 @@ def test_query_expression_types(
         .filter(f)
         .groundtruths(as_subquery=False)
     )
-    assert db.scalar(q) == 1
+    assert db.scalar(q) == 1  # type: ignore - sqlalchemy typing issue
 
     # Test distinct with nested`func.count`
     #   This is to test the recursive table search
@@ -2518,10 +2461,10 @@ def test_query_expression_types(
         .filter(f)
         .groundtruths(as_subquery=False)
     )
-    assert db.scalar(q) == 10
+    assert db.scalar(q) == 10  # type: ignore - sqlalchemy typing issue
 
     # Test nested functions
     q = Query(func.max(func.ST_Area(models.Annotation.box))).groundtruths(
         as_subquery=False
     )
-    assert db.scalar(q) == 100.0
+    assert db.scalar(q) == 100.0  # type: ignore - sqlalchemy typing issue
