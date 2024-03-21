@@ -692,12 +692,12 @@ def _get_atomic_type_by_value(other: Any):
         return Integer
     elif Float.supports(other):
         return Float
-    elif DateTime.supports(other):
-        return DateTime
     elif Date.supports(other):
         return Date
     elif Time.supports(other):
         return Time
+    elif DateTime.supports(other):
+        return DateTime
     elif Duration.supports(other):
         return Duration
     elif MultiPolygon.supports(other):
@@ -759,43 +759,43 @@ class DictionaryValue:
         self._key = key
         self._owner = symbol._owner
         self._name = symbol._name
-        if symbol._attribute:
-            raise ValueError("Symbol attribute should not be defined.")
         if symbol._key:
             raise ValueError("Symbol key should not be defined.")
+        if symbol._attribute:
+            raise ValueError("Symbol attribute should not be defined.")
 
     def __eq__(self, other: Any):
-        return self.generate(fn="__eq__", other=other)
+        return self._generate(fn="__eq__", other=other)
 
     def __ne__(self, other: Any):
-        return self.generate(fn="__ne__", other=other)
+        return self._generate(fn="__ne__", other=other)
 
     def __gt__(self, other: Any):
-        return self.generate(fn="__gt__", other=other)
+        return self._generate(fn="__gt__", other=other)
 
     def __ge__(self, other: Any):
-        return self.generate(fn="__ge__", other=other)
+        return self._generate(fn="__ge__", other=other)
 
     def __lt__(self, other: Any):
-        return self.generate(fn="__lt__", other=other)
+        return self._generate(fn="__lt__", other=other)
 
     def __le__(self, other: Any):
-        return self.generate(fn="__le__", other=other)
+        return self._generate(fn="__le__", other=other)
 
     def intersects(self, other: Any):
-        return self.generate(fn="intersects", other=other)
+        return self._generate(fn="intersects", other=other)
 
     def inside(self, other: Any):
-        return self.generate(fn="inside", other=other)
+        return self._generate(fn="inside", other=other)
 
     def outside(self, other: Any):
-        return self.generate(fn="outside", other=other)
+        return self._generate(fn="outside", other=other)
 
     def is_none(self, other: Any):
-        return self.generate(fn="is_none", other=other)
+        return self._generate(fn="is_none", other=other)
 
     def is_not_none(self, other: Any):
-        return self.generate(fn="is_not_none", other=other)
+        return self._generate(fn="is_not_none", other=other)
 
     @property
     def area(self):
@@ -803,23 +803,37 @@ class DictionaryValue:
             owner=self._owner, name=self._name, key=self._key, attribute="area"
         )
 
-    def generate(self, other: Any, fn: str):
+    def _generate(self, other: Any, fn: str):
         obj = _get_atomic_type_by_value(other)
         sym = obj.symbolic(owner=self._owner, name=self._name, key=self._key)
         return sym.__getattribute__(fn)(other)
 
 
 class Dictionary(Equatable):
+
+    def __init__(
+        self,
+        value: Optional[Dict[str, Any]] = None,
+        symbol: Symbol | None = None
+    ):
+        if isinstance(value, dict):
+            _value = dict()
+            for k, v in value.items():
+                if isinstance(v, Variable):
+                    if v.is_symbolic:
+                        raise ValueError("Dictionary does not accpet symbols as values.")
+                    _value[k] = v
+                else:
+                    _value[k] = _get_atomic_type_by_value(v).definite(v)
+            value = _value
+        super().__init__(value, symbol)
+
     @classmethod
     def definite(
         cls,
         value: Optional[Dict[str, Any]] = None,
     ):
         value = value if value else dict()
-        value = {
-            k: _get_atomic_type_by_value(v).definite(v)
-            for k, v in value.items()
-        }
         return super().definite(value)
 
     @classmethod

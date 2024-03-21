@@ -33,7 +33,6 @@ from valor.symbolic.atomics import (
 from valor.symbolic.functions import OneArgumentFunction, TwoArgumentFunction, AppendableFunction
 
 
-
 def test_symbol():
     s = Symbol(name="some_symbol")
     assert s.__repr__() == "Symbol(name='some_symbol')"
@@ -856,8 +855,91 @@ def test_multipolygon():
 
 
 def test_dictionary_value():
-    pass
+    # test 
+
+
+    # test symbol cannot already have key or attribute
+    with pytest.raises(ValueError) as e:
+        DictionaryValue(
+            symbol=Symbol(
+                name="a", 
+                key="b", 
+                attribute="c", 
+                owner="d"
+            ), 
+            key="k",
+        )
+    assert "key" in str(e)
+    with pytest.raises(ValueError) as e:
+        DictionaryValue(
+            symbol=Symbol(
+                name="a",
+                attribute="c", 
+                owner="d"
+            ), 
+            key="k",
+        )
+    assert "attribute" in str(e)
+    
 
 
 def test_dictionary():
-    pass
+    x = {
+        "k0": True,
+        "k1": "v1",
+        "k2": 123,
+        "k3": 1.24,
+        "k4": datetime.datetime(year=2024, month=1, day=1),
+        "k5": datetime.date(year=2024, month=1, day=1),
+        "k6": datetime.time(hour=1),
+        "k7": datetime.timedelta(seconds=100),
+        "k8": Point((1,-1)),
+        "k9": MultiPoint([(0,0), (1,1)]),
+        "k10": LineString([(0,0), (1,1)]),
+        "k11": MultiLineString([[(0,0), (1,1)]]),
+        "k12": Polygon([[(0,0), (1,1), (0,1), (0,0)]]),
+        "k13": MultiPolygon([[[(0,0), (1,1), (0,1), (0,0)]]]),
+    }
+    y = {
+        "k0": False,
+        "k1": "v2",
+        "k2": 321,
+        "k3": 1.24,
+        "k4": datetime.datetime(year=2024, month=1, day=1),
+        "k5": datetime.date(year=2024, month=1, day=1),
+        "k6": datetime.time(hour=1),
+        "k7": datetime.timedelta(seconds=100),
+        "k8": Point((1,-1))
+    }
+
+    # interoperable with built-in 'dict'
+    objcls = Dictionary
+    permutations = [
+        (x,x),
+        (x,y),
+        (y,y),
+        (y,x),
+    ]
+    for op in ['__eq__', '__ne__']:
+        _test_generic(objcls, permutations, op)
+    for op in ['__gt__', '__ge__', '__lt__', '__le__', '__and__', '__or__', '__xor__', 'is_none', 'is_not_none', 'intersects', 'inside', 'outside']:
+        _test_unsupported(objcls, permutations, op)
+
+    # test encoding
+    print(type(Dictionary(x).encode_value()['k8']['value']))
+    assert {
+        "k0": {"type": "bool", "value": True},
+        "k1": {"type": "string", "value": "v1"},
+        "k2": {"type": "integer", "value": 123},
+        "k3": {"type": "float", "value": 1.24},
+        "k4": {"type": "datetime", "value": "2024-01-01T00:00:00"},
+        "k5": {"type": "date", "value": "2024-01-01"},
+        "k6": {"type": "time", "value": "01:00:00"},
+        "k7": {"type": "duration", "value": 100.0},
+        "k8": {"type": "point", "value": (1, -1)},
+        "k9": {"type": "multipoint", "value": [(0,0), (1,1)]},
+        "k10": {"type": "linestring", "value": [(0,0), (1,1)]},
+        "k11": {"type": "multilinestring", "value": [[(0,0), (1,1)]]},
+        "k12": {"type": "polygon", "value": [[(0,0), (1,1), (0,1), (0,0)]]},
+        "k13": {"type": "multipolygon", "value": [[[(0,0), (1,1), (0,1), (0,0)]]]},
+    } == Dictionary(x).encode_value()
