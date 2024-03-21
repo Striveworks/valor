@@ -3,7 +3,7 @@ from integration_tests.client.datatype.test_data_generation import (
     test_generate_segmentation_data,
 )
 
-from client.valor import Client
+from valor import Client
 
 
 def test_large_dataset_upload(client: Client):

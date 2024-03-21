@@ -414,9 +414,9 @@ def _compute_detection_metrics(
             pd.c.annotation_id.label("pd_ann_id"),
             pd.c.score.label("score"),
         )
-        .select_from(pd)  # type: ignore - sqlalchemy typing issue
+        .select_from(pd)  # type: ignore - SQLAlchemy type issue
         .outerjoin(
-            gt,  # type: ignore - sqlalchemy typing issue
+            gt,  # type: ignore - SQLAlchemy type issue
             and_(
                 pd.c.datum_id == gt.c.datum_id,
                 pd.c.label_id_grouper == gt.c.label_id_grouper,
@@ -519,8 +519,8 @@ def _compute_detection_metrics(
             ).label("label_id_grouper"),
         )
         .filter(groundtruth_filter)
-        .groundtruths()  # type: ignore - sqlalchemy typing issue
-    ).all()  # type: ignore - sqlalchemy typing issue
+        .groundtruths()  # type: ignore - SQLAlchemy type issue
+    ).all()  # type: ignore - SQLAlchemy type issue
 
     for gt_id, grouper_id in groundtruths:
         number_of_groundtruths_per_grouper[grouper_id] += 1
@@ -789,12 +789,12 @@ def compute_detection_metrics(*, db: Session, evaluation_id: int):
 
     # fetch model and datasets
     datasets = (
-        db.query(Query(models.Dataset).filter(groundtruth_filter).any())  # type: ignore - sqlalchemy typing issue
+        db.query(Query(models.Dataset).filter(groundtruth_filter).any())  # type: ignore - SQLAlchemy type issue
         .distinct()
         .all()
     )
     model = (
-        db.query(Query(models.Model).filter(prediction_filter).any())  # type: ignore - sqlalchemy typing issue
+        db.query(Query(models.Model).filter(prediction_filter).any())  # type: ignore - SQLAlchemy type issue
         .distinct()
         .one_or_none()
     )

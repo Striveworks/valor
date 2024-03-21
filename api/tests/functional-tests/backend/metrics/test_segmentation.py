@@ -97,12 +97,12 @@ def test_query_generators(
 
         groundtruth_filter.label_ids = [label_id]
         q = _generate_groundtruth_query(groundtruth_filter)
-        data = db.query(q).all()  # type: ignore - sqlalchemy typing issue
+        data = db.query(q).all()  # type: ignore - SQLAlchemy type issue
         assert len(data) == expected_number
 
     groundtruth_filter.label_ids = [10000000]
     q = _generate_groundtruth_query(groundtruth_filter)
-    data = db.query(q).all()  # type: ignore - sqlalchemy typing issue
+    data = db.query(q).all()  # type: ignore - SQLAlchemy type issue
     assert len(data) == 0
 
     for label_key, label_value, expected_number in [
@@ -121,12 +121,12 @@ def test_query_generators(
 
         prediction_filter.label_ids = [label_id]
         q = _generate_prediction_query(prediction_filter)
-        data = db.query(q).all()  # type: ignore - sqlalchemy typing issue
+        data = db.query(q).all()  # type: ignore - SQLAlchemy type issue
         assert len(data) == expected_number
 
     prediction_filter.label_ids = [10000000]
     q = _generate_prediction_query(prediction_filter)
-    data = db.query(q).all()  # type: ignore - sqlalchemy typing issue
+    data = db.query(q).all()  # type: ignore - SQLAlchemy type issue
     assert len(data) == 0
 
 

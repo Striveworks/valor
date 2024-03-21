@@ -316,7 +316,7 @@ def get_labels(
     )
     return {
         schemas.Label(key=label.key, value=label.value)
-        for label in db.query(stmt.subquery()).all()  # type: ignore - sqlalchemy typing issue
+        for label in db.query(stmt.subquery()).all()  # type: ignore - SQLAlchemy type issue
     }
 
 
@@ -351,7 +351,7 @@ def get_label_keys(
         ignore_groundtruths=ignore_groundtruths,
         ignore_predictions=ignore_predictions,
     )
-    return {key for key in db.scalars(stmt)}  # type: ignore - sqlalchemy typing issue
+    return {key for key in db.scalars(stmt)}  # type: ignore - SQLAlchemy type issue
 
 
 def get_joint_labels(
@@ -517,7 +517,7 @@ def fetch_labels(
         ignore_groundtruths=ignore_groundtruths,
         ignore_predictions=ignore_predictions,
     )
-    return set(db.query(stmt.subquery()).all())  # type: ignore - sqlalchemy typing issue
+    return set(db.query(stmt.subquery()).all())  # type: ignore - SQLAlchemy type issue
 
 
 def fetch_union_of_labels(

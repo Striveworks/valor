@@ -1,4 +1,4 @@
-from client.valor import (
+from valor import (
     Annotation,
     Client,
     Dataset,
@@ -8,7 +8,7 @@ from client.valor import (
     Model,
     Prediction,
 )
-from client.valor.enums import TaskType
+from valor.enums import TaskType
 
 
 def test_create_read_embedding_annotation(
