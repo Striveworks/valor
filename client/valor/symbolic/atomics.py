@@ -84,10 +84,8 @@ class Variable:
             raise TypeError(
                 f"{type(self).__name__} symbol should have type 'Symbol' or be set to 'None'"
             )
-        elif value is not None and not self.supports(value):
-            raise TypeError(
-                f"{type(self).__name__} value with type '{type(value).__name__}' is not supported."
-            )
+        elif symbol is None:
+            self.__validate__(value)
         self._value = symbol if symbol else value
 
     def __repr__(self) -> str:
@@ -155,11 +153,21 @@ class Variable:
         )
 
     @classmethod
-    def supports(cls, value: Any) -> bool:
-        """Checks if value is a supported type."""
+    def __validate__(cls, value: Any):
+        """Validates typing."""
         raise NotImplementedError(
             f"Variable of type `{cls.__name__}` cannot be assigned a value."
         )
+
+    @classmethod
+    def supports(cls, value: Any) -> bool:
+        """Checks if value is a supported type."""
+        try:
+            cls.__validate__(value)
+        except (TypeError, ValueError):
+            return False
+        else:
+            return True
 
     @classmethod
     def decode_value(cls, value: Any):
@@ -236,8 +244,11 @@ class Variable:
 
 class Bool(Variable):
     @classmethod
-    def supports(cls, value: Any) -> bool:
-        return isinstance(value, bool)
+    def __validate__(cls, value: Any):
+        if not isinstance(value, bool):
+            raise TypeError(
+                f"Expected type '{bool}' received type '{type(value)}'"
+            )
 
     def __eq__(self, value: Any):
         other = self.preprocess(value)
@@ -376,13 +387,16 @@ class Listable(Variable):
                 return cls(value=value)
 
             @classmethod
-            def supports(cls, value: List[Any]) -> bool:
-                return isinstance(value, list) and all(
-                    [
-                        isinstance(element, item_class) and element.is_value
-                        for element in value
-                    ]
-                )
+            def __validate__(cls, value: List[Any]):
+                if not isinstance(value, list):
+                    raise TypeError(
+                        f"Expected type '{list}' received type '{type(value)}'"
+                    )
+                for element in value:
+                    if not isinstance(element, item_class):
+                        raise TypeError(
+                            f"Expected list elements with type '{item_class}' received type '{type(element)}'"
+                        )
 
             @classmethod
             def decode_value(cls, value: Any):
@@ -413,28 +427,38 @@ class Listable(Variable):
 
 class Integer(Quantifiable):
     @classmethod
-    def supports(cls, value: Any) -> bool:
-        return isinstance(value, (int, np.integer))
+    def __validate__(cls, value: Any):
+        if not isinstance(value, (int, np.integer)):
+            raise TypeError(
+                f"Expected type '{int}' received type '{type(value)}'"
+            )
 
 
 class Float(Quantifiable):
     @classmethod
-    def supports(cls, value: Any) -> bool:
-        return isinstance(value, (float, np.floating)) or Integer.supports(
-            value
-        )
+    def __validate__(cls, value: Any):
+        if not isinstance(value, (float, np.floating)):
+            raise TypeError(
+                f"Expected type '{float}' received type '{type(value)}'"
+            )
 
 
 class String(Equatable):
     @classmethod
-    def supports(cls, value: Any) -> bool:
-        return isinstance(value, str)
+    def __validate__(cls, value: Any):
+        if not isinstance(value, str):
+            raise TypeError(
+                f"Expected type '{str}' received type '{type(value)}'"
+            )
 
 
 class DateTime(Quantifiable):
     @classmethod
-    def supports(cls, value: Any) -> bool:
-        return type(value) is datetime.datetime
+    def __validate__(cls, value: Any):
+        if not isinstance(value, datetime.datetime):
+            raise TypeError(
+                f"Expected type '{datetime.datetime}' received type '{type(value)}'"
+            )
 
     @classmethod
     def decode_value(cls, value: str):
@@ -446,8 +470,11 @@ class DateTime(Quantifiable):
 
 class Date(Quantifiable):
     @classmethod
-    def supports(cls, value: Any) -> bool:
-        return type(value) is datetime.date
+    def __validate__(cls, value: Any):
+        if not isinstance(value, datetime.date):
+            raise TypeError(
+                f"Expected type '{datetime.date}' received type '{type(value)}'"
+            )
 
     @classmethod
     def decode_value(cls, value: str):
@@ -459,8 +486,11 @@ class Date(Quantifiable):
 
 class Time(Quantifiable):
     @classmethod
-    def supports(cls, value: Any) -> bool:
-        return type(value) is datetime.time
+    def __validate__(cls, value: Any):
+        if not isinstance(value, datetime.time):
+            raise TypeError(
+                f"Expected type '{datetime.time}' received type '{type(value)}'"
+            )
 
     @classmethod
     def decode_value(cls, value: str):
@@ -472,8 +502,11 @@ class Time(Quantifiable):
 
 class Duration(Quantifiable):
     @classmethod
-    def supports(cls, value: Any) -> bool:
-        return type(value) is datetime.timedelta
+    def __validate__(cls, value: Any):
+        if not isinstance(value, datetime.timedelta):
+            raise TypeError(
+                f"Expected type '{datetime.timedelta}' received type '{type(value)}'"
+            )
 
     @classmethod
     def decode_value(cls, value: int):
@@ -520,15 +553,18 @@ class Point(Spatial):
         super().__init__(value=value, symbol=symbol)
 
     @classmethod
-    def supports(cls, value: Any) -> bool:
-        if isinstance(value, tuple):
-            return (
-                len(value) == 2
-                and isinstance(value[0], (int, float, np.floating))
-                and isinstance(value[1], (int, float, np.floating))
+    def __validate__(cls, value: Any):
+        if not isinstance(value, tuple):
+            raise TypeError(
+                f"Expected type '{Tuple[float, float]}' received type '{type(value)}'"
             )
-        else:
-            return issubclass(type(value), Point)
+        elif len(value) != 2:
+            raise ValueError("")
+        for item in value:
+            if not isinstance(item, (int, float, np.floating)):
+                raise TypeError(
+                    f"Expected type '{float}' received type '{type(item)}'"
+                )
 
 
 class MultiPoint(Spatial):
@@ -540,14 +576,13 @@ class MultiPoint(Spatial):
         super().__init__(value=value, symbol=symbol)
 
     @classmethod
-    def supports(cls, value: Any) -> bool:
-        if isinstance(value, list):
-            for point in value:
-                if not Point.supports(point):
-                    return False
-            return True
-        else:
-            return issubclass(type(value), MultiPoint)
+    def __validate__(cls, value: Any):
+        if not isinstance(value, list):
+            raise TypeError(
+                f"Expected '{List[Tuple[float, float]]}' received type '{type(value)}'"
+            )
+        for point in value:
+            Point.__validate__(point)
 
 
 class LineString(Spatial):
@@ -559,11 +594,12 @@ class LineString(Spatial):
         super().__init__(value=value, symbol=symbol)
 
     @classmethod
-    def supports(cls, value: Any) -> bool:
-        if MultiPoint.supports(value):
-            return len(value) >= 2
-        else:
-            return issubclass(type(value), LineString)
+    def __validate__(cls, value: Any):
+        MultiPoint.__validate__(value)
+        if len(value) < 2:
+            raise ValueError(
+                "At least two points are required to make a line."
+            )
 
 
 class MultiLineString(Spatial):
@@ -575,14 +611,13 @@ class MultiLineString(Spatial):
         super().__init__(value=value, symbol=symbol)
 
     @classmethod
-    def supports(cls, value: Any) -> bool:
-        if isinstance(value, list):
-            for line in value:
-                if not LineString.supports(line):
-                    return False
-            return True
-        else:
-            return issubclass(type(value), MultiLineString)
+    def __validate__(cls, value: Any):
+        if not isinstance(value, list):
+            raise TypeError(
+                f"Expected type '{List[List[Tuple[float, float]]]}' received type '{type(value)}'"
+            )
+        for line in value:
+            LineString.__validate__(line)
 
 
 class Polygon(Spatial):
@@ -630,14 +665,12 @@ class Polygon(Spatial):
         super().__init__(value=value, symbol=symbol)
 
     @classmethod
-    def supports(cls, value: Any) -> bool:
-        if MultiLineString.supports(value):
-            for line in value:
-                if not (len(line) >= 4 and line[0] == line[-1]):
-                    return False
-            return True
-        else:
-            return issubclass(type(value), Polygon)
+    def __validate__(cls, value: Any):
+        MultiLineString.__validate__(value)
+        for line in value:
+            LineString.__validate__(line)
+            if not (len(line) >= 4 and line[0] == line[-1]):
+                raise ValueError("Polygon's must contain four unique points.")
 
     @property
     def area(self):
@@ -679,14 +712,13 @@ class MultiPolygon(Spatial):
         super().__init__(value=value, symbol=symbol)
 
     @classmethod
-    def supports(cls, value: Any) -> bool:
-        if isinstance(value, list):
-            for poly in value:
-                if not Polygon.supports(poly):
-                    return False
-            return True
-        else:
-            return issubclass(type(value), MultiPolygon)
+    def __validate__(cls, value: Any):
+        if not isinstance(value, list):
+            raise TypeError(
+                f"Expected type '{List[List[List[Tuple[float, float]]]]}' received type '{type(value)}'"
+            )
+        for poly in value:
+            Polygon.__validate__(poly)
 
     @property
     def area(self):
@@ -704,12 +736,12 @@ def _get_atomic_type_by_value(other: Any):
         return Integer
     elif Float.supports(other):
         return Float
+    elif DateTime.supports(other):
+        return DateTime
     elif Date.supports(other):
         return Date
     elif Time.supports(other):
         return Time
-    elif DateTime.supports(other):
-        return DateTime
     elif Duration.supports(other):
         return Duration
     elif MultiPolygon.supports(other):
@@ -850,8 +882,11 @@ class Dictionary(Equatable):
         return super().definite(value)
 
     @classmethod
-    def supports(cls, value: Any) -> bool:
-        return type(value) in {dict, Dictionary}
+    def __validate__(cls, value: Any):
+        if not isinstance(value, dict):
+            raise TypeError(
+                f"Expected type '{dict}' received type '{type(value)}'"
+            )
 
     @classmethod
     def decode_value(cls, value: dict) -> Any:

@@ -75,7 +75,7 @@ class GroundTruth(StaticCollection):
             annotations=annotations,
         )
 
-    def __validate__(self):
+    def __post_init__(self):
         for annotation in self.annotations:
             for label in annotation.labels:
                 if label.score.get_value() is not None:
@@ -115,7 +115,7 @@ class Prediction(StaticCollection):
             annotations=annotations,
         )
 
-    def __validate__(self):
+    def __post_init__(self):
         """
         Validate the inputs of the `Prediction` based on task type.
         """

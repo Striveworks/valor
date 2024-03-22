@@ -1,5 +1,6 @@
 import io
 import typing
+import warnings
 from base64 import b64decode, b64encode
 from typing import Any, List, Optional, Union
 
@@ -25,17 +26,22 @@ from valor.symbolic.atomics import (
 
 class Score(Float, Nullable):
     @classmethod
-    def supports(cls, value: Any) -> bool:
-        # TODO - improve handling of unsupported types, this will always print TypeError: Score value with type 'float' is not supported.
-        if Float.supports(value):
-            return value >= 0 and value <= 1.0
-        return value is None
+    def __validate__(cls, value: Any):
+        if value is not None:
+            Float.__validate__(value)
+            if value < 0.0:
+                raise ValueError("score must be non-negative")
+            elif value > 1.0:
+                raise ValueError("score must not exceed 1.0")
 
 
 class TaskTypeEnum(String):
     @classmethod
-    def supports(cls, value: Any) -> bool:
-        return isinstance(value, TaskType)
+    def __validate__(cls, value: Any):
+        if not isinstance(value, TaskType):
+            raise TypeError(
+                f"Expected type '{TaskType}' received type '{type(value)}'"
+            )
 
     @classmethod
     def decode_value(cls, value: str):
@@ -85,6 +91,17 @@ class BoundingBox(Polygon, Nullable):
     """
 
     @classmethod
+    def __validate__(cls, value: Any):
+        if value is not None:
+            Polygon.__validate__(value)
+            if len(value) != 1:
+                raise ValueError("Bounding Box should not contain holes.")
+            elif len(value[0]) != 5:
+                raise ValueError(
+                    "Bounding Box should consist of four unique points."
+                )
+
+    @classmethod
     def from_extrema(
         cls,
         xmin: float,
@@ -121,12 +138,6 @@ class BoundingBox(Polygon, Nullable):
             ]
         ]
         return cls(value=points)
-
-    @classmethod
-    def supports(cls, value: Any) -> bool:
-        return (
-            Polygon.supports(value) and len(value) == 1 and len(value[0]) == 5
-        ) or value is None
 
 
 class BoundingPolygon(Polygon, Nullable):
@@ -176,8 +187,9 @@ class BoundingPolygon(Polygon, Nullable):
     """
 
     @classmethod
-    def supports(cls, value: Any) -> bool:
-        return Polygon.supports(value) or value is None
+    def __validate__(cls, value: Any):
+        if value is not None:
+            Polygon.__validate__(value)
 
 
 class Raster(Spatial, Nullable):
@@ -212,6 +224,62 @@ class Raster(Spatial, Nullable):
     """
 
     @classmethod
+    def __validate__(cls, value: Any):
+        if value is not None:
+            if not isinstance(value, dict):
+                raise TypeError(
+                    "Raster should contain a dictionary describing a mask and optionally a geometry."
+                )
+            elif set(value.keys()) != {"mask", "geometry"}:
+                raise ValueError(
+                    "Raster should be described by a dictionary with keys 'mask' and 'geometry'"
+                )
+            elif not isinstance(value["mask"], np.ndarray):
+                raise TypeError(
+                    f"Expected mask to have type '{np.ndarray}' receieved type '{value['mask']}'"
+                )
+            elif len(value["mask"].shape) != 2:
+                raise ValueError("raster currently only supports 2d arrays")
+            elif value["mask"].dtype != bool:
+                raise ValueError(
+                    f"Expecting a binary mask (i.e. of dtype bool) but got dtype {value['mask'].dtype}"
+                )
+            elif (
+                value["geometry"] is not None
+                and not Polygon.supports(value["geometry"])
+                and not MultiPolygon.supports(value["geometry"])
+            ):
+                raise TypeError(
+                    "Expected geometry to conform to either Polygon or MultiPolygon or be 'None'"
+                )
+
+    def encode_value(self) -> Any:
+        value = self.get_value()
+        if value is not None:
+            f = io.BytesIO()
+            PIL.Image.fromarray(value["mask"]).save(f, format="PNG")
+            f.seek(0)
+            mask_bytes = f.read()
+            f.close()
+            value = {
+                "mask": b64encode(mask_bytes).decode(),
+                "geometry": value["geometry"],
+            }
+        return value
+
+    @classmethod
+    def decode_value(cls, value: Any):
+        if value is not None:
+            mask_bytes = b64decode(value["mask"])
+            with io.BytesIO(mask_bytes) as f:
+                img = PIL.Image.open(f)
+                value = {
+                    "mask": np.array(img),
+                    "geometry": value["geometry"],
+                }
+        return cls(value=value)
+
+    @classmethod
     def from_numpy(cls, mask: np.ndarray):
         """
         Create a Raster object from a NumPy array.
@@ -230,27 +298,12 @@ class Raster(Spatial, Nullable):
         ValueError
             If the input array is not 2D or not of dtype bool.
         """
-        if len(mask.shape) != 2:
-            raise ValueError("raster currently only supports 2d arrays")
-        if mask.dtype != bool:
-            raise ValueError(
-                f"Expecting a binary mask (i.e. of dtype bool) but got dtype {mask.dtype}"
-            )
-        f = io.BytesIO()
-        PIL.Image.fromarray(mask).save(f, format="PNG")
-        f.seek(0)
-        mask_bytes = f.read()
-        f.close()
-        value = {
-            "mask": b64encode(mask_bytes).decode(),
-            "geometry": None,
-        }
-        return cls(value=value)
+        return cls(value={"mask": mask, "geometry": None})
 
     @classmethod
     def from_geometry(
         cls,
-        mask: Union[Polygon, MultiPolygon],
+        geometry: Union[Polygon, MultiPolygon],
         height: int,
         width: int,
     ):
@@ -270,23 +323,8 @@ class Raster(Spatial, Nullable):
         -------
         Raster
         """
-        r = cls.from_numpy(np.full((int(height), int(width)), False))
-        if r._value is None:
-            raise ValueError
-        r._value["geometry"] = mask
-        return r
-
-    @classmethod
-    def supports(cls, value: Any) -> bool:
-        return (value is None) or (
-            isinstance(value, dict)
-            and set(value.keys()) == {"mask", "geometry"}
-            and isinstance(value["mask"], str)
-            and (
-                isinstance(value["geometry"], (Polygon, MultiPolygon))
-                or value["geometry"] is None
-            )
-        )
+        bitmask = np.full((int(height), int(width)), False)
+        return cls(value={"mask": bitmask, "geometry": geometry.get_value()})
 
     @property
     def area(self):
@@ -298,31 +336,37 @@ class Raster(Spatial, Nullable):
         return Float.symbolic(name=self._value._name, attribute="area")
 
     @property
-    def array(self) -> np.ndarray:
+    def array(self) -> Optional[np.ndarray]:
         """
-        Convert the base64-encoded mask to a NumPy array.
+        The bitmask as a numpy array.
 
         Returns
         -------
-        np.ndarray
-            A 2D binary array representing the mask.
+        Optional[np.ndarray]
+            A 2D binary array representing the mask if it exists.
         """
-        if self.is_symbolic or not self._value:
-            raise ValueError
-        if self._value["geometry"] is not None:
-            raise ValueError(
-                "NumPy conversion is not supported for geometry-based rasters."
-            )
-        mask_bytes = b64decode(self._value["mask"])
-        with io.BytesIO(mask_bytes) as f:
-            img = PIL.Image.open(f)
-            return np.array(img)
+        if value := self.get_value():
+            if value["geometry"] is not None:
+                warnings.warn(
+                    "array does not hold information as this is a geometry-based raster"
+                )
+            return value["mask"]
+        warnings.warn("raster has no value")
+        return None
 
 
 class Embedding(Spatial, Nullable):
     @classmethod
-    def supports(cls, value: Any) -> bool:
-        return (isinstance(value, list) and len(value) > 0) or value is None
+    def __validate__(cls, value: Any):
+        if value is not None:
+            if not isinstance(value, list):
+                raise TypeError(
+                    f"Expected type '{Optional[List[float]]}' received type '{type(value)}'"
+                )
+            elif len(value) < 1:
+                raise ValueError(
+                    "embedding should have at least one dimension"
+                )
 
 
 def _get_schema_type_by_name(name: str):
@@ -390,20 +434,22 @@ class StaticCollection(Equatable, Listable):
                     else obj.definite(value)
                 )
                 self.__setattr__(attr, value)
-            self.__validate__()
             super().__init__(value=None, symbol=None)
+
+    def __post_init__(self):
+        pass
 
     @classmethod
     def definite(cls, **kwargs):
         kwargs["symbol"] = None
         return cls(**kwargs)
 
-    def __validate__(self):
-        pass
-
     @classmethod
-    def supports(cls, value: Any) -> bool:
-        return value is None
+    def __validate__(cls, value: Any):
+        if value is not None:
+            raise TypeError(
+                "StaticCollection's do not store an internal value."
+            )
 
     @classmethod
     def decode_value(cls, value: dict):

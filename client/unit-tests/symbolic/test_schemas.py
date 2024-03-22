@@ -1,3 +1,4 @@
+import numpy as np
 import pytest
 
 from valor.symbolic.functions import AppendableFunction, TwoArgumentFunction
@@ -177,9 +178,9 @@ def test_score():
     _test_encoding(objcls, None, None)
 
     # test that score is bounded to the range 0.0 <= score <= 1.0
-    with pytest.raises(TypeError):
+    with pytest.raises(ValueError):
         Score(-0.01)
-    with pytest.raises(TypeError):
+    with pytest.raises(ValueError):
         Score(1.01)
 
 
@@ -284,12 +285,12 @@ def test_bounding_box():
     _test_encoding(objcls, None, None)
 
     # test validate box must define 5 points with first == last
-    with pytest.raises(TypeError):
+    with pytest.raises(ValueError):
         BoundingBox([[(0, 0)]])
-    with pytest.raises(TypeError):
+    with pytest.raises(ValueError):
         BoundingBox(value[:-1])
     value[0][-1] = (10, 10)
-    with pytest.raises(TypeError):
+    with pytest.raises(ValueError):
         BoundingBox(value)
 
 
@@ -345,7 +346,41 @@ def test_bounding_polygon():
 
 
 def test_raster():
-    pass
+    objcls = Raster
+
+    bitmask1 = np.full((10, 10), True)
+    bitmask2 = np.full((10, 10), False)
+    geom = BoundingBox.from_extrema(0, 1, 2, 3)
+
+    value = {"mask": bitmask1, "geometry": None}
+    other = {"mask": bitmask2, "geometry": geom.get_value()}
+
+    # test 'from_numpy' classmethod
+    assert Raster.from_numpy(bitmask1).to_dict() == Raster(value).to_dict()
+
+    # test 'from_geometry' classmethod
+    assert (
+        Raster.from_geometry(geom, 10, 10).to_dict() == Raster(other).to_dict()
+    )
+
+    # test typing
+
+    # test property 'area'
+    assert objcls.symbolic().area.is_symbolic
+    assert objcls.symbolic().area.to_dict() == {
+        "type": "symbol",
+        "value": {
+            "owner": None,
+            "name": objcls.__name__.lower(),
+            "key": None,
+            "attribute": "area",
+        },
+    }
+    # test that property 'area' is not accessible when object is a value
+    with pytest.raises(ValueError):
+        objcls(value).area
+
+    # test property 'array'
 
 
 def test_embedding():
