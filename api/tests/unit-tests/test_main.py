@@ -718,7 +718,6 @@ def test_get_prediction(crud, client: TestClient):
 
 def test_post_datasets(client: TestClient):
     example_json = {
-        "id": 1,
         "name": "dataset1",
         "metadata": {
             "meta1": 0.4,
@@ -758,9 +757,7 @@ def test_get_datasets(crud, client: TestClient):
 
 @patch("valor_api.main.crud")
 def test_get_dataset_by_name(crud, client: TestClient):
-    crud.get_dataset.return_value = schemas.Dataset(
-        id=1, name="name", metadata={}
-    )
+    crud.get_dataset.return_value = schemas.Dataset(name="name", metadata={})
     resp = client.get("/datasets/name")
     assert resp.status_code == 200
     crud.get_dataset.assert_called_once()
@@ -837,7 +834,6 @@ def test_delete_dataset(crud, client: TestClient):
 
 def test_post_models(client: TestClient):
     example_json = {
-        "id": 1,
         "name": "model1",
         "metadata": {
             "meta1": 0.4,
@@ -877,7 +873,7 @@ def test_get_models(crud, client: TestClient):
 
 @patch("valor_api.main.crud")
 def test_get_model_by_name(crud, client: TestClient):
-    crud.get_model.return_value = schemas.Model(id=1, name="name", metadata={})
+    crud.get_model.return_value = schemas.Model(name="name", metadata={})
     resp = client.get("/models/modelname")
     assert resp.status_code == 200
     crud.get_model.assert_called_once()

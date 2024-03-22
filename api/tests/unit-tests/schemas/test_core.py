@@ -38,7 +38,6 @@ def test_dataset(metadata):
         metadata=metadata,
     )
     schemas.Dataset(
-        id=1,
         name="dataset1",
         metadata=metadata,
     )
@@ -86,7 +85,6 @@ def test_model(metadata):
         metadata=metadata,
     )
     schemas.Model(
-        id=1,
         name="model1",
         metadata=metadata,
     )
