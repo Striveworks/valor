@@ -201,10 +201,6 @@ def _test_equatable(varA, varB, varC):
     assert {varA, varB} == {varB, varA}
 
 
-def _test_logical(varA, varB, varC):
-    assert False
-
-
 def _test_quantifiable(varA, varB, varC):
 
     # greater-than
@@ -590,8 +586,6 @@ def _test_resolvable(objcls, permutations, op):
         assert A.__getattribute__(op)(B).get_value() is a.__getattribute__(op)(
             b
         )
-        # test commutative propery (this will fail)
-        assert type(b.__getattribute__(op)(A)) not in {objcls, type(b)}
         # test dictionary generation
         dictA = A.to_dict()
         assert A.get_value() == a

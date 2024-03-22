@@ -9,24 +9,27 @@ import PIL.Image
 from valor.enums import TaskType
 from valor.symbolic.atomics import (
     Dictionary,
-    Float,
-    MultiPolygon,
-    Polygon,
-    String,
-    _get_atomic_type_by_name,
     Equatable,
+    Float,
     Listable,
+    MultiPolygon,
     Nullable,
+    Polygon,
     Spatial,
+    String,
     Symbol,
     Variable,
+    _get_atomic_type_by_name,
 )
 
 
 class Score(Float, Nullable):
     @classmethod
     def supports(cls, value: Any) -> bool:
-        return Float.supports(value) or value is None
+        # TODO - improve handling of unsupported types, this will always print TypeError: Score value with type 'float' is not supported.
+        if Float.supports(value):
+            return value >= 0 and value <= 1.0
+        return value is None
 
 
 class TaskTypeEnum(String):
@@ -122,13 +125,8 @@ class BoundingBox(Polygon, Nullable):
     @classmethod
     def supports(cls, value: Any) -> bool:
         return (
-            (
-                Polygon.supports(value)
-                and len(value) == 1 
-                and len(value[0]) == 5
-            )
-            or value is None
-        )
+            Polygon.supports(value) and len(value) == 1 and len(value[0]) == 5
+        ) or value is None
 
 
 class BoundingPolygon(Polygon, Nullable):

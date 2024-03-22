@@ -1,9 +1,10 @@
 import datetime
+from typing import Any, Dict, Iterator, List, Optional, Tuple
+
 import numpy as np
 
-from typing import Any, Dict, List, Tuple, Optional, Iterator
-
 from valor.symbolic.functions import (
+    And,
     Eq,
     Ge,
     Gt,
@@ -14,12 +15,10 @@ from valor.symbolic.functions import (
     Le,
     Lt,
     Ne,
+    Negate,
     Or,
     Outside,
-    And,
-    Or, 
     Xor,
-    Negate,
 )
 
 
@@ -233,10 +232,9 @@ class Variable:
         raise AttributeError(
             f"'{type(self).__name__}' object has no attribute '__le__'"
         )
-    
+
 
 class Bool(Variable):
-
     @classmethod
     def supports(cls, value: Any) -> bool:
         return isinstance(value, bool)
@@ -258,19 +256,19 @@ class Bool(Variable):
         if self.is_value and other.is_value:
             return type(self)(self.get_value() and other.get_value())
         return And(self, other)
-    
+
     def __or__(self, value: Any):
         other = self.preprocess(value)
         if self.is_value and other.is_value:
             return type(self)(self.get_value() or other.get_value())
         return Or(self, other)
-    
+
     def __xor__(self, value: Any):
         other = self.preprocess(value)
         if self.is_value and other.is_value:
             return self != value
         return Xor(self, other)
-    
+
     def __invert__(self):
         if self.is_value:
             return type(self)(not self.get_value())
@@ -281,13 +279,27 @@ class Equatable(Variable):
     def __eq__(self, value: Any):
         other = self.preprocess(value)
         if self.is_value and other.is_value:
-            return Bool(self.get_value() == other.get_value())
+            lhs = self.get_value()
+            rhs = other.get_value()
+            if lhs is None:
+                return Bool(rhs is None)
+            elif rhs is None:
+                return Bool(lhs is None)
+            else:
+                return Bool(lhs == rhs)
         return Eq(self, other)
 
     def __ne__(self, value: Any):
         other = self.preprocess(value)
         if self.is_value and other.is_value:
-            return Bool(self.get_value() != other.get_value())
+            lhs = self.get_value()
+            rhs = other.get_value()
+            if lhs is None:
+                return Bool(rhs is not None)
+            elif rhs is None:
+                return Bool(lhs is not None)
+            else:
+                return Bool(lhs != rhs)
         return Ne(self, other)
 
     def in_(self, vlist: List[Any]):
@@ -810,18 +822,19 @@ class DictionaryValue:
 
 
 class Dictionary(Equatable):
-
     def __init__(
         self,
         value: Optional[Dict[str, Any]] = None,
-        symbol: Symbol | None = None
+        symbol: Symbol | None = None,
     ):
         if isinstance(value, dict):
             _value = dict()
             for k, v in value.items():
                 if isinstance(v, Variable):
                     if v.is_symbolic:
-                        raise ValueError("Dictionary does not accpet symbols as values.")
+                        raise ValueError(
+                            "Dictionary does not accpet symbols as values."
+                        )
                     _value[k] = v
                 else:
                     _value[k] = _get_atomic_type_by_value(v).definite(v)
