@@ -131,7 +131,7 @@ def test_version_mismatch_warning(caplog):
     caplog.clear()
 
     # test missing client or API versions
-    Client().conn._validate_version(client_version=None, api_version="1.1.1")
+    Client().conn._validate_version(client_version=None, api_version="1.1.1")  # type: ignore - purposefully throwing error
 
     assert all(
         record.levelname == "WARNING"
@@ -140,7 +140,7 @@ def test_version_mismatch_warning(caplog):
     )
     caplog.clear()
 
-    Client().conn._validate_version(client_version="1.1.1", api_version=None)
+    Client().conn._validate_version(client_version="1.1.1", api_version=None)  # type: ignore - purposefully throwing error
 
     assert all(
         record.levelname == "WARNING"

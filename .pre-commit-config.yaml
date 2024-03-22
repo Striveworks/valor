@@ -37,6 +37,7 @@ repos:
             "requests",
             "Pillow >= 9.1.0",
             "numpy",
+            "pytest",
             "python-dotenv",
             "SQLAlchemy>=2.0",
             "fastapi[all]>=0.100.0",

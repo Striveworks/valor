@@ -36,7 +36,7 @@ def test_protected_routes(client: TestClient):
     """Check that all routes (except for health, ready, and token) are protected"""
     routes = [
         r
-        for r in client.app.routes
+        for r in client.app.routes  # type: ignore - Cannot access member "routes" for type "_WrapASGI2
         if isinstance(r, APIRoute)
         and r.name not in {"health", "ready", "login_for_access_token"}
     ]
@@ -114,7 +114,7 @@ def _test_post_evaluation_endpoint(
 
     with patch(
         "valor_api.main.crud." + crud_method_name,
-        side_effect=exceptions.ModelStateError("a", "b", "c"),
+        side_effect=exceptions.ModelStateError("a", "b", "c"),  # type: ignore - purposefully throwing error
     ):
         resp = client.post(endpoint, json=example_json)
         assert resp.status_code == 409

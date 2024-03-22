@@ -181,11 +181,14 @@ def prediction_detections(
 
 @pytest.fixture
 def groundtruth_instance_segmentations(
-    poly_with_hole: schemas.BasicPolygon,
-    poly_without_hole: schemas.BasicPolygon,
+    poly_with_hole: schemas.Polygon,
+    poly_without_hole: schemas.Polygon,
     img1: schemas.Datum,
     img2: schemas.Datum,
 ) -> list[schemas.GroundTruth]:
+    assert isinstance(img2.metadata["height"], (int, float)) and isinstance(
+        img2.metadata["width"], (int, float)
+    )
     return [
         schemas.GroundTruth(
             datum=img1,
@@ -809,9 +812,13 @@ def test_create_predicted_segmentations_check_area_and_delete_model(
     )
 
     for i in range(len(img.annotations)):
+        assert isinstance(
+            prediction_instance_segmentations[0].annotations[i].raster,
+            schemas.Raster,
+        )
         mask = _bytes_to_pil(
             b64decode(
-                prediction_instance_segmentations[0].annotations[i].raster.mask
+                prediction_instance_segmentations[0].annotations[i].raster.mask  # type: ignore - raster is checked in assertion above
             )
         )
         assert np.array(mask).sum() in raster_counts
@@ -836,6 +843,9 @@ def test_segmentation_area_no_hole(
     _check_db_empty(db=db)
 
     crud.create_dataset(db=db, dataset=schemas.Dataset(name=dataset_name))
+    assert isinstance(img1.metadata["height"], (int, float)) and isinstance(
+        img1.metadata["width"], (int, float)
+    )
 
     crud.create_groundtruth(
         db=db,
@@ -872,6 +882,9 @@ def test_segmentation_area_with_hole(
     _check_db_empty(db=db)
 
     crud.create_dataset(db=db, dataset=schemas.Dataset(name=dataset_name))
+    assert isinstance(img1.metadata["height"], (int, float)) and isinstance(
+        img1.metadata["width"], (int, float)
+    )
 
     crud.create_groundtruth(
         db=db,
@@ -896,6 +909,7 @@ def test_segmentation_area_with_hole(
     segmentation = db.scalar(select(models.Annotation))
 
     # give tolerance of 2 pixels because of poly -> mask conversion
+    assert segmentation
     assert (db.scalar(ST_Count(segmentation.raster)) - 92) <= 2
 
 
@@ -908,7 +922,9 @@ def test_segmentation_area_multi_polygon(
 ):
     # sanity check nothing in db
     _check_db_empty(db=db)
-
+    assert isinstance(img1.metadata["height"], (int, float)) and isinstance(
+        img1.metadata["width"], (int, float)
+    )
     crud.create_dataset(db=db, dataset=schemas.Dataset(name=dataset_name))
 
     crud.create_groundtruth(
@@ -935,6 +951,7 @@ def test_segmentation_area_multi_polygon(
 
     # the two shapes don't intersect so area should be sum of the areas
     # give tolerance of 2 pixels because of poly -> mask conversion
+    assert segmentation
     assert (
         abs(db.scalar(ST_Count(segmentation.raster)) - (math.ceil(45.5) + 92))
         <= 2
@@ -975,8 +992,6 @@ def test_gt_seg_as_mask_or_polys(
         labels=[schemas.Label(key="k1", value="v1")],
         raster=schemas.Raster(
             mask=mask_b64,
-            height=h,
-            width=w,
         ),
     )
     gt2 = schemas.Annotation(
@@ -1030,6 +1045,7 @@ def test_gt_seg_as_mask_or_polys(
     )
     assert len(segs.annotations) == 2
 
+    assert segs.annotations[0].raster and segs.annotations[1].raster
     decoded_mask0 = np.array(
         _bytes_to_pil(b64decode(segs.annotations[0].raster.mask))
     )
@@ -1062,8 +1078,8 @@ def test_create_detection_metrics(
 
     def method_to_test(
         label_key: str,
-        min_area: float = None,
-        max_area: float = None,
+        min_area: float | None = None,
+        max_area: float | None = None,
     ):
         geometric_filters = []
         if min_area:
@@ -1127,9 +1143,11 @@ def test_create_detection_metrics(
     assert missing_pred_labels == []
     assert ignored_pred_labels == [schemas.Label(key="class", value="3")]
 
-    metrics = db.scalar(
+    query = db.scalar(
         select(models.Evaluation).where(models.Evaluation.id == evaluation_id)
-    ).metrics
+    )
+    assert query
+    metrics = query.metrics
 
     metric_ids = [m.id for m in metrics]
 
@@ -1162,6 +1180,7 @@ def test_create_detection_metrics(
     pydantic_metrics = crud.get_evaluations(
         db=db, evaluation_ids=[evaluation_id]
     )
+    assert pydantic_metrics[0].metrics is not None
     for m in pydantic_metrics[0].metrics:
         assert isinstance(m, schemas.Metric)
     assert len(pydantic_metrics[0].metrics) == len(metric_ids)
@@ -1169,14 +1188,14 @@ def test_create_detection_metrics(
     # run again and make sure no new ids were created
     evaluation_id_again, _, _ = method_to_test(label_key="class")
     assert evaluation_id == evaluation_id_again
-    metric_ids_again = [
-        m.id
-        for m in db.scalar(
-            select(models.Evaluation).where(
-                models.Evaluation.id == evaluation_id_again
-            )
-        ).metrics
-    ]
+
+    query = db.scalar(
+        select(models.Evaluation).where(
+            models.Evaluation.id == evaluation_id_again
+        )
+    )
+    assert query is not None
+    metric_ids_again = [m.id for m in query.metrics]
     assert sorted(metric_ids) == sorted(metric_ids_again)
 
     # test crud.get_model_metrics
@@ -1186,6 +1205,7 @@ def test_create_detection_metrics(
         evaluation_ids=[evaluation_id],
     )[0].metrics
 
+    assert metrics_pydantic
     assert len(metrics_pydantic) == len(metrics)
 
     for m in metrics_pydantic:
@@ -1211,6 +1231,7 @@ def test_create_detection_metrics(
         model_names=["test_model"],
         evaluation_ids=[evaluation_id],
     )[0].metrics
+    assert metrics_pydantic
     for m in metrics_pydantic:
         assert m.type in {
             "AP",
@@ -1323,9 +1344,11 @@ def test_create_clf_metrics(
     assert db.scalar(select(func.count()).select_from(models.Evaluation)) == 1
 
     # get all metrics
-    metrics = db.scalar(
+    query = db.scalar(
         select(models.Evaluation).where(models.Evaluation.id == evaluation_id)
-    ).metrics
+    )
+    assert query
+    metrics = query.metrics
 
     assert set([metric.type for metric in metrics]) == {
         "Accuracy",
@@ -1366,13 +1389,14 @@ def test_create_clf_metrics(
     # test getting metrics from evaluation settings id
     evaluations = crud.get_evaluations(db=db, evaluation_ids=[evaluation_id])
     assert len(evaluations) == 1
-
+    assert evaluations[0].metrics
     for m in evaluations[0].metrics:
         assert isinstance(m, schemas.Metric)
     assert len(evaluations[0].metrics) == len(metrics)
 
     # test getting confusion matrices from evaluation settings id
     cms = evaluations[0].confusion_matrices
+    assert cms
     cms = sorted(cms, key=lambda cm: cm.label_key)
     assert len(cms) == 2
     assert cms[0].label_key == "k1"
@@ -1399,9 +1423,11 @@ def test_create_clf_metrics(
     assert len(resp) == 1
     assert resp[0].status == enums.EvaluationStatus.DONE
 
-    metrics = db.scalar(
+    query = db.scalar(
         select(models.Evaluation).where(models.Evaluation.id == evaluation_id)
-    ).metrics
+    )
+    assert query
+    metrics = query.metrics
     assert len(metrics) == 2 + 2 + 6 + 6 + 6
     confusion_matrices = db.scalars(
         select(models.ConfusionMatrix).where(

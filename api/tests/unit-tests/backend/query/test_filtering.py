@@ -99,7 +99,7 @@ def test__get_spatial_op():
 def test__filter_by_metadatum():
     with pytest.raises(NotImplementedError):
         _filter_by_metadatum(
-            key="key", value_filter="not_valid_type", table=models.Dataset
+            key="key", value_filter="not_valid_type", table=models.Dataset  # type: ignore - purposefully throwing error
         )
 
 

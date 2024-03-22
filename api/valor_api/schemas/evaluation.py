@@ -2,6 +2,7 @@ from pydantic import BaseModel, ConfigDict, model_validator
 
 from valor_api.enums import AnnotationType, EvaluationStatus, TaskType
 from valor_api.schemas.filters import Filter
+from valor_api.schemas.label import Label
 from valor_api.schemas.metrics import ConfusionMatrixResponse, Metric
 
 LabelMapType = list[list[list[str]]]
@@ -150,6 +151,11 @@ class EvaluationResponse(BaseModel):
         A list of metrics associated with the evaluation.
     confusion_matrices: List[ConfusionMatrixResponse]
         A list of confusion matrices associated with the evaluation.
+    missing_pred_labels: List[Label], optional
+        A list of ground truth labels that aren't associated with any predictions.
+    ignored_pred_labels: List[Label], optional
+        A list of prediction labels that aren't associated with any ground truths.
+
     """
 
     id: int
@@ -159,6 +165,8 @@ class EvaluationResponse(BaseModel):
     status: EvaluationStatus
     metrics: list[Metric] | None = None
     confusion_matrices: list[ConfusionMatrixResponse] | None = None
+    ignored_pred_labels: list[Label] | None = None
+    missing_pred_labels: list[Label] | None = None
 
     # pydantic setting
     model_config = ConfigDict(

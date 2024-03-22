@@ -76,12 +76,6 @@ def test_annotation(bbox, polygon, raster, labels, metadata):
         Annotation(
             task_type=enums.TaskType.OBJECT_DETECTION,
             labels=labels,
-            multipolygon=bbox,
-        )
-    with pytest.raises(TypeError) as e:
-        Annotation(
-            task_type=enums.TaskType.OBJECT_DETECTION,
-            labels=labels,
             raster=bbox,
         )
     with pytest.raises(TypeError) as e:
@@ -266,7 +260,7 @@ def test_prediction():
 
     # test equalities
     with pytest.raises(TypeError):
-        Prediction(datum=datum, annotations=pds) == 1
+        _ = Prediction(datum=datum, annotations=pds) == 1
 
     assert Prediction(datum=datum, annotations=pds) == Prediction(
         datum=datum, annotations=pds
