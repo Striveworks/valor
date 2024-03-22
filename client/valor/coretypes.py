@@ -1110,11 +1110,10 @@ class Dataset:
         -------
         valor.Dataset
         """
-        resp.pop("id")
         resp["metadata"] = load_metadata(resp["metadata"])
         return cls(**resp, connection=connection)
 
-    def to_dict(self, id: Optional[int] = None) -> dict:
+    def to_dict(self) -> dict:
         """
         Defines how a `valor.Dataset` object is serialized into a dictionary.
 
@@ -1123,11 +1122,7 @@ class Dataset:
         dict
             A dictionary describing a model.
         """
-        return {
-            "id": id,
-            "name": self.name,
-            "metadata": dump_metadata(self.metadata),
-        }
+        return {"name": self.name, "metadata": dump_metadata(self.metadata)}
 
     def __str__(self) -> str:
         """Dumps the object into a JSON formatted string."""
@@ -1406,11 +1401,10 @@ class Model:
         -------
         valor.Model
         """
-        resp.pop("id")
         resp["metadata"] = load_metadata(resp["metadata"])
         return cls(**resp, connection=connection)
 
-    def to_dict(self, id: Optional[int] = None) -> dict:
+    def to_dict(self) -> dict:
         """
         Defines how a `valor.Model` object is serialized into a dictionary.
 
@@ -1419,11 +1413,7 @@ class Model:
         dict
             A dictionary describing a model.
         """
-        return {
-            "id": id,
-            "name": self.name,
-            "metadata": dump_metadata(self.metadata),
-        }
+        return {"name": self.name, "metadata": dump_metadata(self.metadata)}
 
     def __str__(self) -> str:
         """Dumps the object into a JSON formatted string."""
