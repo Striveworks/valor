@@ -157,8 +157,8 @@ def _compute_curves(
 
 
 def _calculate_ap_and_ar(
-    sorted_ranked_pairs: dict[int, list[RankedPair]],
-    number_of_groundtruths_per_grouper: dict[int, int],
+    sorted_ranked_pairs: dict[str, list[RankedPair]],
+    number_of_groundtruths_per_grouper: dict[str, int],
     grouper_mappings: dict[str, dict[str, schemas.Label]],
     iou_thresholds: list[float],
     recall_score_threshold: float,

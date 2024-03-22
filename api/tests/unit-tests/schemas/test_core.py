@@ -46,31 +46,31 @@ def test_dataset(metadata):
     # test property `name`
     with pytest.raises(ValidationError):
         schemas.Dataset(
-            name=(12,),
+            name=(12,),  # type: ignore - purposefully throwing error
         )
     with pytest.raises(ValidationError):
         schemas.Dataset(name="dataset@")
     with pytest.raises(ValidationError):
-        schemas.Dataset(name=None)
+        schemas.Dataset(name=None)  # type: ignore - purposefully throwing error
 
     # test property `metadata`
     with pytest.raises(ValidationError):
         schemas.Dataset(
             name="123",
-            metadata={123: 12434},
+            metadata={123: 12434},  # type: ignore - purposefully throwing error
         )
     with pytest.raises(ValidationError):
         schemas.Dataset(
             name="123",
-            metadata=[{123: 12434}, "123"],
+            metadata=[{123: 12434}, "123"],  # type: ignore - purposefully throwing error
         )
 
     # test property `id`
     with pytest.raises(ValidationError):
         schemas.Dataset(
-            id="value",
+            id="value",  # type: ignore - purposefully throwing error
             name="123",
-            metadata=[{123: 12434}, "123"],
+            metadata=[{123: 12434}, "123"],  # type: ignore - purposefully throwing error
         )
 
 
@@ -94,31 +94,31 @@ def test_model(metadata):
     # test property `name`
     with pytest.raises(ValidationError):
         schemas.Model(
-            name=(12,),
+            name=(12,),  # type: ignore - purposefully throwing error
         )
     with pytest.raises(ValidationError):
         schemas.Dataset(name="model@")
     with pytest.raises(ValidationError):
-        schemas.Dataset(name=None)
+        schemas.Dataset(name=None)  # type: ignore - purposefully throwing error
 
     # test property `metadata`
     with pytest.raises(ValidationError):
         schemas.Model(
             name="123",
-            metadata={123: 123},
+            metadata={123: 123},  # type: ignore - purposefully throwing error
         )
     with pytest.raises(ValidationError):
         schemas.Model(
             name="123",
-            metadata=[{123: 12434}, "123"],
+            metadata=[{123: 12434}, "123"],  # type: ignore - purposefully throwing error
         )
 
     # test property `id`
     with pytest.raises(ValidationError):
         schemas.Model(
-            id="value",
+            id="value",  # type: ignore - purposefully throwing error
             name="123",
-            metadata=[{123: 12434}, "123"],
+            metadata=[{123: 12434}, "123"],  # type: ignore - purposefully throwing error
         )
 
 
@@ -132,7 +132,7 @@ def test_datum(metadata):
     # test property `uid`
     with pytest.raises(ValidationError):
         schemas.Datum(
-            uid=("uid",),
+            uid=("uid",),  # type: ignore - purposefully throwing error
             dataset_name="name",
         )
     with pytest.raises(ValidationError):
@@ -142,24 +142,24 @@ def test_datum(metadata):
         )
     with pytest.raises(ValidationError):
         schemas.Datum(
-            uid=123,
+            uid=123,  # type: ignore - purposefully throwing error
             dataset_name="name",
         )
     with pytest.raises(ValidationError):
         schemas.Datum(
-            uid=None,
+            uid=None,  # type: ignore - purposefully throwing error
             dataset_name="name",
         )
 
     # test property `dataset`
     with pytest.raises(ValidationError):
-        schemas.Datum(
+        schemas.Datum(  # type: ignore - purposefully throwing error
             uid="123",
-            dataset="name@",
+            dataset="name@",  # type: ignore - purposefully throwing error
         )
-        schemas.Datum(
+        schemas.Datum(  # type: ignore - purposefully throwing error
             uid="123",
-            dataset=None,
+            dataset=None,  # type: ignore - purposefully throwing error
         )
 
     # test property `metadata`
@@ -167,7 +167,7 @@ def test_datum(metadata):
         schemas.Datum(
             uid="123",
             dataset_name="name",
-            metadata={123: 123},
+            metadata={123: 123},  # type: ignore - purposefully throwing error
         )
 
     # test `__eq__`
@@ -202,27 +202,27 @@ def test_annotation_without_scores(metadata, bbox, polygon, raster, labels):
         raster=raster,
     )
     schemas.Annotation(
-        task_type=enums.TaskType.CLASSIFICATION.value,
+        task_type=enums.TaskType.CLASSIFICATION.value,  # type: ignore - purposefully throwing error
         labels=labels,
     )
     schemas.Annotation(
-        task_type=enums.TaskType.OBJECT_DETECTION.value,
+        task_type=enums.TaskType.OBJECT_DETECTION.value,  # type: ignore - purposefully throwing error
         labels=labels,
         bounding_box=bbox,
     )
     schemas.Annotation(
-        task_type=enums.TaskType.SEMANTIC_SEGMENTATION.value,
+        task_type=enums.TaskType.SEMANTIC_SEGMENTATION.value,  # type: ignore - purposefully throwing error
         labels=labels,
         raster=raster,
     )
     schemas.Annotation(
-        task_type=enums.TaskType.SEMANTIC_SEGMENTATION.value,
+        task_type=enums.TaskType.SEMANTIC_SEGMENTATION.value,  # type: ignore - purposefully throwing error
         labels=[],
     )
 
     # test property `task_type`
     with pytest.raises(ValidationError):
-        schemas.Annotation(task_type="custom")
+        schemas.Annotation(task_type=124123)  # type: ignore - purposefully throwing error
 
     # test property `labels`
     with pytest.raises(ValidationError):
@@ -232,7 +232,7 @@ def test_annotation_without_scores(metadata, bbox, polygon, raster, labels):
         )
     with pytest.raises(ValidationError):
         schemas.Annotation(
-            labels=[labels[0], 123],
+            labels=[labels[0], 123],  # type: ignore - purposefully throwing error
             task_type=enums.TaskType.CLASSIFICATION,
         )
     assert gt.labels == labels
@@ -240,9 +240,9 @@ def test_annotation_without_scores(metadata, bbox, polygon, raster, labels):
     # test property `metadata`
     with pytest.raises(ValidationError):
         schemas.Annotation(
-            task_type=enums.TaskType.CLASSIFICATION.value,
+            task_type=enums.TaskType.CLASSIFICATION.value,  # type: ignore - purposefully throwing error
             labels=labels,
-            metadata={123: 123},
+            metadata={123: 123},  # type: ignore - purposefully throwing error
         )
 
     # test geometric properties
@@ -262,7 +262,7 @@ def test_annotation_without_scores(metadata, bbox, polygon, raster, labels):
         schemas.Annotation(
             task_type=enums.TaskType.OBJECT_DETECTION,
             labels=labels,
-            multipolygon=bbox,
+            multipolygon=bbox,  # type: ignore - purposefully throwing error
         )
     with pytest.raises(ValidationError):
         schemas.Annotation(
@@ -292,16 +292,16 @@ def test_annotation_with_scores(
         raster=raster,
     )
     schemas.Annotation(
-        task_type=enums.TaskType.CLASSIFICATION.value,
+        task_type=enums.TaskType.CLASSIFICATION,
         labels=scored_labels,
     )
     schemas.Annotation(
-        task_type=enums.TaskType.OBJECT_DETECTION.value,
+        task_type=enums.TaskType.OBJECT_DETECTION,
         labels=scored_labels,
         bounding_box=bbox,
     )
     schemas.Annotation(
-        task_type=enums.TaskType.SEMANTIC_SEGMENTATION.value,
+        task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
         labels=scored_labels,
         raster=raster,
     )
@@ -309,7 +309,7 @@ def test_annotation_with_scores(
     # test property `task_type`
     with pytest.raises(ValidationError):
         schemas.Annotation(
-            task_type="custom",
+            task_type=1245123,  # type: ignore - purposefully throwing error
         )
 
     # test property `scored_labels`
@@ -326,15 +326,15 @@ def test_annotation_with_scores(
     # test property `metadata`
     with pytest.raises(ValidationError):
         schemas.Annotation(
-            task_type=enums.TaskType.CLASSIFICATION.value,
+            task_type=enums.TaskType.CLASSIFICATION,
             labels=scored_labels,
-            metadata=123,
+            metadata=123,  # type: ignore - purposefully throwing error
         )
     with pytest.raises(ValidationError):
         schemas.Annotation(
-            task_type=enums.TaskType.CLASSIFICATION.value,
+            task_type=enums.TaskType.CLASSIFICATION,
             labels=scored_labels,
-            metadata={123: "123"},
+            metadata={123: "123"},  # type: ignore - purposefully throwing error
         )
 
     # test geometric properties
@@ -354,7 +354,7 @@ def test_annotation_with_scores(
         schemas.Annotation(
             task_type=enums.TaskType.OBJECT_DETECTION,
             labels=scored_labels,
-            multipolygon=bbox,
+            multipolygon=bbox,  # type: ignore - purposefully throwing error
         )
     with pytest.raises(ValidationError) as e:
         schemas.Annotation(
@@ -394,7 +394,7 @@ def test_groundtruth(metadata, groundtruth_annotations, raster):
     )
     with pytest.raises(ValidationError):
         schemas.GroundTruth(
-            datum=schemas.Datum(
+            datum=schemas.Datum(  # type: ignore - purposefully throwing error
                 uid="uid",
             ),
             annotations=groundtruth_annotations,
@@ -415,7 +415,7 @@ def test_groundtruth(metadata, groundtruth_annotations, raster):
                 uid="uid",
                 dataset_name="name",
             ),
-            annotations="annotation",
+            annotations="annotation",  # type: ignore - purposefully throwing error
         )
     with pytest.raises(ValidationError):
         schemas.GroundTruth(
@@ -423,7 +423,7 @@ def test_groundtruth(metadata, groundtruth_annotations, raster):
                 uid="uid",
                 dataset_name="name",
             ),
-            annotations=[groundtruth_annotations[0], 1234],
+            annotations=[groundtruth_annotations[0], 1234],  # type: ignore - purposefully throwing error
         )
 
 
@@ -440,13 +440,13 @@ def test_prediction(metadata, predicted_annotations, labels, scored_labels):
     with pytest.raises(ValidationError):
         schemas.Prediction(
             model_name=("name",),
-            datum=schemas.Datum(uid="uid"),
+            datum=schemas.Datum(uid="uid"),  # type: ignore - purposefully throwing error
             annotations=predicted_annotations,
         )
     with pytest.raises(ValidationError):
         schemas.Prediction(
             model_name="name@#$#@",
-            datum=schemas.Datum(uid="uid"),
+            datum=schemas.Datum(uid="uid"),  # type: ignore - purposefully throwing error
             annotations=predicted_annotations,
         )
 
@@ -458,7 +458,7 @@ def test_prediction(metadata, predicted_annotations, labels, scored_labels):
     with pytest.raises(ValidationError):
         schemas.Prediction(
             model_name="name",
-            datum="datum_uid",
+            datum="datum_uid",  # type: ignore - purposefully throwing error
             annotations=predicted_annotations,
         )
 
@@ -479,7 +479,7 @@ def test_prediction(metadata, predicted_annotations, labels, scored_labels):
                 uid="uid",
                 dataset_name="name",
             ),
-            annotations="annotation",
+            annotations="annotation",  # type: ignore - purposefully throwing error
         )
     with pytest.raises(ValidationError):
         schemas.Prediction(
@@ -488,7 +488,7 @@ def test_prediction(metadata, predicted_annotations, labels, scored_labels):
                 uid="uid",
                 dataset_name="name",
             ),
-            annotations=[predicted_annotations[0], 1234],
+            annotations=[predicted_annotations[0], 1234],  # type: ignore - purposefully throwing error
         )
 
     # check sum to 1
@@ -662,8 +662,8 @@ def test_semantic_segmentation_validation():
     )
 
     with pytest.raises(ValueError) as e:
-        schemas.Prediction(
-            model_name_name="model",
+        schemas.Prediction(  # type: ignore - purposefully throwing error
+            model_name_name="model",  # type: ignore - purposefully throwing error
             datum=schemas.Datum(
                 uid="uid",
                 dataset_name="name",

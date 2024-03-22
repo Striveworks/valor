@@ -69,7 +69,7 @@ def test_set_and_get_geospatial(
     assert expected_coords[1] == returned_datum2
 
     dets1 = dataset.get_groundtruth("uid1")
-
+    assert dets1
     assert dets1.datum.metadata["geospatial"] == expected_coords[0]
 
 
@@ -105,7 +105,7 @@ def test_geospatial_filter(
 
     model = Model.create(name=model_name, metadata={"geospatial": geo_dict})
     for pd in pred_dets:
-        gt.datum.metadata["geospatial"] = geo_dict
+        gt.datum.metadata["geospatial"] = geo_dict  # type: ignore - __setitem__ possibly unbound; shouldn't matter in this case
         model.add_prediction(dataset, pd)
     model.finalize_inferences(dataset)
 
@@ -128,28 +128,27 @@ def test_geospatial_filter(
     assert len(eval_job.metrics) == 12
 
     # passing in an incorrectly-formatted geojson dict should return a ValueError
+    geospatial_metadata = Datum.metadata["geospatial"]
     with pytest.raises(NotImplementedError) as e:
         model.evaluate_detection(
             dataset,
             iou_thresholds_to_compute=[0.1, 0.6],
             iou_thresholds_to_return=[0.1, 0.6],
             filter_by=[
-                Datum.metadata["geospatial"].inside(
-                    {"incorrectly_formatted_dict": {}}
-                )
+                geospatial_metadata.inside({"incorrectly_formatted_dict": {}})  # type: ignore - filter type error
             ],
         )
     assert "is not supported" in str(e)
-
     # test datums
     eval_job = model.evaluate_detection(
         dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
-        filter_by=[Datum.metadata["geospatial"].intersect(geo_dict)],
+        filter_by=[geospatial_metadata.intersect(geo_dict)],  # type: ignore - filter type error
     )
     assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
 
+    assert eval_job.datum_filter.datum_metadata
     assert eval_job.datum_filter.datum_metadata["geospatial"] == [
         Constraint(value=geo_dict, operator="intersect")
     ]

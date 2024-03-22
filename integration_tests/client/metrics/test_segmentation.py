@@ -72,10 +72,11 @@ def test_evaluate_segmentation_with_filter(
 
     model.finalize_inferences(dataset)
 
+    color = Datum.metadata["color"]
     eval_job = model.evaluate_segmentation(
         dataset,
         filter_by=[
-            Datum.metadata["color"] == "red",
+            color == "red",  # type: ignore - filter type error
         ],
     )
     assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE

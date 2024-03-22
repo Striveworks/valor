@@ -1,3 +1,5 @@
+import pandas as pd
+
 from valor_api import enums, schemas
 from valor_api.backend.metrics.multi_object_tracking import (
     MOT_METRICS_NAMES,
@@ -7,7 +9,7 @@ from valor_api.backend.metrics.multi_object_tracking import (
 
 
 # noqa: E731
-def square(x: int, y: int) -> schemas.BasicPolygon:
+def square(x: int, y: int) -> schemas.BoundingBox:
     return schemas.BoundingBox(
         polygon=schemas.geometry.BasicPolygon(
             points=[
@@ -127,9 +129,9 @@ def test_compute_mot_metrics():
     num_frames = 10
     predictions, groundtruths = generate_mot_data(num_frames)
 
-    out = compute_mot_metrics(predictions, groundtruths).to_dict(
-        orient="records"
-    )[0]
+    out = compute_mot_metrics(predictions, groundtruths)
+    assert isinstance(out, pd.DataFrame)
+    results = out.to_dict(orient="records")[0]
 
     perfect_score = [
         num_frames,
@@ -153,4 +155,4 @@ def test_compute_mot_metrics():
         name: score for name, score in zip(MOT_METRICS_NAMES, perfect_score)
     }
 
-    assert perfect_score == out
+    assert perfect_score == results

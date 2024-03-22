@@ -32,7 +32,9 @@ def test_get_model(
 
 
 def test_get_labels(
-    db: Session, dataset_name: str, groundtruth_detections: schemas.GroundTruth
+    db: Session,
+    dataset_name: str,
+    groundtruth_detections: list[schemas.GroundTruth],
 ):
     crud.create_dataset(db=db, dataset=schemas.Dataset(name=dataset_name))
 

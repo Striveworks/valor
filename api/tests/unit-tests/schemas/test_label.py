@@ -11,11 +11,11 @@ def test_label_no_scores():
 
     # test property `key`
     with pytest.raises(ValidationError):
-        schemas.Label(key=("k1",), value="v1")
+        schemas.Label(key=("k1",), value="v1")  # type: ignore - purposefully throwing error
 
     # test property `value`
     with pytest.raises(ValidationError):
-        schemas.Label(key="k1", value=("v1",))
+        schemas.Label(key="k1", value=("v1",))  # type: ignore - purposefully throwing error
 
     # test member fn `__eq__`
     assert l1 == l1
@@ -29,7 +29,7 @@ def test_label_no_scores():
 def test_label_with_scores():
     # test property `score`
     with pytest.raises(ValidationError):
-        schemas.Label(key="k1", value="v1", score="score")
+        schemas.Label(key="k1", value="v1", score="score")  # type: ignore - purposefully throwing error
 
     l1 = schemas.Label(key="k1", value="v1", score=0.75)
     l2 = schemas.Label(key="k1", value="v1", score=0.5)

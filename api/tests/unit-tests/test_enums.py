@@ -26,74 +26,74 @@ def test_annotation_type_members():
     assert AnnotationType.RASTER.numeric == 4
 
     # test `__gt__`
-    AnnotationType.RASTER > AnnotationType.MULTIPOLYGON
-    AnnotationType.RASTER > AnnotationType.POLYGON
-    AnnotationType.RASTER > AnnotationType.BOX
-    AnnotationType.RASTER > AnnotationType.NONE
-    AnnotationType.MULTIPOLYGON > AnnotationType.POLYGON
-    AnnotationType.MULTIPOLYGON > AnnotationType.BOX
-    AnnotationType.MULTIPOLYGON > AnnotationType.NONE
-    AnnotationType.POLYGON > AnnotationType.BOX
-    AnnotationType.POLYGON > AnnotationType.NONE
-    AnnotationType.BOX > AnnotationType.NONE
+    _ = AnnotationType.RASTER > AnnotationType.MULTIPOLYGON
+    _ = AnnotationType.RASTER > AnnotationType.POLYGON
+    _ = AnnotationType.RASTER > AnnotationType.BOX
+    _ = AnnotationType.RASTER > AnnotationType.NONE
+    _ = AnnotationType.MULTIPOLYGON > AnnotationType.POLYGON
+    _ = AnnotationType.MULTIPOLYGON > AnnotationType.BOX
+    _ = AnnotationType.MULTIPOLYGON > AnnotationType.NONE
+    _ = AnnotationType.POLYGON > AnnotationType.BOX
+    _ = AnnotationType.POLYGON > AnnotationType.NONE
+    _ = AnnotationType.BOX > AnnotationType.NONE
     for e in AnnotationType:
         with pytest.raises(TypeError):
-            e > 1234
+            _ = e > 1234
 
     # test `__lt__`
-    AnnotationType.NONE < AnnotationType.RASTER
-    AnnotationType.NONE < AnnotationType.MULTIPOLYGON
-    AnnotationType.NONE < AnnotationType.POLYGON
-    AnnotationType.NONE < AnnotationType.BOX
-    AnnotationType.BOX < AnnotationType.RASTER
-    AnnotationType.BOX < AnnotationType.MULTIPOLYGON
-    AnnotationType.BOX < AnnotationType.POLYGON
-    AnnotationType.POLYGON < AnnotationType.RASTER
-    AnnotationType.POLYGON < AnnotationType.MULTIPOLYGON
-    AnnotationType.MULTIPOLYGON < AnnotationType.RASTER
+    _ = AnnotationType.NONE < AnnotationType.RASTER
+    _ = AnnotationType.NONE < AnnotationType.MULTIPOLYGON
+    _ = AnnotationType.NONE < AnnotationType.POLYGON
+    _ = AnnotationType.NONE < AnnotationType.BOX
+    _ = AnnotationType.BOX < AnnotationType.RASTER
+    _ = AnnotationType.BOX < AnnotationType.MULTIPOLYGON
+    _ = AnnotationType.BOX < AnnotationType.POLYGON
+    _ = AnnotationType.POLYGON < AnnotationType.RASTER
+    _ = AnnotationType.POLYGON < AnnotationType.MULTIPOLYGON
+    _ = AnnotationType.MULTIPOLYGON < AnnotationType.RASTER
     for e in AnnotationType:
         with pytest.raises(TypeError):
-            e < 1234
+            _ = e < 1234
 
     # test `__ge__`
-    AnnotationType.RASTER >= AnnotationType.RASTER
-    AnnotationType.RASTER >= AnnotationType.MULTIPOLYGON
-    AnnotationType.RASTER >= AnnotationType.POLYGON
-    AnnotationType.RASTER >= AnnotationType.BOX
-    AnnotationType.RASTER >= AnnotationType.NONE
-    AnnotationType.MULTIPOLYGON >= AnnotationType.MULTIPOLYGON
-    AnnotationType.MULTIPOLYGON >= AnnotationType.POLYGON
-    AnnotationType.MULTIPOLYGON >= AnnotationType.BOX
-    AnnotationType.MULTIPOLYGON >= AnnotationType.NONE
-    AnnotationType.POLYGON >= AnnotationType.POLYGON
-    AnnotationType.POLYGON >= AnnotationType.BOX
-    AnnotationType.POLYGON >= AnnotationType.NONE
-    AnnotationType.BOX >= AnnotationType.BOX
-    AnnotationType.BOX >= AnnotationType.NONE
-    AnnotationType.NONE >= AnnotationType.NONE
+    _ = AnnotationType.RASTER >= AnnotationType.RASTER
+    _ = AnnotationType.RASTER >= AnnotationType.MULTIPOLYGON
+    _ = AnnotationType.RASTER >= AnnotationType.POLYGON
+    _ = AnnotationType.RASTER >= AnnotationType.BOX
+    _ = AnnotationType.RASTER >= AnnotationType.NONE
+    _ = AnnotationType.MULTIPOLYGON >= AnnotationType.MULTIPOLYGON
+    _ = AnnotationType.MULTIPOLYGON >= AnnotationType.POLYGON
+    _ = AnnotationType.MULTIPOLYGON >= AnnotationType.BOX
+    _ = AnnotationType.MULTIPOLYGON >= AnnotationType.NONE
+    _ = AnnotationType.POLYGON >= AnnotationType.POLYGON
+    _ = AnnotationType.POLYGON >= AnnotationType.BOX
+    _ = AnnotationType.POLYGON >= AnnotationType.NONE
+    _ = AnnotationType.BOX >= AnnotationType.BOX
+    _ = AnnotationType.BOX >= AnnotationType.NONE
+    _ = AnnotationType.NONE >= AnnotationType.NONE
     for e in AnnotationType:
         with pytest.raises(TypeError):
-            e >= 1234
+            _ = e >= 1234
 
     # test `__le__`
-    AnnotationType.NONE <= AnnotationType.RASTER
-    AnnotationType.NONE <= AnnotationType.MULTIPOLYGON
-    AnnotationType.NONE <= AnnotationType.POLYGON
-    AnnotationType.NONE <= AnnotationType.BOX
-    AnnotationType.NONE <= AnnotationType.NONE
-    AnnotationType.BOX <= AnnotationType.RASTER
-    AnnotationType.BOX <= AnnotationType.MULTIPOLYGON
-    AnnotationType.BOX <= AnnotationType.POLYGON
-    AnnotationType.BOX <= AnnotationType.BOX
-    AnnotationType.POLYGON <= AnnotationType.RASTER
-    AnnotationType.POLYGON <= AnnotationType.MULTIPOLYGON
-    AnnotationType.POLYGON <= AnnotationType.POLYGON
-    AnnotationType.MULTIPOLYGON <= AnnotationType.RASTER
-    AnnotationType.MULTIPOLYGON <= AnnotationType.MULTIPOLYGON
-    AnnotationType.RASTER <= AnnotationType.RASTER
+    _ = AnnotationType.NONE <= AnnotationType.RASTER
+    _ = AnnotationType.NONE <= AnnotationType.MULTIPOLYGON
+    _ = AnnotationType.NONE <= AnnotationType.POLYGON
+    _ = AnnotationType.NONE <= AnnotationType.BOX
+    _ = AnnotationType.NONE <= AnnotationType.NONE
+    _ = AnnotationType.BOX <= AnnotationType.RASTER
+    _ = AnnotationType.BOX <= AnnotationType.MULTIPOLYGON
+    _ = AnnotationType.BOX <= AnnotationType.POLYGON
+    _ = AnnotationType.BOX <= AnnotationType.BOX
+    _ = AnnotationType.POLYGON <= AnnotationType.RASTER
+    _ = AnnotationType.POLYGON <= AnnotationType.MULTIPOLYGON
+    _ = AnnotationType.POLYGON <= AnnotationType.POLYGON
+    _ = AnnotationType.MULTIPOLYGON <= AnnotationType.RASTER
+    _ = AnnotationType.MULTIPOLYGON <= AnnotationType.MULTIPOLYGON
+    _ = AnnotationType.RASTER <= AnnotationType.RASTER
     for e in AnnotationType:
         with pytest.raises(TypeError):
-            e <= 1234
+            _ = e <= 1234
 
 
 def test_table_status_members():
