@@ -12,7 +12,6 @@ from valor.symbolic.atomics import (
     Dictionary,
     Equatable,
     Float,
-    Listable,
     MultiPolygon,
     Nullable,
     Polygon,
@@ -398,7 +397,7 @@ def _get_schema_type_by_name(name: str):
         return _get_atomic_type_by_name(name)
 
 
-class StaticCollection(Equatable, Listable):
+class StaticCollection(Equatable):
     """
     A static collection is a Variable that defines its contents by static attributes.
     """
@@ -449,7 +448,7 @@ class StaticCollection(Equatable, Listable):
     def __validate__(cls, value: Any):
         if value is not None:
             raise TypeError(
-                "StaticCollection's do not store an internal value."
+                "A StaticCollection does not store an internal value."
             )
 
     @classmethod
@@ -472,7 +471,13 @@ class StaticCollection(Equatable, Listable):
                 retval[k] = _get_schema_type_by_name(v)
             elif "__origin__" in v.__dict__:
                 if v.__dict__["__origin__"] is list:
-                    retval[k] = typing.get_args(v)[0].list()
+                    value = typing.get_args(v)[0]
+                    if isinstance(value, typing.ForwardRef):
+                        value = value.__forward_arg__
+                    if isinstance(value, str):
+                        value = _get_schema_type_by_name(value)
+                    if isinstance(value, type) and issubclass(value, Variable):
+                        retval[k] = value.list()
                 else:
                     raise NotImplementedError(
                         "Only 'typing.List' is supported."

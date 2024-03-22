@@ -356,8 +356,8 @@ def test_raster():
     other = {"mask": bitmask2, "geometry": geom.get_value()}
 
     encoded_value = {
-        'mask': 'iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKAQAAAAClSfIQAAAAEElEQVR4nGP8f5CJgQEXAgAzSQHUW1CW8QAAAABJRU5ErkJggg==', 
-        'geometry': None,
+        "mask": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKAQAAAAClSfIQAAAAEElEQVR4nGP8f5CJgQEXAgAzSQHUW1CW8QAAAABJRU5ErkJggg==",
+        "geometry": None,
     }
 
     # test encoding
@@ -397,18 +397,18 @@ def test_raster():
     with pytest.raises(ValueError):
         Raster({})
     with pytest.raises(TypeError):
-        Raster({'mask': 123, 'geometry': None})
+        Raster({"mask": 123, "geometry": None})
     with pytest.raises(ValueError) as e:
-        Raster({'mask': np.zeros((10,)), 'geometry': None})
+        Raster({"mask": np.zeros((10,)), "geometry": None})
     assert "2d arrays" in str(e)
     with pytest.raises(ValueError) as e:
-        Raster({'mask': np.zeros((10,10,10)), 'geometry': None})
+        Raster({"mask": np.zeros((10, 10, 10)), "geometry": None})
     assert "2d arrays" in str(e)
     with pytest.raises(ValueError) as e:
-        Raster({'mask': np.zeros((10,10)), 'geometry': None})
+        Raster({"mask": np.zeros((10, 10)), "geometry": None})
     assert "bool" in str(e)
     with pytest.raises(TypeError):
-        Raster({'mask': bitmask1, 'geometry': 123})
+        Raster({"mask": bitmask1, "geometry": 123})
 
     # test property 'area'
     assert objcls.symbolic().area.is_symbolic
@@ -427,23 +427,66 @@ def test_raster():
         objcls(value).area
 
     # test property 'array'
-    assert (bitmask1==Raster(value).array).all()
+    assert (bitmask1 == Raster(value).array).all()
     with pytest.warns(RuntimeWarning):
         Raster(other).array
     with pytest.warns(RuntimeWarning):
         Raster(None).array
-    
+
     # test property 'array' is not available to symbols
     with pytest.raises(TypeError):
         Raster.symbolic().array
 
 
 def test_embedding():
-    pass
+    objcls = Embedding
+    value = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    other = [5, 6, 6, 7, 8, 9, 0, 1, 2, 3]
 
+    # test __init__
+    assert objcls(value).get_value() == value
 
-def test_static_collection():
-    pass
+    # test dictionary generation
+    assert objcls(value).to_dict() == {
+        "type": "embedding",
+        "value": value,
+    }
+
+    # test permutations
+    permutations = [
+        (value, value),
+        (value, other),
+        (other, other),
+        (other, value),
+        (value, None),
+        (None, value),
+    ]
+    for op in ["intersects", "inside", "outside"]:
+        _test_generic(objcls, permutations, op)
+
+    # test nullable
+    assert objcls(value).is_none().get_value() is False  # type: ignore - always returns bool
+    assert objcls(value).is_not_none().get_value() is True  # type: ignore - always returns bool
+    assert objcls(None).is_none().get_value() is True  # type: ignore - always returns bool
+    assert objcls(None).is_not_none().get_value() is False  # type: ignore - always returns bool
+
+    # test unsupported methods
+    for op in [
+        "__eq__",
+        "__ne__",
+        "__gt__",
+        "__ge__",
+        "__lt__",
+        "__le__",
+        "__and__",
+        "__or__",
+        "__xor__",
+    ]:
+        _test_unsupported(objcls, permutations, op)
+
+    # test encoding
+    _test_encoding(objcls, value, value)
+    _test_encoding(objcls, None, None)
 
 
 def test_label():

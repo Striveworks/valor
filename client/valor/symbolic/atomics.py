@@ -126,6 +126,56 @@ class Variable:
         )
 
     @classmethod
+    def list(cls):
+
+        item_class = cls
+
+        class ValueList(Variable):
+            @classmethod
+            def definite(cls, value: Any):
+                if value is None:
+                    value = list()
+                return cls(value=value)
+
+            @classmethod
+            def __validate__(cls, value: List[Any]):
+                if not isinstance(value, list):
+                    raise TypeError(
+                        f"Expected type '{list}' received type '{type(value)}'"
+                    )
+                for element in value:
+                    if not isinstance(element, item_class):
+                        raise TypeError(
+                            f"Expected list elements with type '{item_class}' received type '{type(element)}'"
+                        )
+
+            @classmethod
+            def decode_value(cls, value: Any):
+                if not value:
+                    return []
+                if issubclass(type(value), Variable):
+                    return [
+                        item_class.decode_value(element) for element in value
+                    ]
+
+            def encode_value(self):
+                return [element.encode_value() for element in self.get_value()]
+
+            def __getitem__(self, __key: int) -> cls:
+                return self.get_value()[__key]
+
+            def __setitem__(self, __key: int, __value: cls):
+                value = self.get_value()
+                if value is None:
+                    raise TypeError
+                value[__key] = __value
+
+            def __iter__(self) -> Iterator[cls]:
+                return iter([element for element in self.get_value()])
+
+        return ValueList
+
+    @classmethod
     def preprocess(cls, value: Any):
         """
         This method converts any type to an instance of the variable class.
@@ -371,58 +421,6 @@ class Spatial(Variable):
 
     def outside(self, other: Any):
         return Outside(self, self.preprocess(other))
-
-
-class Listable(Variable):
-    @classmethod
-    def list(cls):
-
-        item_class = cls
-
-        class ValueList(Variable):
-            @classmethod
-            def definite(cls, value: Any):
-                if value is None:
-                    value = list()
-                return cls(value=value)
-
-            @classmethod
-            def __validate__(cls, value: List[Any]):
-                if not isinstance(value, list):
-                    raise TypeError(
-                        f"Expected type '{list}' received type '{type(value)}'"
-                    )
-                for element in value:
-                    if not isinstance(element, item_class):
-                        raise TypeError(
-                            f"Expected list elements with type '{item_class}' received type '{type(element)}'"
-                        )
-
-            @classmethod
-            def decode_value(cls, value: Any):
-                if not value:
-                    return []
-                if issubclass(type(value), Variable):
-                    return [
-                        item_class.decode_value(element) for element in value
-                    ]
-
-            def encode_value(self):
-                return [element.encode_value() for element in self.get_value()]
-
-            def __getitem__(self, __key: int) -> cls:
-                return self.get_value()[__key]
-
-            def __setitem__(self, __key: int, __value: cls):
-                value = self.get_value()
-                if value is None:
-                    raise TypeError
-                value[__key] = __value
-
-            def __iter__(self) -> Iterator[cls]:
-                return iter([element for element in self.get_value()])
-
-        return ValueList
 
 
 class Integer(Quantifiable):
