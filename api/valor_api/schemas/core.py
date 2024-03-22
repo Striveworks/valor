@@ -126,7 +126,6 @@ class Dataset(BaseModel):
         If the name is invalid.
     """
 
-    id: int | None = None
     name: str
     metadata: MetadataType = {}
     model_config = ConfigDict(extra="forbid")
@@ -161,7 +160,6 @@ class Model(BaseModel):
         If the name is invalid.
     """
 
-    id: int | None = None
     name: str
     metadata: MetadataType = {}
     model_config = ConfigDict(extra="forbid")

@@ -1,13 +1,11 @@
 import axios, { AxiosInstance } from 'axios';
 
 export type Dataset = {
-  id: number;
   name: string;
   metadata: Partial<Record<string, any>>;
 };
 
 export type Model = {
-  id: number;
   name: string;
   metadata: Partial<Record<string, any>>;
 };
