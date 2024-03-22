@@ -39,7 +39,7 @@ class TaskTypeEnum(String):
 
     @classmethod
     def decode_value(cls, value: str):
-        return TaskType(value)
+        return cls(TaskType(value))
 
     def encode_value(self) -> Any:
         return self.get_value().value

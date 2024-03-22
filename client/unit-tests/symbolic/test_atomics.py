@@ -611,8 +611,14 @@ def test_bool():
         (False, False),
         (False, True),
     ]
+
+    # test supported methods
     for op in ["__eq__", "__ne__", "__and__", "__or__", "__xor__"]:
         _test_resolvable(objcls, permutations, op)
+    assert (~Bool(True)).get_value() is False  # type: ignore - this will always return a bool
+    assert (~Bool(False)).get_value() is True  # type: ignore - this will always return a bool
+
+    # test unsupported methods
     for op in [
         "__gt__",
         "__ge__",
@@ -625,9 +631,6 @@ def test_bool():
         "outside",
     ]:
         _test_unsupported(objcls, permutations, op)
-
-    assert (~Bool(True)).get_value() is False  # type: ignore - this will always return a bool
-    assert (~Bool(False)).get_value() is True  # type: ignore - this will always return a bool
 
     # test encoding
     _test_encoding(objcls, True, True)
@@ -643,8 +646,12 @@ def test_integer():
         (-100, -100),
         (-100, 100),
     ]
+
+    # test supported methods
     for op in ["__eq__", "__ne__", "__gt__", "__ge__", "__lt__", "__le__"]:
         _test_resolvable(objcls, permutations, op)
+
+    # test unsupported methods
     for op in [
         "__and__",
         "__or__",
@@ -670,8 +677,12 @@ def test_float():
         (-1.23, -3.21),
         (-1.23, 3.21),
     ]
+
+    # test supported methods
     for op in ["__eq__", "__ne__", "__gt__", "__ge__", "__lt__", "__le__"]:
         _test_resolvable(objcls, permutations, op)
+
+    # test unsupported methods
     for op in [
         "__and__",
         "__or__",
@@ -689,7 +700,7 @@ def test_float():
 
 
 def test_string():
-    # interoperable with builtin 'int'
+    # interoperable with builtin 'str'
     objcls = String
     permutations = [
         ("hello", "hello"),
@@ -697,8 +708,12 @@ def test_string():
         ("world", "hello"),
         ("world", "world"),
     ]
+
+    # test supported methods
     for op in ["__eq__", "__ne__"]:
         _test_resolvable(objcls, permutations, op)
+
+    # test unsupported methods
     for op in [
         "__gt__",
         "__ge__",
@@ -740,8 +755,12 @@ def test_datetime():
             datetime.datetime(year=2024, month=1, day=1),
         ),
     ]
+
+    # test supported methods
     for op in ["__eq__", "__ne__", "__gt__", "__ge__", "__lt__", "__le__"]:
         _test_resolvable(objcls, permutations, op)
+
+    # test unsupported methods
     for op in [
         "__and__",
         "__or__",
@@ -783,8 +802,12 @@ def test_date():
             datetime.date(year=2024, month=1, day=1),
         ),
     ]
+
+    # test supported methods
     for op in ["__eq__", "__ne__", "__gt__", "__ge__", "__lt__", "__le__"]:
         _test_resolvable(objcls, permutations, op)
+
+    # test unsupported methods
     for op in [
         "__and__",
         "__or__",
@@ -812,8 +835,12 @@ def test_time():
         (datetime.time(hour=2), datetime.time(hour=2)),
         (datetime.time(hour=2), datetime.time(hour=1)),
     ]
+
+    # test supported methods
     for op in ["__eq__", "__ne__", "__gt__", "__ge__", "__lt__", "__le__"]:
         _test_resolvable(objcls, permutations, op)
+
+    # test unsupported methods
     for op in [
         "__and__",
         "__or__",
@@ -839,8 +866,12 @@ def test_duration():
         (datetime.timedelta(seconds=2), datetime.timedelta(seconds=2)),
         (datetime.timedelta(seconds=2), datetime.timedelta(seconds=1)),
     ]
+
+    # test supported methods
     for op in ["__eq__", "__ne__", "__gt__", "__ge__", "__lt__", "__le__"]:
         _test_resolvable(objcls, permutations, op)
+
+    # test unsupported methods
     for op in [
         "__and__",
         "__or__",
@@ -861,8 +892,12 @@ def test_point():
     # interoperable with GeoJSON-style 'point' geometry
     objcls = Point
     permutations = [((0, 0), (1, 1))]
+
+    # test supported methods
     for op in ["intersects", "inside", "outside"]:
         _test_generic(objcls, permutations, op)
+
+    # test unsupported methods
     for op in [
         "__eq__",
         "__ne__",
@@ -886,8 +921,12 @@ def test_multipoint():
     # interoperable with GeoJSON-style 'multipoint' geometry
     objcls = MultiPoint
     permutations = [([(0, 0), (1, 1)], [(1, 0), (0, 1)])]
+
+    # test supported methods
     for op in ["intersects", "inside", "outside"]:
         _test_generic(objcls, permutations, op)
+
+    # test unsupported methods
     for op in [
         "__eq__",
         "__ne__",
@@ -911,8 +950,12 @@ def test_linestring():
     # interoperable with GeoJSON-style 'linestring' geometry
     objcls = LineString
     permutations = [([(0, 0), (1, 1)], [(1, 0), (0, 1)])]
+
+    # test supported methods
     for op in ["intersects", "inside", "outside"]:
         _test_generic(objcls, permutations, op)
+
+    # test unsupported methods
     for op in [
         "__eq__",
         "__ne__",
@@ -941,8 +984,12 @@ def test_multilinestring():
             [[(-1, 1), (1, 1)], [(1, 0), (0, 1)]],
         )
     ]
+
+    # test supported methods
     for op in ["intersects", "inside", "outside"]:
         _test_generic(objcls, permutations, op)
+
+    # test unsupported methods
     for op in [
         "__eq__",
         "__ne__",
@@ -974,8 +1021,12 @@ def test_polygon():
             ],  # polygon w/ hole
         )
     ]
+
+    # test supported methods
     for op in ["intersects", "inside", "outside"]:
         _test_generic(objcls, permutations, op)
+
+    # test unsupported methods
     for op in [
         "__eq__",
         "__ne__",
@@ -1020,8 +1071,12 @@ def test_multipolygon():
             ],
         )
     ]
+
+    # test supported methods
     for op in ["intersects", "inside", "outside"]:
         _test_generic(objcls, permutations, op)
+
+    # test unsupported methods
     for op in [
         "__eq__",
         "__ne__",
@@ -1062,6 +1117,7 @@ def test_dictionary_value():
 
 
 def test_dictionary():
+    # interoperable with built-in 'dict'
     x = {
         "k0": True,
         "k1": "v1",
@@ -1085,7 +1141,6 @@ def test_dictionary():
         "k3": 1.24,
     }
 
-    # interoperable with built-in 'dict'
     objcls = Dictionary
     permutations = [
         (x, x),
@@ -1093,8 +1148,12 @@ def test_dictionary():
         (y, y),
         (y, x),
     ]
+
+    # test supported methods
     for op in ["__eq__", "__ne__"]:
         _test_generic(objcls, permutations, op)
+
+    # test unsupported methods
     for op in [
         "__gt__",
         "__ge__",

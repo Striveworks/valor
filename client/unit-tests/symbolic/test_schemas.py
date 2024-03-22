@@ -137,6 +137,8 @@ def _test_unsupported(objcls, permutations, op):
 
 def test_score():
     objcls = Score
+
+    # test supported methods
     permutations = [
         (0.9, 0.1),
         (0.9, 0.9),
@@ -153,11 +155,13 @@ def test_score():
         with pytest.raises((AssertionError, TypeError)):
             _test_resolvable(objcls, unresolvable_permutations, op)
 
+    # test nullable
     assert Score(1.0).is_none().get_value() is False  # type: ignore - always returns bool
     assert Score(1.0).is_not_none().get_value() is True  # type: ignore - always returns bool
     assert Score(None).is_none().get_value() is True  # type: ignore - always returns bool
     assert Score(None).is_not_none().get_value() is False  # type: ignore - always returns bool
 
+    # test unsupported methods
     for op in [
         "__and__",
         "__or__",
@@ -180,15 +184,164 @@ def test_score():
 
 
 def test_tasktypeenum():
-    pass
+    from valor.enums import TaskType
+
+    objcls = TaskTypeEnum
+
+    # test supported methods
+    permutations = [
+        (TaskType.CLASSIFICATION, TaskType.CLASSIFICATION),
+        (TaskType.CLASSIFICATION, TaskType.OBJECT_DETECTION),
+        (TaskType.OBJECT_DETECTION, TaskType.OBJECT_DETECTION),
+        (TaskType.OBJECT_DETECTION, TaskType.CLASSIFICATION),
+    ]
+    for op in ["__eq__", "__ne__"]:
+        _test_resolvable(objcls, permutations, op)
+
+    # test unsupported methods
+    for op in [
+        "__gt__",
+        "__ge__",
+        "__lt__",
+        "__le__",
+        "__and__",
+        "__or__",
+        "__xor__",
+        "is_none",
+        "is_not_none",
+        "intersects",
+        "inside",
+        "outside",
+    ]:
+        _test_unsupported(objcls, permutations, op)
+
+    # test encoding
+    _test_encoding(
+        objcls, TaskType.CLASSIFICATION, TaskType.CLASSIFICATION.value
+    )
+    _test_encoding(
+        objcls, TaskType.OBJECT_DETECTION, TaskType.OBJECT_DETECTION.value
+    )
+    _test_encoding(
+        objcls,
+        TaskType.SEMANTIC_SEGMENTATION,
+        TaskType.SEMANTIC_SEGMENTATION.value,
+    )
+    _test_encoding(objcls, TaskType.EMBEDDING, TaskType.EMBEDDING.value)
 
 
 def test_bounding_box():
-    pass
+    objcls = BoundingBox
+    value = [[(0, 2), (1, 2), (1, 3), (0, 3), (0, 2)]]
+    other_value = [[(1, 2), (2, 2), (2, 3), (1, 3), (1, 2)]]
+
+    # test __init__
+    assert objcls(value).get_value() == value
+
+    # test 'from_extrema' classmethod
+    assert objcls.from_extrema(0, 1, 2, 3).get_value() == value
+
+    # test dictionary generation
+    assert objcls.from_extrema(0, 1, 2, 3).to_dict() == {
+        "type": "boundingbox",
+        "value": value,
+    }
+
+    # test permutations
+    permutations = [
+        (value, value),
+        (value, other_value),
+        (other_value, other_value),
+        (other_value, value),
+        (value, None),
+        (None, value),
+    ]
+    for op in ["intersects", "inside", "outside"]:
+        _test_generic(objcls, permutations, op)
+
+    # test nullable
+    assert objcls.from_extrema(0, 1, 2, 3).is_none().get_value() is False  # type: ignore - always returns bool
+    assert objcls.from_extrema(0, 1, 2, 3).is_not_none().get_value() is True  # type: ignore - always returns bool
+    assert objcls(None).is_none().get_value() is True  # type: ignore - always returns bool
+    assert objcls(None).is_not_none().get_value() is False  # type: ignore - always returns bool
+
+    # test unsupported methods
+    for op in [
+        "__eq__",
+        "__ne__",
+        "__gt__",
+        "__ge__",
+        "__lt__",
+        "__le__",
+        "__and__",
+        "__or__",
+        "__xor__",
+    ]:
+        _test_unsupported(objcls, permutations, op)
+
+    # test encoding
+    _test_encoding(objcls, value, value)
+    _test_encoding(objcls, None, None)
+
+    # test validate box must define 5 points with first == last
+    with pytest.raises(TypeError):
+        BoundingBox([[(0, 0)]])
+    with pytest.raises(TypeError):
+        BoundingBox(value[:-1])
+    value[0][-1] = (10, 10)
+    with pytest.raises(TypeError):
+        BoundingBox(value)
 
 
 def test_bounding_polygon():
-    pass
+    objcls = BoundingPolygon
+    value = [[(0, 2), (1, 2), (1, 3), (0, 3), (0, 2)]]
+    other_value = [[(1, 2), (2, 2), (2, 3), (1, 3), (1, 2)]]
+
+    # test __init__
+    assert objcls(value).get_value() == value
+
+    # test dictionary generation
+    assert objcls(value).to_dict() == {
+        "type": "boundingpolygon",
+        "value": value,
+    }
+
+    # test permutations
+    permutations = [
+        (value, value),
+        (value, other_value),
+        (other_value, other_value),
+        (other_value, value),
+        (value, None),
+        (None, value),
+    ]
+    for op in ["intersects", "inside", "outside"]:
+        _test_generic(objcls, permutations, op)
+
+    # test nullable
+    assert objcls(value).is_none().get_value() is False  # type: ignore - always returns bool
+    assert objcls(value).is_not_none().get_value() is True  # type: ignore - always returns bool
+    assert objcls(None).is_none().get_value() is True  # type: ignore - always returns bool
+    assert objcls(None).is_not_none().get_value() is False  # type: ignore - always returns bool
+
+    # test unsupported methods
+    for op in [
+        "__eq__",
+        "__ne__",
+        "__gt__",
+        "__ge__",
+        "__lt__",
+        "__le__",
+        "__and__",
+        "__or__",
+        "__xor__",
+    ]:
+        _test_unsupported(objcls, permutations, op)
+
+    # test encoding
+    _test_encoding(objcls, value, value)
+    _test_encoding(objcls, None, None)
 
 
 def test_raster():
