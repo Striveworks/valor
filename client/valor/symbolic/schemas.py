@@ -239,7 +239,7 @@ class Raster(Spatial, Nullable):
                     f"Expected mask to have type '{np.ndarray}' receieved type '{value['mask']}'"
                 )
             elif len(value["mask"].shape) != 2:
-                raise ValueError("raster currently only supports 2d arrays")
+                raise ValueError("raster only supports 2d arrays")
             elif value["mask"].dtype != bool:
                 raise ValueError(
                     f"Expecting a binary mask (i.e. of dtype bool) but got dtype {value['mask'].dtype}"
@@ -348,10 +348,11 @@ class Raster(Spatial, Nullable):
         if value := self.get_value():
             if value["geometry"] is not None:
                 warnings.warn(
-                    "array does not hold information as this is a geometry-based raster"
+                    "array does not hold information as this is a geometry-based raster",
+                    RuntimeWarning,
                 )
             return value["mask"]
-        warnings.warn("raster has no value")
+        warnings.warn("raster has no value", RuntimeWarning)
         return None
 
 

@@ -234,7 +234,7 @@ def test_tasktypeenum():
 def test_bounding_box():
     objcls = BoundingBox
     value = [[(0, 2), (1, 2), (1, 3), (0, 3), (0, 2)]]
-    other_value = [[(1, 2), (2, 2), (2, 3), (1, 3), (1, 2)]]
+    other = [[(1, 2), (2, 2), (2, 3), (1, 3), (1, 2)]]
 
     # test __init__
     assert objcls(value).get_value() == value
@@ -251,9 +251,9 @@ def test_bounding_box():
     # test permutations
     permutations = [
         (value, value),
-        (value, other_value),
-        (other_value, other_value),
-        (other_value, value),
+        (value, other),
+        (other, other),
+        (other, value),
         (value, None),
         (None, value),
     ]
@@ -297,7 +297,7 @@ def test_bounding_box():
 def test_bounding_polygon():
     objcls = BoundingPolygon
     value = [[(0, 2), (1, 2), (1, 3), (0, 3), (0, 2)]]
-    other_value = [[(1, 2), (2, 2), (2, 3), (1, 3), (1, 2)]]
+    other = [[(1, 2), (2, 2), (2, 3), (1, 3), (1, 2)]]
 
     # test __init__
     assert objcls(value).get_value() == value
@@ -311,9 +311,9 @@ def test_bounding_polygon():
     # test permutations
     permutations = [
         (value, value),
-        (value, other_value),
-        (other_value, other_value),
-        (other_value, value),
+        (value, other),
+        (other, other),
+        (other, value),
         (value, None),
         (None, value),
     ]
@@ -355,6 +355,34 @@ def test_raster():
     value = {"mask": bitmask1, "geometry": None}
     other = {"mask": bitmask2, "geometry": geom.get_value()}
 
+    encoded_value = {
+        'mask': 'iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKAQAAAAClSfIQAAAAEElEQVR4nGP8f5CJgQEXAgAzSQHUW1CW8QAAAABJRU5ErkJggg==', 
+        'geometry': None,
+    }
+
+    # test encoding
+    _test_encoding(objcls, value, encoded_value)
+    _test_encoding(objcls, None, None)
+
+    # test permutations
+    permutations = [
+        (value, value),
+        (value, other),
+        (other, other),
+        (other, value),
+        (value, None),
+        (None, value),
+    ]
+    for op in ["intersects", "inside", "outside"]:
+        _test_generic(objcls, permutations, op)
+
+    # test nullable
+    assert objcls(value).is_none().get_value() is False  # type: ignore - always returns bool
+    assert objcls(value).is_not_none().get_value() is True  # type: ignore - always returns bool
+    assert objcls(None).is_none().get_value() is True  # type: ignore - always returns bool
+    assert objcls(None).is_not_none().get_value() is False  # type: ignore - always returns bool
+    assert Raster(None)
+
     # test 'from_numpy' classmethod
     assert Raster.from_numpy(bitmask1).to_dict() == Raster(value).to_dict()
 
@@ -363,7 +391,24 @@ def test_raster():
         Raster.from_geometry(geom, 10, 10).to_dict() == Raster(other).to_dict()
     )
 
-    # test typing
+    # test type validation
+    with pytest.raises(TypeError):
+        Raster(123)
+    with pytest.raises(ValueError):
+        Raster({})
+    with pytest.raises(TypeError):
+        Raster({'mask': 123, 'geometry': None})
+    with pytest.raises(ValueError) as e:
+        Raster({'mask': np.zeros((10,)), 'geometry': None})
+    assert "2d arrays" in str(e)
+    with pytest.raises(ValueError) as e:
+        Raster({'mask': np.zeros((10,10,10)), 'geometry': None})
+    assert "2d arrays" in str(e)
+    with pytest.raises(ValueError) as e:
+        Raster({'mask': np.zeros((10,10)), 'geometry': None})
+    assert "bool" in str(e)
+    with pytest.raises(TypeError):
+        Raster({'mask': bitmask1, 'geometry': 123})
 
     # test property 'area'
     assert objcls.symbolic().area.is_symbolic
@@ -376,11 +421,21 @@ def test_raster():
             "attribute": "area",
         },
     }
-    # test that property 'area' is not accessible when object is a value
+
+    # test property 'area' is not available to values
     with pytest.raises(ValueError):
         objcls(value).area
 
     # test property 'array'
+    assert (bitmask1==Raster(value).array).all()
+    with pytest.warns(RuntimeWarning):
+        Raster(other).array
+    with pytest.warns(RuntimeWarning):
+        Raster(None).array
+    
+    # test property 'array' is not available to symbols
+    with pytest.raises(TypeError):
+        Raster.symbolic().array
 
 
 def test_embedding():
