@@ -1,8 +1,43 @@
 from dataclasses import dataclass
-from typing import Dict, Iterable, Iterator, List, Optional, Union
+from typing import Any, Dict, Iterable, Iterator, List, Optional, Union
 
 from valor.enums import TaskType
-from valor.schemas.constraints import BinaryExpression, Constraint
+
+
+@dataclass
+class Constraint:
+    """
+    Represents a constraint with a value and an operator.
+
+    Attributes:
+        value : Any
+            The value associated with the constraint.
+        operator : str
+            The operator used to define the constraint.
+    """
+
+    value: Any
+    operator: str
+
+
+@dataclass
+class BinaryExpression:
+    """
+    Stores a conditional relationship.
+
+    Attributes
+    ----------
+    name : str
+        The name of the filter property.
+    constraint : valor.schemas.Constraint
+        The operation that is performed.
+    key : str, optional
+        An optional key used for object retrieval.
+    """
+
+    name: str
+    constraint: Constraint
+    key: Union[str, None] = None
 
 
 @dataclass
