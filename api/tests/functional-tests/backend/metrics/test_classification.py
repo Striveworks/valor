@@ -209,6 +209,7 @@ def test_compute_confusion_matrix_at_grouper_key(
             prediction="dog", groundtruth="bird", count=1
         ),
     ]
+    assert cm
     assert len(cm.entries) == len(expected_entries)
     for entry in cm.entries:
         assert entry in expected_entries
@@ -270,6 +271,7 @@ def test_compute_confusion_matrix_at_grouper_key(
             prediction="red", groundtruth="black", count=1
         ),
     ]
+    assert cm
     assert len(cm.entries) == len(expected_entries)
     for entry in cm.entries:
         assert entry in expected_entries
@@ -365,6 +367,7 @@ def test_compute_confusion_matrix_at_grouper_key_and_filter(
             groundtruth="bird", prediction="dog", count=1
         ),
     ]
+    assert cm
     assert len(cm.entries) == len(expected_entries)
     for e in expected_entries:
         assert e in cm.entries
@@ -453,6 +456,7 @@ def test_compute_confusion_matrix_at_grouper_key_using_label_map(
         ),
     ]
 
+    assert cm
     assert len(cm.entries) == len(expected_entries)
     for e in expected_entries:
         assert e in cm.entries
@@ -799,6 +803,7 @@ def test_classification(
     confusion = existing_evaluations[0].confusion_matrices
 
     # Make matrices accessible by label_key
+    assert confusion
     confusion = {matrix.label_key: matrix for matrix in confusion}
 
     # Test confusion matrix w/ label_key "animal"
@@ -846,6 +851,7 @@ def test_classification(
         assert e in confusion["color"].entries
 
     # Test metrics (only ROCAUC)
+    assert metrics
     for metric in metrics:
         if isinstance(metric, schemas.ROCAUCMetric):
             if metric.label_key == "animal":

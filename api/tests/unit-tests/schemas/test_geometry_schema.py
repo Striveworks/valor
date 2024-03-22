@@ -30,9 +30,9 @@ def test_geometry_Point():
 
     # test properties
     with pytest.raises(ValidationError):
-        schemas.geometry.Point(x="test", y=0)
+        schemas.geometry.Point(x="test", y=0)  # type: ignore - purposefully throwing error
     with pytest.raises(ValidationError):
-        schemas.geometry.Point(x=0, y="test")
+        schemas.geometry.Point(x=0, y="test")  # type: ignore - purposefully throwing error
 
     # test member fn `__str__`
     assert str(p1) == "(3.14, -3.14)"
@@ -63,13 +63,13 @@ def test_geometry_Point():
     assert p1 + p3 == schemas.geometry.Point(x=0, y=0)
 
     with pytest.raises(TypeError):
-        p1 + "not_a_point"
+        _ = p1 + "not_a_point"
 
     # test member fn `__sub__`
     assert p1 - p2 == schemas.geometry.Point(x=0, y=0)
 
     with pytest.raises(TypeError):
-        p1 - "not_a_point"
+        _ = p1 - "not_a_point"
 
     # test member fn `__iadd__`
     p4 = p3
@@ -117,17 +117,17 @@ def test_geometry_LineSegment(box_points):
 
     # test property `points`
     with pytest.raises(ValidationError):
-        schemas.geometry.LineSegment(points="points")
+        schemas.geometry.LineSegment(points="points")  # type: ignore - purposefully throwing error
     with pytest.raises(ValidationError):
-        schemas.geometry.LineSegment(points=box_points[0])
+        schemas.geometry.LineSegment(points=box_points[0])  # type: ignore - purposefully throwing error
     with pytest.raises(ValidationError):
-        schemas.geometry.LineSegment(points=(box_points[0],))
+        schemas.geometry.LineSegment(points=(box_points[0],))  # type: ignore - purposefully throwing error
     with pytest.raises(ValidationError):
         schemas.geometry.LineSegment(
-            points=(box_points[0], box_points[1], box_points[2])
+            points=(box_points[0], box_points[1], box_points[2])  # type: ignore - purposefully throwing error
         )
     with pytest.raises(ValidationError):
-        schemas.geometry.LineSegment(points=(1, 2))
+        schemas.geometry.LineSegment(points=(1, 2))  # type: ignore - purposefully throwing error
 
     # test member fn `delta_xy`
     assert l1.delta_xy() == box_points[0] - box_points[1]
@@ -170,7 +170,7 @@ def test_geometry_BasicPolygon(box_points):
             points=[
                 box_points[0],
                 box_points[1],
-                (1, 3),
+                (1, 3),  # type: ignore - purposefully throwing error
             ]
         )
 
@@ -223,11 +223,11 @@ def test_geometry_Polygon(
     # test property `boundary`
     with pytest.raises(ValidationError):  # type checking
         schemas.Polygon(
-            boundary="component_polygon_skewed_box",
+            boundary="component_polygon_skewed_box",  # type: ignore - purposefully throwing error
         )
     with pytest.raises(ValidationError):
         schemas.Polygon(
-            boundary=[component_polygon_box],
+            boundary=[component_polygon_box],  # type: ignore - purposefully throwing error
         )
 
     # test property `holes`
@@ -239,7 +239,7 @@ def test_geometry_Polygon(
     with pytest.raises(ValidationError):
         schemas.Polygon(
             boundary=component_polygon_box,
-            holes=[component_polygon_skewed_box, 123],
+            holes=[component_polygon_skewed_box, 123],  # type: ignore - purposefully throwing error
         )
 
     # test member fn `__str__`
@@ -279,7 +279,7 @@ def test_geometry_MultiPolygon(
     with pytest.raises(ValidationError):  # type checking
         schemas.MultiPolygon(polygons=component_polygon_box)
     with pytest.raises(ValidationError):
-        schemas.MultiPolygon(polygons=p1)
+        schemas.MultiPolygon(polygons=p1)  # type: ignore - purposefully throwing error
     with pytest.raises(ValidationError):
         schemas.MultiPolygon(polygons=[component_polygon_box])
     with pytest.raises(ValidationError):
@@ -307,11 +307,11 @@ def test_geometry_BoundingBox(
     bbox3 = schemas.BoundingBox(polygon=component_polygon_skewed_box)
 
     with pytest.raises(ValidationError):  # type checking
-        schemas.BoundingBox(polygon=1234)
+        schemas.BoundingBox(polygon=1234)  # type: ignore - purposefully throwing error
     with pytest.raises(ValidationError):
         schemas.BoundingBox(polygon=component_polygon_box.points[0])
     with pytest.raises(ValidationError):
-        schemas.BoundingBox(polygon=[component_polygon_box])
+        schemas.BoundingBox(polygon=[component_polygon_box])  # type: ignore - purposefully throwing error
     with pytest.raises(ValidationError):
         box_plus_one = schemas.geometry.BasicPolygon(
             points=component_polygon_box.points

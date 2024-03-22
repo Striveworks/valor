@@ -12,4 +12,4 @@ def test_auth_User():
 
     # invalid
     with pytest.raises(ValidationError):
-        schemas.User(email=123)
+        schemas.User(email=123)  # type: ignore - purposefully throwing error

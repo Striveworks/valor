@@ -225,10 +225,13 @@ def test_get_unique_task_types_in_dataset(
 def test_get_unique_datum_metadata_in_dataset(
     db: Session, dataset_name: str, dataset_model_create
 ):
+    def _get_width(dct):
+        return dct["width"]
+
     unique_metadata = core.get_unique_datum_metadata_in_dataset(
         db=db, name=dataset_name
     )
-    unique_metadata.sort(key=lambda x: x["width"])
+    unique_metadata.sort(key=_get_width)
     assert unique_metadata == [
         {"width": 32.0, "height": 80.0},
         {"width": 200.0, "height": 100.0},

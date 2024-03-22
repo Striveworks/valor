@@ -18,7 +18,6 @@ from valor import (
 )
 from valor.enums import EvaluationStatus, TaskType
 from valor.exceptions import ClientException
-from valor.metatypes import ImageMetadata
 
 
 def test_evaluate_image_clf(
@@ -320,7 +319,7 @@ def test_evaluate_tabular_clf(
     }
 
     # validate that we can fetch the confusion matrices through get_evaluations()
-    bulk_evals = client.get_evaluations(datasets=dataset_name)
+    bulk_evals = client.get_evaluations(datasets=[dataset_name])
 
     assert len(bulk_evals) == 1
     for metric in bulk_evals[0].metrics:
@@ -446,7 +445,7 @@ def test_stratify_clf_metrics(
     eval_results_val2 = model.evaluate_classification(
         dataset,
         filter_by=[
-            Datum.metadata["md1"] == "md1-val2",
+            Datum.metadata["md1"] == "md1-val2",  # type: ignore - filter type error
         ],
     )
     assert (
@@ -458,7 +457,7 @@ def test_stratify_clf_metrics(
     # should get the same thing if we use the boolean filter
     eval_results_bool = model.evaluate_classification(
         dataset,
-        filter_by=[Datum.metadata["md3"] == True],  # noqa: E712
+        filter_by=[Datum.metadata["md3"] == True],  # type: ignore - filter type error # noqa 712
     )
     assert (
         eval_results_bool.wait_for_completion(timeout=30)
@@ -590,7 +589,7 @@ def test_stratify_clf_metrics_by_time(
     eval_results_val2 = model.evaluate_classification(
         dataset,
         filter_by=[
-            Datum.metadata["md1"] == date.fromisoformat("2002-01-01"),
+            Datum.metadata["md1"] == date.fromisoformat("2002-01-01"),  # type: ignore - filter type error
         ],
     )
     assert (
@@ -668,9 +667,9 @@ def test_stratify_clf_metrics_by_time(
 
 @pytest.fixture
 def gt_clfs_with_label_maps(
-    img5: ImageMetadata,
-    img6: ImageMetadata,
-    img8: ImageMetadata,
+    img5: Datum,
+    img6: Datum,
+    img8: Datum,
 ) -> list[GroundTruth]:
     return [
         GroundTruth(
@@ -716,9 +715,9 @@ def gt_clfs_with_label_maps(
 @pytest.fixture
 def pred_clfs_with_label_maps(
     model_name: str,
-    img5: ImageMetadata,
-    img6: ImageMetadata,
-    img8: ImageMetadata,
+    img5: Datum,
+    img6: Datum,
+    img8: Datum,
 ) -> list[Prediction]:
     return [
         Prediction(
@@ -2400,7 +2399,7 @@ def test_evaluate_classification_with_label_maps(
                         Label(key="class", value="mammals"),
                     ]
                 ]
-            ],
+            ],  # type: ignore - purposefully raising error
         )
 
 

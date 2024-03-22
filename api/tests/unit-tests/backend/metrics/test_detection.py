@@ -107,17 +107,17 @@ def test__calculate_ap_and_ar():
 
     reference_ar_metrics = [
         schemas.ARMetric(
-            ious=[0.5, 0.75, 0.9],
+            ious=set([0.5, 0.75, 0.9]),
             value=0.6666666666666666,  # average of [{'iou_threshold':.5, 'recall': 1}, {'iou_threshold':.75, 'recall':.66}, {'iou_threshold':.9, 'recall':.33}]
             label=schemas.Label(key="name", value="car", score=None),
         ),
         schemas.ARMetric(
-            ious=[0.5, 0.75, 0.9],
+            ious=set([0.5, 0.75, 0.9]),
             value=0.0,
             label=schemas.Label(key="name", value="dog", score=None),
         ),
         schemas.ARMetric(
-            ious=[0.5, 0.75, 0.9],
+            ious=set([0.5, 0.75, 0.9]),
             value=0.25,
             label=schemas.Label(key="name", value="person", score=None),
         ),

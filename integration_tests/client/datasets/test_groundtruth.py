@@ -83,6 +83,7 @@ def test_create_gt_detections_as_bbox_or_poly(
 
     # check that they can be recovered by the client
     detections = dataset.get_groundtruth("uid")
+    assert detections
     assert len(detections.annotations) == 2
     assert (
         len(

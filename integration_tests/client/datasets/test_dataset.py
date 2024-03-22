@@ -135,6 +135,7 @@ def test_create_image_dataset_with_detections(
             gt_dets_uid1.extend(gt.annotations)
         elif gt.datum.uid == "uid2":
             gt_dets_uid2.extend(gt.annotations)
+    assert dets1 and dets2
     assert dets1.annotations == gt_dets_uid1
     assert dets2.annotations == gt_dets_uid2
 
@@ -154,6 +155,7 @@ def test_create_image_dataset_with_segmentations(
     )
 
     gt = dataset.get_groundtruth("uid1")
+    assert gt
     image = ImageMetadata.from_datum(gt.datum)
     segs = gt.annotations
 
@@ -236,7 +238,7 @@ def test_create_tabular_dataset_and_add_groundtruth(
 
     gts = [
         GroundTruth(
-            datum=Datum(uid="uid1", metadata=md1),
+            datum=Datum(uid="uid1", metadata=md1),  # type: ignore - minor MetadataType typing discrepancy
             annotations=[
                 Annotation(
                     task_type=TaskType.CLASSIFICATION,
@@ -248,7 +250,7 @@ def test_create_tabular_dataset_and_add_groundtruth(
             ],
         ),
         GroundTruth(
-            datum=Datum(uid="uid2", metadata=md23),
+            datum=Datum(uid="uid2", metadata=md23),  # type: ignore - minor MetadataType typing discrepancy
             annotations=[
                 Annotation(
                     task_type=TaskType.CLASSIFICATION,
@@ -321,6 +323,7 @@ def test_get_dataset(
 
     # check get
     fetched_dataset = Dataset.get(dataset_name)
+    assert fetched_dataset
     assert fetched_dataset.name == dataset.name
     assert fetched_dataset.metadata == dataset.metadata
 

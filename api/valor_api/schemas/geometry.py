@@ -1046,8 +1046,8 @@ class Raster(BaseModel):
     def from_geometry(
         cls,
         geometry: BoundingBox | Polygon | MultiPolygon,
-        height: int,
-        width: int,
+        height: int | float,
+        width: int | float,
     ):
         """
         Create a Raster object from a geometry.
@@ -1056,9 +1056,9 @@ class Raster(BaseModel):
         ----------
         geometry : BoundingBox | Polygon | MultiPolygon
             Defines the bitmask as a geometry. Overrides any existing mask.
-        height : int
+        height : int | float
             The intended height of the binary mask.
-        width : int
+        width : int | float
             The intended width of the binary mask.
 
         Returns
