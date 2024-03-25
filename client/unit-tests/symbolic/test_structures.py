@@ -1,20 +1,18 @@
-import pytest
 import datetime
 
+import pytest
+
 from valor.symbolic import (
-    Integer,
     Float,
-    String,
-    Bool,
     LineString,
+    List,
     MultiLineString,
     MultiPoint,
     MultiPolygon,
     Point,
     Polygon,
     Symbol,
-    Variable, 
-    List,
+    Variable,
 )
 from valor.symbolic.functions import AppendableFunction, TwoArgumentFunction
 from valor.symbolic.structures import Dictionary, DictionaryValue
@@ -112,39 +110,45 @@ def _test_unsupported(objcls, permutations, op):
 
 def test_list():
     # interoperable with built-in 'list'
-    assert isinstance(List[Float], List)
+
+    assert isinstance(List[Float], type)
     assert issubclass(List[Float], Variable)
 
     symbol = List[Float].symbolic()
     assert symbol.__str__() == "list[float]"
-    assert symbol.to_dict() == {'type': 'symbol', 'value': {'owner': None, 'name': 'list[float]', 'key': None, 'attribute': None}}
+    assert symbol.to_dict() == {
+        "type": "symbol",
+        "value": {
+            "owner": None,
+            "name": "list[float]",
+            "key": None,
+            "attribute": None,
+        },
+    }
 
     variable = List[Float].definite([0.1, 0.2, 0.3])
     assert variable.__str__() == "[0.1, 0.2, 0.3]"
-    assert variable.to_dict() == {'type': 'list[float]', 'value': [0.1, 0.2, 0.3]}
+    assert variable.to_dict() == {
+        "type": "list[float]",
+        "value": [0.1, 0.2, 0.3],
+    }
     v0 = variable[0]
     assert isinstance(v0, Float)
     assert v0.get_value() == 0.1
 
     assert (symbol == variable).to_dict() == {
-        'op': 'eq', 
-        'lhs': {'type': 'symbol', 'value': {'owner': None, 'name': 'list[float]', 'key': None, 'attribute': None}}, 
-        'rhs': {'type': 'list[float]', 'value': [0.1, 0.2, 0.3]}
+        "op": "eq",
+        "lhs": {
+            "type": "symbol",
+            "value": {
+                "owner": None,
+                "name": "list[float]",
+                "key": None,
+                "attribute": None,
+            },
+        },
+        "rhs": {"type": "list[float]", "value": [0.1, 0.2, 0.3]},
     }
-
-    from valor import symbolic
-    import typing
-    class B(symbolic.StaticCollection):
-        # x: typing.List[str]
-        y: List[Float]
-
-    # for xx in B(x=[""], y=[0.1]).x:
-    #     xx.lower()
-
-    b = B(y=[0.1])
-    print(type(b.y.__getitem__()))
-    for yy in b.y:
-        yy.get_value()
 
 
 def test_dictionary_value():

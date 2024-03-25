@@ -1,5 +1,4 @@
 import typing
-
 from typing import Any, Optional
 
 from valor.symbolic.atomics import (
@@ -90,21 +89,28 @@ def _get_atomic_type_by_name(name: str):
         raise NotImplementedError(name)
 
 
-class List(Equatable, list):
+T = typing.TypeVar("T")
+
+
+class List(Equatable):
 
     _registered_classes = dict()
 
+    @classmethod
     def __class_getitem__(cls, item_cls: type):
 
         if not issubclass(item_cls, Variable):
             raise TypeError
-        
+
         if item_cls in cls._registered_classes:
             return cls._registered_classes[item_cls]
 
-        class ValueList(Equatable):
-
-            def __init__(self, value: Optional[Any] = None, symbol: Optional[Symbol] = None):
+        class ValueList(List):
+            def __init__(
+                self,
+                value: Optional[Any] = None,
+                symbol: Optional[Symbol] = None,
+            ):
                 if value is not None:
                     value = [
                         element
@@ -119,14 +125,14 @@ class List(Equatable, list):
                 if value is None:
                     value = list()
                 return cls(value=value)
-            
+
             @classmethod
             def symbolic(
-                cls, 
-                name: str | None = None, 
-                key: str | None = None, 
-                attribute: str | None = None, 
-                owner: str | None = None
+                cls,
+                name: str | None = None,
+                key: str | None = None,
+                attribute: str | None = None,
+                owner: str | None = None,
             ):
                 if name is None:
                     name = f"list[{item_cls.__name__.lower()}]"
@@ -148,14 +154,16 @@ class List(Equatable, list):
             def decode_value(cls, value: Any):
                 if not value:
                     return []
-                if issubclass(type(value), Variable) and issubclass(item_cls, Variable):
+                if issubclass(type(value), Variable) and issubclass(
+                    item_cls, Variable
+                ):
                     return [
                         item_cls.decode_value(element) for element in value
                     ]
 
             def encode_value(self):
                 return [element.encode_value() for element in self.get_value()]
-            
+
             def to_dict(self) -> dict:
                 if isinstance(self._value, Symbol):
                     return self._value.to_dict()
@@ -176,13 +184,22 @@ class List(Equatable, list):
 
             def __iter__(self) -> typing.Iterator[item_cls]:
                 return iter([element for element in self.get_value()])
-            
+
             @staticmethod
             def get_element_type():
                 return item_cls
 
         cls._registered_classes[item_cls] = ValueList
         return ValueList
+
+    def __getitem__(self, __key: int) -> Any:
+        raise NotImplementedError
+
+    def __setitem__(self, __key: int, __value: Any):
+        raise NotImplementedError
+
+    def __iter__(self) -> typing.Iterator[Any]:
+        raise NotImplementedError
 
 
 class DictionaryValue:
