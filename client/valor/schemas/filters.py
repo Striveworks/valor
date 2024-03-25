@@ -267,3 +267,21 @@ class Filter:
                 )
 
         return filter_request
+
+
+# from valor import symbolic as sym
+
+
+# class TestFilter(sym.StaticCollection):
+#     dataset_names: sym.List[sym.String]
+#     dataset_metadata: sym.Dictionary
+
+
+# data = {"dataset_names": ["a", "b", "c"], "dataset_metadata": {"hi": 123}}
+# f = TestFilter(**data)
+# print(f.to_dict())
+
+# other = [
+#     TestFilter.symbolic().dataset_names == ["a", "b", "c"],
+# ]
+# print(other)

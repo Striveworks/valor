@@ -114,6 +114,7 @@ def test_list():
     assert isinstance(List[Float], type)
     assert issubclass(List[Float], Variable)
 
+    # test creating symbolic lists
     symbol = List[Float].symbolic()
     assert symbol.__str__() == "list[float]"
     assert symbol.to_dict() == {
@@ -126,16 +127,39 @@ def test_list():
         },
     }
 
+    # test creating valued lists
     variable = List[Float].definite([0.1, 0.2, 0.3])
     assert variable.__str__() == "[0.1, 0.2, 0.3]"
     assert variable.to_dict() == {
         "type": "list[float]",
         "value": [0.1, 0.2, 0.3],
     }
-    v0 = variable[0]
-    assert isinstance(v0, Float)
-    assert v0.get_value() == 0.1
 
+    # test setting value in list by index
+    assert variable[1].get_value() == 0.2
+    variable[1] = 3.14
+    assert variable[1].get_value() == 3.14
+    variable[1] = Float(0.2)
+
+    # test nested typing
+    assert variable[0].get_value() == 0.1
+
+    # test comparison symbol -> value
+    assert (symbol == [0.1, 0.2, 0.3]).to_dict() == {
+        "op": "eq",
+        "lhs": {
+            "type": "symbol",
+            "value": {
+                "owner": None,
+                "name": "list[float]",
+                "key": None,
+                "attribute": None,
+            },
+        },
+        "rhs": {"type": "list[float]", "value": [0.1, 0.2, 0.3]},
+    }
+
+    # test comparison symbol -> valued variable
     assert (symbol == variable).to_dict() == {
         "op": "eq",
         "lhs": {
@@ -148,6 +172,12 @@ def test_list():
             },
         },
         "rhs": {"type": "list[float]", "value": [0.1, 0.2, 0.3]},
+    }
+
+    # test comparison between valued variable and value
+    assert (variable == [0.1, 0.2, 0.3]).to_dict() == {
+        "type": "bool",
+        "value": True,
     }
 
 

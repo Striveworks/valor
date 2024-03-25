@@ -92,20 +92,20 @@ def _get_atomic_type_by_name(name: str):
 T = typing.TypeVar("T")
 
 
-class List(Equatable):
+class List(typing.Generic[T], Equatable):
 
     _registered_classes = dict()
 
     @classmethod
-    def __class_getitem__(cls, item_cls: type):
+    def __class_getitem__(cls, item_class: typing.Type[T]):
 
-        if not issubclass(item_cls, Variable):
+        if not issubclass(item_class, Variable):
             raise TypeError
 
-        if item_cls in cls._registered_classes:
-            return cls._registered_classes[item_cls]
+        if item_class in cls._registered_classes:
+            return cls._registered_classes[item_class]
 
-        class ValueList(List):
+        class ValueList(Equatable):
             def __init__(
                 self,
                 value: Optional[Any] = None,
@@ -114,8 +114,8 @@ class List(Equatable):
                 if value is not None:
                     value = [
                         element
-                        if isinstance(element, item_cls)
-                        else item_cls(element)
+                        if isinstance(element, item_class)
+                        else item_class(element)
                         for element in value
                     ]
                 super().__init__(value=value, symbol=symbol)
@@ -135,7 +135,7 @@ class List(Equatable):
                 owner: str | None = None,
             ):
                 if name is None:
-                    name = f"list[{item_cls.__name__.lower()}]"
+                    name = f"list[{item_class.__name__.lower()}]"
                 return super().symbolic(name, key, attribute, owner)
 
             @classmethod
@@ -145,21 +145,24 @@ class List(Equatable):
                         f"Expected type '{list}' received type '{type(value)}'"
                     )
                 for element in value:
-                    if not isinstance(element, item_cls):
+                    if not item_class.supports(element) and not issubclass(
+                        type(element), Variable
+                    ):
                         raise TypeError(
-                            f"Expected list elements with type '{item_cls}' received type '{type(element)}'"
+                            f"Expected list elements with type '{item_class}' received type '{type(element)}'"
                         )
 
             @classmethod
             def decode_value(cls, value: Any):
                 if not value:
-                    return []
-                if issubclass(type(value), Variable) and issubclass(
-                    item_cls, Variable
-                ):
-                    return [
-                        item_cls.decode_value(element) for element in value
+                    return cls(value=[])
+                if not issubclass(item_class, Variable):
+                    raise TypeError
+                return cls(
+                    value=[
+                        item_class.decode_value(element) for element in value
                     ]
+                )
 
             def encode_value(self):
                 return [element.encode_value() for element in self.get_value()]
@@ -169,36 +172,36 @@ class List(Equatable):
                     return self._value.to_dict()
                 else:
                     return {
-                        "type": f"list[{item_cls.__name__.lower()}]",
+                        "type": f"list[{item_class.__name__.lower()}]",
                         "value": self.encode_value(),
                     }
 
-            def __getitem__(self, __key: int) -> Float:
+            def __getitem__(self, __key: int) -> T:
                 return self.get_value()[__key]
 
-            def __setitem__(self, __key: int, __value: item_cls):
+            def __setitem__(self, __key: int, __value: Any):
                 value = self.get_value()
-                if value is None:
+                if not issubclass(item_class, Variable):
                     raise TypeError
-                value[__key] = __value
+                value[__key] = item_class.preprocess(__value)
 
-            def __iter__(self) -> typing.Iterator[item_cls]:
+            def __iter__(self) -> typing.Iterator[T]:
                 return iter([element for element in self.get_value()])
 
             @staticmethod
             def get_element_type():
-                return item_cls
+                return item_class
 
-        cls._registered_classes[item_cls] = ValueList
+        cls._registered_classes[item_class] = ValueList
         return ValueList
 
-    def __getitem__(self, __key: int) -> Any:
+    def __getitem__(self, __key: int) -> T:
         raise NotImplementedError
 
     def __setitem__(self, __key: int, __value: Any):
         raise NotImplementedError
 
-    def __iter__(self) -> typing.Iterator[Any]:
+    def __iter__(self) -> typing.Iterator[T]:
         raise NotImplementedError
 
 
