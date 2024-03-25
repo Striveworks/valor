@@ -261,7 +261,7 @@ export class ValorClient {
    * @param dataset name of the dataset
    * @param taskType type of task
    *
-   * @returns {Promise<Evaluation>}
+   * @returns {Promise<Evaluation[]>}
    */
   public async bulkCreateOrGetEvaluations(
     models: string[],
