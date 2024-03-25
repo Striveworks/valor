@@ -2,7 +2,6 @@ from .atomics import (
     Bool,
     Date,
     DateTime,
-    Dictionary,
     Duration,
     Equatable,
     Float,
@@ -20,6 +19,10 @@ from .atomics import (
     Symbol,
     Time,
     Variable,
+)
+from .structures import (
+    List,
+    Dictionary,
 )
 from .functions import (
     And,
@@ -94,6 +97,7 @@ __all__ = [
     "BoundingPolygon",
     "Raster",
     "Embedding",
+    "List",
     "Dictionary",
     "Label",
     "Annotation",

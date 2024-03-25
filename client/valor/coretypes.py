@@ -6,6 +6,7 @@ import warnings
 from dataclasses import asdict, dataclass
 from typing import Dict, List, Optional, Tuple, Union
 
+from valor import symbolic
 from valor.client import ClientConnection, connect, get_connection
 from valor.enums import AnnotationType, EvaluationStatus, TableStatus, TaskType
 from valor.exceptions import ClientException
@@ -62,7 +63,7 @@ class GroundTruth(StaticCollection):
     """
 
     datum: Datum
-    annotations: List[Annotation]
+    annotations: symbolic.List[Annotation]
 
     @classmethod
     def create(
@@ -102,7 +103,7 @@ class Prediction(StaticCollection):
     """
 
     datum: Datum
-    annotations: List[Annotation]
+    annotations: symbolic.List[Annotation]
 
     @classmethod
     def create(

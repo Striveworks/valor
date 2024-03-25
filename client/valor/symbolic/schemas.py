@@ -2,14 +2,13 @@ import io
 import typing
 import warnings
 from base64 import b64decode, b64encode
-from typing import Any, List, Optional, Union
+from typing import Any, Optional, Union
 
 import numpy as np
 import PIL.Image
 
 from valor.enums import TaskType
 from valor.symbolic.atomics import (
-    Dictionary,
     Equatable,
     Float,
     MultiPolygon,
@@ -19,8 +18,8 @@ from valor.symbolic.atomics import (
     String,
     Symbol,
     Variable,
-    _get_atomic_type_by_name,
 )
+from valor.symbolic.structures import _get_atomic_type_by_name, Dictionary, List
 
 
 class Score(Float, Nullable):
@@ -361,7 +360,7 @@ class Embedding(Spatial, Nullable):
         if value is not None:
             if not isinstance(value, list):
                 raise TypeError(
-                    f"Expected type '{Optional[List[float]]}' received type '{type(value)}'"
+                    f"Expected type '{Optional[typing.List[float]]}' received type '{type(value)}'"
                 )
             elif len(value) < 1:
                 raise ValueError(
@@ -385,12 +384,12 @@ def _get_schema_type_by_name(name: str):
         return Dictionary
     elif name == "label":
         return Label
-    elif name == "list[label]":
-        return Label.list()
+    elif name == "labellist":
+        return structures.List[Label]
     elif name == "annotation":
         return Annotation
-    elif name == "list[annotation]":
-        return Annotation.list()
+    elif name == "annotationlist":
+        return structures.List[Annotation]
     elif name == "datum":
         return Datum
     else:
@@ -469,19 +468,22 @@ class StaticCollection(Equatable):
                 retval[k] = v
             elif isinstance(v, str):
                 retval[k] = _get_schema_type_by_name(v)
-            elif "__origin__" in v.__dict__:
-                if v.__dict__["__origin__"] is list:
-                    value = typing.get_args(v)[0]
-                    if isinstance(value, typing.ForwardRef):
-                        value = value.__forward_arg__
-                    if isinstance(value, str):
-                        value = _get_schema_type_by_name(value)
-                    if isinstance(value, type) and issubclass(value, Variable):
-                        retval[k] = value.list()
-                else:
-                    raise NotImplementedError(
-                        "Only 'typing.List' is supported."
-                    )
+
+            # TODO - Add List
+            # elif "__origin__" in v.__dict__:
+            #     if v.__dict__["__origin__"] is list:
+            #         value = typing.get_args(v)[0]
+            #         if isinstance(value, typing.ForwardRef):
+            #             value = value.__forward_arg__
+            #         if isinstance(value, str):
+            #             value = _get_schema_type_by_name(value)
+            #         if isinstance(value, type) and issubclass(value, Variable):
+            #             retval[k] = value.list()
+            #     else:
+            #         raise NotImplementedError(
+            #             "Only 'typing.List' is supported."
+            #         )
+
             else:
                 raise NotImplementedError(
                     f"Unknown typing. Attribute '{k}' with type '{v}'."
@@ -645,7 +647,7 @@ class Annotation(StaticCollection):
     def create(
         cls,
         task_type: TaskType,
-        labels: Optional[List[Label]] = None,
+        labels: Optional[typing.List[Label]] = None,
         metadata: Optional[dict] = None,
         bounding_box: Optional[BoundingBox] = None,
         polygon: Optional[BoundingPolygon] = None,

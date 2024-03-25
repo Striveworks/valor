@@ -2,8 +2,9 @@ from typing import List, Set
 
 import pytest
 
+from valor import symbolic
 from valor.symbolic.atomics import Bool, Float, Integer, String, Symbol
-from valor.symbolic.schemas import Label, StaticCollection
+from valor.symbolic.schemas import StaticCollection
 
 
 def test_static_collection_init():
@@ -141,10 +142,13 @@ def test__get_static_types():
 
     # test lists of variables (note: these are not directly comparable)
     class B(StaticCollection):
-        w: List[Integer]
-        x: List["Float"]
-        y: List["String"]
-        z: List[Bool]
+        w: symbolic.List[Integer]
+        x: symbolic.List[Float]
+        y: symbolic.List[String]
+        z: symbolic.List[Bool]
 
-    symB = B.symbolic()
-    print(symB.w.to_dict())
+    types_ = B._get_static_types()
+    assert types_['w'].get_element_type() == Integer
+    assert types_['x'].get_element_type() == Float
+    assert types_['y'].get_element_type() == String
+    assert types_['z'].get_element_type() == Bool
