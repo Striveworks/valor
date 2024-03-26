@@ -11,10 +11,12 @@ from valor_api.backend.metrics.classification import (
     _compute_accuracy_from_cm,
     _compute_clf_metrics,
     _compute_confusion_matrix_at_grouper_key,
+    _compute_curves,
     _compute_roc_auc,
     compute_clf_metrics,
 )
 from valor_api.backend.metrics.metric_utils import create_grouper_mappings
+from valor_api.backend.query import Query
 
 
 @pytest.fixture
@@ -154,10 +156,39 @@ def test_compute_confusion_matrix_at_grouper_key(
         evaluation_type=enums.TaskType.CLASSIFICATION,
     )
 
+    label_key_filter = list(
+        grouper_mappings["grouper_key_to_label_keys_mapping"]["animal"]
+    )
+
+    # groundtruths filter
+    gFilter = groundtruth_filter.model_copy()
+    gFilter.label_keys = label_key_filter
+
+    # predictions filter
+    pFilter = prediction_filter.model_copy()
+    pFilter.label_keys = label_key_filter
+
+    groundtruths = (
+        Query(
+            models.GroundTruth,
+            models.Annotation.datum_id.label("datum_id"),
+        )
+        .filter(gFilter)
+        .groundtruths(as_subquery=False)
+        .alias()
+    )
+
+    predictions = (
+        Query(models.Prediction)
+        .filter(pFilter)
+        .predictions(as_subquery=False)
+        .alias()
+    )
+
     cm = _compute_confusion_matrix_at_grouper_key(
         db=db,
-        prediction_filter=prediction_filter,
-        groundtruth_filter=groundtruth_filter,
+        predictions=predictions,
+        groundtruths=groundtruths,
         grouper_key="animal",
         grouper_mappings=grouper_mappings,
     )
@@ -178,6 +209,7 @@ def test_compute_confusion_matrix_at_grouper_key(
             prediction="dog", groundtruth="bird", count=1
         ),
     ]
+    assert cm
     assert len(cm.entries) == len(expected_entries)
     for entry in cm.entries:
         assert entry in expected_entries
@@ -185,10 +217,40 @@ def test_compute_confusion_matrix_at_grouper_key(
         assert entry in cm.entries
     assert _compute_accuracy_from_cm(cm) == 2 / 6
 
+    # test for color
+    label_key_filter = list(
+        grouper_mappings["grouper_key_to_label_keys_mapping"]["color"]
+    )
+
+    # groundtruths filter
+    gFilter = groundtruth_filter.model_copy()
+    gFilter.label_keys = label_key_filter
+
+    # predictions filter
+    pFilter = prediction_filter.model_copy()
+    pFilter.label_keys = label_key_filter
+
+    groundtruths = (
+        Query(
+            models.GroundTruth,
+            models.Annotation.datum_id.label("datum_id"),
+        )
+        .filter(gFilter)
+        .groundtruths(as_subquery=False)
+        .alias()
+    )
+
+    predictions = (
+        Query(models.Prediction)
+        .filter(pFilter)
+        .predictions(as_subquery=False)
+        .alias()
+    )
+
     cm = _compute_confusion_matrix_at_grouper_key(
         db=db,
-        prediction_filter=prediction_filter,
-        groundtruth_filter=groundtruth_filter,
+        predictions=predictions,
+        groundtruths=groundtruths,
         grouper_key="color",
         grouper_mappings=grouper_mappings,
     )
@@ -209,6 +271,7 @@ def test_compute_confusion_matrix_at_grouper_key(
             prediction="red", groundtruth="black", count=1
         ),
     ]
+    assert cm
     assert len(cm.entries) == len(expected_entries)
     for entry in cm.entries:
         assert entry in expected_entries
@@ -250,10 +313,39 @@ def test_compute_confusion_matrix_at_grouper_key_and_filter(
         evaluation_type=enums.TaskType.CLASSIFICATION,
     )
 
+    label_key_filter = list(
+        grouper_mappings["grouper_key_to_label_keys_mapping"]["animal"]
+    )
+
+    # groundtruths filter
+    gFilter = groundtruth_filter.model_copy()
+    gFilter.label_keys = label_key_filter
+
+    # predictions filter
+    pFilter = prediction_filter.model_copy()
+    pFilter.label_keys = label_key_filter
+
+    groundtruths = (
+        Query(
+            models.GroundTruth,
+            models.Annotation.datum_id.label("datum_id"),
+        )
+        .filter(gFilter)
+        .groundtruths(as_subquery=False)
+        .alias()
+    )
+
+    predictions = (
+        Query(models.Prediction)
+        .filter(pFilter)
+        .predictions(as_subquery=False)
+        .alias()
+    )
+
     cm = _compute_confusion_matrix_at_grouper_key(
         db,
-        prediction_filter=prediction_filter,
-        groundtruth_filter=groundtruth_filter,
+        predictions=predictions,
+        groundtruths=groundtruths,
         grouper_key="animal",
         grouper_mappings=grouper_mappings,
     )
@@ -275,6 +367,7 @@ def test_compute_confusion_matrix_at_grouper_key_and_filter(
             groundtruth="bird", prediction="dog", count=1
         ),
     ]
+    assert cm
     assert len(cm.entries) == len(expected_entries)
     for e in expected_entries:
         assert e in cm.entries
@@ -314,10 +407,39 @@ def test_compute_confusion_matrix_at_grouper_key_using_label_map(
         evaluation_type=enums.TaskType.CLASSIFICATION,
     )
 
+    label_key_filter = list(
+        grouper_mappings["grouper_key_to_label_keys_mapping"]["animal"]
+    )
+
+    # groundtruths filter
+    gFilter = groundtruth_filter.model_copy()
+    gFilter.label_keys = label_key_filter
+
+    # predictions filter
+    pFilter = prediction_filter.model_copy()
+    pFilter.label_keys = label_key_filter
+
+    groundtruths = (
+        Query(
+            models.GroundTruth,
+            models.Annotation.datum_id.label("datum_id"),
+        )
+        .filter(gFilter)
+        .groundtruths(as_subquery=False)
+        .alias()
+    )
+
+    predictions = (
+        Query(models.Prediction)
+        .filter(pFilter)
+        .predictions(as_subquery=False)
+        .alias()
+    )
+
     cm = _compute_confusion_matrix_at_grouper_key(
         db,
-        prediction_filter=prediction_filter,
-        groundtruth_filter=groundtruth_filter,
+        predictions=predictions,
+        groundtruths=groundtruths,
         grouper_key="animal",
         grouper_mappings=grouper_mappings,
     )
@@ -334,6 +456,7 @@ def test_compute_confusion_matrix_at_grouper_key_using_label_map(
         ),
     ]
 
+    assert cm
     assert len(cm.entries) == len(expected_entries)
     for e in expected_entries:
         assert e in cm.entries
@@ -582,7 +705,7 @@ def test_compute_classification(
     )
 
     confusion, metrics = _compute_clf_metrics(
-        db, model_filter, datum_filter, label_map=None
+        db, model_filter, datum_filter, label_map=None, compute_pr_curves=False
     )
 
     # Make matrices accessible by label_key
@@ -680,6 +803,7 @@ def test_classification(
     confusion = existing_evaluations[0].confusion_matrices
 
     # Make matrices accessible by label_key
+    assert confusion
     confusion = {matrix.label_key: matrix for matrix in confusion}
 
     # Test confusion matrix w/ label_key "animal"
@@ -727,9 +851,544 @@ def test_classification(
         assert e in confusion["color"].entries
 
     # Test metrics (only ROCAUC)
+    assert metrics
     for metric in metrics:
         if isinstance(metric, schemas.ROCAUCMetric):
             if metric.label_key == "animal":
                 assert metric.value == 0.8009259259259259
             elif metric.label_key == "color":
                 assert metric.value == 0.43125
+
+
+def test__compute_curves(
+    db: Session,
+    dataset_name: str,
+    model_name: str,
+    classification_test_data,
+):
+    """Test that _compute_curves correctly returns precision-recall curves for our animal ground truths."""
+
+    prediction_filter = schemas.Filter(
+        model_names=[model_name],
+        task_types=[enums.TaskType.CLASSIFICATION],
+    )
+    groundtruth_filter = schemas.Filter(
+        dataset_names=[dataset_name],
+        task_types=[enums.TaskType.CLASSIFICATION],
+    )
+
+    labels = fetch_union_of_labels(
+        db=db,
+        rhs=prediction_filter,
+        lhs=groundtruth_filter,
+    )
+
+    grouper_mappings = create_grouper_mappings(
+        labels=labels,
+        label_map=None,
+        evaluation_type=enums.TaskType.CLASSIFICATION,
+    )
+
+    label_key_filter = list(
+        grouper_mappings["grouper_key_to_label_keys_mapping"]["animal"]
+    )
+
+    # groundtruths filter
+    gFilter = groundtruth_filter.model_copy()
+    gFilter.label_keys = label_key_filter
+
+    # predictions filter
+    pFilter = prediction_filter.model_copy()
+    pFilter.label_keys = label_key_filter
+
+    groundtruths = (
+        Query(
+            models.GroundTruth,
+            models.Annotation.datum_id.label("datum_id"),
+        )
+        .filter(gFilter)
+        .groundtruths(as_subquery=False)
+        .alias()
+    )
+
+    predictions = (
+        Query(models.Prediction)
+        .filter(pFilter)
+        .predictions(as_subquery=False)
+        .alias()
+    )
+
+    curves = _compute_curves(
+        db=db,
+        predictions=predictions,
+        groundtruths=groundtruths,
+        grouper_key="animal",
+        grouper_mappings=grouper_mappings,
+    )
+
+    expected_curves = {
+        "bird": {
+            0.05: {
+                "tp": 3,
+                "fp": 1,  # last row has a bird prediction with score == .2
+                "fn": 0,
+                "precision": 0.75,
+                "recall": 1.0,
+                "f1_score": 0.8571428571428571,
+            },
+            0.1: {
+                "tp": 3,
+                "fp": 1,
+                "fn": 0,
+                "precision": 0.75,
+                "recall": 1.0,
+                "f1_score": 0.8571428571428571,
+            },
+            0.15: {
+                "tp": 3,
+                "fp": 1,
+                "fn": 0,
+                "precision": 0.75,
+                "recall": 1.0,
+                "f1_score": 0.8571428571428571,
+            },
+            0.2: {
+                "tp": 1,
+                "fp": 1,
+                "fn": 2,  # rows 3 and 4 drop out of tp since they have scores == .15
+                "precision": 0.5,
+                "recall": 0.3333333333333333,
+                "f1_score": 0.4,
+            },
+            0.25: {
+                "tp": 1,
+                "fp": 0,
+                "fn": 2,
+                "precision": 1.0,
+                "recall": 0.3333333333333333,
+                "f1_score": 0.5,
+            },
+            0.3: {
+                "tp": 1,
+                "fp": 0,
+                "fn": 2,
+                "precision": 1.0,
+                "recall": 0.3333333333333333,
+                "f1_score": 0.5,
+            },
+            0.35: {
+                "tp": 1,
+                "fp": 0,
+                "fn": 2,
+                "precision": 1.0,
+                "recall": 0.3333333333333333,
+                "f1_score": 0.5,
+            },
+            0.4: {
+                "tp": 1,
+                "fp": 0,
+                "fn": 2,
+                "precision": 1.0,
+                "recall": 0.3333333333333333,
+                "f1_score": 0.5,
+            },
+            0.45: {
+                "tp": 1,
+                "fp": 0,
+                "fn": 2,
+                "precision": 1.0,
+                "recall": 0.3333333333333333,
+                "f1_score": 0.5,
+            },
+            0.5: {
+                "tp": 1,
+                "fp": 0,
+                "fn": 2,
+                "precision": 1.0,
+                "recall": 0.3333333333333333,
+                "f1_score": 0.5,
+            },
+            0.55: {
+                "tp": 1,
+                "fp": 0,
+                "fn": 2,
+                "precision": 1.0,
+                "recall": 0.3333333333333333,
+                "f1_score": 0.5,
+            },
+            0.6: {
+                "tp": 1,
+                "fp": 0,
+                "fn": 2,
+                "precision": 1.0,
+                "recall": 0.3333333333333333,
+                "f1_score": 0.5,
+            },
+            0.65: {
+                "tp": 0,
+                "fp": 0,
+                "fn": 3,  # first row drops out with score == .6
+                "precision": -1,
+                "recall": 0.0,
+                "f1_score": -1,
+            },
+            0.7: {
+                "tp": 0,
+                "fp": 0,
+                "fn": 3,
+                "precision": -1,
+                "recall": 0.0,
+                "f1_score": -1,
+            },
+            0.75: {
+                "tp": 0,
+                "fp": 0,
+                "fn": 3,
+                "precision": -1,
+                "recall": 0.0,
+                "f1_score": -1,
+            },
+            0.8: {
+                "tp": 0,
+                "fp": 0,
+                "fn": 3,
+                "precision": -1,
+                "recall": 0.0,
+                "f1_score": -1,
+            },
+            0.85: {
+                "tp": 0,
+                "fp": 0,
+                "fn": 3,
+                "precision": -1,
+                "recall": 0.0,
+                "f1_score": -1,
+            },
+            0.9: {
+                "tp": 0,
+                "fp": 0,
+                "fn": 3,
+                "precision": -1,
+                "recall": 0.0,
+                "f1_score": -1,
+            },
+            0.95: {
+                "tp": 0,
+                "fp": 0,
+                "fn": 3,
+                "precision": -1,
+                "recall": 0.0,
+                "f1_score": -1,
+            },
+        },
+        "dog": {
+            0.05: {
+                "tp": 2,
+                "fp": 3,
+                "fn": 0,
+                "precision": 0.4,
+                "recall": 1.0,
+                "f1_score": 0.5714285714285715,
+            },
+            0.1: {
+                "tp": 2,
+                "fp": 2,
+                "fn": 0,
+                "precision": 0.5,
+                "recall": 1.0,
+                "f1_score": 0.6666666666666666,
+            },
+            0.15: {
+                "tp": 1,
+                "fp": 2,
+                "fn": 1,
+                "precision": 0.3333333333333333,
+                "recall": 0.5,
+                "f1_score": 0.4,
+            },
+            0.2: {
+                "tp": 1,
+                "fp": 2,
+                "fn": 1,
+                "precision": 0.3333333333333333,
+                "recall": 0.5,
+                "f1_score": 0.4,
+            },
+            0.25: {
+                "tp": 1,
+                "fp": 1,
+                "fn": 1,
+                "precision": 0.5,
+                "recall": 0.5,
+                "f1_score": 0.5,
+            },
+            0.3: {
+                "tp": 1,
+                "fp": 1,
+                "fn": 1,
+                "precision": 0.5,
+                "recall": 0.5,
+                "f1_score": 0.5,
+            },
+            0.35: {
+                "tp": 1,
+                "fp": 1,
+                "fn": 1,
+                "precision": 0.5,
+                "recall": 0.5,
+                "f1_score": 0.5,
+            },
+            0.4: {
+                "tp": 1,
+                "fp": 1,
+                "fn": 1,
+                "precision": 0.5,
+                "recall": 0.5,
+                "f1_score": 0.5,
+            },
+            0.45: {
+                "tp": 0,  # last dog score of .4 drops out
+                "fp": 1,
+                "fn": 2,
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1_score": -1,
+            },
+            0.5: {
+                "tp": 0,
+                "fp": 1,
+                "fn": 2,
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1_score": -1,
+            },
+            0.55: {
+                "tp": 0,
+                "fp": 1,
+                "fn": 2,
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1_score": -1,
+            },
+            0.6: {
+                "tp": 0,
+                "fp": 1,
+                "fn": 2,
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1_score": -1,
+            },
+            0.65: {
+                "tp": 0,
+                "fp": 1,
+                "fn": 2,
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1_score": -1,
+            },
+            0.7: {
+                "tp": 0,
+                "fp": 1,
+                "fn": 2,
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1_score": -1,
+            },
+            0.75: {
+                "tp": 0,
+                "fp": 1,
+                "fn": 2,
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1_score": -1,
+            },
+            0.8: {
+                "tp": 0,
+                "fp": 0,  # last dog prediction drops out with score ==.75
+                "fn": 2,
+                "precision": -1,
+                "recall": 0.0,
+                "f1_score": -1,
+            },
+            0.85: {
+                "tp": 0,
+                "fp": 0,
+                "fn": 2,
+                "precision": -1,
+                "recall": 0.0,
+                "f1_score": -1,
+            },
+            0.9: {
+                "tp": 0,
+                "fp": 0,
+                "fn": 2,
+                "precision": -1,
+                "recall": 0.0,
+                "f1_score": -1,
+            },
+            0.95: {
+                "tp": 0,
+                "fp": 0,
+                "fn": 2,
+                "precision": -1,
+                "recall": 0.0,
+                "f1_score": -1,
+            },
+        },
+        "cat": {
+            0.05: {
+                "tp": 1,
+                "fp": 5,
+                "fn": 0,
+                "precision": 0.16666666666666666,
+                "recall": 1.0,
+                "f1_score": 0.2857142857142857,
+            },
+            0.1: {
+                "tp": 1,
+                "fp": 5,
+                "fn": 0,
+                "precision": 0.16666666666666666,
+                "recall": 1.0,
+                "f1_score": 0.2857142857142857,
+            },
+            0.15: {
+                "tp": 1,
+                "fp": 4,
+                "fn": 0,
+                "precision": 0.2,
+                "recall": 1.0,
+                "f1_score": 0.33333333333333337,
+            },
+            0.2: {
+                "tp": 1,
+                "fp": 4,
+                "fn": 0,
+                "precision": 0.2,
+                "recall": 1.0,
+                "f1_score": 0.33333333333333337,
+            },
+            0.25: {
+                "tp": 1,
+                "fp": 3,
+                "fn": 0,
+                "precision": 0.25,
+                "recall": 1.0,
+                "f1_score": 0.4,
+            },
+            0.3: {
+                "tp": 1,
+                "fp": 3,
+                "fn": 0,
+                "precision": 0.25,
+                "recall": 1.0,
+                "f1_score": 0.4,
+            },
+            0.35: {
+                "tp": 1,
+                "fp": 3,
+                "fn": 0,
+                "precision": 0.25,
+                "recall": 1.0,
+                "f1_score": 0.4,
+            },
+            0.4: {
+                "tp": 1,
+                "fp": 3,
+                "fn": 0,
+                "precision": 0.25,
+                "recall": 1.0,
+                "f1_score": 0.4,
+            },
+            0.45: {
+                "tp": 1,
+                "fp": 2,
+                "fn": 0,
+                "precision": 0.3333333333333333,
+                "recall": 1.0,
+                "f1_score": 0.5,
+            },
+            0.5: {
+                "tp": 1,
+                "fp": 2,
+                "fn": 0,
+                "precision": 0.3333333333333333,
+                "recall": 1.0,
+                "f1_score": 0.5,
+            },
+            0.55: {
+                "tp": 1,
+                "fp": 2,
+                "fn": 0,
+                "precision": 0.3333333333333333,
+                "recall": 1.0,
+                "f1_score": 0.5,
+            },
+            0.6: {
+                "tp": 1,
+                "fp": 2,
+                "fn": 0,
+                "precision": 0.3333333333333333,
+                "recall": 1.0,
+                "f1_score": 0.5,
+            },
+            0.65: {
+                "tp": 1,
+                "fp": 2,
+                "fn": 0,
+                "precision": 0.3333333333333333,
+                "recall": 1.0,
+                "f1_score": 0.5,
+            },
+            0.7: {
+                "tp": 1,
+                "fp": 2,
+                "fn": 0,
+                "precision": 0.3333333333333333,
+                "recall": 1.0,
+                "f1_score": 0.5,
+            },
+            0.75: {
+                "tp": 1,
+                "fp": 2,
+                "fn": 0,
+                "precision": 0.3333333333333333,
+                "recall": 1.0,
+                "f1_score": 0.5,
+            },
+            0.8: {
+                "tp": 1,
+                "fp": 2,
+                "fn": 0,
+                "precision": 0.3333333333333333,
+                "recall": 1.0,
+                "f1_score": 0.5,
+            },
+            0.85: {
+                "tp": 1,
+                "fp": 1,
+                "fn": 0,
+                "precision": 0.5,
+                "recall": 1.0,
+                "f1_score": 0.6666666666666666,
+            },
+            0.9: {
+                "tp": 1,
+                "fp": 1,
+                "fn": 0,
+                "precision": 0.5,
+                "recall": 1.0,
+                "f1_score": 0.6666666666666666,
+            },
+            0.95: {
+                "tp": 1,
+                "fp": 0,
+                "fn": 0,
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1_score": 1.0,
+            },
+        },
+    }
+
+    assert expected_curves == curves

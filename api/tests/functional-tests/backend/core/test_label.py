@@ -170,6 +170,7 @@ def create_dataset_model(db: Session, dataset_name: str, model_name: str):
 def test_fetch_label(db: Session, simple_labels: list[schemas.Label]):
     for label in simple_labels:
         fetched_label = fetch_label(db, label)
+        assert fetched_label is not None
         assert fetched_label.key == label.key
         assert fetched_label.value == label.value
 

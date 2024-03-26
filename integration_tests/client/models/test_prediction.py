@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from valor import Annotation, Client, Dataset, Label, Model, Prediction
 from valor.coretypes import GroundTruth
 from valor.enums import TaskType
-from valor.metatypes import ImageMetadata
+from valor.metatypes import Datum
 from valor.schemas import BasicPolygon, BoundingBox, Point, Polygon
 from valor_api.backend import models
 
@@ -20,7 +20,7 @@ def test_create_pred_detections_as_bbox_or_poly(
     dataset_name: str,
     model_name: str,
     gt_dets1: list[GroundTruth],
-    img1: ImageMetadata,
+    img1: Datum,
 ):
     """Test that a predicted detection can be created as either a bounding box
     or a polygon

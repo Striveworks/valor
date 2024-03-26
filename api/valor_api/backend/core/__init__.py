@@ -29,7 +29,6 @@ from .evaluation import (
     count_active_evaluations,
     create_or_get_evaluations,
     fetch_evaluation_from_id,
-    fetch_evaluations,
     get_evaluation_requests_from_model,
     get_evaluation_status,
     get_evaluations,
@@ -53,6 +52,7 @@ from .label import (
     get_joint_labels,
     get_label_keys,
     get_labels,
+    validate_matching_label_keys,
 )
 from .model import (
     create_model,
@@ -103,6 +103,7 @@ __all__ = [
     "fetch_label",
     "fetch_matching_labels",
     "get_disjoint_keys",
+    "validate_matching_label_keys",
     "get_disjoint_labels",
     "get_joint_keys",
     "get_joint_labels",
@@ -120,7 +121,6 @@ __all__ = [
     "create_prediction",
     "get_prediction",
     "create_or_get_evaluations",
-    "fetch_evaluations",
     "fetch_evaluation_from_id",
     "get_evaluations",
     "get_evaluation_status",

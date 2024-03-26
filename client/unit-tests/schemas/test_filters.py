@@ -35,24 +35,24 @@ def test_declarative_filtering():
         Model.name == "model1",
         Datum.uid == "uid1",
         Label.key == "k1",
-        Label.score > 0.5,
-        Label.score < 0.75,
+        Label.score > 0.5,  # type: ignore - > not compatible with type None
+        Label.score < 0.75,  # type: ignore - > not compatible with type None
         Annotation.labels == Label(key="k2", value="v2"),
-        Annotation.task_type.in_(
+        Annotation.task_type.in_(  # type: ignore - task_type not compatible with in_
             [TaskType.CLASSIFICATION, TaskType.OBJECT_DETECTION]
         ),
         # geometry filters
-        Annotation.raster.is_none(),
-        Annotation.polygon.is_none(),
-        Annotation.bounding_box.exists(),
-        Annotation.bounding_box.area >= 1000,
-        Annotation.bounding_box.area <= 5000,
+        Annotation.raster.is_none(),  # type: ignore - filtering issue
+        Annotation.polygon.is_none(),  # type: ignore - filtering issue
+        Annotation.bounding_box.exists(),  # type: ignore - filtering issue
+        Annotation.bounding_box.area >= 1000,  # type: ignore - filtering issue
+        Annotation.bounding_box.area <= 5000,  # type: ignore - filtering issue
         # metadata filters
-        Dataset.metadata["arbitrary_numeric_key"] >= 10,
-        Dataset.metadata["arbitrary_numeric_key"] < 20,
+        Dataset.metadata["arbitrary_numeric_key"] >= 10,  # type: ignore - metadata dict not compatible with type checking
+        Dataset.metadata["arbitrary_numeric_key"] < 20,  # type: ignore - metadata dict not compatible with type checking
         Model.metadata["arbitrary_str_key"] == "arbitrary value",
-        Datum.metadata["arbitrary_datetime_key"] >= datetime.timedelta(days=1),
-        Datum.metadata["arbitrary_datetime_key"] <= datetime.timedelta(days=2),
+        Datum.metadata["arbitrary_datetime_key"] >= datetime.timedelta(days=1),  # type: ignore - metadata dict not compatible with type checking
+        Datum.metadata["arbitrary_datetime_key"] <= datetime.timedelta(days=2),  # type: ignore - metadata dict not compatible with type checking
         Annotation.metadata["myKey"] == "helloworld",
     ]
 

@@ -234,7 +234,7 @@ class Metric(Base):
         ForeignKey("label.id"), nullable=True
     )
     type: Mapped[str] = mapped_column()
-    value: Mapped[float] = mapped_column(nullable=True)
+    value = mapped_column(JSONB, nullable=True)
     parameters = mapped_column(JSONB, nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
 

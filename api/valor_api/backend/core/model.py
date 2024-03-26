@@ -24,7 +24,6 @@ def _load_model_schema(
 ) -> schemas.Model:
     """Convert database row to schema."""
     return schemas.Model(
-        id=model.id,
         name=model.name,
         metadata=model.meta,
     )

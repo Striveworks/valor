@@ -74,9 +74,9 @@ def _generate_gt_annotation(
         task_type=task_type,
         labels=labels,
         raster=raster,
-        bounding_box=bounding_box
-        if task_type == TaskType.OBJECT_DETECTION
-        else None,
+        bounding_box=(
+            bounding_box if task_type == TaskType.OBJECT_DETECTION else None
+        ),
     )
 
 
@@ -325,6 +325,7 @@ def test_generate_segmentation_data(
         uid = image.uid
         sample_gt = dataset.get_groundtruth(uid)
 
+        assert sample_gt
         sample_annotations = sample_gt.annotations
         assert sample_annotations[0].raster is not None
         sample_mask_size = _mask_bytes_to_pil(
@@ -375,7 +376,7 @@ def test_generate_prediction_data(client: Client):
         dataset,
         iou_thresholds_to_compute=[0.1, 0.9],
         iou_thresholds_to_return=[0.1, 0.9],
-        filter_by=[Label.key == "k1"],
+        filter_by=[Label.key == "k1"],  # type: ignore - filter type issue
         convert_annotations_to_type=AnnotationType.BOX,
     )
     assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
@@ -407,6 +408,8 @@ def test_generate_prediction_data(client: Client):
             "iou_thresholds_to_return": [0.1, 0.9],
             "label_map": None,
             "recall_score_threshold": 0.0,
+            "compute_pr_curves": False,
+            "pr_curve_iou_threshold": 0.5,
         },
     }
     assert len(eval_job.metrics) > 0

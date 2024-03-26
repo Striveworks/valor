@@ -134,4 +134,5 @@ def test_create_annotation_with_embedding(
         .where(models.Annotation.model_id.isnot(None))
         .subquery()
     ).one_or_none()
+    assert annotation is not None
     assert annotation.embedding_id is not None

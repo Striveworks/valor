@@ -1,0 +1,30 @@
+{
+  "name": "valor-client",
+  "description": "A TypeScript API client for Valor.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig-build.json",
+    "test": "jest -i"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/striveworks/valor.git"
+  },
+  "keywords": [
+    "valor",
+    "striveworks"
+  ],
+  "author": "Striveworks <valor@striveworks.com> (https://www.striveworks.com/)",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^0.28.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^26.0.24",
+    "@types/node": "^14.14.31",
+    "ts-jest": "^26.5.6",
+    "typescript": "^4.9.5"
+  },
+  "private": false
+}

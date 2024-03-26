@@ -878,8 +878,6 @@ class Evaluation:
         self.kwargs = kwargs
         self.ignored_pred_labels: Optional[List[Label]] = None
         self.missing_pred_labels: Optional[List[Label]] = None
-        self.ignored_pred_keys: Optional[List[str]] = None
-        self.missing_pred_keys: Optional[List[str]] = None
 
         for k, v in kwargs.items():
             setattr(self, k, v)
@@ -1112,11 +1110,10 @@ class Dataset:
         -------
         valor.Dataset
         """
-        resp.pop("id")
         resp["metadata"] = load_metadata(resp["metadata"])
         return cls(**resp, connection=connection)
 
-    def to_dict(self, id: Optional[int] = None) -> dict:
+    def to_dict(self) -> dict:
         """
         Defines how a `valor.Dataset` object is serialized into a dictionary.
 
@@ -1125,11 +1122,7 @@ class Dataset:
         dict
             A dictionary describing a model.
         """
-        return {
-            "id": id,
-            "name": self.name,
-            "metadata": dump_metadata(self.metadata),
-        }
+        return {"name": self.name, "metadata": dump_metadata(self.metadata)}
 
     def __str__(self) -> str:
         """Dumps the object into a JSON formatted string."""
@@ -1408,11 +1401,10 @@ class Model:
         -------
         valor.Model
         """
-        resp.pop("id")
         resp["metadata"] = load_metadata(resp["metadata"])
         return cls(**resp, connection=connection)
 
-    def to_dict(self, id: Optional[int] = None) -> dict:
+    def to_dict(self) -> dict:
         """
         Defines how a `valor.Model` object is serialized into a dictionary.
 
@@ -1421,11 +1413,7 @@ class Model:
         dict
             A dictionary describing a model.
         """
-        return {
-            "id": id,
-            "name": self.name,
-            "metadata": dump_metadata(self.metadata),
-        }
+        return {"name": self.name, "metadata": dump_metadata(self.metadata)}
 
     def __str__(self) -> str:
         """Dumps the object into a JSON formatted string."""
@@ -1564,6 +1552,7 @@ class Model:
         datasets: Optional[Union[Dataset, List[Dataset]]] = None,
         filter_by: Optional[FilterType] = None,
         label_map: Optional[Dict[Label, Label]] = None,
+        compute_pr_curves: bool = False,
     ) -> Evaluation:
         """
         Start a classification evaluation job.
@@ -1576,6 +1565,8 @@ class Model:
             Optional set of constraints to filter evaluation by.
         label_map : Dict[Label, Label], optional
             Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
+        compute_pr_curves: bool
+            A boolean which determines whether we calculate precision-recall curves or not.
 
         Returns
         -------
@@ -1595,6 +1586,7 @@ class Model:
             parameters=EvaluationParameters(
                 task_type=TaskType.CLASSIFICATION,
                 label_map=self._create_label_map(label_map=label_map),
+                compute_pr_curves=compute_pr_curves,
             ),
         )
 
@@ -1613,6 +1605,8 @@ class Model:
         iou_thresholds_to_return: Optional[List[float]] = None,
         label_map: Optional[Dict[Label, Label]] = None,
         recall_score_threshold: float = 0,
+        compute_pr_curves: bool = False,
+        pr_curve_iou_threshold: float = 0.5,
     ) -> Evaluation:
         """
         Start an object-detection evaluation job.
@@ -1633,6 +1627,12 @@ class Model:
             Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
         recall_score_threshold: float, default=0
             The confidence score threshold for use when determining whether to count a prediction as a true positive or not while calculating Average Recall.
+        compute_pr_curves: bool, optional
+            A boolean which determines whether we calculate precision-recall curves or not.
+        pr_curve_iou_threshold: float, optional
+            The IOU threshold to use when calculating precision-recall curves. Defaults to 0.5. Does nothing when compute_pr_curves is set to False or None.
+
+
         Returns
         -------
         Evaluation
@@ -1653,6 +1653,8 @@ class Model:
             iou_thresholds_to_return=iou_thresholds_to_return,
             label_map=self._create_label_map(label_map=label_map),
             recall_score_threshold=recall_score_threshold,
+            compute_pr_curves=compute_pr_curves,
+            pr_curve_iou_threshold=pr_curve_iou_threshold,
         )
         datum_filter = self._format_constraints(datasets, filter_by)
         request = EvaluationRequest(

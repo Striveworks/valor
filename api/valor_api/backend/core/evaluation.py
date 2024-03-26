@@ -1,4 +1,6 @@
-from sqlalchemy import and_, func, or_, select
+from typing import Sequence
+
+from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.elements import BinaryExpression
@@ -320,16 +322,7 @@ def _create_responses(
 
         match parameters.task_type:
             case enums.TaskType.CLASSIFICATION:
-                missing_pred_keys, ignored_pred_keys = core.get_disjoint_keys(
-                    db,
-                    datum_filter,
-                    model_filter,
-                    label_map=parameters.label_map,
-                )
-                kwargs = {
-                    "missing_pred_keys": missing_pred_keys,
-                    "ignored_pred_keys": ignored_pred_keys,
-                }
+                kwargs = {}
             case (
                 enums.TaskType.OBJECT_DETECTION
                 | enums.TaskType.SEMANTIC_SEGMENTATION
@@ -468,14 +461,15 @@ def create_or_get_evaluations(
     )
 
 
-def fetch_evaluations(
+def _fetch_evaluations_and_mark_for_deletion(
     db: Session,
     evaluation_ids: list[int] | None = None,
     dataset_names: list[str] | None = None,
     model_names: list[str] | None = None,
-) -> list[models.Evaluation]:
+) -> Sequence[models.Evaluation]:
     """
-    Returns all evaluations that conform to user-supplied constraints.
+    Gets all evaluations that conform to user-supplied constraints and that are not already marked
+    for deletion. Then marks them for deletion and returns them.
 
     Parameters
     ----------
@@ -498,7 +492,21 @@ def fetch_evaluations(
         dataset_names=dataset_names,
         model_names=model_names,
     )
-    return db.query(models.Evaluation).where(*expr).all()
+
+    stmt = (
+        update(models.Evaluation)
+        .returning(models.Evaluation)
+        .where(
+            and_(
+                *expr,
+                models.Evaluation.status != enums.EvaluationStatus.DELETING,
+            )
+        )
+        .values(status=enums.EvaluationStatus.DELETING)
+        .execution_options(synchronize_session="fetch")
+    )
+
+    return db.execute(stmt).scalars().all()
 
 
 def fetch_evaluation_from_id(
@@ -527,7 +535,12 @@ def fetch_evaluation_from_id(
     """
     evaluation = (
         db.query(models.Evaluation)
-        .where(models.Evaluation.id == evaluation_id)
+        .where(
+            and_(
+                models.Evaluation.id == evaluation_id,
+                models.Evaluation.status != enums.EvaluationStatus.DELETING,
+            )
+        )
         .one_or_none()
     )
     if evaluation is None:
@@ -565,7 +578,16 @@ def get_evaluations(
         dataset_names=dataset_names,
         model_names=model_names,
     )
-    evaluations = db.query(models.Evaluation).where(*expr).all()
+    evaluations = (
+        db.query(models.Evaluation)
+        .where(
+            and_(
+                *expr,
+                models.Evaluation.status != enums.EvaluationStatus.DELETING,
+            )
+        )
+        .all()
+    )
     return _create_responses(db, evaluations)
 
 
@@ -589,7 +611,12 @@ def get_evaluation_requests_from_model(
     """
     evaluations = (
         db.query(models.Evaluation)
-        .where(models.Evaluation.model_name == model_name)
+        .where(
+            and_(
+                models.Evaluation.model_name == model_name,
+                models.Evaluation.status != enums.EvaluationStatus.DELETING,
+            )
+        )
         .all()
     )
     return [
@@ -743,7 +770,7 @@ def delete_evaluations(
     ):
         raise exceptions.EvaluationRunningError
 
-    evaluations = fetch_evaluations(
+    evaluations = _fetch_evaluations_and_mark_for_deletion(
         db=db,
         evaluation_ids=evaluation_ids,
         dataset_names=dataset_names,

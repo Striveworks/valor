@@ -17,7 +17,7 @@ def test_Metric():
     with pytest.raises(ValidationError):
         schemas.Metric(
             type="detection",
-            parameters=123,
+            parameters=123,  # type: ignore - purposefully throwing error
             value=0.2,
             label=schemas.Label(key="k1", value="v1"),
         )
@@ -30,16 +30,16 @@ def test_APMetric():
 
     with pytest.raises(ValidationError):
         schemas.APMetric(
-            iou=None, value=0.5, label=schemas.Label(key="k1", value="v1")
+            iou=None, value=0.5, label=schemas.Label(key="k1", value="v1")  # type: ignore - purposefully throwing error
         )
 
     with pytest.raises(ValidationError):
         schemas.APMetric(
-            iou=0.1, value=None, label=schemas.Label(key="k1", value="v1")
+            iou=0.1, value=None, label=schemas.Label(key="k1", value="v1")  # type: ignore - purposefully throwing error
         )
 
     with pytest.raises(ValidationError):
-        schemas.APMetric(iou=0.1, value=0.5, label="k1")
+        schemas.APMetric(iou=0.1, value=0.5, label="k1")  # type: ignore - purposefully throwing error
 
     assert all(
         [
@@ -58,19 +58,19 @@ def test_APMetricAveragedOverIOUs():
 
     with pytest.raises(ValidationError):
         schemas.APMetricAveragedOverIOUs(
-            ious=None, value=0.5, label=schemas.Label(key="k1", value="v1")
+            ious=None, value=0.5, label=schemas.Label(key="k1", value="v1")  # type: ignore - purposefully throwing error
         )
 
     with pytest.raises(ValidationError):
         schemas.APMetricAveragedOverIOUs(
             ious=set([0.1, 0.2]),
-            value=None,
+            value=None,  # type: ignore - purposefully throwing error
             label=schemas.Label(key="k1", value="v1"),
         )
 
     with pytest.raises(ValidationError):
         schemas.APMetricAveragedOverIOUs(
-            ious=set([0.1, 0.2]), value=0.5, label="k1"
+            ious=set([0.1, 0.2]), value=0.5, label="k1"  # type: ignore - purposefully throwing error
         )
 
     assert all(
@@ -87,13 +87,13 @@ def test_mAPMetric():
     map_metric = schemas.mAPMetric(iou=0.2, value=0.5)
 
     with pytest.raises(ValidationError):
-        schemas.mAPMetric(iou=None, value=0.5)
+        schemas.mAPMetric(iou=None, value=0.5)  # type: ignore - purposefully throwing error
 
     with pytest.raises(ValidationError):
-        schemas.mAPMetric(iou=0.1, value=None)
+        schemas.mAPMetric(iou=0.1, value=None)  # type: ignore - purposefully throwing error
 
     with pytest.raises(ValidationError):
-        schemas.mAPMetric(iou=0.1, value="value")
+        schemas.mAPMetric(iou=0.1, value="value")  # type: ignore - purposefully throwing error
 
     assert all(
         [
@@ -109,13 +109,13 @@ def test_mAPMetricAveragedOverIOUs():
     )
 
     with pytest.raises(ValidationError):
-        schemas.mAPMetricAveragedOverIOUs(ious=None, value=0.5)
+        schemas.mAPMetricAveragedOverIOUs(ious=None, value=0.5)  # type: ignore - purposefully throwing error
 
     with pytest.raises(ValidationError):
-        schemas.mAPMetricAveragedOverIOUs(ious=set([0.1, 0.2]), value=None)
+        schemas.mAPMetricAveragedOverIOUs(ious=set([0.1, 0.2]), value=None)  # type: ignore - purposefully throwing error
 
     with pytest.raises(ValidationError):
-        schemas.mAPMetricAveragedOverIOUs(ious=set([0.1, 0.2]), value="value")
+        schemas.mAPMetricAveragedOverIOUs(ious=set([0.1, 0.2]), value="value")  # type: ignore - purposefully throwing error
 
     assert all(
         [
@@ -132,17 +132,17 @@ def test_ConfusionMatrixEntry():
 
     with pytest.raises(ValidationError):
         schemas.ConfusionMatrixEntry(
-            prediction=None, groundtruth="gt", count=123
+            prediction=None, groundtruth="gt", count=123  # type: ignore - purposefully throwing error
         )
 
     with pytest.raises(ValidationError):
         schemas.ConfusionMatrixEntry(
-            prediction="pred", groundtruth=123, count=123
+            prediction="pred", groundtruth=123, count=123  # type: ignore - purposefully throwing error
         )
 
     with pytest.raises(ValidationError):
         schemas.ConfusionMatrixEntry(
-            prediction="pred", groundtruth="gt", count="not an int"
+            prediction="pred", groundtruth="gt", count="not an int"  # type: ignore - purposefully throwing error
         )
 
 
@@ -161,7 +161,7 @@ def test__BaseConfusionMatrix():
 
     with pytest.raises(ValidationError):
         schemas.metrics._BaseConfusionMatrix(
-            label_key=123,
+            label_key=123,  # type: ignore - purposefully throwing error
             entries=[
                 schemas.ConfusionMatrixEntry(
                     prediction="pred1", groundtruth="gt1", count=123
@@ -173,11 +173,11 @@ def test__BaseConfusionMatrix():
         )
 
     with pytest.raises(ValidationError):
-        schemas.metrics._BaseConfusionMatrix(label_key="label", entries=None)
+        schemas.metrics._BaseConfusionMatrix(label_key="label", entries=None)  # type: ignore - purposefully throwing error
 
     with pytest.raises(ValidationError):
         schemas.metrics._BaseConfusionMatrix(
-            label_key="label", entries=["not an entry"]
+            label_key="label", entries=["not an entry"]  # type: ignore - purposefully throwing error
         )
 
 
@@ -227,10 +227,10 @@ def test_AccuracyMetric():
     acc_metric = schemas.AccuracyMetric(label_key="key", value=0.5)
 
     with pytest.raises(ValidationError):
-        schemas.AccuracyMetric(label_key=None, value=0.5)
+        schemas.AccuracyMetric(label_key=None, value=0.5)  # type: ignore - purposefully throwing error
 
     with pytest.raises(ValidationError):
-        schemas.AccuracyMetric(label_key="key", value="value")
+        schemas.AccuracyMetric(label_key="key", value="value")  # type: ignore - purposefully throwing error
 
     assert all(
         [
@@ -252,11 +252,11 @@ def test__PrecisionRecallF1Base():
     assert null_value.value == -1
 
     with pytest.raises(ValidationError):
-        schemas.metrics._PrecisionRecallF1Base(label=None, value=0.5)
+        schemas.metrics._PrecisionRecallF1Base(label=None, value=0.5)  # type: ignore - purposefully throwing error
 
     with pytest.raises(ValidationError):
         schemas.metrics._PrecisionRecallF1Base(
-            label=schemas.Label(key="key", value="value"), value="value"
+            label=schemas.Label(key="key", value="value"), value="value"  # type: ignore - purposefully throwing error
         )
 
 
@@ -312,13 +312,13 @@ def test_ROCAUCMetric():
     roc_auc_metric = schemas.ROCAUCMetric(label_key="key", value=0.2)
 
     with pytest.raises(ValidationError):
-        schemas.ROCAUCMetric(label_key=None, value=0.2)
+        schemas.ROCAUCMetric(label_key=None, value=0.2)  # type: ignore - purposefully throwing error
 
     with pytest.raises(ValidationError):
-        schemas.ROCAUCMetric(label_key=123, value=0.2)
+        schemas.ROCAUCMetric(label_key=123, value=0.2)  # type: ignore - purposefully throwing error
 
     with pytest.raises(ValidationError):
-        schemas.ROCAUCMetric(label_key="key", value="not a number")
+        schemas.ROCAUCMetric(label_key="key", value="not a number")  # type: ignore - purposefully throwing error
 
     assert all(
         [
@@ -334,19 +334,19 @@ def test_IOUMetric():
     )
 
     with pytest.raises(ValidationError):
-        schemas.IOUMetric(label=None, value=0.2)
+        schemas.IOUMetric(label=None, value=0.2)  # type: ignore - purposefully throwing error
 
     with pytest.raises(ValidationError):
-        schemas.IOUMetric(label="not a label", value=0.2)
+        schemas.IOUMetric(label="not a label", value=0.2)  # type: ignore - purposefully throwing error
 
     with pytest.raises(ValidationError):
         schemas.IOUMetric(
-            label=schemas.Label(key="key", value="value"), value=None
+            label=schemas.Label(key="key", value="value"), value=None  # type: ignore - purposefully throwing error
         )
 
     with pytest.raises(ValidationError):
         schemas.IOUMetric(
-            label=schemas.Label(key="key", value="value"), value="not a value"
+            label=schemas.Label(key="key", value="value"), value="not a value"  # type: ignore - purposefully throwing error
         )
     assert all(
         [
@@ -360,10 +360,10 @@ def test_mIOUMetric():
     iou_metric = schemas.mIOUMetric(value=0.2)
 
     with pytest.raises(ValidationError):
-        schemas.mIOUMetric(value=None)
+        schemas.mIOUMetric(value=None)  # type: ignore - purposefully throwing error
 
     with pytest.raises(ValidationError):
-        schemas.mIOUMetric(value="not a value")
+        schemas.mIOUMetric(value="not a value")  # type: ignore - purposefully throwing error
 
     assert all(
         [

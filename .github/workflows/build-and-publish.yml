@@ -1,4 +1,4 @@
-name: Build and publish python package
+name: Build and publish python and typescript packages
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
       - "v*"
 
 jobs:
-  build-and-publish:
+  build-and-publish-py-package:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -23,3 +23,22 @@ jobs:
         with:
           password: ${{ secrets.PYPI_API_TOKEN }}
           packages-dir: ./client/dist
+  build-and-publish-ts-package:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./ts-client
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+      - name: Set version from the git tag
+        run: npm version ${{ github.ref_name }}
+      - run: npm ci
+      - run: npm run build
+      - name: Publish to npm
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_API_TOKEN }}

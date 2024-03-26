@@ -36,7 +36,7 @@ def test_protected_routes(client: TestClient):
     """Check that all routes (except for health, ready, and token) are protected"""
     routes = [
         r
-        for r in client.app.routes
+        for r in client.app.routes  # type: ignore - Cannot access member "routes" for type "_WrapASGI2
         if isinstance(r, APIRoute)
         and r.name not in {"health", "ready", "login_for_access_token"}
     ]
@@ -114,7 +114,7 @@ def _test_post_evaluation_endpoint(
 
     with patch(
         "valor_api.main.crud." + crud_method_name,
-        side_effect=exceptions.ModelStateError("a", "b", "c"),
+        side_effect=exceptions.ModelStateError("a", "b", "c"),  # type: ignore - purposefully throwing error
     ):
         resp = client.post(endpoint, json=example_json)
         assert resp.status_code == 409
@@ -718,7 +718,6 @@ def test_get_prediction(crud, client: TestClient):
 
 def test_post_datasets(client: TestClient):
     example_json = {
-        "id": 1,
         "name": "dataset1",
         "metadata": {
             "meta1": 0.4,
@@ -758,9 +757,7 @@ def test_get_datasets(crud, client: TestClient):
 
 @patch("valor_api.main.crud")
 def test_get_dataset_by_name(crud, client: TestClient):
-    crud.get_dataset.return_value = schemas.Dataset(
-        id=1, name="name", metadata={}
-    )
+    crud.get_dataset.return_value = schemas.Dataset(name="name", metadata={})
     resp = client.get("/datasets/name")
     assert resp.status_code == 200
     crud.get_dataset.assert_called_once()
@@ -837,7 +834,6 @@ def test_delete_dataset(crud, client: TestClient):
 
 def test_post_models(client: TestClient):
     example_json = {
-        "id": 1,
         "name": "model1",
         "metadata": {
             "meta1": 0.4,
@@ -877,7 +873,7 @@ def test_get_models(crud, client: TestClient):
 
 @patch("valor_api.main.crud")
 def test_get_model_by_name(crud, client: TestClient):
-    crud.get_model.return_value = schemas.Model(id=1, name="name", metadata={})
+    crud.get_model.return_value = schemas.Model(name="name", metadata={})
     resp = client.get("/models/modelname")
     assert resp.status_code == 200
     crud.get_model.assert_called_once()
@@ -979,8 +975,6 @@ def test_post_clf_metrics(client: TestClient):
         status=EvaluationStatus.PENDING,
         metrics=[],
         confusion_matrices=[],
-        missing_pred_keys=[],
-        ignored_pred_keys=[],
     ).model_dump()
 
     example_json = schemas.EvaluationRequest(

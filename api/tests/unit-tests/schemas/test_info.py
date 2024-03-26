@@ -10,7 +10,7 @@ def test_info_APIVersion():
 
     # invalid
     with pytest.raises(ValidationError):
-        schemas.APIVersion(api_version=1)
+        schemas.APIVersion(api_version=1)  # type: ignore - purposefully throwing error
 
     with pytest.raises(ValidationError):
-        schemas.APIVersion()
+        schemas.APIVersion()  # type: ignore - purposefully throwing error

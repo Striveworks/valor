@@ -19,7 +19,7 @@ from valor import (
     Prediction,
 )
 from valor.enums import TaskType
-from valor.metatypes import ImageMetadata
+from valor.metatypes import Datum
 from valor.schemas import BoundingBox, Point, Polygon, Raster
 from valor_api.backend import models
 
@@ -90,7 +90,7 @@ def test_boundary(
     client: Client,
     dataset_name: str,
     rect1: BoundingBox,
-    img1: ImageMetadata,
+    img1: Datum,
 ):
     """Test consistency of boundary in back end and client"""
     dataset = Dataset.create(dataset_name)
@@ -124,7 +124,7 @@ def test_iou(
     model_name: str,
     rect1: BoundingBox,
     rect2: BoundingBox,
-    img1: ImageMetadata,
+    img1: Datum,
 ):
     rect1_poly = bbox_to_poly(rect1)
     rect2_poly = bbox_to_poly(rect2)
@@ -179,7 +179,7 @@ def test_iou(
 def test_add_raster_and_boundary_box(
     client: Client,
     dataset_name: str,
-    img1: ImageMetadata,
+    img1: Datum,
 ):
     img_size = [900, 300]
     mask = _generate_mask(height=img_size[0], width=img_size[1])
@@ -205,6 +205,7 @@ def test_add_raster_and_boundary_box(
 
     fetched_gt = dataset.get_groundtruth("uid1")
 
+    assert fetched_gt
     assert (
         fetched_gt.annotations[0].raster is not None
     ), "Raster doesn't exist on fetched gt"

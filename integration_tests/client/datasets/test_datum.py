@@ -100,7 +100,7 @@ def test_get_datums(
     assert (
         len(
             dataset_with_metadata.get_datums(
-                filter_by=[Datum.metadata["metadatum1"] == "nonexistent value"]
+                filter_by=[Datum.metadata["metadatum1"] == "nonexistent value"]  # type: ignore - filter type error
             )
         )
         == 0
@@ -108,7 +108,7 @@ def test_get_datums(
 
     with pytest.raises(ValueError) as exc_info:
         dataset_with_metadata.get_datums(
-            filter_by=[Dataset.name == "dataset name"]
+            filter_by=[Dataset.name == "dataset name"]  # type: ignore - purposefully throwing error
         )
     assert (
         "Cannot filter by dataset_names when calling `Dataset.get_datums`"

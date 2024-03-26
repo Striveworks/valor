@@ -28,6 +28,7 @@ from .core import (
     set_dataset_status,
     set_evaluation_status,
     set_model_status,
+    validate_matching_label_keys,
 )
 from .metrics import (
     compute_clf_metrics,
@@ -53,6 +54,7 @@ __all__ = [
     "get_prediction",
     "get_disjoint_keys",
     "get_disjoint_labels",
+    "validate_matching_label_keys",
     "get_joint_keys",
     "get_joint_labels",
     "get_label_keys",

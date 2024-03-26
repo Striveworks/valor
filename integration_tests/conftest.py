@@ -33,7 +33,7 @@ def _generate_mask(
 
 
 @pytest.fixture
-def connection() -> ClientConnection:
+def connection() -> ClientConnection:  # type: ignore - this function technically doesn't return anything, but downstream tests will throw errors if we change the return type to None
     reset_connection()
     connect(host="http://localhost:8000")
 
@@ -776,7 +776,9 @@ def pred_semantic_segs(
 
 
 @pytest.fixture
-def pred_clfs(model_name: str, img5: Datum, img6: Datum) -> list[Prediction]:
+def pred_clfs(
+    model_name: str, img5: Datum, img6: Datum, img8: Datum
+) -> list[Prediction]:
     return [
         Prediction(
             datum=img5,
@@ -784,9 +786,9 @@ def pred_clfs(model_name: str, img5: Datum, img6: Datum) -> list[Prediction]:
                 Annotation(
                     task_type=TaskType.CLASSIFICATION,
                     labels=[
-                        Label(key="k12", value="v12", score=0.47),
-                        Label(key="k12", value="v16", score=0.53),
-                        Label(key="k13", value="v13", score=1.0),
+                        Label(key="k4", value="v1", score=0.47),
+                        Label(key="k4", value="v8", score=0.53),
+                        Label(key="k5", value="v1", score=1.0),
                     ],
                 )
             ],
@@ -799,6 +801,17 @@ def pred_clfs(model_name: str, img5: Datum, img6: Datum) -> list[Prediction]:
                     labels=[
                         Label(key="k4", value="v4", score=0.71),
                         Label(key="k4", value="v5", score=0.29),
+                    ],
+                )
+            ],
+        ),
+        Prediction(
+            datum=img8,
+            annotations=[
+                Annotation(
+                    task_type=TaskType.CLASSIFICATION,
+                    labels=[
+                        Label(key="k3", value="v1", score=1.0),
                     ],
                 )
             ],
