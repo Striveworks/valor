@@ -81,7 +81,11 @@ test('model methods', async () => {
   expect(modelsByMetadata2.length).toBe(0);
 });
 
-test('evaluation methods', async () => {
+/**
+ * Helper method that creates two datasets with groundtruth and two models with predictions
+ * on each dataset
+ */
+const createDatasetsAndModels = async () => {
   const datasetNames = ['test-dataset1', 'test-dataset2'];
   const modelNames = ['test-model1', 'test-model2'];
 
@@ -114,6 +118,12 @@ test('evaluation methods', async () => {
       );
     })
   );
+
+  return { datasetNames, modelNames };
+};
+
+test('evaluation methods', async () => {
+  const { datasetNames, modelNames } = await createDatasetsAndModels();
 
   // evals a model against a dataset and polls the status
   const evalAndWaitForCompletion = async (modelName: string, datasetName: string) => {
@@ -149,4 +159,31 @@ test('evaluation methods', async () => {
   expect((await client.getEvaluationsByDatasetNames([datasetNames[0]])).length).toBe(2);
   expect((await client.getEvaluationsByDatasetNames(datasetNames)).length).toBe(4);
   expect((await client.getEvaluationsByDatasetNames(['no-such-dataset'])).length).toBe(0);
+
+  // test bulk create or get evaluations
+});
+
+test('bulk create or get evaluations', async () => {
+  const { datasetNames, modelNames } = await createDatasetsAndModels();
+
+  // bulk create evaluations for each dataset
+  for (const datasetName of datasetNames) {
+    await client.finalizeDataset(datasetName);
+
+    let evaluations = await client.bulkCreateOrGetEvaluations(
+      modelNames,
+      datasetName,
+      'classification'
+    );
+    expect(evaluations.length).toBe(2);
+    // check all evaluations are pending
+
+    while (evaluations.every((evaluation) => evaluation.status !== 'done')) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      evaluations = await client.getEvaluationsByIds(
+        evaluations.map((evaluation) => evaluation.id)
+      );
+      expect(evaluations.length).toBe(2);
+    }
+  }
 });
