@@ -5,7 +5,7 @@ import pytest
 from valor import Annotation, GroundTruth, Label
 from valor.enums import TaskType
 from valor.metatypes import ImageMetadata
-from valor.schemas import BasicPolygon, MultiPolygon, Point, Polygon, Raster
+from valor.schemas import MultiPolygon, Polygon, Raster
 from valor.viz import (
     _polygons_to_binary_mask,
     create_combined_segmentation_mask,
@@ -14,44 +14,46 @@ from valor.viz import (
 
 
 @pytest.fixture
-def bounding_poly() -> BasicPolygon:
-    return BasicPolygon(
-        points=[
-            Point(100, 100),
-            Point(200, 100),
-            Point(200, 200),
-            Point(100, 200),
+def bounding_poly() -> Polygon:
+    return Polygon(
+        [
+            [
+                (100, 100),
+                (200, 100),
+                (200, 200),
+                (100, 200),
+                (100, 100),
+            ]
         ]
     )
 
 
 @pytest.fixture
-def poly1(bounding_poly: BasicPolygon) -> Polygon:
+def poly1(bounding_poly: Polygon) -> Polygon:
     return Polygon(
-        boundary=bounding_poly,
-        holes=[
-            BasicPolygon(
-                points=[
-                    Point(150, 120),
-                    Point(180, 120),
-                    Point(180, 140),
-                    Point(150, 140),
-                ]
-            )
-        ],
+        [
+            bounding_poly.get_value()[0],
+            [
+                (150, 120),
+                (180, 120),
+                (180, 140),
+                (150, 140),
+                (150, 120),
+            ],
+        ]
     )
 
 
 def test__polygons_to_binary_mask(poly1):
     poly2 = Polygon(
-        boundary=BasicPolygon(
-            points=[
-                Point(10, 15),
-                Point(20, 15),
-                Point(20, 20),
-                Point(10, 20),
+        [
+            [
+                (10, 15),
+                (20, 15),
+                (20, 20),
+                (10, 20),
             ]
-        )
+        ]
     )
 
     mask = _polygons_to_binary_mask([poly1, poly2], 500, 600)
@@ -74,7 +76,7 @@ def test_create_combined_segmentation_mask(poly1: Polygon):
         )
     assert "cannot be empty" in str(exc_info)
 
-    image = ImageMetadata(uid="uid", height=200, width=200).to_datum()
+    image = ImageMetadata.create(uid="uid", height=200, width=200).datum
 
     gt1 = GroundTruth(
         datum=image,
@@ -87,7 +89,7 @@ def test_create_combined_segmentation_mask(poly1: Polygon):
                     Label(key="k3", value="v3"),
                 ],
                 raster=Raster.from_geometry(
-                    MultiPolygon(polygons=[poly1]),
+                    MultiPolygon([poly1.get_value()]),
                     height=200,
                     width=200,
                 ),
@@ -145,9 +147,9 @@ def test_create_combined_segmentation_mask(poly1: Polygon):
             gts
             + [
                 GroundTruth(
-                    datum=ImageMetadata(
+                    datum=ImageMetadata.create(
                         "different uid", height=10, width=100
-                    ).to_datum(),
+                    ).datum,
                     annotations=gts[0].annotations,
                 )
             ],
@@ -156,17 +158,15 @@ def test_create_combined_segmentation_mask(poly1: Polygon):
     assert "belong to the same image" in str(exc_info)
 
 
-def test_draw_detections_on_image(bounding_poly: BasicPolygon):
+def test_draw_detections_on_image(bounding_poly: Polygon):
     detections = [
         GroundTruth(
-            datum=ImageMetadata("test", 300, 300).to_datum(),
+            datum=ImageMetadata.create("test", 300, 300).datum,
             annotations=[
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
-                    labels=[Label("k", "v")],
-                    polygon=Polygon(
-                        boundary=bounding_poly,
-                    ),
+                    labels=[Label(key="k", value="v")],
+                    polygon=bounding_poly,
                 )
             ],
         ),

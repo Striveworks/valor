@@ -82,38 +82,56 @@ class AppendableFunction(Function):
     _function = None
 
     def __init__(self, *args) -> None:
+        """
+        Appendable function.
+        """
         if len(args) < 2:
             raise TypeError(
                 f"missing {2 - len(args)} required positional argument"
             )
-        if self._function is None:
-            raise NotImplementedError(
-                "No function was defined as the appending operator."
-            )
-        self.__setattr__(self._function, self.append)
-        super().__init__(*args)
+        flat_args = []
+        for arg in args:
+            if isinstance(arg, type(self)):
+                flat_args += arg._args
+            else:
+                flat_args.append(arg)
+        super().__init__(*flat_args)
 
     def append(self, value: Any):
         self._args.append(value)
+        return self
 
 
 class And(AppendableFunction):
     _operator = "&"
-    _function = "__and__"
+
+    def __and__(self, other: Any):
+        self.append(other)
+        return self
 
 
 class Or(AppendableFunction):
     _operator = "|"
-    _function = "__or__"
+
+    def __or__(self, other: Any):
+        self.append(other)
+        return self
 
 
 class Xor(AppendableFunction):
     _operator = "^"
-    _function = "__xor__"
+
+    def __xor__(self, other: Any):
+        self.append(other)
+        return self
 
 
 class Negate(OneArgumentFunction):
     _operator = "~"
+
+    def __invert__(self):
+        """Inverts negation so return contents."""
+        return self.arg
 
 
 class IsNull(OneArgumentFunction):

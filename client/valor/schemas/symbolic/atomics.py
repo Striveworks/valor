@@ -1,9 +1,9 @@
 import datetime
-from typing import Any, Iterator, List, Optional, Tuple
+from typing import Any, List, Optional, Tuple
 
 import numpy as np
 
-from valor.symbolic.functions import (
+from valor.schemas.symbolic.functions import (
     And,
     Eq,
     Ge,
@@ -57,6 +57,22 @@ class Symbol:
         if self._attribute:
             ret += f".{self._attribute}"
         return ret
+
+    def __eq__(self, other):
+        if not isinstance(other, Symbol):
+            return False
+        return (
+            self._owner == other._owner
+            and self._name == other._name
+            and self._key == other._key
+            and self._attribute == other._attribute
+        )
+
+    def __ne__(self, other):
+        return not (self == other)
+
+    def __hash__(self) -> int:
+        return hash(self.__repr__())
 
     def to_dict(self):
         return {
@@ -124,56 +140,6 @@ class Variable:
                 owner=owner,
             )
         )
-
-    @classmethod
-    def list(cls):
-
-        item_class = cls
-
-        class ValueList(Variable):
-            @classmethod
-            def definite(cls, value: Any):
-                if value is None:
-                    value = list()
-                return cls(value=value)
-
-            @classmethod
-            def __validate__(cls, value: List[Any]):
-                if not isinstance(value, list):
-                    raise TypeError(
-                        f"Expected type '{list}' received type '{type(value)}'"
-                    )
-                for element in value:
-                    if not isinstance(element, item_class):
-                        raise TypeError(
-                            f"Expected list elements with type '{item_class}' received type '{type(element)}'"
-                        )
-
-            @classmethod
-            def decode_value(cls, value: Any):
-                if not value:
-                    return []
-                if issubclass(type(value), Variable):
-                    return [
-                        item_class.decode_value(element) for element in value
-                    ]
-
-            def encode_value(self):
-                return [element.encode_value() for element in self.get_value()]
-
-            def __getitem__(self, __key: int) -> cls:
-                return self.get_value()[__key]
-
-            def __setitem__(self, __key: int, __value: cls):
-                value = self.get_value()
-                if value is None:
-                    raise TypeError
-                value[__key] = __value
-
-            def __iter__(self) -> Iterator[cls]:
-                return iter([element for element in self.get_value()])
-
-        return ValueList
 
     @classmethod
     def preprocess(cls, value: Any):
@@ -435,7 +401,7 @@ class Integer(Quantifiable):
 class Float(Quantifiable):
     @classmethod
     def __validate__(cls, value: Any):
-        if not isinstance(value, (float, np.floating)):
+        if not isinstance(value, (int, float, np.floating)):
             raise TypeError(
                 f"Expected type '{float}' received type '{type(value)}'"
             )
@@ -674,7 +640,37 @@ class Polygon(Spatial):
     def area(self):
         if not isinstance(self._value, Symbol):
             raise ValueError
-        return Float.symbolic(name=self._value._name, attribute="area")
+        return Float.symbolic(
+            owner=self._value._owner,
+            name=self._value._name,
+            key=self._value._key,
+            attribute="area",
+        )
+
+    @property
+    def boundary(self):
+        """"""
+        return self.get_value()[0]
+
+    @property
+    def holes(self):
+        return self.get_value()[1:]
+
+    @property
+    def xmin(self):
+        return min([p[0] for p in self.boundary])
+
+    @property
+    def xmax(self):
+        return max([p[0] for p in self.boundary])
+
+    @property
+    def ymin(self):
+        return min([p[1] for p in self.boundary])
+
+    @property
+    def ymax(self):
+        return max([p[1] for p in self.boundary])
 
 
 class MultiPolygon(Spatial):
@@ -721,5 +717,16 @@ class MultiPolygon(Spatial):
     @property
     def area(self):
         if not isinstance(self._value, Symbol):
-            raise ValueError
-        return Float.symbolic(name=self._value._name, attribute="area")
+            raise ValueError(
+                "attribute 'area' is reserved for symbolic variables."
+            )
+        return Float.symbolic(
+            owner=self._value._owner,
+            name=self._value._name,
+            key=self._value._key,
+            attribute="area",
+        )
+
+    @property
+    def polygons(self) -> List[Polygon]:
+        return [Polygon(poly) for poly in self.get_value()]

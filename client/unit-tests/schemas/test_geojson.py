@@ -1,14 +1,14 @@
 import numpy as np
 import pytest
 
-from valor.symbolic import geojson
+from valor.schemas import BoundingBox, MultiPolygon, Point, Polygon, Raster
 
 
 def test_point():
     # valid
-    p1 = geojson.Point(x=1, y=1)
-    p2 = geojson.Point(x=1.0, y=1.0)
-    p3 = geojson.Point(x=1.0, y=0.99)
+    p1 = Point((1, 1))
+    p2 = Point((1.0, 1.0))
+    p3 = Point((1.0, 0.99))
 
     # test member fn `__hash__`
     assert p1.__hash__() == p2.__hash__()
@@ -25,136 +25,101 @@ def test_point():
     assert p11.y == p1.y * 10
 
 
-def test_basicpolygon():
-    p1 = geojson.Point(x=0, y=0)
-    p2 = geojson.Point(x=5, y=0)
-    p3 = geojson.Point(x=10, y=5)
-    p4 = geojson.Point(x=0, y=5)
-
-    geojson.BasicPolygon(points=[p1, p2, p4])
-
-    # Test __post_init__
-    with pytest.raises(TypeError) as e:
-        geojson.BasicPolygon(points=p1)  # type: ignore
-    assert "is not a list" in str(e)
-    with pytest.raises(TypeError) as e:
-        geojson.BasicPolygon(points=[p1, p2, 4])  # type: ignore
-    assert "is not a `Point`"
-    with pytest.raises(ValueError) as e:
-        geojson.BasicPolygon(points=[p1, p2])
-    assert "needs at least 3 unique points" in str(e)
-
-    # Test member fn `xy_list`
-    poly = geojson.BasicPolygon(points=[p1, p2, p3])
-    assert poly.xy_list() == [p1, p2, p3]
-
-    # Test properties
-    assert poly.xmin == 0
-    assert poly.xmax == 10
-    assert poly.ymin == 0
-    assert poly.ymax == 5
-
-
 def test_polygon():
-    p1 = geojson.Point(x=0, y=0)
-    p2 = geojson.Point(x=5, y=0)
-    p3 = geojson.Point(x=0, y=5)
-    poly = geojson.BasicPolygon(points=[p1, p2, p3])
+    p1 = (0, 0)
+    p2 = (5, 0)
+    p3 = (0, 5)
+    coords = [p1, p2, p3]
 
     # valid
-    geojson.Polygon(boundary=poly)
-    geojson.Polygon(boundary=poly, holes=[poly])
+    Polygon([coords])
+    Polygon([coords, coords])  # defines a hole
 
-    # test `__post_init__`
+    # test validation
     with pytest.raises(TypeError) as e:
-        geojson.Polygon(boundary=123)  # type: ignore
-    assert "boundary should be of type `valor.geojson.BasicPolygon`" in str(e)
+        Polygon(123)  # type: ignore
+    assert "boundary should be of type `valor.BasicPolygon`" in str(e)
     with pytest.raises(TypeError) as e:
-        geojson.Polygon(boundary=poly, holes=123)  # type: ignore
-    assert "holes should be a list of `valor.geojson.BasicPolygon`" in str(e)
+        Polygon([poly, 123])  # type: ignore
+    assert "holes should be a list of `valor.BasicPolygon`" in str(e)
     with pytest.raises(TypeError) as e:
-        geojson.Polygon(boundary=poly, holes=[123])  # type: ignore
-    assert (
-        "should contain elements of type `valor.geojson.BasicPolygon`"
-        in str(e)
-    )
+        Polygon([poly, [123]])  # type: ignore
+    assert "should contain elements of type `valor.BasicPolygon`" in str(e)
 
 
 def test_boundingbox():
-    p1 = geojson.Point(x=0, y=0)
-    p2 = geojson.Point(x=5, y=0)
-    p3 = geojson.Point(x=5, y=5)
-    p4 = geojson.Point(x=0, y=5)
-    poly = geojson.BasicPolygon(points=[p1, p2, p3, p4])
+    p1 = (0, 0)
+    p2 = (5, 0)
+    p3 = (5, 5)
+    p4 = (0, 5)
+    coords = [[p1, p2, p3, p4, p1]]
 
-    # test __post_init__
-    geojson.BoundingBox(polygon=poly)
+    # test validation
+    BoundingBox(coords)
     with pytest.raises(TypeError) as e:
-        geojson.BoundingBox(polygon=p1)  # type: ignore
-    assert "should be of type `valor.geojson.BasicPolygon`" in str(e)
+        BoundingBox(polygon=p1)  # type: ignore
     with pytest.raises(ValueError) as e:
-        geojson.BoundingBox(polygon=geojson.BasicPolygon(points=[p1, p2, p3]))
+        BoundingBox([[p1, p2, p3, p4]])
     assert "should be made of a 4-point polygon" in str(e)
 
     # test classmethod `from_extrema`
-    bbox = geojson.BoundingBox.from_extrema(xmin=-1, xmax=10, ymin=-2, ymax=11)
-    assert bbox.polygon.xy_list() == [
-        geojson.Point(x=-1, y=-2),
-        geojson.Point(x=10, y=-2),
-        geojson.Point(x=10, y=11),
-        geojson.Point(x=-1, y=11),
-    ]
+    assert (
+        BoundingBox.from_extrema(
+            xmin=-1, xmax=10, ymin=-2, ymax=11
+        ).get_value()
+        == coords
+    )
 
 
 def test_multipolygon():
-    p1 = geojson.Point(x=0, y=0)
-    p2 = geojson.Point(x=5, y=0)
-    p3 = geojson.Point(x=5, y=5)
-    p4 = geojson.Point(x=0, y=5)
-    component_poly = geojson.BasicPolygon(points=[p1, p2, p3, p4])
-    poly = geojson.Polygon(boundary=component_poly)
+    p1 = (0, 0)
+    p2 = (5, 0)
+    p3 = (5, 5)
+    p4 = (0, 5)
+    coords = [p1, p2, p3, p4]
 
     # valid
-    geojson.MultiPolygon(polygons=[poly])
+    MultiPolygon([[coords]])
 
-    # test `__post_init__`
+    # test validation
     with pytest.raises(TypeError) as e:
-        geojson.MultiPolygon(polygons=component_poly)  # type: ignore
-    assert "polygons should be list of `valor.geojson.Polyon`" in str(e)
+        MultiPolygon(coords)  # type: ignore
     with pytest.raises(TypeError) as e:
-        geojson.MultiPolygon(polygons=[component_poly])  # type: ignore
-    assert (
-        "polygons list should contain elements of type `valor.geojson.Polygon`"
-        in str(e)
-    )
+        MultiPolygon([coords])  # type: ignore
+    with pytest.raises(TypeError) as e:
+        MultiPolygon([[coords], 123])  # type: ignore
+    with pytest.raises(TypeError) as e:
+        MultiPolygon([[[coords]]])  # type: ignore
 
 
 def test_raster(raster_raw_mask):
     mask1 = np.ones((10, 10)) == 1
 
     # valid
-    geojson.Raster(mask="test")
-    geojson.Raster.from_numpy(mask=mask1)
+    Raster({"mask": "test", "geometry": None})
+    Raster.from_numpy(mask=mask1)
 
     # test `__post_init__`
     with pytest.raises(TypeError) as e:
-        geojson.Raster(mask=123)  # type: ignore
+        Raster(mask=123)  # type: ignore
     assert "mask should be of type `str`" in str(e)
 
     # test classmethod `from_numpy`
     mask2 = np.ones((10, 10, 10)) == 1
     mask3 = np.ones((10, 10))
     with pytest.raises(ValueError) as e:
-        geojson.Raster.from_numpy(mask2)
+        Raster.from_numpy(mask2)
     assert "raster currently only supports 2d arrays" in str(e)
     with pytest.raises(ValueError) as e:
-        geojson.Raster.from_numpy(mask3)
+        Raster.from_numpy(mask3)
     assert "Expecting a binary mask" in str(e)
 
     # test member fn `to_numpy`
-    r = geojson.Raster.from_numpy(raster_raw_mask)
+    r = Raster.from_numpy(raster_raw_mask)
+    value = r.get_value()
+    assert value
     assert (
-        r.mask
+        value["mask"]
         == "iVBORw0KGgoAAAANSUhEUgAAABQAAAAUAQAAAACl8iCgAAAAF0lEQVR4nGP4f4CBiYGBIGZgsP9AjDoAuysDE0GVDN8AAAAASUVORK5CYII="
     )
-    assert (r.to_numpy() == raster_raw_mask).all()
+    assert (r.array == raster_raw_mask).all()

@@ -3,24 +3,24 @@ from __future__ import annotations
 import json
 import time
 import warnings
-from dataclasses import asdict, dataclass
+from dataclasses import asdict
 from typing import Dict, List, Optional, Tuple, Union
 
-from valor import symbolic
 from valor.client import ClientConnection, connect, get_connection
 from valor.enums import AnnotationType, EvaluationStatus, TableStatus, TaskType
 from valor.exceptions import ClientException
-from valor.schemas.evaluation import EvaluationParameters, EvaluationRequest
-from valor.schemas.filters import Filter
-from valor.symbolic import (
+from valor.schemas import (
     Annotation,
     BoundingBox,
     Datum,
     Dictionary,
+    EvaluationParameters,
+    EvaluationRequest,
+    Filter,
     Label,
-    StaticCollection,
-    String,
 )
+from valor.schemas import List as SymbolicList
+from valor.schemas import StaticCollection, String
 
 FilterType = Union[list, dict]  # TODO - Remove this
 
@@ -62,8 +62,10 @@ class GroundTruth(StaticCollection):
         The list of `Annotations` associated with the `GroundTruth`.
     """
 
-    datum: Datum
-    annotations: symbolic.List[Annotation]
+    datum: Datum = Datum.symbolic(owner="groundtruth", name="datum")
+    annotations: SymbolicList[Annotation] = SymbolicList[Annotation].symbolic(
+        owner="groundtruth", name="annotations"
+    )
 
     @classmethod
     def create(
@@ -102,8 +104,10 @@ class Prediction(StaticCollection):
         The score assigned to the `Prediction`.
     """
 
-    datum: Datum
-    annotations: symbolic.List[Annotation]
+    datum: Datum = Datum.symbolic(owner="prediction", name="datum")
+    annotations: SymbolicList[Annotation] = SymbolicList[Annotation].symbolic(
+        owner="prediction", name="annotations"
+    )
 
     @classmethod
     def create(
@@ -334,7 +338,6 @@ class Evaluation:
         return df
 
 
-@dataclass
 class DatasetSummary:
     """Dataclass for storing dataset summary information"""
 
@@ -370,8 +373,10 @@ class Dataset(StaticCollection):
         A dictionary of metadata that describes the dataset.
     """
 
-    name: String
-    metadata: Dictionary
+    name: String = String.symbolic(owner="dataset", name="name")
+    metadata: Dictionary = Dictionary.symbolic(
+        owner="dataset", name="metadata"
+    )
 
     @classmethod
     def create(
@@ -616,8 +621,8 @@ class Model(StaticCollection):
         A dictionary of metadata that describes the model.
     """
 
-    name: String
-    metadata: Dictionary
+    name: String = String.symbolic(owner="model", name="name")
+    metadata: Dictionary = Dictionary.symbolic(owner="model", name="metadata")
 
     @classmethod
     def create(

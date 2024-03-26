@@ -2,8 +2,8 @@ from typing import Tuple
 
 import pytest
 
-from valor.symbolic.atomics import Float, Integer, String
-from valor.symbolic.functions import (
+from valor.schemas.symbolic.atomics import Float, Integer, String
+from valor.schemas.symbolic.functions import (
     And,
     AppendableFunction,
     Function,
@@ -69,26 +69,17 @@ def test_appendable_function(variables):
     # test case where too few args
     with pytest.raises(TypeError):
         AppendableFunction(x)  # type: ignore - edge case test
-    # test base class is not fully implemented
-    assert AppendableFunction._function is None
-    with pytest.raises(NotImplementedError):
-        AppendableFunction(x, y)
 
     # test that all appendable functions define a overloadable function
     assert issubclass(And, AppendableFunction)
     assert issubclass(Or, AppendableFunction)
     assert issubclass(Xor, AppendableFunction)
-    assert And._function == "__and__"
-    assert Or._function == "__or__"
-    assert Xor._function == "__xor__"
 
-    # continue tests using And
-    f = And(x, y)
+    # test append
+    f = AppendableFunction(x, y)
     f.append(z)
-
-    # test dictionary generation
     assert f.to_dict() == {
-        "op": "and",
+        "op": "appendablefunction",
         "args": [
             {"type": "integer", "value": 1},
             {"type": "string", "value": "2"},
@@ -96,10 +87,78 @@ def test_appendable_function(variables):
         ],
     }
 
-    # test that all args can be defined at initialization to yield same result
-    assert f.to_dict() == And(x, y, z).to_dict()
-    assert f.__repr__() == And(x, y, z).__repr__()
-    assert f.__str__() == And(x, y, z).__str__()
+    # continue append on the subclass 'And'
+    f1 = And(x, y)
+    f1.append(z)
+    assert f1.to_dict() == {
+        "op": "and",
+        "args": [
+            {"type": "integer", "value": 1},
+            {"type": "string", "value": "2"},
+            {"type": "float", "value": 0.3},
+        ],
+    }
+    assert f1.to_dict() == And(x, y, z).to_dict()
+    assert f1.__repr__() == And(x, y, z).__repr__()
+    assert f1.__str__() == And(x, y, z).__str__()
+
+    # test that nested AND's collapse into one
+    f2 = And(And(x, y), z)
+    assert f1.to_dict() == f2.to_dict()
+
+    # test '&' operator overload
+    e1 = Integer.symbolic() == x
+    e2 = String.symbolic() == y
+    e3 = Float.symbolic() == z
+    f3 = e1 & e2 & e3
+    f4 = e1 & (e2 & e3)
+    f5 = (e1 & e2) & e3
+    assert f3.to_dict() == f4.to_dict()
+    assert f3.to_dict() == f5.to_dict()
+    assert f3.to_dict() == {
+        "op": "and",
+        "args": [
+            {
+                "op": "eq",
+                "lhs": {
+                    "type": "symbol",
+                    "value": {
+                        "owner": None,
+                        "name": "integer",
+                        "key": None,
+                        "attribute": None,
+                    },
+                },
+                "rhs": {"type": "integer", "value": 1},
+            },
+            {
+                "op": "eq",
+                "lhs": {
+                    "type": "symbol",
+                    "value": {
+                        "owner": None,
+                        "name": "string",
+                        "key": None,
+                        "attribute": None,
+                    },
+                },
+                "rhs": {"type": "string", "value": "2"},
+            },
+            {
+                "op": "eq",
+                "lhs": {
+                    "type": "symbol",
+                    "value": {
+                        "owner": None,
+                        "name": "float",
+                        "key": None,
+                        "attribute": None,
+                    },
+                },
+                "rhs": {"type": "float", "value": 0.3},
+            },
+        ],
+    }
 
 
 def test_one_arg_function(variables):

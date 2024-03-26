@@ -5,7 +5,6 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
 from valor import Annotation, GroundTruth, Prediction, enums, schemas
-from valor.metatypes import ImageMetadata
 
 # https://sashat.me/2017/01/11/list-of-20-simple-distinct-colors/
 COLOR_MAP = [
@@ -142,14 +141,16 @@ def create_combined_segmentation_mask(
     }
     seg_colors = [label_value_to_color[v] for v in label_values]
 
-    image = ImageMetadata.from_datum(annotated_datums[0].datum)
-    img_w, img_h = image.width, image.height
-
+    datum = annotated_datums[0].datum
+    if not (metadata := datum.metadata.get_value()):
+        raise ValueError
+    img_w = int(metadata["width"].get_value())
+    img_h = int(metadata["height"].get_value())
     combined_mask = np.zeros((img_h, img_w, 3), dtype=np.uint8)
     for annotation, color in zip(annotations, seg_colors):
         if annotation.raster is not None:
             if annotation.raster.geometry is None:
-                mask = annotation.raster.to_numpy()
+                mask = annotation.raster.array
             elif isinstance(annotation.raster.geometry, schemas.MultiPolygon):
                 mask = _polygons_to_binary_mask(
                     annotation.raster.geometry.polygons,
@@ -159,16 +160,6 @@ def create_combined_segmentation_mask(
             elif isinstance(annotation.raster.geometry, schemas.Polygon):
                 mask = _polygons_to_binary_mask(
                     [annotation.raster.geometry],
-                    img_w=img_w,
-                    img_h=img_h,
-                )
-            elif isinstance(annotation.raster.geometry, schemas.BoundingBox):
-                mask = _polygons_to_binary_mask(
-                    [
-                        schemas.Polygon(
-                            boundary=annotation.raster.geometry.polygon
-                        )
-                    ],
                     img_w=img_w,
                     img_h=img_h,
                 )
@@ -239,8 +230,10 @@ def draw_bounding_box_on_image(
     img
         Pillow image with bounding box drawn on it.
     """
+    if not (coords := bounding_box.get_value()):
+        raise ValueError("Bounding box contains 'None'")
     return _draw_bounding_polygon_on_image(
-        bounding_box.polygon, img, color=color, inplace=False
+        schemas.Polygon(coords), img, color=color, inplace=False
     )
 
 
@@ -253,14 +246,14 @@ def _draw_detection_on_image(
     )
     if detection.polygon is not None:
         img = _draw_bounding_polygon_on_image(
-            detection.polygon.boundary,
+            detection.polygon,
             img,
             inplace=inplace,
             text=text,
         )
     elif detection.bounding_box is not None:
         img = _draw_bounding_polygon_on_image(
-            detection.bounding_box.polygon,
+            detection.bounding_box,
             img,
             inplace=inplace,
             text=text,
@@ -270,7 +263,7 @@ def _draw_detection_on_image(
 
 
 def _draw_bounding_polygon_on_image(
-    polygon: schemas.BasicPolygon,
+    polygon: schemas.Polygon,
     img: Image.Image,
     color: Tuple[int, int, int] = (255, 0, 0),
     inplace: bool = False,
@@ -282,7 +275,7 @@ def _draw_bounding_polygon_on_image(
     img_draw = ImageDraw.Draw(img)
 
     img_draw.polygon(
-        [(p.x, p.y) for p in polygon.points],
+        [p for p in polygon.boundary],
         outline=color,
     )
 
@@ -300,7 +293,7 @@ def _draw_bounding_polygon_on_image(
 def _write_text(
     font_size: int,
     text: str,
-    boundary: schemas.BasicPolygon,
+    boundary: schemas.Polygon,
     draw: ImageDraw.ImageDraw,
     color: Union[Tuple[int, int, int], str],
 ):
@@ -353,7 +346,8 @@ def draw_raster_on_image(
         alpha (transparency) value of the mask. 0 is fully transparent, 1 is fully opaque
     """
     img = img.copy()
-    binary_mask = raster.to_numpy()
+    if not (binary_mask := raster.array):
+        raise ValueError
     mask_arr = np.zeros(
         (binary_mask.shape[0], binary_mask.shape[1], 3), dtype=np.uint8
     )

@@ -2,7 +2,7 @@ import datetime
 
 import pytest
 
-from valor.symbolic.data_structures import Dictionary
+from valor.schemas.symbolic.structures import Dictionary
 
 
 def test_validate_metadata():

@@ -1,18 +1,17 @@
 import numpy as np
 import pytest
 
-from valor.symbolic.functions import AppendableFunction, TwoArgumentFunction
-from valor.symbolic.schemas import (
-    Annotation,
+from valor.schemas import (
     BoundingBox,
     BoundingPolygon,
-    Datum,
     Embedding,
-    Label,
     Raster,
     Score,
-    StaticCollection,
     TaskTypeEnum,
+)
+from valor.schemas.symbolic.functions import (
+    AppendableFunction,
+    TwoArgumentFunction,
 )
 
 

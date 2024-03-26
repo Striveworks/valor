@@ -34,9 +34,10 @@ class ImageMetadata:
             raise TypeError
         elif datum.is_symbolic:
             raise ValueError
-        elif not isinstance(datum.metadata["height"], int) or not isinstance(
-            datum.metadata["width"], int
-        ):
+
+        height = datum.metadata.get_value()["height"].get_value()
+        width = datum.metadata.get_value()["width"].get_value()
+        if not isinstance(height, int) or not isinstance(width, int):
             raise TypeError("Height and width metadata must be integers.")
         self.datum = datum
 

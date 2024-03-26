@@ -1,7 +1,7 @@
 import typing
 from typing import Any, Optional
 
-from valor.symbolic.atomics import (
+from valor.schemas.symbolic.atomics import (
     Bool,
     Date,
     DateTime,
@@ -89,7 +89,7 @@ def _get_atomic_type_by_name(name: str):
         raise NotImplementedError(name)
 
 
-T = typing.TypeVar("T")
+T = typing.TypeVar("T", bound=Variable)
 
 
 class List(typing.Generic[T], Equatable):
@@ -98,9 +98,6 @@ class List(typing.Generic[T], Equatable):
 
     @classmethod
     def __class_getitem__(cls, item_class: typing.Type[T]):
-
-        if not issubclass(item_class, Variable):
-            raise TypeError
 
         if item_class in cls._registered_classes:
             return cls._registered_classes[item_class]
@@ -156,8 +153,6 @@ class List(typing.Generic[T], Equatable):
             def decode_value(cls, value: Any):
                 if not value:
                     return cls(value=[])
-                if not issubclass(item_class, Variable):
-                    raise TypeError
                 return cls(
                     value=[
                         item_class.decode_value(element) for element in value
@@ -180,10 +175,8 @@ class List(typing.Generic[T], Equatable):
                 return self.get_value()[__key]
 
             def __setitem__(self, __key: int, __value: Any):
-                value = self.get_value()
-                if not issubclass(item_class, Variable):
-                    raise TypeError
-                value[__key] = item_class.preprocess(__value)
+                vlist = self.get_value()
+                vlist[__key] = item_class.preprocess(__value)
 
             def __iter__(self) -> typing.Iterator[T]:
                 return iter([element for element in self.get_value()])
@@ -259,7 +252,10 @@ class DictionaryValue:
         )
 
     def _generate(self, other: Any, fn: str):
-        obj = _get_atomic_type_by_value(other)
+        if isinstance(other, Variable):
+            obj = type(other)
+        else:
+            obj = _get_atomic_type_by_value(other)
         sym = obj.symbolic(owner=self._owner, name=self._name, key=self._key)
         return sym.__getattribute__(fn)(other)
 

@@ -2,18 +2,15 @@ import datetime
 
 import pytest
 
-from valor.symbolic.atomics import (
+from valor.schemas.symbolic.atomics import (
     Bool,
     Date,
     DateTime,
-    Dictionary,
-    DictionaryValue,
     Duration,
     Equatable,
     Float,
     Integer,
     LineString,
-    Listable,
     MultiLineString,
     MultiPoint,
     MultiPolygon,
@@ -27,7 +24,10 @@ from valor.symbolic.atomics import (
     Time,
     Variable,
 )
-from valor.symbolic.functions import AppendableFunction, TwoArgumentFunction
+from valor.schemas.symbolic.functions import (
+    AppendableFunction,
+    TwoArgumentFunction,
+)
 
 
 def test_symbol():
@@ -397,19 +397,6 @@ def _test_spatial(varA, varB, varC):
     }
 
 
-def _test_listable(varA, varB, varC):
-    listA = varA.list().symbolic("list_of_A")
-    assert listA.to_dict() == {
-        "type": "symbol",
-        "value": {
-            "attribute": None,
-            "key": None,
-            "name": "list_of_a",
-            "owner": None,
-        },
-    }
-
-
 def test_modifiers():
 
     # equatable
@@ -423,8 +410,6 @@ def test_modifiers():
         _test_nullable(A, B, C)
     with pytest.raises(AttributeError):
         _test_spatial(A, B, C)
-    with pytest.raises(AttributeError):
-        _test_listable(A, B, C)
 
     # quantifiable
     A = Quantifiable.symbolic("A")
@@ -436,8 +421,6 @@ def test_modifiers():
         _test_nullable(A, B, C)
     with pytest.raises(AttributeError):
         _test_spatial(A, B, C)
-    with pytest.raises(AttributeError):
-        _test_listable(A, B, C)
 
     # nullable
     A = Nullable.symbolic("A")
@@ -450,8 +433,6 @@ def test_modifiers():
         _test_quantifiable(A, B, C)
     with pytest.raises(AttributeError):
         _test_spatial(A, B, C)
-    with pytest.raises(AttributeError):
-        _test_listable(A, B, C)
 
     # spatial
     A = Spatial.symbolic("A")
@@ -464,22 +445,6 @@ def test_modifiers():
         _test_quantifiable(A, B, C)
     with pytest.raises(AttributeError):
         _test_nullable(A, B, C)
-    with pytest.raises(AttributeError):
-        _test_listable(A, B, C)
-
-    # listable
-    A = Listable.symbolic("A")
-    B = Listable.symbolic("B")
-    C = Listable.symbolic("C")
-    _test_listable(A, B, C)
-    with pytest.raises(AttributeError):
-        _test_equatable(A, B, C)
-    with pytest.raises(AttributeError):
-        _test_quantifiable(A, B, C)
-    with pytest.raises(AttributeError):
-        _test_nullable(A, B, C)
-    with pytest.raises(AttributeError):
-        _test_spatial(A, B, C)
 
 
 def get_function_name(fn: str) -> str:

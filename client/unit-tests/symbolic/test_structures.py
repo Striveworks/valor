@@ -2,7 +2,7 @@ import datetime
 
 import pytest
 
-from valor.symbolic import (
+from valor.schemas import (
     Float,
     LineString,
     List,
@@ -14,8 +14,11 @@ from valor.symbolic import (
     Symbol,
     Variable,
 )
-from valor.symbolic.functions import AppendableFunction, TwoArgumentFunction
-from valor.symbolic.structures import Dictionary, DictionaryValue
+from valor.schemas.symbolic.functions import (
+    AppendableFunction,
+    TwoArgumentFunction,
+)
+from valor.schemas.symbolic.structures import Dictionary, DictionaryValue
 
 
 def get_function_name(fn: str) -> str:
