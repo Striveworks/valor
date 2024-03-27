@@ -81,9 +81,10 @@ def _compute_curves(
     Returns
     -------
     dict
-        A nested dictionary where the first key is the class label, the second key is the confidence threshold (e.g., 0.05), the third key is the metric name (e.g., "precision"), and the final key is the value.
+        A nested dictionary where the first key is the class label, the second key is the confidence threshold (e.g., 0.05), the third key is the metric name (e.g., "precision"), and the final key is either the value itself (for precision, recall, etc.) or a list of tuples containing the (dataset_name, datum_id, bounding boxes) for each observation.
     """
 
+    # TODO get detection working
     output = defaultdict(dict)
 
     for grouper_id, grouper_label in grouper_mappings[
