@@ -1,3 +1,4 @@
+from datetime import datetime
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
@@ -943,6 +944,7 @@ def test_post_detection_metrics(client: TestClient):
         confusion_matrices=[],
         missing_pred_labels=[],
         ignored_pred_labels=[],
+        created_at=datetime.now(),
     ).model_dump()
 
     example_json = schemas.EvaluationRequest(
@@ -975,6 +977,7 @@ def test_post_clf_metrics(client: TestClient):
         status=EvaluationStatus.PENDING,
         metrics=[],
         confusion_matrices=[],
+        created_at=datetime.now(),
     ).model_dump()
 
     example_json = schemas.EvaluationRequest(
@@ -1007,6 +1010,7 @@ def test_post_semenatic_segmentation_metrics(client: TestClient):
         confusion_matrices=[],
         missing_pred_labels=[],
         ignored_pred_labels=[],
+        created_at=datetime.now(),
     ).model_dump()
 
     example_json = schemas.EvaluationRequest(
