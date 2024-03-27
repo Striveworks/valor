@@ -1251,8 +1251,7 @@ def test_create_detection_metrics(
     assert model_evals[0] == schemas.EvaluationResponse(
         model_name=model_name,
         datum_filter=schemas.Filter(
-            label_keys=["class"],
-            dataset_names=[dataset_name],
+            label_keys=["class"], dataset_names=[dataset_name]
         ),
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.OBJECT_DETECTION,
@@ -1268,6 +1267,7 @@ def test_create_detection_metrics(
         ignored_pred_labels=[
             schemas.Label(key="class", value="3", score=None)
         ],
+        created_at=model_evals[0].created_at,
     )
     assert model_evals[1] == schemas.EvaluationResponse(
         model_name=model_name,
@@ -1297,6 +1297,7 @@ def test_create_detection_metrics(
         confusion_matrices=[],
         missing_pred_labels=[],
         ignored_pred_labels=[],
+        created_at=model_evals[1].created_at,
     )
 
 
