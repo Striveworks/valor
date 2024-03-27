@@ -149,6 +149,8 @@ class EvaluationResponse(BaseModel):
         Any parameters used by the evaluation method.
     status : str
         The status of the evaluation.
+    created_at: datetime.datetime
+        The time the evaluation was created.
     metrics : List[Metric]
         A list of metrics associated with the evaluation.
     confusion_matrices: List[ConfusionMatrixResponse]
@@ -157,7 +159,6 @@ class EvaluationResponse(BaseModel):
         A list of ground truth labels that aren't associated with any predictions.
     ignored_pred_labels: List[Label], optional
         A list of prediction labels that aren't associated with any ground truths.
-
     """
 
     id: int
@@ -165,11 +166,11 @@ class EvaluationResponse(BaseModel):
     datum_filter: Filter
     parameters: EvaluationParameters
     status: EvaluationStatus
+    created_at: datetime.datetime
     metrics: list[Metric] | None = None
     confusion_matrices: list[ConfusionMatrixResponse] | None = None
     ignored_pred_labels: list[Label] | None = None
     missing_pred_labels: list[Label] | None = None
-    created_at: datetime.datetime
 
     # pydantic setting
     model_config = ConfigDict(
