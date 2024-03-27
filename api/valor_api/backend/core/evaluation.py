@@ -1,3 +1,4 @@
+from datetime import timezone
 from typing import Sequence
 
 from sqlalchemy import and_, func, or_, select, update
@@ -286,6 +287,7 @@ def _create_response(
             )
             for matrix in confusion_matrices
         ],
+        created_at=evaluation.created_at.replace(tzinfo=timezone.utc),
         **kwargs,
     )
 
@@ -626,6 +628,7 @@ def get_evaluation_requests_from_model(
             datum_filter=eval_.datum_filter,
             parameters=eval_.parameters,
             status=eval_.status,  # type: ignore - must be str in psql
+            created_at=eval_.created_at.replace(tzinfo=timezone.utc),
         )
         for eval_ in evaluations
     ]

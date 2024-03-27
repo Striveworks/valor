@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import pytest
 from pydantic import ValidationError
 
@@ -155,6 +157,7 @@ def test_EvaluationResponse():
         status=enums.EvaluationStatus.DONE,
         metrics=[],
         confusion_matrices=[],
+        created_at=datetime.now(),
     )
 
     # test missing evaluation_id
@@ -169,6 +172,7 @@ def test_EvaluationResponse():
             status=enums.EvaluationStatus.DONE,
             metrics=[],
             confusion_matrices=[],
+            created_at=datetime.now(),
         )
 
     # test missing model name
@@ -183,6 +187,7 @@ def test_EvaluationResponse():
             status=enums.EvaluationStatus.DONE,
             metrics=[],
             confusion_matrices=[],
+            created_at=datetime.now(),
         )
 
     # test missing EvaluationParameters
@@ -195,6 +200,7 @@ def test_EvaluationResponse():
             status=enums.EvaluationStatus.DONE,
             metrics=[],
             confusion_matrices=[],
+            created_at=datetime.now(),
         )
 
     # test missing EvaluationStatus
@@ -209,4 +215,5 @@ def test_EvaluationResponse():
             status=None,  # type: ignore - purposefully throwing error
             metrics=[],
             confusion_matrices=[],
+            created_at=datetime.now(),
         )
