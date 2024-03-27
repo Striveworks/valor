@@ -1,3 +1,5 @@
+import datetime
+
 import pytest
 from sqlalchemy.orm import Session
 
@@ -339,6 +341,7 @@ def test_fetch_evaluation_from_id(
         fetched_evaluation.parameters["task_type"]
         == enums.TaskType.SEMANTIC_SEGMENTATION
     )
+    assert isinstance(fetched_evaluation.created_at, datetime.datetime)
 
 
 def test_get_evaluations(
