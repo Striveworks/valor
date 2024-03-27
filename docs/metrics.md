@@ -4,7 +4,7 @@ Let's look at the various metrics you can calculate using Valor.
 If we're missing an important metric for your particular use case, please [write us a GitHub Issue ticket](https://github.com/Striveworks/valor/issues). We love hearing your suggestions.
 
 ## Classification Metrics
-
+# TODO edit docs
 | Name | Description | Equation |
 |:- | :- | :- |
 | Precision | The number of true positives divided by the total number of positive predictions (i.e., the number of true positives plus the number of false positives). | $\dfrac{\|TP\|}{\|TP\|+\|FP\|}$ |
