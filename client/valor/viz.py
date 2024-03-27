@@ -40,16 +40,16 @@ def _polygons_to_binary_mask(
     mask = Image.new("1", (img_w, img_h), (False,))
     draw = ImageDraw.Draw(mask)
     for poly in polys:
-        draw.polygon(poly.boundary.tuple_list(), fill=(True,))  # type: ignore
+        draw.polygon(poly.boundary, fill=(True,))  # type: ignore
         if poly.holes is not None:
             for hole in poly.holes:
-                draw.polygon(hole.tuple_list(), fill=(False,))  # type: ignore
+                draw.polygon(hole, fill=(False,))  # type: ignore
 
     return np.array(mask)
 
 
 def create_combined_segmentation_mask(
-    annotated_datums: Sequence[Union[GroundTruth, Prediction]],
+    annotated_datum: Union[GroundTruth, Prediction],
     label_key: str,
     task_type: Union[enums.TaskType, None] = None,
 ) -> Tuple[Image.Image, Dict[str, Image.Image]]:
@@ -82,25 +82,34 @@ def create_combined_segmentation_mask(
         If there aren't any segmentations.
     """
 
-    if len(annotated_datums) == 0:
-        raise ValueError("`segs` cannot be empty.")
+    # validate input type
+    if not isinstance(annotated_datum, (GroundTruth, Prediction)):
+        raise ValueError("Expected either a 'GroundTruth' or 'Prediction'")
 
-    if (
-        len(
-            set(
-                [
-                    annotated_datum.datum.uid
-                    for annotated_datum in annotated_datums
-                ]
+    # verify there are a nonzero number of annotations
+    if len(annotated_datum.annotations) == 0:
+        raise ValueError("annotations cannot be empty.")
+
+    # validate raster size
+    img_h = None
+    img_w = None
+    for annotation in annotated_datum.annotations:
+        if img_h is None:
+            img_h = annotation.raster.height
+        if img_w is None:
+            img_w = annotation.raster.width
+        if (img_h != annotation.raster.height) or (
+            img_w != annotation.raster.width
+        ):
+            raise ValueError(
+                f"Size mismatch between rasters. {(img_h, img_w)} != {(annotation.raster.height, annotation.raster.width)}"
             )
-        )
-        > 1
-    ):
-        raise RuntimeError(
-            "Expected all segmentation to belong to the same image"
+    if img_h is None or img_w is None:
+        raise ValueError(
+            f"Segmentation bounds not properly defined. {(img_h, img_w)}"
         )
 
-    # Validate task type
+    # validate task type
     if task_type is not None and task_type not in [
         enums.TaskType.OBJECT_DETECTION,
         enums.TaskType.SEMANTIC_SEGMENTATION,
@@ -109,7 +118,7 @@ def create_combined_segmentation_mask(
             "Expected either Instance or Semantic segmentation task_type."
         )
 
-    # Create valid task type list
+    # create valid task type list
     if task_type is None:
         task_types = [
             enums.TaskType.OBJECT_DETECTION,
@@ -120,35 +129,32 @@ def create_combined_segmentation_mask(
 
     # unpack raster annotations
     annotations: List[Annotation] = []
-    for annotated_datum in annotated_datums:
-        for annotation in annotated_datum.annotations:
-            if annotation.task_type in task_types:
-                annotations.append(annotation)
+    for annotation in annotated_datum.annotations:
+        if annotation.task_type.get_value() in task_types:
+            annotations.append(annotation)
 
+    # unpack label values
     label_values = []
     for annotation in annotations:
         for label in annotation.labels:
-            if label.key == label_key:
-                label_values.append(label.value)
+            if label.key.get_value() == label_key:
+                label_values.append(label.value.get_value())
     if not label_values:
         raise RuntimeError(
             f"Annotation doesn't have a label with key `{label_key}`"
         )
 
+    # assign label coloring
     unique_label_values = list(set(label_values))
     label_value_to_color = {
         v: COLOR_MAP[i] for i, v in enumerate(unique_label_values)
     }
     seg_colors = [label_value_to_color[v] for v in label_values]
 
-    datum = annotated_datums[0].datum
-    if not (metadata := datum.metadata.get_value()):
-        raise ValueError
-    img_w = int(metadata["width"].get_value())
-    img_h = int(metadata["height"].get_value())
+    # create mask
     combined_mask = np.zeros((img_h, img_w, 3), dtype=np.uint8)
     for annotation, color in zip(annotations, seg_colors):
-        if annotation.raster is not None:
+        if annotation.raster.array is not None:
             if annotation.raster.geometry is None:
                 mask = annotation.raster.array
             elif isinstance(annotation.raster.geometry, schemas.MultiPolygon):
@@ -165,10 +171,9 @@ def create_combined_segmentation_mask(
                 )
             else:
                 continue
+            combined_mask[np.where(mask)] = color
         else:
             continue
-
-        combined_mask[np.where(mask)] = color
 
     legend = {
         v: Image.new("RGB", (20, 20), color)

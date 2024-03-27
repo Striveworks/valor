@@ -859,13 +859,11 @@ def test_point():
     permutations = [((0, 0), (1, 1))]
 
     # test supported methods
-    for op in ["intersects", "inside", "outside"]:
+    for op in ["intersects", "inside", "outside", "__eq__", "__ne__"]:
         _test_generic(objcls, permutations, op)
 
     # test unsupported methods
     for op in [
-        "__eq__",
-        "__ne__",
         "__gt__",
         "__ge__",
         "__lt__",

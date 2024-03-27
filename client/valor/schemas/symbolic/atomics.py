@@ -116,10 +116,7 @@ class Variable:
         value: Any,
     ):
         """Initialize variable with a value."""
-        if not cls.supports(value):
-            raise TypeError(
-                f"Value `{value}` with type `{type(value).__name__}` is not a supported type for `{cls.__name__}`"
-            )
+        cls.__validate__(value)
         return cls(value=value)
 
     @classmethod
@@ -306,8 +303,8 @@ class Equatable(Variable):
     def __eq__(self, value: Any):
         other = self.preprocess(value)
         if self.is_value and other.is_value:
-            lhs = self.get_value()
-            rhs = other.get_value()
+            lhs = self.encode_value()
+            rhs = other.encode_value()
             if lhs is None:
                 return Bool(rhs is None)
             elif rhs is None:
@@ -319,8 +316,8 @@ class Equatable(Variable):
     def __ne__(self, value: Any):
         other = self.preprocess(value)
         if self.is_value and other.is_value:
-            lhs = self.get_value()
-            rhs = other.get_value()
+            lhs = self.encode_value()
+            rhs = other.encode_value()
             if lhs is None:
                 return Bool(rhs is not None)
             elif rhs is None:
@@ -333,7 +330,9 @@ class Equatable(Variable):
         return Or(*[(self == v) for v in vlist])
 
     def __hash__(self):
-        return hash(str(self))
+        if self.is_symbolic:
+            return hash(str(self))
+        return hash(str(self.encode_value()))
 
 
 class Quantifiable(Equatable):
@@ -480,7 +479,7 @@ class Duration(Quantifiable):
         return self.get_value().total_seconds()
 
 
-class Point(Spatial):
+class Point(Spatial, Equatable):
     """
     Represents a point in 2D space.
 
@@ -520,15 +519,42 @@ class Point(Spatial):
     def __validate__(cls, value: Any):
         if not isinstance(value, tuple):
             raise TypeError(
-                f"Expected type '{Tuple[float, float]}' received type '{type(value)}'"
+                f"Expected type 'Tuple[float, float]' received type '{type(value).__name__}'"
             )
         elif len(value) != 2:
             raise ValueError("")
         for item in value:
             if not isinstance(item, (int, float, np.floating)):
                 raise TypeError(
-                    f"Expected type '{float}' received type '{type(item)}'"
+                    f"Expected type '{float.__name__}' received type '{type(item).__name__}'"
                 )
+
+    def encode_value(self) -> Any:
+        value = self.get_value()
+        return (float(value[0]), float(value[1]))
+
+    def tuple(self):
+        return self.get_value()
+
+    def resize(
+        self,
+        og_img_h=10,
+        og_img_w=10,
+        new_img_h=100,
+        new_img_w=100,
+    ):
+        value = self.get_value()
+        h_ratio = new_img_h / og_img_h
+        w_ratio = new_img_w / og_img_w
+        return Point((value[0] * h_ratio, value[1] * w_ratio))
+
+    @property
+    def x(self):
+        return self.get_value()[0]
+
+    @property
+    def y(self):
+        return self.get_value()[1]
 
 
 class MultiPoint(Spatial):
@@ -543,7 +569,7 @@ class MultiPoint(Spatial):
     def __validate__(cls, value: Any):
         if not isinstance(value, list):
             raise TypeError(
-                f"Expected '{List[Tuple[float, float]]}' received type '{type(value)}'"
+                f"Expected 'List[Tuple[float, float]]' received type '{type(value).__name__}'"
             )
         for point in value:
             Point.__validate__(point)
@@ -578,7 +604,7 @@ class MultiLineString(Spatial):
     def __validate__(cls, value: Any):
         if not isinstance(value, list):
             raise TypeError(
-                f"Expected type '{List[List[Tuple[float, float]]]}' received type '{type(value)}'"
+                f"Expected type 'List[List[Tuple[float, float]]]' received type '{type(value).__name__}'"
             )
         for line in value:
             LineString.__validate__(line)
@@ -634,7 +660,9 @@ class Polygon(Spatial):
         for line in value:
             LineString.__validate__(line)
             if not (len(line) >= 4 and line[0] == line[-1]):
-                raise ValueError("Polygon's must contain four unique points.")
+                raise ValueError(
+                    "Polygon are defined by at least 4 points with the first point being repeated at the end."
+                )
 
     @property
     def area(self):
@@ -709,7 +737,7 @@ class MultiPolygon(Spatial):
     def __validate__(cls, value: Any):
         if not isinstance(value, list):
             raise TypeError(
-                f"Expected type '{List[List[List[Tuple[float, float]]]]}' received type '{type(value)}'"
+                f"Expected type 'List[List[List[Tuple[float, float]]]]' received type '{type(value).__name__}'"
             )
         for poly in value:
             Polygon.__validate__(poly)

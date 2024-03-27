@@ -35,7 +35,7 @@ class TaskTypeEnum(String):
     def __validate__(cls, value: Any):
         if not isinstance(value, TaskType):
             raise TypeError(
-                f"Expected type '{TaskType}' received type '{type(value)}'"
+                f"Expected value with type '{TaskType.__name__}' received type '{type(value).__name__}'"
             )
 
     @classmethod
@@ -368,6 +368,20 @@ class Raster(Spatial, Nullable):
         if value := self.get_value():
             return value["geometry"]
         warnings.warn("raster has no value", RuntimeWarning)
+        return None
+
+    @property
+    def height(self) -> Optional[int]:
+        array = self.array
+        if array is not None:
+            return array.shape[0]
+        return None
+
+    @property
+    def width(self) -> Optional[int]:
+        array = self.array
+        if array is not None:
+            return array.shape[1]
         return None
 
 

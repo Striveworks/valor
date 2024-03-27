@@ -77,19 +77,23 @@ class StaticCollection(Equatable):
         else:
             for attr, obj in static_types.items():
                 value = kwargs[attr] if attr in kwargs else None
-                value = (
-                    value
-                    if isinstance(value, Variable)
-                    else obj.definite(value)
-                )
+                if not isinstance(value, obj):
+                    if issubclass(obj, StaticCollection):
+                        raise TypeError(
+                            f"{class_name}.{attr} expected a value with type '{obj.__name__}' received value with type '{type(value).__name__}'"
+                        )
+                    value = obj.definite(value)
                 self.__setattr__(attr, value)
+            self.__post_init__()
             super().__init__(value=None, symbol=None)
 
     def __post_init__(self):
         pass
 
     @classmethod
-    def definite(cls, **kwargs):
+    def definite(cls, *args, **kwargs):
+        if args:
+            raise TypeError(f"{cls.__name__}() takes no positional arguments.")
         kwargs["symbol"] = None
         return cls(**kwargs)
 

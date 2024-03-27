@@ -22,6 +22,7 @@ def box_points() -> List[Tuple[float, float]]:
         (10, 0),
         (10, 10),
         (0, 10),
+        (0, 0),
     ]
 
 
@@ -32,7 +33,7 @@ def bbox() -> BoundingBox:
 
 @pytest.fixture
 def polygon(box_points) -> BoundingPolygon:
-    return BoundingPolygon(value=[box_points])
+    return BoundingPolygon([box_points])
 
 
 @pytest.fixture

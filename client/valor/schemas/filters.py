@@ -2,21 +2,16 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Union
 
 from valor.enums import TaskType
-from valor.schemas.symbolic.annotations import Score, TaskTypeEnum
 from valor.schemas.symbolic.atomics import (
-    Bool,
     Date,
     DateTime,
     Duration,
-    Float,
-    Integer,
     LineString,
     MultiLineString,
     MultiPoint,
     MultiPolygon,
     Point,
     Polygon,
-    String,
     Time,
     Variable,
 )
@@ -67,7 +62,7 @@ def _convert_symbol_to_attribute_name(symbol_name):
         "annotation.box.area": "bounding_box_area",
         "annotation.polygon": "require_polygon",
         "annotation.polygon.area": "polygon_area",
-        "annotaiton.polygon": "require_raster",
+        "annotation.raster": "require_raster",
         "annotation.raster.area": "raster_area",
         "annotation.labels": "labels",
         "label.id": "label_ids",
@@ -81,15 +76,7 @@ def _convert_expression_to_constraint(expr: Function):
     # extract value
     if isinstance(expr, TwoArgumentFunction):
         variable = expr.rhs
-        if isinstance(variable, Bool):
-            value = variable.get_value()
-        elif isinstance(variable, Float):
-            value = variable.get_value()
-        elif isinstance(variable, Integer):
-            value = variable.get_value()
-        elif isinstance(variable, String):
-            value = variable.get_value()
-        elif isinstance(
+        if isinstance(
             variable,
             (
                 Point,
@@ -106,12 +93,8 @@ def _convert_expression_to_constraint(expr: Function):
             }
         elif isinstance(variable, (DateTime, Date, Time, Duration)):
             value = {type(variable).__name__.lower(): variable.encode_value()}
-        elif isinstance(variable, Score):
-            value = variable.get_value()
-        elif isinstance(variable, TaskTypeEnum):
-            value = variable.encode_value()
         else:
-            raise NotImplementedError
+            value = variable.encode_value()
     else:
         value = None
 
@@ -447,7 +430,6 @@ class Filter:
             "model_names",
             "datum_uids",
             "task_types",
-            "labels",
             "label_keys",
         ]:
             if attr in constraints:
@@ -456,5 +438,20 @@ class Filter:
                     attr,
                     [expr.value for expr in constraints[attr]],
                 )
+
+        # edge cases
+        if "labels" in constraints:
+            print(constraints["labels"])
+            for label in constraints["labels"]:
+                print(label)
+            setattr(
+                filter_request,
+                "labels",
+                [
+                    {label["key"]: label["value"]}
+                    for labels in constraints["labels"]
+                    for label in labels.value
+                ],
+            )
 
         return filter_request

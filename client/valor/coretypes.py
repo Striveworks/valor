@@ -11,7 +11,6 @@ from valor.enums import AnnotationType, EvaluationStatus, TableStatus, TaskType
 from valor.exceptions import ClientException
 from valor.schemas import (
     Annotation,
-    BoundingBox,
     Datum,
     Dictionary,
     EvaluationParameters,
@@ -136,7 +135,8 @@ class Prediction(StaticCollection):
                         raise ValueError(
                             f"For task type `{task_type}` prediction labels must have scores, but got `None`"
                         )
-            elif task_type == TaskType.CLASSIFICATION:
+            if task_type == TaskType.CLASSIFICATION:
+
                 label_keys_to_sum = {}
                 for scored_label in annotation.labels:
                     label_key = scored_label.key.get_value()
@@ -1698,26 +1698,3 @@ class Client:
             Evaluation(**evaluation)
             for evaluation in self.conn.evaluate(request)
         ]
-
-
-if __name__ == "__main__":
-
-    gt = GroundTruth.create(
-        datum=Datum.create(uid="uid1", metadata={"hello": "world"}),
-        annotations=[
-            Annotation.create(
-                task_type=TaskType.OBJECT_DETECTION,
-                labels=[Label.create(key="k1", value="v1")],
-                bounding_box=BoundingBox.from_extrema(0, 1, 0, 1),
-            )
-        ],
-    )
-
-    print(json.dumps(gt.to_dict(), indent=2))
-
-    cond = GroundTruth.symbolic() == gt
-    # cond = Label.key == "hello"
-    cond = BoundingBox.symbolic().intersects(
-        BoundingBox.from_extrema(0, 1, 0, 1)
-    )
-    print(json.dumps(cond.to_dict(), indent=2))

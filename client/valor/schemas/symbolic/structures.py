@@ -109,11 +109,15 @@ class List(typing.Generic[T], Equatable):
                 symbol: Optional[Symbol] = None,
             ):
                 if value is not None:
+                    if not isinstance(value, list):
+                        raise TypeError(
+                            f"Expected a value with type 'List[{item_class.__name__}]' but received type '{type(value).__name__}'"
+                        )
                     value = [
-                        element
-                        if isinstance(element, item_class)
-                        else item_class(element)
-                        for element in value
+                        item
+                        if isinstance(item, item_class)
+                        else item_class.definite(item)
+                        for item in value
                     ]
                 super().__init__(value=value, symbol=symbol)
 
@@ -181,6 +185,9 @@ class List(typing.Generic[T], Equatable):
             def __iter__(self) -> typing.Iterator[T]:
                 return iter([element for element in self.get_value()])
 
+            def __len__(self):
+                return len(self.get_value())
+
             @staticmethod
             def get_element_type():
                 return item_class
@@ -195,6 +202,9 @@ class List(typing.Generic[T], Equatable):
         raise NotImplementedError
 
     def __iter__(self) -> typing.Iterator[T]:
+        raise NotImplementedError
+
+    def __len__(self) -> int:
         raise NotImplementedError
 
 
@@ -269,7 +279,11 @@ class Dictionary(Equatable):
         if isinstance(value, dict):
             _value = dict()
             for k, v in value.items():
-                if isinstance(v, Variable):
+                if v is None:
+                    raise ValueError(
+                        "Dictionary does not accept 'None' as a value."
+                    )
+                elif isinstance(v, Variable):
                     if v.is_symbolic:
                         raise ValueError(
                             "Dictionary does not accpet symbols as values."
@@ -294,13 +308,18 @@ class Dictionary(Equatable):
             raise TypeError(
                 f"Expected type '{dict}' received type '{type(value)}'"
             )
+        for k, v in value.items():
+            if not isinstance(k, str):
+                raise TypeError("Dictionary keys must be of type 'str'")
 
     @classmethod
     def decode_value(cls, value: dict) -> Any:
-        return {
-            k: _get_atomic_type_by_name(v["type"]).decode_value(v["value"])
-            for k, v in value.items()
-        }
+        return cls(
+            {
+                k: _get_atomic_type_by_name(v["type"]).decode_value(v["value"])
+                for k, v in value.items()
+            }
+        )
 
     def encode_value(self) -> dict:
         return {k: v.to_dict() for k, v in self.items()}
