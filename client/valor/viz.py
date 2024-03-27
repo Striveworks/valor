@@ -235,7 +235,8 @@ def draw_bounding_box_on_image(
     img
         Pillow image with bounding box drawn on it.
     """
-    if not (coords := bounding_box.get_value()):
+    coords = bounding_box.get_value()
+    if not coords:
         raise ValueError("Bounding box contains 'None'")
     return _draw_bounding_polygon_on_image(
         schemas.Polygon(coords), img, color=color, inplace=False
@@ -351,7 +352,8 @@ def draw_raster_on_image(
         alpha (transparency) value of the mask. 0 is fully transparent, 1 is fully opaque
     """
     img = img.copy()
-    if not (binary_mask := raster.array):
+    binary_mask = raster.array
+    if not binary_mask:
         raise ValueError
     mask_arr = np.zeros(
         (binary_mask.shape[0], binary_mask.shape[1], 3), dtype=np.uint8

@@ -345,7 +345,8 @@ class Raster(Spatial, Nullable):
         Optional[np.ndarray]
             A 2D binary array representing the mask if it exists.
         """
-        if value := self.get_value():
+        value = self.get_value()
+        if value is not None:
             if value["geometry"] is not None:
                 warnings.warn(
                     "array does not hold information as this is a geometry-based raster",
@@ -365,7 +366,8 @@ class Raster(Spatial, Nullable):
         Polygon | MultiPolygon | None
             The geometry if it exists.
         """
-        if value := self.get_value():
+        value = self.get_value()
+        if value is not None:
             return value["geometry"]
         warnings.warn("raster has no value", RuntimeWarning)
         return None
