@@ -11,14 +11,7 @@ from sqlalchemy.orm import Session
 from valor import Annotation, Client, Dataset, Datum, GroundTruth, Label
 from valor.enums import TaskType
 from valor.exceptions import ClientException
-from valor.schemas import (
-    BasicPolygon,
-    BoundingBox,
-    MultiPolygon,
-    Point,
-    Polygon,
-    Raster,
-)
+from valor.schemas import BoundingBox, BoundingPolygon, MultiPolygon, Raster
 from valor_api.backend import models
 
 
@@ -53,16 +46,16 @@ def test_create_gt_detections_as_bbox_or_poly(
             Annotation(
                 task_type=TaskType.OBJECT_DETECTION,
                 labels=[Label(key="k", value="v")],
-                polygon=Polygon(
-                    boundary=BasicPolygon(
-                        points=[
-                            Point(x=xmin, y=ymin),
-                            Point(x=xmax, y=ymin),
-                            Point(x=xmax, y=ymax),
-                            Point(x=xmin, y=ymax),
+                polygon=BoundingPolygon(
+                    [
+                        [
+                            (xmin, ymin),
+                            (xmax, ymin),
+                            (xmax, ymax),
+                            (xmin, ymax),
+                            (xmin, ymin),
                         ]
-                    ),
-                    holes=[],
+                    ]
                 ),
             ),
         ],
@@ -118,16 +111,15 @@ def test_create_gt_segs_as_polys_or_masks(
     mask = np.zeros((h, w), dtype=bool)
     mask[ymin:ymax, xmin:xmax] = True
 
-    poly = Polygon(
-        boundary=BasicPolygon(
-            points=[
-                Point(x=xmin, y=ymin),
-                Point(x=xmin, y=ymax),
-                Point(x=xmax, y=ymax),
-                Point(x=xmax, y=ymin),
-            ]
-        )
-    )
+    pts = [
+        (xmin, ymin),
+        (xmin, ymax),
+        (xmax, ymax),
+        (xmax, ymin),
+        (xmin, ymin),
+    ]
+    poly = BoundingPolygon([pts])
+    multipoly = MultiPolygon([[pts]])
 
     dataset = Dataset.create(dataset_name)
 
@@ -145,7 +137,7 @@ def test_create_gt_segs_as_polys_or_masks(
                     task_type=TaskType.SEMANTIC_SEGMENTATION,
                     labels=[Label(key="k1", value="v1")],
                     raster=Raster.from_geometry(
-                        MultiPolygon(polygons=[poly]),
+                        poly,
                         height=image_height,
                         width=image_width,
                     ),
@@ -170,7 +162,7 @@ def test_create_gt_segs_as_polys_or_masks(
                 task_type=TaskType.OBJECT_DETECTION,
                 labels=[Label(key="k1", value="v1")],
                 raster=Raster.from_geometry(
-                    MultiPolygon(polygons=[poly]),
+                    multipoly,
                     height=image_height,
                     width=image_width,
                 ),

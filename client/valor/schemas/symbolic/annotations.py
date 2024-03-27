@@ -31,6 +31,15 @@ class Score(Float, Nullable):
 
 
 class TaskTypeEnum(String):
+    def __init__(
+        self,
+        value: Optional[Any] = None,
+        symbol: Optional[Symbol] = None,
+    ):
+        if isinstance(value, str):
+            value = TaskType(value)
+        super().__init__(value=value, symbol=symbol)
+
     @classmethod
     def __validate__(cls, value: Any):
         if not isinstance(value, TaskType):
@@ -134,6 +143,11 @@ class BoundingBox(Polygon, Nullable):
         ]
         return cls(value=points)
 
+    @property
+    def polygon(self) -> Optional[Polygon]:
+        value = self.get_value()
+        return Polygon(value) if value else None
+
 
 class BoundingPolygon(Polygon, Nullable):
     """
@@ -185,6 +199,11 @@ class BoundingPolygon(Polygon, Nullable):
     def __validate__(cls, value: Any):
         if value is not None:
             Polygon.__validate__(value)
+
+    @property
+    def polygon(self) -> Optional[Polygon]:
+        value = self.get_value()
+        return Polygon(value) if value else None
 
 
 class Raster(Spatial, Nullable):

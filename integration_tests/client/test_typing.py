@@ -10,59 +10,61 @@ from valor import (
     Prediction,
     enums,
 )
-from valor.schemas import geometry
-from valor.schemas.properties import (
-    DictionaryProperty,
-    GeometryProperty,
-    LabelProperty,
-    NumericProperty,
-    StringProperty,
+from valor.schemas import (
+    BoundingBox,
+    BoundingPolygon,
+    Dictionary,
+    List,
+    Raster,
+    Score,
+    String,
+    TaskTypeEnum,
 )
 
 
 def test_label_typing():
-    assert type(Label.key) is StringProperty
-    assert type(Label.value) is StringProperty
-    assert type(Label.score) is NumericProperty
+    assert type(Label.key) is String
+    assert type(Label.value) is String
+    assert type(Label.score) is Score
 
     label = Label(key="k1", value="v1")
-    assert type(label.key) is str
-    assert type(label.value) is str
-    assert label.score is None
+    assert type(label.key) is String
+    assert type(label.value) is String
+    assert type(label.score) is Score
 
     label = Label(key="k1", value="v1", score=None)
-    assert type(label.key) is str
-    assert type(label.value) is str
-    assert label.score is None
+    assert type(label.key) is String
+    assert type(label.value) is String
+    assert type(label.score) is Score
 
-    label = Label(key="k1", value="v1", score=1.4)
-    assert type(label.key) is str
-    assert type(label.value) is str
-    assert type(label.score) is float
+    label = Label(key="k1", value="v1", score=1.0)
+    assert type(label.key) is String
+    assert type(label.value) is String
+    assert type(label.score) is Score
 
 
 def test_annotation_typing():
-    assert type(Annotation.task_type) is StringProperty
-    assert type(Annotation.labels) is LabelProperty
-    assert type(Annotation.metadata) is DictionaryProperty
-    assert type(Annotation.bounding_box) is GeometryProperty
-    assert type(Annotation.polygon) is GeometryProperty
-    assert type(Annotation.raster) is GeometryProperty
+    assert type(Annotation.task_type) is TaskTypeEnum
+    assert type(Annotation.labels) is List[Label]
+    assert type(Annotation.metadata) is Dictionary
+    assert type(Annotation.bounding_box) is BoundingBox
+    assert type(Annotation.polygon) is BoundingPolygon
+    assert type(Annotation.raster) is Raster
 
     annotation = Annotation(
         task_type=enums.TaskType.CLASSIFICATION,
         labels=[],
     )
-    assert type(annotation.task_type) is enums.TaskType
-    assert type(annotation.labels) is list
-    assert type(annotation.metadata) is dict
-    assert annotation.bounding_box is None
-    assert annotation.polygon is None
-    assert annotation.raster is None
+    assert type(annotation.task_type) is TaskTypeEnum
+    assert type(annotation.labels) is List[Label]
+    assert type(annotation.metadata) is Dictionary
+    assert type(annotation.bounding_box) is BoundingBox
+    assert type(annotation.polygon) is BoundingPolygon
+    assert type(annotation.raster) is Raster
 
-    bbox = geometry.BoundingBox.from_extrema(0, 1, 0, 1)
-    polygon = geometry.Polygon(boundary=bbox.polygon)
-    raster = geometry.Raster.from_numpy(np.zeros((10, 10)) == 0)
+    bbox = BoundingBox.from_extrema(0, 1, 0, 1)
+    polygon = BoundingPolygon([bbox.boundary])
+    raster = Raster.from_numpy(np.zeros((10, 10)) == 0)
     annotation = Annotation(
         task_type=enums.TaskType.CLASSIFICATION,
         labels=[],
@@ -71,62 +73,62 @@ def test_annotation_typing():
         polygon=polygon,
         raster=raster,
     )
-    assert type(annotation.task_type) is enums.TaskType
-    assert type(annotation.labels) is list
-    assert type(annotation.metadata) is dict
-    assert type(annotation.bounding_box) is geometry.BoundingBox
-    assert type(annotation.polygon) is geometry.Polygon
-    assert type(annotation.raster) is geometry.Raster
+    assert type(annotation.task_type) is TaskTypeEnum
+    assert type(annotation.labels) is List[Label]
+    assert type(annotation.metadata) is Dictionary
+    assert type(annotation.bounding_box) is BoundingBox
+    assert type(annotation.polygon) is BoundingPolygon
+    assert type(annotation.raster) is Raster
 
 
 def test_datum_typing():
-    assert type(Datum.uid) is StringProperty
-    assert type(Datum.metadata) is DictionaryProperty
+    assert type(Datum.uid) is String
+    assert type(Datum.metadata) is Dictionary
 
     datum = Datum(uid="test")
-    assert type(datum.uid) is str
-    assert type(datum.metadata) is dict
+    assert type(datum.uid) is String
+    assert type(datum.metadata) is Dictionary
 
     datum = Datum(uid="test", metadata={})
-    assert type(datum.uid) is str
-    assert type(datum.metadata) is dict
+    assert type(datum.uid) is String
+    assert type(datum.metadata) is Dictionary
 
 
 def test_groundtruth_typing():
     # GroundTruth doesn't use special properties.
     groundtruth = GroundTruth(datum=Datum(uid="uid"), annotations=[])
     assert type(groundtruth.datum) is Datum
-    assert type(groundtruth.annotations) is list
+    assert type(groundtruth.annotations) is List[Annotation]
 
 
 def test_prediction_typing():
     # Prediction doesn't use special properties.
     prediction = Prediction(datum=Datum(uid="uid"), annotations=[])
     assert type(prediction.datum) is Datum
-    assert type(prediction.annotations) is list
+    assert type(prediction.annotations) is List[Annotation]
 
 
 def test_dataset_typing():
-    assert type(Dataset.name) is StringProperty
-    assert type(Dataset.metadata) is DictionaryProperty
+    assert type(Dataset.name) is String
+    assert type(Dataset.metadata) is Dictionary
 
     dataset = Dataset(name="test")
-    assert type(dataset.name) is str
-    assert type(dataset.metadata) is dict
+    assert type(dataset.name) is String
+    assert type(dataset.metadata) is Dictionary
 
     dataset = Dataset(name="test", metadata={})
-    assert type(dataset.name) is str
-    assert type(dataset.metadata) is dict
+    assert type(dataset.name) is String
+    assert type(dataset.metadata) is Dictionary
 
 
 def test_model_typing():
-    assert type(Model.name) is StringProperty
-    assert type(Model.metadata) is DictionaryProperty
+    assert type(Model.name) is String
+    assert type(Model.metadata) is Dictionary
 
     model = Model(name="test")
-    assert type(model.name) is str
-    assert type(model.metadata) is dict
+    assert type(model.name) is String
+    assert type(model.metadata) is Dictionary
 
     model = Model(name="test", metadata={})
-    assert type(model.name) is str
-    assert type(model.metadata) is dict
+    assert type(model.name) is String
+    assert type(model.metadata) is Dictionary

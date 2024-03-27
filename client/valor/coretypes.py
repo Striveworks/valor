@@ -20,8 +20,9 @@ from valor.schemas import (
 )
 from valor.schemas import List as SymbolicList
 from valor.schemas import StaticCollection, String
+from valor.schemas.compatibility import decode_api_format, encode_api_format
 
-FilterType = Union[list, dict]  # TODO - Remove this
+FilterType = Union[list, dict, Filter]  # TODO - Remove this
 
 
 def _format_filter(filter_by: Optional[FilterType]) -> Filter:
@@ -71,6 +72,7 @@ class GroundTruth(StaticCollection):
         cls,
         datum: Datum,
         annotations: List[Annotation],
+        **_,
     ):
         return cls.definite(
             datum=datum,
@@ -113,6 +115,7 @@ class Prediction(StaticCollection):
         cls,
         datum: Datum,
         annotations: List[Annotation],
+        **_,
     ):
         return cls.definite(
             datum=datum,
@@ -385,6 +388,7 @@ class Dataset(StaticCollection):
         name: str,
         metadata: Optional[dict] = None,
         connection: Optional[ClientConnection] = None,
+        **_,
     ) -> Dataset:
         """
         Creates a dataset that persists in the back end.
@@ -631,6 +635,7 @@ class Model(StaticCollection):
         name: str,
         metadata: Optional[dict] = None,
         connection: Optional[ClientConnection] = None,
+        **_,
     ) -> Model:
         """
         Creates a model that persists in the back end.
@@ -1146,7 +1151,7 @@ class Client:
             The dataset to create.
         """
         if isinstance(dataset, Dataset):
-            dataset = dataset.to_dict()
+            dataset = encode_api_format(dataset)
         self.conn.create_dataset(dataset)
 
     def create_groundtruths(
@@ -1177,8 +1182,8 @@ class Client:
                 warnings.warn(
                     f"GroundTruth for datum with uid `{groundtruth.datum.uid}` contains no annotations."
                 )
-            groundtruth_dict = groundtruth.to_dict()
-            groundtruth_dict["dataset_name"] = dataset.get_name()
+            groundtruth_dict = encode_api_format(groundtruth)
+            groundtruth_dict["datum"]["dataset_name"] = dataset.get_name()
             groundtruths_json.append(groundtruth_dict)
         self.conn.create_groundtruths(groundtruths_json)
 
@@ -1210,6 +1215,7 @@ class Client:
             resp = self.conn.get_groundtruth(
                 dataset_name=dataset_name, datum_uid=datum_uid
             )
+            resp = decode_api_format(resp)
             return GroundTruth(**resp)
         except ClientException as e:
             if e.status_code == 404:
@@ -1248,8 +1254,9 @@ class Client:
             A Dataset with a matching name, or 'None' if one doesn't exist.
         """
         try:
+            resp = decode_api_format(self.conn.get_dataset(name))
             dataset = Dataset(
-                **self.conn.get_dataset(name),
+                **resp,
             )
             dataset.add_connection(self.conn)
             return dataset
@@ -1280,6 +1287,7 @@ class Client:
             filter_ = asdict(filter_)
         dataset_list = []
         for kwargs in self.conn.get_datasets(filter_):
+            kwargs = decode_api_format(kwargs)
             dataset = Dataset(**kwargs)
             dataset.add_connection(self.conn)
             dataset_list.append(dataset)
@@ -1306,7 +1314,8 @@ class Client:
         if isinstance(filter_, Filter):
             filter_ = asdict(filter_)
         return [
-            Datum.create(**datum) for datum in self.conn.get_datums(filter_)
+            Datum.create(**decode_api_format(datum))
+            for datum in self.conn.get_datums(filter_)
         ]
 
     def get_datum(
@@ -1333,6 +1342,7 @@ class Client:
         )
         try:
             resp = self.conn.get_datum(dataset_name=dataset_name, uid=uid)
+            resp = decode_api_format(resp)
             return Datum.create(**resp)
         except ClientException as e:
             if e.status_code == 404:
@@ -1415,7 +1425,7 @@ class Client:
             The model to create.
         """
         if isinstance(model, Model):
-            model = model.to_dict()
+            model = encode_api_format(model)
         self.conn.create_model(model)
 
     def create_predictions(
@@ -1448,7 +1458,7 @@ class Client:
                 warnings.warn(
                     f"Prediction for datum with uid `{prediction.datum.uid}` contains no annotations."
                 )
-            prediction_dict = prediction.to_dict()
+            prediction_dict = encode_api_format(prediction)
             prediction_dict["datum"]["dataset_name"] = dataset.get_name()
             prediction_dict["model_name"] = model.get_name()
             predictions_json.append(prediction_dict)
@@ -1488,7 +1498,8 @@ class Client:
                 model_name=model_name,
                 datum_uid=datum_uid,
             )
-            return Prediction(**resp)
+            resp = decode_api_format(resp)
+            return Prediction.create(**resp)
         except ClientException as e:
             if e.status_code == 404:
                 return None
@@ -1527,7 +1538,8 @@ class Client:
             A Model with matching name or 'None' if one doesn't exist.
         """
         try:
-            model = Model(**self.conn.get_model(name))
+            resp = decode_api_format(self.conn.get_model(name))
+            model = Model(**resp)
             model.add_connection(self.conn)
             return model
         except ClientException as e:
@@ -1557,6 +1569,7 @@ class Client:
             filter_ = asdict(filter_)
         model_list = []
         for kwargs in self.conn.get_models(filter_):
+            kwargs = decode_api_format(kwargs)
             model = Model(**kwargs)
             model.add_connection(self.conn)
             model_list.append(model)

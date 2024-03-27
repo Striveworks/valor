@@ -2,19 +2,8 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Union
 
 from valor.enums import TaskType
-from valor.schemas.symbolic.atomics import (
-    Date,
-    DateTime,
-    Duration,
-    LineString,
-    MultiLineString,
-    MultiPoint,
-    MultiPolygon,
-    Point,
-    Polygon,
-    Time,
-    Variable,
-)
+from valor.schemas.compatibility import encode_api_format
+from valor.schemas.symbolic.atomics import Variable
 from valor.schemas.symbolic.functions import (
     And,
     AppendableFunction,
@@ -75,26 +64,7 @@ def _convert_symbol_to_attribute_name(symbol_name):
 def _convert_expression_to_constraint(expr: Function):
     # extract value
     if isinstance(expr, TwoArgumentFunction):
-        variable = expr.rhs
-        if isinstance(
-            variable,
-            (
-                Point,
-                MultiPoint,
-                LineString,
-                MultiLineString,
-                Polygon,
-                MultiPolygon,
-            ),
-        ):
-            value = {
-                "type": type(variable).__name__.lower(),
-                "coordinates": variable.get_value(),
-            }
-        elif isinstance(variable, (DateTime, Date, Time, Duration)):
-            value = {type(variable).__name__.lower(): variable.encode_value()}
-        else:
-            value = variable.encode_value()
+        value = encode_api_format(expr.rhs)
     else:
         value = None
 

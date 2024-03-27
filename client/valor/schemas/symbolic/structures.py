@@ -113,12 +113,18 @@ class List(typing.Generic[T], Equatable):
                         raise TypeError(
                             f"Expected a value with type 'List[{item_class.__name__}]' but received type '{type(value).__name__}'"
                         )
-                    value = [
-                        item
-                        if isinstance(item, item_class)
-                        else item_class.definite(item)
-                        for item in value
-                    ]
+                    vlist = []
+                    for item in value:
+                        if isinstance(item, item_class):
+                            vlist.append(item)
+                        elif isinstance(item, dict) and set(item.keys()) != {
+                            "type",
+                            "value",
+                        }:
+                            vlist.append(item_class.definite(**item))
+                        else:
+                            vlist.append(item_class.definite(item))
+                    value = vlist
                 super().__init__(value=value, symbol=symbol)
 
             @classmethod
@@ -325,16 +331,19 @@ class Dictionary(Equatable):
         return {k: v.to_dict() for k, v in self.items()}
 
     def __getitem__(self, key: str):
-        if isinstance(self._value, Symbol):
-            return DictionaryValue(symbol=self._value, key=key)
-        return self.get_value()[key]
+        value = self.get_value()
+        if not value:
+            raise KeyError(key)
+        return value[key]
 
     def __setitem__(self, key: str, value: Any):
-        if isinstance(self._value, Symbol):
-            raise NotImplementedError(
-                "Symbols do not support the setting of values."
-            )
         self.get_value()[key] = value
+
+    def pop(self, key: str):
+        value = self.get_value()
+        if not value:
+            raise KeyError(key)
+        return value.pop(key)
 
     def items(self):
         if isinstance(self._value, Symbol):

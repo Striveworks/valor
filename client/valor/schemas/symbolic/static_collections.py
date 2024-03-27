@@ -79,10 +79,13 @@ class StaticCollection(Equatable):
                 value = kwargs[attr] if attr in kwargs else None
                 if not isinstance(value, obj):
                     if issubclass(obj, StaticCollection):
-                        raise TypeError(
-                            f"{class_name}.{attr} expected a value with type '{obj.__name__}' received value with type '{type(value).__name__}'"
-                        )
-                    value = obj.definite(value)
+                        if not isinstance(value, dict):
+                            raise TypeError(
+                                f"{class_name}.{attr} expected a value with type '{obj.__name__}' received value with type '{type(value).__name__}'"
+                            )
+                        value = obj.definite(**value)
+                    else:
+                        value = obj.definite(value)
                 self.__setattr__(attr, value)
             self.__post_init__()
             super().__init__(value=None, symbol=None)
@@ -174,6 +177,7 @@ class Label(StaticCollection):
         key: str,
         value: str,
         score: Optional[float] = None,
+        **_,
     ):
         return cls.definite(
             key=key,
@@ -303,6 +307,7 @@ class Annotation(StaticCollection):
         polygon: Optional[BoundingPolygon] = None,
         raster: Optional[Raster] = None,
         embedding: Optional[Embedding] = None,
+        **_,
     ):
         return cls.definite(
             task_type=task_type,
@@ -335,6 +340,7 @@ class Datum(StaticCollection):
         cls,
         uid: str,
         metadata: Optional[dict] = None,
+        **_,
     ):
         return cls.definite(
             uid=uid,

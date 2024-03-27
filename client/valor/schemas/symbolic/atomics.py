@@ -116,7 +116,6 @@ class Variable:
         value: Any,
     ):
         """Initialize variable with a value."""
-        cls.__validate__(value)
         return cls(value=value)
 
     @classmethod
@@ -529,6 +528,10 @@ class Point(Spatial, Equatable):
                     f"Expected type '{float.__name__}' received type '{type(item).__name__}'"
                 )
 
+    @classmethod
+    def decode_value(cls, value: List[float]):
+        return cls((value[0], value[1]))
+
     def encode_value(self) -> Any:
         value = self.get_value()
         return (float(value[0]), float(value[1]))
@@ -574,6 +577,10 @@ class MultiPoint(Spatial):
         for point in value:
             Point.__validate__(point)
 
+    @classmethod
+    def decode_value(cls, value: List[List[float]]):
+        return cls([(point[0], point[1]) for point in value])
+
 
 class LineString(Spatial):
     def __init__(
@@ -590,6 +597,10 @@ class LineString(Spatial):
             raise ValueError(
                 "At least two points are required to make a line."
             )
+
+    @classmethod
+    def decode_value(cls, value: List[List[float]]):
+        return cls([(point[0], point[1]) for point in value])
 
 
 class MultiLineString(Spatial):
@@ -608,6 +619,12 @@ class MultiLineString(Spatial):
             )
         for line in value:
             LineString.__validate__(line)
+
+    @classmethod
+    def decode_value(cls, value: List[List[List[float]]]):
+        return cls(
+            [[(point[0], point[1]) for point in line] for line in value]
+        )
 
 
 class Polygon(Spatial):
@@ -661,8 +678,17 @@ class Polygon(Spatial):
             LineString.__validate__(line)
             if not (len(line) >= 4 and line[0] == line[-1]):
                 raise ValueError(
-                    "Polygon are defined by at least 4 points with the first point being repeated at the end."
+                    "Polygons are defined by at least 4 points with the first point being repeated at the end."
                 )
+
+    @classmethod
+    def decode_value(cls, value: List[List[List[float]]]):
+        return cls(
+            [
+                [(point[0], point[1]) for point in subpolygon]
+                for subpolygon in value
+            ]
+        )
 
     @property
     def area(self):
@@ -741,6 +767,18 @@ class MultiPolygon(Spatial):
             )
         for poly in value:
             Polygon.__validate__(poly)
+
+    @classmethod
+    def decode_value(cls, value: List[List[List[List[float]]]]):
+        return cls(
+            [
+                [
+                    [(point[0], point[1]) for point in subpolygon]
+                    for subpolygon in polygon
+                ]
+                for polygon in value
+            ]
+        )
 
     @property
     def area(self):

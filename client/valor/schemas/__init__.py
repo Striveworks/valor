@@ -1,5 +1,5 @@
 from .evaluation import EvaluationParameters, EvaluationRequest
-from .filters import Filter
+from .filters import Constraint, Filter
 from .symbolic.annotations import (
     BoundingBox,
     BoundingPolygon,
@@ -60,6 +60,7 @@ __all__ = [
     "EvaluationRequest",
     "EvaluationParameters",
     "Filter",
+    "Constraint",
     "And",
     "Eq",
     "Ge",

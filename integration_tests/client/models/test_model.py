@@ -25,7 +25,6 @@ from valor import (
 )
 from valor.enums import TaskType
 from valor.exceptions import ClientException
-from valor.metatypes import ImageMetadata
 from valor.schemas import Point
 from valor_api.backend import models
 
@@ -237,7 +236,7 @@ def test_create_model_with_predicted_segmentations(
     mask_array = np.array(PIL.Image.open(f))
     assert pred_instance_segs[0].annotations[0].raster is not None
     np.testing.assert_equal(
-        mask_array, pred_instance_segs[0].annotations[0].raster.to_numpy()
+        mask_array, pred_instance_segs[0].annotations[0].raster.array
     )
 
     # test raster 2
@@ -246,7 +245,7 @@ def test_create_model_with_predicted_segmentations(
     mask_array = np.array(PIL.Image.open(f))
     assert pred_instance_segs[1].annotations[0].raster is not None
     np.testing.assert_equal(
-        mask_array, pred_instance_segs[1].annotations[0].raster.to_numpy()
+        mask_array, pred_instance_segs[1].annotations[0].raster.array
     )
 
 
@@ -367,35 +366,11 @@ def test_add_prediction(
     client: Client,
     gt_dets1: list[GroundTruth],
     pred_dets: list[Prediction],
-    img1: ImageMetadata,
+    img1: Datum,
     model_name: str,
     dataset_name: str,
     db: Session,
 ):
-    img1 = ImageMetadata(
-        uid="uid1",
-        height=900,
-        width=300,
-        metadata={
-            "geospatial": {
-                "type": "Polygon",
-                "coordinates": [
-                    [
-                        [125.2750725, 38.760525],
-                        [125.3902365, 38.775069],
-                        [125.5054005, 38.789613],
-                        [125.5051935, 38.71402425],
-                        [125.5049865, 38.6384355],
-                        [125.3902005, 38.6244225],
-                        [125.2754145, 38.6104095],
-                        [125.2752435, 38.68546725],
-                        [125.2750725, 38.760525],
-                    ]
-                ],
-            },
-        },
-    )
-
     dataset = Dataset.create(dataset_name)
     for gt in gt_dets1:
         dataset.add_groundtruth(gt)
@@ -418,7 +393,7 @@ def test_add_prediction(
     model.finalize_inferences(dataset)
 
     # test get predictions
-    pred = model.get_prediction(dataset, img1.to_datum())
+    pred = model.get_prediction(dataset, img1)
     assert pred
     assert pred.annotations == pred_dets[0].annotations
 
@@ -429,7 +404,7 @@ def test_add_empty_prediction(
     client: Client,
     gt_dets1: list[GroundTruth],
     pred_dets: list[Prediction],
-    img1: ImageMetadata,
+    img1: Datum,
     model_name: str,
     dataset_name: str,
     db: Session,
@@ -481,7 +456,7 @@ def test_add_skipped_prediction(
     client: Client,
     gt_dets1: list[GroundTruth],
     pred_dets: list[Prediction],
-    img1: ImageMetadata,
+    img1: Datum,
     model_name: str,
     dataset_name: str,
     db: Session,

@@ -345,7 +345,7 @@ class BasicPolygon(BaseModel):
 
     Attributes
     ----------
-    points: Tuple[Point, Point]
+    points: List[Point]
         The coordinates of the geometry.
 
     Raises

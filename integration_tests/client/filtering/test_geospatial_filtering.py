@@ -4,16 +4,9 @@ that is no auth
 
 import pytest
 
-from valor import (
-    Client,
-    Constraint,
-    Dataset,
-    Datum,
-    GroundTruth,
-    Model,
-    Prediction,
-)
+from valor import Client, Dataset, Datum, GroundTruth, Model, Prediction
 from valor.enums import EvaluationStatus
+from valor.schemas import Constraint
 
 
 def test_set_and_get_geospatial(

@@ -10,7 +10,7 @@ from valor import Annotation, Client, Dataset, Label, Model, Prediction
 from valor.coretypes import GroundTruth
 from valor.enums import TaskType
 from valor.metatypes import Datum
-from valor.schemas import BasicPolygon, BoundingBox, Point, Polygon
+from valor.schemas import BoundingBox, BoundingPolygon
 from valor_api.backend import models
 
 
@@ -46,15 +46,16 @@ def test_create_pred_detections_as_bbox_or_poly(
             Annotation(
                 task_type=TaskType.OBJECT_DETECTION,
                 labels=[Label(key="k", value="v", score=0.4)],
-                polygon=Polygon(
-                    boundary=BasicPolygon(
-                        points=[
-                            Point(x=xmin, y=ymin),
-                            Point(x=xmax, y=ymin),
-                            Point(x=xmax, y=ymax),
-                            Point(x=xmin, y=ymax),
+                polygon=BoundingPolygon(
+                    [
+                        [
+                            (xmin, ymin),
+                            (xmax, ymin),
+                            (xmax, ymax),
+                            (xmin, ymax),
+                            (xmin, ymin),
                         ]
-                    )
+                    ]
                 ),
             ),
         ],
