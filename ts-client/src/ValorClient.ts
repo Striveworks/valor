@@ -1,13 +1,11 @@
 import axios, { AxiosInstance } from 'axios';
 
 export type Dataset = {
-  id: number;
   name: string;
   metadata: Partial<Record<string, any>>;
 };
 
 export type Model = {
-  id: number;
   name: string;
   metadata: Partial<Record<string, any>>;
 };
@@ -255,6 +253,29 @@ export class ValorClient {
   }
 
   /**
+   * Creates new evaluations given a list of models, or gets existing ones if evaluations with the
+   * same parameters already exists.
+   *
+   * @param models names of the models
+   * @param dataset name of the dataset
+   * @param taskType type of task
+   *
+   * @returns {Promise<Evaluation[]>}
+   */
+  public async bulkCreateOrGetEvaluations(
+    models: string[],
+    dataset: string,
+    taskType: TaskType
+  ): Promise<Evaluation[]> {
+    const response = await this.client.post('/evaluations', {
+      model_names: models,
+      datum_filter: { dataset_names: [dataset] },
+      parameters: { task_type: taskType }
+    });
+    return response.data;
+  }
+
+  /**
    * Fetches evaluations matching the filters defined by queryParams. This is
    * private because we define higher-level methods that use this.
    *
@@ -277,6 +298,20 @@ export class ValorClient {
   public async getEvaluationById(id: number): Promise<Evaluation> {
     const evaluations = await this.getEvaluations({ evaluation_ids: id });
     return evaluations[0];
+  }
+
+  /**
+   * Bulk fetches evaluation by array of ids
+   *
+   * @param id id of the evaluation
+   *
+   * @returns {Promise<Evaluation[]>}
+   */
+  public async getEvaluationsByIds(ids: number[]): Promise<Evaluation[]> {
+    const evaluations = await this.getEvaluations({
+      evaluation_ids: ids.map((id) => id.toString()).join(',')
+    });
+    return evaluations;
   }
 
   /**

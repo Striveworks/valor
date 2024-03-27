@@ -21,11 +21,7 @@ def _load_dataset_schema(
     dataset: models.Dataset,
 ) -> schemas.Dataset:
     """Convert database row to schema."""
-    return schemas.Dataset(
-        id=dataset.id,
-        name=dataset.name,
-        metadata=dataset.meta,
-    )
+    return schemas.Dataset(name=dataset.name, metadata=dataset.meta)
 
 
 def create_dataset(

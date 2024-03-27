@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import time
 import warnings
-from dataclasses import asdict
+from dataclasses import asdict, dataclass
 from typing import Dict, List, Optional, Tuple, Union
 
 from valor.client import ClientConnection, connect, get_connection
@@ -338,6 +338,7 @@ class Evaluation:
         return df
 
 
+@dataclass
 class DatasetSummary:
     """Dataclass for storing dataset summary information"""
 

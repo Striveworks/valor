@@ -18,7 +18,7 @@
   "author": "Striveworks <valor@striveworks.com> (https://www.striveworks.com/)",
   "license": "MIT",
   "dependencies": {
-    "axios": "^0.21.1"
+    "axios": "^0.28.0"
   },
   "devDependencies": {
     "@types/jest": "^26.0.24",

@@ -13,7 +13,7 @@ WAIT_SECONDS=3
 
 wait_for_postgres() {
   retries=0
-  until nc -z -w 1 $POSTGRES_HOST $POSTGRES_PORT || [ $retries -eq $MAX_RETRIES ]; do
+  until PGPASSWORD=$POSTGRES_PASSWORD psql -h $POSTGRES_HOST -U $POSTGRES_USERNAME -c "select 1" -d $POSTGRES_DB >& /dev/null || [ $retries -eq $MAX_RETRIES ]; do
     echo "Waiting for PostgreSQL to be ready... (Retry $((retries+1)) of $MAX_RETRIES)"
     sleep $WAIT_SECONDS
     retries=$((retries+1))
