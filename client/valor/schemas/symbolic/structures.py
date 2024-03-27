@@ -130,10 +130,10 @@ class List(typing.Generic[T], Equatable):
             @classmethod
             def symbolic(
                 cls,
-                name: str | None = None,
-                key: str | None = None,
-                attribute: str | None = None,
-                owner: str | None = None,
+                name: Optional[str] = None,
+                key: Optional[str] = None,
+                attribute: Optional[str] = None,
+                owner: Optional[str] = None,
             ):
                 if name is None:
                     name = f"list[{item_class.__name__.lower()}]"
@@ -274,7 +274,7 @@ class Dictionary(Equatable):
     def __init__(
         self,
         value: Optional[typing.Dict[str, Any]] = None,
-        symbol: Symbol | None = None,
+        symbol: Optional[Symbol] = None,
     ):
         if isinstance(value, dict):
             _value = dict()
