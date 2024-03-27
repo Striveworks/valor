@@ -39,6 +39,7 @@ export type Evaluation = {
   status: 'pending' | 'running' | 'done' | 'failed' | 'deleting';
   metrics: Metric[];
   confusion_matrices: any[];
+  created_at: Date;
 };
 
 const metadataDictToString = (input: { [key: string]: string | number }): string => {
@@ -230,6 +231,17 @@ export class ValorClient {
   }
 
   /**
+   * Takes data from the backend response and converts it to an Evaluation object
+   * by converting the datetime string to a `Date` object
+   */
+  private unmarshalEvaluation(evaluation: any): Evaluation {
+    return {
+      ...evaluation,
+      created_at: new Date(evaluation.created_at)
+    };
+  }
+
+  /**
    * Creates a new evaluation or gets an existing one if an evaluation with the
    * same parameters already exists.
    *
@@ -249,7 +261,7 @@ export class ValorClient {
       datum_filter: { dataset_names: [dataset] },
       parameters: { task_type: taskType }
     });
-    return response.data[0];
+    return this.unmarshalEvaluation(response.data[0]);
   }
 
   /**
@@ -272,7 +284,7 @@ export class ValorClient {
       datum_filter: { dataset_names: [dataset] },
       parameters: { task_type: taskType }
     });
-    return response.data;
+    return response.data.map(this.unmarshalEvaluation);
   }
 
   /**
@@ -285,7 +297,7 @@ export class ValorClient {
    */
   private async getEvaluations(queryParams: object): Promise<Evaluation[]> {
     const response = await this.client.get('/evaluations', { params: queryParams });
-    return response.data;
+    return response.data.map(this.unmarshalEvaluation);
   }
 
   /**

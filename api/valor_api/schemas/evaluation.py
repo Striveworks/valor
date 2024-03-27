@@ -1,3 +1,5 @@
+import datetime
+
 from pydantic import BaseModel, ConfigDict, model_validator
 
 from valor_api.enums import AnnotationType, EvaluationStatus, TaskType
@@ -167,6 +169,7 @@ class EvaluationResponse(BaseModel):
     confusion_matrices: list[ConfusionMatrixResponse] | None = None
     ignored_pred_labels: list[Label] | None = None
     missing_pred_labels: list[Label] | None = None
+    created_at: datetime.datetime
 
     # pydantic setting
     model_config = ConfigDict(
