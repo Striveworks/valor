@@ -3,7 +3,12 @@ import datetime
 import pytest
 
 from valor.schemas import (
+    Bool,
+    Date,
+    DateTime,
+    Duration,
     Float,
+    Integer,
     LineString,
     List,
     MultiLineString,
@@ -11,14 +16,83 @@ from valor.schemas import (
     MultiPolygon,
     Point,
     Polygon,
+    String,
     Symbol,
+    Time,
     Variable,
 )
 from valor.schemas.symbolic.functions import (
     AppendableFunction,
     TwoArgumentFunction,
 )
-from valor.schemas.symbolic.structures import Dictionary, DictionaryValue
+from valor.schemas.symbolic.structures import (
+    Dictionary,
+    DictionaryValue,
+    _get_atomic_type_by_name,
+    _get_atomic_type_by_value,
+)
+
+
+def test__get_atomic_type_by_value():
+    assert _get_atomic_type_by_value(True) is Bool
+    assert _get_atomic_type_by_value("hello world") is String
+    assert _get_atomic_type_by_value(int(1)) is Integer
+    assert _get_atomic_type_by_value(float(3.14)) is Float
+    assert (
+        _get_atomic_type_by_value(datetime.datetime(year=2024, month=1, day=1))
+        is DateTime
+    )
+    assert (
+        _get_atomic_type_by_value(datetime.date(year=2024, month=1, day=1))
+        is Date
+    )
+    assert (
+        _get_atomic_type_by_value(datetime.time(hour=1, minute=1, second=1))
+        is Time
+    )
+    assert (
+        _get_atomic_type_by_value(datetime.timedelta(seconds=100)) is Duration
+    )
+    assert _get_atomic_type_by_value((1, 1)) is Point
+    assert _get_atomic_type_by_value([(1, 1)]) is MultiPoint
+    assert _get_atomic_type_by_value([(1, 1), (2, 2)]) is LineString
+    assert _get_atomic_type_by_value([[(1, 1), (2, 2)]]) is MultiLineString
+    assert (
+        _get_atomic_type_by_value([[(1, 1), (2, 2), (0, 1), (1, 1)]])
+        is Polygon
+    )
+    assert (
+        _get_atomic_type_by_value([[[(1, 1), (2, 2), (0, 1), (1, 1)]]])
+        is MultiPolygon
+    )
+    with pytest.raises(NotImplementedError):
+        assert _get_atomic_type_by_value({"randomvalue": "idk"})
+
+
+def test__get_atomic_type_by_name():
+    types_ = [
+        Bool,
+        String,
+        Integer,
+        Float,
+        DateTime,
+        Date,
+        Time,
+        Duration,
+        Point,
+        MultiPoint,
+        LineString,
+        MultiLineString,
+        Polygon,
+        MultiPolygon,
+    ]
+    for type_ in types_:
+        type_name = type_.__name__
+        assert issubclass(type_, Variable)
+        assert isinstance(type_name, str)
+        assert _get_atomic_type_by_name(type_name) is type_
+    with pytest.raises(NotImplementedError):
+        assert _get_atomic_type_by_name("some_nonexistent_type")
 
 
 def get_function_name(fn: str) -> str:
@@ -177,27 +251,95 @@ def test_list():
         "rhs": {"type": "list[float]", "value": [0.1, 0.2, 0.3]},
     }
 
+    # test decode from json dict
+    assert List[Float].decode_value([0.1, 0.2, 0.3]).get_value() == [
+        0.1,
+        0.2,
+        0.3,
+    ]
+
     # test comparison between valued variable and value
     assert (variable == [0.1, 0.2, 0.3]).to_dict() == {
         "type": "bool",
         "value": True,
     }
 
+    # test setting list to non-list type
+    with pytest.raises(TypeError):
+        assert List[String](String("hello"))
+
+    # test setting list item to unsupported type
+    with pytest.raises(TypeError):
+        assert List[Integer]([String("hello")])
+
+    # test that type wrapper is not implemented
+    with pytest.raises(NotImplementedError):
+        List()[0]
+    with pytest.raises(NotImplementedError):
+        List()[0] = 1
+    with pytest.raises(NotImplementedError):
+        iter(List())
+    with pytest.raises(NotImplementedError):
+        len(List())
+
 
 def test_dictionary_value():
-    # test symbol cannot already have key or attribute
+    # test symbol cannot already attribute
     with pytest.raises(ValueError) as e:
         DictionaryValue(
-            symbol=Symbol(name="a", key="b", attribute="c", owner="d"),
-            key="k",
-        )
-    assert "key" in str(e)
-    with pytest.raises(ValueError) as e:
-        DictionaryValue(
-            symbol=Symbol(name="a", attribute="c", owner="d"),
-            key="k",
+            symbol=Symbol(name="a", attribute="c", owner="d", key="b"),
         )
     assert "attribute" in str(e)
+
+    # test symbol must have key
+    with pytest.raises(ValueError) as e:
+        DictionaryValue(
+            symbol=Symbol(name="a", owner="d"),
+        )
+    assert "key" in str(e)
+
+    # test router
+    assert (DictionaryValue.symbolic(name="a", key="b") == 0).to_dict()[
+        "op"
+    ] == "eq"
+    assert (DictionaryValue.symbolic(name="a", key="b") != 0).to_dict()[
+        "op"
+    ] == "ne"
+    assert (DictionaryValue.symbolic(name="a", key="b") >= 0).to_dict()[
+        "op"
+    ] == "ge"
+    assert (DictionaryValue.symbolic(name="a", key="b") <= 0).to_dict()[
+        "op"
+    ] == "le"
+    assert (DictionaryValue.symbolic(name="a", key="b") > 0).to_dict()[
+        "op"
+    ] == "gt"
+    assert (DictionaryValue.symbolic(name="a", key="b") < 0).to_dict()[
+        "op"
+    ] == "lt"
+    assert (
+        DictionaryValue.symbolic(name="a", key="b").intersects((0, 0))
+    ).to_dict()["op"] == "intersects"
+    assert (
+        DictionaryValue.symbolic(name="a", key="b").inside((0, 0))
+    ).to_dict()["op"] == "inside"
+    assert (
+        DictionaryValue.symbolic(name="a", key="b").outside((0, 0))
+    ).to_dict()["op"] == "outside"
+    assert (DictionaryValue.symbolic(name="a", key="b").is_none()).to_dict()[
+        "op"
+    ] == "isnull"
+    assert (
+        DictionaryValue.symbolic(name="a", key="b").is_not_none()
+    ).to_dict()["op"] == "isnotnull"
+    assert (DictionaryValue.symbolic(name="a", key="b").area == 0).to_dict()[
+        "op"
+    ] == "eq"
+
+    # test router with Variable type
+    assert (DictionaryValue.symbolic(name="a", key="b") == Float(0)).to_dict()[
+        "op"
+    ] == "eq"
 
 
 def test_dictionary():

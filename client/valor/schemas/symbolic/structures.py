@@ -13,6 +13,7 @@ from valor.schemas.symbolic.atomics import (
     MultiLineString,
     MultiPoint,
     MultiPolygon,
+    Nullable,
     Point,
     Polygon,
     String,
@@ -214,19 +215,17 @@ class List(typing.Generic[T], Equatable):
         raise NotImplementedError
 
 
-class DictionaryValue(Variable):
-    def __init__(
-        self,
-        symbol: Symbol,
-        key: str,
-    ):
-        self._key = key
-        self._owner = symbol._owner
-        self._name = symbol._name
-        if symbol._key:
-            raise ValueError("Symbol key should not be defined.")
+class DictionaryValue(Nullable):
+    def __init__(self, value: Any | None = None, symbol: Symbol | None = None):
+        if symbol is None:
+            raise ValueError("DictionaryValue should never contain a value.")
         if symbol._attribute:
-            raise ValueError("Symbol attribute should not be defined.")
+            raise ValueError(
+                "DictionaryValue symbol should not contain attribute."
+            )
+        if not symbol._key:
+            raise ValueError("DictionaryValue symbol should contain key.")
+        super().__init__(value, symbol)
 
     def __eq__(self, other: Any):
         return self._generate(fn="__eq__", other=other)
@@ -255,16 +254,20 @@ class DictionaryValue(Variable):
     def outside(self, other: Any):
         return self._generate(fn="outside", other=other)
 
-    def is_none(self, other: Any):
-        return self._generate(fn="is_none", other=other)
+    def is_none(self):
+        return super().is_none()
 
-    def is_not_none(self, other: Any):
-        return self._generate(fn="is_not_none", other=other)
+    def is_not_none(self):
+        return super().is_not_none()
 
     @property
     def area(self):
+        symbol = self.get_symbol()
         return Float.symbolic(
-            owner=self._owner, name=self._name, key=self._key, attribute="area"
+            owner=symbol._owner,
+            name=symbol._name,
+            key=symbol._key,
+            attribute="area",
         )
 
     def _generate(self, other: Any, fn: str):
@@ -272,7 +275,13 @@ class DictionaryValue(Variable):
             obj = type(other)
         else:
             obj = _get_atomic_type_by_value(other)
-        sym = obj.symbolic(owner=self._owner, name=self._name, key=self._key)
+        symbol = self.get_symbol()
+        sym = obj.symbolic(
+            owner=symbol._owner,
+            name=symbol._name,
+            attribute=symbol._attribute,
+            key=symbol._key,
+        )
         return sym.__getattribute__(fn)(other)
 
 
@@ -332,7 +341,13 @@ class Dictionary(Equatable):
 
     def __getitem__(self, key: str):
         if self.is_symbolic:
-            return DictionaryValue(symbol=self.get_symbol(), key=key)
+            symbol = self.get_symbol()
+            return DictionaryValue.symbolic(
+                owner=symbol._owner,
+                name=symbol._name,
+                attribute=None,
+                key=key,
+            )
         else:
             value = self.get_value()
             if not value:
