@@ -9,7 +9,7 @@ from valor.schemas import (
     Score,
     TaskTypeEnum,
 )
-from valor.schemas.symbolic.functions import (
+from valor.schemas.symbolic.operators import (
     AppendableFunction,
     TwoArgumentFunction,
 )

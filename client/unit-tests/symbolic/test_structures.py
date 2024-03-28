@@ -21,15 +21,15 @@ from valor.schemas import (
     Time,
     Variable,
 )
-from valor.schemas.symbolic.functions import (
-    AppendableFunction,
-    TwoArgumentFunction,
-)
-from valor.schemas.symbolic.structures import (
+from valor.schemas.symbolic.collections import (
     Dictionary,
     DictionaryValue,
     _get_atomic_type_by_name,
     _get_atomic_type_by_value,
+)
+from valor.schemas.symbolic.operators import (
+    AppendableFunction,
+    TwoArgumentFunction,
 )
 
 

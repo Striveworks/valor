@@ -2,7 +2,11 @@ import datetime
 
 import pytest
 
-from valor.schemas.symbolic.atomics import (
+from valor.schemas.symbolic.operators import (
+    AppendableFunction,
+    TwoArgumentFunction,
+)
+from valor.schemas.symbolic.types import (
     Bool,
     Date,
     DateTime,
@@ -23,10 +27,6 @@ from valor.schemas.symbolic.atomics import (
     Symbol,
     Time,
     Variable,
-)
-from valor.schemas.symbolic.functions import (
-    AppendableFunction,
-    TwoArgumentFunction,
 )
 
 

@@ -2,20 +2,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Union
 
 from valor.enums import TaskType
-from valor.schemas.symbolic.atomics import (
-    Date,
-    DateTime,
-    Duration,
-    LineString,
-    MultiLineString,
-    MultiPoint,
-    MultiPolygon,
-    Point,
-    Polygon,
-    Time,
-    Variable,
-)
-from valor.schemas.symbolic.functions import (
+from valor.schemas.symbolic.operators import (
     And,
     AppendableFunction,
     Function,
@@ -29,6 +16,19 @@ from valor.schemas.symbolic.functions import (
     Outside,
     TwoArgumentFunction,
     Xor,
+)
+from valor.schemas.symbolic.types import (
+    Date,
+    DateTime,
+    Duration,
+    LineString,
+    MultiLineString,
+    MultiPoint,
+    MultiPolygon,
+    Point,
+    Polygon,
+    Time,
+    Variable,
 )
 
 

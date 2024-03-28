@@ -9,7 +9,7 @@ import numpy as np
 import PIL.Image
 
 from valor.enums import TaskType
-from valor.schemas.symbolic.functions import (
+from valor.schemas.symbolic.operators import (
     And,
     Eq,
     Ge,

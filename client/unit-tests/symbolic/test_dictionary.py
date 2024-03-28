@@ -2,8 +2,7 @@ import datetime
 
 import pytest
 
-from valor.schemas import Float, Integer
-from valor.schemas.symbolic.structures import Dictionary
+from valor.schemas import Dictionary, Float, Integer
 
 
 def test_validate_metadata():

@@ -1,8 +1,8 @@
 import pytest
 
 from valor.schemas import List as SymbolicList
-from valor.schemas.symbolic.atomics import Bool, Float, Integer, String, Symbol
-from valor.schemas.symbolic.static_collections import StaticCollection
+from valor.schemas.symbolic.collections import StaticCollection
+from valor.schemas.symbolic.types import Bool, Float, Integer, String, Symbol
 
 
 def test_static_collection_init():

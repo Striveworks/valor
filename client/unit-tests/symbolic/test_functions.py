@@ -2,8 +2,7 @@ from typing import Tuple
 
 import pytest
 
-from valor.schemas.symbolic.atomics import Float, Integer, String
-from valor.schemas.symbolic.functions import (
+from valor.schemas.symbolic.operators import (
     And,
     AppendableFunction,
     Function,
@@ -13,6 +12,7 @@ from valor.schemas.symbolic.functions import (
     TwoArgumentFunction,
     Xor,
 )
+from valor.schemas.symbolic.types import Float, Integer, String
 
 
 @pytest.fixture

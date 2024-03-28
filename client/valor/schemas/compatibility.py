@@ -1,11 +1,12 @@
 from typing import Any, Optional, Union
 
-from valor.schemas.symbolic.annotations import (
+from valor.schemas.symbolic.collections import (
+    Dictionary,
+    _get_atomic_type_by_name,
+)
+from valor.schemas.symbolic.types import (
     BoundingBox,
     BoundingPolygon,
-    Raster,
-)
-from valor.schemas.symbolic.atomics import (
     Date,
     DateTime,
     Duration,
@@ -15,11 +16,8 @@ from valor.schemas.symbolic.atomics import (
     MultiPolygon,
     Point,
     Polygon,
+    Raster,
     Time,
-)
-from valor.schemas.symbolic.structures import (
-    Dictionary,
-    _get_atomic_type_by_name,
 )
 
 
