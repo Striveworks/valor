@@ -284,6 +284,10 @@ def test_list():
 
 
 def test_dictionary_value():
+    # test cannot hold a value
+    with pytest.raises(NotImplementedError):
+        DictionaryValue.definite(1)
+
     # test symbol cannot already attribute
     with pytest.raises(ValueError) as e:
         DictionaryValue(

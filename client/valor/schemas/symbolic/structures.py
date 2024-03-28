@@ -216,16 +216,41 @@ class List(typing.Generic[T], Equatable):
 
 
 class DictionaryValue(Nullable):
-    def __init__(self, value: Any | None = None, symbol: Symbol | None = None):
-        if symbol is None:
-            raise ValueError("DictionaryValue should never contain a value.")
+    def __init__(self, symbol: Symbol):
+        if not isinstance(symbol, Symbol):
+            raise ValueError(
+                "DictionaryValue should only be initialized as a symbol."
+            )
         if symbol._attribute:
             raise ValueError(
                 "DictionaryValue symbol should not contain attribute."
             )
         if not symbol._key:
             raise ValueError("DictionaryValue symbol should contain key.")
-        super().__init__(value, symbol)
+        super().__init__(value=None, symbol=symbol)
+
+    @classmethod
+    def definite(cls, value: Any):
+        raise NotImplementedError(
+            "DictionaryValue should only be initialized as a symbol."
+        )
+
+    @classmethod
+    def symbolic(
+        cls,
+        name: Optional[str] = None,
+        key: Optional[str] = None,
+        attribute: Optional[str] = None,
+        owner: Optional[str] = None,
+    ):
+        return cls(
+            Symbol(
+                name=name if name else cls.__name__.lower(),
+                key=key,
+                attribute=attribute,
+                owner=owner,
+            )
+        )
 
     def __eq__(self, other: Any):
         return self._generate(fn="__eq__", other=other)
