@@ -24,6 +24,7 @@ from valor.schemas.symbolic.atomics import (
 
 
 def _get_atomic_type_by_value(other: Any):
+    """Retrieves variable type using built-in type."""
     if Bool.supports(other):
         return Bool
     elif String.supports(other):
@@ -57,6 +58,7 @@ def _get_atomic_type_by_value(other: Any):
 
 
 def _get_atomic_type_by_name(name: str):
+    """Retrieves variable type by name."""
     name = name.lower()
     if name == "bool":
         return Bool
@@ -94,6 +96,15 @@ T = typing.TypeVar("T", bound=Variable)
 
 
 class List(typing.Generic[T], Equatable):
+    """
+    List is both a method of typing and a class-factory.
+
+    The '__class_getitem__' classmethod produces strongly-typed ValueLists.
+
+    Examples
+    --------
+    >>> x = List[String](["foo", "bar"])
+    """
 
     _registered_classes = dict()
 
@@ -104,6 +115,10 @@ class List(typing.Generic[T], Equatable):
             return cls._registered_classes[item_class]
 
         class ValueList(Equatable):
+            """
+            Strongly-typed variable list.
+            """
+
             def __init__(
                 self,
                 value: Optional[Any] = None,
@@ -130,6 +145,7 @@ class List(typing.Generic[T], Equatable):
 
             @classmethod
             def definite(cls, value: Any):
+                """Initialize variable with a value."""
                 if value is None:
                     value = list()
                 return cls(value=value)
@@ -142,12 +158,14 @@ class List(typing.Generic[T], Equatable):
                 attribute: Optional[str] = None,
                 owner: Optional[str] = None,
             ):
+                """Initialize variable as a symbol."""
                 if name is None:
                     name = f"list[{item_class.__name__.lower()}]"
                 return super().symbolic(name, key, attribute, owner)
 
             @classmethod
             def __validate__(cls, value: list):
+                """Validate typing."""
                 if not isinstance(value, list):
                     raise TypeError(
                         f"Expected type '{list}' received type '{type(value)}'"
@@ -162,6 +180,7 @@ class List(typing.Generic[T], Equatable):
 
             @classmethod
             def decode_value(cls, value: Any):
+                """Decode object from JSON compatible dictionary."""
                 if not value:
                     return cls(value=[])
                 return cls(
@@ -171,9 +190,11 @@ class List(typing.Generic[T], Equatable):
                 )
 
             def encode_value(self):
+                """Encode object to JSON compatible dictionary."""
                 return [element.encode_value() for element in self.get_value()]
 
             def to_dict(self) -> dict:
+                """Encode variable to a JSON-compatible dictionary."""
                 if isinstance(self._value, Symbol):
                     return self._value.to_dict()
                 else:
@@ -231,6 +252,7 @@ class DictionaryValue(Nullable):
 
     @classmethod
     def definite(cls, value: Any):
+        """Assigning a value is not supported."""
         raise NotImplementedError(
             "DictionaryValue should only be initialized as a symbol."
         )
@@ -243,6 +265,7 @@ class DictionaryValue(Nullable):
         attribute: Optional[str] = None,
         owner: Optional[str] = None,
     ):
+        """Initialize variable as a symbol."""
         return cls(
             Symbol(
                 name=name if name else cls.__name__.lower(),
@@ -287,6 +310,7 @@ class DictionaryValue(Nullable):
 
     @property
     def area(self):
+        """Returns area attribute."""
         symbol = self.get_symbol()
         return Float.symbolic(
             owner=symbol._owner,
@@ -296,6 +320,7 @@ class DictionaryValue(Nullable):
         )
 
     def _generate(self, other: Any, fn: str):
+        """Generate expression."""
         if isinstance(other, Variable):
             obj = type(other)
         else:
@@ -311,6 +336,19 @@ class DictionaryValue(Nullable):
 
 
 class Dictionary(Equatable):
+    """
+    Symbolic implementation of the built-in type 'dict'.
+
+    Examples
+    --------
+    >>> v = Dictionary({"k1": "v1", "k2": 3.14})
+    >>> s = Dictionary.symbolic(name="some_var")
+
+    # Create an equality expression.
+    >>> s["k1"] == v["k1"]
+    Eq(Symbol(name='some_var', key='k1'), 'v1')
+    """
+
     def __init__(
         self,
         value: Optional[typing.Dict[str, Any]] = None,
@@ -339,11 +377,13 @@ class Dictionary(Equatable):
         cls,
         value: Optional[typing.Dict[str, Any]] = None,
     ):
+        """Initialize variable with a value."""
         value = value if value else dict()
         return super().definite(value)
 
     @classmethod
     def __validate__(cls, value: Any):
+        """Validate typing."""
         if not isinstance(value, dict):
             raise TypeError(
                 f"Expected type '{dict}' received type '{type(value)}'"
@@ -354,6 +394,7 @@ class Dictionary(Equatable):
 
     @classmethod
     def decode_value(cls, value: dict) -> Any:
+        """Decode object from JSON compatible dictionary."""
         return cls(
             {
                 k: _get_atomic_type_by_name(v["type"]).decode_value(v["value"])
@@ -362,6 +403,7 @@ class Dictionary(Equatable):
         )
 
     def encode_value(self) -> dict:
+        """Encode object to JSON compatible dictionary."""
         return {k: v.to_dict() for k, v in self.items()}
 
     def __getitem__(self, key: str):

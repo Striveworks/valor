@@ -102,6 +102,7 @@ def _encode_api_geometry(
 
 
 def encode_api_format(obj: Any) -> dict:
+    """Encodes form client format into api format."""
     json = obj.encode_value()
 
     # static collection
@@ -185,6 +186,7 @@ def _decode_api_geometry(value: Optional[dict]):
 
 
 def decode_api_format(json: dict):
+    """Decoded api format into client format."""
     # objects
     if "datum" in json:
         json["datum"] = decode_api_format(json["datum"])
