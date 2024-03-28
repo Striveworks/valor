@@ -3,6 +3,7 @@ import copy
 import pytest
 
 from valor import Annotation, Datum, GroundTruth, Label, Prediction, enums
+from valor.schemas import Score
 
 
 def test_datum():
@@ -129,11 +130,11 @@ def test_prediction_annotation():
     l3 = Label(key="other", value="value")
 
     s1 = copy.deepcopy(l1)
-    s1.score = 0.5
+    s1.score = Score(0.5)
     s2 = copy.deepcopy(l2)
-    s2.score = 0.5
+    s2.score = Score(0.5)
     s3 = copy.deepcopy(l3)
-    s3.score = 1.0
+    s3.score = Score(1.0)
 
     # valid
     Annotation(task_type=enums.TaskType.CLASSIFICATION, labels=[s1, s2, s3])

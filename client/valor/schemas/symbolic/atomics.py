@@ -1,5 +1,5 @@
 import datetime
-from typing import Any, List, Optional, Tuple
+from typing import Any, List, Optional, Tuple, Union
 
 import numpy as np
 
@@ -231,32 +231,32 @@ class Variable:
             raise TypeError(f"{type(self).__name__} is a valued object.")
         return self._value
 
-    def __eq__(self, value: Any):
+    def __eq__(self, value: Any) -> Union["Bool", Eq]:  # type: ignore - overriding __eq__
         raise AttributeError(
             f"'{type(self).__name__}' object has no attribute '__eq__'"
         )
 
-    def __ne__(self, value: Any):
+    def __ne__(self, value: Any) -> Union["Bool", Ne]:  # type: ignore - overriding __ne__
         raise AttributeError(
             f"'{type(self).__name__}' object has no attribute '__ne__'"
         )
 
-    def __gt__(self, value: Any):
+    def __gt__(self, value: Any) -> Union["Bool", Gt]:
         raise AttributeError(
             f"'{type(self).__name__}' object has no attribute '__gt__'"
         )
 
-    def __ge__(self, value: Any):
+    def __ge__(self, value: Any) -> Union["Bool", Ge]:
         raise AttributeError(
             f"'{type(self).__name__}' object has no attribute '__ge__'"
         )
 
-    def __lt__(self, value: Any):
+    def __lt__(self, value: Any) -> Union["Bool", Lt]:
         raise AttributeError(
             f"'{type(self).__name__}' object has no attribute '__lt__'"
         )
 
-    def __le__(self, value: Any):
+    def __le__(self, value: Any) -> Union["Bool", Le]:
         raise AttributeError(
             f"'{type(self).__name__}' object has no attribute '__le__'"
         )
@@ -270,44 +270,44 @@ class Bool(Variable):
                 f"Expected type '{bool}' received type '{type(value)}'"
             )
 
-    def __eq__(self, value: Any):
+    def __eq__(self, value: Any) -> Union["Bool", Eq]:
         other = self.preprocess(value)
         if self.is_value and other.is_value:
             return type(self)(self.get_value() is other.get_value())
         return Eq(self, other)
 
-    def __ne__(self, value: Any):
+    def __ne__(self, value: Any) -> Union["Bool", Ne]:
         other = self.preprocess(value)
         if self.is_value and other.is_value:
             return type(self)(self.get_value() is not other.get_value())
         return Ne(self, other)
 
-    def __and__(self, value: Any):
+    def __and__(self, value: Any) -> Union["Bool", And]:
         other = self.preprocess(value)
         if self.is_value and other.is_value:
             return type(self)(self.get_value() and other.get_value())
         return And(self, other)
 
-    def __or__(self, value: Any):
+    def __or__(self, value: Any) -> Union["Bool", Or]:
         other = self.preprocess(value)
         if self.is_value and other.is_value:
             return type(self)(self.get_value() or other.get_value())
         return Or(self, other)
 
-    def __xor__(self, value: Any):
+    def __xor__(self, value: Any) -> Union["Bool", Xor]:
         other = self.preprocess(value)
         if self.is_value and other.is_value:
             return self != value
         return Xor(self, other)
 
-    def __invert__(self):
+    def __invert__(self) -> Union["Bool", Negate]:
         if self.is_value:
             return type(self)(not self.get_value())
         return Negate(self)
 
 
 class Equatable(Variable):
-    def __eq__(self, value: Any):
+    def __eq__(self, value: Any) -> Union["Bool", Eq]:
         other = self.preprocess(value)
         if self.is_value and other.is_value:
             lhs = self.encode_value()
@@ -320,7 +320,7 @@ class Equatable(Variable):
                 return Bool(lhs == rhs)
         return Eq(self, other)
 
-    def __ne__(self, value: Any):
+    def __ne__(self, value: Any) -> Union["Bool", Ne]:
         other = self.preprocess(value)
         if self.is_value and other.is_value:
             lhs = self.encode_value()
@@ -333,7 +333,7 @@ class Equatable(Variable):
                 return Bool(lhs != rhs)
         return Ne(self, other)
 
-    def in_(self, vlist: List[Any]):
+    def in_(self, vlist: List[Any]) -> Or:
         return Or(*[(self == v) for v in vlist])
 
     def __hash__(self):
@@ -343,25 +343,25 @@ class Equatable(Variable):
 
 
 class Quantifiable(Equatable):
-    def __gt__(self, value: Any):
+    def __gt__(self, value: Any) -> Union["Bool", Gt]:
         other = self.preprocess(value)
         if self.is_value and other.is_value:
             return Bool(self.get_value() > other.get_value())
         return Gt(self, other)
 
-    def __ge__(self, value: Any):
+    def __ge__(self, value: Any) -> Union["Bool", Ge]:
         other = self.preprocess(value)
         if self.is_value and other.is_value:
             return Bool(self.get_value() >= other.get_value())
         return Ge(self, other)
 
-    def __lt__(self, value: Any):
+    def __lt__(self, value: Any) -> Union["Bool", Lt]:
         other = self.preprocess(value)
         if self.is_value and other.is_value:
             return Bool(self.get_value() < other.get_value())
         return Lt(self, other)
 
-    def __le__(self, value: Any):
+    def __le__(self, value: Any) -> Union["Bool", Le]:
         other = self.preprocess(value)
         if self.is_value and other.is_value:
             return Bool(self.get_value() <= other.get_value())
@@ -369,12 +369,12 @@ class Quantifiable(Equatable):
 
 
 class Nullable(Variable):
-    def is_none(self):
+    def is_none(self) -> Union["Bool", IsNull]:
         if self.is_value:
             return Bool(self.get_value() is None)
         return IsNull(self)
 
-    def is_not_none(self):
+    def is_not_none(self) -> Union["Bool", IsNotNull]:
         if self.is_value:
             return Bool(self.get_value() is not None)
         return IsNotNull(self)
@@ -385,13 +385,13 @@ class Nullable(Variable):
 
 
 class Spatial(Variable):
-    def intersects(self, other: Any):
+    def intersects(self, other: Any) -> Intersects:
         return Intersects(self, self.preprocess(other))
 
-    def inside(self, other: Any):
+    def inside(self, other: Any) -> Inside:
         return Inside(self, self.preprocess(other))
 
-    def outside(self, other: Any):
+    def outside(self, other: Any) -> Outside:
         return Outside(self, self.preprocess(other))
 
 
