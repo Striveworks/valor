@@ -2,7 +2,7 @@ import io
 import typing
 import warnings
 from base64 import b64decode, b64encode
-from typing import Any, Optional, Union
+from typing import Any, List, Optional, Union
 
 import numpy as np
 import PIL.Image
@@ -28,6 +28,12 @@ class Score(Float, Nullable):
                 raise ValueError("score must be non-negative")
             elif value > 1.0:
                 raise ValueError("score must not exceed 1.0")
+
+    @classmethod
+    def decode_value(cls, value: Optional[Union[float, np.floating]]):
+        if value is None:
+            return cls(None)
+        return super().decode_value(value)
 
 
 class TaskTypeEnum(String):
@@ -104,6 +110,12 @@ class BoundingBox(Polygon, Nullable):
                 raise ValueError(
                     "Bounding Box should consist of four unique points."
                 )
+
+    @classmethod
+    def decode_value(cls, value: Optional[List[List[List[float]]]]):
+        if value is None:
+            return cls(None)
+        return super().decode_value(value)
 
     @classmethod
     def from_extrema(
@@ -199,6 +211,12 @@ class BoundingPolygon(Polygon, Nullable):
     def __validate__(cls, value: Any):
         if value is not None:
             Polygon.__validate__(value)
+
+    @classmethod
+    def decode_value(cls, value: Optional[List[List[List[float]]]]):
+        if value is None:
+            return cls(None)
+        return super().decode_value(value)
 
     @property
     def polygon(self) -> Optional[Polygon]:
@@ -418,3 +436,9 @@ class Embedding(Spatial, Nullable):
                 raise ValueError(
                     "embedding should have at least one dimension"
                 )
+
+    @classmethod
+    def decode_value(cls, value: Optional[List[float]]):
+        if value is None:
+            return cls(None)
+        return super().decode_value(value)

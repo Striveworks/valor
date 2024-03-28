@@ -86,30 +86,44 @@ def _encode_api_geometry(
             ]
         }
     elif isinstance(geometry, Raster):
-        if geometry.geometry is None:
-            return geometry.encode_value()
-        else:
-            value = geometry.encode_value()
-            value["geometry"] = _encode_api_geometry(geometry.geometry)
-            return value
+        value = geometry.encode_value()
+        if value["geometry"] is not None:
+            if Polygon.supports(value["geometry"]):
+                value["geometry"] = _encode_api_geometry(
+                    Polygon(value["geometry"])
+                )
+            elif MultiPolygon.supports(value["geometry"]):
+                value["geometry"] = _encode_api_geometry(
+                    MultiPolygon(value["geometry"])
+                )
+            else:
+                raise ValueError
+        return value
 
 
 def encode_api_format(obj: Any) -> dict:
     json = obj.encode_value()
+
+    # static collection
     if "datum" in json:
         json["datum"] = encode_api_format(obj.datum)
     if "annotations" in json:
         json["annotations"] = [
             encode_api_format(annotation) for annotation in obj.annotations
         ]
+
+    # dictionary
     if "metadata" in json:
         json["metadata"] = _encode_api_metadata(obj.metadata)
+
+    # geometry
     if "bounding_box" in json:
         json["bounding_box"] = _encode_api_geometry(obj.bounding_box)
     if "polygon" in json:
         json["polygon"] = _encode_api_geometry(obj.polygon)
     if "raster" in json:
         json["raster"] = _encode_api_geometry(obj.raster)
+
     return json
 
 
@@ -145,22 +159,29 @@ def _decode_api_geometry(value: Optional[dict]):
             ]
         ]
     elif set(value.keys()) == {"boundary", "holes"}:
-        return [
-            [
-                (pt["x"], pt["y"])
-                for pt in [
-                    *value["boundary"]["points"],
-                    value["boundary"]["points"][0],
-                ]
-            ],
+        boundary = [
+            (pt["x"], pt["y"])
+            for pt in [
+                *value["boundary"]["points"],
+                value["boundary"]["points"][0],
+            ]
+        ]
+        holes = (
             [
                 [
                     (pt["x"], pt["y"])
                     for pt in [*hole["points"], hole["points"][0]]
                 ]
                 for hole in value["holes"]
-            ],
-        ]
+            ]
+            if value["holes"]
+            else None
+        )
+        return [boundary, *holes] if holes else [boundary]
+    elif set(value.keys()) == {"mask", "geometry"}:
+        if value["geometry"] is not None:
+            value["geometry"] = _decode_api_geometry(value["geometry"])
+        return Raster.decode_value(value).get_value()
 
 
 def decode_api_format(json: dict):
@@ -182,5 +203,7 @@ def decode_api_format(json: dict):
         json["bounding_box"] = _decode_api_geometry(json["bounding_box"])
     if "polygon" in json:
         json["polygon"] = _decode_api_geometry(json["polygon"])
+    if "raster" in json:
+        json["raster"] = _decode_api_geometry(json["raster"])
 
     return json

@@ -83,16 +83,16 @@ def test_create_gt_detections_as_bbox_or_poly(
             [
                 det
                 for det in detections.annotations
-                if det.bounding_box is not None
+                if det.bounding_box.get_value() is not None
             ]
         )
         == 1
     )
     for det in detections.annotations:
-        if det.bounding_box:
-            assert det == gt.annotations[0]
+        if det.bounding_box.get_value():
+            assert det.to_dict() == gt.annotations[0].to_dict()
         else:
-            assert det == gt.annotations[1]
+            assert det.to_dict() == gt.annotations[1].to_dict()
 
 
 def test_create_gt_segs_as_polys_or_masks(

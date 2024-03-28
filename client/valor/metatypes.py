@@ -3,6 +3,7 @@ from typing import Optional
 from PIL.Image import Image
 
 from valor import Datum
+from valor.schemas import Integer
 
 
 class ImageMetadata:
@@ -35,10 +36,10 @@ class ImageMetadata:
         elif datum.is_symbolic:
             raise ValueError
 
-        height = datum.metadata.get_value()["height"].get_value()
-        width = datum.metadata.get_value()["width"].get_value()
-        if not isinstance(height, int) or not isinstance(width, int):
-            raise TypeError("Height and width metadata must be integers.")
+        height = int(datum.metadata.get_value()["height"].get_value())
+        width = int(datum.metadata.get_value()["width"].get_value())
+        datum.metadata["height"] = Integer(height)
+        datum.metadata["width"] = Integer(width)
         self.datum = datum
 
     @classmethod
@@ -110,14 +111,13 @@ class VideoFrameMetadata:
             raise TypeError
         elif datum.is_symbolic:
             raise ValueError
-        elif (
-            not isinstance(datum.metadata["height"], int)
-            or not isinstance(datum.metadata["width"], int)
-            or not isinstance(datum.metadata["frame"], int)
-        ):
-            raise TypeError(
-                "Height, width and frame number metadata must be integers."
-            )
+
+        height = int(datum.metadata.get_value()["height"].get_value())
+        width = int(datum.metadata.get_value()["width"].get_value())
+        frame = int(datum.metadata.get_value()["frame"].get_value())
+        datum.metadata["height"] = Integer(height)
+        datum.metadata["width"] = Integer(width)
+        datum.metadata["frame"] = Integer(frame)
         self.datum = datum
 
     @classmethod

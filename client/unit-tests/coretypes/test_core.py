@@ -57,7 +57,7 @@ def test_annotation(bbox, polygon, raster, labels, metadata):
     )
 
     # test `__post_init__`
-    with pytest.raises(TypeError) as e:
+    with pytest.raises(ValueError) as e:
         Annotation(task_type="something", labels=labels)  # type: ignore
     assert "TaskType" in str(e)
     with pytest.raises(TypeError) as e:
@@ -110,7 +110,7 @@ def test_groundtruth_annotation():
     )
 
     # test `__post_init__`
-    with pytest.raises(TypeError) as e:
+    with pytest.raises(ValueError) as e:
         Annotation(task_type="soemthing", labels=[l1])  # type: ignore
     assert "TaskType" in str(e)
     with pytest.raises(TypeError) as e:
@@ -139,7 +139,7 @@ def test_prediction_annotation():
     Annotation(task_type=enums.TaskType.CLASSIFICATION, labels=[s1, s2, s3])
 
     # test `__post_init__`
-    with pytest.raises(TypeError) as e:
+    with pytest.raises(ValueError) as e:
         Annotation(task_type="something", labels=[s1, s2, s3])  # type: ignore
     assert "TaskType" in str(e)
     with pytest.raises(TypeError) as e:

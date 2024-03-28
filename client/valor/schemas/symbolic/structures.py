@@ -214,7 +214,7 @@ class List(typing.Generic[T], Equatable):
         raise NotImplementedError
 
 
-class DictionaryValue:
+class DictionaryValue(Variable):
     def __init__(
         self,
         symbol: Symbol,
@@ -331,13 +331,22 @@ class Dictionary(Equatable):
         return {k: v.to_dict() for k, v in self.items()}
 
     def __getitem__(self, key: str):
-        value = self.get_value()
-        if not value:
-            raise KeyError(key)
-        return value[key]
+        if self.is_symbolic:
+            return DictionaryValue(symbol=self.get_symbol(), key=key)
+        else:
+            value = self.get_value()
+            if not value:
+                raise KeyError(key)
+            return value[key]
 
     def __setitem__(self, key: str, value: Any):
+        if not isinstance(value, Variable):
+            obj = _get_atomic_type_by_value(value)
+            value = obj.definite(value)
         self.get_value()[key] = value
+
+    def __len__(self) -> int:
+        return len(self.get_value())
 
     def pop(self, key: str):
         value = self.get_value()

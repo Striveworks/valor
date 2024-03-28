@@ -28,7 +28,7 @@ def polygon() -> Polygon:
 
 @pytest.fixture
 def geojson(polygon: Polygon):
-    return {"type": "polygon", "coordinates": polygon.get_value()}
+    return {"type": "Polygon", "coordinates": polygon.get_value()}
 
 
 def test__format_filter(geojson, polygon):

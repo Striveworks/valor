@@ -2,6 +2,8 @@
 that is no auth
 """
 
+from typing import List, Tuple
+
 import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -18,7 +20,7 @@ def dataset_with_metadata(
     client: Client,
     dataset_name: str,
     metadata: dict,
-    rect1: BoundingBox,
+    rect1: List[Tuple[float, float]],
 ) -> Dataset:
     # split metadata
     md1 = {"metadatum1": metadata["metadatum1"]}
@@ -28,12 +30,12 @@ def dataset_with_metadata(
     }
 
     # create via image metatypes
-    img1 = ImageMetadata(
+    img1 = ImageMetadata.create(
         uid="uid1", metadata=md1, height=100, width=200
-    ).to_datum()
-    img2 = ImageMetadata(
+    ).datum
+    img2 = ImageMetadata.create(
         uid="uid2", metadata=md23, height=200, width=100
-    ).to_datum()
+    ).datum
 
     # create dataset
     dataset = Dataset.create(dataset_name)
@@ -44,7 +46,7 @@ def dataset_with_metadata(
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k", value="v")],
-                    bounding_box=rect1,
+                    bounding_box=BoundingBox([rect1]),
                 ),
             ],
         )

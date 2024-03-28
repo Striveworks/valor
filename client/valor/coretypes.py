@@ -188,30 +188,6 @@ class Evaluation:
         self.conn = connection
         self.update(**kwargs)
 
-    def __str__(self) -> str:
-        """Dumps the object into a JSON formatted string."""
-        return json.dumps(self.to_dict(), indent=4)
-
-    def to_dict(self) -> dict:
-        """
-        Defines how a `valor.Evaluation` object is serialized into a dictionary.
-
-        Returns
-        ----------
-        dict
-            A dictionary describing an evaluation.
-        """
-        return {
-            "id": self.id,
-            "model_name": self.model_name,
-            "datum_filter": asdict(self.datum_filter),
-            "parameters": asdict(self.parameters),
-            "status": self.status.value,
-            "metrics": self.metrics,
-            "confusion_matrices": self.confusion_matrices,
-            **self.kwargs,
-        }
-
     def update(
         self,
         *_,
@@ -297,6 +273,30 @@ class Evaluation:
             if timeout and time.time() - t_start > timeout:
                 raise TimeoutError
         return self.status
+
+    def __str__(self) -> str:
+        """Dumps the object into a JSON formatted string."""
+        return json.dumps(self.to_dict(), indent=4)
+
+    def to_dict(self) -> dict:
+        """
+        Defines how a `valor.Evaluation` object is serialized into a dictionary.
+
+        Returns
+        ----------
+        dict
+            A dictionary describing an evaluation.
+        """
+        return {
+            "id": self.id,
+            "model_name": self.model_name,
+            "datum_filter": asdict(self.datum_filter),
+            "parameters": asdict(self.parameters),
+            "status": self.status.value,
+            "metrics": self.metrics,
+            "confusion_matrices": self.confusion_matrices,
+            **self.kwargs,
+        }
 
     def to_dataframe(
         self,
@@ -546,7 +546,7 @@ class Dataset(StaticCollection):
             raise ValueError(
                 "Cannot filter by dataset_names when calling `Dataset.get_datums`."
             )
-        filter_["dataset_names"] = [self.name]
+        filter_["dataset_names"] = [self.get_name()]
         return Client(self.conn).get_datums(filter_by=filter_)
 
     def get_evaluations(

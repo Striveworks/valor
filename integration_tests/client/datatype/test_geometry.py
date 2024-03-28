@@ -20,7 +20,7 @@ from valor import (
 )
 from valor.enums import TaskType
 from valor.metatypes import Datum
-from valor.schemas import BoundingBox, Point, Polygon, Raster
+from valor.schemas import BoundingBox, BoundingPolygon, Raster
 from valor_api.backend import models
 
 
@@ -37,35 +37,33 @@ def _generate_mask(
     return mask
 
 
-def bbox_to_poly(bbox: BoundingBox) -> Polygon:
-    return Polygon(boundary=bbox.polygon)
-
-
 def _list_of_points_from_wkt_polygon(
     db: Session, det: models.Annotation
-) -> list[Point]:
+) -> list[tuple[float, float]]:
     geo = json.loads(db.scalar(det.polygon.ST_AsGeoJSON()) or "")
     assert len(geo["coordinates"]) == 1
-    return [Point(p[0], p[1]) for p in geo["coordinates"][0][:-1]]
+    return [(p[0], p[1]) for p in geo["coordinates"][0]]
 
 
-def area(rect: Polygon) -> float:
+def area(rect: list[tuple[float, float]]) -> float:
     """Computes the area of a rectangle"""
-    assert len(rect.boundary.points) == 4
-    xs = [pt.x for pt in rect.boundary.points]
-    ys = [pt.y for pt in rect.boundary.points]
+    assert len(rect) == 5
+    xs = [pt[0] for pt in rect]
+    ys = [pt[1] for pt in rect]
     return (max(xs) - min(xs)) * (max(ys) - min(ys))
 
 
-def intersection_area(rect1: Polygon, rect2: Polygon) -> float:
+def intersection_area(
+    rect1: list[tuple[float, float]], rect2: list[tuple[float, float]]
+) -> float:
     """Computes the intersection area of two rectangles"""
-    assert len(rect1.boundary.points) == len(rect2.boundary.points) == 4
+    assert len(rect1) == len(rect2) == 5
 
-    xs1 = [pt.x for pt in rect1.boundary.points]
-    xs2 = [pt.x for pt in rect2.boundary.points]
+    xs1 = [pt[0] for pt in rect1]
+    xs2 = [pt[0] for pt in rect2]
 
-    ys1 = [pt.y for pt in rect1.boundary.points]
-    ys2 = [pt.y for pt in rect2.boundary.points]
+    ys1 = [pt[1] for pt in rect1]
+    ys2 = [pt[1] for pt in rect2]
 
     inter_xmin = max(min(xs1), min(xs2))
     inter_xmax = min(max(xs1), max(xs2))
@@ -79,7 +77,9 @@ def intersection_area(rect1: Polygon, rect2: Polygon) -> float:
     return inter_width * inter_height
 
 
-def iou(rect1: Polygon, rect2: Polygon) -> float:
+def iou(
+    rect1: list[tuple[float, float]], rect2: list[tuple[float, float]]
+) -> float:
     """Computes the "intersection over union" of two rectangles"""
     inter_area = intersection_area(rect1, rect2)
     return inter_area / (area(rect1) + area(rect2) - inter_area)
@@ -89,12 +89,12 @@ def test_boundary(
     db: Session,
     client: Client,
     dataset_name: str,
-    rect1: BoundingBox,
+    rect1: list[tuple[float, float]],
     img1: Datum,
 ):
     """Test consistency of boundary in back end and client"""
     dataset = Dataset.create(dataset_name)
-    rect1_poly = bbox_to_poly(rect1)
+    rect1_poly = BoundingPolygon([rect1])
     dataset.add_groundtruth(
         GroundTruth(
             datum=img1,
@@ -110,11 +110,11 @@ def test_boundary(
 
     # get the one detection that exists
     db_det = db.scalar(select(models.Annotation))
+    assert db_det
 
     # check boundary
     points = _list_of_points_from_wkt_polygon(db, db_det)
-
-    assert set(points) == set([pt for pt in rect1_poly.boundary.points])
+    assert points == rect1_poly.boundary
 
 
 def test_iou(
@@ -122,12 +122,12 @@ def test_iou(
     client: Client,
     dataset_name: str,
     model_name: str,
-    rect1: BoundingBox,
-    rect2: BoundingBox,
+    rect1: list[tuple[float, float]],
+    rect2: list[tuple[float, float]],
     img1: Datum,
 ):
-    rect1_poly = bbox_to_poly(rect1)
-    rect2_poly = bbox_to_poly(rect2)
+    rect1_poly = BoundingPolygon([rect1])
+    rect2_poly = BoundingPolygon([rect2])
 
     dataset = Dataset.create(dataset_name)
     dataset.add_groundtruth(
@@ -136,7 +136,7 @@ def test_iou(
             annotations=[
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
-                    labels=[Label("k", "v")],
+                    labels=[Label(key="k", value="v")],
                     polygon=rect1_poly,
                 )
             ],
@@ -156,7 +156,7 @@ def test_iou(
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
                     polygon=rect2_poly,
-                    labels=[Label("k", "v", score=0.6)],
+                    labels=[Label(key="k", value="v", score=0.6)],
                 )
             ],
         ),
@@ -173,7 +173,9 @@ def test_iou(
     gunion = ST_Union(db_gt, db_pred)
     iou_computation = ST_Area(gintersection) / ST_Area(gunion)
 
-    assert iou(rect1_poly, rect2_poly) == db.scalar(select(iou_computation))
+    assert iou(rect1_poly.boundary, rect2_poly.boundary) == db.scalar(
+        select(iou_computation)
+    )
 
 
 def test_add_raster_and_boundary_box(

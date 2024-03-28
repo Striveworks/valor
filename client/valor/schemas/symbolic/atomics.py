@@ -190,6 +190,14 @@ class Variable:
         """Encode object value to JSON compatible dictionary."""
         return self.get_value()
 
+    @classmethod
+    def from_dict(cls, value: dict):
+        if set(value.keys()) != {"type", "value"}:
+            raise KeyError
+        elif value["type"] != cls.__name__.lower():
+            raise TypeError
+        return cls.decode_value(value["value"])
+
     def to_dict(self) -> dict:
         if isinstance(self._value, Symbol):
             return self._value.to_dict()
