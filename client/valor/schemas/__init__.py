@@ -1,14 +1,13 @@
 from .evaluation import EvaluationParameters, EvaluationRequest
 from .filters import Constraint, Filter
-from .symbolic.annotations import (
-    BoundingBox,
-    BoundingPolygon,
-    Embedding,
-    Raster,
-    Score,
-    TaskTypeEnum,
+from .symbolic.collections import (
+    Annotation,
+    Datum,
+    Dictionary,
+    Label,
+    List,
+    StaticCollection,
 )
-from .symbolic.collections import Annotation, Datum, Label, StaticCollection
 from .symbolic.operators import (
     And,
     Eq,
@@ -26,12 +25,14 @@ from .symbolic.operators import (
     Outside,
     Xor,
 )
-from .symbolic.structures import Dictionary, List
 from .symbolic.types import (
     Bool,
+    BoundingBox,
+    BoundingPolygon,
     Date,
     DateTime,
     Duration,
+    Embedding,
     Equatable,
     Float,
     Integer,
@@ -43,9 +44,12 @@ from .symbolic.types import (
     Point,
     Polygon,
     Quantifiable,
+    Raster,
+    Score,
     Spatial,
     String,
     Symbol,
+    TaskTypeEnum,
     Time,
     Variable,
 )
