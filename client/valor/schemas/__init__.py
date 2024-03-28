@@ -45,7 +45,6 @@ from .symbolic.functions import (
     Negate,
     Or,
     Outside,
-    Where,
     Xor,
 )
 from .symbolic.static_collections import (
@@ -76,7 +75,6 @@ __all__ = [
     "Or",
     "Outside",
     "Xor",
-    "Where",
     "Symbol",
     "Variable",
     "Equatable",

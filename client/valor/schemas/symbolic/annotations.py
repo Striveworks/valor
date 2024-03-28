@@ -20,8 +20,18 @@ from valor.schemas.symbolic.atomics import (
 
 
 class Score(Float, Nullable):
+    """
+    Implements the score annotation as a nullable floating-point variable.
+
+    Examples
+    --------
+    >>> Score(0.9)
+    >>> Score(None)
+    """
+
     @classmethod
     def __validate__(cls, value: Any):
+        """Validates typing."""
         if value is not None:
             Float.__validate__(value)
             if value < 0.0:
@@ -31,12 +41,23 @@ class Score(Float, Nullable):
 
     @classmethod
     def decode_value(cls, value: Optional[Union[float, np.floating]]):
+        """Decode object from JSON compatible dictionary."""
         if value is None:
             return cls(None)
         return super().decode_value(value)
 
 
 class TaskTypeEnum(String):
+    """
+    Wrapper for 'valor.enums.TaskType'.
+
+    Examples
+    --------
+    >>> from valor.enums import TaskType
+    >>> TaskTypeEnum(TaskType.CLASSIFICATION)
+    >>> TaskTypeEnum("classification")
+    """
+
     def __init__(
         self,
         value: Optional[Any] = None,
@@ -48,6 +69,7 @@ class TaskTypeEnum(String):
 
     @classmethod
     def __validate__(cls, value: Any):
+        """Validates typing."""
         if not isinstance(value, TaskType):
             raise TypeError(
                 f"Expected value with type '{TaskType.__name__}' received type '{type(value).__name__}'"
@@ -55,46 +77,24 @@ class TaskTypeEnum(String):
 
     @classmethod
     def decode_value(cls, value: str):
+        """Decode object from JSON compatible dictionary."""
         return cls(TaskType(value))
 
     def encode_value(self) -> Any:
+        """Encode object to JSON compatible dictionary."""
         return self.get_value().value
 
 
 class BoundingBox(Polygon, Nullable):
     """
-    Represents a bounding box defined by a 4-point polygon. Note that this does not need to be axis-aligned.
-
-    Parameters
-    ----------
-    polygon : BasicPolygon or dict
-        The 4-point polygon defining the bounding box. Can be a `BasicPolygon` object
-        or a dictionary with the necessary information to create a `BasicPolygon`.
-
-    Raises
-    ------
-    TypeError
-        If `polygon` is not a `BasicPolygon` or cannot be converted to one.
-    ValueError
-        If the number of points in `polygon` is not equal to 4, making it invalid as a bounding box.
+    Implements a nullable bounding box defined by a polygon with 4 unique points. Note that this does not need to be axis-aligned.
 
     Examples
     --------
-    Create a BoundingBox from Points.
-    Note that ordering is important to prevent self-intersection!
-    >>> box1 = schemas.BoundingBox(
-    ...     polygon=schemas.BasicPolygon(
-    ...         points=[
-    ...             schemas.Point(0,0),
-    ...             schemas.Point(0,1),
-    ...             schemas.Point(1,1),
-    ...             schemas.Point(1,0),
-    ...         ]
-    ...     ),
-    ... )
+    >>> BoundingBox([[(0,0), (0,1), (1,1), (1,0), (0,0)]])
 
     Create a BoundingBox using extrema.
-    >>> box2 = BoundingBox.from_extrema(
+    >>> BoundingBox.from_extrema(
     ...     xmin=0, xmax=1,
     ...     ymin=0, ymax=1,
     ... )
@@ -102,6 +102,7 @@ class BoundingBox(Polygon, Nullable):
 
     @classmethod
     def __validate__(cls, value: Any):
+        """Validates typing."""
         if value is not None:
             Polygon.__validate__(value)
             if len(value) != 1:
@@ -113,6 +114,7 @@ class BoundingBox(Polygon, Nullable):
 
     @classmethod
     def decode_value(cls, value: Optional[List[List[List[float]]]]):
+        """Decode object from JSON compatible dictionary."""
         if value is None:
             return cls(None)
         return super().decode_value(value)
@@ -157,6 +159,7 @@ class BoundingBox(Polygon, Nullable):
 
     @property
     def polygon(self) -> Optional[Polygon]:
+        """Returns the component polygon if it exists."""
         value = self.get_value()
         return Polygon(value) if value else None
 
@@ -209,17 +212,20 @@ class BoundingPolygon(Polygon, Nullable):
 
     @classmethod
     def __validate__(cls, value: Any):
+        """Validates typing."""
         if value is not None:
             Polygon.__validate__(value)
 
     @classmethod
     def decode_value(cls, value: Optional[List[List[List[float]]]]):
+        """Decode object from JSON compatible dictionary."""
         if value is None:
             return cls(None)
         return super().decode_value(value)
 
     @property
     def polygon(self) -> Optional[Polygon]:
+        """Returns the component polygon if it exists."""
         value = self.get_value()
         return Polygon(value) if value else None
 
@@ -257,6 +263,7 @@ class Raster(Spatial, Nullable):
 
     @classmethod
     def __validate__(cls, value: Any):
+        """Validates typing."""
         if value is not None:
             if not isinstance(value, dict):
                 raise TypeError(
@@ -286,6 +293,7 @@ class Raster(Spatial, Nullable):
                 )
 
     def encode_value(self) -> Any:
+        """Encode object to JSON compatible dictionary."""
         value = self.get_value()
         if value is not None:
             f = io.BytesIO()
@@ -301,6 +309,7 @@ class Raster(Spatial, Nullable):
 
     @classmethod
     def decode_value(cls, value: Any):
+        """Decode object from JSON compatible dictionary."""
         if value is not None:
             mask_bytes = b64decode(value["mask"])
             with io.BytesIO(mask_bytes) as f:
@@ -396,7 +405,7 @@ class Raster(Spatial, Nullable):
     @property
     def geometry(self) -> Optional[Union[Polygon, MultiPolygon]]:
         """
-        The optional geometry that describes the bitmask.
+        The geometric mask if it exists.
 
         Returns
         -------
@@ -411,6 +420,7 @@ class Raster(Spatial, Nullable):
 
     @property
     def height(self) -> Optional[int]:
+        """Returns the height of the raster if it exists."""
         array = self.array
         if array is not None:
             return array.shape[0]
@@ -418,6 +428,7 @@ class Raster(Spatial, Nullable):
 
     @property
     def width(self) -> Optional[int]:
+        """Returns the width of the raster if it exists."""
         array = self.array
         if array is not None:
             return array.shape[1]
@@ -427,6 +438,7 @@ class Raster(Spatial, Nullable):
 class Embedding(Spatial, Nullable):
     @classmethod
     def __validate__(cls, value: Any):
+        """Validates typing."""
         if value is not None:
             if not isinstance(value, list):
                 raise TypeError(
@@ -439,6 +451,7 @@ class Embedding(Spatial, Nullable):
 
     @classmethod
     def decode_value(cls, value: Optional[List[float]]):
+        """Decode object from JSON compatible dictionary."""
         if value is None:
             return cls(None)
         return super().decode_value(value)

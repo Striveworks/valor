@@ -23,6 +23,10 @@ from valor.schemas.symbolic.functions import (
 
 
 class Symbol:
+    """
+    A symbol contains no value and is defined by the tuple (owner, name, key, attribute).
+    """
+
     def __init__(
         self,
         name: str,
@@ -87,6 +91,12 @@ class Symbol:
 
 
 class Variable:
+    """
+    Base class for constructing variables types.
+
+    Contains either a value or a symbol.
+    """
+
     def __init__(
         self,
         value: Optional[Any] = None,
@@ -183,15 +193,16 @@ class Variable:
 
     @classmethod
     def decode_value(cls, value: Any):
-        """Decode object value from JSON compatible dictionary."""
+        """Decode object from JSON compatible dictionary."""
         return cls(value=value)
 
     def encode_value(self) -> Any:
-        """Encode object value to JSON compatible dictionary."""
+        """Encode object to JSON compatible dictionary."""
         return self.get_value()
 
     @classmethod
     def from_dict(cls, value: dict):
+        """Decode a JSON-compatible dictionary into an instance of the variable."""
         if set(value.keys()) != {"type", "value"}:
             raise KeyError
         elif value["type"] != cls.__name__.lower():
@@ -199,6 +210,7 @@ class Variable:
         return cls.decode_value(value["value"])
 
     def to_dict(self) -> dict:
+        """Encode variable to a JSON-compatible dictionary."""
         if isinstance(self._value, Symbol):
             return self._value.to_dict()
         else:
@@ -263,8 +275,17 @@ class Variable:
 
 
 class Bool(Variable):
+    """
+    Implementation of the built-in type 'bool' as a Variable.
+
+    Examples
+    --------
+    >>> Bool(True)
+    """
+
     @classmethod
     def __validate__(cls, value: Any):
+        """Validates typing."""
         if not isinstance(value, bool):
             raise TypeError(
                 f"Expected type '{bool}' received type '{type(value)}'"
@@ -307,6 +328,10 @@ class Bool(Variable):
 
 
 class Equatable(Variable):
+    """
+    Variable modifier to handle equatable values.
+    """
+
     def __eq__(self, value: Any) -> Union["Bool", Eq]:
         other = self.preprocess(value)
         if self.is_value and other.is_value:
@@ -334,6 +359,7 @@ class Equatable(Variable):
         return Ne(self, other)
 
     def in_(self, vlist: List[Any]) -> Or:
+        """Returns Or(*[(self == v) for v in vlist])"""
         return Or(*[(self == v) for v in vlist])
 
     def __hash__(self):
@@ -343,6 +369,10 @@ class Equatable(Variable):
 
 
 class Quantifiable(Equatable):
+    """
+    Variable modifier to handle quantifiable values.
+    """
+
     def __gt__(self, value: Any) -> Union["Bool", Gt]:
         other = self.preprocess(value)
         if self.is_value and other.is_value:
@@ -369,12 +399,18 @@ class Quantifiable(Equatable):
 
 
 class Nullable(Variable):
+    """
+    Variable modifier to handle null values.
+    """
+
     def is_none(self) -> Union["Bool", IsNull]:
+        """Conditional whether variable is 'None'"""
         if self.is_value:
             return Bool(self.get_value() is None)
         return IsNull(self)
 
     def is_not_none(self) -> Union["Bool", IsNotNull]:
+        """Conditional whether variable is not 'None'"""
         if self.is_value:
             return Bool(self.get_value() is not None)
         return IsNotNull(self)
@@ -385,17 +421,32 @@ class Nullable(Variable):
 
 
 class Spatial(Variable):
+    """
+    Variable modifier to handle spatial values.
+    """
+
     def intersects(self, other: Any) -> Intersects:
+        """Conditional whether lhs intersects rhs."""
         return Intersects(self, self.preprocess(other))
 
     def inside(self, other: Any) -> Inside:
+        """Conditional whether lhs is fully inside of rhs."""
         return Inside(self, self.preprocess(other))
 
     def outside(self, other: Any) -> Outside:
+        """Conditional whether lhs is outside of rhs."""
         return Outside(self, self.preprocess(other))
 
 
 class Integer(Quantifiable):
+    """
+    Implementation of the built-in type 'int' as a Variable.
+
+    Examples
+    --------
+    >>> Integer(123)
+    """
+
     @classmethod
     def __validate__(cls, value: Any):
         if not isinstance(value, (int, np.integer)):
@@ -405,6 +456,14 @@ class Integer(Quantifiable):
 
 
 class Float(Quantifiable):
+    """
+    Implementation of the built-in type 'float' as a Variable.
+
+    Examples
+    --------
+    >>> Float(3.14)
+    """
+
     @classmethod
     def __validate__(cls, value: Any):
         if not isinstance(value, (int, float, np.floating)):
@@ -414,6 +473,14 @@ class Float(Quantifiable):
 
 
 class String(Equatable):
+    """
+    Implementation of the built-in type 'str' as a Variable.
+
+    Examples
+    --------
+    >>> String("hello world")
+    """
+
     @classmethod
     def __validate__(cls, value: Any):
         if not isinstance(value, str):
@@ -423,6 +490,15 @@ class String(Equatable):
 
 
 class DateTime(Quantifiable):
+    """
+    Implementation of the type 'datetime.datetime' as a Variable.
+
+    Examples
+    --------
+    >>> import datetime
+    >>> DateTime(datetime.datetime(year=2024, month=1, day=1))
+    """
+
     @classmethod
     def __validate__(cls, value: Any):
         if not isinstance(value, datetime.datetime):
@@ -432,13 +508,24 @@ class DateTime(Quantifiable):
 
     @classmethod
     def decode_value(cls, value: str):
+        """Decode object from JSON compatible dictionary."""
         return cls(value=datetime.datetime.fromisoformat(value))
 
     def encode_value(self):
+        """Encode object to JSON compatible dictionary."""
         return self.get_value().isoformat()
 
 
 class Date(Quantifiable):
+    """
+    Implementation of the type 'datetime.date' as a Variable.
+
+    Examples
+    --------
+    >>> import datetime
+    >>> Date(datetime.date(year=2024, month=1, day=1))
+    """
+
     @classmethod
     def __validate__(cls, value: Any):
         if not isinstance(value, datetime.date):
@@ -448,13 +535,24 @@ class Date(Quantifiable):
 
     @classmethod
     def decode_value(cls, value: str):
+        """Decode object from JSON compatible dictionary."""
         return cls(value=datetime.date.fromisoformat(value))
 
     def encode_value(self):
+        """Encode object to JSON compatible dictionary."""
         return self.get_value().isoformat()
 
 
 class Time(Quantifiable):
+    """
+    Implementation of the type 'datetime.time' as a Variable.
+
+    Examples
+    --------
+    >>> import datetime
+    >>> Time(datetime.time(hour=1, minute=1))
+    """
+
     @classmethod
     def __validate__(cls, value: Any):
         if not isinstance(value, datetime.time):
@@ -464,13 +562,24 @@ class Time(Quantifiable):
 
     @classmethod
     def decode_value(cls, value: str):
+        """Decode object from JSON compatible dictionary."""
         return cls(value=datetime.time.fromisoformat(value))
 
     def encode_value(self):
+        """Encode object to JSON compatible dictionary."""
         return self.get_value().isoformat()
 
 
 class Duration(Quantifiable):
+    """
+    Implementation of the type 'datetime.timedelta' as a Variable.
+
+    Examples
+    --------
+    >>> import datetime
+    >>> Duration(datetime.timedelta(seconds=100))
+    """
+
     @classmethod
     def __validate__(cls, value: Any):
         if not isinstance(value, datetime.timedelta):
@@ -480,9 +589,11 @@ class Duration(Quantifiable):
 
     @classmethod
     def decode_value(cls, value: int):
+        """Decode object from JSON compatible dictionary."""
         return cls(value=datetime.timedelta(seconds=value))
 
     def encode_value(self):
+        """Encode object to JSON compatible dictionary."""
         return self.get_value().total_seconds()
 
 
@@ -490,29 +601,11 @@ class Point(Spatial, Equatable):
     """
     Represents a point in 2D space.
 
-    Parameters
-    ----------
-    x : Union[float, int]
-        The x-coordinate of the point.
-    y : Union[float, int]
-        The y-coordinate of the point.
-
-    Attributes
-    ----------
-    x : float
-        The x-coordinate of the point.
-    y : float
-        The y-coordinate of the point.
-
-    Raises
-    ------
-    TypeError
-        If the coordinates are not of type `float` or convertible to `float`.
+    Follows the GeoJSON specification (RFC 7946).
 
     Examples
     --------
-    >>> Point(value=(1,2))
-    Point(x=1.0, y=2.0)
+    >>> Point((1,2))
     """
 
     def __init__(
@@ -538,9 +631,11 @@ class Point(Spatial, Equatable):
 
     @classmethod
     def decode_value(cls, value: List[float]):
+        """Decode object from JSON compatible dictionary."""
         return cls((value[0], value[1]))
 
     def encode_value(self) -> Any:
+        """Encode object to JSON compatible dictionary."""
         value = self.get_value()
         return (float(value[0]), float(value[1]))
 
@@ -569,6 +664,16 @@ class Point(Spatial, Equatable):
 
 
 class MultiPoint(Spatial):
+    """
+    Represents a list of points.
+
+    Follows the GeoJSON specification (RFC 7946).
+
+    Examples
+    --------
+    >>> MultiPoint([(0,0), (0,1), (1,1)])
+    """
+
     def __init__(
         self,
         value: Optional[List[Tuple[float, float]]] = None,
@@ -587,10 +692,22 @@ class MultiPoint(Spatial):
 
     @classmethod
     def decode_value(cls, value: List[List[float]]):
+        """Decode object from JSON compatible dictionary."""
         return cls([(point[0], point[1]) for point in value])
 
 
 class LineString(Spatial):
+    """
+    Represents a line.
+
+    Follows the GeoJSON specification (RFC 7946).
+
+    Examples
+    --------
+    Create a line.
+    >>> LineString([(0,0), (0,1), (1,1)])
+    """
+
     def __init__(
         self,
         value: Optional[List[Tuple[float, float]]] = None,
@@ -608,10 +725,31 @@ class LineString(Spatial):
 
     @classmethod
     def decode_value(cls, value: List[List[float]]):
+        """Decode object from JSON compatible dictionary."""
         return cls([(point[0], point[1]) for point in value])
 
 
 class MultiLineString(Spatial):
+    """
+    Represents a list of lines.
+
+    Follows the GeoJSON specification (RFC 7946).
+
+    Examples
+    --------
+    Create a single line.
+    >>> MultiLineString([[(0,0), (0,1), (1,1), (0,0)]])
+
+    Create 3 lines.
+    >>> MultiLineString(
+    ...     [
+    ...         [(0,0), (0,1), (1,1)],
+    ...         [(0.1, 0.1), (0.1, 0.2), (0.2, 0.2)],
+    ...         [(0.6, 0.6), (0.6, 0.7), (0.7, 0.7)],
+    ...     ]
+    ... )
+    """
+
     def __init__(
         self,
         value: Optional[List[List[Tuple[float, float]]]] = None,
@@ -630,6 +768,7 @@ class MultiLineString(Spatial):
 
     @classmethod
     def decode_value(cls, value: List[List[List[float]]]):
+        """Decode object from JSON compatible dictionary."""
         return cls(
             [[(point[0], point[1]) for point in line] for line in value]
         )
@@ -639,36 +778,20 @@ class Polygon(Spatial):
     """
     Represents a polygon with a boundary and optional holes.
 
-    Parameters
-    ----------
-    boundary : BasicPolygon or dict
-        The outer boundary of the polygon. Can be a `BasicPolygon` object or a
-        dictionary with the necessary information to create a `BasicPolygon`.
-    holes : List[BasicPolygon], optional
-        List of holes inside the polygon. Defaults to an empty list.
-
-    Raises
-    ------
-    TypeError
-        If `boundary` is not a `BasicPolygon` or cannot be converted to one.
-        If `holes` is not a list, or an element in `holes` is not a `BasicPolygon`.
+    Follows the GeoJSON specification (RFC 7946).
 
     Examples
     --------
-    Create component polygons with BasicPolygon
-    >>> basic_polygon1 = BasicPolygon(...)
-    >>> basic_polygon2 = BasicPolygon(...)
-    >>> basic_polygon3 = BasicPolygon(...)
+    Create a polygon without any holes.
+    >>> Polygon([[(0,0), (0,1), (1,1), (0,0)]])
 
-    Create a polygon from a basic polygon.
-    >>> polygon1 = Polygon(
-    ...     boundary=basic_polygon1,
-    ... )
-
-    Create a polygon with holes.
-    >>> polygon2 = Polygon(
-    ...     boundary=basic_polygon1,
-    ...     holes=[basic_polygon2, basic_polygon3],
+    Create a polygon with 2 holes.
+    >>> Polygon(
+    ...     [
+    ...         [(0,0), (0,1), (1,1), (0,0)],
+    ...         [(0.1, 0.1), (0.1, 0.2), (0.2, 0.2), (0.1, 0.1)],
+    ...         [(0.6, 0.6), (0.6, 0.7), (0.7, 0.7), (0.6, 0.6)],
+    ...     ]
     ... )
     """
 
@@ -691,6 +814,7 @@ class Polygon(Spatial):
 
     @classmethod
     def decode_value(cls, value: List[List[List[float]]]):
+        """Decode object from JSON compatible dictionary."""
         return cls(
             [
                 [(point[0], point[1]) for point in subpolygon]
@@ -739,23 +863,20 @@ class MultiPolygon(Spatial):
     """
     Represents a collection of polygons.
 
-    Parameters
-    ----------
-    polygons : List[Polygon], optional
-        List of `Polygon` objects. Defaults to an empty list.
-
-    Raises
-    ------
-    TypeError
-        If `polygons` is not a list, or an element in `polygons` is not a `Polygon`.
+    Follows the GeoJSON specification (RFC 7946).
 
     Examples
     --------
     >>> MultiPolygon(
-    ...     polygons=[
-    ...         Polygon(...),
-    ...         Polygon(...),
-    ...         Polygon(...),
+    ...     [
+    ...         [
+    ...             [(0,0), (0,1), (1,1), (0,0)]
+    ...         ],
+    ...         [
+    ...             [(0,0), (0,1), (1,1), (0,0)],
+    ...             [(0.1, 0.1), (0.1, 0.2), (0.2, 0.2), (0.1, 0.1)],
+    ...             [(0.6, 0.6), (0.6, 0.7), (0.7, 0.7), (0.6, 0.6)],
+    ...         ],
     ...     ]
     ... )
     """
@@ -778,6 +899,7 @@ class MultiPolygon(Spatial):
 
     @classmethod
     def decode_value(cls, value: List[List[List[List[float]]]]):
+        """Decode object from JSON compatible dictionary."""
         return cls(
             [
                 [

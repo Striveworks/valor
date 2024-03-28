@@ -95,6 +95,7 @@ class StaticCollection(Equatable):
 
     @classmethod
     def definite(cls, *args, **kwargs):
+        """Initialize variable with a value."""
         if args:
             raise TypeError(f"{cls.__name__}() takes no positional arguments.")
         kwargs["symbol"] = None
@@ -102,6 +103,7 @@ class StaticCollection(Equatable):
 
     @classmethod
     def __validate__(cls, value: Any):
+        """Validate typing."""
         if value is not None:
             raise TypeError(
                 "A StaticCollection does not store an internal value."
@@ -109,15 +111,18 @@ class StaticCollection(Equatable):
 
     @classmethod
     def decode_value(cls, value: dict):
+        """Decode object from JSON compatible dictionary."""
         return cls(**value)
 
     def encode_value(self):
+        """Encode object to JSON compatible dictionary."""
         return {
             k: v.encode_value() for k, v in self._get_dynamic_values().items()
         }
 
     @classmethod
     def _get_static_types(cls):
+        """Returns any static members that inherit from 'Variable'."""
         fields = getattr(cls, "__annotations__", dict())
         retval = dict()
         for k, v in fields.items():
@@ -132,6 +137,7 @@ class StaticCollection(Equatable):
         return retval
 
     def _get_dynamic_values(self):
+        """Returns the values of attributes that inherit from 'Variable'."""
         return {
             name: self.__getattribute__(name)
             for name in self._get_static_types().keys()
@@ -152,15 +158,6 @@ class Label(StaticCollection):
     """
     An object for labeling datasets, models, and annotations.
 
-    Parameters
-    ----------
-    key : str
-        The class key of the label.
-    value : str
-        The class value of the label.
-    score : float, optional
-        The score associated with the label (if applicable).
-
     Attributes
     ----------
     filter_by : filter_factory
@@ -179,6 +176,18 @@ class Label(StaticCollection):
         score: Optional[float] = None,
         **_,
     ):
+        """
+        Constructs a label.
+
+        Parameters
+        ----------
+        key : str
+            The class key of the label.
+        value : str
+            The class value of the label.
+        score : float, optional
+            The score associated with the label (if applicable).
+        """
         return cls.definite(
             key=key,
             value=value,
@@ -205,26 +214,9 @@ class Annotation(StaticCollection):
     """
     A class used to annotate `GroundTruths` and `Predictions`.
 
-    Parameters
-    ----------
-    task_type: TaskType
-        The task type associated with the `Annotation`.
-    labels: List[Label], optional
-        A list of labels to use for the `Annotation`.
-    metadata: Dict[str, Union[int, float, str, bool, datetime.datetime, datetime.date, datetime.time]]
-        A dictionary of metadata that describes the `Annotation`.
-    bounding_box: BoundingBox, optional
-        A bounding box to assign to the `Annotation`.
-    polygon: Polygon, optional
-        A polygon to assign to the `Annotation`.
-    raster: Raster, optional
-        A raster to assign to the `Annotation`.
-    embedding: List[float], optional
-        An embedding, described by a list of values with type float and a maximum length of 16,000.
-
     Attributes
     ----------
-    geometric_area : float
+    area : float
         The area of the annotation.
 
     Examples
@@ -309,6 +301,26 @@ class Annotation(StaticCollection):
         embedding: Optional[Embedding] = None,
         **_,
     ):
+        """
+        Constructs an annotation.
+
+        Parameters
+        ----------
+        task_type: TaskType
+            The task type associated with the `Annotation`.
+        labels: List[Label], optional
+            A list of labels to use for the `Annotation`.
+        metadata: Dict[str, Union[int, float, str, bool, datetime.datetime, datetime.date, datetime.time]]
+            A dictionary of metadata that describes the `Annotation`.
+        bounding_box: BoundingBox, optional
+            A bounding box to assign to the `Annotation`.
+        polygon: Polygon, optional
+            A polygon to assign to the `Annotation`.
+        raster: Raster, optional
+            A raster to assign to the `Annotation`.
+        embedding: List[float], optional
+            An embedding, described by a list of values with type float and a maximum length of 16,000.
+        """
         return cls.definite(
             task_type=task_type,
             labels=labels,
@@ -322,14 +334,7 @@ class Annotation(StaticCollection):
 
 class Datum(StaticCollection):
     """
-    A class used to store datum about `GroundTruths` and `Predictions`.
-
-    Parameters
-    ----------
-    uid : str
-        The UID of the `Datum`.
-    metadata : dict
-        A dictionary of metadata that describes the `Datum`.
+    A class used to store information about a datum for either a 'GroundTruth' or a 'Prediction'.
     """
 
     uid: String = String.symbolic(owner="datum", name="uid")
@@ -342,10 +347,21 @@ class Datum(StaticCollection):
         metadata: Optional[dict] = None,
         **_,
     ):
+        """
+        Constructs a datum.
+
+        Parameters
+        ----------
+        uid : str
+            The UID of the `Datum`.
+        metadata : dict
+            A dictionary of metadata that describes the `Datum`.
+        """
         return cls.definite(
             uid=uid,
             metadata=metadata,
         )
 
     def get_uid(self) -> str:
+        """Safely get UID."""
         return self.uid.get_value()

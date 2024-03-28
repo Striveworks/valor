@@ -2,6 +2,8 @@ from typing import Any
 
 
 class Function:
+    """Base class for defining a function."""
+
     _operator = None
 
     def __init__(self, *args) -> None:
@@ -38,6 +40,7 @@ class Function:
         return Negate(self)
 
     def to_dict(self):
+        """Encode to a JSON-compatible dictionary."""
         return {
             "op": type(self).__name__.lower(),
             "args": [arg.to_dict() for arg in self._args],
@@ -45,18 +48,24 @@ class Function:
 
 
 class OneArgumentFunction(Function):
+    """Base class for defining single argument functions."""
+
     def __init__(self, arg) -> None:
         super().__init__(arg)
 
     @property
     def arg(self):
+        """Returns the argument."""
         return self._args[0]
 
     def to_dict(self):
+        """Encode to a JSON-compatible dictionary."""
         return {"op": type(self).__name__.lower(), "arg": self.arg.to_dict()}
 
 
 class TwoArgumentFunction(Function):
+    """Base class for defining two argument functions."""
+
     def __init__(self, lhs: Any, rhs: Any) -> None:
         self._lhs = lhs
         self._rhs = rhs
@@ -64,13 +73,16 @@ class TwoArgumentFunction(Function):
 
     @property
     def lhs(self):
+        """Returns the lhs operand."""
         return self._lhs
 
     @property
     def rhs(self):
+        """Returns the rhs operand."""
         return self._rhs
 
     def to_dict(self):
+        """Encode to a JSON-compatible dictionary."""
         return {
             "op": type(self).__name__.lower(),
             "lhs": self.lhs.to_dict(),
@@ -79,6 +91,8 @@ class TwoArgumentFunction(Function):
 
 
 class AppendableFunction(Function):
+    """Base class for defining functions with an unlimited number of arguments."""
+
     _function = None
 
     def __init__(self, *args) -> None:
@@ -98,11 +112,14 @@ class AppendableFunction(Function):
         super().__init__(*flat_args)
 
     def append(self, value: Any):
+        """Appends an argument to the function."""
         self._args.append(value)
         return self
 
 
 class And(AppendableFunction):
+    """Implementation of logical AND (&)."""
+
     _operator = "&"
 
     def __and__(self, other: Any):
@@ -111,6 +128,8 @@ class And(AppendableFunction):
 
 
 class Or(AppendableFunction):
+    """Implementation of logical OR (|)."""
+
     _operator = "|"
 
     def __or__(self, other: Any):
@@ -119,6 +138,8 @@ class Or(AppendableFunction):
 
 
 class Xor(AppendableFunction):
+    """Implementation of logical XOR (^)."""
+
     _operator = "^"
 
     def __xor__(self, other: Any):
@@ -127,6 +148,8 @@ class Xor(AppendableFunction):
 
 
 class Negate(OneArgumentFunction):
+    """Implementation of logical negation (~)."""
+
     _operator = "~"
 
     def __invert__(self):
@@ -135,48 +158,66 @@ class Negate(OneArgumentFunction):
 
 
 class IsNull(OneArgumentFunction):
+    """Implementation of is null value check."""
+
     pass
 
 
 class IsNotNull(OneArgumentFunction):
+    """Implementation of is not null value check."""
+
     pass
 
 
 class Eq(TwoArgumentFunction):
+    """Implementation of the equality operator '=='."""
+
     _operator = "=="
 
 
 class Ne(TwoArgumentFunction):
+    """Implementation of the inequality operator '!='."""
+
     _operator = "!="
 
 
 class Gt(TwoArgumentFunction):
+    """Implementation of the greater-than operator '>'."""
+
     _operator = ">"
 
 
 class Ge(TwoArgumentFunction):
+    """Implementation of the greater-than or equal operator '>='."""
+
     _operator = ">="
 
 
 class Lt(TwoArgumentFunction):
+    """Implementation of the less-than operator '<'."""
+
     _operator = "<"
 
 
 class Le(TwoArgumentFunction):
+    """Implementation of the less-than or equal operator '<='."""
+
     _operator = "<="
 
 
 class Intersects(TwoArgumentFunction):
+    """Implementation of the spatial 'intersects' operator."""
+
     pass
 
 
 class Inside(TwoArgumentFunction):
+    """Implementation of the spatial 'inside' operator."""
+
     pass
 
 
 class Outside(TwoArgumentFunction):
-    pass
+    """Implementation of the spatial 'outside' operator."""
 
-
-class Where(TwoArgumentFunction):
     pass
