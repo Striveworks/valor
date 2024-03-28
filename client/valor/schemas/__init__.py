@@ -8,7 +8,26 @@ from .symbolic.annotations import (
     Score,
     TaskTypeEnum,
 )
-from .symbolic.atomics import (
+from .symbolic.collections import Annotation, Datum, Label, StaticCollection
+from .symbolic.operators import (
+    And,
+    Eq,
+    Ge,
+    Gt,
+    Inside,
+    Intersects,
+    IsNotNull,
+    IsNull,
+    Le,
+    Lt,
+    Ne,
+    Negate,
+    Or,
+    Outside,
+    Xor,
+)
+from .symbolic.structures import Dictionary, List
+from .symbolic.types import (
     Bool,
     Date,
     DateTime,
@@ -30,30 +49,6 @@ from .symbolic.atomics import (
     Time,
     Variable,
 )
-from .symbolic.functions import (
-    And,
-    Eq,
-    Ge,
-    Gt,
-    Inside,
-    Intersects,
-    IsNotNull,
-    IsNull,
-    Le,
-    Lt,
-    Ne,
-    Negate,
-    Or,
-    Outside,
-    Xor,
-)
-from .symbolic.static_collections import (
-    Annotation,
-    Datum,
-    Label,
-    StaticCollection,
-)
-from .symbolic.structures import Dictionary, List
 
 __all__ = [
     "EvaluationRequest",
