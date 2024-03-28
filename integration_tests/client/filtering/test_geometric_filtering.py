@@ -136,8 +136,8 @@ def test_filter_by_bounding_box(client, groundtruths_with_areas, areas):
     all_labels = client.get_labels(
         Filter.create(
             [
-                Annotation.bounding_box.is_not_none(),  # type: ignore - filter type error
-                Annotation.polygon.is_none(),  # type: ignore - filter type error
+                Annotation.bounding_box.is_not_none(),
+                Annotation.polygon.is_none(),
                 Annotation.raster.is_none(),
             ]
         )
