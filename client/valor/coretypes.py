@@ -54,13 +54,6 @@ def _format_filter(filter_by: Optional[FilterType]) -> Filter:
 class GroundTruth(StaticCollection):
     """
     An object describing a ground truth (e.g., a human-drawn bounding box on an image).
-
-    Parameters
-    ----------
-    datum : Datum
-        The `Datum` associated with the `GroundTruth`.
-    annotations : List[Annotation]
-        The list of `Annotations` associated with the `GroundTruth`.
     """
 
     datum: Datum = Datum.symbolic(owner="groundtruth", name="datum")
@@ -75,6 +68,16 @@ class GroundTruth(StaticCollection):
         annotations: List[Annotation],
         **_,
     ):
+        """
+        Creates a ground truth.
+
+        Parameters
+        ----------
+        datum : Datum
+            The `Datum` associated with the `GroundTruth`.
+        annotations : List[Annotation]
+            The list of `Annotations` associated with the `GroundTruth`.
+        """
         return cls.definite(
             datum=datum,
             annotations=annotations,
@@ -92,18 +95,6 @@ class GroundTruth(StaticCollection):
 class Prediction(StaticCollection):
     """
     An object describing a prediction (e.g., a machine-drawn bounding box on an image).
-
-    Parameters
-    ----------
-    datum : Datum
-        The `Datum` associated with the `Prediction`.
-    annotations : List[Annotation]
-        The list of `Annotations` associated with the `Prediction`.
-
-    Attributes
-    ----------
-    score : Union[float, int]
-        The score assigned to the `Prediction`.
     """
 
     datum: Datum = Datum.symbolic(owner="prediction", name="datum")
@@ -118,6 +109,16 @@ class Prediction(StaticCollection):
         annotations: List[Annotation],
         **_,
     ):
+        """
+        Creates a prediction.
+
+        Parameters
+        ----------
+        datum : Datum
+            The `Datum` associated with the `Prediction`.
+        annotations : List[Annotation]
+            The list of `Annotations` associated with the `Prediction`.
+        """
         return cls.definite(
             datum=datum,
             annotations=annotations,
@@ -374,7 +375,7 @@ class Dataset(StaticCollection):
     """
     A class describing a given dataset.
 
-    Parameters
+    Attributes
     ----------
     name : str
         The name of the dataset.
@@ -623,7 +624,7 @@ class Model(StaticCollection):
     """
     A class describing a model that was trained on a particular dataset.
 
-    Parameters
+    Attributes
     ----------
     name : str
         The name of the model.
