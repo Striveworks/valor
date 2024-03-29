@@ -102,7 +102,6 @@ def _compute_curves(
 
         for confidence_threshold in [x / 100 for x in range(5, 100, 5)]:
             if grouper_id not in sorted_ranked_pairs:
-                # happens when there are no ground truths for a label
                 tp = []
                 fn = (
                     [
