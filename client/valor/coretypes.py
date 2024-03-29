@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import datetime
 import json
 import time
 import warnings
@@ -858,6 +859,7 @@ class Evaluation:
         status: EvaluationStatus,
         metrics: List[Dict],
         confusion_matrices: List[Dict],
+        created_at: str,
         **kwargs,
     ):
         self.id = id
@@ -878,6 +880,9 @@ class Evaluation:
         self.kwargs = kwargs
         self.ignored_pred_labels: Optional[List[Label]] = None
         self.missing_pred_labels: Optional[List[Label]] = None
+        self.created_at = datetime.datetime.strptime(
+            created_at, "%Y-%m-%dT%H:%M:%S.%fZ"
+        ).replace(tzinfo=datetime.timezone.utc)
 
         for k, v in kwargs.items():
             setattr(self, k, v)

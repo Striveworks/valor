@@ -2,7 +2,7 @@
 that is no auth
 """
 
-from datetime import date, datetime
+from datetime import date, datetime, timedelta, timezone
 
 import pytest
 
@@ -228,11 +228,6 @@ def test_evaluate_tabular_clf(
         model.add_prediction(dataset, pd)
 
     # test model finalization
-    print(
-        client.get_model_status(
-            dataset_name=dataset_name, model_name=model_name
-        )
-    )
     with pytest.raises(ClientException) as exc_info:
         model.evaluate_classification(dataset)
     assert "has not been finalized" in str(exc_info)
@@ -357,6 +352,11 @@ def test_evaluate_tabular_clf(
     assert len(results[0].datum_filter.dataset_names) == 1
     assert results[0].datum_filter.dataset_names[0] == dataset_name
     assert results[0].model_name == model_name
+    assert isinstance(results[0].created_at, datetime)
+    # check created at is within a minute of the current time
+    assert (datetime.now(timezone.utc) - results[0].created_at) < timedelta(
+        minutes=1
+    )
 
     metrics_from_eval_settings_id = results[0].metrics
     assert len(metrics_from_eval_settings_id) == len(expected_metrics)

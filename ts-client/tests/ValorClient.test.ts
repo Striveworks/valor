@@ -140,6 +140,12 @@ test('evaluation methods', async () => {
     }
     expect(evaluation.metrics.length).toBeGreaterThan(0);
     expect(evaluation.datum_filter.dataset_names).toStrictEqual([datasetName]);
+    // check the date is within one minute of the current time
+    console.log(`evaluation.created_at: ${evaluation.created_at}`);
+    const now = new Date();
+    console.log(`now: ${now}`);
+    const timeDiff = Math.abs(now.getTime() - evaluation.created_at.getTime());
+    expect(timeDiff).toBeLessThan(60 * 1000);
   };
   // evaluate against all models and datasets
   await Promise.all(
