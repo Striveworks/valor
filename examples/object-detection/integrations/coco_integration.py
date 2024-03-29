@@ -79,11 +79,13 @@ def download_coco_panoptic(
     return panoptic_val2017
 
 
-def download_image(datum: Datum) -> PIL.Image:
+def download_image(datum: Datum) -> PIL.Image.Image:
     """
     Download image using Datum.
     """
-    url = datum.metadata["coco_url"]
+    url = datum.metadata["coco_url"].get_value()
+    if not isinstance(url, str):
+        raise TypeError("datum.metadata['coco_url'] is not type 'str'.")
     img_data = BytesIO(requests.get(url).content)
     return PIL.Image.open(img_data)
 
@@ -96,17 +98,17 @@ def _parse_image_to_datum(image: dict) -> Datum:
     uid = str(image.pop("id"))
     height = image.pop("height")
     width = image.pop("width")
-    image_metadata = ImageMetadata(
+    image_metadata = ImageMetadata.create(
         uid=uid,
         height=height,
         width=width,
         metadata=image,
     )
-    return image_metadata.to_datum()
+    return image_metadata.datum
 
 
 def _parse_categories(
-    categories: list,
+    categories: List[dict],
 ) -> Dict[int, Union[TaskType, Dict[str, str]]]:
     """
     Parse COCO categories into `valor.enums.TaskType` and `valor.Label`
@@ -124,7 +126,7 @@ def _parse_categories(
             },
         }
         for category in categories
-    }
+    }  # type: ignore - dict typing
 
 
 def _create_masks(filename: str) -> np.ndarray:
@@ -149,7 +151,9 @@ def create_annotations_from_instance_segmentations(
                     value=str(
                         category_id_to_labels_and_task[
                             segmentation["category_id"]
-                        ]["labels"]["supercategory"]
+                        ]["labels"][
+                            "supercategory"
+                        ]  # type: ignore - dict typing
                     ),
                 ),
                 Label(
@@ -157,7 +161,9 @@ def create_annotations_from_instance_segmentations(
                     value=str(
                         category_id_to_labels_and_task[
                             segmentation["category_id"]
-                        ]["labels"]["name"]
+                        ]["labels"][
+                            "name"
+                        ]  # type: ignore - dict typing
                     ),
                 ),
                 Label(key="iscrowd", value=str(segmentation["iscrowd"])),
@@ -167,7 +173,7 @@ def create_annotations_from_instance_segmentations(
         for segmentation in image["segments_info"]
         if category_id_to_labels_and_task[segmentation["category_id"]][
             "task_type"
-        ]
+        ]  # type: ignore - dict typing
         == TaskType.OBJECT_DETECTION
     ]
 
@@ -186,19 +192,19 @@ def create_annotations_from_semantic_segmentations(
     for segmentation in image["segments_info"]:
         category_id = segmentation["category_id"]
         if (
-            category_id_to_labels_and_task[category_id]["task_type"]
+            category_id_to_labels_and_task[category_id]["task_type"]  # type: ignore - dict typing
             == TaskType.SEMANTIC_SEGMENTATION
         ):
             for key, value in [
                 (
                     "supercategory",
-                    category_id_to_labels_and_task[category_id]["labels"][
+                    category_id_to_labels_and_task[category_id]["labels"][  # type: ignore - dict typing
                         "supercategory"
                     ],
                 ),
                 (
                     "name",
-                    category_id_to_labels_and_task[category_id]["labels"][
+                    category_id_to_labels_and_task[category_id]["labels"][  # type: ignore - dict typing
                         "name"
                     ],
                 ),
@@ -299,7 +305,7 @@ def create_dataset_from_coco_panoptic(
 
     # download and unzip coco dataset
     data = download_coco_panoptic(
-        destination=destination,
+        destination=Path(destination),
         coco_url=coco_url,
     )
 

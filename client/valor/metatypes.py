@@ -78,12 +78,18 @@ class ImageMetadata:
         return cls.create(uid=uid, height=height, width=width)
 
     @property
-    def height(self):
-        return self.datum.metadata["height"]
+    def height(self) -> int:
+        value = self.datum.metadata["height"].get_value()
+        if not isinstance(value, int):
+            raise TypeError
+        return int(value)
 
     @property
-    def width(self):
-        return self.datum.metadata["width"]
+    def width(self) -> int:
+        value = self.datum.metadata["width"].get_value()
+        if not isinstance(value, int):
+            raise TypeError
+        return int(value)
 
 
 class VideoFrameMetadata:
@@ -147,13 +153,22 @@ class VideoFrameMetadata:
         )
 
     @property
-    def height(self):
-        return self.datum.metadata["height"]
+    def height(self) -> int:
+        value = self.datum.metadata["height"].get_value()
+        if not isinstance(value, int):
+            raise TypeError
+        return int(value)
 
     @property
-    def width(self):
-        return self.datum.metadata["width"]
+    def width(self) -> int:
+        value = self.datum.metadata["width"].get_value()
+        if not isinstance(value, int):
+            raise TypeError
+        return int(value)
 
     @property
-    def frame(self):
-        return self.datum.metadata["frame"]
+    def frame(self) -> int:
+        value = self.datum.metadata["frame"].get_value()
+        if not isinstance(value, int):
+            raise TypeError
+        return int(value)
