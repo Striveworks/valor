@@ -351,6 +351,117 @@ def predictions(
 
 
 @pytest.fixture
+def groundtruths_with_rasters(
+    db: Session,
+    img1: schemas.Datum,
+) -> list[list[models.GroundTruth]]:
+    """Used to test object detection functionality on rasters"""
+    dataset_name = "test_dataset"
+    crud.create_dataset(
+        db=db,
+        dataset=schemas.Dataset(
+            name=dataset_name,
+            metadata={"type": "image"},
+        ),
+    )
+
+    gts = {
+        "rasters": [
+            np.ones((80, 32), dtype=bool),
+            np.ones((80, 32), dtype=bool),
+            np.ones((80, 32), dtype=bool),
+        ],
+        "labels": ["label1", "label2", "label3"],
+    }
+    db_gts_per_img = [
+        schemas.GroundTruth(
+            datum=img1,
+            annotations=[
+                schemas.Annotation(
+                    task_type=enums.TaskType.OBJECT_DETECTION,
+                    labels=[schemas.Label(key="class", value=class_label)],
+                    raster=schemas.Raster.from_numpy(raster),
+                )
+                for raster, class_label in zip(gts["rasters"], gts["labels"])
+            ],
+        )
+    ]
+
+    for gt in db_gts_per_img:
+        crud.create_groundtruth(
+            db=db,
+            groundtruth=gt,
+        )
+    crud.finalize(db=db, dataset_name=dataset_name)
+
+    return db.query(models.GroundTruth).all()  # type: ignore - SQLAlchemy type issue
+
+
+@pytest.fixture
+def predictions_with_rasters(
+    db: Session,
+    dataset_name: str,
+    model_name: str,
+    img1: schemas.Datum,
+) -> list[list[models.Prediction]]:
+    """Used to test object detection functionality on rasters"""
+
+    crud.create_model(
+        db=db,
+        model=schemas.Model(
+            name=model_name,
+            metadata={"type": "image"},
+        ),
+    )
+
+    preds = {
+        "rasters": [
+            np.ones((80, 32), dtype=bool),
+            np.ones((80, 32), dtype=bool),
+            np.zeros((80, 32), dtype=bool),
+            np.zeros((80, 32), dtype=bool),
+        ],
+        "labels": ["label1", "label2", "label3", "label4"],
+        "scores": [
+            0.3,
+            0.93,
+            0.92,
+            0.94,
+        ],  # we expect our AP and AR metrics to be 1 for label2 since the second prediction has a higher score than the third
+    }
+
+    db_preds_per_img = [
+        schemas.Prediction(
+            model_name=model_name,
+            datum=img1,
+            annotations=[
+                schemas.Annotation(
+                    task_type=enums.TaskType.OBJECT_DETECTION,
+                    labels=[
+                        schemas.Label(
+                            key="class", value=class_label, score=score
+                        )
+                    ],
+                    raster=schemas.Raster.from_numpy(raster),
+                )
+                for raster, class_label, score in zip(
+                    preds["rasters"], preds["labels"], preds["scores"]
+                )
+            ],
+        )
+    ]
+
+    for pd in db_preds_per_img:
+        crud.create_prediction(
+            db=db,
+            prediction=pd,
+        )
+    crud.finalize(db=db, dataset_name=dataset_name, model_name=model_name)
+
+    return db.query(models.Prediction).all()  # type: ignore - SQLAlchemy type issue
+
+
+@pytest.fixture
 def pred_semantic_segs_img1_create(
     model_name,
     img1_pred_mask_bytes1: bytes,

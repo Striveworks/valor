@@ -706,3 +706,162 @@ def test__compute_detection_metrics(
         pr_metrics["value"]["3"][0.05]["fp"][0][2]
         == '{"type":"Polygon","coordinates":[[[61,22.75],[565,22.75],[565,632.42],[61,632.42],[61,22.75]]]}'
     )
+
+
+def test__compute_detection_metrics_with_rasters(
+    db: Session,
+    groundtruths_with_rasters: list[list[GroundTruth]],
+    predictions_with_rasters: list[list[Prediction]],
+):
+    iou_thresholds = set([round(0.5 + 0.05 * i, 2) for i in range(10)])
+    metrics = _compute_detection_metrics(
+        db=db,
+        parameters=schemas.EvaluationParameters(
+            task_type=enums.TaskType.OBJECT_DETECTION,
+            convert_annotations_to_type=enums.AnnotationType.RASTER,
+            iou_thresholds_to_compute=list(iou_thresholds),
+            iou_thresholds_to_return=[0.5, 0.75],
+            compute_pr_curves=True,
+        ),
+        prediction_filter=schemas.Filter(
+            model_names=["test_model"],
+            label_keys=["class"],
+        ),
+        groundtruth_filter=schemas.Filter(
+            dataset_names=["test_dataset"],
+            label_keys=["class"],
+        ),
+        target_type=enums.AnnotationType.RASTER,
+    )
+
+    metrics = [m.model_dump(exclude_none=True) for m in metrics]
+
+    for m in metrics:
+        _round_dict(m, 3)
+
+    expected = [
+        # AP METRICS
+        {
+            "iou": 0.5,
+            "value": 1.0,
+            "label": {"key": "class", "value": "label2"},
+        },
+        {
+            "iou": 0.75,
+            "value": 1.0,
+            "label": {"key": "class", "value": "label2"},
+        },
+        {
+            "iou": 0.5,
+            "value": 1.0,
+            "label": {"key": "class", "value": "label1"},
+        },
+        {
+            "iou": 0.75,
+            "value": 1.0,
+            "label": {"key": "class", "value": "label1"},
+        },
+        {
+            "iou": 0.5,
+            "value": 0.0,
+            "label": {"key": "class", "value": "label3"},
+        },
+        {
+            "iou": 0.75,
+            "value": 0.0,
+            "label": {"key": "class", "value": "label3"},
+        },
+        # AP METRICS AVERAGED OVER IOUS
+        {
+            "ious": iou_thresholds,
+            "value": 1.0,
+            "label": {"key": "class", "value": "label2"},
+        },
+        {
+            "ious": iou_thresholds,
+            "value": -1.0,
+            "label": {"key": "class", "value": "label4"},
+        },
+        {
+            "ious": iou_thresholds,
+            "value": 1.0,
+            "label": {"key": "class", "value": "label1"},
+        },
+        {
+            "ious": iou_thresholds,
+            "value": 0.0,
+            "label": {"key": "class", "value": "label3"},
+        },
+        # mAP METRICS
+        {"iou": 0.5, "value": 0.667},
+        {"iou": 0.75, "value": 0.667},
+        # mAP METRICS AVERAGED OVER IOUS
+        {
+            "ious": iou_thresholds,
+            "value": 0.667,
+        },
+        # AR METRICS
+        {
+            "ious": iou_thresholds,
+            "value": 1.0,
+            "label": {"key": "class", "value": "label2"},
+        },
+        {
+            "ious": iou_thresholds,
+            "value": 1.0,
+            "label": {"key": "class", "value": "label1"},
+        },
+        {
+            "ious": iou_thresholds,
+            "value": 0.0,
+            "label": {"key": "class", "value": "label3"},
+        },
+        # mAR METRICS
+        {
+            "ious": iou_thresholds,
+            "value": 0.667,
+        },
+    ]
+
+    non_pr_metrics = metrics[:-1]
+    pr_metrics = metrics[-1]
+    for m in non_pr_metrics:
+        assert m in expected
+
+    for m in expected:
+        assert m in non_pr_metrics
+
+    pr_expected_answers = {
+        ("class", "label1", 0.05, "tp"): 1,
+        ("class", "label1", 0.35, "tp"): 0,
+        ("class", "label2", 0.05, "tp"): 1,
+        ("class", "label2", 0.05, "fp"): 0,
+        ("class", "label2", 0.95, "fp"): 0,
+        ("class", "label3", 0.05, "tp"): 0,
+        ("class", "label3", 0.05, "fn"): 1,
+        ("class", "label4", 0.05, "tp"): 0,
+        ("class", "label4", 0.05, "fp"): 1,
+    }
+
+    for (
+        key,
+        value,
+        threshold,
+        metric,
+    ), expected_length in pr_expected_answers.items():
+        assert (
+            len(pr_metrics["value"][value][threshold][metric])
+            == expected_length
+        )
+
+    # spot check a few geojson results
+    assert (
+        pr_metrics["value"]["label1"][0.05]["tp"][0][2]
+        == '{"type":"Polygon","coordinates":[[[0,80],[32,80],[32,0],[0,0],[0,80]]]}'
+    )
+    assert (
+        pr_metrics["value"]["label2"][0.85]["tp"][0][2]
+        == '{"type":"Polygon","coordinates":[[[0,80],[32,80],[32,0],[0,0],[0,80]]]}'
+    )
+
+    assert pr_metrics["value"]["label3"][0.85]["tp"] == []
