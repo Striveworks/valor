@@ -360,7 +360,8 @@ def _compute_detection_metrics(
             case AnnotationType.MULTIPOLYGON:
                 return table.multipolygon
             case AnnotationType.RASTER:
-                return table.raster
+                # we use ST_Envelope to handle complex geometry cases where we can't directly convert to GeoJSON (i.e., when dealing with rasters)
+                return gfunc.ST_Envelope(table.raster)
             case _:
                 raise RuntimeError
 
