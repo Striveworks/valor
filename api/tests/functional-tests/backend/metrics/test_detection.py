@@ -479,6 +479,51 @@ def test__compute_curves(db: Session):
         == '{"type":"Polygon","coordinates":[[[61,22.75],[565,22.75],[565,632.42],[61,632.42],[61,22.75]]]}'
     )
 
+    # do a second test with a much higher iou_threshold
+    second_output = _compute_curves(
+        sorted_ranked_pairs=sorted_ranked_pairs,
+        grouper_mappings=grouper_mappings,
+        groundtruths_per_grouper=groundtruths_per_grouper,
+        false_positive_entries=false_positive_entries,
+        iou_threshold=0.9,
+    )
+
+    pr_expected_answers = {
+        # (class, 4)
+        ("class", "4", 0.05, "tp"): 0,
+        ("class", "4", 0.05, "fn"): 2,
+        # (class, 2)
+        ("class", "2", 0.05, "tp"): 1,
+        ("class", "2", 0.05, "fn"): 1,
+        ("class", "2", 0.75, "tp"): 0,
+        ("class", "2", 0.75, "fn"): 2,
+        # (class, 49)
+        ("class", "49", 0.05, "tp"): 2,
+        ("class", "49", 0.3, "tp"): 2,
+        ("class", "49", 0.5, "tp"): 2,
+        ("class", "49", 0.85, "tp"): 1,
+        # (class, 3)
+        ("class", "3", 0.05, "tp"): 0,
+        ("class", "3", 0.05, "fp"): 1,
+        # (class, 1)
+        ("class", "1", 0.05, "tp"): 0,
+        ("class", "1", 0.05, "fn"): 1,
+        # (class, 0)
+        ("class", "0", 0.05, "tp"): 1,
+        ("class", "0", 0.5, "tp"): 0,
+        ("class", "0", 0.95, "fn"): 5,
+    }
+
+    for (
+        key,
+        value,
+        threshold,
+        metric,
+    ), expected_length in pr_expected_answers.items():
+        datum_geojson_tuples = second_output[0].value[value][threshold][metric]
+        assert isinstance(datum_geojson_tuples, list)
+        assert len(datum_geojson_tuples) == expected_length
+
 
 def test__compute_detection_metrics(
     db: Session,
