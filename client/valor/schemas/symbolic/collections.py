@@ -467,15 +467,18 @@ def _get_schema_type_by_name(name: str):
         "embedding": Embedding,
         "dictionary": Dictionary,
         "label": Label,
-        "list[label]": List[Label],
         "annotation": Annotation,
-        "list[annotation]": List[Annotation],
         "datum": Datum,
     }
-    type_ = types_.get(name.lower(), None)
-    if type_ is None:
-        type_ = _get_atomic_type_by_name(name)
-    return type_
+    name = name.lower()
+    if name in types_:
+        return types_[name]
+    elif "list[label]" in name:
+        return List[Label]
+    elif "list[annotation]" in name:
+        return List[Annotation]
+    else:
+        return _get_atomic_type_by_name(name)
 
 
 class StaticCollection(Equatable):
