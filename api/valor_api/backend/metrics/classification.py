@@ -26,7 +26,20 @@ def _compute_curves(
     groundtruths: Subquery | NamedFromClause,
     grouper_key: str,
     grouper_mappings: dict[str, dict[str, dict]],
-) -> dict[str, dict[float, dict[str, int | float | None]]]:
+) -> dict[
+    str,
+    dict[
+        float,
+        dict[
+            str,
+            int
+            | float
+            | list[tuple[str, int]]
+            | list[tuple[str, int, str]]
+            | None,
+        ],
+    ],
+]:
     """
     Calculates precision-recall curves for each class.
 
@@ -46,16 +59,18 @@ def _compute_curves(
     Returns
     -------
     dict[str, dict[float, dict[str, int | float | None]]]
-        A nested dictionary where the first key is the class label, the second key is the confidence threshold (e.g., 0.05), the third key is the metric name (e.g., "precision"), and the final key is the value.
+        A nested dictionary where the first key is the class label, the second key is the confidence threshold (e.g., 0.05), the third key is the metric name (e.g., "precision"), and the final key is either the value itself (for precision, recall, etc.) or a list of tuples containing the (dataset_name, datum_id) for each observation.
     """
 
     output = defaultdict(lambda: defaultdict(dict))
 
     for threshold in [x / 100 for x in range(5, 100, 5)]:
+        # get predictions that are above the confidence threshold
         predictions_that_meet_criteria = (
             select(
-                models.Label.value.label("pred_label_value"),
+                models.Label.value.label("pd_label_value"),
                 models.Annotation.datum_id.label("datum_id"),
+                predictions.c.dataset_name,
                 predictions.c.score,
             )
             .select_from(predictions)
@@ -75,7 +90,7 @@ def _compute_curves(
             "cols",
             case(
                 grouper_mappings["label_value_to_grouper_value"],
-                value=predictions_that_meet_criteria.c.pred_label_value,
+                value=predictions_that_meet_criteria.c.pd_label_value,
             ),
             case(
                 grouper_mappings["label_value_to_grouper_value"],
@@ -84,7 +99,13 @@ def _compute_curves(
         )
 
         total_query = (
-            select(b, predictions_that_meet_criteria.c.datum_id, func.count())
+            select(
+                b,
+                predictions_that_meet_criteria.c.datum_id,
+                predictions_that_meet_criteria.c.dataset_name,
+                groundtruths.c.datum_id,
+                groundtruths.c.dataset_name,
+            )
             .select_from(groundtruths)
             .join(
                 predictions_that_meet_criteria,  # type: ignore
@@ -96,7 +117,13 @@ def _compute_curves(
                 models.Label,
                 models.Label.id == groundtruths.c.label_id,
             )
-            .group_by(b, predictions_that_meet_criteria.c.datum_id)  # type: ignore - SQLAlchemy Bundle not compatible with _first
+            .group_by(
+                b,  # type: ignore - SQLAlchemy Bundle not compatible with _first
+                predictions_that_meet_criteria.c.datum_id,
+                predictions_that_meet_criteria.c.dataset_name,
+                groundtruths.c.datum_id,
+                groundtruths.c.dataset_name,
+            )
         )
 
         res = list(db.execute(total_query).all())
@@ -110,33 +137,47 @@ def _compute_curves(
         for grouper_value in grouper_mappings["grouper_key_to_labels_mapping"][
             grouper_key
         ].keys():
-            tp, fp, fn = [0] * 3
+            tp, fp, fn = [], [], []
             seen_datums = set()
 
             for row in res:
-                predicted_label, actual_label, datum_id, count = (
+                (
+                    predicted_label,
+                    actual_label,
+                    pd_datum_id,
+                    pd_dataset_name,
+                    gt_datum_id,
+                    gt_dataset_name,
+                ) = (
                     row[0][0],
                     row[0][1],
                     row[1],
                     row[2],
+                    row[3],
+                    row[4],
                 )
 
                 if predicted_label == grouper_value == actual_label:
-                    tp += count
-                    seen_datums.add(datum_id)
+                    tp += [(pd_dataset_name, pd_datum_id)]
+                    seen_datums.add(gt_datum_id)
                 elif predicted_label == grouper_value:
-                    fp += count
-                    seen_datums.add(datum_id)
+                    fp += [(pd_dataset_name, pd_datum_id)]
+                    seen_datums.add(gt_datum_id)
                 elif (
                     actual_label == grouper_value
-                    and datum_id not in seen_datums
+                    and gt_datum_id not in seen_datums
                 ):
-                    fn += count
-                    seen_datums.add(datum_id)
+                    fn += [(gt_dataset_name, gt_datum_id)]
+                    seen_datums.add(gt_datum_id)
 
             # calculate metrics
-            precision = tp / (tp + fp) if (tp + fp) > 0 else -1
-            recall = tp / (tp + fn) if (tp + fn) > 0 else -1
+            tp_cnt, fp_cnt, fn_cnt = len(tp), len(fp), len(fn)
+            precision = (
+                (tp_cnt) / (tp_cnt + fp_cnt) if (tp_cnt + fp_cnt) > 0 else -1
+            )
+            recall = (
+                tp_cnt / (tp_cnt + fn_cnt) if (tp_cnt + fn_cnt) > 0 else -1
+            )
             f1_score = (
                 (2 * precision * recall) / (precision + recall)
                 if precision and recall
@@ -415,7 +456,7 @@ def _compute_confusion_matrix_at_grouper_key(
     # 3. Get labels for hard predictions, organize per datum
     hard_preds_query = (
         select(
-            models.Label.value.label("pred_label_value"),
+            models.Label.value.label("pd_label_value"),
             min_id_query.c.datum_id.label("datum_id"),
         )
         .select_from(min_id_query)
@@ -435,7 +476,7 @@ def _compute_confusion_matrix_at_grouper_key(
         "cols",
         case(
             grouper_mappings["label_value_to_grouper_value"],
-            value=hard_preds_query.c.pred_label_value,
+            value=hard_preds_query.c.pd_label_value,
         ),
         case(
             grouper_mappings["label_value_to_grouper_value"],
@@ -592,6 +633,7 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
         Query(
             models.GroundTruth,
             models.Annotation.datum_id.label("datum_id"),
+            models.Dataset.name.label("dataset_name"),
         )
         .filter(gFilter)
         .groundtruths(as_subquery=False)
@@ -599,7 +641,7 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
     )
 
     predictions = (
-        Query(models.Prediction)
+        Query(models.Prediction, models.Dataset.name.label("dataset_name"))
         .filter(pFilter)
         .predictions(as_subquery=False)
         .alias()
