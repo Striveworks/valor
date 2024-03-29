@@ -595,9 +595,12 @@ class Label(StaticCollection):
 
     Attributes
     ----------
-    key
-    value
-    score
+    key : String
+        The class label key.
+    value : String
+        The class label value.
+    score : Score
+        The label score.
 
     Examples
     --------
@@ -658,13 +661,20 @@ class Annotation(StaticCollection):
 
     Attributes
     ----------
-    task_type
-    labels
-    metadata
-    bounding_box
-    polygon
-    raster
-    embedding
+    task_type: TaskTypeEnum
+        The task type associated with the `Annotation`.
+    labels: List[Label], optional
+        A list of labels to use for the `Annotation`.
+    metadata: Dictionary
+        A dictionary of metadata that describes the `Annotation`.
+    bounding_box: BoundingBox
+        A bounding box to assign to the `Annotation`.
+    polygon: BoundingPolygon
+        A polygon to assign to the `Annotation`.
+    raster: Raster
+        A raster to assign to the `Annotation`.
+    embedding: List[float]
+        An embedding, described by a list of values with type float and a maximum length of 16,000.
 
     Examples
     --------
@@ -761,7 +771,7 @@ class Annotation(StaticCollection):
             A dictionary of metadata that describes the `Annotation`.
         bounding_box: BoundingBox, optional
             A bounding box to assign to the `Annotation`.
-        polygon: Polygon, optional
+        polygon: BoundingPolygon, optional
             A polygon to assign to the `Annotation`.
         raster: Raster, optional
             A raster to assign to the `Annotation`.
@@ -785,8 +795,10 @@ class Datum(StaticCollection):
 
     Attributes
     ----------
-    uid
-    metadata
+    uid : String
+        The UID of the datum.
+    metadata : Dictionary
+        A dictionary of metadata that describes the datum.
 
     Examples
     --------
@@ -811,9 +823,9 @@ class Datum(StaticCollection):
         Parameters
         ----------
         uid : str
-            The UID of the `Datum`.
+            The UID of the datum.
         metadata : dict
-            A dictionary of metadata that describes the `Datum`.
+            A dictionary of metadata that describes the datum.
         """
         return cls.definite(
             uid=uid,

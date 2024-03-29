@@ -57,8 +57,10 @@ class GroundTruth(StaticCollection):
 
     Attributes
     ----------
-    datum
-    annotations
+    datum : Datum
+        The datum associated with the groundtruth.
+    annotations : List[Annotation]
+        The list of annotations associated with the groundtruth.
 
     Examples
     --------
@@ -115,8 +117,10 @@ class Prediction(StaticCollection):
 
     Attributes
     ----------
-    datum
-    annotations
+    datum : Datum
+        The datum associated with the prediction.
+    annotations : List[Annotation]
+        The list of annotations associated with the prediction.
 
     Examples
     --------
@@ -414,8 +418,10 @@ class Dataset(StaticCollection):
 
     Attributes
     ----------
-    name
-    metadata
+    name : String
+        The name of the dataset.
+    metadata : Dictionary
+        A dictionary of metadata that describes the dataset.
 
     Examples
     --------
@@ -667,8 +673,10 @@ class Model(StaticCollection):
 
     Attributes
     ----------
-    name
-    metadata
+    name : String
+        The name of the model.
+    metadata : Dictionary
+        A dictionary of metadata that describes the model.
 
     Examples
     --------
