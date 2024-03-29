@@ -22,6 +22,11 @@ from valor_api.enums import AnnotationType
 
 @dataclass
 class RankedPair:
+    dataset_name: str
+    pd_datum_id: int
+    gt_datum_id: int
+    pd_geojson: str
+    gt_geojson: str
     gt_id: int
     pd_id: int
     score: float
@@ -58,7 +63,7 @@ def _calculate_101_pt_interp(precisions, recalls) -> float:
 def _compute_curves(
     sorted_ranked_pairs: dict[int, list[RankedPair]],
     grouper_mappings: dict[str, dict[str, schemas.Label]],
-    number_of_groundtruths_per_grouper: dict[int, int],
+    groundtruths_per_grouper: dict[int, list],
     false_positive_entries: list[tuple],
     iou_threshold: float,
 ) -> list[schemas.PrecisionRecallCurve]:
@@ -71,8 +76,8 @@ def _compute_curves(
         The ground truth-prediction matches from psql, grouped by grouper_id.
     grouper_mappings: dict[str, dict[str, schemas.Label]]
         A dictionary of mappings that connect groupers to their related labels.
-    number_of_groundtruths_per_grouper: dict[int, int]
-        A dictionary containing the number of ground truths associated with each grouper_id.
+    groundtruths_per_grouper: dict[int, int]
+        A dictionary containing the (dataset_name, datum_id, gt_id) for all groundtruths associated with a grouper.
     false_positive_entries: list[tuple]
         A list of predictions that don't have an associated ground truth. Used to calculate false positives.
     iou_threshold: float
@@ -84,7 +89,6 @@ def _compute_curves(
         A nested dictionary where the first key is the class label, the second key is the confidence threshold (e.g., 0.05), the third key is the metric name (e.g., "precision"), and the final key is either the value itself (for precision, recall, etc.) or a list of tuples containing the (dataset_name, datum_id, bounding boxes) for each observation.
     """
 
-    # TODO get detection working
     output = defaultdict(dict)
 
     for grouper_id, grouper_label in grouper_mappings[
@@ -99,37 +103,56 @@ def _compute_curves(
         for confidence_threshold in [x / 100 for x in range(5, 100, 5)]:
             if grouper_id not in sorted_ranked_pairs:
                 # happens when there are no ground truths for a label
-                tp = 0
+                tp = []
                 fn = (
-                    number_of_groundtruths_per_grouper[grouper_id]
-                    if grouper_id in number_of_groundtruths_per_grouper
-                    else 0
+                    [
+                        (dataset_name, datum_id, gt_geojson)
+                        for dataset_name, datum_id, gt_id, gt_geojson in groundtruths_per_grouper[
+                            grouper_id
+                        ]
+                    ]
+                    if grouper_id in groundtruths_per_grouper
+                    else []
                 )
+
             else:
-                tp, fp, fn = [0] * 3
+                tp, fp, fn = [], [], []
+                seen_gts = set()
 
                 for row in sorted_ranked_pairs[grouper_id]:
                     if (
                         row.score >= confidence_threshold
                         and row.iou >= iou_threshold
                     ):
-                        tp += 1
+                        tp += [
+                            (row.dataset_name, row.gt_datum_id, row.gt_geojson)
+                        ]
+                        seen_gts.add(row.gt_id)
 
-                fn = number_of_groundtruths_per_grouper[grouper_id] - tp
-
-            fp = len(
-                [
-                    pred_label_id
-                    for gt_label_id, pred_label_id, pred_score in false_positive_entries
-                    if pred_score >= confidence_threshold
-                    and pred_label_id == grouper_id
-                    and gt_label_id is None
+                fn = [
+                    (dataset_name, datum_id, gt_geojson)
+                    for dataset_name, datum_id, gt_id, gt_geojson in groundtruths_per_grouper[
+                        grouper_id
+                    ]
+                    if gt_id not in seen_gts
                 ]
-            )
+
+            fp = [
+                (dset_name, pd_datum_id, pd_geojson)
+                for dset_name, gt_datum_id, pd_datum_id, gt_label_id, pd_label_id, pd_score, pd_geojson in false_positive_entries
+                if pd_score >= confidence_threshold
+                and pd_label_id == grouper_id
+                and gt_label_id is None
+            ]
 
             # calculate metrics
-            precision = tp / (tp + fp) if (tp + fp) > 0 else -1
-            recall = tp / (tp + fn) if (tp + fn) > 0 else -1
+            tp_cnt, fp_cnt, fn_cnt = len(tp), len(fp), len(fn)
+            precision = (
+                tp_cnt / (tp_cnt + fp_cnt) if (tp_cnt + fp_cnt) > 0 else -1
+            )
+            recall = (
+                tp_cnt / (tp_cnt + fn_cnt) if (tp_cnt + fn_cnt) > 0 else -1
+            )
             f1_score = (
                 (2 * precision * recall) / (precision + recall)
                 if precision and recall
@@ -337,6 +360,8 @@ def _compute_detection_metrics(
                 return table.polygon
             case AnnotationType.MULTIPOLYGON:
                 return table.multipolygon
+            case AnnotationType.RASTER:
+                return table.raster
             case _:
                 raise RuntimeError
 
@@ -371,6 +396,7 @@ def _compute_detection_metrics(
     # Join gt, datum, annotation, label. Map grouper_ids to each label_id.
     gt = (
         Query(
+            models.Dataset.name.label("dataset_name"),
             models.GroundTruth.id.label("id"),
             models.GroundTruth.annotation_id.label("annotation_id"),
             models.GroundTruth.label_id.label("label_id"),
@@ -379,6 +405,11 @@ def _compute_detection_metrics(
                 grouper_mappings["label_id_to_grouper_id_mapping"],
                 value=models.GroundTruth.label_id,
             ).label("label_id_grouper"),
+            (
+                gfunc.ST_AsGeoJSON(
+                    _annotation_type_to_column(target_type, models.Annotation)
+                ).label("geojson")
+            ),
         )
         .filter(groundtruth_filter)
         .groundtruths("groundtruths")
@@ -387,6 +418,7 @@ def _compute_detection_metrics(
     # Join pd, datum, annotation, label
     pd = (
         Query(
+            models.Dataset.name.label("dataset_name"),
             models.Prediction.id.label("id"),
             models.Prediction.annotation_id.label("annotation_id"),
             models.Prediction.label_id.label("label_id"),
@@ -396,15 +428,25 @@ def _compute_detection_metrics(
                 grouper_mappings["label_id_to_grouper_id_mapping"],
                 value=models.Prediction.label_id,
             ).label("label_id_grouper"),
+            (
+                gfunc.ST_AsGeoJSON(
+                    _annotation_type_to_column(target_type, models.Annotation)
+                ).label("geojson")
+            ),
         )
         .filter(prediction_filter)
         .predictions("predictions")
     )
 
-    # Create joint table
     joint = (
         select(
-            func.coalesce(gt.c.datum_id, pd.c.datum_id).label("datum_id"),
+            func.coalesce(pd.c.dataset_name, gt.c.dataset_name).label(
+                "dataset_name"
+            ),
+            gt.c.datum_id.label("gt_datum_id"),
+            pd.c.datum_id.label("pd_datum_id"),
+            gt.c.geojson.label("gt_geojson"),
+            pd.c.geojson.label("pd_geojson"),
             gt.c.id.label("gt_id"),
             pd.c.id.label("pd_id"),
             gt.c.label_id.label("gt_label_id"),
@@ -449,7 +491,9 @@ def _compute_detection_metrics(
     # Compute IOUs
     ious = (
         select(
-            joint.c.datum_id.label("datum_id"),
+            joint.c.dataset_name,
+            joint.c.pd_datum_id,
+            joint.c.gt_datum_id,
             joint.c.gt_id.label("gt_id"),
             joint.c.pd_id.label("pd_id"),
             joint.c.gt_label_id.label("gt_label_id"),
@@ -458,6 +502,8 @@ def _compute_detection_metrics(
             joint.c.pd_label_id_grouper.label("pd_label_id_grouper"),
             joint.c.score.label("score"),
             func.coalesce(iou_computation, 0).label("iou"),
+            joint.c.gt_geojson,
+            joint.c.pd_geojson,
         )
         .select_from(joint)
         .join(gt_annotation, gt_annotation.id == joint.c.gt_ann_id)
@@ -481,15 +527,21 @@ def _compute_detection_metrics(
     pd_set = set()
     ranking = {}
     for row in ordered_ious:
-        # datum_id = row[0]
-        gt_id = row[1]
-        pd_id = row[2]
-        # gt_label_id = row[3]
-        # pd_label_id = row[4]
-        gt_label_id_grouper = row[5]
-        # pd_label_id_grouper = row[6]
-        score = row[7]
-        iou = row[8]
+        (
+            dataset_name,
+            pd_datum_id,
+            gt_datum_id,
+            gt_id,
+            pd_id,
+            _,
+            _,
+            gt_label_id_grouper,
+            _,
+            score,
+            iou,
+            gt_geojson,
+            pd_geojson,
+        ) = row
 
         # Check if gt or pd already found
         if gt_id not in gt_set and pd_id not in pd_set:
@@ -501,6 +553,11 @@ def _compute_detection_metrics(
 
             ranking[gt_label_id_grouper].append(
                 RankedPair(
+                    dataset_name=dataset_name,
+                    pd_datum_id=pd_datum_id,
+                    gt_datum_id=gt_datum_id,
+                    pd_geojson=pd_geojson,
+                    gt_geojson=gt_geojson,
                     gt_id=gt_id,
                     pd_id=pd_id,
                     score=score,
@@ -508,7 +565,8 @@ def _compute_detection_metrics(
                 )
             )
 
-    # Get the number of groundtruths per grouper_id
+    # Get the groundtruths per grouper_id
+    groundtruths_per_grouper = defaultdict(list)
     number_of_groundtruths_per_grouper = defaultdict(int)
 
     groundtruths = db.query(
@@ -518,21 +576,36 @@ def _compute_detection_metrics(
                 grouper_mappings["label_id_to_grouper_id_mapping"],
                 value=models.GroundTruth.label_id,
             ).label("label_id_grouper"),
+            models.Datum.id.label("datum_id"),
+            models.Dataset.name.label("dataset_name"),
+            (
+                gfunc.ST_AsGeoJSON(
+                    _annotation_type_to_column(target_type, models.Annotation)
+                ).label("gt_geojson")
+            ),
         )
         .filter(groundtruth_filter)
         .groundtruths()  # type: ignore - SQLAlchemy type issue
     ).all()  # type: ignore - SQLAlchemy type issue
 
-    for gt_id, grouper_id in groundtruths:
+    for gt_id, grouper_id, datum_id, dset_name, gt_geojson in groundtruths:
+        # we're ok with duplicates since they indicate multiple groundtruths for a given dataset/datum_id
+        groundtruths_per_grouper[grouper_id].append(
+            (dset_name, datum_id, gt_id, gt_geojson)
+        )
         number_of_groundtruths_per_grouper[grouper_id] += 1
 
     # Optionally compute precision-recall curves
     if parameters.compute_pr_curves:
         false_positive_entries = db.query(
             select(
+                joint.c.dataset_name,
+                joint.c.gt_datum_id,
+                joint.c.pd_datum_id,
                 joint.c.gt_label_id_grouper.label("gt_label_id_grouper"),
                 joint.c.pd_label_id_grouper.label("pd_label_id_grouper"),
                 joint.c.score.label("score"),
+                joint.c.pd_geojson,
             )
             .select_from(joint)
             .where(
@@ -547,7 +620,7 @@ def _compute_detection_metrics(
         pr_curves = _compute_curves(
             sorted_ranked_pairs=ranking,
             grouper_mappings=grouper_mappings,
-            number_of_groundtruths_per_grouper=number_of_groundtruths_per_grouper,
+            groundtruths_per_grouper=groundtruths_per_grouper,
             false_positive_entries=false_positive_entries,
             iou_threshold=parameters.pr_curve_iou_threshold,
         )

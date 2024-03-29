@@ -983,8 +983,8 @@ def test_evaluate_classification_with_label_maps(
     }
 
     metrics = eval_job.metrics
-    pr_metrics = []
 
+    pr_metrics = []
     for m in metrics:
         if m["type"] != "PrecisionRecallCurve":
             assert m in cat_expected_metrics

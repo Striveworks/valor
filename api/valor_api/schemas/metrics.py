@@ -419,7 +419,17 @@ class PrecisionRecallCurve(BaseModel):
     label_key: str
     value: dict[
         str,
-        dict[float, dict[str, int | float | list[tuple[str, int]] | None]],
+        dict[
+            float,
+            dict[
+                str,
+                int
+                | float
+                | list[tuple[str, int]]  # for classification tasks
+                | list[tuple[str, int, str]]  # for object detection tasks
+                | None,
+            ],
+        ],
     ]
     pr_curve_iou_threshold: float | None = None
 

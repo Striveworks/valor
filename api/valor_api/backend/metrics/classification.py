@@ -20,6 +20,7 @@ from valor_api.backend.query import Query
 LabelMapType = list[list[list[str]]]
 
 
+# TODO use pd instead of pred
 def _compute_curves(
     db: Session,
     predictions: Subquery | NamedFromClause,
@@ -28,7 +29,17 @@ def _compute_curves(
     grouper_mappings: dict[str, dict[str, dict]],
 ) -> dict[
     str,
-    dict[float, dict[str, int | float | list[tuple[str, int]] | None]],
+    dict[
+        float,
+        dict[
+            str,
+            int
+            | float
+            | list[tuple[str, int]]
+            | list[tuple[str, int, str]]
+            | None,
+        ],
+    ],
 ]:
     """
     Calculates precision-recall curves for each class.
