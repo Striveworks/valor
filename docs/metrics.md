@@ -4,7 +4,6 @@ Let's look at the various metrics you can calculate using Valor.
 If we're missing an important metric for your particular use case, please [write us a GitHub Issue ticket](https://github.com/Striveworks/valor/issues). We love hearing your suggestions.
 
 ## Classification Metrics
-# TODO edit docs
 | Name | Description | Equation |
 |:- | :- | :- |
 | Precision | The number of true positives divided by the total number of positive predictions (i.e., the number of true positives plus the number of false positives). | $\dfrac{\|TP\|}{\|TP\|+\|FP\|}$ |
@@ -178,17 +177,15 @@ Precision-recall curves offer insight into which confidence threshold you should
     "value": {
         "cat": { # The value of the label.
             "0.05": { # The confidence score threshold, ranging from 0.05 to 0.95 in increments of 0.05.
-                "fn": 0,
-                "fp": 1,
-                "tp": 0,
-                "recall": -1,
-                "f1_score": -1,
-                "precision": 0.0,
-            },
-            "0.1": {
-                "fn": 0,
-                "fp": 1,
-                "tp": 0,
+                "fn": [],
+                "fp": [
+                    (
+                        'test_dataset',
+                        1,
+                        '{"type":"Polygon","coordinates":[[[464.08,105.09],[495.74,105.09],[495.74,146.99],[464.08,146.99],[464.08,105.09]]]}'
+                    ) # There's one false positive for this (key, value, confidence threshold) combination as indicated by the one tuple shown here. This tuple contains that observation's dataset name, datum ID, and coordinates in the form of a GeoJSON string. For classification tasks, this tuple will only contain the given observation's dataset name and datum ID.
+                ],
+                "tp": [],
                 "recall": -1,
                 "f1_score": -1,
                 "precision": 0.0,

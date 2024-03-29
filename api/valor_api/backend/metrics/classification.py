@@ -20,7 +20,6 @@ from valor_api.backend.query import Query
 LabelMapType = list[list[list[str]]]
 
 
-# TODO use pd instead of pred
 def _compute_curves(
     db: Session,
     predictions: Subquery | NamedFromClause,
@@ -69,7 +68,7 @@ def _compute_curves(
         # get predictions that are above the confidence threshold
         predictions_that_meet_criteria = (
             select(
-                models.Label.value.label("pred_label_value"),
+                models.Label.value.label("pd_label_value"),
                 models.Annotation.datum_id.label("datum_id"),
                 predictions.c.dataset_name,
                 predictions.c.score,
@@ -91,7 +90,7 @@ def _compute_curves(
             "cols",
             case(
                 grouper_mappings["label_value_to_grouper_value"],
-                value=predictions_that_meet_criteria.c.pred_label_value,
+                value=predictions_that_meet_criteria.c.pd_label_value,
             ),
             case(
                 grouper_mappings["label_value_to_grouper_value"],
@@ -145,8 +144,8 @@ def _compute_curves(
                 (
                     predicted_label,
                     actual_label,
-                    pred_datum_id,
-                    pred_dataset_name,
+                    pd_datum_id,
+                    pd_dataset_name,
                     gt_datum_id,
                     gt_dataset_name,
                 ) = (
@@ -159,10 +158,10 @@ def _compute_curves(
                 )
 
                 if predicted_label == grouper_value == actual_label:
-                    tp += [(pred_dataset_name, pred_datum_id)]
+                    tp += [(pd_dataset_name, pd_datum_id)]
                     seen_datums.add(gt_datum_id)
                 elif predicted_label == grouper_value:
-                    fp += [(pred_dataset_name, pred_datum_id)]
+                    fp += [(pd_dataset_name, pd_datum_id)]
                     seen_datums.add(gt_datum_id)
                 elif (
                     actual_label == grouper_value
@@ -457,7 +456,7 @@ def _compute_confusion_matrix_at_grouper_key(
     # 3. Get labels for hard predictions, organize per datum
     hard_preds_query = (
         select(
-            models.Label.value.label("pred_label_value"),
+            models.Label.value.label("pd_label_value"),
             min_id_query.c.datum_id.label("datum_id"),
         )
         .select_from(min_id_query)
@@ -477,7 +476,7 @@ def _compute_confusion_matrix_at_grouper_key(
         "cols",
         case(
             grouper_mappings["label_value_to_grouper_value"],
-            value=hard_preds_query.c.pred_label_value,
+            value=hard_preds_query.c.pd_label_value,
         ),
         case(
             grouper_mappings["label_value_to_grouper_value"],
