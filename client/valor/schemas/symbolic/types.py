@@ -31,6 +31,10 @@ from valor.schemas.symbolic.operators import (
 class Symbol:
     """
     A symbol contains no value and is defined by the tuple (owner, name, key, attribute).
+
+    Examples
+    --------
+    >>> Symbol(name="a")
     """
 
     def __init__(
@@ -101,6 +105,18 @@ class Variable:
     Base class for constructing variables types.
 
     Contains either a value or a symbol.
+
+    Examples
+    --------
+    Creating a valued variable.
+    >>> Variable(value=...)
+    or
+    >>> Variable.definite(...)
+
+    Creating a symbolic variable.
+    >>> Variable(symbol=Symbol(...))
+    or
+    >>> Variable.symbolic(name=...)
     """
 
     def __init__(
@@ -131,7 +147,14 @@ class Variable:
         cls,
         value: Any,
     ):
-        """Initialize variable with a value."""
+        """
+        Initialize variable with a value.
+
+        Parameters
+        ----------
+        value : Any
+            The intended value of the variable.
+        """
         return cls(value=value)
 
     @classmethod
@@ -142,7 +165,20 @@ class Variable:
         attribute: Optional[str] = None,
         owner: Optional[str] = None,
     ):
-        """Initialize variable as a symbol."""
+        """
+        Initialize variable as a symbol.
+
+        Parameters
+        ----------
+        name: str, optional
+            The name of the symbol. Defaults to the name of the parent class.
+        key: str, optional
+            An optional dictionary key.
+        attribute: str, optional
+            An optional attribute name.
+        owner: str, optional
+            An optional name describing the class that owns this symbol.
+        """
         name = cls.__name__ if not name else name
         return cls(
             symbol=Symbol(
@@ -182,14 +218,32 @@ class Variable:
 
     @classmethod
     def __validate__(cls, value: Any):
-        """Validates typing."""
+        """
+        Validates typing.
+
+        Parameters
+        ----------
+        value : Any
+            The value to validate.
+
+        Raises
+        ------
+        NotImplementedError
+            This function is not implemented in the base class.
+        """
         raise NotImplementedError(
             f"Variable of type `{cls.__name__}` cannot be assigned a value."
         )
 
     @classmethod
     def supports(cls, value: Any) -> bool:
-        """Checks if value is a supported type."""
+        """
+        Checks if value is a supported type.
+
+        Returns
+        -------
+        bool
+        """
         try:
             cls.__validate__(value)
         except (TypeError, ValueError):
@@ -236,7 +290,14 @@ class Variable:
         return not isinstance(self._value, Symbol)
 
     def get_value(self) -> Any:
-        """Retrieve value, if it exists."""
+        """
+        Retrieve value, if it exists.
+
+        Raises
+        ------
+        TypeError
+            If the variable is symbolic.
+        """
         if isinstance(self._value, Symbol):
             raise TypeError(
                 f"{type(self).__name__} is symbolic and does not contain a value."
@@ -244,7 +305,18 @@ class Variable:
         return self._value
 
     def get_symbol(self) -> Symbol:
-        """Retrieve symbol, if it exists."""
+        """
+        Retrieve symbol, if it exists.
+
+        Raises
+        ------
+        TypeError
+            If the variable is a valued object.
+
+        Returns
+        -------
+        Symbol
+        """
         if not isinstance(self._value, Symbol):
             raise TypeError(f"{type(self).__name__} is a valued object.")
         return self._value
@@ -284,6 +356,13 @@ class Bool(Variable):
     """
     Implementation of the built-in type 'bool' as a Variable.
 
+    Parameters
+    ----------
+    value : bool, optional
+        A boolean value.
+    symbol : Symbol, optional
+        A symbolic representation.
+
     Examples
     --------
     >>> Bool(True)
@@ -291,7 +370,19 @@ class Bool(Variable):
 
     @classmethod
     def __validate__(cls, value: Any):
-        """Validates typing."""
+        """
+        Validates typing.
+
+        Parameters
+        ----------
+        value : Any
+            The value to validate.
+
+        Raises
+        ------
+        TypeError
+            If the value type is not supported.
+        """
         if not isinstance(value, bool):
             raise TypeError(
                 f"Expected type '{bool}' received type '{type(value)}'"
@@ -448,6 +539,13 @@ class Integer(Quantifiable):
     """
     Implementation of the built-in type 'int' as a Variable.
 
+    Parameters
+    ----------
+    value : int, optional
+        A integer value.
+    symbol : Symbol, optional
+        A symbolic representation.
+
     Examples
     --------
     >>> Integer(123)
@@ -464,6 +562,13 @@ class Integer(Quantifiable):
 class Float(Quantifiable):
     """
     Implementation of the built-in type 'float' as a Variable.
+
+    Parameters
+    ----------
+    value : float, optional
+        A float value.
+    symbol : Symbol, optional
+        A symbolic representation.
 
     Examples
     --------
@@ -482,6 +587,13 @@ class String(Equatable):
     """
     Implementation of the built-in type 'str' as a Variable.
 
+    Parameters
+    ----------
+    value : str, optional
+        A string value.
+    symbol : Symbol, optional
+        A symbolic representation.
+
     Examples
     --------
     >>> String("hello world")
@@ -498,6 +610,13 @@ class String(Equatable):
 class DateTime(Quantifiable):
     """
     Implementation of the type 'datetime.datetime' as a Variable.
+
+    Parameters
+    ----------
+    value : datetime.datetime, optional
+        A datetime value.
+    symbol : Symbol, optional
+        A symbolic representation.
 
     Examples
     --------
@@ -526,6 +645,13 @@ class Date(Quantifiable):
     """
     Implementation of the type 'datetime.date' as a Variable.
 
+    Parameters
+    ----------
+    value : datetime.date, optional
+        A date value.
+    symbol : Symbol, optional
+        A symbolic representation.
+
     Examples
     --------
     >>> import datetime
@@ -553,6 +679,13 @@ class Time(Quantifiable):
     """
     Implementation of the type 'datetime.time' as a Variable.
 
+    Parameters
+    ----------
+    value : datetime.time, optional
+        A time value.
+    symbol : Symbol, optional
+        A symbolic representation.
+
     Examples
     --------
     >>> import datetime
@@ -579,6 +712,13 @@ class Time(Quantifiable):
 class Duration(Quantifiable):
     """
     Implementation of the type 'datetime.timedelta' as a Variable.
+
+    Parameters
+    ----------
+    value : datetime.timedelta, optional
+        A time duration.
+    symbol : Symbol, optional
+        A symbolic representation.
 
     Examples
     --------
@@ -608,6 +748,13 @@ class Point(Spatial, Equatable):
     Represents a point in 2D space.
 
     Follows the GeoJSON specification (RFC 7946).
+
+    Parameters
+    ----------
+    value : Tuple[float, float], optional
+        A point.
+    symbol : Symbol, optional
+        A symbolic representation.
 
     Examples
     --------
@@ -675,6 +822,13 @@ class MultiPoint(Spatial):
 
     Follows the GeoJSON specification (RFC 7946).
 
+    Parameters
+    ----------
+    value : List[Tuple[float, float]], optional
+        A multipoint.
+    symbol : Symbol, optional
+        A symbolic representation.
+
     Examples
     --------
     >>> MultiPoint([(0,0), (0,1), (1,1)])
@@ -708,6 +862,20 @@ class LineString(Spatial):
 
     Follows the GeoJSON specification (RFC 7946).
 
+    Parameters
+    ----------
+    value : List[Tuple[float, float]], optional
+        A linestring.
+    symbol : Symbol, optional
+        A symbolic representation.
+
+    Methods
+    -------
+    colorspace(c='rgb')
+        Represent the photo in the given colorspace.
+    gamma(n=1.0)
+        Change the photo's gamma exposure.
+
     Examples
     --------
     Create a line.
@@ -740,6 +908,13 @@ class MultiLineString(Spatial):
     Represents a list of lines.
 
     Follows the GeoJSON specification (RFC 7946).
+
+    Parameters
+    ----------
+    value : List[List[Tuple[float, float]]], optional
+        A multilinestring.
+    symbol : Symbol, optional
+        A symbolic representation.
 
     Examples
     --------
@@ -786,6 +961,23 @@ class Polygon(Spatial):
 
     Follows the GeoJSON specification (RFC 7946).
 
+    Parameters
+    ----------
+    value : List[List[Tuple[float, float]]], optional
+        A polygon.
+    symbol : Symbol, optional
+        A symbolic representation.
+
+    Attributes
+    ----------
+    area
+    boundary
+    holes
+    xmin
+    xmax
+    ymin
+    ymax
+
     Examples
     --------
     Create a polygon without any holes.
@@ -829,7 +1021,10 @@ class Polygon(Spatial):
         )
 
     @property
-    def area(self):
+    def area(self) -> Float:
+        """
+        Symbolic representation of area.
+        """
         if not isinstance(self._value, Symbol):
             raise ValueError
         return Float.symbolic(
@@ -840,28 +1035,77 @@ class Polygon(Spatial):
         )
 
     @property
-    def boundary(self):
-        """"""
-        return self.get_value()[0]
+    def boundary(self) -> List[Tuple[float, float]]:
+        """
+        The boundary of the polygon.
+
+        Returns
+        -------
+        List[Tuple(float, float)]
+            A list of points.
+        """
+        value = self.get_value()
+        if value is None:
+            raise ValueError("Polygon is 'None'")
+        return value[0]
 
     @property
-    def holes(self):
-        return self.get_value()[1:]
+    def holes(self) -> List[List[Tuple[float, float]]]:
+        """
+        Any holes in the polygon.
+
+        Returns
+        -------
+        List[List[Tuple(float, float)]]
+            A list of holes.
+        """
+        value = self.get_value()
+        if value is None:
+            raise ValueError("Polygon is 'None'")
+        return value[1:]
 
     @property
-    def xmin(self):
+    def xmin(self) -> float:
+        """
+        Minimum x-value.
+
+        Returns
+        -------
+        float
+        """
         return min([p[0] for p in self.boundary])
 
     @property
-    def xmax(self):
+    def xmax(self) -> float:
+        """
+        Maximum x-value.
+
+        Returns
+        -------
+        float
+        """
         return max([p[0] for p in self.boundary])
 
     @property
-    def ymin(self):
+    def ymin(self) -> float:
+        """
+        Minimum y-value.
+
+        Returns
+        -------
+        float
+        """
         return min([p[1] for p in self.boundary])
 
     @property
-    def ymax(self):
+    def ymax(self) -> float:
+        """
+        Maximum y-value.
+
+        Returns
+        -------
+        float
+        """
         return max([p[1] for p in self.boundary])
 
 
@@ -870,6 +1114,18 @@ class MultiPolygon(Spatial):
     Represents a collection of polygons.
 
     Follows the GeoJSON specification (RFC 7946).
+
+    Parameters
+    ----------
+    value : List[List[List[Tuple[float, float]]]], optional
+        A list of polygons.
+    symbol : Symbol, optional
+        A symbolic representation.
+
+    Attributes
+    ----------
+    area
+    polygons
 
     Examples
     --------
@@ -918,6 +1174,9 @@ class MultiPolygon(Spatial):
 
     @property
     def area(self):
+        """
+        Symbolic representation of area.
+        """
         if not isinstance(self._value, Symbol):
             raise ValueError(
                 "attribute 'area' is reserved for symbolic variables."
@@ -931,12 +1190,26 @@ class MultiPolygon(Spatial):
 
     @property
     def polygons(self) -> List[Polygon]:
+        """
+        List of the component polygons.
+
+        Returns
+        -------
+        List[Polygon]
+        """
         return [Polygon(poly) for poly in self.get_value()]
 
 
 class Score(Float, Nullable):
     """
-    Implements the score annotation as a nullable floating-point variable.
+    Implements a score annotation as a nullable floating-point variable.
+
+    Parameters
+    ----------
+    value : float, optional
+        A score value between 0.0 and 1.0.
+    symbol : Symbol, optional
+        A symbolic representation.
 
     Examples
     --------
@@ -946,7 +1219,19 @@ class Score(Float, Nullable):
 
     @classmethod
     def __validate__(cls, value: Any):
-        """Validates typing."""
+        """
+        Validates typing.
+
+        Parameters
+        ----------
+        value : Any
+            The value to validate.
+
+        Raises
+        ------
+        TypeError
+            If the value type is not supported.
+        """
         if value is not None:
             Float.__validate__(value)
             if value < 0.0:
@@ -964,7 +1249,14 @@ class Score(Float, Nullable):
 
 class TaskTypeEnum(String):
     """
-    Wrapper for 'valor.enums.TaskType'.
+    Variable wrapper for 'valor.enums.TaskType'.
+
+    Parameters
+    ----------
+    value : Union[str, valor.enums.TaskType], optional
+        A task type enum value.
+    symbol : Symbol, optional
+        A symbolic representation.
 
     Examples
     --------
@@ -984,7 +1276,19 @@ class TaskTypeEnum(String):
 
     @classmethod
     def __validate__(cls, value: Any):
-        """Validates typing."""
+        """
+        Validates typing.
+
+        Parameters
+        ----------
+        value : Any
+            The value to validate.
+
+        Raises
+        ------
+        TypeError
+            If the value type is not supported.
+        """
         if not isinstance(value, TaskType):
             raise TypeError(
                 f"Expected value with type '{TaskType.__name__}' received type '{type(value).__name__}'"
@@ -1002,7 +1306,27 @@ class TaskTypeEnum(String):
 
 class BoundingBox(Polygon, Nullable):
     """
-    Implements a nullable bounding box defined by a polygon with 4 unique points. Note that this does not need to be axis-aligned.
+    Bounding Box Annotation.
+
+    Implements a nullable polygon with 4 unique points. Note that this does not need to be axis-aligned.
+
+    Parameters
+    ----------
+    value : List[List[Tuple[float, float]]], optional
+        An polygon value representing a box.
+    symbol : Symbol, optional
+        A symbolic representation.
+
+    Attributes
+    ----------
+    area
+    polygon
+    boundary
+    holes
+    xmin
+    xmax
+    ymin
+    ymax
 
     Examples
     --------
@@ -1017,7 +1341,19 @@ class BoundingBox(Polygon, Nullable):
 
     @classmethod
     def __validate__(cls, value: Any):
-        """Validates typing."""
+        """
+        Validates typing.
+
+        Parameters
+        ----------
+        value : Any
+            The value to validate.
+
+        Raises
+        ------
+        TypeError
+            If the value type is not supported.
+        """
         if value is not None:
             Polygon.__validate__(value)
             if len(value) != 1:
@@ -1074,7 +1410,14 @@ class BoundingBox(Polygon, Nullable):
 
     @property
     def polygon(self) -> Optional[Polygon]:
-        """Returns the component polygon if it exists."""
+        """
+        The box defined as a 'Polygon'.
+
+        Returns
+        -------
+        Polygon | None
+            The component polygon or 'None' if it doesn't exist.
+        """
         value = self.get_value()
         return Polygon(value) if value else None
 
@@ -1085,11 +1428,21 @@ class BoundingPolygon(Polygon, Nullable):
 
     Parameters
     ----------
-    boundary : BasicPolygon or dict
-        The outer boundary of the polygon. Can be a `BasicPolygon` object or a
-        dictionary with the necessary information to create a `BasicPolygon`.
-    holes : List[BasicPolygon], optional
-        List of holes inside the polygon. Defaults to an empty list.
+    value : List[List[Tuple[float, float]]], optional
+        An polygon value.
+    symbol : Symbol, optional
+        A symbolic representation.
+
+    Attributes
+    ----------
+    area
+    polygon
+    boundary
+    holes
+    xmin
+    xmax
+    ymin
+    ymax
 
     Raises
     ------
@@ -1127,7 +1480,19 @@ class BoundingPolygon(Polygon, Nullable):
 
     @classmethod
     def __validate__(cls, value: Any):
-        """Validates typing."""
+        """
+        Validates typing.
+
+        Parameters
+        ----------
+        value : Any
+            The value to validate.
+
+        Raises
+        ------
+        TypeError
+            If the value type is not supported.
+        """
         if value is not None:
             Polygon.__validate__(value)
 
@@ -1140,7 +1505,14 @@ class BoundingPolygon(Polygon, Nullable):
 
     @property
     def polygon(self) -> Optional[Polygon]:
-        """Returns the component polygon if it exists."""
+        """
+        The bounding polygon defined as a 'Polygon'.
+
+        Returns
+        -------
+        Polygon | None
+            The component polygon or 'None' if it doesn't exist.
+        """
         value = self.get_value()
         return Polygon(value) if value else None
 
@@ -1151,10 +1523,18 @@ class Raster(Spatial, Nullable):
 
     Parameters
     ----------
-    mask : str
-        Base64-encoded string representing the raster mask.
-    geometry : Union[Polygon, MultiPolygon], optional
-        Option to input the raster as a geometry. Overrides the mask.
+    value : Dict[str, Union[np.ndarray, str, None]], optional
+        An raster value.
+    symbol : Symbol, optional
+        A symbolic representation.
+
+    Parameters
+    ----------
+    area
+    array
+    geometry
+    height
+    width
 
     Raises
     ------
@@ -1178,7 +1558,19 @@ class Raster(Spatial, Nullable):
 
     @classmethod
     def __validate__(cls, value: Any):
-        """Validates typing."""
+        """
+        Validates typing.
+
+        Parameters
+        ----------
+        value : Any
+            The value to validate.
+
+        Raises
+        ------
+        TypeError
+            If the value type is not supported.
+        """
         if value is not None:
             if not isinstance(value, dict):
                 raise TypeError(
@@ -1283,7 +1675,7 @@ class Raster(Spatial, Nullable):
         return cls(value={"mask": bitmask, "geometry": geometry.get_value()})
 
     @property
-    def area(self):
+    def area(self) -> Float:
         """
         Symbolic representation of area.
         """
@@ -1351,9 +1743,32 @@ class Raster(Spatial, Nullable):
 
 
 class Embedding(Spatial, Nullable):
+    """
+    Represents a model embedding.
+
+    Parameters
+    ----------
+    value : List[float], optional
+        An embedding value.
+    symbol : Symbol, optional
+        A symbolic representation.
+    """
+
     @classmethod
     def __validate__(cls, value: Any):
-        """Validates typing."""
+        """
+        Validates typing.
+
+        Parameters
+        ----------
+        value : Any
+            The value to validate.
+
+        Raises
+        ------
+        TypeError
+            If the value type is not supported.
+        """
         if value is not None:
             if not isinstance(value, list):
                 raise TypeError(

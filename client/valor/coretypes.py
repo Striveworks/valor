@@ -54,6 +54,23 @@ def _format_filter(filter_by: Optional[FilterType]) -> Filter:
 class GroundTruth(StaticCollection):
     """
     An object describing a ground truth (e.g., a human-drawn bounding box on an image).
+
+    Attributes
+    ----------
+    datum
+    annotations
+
+    Examples
+    --------
+    >>> GroundTruth(
+    ...     datum=Datum(uid="uid1"),
+    ...     annotations=[
+    ...         Annotation(
+    ...             task_type=TaskType.CLASSIFICATION,
+    ...             labels=[Label(key="k1", value="v1")],
+    ...         )
+    ...     ]
+    ... )
     """
 
     datum: Datum = Datum.symbolic(owner="groundtruth", name="datum")
@@ -95,6 +112,26 @@ class GroundTruth(StaticCollection):
 class Prediction(StaticCollection):
     """
     An object describing a prediction (e.g., a machine-drawn bounding box on an image).
+
+    Attributes
+    ----------
+    datum
+    annotations
+
+    Examples
+    --------
+    >>> Prediction(
+    ...     datum=Datum(uid="uid1"),
+    ...     annotations=[
+    ...         Annotation(
+    ...             task_type=TaskType.CLASSIFICATION,
+    ...             labels=[
+    ...                 Label(key="k1", value="v1", score=0.9),
+    ...                 Label(key="k1", value="v1", score=0.1)
+    ...             ],
+    ...         )
+    ...     ]
+    ... )
     """
 
     datum: Datum = Datum.symbolic(owner="prediction", name="datum")
@@ -377,10 +414,14 @@ class Dataset(StaticCollection):
 
     Attributes
     ----------
-    name : str
-        The name of the dataset.
-    metadata : dict
-        A dictionary of metadata that describes the dataset.
+    name
+    metadata
+
+    Examples
+    --------
+    >>> Dataset.create(name="dataset1")
+    >>> Dataset.create(name="dataset1", metadata={})
+    >>> Dataset.create(name="dataset1", metadata={"foo": "bar", "pi": 3.14})
     """
 
     name: String = String.symbolic(owner="dataset", name="name")
@@ -626,10 +667,14 @@ class Model(StaticCollection):
 
     Attributes
     ----------
-    name : str
-        The name of the model.
-    metadata : dict
-        A dictionary of metadata that describes the model.
+    name
+    metadata
+
+    Examples
+    --------
+    >>> Model.create(name="model1")
+    >>> Model.create(name="model1", metadata={})
+    >>> Model.create(name="model1", metadata={"foo": "bar", "pi": 3.14})
     """
 
     name: String = String.symbolic(owner="model", name="name")

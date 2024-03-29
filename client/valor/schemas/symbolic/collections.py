@@ -31,7 +31,11 @@ from valor.schemas.symbolic.types import (
 
 
 def _get_atomic_type_by_value(other: Any):
-    """Retrieves variable type using built-in type."""
+    """
+    Retrieves variable type using built-in type.
+
+    Order of checking is very important as certain types are subsets of others.
+    """
     if Bool.supports(other):
         return Bool
     elif String.supports(other):
@@ -66,37 +70,26 @@ def _get_atomic_type_by_value(other: Any):
 
 def _get_atomic_type_by_name(name: str):
     """Retrieves variable type by name."""
-    name = name.lower()
-    if name == "bool":
-        return Bool
-    elif name == "string":
-        return String
-    elif name == "integer":
-        return Integer
-    elif name == "float":
-        return Float
-    elif name == "datetime":
-        return DateTime
-    elif name == "date":
-        return Date
-    elif name == "time":
-        return Time
-    elif name == "duration":
-        return Duration
-    elif name == "multipolygon":
-        return MultiPolygon
-    elif name == "polygon":
-        return Polygon
-    elif name == "multilinestring":
-        return MultiLineString
-    elif name == "linestring":
-        return LineString
-    elif name == "multipoint":
-        return MultiPoint
-    elif name == "point":
-        return Point
-    else:
+    types_ = {
+        "bool": Bool,
+        "string": String,
+        "integer": Integer,
+        "float": Float,
+        "datetime": DateTime,
+        "date": Date,
+        "time": Time,
+        "duration": Duration,
+        "multipolygon": MultiPolygon,
+        "polygon": Polygon,
+        "multilinestring": MultiLineString,
+        "linestring": LineString,
+        "multipoint": MultiPoint,
+        "point": Point,
+    }
+    type_ = types_.get(name.lower(), None)
+    if type_ is None:
         raise NotImplementedError(name)
+    return type_
 
 
 T = typing.TypeVar("T", bound=Variable)
@@ -124,6 +117,13 @@ class List(typing.Generic[T], Equatable):
         class ValueList(Equatable):
             """
             Strongly-typed variable list.
+
+            Parameters
+            ----------
+            value : List[T], optional
+                A list of items with type T.
+            symbol : Symbol, optional
+                A symbolic representation.
             """
 
             def __init__(
@@ -244,6 +244,8 @@ class List(typing.Generic[T], Equatable):
 
 
 class DictionaryValue(Nullable):
+    """Helper class for routing dictionary expressions."""
+
     def __init__(self, symbol: Symbol):
         if not isinstance(symbol, Symbol):
             raise ValueError(
@@ -345,6 +347,13 @@ class DictionaryValue(Nullable):
 class Dictionary(Equatable):
     """
     Symbolic implementation of the built-in type 'dict'.
+
+    Parameters
+    ----------
+    value : Dict[str, Any], optional
+        A dictionary of items.
+    symbol : Symbol, optional
+        A symbolic representation.
 
     Examples
     --------
@@ -450,31 +459,23 @@ class Dictionary(Equatable):
 
 
 def _get_schema_type_by_name(name: str):
-    name = name.lower()
-    if name == "score":
-        return Score
-    elif name == "boundingbox":
-        return BoundingBox
-    elif name == "boundingpolygon":
-        return BoundingPolygon
-    elif name == "raster":
-        return Raster
-    elif name == "embedding":
-        return Embedding
-    elif name == "dictionary":
-        return Dictionary
-    elif name == "label":
-        return Label
-    elif "list[label]" in name:
-        return List[Label]
-    elif name == "annotation":
-        return Annotation
-    elif "list[annotation]" in name:
-        return List[Annotation]
-    elif name == "datum":
-        return Datum
-    else:
-        return _get_atomic_type_by_name(name)
+    types_ = {
+        "score": Score,
+        "boundingbox": BoundingBox,
+        "boundingpolygon": BoundingPolygon,
+        "raster": Raster,
+        "embedding": Embedding,
+        "dictionary": Dictionary,
+        "label": Label,
+        "list[label]": List[Label],
+        "annotation": Annotation,
+        "list[annotation]": List[Annotation],
+        "datum": Datum,
+    }
+    type_ = types_.get(name.lower(), None)
+    if type_ is None:
+        type_ = _get_atomic_type_by_name(name)
+    return type_
 
 
 class StaticCollection(Equatable):
@@ -591,8 +592,15 @@ class Label(StaticCollection):
 
     Attributes
     ----------
-    filter_by : filter_factory
-        Declarative mappers used to create filters.
+    key
+    value
+    score
+
+    Examples
+    --------
+    >>> Label(key="k1", value="v1")
+    >>> Label(key="k1", value="v1", score=None)
+    >>> Label(key="k1", value="v1", score=0.9)
     """
 
     key: String = String.symbolic(owner="label", name="key")
@@ -647,8 +655,13 @@ class Annotation(StaticCollection):
 
     Attributes
     ----------
-    area : float
-        The area of the annotation.
+    task_type
+    labels
+    metadata
+    bounding_box
+    polygon
+    raster
+    embedding
 
     Examples
     --------
@@ -673,30 +686,30 @@ class Annotation(StaticCollection):
     >>> annotation = Annotation.create(
     ...     task_type=TaskType.OBJECT_DETECTION,
     ...     labels=[Label(key="k1", value="v1")],
-    ...     polygon=polygon1,
+    ...     polygon=BoundingPolygon(...),
     ... )
 
     Object-Detection Raster
     >>> annotation = Annotation.create(
     ...     task_type=TaskType.OBJECT_DETECTION,
     ...     labels=[Label(key="k1", value="v1")],
-    ...     raster=raster1,
+    ...     raster=Raster(...),
     ... )
 
     Semantic-Segmentation Raster
     >>> annotation = Annotation.create(
     ...     task_type=TaskType.SEMANTIC_SEGMENTATION,
     ...     labels=[Label(key="k1", value="v1")],
-    ...     raster=raster1,
+    ...     raster=Raster(...),
     ... )
 
     Defining all supported annotation types for a given `task_type` is allowed!
     >>> Annotation.create(
     ...     task_type=TaskType.OBJECT_DETECTION,
     ...     labels=[Label(key="k1", value="v1")],
-    ...     bounding_box=box1,
-    ...     polygon=polygon1,
-    ...     raster=raster1,
+    ...     bounding_box=BoundingBox(...),
+    ...     polygon=BoundingPolygon(...),
+    ...     raster=Raster(...),
     ... )
     """
 
@@ -766,6 +779,17 @@ class Annotation(StaticCollection):
 class Datum(StaticCollection):
     """
     A class used to store information about a datum for either a 'GroundTruth' or a 'Prediction'.
+
+    Attributes
+    ----------
+    uid
+    metadata
+
+    Examples
+    --------
+    >>> Datum(uid="uid1")
+    >>> Datum(uid="uid1", metadata={})
+    >>> Datum(uid="uid1", metadata={"foo": "bar", "pi": 3.14})
     """
 
     uid: String = String.symbolic(owner="datum", name="uid")
