@@ -67,7 +67,7 @@ def test__format_filter(geojson, polygon):
 
     filter_from_constraints = Filter.create(
         [
-            Dataset.name.in_(["a", "b"]) | (Dataset.name == "c"),
+            Dataset.name.in_(["a", "b", "c"]),
             (Model.name == "x") | Model.name.in_(["y", "z"]),
             Label.score > 0.75,
             Annotation.polygon.area > 1000,
