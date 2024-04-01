@@ -98,6 +98,12 @@ const createDatasetsAndModels = async () => {
         labels: [{ key: 'label-key', value: 'label-value' }]
       }
     ]);
+    await client.addGroundTruth(datasetName, 'uid2', [
+      {
+        task_type: 'classification',
+        labels: [{ key: 'label-key', value: 'label-value-with-no-prediction' }]
+      }
+    ]);
     await client.finalizeDataset(datasetName);
   }
 
@@ -109,6 +115,12 @@ const createDatasetsAndModels = async () => {
       await Promise.all(
         datasetNames.map(async (datasetName) => {
           await client.addPredictions(modelName, datasetName, 'uid1', [
+            {
+              task_type: 'classification',
+              labels: [{ key: 'label-key', value: 'label-value', score: 1.0 }]
+            }
+          ]);
+          await client.addPredictions(modelName, datasetName, 'uid2', [
             {
               task_type: 'classification',
               labels: [{ key: 'label-key', value: 'label-value', score: 1.0 }]
@@ -140,10 +152,13 @@ test('evaluation methods', async () => {
     }
     expect(evaluation.metrics.length).toBeGreaterThan(0);
     expect(evaluation.datum_filter.dataset_names).toStrictEqual([datasetName]);
+
+    // get the ROCAUC metric, and check that its null (backend returns -1 here)
+    const rocaucMetric = evaluation.metrics.find((metric) => metric.type === 'ROCAUC');
+    expect(rocaucMetric.value).toBeNull();
+
     // check the date is within one minute of the current time
-    console.log(`evaluation.created_at: ${evaluation.created_at}`);
     const now = new Date();
-    console.log(`now: ${now}`);
     const timeDiff = Math.abs(now.getTime() - evaluation.created_at.getTime());
     expect(timeDiff).toBeLessThan(60 * 1000);
   };

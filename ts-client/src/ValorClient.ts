@@ -232,11 +232,17 @@ export class ValorClient {
 
   /**
    * Takes data from the backend response and converts it to an Evaluation object
-   * by converting the datetime string to a `Date` object
+   * by converting the datetime string to a `Date` object and replacing -1 metric values with
+   * `null`.
    */
   private unmarshalEvaluation(evaluation: any): Evaluation {
+    const updatedMetrics = evaluation.metrics.map((metric: Metric) => ({
+      ...metric,
+      value: metric.value === -1 ? null : metric.value
+    }));
     return {
       ...evaluation,
+      metrics: updatedMetrics,
       created_at: new Date(evaluation.created_at)
     };
   }
