@@ -14,7 +14,14 @@ from valor import Annotation, Client, GroundTruth, Label, Prediction
 from valor.client import ClientConnection, connect, reset_connection
 from valor.enums import TaskType
 from valor.metatypes import Datum
-from valor.schemas import BoundingBox, MultiPolygon, Polygon, Raster
+from valor.schemas import (
+    BoundingBox,
+    BoundingPolygon,
+    MultiPolygon,
+    Point,
+    Polygon,
+    Raster,
+)
 from valor_api import exceptions
 from valor_api.backend import models
 
@@ -49,7 +56,7 @@ def db(connection: ClientConnection) -> Iterator[Session]:
     if len(client.get_datasets()) > 0:
         raise RuntimeError(
             "Tests should be run on an empty valor back end but found existing datasets.",
-            [ds.name for ds in client.get_datasets()],
+            [ds.get_name() for ds in client.get_datasets()],
         )
 
     if len(client.get_models()) > 0:
@@ -78,13 +85,13 @@ def db(connection: ClientConnection) -> Iterator[Session]:
 
     for model in client.get_models():
         try:
-            client.delete_model(model.name, timeout=360)
+            client.delete_model(model.get_name(), timeout=360)
         except exceptions.ModelDoesNotExistError:
             continue
 
     for dataset in client.get_datasets():
         try:
-            client.delete_dataset(dataset.name, timeout=360)
+            client.delete_dataset(dataset.get_name(), timeout=360)
         except exceptions.DatasetDoesNotExistError:
             continue
 
@@ -142,22 +149,21 @@ def img1(
 ) -> Datum:
     coordinates = [
         [
-            [125.2750725, 38.760525],
-            [125.3902365, 38.775069],
-            [125.5054005, 38.789613],
-            [125.5051935, 38.71402425],
-            [125.5049865, 38.6384355],
-            [125.3902005, 38.6244225],
-            [125.2754145, 38.6104095],
-            [125.2752435, 38.68546725],
-            [125.2750725, 38.760525],
+            (125.2750725, 38.760525),
+            (125.3902365, 38.775069),
+            (125.5054005, 38.789613),
+            (125.5051935, 38.71402425),
+            (125.5049865, 38.6384355),
+            (125.3902005, 38.6244225),
+            (125.2754145, 38.6104095),
+            (125.2752435, 38.68546725),
+            (125.2750725, 38.760525),
         ]
     ]
-    geo_dict = {"type": "Polygon", "coordinates": coordinates}
     return Datum(
         uid="uid1",
         metadata={
-            "geospatial": geo_dict,
+            "geospatial": Polygon(coordinates),
             "height": image_height,
             "width": image_width,
         },
@@ -169,12 +175,11 @@ def img2(
     image_height: int,
     image_width: int,
 ) -> Datum:
-    coordinates = [44.1, 22.4]
-    geo_dict = {"type": "Point", "coordinates": coordinates}
+    coordinates = (44.1, 22.4)
     return Datum(
         uid="uid2",
         metadata={
-            "geospatial": geo_dict,
+            "geospatial": Point(coordinates),
             "height": image_height,
             "width": image_width,
         },
@@ -241,27 +246,51 @@ def img9(
 
 
 @pytest.fixture
-def rect1():
+def rect1() -> list[tuple[float, float]]:
     """Box with area = 1500."""
-    return BoundingBox.from_extrema(xmin=10, ymin=10, xmax=60, ymax=40)
+    return [
+        (10, 10),
+        (60, 10),
+        (60, 40),
+        (10, 40),
+        (10, 10),
+    ]
 
 
 @pytest.fixture
-def rect2():
+def rect2() -> list[tuple[float, float]]:
     """Box with area = 1100."""
-    return BoundingBox.from_extrema(xmin=15, ymin=0, xmax=70, ymax=20)
+    return [
+        (15, 0),
+        (70, 0),
+        (70, 20),
+        (15, 20),
+        (15, 0),
+    ]
 
 
 @pytest.fixture
-def rect3():
+def rect3() -> list[tuple[float, float]]:
     """Box with area = 57,510."""
-    return BoundingBox.from_extrema(xmin=87, ymin=10, xmax=158, ymax=820)
+    return [
+        (87, 10),
+        (158, 10),
+        (158, 820),
+        (87, 820),
+        (87, 10),
+    ]
 
 
 @pytest.fixture
-def rect4():
+def rect4() -> list[tuple[float, float]]:
     """Box with area = 90."""
-    return BoundingBox.from_extrema(xmin=1, ymin=10, xmax=10, ymax=20)
+    return [
+        (1, 10),
+        (10, 10),
+        (10, 20),
+        (1, 20),
+        (1, 10),
+    ]
 
 
 """GroundTruths"""
@@ -269,9 +298,9 @@ def rect4():
 
 @pytest.fixture
 def gt_dets1(
-    rect1: BoundingBox,
-    rect2: BoundingBox,
-    rect3: BoundingBox,
+    rect1: list[tuple[float, float]],
+    rect2: list[tuple[float, float]],
+    rect3: list[tuple[float, float]],
     img1: Datum,
     img2: Datum,
 ) -> list[GroundTruth]:
@@ -282,12 +311,12 @@ def gt_dets1(
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k1", value="v1")],
-                    bounding_box=rect1,
+                    bounding_box=BoundingBox([rect1]),
                 ),
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k2", value="v2")],
-                    bounding_box=rect3,
+                    bounding_box=BoundingBox([rect3]),
                 ),
             ],
         ),
@@ -297,7 +326,7 @@ def gt_dets1(
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k1", value="v1")],
-                    bounding_box=rect2,
+                    bounding_box=BoundingBox([rect2]),
                 )
             ],
         ),
@@ -306,9 +335,9 @@ def gt_dets1(
 
 @pytest.fixture
 def gt_dets2(
-    rect1: BoundingBox,
-    rect2: BoundingBox,
-    rect3: BoundingBox,
+    rect1: list[tuple[float, float]],
+    rect2: list[tuple[float, float]],
+    rect3: list[tuple[float, float]],
     img5: Datum,
     img6: Datum,
     img8: Datum,
@@ -320,12 +349,12 @@ def gt_dets2(
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k1", value="v1")],
-                    polygon=Polygon(boundary=rect1.polygon, holes=[]),
+                    polygon=BoundingPolygon([rect1]),
                 ),
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k2", value="v2")],
-                    bounding_box=rect3,
+                    bounding_box=BoundingBox([rect3]),
                 ),
             ],
         ),
@@ -335,7 +364,7 @@ def gt_dets2(
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k1", value="v1")],
-                    polygon=Polygon(boundary=rect2.polygon, holes=[]),
+                    polygon=BoundingPolygon([rect2]),
                 )
             ],
         ),
@@ -345,7 +374,7 @@ def gt_dets2(
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k3", value="v3")],
-                    bounding_box=rect3,
+                    bounding_box=BoundingBox([rect3]),
                 )
             ],
         ),
@@ -356,8 +385,8 @@ def gt_dets2(
 def gt_poly_dets1(
     img1: Datum,
     img2: Datum,
-    rect1: BoundingBox,
-    rect2: BoundingBox,
+    rect1: list[tuple[float, float]],
+    rect2: list[tuple[float, float]],
 ):
     """Same thing as gt_dets1 but represented as a polygon instead of bounding box"""
     return [
@@ -367,7 +396,7 @@ def gt_poly_dets1(
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k1", value="v1")],
-                    polygon=Polygon(boundary=rect1.polygon, holes=[]),
+                    polygon=BoundingPolygon([rect1]),
                 ),
             ],
         ),
@@ -377,7 +406,7 @@ def gt_poly_dets1(
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k1", value="v1")],
-                    polygon=Polygon(boundary=rect2.polygon, holes=[]),
+                    polygon=BoundingPolygon([rect2]),
                 )
             ],
         ),
@@ -386,14 +415,19 @@ def gt_poly_dets1(
 
 @pytest.fixture
 def gt_segs(
-    rect1: BoundingBox,
-    rect2: BoundingBox,
-    rect3: BoundingBox,
+    rect1: list[tuple[float, float]],
+    rect2: list[tuple[float, float]],
+    rect3: list[tuple[float, float]],
     img1: Datum,
     img2: Datum,
     image_height: int,
     image_width: int,
 ) -> list[GroundTruth]:
+
+    multipolygon1 = MultiPolygon([[rect1]])
+    multipolygon31 = MultiPolygon([[rect3], [rect1]])
+    multipolygon2_1 = MultiPolygon([[rect2, rect1]])  # boundary  # hole
+
     return [
         GroundTruth(
             datum=img1,
@@ -402,9 +436,7 @@ def gt_segs(
                     task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k1", value="v1")],
                     raster=Raster.from_geometry(
-                        MultiPolygon(
-                            polygons=[Polygon(boundary=rect1.polygon)]
-                        ),
+                        geometry=multipolygon1,
                         height=image_height,
                         width=image_width,
                     ),
@@ -413,12 +445,7 @@ def gt_segs(
                     task_type=TaskType.SEMANTIC_SEGMENTATION,
                     labels=[Label(key="k2", value="v2")],
                     raster=Raster.from_geometry(
-                        MultiPolygon(
-                            polygons=[
-                                Polygon(boundary=rect3.polygon),
-                                Polygon(boundary=rect1.polygon),
-                            ]
-                        ),
+                        geometry=multipolygon31,
                         height=image_height,
                         width=image_width,
                     ),
@@ -432,14 +459,7 @@ def gt_segs(
                     task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k1", value="v1")],
                     raster=Raster.from_geometry(
-                        MultiPolygon(
-                            polygons=[
-                                Polygon(
-                                    boundary=rect2.polygon,
-                                    holes=[rect1.polygon],
-                                )
-                            ]
-                        ),
+                        geometry=multipolygon2_1,
                         height=image_height,
                         width=image_width,
                     ),
@@ -451,8 +471,8 @@ def gt_segs(
 
 @pytest.fixture
 def gt_semantic_segs1(
-    rect1: BoundingBox,
-    rect3: BoundingBox,
+    rect1: list[tuple[float, float]],
+    rect3: list[tuple[float, float]],
     img1: Datum,
     image_height: int,
     image_width: int,
@@ -466,9 +486,9 @@ def gt_semantic_segs1(
                     labels=[Label(key="k2", value="v2")],
                     raster=Raster.from_geometry(
                         MultiPolygon(
-                            polygons=[
-                                Polygon(boundary=rect3.polygon),
-                                Polygon(boundary=rect1.polygon),
+                            [
+                                [rect3],
+                                [rect1],
                             ]
                         ),
                         height=image_height,
@@ -503,7 +523,7 @@ def gt_semantic_segs1_mask(
 
 @pytest.fixture
 def gt_semantic_segs2(
-    rect3: BoundingBox,
+    rect3: list[tuple[float, float]],
     img2: Datum,
     image_height: int,
     image_width: int,
@@ -517,7 +537,7 @@ def gt_semantic_segs2(
                     labels=[Label(key="k3", value="v3")],
                     raster=Raster.from_geometry(
                         MultiPolygon(
-                            polygons=[Polygon(boundary=rect3.polygon)],
+                            [[rect3]],
                         ),
                         height=image_height,
                         width=image_width,
@@ -617,8 +637,8 @@ def gt_clfs_tabular() -> list[int]:
 @pytest.fixture
 def pred_dets(
     model_name: str,
-    rect1: BoundingBox,
-    rect2: BoundingBox,
+    rect1: list[tuple[float, float]],
+    rect2: list[tuple[float, float]],
     img1: Datum,
     img2: Datum,
 ) -> list[Prediction]:
@@ -629,7 +649,7 @@ def pred_dets(
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k1", value="v1", score=0.3)],
-                    bounding_box=rect1,
+                    bounding_box=BoundingBox([rect1]),
                 )
             ],
         ),
@@ -639,7 +659,7 @@ def pred_dets(
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k2", value="v2", score=0.98)],
-                    bounding_box=rect2,
+                    bounding_box=BoundingBox([rect2]),
                 )
             ],
         ),
@@ -648,8 +668,8 @@ def pred_dets(
 
 @pytest.fixture
 def pred_dets2(
-    rect3: BoundingBox,
-    rect4: BoundingBox,
+    rect3: list[tuple[float, float]],
+    rect4: list[tuple[float, float]],
     img1: Datum,
     img2: Datum,
 ) -> list[Prediction]:
@@ -660,7 +680,7 @@ def pred_dets2(
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k1", value="v1", score=0.7)],
-                    bounding_box=rect3,
+                    bounding_box=BoundingBox([rect3]),
                 )
             ],
         ),
@@ -670,7 +690,7 @@ def pred_dets2(
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k2", value="v2", score=0.98)],
-                    bounding_box=rect4,
+                    bounding_box=BoundingBox([rect4]),
                 )
             ],
         ),
@@ -686,9 +706,12 @@ def pred_poly_dets(pred_dets: list[Prediction]) -> list[Prediction]:
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
                     labels=annotation.labels,
-                    polygon=Polygon(
-                        boundary=annotation.bounding_box.polygon,
-                        holes=[],
+                    polygon=(
+                        BoundingPolygon(
+                            [annotation.bounding_box.polygon.boundary]
+                        )
+                        if annotation.bounding_box.polygon
+                        else None
                     ),
                 )
                 for annotation in det.annotations

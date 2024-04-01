@@ -2,29 +2,36 @@ import datetime
 
 import pytest
 
-from valor import Annotation, Constraint, Dataset, Filter, Label, Model
+from valor import Annotation, Dataset, Filter, Label, Model
 from valor.coretypes import _format_filter
+from valor.schemas import Polygon
+from valor.schemas.filters import Constraint
 
 
 @pytest.fixture
-def geojson() -> dict:
+def polygon() -> Polygon:
     coordinates = [
         [
-            [125.2750725, 38.760525],
-            [125.3902365, 38.775069],
-            [125.5054005, 38.789613],
-            [125.5051935, 38.71402425],
-            [125.5049865, 38.6384355],
-            [125.3902005, 38.6244225],
-            [125.2754145, 38.6104095],
-            [125.2752435, 38.68546725],
-            [125.2750725, 38.760525],
+            (125.2750725, 38.760525),
+            (125.3902365, 38.775069),
+            (125.5054005, 38.789613),
+            (125.5051935, 38.71402425),
+            (125.5049865, 38.6384355),
+            (125.3902005, 38.6244225),
+            (125.2754145, 38.6104095),
+            (125.2752435, 38.68546725),
+            (125.2750725, 38.760525),
         ]
     ]
-    return {"type": "Polygon", "coordinates": coordinates}
+    return Polygon(coordinates)
 
 
-def test__format_filter(geojson):
+@pytest.fixture
+def geojson(polygon: Polygon):
+    return {"type": "Polygon", "coordinates": polygon.get_value()}
+
+
+def test__format_filter(geojson, polygon):
 
     filter_object = Filter(
         dataset_names=["a", "b", "c"],
@@ -34,15 +41,17 @@ def test__format_filter(geojson):
             Constraint(value=1000, operator=">"),
             Constraint(value=5000, operator="<"),
         ],
+        raster_area=[
+            Constraint(value=100, operator=">"),
+            Constraint(value=500, operator="<"),
+        ],
         dataset_metadata={
             "some_str": [Constraint(value="foobar", operator="==")],
             "some_float": [Constraint(value=0.123, operator=">=")],
             "some_datetime": [
                 Constraint(
                     value={
-                        "duration": str(
-                            datetime.timedelta(days=1).total_seconds()
-                        )
+                        "duration": datetime.timedelta(days=1).total_seconds()
                     },
                     operator=">",
                 )
@@ -56,17 +65,18 @@ def test__format_filter(geojson):
         },
     )
 
-    filter_from_constraints = _format_filter(
+    filter_from_constraints = Filter.create(
         [
-            Dataset.name.in_(["a", "b", "c"]),  # type: ignore - filter type error
-            Model.name.in_(["x", "y", "z"]),  # type: ignore - filter type error
-            Label.score > 0.75,  # type: ignore - filter type error
-            Annotation.polygon.area > 1000,  # type: ignore - filter type error
-            Annotation.polygon.area < 5000,  # type: ignore - filter type error
-            Dataset.metadata["some_str"] == "foobar",  # type: ignore - filter type error
-            Dataset.metadata["some_float"] >= 0.123,  # type: ignore - filter type error
-            Dataset.metadata["some_datetime"] > datetime.timedelta(days=1),  # type: ignore - filter type error
-            Dataset.metadata["some_geospatial"].intersect(geojson),  # type: ignore - filter type error
+            Dataset.name.in_(["a", "b", "c"]),
+            (Model.name == "x") | Model.name.in_(["y", "z"]),
+            Label.score > 0.75,
+            Annotation.polygon.area > 1000,
+            Annotation.polygon.area < 5000,
+            (Annotation.raster.area > 100) & (Annotation.raster.area < 500),
+            Dataset.metadata["some_str"] == "foobar",
+            Dataset.metadata["some_float"] >= 0.123,
+            Dataset.metadata["some_datetime"] > datetime.timedelta(days=1),
+            Dataset.metadata["some_geospatial"].intersects(polygon),
         ]
     )
 
@@ -79,15 +89,19 @@ def test__format_filter(geojson):
                 {"value": 1000, "operator": ">"},
                 {"value": 5000, "operator": "<"},
             ],
+            "raster_area": [
+                {"value": 100, "operator": ">"},
+                {"value": 500, "operator": "<"},
+            ],
             "dataset_metadata": {
                 "some_str": [{"value": "foobar", "operator": "=="}],
                 "some_float": [{"value": 0.123, "operator": ">="}],
                 "some_datetime": [
                     {
                         "value": {
-                            "duration": str(
-                                datetime.timedelta(days=1).total_seconds()
-                            )
+                            "duration": datetime.timedelta(
+                                days=1
+                            ).total_seconds()
                         },
                         "operator": ">",
                     }

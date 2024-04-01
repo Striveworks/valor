@@ -19,7 +19,7 @@ def parse_detection_into_bounding_box(
     bboxes = [numpy.asarray(box.cpu()) for box in result.boxes.xyxy]
 
     # validate dimensions
-    image_metadata = ImageMetadata.from_datum(datum)
+    image_metadata = ImageMetadata(datum)
     if image_metadata.height != result.orig_shape[0]:
         raise RuntimeError
     if image_metadata.width != result.orig_shape[1]:
@@ -92,7 +92,7 @@ def parse_detection_into_raster(
     masks = [mask for mask in result.masks.data]
 
     # validate dimensions
-    image_metadata = ImageMetadata.from_datum(datum)
+    image_metadata = ImageMetadata(datum)
     if image_metadata.height != result.orig_shape[0]:
         raise RuntimeError
     if image_metadata.width != result.orig_shape[1]:

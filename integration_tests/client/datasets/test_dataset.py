@@ -156,22 +156,22 @@ def test_create_image_dataset_with_segmentations(
 
     gt = dataset.get_groundtruth("uid1")
     assert gt
-    image = ImageMetadata.from_datum(gt.datum)
+    image = ImageMetadata(gt.datum)
     segs = gt.annotations
 
     instance_segs = []
     semantic_segs = []
     for seg in segs:
         assert isinstance(seg, Annotation)
-        if seg.task_type == TaskType.OBJECT_DETECTION:
+        if seg.task_type.get_value() == TaskType.OBJECT_DETECTION:
             instance_segs.append(seg)
-        elif seg.task_type == TaskType.SEMANTIC_SEGMENTATION:
+        elif seg.task_type.get_value() == TaskType.SEMANTIC_SEGMENTATION:
             semantic_segs.append(seg)
 
     # should have one instance segmentation that's a rectangle
     # with xmin, ymin, xmax, ymax = 10, 10, 60, 40
     assert len(instance_segs) == 1
-    mask = instance_segs[0].raster.to_numpy()
+    mask = instance_segs[0].raster.array
     # check get all True in the box
     assert mask[10:40, 10:60].all()
     # check that outside the box is all False
@@ -183,7 +183,7 @@ def test_create_image_dataset_with_segmentations(
     # with xmin, ymin, xmax, ymax = 10, 10, 60, 40 plus a rectangle
     # with xmin, ymin, xmax, ymax = 87, 10, 158, 820
     assert len(semantic_segs) == 1
-    mask = semantic_segs[0].raster.to_numpy()
+    mask = semantic_segs[0].raster.array
     assert mask[10:40, 10:60].all()
     assert mask[10:820, 87:158].all()
     assert mask.sum() == (40 - 10) * (60 - 10) + (820 - 10) * (158 - 87)
@@ -381,7 +381,7 @@ def test_get_summary(
         TaskType.SEMANTIC_SEGMENTATION,
     ]
 
-    summary.labels.sort(key=lambda x: x.key)
+    summary.labels.sort(key=lambda x: x.key.get_value())
     assert summary.labels == [
         Label(key="k1", value="v1"),
         Label(key="k2", value="v2"),
@@ -393,7 +393,7 @@ def test_get_summary(
         "width": 300,
         "geospatial": {
             "geojson": {
-                "type": "Polygon",
+                "type": "polygon",
                 "coordinates": [
                     [
                         [125.2750725, 38.760525],
@@ -414,7 +414,7 @@ def test_get_summary(
         "height": image_height,
         "width": image_width,
         "geospatial": {
-            "geojson": {"coordinates": [44.1, 22.4], "type": "Point"}
+            "geojson": {"coordinates": [44.1, 22.4], "type": "point"}
         },
     } in summary.datum_metadata  # uid2
 
@@ -424,6 +424,3 @@ def test_get_summary(
 def test_validate_dataset(client: Client, dataset_name: str):
     with pytest.raises(TypeError):
         Dataset.create(name=123)  # type: ignore
-
-    with pytest.raises(TypeError):
-        Dataset.create(name=dataset_name, id="not an int")  # type: ignore

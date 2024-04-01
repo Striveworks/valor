@@ -1,3 +1,4 @@
+import datetime
 from typing import Optional
 from unittest.mock import Mock
 
@@ -51,6 +52,9 @@ def test_to_dataframe():
             ),
         ],
         confusion_matrices=[],
+        created_at=datetime.datetime(
+            year=2024, month=1, day=1, microsecond=1
+        ).strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
         connection=Mock(),
     ).to_dataframe()
 

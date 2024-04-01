@@ -1,6 +1,6 @@
 import numpy as np
 
-from valor.typing import is_float, is_numeric
+from valor.type_checks import is_float, is_numeric
 
 
 def test_is_numeric():

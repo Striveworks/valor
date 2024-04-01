@@ -1,8 +1,233 @@
 from dataclasses import dataclass
-from typing import Dict, Iterable, Iterator, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 from valor.enums import TaskType
-from valor.schemas.constraints import BinaryExpression, Constraint
+from valor.schemas.symbolic.operators import (
+    And,
+    AppendableFunction,
+    Function,
+    Inside,
+    Intersects,
+    IsNotNull,
+    IsNull,
+    Negate,
+    OneArgumentFunction,
+    Or,
+    Outside,
+    TwoArgumentFunction,
+    Xor,
+)
+from valor.schemas.symbolic.types import (
+    Date,
+    DateTime,
+    Duration,
+    LineString,
+    MultiLineString,
+    MultiPoint,
+    MultiPolygon,
+    Point,
+    Polygon,
+    Time,
+    Variable,
+)
+
+
+@dataclass
+class Constraint:
+    """
+    Represents a constraint with a value and an operator.
+
+    Attributes:
+        value : Any
+            The value associated with the constraint.
+        operator : str
+            The operator used to define the constraint.
+    """
+
+    value: Any
+    operator: str
+
+
+def _convert_symbol_to_attribute_name(symbol_name):
+    map_sym_to_attr = {
+        "dataset.name": "dataset_names",
+        "dataset.metadata": "dataset_metadata",
+        "model.name": "model_names",
+        "model.metadata": "model_metadata",
+        "datum.uid": "datum_uids",
+        "datum.metadata": "datum_metadata",
+        "annotation.task_type": "task_types",
+        "annotation.metadata": "annotation_metadata",
+        "annotation.box": "require_bounding_box",
+        "annotation.box.area": "bounding_box_area",
+        "annotation.polygon": "require_polygon",
+        "annotation.polygon.area": "polygon_area",
+        "annotation.raster": "require_raster",
+        "annotation.raster.area": "raster_area",
+        "annotation.labels": "labels",
+        "label.id": "label_ids",
+        "label.key": "label_keys",
+        "label.score": "label_scores",
+    }
+    return map_sym_to_attr[symbol_name]
+
+
+def _convert_expression_to_constraint(expr: Function):
+    # extract value
+    if isinstance(expr, TwoArgumentFunction):
+        variable = expr.rhs
+        if isinstance(
+            variable,
+            (
+                Point,
+                MultiPoint,
+                LineString,
+                MultiLineString,
+                Polygon,
+                MultiPolygon,
+            ),
+        ):
+            value = {
+                "type": type(variable).__name__.capitalize(),
+                "coordinates": variable.get_value(),
+            }
+        elif isinstance(variable, (DateTime, Date, Time, Duration)):
+            value = {type(variable).__name__.lower(): variable.encode_value()}
+        else:
+            value = variable.encode_value()
+    else:
+        value = None
+
+    # extract operator
+    if hasattr(expr, "_operator") and expr._operator is not None:
+        op = expr._operator
+    elif isinstance(expr, Inside):
+        op = "inside"
+    elif isinstance(expr, Intersects):
+        op = "intersect"
+    elif isinstance(expr, Outside):
+        op = "outside"
+    elif isinstance(expr, IsNotNull):
+        op = "exists"
+    elif isinstance(expr, IsNull):
+        op = "is_none"
+    else:
+        raise NotImplementedError(
+            f"Function '{type(expr)}' has not been implemented by the API."
+        )
+
+    return Constraint(value=value, operator=op)
+
+
+def _scan_one_arg_function(fn: OneArgumentFunction):
+    if not fn.arg.is_symbolic:
+        raise ValueError(
+            "Single argument functions should take a symbol as input."
+        )
+
+
+def _scan_two_arg_function(fn: TwoArgumentFunction):
+    if not isinstance(fn.lhs, Variable) or not isinstance(fn.rhs, Variable):
+        raise ValueError("Nested arguments are currently unsupported.")
+    elif not fn.lhs.is_symbolic:
+        raise ValueError(
+            f"Values on the lhs of an operator are currently unsupported. {fn.lhs}"
+        )
+    elif not fn.rhs.is_value:
+        raise ValueError(
+            f"Symbols on the rhs of an operator are currently unsupported. {fn.rhs}"
+        )
+
+
+def _scan_appendable_function(fn: AppendableFunction):
+    if not isinstance(fn, (And, Or)):
+        raise ValueError(
+            f"Operation '{type(fn)}' is currently unsupported by the API."
+        )
+
+    symbols = set()
+    for arg in fn._args:
+        if not isinstance(fn, Function):
+            raise ValueError(
+                f"Expected a function but received value with type '{type(fn)}'"
+            )
+
+        # scan for nested logic
+        if isinstance(arg, (Or, And, Xor, Negate)):
+            raise NotImplementedError
+
+        # scan for symbol/value positioning
+        if isinstance(arg, OneArgumentFunction):
+            _scan_one_arg_function(arg)
+        elif isinstance(arg, TwoArgumentFunction):
+            _scan_two_arg_function(arg)
+
+        symbols.add(arg._args[0].get_symbol())
+
+    # check that only one symbol was defined per statement
+    if len(symbols) > 1:
+        raise ValueError(
+            f"Defining more than one variable per statement is currently unsupported. {symbols}"
+        )
+    symbol = list(symbols)[0]
+
+    # check that symbol is compatible with the logical operation
+    if isinstance(fn, And) and not (
+        symbol._name in Filter._supports_and()
+        or symbol._attribute in Filter._supports_and()
+    ):
+        raise ValueError(
+            f"Symbol '{str(symbol)}' currently does not support the 'AND' operation."
+        )
+    elif isinstance(fn, Or) and not (
+        symbol._name in Filter._supports_or()
+        or symbol._attribute in Filter._supports_or()
+    ):
+        raise ValueError(
+            f"Symbol '{str(symbol)}' currently does not support the 'AND' operation."
+        )
+
+
+def _parse_listed_expressions(flist):
+    expressions = {}
+    for row in flist:
+        if not isinstance(row, Function):
+            raise ValueError(
+                f"Expected a function but received value with type '{type(row)}'"
+            )
+        elif isinstance(row, AppendableFunction):
+            _scan_appendable_function(row)
+            symbol = row._args[0]._args[0].get_symbol()
+            constraints = [
+                _convert_expression_to_constraint(arg) for arg in row._args
+            ]
+        elif isinstance(row, TwoArgumentFunction):
+            _scan_two_arg_function(row)
+            symbol = row.lhs.get_symbol()
+            constraints = [_convert_expression_to_constraint(row)]
+        elif isinstance(row, OneArgumentFunction):
+            _scan_one_arg_function(row)
+            symbol = row.arg.get_symbol()
+            constraints = [_convert_expression_to_constraint(row)]
+        else:
+            raise NotImplementedError
+
+        symbol_name = f"{symbol._owner}.{symbol._name}"
+        if symbol._attribute:
+            symbol_name += f".{symbol._attribute}"
+        attribute_name = _convert_symbol_to_attribute_name(symbol_name)
+        if symbol._key:
+            if attribute_name not in expressions:
+                expressions[attribute_name] = dict()
+            if symbol._key not in expressions[attribute_name]:
+                expressions[attribute_name][symbol._key] = list()
+            expressions[attribute_name][symbol._key] += constraints
+        else:
+            if attribute_name not in expressions:
+                expressions[attribute_name] = list()
+            expressions[attribute_name] += constraints
+
+    return expressions
 
 
 @dataclass
@@ -87,6 +312,24 @@ class Filter:
     label_keys: Optional[List[str]] = None
     label_scores: Optional[List[Constraint]] = None
 
+    @staticmethod
+    def _supports_and():
+        return {
+            "area",
+            "score",
+            "metadata",
+        }
+
+    @staticmethod
+    def _supports_or():
+        return {
+            "name",
+            "uid",
+            "task_type",
+            "labels",
+            "keys",
+        }
+
     def __post_init__(self):
         def _unpack_metadata(metadata: Optional[dict]) -> Union[dict, None]:
             if metadata is None:
@@ -139,9 +382,7 @@ class Filter:
         self.label_scores = _unpack_list(self.label_scores, Constraint)
 
     @classmethod
-    def create(
-        cls, expressions: List[Union[BinaryExpression, List[BinaryExpression]]]
-    ):
+    def create(cls, expressions: List[Any]):
         """
         Parses a list of `BinaryExpression` to create a `schemas.Filter` object.
 
@@ -151,22 +392,7 @@ class Filter:
             A list of (lists of) `BinaryExpressions' to parse into a `Filter` object.
         """
 
-        def flatten(
-            t: Iterable[Union[BinaryExpression, Iterable[BinaryExpression]]]
-        ) -> Iterator[BinaryExpression]:
-            """Flatten a nested iterable of BinaryExpressions."""
-            for item in t:
-                if isinstance(item, BinaryExpression):
-                    yield item
-                else:
-                    yield from flatten(item)
-
-        # create dict using expr names as keys
-        expression_dict = {}
-        for expr in flatten(expressions):
-            if expr.name not in expression_dict:
-                expression_dict[expr.name] = []
-            expression_dict[expr.name].append(expr)
+        constraints = _parse_listed_expressions(expressions)
 
         # create filter
         filter_request = cls()
@@ -177,30 +403,13 @@ class Filter:
             "model_metadata",
             "datum_metadata",
             "annotation_metadata",
-        ]:
-            if attr in expression_dict:
-                for expr in expression_dict[attr]:
-                    if not getattr(filter_request, attr):
-                        setattr(filter_request, attr, {})
-                    __value = getattr(filter_request, attr)
-                    if expr.key not in __value:
-                        __value[expr.key] = []
-                    __value[expr.key].append(expr.constraint)
-                    setattr(filter_request, attr, __value)
-
-        # numeric constraints
-        for attr in [
             "bounding_box_area",
             "polygon_area",
             "raster_area",
             "label_scores",
         ]:
-            if attr in expression_dict:
-                setattr(
-                    filter_request,
-                    attr,
-                    [expr.constraint for expr in expression_dict[attr]],
-                )
+            if attr in constraints:
+                setattr(filter_request, attr, constraints[attr])
 
         # boolean constraints
         for attr in [
@@ -208,11 +417,11 @@ class Filter:
             "require_polygon",
             "require_raster",
         ]:
-            if attr in expression_dict:
-                for expr in expression_dict[attr]:
-                    if expr.constraint.operator == "exists":
+            if attr in constraints:
+                for constraint in constraints[attr]:
+                    if constraint.operator == "exists":
                         setattr(filter_request, attr, True)
-                    elif expr.constraint.operator == "is_none":
+                    elif constraint.operator == "is_none":
                         setattr(filter_request, attr, False)
 
         # equality constraints
@@ -221,14 +430,25 @@ class Filter:
             "model_names",
             "datum_uids",
             "task_types",
-            "labels",
             "label_keys",
         ]:
-            if attr in expression_dict:
+            if attr in constraints:
                 setattr(
                     filter_request,
                     attr,
-                    [expr.constraint.value for expr in expression_dict[attr]],
+                    [expr.value for expr in constraints[attr]],
                 )
+
+        # edge case - label list
+        if "labels" in constraints:
+            setattr(
+                filter_request,
+                "labels",
+                [
+                    {label["key"]: label["value"]}
+                    for labels in constraints["labels"]
+                    for label in labels.value
+                ],
+            )
 
         return filter_request
