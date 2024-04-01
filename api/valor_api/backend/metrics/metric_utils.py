@@ -294,8 +294,10 @@ def validate_computation(fn: Callable) -> Callable:
             core.set_evaluation_status(
                 db, evaluation_id, enums.EvaluationStatus.FAILED
             )
-            logger.info(
-                f"Evaluation `{evaluation_id}` failed with error: {str(e)}"
+            logger.error(
+                "Valor Evaluation Exception",
+                method=fn.__name__,
+                exc_info=e,
             )
             raise e
         core.set_evaluation_status(

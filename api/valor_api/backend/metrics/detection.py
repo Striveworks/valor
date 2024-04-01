@@ -868,10 +868,18 @@ def compute_detection_metrics(*, db: Session, evaluation_id: int):
         .all()
     )
     model = (
-        db.query(Query(models.Model).filter(prediction_filter).any())  # type: ignore - SQLAlchemy type issue
-        .distinct()
+        db.query(models.Model)
+        .where(models.Model.name == evaluation.model_name)
         .one_or_none()
     )
+
+    # verify
+    if not datasets:
+        raise RuntimeError("No datasets returned by datum filter.")
+    if model is None:
+        raise RuntimeError(
+            f"Referenced model '{evaluation.model_name}' does not exist."
+        )
 
     # ensure that all annotations have a common type to operate over
     target_type = _convert_annotations_to_common_type(
