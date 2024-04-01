@@ -76,7 +76,7 @@ def test_evaluate_segmentation_with_filter(
     eval_job = model.evaluate_segmentation(
         dataset,
         filter_by=[
-            color == "red",  # type: ignore - filter type error
+            color == "red",
         ],
     )
     assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE

@@ -25,17 +25,15 @@ from valor import (
 )
 from valor.enums import TaskType
 from valor.exceptions import ClientException
-from valor.metatypes import ImageMetadata
-from valor.schemas import Point
 from valor_api.backend import models
 
 
 def _list_of_points_from_wkt_polygon(
     db: Session, det: models.Annotation
-) -> list[Point]:
+) -> list[tuple[float, float]]:
     geo = json.loads(db.scalar(det.polygon.ST_AsGeoJSON()) or "")
     assert len(geo["coordinates"]) == 1
-    return [Point(p[0], p[1]) for p in geo["coordinates"][0][:-1]]
+    return [(p[0], p[1]) for p in geo["coordinates"][0]]
 
 
 def _test_create_model_with_preds(
@@ -187,7 +185,7 @@ def test_create_image_model_with_predicted_detections(
     for pd in pred_poly_dets:
         for ann in pd.annotations:
             assert ann.polygon is not None
-            fx_point_lists.append(ann.polygon.boundary.points)
+            fx_point_lists.append(ann.polygon.boundary)
 
     # check boundary
     for fx_points in fx_point_lists:
@@ -237,7 +235,7 @@ def test_create_model_with_predicted_segmentations(
     mask_array = np.array(PIL.Image.open(f))
     assert pred_instance_segs[0].annotations[0].raster is not None
     np.testing.assert_equal(
-        mask_array, pred_instance_segs[0].annotations[0].raster.to_numpy()
+        mask_array, pred_instance_segs[0].annotations[0].raster.array
     )
 
     # test raster 2
@@ -246,7 +244,7 @@ def test_create_model_with_predicted_segmentations(
     mask_array = np.array(PIL.Image.open(f))
     assert pred_instance_segs[1].annotations[0].raster is not None
     np.testing.assert_equal(
-        mask_array, pred_instance_segs[1].annotations[0].raster.to_numpy()
+        mask_array, pred_instance_segs[1].annotations[0].raster.array
     )
 
 
@@ -367,35 +365,11 @@ def test_add_prediction(
     client: Client,
     gt_dets1: list[GroundTruth],
     pred_dets: list[Prediction],
-    img1: ImageMetadata,
+    img1: Datum,
     model_name: str,
     dataset_name: str,
     db: Session,
 ):
-    img1 = ImageMetadata(
-        uid="uid1",
-        height=900,
-        width=300,
-        metadata={
-            "geospatial": {
-                "type": "Polygon",
-                "coordinates": [
-                    [
-                        [125.2750725, 38.760525],
-                        [125.3902365, 38.775069],
-                        [125.5054005, 38.789613],
-                        [125.5051935, 38.71402425],
-                        [125.5049865, 38.6384355],
-                        [125.3902005, 38.6244225],
-                        [125.2754145, 38.6104095],
-                        [125.2752435, 38.68546725],
-                        [125.2750725, 38.760525],
-                    ]
-                ],
-            },
-        },
-    )
-
     dataset = Dataset.create(dataset_name)
     for gt in gt_dets1:
         dataset.add_groundtruth(gt)
@@ -418,7 +392,7 @@ def test_add_prediction(
     model.finalize_inferences(dataset)
 
     # test get predictions
-    pred = model.get_prediction(dataset, img1.to_datum())
+    pred = model.get_prediction(dataset, img1)
     assert pred
     assert pred.annotations == pred_dets[0].annotations
 
@@ -429,7 +403,7 @@ def test_add_empty_prediction(
     client: Client,
     gt_dets1: list[GroundTruth],
     pred_dets: list[Prediction],
-    img1: ImageMetadata,
+    img1: Datum,
     model_name: str,
     dataset_name: str,
     db: Session,
@@ -481,7 +455,7 @@ def test_add_skipped_prediction(
     client: Client,
     gt_dets1: list[GroundTruth],
     pred_dets: list[Prediction],
-    img1: ImageMetadata,
+    img1: Datum,
     model_name: str,
     dataset_name: str,
     db: Session,
@@ -517,9 +491,6 @@ def test_add_skipped_prediction(
 def test_validate_model(client: Client, model_name: str):
     with pytest.raises(TypeError):
         Model.create(name=123)  # type: ignore
-
-    with pytest.raises(TypeError):
-        Model.create(name=model_name, id="not an int")  # type: ignore
 
 
 def test_get_prediction(client: Client, model_name: str, dataset_name: str):

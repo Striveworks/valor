@@ -12,23 +12,19 @@ except importlib_metadata.PackageNotFoundError:
 
 from .client import ClientConnection, connect
 from .coretypes import (
-    Annotation,
     Client,
     Dataset,
-    Datum,
     Evaluation,
     GroundTruth,
-    Label,
     Model,
     Prediction,
 )
-from .schemas import Constraint, Filter
+from .schemas import Annotation, Datum, Filter, Label
 
 __all__ = [
     "connect",
     "Client",
     "ClientConnection",
-    "Label",
     "Evaluation",
     "Dataset",
     "Model",
@@ -37,5 +33,5 @@ __all__ = [
     "GroundTruth",
     "Prediction",
     "Filter",
-    "Constraint",
+    "Label",
 ]

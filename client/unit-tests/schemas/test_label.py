@@ -8,14 +8,11 @@ def test_label():
     # valid
     l1 = Label(key="test", value="value")
 
-    # test `__post_init__`
-    with pytest.raises(TypeError) as e:
-        Label(key=123, value="123")  # type: ignore
-
-    assert "str" in str(e)
-    with pytest.raises(TypeError) as e:
-        Label(key="123", value=123)  # type: ignore
-    assert "str" in str(e)
+    # test validation
+    with pytest.raises(TypeError):
+        assert Label(key=123, value="123")
+    with pytest.raises(TypeError):
+        assert Label(key="123", value=123)
 
     # test member fn `tuple`
     assert l1.tuple() == ("test", "value", None)
@@ -23,6 +20,10 @@ def test_label():
     # test member fn `__eq__`
     l2 = Label(key="test", value="value")
     assert l1 == l2
+
+    # test member fn `__ne__`
+    l3 = Label(key="test", value="other")
+    assert l1 != l3
 
     # test member fn `__hash__`
     assert l1.__hash__() == l2.__hash__()
@@ -39,11 +40,9 @@ def test_scored_label():
     s5 = Label(key="other", value="value", score=0.5)
     s6 = Label(key="test", value="value", score=np.float32(0.5))
 
-    # test `__post_init__`
-
-    with pytest.raises(TypeError) as e:
-        Label(key="k", value="v", score="boo")  # type: ignore
-    assert "float" in str(e)
+    # test validation
+    with pytest.raises(TypeError):
+        assert Label(key="k", value="v", score="boo")  # type: ignore
 
     # test property `key`
     assert l1.key == "test"
@@ -52,21 +51,25 @@ def test_scored_label():
     assert l1.value == "value"
 
     # test member fn `__eq__`
-    assert s1 == s2
-    assert s1 == s6
-    assert not s1 == s3
-    assert not s1 == s4
-    assert not s1 == s5
-    assert not s1 == 123
-    assert not s1 == "123"
+    assert (s1 == s2).get_value()  # type: ignore - resolved to 'Bool' as both sides are values
+    assert (s1 == s6).get_value()  # type: ignore - resolved to 'Bool' as both sides are values
+    assert not (s1 == s3).get_value()  # type: ignore - resolved to 'Bool' as both sides are values
+    assert not (s1 == s4).get_value()  # type: ignore - resolved to 'Bool' as both sides are values
+    assert not (s1 == s5).get_value()  # type: ignore - resolved to 'Bool' as both sides are values
+    with pytest.raises(TypeError):
+        assert s1 == 123
+    with pytest.raises(TypeError):
+        assert s1 == "123"
 
-    # test member fn `__eq__`
-    assert not s1 != s2
-    assert s1 != s3
-    assert s1 != s4
-    assert s1 != s5
-    assert s1 != 123
-    assert s1 != "123"
+    # test member fn `__ne__`
+    assert not (s1 != s2).get_value()  # type: ignore - resolved to 'Bool' as both sides are values
+    assert (s1 != s3).get_value()  # type: ignore - resolved to 'Bool' as both sides are values
+    assert (s1 != s4).get_value()  # type: ignore - resolved to 'Bool' as both sides are values
+    assert (s1 != s5).get_value()  # type: ignore - resolved to 'Bool' as both sides are values
+    with pytest.raises(TypeError):
+        assert s1 != 123
+    with pytest.raises(TypeError):
+        assert s1 != "123"
 
     # test member fn `__hash__`
     assert s1.__hash__() == s2.__hash__()

@@ -1,6 +1,5 @@
 import io
 import random
-from base64 import b64decode
 from dataclasses import asdict
 from typing import cast
 
@@ -118,11 +117,11 @@ def _generate_ground_truth(
     """Generate a GroundTruth for an image with the given number of annotations and labels"""
 
     image_metadata = _generate_image_metadata(unique_id=unique_image_id)
-    image_datum = ImageMetadata(
+    image_datum = ImageMetadata.create(
         uid=image_metadata["uid"],
         height=image_metadata["height"],
         width=image_metadata["width"],
-    ).to_datum()
+    ).datum
 
     unique_label_ids = list(range(n_annotations * n_labels))
 
@@ -279,8 +278,8 @@ def generate_prediction_data(
     datums = dataset.get_datums()
 
     for datum in datums:
-        height = cast(int, datum.metadata["height"])
-        width = cast(int, datum.metadata["width"])
+        height = cast(int, datum.metadata["height"].get_value())
+        width = cast(int, datum.metadata["width"].get_value())
         prediction = _generate_prediction(
             datum=datum,
             height=int(height),
@@ -322,17 +321,17 @@ def test_generate_segmentation_data(
     ), "Number of images doesn't match the test input"
 
     for image in dataset.get_datums():
-        uid = image.uid
+        uid = image.get_uid()
         sample_gt = dataset.get_groundtruth(uid)
 
         assert sample_gt
         sample_annotations = sample_gt.annotations
-        assert sample_annotations[0].raster is not None
-        sample_mask_size = _mask_bytes_to_pil(
-            b64decode(sample_annotations[0].raster.mask)
+        assert sample_annotations[0].raster.get_value() is not None
+        sample_mask_size = Image.fromarray(
+            sample_annotations[0].raster.array
         ).size
 
-        sample_image = ImageMetadata.from_datum(sample_gt.datum)
+        sample_image = ImageMetadata(sample_gt.datum)
         sample_image_size = (sample_image.width, sample_image.height)
 
         assert (
@@ -376,7 +375,7 @@ def test_generate_prediction_data(client: Client):
         dataset,
         iou_thresholds_to_compute=[0.1, 0.9],
         iou_thresholds_to_return=[0.1, 0.9],
-        filter_by=[Label.key == "k1"],  # type: ignore - filter type issue
+        filter_by=[Label.key == "k1"],
         convert_annotations_to_type=AnnotationType.BOX,
     )
     assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE

@@ -4,16 +4,9 @@ that is no auth
 
 import pytest
 
-from valor import (
-    Client,
-    Constraint,
-    Dataset,
-    Datum,
-    GroundTruth,
-    Model,
-    Prediction,
-)
+from valor import Client, Dataset, Datum, GroundTruth, Model, Prediction
 from valor.enums import EvaluationStatus
+from valor.schemas import Constraint, Polygon
 
 
 def test_set_and_get_geospatial(
@@ -24,53 +17,60 @@ def test_set_and_get_geospatial(
 ):
     coordinates = [
         [
-            [125.2750725, 38.760525],
-            [125.3902365, 38.775069],
-            [125.5054005, 38.789613],
-            [125.5051935, 38.71402425],
-            [125.5049865, 38.6384355],
-            [125.3902005, 38.6244225],
-            [125.2754145, 38.6104095],
-            [125.2752435, 38.68546725],
-            [125.2750725, 38.760525],
+            (125.2750725, 38.760525),
+            (125.3902365, 38.775069),
+            (125.5054005, 38.789613),
+            (125.5051935, 38.71402425),
+            (125.5049865, 38.6384355),
+            (125.3902005, 38.6244225),
+            (125.2754145, 38.6104095),
+            (125.2752435, 38.68546725),
+            (125.2750725, 38.760525),
         ]
     ]
-    geo_dict = {"type": "Polygon", "coordinates": coordinates}
 
     dataset = Dataset.create(
         name=dataset_name,
-        metadata={"geospatial": geo_dict},
+        metadata={"geospatial": Polygon(coordinates)},
     )
 
     # check Dataset's geospatial coordinates
     fetched_datasets = client.get_datasets()
-    assert fetched_datasets[0].metadata["geospatial"] == geo_dict
+    assert (
+        fetched_datasets[0].metadata["geospatial"].get_value() == coordinates
+    )
 
     # check Model's geospatial coordinates
     Model.create(
         name=model_name,
-        metadata={"geospatial": geo_dict},
+        metadata={"geospatial": Polygon(coordinates)},
     )
 
     fetched_models = client.get_models()
-    assert fetched_models[0].metadata["geospatial"] == geo_dict
+    assert fetched_models[0].metadata["geospatial"].get_value() == coordinates
 
     # check Datums's geospatial coordinates
     for gt in gt_dets1:
         dataset.add_groundtruth(gt)
     dataset.finalize()
 
-    expected_coords = [gt.datum.metadata["geospatial"] for gt in gt_dets1]
+    expected_coords = [
+        gt.datum.metadata["geospatial"].get_value() for gt in gt_dets1
+    ]
 
-    returned_datum1 = dataset.get_datums()[0].metadata["geospatial"]
-    returned_datum2 = dataset.get_datums()[1].metadata["geospatial"]
+    returned_datum1 = (
+        dataset.get_datums()[0].metadata["geospatial"].get_value()
+    )
+    returned_datum2 = (
+        dataset.get_datums()[1].metadata["geospatial"].get_value()
+    )
 
     assert expected_coords[0] == returned_datum1
     assert expected_coords[1] == returned_datum2
 
     dets1 = dataset.get_groundtruth("uid1")
     assert dets1
-    assert dets1.datum.metadata["geospatial"] == expected_coords[0]
+    assert dets1.datum.metadata["geospatial"].get_value() == expected_coords[0]
 
 
 def test_geospatial_filter(
@@ -82,30 +82,37 @@ def test_geospatial_filter(
 ):
     coordinates = [
         [
-            [125.2750725, 38.760525],
-            [125.3902365, 38.775069],
-            [125.5054005, 38.789613],
-            [125.5051935, 38.71402425],
-            [125.5049865, 38.6384355],
-            [125.3902005, 38.6244225],
-            [125.2754145, 38.6104095],
-            [125.2752435, 38.68546725],
-            [125.2750725, 38.760525],
+            (125.2750725, 38.760525),
+            (125.3902365, 38.775069),
+            (125.5054005, 38.789613),
+            (125.5051935, 38.71402425),
+            (125.5049865, 38.6384355),
+            (125.3902005, 38.6244225),
+            (125.2754145, 38.6104095),
+            (125.2752435, 38.68546725),
+            (125.2750725, 38.760525),
         ]
     ]
-    geo_dict = {"type": "Polygon", "coordinates": coordinates}
+    geodict = {
+        "type": "Polygon",
+        "coordinates": [
+            [list(point) for point in subpoly] for subpoly in coordinates
+        ],
+    }
 
     dataset = Dataset.create(
-        name=dataset_name, metadata={"geospatial": geo_dict}
+        name=dataset_name, metadata={"geospatial": Polygon(coordinates)}
     )
     for gt in gt_dets1:
-        gt.datum.metadata["geospatial"] = geo_dict
+        gt.datum.metadata["geospatial"] = Polygon(coordinates)
         dataset.add_groundtruth(gt)
     dataset.finalize()
 
-    model = Model.create(name=model_name, metadata={"geospatial": geo_dict})
+    model = Model.create(
+        name=model_name, metadata={"geospatial": Polygon(coordinates)}
+    )
     for pd in pred_dets:
-        gt.datum.metadata["geospatial"] = geo_dict  # type: ignore - __setitem__ possibly unbound; shouldn't matter in this case
+        pd.datum.metadata["geospatial"] = Polygon(coordinates)
         model.add_prediction(dataset, pd)
     model.finalize_inferences(dataset)
 
@@ -118,7 +125,7 @@ def test_geospatial_filter(
                 "geospatial": [
                     {
                         "operator": "intersect",
-                        "value": geo_dict,
+                        "value": geodict,
                     }
                 ],
             }
@@ -129,28 +136,28 @@ def test_geospatial_filter(
 
     # passing in an incorrectly-formatted geojson dict should return a ValueError
     geospatial_metadata = Datum.metadata["geospatial"]
-    with pytest.raises(NotImplementedError) as e:
+    with pytest.raises(NotImplementedError):
         model.evaluate_detection(
             dataset,
             iou_thresholds_to_compute=[0.1, 0.6],
             iou_thresholds_to_return=[0.1, 0.6],
             filter_by=[
-                geospatial_metadata.inside({"incorrectly_formatted_dict": {}})  # type: ignore - filter type error
+                geospatial_metadata.inside({"incorrectly_formatted_dict": {}})
             ],
         )
-    assert "is not supported" in str(e)
+
     # test datums
     eval_job = model.evaluate_detection(
         dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
-        filter_by=[geospatial_metadata.intersect(geo_dict)],  # type: ignore - filter type error
+        filter_by=[geospatial_metadata.intersects(Polygon(coordinates))],
     )
     assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
 
     assert eval_job.datum_filter.datum_metadata
     assert eval_job.datum_filter.datum_metadata["geospatial"] == [
-        Constraint(value=geo_dict, operator="intersect")
+        Constraint(value=geodict, operator="intersect")
     ]
     assert len(eval_job.metrics) == 12
 
@@ -166,7 +173,7 @@ def test_geospatial_filter(
                     {
                         "operator": "inside",
                         "value": {
-                            "type": "Polygon",
+                            "type": "polygon",
                             "coordinates": [
                                 [
                                     [124.0, 37.0],

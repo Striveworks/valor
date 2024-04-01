@@ -5,7 +5,6 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
 from valor import Annotation, GroundTruth, Prediction, enums, schemas
-from valor.metatypes import ImageMetadata
 
 # https://sashat.me/2017/01/11/list-of-20-simple-distinct-colors/
 COLOR_MAP = [
@@ -41,16 +40,16 @@ def _polygons_to_binary_mask(
     mask = Image.new("1", (img_w, img_h), (False,))
     draw = ImageDraw.Draw(mask)
     for poly in polys:
-        draw.polygon(poly.boundary.tuple_list(), fill=(True,))  # type: ignore
+        draw.polygon(poly.boundary, fill=(True,))  # type: ignore
         if poly.holes is not None:
             for hole in poly.holes:
-                draw.polygon(hole.tuple_list(), fill=(False,))  # type: ignore
+                draw.polygon(hole, fill=(False,))  # type: ignore
 
     return np.array(mask)
 
 
 def create_combined_segmentation_mask(
-    annotated_datums: Sequence[Union[GroundTruth, Prediction]],
+    annotated_datum: Union[GroundTruth, Prediction],
     label_key: str,
     task_type: Union[enums.TaskType, None] = None,
 ) -> Tuple[Image.Image, Dict[str, Image.Image]]:
@@ -83,25 +82,34 @@ def create_combined_segmentation_mask(
         If there aren't any segmentations.
     """
 
-    if len(annotated_datums) == 0:
-        raise ValueError("`segs` cannot be empty.")
+    # validate input type
+    if not isinstance(annotated_datum, (GroundTruth, Prediction)):
+        raise ValueError("Expected either a 'GroundTruth' or 'Prediction'")
 
-    if (
-        len(
-            set(
-                [
-                    annotated_datum.datum.uid
-                    for annotated_datum in annotated_datums
-                ]
+    # verify there are a nonzero number of annotations
+    if len(annotated_datum.annotations) == 0:
+        raise ValueError("annotations cannot be empty.")
+
+    # validate raster size
+    img_h = None
+    img_w = None
+    for annotation in annotated_datum.annotations:
+        if img_h is None:
+            img_h = annotation.raster.height
+        if img_w is None:
+            img_w = annotation.raster.width
+        if (img_h != annotation.raster.height) or (
+            img_w != annotation.raster.width
+        ):
+            raise ValueError(
+                f"Size mismatch between rasters. {(img_h, img_w)} != {(annotation.raster.height, annotation.raster.width)}"
             )
-        )
-        > 1
-    ):
-        raise RuntimeError(
-            "Expected all segmentation to belong to the same image"
+    if img_h is None or img_w is None:
+        raise ValueError(
+            f"Segmentation bounds not properly defined. {(img_h, img_w)}"
         )
 
-    # Validate task type
+    # validate task type
     if task_type is not None and task_type not in [
         enums.TaskType.OBJECT_DETECTION,
         enums.TaskType.SEMANTIC_SEGMENTATION,
@@ -110,7 +118,7 @@ def create_combined_segmentation_mask(
             "Expected either Instance or Semantic segmentation task_type."
         )
 
-    # Create valid task type list
+    # create valid task type list
     if task_type is None:
         task_types = [
             enums.TaskType.OBJECT_DETECTION,
@@ -121,35 +129,34 @@ def create_combined_segmentation_mask(
 
     # unpack raster annotations
     annotations: List[Annotation] = []
-    for annotated_datum in annotated_datums:
-        for annotation in annotated_datum.annotations:
-            if annotation.task_type in task_types:
-                annotations.append(annotation)
+    for annotation in annotated_datum.annotations:
+        if annotation.task_type.get_value() in task_types:
+            annotations.append(annotation)
 
+    # unpack label values
     label_values = []
     for annotation in annotations:
         for label in annotation.labels:
-            if label.key == label_key:
-                label_values.append(label.value)
+            if label.key.get_value() == label_key:
+                label_values.append(label.value.get_value())
     if not label_values:
         raise RuntimeError(
             f"Annotation doesn't have a label with key `{label_key}`"
         )
 
+    # assign label coloring
     unique_label_values = list(set(label_values))
     label_value_to_color = {
         v: COLOR_MAP[i] for i, v in enumerate(unique_label_values)
     }
     seg_colors = [label_value_to_color[v] for v in label_values]
 
-    image = ImageMetadata.from_datum(annotated_datums[0].datum)
-    img_w, img_h = image.width, image.height
-
+    # create mask
     combined_mask = np.zeros((img_h, img_w, 3), dtype=np.uint8)
     for annotation, color in zip(annotations, seg_colors):
-        if annotation.raster is not None:
+        if annotation.raster.array is not None:
             if annotation.raster.geometry is None:
-                mask = annotation.raster.to_numpy()
+                mask = annotation.raster.array
             elif isinstance(annotation.raster.geometry, schemas.MultiPolygon):
                 mask = _polygons_to_binary_mask(
                     annotation.raster.geometry.polygons,
@@ -162,22 +169,11 @@ def create_combined_segmentation_mask(
                     img_w=img_w,
                     img_h=img_h,
                 )
-            elif isinstance(annotation.raster.geometry, schemas.BoundingBox):
-                mask = _polygons_to_binary_mask(
-                    [
-                        schemas.Polygon(
-                            boundary=annotation.raster.geometry.polygon
-                        )
-                    ],
-                    img_w=img_w,
-                    img_h=img_h,
-                )
             else:
                 continue
+            combined_mask[np.where(mask)] = color
         else:
             continue
-
-        combined_mask[np.where(mask)] = color
 
     legend = {
         v: Image.new("RGB", (20, 20), color)
@@ -239,8 +235,11 @@ def draw_bounding_box_on_image(
     img
         Pillow image with bounding box drawn on it.
     """
+    coords = bounding_box.get_value()
+    if not coords:
+        raise ValueError("Bounding box contains 'None'")
     return _draw_bounding_polygon_on_image(
-        bounding_box.polygon, img, color=color, inplace=False
+        schemas.Polygon(coords), img, color=color, inplace=False
     )
 
 
@@ -253,14 +252,14 @@ def _draw_detection_on_image(
     )
     if detection.polygon is not None:
         img = _draw_bounding_polygon_on_image(
-            detection.polygon.boundary,
+            detection.polygon,
             img,
             inplace=inplace,
             text=text,
         )
     elif detection.bounding_box is not None:
         img = _draw_bounding_polygon_on_image(
-            detection.bounding_box.polygon,
+            detection.bounding_box,
             img,
             inplace=inplace,
             text=text,
@@ -270,7 +269,7 @@ def _draw_detection_on_image(
 
 
 def _draw_bounding_polygon_on_image(
-    polygon: schemas.BasicPolygon,
+    polygon: schemas.Polygon,
     img: Image.Image,
     color: Tuple[int, int, int] = (255, 0, 0),
     inplace: bool = False,
@@ -282,7 +281,7 @@ def _draw_bounding_polygon_on_image(
     img_draw = ImageDraw.Draw(img)
 
     img_draw.polygon(
-        [(p.x, p.y) for p in polygon.points],
+        [p for p in polygon.boundary],
         outline=color,
     )
 
@@ -300,7 +299,7 @@ def _draw_bounding_polygon_on_image(
 def _write_text(
     font_size: int,
     text: str,
-    boundary: schemas.BasicPolygon,
+    boundary: schemas.Polygon,
     draw: ImageDraw.ImageDraw,
     color: Union[Tuple[int, int, int], str],
 ):
@@ -353,7 +352,9 @@ def draw_raster_on_image(
         alpha (transparency) value of the mask. 0 is fully transparent, 1 is fully opaque
     """
     img = img.copy()
-    binary_mask = raster.to_numpy()
+    binary_mask = raster.array
+    if not binary_mask:
+        raise ValueError
     mask_arr = np.zeros(
         (binary_mask.shape[0], binary_mask.shape[1], 3), dtype=np.uint8
     )

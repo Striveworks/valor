@@ -111,7 +111,7 @@ def test_evaluate_detection(
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
         filter_by=[
-            Label.key == "k1",  # type: ignore - filter type error
+            Label.key == "k1",
         ],
         convert_annotations_to_type=AnnotationType.BOX,
     )
@@ -153,8 +153,8 @@ def test_evaluate_detection(
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
         filter_by=[
-            Annotation.labels.in_([Label(key="k1", value="v1")]),  # type: ignore - filter type error
-            Annotation.bounding_box.exists(),  # type: ignore - filter type error
+            Annotation.labels == [Label(key="k1", value="v1")],
+            Annotation.bounding_box.is_not_none(),
         ],
     )
     assert (
@@ -169,7 +169,7 @@ def test_evaluate_detection(
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
         filter_by=[
-            Annotation.labels == Label(key="k1", value="v1"),  # type: ignore - filter type error
+            Annotation.labels == [Label(key="k1", value="v1")],
         ],
         convert_annotations_to_type=AnnotationType.BOX,
     )
@@ -187,7 +187,7 @@ def test_evaluate_detection(
             iou_thresholds_to_compute=[0.1, 0.6],
             iou_thresholds_to_return=[0.1, 0.6],
             filter_by=[
-                Annotation.labels.in_([Label(key="k1", value="v2")]),  # type: ignore - filter type error
+                Annotation.labels == [Label(key="k1", value="v2")],
             ],
             convert_annotations_to_type=AnnotationType.BOX,
         )
@@ -207,9 +207,9 @@ def test_evaluate_detection(
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
         filter_by=[
-            Label.key == "k1",  # type: ignore - filter type error
-            Annotation.bounding_box.area >= 10,  # type: ignore - filter type error
-            Annotation.bounding_box.area <= 2000,  # type: ignore - filter type error
+            Label.key == "k1",
+            Annotation.bounding_box.area >= 10,
+            Annotation.bounding_box.area <= 2000,
         ],
         convert_annotations_to_type=AnnotationType.BOX,
     )
@@ -260,8 +260,8 @@ def test_evaluate_detection(
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
         filter_by=[
-            Label.key == "k1",  # type: ignore - filter type error
-            Annotation.bounding_box.area >= 1200,  # type: ignore - filter type error
+            Label.key == "k1",
+            Annotation.bounding_box.area >= 1200,
         ],
         convert_annotations_to_type=AnnotationType.BOX,
     )
@@ -309,8 +309,8 @@ def test_evaluate_detection(
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
         filter_by=[
-            Label.key == "k1",  # type: ignore - filter type error
-            Annotation.bounding_box.area <= 1200,  # type: ignore - filter type error
+            Label.key == "k1",
+            Annotation.bounding_box.area <= 1200,
         ],
         convert_annotations_to_type=AnnotationType.BOX,
     )
@@ -359,9 +359,9 @@ def test_evaluate_detection(
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
         filter_by=[
-            Label.key == "k1",  # type: ignore - filter type error
-            Annotation.bounding_box.area >= 1200,  # type: ignore - filter type error
-            Annotation.bounding_box.area <= 1800,  # type: ignore - filter type error
+            Label.key == "k1",
+            Annotation.bounding_box.area >= 1200,
+            Annotation.bounding_box.area <= 1800,
         ],
         convert_annotations_to_type=AnnotationType.BOX,
     )
@@ -434,8 +434,8 @@ def test_evaluate_detection_with_json_filters(
     eval_results = model.evaluate_detection(
         dataset,
         filter_by=[
-            Label.key == "k1",  # type: ignore - filter type error
-            Annotation.bounding_box.exists(),  # type: ignore - filter type error
+            Label.key == "k1",
+            Annotation.bounding_box.is_not_none(),
         ],
     )
     assert (
@@ -494,8 +494,8 @@ def test_evaluate_detection_with_json_filters(
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
         filter_by=[
-            Label.key == "k1",  # type: ignore - filter type error
-            Annotation.bounding_box.area >= 1200,  # type: ignore - filter type error
+            Label.key == "k1",
+            Annotation.bounding_box.area >= 1200,
         ],
         convert_annotations_to_type=AnnotationType.BOX,
     )
@@ -597,8 +597,8 @@ def test_get_evaluations(
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
         filter_by=[
-            Label.key == "k1",  # type: ignore - filter type error
-            Annotation.bounding_box.exists(),  # type: ignore - filter type error
+            Label.key == "k1",
+            Annotation.bounding_box.is_not_none(),
         ],
     )
     eval_job.wait_for_completion(timeout=30)
@@ -716,8 +716,8 @@ def test_get_evaluations(
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
         filter_by=[
-            Label.key == "k1",  # type: ignore - filter type error
-            Annotation.bounding_box.exists(),  # type: ignore - filter type error
+            Label.key == "k1",
+            Annotation.bounding_box.is_not_none(),
         ],
     )
     eval_job2.wait_for_completion(timeout=30)
@@ -762,9 +762,9 @@ def test_get_evaluations(
 
 @pytest.fixture
 def gts_det_with_label_maps(
-    rect1: BoundingBox,
-    rect2: BoundingBox,
-    rect3: BoundingBox,
+    rect1: list[tuple[float, float]],
+    rect2: list[tuple[float, float]],
+    rect3: list[tuple[float, float]],
     img1: Datum,
     img2: Datum,
 ) -> list[GroundTruth]:
@@ -775,22 +775,22 @@ def gts_det_with_label_maps(
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="class_name", value="maine coon cat")],
-                    bounding_box=rect1,
+                    bounding_box=BoundingBox([rect1]),
                 ),
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="class", value="british shorthair")],
-                    bounding_box=rect3,
+                    bounding_box=BoundingBox([rect3]),
                 ),
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k1", value="v1")],
-                    bounding_box=rect1,
+                    bounding_box=BoundingBox([rect1]),
                 ),
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k2", value="v2")],
-                    bounding_box=rect3,
+                    bounding_box=BoundingBox([rect3]),
                 ),
             ],
         ),
@@ -800,12 +800,12 @@ def gts_det_with_label_maps(
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="class", value="siamese cat")],
-                    bounding_box=rect2,
+                    bounding_box=BoundingBox([rect2]),
                 ),
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k1", value="v1")],
-                    bounding_box=rect2,
+                    bounding_box=BoundingBox([rect2]),
                 ),
             ],
         ),
@@ -814,8 +814,8 @@ def gts_det_with_label_maps(
 
 @pytest.fixture
 def preds_det_with_label_maps(
-    rect1: BoundingBox,
-    rect2: BoundingBox,
+    rect1: list[tuple[float, float]],
+    rect2: list[tuple[float, float]],
     img1: Datum,
     img2: Datum,
 ) -> list[Prediction]:
@@ -826,12 +826,12 @@ def preds_det_with_label_maps(
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="class", value="cat", score=0.3)],
-                    bounding_box=rect1,
+                    bounding_box=BoundingBox([rect1]),
                 ),
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k1", value="v1", score=0.3)],
-                    bounding_box=rect1,
+                    bounding_box=BoundingBox([rect1]),
                 ),
             ],
         ),
@@ -841,12 +841,12 @@ def preds_det_with_label_maps(
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="class_name", value="cat", score=0.98)],
-                    bounding_box=rect2,
+                    bounding_box=BoundingBox([rect2]),
                 ),
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k2", value="v2", score=0.98)],
-                    bounding_box=rect2,
+                    bounding_box=BoundingBox([rect2]),
                 ),
             ],
         ),

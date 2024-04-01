@@ -43,4 +43,4 @@ def test_create_read_embedding_annotation(
 
     predictions = model.get_prediction(dataset=dataset, datum="uid123")
     assert predictions
-    assert predictions.annotations[0].embedding == [1, 2, 3, 4, 5]
+    assert predictions.annotations[0].embedding.get_value() == [1, 2, 3, 4, 5]

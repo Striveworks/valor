@@ -5,7 +5,7 @@ import pytest
 from valor import Annotation, GroundTruth, Label
 from valor.enums import TaskType
 from valor.metatypes import ImageMetadata
-from valor.schemas import BasicPolygon, MultiPolygon, Point, Polygon, Raster
+from valor.schemas import BoundingPolygon, MultiPolygon, Polygon, Raster
 from valor.viz import (
     _polygons_to_binary_mask,
     create_combined_segmentation_mask,
@@ -14,44 +14,47 @@ from valor.viz import (
 
 
 @pytest.fixture
-def bounding_poly() -> BasicPolygon:
-    return BasicPolygon(
-        points=[
-            Point(100, 100),
-            Point(200, 100),
-            Point(200, 200),
-            Point(100, 200),
+def bounding_poly() -> Polygon:
+    return Polygon(
+        [
+            [
+                (100, 100),
+                (200, 100),
+                (200, 200),
+                (100, 200),
+                (100, 100),
+            ]
         ]
     )
 
 
 @pytest.fixture
-def poly1(bounding_poly: BasicPolygon) -> Polygon:
+def poly1(bounding_poly: Polygon) -> Polygon:
     return Polygon(
-        boundary=bounding_poly,
-        holes=[
-            BasicPolygon(
-                points=[
-                    Point(150, 120),
-                    Point(180, 120),
-                    Point(180, 140),
-                    Point(150, 140),
-                ]
-            )
-        ],
+        [
+            bounding_poly.get_value()[0],
+            [
+                (150, 120),
+                (180, 120),
+                (180, 140),
+                (150, 140),
+                (150, 120),
+            ],
+        ]
     )
 
 
 def test__polygons_to_binary_mask(poly1):
     poly2 = Polygon(
-        boundary=BasicPolygon(
-            points=[
-                Point(10, 15),
-                Point(20, 15),
-                Point(20, 20),
-                Point(10, 20),
+        [
+            [
+                (10, 15),
+                (20, 15),
+                (20, 20),
+                (10, 20),
+                (10, 15),
             ]
-        )
+        ]
     )
 
     mask = _polygons_to_binary_mask([poly1, poly2], 500, 600)
@@ -66,15 +69,7 @@ def test__polygons_to_binary_mask(poly1):
 
 
 def test_create_combined_segmentation_mask(poly1: Polygon):
-    with pytest.raises(ValueError) as exc_info:
-        create_combined_segmentation_mask(
-            [],
-            label_key="",
-            task_type=TaskType.OBJECT_DETECTION,
-        )
-    assert "cannot be empty" in str(exc_info)
-
-    image = ImageMetadata(uid="uid", height=200, width=200).to_datum()
+    image = ImageMetadata.create(uid="uid", height=200, width=200).datum
 
     gt1 = GroundTruth(
         datum=image,
@@ -87,17 +82,11 @@ def test_create_combined_segmentation_mask(poly1: Polygon):
                     Label(key="k3", value="v3"),
                 ],
                 raster=Raster.from_geometry(
-                    MultiPolygon(polygons=[poly1]),
-                    height=200,
-                    width=200,
+                    MultiPolygon([poly1.get_value()]),
+                    height=2,
+                    width=2,
                 ),
             ),
-        ],
-    )
-
-    gt2 = GroundTruth(
-        datum=image,
-        annotations=[
             Annotation(
                 task_type=TaskType.SEMANTIC_SEGMENTATION,
                 labels=[
@@ -107,66 +96,87 @@ def test_create_combined_segmentation_mask(poly1: Polygon):
                 raster=Raster.from_numpy(
                     np.array([[True, False], [False, True]]),
                 ),
-            )
+            ),
         ],
     )
 
-    gts = [gt1, gt2]
+    gt_with_size_mismatch = GroundTruth(
+        datum=image,
+        annotations=[
+            Annotation(
+                task_type=TaskType.OBJECT_DETECTION,
+                labels=[
+                    Label(key="k1", value="v1"),
+                    Label(key="k2", value="v2"),
+                    Label(key="k3", value="v3"),
+                ],
+                raster=Raster.from_geometry(
+                    MultiPolygon([poly1.get_value()]),
+                    height=20,
+                    width=20,
+                ),
+            ),
+            Annotation(
+                task_type=TaskType.SEMANTIC_SEGMENTATION,
+                labels=[
+                    Label(key="k1", value="v1"),
+                    Label(key="k2", value="v3"),
+                ],
+                raster=Raster.from_numpy(
+                    np.array([[True, False], [False, True]]),
+                ),
+            ),
+        ],
+    )
+
+    # test that a size mistmatch between rasters is caught
+    with pytest.raises(ValueError) as exc_info:
+        create_combined_segmentation_mask(
+            gt_with_size_mismatch,
+            label_key="k2",
+            task_type=TaskType.SEMANTIC_SEGMENTATION,
+        )
+    assert "(20, 20) != (2, 2)" in str(exc_info)
 
     # check get an error since "k3" isn't a label key in seg2
     with pytest.raises(RuntimeError) as exc_info:
         create_combined_segmentation_mask(
-            [gts[1]],
+            gt1,
             label_key="k3",
             task_type=TaskType.SEMANTIC_SEGMENTATION,
         )
     assert "doesn't have a label" in str(exc_info)
 
     # should have one distinct (non-black) color
-    combined_mask, _ = create_combined_segmentation_mask(
-        gts,
+    combined_mask, legend = create_combined_segmentation_mask(
+        gt1,
         label_key="k1",
         task_type=TaskType.SEMANTIC_SEGMENTATION,
     )
     combined_mask = np.array(combined_mask)
     # check that we get two unique RGB values (black and one color for label value "v1")
-    unique_rgb = np.unique(combined_mask.reshape(-1, 3), axis=0)
-    assert unique_rgb.shape == (2, 3)
+    assert combined_mask.shape == (2, 2, 3)
+    assert len(legend) == 1  # background color 'black' is not counted
 
     # should have two distinct (non-black) color
-    combined_mask, _ = create_combined_segmentation_mask(gts, label_key="k2")
+    combined_mask, legend = create_combined_segmentation_mask(
+        gt1, label_key="k2"
+    )
     combined_mask = np.array(combined_mask)
-    # check that we get two unique RGB values (black and one color for label value "v1")
-    unique_rgb = np.unique(combined_mask.reshape(-1, 3), axis=0)
-    assert unique_rgb.shape == (3, 3)
-
-    with pytest.raises(RuntimeError) as exc_info:
-        create_combined_segmentation_mask(
-            gts
-            + [
-                GroundTruth(
-                    datum=ImageMetadata(
-                        "different uid", height=10, width=100
-                    ).to_datum(),
-                    annotations=gts[0].annotations,
-                )
-            ],
-            "",
-        )
-    assert "belong to the same image" in str(exc_info)
+    # check that we get three unique RGB values (black and two colors for label values "v2" and "v3")
+    assert combined_mask.shape == (2, 2, 3)
+    assert len(legend) == 2  # background color 'black' is not counted
 
 
-def test_draw_detections_on_image(bounding_poly: BasicPolygon):
+def test_draw_detections_on_image(bounding_poly: Polygon):
     detections = [
         GroundTruth(
-            datum=ImageMetadata("test", 300, 300).to_datum(),
+            datum=ImageMetadata.create("test", 300, 300).datum,
             annotations=[
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
-                    labels=[Label("k", "v")],
-                    polygon=Polygon(
-                        boundary=bounding_poly,
-                    ),
+                    labels=[Label(key="k", value="v")],
+                    polygon=BoundingPolygon(bounding_poly.get_value()),
                 )
             ],
         ),

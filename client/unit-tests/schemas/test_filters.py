@@ -35,24 +35,24 @@ def test_declarative_filtering():
         Model.name == "model1",
         Datum.uid == "uid1",
         Label.key == "k1",
-        Label.score > 0.5,  # type: ignore - > not compatible with type None
-        Label.score < 0.75,  # type: ignore - > not compatible with type None
-        Annotation.labels == Label(key="k2", value="v2"),
-        Annotation.task_type.in_(  # type: ignore - task_type not compatible with in_
+        Label.score > 0.5,
+        Label.score < 0.75,
+        Annotation.labels == [Label(key="k2", value="v2")],
+        Annotation.task_type.in_(
             [TaskType.CLASSIFICATION, TaskType.OBJECT_DETECTION]
         ),
         # geometry filters
-        Annotation.raster.is_none(),  # type: ignore - filtering issue
-        Annotation.polygon.is_none(),  # type: ignore - filtering issue
-        Annotation.bounding_box.exists(),  # type: ignore - filtering issue
-        Annotation.bounding_box.area >= 1000,  # type: ignore - filtering issue
-        Annotation.bounding_box.area <= 5000,  # type: ignore - filtering issue
+        Annotation.raster.is_none(),
+        Annotation.polygon.is_none(),
+        Annotation.bounding_box.is_not_none(),
+        Annotation.bounding_box.area >= 1000,
+        Annotation.bounding_box.area <= 5000,
         # metadata filters
-        Dataset.metadata["arbitrary_numeric_key"] >= 10,  # type: ignore - metadata dict not compatible with type checking
-        Dataset.metadata["arbitrary_numeric_key"] < 20,  # type: ignore - metadata dict not compatible with type checking
+        Dataset.metadata["arbitrary_numeric_key"] >= 10,
+        Dataset.metadata["arbitrary_numeric_key"] < 20,
         Model.metadata["arbitrary_str_key"] == "arbitrary value",
-        Datum.metadata["arbitrary_datetime_key"] >= datetime.timedelta(days=1),  # type: ignore - metadata dict not compatible with type checking
-        Datum.metadata["arbitrary_datetime_key"] <= datetime.timedelta(days=2),  # type: ignore - metadata dict not compatible with type checking
+        Datum.metadata["arbitrary_datetime_key"] >= datetime.timedelta(days=1),
+        Datum.metadata["arbitrary_datetime_key"] <= datetime.timedelta(days=2),
         Annotation.metadata["myKey"] == "helloworld",
     ]
 
@@ -74,8 +74,8 @@ def test_declarative_filtering():
         "datum_uids": ["uid1"],
         "datum_metadata": {
             "arbitrary_datetime_key": [
-                {"value": {"duration": "86400.0"}, "operator": ">="},
-                {"value": {"duration": "172800.0"}, "operator": "<="},
+                {"value": {"duration": 86400.0}, "operator": ">="},
+                {"value": {"duration": 172800.0}, "operator": "<="},
             ]
         },
         "task_types": [
@@ -88,7 +88,7 @@ def test_declarative_filtering():
             {"value": 5000, "operator": "<="},
         ],
         "annotation_metadata": {
-            "myKey": [{"value": "helloworld", "operator": "=="}]
+            "mykey": [{"value": "helloworld", "operator": "=="}]
         },
         "require_polygon": False,
         "polygon_area": None,

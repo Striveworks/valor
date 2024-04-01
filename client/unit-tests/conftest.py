@@ -1,9 +1,10 @@
-from typing import List
+from typing import List, Tuple
 
 import numpy as np
 import pytest
 
-from valor import Label, schemas
+from valor import Label
+from valor.schemas import BoundingBox, BoundingPolygon, Raster
 
 
 @pytest.fixture
@@ -15,28 +16,24 @@ def labels() -> List[Label]:
 
 
 @pytest.fixture
-def box_points() -> List[schemas.Point]:
+def box_points() -> List[Tuple[float, float]]:
     return [
-        schemas.Point(x=0, y=0),
-        schemas.Point(x=10, y=0),
-        schemas.Point(x=10, y=10),
-        schemas.Point(x=0, y=10),
+        (0, 0),
+        (10, 0),
+        (10, 10),
+        (0, 10),
+        (0, 0),
     ]
 
 
 @pytest.fixture
-def basic_polygon(box_points) -> schemas.BasicPolygon:
-    return schemas.BasicPolygon(points=box_points)
+def bbox() -> BoundingBox:
+    return BoundingBox.from_extrema(xmin=0, xmax=10, ymin=0, ymax=10)
 
 
 @pytest.fixture
-def bbox() -> schemas.BoundingBox:
-    return schemas.BoundingBox.from_extrema(xmin=0, xmax=10, ymin=0, ymax=10)
-
-
-@pytest.fixture
-def polygon(basic_polygon) -> schemas.Polygon:
-    return schemas.Polygon(boundary=basic_polygon)
+def polygon(box_points) -> BoundingPolygon:
+    return BoundingPolygon([box_points])
 
 
 @pytest.fixture
@@ -54,8 +51,8 @@ def raster_raw_mask() -> np.ndarray:
 
 
 @pytest.fixture
-def raster(raster_raw_mask) -> schemas.Raster:
-    return schemas.Raster.from_numpy(raster_raw_mask)
+def raster(raster_raw_mask) -> Raster:
+    return Raster.from_numpy(raster_raw_mask)
 
 
 @pytest.fixture

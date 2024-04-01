@@ -1,9 +1,9 @@
-from typing import Optional, cast
+from typing import Optional
 
-import PIL.Image
+from PIL.Image import Image
 
 from valor import Datum
-from valor.schemas.metadata import MetadataType, validate_metadata
+from valor.schemas import Integer
 
 
 class ImageMetadata:
@@ -22,41 +22,7 @@ class ImageMetadata:
         A dictionary of metadata that describes the image.
     """
 
-    def __init__(
-        self,
-        uid: str,
-        height: int,
-        width: int,
-        metadata: Optional[MetadataType] = None,
-    ):
-        self.uid = uid
-        self._dataset_name = None
-        self.height = height
-        self.width = width
-        self.metadata: MetadataType = dict(metadata) if metadata else {}
-
-        if not isinstance(self.uid, str):
-            raise TypeError("ImageMetadata uid must be a string.")
-        if not isinstance(self.height, int):
-            raise TypeError("ImageMetadata height must be a int.")
-        if not isinstance(self.width, int):
-            raise TypeError("ImageMetadata height must be a int.")
-        validate_metadata(self.metadata)
-
-    @staticmethod
-    def valid(datum: Datum) -> bool:
-        """
-        Asserts whether the `Datum's` height and width is a valid subset of the image's height and width.
-
-        Parameters
-        ----------
-        datum : Datum
-            The `Datum` to check validity for.
-        """
-        return {"height", "width"}.issubset(datum.metadata)
-
-    @classmethod
-    def from_datum(cls, datum: Datum):
+    def __init__(self, datum: Datum):
         """
         Creates an `ImageMetadata` object from a `Datum`.
 
@@ -65,53 +31,65 @@ class ImageMetadata:
         datum : Datum
             The `Datum` to extract metadata from.
         """
-        if not cls.valid(datum):
-            raise ValueError(
-                f"`datum` does not contain height and/or width in metadata `{datum.metadata}`"
-            )
-        metadata = dict(datum.metadata)
-        width = cast(int, metadata.pop("width"))
-        height = cast(int, metadata.pop("height"))
-        img = cls(
-            uid=datum.uid,
-            height=int(height),
-            width=int(width),
-            metadata=metadata,
-        )
-        return img
+        if not isinstance(datum, Datum):
+            raise TypeError
+        elif datum.is_symbolic:
+            raise ValueError
+
+        height = int(datum.metadata.get_value()["height"].get_value())
+        width = int(datum.metadata.get_value()["width"].get_value())
+        datum.metadata["height"] = Integer(height)
+        datum.metadata["width"] = Integer(width)
+        self.datum = datum
 
     @classmethod
-    def from_pil(cls, uid: str, image: PIL.Image.Image):
+    def create(
+        cls,
+        uid: str,
+        height: int,
+        width: int,
+        metadata: Optional[dict] = None,
+    ):
+        if not isinstance(height, int) or not isinstance(width, int):
+            raise TypeError("Height and width must be integers.")
+        metadata = metadata if metadata else dict()
+        metadata["height"] = height
+        metadata["width"] = width
+        return cls(
+            datum=Datum.definite(
+                uid=uid,
+                metadata=metadata,
+            )
+        )
+
+    @classmethod
+    def from_pil(cls, image: Image, uid: str):
         """
         Creates an `ImageMetadata` object from an image.
 
         Parameters
         ----------
-        uid : str
-            The UID of the image.
         image : PIL.Image.Image
             The image to create metadata for.
+        uid : str
+            The UID of the image.
         """
         width, height = image.size
-        return cls(
-            uid=uid,
-            height=int(height),
-            width=int(width),
-        )
+        return cls.create(uid=uid, height=height, width=width)
 
-    def to_datum(self) -> Datum:
-        """
-        Converts an `ImageMetadata` object into a `Datum`.
-        """
-        metadata = dict(self.metadata) if self.metadata else {}
+    @property
+    def height(self) -> int:
+        value = self.datum.metadata["height"].get_value()
+        if not isinstance(value, int):
+            raise TypeError
+        return int(value)
 
-        metadata["height"] = self.height
-        metadata["width"] = self.width
-        datum = Datum(
-            uid=self.uid,
-            metadata=metadata,
-        )
-        return datum
+    @property
+    def width(self) -> int:
+        value = self.datum.metadata["width"].get_value()
+        if not isinstance(value, int):
+            raise TypeError
+        return int(value)
 
 
 class VideoFrameMetadata:
@@ -126,35 +104,7 @@ class VideoFrameMetadata:
         The number of seconds into the video that the frame was taken.
     """
 
-    def __init__(
-        self,
-        image: ImageMetadata,
-        frame: int,
-    ):
-        self.image = image
-        self.frame = frame
-
-        if not isinstance(self.image, ImageMetadata):
-            raise TypeError(
-                "`image` should be of type `valor.metatypes.ImageMetadata`"
-            )
-        if not isinstance(self.frame, int):
-            raise TypeError("`frame` should be of type `int`.")
-
-    @staticmethod
-    def valid(datum: Datum) -> bool:
-        """
-        Asserts whether the `Datum's` height and width is a valid subset of the image's height and width.
-
-        Parameters
-        ----------
-        datum : Datum
-            The `Datum` to check validity for.
-        """
-        return {"height", "width", "frame"}.issubset(datum.metadata)
-
-    @classmethod
-    def from_datum(cls, datum: Datum):
+    def __init__(self, datum: Datum):
         """
         Creates a `VideoFrameMetadata` object from a `Datum`.
 
@@ -163,21 +113,62 @@ class VideoFrameMetadata:
         datum : Datum
             The `Datum` to extract metadata from.
         """
-        if not cls.valid(datum):
-            raise ValueError(
-                f"`datum` does not contain height, width and/or frame in metadata `{datum.metadata}`"
-            )
-        image = ImageMetadata.from_datum(datum)
-        frame = cast(int, image.metadata.pop("frame"))
+        if not isinstance(datum, Datum):
+            raise TypeError
+        elif datum.is_symbolic:
+            raise ValueError
+
+        height = int(datum.metadata.get_value()["height"].get_value())
+        width = int(datum.metadata.get_value()["width"].get_value())
+        frame = int(datum.metadata.get_value()["frame"].get_value())
+        datum.metadata["height"] = Integer(height)
+        datum.metadata["width"] = Integer(width)
+        datum.metadata["frame"] = Integer(frame)
+        self.datum = datum
+
+    @classmethod
+    def create(
+        cls,
+        uid: str,
+        height: int,
+        width: int,
+        frame: int,
+        metadata: Optional[dict] = None,
+    ):
+        if (
+            not isinstance(height, int)
+            or not isinstance(width, int)
+            or not isinstance(frame, int)
+        ):
+            raise TypeError("Height, width and frame must be integers.")
+        metadata = metadata if metadata else dict()
+        metadata["height"] = height
+        metadata["width"] = width
+        metadata["frame"] = frame
         return cls(
-            image=image,
-            frame=int(frame),
+            Datum.definite(
+                uid=uid,
+                metadata=metadata,
+            )
         )
 
-    def to_datum(self) -> Datum:
-        """
-        Converts a `VideoFrameMetadata` object into a `Datum`.
-        """
-        datum = self.image.to_datum()
-        datum.metadata["frame"] = self.frame
-        return datum
+    @property
+    def height(self) -> int:
+        value = self.datum.metadata["height"].get_value()
+        if not isinstance(value, int):
+            raise TypeError
+        return int(value)
+
+    @property
+    def width(self) -> int:
+        value = self.datum.metadata["width"].get_value()
+        if not isinstance(value, int):
+            raise TypeError
+        return int(value)
+
+    @property
+    def frame(self) -> int:
+        value = self.datum.metadata["frame"].get_value()
+        if not isinstance(value, int):
+            raise TypeError
+        return int(value)
