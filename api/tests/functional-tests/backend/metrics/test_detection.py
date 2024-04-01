@@ -1,12 +1,21 @@
+import pytest
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from valor_api import enums, schemas
+from valor_api import crud, enums, schemas
 from valor_api.backend.metrics.detection import (
     RankedPair,
     _compute_curves,
     _compute_detection_metrics,
+    compute_detection_metrics,
 )
-from valor_api.backend.models import GroundTruth, Prediction
+from valor_api.backend.models import (
+    Dataset,
+    Evaluation,
+    GroundTruth,
+    Model,
+    Prediction,
+)
 
 
 def _round_dict(d: dict, prec: int = 3) -> None:
@@ -865,3 +874,90 @@ def test__compute_detection_metrics_with_rasters(
     )
 
     assert pr_metrics["value"]["label3"][0.85]["tp"] == []
+
+
+def test_detection_exceptions(db: Session):
+    dataset_name = "myDataset1"
+    model_name = "myModel1"
+
+    dataset = Dataset(
+        name=dataset_name,
+        meta=dict(),
+        status=enums.TableStatus.CREATING,
+    )
+    model = Model(
+        name=model_name,
+        meta=dict(),
+        status=enums.ModelStatus.READY,
+    )
+    evaluation = Evaluation(
+        model_name=model_name,
+        datum_filter={"dataset_names": [dataset_name]},
+        parameters=schemas.EvaluationParameters(
+            task_type=enums.TaskType.OBJECT_DETECTION,
+            iou_thresholds_to_compute=[0.5],
+            iou_thresholds_to_return=[0.5],
+        ).model_dump(),
+        status=enums.EvaluationStatus.PENDING,
+    )
+    try:
+        db.add(dataset)
+        db.add(model)
+        db.add(evaluation)
+        db.commit()
+    except IntegrityError as e:
+        db.rollback()
+        raise e
+    row = db.query(Evaluation).one_or_none()
+    assert row
+    evaluation_id = row.id
+
+    # test that no datasets are found that meet the filter requirements
+    # - this is b/c no ground truths exist that match the evaluation task type.
+    with pytest.raises(RuntimeError) as e:
+        compute_detection_metrics(db=db, evaluation_id=evaluation_id)
+    assert "No datasets could be found that meet filter requirements." in str(
+        e
+    )
+
+    crud.create_groundtruth(
+        db=db,
+        groundtruth=schemas.GroundTruth(
+            datum=schemas.Datum(dataset_name=dataset_name, uid="uid"),
+            annotations=[
+                schemas.Annotation(
+                    task_type=enums.TaskType.OBJECT_DETECTION,
+                    labels=[schemas.Label(key="k1", value="v1")],
+                    bounding_box=schemas.BoundingBox.from_extrema(
+                        xmin=0, xmax=1, ymin=0, ymax=1
+                    ),
+                )
+            ],
+        ),
+    )
+
+    # test that the model does not meet the filter requirements
+    # - this is b/c no predictions exist that match the evaluation task type.
+    with pytest.raises(RuntimeError) as e:
+        compute_detection_metrics(db=db, evaluation_id=evaluation_id)
+    assert f"Model '{model_name}' does not meet filter requirements." in str(e)
+
+    crud.create_prediction(
+        db=db,
+        prediction=schemas.Prediction(
+            model_name=model_name,
+            datum=schemas.Datum(dataset_name=dataset_name, uid="uid"),
+            annotations=[
+                schemas.Annotation(
+                    task_type=enums.TaskType.OBJECT_DETECTION,
+                    labels=[schemas.Label(key="k1", value="v1", score=1.0)],
+                    bounding_box=schemas.BoundingBox.from_extrema(
+                        xmin=0, xmax=1, ymin=0, ymax=1
+                    ),
+                )
+            ],
+        ),
+    )
+
+    # show that no errors raised
+    compute_detection_metrics(db=db, evaluation_id=evaluation_id)

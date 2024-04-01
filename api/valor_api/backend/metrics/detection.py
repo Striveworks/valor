@@ -836,7 +836,7 @@ def _convert_annotations_to_common_type(
 
 
 @validate_computation
-def compute_detection_metrics(*, db: Session, evaluation_id: int):
+def compute_detection_metrics(*_, db: Session, evaluation_id: int):
     """
     Create detection metrics. This function is intended to be run using FastAPI's `BackgroundTasks`.
 
@@ -868,17 +868,19 @@ def compute_detection_metrics(*, db: Session, evaluation_id: int):
         .all()
     )
     model = (
-        db.query(models.Model)
-        .where(models.Model.name == evaluation.model_name)
+        db.query(Query(models.Model).filter(prediction_filter).any())  # type: ignore - SQLAlchemy type issue
+        .distinct()
         .one_or_none()
     )
 
     # verify
     if not datasets:
-        raise RuntimeError("No datasets returned by datum filter.")
+        raise RuntimeError(
+            "No datasets could be found that meet filter requirements."
+        )
     if model is None:
         raise RuntimeError(
-            f"Referenced model '{evaluation.model_name}' does not exist."
+            f"Model '{evaluation.model_name}' does not meet filter requirements."
         )
 
     # ensure that all annotations have a common type to operate over

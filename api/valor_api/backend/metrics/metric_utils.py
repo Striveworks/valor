@@ -295,7 +295,7 @@ def validate_computation(fn: Callable) -> Callable:
                 db, evaluation_id, enums.EvaluationStatus.FAILED
             )
             logger.error(
-                "Valor Evaluation Exception",
+                f"Valor Exception: Evaluation '{evaluation_id}'",
                 method=fn.__name__,
                 exc_info=e,
             )
