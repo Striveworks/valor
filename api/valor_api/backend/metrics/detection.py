@@ -836,7 +836,7 @@ def _convert_annotations_to_common_type(
 
 
 @validate_computation
-def compute_detection_metrics(*, db: Session, evaluation_id: int):
+def compute_detection_metrics(*_, db: Session, evaluation_id: int):
     """
     Create detection metrics. This function is intended to be run using FastAPI's `BackgroundTasks`.
 
@@ -872,6 +872,16 @@ def compute_detection_metrics(*, db: Session, evaluation_id: int):
         .distinct()
         .one_or_none()
     )
+
+    # verify
+    if not datasets:
+        raise RuntimeError(
+            "No datasets could be found that meet filter requirements."
+        )
+    if model is None:
+        raise RuntimeError(
+            f"Model '{evaluation.model_name}' does not meet filter requirements."
+        )
 
     # ensure that all annotations have a common type to operate over
     target_type = _convert_annotations_to_common_type(

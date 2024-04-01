@@ -314,10 +314,8 @@ def test_evaluate_detection(
         ],
         convert_annotations_to_type=AnnotationType.BOX,
     )
-    assert (
-        eval_job_max_area_1200.wait_for_completion(timeout=30)
-        == EvaluationStatus.DONE
-    )
+    # this computation will return 'EvaluationStatus.FAILED' as no predictions exist that meet the filter requirements.
+    eval_job_max_area_1200.wait_for_completion(timeout=30)
     result = eval_job_max_area_1200.to_dict()
     max_area_1200_metrics = result.pop("metrics")
     assert result == {
@@ -345,7 +343,7 @@ def test_evaluate_detection(
             "pr_curve_iou_threshold": 0.5,
         },
         # check metrics below
-        "status": EvaluationStatus.DONE.value,
+        "status": EvaluationStatus.FAILED.value,
         "confusion_matrices": [],
         "missing_pred_labels": [{"key": "k1", "value": "v1"}],
         "ignored_pred_labels": [],
