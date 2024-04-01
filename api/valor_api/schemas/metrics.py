@@ -41,7 +41,7 @@ class ARMetric(BaseModel):
     """
 
     ious: set[float]
-    value: float
+    value: float | None
     label: Label
 
     def db_mapping(self, label_id: int, evaluation_id: int) -> dict:
@@ -83,7 +83,7 @@ class APMetric(BaseModel):
     """
 
     iou: float
-    value: float
+    value: float | None
     label: Label
 
     def db_mapping(self, label_id: int, evaluation_id: int) -> dict:
@@ -125,7 +125,7 @@ class APMetricAveragedOverIOUs(BaseModel):
     """
 
     ious: set[float]
-    value: float
+    value: float | None
     label: Label
 
     def db_mapping(self, label_id: int, evaluation_id: int) -> dict:
@@ -165,7 +165,7 @@ class mARMetric(BaseModel):
     """
 
     ious: set[float]
-    value: float
+    value: float | None
 
     def db_mapping(self, evaluation_id: int) -> dict:
         """
@@ -203,7 +203,7 @@ class mAPMetric(BaseModel):
     """
 
     iou: float
-    value: float
+    value: float | None
 
     def db_mapping(self, evaluation_id: int) -> dict:
         """
@@ -239,7 +239,7 @@ class mAPMetricAveragedOverIOUs(BaseModel):
     """
 
     ious: set[float]
-    value: float
+    value: float | None
 
     def db_mapping(self, evaluation_id: int) -> dict:
         """
@@ -379,7 +379,7 @@ class AccuracyMetric(BaseModel):
     """
 
     label_key: str
-    value: float
+    value: float | None
 
     def db_mapping(self, evaluation_id: int) -> dict:
         """
@@ -569,7 +569,7 @@ class IOUMetric(BaseModel):
         A label for the metric.
     """
 
-    value: float
+    value: float | None
     label: Label
 
     def db_mapping(self, label_id: int, evaluation_id: int) -> dict:
@@ -603,7 +603,7 @@ class mIOUMetric(BaseModel):
         The metric value.
     """
 
-    value: float
+    value: float | None
 
     def db_mapping(self, evaluation_id: int) -> dict:
         """

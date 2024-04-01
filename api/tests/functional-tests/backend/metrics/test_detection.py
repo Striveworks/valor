@@ -551,7 +551,7 @@ def test__compute_detection_metrics(
         target_type=enums.AnnotationType.BOX,
     )
 
-    metrics = [m.model_dump(exclude_none=True) for m in metrics]
+    metrics = [m.model_dump() for m in metrics]
 
     for m in metrics:
         _round_dict(m, 3)
@@ -560,20 +560,56 @@ def test__compute_detection_metrics(
     # https://github.com/Lightning-AI/metrics/blob/107dbfd5fb158b7ae6d76281df44bd94c836bfce/tests/unittests/detection/test_map.py#L231
     expected = [
         # AP METRICS
-        {"iou": 0.5, "value": 0.505, "label": {"key": "class", "value": "2"}},
-        {"iou": 0.75, "value": 0.505, "label": {"key": "class", "value": "2"}},
-        {"iou": 0.5, "value": 0.79, "label": {"key": "class", "value": "49"}},
+        {
+            "iou": 0.5,
+            "value": 0.505,
+            "label": {"key": "class", "value": "2", "score": None},
+        },
+        {
+            "iou": 0.75,
+            "value": 0.505,
+            "label": {"key": "class", "value": "2", "score": None},
+        },
+        {
+            "iou": 0.5,
+            "value": 0.79,
+            "label": {"key": "class", "value": "49", "score": None},
+        },
         {
             "iou": 0.75,
             "value": 0.576,
-            "label": {"key": "class", "value": "49"},
+            "label": {"key": "class", "value": "49", "score": None},
         },
-        {"iou": 0.5, "value": 1.0, "label": {"key": "class", "value": "0"}},
-        {"iou": 0.75, "value": 0.723, "label": {"key": "class", "value": "0"}},
-        {"iou": 0.5, "value": 1.0, "label": {"key": "class", "value": "1"}},
-        {"iou": 0.75, "value": 1.0, "label": {"key": "class", "value": "1"}},
-        {"iou": 0.5, "value": 1.0, "label": {"key": "class", "value": "4"}},
-        {"iou": 0.75, "value": 1.0, "label": {"key": "class", "value": "4"}},
+        {
+            "iou": 0.5,
+            "value": 1.0,
+            "label": {"key": "class", "value": "0", "score": None},
+        },
+        {
+            "iou": 0.75,
+            "value": 0.723,
+            "label": {"key": "class", "value": "0", "score": None},
+        },
+        {
+            "iou": 0.5,
+            "value": 1.0,
+            "label": {"key": "class", "value": "1", "score": None},
+        },
+        {
+            "iou": 0.75,
+            "value": 1.0,
+            "label": {"key": "class", "value": "1", "score": None},
+        },
+        {
+            "iou": 0.5,
+            "value": 1.0,
+            "label": {"key": "class", "value": "4", "score": None},
+        },
+        {
+            "iou": 0.75,
+            "value": 1.0,
+            "label": {"key": "class", "value": "4", "score": None},
+        },
         # mAP METRICS
         {"iou": 0.5, "value": 0.859},
         {"iou": 0.75, "value": 0.761},
@@ -581,27 +617,27 @@ def test__compute_detection_metrics(
         {
             "ious": iou_thresholds,
             "value": 0.454,
-            "label": {"key": "class", "value": "2"},
+            "label": {"key": "class", "value": "2", "score": None},
         },
         {
             "ious": iou_thresholds,
             "value": 0.555,  # note COCO had 0.556
-            "label": {"key": "class", "value": "49"},
+            "label": {"key": "class", "value": "49", "score": None},
         },
         {
             "ious": iou_thresholds,
             "value": 0.725,
-            "label": {"key": "class", "value": "0"},
+            "label": {"key": "class", "value": "0", "score": None},
         },
         {
             "ious": iou_thresholds,
             "value": 0.8,
-            "label": {"key": "class", "value": "1"},
+            "label": {"key": "class", "value": "1", "score": None},
         },
         {
             "ious": iou_thresholds,
             "value": 0.650,
-            "label": {"key": "class", "value": "4"},
+            "label": {"key": "class", "value": "4", "score": None},
         },
         # mAP METRICS AVERAGED OVER IOUS
         {"ious": iou_thresholds, "value": 0.637},
@@ -609,32 +645,32 @@ def test__compute_detection_metrics(
         {
             "ious": iou_thresholds,
             "value": 0.45,
-            "label": {"key": "class", "value": "2"},
+            "label": {"key": "class", "value": "2", "score": None},
         },
         {
             "ious": iou_thresholds,
-            "value": -1,
-            "label": {"key": "class", "value": "3"},
+            "value": None,
+            "label": {"key": "class", "value": "3", "score": None},
         },
         {
             "ious": iou_thresholds,
             "value": 0.58,
-            "label": {"key": "class", "value": "49"},
+            "label": {"key": "class", "value": "49", "score": None},
         },
         {
             "ious": iou_thresholds,
             "value": 0.78,
-            "label": {"key": "class", "value": "0"},
+            "label": {"key": "class", "value": "0", "score": None},
         },
         {
             "ious": iou_thresholds,
             "value": 0.8,
-            "label": {"key": "class", "value": "1"},
+            "label": {"key": "class", "value": "1", "score": None},
         },
         {
             "ious": iou_thresholds,
             "value": 0.65,
-            "label": {"key": "class", "value": "4"},
+            "label": {"key": "class", "value": "4", "score": None},
         },
         # mAR METRICS
         {
@@ -645,6 +681,7 @@ def test__compute_detection_metrics(
 
     non_pr_metrics = metrics[:-1]
     pr_metrics = metrics[-1]
+
     for m in non_pr_metrics:
         assert m in expected
 
@@ -734,7 +771,7 @@ def test__compute_detection_metrics_with_rasters(
         target_type=enums.AnnotationType.RASTER,
     )
 
-    metrics = [m.model_dump(exclude_none=True) for m in metrics]
+    metrics = [m.model_dump() for m in metrics]
 
     for m in metrics:
         _round_dict(m, 3)
@@ -744,53 +781,53 @@ def test__compute_detection_metrics_with_rasters(
         {
             "iou": 0.5,
             "value": 1.0,
-            "label": {"key": "class", "value": "label2"},
+            "label": {"key": "class", "value": "label2", "score": None},
         },
         {
             "iou": 0.75,
             "value": 1.0,
-            "label": {"key": "class", "value": "label2"},
+            "label": {"key": "class", "value": "label2", "score": None},
         },
         {
             "iou": 0.5,
             "value": 1.0,
-            "label": {"key": "class", "value": "label1"},
+            "label": {"key": "class", "value": "label1", "score": None},
         },
         {
             "iou": 0.75,
             "value": 1.0,
-            "label": {"key": "class", "value": "label1"},
+            "label": {"key": "class", "value": "label1", "score": None},
         },
         {
             "iou": 0.5,
             "value": 0.0,
-            "label": {"key": "class", "value": "label3"},
+            "label": {"key": "class", "value": "label3", "score": None},
         },
         {
             "iou": 0.75,
             "value": 0.0,
-            "label": {"key": "class", "value": "label3"},
+            "label": {"key": "class", "value": "label3", "score": None},
         },
         # AP METRICS AVERAGED OVER IOUS
         {
             "ious": iou_thresholds,
             "value": 1.0,
-            "label": {"key": "class", "value": "label2"},
+            "label": {"key": "class", "value": "label2", "score": None},
         },
         {
             "ious": iou_thresholds,
-            "value": -1.0,
-            "label": {"key": "class", "value": "label4"},
+            "value": None,
+            "label": {"key": "class", "value": "label4", "score": None},
         },
         {
             "ious": iou_thresholds,
             "value": 1.0,
-            "label": {"key": "class", "value": "label1"},
+            "label": {"key": "class", "value": "label1", "score": None},
         },
         {
             "ious": iou_thresholds,
             "value": 0.0,
-            "label": {"key": "class", "value": "label3"},
+            "label": {"key": "class", "value": "label3", "score": None},
         },
         # mAP METRICS
         {"iou": 0.5, "value": 0.667},
@@ -804,17 +841,17 @@ def test__compute_detection_metrics_with_rasters(
         {
             "ious": iou_thresholds,
             "value": 1.0,
-            "label": {"key": "class", "value": "label2"},
+            "label": {"key": "class", "value": "label2", "score": None},
         },
         {
             "ious": iou_thresholds,
             "value": 1.0,
-            "label": {"key": "class", "value": "label1"},
+            "label": {"key": "class", "value": "label1", "score": None},
         },
         {
             "ious": iou_thresholds,
             "value": 0.0,
-            "label": {"key": "class", "value": "label3"},
+            "label": {"key": "class", "value": "label3", "score": None},
         },
         # mAR METRICS
         {

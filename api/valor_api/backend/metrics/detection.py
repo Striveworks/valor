@@ -147,15 +147,15 @@ def _compute_curves(
             # calculate metrics
             tp_cnt, fp_cnt, fn_cnt = len(tp), len(fp), len(fn)
             precision = (
-                tp_cnt / (tp_cnt + fp_cnt) if (tp_cnt + fp_cnt) > 0 else -1
+                tp_cnt / (tp_cnt + fp_cnt) if (tp_cnt + fp_cnt) > 0 else None
             )
             recall = (
-                tp_cnt / (tp_cnt + fn_cnt) if (tp_cnt + fn_cnt) > 0 else -1
+                tp_cnt / (tp_cnt + fn_cnt) if (tp_cnt + fn_cnt) > 0 else None
             )
             f1_score = (
                 (2 * precision * recall) / (precision + recall)
-                if precision and recall
-                else -1
+                if precision is not None and recall is not None
+                else None
             )
 
             curves[label_value][confidence_threshold] = {
@@ -263,19 +263,19 @@ def _calculate_ap_and_ar(
                     precisions.append(
                         precision_cnt_tp
                         / (precision_cnt_tp + precision_cnt_fp)
-                        if (precision_cnt_tp + precision_cnt_fp)
+                        if (precision_cnt_tp + precision_cnt_fp) > 0
                         else 0
                     )
                     recalls.append(
                         precision_cnt_tp
                         / (precision_cnt_tp + precision_cnt_fn)
-                        if (precision_cnt_tp + precision_cnt_fn)
+                        if (precision_cnt_tp + precision_cnt_fn) > 0
                         else 0
                     )
 
                 recalls_across_thresholds.append(
                     recall_cnt_tp / (recall_cnt_tp + recall_cnt_fn)
-                    if (recall_cnt_tp + recall_cnt_fn)
+                    if (recall_cnt_tp + recall_cnt_fn) > 0
                     else 0
                 )
             else:
@@ -299,8 +299,8 @@ def _calculate_ap_and_ar(
                 value=(
                     sum(recalls_across_thresholds)
                     / len(recalls_across_thresholds)
-                    if recalls_across_thresholds
-                    else -1
+                    if len(recalls_across_thresholds) > 0
+                    else None
                 ),
                 label=grouper_label,
             )
@@ -340,9 +340,8 @@ def _compute_detection_metrics(
     target_type: enums.AnnotationType
         The annotation type to compute metrics for.
 
-
     Returns
-    ----------
+    -------
     List[schemas.APMetric | schemas.ARMetric | schemas.APMetricAveragedOverIOUs | schemas.mAPMetric | schemas.mARMetric | schemas.mAPMetricAveragedOverIOUs | schemas.PrecisionRecallCurve]
         A list of average precision metrics.
 
@@ -627,7 +626,9 @@ def _compute_detection_metrics(
     else:
         pr_curves = []
 
-    # Compute AP
+    print("======AP, AR=========")
+
+    # Compute AP, AR
     ap_metrics, ar_metrics = _calculate_ap_and_ar(
         sorted_ranked_pairs=ranking,
         number_of_groundtruths_per_grouper=number_of_groundtruths_per_grouper,
@@ -635,6 +636,8 @@ def _compute_detection_metrics(
         grouper_mappings=grouper_mappings,
         recall_score_threshold=parameters.recall_score_threshold,
     )
+
+    print("======AVERAGE=========")
 
     # calculate averaged metrics
     mean_ap_metrics = _compute_mean_detection_metrics_from_aps(ap_metrics)
@@ -687,27 +690,27 @@ def _compute_detection_metrics_averaged_over_ious_from_aps(
     ret = []
     for label_tuple, value in label_tuple_to_values.items():
         ious = label_tuple_to_ious[label_tuple]
+        value = value / len(ious) if len(ious) > 0 else None
         ret.append(
             schemas.APMetricAveragedOverIOUs(
                 ious=set(ious),
-                value=value / len(ious),
+                value=value,
                 label=schemas.Label(key=label_tuple[0], value=label_tuple[1]),
             )
         )
-
     return ret
 
 
-def _average_ignore_minus_one(a):
-    """Average a list of metrics, ignoring values of -1"""
+def _average_ignore_null_values(a):
+    """Average a list of metrics, ignoring values of None"""
     num, denom = 0.0, 0.0
     div0_flag = True
     for x in a:
-        if x != -1:
+        if x is not None:
             div0_flag = False
             num += x
             denom += 1
-    return -1 if div0_flag else num / denom
+    return None if div0_flag else num / denom
 
 
 def _compute_mean_ar_metrics(
@@ -727,7 +730,7 @@ def _compute_mean_ar_metrics(
         mean_metrics.append(
             schemas.mARMetric(
                 ious=ious,
-                value=_average_ignore_minus_one(ious_to_values[ious]),
+                value=_average_ignore_null_values(ious_to_values[ious]),
             )
         )
 
@@ -757,11 +760,11 @@ def _compute_mean_detection_metrics_from_aps(
     mean_detection_metrics = [
         (
             schemas.mAPMetric(
-                iou=iou, value=_average_ignore_minus_one(vals[iou])
+                iou=iou, value=_average_ignore_null_values(vals[iou])
             )
             if isinstance(iou, float)
             else schemas.mAPMetricAveragedOverIOUs(
-                ious=iou, value=_average_ignore_minus_one(vals[iou])
+                ious=iou, value=_average_ignore_null_values(vals[iou])
             )
         )
         for iou in vals.keys()
@@ -872,6 +875,8 @@ def compute_detection_metrics(*, db: Session, evaluation_id: int):
         .distinct()
         .one_or_none()
     )
+    if model is None:
+        raise RuntimeError
 
     # ensure that all annotations have a common type to operate over
     target_type = _convert_annotations_to_common_type(
@@ -891,6 +896,8 @@ def compute_detection_metrics(*, db: Session, evaluation_id: int):
             groundtruth_filter.require_raster = True
             prediction_filter.require_raster = True
 
+    print("======TEST=========")
+
     metrics = _compute_detection_metrics(
         db=db,
         parameters=parameters,
@@ -898,6 +905,8 @@ def compute_detection_metrics(*, db: Session, evaluation_id: int):
         groundtruth_filter=groundtruth_filter,
         target_type=target_type,
     )
+
+    print("======COMPUTE=========")
 
     metric_mappings = create_metric_mappings(
         db=db,
