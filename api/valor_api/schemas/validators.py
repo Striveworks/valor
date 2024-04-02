@@ -101,6 +101,15 @@ def check_type_polygon(v: Any) -> bool:
     )
 
 
+def check_type_box(v: Any) -> bool:
+    return (
+        check_type_polygon(v)
+        and len(v) == 1
+        and len(v[0]) == 5
+        and v[0][0] == v[0][-1]
+    )
+
+
 def check_type_multipolygon(v: Any) -> bool:
     return isinstance(v, list) and all(
         check_type_polygon(polygon) for polygon in v
@@ -312,6 +321,7 @@ def validate_geojson(class_name: str, geojson: dict):
         "linestring": check_type_linestring,
         "multilinestring": check_type_multilinestring,
         "polygon": check_type_polygon,
+        "box": check_type_box,
         "multipolygon": check_type_multipolygon,
     }
     # validate geojson

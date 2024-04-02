@@ -1,971 +1,325 @@
 import io
-import math
 from base64 import b64decode, b64encode
+from typing import Any
 
 import numpy as np
 import PIL.Image
 from geoalchemy2.functions import (
     ST_AddBand,
     ST_AsRaster,
-    ST_GeomFromText,
+    ST_GeomFromGeoJSON,
     ST_MakeEmptyRaster,
     ST_MapAlgebra,
 )
-from pydantic import BaseModel, Field, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    field_validator,
+    model_validator,
+)
 from sqlalchemy import ScalarSelect, select
+
+from valor_api.schemas.validators import (
+    check_type_box,
+    deserialize,
+    validate_geojson,
+)
 
 
 class Point(BaseModel):
     """
-    Describes a point in geometric space.
+    Describes a Point in (x,y) coordinates.
 
     Attributes
     ----------
-    x : float
-        The x-coordinate of the point.
-    y : float
-        The y-coordinate of the point.
+    value : tuple[int | float, int | float]
+        A list of coordinates describing the Point.
 
     Raises
     ------
     ValueError
-        If an x or y-coordinate isn't passed.
+        If the value doesn't conform to the type.
     """
 
-    x: float
-    y: float
+    value: tuple[int | float, int | float]
+    model_config = ConfigDict(extra="forbid")
 
-    @field_validator("x")
+    @model_validator(mode="before")
     @classmethod
-    def _has_x(cls, v):
-        """Validate that the object has a x-coordinate"""
+    def deserialize_valor_type(cls, data: Any) -> Any:
+        return deserialize(class_name=cls.__name__, data=data)
 
-        if not isinstance(v, float):
-            raise ValueError
-        return v
-
-    @field_validator("y")
     @classmethod
-    def _has_y(cls, v):
-        """Validate that the object has a y-coordinate"""
-        if not isinstance(v, float):
-            raise ValueError
-        return v
+    def from_geojson(cls, geojson: dict):
+        validate_geojson(class_name=cls.__name__, geojson=geojson)
+        value = geojson.get("coordinates")
+        if not isinstance(value, list):
+            raise TypeError("Coordinates should contain a list.")
+        return cls(value=tuple(value))
 
-    def __str__(self) -> str:
-        """Converts the object into a string."""
-        return f"({self.x}, {self.y})"
-
-    def __hash__(self) -> int:
-        """Hashes the object"""
-        return hash((self.x, self.y))
-
-    def __eq__(self, other) -> bool:
-        """
-        Checks if the `Point` is close to another point using `math.isclose`.
-
-        Parameters
-        ----------
-        other : Point
-            The object to compare against.
-
-        Returns
-        ----------
-        boolean
-            A boolean describing whether the two objects are equal.
-
-        Raises
-        ----------
-        TypeError
-            If comparing an object of a different type.
-        """
-        if not isinstance(other, Point):
-            raise TypeError
-        return math.isclose(self.x, other.x) and math.isclose(self.y, other.y)
-
-    def __neq__(self, other) -> bool:
-        """
-        Checks if the `Point` is not equal to another `Point`.
-
-        Parameters
-        ----------
-        other : Point
-            The object to compare against.
-
-        Returns
-        ----------
-        boolean
-            A boolean describing whether the two objects are equal.
-
-        Raises
-        ----------
-        TypeError
-            If comparing an object of a different type.
-        """
-        if not isinstance(other, Point):
-            raise TypeError
-        return not (self == other)
-
-    def __neg__(self):
-        """
-        Return the inverse of the `Point` in coordinate space.
-
-        Returns
-        ----------
-        Point
-            A `Point` with inverse coordinates..
-        """
-        return Point(x=-self.x, y=-self.y)
-
-    def __add__(self, other):
-        """
-        Add the coordinates of two `Points` and return a new `Point`.
-
-        Parameters
-        ----------
-        other : Point
-            The object to add.
-
-        Returns
-        ----------
-        Point
-            A `Point`.
-
-        Raises
-        ----------
-        TypeError
-            If adding an object of a different type.
-        """
-        if not isinstance(other, Point):
-            raise TypeError
-        newx = self.x + other.x
-        newy = self.y + other.y
-        return Point(x=newx, y=newy)
-
-    def __sub__(self, other):
-        """
-        Subtract the coordinates of two `Points` and return a new `Point`.
-
-        Parameters
-        ----------
-        other : Point
-            The object to subtract.
-
-        Returns
-        ----------
-        Point
-            A `Point`.
-
-        Raises
-        ----------
-        TypeError
-            If subtracting an object of a different type.
-        """
-        if not isinstance(other, Point):
-            raise TypeError
-        newx = self.x - other.x
-        newy = self.y - other.y
-        return Point(x=newx, y=newy)
-
-    def __iadd__(self, other):
-        """
-        Add the coordinates of two `Points` and return a new `Point`.
-
-        Parameters
-        ----------
-        other : Point
-            The object to add.
-
-        Returns
-        ----------
-        Point
-            A `Point`.
-
-        Raises
-        ----------
-        TypeError
-            If adding an object of a different type.
-        """
-        if not isinstance(other, Point):
-            raise TypeError
-        return self + other
-
-    def __isub__(self, other):
-        """
-        Subtract the coordinates of two `Points` and return a new `Point`.
-
-        Parameters
-        ----------
-        other : Point
-            The object to subtract.
-
-        Returns
-        ----------
-        Point
-            A `Point`.
-
-        Raises
-        ----------
-        TypeError
-            If subtracting an object of a different type.
-        """
-        if not isinstance(other, Point):
-            raise TypeError
-        return self - other
-
-    def dot(self, other):
-        """
-        Multiply the x and y-coordinates of two `Points`.
-
-        Parameters
-        ----------
-        other : Point
-            The object to subtract.
-
-        Returns
-        ----------
-        Point
-            A `Point`.
-
-        Raises
-        ----------
-        TypeError
-            If multiplying an object of a different type.
-        """
-        if not isinstance(other, Point):
-            raise TypeError
-        return (self.x * other.x) + (self.y * other.y)
-
-    def wkt(self) -> str:
-        """
-        Returns the well-known text (WKT) representation of the object.
-
-        Returns
-        ----------
-        str
-            The WKT representation of the shape.
-        """
-        return f"POINT ({self.x} {self.y})"
+    def to_geojson(self) -> dict:
+        return {"type": "Point", "coordinates": list(self.value)}
 
 
-class LineSegment(BaseModel):
+class MultiPoint(BaseModel):
     """
-    Describes a line segment in geometric space.
+    Describes a MultiPoint in (x,y) coordinates.
 
     Attributes
     ----------
-    points: Tuple[Point, Point]
-        The coordinates of two points creating the line.
-    """
-
-    points: tuple[Point, Point]
-
-    def delta_xy(self) -> Point:
-        """
-        Return the change in x and y over the start and end points of the line.
-
-        Returns
-        ----------
-        Point
-            A `Point` with the coordinates subtracted.
-        """
-        return self.points[0] - self.points[1]
-
-    def parallel(self, other) -> bool:
-        """
-        Check whether two lines are parallel.
-
-        Parameters
-        ----------
-        other : LineSegment
-            The other line to compare against.
-
-        Returns
-        ----------
-        bool
-            Whether the lines are parallel.
-
-        Raises
-        ----------
-        TypeError
-            If other isn't of the correct type.
-        """
-        if not isinstance(other, LineSegment):
-            raise TypeError
-
-        d1 = self.delta_xy()
-        d2 = other.delta_xy()
-
-        slope1 = d1.y / d1.x if d1.x else math.inf
-        slope2 = d2.y / d2.x if d2.x else math.inf
-        return math.isclose(slope1, slope2)
-
-    def perpendicular(self, other) -> bool:
-        """
-        Check whether two lines are perpendicular.
-
-        Parameters
-        ----------
-        other : LineSegment
-            The other line to compare against.
-
-        Returns
-        ----------
-        bool
-            Whether the lines are perpendicular.
-
-        Raises
-        ----------
-        TypeError
-            If other isn't of the correct type.
-        """
-        """Check whether two lines are perpendicular."""
-        if not isinstance(other, LineSegment):
-            raise TypeError
-
-        d1 = self.delta_xy()
-        d2 = other.delta_xy()
-
-        slope1 = d1.y / d1.x if d1.x else math.inf
-        slope2 = d2.y / d2.x if d2.x else math.inf
-
-        if slope1 == 0 and math.fabs(slope2) == math.inf:
-            return True
-        elif math.fabs(slope1) == math.inf and slope2 == 0:
-            return True
-        elif slope2 == 0:
-            return False
-        else:
-            return math.isclose(slope1, -1.0 / slope2)
-
-
-class BasicPolygon(BaseModel):
-    """
-    Describes a polygon in geometric space.
-
-    Attributes
-    ----------
-    points: List[Point]
-        The coordinates of the geometry.
+    value : list[tuple[int | float, int | float]]
+        A list of coordinates describing the MultiPoint.
 
     Raises
     ------
     ValueError
-        If less than three points are passed.
+        If the value doesn't conform to the type.
     """
 
-    points: list[Point]
+    value: list[tuple[int | float, int | float]]
+    model_config = ConfigDict(extra="forbid")
 
-    @field_validator("points")
+    @model_validator(mode="before")
     @classmethod
-    def _check_points(cls, v):
-        if v is not None:
-            if len(set(v)) < 3:
-                raise ValueError(
-                    "Polygon must be composed of at least three unique points."
-                )
-            # Remove duplicate of start point
-            if v[0] == v[-1]:
-                v = v[:-1]
+    def deserialize_valor_type(cls, data: Any) -> Any:
+        return deserialize(class_name=cls.__name__, data=data)
 
-        return v
+    @classmethod
+    def from_geojson(cls, geojson: dict):
+        validate_geojson(class_name=cls.__name__, geojson=geojson)
+        value = geojson.get("coordinates")
+        if not isinstance(value, list):
+            raise TypeError("Coordinates should contain a list.")
+        return cls(value=[tuple(point) for point in value])
 
-    @property
-    def left(self):
-        """
-        Returns the left-most point of the geometry.
+    def to_geojson(self) -> dict:
+        return {
+            "type": "MultiPoint",
+            "coordinates": [list(point) for point in self.value],
+        }
 
-        Returns
-        ----------
-        float | int
-            A coordinate.
-        """
-        return min(self.points, key=lambda point: point.x).x
 
-    @property
-    def right(self):
-        """
-        Returns the right-most point of the geometry.
+class LineString(BaseModel):
+    """
+    Describes a LineString in (x,y) coordinates.
 
-        Returns
-        ----------
-        float | int
-            A coordinate.
-        """
-        return max(self.points, key=lambda point: point.x).x
+    Attributes
+    ----------
+    value : list[tuple[int | float, int | float]]
+        A list of coordinates describing the LineString.
 
-    @property
-    def top(self):
-        """
-        Returns the top-most point of the geometry.
+    Raises
+    ------
+    ValueError
+        If the value doesn't conform to the type.
+    """
 
-        Returns
-        ----------
-        float | int
-            A coordinate.
-        """
-        return max(self.points, key=lambda point: point.y).y
+    value: list[tuple[int | float, int | float]]
+    model_config = ConfigDict(extra="forbid")
 
-    @property
-    def bottom(self):
-        """
-        Returns the bottom-most point of the geometry.
+    @model_validator(mode="before")
+    @classmethod
+    def deserialize_valor_type(cls, data: Any) -> Any:
+        return deserialize(class_name=cls.__name__, data=data)
 
-        Returns
-        ----------
-        float | int
-            A coordinate.
-        """
-        return min(self.points, key=lambda point: point.y).y
+    @classmethod
+    def from_geojson(cls, geojson: dict):
+        validate_geojson(class_name=cls.__name__, geojson=geojson)
+        value = geojson.get("coordinates")
+        if not isinstance(value, list):
+            raise TypeError("Coordinates should contain a list.")
+        return cls(value=[tuple(point) for point in value])
 
-    @property
-    def width(self):
-        """
-        Returns the width of the geometry.
+    def to_geojson(self) -> dict:
+        return {
+            "type": "LineString",
+            "coordinates": [list(point) for point in self.value],
+        }
 
-        Returns
-        ----------
-        float | int
-            The width of the geometry.
-        """
-        return self.right - self.left
 
-    @property
-    def height(self):
-        """
-        Returns the height of the geometry.
+class MultiLineString(BaseModel):
+    """
+    Describes a MultiLineString in (x,y) coordinates.
 
-        Returns
-        ----------
-        float | int
-            The height of the geometry.
-        """
-        return self.top - self.bottom
+    Attributes
+    ----------
+    value : list[list[tuple[int | float, int | float]]]
+        A list of coordinates describing the MultiLineString.
 
-    @property
-    def segments(self) -> list[LineSegment]:
-        """
-        Returns a list of line segments for the polygon.
+    Raises
+    ------
+    ValueError
+        If the value doesn't conform to the type.
+    """
 
-        Returns
-        ----------
-        List[LineSegment]
-            A list of segments.
-        """
-        plist = self.points + [self.points[0]]
-        return [
-            LineSegment(points=(plist[i], plist[i + 1]))
-            for i in range(len(plist) - 1)
-        ]
+    value: list[list[tuple[int | float, int | float]]]
+    model_config = ConfigDict(extra="forbid")
 
-    def __str__(self):
-        """Converts the object to a string. In PostGIS, a polygon has to begin and end at the same point"""
+    @model_validator(mode="before")
+    @classmethod
+    def deserialize_valor_type(cls, data: Any) -> Any:
+        return deserialize(class_name=cls.__name__, data=data)
 
-        pts = self.points
-        if pts[0] != pts[-1]:
-            pts = pts + [pts[0]]
-        points_string = [f"({','.join([str(pt.x), str(pt.y)])})" for pt in pts]
-        return f"({','.join(points_string)})"
+    @classmethod
+    def from_geojson(cls, geojson: dict):
+        validate_geojson(class_name=cls.__name__, geojson=geojson)
+        value = geojson.get("coordinates")
+        if not isinstance(value, list):
+            raise TypeError("Coordinates should contain a list.")
+        return cls(value=[[tuple(point) for point in line] for line in value])
 
-    def wkt(self, partial: bool = False) -> str:
-        """
-        Returns the well-known text (WKT) representation of the object.
-
-        Parameters
-        ----------
-        partial : bool
-            Whether to return the full WKT string or not.
-
-        Returns
-        ----------
-        str
-            The WKT representation of the shape.
-        """
-        # in PostGIS polygon has to begin and end at the same point
-        pts = self.points
-        if pts[0] != pts[-1]:
-            pts = pts + [pts[0]]
-        points_string = [" ".join([str(pt.x), str(pt.y)]) for pt in pts]
-        wkt_format = f"({', '.join(points_string)})"
-        if partial:
-            return wkt_format
-        return f"POLYGON ({wkt_format})"
-
-    def offset(self, x: float = 0, y: float = 0):
-        """
-        Translates the geometry by an offset.
-
-        Parameters
-        ----------
-        x : int, default=0
-            The x-axis offset.
-        y : int, default=0
-            The y-axis offset.
-        """
-        self.points = [Point(x=pt.x + x, y=pt.y + y) for pt in self.points]
+    def to_geojson(self) -> dict:
+        return {
+            "type": "MultiLineString",
+            "coordinates": [
+                [list(point) for point in line] for line in self.value
+            ],
+        }
 
 
 class Polygon(BaseModel):
     """
-    Describes a polygon in geometric space.
+    Describes a Polygon in (x,y) coordinates.
 
     Attributes
     ----------
-    boundary : BasicPolygon
-        The polygon itself.
-    holes : List[BasicPolygon]
-        Any holes that exist within the polygon.
+    value : list[list[tuple[int | float, int | float]]]
+        A list of coordinates describing the Box.
+
+    Raises
+    ------
+    ValueError
+        If the value doesn't conform to the type.
     """
 
-    boundary: BasicPolygon
-    holes: list[BasicPolygon] | None = Field(default=None)
+    value: list[list[tuple[int | float, int | float]]]
+    model_config = ConfigDict(extra="forbid")
 
-    def __str__(self):
-        """Converts the object to a string."""
-        polys = [str(self.boundary)]
-        if self.holes:
-            for hole in self.holes:
-                polys.append(str(hole))
-        return f"({','.join(polys)})"
+    @model_validator(mode="before")
+    @classmethod
+    def deserialize_valor_type(cls, data: Any) -> Any:
+        return deserialize(class_name=cls.__name__, data=data)
 
-    @property
-    def left(self):
-        """
-        Returns the left-most point of the geometry.
+    @classmethod
+    def from_geojson(cls, geojson: dict):
+        validate_geojson(class_name=cls.__name__, geojson=geojson)
+        value = geojson.get("coordinates")
+        if not isinstance(value, list):
+            raise TypeError("Coordinates should contain a list.")
+        return cls(
+            value=[
+                [tuple(point) for point in subpolygon] for subpolygon in value
+            ]
+        )
 
-        Returns
-        ----------
-        float | int
-            A coordinate.
-        """
-        return self.boundary.left
+    def to_geojson(self) -> dict:
+        return {
+            "type": "Polygon",
+            "coordinates": [
+                [list(point) for point in subpolygon]
+                for subpolygon in self.value
+            ],
+        }
 
-    @property
-    def right(self):
-        """
-        Returns the right-most point of the geometry.
 
-        Returns
-        ----------
-        float | int
-            A coordinate.
-        """
-        return self.boundary.right
+class Box(BaseModel):
+    """
+    Describes a Box in (x,y) coordinates.
 
-    @property
-    def top(self):
-        """
-        Returns the top-most point of the geometry.
+    Attributes
+    ----------
+    value : list[list[tuple[int | float, int | float]]]
+        A list of coordinates describing the Box.
 
-        Returns
-        ----------
-        float | int
-            A coordinate.
-        """
-        return self.boundary.top
+    Raises
+    ------
+    ValueError
+        If the value doesn't conform to the type.
+    """
 
-    @property
-    def bottom(self):
-        """
-        Returns the bottom-most point of the geometry.
+    value: list[list[tuple[int | float, int | float]]]
+    model_config = ConfigDict(extra="forbid")
 
-        Returns
-        ----------
-        float | int
-            A coordinate.
-        """
-        return self.boundary.bottom
+    @model_validator(mode="before")
+    @classmethod
+    def deserialize_valor_type(cls, data: Any) -> Any:
+        return deserialize(class_name=cls.__name__, data=data)
 
-    @property
-    def width(self):
-        """
-        Returns the width of the geometry.
+    @classmethod
+    def from_geojson(cls, geojson: dict):
+        validate_geojson(class_name="Polygon", geojson=geojson)
+        value = geojson.get("coordinates")
+        if not isinstance(value, list):
+            raise TypeError("Coordinates should contain a list.")
+        if not check_type_box(value):
+            raise ValueError("Value does not conform to the 'Box' type.")
+        return cls(
+            value=[
+                [tuple(point) for point in subpolygon] for subpolygon in value
+            ]
+        )
 
-        Returns
-        ----------
-        float | int
-            The width of the geometry.
-        """
-        return self.boundary.width
-
-    @property
-    def height(self):
-        """
-        Returns the height of the geometry.
-
-        Returns
-        ----------
-        float | int
-            The height of the geometry.
-        """
-        return self.boundary.height
-
-    def wkt(self, partial: bool = False) -> str:
-        """
-        Returns the well-known text (WKT) representation of the object.
-
-        Parameters
-        ----------
-        partial : bool
-            Whether to return the full WKT string or not.
-
-        Returns
-        ----------
-        str
-            The WKT representation of the shape.
-        """
-        polys = [self.boundary.wkt(partial=True)]
-        if self.holes:
-            for hole in self.holes:
-                polys.append(hole.wkt(partial=True))
-        wkt_format = f"({', '.join(polys)})"
-        if partial:
-            return wkt_format
-        return f"POLYGON {wkt_format}"
-
-    def offset(self, x: float = 0, y: float = 0):
-        """
-        Translates the geometry by an offset.
-
-        Parameters
-        ----------
-        x : int, default=0
-            The x-axis offset.
-        y : int, default=0
-            The y-axis offset.
-        """
-        self.boundary.offset(x, y)
-        if self.holes:
-            for idx in range(len(self.holes)):
-                self.holes[idx].offset(x, y)
+    def to_geojson(self) -> dict:
+        return {
+            "type": "Polygon",
+            "coordinates": [
+                [list(point) for point in subpolygon]
+                for subpolygon in self.value
+            ],
+        }
 
 
 class MultiPolygon(BaseModel):
     """
-    Describes a multipolygon in geometric space.
+    Describes a MultiPolygon in (x,y) coordinates.
 
     Attributes
     ----------
-    polygons: List[Polygon]
-        A list of polygons that make up the `MultiPolygon`.
+    value : list[list[list[tuple[int | float, int | float]]]]
+        A list of coordinates describing the MultiPolygon.
 
     Raises
     ------
     ValueError
-        If less than three points are passed.
+        If the value doesn't conform to the type.
     """
 
-    polygons: list[Polygon]
+    value: list[list[list[tuple[int | float, int | float]]]]
+    model_config = ConfigDict(extra="forbid")
 
-    @property
-    def left(self):
-        """
-        Returns the left-most point of the geometry.
-
-        Returns
-        ----------
-        float | int
-            A coordinate.
-        """
-        return min([poly.left for poly in self.polygons])
-
-    @property
-    def right(self):
-        """
-        Returns the right-most point of the geometry.
-
-        Returns
-        ----------
-        float | int
-            A coordinate.
-        """
-        return max([poly.right for poly in self.polygons])
-
-    @property
-    def top(self):
-        """
-        Returns the top-most point of the geometry.
-
-        Returns
-        ----------
-        float | int
-            A coordinate.
-        """
-        return max([poly.top for poly in self.polygons])
-
-    @property
-    def bottom(self):
-        """
-        Returns the bottom-most point of the geometry.
-
-        Returns
-        ----------
-        float | int
-            A coordinate.
-        """
-        return min([poly.bottom for poly in self.polygons])
-
-    @property
-    def width(self):
-        """
-        Returns the width of the geometry.
-
-        Returns
-        ----------
-        float | int
-            The width of the geometry.
-        """
-        return self.right - self.left
-
-    @property
-    def height(self):
-        """
-        Returns the height of the geometry.
-
-        Returns
-        ----------
-        float | int
-            The height of the geometry.
-        """
-        return self.top - self.bottom
-
-    def wkt(self) -> str:
-        """
-        Returns the well-known text (WKT) representation of the object`.
-
-        Returns
-        ----------
-        str
-            The WKT representation of the shape.
-        """
-        plist = [polygon.wkt(partial=True) for polygon in self.polygons]
-        return f"MULTIPOLYGON ({', '.join(plist)})"
-
-    def offset(self, x: float = 0, y: float = 0):
-        """
-        Translates the geometry by an offset.
-
-        Parameters
-        ----------
-        x : int, default=0
-            The x-axis offset.
-        y : int, default=0
-            The y-axis offset.
-        """
-        for idx in range(len(self.polygons)):
-            self.polygons[idx].offset(x, y)
-
-
-class BoundingBox(BaseModel):
-    """
-    Describes a bounding box in geometric space.
-
-    Attributes
-    ----------
-    polygons: BasicPolygon
-        A polygon describing the bounding box.
-
-    Raises
-    ------
-    ValueError
-        If the number of points != 4.
-    """
-
-    polygon: BasicPolygon
-
-    @field_validator("polygon")
+    @model_validator(mode="before")
     @classmethod
-    def _validate_polygon(cls, v):
-        """Validates the number of points in the polygon."""
-        if len(set(v.points)) != 4:
-            raise ValueError(
-                "bounding box polygon requires exactly 4 unique points."
-            )
-        return v
+    def deserialize_valor_type(cls, data: Any) -> Any:
+        return deserialize(class_name=cls.__name__, data=data)
 
     @classmethod
-    def from_extrema(cls, xmin: float, ymin: float, xmax: float, ymax: float):
-        """
-        Create a bounding box from extrema.
-
-        Parameters
-        ----------
-        xmin: float
-            The minimum x-coordinate.
-        ymin: float
-            The minimum y-coordinate.
-        xmax: float
-            The maximum x-coordinate.
-        ymax: float
-            The maximum y-coordinate.
-
-
-        Returns
-        ------
-        BoundingBox
-            The bounding box created from the extrema.
-        """
+    def from_geojson(cls, geojson: dict):
+        validate_geojson(class_name=cls.__name__, geojson=geojson)
+        value = geojson.get("coordinates")
+        if not isinstance(value, list):
+            raise TypeError("Coordinates should contain a list.")
         return cls(
-            polygon=BasicPolygon(
-                points=[
-                    Point(x=xmin, y=ymin),
-                    Point(x=xmax, y=ymin),
-                    Point(x=xmax, y=ymax),
-                    Point(x=xmin, y=ymax),
+            value=[
+                [
+                    [tuple(point) for point in subpolygon]
+                    for subpolygon in polygon
                 ]
-            )
+                for polygon in value
+            ]
         )
 
-    @property
-    def left(self):
-        """
-        Returns the left-most point of the geometry.
-
-        Returns
-        ----------
-        float | int
-            A coordinate.
-        """
-        return self.polygon.left
-
-    @property
-    def right(self):
-        """
-        Returns the right-most point of the geometry.
-
-        Returns
-        ----------
-        float | int
-            A coordinate.
-        """
-        return self.polygon.right
-
-    @property
-    def top(self):
-        """
-        Returns the top-most point of the geometry.
-
-        Returns
-        ----------
-        float | int
-            A coordinate.
-        """
-        return self.polygon.top
-
-    @property
-    def bottom(self):
-        """
-        Returns the bottom-most point of the geometry.
-
-        Returns
-        ----------
-        float | int
-            A coordinate.
-        """
-        return self.polygon.bottom
-
-    @property
-    def width(self):
-        """
-        Returns the width of the geometry.
-
-        Returns
-        ----------
-        float | int
-            The width of the geometry.
-        """
-        return self.polygon.width
-
-    @property
-    def height(self):
-        """
-        Returns the height of the geometry.
-
-        Returns
-        ----------
-        float | int
-            The height of the geometry.
-        """
-        return self.polygon.height
-
-    def is_rectangular(self):
-        """
-        Asserts whether the bounding box is rectangular.
-
-        Returns
-        ----------
-        bool
-            Whether the polygon is rectangular or not.
-        """
-        # retrieve segments
-        segments = self.polygon.segments
-
-        # check if segments are parallel
-        if not (
-            segments[0].parallel(segments[2])
-            and segments[1].parallel(segments[3])
-        ):
-            return False
-
-        # check if segments are perpendicular
-        for i in range(3):
-            if not segments[i].perpendicular(segments[i + 1]):
-                return False
-
-        return True
-
-    def is_rotated(self):
-        """
-        Asserts whether the bounding box is rotated.
-
-        Returns
-        ----------
-        bool
-            Whether the polygon is rotated or not.
-        """
-        # check if rectangular
-        if not self.is_rectangular():
-            return False
-
-        # check if rotation exists by seeing if corners do not share values.
-        x = set([p.x for p in self.polygon.points])
-        y = set([p.y for p in self.polygon.points])
-        return (len(x) != 2) and (len(y) != 2)
-
-    def is_skewed(self):
-        """
-        Asserts whether the bounding box is skewed.
-
-        Returns
-        ----------
-        bool
-            Whether the polygon is skewed or not.
-        """
-        return not (self.is_rotated() or self.is_rectangular())
-
-    def wkt(self) -> str:
-        """
-        Returns the well-known text (WKT) representation of the object.
-
-        Returns
-        ----------
-        str
-            The WKT representation of the shape.
-        """
-        return self.polygon.wkt()
-
-    def offset(self, x: float = 0, y: float = 0):
-        """
-        Translates the geometry by an offset.
-
-        Parameters
-        ----------
-        x : int, default=0
-            The x-axis offset.
-        y : int, default=0
-            The y-axis offset.
-        """
-        self.polygon.offset(x, y)
+    def to_geojson(self) -> dict:
+        return {
+            "type": "Polygon",
+            "coordinates": [
+                [
+                    [list(point) for point in subpolygon]
+                    for subpolygon in polygon
+                ]
+                for polygon in self.value
+            ],
+        }
 
 
 class Raster(BaseModel):
@@ -987,7 +341,7 @@ class Raster(BaseModel):
     """
 
     mask: str = Field(frozen=True)
-    geometry: BoundingBox | Polygon | MultiPolygon | None = None
+    geometry: Box | Polygon | MultiPolygon | None = None
 
     @field_validator("mask")
     @classmethod
@@ -1045,7 +399,7 @@ class Raster(BaseModel):
     @classmethod
     def from_geometry(
         cls,
-        geometry: BoundingBox | Polygon | MultiPolygon,
+        geometry: Box | Polygon | MultiPolygon,
         height: int | float,
         width: int | float,
     ):
@@ -1160,7 +514,7 @@ class Raster(BaseModel):
                 "8BUI",
             )
             geom_raster = ST_AsRaster(
-                ST_GeomFromText(self.geometry.wkt()),
+                ST_GeomFromGeoJSON(self.geometry.to_geojson()),
                 1.0,  # scalex
                 1.0,  # scaley
                 "8BUI",  # pixeltype

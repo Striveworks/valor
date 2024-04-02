@@ -2,8 +2,8 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
+from api.valor_api.schemas.geometry import Box, Polygon
 from valor_api.enums import TaskType
-from valor_api.schemas.geojson import Polygon
 from valor_api.schemas.validators import (
     deserialize,
     validate_annotation_by_task_type,
@@ -25,7 +25,7 @@ class Annotation(BaseModel):
     task_type: TaskType
     metadata: dict = dict()
     labels: list[Label] = list()
-    box: Polygon | None = None
+    box: Box | None = None
     polygon: Polygon | None = None
     raster: Any | None = None
     embedding: list[float] | None = None
