@@ -1004,7 +1004,6 @@ class Polygon(Spatial):
     def __validate__(cls, value: Any):
         MultiLineString.__validate__(value)
         for line in value:
-            LineString.__validate__(line)
             if not (len(line) >= 4 and line[0] == line[-1]):
                 raise ValueError(
                     "Polygons are defined by at least 4 points with the first point being repeated at the end."
