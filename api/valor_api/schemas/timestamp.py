@@ -1,3 +1,4 @@
+import datetime
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
@@ -38,6 +39,15 @@ class DateTime(BaseModel):
             )
         return v
 
+    @classmethod
+    def from_datetime(cls, value: datetime.datetime):
+        """Construct a class instance from a 'datetime.datetime' object."""
+        cls(value=value.isoformat())
+
+    def to_datetime(self):
+        """Cast to a 'datetime.datetime' object."""
+        return datetime.datetime.fromisoformat(self.value)
+
 
 class Date(BaseModel):
     """
@@ -64,6 +74,15 @@ class Date(BaseModel):
             raise ValueError("Date does not conform to 'datetime.date'.")
         return v
 
+    @classmethod
+    def from_date(cls, value: datetime.date):
+        """Construct a class instance from a 'datetime.date' object."""
+        cls(value=value.isoformat())
+
+    def to_date(self):
+        """Cast to a 'datetime.date' object."""
+        return datetime.date.fromisoformat(self.value)
+
 
 class Time(BaseModel):
     """
@@ -89,6 +108,15 @@ class Time(BaseModel):
         if not check_type_time(v):
             raise ValueError("Time does not conform to 'datetime.time'.")
         return v
+
+    @classmethod
+    def from_time(cls, value: datetime.time):
+        """Construct a class instance from a 'datetime.time' object."""
+        cls(value=value.isoformat())
+
+    def to_time(self):
+        """Cast to a 'datetime.time' object."""
+        return datetime.time.fromisoformat(self.value)
 
 
 class Duration(BaseModel):
@@ -117,3 +145,12 @@ class Duration(BaseModel):
                 "Duration does not conform to 'datetime.timedelta'."
             )
         return v
+
+    @classmethod
+    def from_timedelta(cls, value: datetime.timedelta):
+        """Construct a class instance from a 'datetime.timedelta' object."""
+        cls(value=value.total_seconds())
+
+    def to_timedelta(self):
+        """Cast to a 'datetime.timedelta' object."""
+        return datetime.timedelta(seconds=self.value)

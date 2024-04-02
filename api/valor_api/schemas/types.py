@@ -2,7 +2,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
-from api.valor_api.schemas.geometry import Box, Polygon
+from api.valor_api.schemas.geometry import Box, Polygon, Raster
 from valor_api.enums import TaskType
 from valor_api.schemas.validators import (
     deserialize,
@@ -27,7 +27,7 @@ class Annotation(BaseModel):
     labels: list[Label] = list()
     box: Box | None = None
     polygon: Polygon | None = None
-    raster: Any | None = None
+    raster: Raster | None = None
     embedding: list[float] | None = None
     model_config = ConfigDict(extra="forbid")
 

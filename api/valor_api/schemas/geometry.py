@@ -342,6 +342,12 @@ class Raster(BaseModel):
 
     mask: str = Field(frozen=True)
     geometry: Box | Polygon | MultiPolygon | None = None
+    model_config = ConfigDict(extra="forbid")
+
+    @model_validator(mode="before")
+    @classmethod
+    def deserialize_valor_type(cls, data: Any) -> Any:
+        return deserialize(class_name=cls.__name__, data=data)
 
     @field_validator("mask")
     @classmethod
