@@ -2,7 +2,7 @@ FROM --platform=${BUILDPLATFORM:-linux/amd64} python:3.10-alpine
 
 ARG VERSION="0.0.0-dev"
 
-RUN apk add --update --no-cache build-base libpq-dev
+RUN apk add --update --no-cache build-base libpq-dev gfortran
 
 COPY ./pyproject.toml /src/
 
