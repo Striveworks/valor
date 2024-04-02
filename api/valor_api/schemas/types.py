@@ -5,6 +5,7 @@ from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 from valor_api.enums import TaskType
 from valor_api.schemas.geojson import Polygon
 from valor_api.schemas.validators import (
+    deserialize,
     validate_annotation_by_task_type,
     validate_dictionary,
     validate_groundtruth_annotations,
@@ -13,27 +14,14 @@ from valor_api.schemas.validators import (
 )
 
 
-class Deserializer:
-    @model_validator(mode="before")
-    @classmethod
-    def deserialize_valor_type(cls, data: Any) -> Any:
-        if isinstance(data, dict) and set(data.keys()) == {"type", "value"}:
-            if not data.get("type") == cls.__name__.lower():
-                raise TypeError(
-                    f"'{cls.__name__}' received value with type '{data.get('type')}'"
-                )
-            return data.get("value")
-        return data
-
-
-class Label(BaseModel, Deserializer):
+class Label(BaseModel):
     key: str
     value: str
     score: float | None = None
     model_config = ConfigDict(extra="forbid")
 
 
-class Annotation(BaseModel, Deserializer):
+class Annotation(BaseModel):
     task_type: TaskType
     metadata: dict = dict()
     labels: list[Label] = list()
@@ -42,6 +30,11 @@ class Annotation(BaseModel, Deserializer):
     raster: Any | None = None
     embedding: list[float] | None = None
     model_config = ConfigDict(extra="forbid")
+
+    @model_validator(mode="before")
+    @classmethod
+    def deserialize_valor_type(cls, data: Any) -> Any:
+        return deserialize(class_name=cls.__name__, data=data)
 
     @model_validator(mode="after")
     @classmethod
@@ -57,10 +50,15 @@ class Annotation(BaseModel, Deserializer):
         return v
 
 
-class Datum(BaseModel, Deserializer):
+class Datum(BaseModel):
     uid: str
     metadata: dict = dict()
     model_config = ConfigDict(extra="forbid")
+
+    @model_validator(mode="before")
+    @classmethod
+    def deserialize_valor_type(cls, data: Any) -> Any:
+        return deserialize(class_name=cls.__name__, data=data)
 
     @field_validator("uid")
     @classmethod
@@ -77,11 +75,16 @@ class Datum(BaseModel, Deserializer):
         return v
 
 
-class GroundTruth(BaseModel, Deserializer):
+class GroundTruth(BaseModel):
     dataset_name: str
     datum: Datum
     annotations: list[Annotation]
     model_config = ConfigDict(extra="forbid")
+
+    @model_validator(mode="before")
+    @classmethod
+    def deserialize_valor_type(cls, data: Any) -> Any:
+        return deserialize(class_name=cls.__name__, data=data)
 
     @field_validator("dataset_name")
     @classmethod
@@ -100,12 +103,17 @@ class GroundTruth(BaseModel, Deserializer):
         return v
 
 
-class Prediction(BaseModel, Deserializer):
+class Prediction(BaseModel):
     dataset_name: str
     model_name: str
     datum: Datum
     annotations: list[Annotation]
     model_config = ConfigDict(extra="forbid")
+
+    @model_validator(mode="before")
+    @classmethod
+    def deserialize_valor_type(cls, data: Any) -> Any:
+        return deserialize(class_name=cls.__name__, data=data)
 
     @field_validator("dataset_name")
     @classmethod
@@ -131,10 +139,15 @@ class Prediction(BaseModel, Deserializer):
         return v
 
 
-class Dataset(BaseModel, Deserializer):
+class Dataset(BaseModel):
     name: str
     metadata: dict = dict()
     model_config = ConfigDict(extra="forbid")
+
+    @model_validator(mode="before")
+    @classmethod
+    def deserialize_valor_type(cls, data: Any) -> Any:
+        return deserialize(class_name=cls.__name__, data=data)
 
     @field_validator("name")
     @classmethod
@@ -151,10 +164,15 @@ class Dataset(BaseModel, Deserializer):
         return v
 
 
-class Model(BaseModel, Deserializer):
+class Model(BaseModel):
     name: str
     metadata: dict = dict()
     model_config = ConfigDict(extra="forbid")
+
+    @model_validator(mode="before")
+    @classmethod
+    def deserialize_valor_type(cls, data: Any) -> Any:
+        return deserialize(class_name=cls.__name__, data=data)
 
     @field_validator("name")
     @classmethod

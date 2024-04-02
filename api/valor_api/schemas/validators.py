@@ -70,10 +70,10 @@ def check_type_duration(v: Any) -> bool:
 
 def check_type_point(v: Any) -> bool:
     return (
-        isinstance(v, tuple)
+        isinstance(v, (tuple, list))
         and len(v) == 2
-        and isinstance(v[0], float)
-        and isinstance(v[1], float)
+        and isinstance(v[0], (int, float))
+        and isinstance(v[1], (int, float))
     )
 
 
@@ -303,3 +303,44 @@ def validate_dictionary(dictionary: dict):
             raise ValueError(
                 f"Metadata value '{value_}' failed validation for type '{type_}'"
             )
+
+
+def validate_geojson(class_name: str, geojson: dict):
+    map_str_to_geojson_validator = {
+        "point": check_type_point,
+        "multipoint": check_type_multipoint,
+        "linestring": check_type_linestring,
+        "multilinestring": check_type_multilinestring,
+        "polygon": check_type_polygon,
+        "multipolygon": check_type_multipolygon,
+    }
+    # validate geojson
+    if class_name.lower() not in map_str_to_geojson_validator:
+        raise TypeError(
+            f"Class '{class_name}' is not a supported GeoJSON geometry."
+        )
+    elif not isinstance(geojson, dict):
+        raise TypeError(
+            "GeoJSON should be defined by an object of type 'dict'."
+        )
+    elif set(geojson.keys()) != {"type", "coordinates"}:
+        raise KeyError(
+            "Expected geojson to have keys 'type' and 'coordinates'."
+        )
+    elif geojson.get("type") != class_name:
+        raise TypeError(f"GeoJSON type does not match '{class_name}'.")
+    # validate coordinates
+    if not map_str_to_geojson_validator[class_name.lower()](
+        geojson.get("coordinates")
+    ):
+        raise ValueError(f"Value does not conform to {class_name}.")
+
+
+def deserialize(class_name: str, data: Any) -> Any:
+    if isinstance(data, dict) and set(data.keys()) == {"type", "value"}:
+        if not data.get("type") == class_name.lower():
+            raise TypeError(
+                f"'{class_name}' received value with type '{data.get('type')}'"
+            )
+        return data.get("value")
+    return data
