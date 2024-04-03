@@ -1209,7 +1209,7 @@ class Client:
             The dataset to create.
         """
         if isinstance(dataset, Dataset):
-            dataset = dataset.to_dict()
+            dataset = dataset.encode_value()
         self.conn.create_dataset(dataset)
 
     def create_groundtruths(
@@ -1240,8 +1240,8 @@ class Client:
                 warnings.warn(
                     f"GroundTruth for datum with uid `{groundtruth.datum.uid}` contains no annotations."
                 )
-            groundtruth_dict = groundtruth.to_dict()
-            groundtruth_dict["datum"]["dataset_name"] = dataset.get_name()
+            groundtruth_dict = groundtruth.encode_value()
+            groundtruth_dict["dataset_name"] = dataset.get_name()
             groundtruths_json.append(groundtruth_dict)
         self.conn.create_groundtruths(groundtruths_json)
 
@@ -1478,7 +1478,7 @@ class Client:
             The model to create.
         """
         if isinstance(model, Model):
-            model = model.to_dict()
+            model = model.encode_value()
         self.conn.create_model(model)
 
     def create_predictions(
@@ -1511,8 +1511,8 @@ class Client:
                 warnings.warn(
                     f"Prediction for datum with uid `{prediction.datum.uid}` contains no annotations."
                 )
-            prediction_dict = prediction.to_dict()
-            prediction_dict["datum"]["dataset_name"] = dataset.get_name()
+            prediction_dict = prediction.encode_value()
+            prediction_dict["dataset_name"] = dataset.get_name()
             prediction_dict["model_name"] = model.get_name()
             predictions_json.append(prediction_dict)
         self.conn.create_predictions(predictions_json)

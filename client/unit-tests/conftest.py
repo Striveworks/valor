@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 from valor import Label
-from valor.schemas import BoundingBox, BoundingPolygon, Raster
+from valor.schemas import Box, Polygon, Raster
 
 
 @pytest.fixture
@@ -27,13 +27,13 @@ def box_points() -> List[Tuple[float, float]]:
 
 
 @pytest.fixture
-def bbox() -> BoundingBox:
-    return BoundingBox.from_extrema(xmin=0, xmax=10, ymin=0, ymax=10)
+def bbox() -> Box:
+    return Box.from_extrema(xmin=0, xmax=10, ymin=0, ymax=10)
 
 
 @pytest.fixture
-def polygon(box_points) -> BoundingPolygon:
-    return BoundingPolygon([box_points])
+def polygon(box_points) -> Polygon:
+    return Polygon([box_points])
 
 
 @pytest.fixture

@@ -1,5 +1,5 @@
 import math
-from typing import Any
+from typing import Any, Union
 
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
@@ -13,6 +13,14 @@ from valor_api.schemas.validators import (
     validate_prediction_annotations,
     validate_string,
 )
+
+GeometryType = Union[
+    tuple[float, float],
+    list[tuple[float, float]],
+    list[list[tuple[float, float]]],
+    list[list[list[tuple[float, float]]]],
+]
+MetadataType = dict[str, dict[str, bool | int | float | str | GeometryType]]
 
 
 class Label(BaseModel):

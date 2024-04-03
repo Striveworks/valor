@@ -1,5 +1,4 @@
 from .auth import User
-from .core import Annotation, Dataset, Datum, GroundTruth, Model, Prediction
 from .evaluation import (
     EvaluationParameters,
     EvaluationRequest,
@@ -16,23 +15,14 @@ from .filters import (
     convert_filter_query_params_to_filter_obj,
 )
 from .geometry import (
-    BasicPolygon,
-    BoundingBox,
+    Box,
+    LineString,
+    MultiLineString,
+    MultiPoint,
     MultiPolygon,
     Point,
     Polygon,
     Raster,
-)
-from .info import APIVersion
-from .label import Label
-from .metadata import (
-    Date,
-    DateTime,
-    Duration,
-    GeoJSONMultiPolygon,
-    GeoJSONPoint,
-    GeoJSONPolygon,
-    Time,
 )
 from .metrics import (
     AccuracyMetric,
@@ -54,8 +44,18 @@ from .metrics import (
     mARMetric,
     mIOUMetric,
 )
-from .status import Health, Readiness
+from .status import APIVersion, Health, Readiness
 from .summary import DatasetSummary
+from .timestamp import Date, DateTime, Duration, Time
+from .types import (
+    Annotation,
+    Dataset,
+    Datum,
+    GroundTruth,
+    Label,
+    Model,
+    Prediction,
+)
 
 __all__ = [
     "APIVersion",
@@ -68,8 +68,6 @@ __all__ = [
     "Prediction",
     "Label",
     "Point",
-    "BasicPolygon",
-    "BoundingBox",
     "MultiPolygon",
     "Polygon",
     "Raster",
@@ -92,9 +90,10 @@ __all__ = [
     "ARMetric",
     "mARMetric",
     "APMetricAveragedOverIOUs",
-    "GeoJSONPoint",
-    "GeoJSONPolygon",
-    "GeoJSONMultiPolygon",
+    "MultiPoint",
+    "LineString",
+    "MultiLineString",
+    "Box",
     "mAPMetric",
     "mAPMetricAveragedOverIOUs",
     "ConfusionMatrixEntry",

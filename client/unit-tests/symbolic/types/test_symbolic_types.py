@@ -18,7 +18,6 @@ from valor.schemas.symbolic.types import (
     MultiLineString,
     MultiPoint,
     MultiPolygon,
-    Nullable,
     Point,
     Polygon,
     Quantifiable,
@@ -419,18 +418,6 @@ def test_modifiers():
     _test_quantifiable(A, B, C)
     with pytest.raises(AttributeError):
         _test_nullable(A, B, C)
-    with pytest.raises(AttributeError):
-        _test_spatial(A, B, C)
-
-    # nullable
-    A = Nullable.symbolic("A")
-    B = Nullable.symbolic("B")
-    C = Nullable.symbolic("C")
-    _test_nullable(A, B, C)
-    with pytest.raises(AttributeError):
-        _test_equatable(A, B, C)
-    with pytest.raises(AttributeError):
-        _test_quantifiable(A, B, C)
     with pytest.raises(AttributeError):
         _test_spatial(A, B, C)
 
