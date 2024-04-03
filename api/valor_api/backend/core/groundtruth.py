@@ -20,15 +20,18 @@ def create_groundtruth(
     groundtruth: schemas.GroundTruth
         The ground truth to create.
     """
+    # fetch dataset row
+    dataset = core.fetch_dataset(db=db, name=groundtruth.dataset_name)
+
     # check dataset status
     if (
-        core.get_dataset_status(db=db, name=groundtruth.datum.dataset_name)
+        core.get_dataset_status(db=db, name=groundtruth.dataset_name)
         != enums.TableStatus.CREATING
     ):
-        raise exceptions.DatasetFinalizedError(groundtruth.datum.dataset_name)
+        raise exceptions.DatasetFinalizedError(groundtruth.dataset_name)
 
     # create datum
-    datum = core.create_datum(db, groundtruth.datum)
+    datum = core.create_datum(db=db, datum=groundtruth.datum, dataset=dataset)
 
     # create labels
     all_labels = [
@@ -96,9 +99,9 @@ def get_groundtruth(
     dataset = core.fetch_dataset(db, name=dataset_name)
     datum = core.fetch_datum(db, dataset_id=dataset.id, uid=datum_uid)
     return schemas.GroundTruth(
+        dataset_name=dataset.name,
         datum=schemas.Datum(
             uid=datum.uid,
-            dataset_name=dataset_name,
             metadata=datum.meta,
         ),
         annotations=core.get_annotations(db, datum),

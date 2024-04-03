@@ -5,7 +5,7 @@ import pytest
 
 from valor import Annotation, Dataset, Datum, Filter, GroundTruth, Label
 from valor.enums import TaskType
-from valor.schemas import BoundingBox, BoundingPolygon, MultiPolygon, Raster
+from valor.schemas import Box, MultiPolygon, Polygon, Raster
 
 
 @pytest.fixture
@@ -59,13 +59,13 @@ def groundtruths_with_areas(
     # create geometries
     for idx, hw in enumerate(heights_and_widths):
         h, w = hw
-        bbox = BoundingBox.from_extrema(
+        bbox = Box.from_extrema(
             xmin=0,
             xmax=w,
             ymin=0,
             ymax=h,
         )
-        polygon = BoundingPolygon([bbox.boundary])
+        polygon = Polygon([bbox.boundary])
         multipolygon = MultiPolygon([[bbox.boundary]])
         raster = _create_raster(h, w, image_height_width)
 
@@ -77,7 +77,7 @@ def groundtruths_with_areas(
                         Annotation(
                             task_type=TaskType.OBJECT_DETECTION,
                             labels=[Label(key="box", value=str(idx))],
-                            bounding_box=bbox,
+                            box=bbox,
                         )
                     ],
                 ),
@@ -136,7 +136,7 @@ def test_filter_by_bounding_box(client, groundtruths_with_areas, areas):
     all_labels = client.get_labels(
         Filter.create(
             [
-                Annotation.bounding_box.is_not_none(),
+                Annotation.box.is_not_none(),
                 Annotation.polygon.is_none(),
                 Annotation.raster.is_none(),
             ]
@@ -154,10 +154,10 @@ def test_filter_by_bounding_box(client, groundtruths_with_areas, areas):
         thresholded_labels = client.get_labels(
             Filter.create(
                 [
-                    Annotation.bounding_box.is_not_none(),
+                    Annotation.box.is_not_none(),
                     Annotation.polygon.is_none(),
                     Annotation.raster.is_none(),
-                    Annotation.bounding_box.area > area,
+                    Annotation.box.area > area,
                 ]
             )
         )
@@ -184,7 +184,7 @@ def test_filter_by_polygon(client, groundtruths_with_areas, areas):
     all_labels = client.get_labels(
         Filter.create(
             [
-                Annotation.bounding_box.is_none(),
+                Annotation.box.is_none(),
                 Annotation.polygon.is_not_none(),
                 Annotation.raster.is_none(),
             ]
@@ -202,7 +202,7 @@ def test_filter_by_polygon(client, groundtruths_with_areas, areas):
         thresholded_labels = client.get_labels(
             Filter.create(
                 [
-                    Annotation.bounding_box.is_none(),
+                    Annotation.box.is_none(),
                     Annotation.polygon.is_not_none(),
                     Annotation.raster.is_none(),
                     Annotation.polygon.area > area,
@@ -234,7 +234,7 @@ def test_filter_by_multipolygon(client, groundtruths_with_areas, areas):
         Filter.create(
             [
                 Label.key == label_key,
-                Annotation.bounding_box.is_none(),
+                Annotation.box.is_none(),
                 Annotation.polygon.is_none(),
                 Annotation.raster.is_not_none(),
             ]
@@ -253,7 +253,7 @@ def test_filter_by_multipolygon(client, groundtruths_with_areas, areas):
             Filter.create(
                 [
                     Label.key == label_key,
-                    Annotation.bounding_box.is_none(),
+                    Annotation.box.is_none(),
                     Annotation.polygon.is_none(),
                     Annotation.raster.is_not_none(),
                     Annotation.raster.area > area,
@@ -284,7 +284,7 @@ def test_filter_by_raster(client, groundtruths_with_areas, areas):
         Filter.create(
             [
                 Label.key == label_key,
-                Annotation.bounding_box.is_none(),
+                Annotation.box.is_none(),
                 Annotation.polygon.is_none(),
                 Annotation.raster.is_not_none(),
             ]
@@ -303,7 +303,7 @@ def test_filter_by_raster(client, groundtruths_with_areas, areas):
             Filter.create(
                 [
                     Label.key == label_key,
-                    Annotation.bounding_box.is_none(),
+                    Annotation.box.is_none(),
                     Annotation.polygon.is_none(),
                     Annotation.raster.is_not_none(),
                     Annotation.raster.area > area,

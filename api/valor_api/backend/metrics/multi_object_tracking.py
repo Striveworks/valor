@@ -38,7 +38,7 @@ class MOTDetection:
         The frame number for a video frame.
     object_id: str
         The id of the object
-    bbox: schemas.BoundingBox
+    bbox: schemas.Box
         A bounding box for the frame.
     confidence: float
         The confidence level for the bounding box.
@@ -48,7 +48,7 @@ class MOTDetection:
         self,
         frame_number: int | float,
         object_id: str,
-        bbox: schemas.BoundingBox,
+        bbox: schemas.Box,
         confidence: float,
     ):
         self.frame_number = frame_number
@@ -97,7 +97,7 @@ def _ground_truth_det_to_mot(
     for label in gt.labels:
         if label.key == OBJECT_ID_LABEL_KEY:
             break
-    bbox = gt.bounding_box
+    bbox = gt.box
 
     if not bbox:
         raise ValueError("GroundTruth is missing bounding box.")
@@ -128,7 +128,7 @@ def _pred_det_to_mot(
         if scored_label.key == object_id_label_key:
             break
 
-    bbox = pred.bounding_box
+    bbox = pred.box
 
     if not bbox:
         raise ValueError("Prediction is missing bounding box.")

@@ -20,11 +20,7 @@ from pydantic import (
 )
 from sqlalchemy import ScalarSelect, select
 
-from valor_api.schemas.validators import (
-    check_type_box,
-    deserialize,
-    validate_geojson,
-)
+from valor_api.schemas.validators import deserialize, validate_geojson
 
 
 class Point(BaseModel):
@@ -60,6 +56,9 @@ class Point(BaseModel):
 
     def to_geojson(self) -> dict:
         return {"type": "Point", "coordinates": list(self.value)}
+
+    def to_wkt(self) -> str:
+        return f"POINT ({self.value[0]} {self.value[1]})"
 
 
 class MultiPoint(BaseModel):
@@ -99,6 +98,12 @@ class MultiPoint(BaseModel):
             "coordinates": [list(point) for point in self.value],
         }
 
+    def to_wkt(self) -> str:
+        points = ", ".join(
+            [f"({point[0]} {point[1]})" for point in self.value]
+        )
+        return f"MULTIPOINT ({points})"
+
 
 class LineString(BaseModel):
     """
@@ -136,6 +141,10 @@ class LineString(BaseModel):
             "type": "LineString",
             "coordinates": [list(point) for point in self.value],
         }
+
+    def to_wkt(self) -> str:
+        points = ", ".join([f"{point[0]} {point[1]}" for point in self.value])
+        return f"LINESTRING ({points})"
 
 
 class MultiLineString(BaseModel):
@@ -176,6 +185,15 @@ class MultiLineString(BaseModel):
                 [list(point) for point in line] for line in self.value
             ],
         }
+
+    def to_wkt(self) -> str:
+        points = "),(".join(
+            [
+                ", ".join([f"{point[0]} {point[1]}" for point in line])
+                for line in self.value
+            ]
+        )
+        return f"MULTILINESTRING (({points}))"
 
 
 class Polygon(BaseModel):
@@ -222,6 +240,15 @@ class Polygon(BaseModel):
             ],
         }
 
+    def to_wkt(self) -> str:
+        coords = "),(".join(
+            [
+                ", ".join([f"{point[0]} {point[1]}" for point in subpolygon])
+                for subpolygon in self.value
+            ]
+        )
+        return f"POLYGON (({coords}))"
+
 
 class Box(BaseModel):
     """
@@ -247,27 +274,58 @@ class Box(BaseModel):
         return deserialize(class_name=cls.__name__, data=data)
 
     @classmethod
-    def from_geojson(cls, geojson: dict):
-        validate_geojson(class_name="Polygon", geojson=geojson)
-        value = geojson.get("coordinates")
-        if not isinstance(value, list):
-            raise TypeError("Coordinates should contain a list.")
-        if not check_type_box(value):
-            raise ValueError("Value does not conform to the 'Box' type.")
+    def from_extrema(
+        cls,
+        xmin: float,
+        xmax: float,
+        ymin: float,
+        ymax: float,
+    ):
+        """
+        Create a box from extrema.
+
+        Parameters
+        ----------
+        xmin: float
+            The minimum x-coordinate.
+        xmax: float
+            The maximum x-coordinate.
+        ymin: float
+            The minimum y-coordinate.
+        ymax: float
+            The maximum y-coordinate.
+
+        Returns
+        -------
+        BoundingBox
+            The bounding box created from the extrema.
+        """
+        if xmin >= xmax or ymin >= ymax:
+            raise ValueError(
+                "Minimums cannot be greater-than or equal to maximums."
+            )
         return cls(
             value=[
-                [tuple(point) for point in subpolygon] for subpolygon in value
+                [
+                    (xmin, ymin),
+                    (xmax, ymin),
+                    (xmax, ymax),
+                    (xmin, ymax),
+                    (xmin, ymin),
+                ]
             ]
         )
 
+    @classmethod
+    def from_geojson(cls, geojson: dict):
+        validate_geojson(class_name="Polygon", geojson=geojson)
+        return cls(value=Polygon.from_geojson(geojson).value)
+
     def to_geojson(self) -> dict:
-        return {
-            "type": "Polygon",
-            "coordinates": [
-                [list(point) for point in subpolygon]
-                for subpolygon in self.value
-            ],
-        }
+        return Polygon(value=self.value).to_geojson()
+
+    def to_wkt(self) -> str:
+        return Polygon(value=self.value).to_wkt()
 
 
 class MultiPolygon(BaseModel):
@@ -311,7 +369,7 @@ class MultiPolygon(BaseModel):
 
     def to_geojson(self) -> dict:
         return {
-            "type": "Polygon",
+            "type": "MultiPolygon",
             "coordinates": [
                 [
                     [list(point) for point in subpolygon]
@@ -320,6 +378,23 @@ class MultiPolygon(BaseModel):
                 for polygon in self.value
             ],
         }
+
+    def to_wkt(self) -> str:
+        polygons = [
+            "("
+            + "),(".join(
+                [
+                    ",".join(
+                        [f"{point[0]} {point[1]}" for point in subpolygon]
+                    )
+                    for subpolygon in polygon
+                ]
+            )
+            + ")"
+            for polygon in self.value
+        ]
+        coords = "),(".join(polygons)
+        return f"MULTIPOLYGON (({coords}))"
 
 
 class Raster(BaseModel):
@@ -495,7 +570,7 @@ class Raster(BaseModel):
         """
         return self.array.shape[1]
 
-    def wkt(self) -> ScalarSelect | bytes:
+    def to_wkt(self) -> ScalarSelect | bytes:
         """
         Converts raster schema into a postgis-compatible type.
 

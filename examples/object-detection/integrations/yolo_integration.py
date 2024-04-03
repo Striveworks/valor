@@ -48,7 +48,7 @@ def parse_detection_into_bounding_box(
             Annotation(
                 task_type=enums.TaskType.OBJECT_DETECTION,
                 labels=[scored_label],
-                bounding_box=bbox,
+                box=bbox,
             )
             for bbox, scored_label in list(zip(bboxes, labels))
         ],

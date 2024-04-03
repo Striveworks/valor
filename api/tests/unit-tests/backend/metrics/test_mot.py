@@ -9,16 +9,16 @@ from valor_api.backend.metrics.multi_object_tracking import (
 
 
 # noqa: E731
-def square(x: int, y: int) -> schemas.BoundingBox:
-    return schemas.BoundingBox(
-        polygon=schemas.geometry.BasicPolygon(
-            points=[
-                schemas.geometry.Point(x=x, y=y),
-                schemas.geometry.Point(x=x + 10, y=y),
-                schemas.geometry.Point(x=x, y=y + 10),
-                schemas.geometry.Point(x=x + 10, y=y + 10),
+def square(x: int, y: int) -> schemas.Box:
+    return schemas.Box(
+        value=[
+            [
+                (x, y),
+                (x + 10, y),
+                (x, y + 10),
+                (x + 10, y + 10),
             ]
-        )
+        ]
     )
 
 
@@ -30,7 +30,6 @@ def generate_mot_data(num_frames: int):
 
     create_img = lambda frame: schemas.Datum(  # noqa: E731
         uid="test",
-        dataset_name="name",
         metadata={
             "type": "image",
             "height": 500,
@@ -78,45 +77,47 @@ def generate_mot_data(num_frames: int):
         labels3 = [create_label_lambda("object 3")]
 
         gts = schemas.GroundTruth(
+            dataset_name="name",
             datum=image,
             annotations=[
                 schemas.Annotation(
                     labels=labels1,
                     task_type=enums.TaskType.OBJECT_DETECTION,
-                    bounding_box=boundary1,
+                    box=boundary1,
                 ),
                 schemas.Annotation(
                     labels=labels2,
                     task_type=enums.TaskType.OBJECT_DETECTION,
-                    bounding_box=boundary2,
+                    box=boundary2,
                 ),
                 schemas.Annotation(
                     labels=labels3,
                     task_type=enums.TaskType.OBJECT_DETECTION,
-                    bounding_box=boundary3,
+                    box=boundary3,
                 ),
             ],
         )
         groundtruths.append(gts)
 
         pds = schemas.Prediction(
+            dataset_name="name",
             model_name="test",
             datum=image,
             annotations=[
                 schemas.Annotation(
                     labels=scored_labels1,
                     task_type=enums.TaskType.OBJECT_DETECTION,
-                    bounding_box=boundary1,
+                    box=boundary1,
                 ),
                 schemas.Annotation(
                     labels=scored_labels2,
                     task_type=enums.TaskType.OBJECT_DETECTION,
-                    bounding_box=boundary2,
+                    box=boundary2,
                 ),
                 schemas.Annotation(
                     labels=scored_labels3,
                     task_type=enums.TaskType.OBJECT_DETECTION,
-                    bounding_box=boundary3,
+                    box=boundary3,
                 ),
             ],
         )

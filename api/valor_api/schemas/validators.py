@@ -90,8 +90,10 @@ def check_type_linestring(v: Any) -> bool:
 
 
 def check_type_multilinestring(v: Any) -> bool:
-    return isinstance(v, list) and all(
-        [check_type_linestring(line) for line in v]
+    return (
+        isinstance(v, list)
+        and len(v) >= 1
+        and all([check_type_linestring(line) for line in v])
     )
 
 
@@ -111,8 +113,21 @@ def check_type_box(v: Any) -> bool:
 
 
 def check_type_multipolygon(v: Any) -> bool:
-    return isinstance(v, list) and all(
-        check_type_polygon(polygon) for polygon in v
+    return (
+        isinstance(v, list)
+        and len(v) >= 1
+        and all(check_type_polygon(polygon) for polygon in v)
+    )
+
+
+def check_if_empty_annotation(values):
+    """Checks if the annotation is empty."""
+    return (
+        not values.labels
+        and values.box is None
+        and values.polygon is None
+        and values.raster is None
+        and values.embedding is None
     )
 
 
@@ -128,17 +143,6 @@ def validate_string(value: str):
         )
 
 
-def check_if_empty_annotation(values):
-    """Checks if the annotation is empty."""
-    return (
-        not values.labels
-        and values.bounding_box is None
-        and values.polygon is None
-        and values.raster is None
-        and values.embedding is None
-    )
-
-
 def validate_annotation_by_task_type(values):
     """Validates the contents of an annotation by task type."""
     if check_if_empty_annotation(values):
@@ -148,7 +152,7 @@ def validate_annotation_by_task_type(values):
         case TaskType.CLASSIFICATION:
             if not (
                 values.labels
-                and values.bounding_box is None
+                and values.box is None
                 and values.polygon is None
                 and values.raster is None
                 and values.embedding is None
@@ -160,7 +164,7 @@ def validate_annotation_by_task_type(values):
             if not (
                 values.labels
                 and (
-                    values.bounding_box is not None
+                    values.box is not None
                     or values.polygon is not None
                     or values.raster is not None
                 )
@@ -173,7 +177,7 @@ def validate_annotation_by_task_type(values):
             if not (
                 values.labels
                 and values.raster is not None
-                and values.bounding_box is None
+                and values.box is None
                 and values.polygon is None
                 and values.embedding is None
             ):
@@ -184,7 +188,7 @@ def validate_annotation_by_task_type(values):
             if not (
                 values.embedding is not None
                 and not values.labels
-                and values.bounding_box is None
+                and values.box is None
                 and values.polygon is None
                 and values.raster is None
             ):
@@ -348,9 +352,33 @@ def validate_geojson(class_name: str, geojson: dict):
 
 def deserialize(class_name: str, data: Any) -> Any:
     if isinstance(data, dict) and set(data.keys()) == {"type", "value"}:
-        if not data.get("type") == class_name.lower():
+        data_type = data.pop("type")
+        if data_type != class_name.lower():
             raise TypeError(
-                f"'{class_name}' received value with type '{data.get('type')}'"
+                f"'{class_name}' received value with type '{data_type}'"
             )
-        return data.get("value")
+    if isinstance(data, dict) and set(data.keys()) == {"value"}:
+        value = data.get("value")
+        map_str_to_validator = {
+            "bool": check_type_bool,
+            "integer": check_type_integer,
+            "float": check_type_float,
+            "string": check_type_string,
+            "datetime": check_type_datetime,
+            "date": check_type_date,
+            "time": check_type_time,
+            "duration": check_type_duration,
+            "point": check_type_point,
+            "multipoint": check_type_multipoint,
+            "linestring": check_type_linestring,
+            "multilinestring": check_type_multilinestring,
+            "polygon": check_type_polygon,
+            "box": check_type_box,
+            "multipolygon": check_type_multipolygon,
+        }
+        if class_name.lower() in map_str_to_validator:
+            if not map_str_to_validator[class_name.lower()](value):
+                raise ValueError(
+                    f"Value '{data}' does not conform to {class_name}."
+                )
     return data

@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from valor import Annotation, Client, Dataset, Datum, GroundTruth, Label
 from valor.enums import TaskType
 from valor.exceptions import ClientException
-from valor.schemas import BoundingBox, BoundingPolygon, MultiPolygon, Raster
+from valor.schemas import Box, MultiPolygon, Polygon, Raster
 from valor_api.backend import models
 
 
@@ -39,14 +39,14 @@ def test_create_gt_detections_as_bbox_or_poly(
             Annotation(
                 task_type=TaskType.OBJECT_DETECTION,
                 labels=[Label(key="k", value="v")],
-                bounding_box=BoundingBox.from_extrema(
+                box=Box.from_extrema(
                     xmin=xmin, ymin=ymin, xmax=xmax, ymax=ymax
                 ),
             ),
             Annotation(
                 task_type=TaskType.OBJECT_DETECTION,
                 labels=[Label(key="k", value="v")],
-                polygon=BoundingPolygon(
+                polygon=Polygon(
                     [
                         [
                             (xmin, ymin),
@@ -83,13 +83,13 @@ def test_create_gt_detections_as_bbox_or_poly(
             [
                 det
                 for det in detections.annotations
-                if det.bounding_box.get_value() is not None
+                if det.box.get_value() is not None
             ]
         )
         == 1
     )
     for det in detections.annotations:
-        if det.bounding_box.get_value():
+        if det.box.get_value():
             assert det.to_dict() == gt.annotations[0].to_dict()
         else:
             assert det.to_dict() == gt.annotations[1].to_dict()
@@ -118,7 +118,7 @@ def test_create_gt_segs_as_polys_or_masks(
         (xmax, ymin),
         (xmin, ymin),
     ]
-    poly = BoundingPolygon([pts])
+    poly = Polygon([pts])
     multipoly = MultiPolygon([[pts]])
 
     dataset = Dataset.create(dataset_name)

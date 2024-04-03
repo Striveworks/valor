@@ -67,7 +67,7 @@ def create_object_detection_dataset(
             Annotation(
                 task_type=task_type,
                 labels=labels,
-                bounding_box=bbox,
+                box=bbox,
             ),
             Annotation(
                 task_type=task_type,

@@ -14,14 +14,7 @@ from valor import Annotation, Client, GroundTruth, Label, Prediction
 from valor.client import ClientConnection, connect, reset_connection
 from valor.enums import TaskType
 from valor.metatypes import Datum
-from valor.schemas import (
-    BoundingBox,
-    BoundingPolygon,
-    MultiPolygon,
-    Point,
-    Polygon,
-    Raster,
-)
+from valor.schemas import Box, MultiPolygon, Point, Polygon, Raster
 from valor_api import exceptions
 from valor_api.backend import models
 
@@ -311,12 +304,12 @@ def gt_dets1(
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k1", value="v1")],
-                    bounding_box=BoundingBox([rect1]),
+                    box=Box([rect1]),
                 ),
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k2", value="v2")],
-                    bounding_box=BoundingBox([rect3]),
+                    box=Box([rect3]),
                 ),
             ],
         ),
@@ -326,7 +319,7 @@ def gt_dets1(
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k1", value="v1")],
-                    bounding_box=BoundingBox([rect2]),
+                    box=Box([rect2]),
                 )
             ],
         ),
@@ -349,12 +342,12 @@ def gt_dets2(
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k1", value="v1")],
-                    polygon=BoundingPolygon([rect1]),
+                    polygon=Polygon([rect1]),
                 ),
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k2", value="v2")],
-                    bounding_box=BoundingBox([rect3]),
+                    box=Box([rect3]),
                 ),
             ],
         ),
@@ -364,7 +357,7 @@ def gt_dets2(
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k1", value="v1")],
-                    polygon=BoundingPolygon([rect2]),
+                    polygon=Polygon([rect2]),
                 )
             ],
         ),
@@ -374,7 +367,7 @@ def gt_dets2(
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k3", value="v3")],
-                    bounding_box=BoundingBox([rect3]),
+                    box=Box([rect3]),
                 )
             ],
         ),
@@ -396,7 +389,7 @@ def gt_poly_dets1(
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k1", value="v1")],
-                    polygon=BoundingPolygon([rect1]),
+                    polygon=Polygon([rect1]),
                 ),
             ],
         ),
@@ -406,7 +399,7 @@ def gt_poly_dets1(
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k1", value="v1")],
-                    polygon=BoundingPolygon([rect2]),
+                    polygon=Polygon([rect2]),
                 )
             ],
         ),
@@ -649,7 +642,7 @@ def pred_dets(
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k1", value="v1", score=0.3)],
-                    bounding_box=BoundingBox([rect1]),
+                    box=Box([rect1]),
                 )
             ],
         ),
@@ -659,7 +652,7 @@ def pred_dets(
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k2", value="v2", score=0.98)],
-                    bounding_box=BoundingBox([rect2]),
+                    box=Box([rect2]),
                 )
             ],
         ),
@@ -680,7 +673,7 @@ def pred_dets2(
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k1", value="v1", score=0.7)],
-                    bounding_box=BoundingBox([rect3]),
+                    box=Box([rect3]),
                 )
             ],
         ),
@@ -690,7 +683,7 @@ def pred_dets2(
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k2", value="v2", score=0.98)],
-                    bounding_box=BoundingBox([rect4]),
+                    box=Box([rect4]),
                 )
             ],
         ),
@@ -707,15 +700,13 @@ def pred_poly_dets(pred_dets: list[Prediction]) -> list[Prediction]:
                     task_type=TaskType.OBJECT_DETECTION,
                     labels=annotation.labels,
                     polygon=(
-                        BoundingPolygon(
-                            [annotation.bounding_box.polygon.boundary]
-                        )
-                        if annotation.bounding_box.polygon
+                        Polygon([annotation.box.polygon.boundary])
+                        if annotation.box.polygon
                         else None
                     ),
                 )
                 for annotation in det.annotations
-                if annotation.bounding_box is not None
+                if annotation.box is not None
             ],
         )
         for det in pred_dets

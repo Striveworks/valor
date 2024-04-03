@@ -13,7 +13,7 @@ from valor_api.backend.core.groundtruth import delete_groundtruths
 from valor_api.backend.core.label import get_labels
 from valor_api.backend.core.prediction import delete_dataset_predictions
 from valor_api.backend.query import Query
-from valor_api.schemas.core import MetadataType
+from valor_api.schemas.types import MetadataType
 
 
 def _load_dataset_schema(

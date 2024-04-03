@@ -59,7 +59,7 @@ import valor
 model: valor.Model # object detection model
 dset: valor.Dataset # dataset to evaluate on
 
-dset.evaluate_detection(dset, filter_by=[valor.Annotation.bounding_box.area < 500])
+dset.evaluate_detection(dset, filter_by=[valor.Annotation.box.area < 500])
 ```
 
 ### Filtering in queries

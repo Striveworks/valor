@@ -928,7 +928,7 @@ def test_detection_exceptions(db: Session):
                 schemas.Annotation(
                     task_type=enums.TaskType.OBJECT_DETECTION,
                     labels=[schemas.Label(key="k1", value="v1")],
-                    bounding_box=schemas.BoundingBox.from_extrema(
+                    box=schemas.BoundingBox.from_extrema(
                         xmin=0, xmax=1, ymin=0, ymax=1
                     ),
                 )
@@ -951,7 +951,7 @@ def test_detection_exceptions(db: Session):
                 schemas.Annotation(
                     task_type=enums.TaskType.OBJECT_DETECTION,
                     labels=[schemas.Label(key="k1", value="v1", score=1.0)],
-                    bounding_box=schemas.BoundingBox.from_extrema(
+                    box=schemas.BoundingBox.from_extrema(
                         xmin=0, xmax=1, ymin=0, ymax=1
                     ),
                 )

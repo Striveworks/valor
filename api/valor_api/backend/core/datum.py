@@ -1,16 +1,16 @@
-from sqlalchemy import and_, select
+from sqlalchemy import and_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from valor_api import exceptions, schemas
 from valor_api.backend import models
-from valor_api.backend.core.dataset import fetch_dataset
 from valor_api.backend.query import Query
 
 
 def create_datum(
     db: Session,
     datum: schemas.Datum,
+    dataset: models.Dataset,
 ) -> models.Datum:
     """
     Create a datum in the database.
@@ -21,16 +21,14 @@ def create_datum(
         The database Session you want to query against.
     datum : schemas.Datum
         The datum to add to the database.
+    dataset : models.Dataset
+        The dataset to link to the datum.
 
     Returns
     ----------
     models.Datum
         The datum.
     """
-    # retrieve dataset
-    dataset = fetch_dataset(db, datum.dataset_name)
-
-    # create datum
     try:
         row = models.Datum(
             uid=datum.uid,
@@ -112,11 +110,6 @@ def get_datums(
     )
     return [
         schemas.Datum(
-            dataset_name=db.scalar(
-                select(models.Dataset.name).where(
-                    models.Dataset.id == datum.dataset_id
-                )
-            ),  # type: ignore - sqlalchemy typing
             uid=datum.uid,
             metadata=datum.meta,
         )

@@ -3,15 +3,8 @@ import json
 from pydantic import BaseModel, ConfigDict, create_model, field_validator
 
 from valor_api.enums import TaskType
-from valor_api.schemas.metadata import (
-    Date,
-    DateTime,
-    Duration,
-    GeoJSONMultiPolygon,
-    GeoJSONPoint,
-    GeoJSONPolygon,
-    Time,
-)
+from valor_api.schemas.geometry import MultiPolygon, Point, Polygon
+from valor_api.schemas.timestamp import Date, DateTime, Duration, Time
 
 
 class StringFilter(BaseModel):
@@ -129,7 +122,7 @@ class GeospatialFilter(BaseModel):
 
     """
 
-    value: GeoJSONPoint | GeoJSONPolygon | GeoJSONMultiPolygon
+    value: Point | Polygon | MultiPolygon
     operator: str = "intersect"
 
     @field_validator("operator")
@@ -202,7 +195,7 @@ class Filter(BaseModel):
         A dictionary of `Annotation` metadata to filter on.
     require_bounding_box : bool, optional
         A toggle for filtering by bounding boxes.
-    bounding_box_area : bool, optional
+    box_area : bool, optional
         An optional constraint to filter by bounding box area.
     require_polygon : bool, optional
         A toggle for filtering by polygons.
@@ -286,7 +279,7 @@ class Filter(BaseModel):
         | None
     ) = None
     require_bounding_box: bool | None = None
-    bounding_box_area: list[NumericFilter] | None = None
+    box_area: list[NumericFilter] | None = None
     require_polygon: bool | None = None
     polygon_area: list[NumericFilter] | None = None
     require_raster: bool | None = None

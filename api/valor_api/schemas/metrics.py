@@ -1,7 +1,7 @@
 import numpy as np
 from pydantic import BaseModel, ConfigDict, field_validator
 
-from valor_api.schemas.label import Label
+from valor_api.schemas.types import Label
 
 
 class Metric(BaseModel):

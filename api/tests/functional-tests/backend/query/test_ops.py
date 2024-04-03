@@ -233,13 +233,13 @@ def groundtruth_annotations_cat(
         schemas.Annotation(
             task_type=TaskType.OBJECT_DETECTION,
             labels=[label_cat],
-            bounding_box=schemas.BoundingBox.from_extrema(0, 0, 10, 10),
+            box=schemas.BoundingBox.from_extrema(0, 0, 10, 10),
             metadata=metadata_1,
         ),
         schemas.Annotation(
             task_type=TaskType.OBJECT_DETECTION,
             labels=[label_cat],
-            bounding_box=schemas.BoundingBox.from_extrema(0, 0, 1, 50),
+            box=schemas.BoundingBox.from_extrema(0, 0, 1, 50),
             metadata=metadata_2,
         ),
         schemas.Annotation(
@@ -273,13 +273,13 @@ def groundtruth_annotations_dog(
         schemas.Annotation(
             task_type=TaskType.OBJECT_DETECTION,
             labels=[label_dog],
-            bounding_box=schemas.BoundingBox.from_extrema(0, 0, 10, 10),
+            box=schemas.BoundingBox.from_extrema(0, 0, 10, 10),
             metadata=metadata_3,
         ),
         schemas.Annotation(
             task_type=TaskType.OBJECT_DETECTION,
             labels=[label_dog],
-            bounding_box=schemas.BoundingBox.from_extrema(0, 0, 1, 50),
+            box=schemas.BoundingBox.from_extrema(0, 0, 1, 50),
             metadata=metadata_4,
         ),
         schemas.Annotation(
@@ -318,7 +318,7 @@ def prediction_annotations_cat(
                 schemas.Label(key="class", value="cat", score=0.8),
                 schemas.Label(key="class", value="dog", score=0.2),
             ],
-            bounding_box=schemas.BoundingBox.from_extrema(0, 0, 10, 10),
+            box=schemas.BoundingBox.from_extrema(0, 0, 10, 10),
             metadata=metadata_1,
         ),
         schemas.Annotation(
@@ -327,7 +327,7 @@ def prediction_annotations_cat(
                 schemas.Label(key="class", value="cat", score=0.7),
                 schemas.Label(key="class", value="dog", score=0.3),
             ],
-            bounding_box=schemas.BoundingBox.from_extrema(0, 0, 1, 50),
+            box=schemas.BoundingBox.from_extrema(0, 0, 1, 50),
             metadata=metadata_2,
         ),
         schemas.Annotation(
@@ -372,7 +372,7 @@ def prediction_annotations_dog(
                 schemas.Label(key="class", value="cat", score=0.2),
                 schemas.Label(key="class", value="dog", score=0.8),
             ],
-            bounding_box=schemas.BoundingBox.from_extrema(0, 0, 10, 10),
+            box=schemas.BoundingBox.from_extrema(0, 0, 10, 10),
             metadata=metadata_3,
         ),
         schemas.Annotation(
@@ -381,7 +381,7 @@ def prediction_annotations_dog(
                 schemas.Label(key="class", value="cat", score=0.3),
                 schemas.Label(key="class", value="dog", score=0.7),
             ],
-            bounding_box=schemas.BoundingBox.from_extrema(0, 0, 1, 50),
+            box=schemas.BoundingBox.from_extrema(0, 0, 1, 50),
             metadata=metadata_4,
         ),
         schemas.Annotation(
@@ -899,7 +899,7 @@ def test_complex_queries(
                 operator=">",
             )
         ],
-        require_bounding_box=True,
+        require_box=True,
     )
     q = Query(models.Datum.uid).filter(f).predictions()
     datum_uids = db.query(q).distinct().all()  # type: ignore - SQLAlchemy type issue
@@ -913,7 +913,7 @@ def test_query_by_annotation_geometry(
     model_sim,
 ):
     f = schemas.Filter(
-        bounding_box_area=[
+        box_area=[
             schemas.NumericFilter(
                 value=75,
                 operator=">",

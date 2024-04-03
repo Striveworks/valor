@@ -221,7 +221,7 @@ def _test_obj_det_manifest(groundtruths):
     assert len(gt.annotations[0].labels) == 1
     assert gt.annotations[0].labels[0].tuple() == ("class_label", "dog", None)
     assert gt.annotations[0].polygon is None
-    assert gt.annotations[0].bounding_box == BoundingBox.from_extrema(
+    assert gt.annotations[0].box == BoundingBox.from_extrema(
         xmin=16, ymin=130, xmax=70, ymax=150
     )
 
@@ -233,7 +233,7 @@ def _test_obj_det_manifest(groundtruths):
         None,
     )
     assert gt.annotations[1].polygon is None
-    assert gt.annotations[1].bounding_box == BoundingBox.from_extrema(
+    assert gt.annotations[1].box == BoundingBox.from_extrema(
         xmin=89, ymin=10, xmax=97, ymax=110
     )
 
@@ -244,7 +244,7 @@ def _test_obj_det_manifest(groundtruths):
     assert len(gt.annotations[0].labels) == 1
     assert gt.annotations[0].labels[0].tuple() == ("class_label", "cat", None)
     assert gt.annotations[0].polygon is None
-    assert gt.annotations[0].bounding_box == BoundingBox.from_extrema(
+    assert gt.annotations[0].box == BoundingBox.from_extrema(
         xmin=500, ymin=220, xmax=530, ymax=260
     )
 
@@ -507,9 +507,9 @@ def test__parse_chariot_detect_image_object_detection(
     chariot_detection_boxes = obj_det_prediction[0]["detection_boxes"]
     for i, valor_det in enumerate(valor_detections.annotations):
         assert [
-            valor_det.bounding_box.ymin,
-            valor_det.bounding_box.xmin,
-            valor_det.bounding_box.ymax,
-            valor_det.bounding_box.xmax,
+            valor_det.box.ymin,
+            valor_det.box.xmin,
+            valor_det.box.ymax,
+            valor_det.box.xmax,
         ] in chariot_detection_boxes
         assert valor_det.polygon is None

@@ -24,7 +24,7 @@ def test_annotation(bbox, polygon, raster, labels, metadata):
     # valid
     Annotation(
         task_type=enums.TaskType.OBJECT_DETECTION,
-        bounding_box=bbox,
+        box=bbox,
         labels=labels,
     )
     Annotation(
@@ -43,7 +43,7 @@ def test_annotation(bbox, polygon, raster, labels, metadata):
     Annotation(
         task_type=enums.TaskType.OBJECT_DETECTION,
         labels=labels,
-        bounding_box=bbox,
+        box=bbox,
         polygon=polygon,
         raster=raster,
     )
@@ -70,7 +70,7 @@ def test_annotation(bbox, polygon, raster, labels, metadata):
         Annotation(
             task_type=enums.TaskType.OBJECT_DETECTION,
             labels=labels,
-            bounding_box=polygon,
+            box=polygon,
         )
     with pytest.raises(TypeError) as e:
         Annotation(
@@ -222,7 +222,7 @@ def test_prediction():
     string = str(Prediction(datum=datum, annotations=pds))
     assert (
         string
-        == "{'datum': {'uid': 'somefile', 'metadata': {}}, 'annotations': [{'task_type': 'classification', 'labels': [{'key': 'test', 'value': 'value', 'score': 1.0}], 'metadata': {}, 'bounding_box': None, 'polygon': None, 'raster': None, 'embedding': None}, {'task_type': 'classification', 'labels': [{'key': 'test', 'value': 'value', 'score': 1.0}], 'metadata': {}, 'bounding_box': None, 'polygon': None, 'raster': None, 'embedding': None}]}"
+        == "{'datum': {'uid': 'somefile', 'metadata': {}}, 'annotations': [{'task_type': 'classification', 'labels': [{'key': 'test', 'value': 'value', 'score': 1.0}], 'metadata': {}, 'box': None, 'polygon': None, 'raster': None, 'embedding': None}, {'task_type': 'classification', 'labels': [{'key': 'test', 'value': 'value', 'score': 1.0}], 'metadata': {}, 'box': None, 'polygon': None, 'raster': None, 'embedding': None}]}"
     )
     assert "dataset_name" not in string
 

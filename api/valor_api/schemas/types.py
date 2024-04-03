@@ -3,8 +3,8 @@ from typing import Any, Union
 
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
-from api.valor_api.schemas.geometry import Box, Polygon, Raster
 from valor_api.enums import TaskType
+from valor_api.schemas.geometry import Box, Polygon, Raster
 from valor_api.schemas.validators import (
     deserialize,
     validate_annotation_by_task_type,
@@ -28,6 +28,11 @@ class Label(BaseModel):
     value: str
     score: float | None = None
     model_config = ConfigDict(extra="forbid")
+
+    @model_validator(mode="before")
+    @classmethod
+    def deserialize_valor_type(cls, data: Any) -> Any:
+        return deserialize(class_name=cls.__name__, data=data)
 
     def __eq__(self, other):
         """

@@ -17,7 +17,7 @@ def test_empty_filter():
         "task_types": None,
         "annotation_metadata": None,
         "require_bounding_box": None,
-        "bounding_box_area": None,
+        "box_area": None,
         "require_polygon": None,
         "polygon_area": None,
         "require_raster": None,
@@ -44,9 +44,9 @@ def test_declarative_filtering():
         # geometry filters
         Annotation.raster.is_none(),
         Annotation.polygon.is_none(),
-        Annotation.bounding_box.is_not_none(),
-        Annotation.bounding_box.area >= 1000,
-        Annotation.bounding_box.area <= 5000,
+        Annotation.box.is_not_none(),
+        Annotation.box.area >= 1000,
+        Annotation.box.area <= 5000,
         # metadata filters
         Dataset.metadata["arbitrary_numeric_key"] >= 10,
         Dataset.metadata["arbitrary_numeric_key"] < 20,
@@ -83,7 +83,7 @@ def test_declarative_filtering():
             TaskType.OBJECT_DETECTION.value,
         ],
         "require_bounding_box": True,
-        "bounding_box_area": [
+        "box_area": [
             {"value": 1000, "operator": ">="},
             {"value": 5000, "operator": "<="},
         ],

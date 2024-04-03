@@ -94,7 +94,7 @@ def groundtruth_detections(img1: schemas.Datum) -> list[schemas.GroundTruth]:
                         schemas.Label(key="k2", value="v2"),
                     ],
                     metadata={},
-                    bounding_box=schemas.BoundingBox(
+                    box=schemas.BoundingBox(
                         polygon=schemas.BasicPolygon(
                             points=[
                                 schemas.Point(x=10, y=20),
@@ -111,7 +111,7 @@ def groundtruth_detections(img1: schemas.Datum) -> list[schemas.GroundTruth]:
                     task_type=enums.TaskType.OBJECT_DETECTION,
                     labels=[schemas.Label(key="k2", value="v2")],
                     metadata={},
-                    bounding_box=schemas.BoundingBox(
+                    box=schemas.BoundingBox(
                         polygon=schemas.BasicPolygon(
                             points=[
                                 schemas.Point(x=10, y=20),
@@ -146,7 +146,7 @@ def prediction_detections(
                         schemas.Label(key="k2", value="v1", score=0.8),
                         schemas.Label(key="k2", value="v2", score=0.2),
                     ],
-                    bounding_box=schemas.BoundingBox(
+                    box=schemas.BoundingBox(
                         polygon=schemas.BasicPolygon(
                             points=[
                                 schemas.Point(x=107, y=207),
@@ -163,7 +163,7 @@ def prediction_detections(
                         schemas.Label(key="k2", value="v1", score=0.1),
                         schemas.Label(key="k2", value="v2", score=0.9),
                     ],
-                    bounding_box=schemas.BoundingBox(
+                    box=schemas.BoundingBox(
                         polygon=schemas.BasicPolygon(
                             points=[
                                 schemas.Point(x=107, y=207),
@@ -438,7 +438,7 @@ def test_create_detection_ground_truth_and_delete_dataset(
 
         for gta, new_gta in zip(gt.annotations, new_gt.annotations):
             assert set(gta.labels) == set(new_gta.labels)
-            assert gta.bounding_box == new_gta.bounding_box
+            assert gta.box == new_gta.box
 
     # finalize to free job state
     crud.finalize(db=db, dataset_name=dataset_name)
@@ -538,7 +538,7 @@ def test_create_detections_as_bbox_or_poly(
     det2 = schemas.Annotation(
         task_type=enums.TaskType.OBJECT_DETECTION,
         labels=[schemas.Label(key="k", value="v")],
-        bounding_box=schemas.BoundingBox.from_extrema(
+        box=schemas.BoundingBox.from_extrema(
             xmin=xmin,
             ymin=ymin,
             xmax=xmax,
@@ -1104,7 +1104,7 @@ def test_create_detection_metrics(
             datum_filter=schemas.Filter(
                 label_keys=[label_key],
                 dataset_names=["test_dataset"],
-                bounding_box_area=geometric_filters,
+                box_area=geometric_filters,
             ),
             parameters=schemas.EvaluationParameters(
                 task_type=enums.TaskType.OBJECT_DETECTION,
@@ -1274,7 +1274,7 @@ def test_create_detection_metrics(
         datum_filter=schemas.Filter(
             dataset_names=[dataset_name],
             label_keys=["class"],
-            bounding_box_area=[
+            box_area=[
                 schemas.NumericFilter(
                     value=min_area,
                     operator=">=",

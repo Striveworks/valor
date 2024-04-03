@@ -314,7 +314,7 @@ def test_parse_yolo_object_detection(image, bboxes, names):
         assert prediction.annotations[i].labels[0].key == "class"
         assert prediction.annotations[i].labels[0].value == names[i]
         assert prediction.annotations[i].labels[0].score == bboxes[i][4]
-        assert prediction.annotations[i].bounding_box.xmin == bboxes[i][0]
-        assert prediction.annotations[i].bounding_box.ymin == bboxes[i][1]
-        assert prediction.annotations[i].bounding_box.xmax == bboxes[i][2]
-        assert prediction.annotations[i].bounding_box.ymax == bboxes[i][3]
+        assert prediction.annotations[i].box.xmin == bboxes[i][0]
+        assert prediction.annotations[i].box.ymin == bboxes[i][1]
+        assert prediction.annotations[i].box.xmax == bboxes[i][2]
+        assert prediction.annotations[i].box.ymax == bboxes[i][3]

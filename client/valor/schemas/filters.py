@@ -59,7 +59,7 @@ def _convert_symbol_to_attribute_name(symbol_name):
         "annotation.task_type": "task_types",
         "annotation.metadata": "annotation_metadata",
         "annotation.box": "require_bounding_box",
-        "annotation.box.area": "bounding_box_area",
+        "annotation.box.area": "box_area",
         "annotation.polygon": "require_polygon",
         "annotation.polygon.area": "polygon_area",
         "annotation.raster": "require_raster",
@@ -255,7 +255,7 @@ class Filter:
         A dictionary of `Annotation` metadata to filter on.
     require_bounding_box : bool, optional
         A toggle for filtering by bounding boxes.
-    bounding_box_area : bool, optional
+    box_area : bool, optional
         An optional constraint to filter by bounding box area.
     require_polygon : bool, optional
         A toggle for filtering by polygons.
@@ -300,7 +300,7 @@ class Filter:
 
     # geometries
     require_bounding_box: Optional[bool] = None
-    bounding_box_area: Optional[List[Constraint]] = None
+    box_area: Optional[List[Constraint]] = None
     require_polygon: Optional[bool] = None
     polygon_area: Optional[List[Constraint]] = None
     require_raster: Optional[bool] = None
@@ -372,9 +372,7 @@ class Filter:
         self.task_types = _unpack_list(self.task_types, TaskType)
 
         # unpack area
-        self.bounding_box_area = _unpack_list(
-            self.bounding_box_area, Constraint
-        )
+        self.box_area = _unpack_list(self.box_area, Constraint)
         self.polygon_area = _unpack_list(self.polygon_area, Constraint)
         self.raster_area = _unpack_list(self.raster_area, Constraint)
 
@@ -403,7 +401,7 @@ class Filter:
             "model_metadata",
             "datum_metadata",
             "annotation_metadata",
-            "bounding_box_area",
+            "box_area",
             "polygon_area",
             "raster_area",
             "label_scores",

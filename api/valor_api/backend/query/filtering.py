@@ -309,17 +309,17 @@ def filter_by_annotation(
 
     # geometric area - AND like-typed filter_, OR different-typed filter_
     area_expr = []
-    if filter_.bounding_box_area:
-        bounding_box_area_expr = []
-        for area_filter in filter_.bounding_box_area:
+    if filter_.box_area:
+        box_area_expr = []
+        for area_filter in filter_.box_area:
             op = _get_numeric_op(area_filter.operator)
-            bounding_box_area_expr.append(
+            box_area_expr.append(
                 op(func.ST_Area(Annotation.box), area_filter.value)
             )
-        if len(bounding_box_area_expr) > 1:
-            area_expr.append(and_(*bounding_box_area_expr))
+        if len(box_area_expr) > 1:
+            area_expr.append(and_(*box_area_expr))
         else:
-            area_expr.append(bounding_box_area_expr[0])
+            area_expr.append(box_area_expr[0])
     if filter_.polygon_area:
         polygon_area_expr = []
         for area_filter in filter_.polygon_area:

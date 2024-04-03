@@ -228,7 +228,7 @@ class Annotation(StaticCollection):
         A list of labels to use for the `Annotation`.
     metadata: Dictionary
         A dictionary of metadata that describes the `Annotation`.
-    bounding_box: BoundingBox
+    box: Box
         A bounding box to assign to the `Annotation`.
     polygon: BoundingPolygon
         A polygon to assign to the `Annotation`.
@@ -249,11 +249,11 @@ class Annotation(StaticCollection):
     ...     ]
     ... )
 
-    Object-Detection BoundingBox
+    Object-Detection Box
     >>> annotation = Annotation.create(
     ...     task_type=TaskType.OBJECT_DETECTION,
     ...     labels=[Label(key="k1", value="v1")],
-    ...     bounding_box=box2,
+    ...     box=box2,
     ... )
 
     Object-Detection Polygon
@@ -281,7 +281,7 @@ class Annotation(StaticCollection):
     >>> Annotation.create(
     ...     task_type=TaskType.OBJECT_DETECTION,
     ...     labels=[Label(key="k1", value="v1")],
-    ...     bounding_box=BoundingBox(...),
+    ...     box=Box(...),
     ...     polygon=BoundingPolygon(...),
     ...     raster=Raster(...),
     ... )
@@ -296,9 +296,7 @@ class Annotation(StaticCollection):
     metadata: Dictionary = Dictionary.symbolic(
         owner="annotation", name="metadata"
     )
-    bounding_box: Nullable[Box] = Nullable[Box].symbolic(
-        owner="annotation", name="box"
-    )
+    box: Nullable[Box] = Nullable[Box].symbolic(owner="annotation", name="box")
     polygon: Nullable[Polygon] = Nullable[Polygon].symbolic(
         owner="annotation", name="polygon"
     )
@@ -315,7 +313,7 @@ class Annotation(StaticCollection):
         task_type: TaskType,
         labels: Optional[typing.List[Label]] = None,
         metadata: Optional[dict] = None,
-        bounding_box: Optional[Box] = None,
+        box: Optional[Box] = None,
         polygon: Optional[Polygon] = None,
         raster: Optional[Raster] = None,
         embedding: Optional[Embedding] = None,
@@ -332,7 +330,7 @@ class Annotation(StaticCollection):
             A list of labels to use for the `Annotation`.
         metadata: Dict[str, Union[int, float, str, bool, datetime.datetime, datetime.date, datetime.time]]
             A dictionary of metadata that describes the `Annotation`.
-        bounding_box: BoundingBox, optional
+        box: Box, optional
             A bounding box to assign to the `Annotation`.
         polygon: BoundingPolygon, optional
             A polygon to assign to the `Annotation`.
@@ -345,7 +343,7 @@ class Annotation(StaticCollection):
             task_type=task_type,
             labels=labels,
             metadata=metadata,
-            bounding_box=bounding_box,
+            box=box,
             polygon=polygon,
             raster=raster,
             embedding=embedding,

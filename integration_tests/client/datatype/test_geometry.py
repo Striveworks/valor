@@ -20,7 +20,7 @@ from valor import (
 )
 from valor.enums import TaskType
 from valor.metatypes import Datum
-from valor.schemas import BoundingBox, BoundingPolygon, Raster
+from valor.schemas import Box, Polygon, Raster
 from valor_api.backend import models
 
 
@@ -94,7 +94,7 @@ def test_boundary(
 ):
     """Test consistency of boundary in back end and client"""
     dataset = Dataset.create(dataset_name)
-    rect1_poly = BoundingPolygon([rect1])
+    rect1_poly = Polygon([rect1])
     dataset.add_groundtruth(
         GroundTruth(
             datum=img1,
@@ -126,8 +126,8 @@ def test_iou(
     rect2: list[tuple[float, float]],
     img1: Datum,
 ):
-    rect1_poly = BoundingPolygon([rect1])
-    rect2_poly = BoundingPolygon([rect2])
+    rect1_poly = Polygon([rect1])
+    rect2_poly = Polygon([rect2])
 
     dataset = Dataset.create(dataset_name)
     dataset.add_groundtruth(
@@ -193,9 +193,7 @@ def test_add_raster_and_boundary_box(
             Annotation(
                 task_type=TaskType.OBJECT_DETECTION,
                 labels=[Label(key="k3", value="v3")],
-                bounding_box=BoundingBox.from_extrema(
-                    xmin=10, ymin=10, xmax=60, ymax=40
-                ),
+                box=Box.from_extrema(xmin=10, ymin=10, xmax=60, ymax=40),
                 raster=raster,
             )
         ],
@@ -212,7 +210,7 @@ def test_add_raster_and_boundary_box(
         fetched_gt.annotations[0].raster is not None
     ), "Raster doesn't exist on fetched gt"
     assert (
-        fetched_gt.annotations[0].bounding_box is not None
+        fetched_gt.annotations[0].box is not None
     ), "Bounding box doesn't exist on fetched gt"
 
     client.delete_dataset(dataset_name, timeout=30)

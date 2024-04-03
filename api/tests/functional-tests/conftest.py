@@ -214,7 +214,7 @@ def groundtruths(
                 schemas.Annotation(
                     task_type=enums.TaskType.OBJECT_DETECTION,
                     labels=[schemas.Label(key="class", value=class_label)],
-                    bounding_box=schemas.BoundingBox.from_extrema(
+                    box=schemas.BoundingBox.from_extrema(
                         xmin=box[0],
                         ymin=box[1],
                         xmax=box[2],
@@ -325,7 +325,7 @@ def predictions(
                             key="class", value=class_label, score=score
                         )
                     ],
-                    bounding_box=schemas.BoundingBox.from_extrema(
+                    box=schemas.BoundingBox.from_extrema(
                         xmin=box[0],
                         ymin=box[1],
                         xmax=box[2],
@@ -588,7 +588,7 @@ def groundtruth_detections(
                         schemas.Label(key="k2", value="v2"),
                     ],
                     metadata={"int_key": 1},
-                    bounding_box=schemas.BoundingBox(
+                    box=schemas.BoundingBox(
                         polygon=schemas.BasicPolygon(
                             points=[
                                 schemas.Point(x=10, y=20),
@@ -614,7 +614,7 @@ def groundtruth_detections(
                             ]
                         )
                     ),
-                    bounding_box=schemas.BoundingBox(
+                    box=schemas.BoundingBox(
                         polygon=schemas.BasicPolygon(
                             points=[
                                 schemas.Point(x=10, y=20),
@@ -639,7 +639,7 @@ def groundtruth_detections(
                         schemas.Label(key="k2", value="v2"),
                     ],
                     metadata={},
-                    bounding_box=schemas.BoundingBox(
+                    box=schemas.BoundingBox(
                         polygon=schemas.BasicPolygon(
                             points=[
                                 schemas.Point(x=10, y=20),
@@ -682,7 +682,7 @@ def prediction_detections(
                         schemas.Label(key="k2", value="v1", score=0.8),
                         schemas.Label(key="k2", value="v2", score=0.2),
                     ],
-                    bounding_box=schemas.BoundingBox(
+                    box=schemas.BoundingBox(
                         polygon=schemas.BasicPolygon(
                             points=[
                                 schemas.Point(x=107, y=207),
@@ -699,7 +699,7 @@ def prediction_detections(
                         schemas.Label(key="k2", value="v1", score=0.1),
                         schemas.Label(key="k2", value="v2", score=0.9),
                     ],
-                    bounding_box=schemas.BoundingBox(
+                    box=schemas.BoundingBox(
                         polygon=schemas.BasicPolygon(
                             points=[
                                 schemas.Point(x=107, y=207),
@@ -780,7 +780,7 @@ def created_dataset(db: Session, dataset_name: str) -> str:
                 schemas.Annotation(
                     task_type=enums.TaskType.OBJECT_DETECTION,
                     labels=[schemas.Label(key="k1", value="v1")],
-                    bounding_box=schemas.BoundingBox.from_extrema(0, 0, 1, 1),
+                    box=schemas.BoundingBox.from_extrema(0, 0, 1, 1),
                 )
             ],
         ),
@@ -831,7 +831,7 @@ def created_model(db: Session, model_name: str, created_dataset: str) -> str:
                 schemas.Annotation(
                     task_type=enums.TaskType.OBJECT_DETECTION,
                     labels=[schemas.Label(key="k1", value="v1", score=1.0)],
-                    bounding_box=schemas.BoundingBox.from_extrema(0, 0, 1, 1),
+                    box=schemas.BoundingBox.from_extrema(0, 0, 1, 1),
                 )
             ],
         ),

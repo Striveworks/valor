@@ -254,7 +254,7 @@ def _draw_detection_on_image(
     text = ", ".join(
         [f"{label.key}:{label.value}" for label in detection.labels]
     )
-    box = detection.bounding_box.unwrap()
+    box = detection.box.unwrap()
     polygon = detection.polygon.unwrap()
     if polygon is not None:
         img = _draw_bounding_polygon_on_image(
