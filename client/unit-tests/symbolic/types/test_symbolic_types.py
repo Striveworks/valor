@@ -1,4 +1,5 @@
 import datetime
+import typing
 
 import pytest
 
@@ -422,18 +423,6 @@ def test_modifiers():
     with pytest.raises(AttributeError):
         _test_spatial(A, B, C)
 
-    # nullable
-    A = Nullable.symbolic("A")
-    B = Nullable.symbolic("B")
-    C = Nullable.symbolic("C")
-    _test_nullable(A, B, C)
-    with pytest.raises(AttributeError):
-        _test_equatable(A, B, C)
-    with pytest.raises(AttributeError):
-        _test_quantifiable(A, B, C)
-    with pytest.raises(AttributeError):
-        _test_spatial(A, B, C)
-
     # spatial
     A = Spatial.symbolic("A")
     B = Spatial.symbolic("B")
@@ -474,15 +463,16 @@ def _test_encoding(objcls, value, encoded_value):
     assert encoded_value == objcls(value).encode_value()
 
 
-def _test_to_dict(objcls, value):
+def _test_to_dict(objcls, value, type_name: typing.Optional[str] = None):
+    type_name = type_name if type_name else objcls.__name__.lower()
     # test __init__
     assert objcls(value).to_dict() == {
-        "type": objcls.__name__.lower(),
+        "type": type_name,
         "value": objcls(value).encode_value(),
     }
     # test definite
     assert objcls.definite(value).to_dict() == {
-        "type": objcls.__name__.lower(),
+        "type": type_name,
         "value": objcls(value).encode_value(),
     }
     # test symbolic
@@ -490,15 +480,18 @@ def _test_to_dict(objcls, value):
         "type": "symbol",
         "value": {
             "owner": None,
-            "name": objcls.__name__.lower(),
+            "name": type_name,
             "key": None,
             "attribute": None,
         },
     }
 
 
-def _test_generic(objcls, permutations, op):
+def _test_generic(
+    objcls, permutations, op, type_name: typing.Optional[str] = None
+):
     """Tests expressions that can only be resolved to JSON."""
+    type_name = type_name if type_name else objcls.__name__.lower()
     for a, _ in permutations:
         A = objcls(a)
         C = objcls.symbolic()
@@ -518,7 +511,7 @@ def _test_generic(objcls, permutations, op):
             except AttributeError as e:
                 raise AssertionError(e)
         # test instance dictionary generation
-        _test_to_dict(objcls, a)
+        _test_to_dict(objcls, a, type_name=type_name)
         # test functional dictionary generation
         expr = C.__getattribute__(op)(a)
         expr_dict = expr.to_dict()
@@ -538,8 +531,11 @@ def _test_generic(objcls, permutations, op):
             raise AssertionError
 
 
-def _test_resolvable(objcls, permutations, op):
-    # test expressions that can be simplified to a 'Bool'
+def _test_resolvable(
+    objcls, permutations, op, type_name: typing.Optional[str] = None
+):
+    """Test expressions that can be simplified to 'Bool'"""
+    type_name = type_name if type_name else objcls.__name__.lower()
     for a, b in permutations:
         A = objcls(a)
         B = objcls(b)
@@ -555,10 +551,10 @@ def _test_resolvable(objcls, permutations, op):
         dictA = A.to_dict()
         assert A.get_value() == a
         assert len(dictA) == 2
-        assert dictA["type"] == objcls.__name__.lower()
+        assert dictA["type"] == type_name
         assert dictA["value"] == A.encode_value()
     # test expressions that cannot be simplified
-    _test_generic(objcls, permutations, op)
+    _test_generic(objcls, permutations, op, type_name=type_name)
 
 
 def _test_unsupported(objcls, permutations, op):
@@ -1109,3 +1105,55 @@ def test_multipolygon():
 
     # test geojson rules
     pass  # TODO
+
+
+def test_nullable():
+    # interoperable with builtin 'str'
+    objcls = Nullable[String]
+    resolvable = [
+        ("hello", "hello"),
+        ("hello", "world"),
+        ("world", "hello"),
+        ("world", "world"),
+    ]
+
+    unresolvable = [
+        ("hello", None),
+        (None, "hello"),
+        (None, None),
+    ]
+
+    # test supported string methods
+    for op in ["__eq__", "__ne__"]:
+        _test_resolvable(objcls, resolvable, op, type_name="optional[string]")
+        _test_generic(objcls, unresolvable, op, type_name="optional[string]")
+        with pytest.raises((AssertionError, TypeError)):
+            _test_resolvable(
+                objcls, unresolvable, op, type_name="optional[string]"
+            )
+
+    # test is_none
+    assert objcls(None).is_none().get_value() is True  # type: ignore - guaranteed output
+    assert objcls("hello").is_none().get_value() is False  # type: ignore - guaranteed output
+
+    # test it_not_none
+    assert objcls(None).is_not_none().get_value() is False  # type: ignore - guaranteed output
+    assert objcls("hello").is_not_none().get_value() is True  # type: ignore - guaranteed output
+
+    # test unsupported methods
+    for op in [
+        "__gt__",
+        "__ge__",
+        "__lt__",
+        "__le__",
+        "__and__",
+        "__or__",
+        "__xor__",
+        "intersects",
+        "inside",
+        "outside",
+    ]:
+        _test_unsupported(objcls, resolvable, op)
+
+    # test encoding
+    _test_encoding(objcls, "hello", "hello")

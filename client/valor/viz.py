@@ -94,15 +94,16 @@ def create_combined_segmentation_mask(
     img_h = None
     img_w = None
     for annotation in annotated_datum.annotations:
+        raster = annotation.raster.unwrap()
+        if raster is None:
+            raise ValueError("No raster exists.")
         if img_h is None:
-            img_h = annotation.raster.height
+            img_h = raster.height
         if img_w is None:
-            img_w = annotation.raster.width
-        if (img_h != annotation.raster.height) or (
-            img_w != annotation.raster.width
-        ):
+            img_w = raster.width
+        if (img_h != raster.height) or (img_w != raster.width):
             raise ValueError(
-                f"Size mismatch between rasters. {(img_h, img_w)} != {(annotation.raster.height, annotation.raster.width)}"
+                f"Size mismatch between rasters. {(img_h, img_w)} != {(raster.height, raster.width)}"
             )
     if img_h is None or img_w is None:
         raise ValueError(
@@ -154,18 +155,21 @@ def create_combined_segmentation_mask(
     # create mask
     combined_mask = np.zeros((img_h, img_w, 3), dtype=np.uint8)
     for annotation, color in zip(annotations, seg_colors):
-        if annotation.raster.array is not None:
-            if annotation.raster.geometry is None:
-                mask = annotation.raster.array
-            elif isinstance(annotation.raster.geometry, schemas.MultiPolygon):
+        raster = annotation.raster.unwrap()
+        if raster is None:
+            raise ValueError("No raster exists.")
+        if raster.array is not None:
+            if raster.geometry is None:
+                mask = raster.array
+            elif isinstance(raster.geometry, schemas.MultiPolygon):
                 mask = _polygons_to_binary_mask(
-                    annotation.raster.geometry.polygons,
+                    raster.geometry.to_polygons(),
                     img_w=img_w,
                     img_h=img_h,
                 )
-            elif isinstance(annotation.raster.geometry, schemas.Polygon):
+            elif isinstance(raster.geometry, (schemas.Box, schemas.Polygon)):
                 mask = _polygons_to_binary_mask(
-                    [annotation.raster.geometry],
+                    [raster.geometry],
                     img_w=img_w,
                     img_h=img_h,
                 )
@@ -215,7 +219,7 @@ def draw_detections_on_image(
 
 
 def draw_bounding_box_on_image(
-    bounding_box: schemas.BoundingBox,
+    bounding_box: schemas.Box,
     img: Image.Image,
     color: Tuple[int, int, int] = (255, 0, 0),
 ) -> Image.Image:
@@ -250,16 +254,18 @@ def _draw_detection_on_image(
     text = ", ".join(
         [f"{label.key}:{label.value}" for label in detection.labels]
     )
-    if detection.polygon is not None:
+    box = detection.box.unwrap()
+    polygon = detection.polygon.unwrap()
+    if polygon is not None:
         img = _draw_bounding_polygon_on_image(
-            detection.polygon,
+            polygon,
             img,
             inplace=inplace,
             text=text,
         )
-    elif detection.bounding_box is not None:
+    elif box is not None:
         img = _draw_bounding_polygon_on_image(
-            detection.bounding_box,
+            box,
             img,
             inplace=inplace,
             text=text,

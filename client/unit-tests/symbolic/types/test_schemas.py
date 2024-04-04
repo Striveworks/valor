@@ -1,14 +1,9 @@
+import typing
+
 import numpy as np
 import pytest
 
-from valor.schemas import (
-    BoundingBox,
-    BoundingPolygon,
-    Embedding,
-    Raster,
-    Score,
-    TaskTypeEnum,
-)
+from valor.schemas import Box, Embedding, Float, Nullable, Raster, TaskTypeEnum
 from valor.schemas.symbolic.operators import (
     AppendableFunction,
     TwoArgumentFunction,
@@ -42,15 +37,16 @@ def _test_encoding(objcls, value, encoded_value):
     assert encoded_value == objcls(value).encode_value()
 
 
-def _test_to_dict(objcls, value):
+def _test_to_dict(objcls, value, type_name: typing.Optional[str] = None):
+    type_name = type_name if type_name else objcls.__name__.lower()
     # test __init__
     assert objcls(value).to_dict() == {
-        "type": objcls.__name__.lower(),
+        "type": type_name,
         "value": objcls(value).encode_value(),
     }
     # test definite
     assert objcls.definite(value).to_dict() == {
-        "type": objcls.__name__.lower(),
+        "type": type_name,
         "value": objcls(value).encode_value(),
     }
     # test symbolic
@@ -58,14 +54,16 @@ def _test_to_dict(objcls, value):
         "type": "symbol",
         "value": {
             "owner": None,
-            "name": objcls.__name__.lower(),
+            "name": type_name,
             "key": None,
             "attribute": None,
         },
     }
 
 
-def _test_generic(objcls, permutations, op):
+def _test_generic(
+    objcls, permutations, op, type_name: typing.Optional[str] = None
+):
     """Tests expressions that can only be resolved to JSON."""
     for a, _ in permutations:
         A = objcls(a)
@@ -86,7 +84,7 @@ def _test_generic(objcls, permutations, op):
             except AttributeError as e:
                 raise AssertionError(e)
         # test instance dictionary generation
-        _test_to_dict(objcls, a)
+        _test_to_dict(objcls, a, type_name)
         # test functional dictionary generation
         expr = C.__getattribute__(op)(a)
         expr_dict = expr.to_dict()
@@ -106,7 +104,11 @@ def _test_generic(objcls, permutations, op):
             raise AssertionError
 
 
-def _test_resolvable(objcls, permutations, op):
+def _test_resolvable(
+    objcls, permutations, op, type_name: typing.Optional[str] = None
+):
+    type_name = type_name if type_name else objcls.__name__.lower()
+
     # test expressions that can be simplified to a 'Bool'
     for a, b in permutations:
         A = objcls(a)
@@ -123,10 +125,10 @@ def _test_resolvable(objcls, permutations, op):
         dictA = A.to_dict()
         assert A.get_value() == a
         assert len(dictA) == 2
-        assert dictA["type"] == objcls.__name__.lower()
+        assert dictA["type"] == type_name
         assert dictA["value"] == A.encode_value()
     # test expressions that cannot be simplified
-    _test_generic(objcls, permutations, op)
+    _test_generic(objcls, permutations, op, type_name=type_name)
 
 
 def _test_unsupported(objcls, permutations, op):
@@ -136,7 +138,7 @@ def _test_unsupported(objcls, permutations, op):
 
 
 def test_score():
-    objcls = Score
+    objcls = Nullable[Float]
 
     # test supported methods
     permutations = [
@@ -150,16 +152,23 @@ def test_score():
         (None, 0.9),
     ]
     for op in ["__eq__", "__ne__", "__gt__", "__ge__", "__lt__", "__le__"]:
-        _test_resolvable(objcls, permutations, op)
-        _test_generic(objcls, unresolvable_permutations, op)
+        _test_resolvable(objcls, permutations, op, type_name="optional[float]")
+        _test_generic(
+            objcls, unresolvable_permutations, op, type_name="optional[float]"
+        )
         with pytest.raises((AssertionError, TypeError)):
-            _test_resolvable(objcls, unresolvable_permutations, op)
+            _test_resolvable(
+                objcls,
+                unresolvable_permutations,
+                op,
+                type_name="optional[float]",
+            )
 
     # test nullable
-    assert Score(1.0).is_none().get_value() is False  # type: ignore - always returns bool
-    assert Score(1.0).is_not_none().get_value() is True  # type: ignore - always returns bool
-    assert Score(None).is_none().get_value() is True  # type: ignore - always returns bool
-    assert Score(None).is_not_none().get_value() is False  # type: ignore - always returns bool
+    assert Nullable[Float](1.0).is_none().get_value() is False  # type: ignore - always returns bool
+    assert Nullable[Float](1.0).is_not_none().get_value() is True  # type: ignore - always returns bool
+    assert Nullable[Float](None).is_none().get_value() is True  # type: ignore - always returns bool
+    assert Nullable[Float](None).is_not_none().get_value() is False  # type: ignore - always returns bool
 
     # test unsupported methods
     for op in [
@@ -174,13 +183,6 @@ def test_score():
 
     # test encoding
     _test_encoding(objcls, 0.2, 0.2)
-    _test_encoding(objcls, None, None)
-
-    # test that score is bounded to the range 0.0 <= score <= 1.0
-    with pytest.raises(ValueError):
-        Score(-0.01)
-    with pytest.raises(ValueError):
-        Score(1.01)
 
 
 def test_tasktypeenum():
@@ -230,8 +232,8 @@ def test_tasktypeenum():
     _test_encoding(objcls, TaskType.EMBEDDING, TaskType.EMBEDDING.value)
 
 
-def test_bounding_box():
-    objcls = BoundingBox
+def test_box():
+    objcls = Box
     value = [[(0, 2), (1, 2), (1, 3), (0, 3), (0, 2)]]
     other = [[(1, 2), (2, 2), (2, 3), (1, 3), (1, 2)]]
 
@@ -243,7 +245,7 @@ def test_bounding_box():
 
     # test dictionary generation
     assert objcls.from_extrema(0, 1, 2, 3).to_dict() == {
-        "type": "boundingbox",
+        "type": "box",
         "value": value,
     }
 
@@ -253,17 +255,15 @@ def test_bounding_box():
         (value, other),
         (other, other),
         (other, value),
-        (value, None),
-        (None, value),
     ]
     for op in ["intersects", "inside", "outside"]:
         _test_generic(objcls, permutations, op)
 
     # test nullable
-    assert objcls.from_extrema(0, 1, 2, 3).is_none().get_value() is False  # type: ignore - always returns bool
-    assert objcls.from_extrema(0, 1, 2, 3).is_not_none().get_value() is True  # type: ignore - always returns bool
-    assert objcls(None).is_none().get_value() is True  # type: ignore - always returns bool
-    assert objcls(None).is_not_none().get_value() is False  # type: ignore - always returns bool
+    assert not hasattr(objcls, "is_none")
+    assert not hasattr(objcls, "is__not_none")
+    with pytest.raises(TypeError):
+        objcls(None)
 
     # test unsupported methods
     for op in [
@@ -281,67 +281,15 @@ def test_bounding_box():
 
     # test encoding
     _test_encoding(objcls, value, value)
-    _test_encoding(objcls, None, None)
 
     # test validate box must define 5 points with first == last
     with pytest.raises(ValueError):
-        BoundingBox([[(0, 0)]])
+        Box([[(0, 0)]])
     with pytest.raises(ValueError):
-        BoundingBox(value[:-1])
+        Box(value[:-1])
     value[0][-1] = (10, 10)
     with pytest.raises(ValueError):
-        BoundingBox(value)
-
-
-def test_bounding_polygon():
-    objcls = BoundingPolygon
-    value = [[(0, 2), (1, 2), (1, 3), (0, 3), (0, 2)]]
-    other = [[(1, 2), (2, 2), (2, 3), (1, 3), (1, 2)]]
-
-    # test __init__
-    assert objcls(value).get_value() == value
-
-    # test dictionary generation
-    assert objcls(value).to_dict() == {
-        "type": "boundingpolygon",
-        "value": value,
-    }
-
-    # test permutations
-    permutations = [
-        (value, value),
-        (value, other),
-        (other, other),
-        (other, value),
-        (value, None),
-        (None, value),
-    ]
-    for op in ["intersects", "inside", "outside"]:
-        _test_generic(objcls, permutations, op)
-
-    # test nullable
-    assert objcls(value).is_none().get_value() is False  # type: ignore - always returns bool
-    assert objcls(value).is_not_none().get_value() is True  # type: ignore - always returns bool
-    assert objcls(None).is_none().get_value() is True  # type: ignore - always returns bool
-    assert objcls(None).is_not_none().get_value() is False  # type: ignore - always returns bool
-
-    # test unsupported methods
-    for op in [
-        "__eq__",
-        "__ne__",
-        "__gt__",
-        "__ge__",
-        "__lt__",
-        "__le__",
-        "__and__",
-        "__or__",
-        "__xor__",
-    ]:
-        _test_unsupported(objcls, permutations, op)
-
-    # test encoding
-    _test_encoding(objcls, value, value)
-    _test_encoding(objcls, None, None)
+        Box(value)
 
 
 def test_raster():
@@ -349,7 +297,7 @@ def test_raster():
 
     bitmask1 = np.full((10, 10), True)
     bitmask2 = np.full((10, 10), False)
-    geom = BoundingBox.from_extrema(0, 1, 2, 3)
+    geom = Box.from_extrema(0, 1, 2, 3)
 
     value = {"mask": bitmask1, "geometry": None}
     other = {"mask": bitmask2, "geometry": geom.get_value()}
@@ -361,7 +309,6 @@ def test_raster():
 
     # test encoding
     _test_encoding(objcls, value, encoded_value)
-    _test_encoding(objcls, None, None)
 
     # test permutations
     permutations = [
@@ -369,18 +316,15 @@ def test_raster():
         (value, other),
         (other, other),
         (other, value),
-        (value, None),
-        (None, value),
     ]
     for op in ["intersects", "inside", "outside"]:
         _test_generic(objcls, permutations, op)
 
     # test nullable
-    assert objcls(value).is_none().get_value() is False  # type: ignore - always returns bool
-    assert objcls(value).is_not_none().get_value() is True  # type: ignore - always returns bool
-    assert objcls(None).is_none().get_value() is True  # type: ignore - always returns bool
-    assert objcls(None).is_not_none().get_value() is False  # type: ignore - always returns bool
-    assert Raster(None)
+    assert not hasattr(objcls, "is_none")
+    assert not hasattr(objcls, "is__not_none")
+    with pytest.raises(TypeError):
+        objcls(None)
 
     # test 'from_numpy' classmethod
     assert Raster.from_numpy(bitmask1).to_dict() == Raster(value).to_dict()
@@ -429,8 +373,6 @@ def test_raster():
     assert (bitmask1 == Raster(value).array).all()
     with pytest.warns(RuntimeWarning):
         Raster(other).array
-    with pytest.warns(RuntimeWarning):
-        Raster(None).array
 
     # test property 'array' is not available to symbols
     with pytest.raises(TypeError):
@@ -457,17 +399,15 @@ def test_embedding():
         (value, other),
         (other, other),
         (other, value),
-        (value, None),
-        (None, value),
     ]
     for op in ["intersects", "inside", "outside"]:
         _test_generic(objcls, permutations, op)
 
     # test nullable
-    assert objcls(value).is_none().get_value() is False  # type: ignore - always returns bool
-    assert objcls(value).is_not_none().get_value() is True  # type: ignore - always returns bool
-    assert objcls(None).is_none().get_value() is True  # type: ignore - always returns bool
-    assert objcls(None).is_not_none().get_value() is False  # type: ignore - always returns bool
+    assert not hasattr(objcls, "is_none")
+    assert not hasattr(objcls, "is__not_none")
+    with pytest.raises(TypeError):
+        objcls(None)
 
     # test unsupported methods
     for op in [
@@ -485,7 +425,6 @@ def test_embedding():
 
     # test encoding
     _test_encoding(objcls, value, value)
-    _test_encoding(objcls, None, None)
 
 
 def test_label():

@@ -5,7 +5,7 @@ import pytest
 from valor import Annotation, GroundTruth, Label
 from valor.enums import TaskType
 from valor.metatypes import ImageMetadata
-from valor.schemas import BoundingPolygon, MultiPolygon, Polygon, Raster
+from valor.schemas import MultiPolygon, Polygon, Raster
 from valor.viz import (
     _polygons_to_binary_mask,
     create_combined_segmentation_mask,
@@ -176,7 +176,7 @@ def test_draw_detections_on_image(bounding_poly: Polygon):
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k", value="v")],
-                    polygon=BoundingPolygon(bounding_poly.get_value()),
+                    polygon=Polygon(bounding_poly.get_value()),
                 )
             ],
         ),

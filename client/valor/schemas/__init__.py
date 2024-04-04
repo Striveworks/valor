@@ -1,13 +1,6 @@
 from .evaluation import EvaluationParameters, EvaluationRequest
 from .filters import Constraint, Filter
-from .symbolic.collections import (
-    Annotation,
-    Datum,
-    Dictionary,
-    Label,
-    List,
-    StaticCollection,
-)
+from .symbolic.collections import Annotation, Datum, Label, StaticCollection
 from .symbolic.operators import (
     And,
     Eq,
@@ -27,16 +20,17 @@ from .symbolic.operators import (
 )
 from .symbolic.types import (
     Bool,
-    BoundingBox,
-    BoundingPolygon,
+    Box,
     Date,
     DateTime,
+    Dictionary,
     Duration,
     Embedding,
     Equatable,
     Float,
     Integer,
     LineString,
+    List,
     MultiLineString,
     MultiPoint,
     MultiPolygon,
@@ -45,7 +39,6 @@ from .symbolic.types import (
     Polygon,
     Quantifiable,
     Raster,
-    Score,
     Spatial,
     String,
     Symbol,
@@ -81,10 +74,10 @@ __all__ = [
     "Nullable",
     "Spatial",
     "Bool",
+    "Box",
     "Integer",
     "Float",
     "String",
-    "Score",
     "DateTime",
     "Date",
     "Time",
@@ -96,8 +89,6 @@ __all__ = [
     "MultiLineString",
     "Polygon",
     "MultiPolygon",
-    "BoundingBox",
-    "BoundingPolygon",
     "Raster",
     "TaskTypeEnum",
     "Embedding",

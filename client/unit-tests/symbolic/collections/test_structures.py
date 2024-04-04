@@ -21,55 +21,47 @@ from valor.schemas import (
     Time,
     Variable,
 )
-from valor.schemas.symbolic.collections import (
-    Dictionary,
-    DictionaryValue,
-    _get_atomic_type_by_name,
-    _get_atomic_type_by_value,
-)
 from valor.schemas.symbolic.operators import (
     AppendableFunction,
     TwoArgumentFunction,
 )
+from valor.schemas.symbolic.types import (
+    Dictionary,
+    DictionaryValue,
+    _get_type_by_name,
+    _get_type_by_value,
+)
 
 
-def test__get_atomic_type_by_value():
-    assert _get_atomic_type_by_value(True) is Bool
-    assert _get_atomic_type_by_value("hello world") is String
-    assert _get_atomic_type_by_value(int(1)) is Integer
-    assert _get_atomic_type_by_value(float(3.14)) is Float
+def test__get_type_by_value():
+    assert _get_type_by_value(True) is Bool
+    assert _get_type_by_value("hello world") is String
+    assert _get_type_by_value(int(1)) is Integer
+    assert _get_type_by_value(float(3.14)) is Float
     assert (
-        _get_atomic_type_by_value(datetime.datetime(year=2024, month=1, day=1))
+        _get_type_by_value(datetime.datetime(year=2024, month=1, day=1))
         is DateTime
     )
+    assert _get_type_by_value(datetime.date(year=2024, month=1, day=1)) is Date
     assert (
-        _get_atomic_type_by_value(datetime.date(year=2024, month=1, day=1))
-        is Date
+        _get_type_by_value(datetime.time(hour=1, minute=1, second=1)) is Time
     )
+    assert _get_type_by_value(datetime.timedelta(seconds=100)) is Duration
+    assert _get_type_by_value((1, 1)) is Point
+    assert _get_type_by_value([(1, 1)]) is MultiPoint
+    assert _get_type_by_value([(1, 1), (2, 2)]) is LineString
+    assert _get_type_by_value([[(1, 1), (2, 2)]]) is MultiLineString
+    assert _get_type_by_value([[(1, 1), (2, 2), (0, 1), (1, 1)]]) is Polygon
     assert (
-        _get_atomic_type_by_value(datetime.time(hour=1, minute=1, second=1))
-        is Time
-    )
-    assert (
-        _get_atomic_type_by_value(datetime.timedelta(seconds=100)) is Duration
-    )
-    assert _get_atomic_type_by_value((1, 1)) is Point
-    assert _get_atomic_type_by_value([(1, 1)]) is MultiPoint
-    assert _get_atomic_type_by_value([(1, 1), (2, 2)]) is LineString
-    assert _get_atomic_type_by_value([[(1, 1), (2, 2)]]) is MultiLineString
-    assert (
-        _get_atomic_type_by_value([[(1, 1), (2, 2), (0, 1), (1, 1)]])
-        is Polygon
-    )
-    assert (
-        _get_atomic_type_by_value([[[(1, 1), (2, 2), (0, 1), (1, 1)]]])
+        _get_type_by_value([[[(1, 1), (2, 2), (0, 1), (1, 1)]]])
         is MultiPolygon
     )
+    assert _get_type_by_value({"randomvalue": "idk"}) is Dictionary
     with pytest.raises(NotImplementedError):
-        assert _get_atomic_type_by_value({"randomvalue": "idk"})
+        assert _get_type_by_value(set()).__name__
 
 
-def test__get_atomic_type_by_name():
+def test__get_type_by_name():
     types_ = [
         Bool,
         String,
@@ -90,9 +82,9 @@ def test__get_atomic_type_by_name():
         type_name = type_.__name__
         assert issubclass(type_, Variable)
         assert isinstance(type_name, str)
-        assert _get_atomic_type_by_name(type_name) is type_
+        assert _get_type_by_name(type_name) is type_
     with pytest.raises(NotImplementedError):
-        assert _get_atomic_type_by_name("some_nonexistent_type")
+        assert _get_type_by_name("some_nonexistent_type")
 
 
 def get_function_name(fn: str) -> str:

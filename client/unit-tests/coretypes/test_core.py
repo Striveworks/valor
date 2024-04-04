@@ -3,7 +3,7 @@ import copy
 import pytest
 
 from valor import Annotation, Datum, GroundTruth, Label, Prediction, enums
-from valor.schemas import Score
+from valor.schemas import Float, Nullable
 
 
 def test_datum():
@@ -24,7 +24,7 @@ def test_annotation(bbox, polygon, raster, labels, metadata):
     # valid
     Annotation(
         task_type=enums.TaskType.OBJECT_DETECTION,
-        bounding_box=bbox,
+        box=bbox,
         labels=labels,
     )
     Annotation(
@@ -43,7 +43,7 @@ def test_annotation(bbox, polygon, raster, labels, metadata):
     Annotation(
         task_type=enums.TaskType.OBJECT_DETECTION,
         labels=labels,
-        bounding_box=bbox,
+        box=bbox,
         polygon=polygon,
         raster=raster,
     )
@@ -56,6 +56,11 @@ def test_annotation(bbox, polygon, raster, labels, metadata):
         labels=labels,
         metadata=metadata,
     )
+    Annotation(
+        task_type=enums.TaskType.OBJECT_DETECTION,
+        labels=labels,
+        polygon=bbox,  # bbox is a constrained polygon so this is valid usage
+    )
 
     # test `__post_init__`
     with pytest.raises(ValueError) as e:
@@ -65,13 +70,7 @@ def test_annotation(bbox, polygon, raster, labels, metadata):
         Annotation(
             task_type=enums.TaskType.OBJECT_DETECTION,
             labels=labels,
-            bounding_box=polygon,
-        )
-    with pytest.raises(TypeError) as e:
-        Annotation(
-            task_type=enums.TaskType.OBJECT_DETECTION,
-            labels=labels,
-            polygon=bbox,
+            box=polygon,
         )
     with pytest.raises(TypeError) as e:
         Annotation(
@@ -130,11 +129,11 @@ def test_prediction_annotation():
     l3 = Label(key="other", value="value")
 
     s1 = copy.deepcopy(l1)
-    s1.score = Score(0.5)
+    s1.score = Nullable[Float](0.5)
     s2 = copy.deepcopy(l2)
-    s2.score = Score(0.5)
+    s2.score = Nullable[Float](0.5)
     s3 = copy.deepcopy(l3)
-    s3.score = Score(1.0)
+    s3.score = Nullable[Float](1.0)
 
     # valid
     Annotation(task_type=enums.TaskType.CLASSIFICATION, labels=[s1, s2, s3])
@@ -223,7 +222,7 @@ def test_prediction():
     string = str(Prediction(datum=datum, annotations=pds))
     assert (
         string
-        == "{'datum': {'uid': 'somefile', 'metadata': {}}, 'annotations': [{'task_type': 'classification', 'labels': [{'key': 'test', 'value': 'value', 'score': 1.0}], 'metadata': {}, 'bounding_box': None, 'polygon': None, 'raster': None, 'embedding': None}, {'task_type': 'classification', 'labels': [{'key': 'test', 'value': 'value', 'score': 1.0}], 'metadata': {}, 'bounding_box': None, 'polygon': None, 'raster': None, 'embedding': None}]}"
+        == "{'datum': {'uid': 'somefile', 'metadata': {}}, 'annotations': [{'task_type': 'classification', 'labels': [{'key': 'test', 'value': 'value', 'score': 1.0}], 'metadata': {}, 'box': None, 'polygon': None, 'raster': None, 'embedding': None}, {'task_type': 'classification', 'labels': [{'key': 'test', 'value': 'value', 'score': 1.0}], 'metadata': {}, 'box': None, 'polygon': None, 'raster': None, 'embedding': None}]}"
     )
     assert "dataset_name" not in string
 
