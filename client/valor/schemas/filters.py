@@ -58,7 +58,7 @@ def _convert_symbol_to_attribute_name(symbol_name):
         "datum.metadata": "datum_metadata",
         "annotation.task_type": "task_types",
         "annotation.metadata": "annotation_metadata",
-        "annotation.box": "require_bounding_box",
+        "annotation.box": "require_box",
         "annotation.box.area": "box_area",
         "annotation.polygon": "require_polygon",
         "annotation.polygon.area": "polygon_area",
@@ -253,7 +253,7 @@ class Filter:
         A list of task types to filter on.
     annotation_metadata : Dict[str, List[Constraint]], optional
         A dictionary of `Annotation` metadata to filter on.
-    require_bounding_box : bool, optional
+    require_box : bool, optional
         A toggle for filtering by bounding boxes.
     box_area : bool, optional
         An optional constraint to filter by bounding box area.
@@ -299,7 +299,7 @@ class Filter:
     annotation_metadata: Optional[Dict[str, List[Constraint]]] = None
 
     # geometries
-    require_bounding_box: Optional[bool] = None
+    require_box: Optional[bool] = None
     box_area: Optional[List[Constraint]] = None
     require_polygon: Optional[bool] = None
     polygon_area: Optional[List[Constraint]] = None
@@ -411,7 +411,7 @@ class Filter:
 
         # boolean constraints
         for attr in [
-            "require_bounding_box",
+            "require_box",
             "require_polygon",
             "require_raster",
         ]:

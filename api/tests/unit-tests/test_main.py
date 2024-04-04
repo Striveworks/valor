@@ -224,17 +224,16 @@ def test_post_groundtruth_bbox_detection(client: TestClient):
                     "meta1": {"type": "float", "value": 0.4},
                     "meta2": {"type": "string", "value": "v1"},
                 },
-                "bounding_box": {
-                    "polygon": {
-                        "points": [
-                            {"x": 0, "y": 0},
-                            {"x": 0, "y": 1},
-                            {"x": 1, "y": 1},
-                            {"x": 1, "y": 0},
-                        ]
-                    }
-                },
-            },
+                "box": [
+                    [
+                        [0, 0],
+                        [0, 1],
+                        [1, 1],
+                        [1, 0],
+                        [0, 0],
+                    ]
+                ],
+            }
         ],
     }
     _test_post_endpoints(
@@ -266,36 +265,31 @@ def test_post_groundtruth_polygon_detection(client: TestClient):
                     "meta1": {"type": "float", "value": 0.4},
                     "meta2": {"type": "string", "value": "v1"},
                 },
-                "polygon": {
-                    "boundary": {
-                        "points": [
-                            {"x": 0, "y": 0},
-                            {"x": 0, "y": 10},
-                            {"x": 10, "y": 10},
-                            {"x": 10, "y": 0},
-                        ]
-                    },
-                    "holes": [
-                        {
-                            "points": [
-                                {"x": 1, "y": 1},
-                                {"x": 1, "y": 2},
-                                {"x": 3, "y": 3},
-                                {"x": 2, "y": 1},
-                            ]
-                        },
-                        {
-                            "points": [
-                                {"x": 4, "y": 4},
-                                {"x": 4, "y": 5},
-                                {"x": 4.5, "y": 5.5},
-                                {"x": 5, "y": 5},
-                                {"x": 5, "y": 4},
-                            ]
-                        },
+                "polygon": [
+                    [
+                        [0, 0],
+                        [0, 10],
+                        [10, 10],
+                        [10, 0],
+                        [0, 0],
                     ],
-                },
-            },
+                    [
+                        [1, 1],
+                        [1, 2],
+                        [3, 3],
+                        [2, 1],
+                        [1, 1],
+                    ],
+                    [
+                        [4, 4],
+                        [4, 5],
+                        [4.5, 5.5],
+                        [5, 5],
+                        [5, 4],
+                        [4, 4],
+                    ],
+                ],
+            }
         ],
     }
     _test_post_endpoints(
@@ -312,8 +306,8 @@ def test_post_groundtruth_raster_segmentation(client: TestClient):
         "datum": {
             "uid": "file_uid",
             "metadata": {
-                "height": 20,
-                "width": 20,
+                "height": {"type": "integer", "value": 20},
+                "width": {"type": "integer", "value": 20},
             },
         },
         "annotations": [
@@ -380,17 +374,16 @@ def test_get_groundtruth(crud, client: TestClient):
                     "meta1": {"type": "float", "value": 0.4},
                     "meta2": {"type": "string", "value": "v1"},
                 },
-                "bounding_box": {
-                    "polygon": {
-                        "points": [
-                            {"x": 0, "y": 0},
-                            {"x": 0, "y": 1},
-                            {"x": 1, "y": 1},
-                            {"x": 1, "y": 0},
-                        ]
-                    }
-                },
-            },
+                "box": [
+                    [
+                        [0, 0],
+                        [0, 1],
+                        [1, 1],
+                        [1, 0],
+                        [0, 0],
+                    ]
+                ],
+            }
         ],
     }
 
@@ -521,16 +514,15 @@ def test_post_prediction_bbox_detection(client: TestClient):
                     "meta1": {"type": "float", "value": 0.4},
                     "meta2": {"type": "string", "value": "v1"},
                 },
-                "bounding_box": {
-                    "polygon": {
-                        "points": [
-                            {"x": 0, "y": 0},
-                            {"x": 0, "y": 1},
-                            {"x": 1, "y": 1},
-                            {"x": 1, "y": 0},
-                        ]
-                    }
-                },
+                "box": [
+                    [
+                        [0, 0],
+                        [0, 1],
+                        [1, 1],
+                        [1, 0],
+                        [0, 0],
+                    ]
+                ],
             },
         ],
     }
@@ -565,36 +557,31 @@ def test_post_prediction_polygon_detection(client: TestClient):
                     "meta1": {"type": "float", "value": 0.4},
                     "meta2": {"type": "string", "value": "v1"},
                 },
-                "polygon": {
-                    "boundary": {
-                        "points": [
-                            {"x": 0, "y": 0},
-                            {"x": 0, "y": 10},
-                            {"x": 10, "y": 10},
-                            {"x": 10, "y": 0},
-                        ]
-                    },
-                    "holes": [
-                        {
-                            "points": [
-                                {"x": 1, "y": 1},
-                                {"x": 1, "y": 2},
-                                {"x": 3, "y": 3},
-                                {"x": 2, "y": 1},
-                            ]
-                        },
-                        {
-                            "points": [
-                                {"x": 4, "y": 4},
-                                {"x": 4, "y": 5},
-                                {"x": 4.5, "y": 5.5},
-                                {"x": 5, "y": 5},
-                                {"x": 5, "y": 4},
-                            ]
-                        },
+                "polygon": [
+                    [
+                        [0, 0],
+                        [0, 10],
+                        [10, 10],
+                        [10, 0],
+                        [0, 0],
                     ],
-                },
-            },
+                    [
+                        [1, 1],
+                        [1, 2],
+                        [3, 3],
+                        [2, 1],
+                        [1, 1],
+                    ],
+                    [
+                        [4, 4],
+                        [4, 5],
+                        [4.5, 5.5],
+                        [5, 5],
+                        [5, 4],
+                        [4, 4],
+                    ],
+                ],
+            }
         ],
     }
 
@@ -616,8 +603,8 @@ def test_post_prediction_raster_segmentation(client: TestClient):
             "datum": {
                 "uid": "file_uid",
                 "metadata": {
-                    "height": 20,
-                    "width": 20,
+                    "height": {"type": "integer", "value": 20},
+                    "width": {"type": "integer", "value": 20},
                 },
             },
             "annotations": [

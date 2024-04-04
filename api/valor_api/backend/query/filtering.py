@@ -291,8 +291,8 @@ def filter_by_annotation(
         )
 
     # geometry requirement
-    if filter_.require_bounding_box is not None:
-        if filter_.require_bounding_box:
+    if filter_.require_box is not None:
+        if filter_.require_box:
             expressions.append([Annotation.box.isnot(None)])
         else:
             expressions.append([Annotation.box.is_(None)])

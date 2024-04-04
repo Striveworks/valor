@@ -3,26 +3,26 @@ import pytest
 from pydantic import ValidationError
 
 from valor_api import enums, schemas
-from valor_api.schemas.validators import validate_string
+from valor_api.schemas.validators import validate_type_string
 
 
-def test_validate_string():
-    validate_string("dataset1")
-    validate_string("dataset-1")
-    validate_string("dataset_1")
+def test_validate_type_string():
+    validate_type_string("dataset1")
+    validate_type_string("dataset-1")
+    validate_type_string("dataset_1")
     with pytest.raises(ValueError) as e:
-        validate_string("data!@#$%^&*()'set_1")
+        validate_type_string("data!@#$%^&*()'set_1")
     assert "illegal characters" in str(e)
 
 
 def test__format_uid():
-    validate_string("uid1")
-    validate_string("uid-1")
-    validate_string("uid_1")
-    validate_string("uid1.png")
-    validate_string("folder/uid1.png")
+    validate_type_string("uid1")
+    validate_type_string("uid-1")
+    validate_type_string("uid_1")
+    validate_type_string("uid1.png")
+    validate_type_string("folder/uid1.png")
     with pytest.raises(ValueError) as e:
-        validate_string("uid!@#$%^&*()'_1")
+        validate_type_string("uid!@#$%^&*()'_1")
     assert "illegal characters" in str(e)
 
 

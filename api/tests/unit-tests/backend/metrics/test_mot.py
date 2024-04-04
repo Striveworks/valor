@@ -8,7 +8,6 @@ from valor_api.backend.metrics.multi_object_tracking import (
 )
 
 
-# noqa: E731
 def square(x: int, y: int) -> schemas.Box:
     return schemas.Box(
         value=[
@@ -17,6 +16,7 @@ def square(x: int, y: int) -> schemas.Box:
                 (x + 10, y),
                 (x, y + 10),
                 (x + 10, y + 10),
+                (x, y),
             ]
         ]
     )
@@ -31,10 +31,10 @@ def generate_mot_data(num_frames: int):
     create_img = lambda frame: schemas.Datum(  # noqa: E731
         uid="test",
         metadata={
-            "type": "image",
-            "height": 500,
-            "width": 500,
-            "frame": frame,
+            "type": {"type": "string", "value": "image"},
+            "height": {"type": "integer", "value": 500},
+            "width": {"type": "integer", "value": 500},
+            "frame": {"type": "integer", "value": frame},
         },
     )
     create_label_lambda = lambda obj_id: schemas.Label(  # noqa: E731

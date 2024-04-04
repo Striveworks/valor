@@ -11,7 +11,7 @@ from valor_api.schemas.validators import (
     validate_dictionary,
     validate_groundtruth_annotations,
     validate_prediction_annotations,
-    validate_string,
+    validate_type_string,
 )
 
 GeometryType = Union[
@@ -31,8 +31,8 @@ class Label(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def deserialize_valor_type(cls, data: Any) -> Any:
-        return deserialize(class_name=cls.__name__, data=data)
+    def deserialize_valor_type(cls, values: Any) -> Any:
+        return deserialize(class_name=cls.__name__, values=values)
 
     def __eq__(self, other):
         """
@@ -94,8 +94,8 @@ class Annotation(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def deserialize_valor_type(cls, data: Any) -> Any:
-        return deserialize(class_name=cls.__name__, data=data)
+    def deserialize_valor_type(cls, values: Any) -> Any:
+        return deserialize(class_name=cls.__name__, values=values)
 
     @model_validator(mode="after")
     @classmethod
@@ -118,14 +118,14 @@ class Datum(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def deserialize_valor_type(cls, data: Any) -> Any:
-        return deserialize(class_name=cls.__name__, data=data)
+    def deserialize_valor_type(cls, values: Any) -> Any:
+        return deserialize(class_name=cls.__name__, values=values)
 
     @field_validator("uid")
     @classmethod
     def validate_uid(cls, v):
         """Validates the 'uid' field."""
-        validate_string(v)
+        validate_type_string(v)
         return v
 
     @field_validator("metadata")
@@ -144,14 +144,14 @@ class GroundTruth(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def deserialize_valor_type(cls, data: Any) -> Any:
-        return deserialize(class_name=cls.__name__, data=data)
+    def deserialize_valor_type(cls, values: Any) -> Any:
+        return deserialize(class_name=cls.__name__, values=values)
 
     @field_validator("dataset_name")
     @classmethod
     def validate_dataset_name(cls, v):
         """Validates the 'dataset_name' field."""
-        validate_string(v)
+        validate_type_string(v)
         return v
 
     @field_validator("annotations")
@@ -173,21 +173,21 @@ class Prediction(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def deserialize_valor_type(cls, data: Any) -> Any:
-        return deserialize(class_name=cls.__name__, data=data)
+    def deserialize_valor_type(cls, values: Any) -> Any:
+        return deserialize(class_name=cls.__name__, values=values)
 
     @field_validator("dataset_name")
     @classmethod
     def validate_dataset_name(cls, v):
         """Validates the 'dataset_name' field."""
-        validate_string(v)
+        validate_type_string(v)
         return v
 
     @field_validator("model_name")
     @classmethod
     def validate_model_name(cls, v):
         """Validates the 'model_name' field."""
-        validate_string(v)
+        validate_type_string(v)
         return v
 
     @field_validator("annotations")
@@ -207,14 +207,14 @@ class Dataset(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def deserialize_valor_type(cls, data: Any) -> Any:
-        return deserialize(class_name=cls.__name__, data=data)
+    def deserialize_valor_type(cls, values: Any) -> Any:
+        return deserialize(class_name=cls.__name__, values=values)
 
     @field_validator("name")
     @classmethod
     def validate_name(cls, v):
         """Validates the 'name' field."""
-        validate_string(v)
+        validate_type_string(v)
         return v
 
     @field_validator("metadata")
@@ -232,14 +232,14 @@ class Model(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def deserialize_valor_type(cls, data: Any) -> Any:
-        return deserialize(class_name=cls.__name__, data=data)
+    def deserialize_valor_type(cls, values: Any) -> Any:
+        return deserialize(class_name=cls.__name__, values=values)
 
     @field_validator("name")
     @classmethod
     def validate_name(cls, v):
         """Validates the 'name' field."""
-        validate_string(v)
+        validate_type_string(v)
         return v
 
     @field_validator("metadata")

@@ -5,122 +5,374 @@ from typing import Any
 from valor_api.enums import TaskType
 
 
-def check_type_bool(v: Any) -> bool:
-    return isinstance(v, bool)
+def generate_type_error(received_value: Any, expected_type: str):
+    return TypeError(
+        f"Expected value of type '{expected_type}', received value '{received_value}' with type '{type(received_value).__name__}'."
+    )
 
 
-def check_type_integer(v: Any) -> bool:
-    return isinstance(v, int)
+def validate_type_bool(v: Any):
+    """
+    Validates boolean values.
+
+    Parameters
+    ----------
+    v : Any
+        The value to validate.
+
+    Raises
+    ------
+    TypeError
+        If the value is not of type 'bool'.
+    """
+    if not isinstance(v, bool):
+        raise generate_type_error(v, bool.__name__)
 
 
-def check_type_float(v: Any) -> bool:
-    return isinstance(v, float)
+def validate_type_integer(v: Any):
+    """
+    Validates integer values.
+
+    Parameters
+    ----------
+    v : Any
+        The value to validate.
+
+    Raises
+    ------
+    TypeError
+        If the value is not of type 'int'.
+    """
+    if not isinstance(v, int):
+        raise generate_type_error(v, int.__name__)
 
 
-def check_type_string(v: Any) -> bool:
+def validate_type_float(v: Any):
+    """
+    Validates floating-point values.
+
+    Parameters
+    ----------
+    v : Any
+        The value to validate.
+
+    Raises
+    ------
+    TypeError
+        If the value is not of type 'float'.
+    """
+    if not isinstance(v, float):
+        raise generate_type_error(v, float.__name__)
+
+
+def validate_type_string(v: Any):
+    """
+    Validates string values.
+
+    Parameters
+    ----------
+    v : Any
+        The value to validate.
+
+    Raises
+    ------
+    TypeError
+        If the value is not of type 'str'.
+    ValueError
+        If the string contains forbidden characters.
+    """
     if not isinstance(v, str):
-        return False
-    validate_string(v)
-    return True
+        raise generate_type_error(v, str.__name__)
+    allowed_special = ["-", "_", "/", "."]
+    pattern = re.compile(f"^[a-zA-Z0-9{''.join(allowed_special)}]+$")
+    if not pattern.match(v):
+        raise ValueError(
+            "The provided string contains illegal characters. Please ensure your input consists of only alphanumeric characters, hyphens, underscores, forward slashes, and periods."
+        )
 
 
-def check_type_datetime(v: Any) -> bool:
+def validate_type_datetime(v: Any):
+    """
+    Validates ISO Formatted DateTime values.
+
+    Parameters
+    ----------
+    v : Any
+        The value to validate.
+
+    Raises
+    ------
+    TypeError
+        If the value is not of type 'str'.
+    ValueError
+        If the value is not formatted correctly.
+    """
     if not isinstance(v, str):
-        return False
+        raise generate_type_error(v, "ISO formatted datetime")
     try:
         datetime.datetime.fromisoformat(v)
-    except ValueError:
-        return False
-    else:
-        return True
+    except ValueError as e:
+        raise ValueError(
+            f"DateTime value not provided in correct format: {str(e)}"
+        )
 
 
-def check_type_date(v: Any) -> bool:
+def validate_type_date(v: Any):
+    """
+    Validates ISO Formatted Date values.
+
+    Parameters
+    ----------
+    v : Any
+        The value to validate.
+
+    Raises
+    ------
+    TypeError
+        If the value is not of type 'str'.
+    ValueError
+        If the value is not formatted correctly.
+    """
     if not isinstance(v, str):
-        return False
+        raise generate_type_error(v, "ISO formatted date")
     try:
         datetime.date.fromisoformat(v)
-    except ValueError:
-        return False
-    else:
-        return True
+    except ValueError as e:
+        raise ValueError(
+            f"Date value not provided in correct format: {str(e)}"
+        )
 
 
-def check_type_time(v: Any) -> bool:
+def validate_type_time(v: Any):
+    """
+    Validates ISO Formatted Time values.
+
+    Parameters
+    ----------
+    v : Any
+        The value to validate.
+
+    Raises
+    ------
+    TypeError
+        If the value is not of type 'str'.
+    ValueError
+        If the value is not formatted correctly.
+    """
     if not isinstance(v, str):
-        return False
+        raise generate_type_error(v, "ISO formatted time")
     try:
         datetime.time.fromisoformat(v)
-    except ValueError:
-        return False
-    else:
-        return True
+    except ValueError as e:
+        raise ValueError(
+            f"Time value not provided in correct format: {str(e)}"
+        )
 
 
-def check_type_duration(v: Any) -> bool:
+def validate_type_duration(v: Any):
+    """
+    Validates Duration values.
+
+    Parameters
+    ----------
+    v : Any
+        The value to validate.
+
+    Raises
+    ------
+    TypeError
+        If the value is not of type 'float'.
+    ValueError
+        If the value is not formatted correctly.
+    """
     if not isinstance(v, float):
-        return False
+        raise generate_type_error(v, float.__name__)
     try:
         datetime.timedelta(seconds=v)
-    except ValueError:
-        return False
-    else:
-        return True
+    except ValueError as e:
+        raise ValueError(
+            f"Duration value not provided in correct format: {str(e)}"
+        )
 
 
-def check_type_point(v: Any) -> bool:
-    return (
-        isinstance(v, (tuple, list))
-        and len(v) == 2
+def validate_type_point(v: Any):
+    """
+    Validates geometric point values.
+
+    Parameters
+    ----------
+    v : Any
+        The value to validate.
+
+    Raises
+    ------
+    TypeError
+        If the value is not of type 'tuple' or 'list'.
+    ValueError
+        If the point is not an (x,y) position.
+    """
+    if not isinstance(v, (tuple, list)):
+        raise generate_type_error(v, "tuple[float, float] or list[float]")
+    elif not (
+        len(v) == 2
         and isinstance(v[0], (int, float))
         and isinstance(v[1], (int, float))
-    )
+    ):
+        raise ValueError(
+            f"Expected point to have two numeric values representing an (x, y) pair. Received '{v}'."
+        )
 
 
-def check_type_multipoint(v: Any) -> bool:
-    return isinstance(v, list) and all([check_type_point(pt) for pt in v])
+def validate_type_multipoint(v: Any):
+    """
+    Validates geometric multipoint values.
+
+    Parameters
+    ----------
+    v : Any
+        The value to validate.
+
+    Raises
+    ------
+    TypeError
+        If the value is not of type 'list'.
+    ValueError
+        If there are no points or they are not (x,y) positions.
+    """
+    if not isinstance(v, list):
+        raise generate_type_error(
+            v, "list[tuple[float, float]] or list[list[float]]"
+        )
+    elif not v:
+        raise ValueError("List cannot be empty.")
+    for point in v:
+        validate_type_point(point)
 
 
-def check_type_linestring(v: Any) -> bool:
-    return (
-        isinstance(v, list)
-        and len(v) >= 2
-        and all([check_type_point(pt) for pt in v])
-    )
+def validate_type_linestring(v: Any):
+    """
+    Validates geometric linestring values.
+
+    Parameters
+    ----------
+    v : Any
+        The value to validate.
+
+    Raises
+    ------
+    TypeError
+        If the value is not of type 'list'.
+    ValueError
+        If the value does not conform to the linestring requirements.
+    """
+    validate_type_multipoint(v)
+    if len(v) < 2:
+        raise ValueError(
+            f"A line requires two or more points. Received '{v}'."
+        )
 
 
-def check_type_multilinestring(v: Any) -> bool:
-    return (
-        isinstance(v, list)
-        and len(v) >= 1
-        and all([check_type_linestring(line) for line in v])
-    )
+def validate_type_multilinestring(v: Any):
+    """
+    Validates geometric multilinestring values.
+
+    Parameters
+    ----------
+    v : Any
+        The value to validate.
+
+    Raises
+    ------
+    TypeError
+        If the value is not of type 'list'.
+    ValueError
+        If the value does not conform to the multilinestring requirements.
+    """
+    if not isinstance(v, list):
+        return generate_type_error(
+            v, "list[list[tuple[float, float]]] or list[list[list[float]]]"
+        )
+    elif not v:
+        raise ValueError("List cannot be empty.")
+    for line in v:
+        validate_type_linestring(line)
 
 
-def check_type_polygon(v: Any) -> bool:
-    return check_type_multilinestring(v) and all(
-        [(len(line) >= 4 and line[0] == line[-1]) for line in v]
-    )
+def validate_type_polygon(v: Any):
+    """
+    Validates geometric polygon values.
+
+    Parameters
+    ----------
+    v : Any
+        The value to validate.
+
+    Raises
+    ------
+    TypeError
+        If the value is not of type 'list'.
+    ValueError
+        If the value does not conform to the polygon requirements.
+    """
+    validate_type_multilinestring(v)
+    for line in v:
+        if not (len(line) >= 4 and line[0] == line[-1]):
+            raise ValueError(
+                "A polygon is defined by a line of at least four points with the first and last points being equal."
+            )
 
 
-def check_type_box(v: Any) -> bool:
-    return (
-        check_type_polygon(v)
-        and len(v) == 1
-        and len(v[0]) == 5
-        and v[0][0] == v[0][-1]
-    )
+def validate_type_box(v: Any):
+    """
+    Validates geometric box values.
+
+    Parameters
+    ----------
+    v : Any
+        The value to validate.
+
+    Raises
+    ------
+    TypeError
+        If the value is not of type 'list'.
+    ValueError
+        If the value does not conform to the box requirements.
+    """
+    validate_type_polygon(v)
+    if not (len(v) == 1 and len(v[0]) == 5 and v[0][0] == v[0][-1]):
+        raise ValueError(
+            "Boxes are defined by five points with the first and last being equal."
+        )
 
 
-def check_type_multipolygon(v: Any) -> bool:
-    return (
-        isinstance(v, list)
-        and len(v) >= 1
-        and all(check_type_polygon(polygon) for polygon in v)
-    )
+def validate_type_multipolygon(v: Any):
+    """
+    Validates geometric multipolygon values.
+
+    Parameters
+    ----------
+    v : Any
+        The value to validate.
+
+    Raises
+    ------
+    TypeError
+        If the value is not of type 'list'.
+    ValueError
+        If the value does not conform to the multipolygon requirements.
+    """
+    if not isinstance(v, list):
+        raise generate_type_error(
+            v,
+            "list[list[list[tuple[float, float]]]] or list[list[list[list[float]]]]",
+        )
+    elif not v:
+        raise ValueError("List cannot be empty.")
+    for polygon in v:
+        validate_type_polygon(polygon)
 
 
-def check_if_empty_annotation(values):
+def _check_if_empty_annotation(values):
     """Checks if the annotation is empty."""
     return (
         not values.labels
@@ -131,21 +383,9 @@ def check_if_empty_annotation(values):
     )
 
 
-def validate_string(value: str):
-    """Validate that a name doesn't contain any forbidden characters"""
-    if not isinstance(value, str):
-        raise TypeError(f"Value '{value}' is not a string.")
-    allowed_special = ["-", "_", "/", "."]
-    pattern = re.compile(f"^[a-zA-Z0-9{''.join(allowed_special)}]+$")
-    if not pattern.match(value):
-        raise ValueError(
-            "The provided string contains illegal characters. Please ensure your input consists of only alphanumeric characters, hyphens, underscores, forward slashes, and periods."
-        )
-
-
 def validate_annotation_by_task_type(values):
     """Validates the contents of an annotation by task type."""
-    if check_if_empty_annotation(values):
+    if _check_if_empty_annotation(values):
         if values.task_type != TaskType.SKIP:
             values.task_type = TaskType.EMPTY
     match values.task_type:
@@ -196,7 +436,7 @@ def validate_annotation_by_task_type(values):
                     "Annotation with task type `embedding` do not support labels or geometries."
                 )
         case TaskType.EMPTY | TaskType.SKIP:
-            if not check_if_empty_annotation(values):
+            if not _check_if_empty_annotation(values):
                 raise ValueError("Annotation is not empty.")
         case _:
             raise NotImplementedError(
@@ -274,20 +514,20 @@ def validate_prediction_annotations(annotations: list[Any]):
 
 def validate_dictionary(dictionary: dict):
     map_str_to_type_validator = {
-        "bool": check_type_bool,
-        "integer": check_type_integer,
-        "float": check_type_float,
-        "string": check_type_string,
-        "datetime": check_type_datetime,
-        "date": check_type_date,
-        "time": check_type_time,
-        "duration": check_type_duration,
-        "point": check_type_point,
-        "multipoint": check_type_multipoint,
-        "linestring": check_type_linestring,
-        "multilinestring": check_type_multilinestring,
-        "polygon": check_type_polygon,
-        "multipolygon": check_type_multipolygon,
+        "bool": validate_type_bool,
+        "integer": validate_type_integer,
+        "float": validate_type_float,
+        "string": validate_type_string,
+        "datetime": validate_type_datetime,
+        "date": validate_type_date,
+        "time": validate_type_time,
+        "duration": validate_type_duration,
+        "point": validate_type_point,
+        "multipoint": validate_type_multipoint,
+        "linestring": validate_type_linestring,
+        "multilinestring": validate_type_multilinestring,
+        "polygon": validate_type_polygon,
+        "multipolygon": validate_type_multipolygon,
     }
     if not isinstance(dictionary, dict):
         raise TypeError("Expected 'metadata' to be a dictionary.")
@@ -302,9 +542,8 @@ def validate_dictionary(dictionary: dict):
             raise TypeError(
                 "Metadata values must be described using Valor's typing format."
             )
-        # validate metadata values
+        # validate metadata type
         type_ = value.get("type")
-        value_ = value.get("value")
         if (
             not isinstance(type_, str)
             or type_ not in map_str_to_type_validator
@@ -312,21 +551,28 @@ def validate_dictionary(dictionary: dict):
             raise TypeError(
                 f"Metadata does not support values with type '{type_}'"
             )
-        elif not map_str_to_type_validator[type_](value_):
+        # validate metadata value
+        value_ = value.get("value")
+        try:
+            map_str_to_type_validator[type_](value_)
+        except (
+            TypeError,
+            ValueError,
+        ) as e:
             raise ValueError(
-                f"Metadata value '{value_}' failed validation for type '{type_}'"
+                f"Metadata value '{value_}' failed validation for type '{type_}'. Validation error: {str(e)}"
             )
 
 
 def validate_geojson(class_name: str, geojson: dict):
     map_str_to_geojson_validator = {
-        "point": check_type_point,
-        "multipoint": check_type_multipoint,
-        "linestring": check_type_linestring,
-        "multilinestring": check_type_multilinestring,
-        "polygon": check_type_polygon,
-        "box": check_type_box,
-        "multipolygon": check_type_multipolygon,
+        "point": validate_type_point,
+        "multipoint": validate_type_multipoint,
+        "linestring": validate_type_linestring,
+        "multilinestring": validate_type_multilinestring,
+        "polygon": validate_type_polygon,
+        "box": validate_type_box,
+        "multipolygon": validate_type_multipolygon,
     }
     # validate geojson
     if class_name.lower() not in map_str_to_geojson_validator:
@@ -344,41 +590,48 @@ def validate_geojson(class_name: str, geojson: dict):
     elif geojson.get("type") != class_name:
         raise TypeError(f"GeoJSON type does not match '{class_name}'.")
     # validate coordinates
-    if not map_str_to_geojson_validator[class_name.lower()](
-        geojson.get("coordinates")
-    ):
-        raise ValueError(f"Value does not conform to {class_name}.")
+    try:
+        map_str_to_geojson_validator[class_name.lower()](
+            geojson.get("coordinates")
+        )
+    except (TypeError, ValueError) as e:
+        raise ValueError(
+            f"Value does not conform to {class_name}. Validation error: {str(e)}"
+        )
 
 
-def deserialize(class_name: str, data: Any) -> Any:
-    if isinstance(data, dict) and set(data.keys()) == {"type", "value"}:
-        data_type = data.pop("type")
-        if data_type != class_name.lower():
+def deserialize(class_name: str, values: Any) -> Any:
+    if isinstance(values, dict) and set(values.keys()) == {"type", "value"}:
+        values_type = values.pop("type")
+        if values_type != class_name.lower():
             raise TypeError(
-                f"'{class_name}' received value with type '{data_type}'"
+                f"'{class_name}' received value with type '{values_type}'"
             )
-    if isinstance(data, dict) and set(data.keys()) == {"value"}:
-        value = data.get("value")
-        map_str_to_validator = {
-            "bool": check_type_bool,
-            "integer": check_type_integer,
-            "float": check_type_float,
-            "string": check_type_string,
-            "datetime": check_type_datetime,
-            "date": check_type_date,
-            "time": check_type_time,
-            "duration": check_type_duration,
-            "point": check_type_point,
-            "multipoint": check_type_multipoint,
-            "linestring": check_type_linestring,
-            "multilinestring": check_type_multilinestring,
-            "polygon": check_type_polygon,
-            "box": check_type_box,
-            "multipolygon": check_type_multipolygon,
-        }
-        if class_name.lower() in map_str_to_validator:
-            if not map_str_to_validator[class_name.lower()](value):
-                raise ValueError(
-                    f"Value '{data}' does not conform to {class_name}."
-                )
-    return data
+        values = values.pop("value")
+    map_str_to_validator = {
+        "bool": validate_type_bool,
+        "integer": validate_type_integer,
+        "float": validate_type_float,
+        "string": validate_type_string,
+        "datetime": validate_type_datetime,
+        "date": validate_type_date,
+        "time": validate_type_time,
+        "duration": validate_type_duration,
+        "point": validate_type_point,
+        "multipoint": validate_type_multipoint,
+        "linestring": validate_type_linestring,
+        "multilinestring": validate_type_multilinestring,
+        "polygon": validate_type_polygon,
+        "box": validate_type_box,
+        "multipolygon": validate_type_multipolygon,
+    }
+    if class_name.lower() in map_str_to_validator:
+        if not (isinstance(values, dict) and set(values.keys()) == {"value"}):
+            values = {"value": values}
+        try:
+            map_str_to_validator[class_name.lower()](values.get("value"))
+        except (TypeError, ValueError) as e:
+            raise ValueError(
+                f"Value '{values.get('value')}' does not conform to {class_name}. Validation error: {str(e)}"
+            )
+    return values

@@ -72,10 +72,10 @@ class MOTDetection:
         return [
             self.frame_number,
             self.object_id,
-            self.bbox.left,
-            self.bbox.top,
-            self.bbox.width,
-            self.bbox.height,
+            self.bbox.xmin,  # left
+            self.bbox.ymax,  # top
+            self.bbox.xmax - self.bbox.xmin,  # width
+            self.bbox.ymax - self.bbox.ymin,  # height
             self.confidence,
             -1,
             -1,
@@ -89,7 +89,10 @@ def _ground_truth_det_to_mot(
     obj_id_to_int: dict,
 ) -> NDArray:
     """Helper to convert a ground truth detection into MOT format"""
-    if "frame" not in datum.metadata:
+    if (
+        "frame" not in datum.metadata
+        and datum.metadata["frame"]["type"] != "integer"
+    ):
         raise ValueError("Datum does not contain a video frame number.")
     if not gt.labels:
         raise ValueError("GroundTruth does not contain labels.")
@@ -103,7 +106,7 @@ def _ground_truth_det_to_mot(
         raise ValueError("GroundTruth is missing bounding box.")
 
     mot_det = MOTDetection(
-        frame_number=datum.metadata["frame"],  # type: ignore - we don't need to explicitely type the "frame" key of the metadata dict
+        frame_number=datum.metadata["frame"]["value"],  # type: ignore - we don't need to explicitely type the "frame" key of the metadata dict
         object_id=obj_id_to_int[
             label.value  # type: ignore - label shouldn't be unbound if gt.labels isn't empty
         ],  # Label's value is used as object id
@@ -120,21 +123,36 @@ def _pred_det_to_mot(
     object_id_label_key: str = OBJECT_ID_LABEL_KEY,
 ) -> NDArray:
     """Helper to convert a predicted detection into MOT format"""
-    if "frame" not in datum.metadata:
+    if (
+        "frame" not in datum.metadata
+        and datum.metadata["frame"]["type"] != "integer"
+    ):
         raise ValueError("Datum does not contain a video frame number.")
     if not pred.labels:
         raise ValueError("Prediction does not contain labels.")
-    for scored_label in pred.labels:
-        if scored_label.key == object_id_label_key:
-            break
 
-    bbox = pred.box
+    def search_labels_by_label_key(
+        labels: list[schemas.Label], label_key: str
+    ) -> schemas.Label | None:
+        for label in labels:
+            if label.key == label_key:
+                return label
+        return None
 
-    if not bbox:
+    if not (
+        scored_label := search_labels_by_label_key(
+            labels=pred.labels, label_key=object_id_label_key
+        )
+    ):
+        raise ValueError(
+            f"No label prediction exists for label key '{object_id_label_key}'."
+        )
+
+    if not (bbox := pred.box):
         raise ValueError("Prediction is missing bounding box.")
 
     mot_det = MOTDetection(
-        frame_number=datum.metadata["frame"],  # type: ignore - we don't need to explicitely type the "frame" key of the metadata dict
+        frame_number=datum.metadata["frame"]["value"],
         object_id=obj_id_to_int[
             scored_label.value  # type: ignore - label shouldn't be unbound if gt.labels isn't empty
         ],

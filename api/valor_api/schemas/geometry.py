@@ -43,8 +43,8 @@ class Point(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def deserialize_valor_type(cls, data: Any) -> Any:
-        return deserialize(class_name=cls.__name__, data=data)
+    def deserialize_valor_type(cls, values: Any) -> Any:
+        return deserialize(class_name=cls.__name__, values=values)
 
     @classmethod
     def from_geojson(cls, geojson: dict):
@@ -81,8 +81,8 @@ class MultiPoint(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def deserialize_valor_type(cls, data: Any) -> Any:
-        return deserialize(class_name=cls.__name__, data=data)
+    def deserialize_valor_type(cls, values: Any) -> Any:
+        return deserialize(class_name=cls.__name__, values=values)
 
     @classmethod
     def from_geojson(cls, geojson: dict):
@@ -125,8 +125,8 @@ class LineString(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def deserialize_valor_type(cls, data: Any) -> Any:
-        return deserialize(class_name=cls.__name__, data=data)
+    def deserialize_valor_type(cls, values: Any) -> Any:
+        return deserialize(class_name=cls.__name__, values=values)
 
     @classmethod
     def from_geojson(cls, geojson: dict):
@@ -167,8 +167,8 @@ class MultiLineString(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def deserialize_valor_type(cls, data: Any) -> Any:
-        return deserialize(class_name=cls.__name__, data=data)
+    def deserialize_valor_type(cls, values: Any) -> Any:
+        return deserialize(class_name=cls.__name__, values=values)
 
     @classmethod
     def from_geojson(cls, geojson: dict):
@@ -216,8 +216,8 @@ class Polygon(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def deserialize_valor_type(cls, data: Any) -> Any:
-        return deserialize(class_name=cls.__name__, data=data)
+    def deserialize_valor_type(cls, values: Any) -> Any:
+        return deserialize(class_name=cls.__name__, values=values)
 
     @classmethod
     def from_geojson(cls, geojson: dict):
@@ -270,8 +270,8 @@ class Box(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def deserialize_valor_type(cls, data: Any) -> Any:
-        return deserialize(class_name=cls.__name__, data=data)
+    def deserialize_valor_type(cls, values: Any) -> Any:
+        return deserialize(class_name=cls.__name__, values=values)
 
     @classmethod
     def from_extrema(
@@ -327,6 +327,22 @@ class Box(BaseModel):
     def to_wkt(self) -> str:
         return Polygon(value=self.value).to_wkt()
 
+    @property
+    def xmin(self):
+        return min([point[0] for point in self.value[0]])
+
+    @property
+    def xmax(self):
+        return max([point[0] for point in self.value[0]])
+
+    @property
+    def ymin(self):
+        return min([point[1] for point in self.value[0]])
+
+    @property
+    def ymax(self):
+        return max([point[1] for point in self.value[0]])
+
 
 class MultiPolygon(BaseModel):
     """
@@ -348,8 +364,8 @@ class MultiPolygon(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def deserialize_valor_type(cls, data: Any) -> Any:
-        return deserialize(class_name=cls.__name__, data=data)
+    def deserialize_valor_type(cls, values: Any) -> Any:
+        return deserialize(class_name=cls.__name__, values=values)
 
     @classmethod
     def from_geojson(cls, geojson: dict):
@@ -421,8 +437,8 @@ class Raster(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def deserialize_valor_type(cls, data: Any) -> Any:
-        return deserialize(class_name=cls.__name__, data=data)
+    def deserialize_valor_type(cls, values: Any) -> Any:
+        return deserialize(class_name=cls.__name__, values=values)
 
     @field_validator("mask")
     @classmethod

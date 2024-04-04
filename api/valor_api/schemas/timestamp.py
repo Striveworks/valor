@@ -4,11 +4,11 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 from valor_api.schemas.validators import (
-    check_type_date,
-    check_type_datetime,
-    check_type_duration,
-    check_type_time,
     deserialize,
+    validate_type_date,
+    validate_type_datetime,
+    validate_type_duration,
+    validate_type_time,
 )
 
 
@@ -27,16 +27,13 @@ class DateTime(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def deserialize_valor_type(cls, data: Any) -> Any:
-        return deserialize(class_name=cls.__name__, data=data)
+    def deserialize_valor_type(cls, values: Any) -> Any:
+        return deserialize(class_name=cls.__name__, values=values)
 
     @field_validator("value")
     @classmethod
     def validate_value(cls, v: str) -> str:
-        if not check_type_datetime(v):
-            raise ValueError(
-                "DateTime does not conform to 'datetime.datetime'."
-            )
+        validate_type_datetime(v)
         return v
 
     @classmethod
@@ -64,14 +61,13 @@ class Date(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def deserialize_valor_type(cls, data: Any) -> Any:
-        return deserialize(class_name=cls.__name__, data=data)
+    def deserialize_valor_type(cls, values: Any) -> Any:
+        return deserialize(class_name=cls.__name__, values=values)
 
     @field_validator("value")
     @classmethod
     def validate_value(cls, v: str) -> str:
-        if not check_type_date(v):
-            raise ValueError("Date does not conform to 'datetime.date'.")
+        validate_type_date(v)
         return v
 
     @classmethod
@@ -99,14 +95,13 @@ class Time(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def deserialize_valor_type(cls, data: Any) -> Any:
-        return deserialize(class_name=cls.__name__, data=data)
+    def deserialize_valor_type(cls, values: Any) -> Any:
+        return deserialize(class_name=cls.__name__, values=values)
 
     @field_validator("value")
     @classmethod
     def validate_value(cls, v: str) -> str:
-        if not check_type_time(v):
-            raise ValueError("Time does not conform to 'datetime.time'.")
+        validate_type_time(v)
         return v
 
     @classmethod
@@ -134,16 +129,13 @@ class Duration(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def deserialize_valor_type(cls, data: Any) -> Any:
-        return deserialize(class_name=cls.__name__, data=data)
+    def deserialize_valor_type(cls, values: Any) -> Any:
+        return deserialize(class_name=cls.__name__, values=values)
 
     @field_validator("value")
     @classmethod
     def validate_value(cls, v: str) -> str:
-        if not check_type_duration(v):
-            raise ValueError(
-                "Duration does not conform to 'datetime.timedelta'."
-            )
+        validate_type_duration(v)
         return v
 
     @classmethod
