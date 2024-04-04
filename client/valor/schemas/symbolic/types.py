@@ -2177,7 +2177,7 @@ def _get_type_by_name(
     )
     if "list" in name.lower():
         return List[type_]
-    elif "nullable" in name.lower():
+    elif "optional" in name.lower():
         return Nullable[type_]
     else:
         raise NotImplementedError(name)

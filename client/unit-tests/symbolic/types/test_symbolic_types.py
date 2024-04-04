@@ -1157,3 +1157,15 @@ def test_nullable():
 
     # test encoding
     _test_encoding(objcls, "hello", "hello")
+
+    # test usage
+    assert Nullable[Float](0.6).get_value() == 0.6
+    assert Nullable[Float](0.6).to_dict() == {
+        "type": "optional[float]",
+        "value": 0.6,
+    }
+    assert Nullable[Float](None).get_value() is None
+    assert Nullable[Float](None).to_dict() == {
+        "type": "optional[float]",
+        "value": None,
+    }
