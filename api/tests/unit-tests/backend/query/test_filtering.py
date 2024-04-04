@@ -106,19 +106,19 @@ def test__filter_by_metadatum():
 def test_filter_by_annotation_box():
     filter_ = Filter(require_bounding_box=True)
     assert str(filter_by_annotation(filter_)[0]) == str(
-        models.Annotation.box.isnot(None)
+        models.Annotation.bounding_box.isnot(None)
     )
 
     filter_ = Filter(require_bounding_box=False)
     assert str(filter_by_annotation(filter_)[0]) == str(
-        models.Annotation.box.is_(None)
+        models.Annotation.bounding_box.is_(None)
     )
 
     filter_ = Filter(
         bounding_box_area=[NumericFilter(value=100.0, operator=">=")]
     )
     assert str(filter_by_annotation(filter_)[0]) == str(
-        func.ST_Area(models.Annotation.box) >= 100.0
+        func.ST_Area(models.Annotation.bounding_box) >= 100.0
     )
 
     filter_ = Filter(
@@ -129,8 +129,8 @@ def test_filter_by_annotation_box():
     )
     assert str(filter_by_annotation(filter_)[0]) == str(
         and_(
-            func.ST_Area(models.Annotation.box) >= 100.0,
-            func.ST_Area(models.Annotation.box) < 200.0,
+            func.ST_Area(models.Annotation.bounding_box) >= 100.0,
+            func.ST_Area(models.Annotation.bounding_box) < 200.0,
         )
     )
 

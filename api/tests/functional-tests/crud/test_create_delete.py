@@ -558,14 +558,14 @@ def test_create_detections_as_bbox_or_poly(
 
     dets = db.scalars(select(models.GroundTruth)).all()
     assert len(dets) == 2
-    assert set([det.annotation.box is not None for det in dets]) == {
+    assert set([det.annotation.bounding_box is not None for det in dets]) == {
         True,
         False,
     }
 
     # check we get the same polygon
     assert db.scalar(ST_AsText(dets[0].annotation.polygon)) == db.scalar(
-        ST_AsText(dets[1].annotation.box)
+        ST_AsText(dets[1].annotation.bounding_box)
     )
 
 

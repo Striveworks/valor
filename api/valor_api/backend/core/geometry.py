@@ -75,7 +75,7 @@ def get_annotation_type(
     hierarchy = [
         (AnnotationType.RASTER, models.Annotation.raster),
         (AnnotationType.POLYGON, models.Annotation.polygon),
-        (AnnotationType.BOX, models.Annotation.box),
+        (AnnotationType.BOX, models.Annotation.bounding_box),
     ]
     for atype, col in hierarchy:
         search = (
@@ -119,7 +119,7 @@ def _convert_polygon_to_box(
         select(models.Annotation.id)
         .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
         .where(
-            models.Annotation.box.is_(None),
+            models.Annotation.bounding_box.is_(None),
             models.Annotation.polygon.isnot(None),
             *where_conditions,
         )

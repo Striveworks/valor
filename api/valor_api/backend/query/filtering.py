@@ -293,9 +293,9 @@ def filter_by_annotation(
     # geometry requirement
     if filter_.require_bounding_box is not None:
         if filter_.require_bounding_box:
-            expressions.append([Annotation.box.isnot(None)])
+            expressions.append([Annotation.bounding_box.isnot(None)])
         else:
-            expressions.append([Annotation.box.is_(None)])
+            expressions.append([Annotation.bounding_box.is_(None)])
     if filter_.require_polygon is not None:
         if filter_.require_polygon:
             expressions.append([Annotation.polygon.isnot(None)])
@@ -314,7 +314,7 @@ def filter_by_annotation(
         for area_filter in filter_.bounding_box_area:
             op = _get_numeric_op(area_filter.operator)
             bounding_box_area_expr.append(
-                op(func.ST_Area(Annotation.box), area_filter.value)
+                op(func.ST_Area(Annotation.bounding_box), area_filter.value)
             )
         if len(bounding_box_area_expr) > 1:
             area_expr.append(and_(*bounding_box_area_expr))

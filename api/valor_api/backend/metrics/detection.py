@@ -354,7 +354,7 @@ def _compute_detection_metrics(
     ):
         match annotation_type:
             case AnnotationType.BOX:
-                return table.box
+                return table.bounding_box
             case AnnotationType.POLYGON:
                 return table.polygon
             case AnnotationType.MULTIPOLYGON:

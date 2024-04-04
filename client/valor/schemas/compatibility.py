@@ -111,7 +111,7 @@ def encode_api_format(obj: Any) -> dict:
     # geometry
     if "box" in json:
         json.pop("box")
-        json["bounding_box"] = _encode_api_geometry(obj.box)
+        json["bounding_box"] = _encode_api_geometry(obj.bounding_box)
     if "polygon" in json:
         json["polygon"] = _encode_api_geometry(obj.polygon)
     if "raster" in json:

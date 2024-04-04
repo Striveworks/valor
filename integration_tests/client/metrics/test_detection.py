@@ -22,7 +22,7 @@ from valor import (
 )
 from valor.enums import AnnotationType, EvaluationStatus, TaskType
 from valor.exceptions import ClientException
-from valor.schemas import BoundingBox
+from valor.schemas import Box
 from valor_api.backend import models
 
 default_filter_properties = asdict(Filter())
@@ -195,7 +195,7 @@ def test_evaluate_detection(
 
     # now test if we set min_area and/or max_area
     areas = db.scalars(
-        select(ST_Area(models.Annotation.box)).where(
+        select(ST_Area(models.Annotation.bounding_box)).where(
             models.Annotation.model_id.isnot(None)
         )
     ).all()
@@ -224,7 +224,7 @@ def test_evaluate_detection(
         "datum_filter": {
             **default_filter_properties,
             "dataset_names": ["test_dataset"],
-            "bounding_box_area": [
+            "box_area": [
                 {
                     "operator": ">=",
                     "value": 10.0,
@@ -277,7 +277,7 @@ def test_evaluate_detection(
         "datum_filter": {
             **default_filter_properties,
             "dataset_names": ["test_dataset"],
-            "bounding_box_area": [
+            "box_area": [
                 {
                     "operator": ">=",
                     "value": 1200.0,
@@ -324,7 +324,7 @@ def test_evaluate_detection(
         "datum_filter": {
             **default_filter_properties,
             "dataset_names": ["test_dataset"],
-            "bounding_box_area": [
+            "box_area": [
                 {
                     "operator": "<=",
                     "value": 1200.0,
@@ -375,7 +375,7 @@ def test_evaluate_detection(
         "datum_filter": {
             **default_filter_properties,
             "dataset_names": ["test_dataset"],
-            "bounding_box_area": [
+            "box_area": [
                 {
                     "operator": ">=",
                     "value": 1200.0,
@@ -509,7 +509,7 @@ def test_evaluate_detection_with_json_filters(
         iou_thresholds_to_return=[0.1, 0.6],
         filter_by={
             **default_filter_properties,
-            "bounding_box_area": [
+            "box_area": [
                 {
                     "operator": ">=",
                     "value": 1200.0,
@@ -537,7 +537,7 @@ def test_evaluate_detection_with_json_filters(
         "datum_filter": {
             **default_filter_properties,
             "dataset_names": ["test_dataset"],
-            "bounding_box_area": [
+            "box_area": [
                 {
                     "operator": ">=",
                     "value": 1200.0,
@@ -773,22 +773,22 @@ def gts_det_with_label_maps(
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="class_name", value="maine coon cat")],
-                    bounding_box=BoundingBox([rect1]),
+                    box=Box([rect1]),
                 ),
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="class", value="british shorthair")],
-                    bounding_box=BoundingBox([rect3]),
+                    box=Box([rect3]),
                 ),
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k1", value="v1")],
-                    bounding_box=BoundingBox([rect1]),
+                    box=Box([rect1]),
                 ),
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k2", value="v2")],
-                    bounding_box=BoundingBox([rect3]),
+                    box=Box([rect3]),
                 ),
             ],
         ),
@@ -798,12 +798,12 @@ def gts_det_with_label_maps(
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="class", value="siamese cat")],
-                    bounding_box=BoundingBox([rect2]),
+                    box=Box([rect2]),
                 ),
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k1", value="v1")],
-                    bounding_box=BoundingBox([rect2]),
+                    box=Box([rect2]),
                 ),
             ],
         ),
@@ -824,12 +824,12 @@ def preds_det_with_label_maps(
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="class", value="cat", score=0.3)],
-                    bounding_box=BoundingBox([rect1]),
+                    box=Box([rect1]),
                 ),
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k1", value="v1", score=0.3)],
-                    bounding_box=BoundingBox([rect1]),
+                    box=Box([rect1]),
                 ),
             ],
         ),
@@ -839,12 +839,12 @@ def preds_det_with_label_maps(
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="class_name", value="cat", score=0.98)],
-                    bounding_box=BoundingBox([rect2]),
+                    box=Box([rect2]),
                 ),
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k2", value="v2", score=0.98)],
-                    bounding_box=BoundingBox([rect2]),
+                    box=Box([rect2]),
                 ),
             ],
         ),

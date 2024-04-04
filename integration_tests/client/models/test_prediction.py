@@ -10,7 +10,7 @@ from valor import Annotation, Client, Dataset, Label, Model, Prediction
 from valor.coretypes import GroundTruth
 from valor.enums import TaskType
 from valor.metatypes import Datum
-from valor.schemas import BoundingBox, BoundingPolygon
+from valor.schemas import Box, Polygon
 from valor_api.backend import models
 
 
@@ -39,14 +39,14 @@ def test_create_pred_detections_as_bbox_or_poly(
             Annotation(
                 task_type=TaskType.OBJECT_DETECTION,
                 labels=[Label(key="k", value="v", score=0.6)],
-                bounding_box=BoundingBox.from_extrema(
+                box=Box.from_extrema(
                     xmin=xmin, ymin=ymin, xmax=xmax, ymax=ymax
                 ),
             ),
             Annotation(
                 task_type=TaskType.OBJECT_DETECTION,
                 labels=[Label(key="k", value="v", score=0.4)],
-                polygon=BoundingPolygon(
+                polygon=Polygon(
                     [
                         [
                             (xmin, ymin),
@@ -67,7 +67,9 @@ def test_create_pred_detections_as_bbox_or_poly(
         select(models.Annotation).where(models.Annotation.model_id.isnot(None))
     ).all()
     assert len(db_dets) == 3
-    boxes = [det.box for det in db_dets if det.box is not None]
+    boxes = [
+        det.bounding_box for det in db_dets if det.bounding_box is not None
+    ]
     assert len(boxes) == 1
     polygons = [det.polygon for det in db_dets if det.polygon is not None]
     assert len(polygons) == 1

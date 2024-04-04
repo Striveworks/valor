@@ -217,7 +217,7 @@ def test_convert_from_raster(
     annotation_id = db.scalar(
         select(models.Annotation.id).where(
             and_(
-                models.Annotation.box.is_(None),
+                models.Annotation.bounding_box.is_(None),
                 models.Annotation.polygon.is_(None),
                 models.Annotation.raster.isnot(None),
             )
@@ -238,11 +238,11 @@ def test_convert_from_raster(
     ).one_or_none()
     assert annotation is not None
 
-    assert annotation.box is not None
+    assert annotation.bounding_box is not None
     assert annotation.polygon is not None
     assert annotation.raster is not None
 
-    converted_box = _load_box(db, annotation.box)
+    converted_box = _load_box(db, annotation.bounding_box)
     converted_polygon = _load_polygon(db, annotation.polygon)
 
     # check that points match
@@ -258,7 +258,7 @@ def test_convert_polygon_to_box(
     annotation_id = db.scalar(
         select(models.Annotation.id).where(
             and_(
-                models.Annotation.box.is_(None),
+                models.Annotation.bounding_box.is_(None),
                 models.Annotation.polygon.isnot(None),
                 models.Annotation.raster.is_(None),
             )
@@ -276,11 +276,11 @@ def test_convert_polygon_to_box(
     ).one_or_none()
     assert annotation is not None
 
-    assert annotation.box is not None
+    assert annotation.bounding_box is not None
     assert annotation.polygon is not None
     assert annotation.raster is None
 
-    converted_box = _load_box(db, annotation.box)
+    converted_box = _load_box(db, annotation.bounding_box)
 
     # check that points match
     assert converted_box == bbox
@@ -347,7 +347,7 @@ def test_create_segmentations_from_polygons(
         db.scalar(
             select(func.count(models.Annotation.id)).where(
                 or_(
-                    models.Annotation.box.isnot(None),
+                    models.Annotation.bounding_box.isnot(None),
                     models.Annotation.polygon.isnot(None),
                 )
             )

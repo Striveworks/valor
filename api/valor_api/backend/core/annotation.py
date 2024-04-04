@@ -253,8 +253,8 @@ def get_annotation(
     embedding = None
 
     # bounding box
-    if annotation.box is not None:
-        geojson = json.loads(db.scalar(ST_AsGeoJSON(annotation.box)))
+    if annotation.bounding_box is not None:
+        geojson = json.loads(db.scalar(ST_AsGeoJSON(annotation.bounding_box)))
         bounding_box = schemas.BoundingBox(
             polygon=schemas.metadata.geojson_from_dict(data=geojson)
             .geometry()

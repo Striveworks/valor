@@ -21,7 +21,7 @@ from valor import (
 )
 from valor.enums import AnnotationType, EvaluationStatus, TaskType
 from valor.metatypes import ImageMetadata
-from valor.schemas import BoundingBox, Raster
+from valor.schemas import Box, Raster
 
 
 def _sample_without_replacement(array: list, n: int) -> list:
@@ -73,9 +73,7 @@ def _generate_gt_annotation(
         task_type=task_type,
         labels=labels,
         raster=raster,
-        bounding_box=(
-            bounding_box if task_type == TaskType.OBJECT_DETECTION else None
-        ),
+        box=(bounding_box if task_type == TaskType.OBJECT_DETECTION else None),
     )
 
 
@@ -160,9 +158,7 @@ def _generate_bounding_box(
         y_min = 0
         y_max = max_height
 
-    return BoundingBox.from_extrema(
-        xmin=x_min, ymin=y_min, xmax=x_max, ymax=y_max
-    )
+    return Box.from_extrema(xmin=x_min, ymin=y_min, xmax=x_max, ymax=y_max)
 
 
 def _generate_prediction_annotation(
@@ -179,7 +175,7 @@ def _generate_prediction_annotation(
     return Annotation(
         task_type=TaskType.OBJECT_DETECTION,
         labels=labels,
-        bounding_box=box,
+        box=box,
     )
 
 

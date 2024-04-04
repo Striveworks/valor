@@ -44,9 +44,9 @@ def test_declarative_filtering():
         # geometry filters
         Annotation.raster.is_none(),
         Annotation.polygon.is_none(),
-        Annotation.box.is_not_none(),
-        Annotation.box.area >= 1000,
-        Annotation.box.area <= 5000,
+        Annotation.bounding_box.is_not_none(),
+        Annotation.bounding_box.area >= 1000,
+        Annotation.bounding_box.area <= 5000,
         # metadata filters
         Dataset.metadata["arbitrary_numeric_key"] >= 10,
         Dataset.metadata["arbitrary_numeric_key"] < 20,
