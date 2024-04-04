@@ -2164,7 +2164,8 @@ def _get_type_by_name(
         types_.update(additional_types)
 
     parsed_name = name.lower().split(".")[-1]
-    if type_ := types_.get(parsed_name, None):
+    type_ = types_.get(parsed_name, None)
+    if type_ is not None:
         return type_
 
     match = re.search(r"\[(.*?)\]", name.lower())
