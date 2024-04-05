@@ -77,7 +77,7 @@ def groundtruths_with_areas(
                         Annotation(
                             task_type=TaskType.OBJECT_DETECTION,
                             labels=[Label(key="box", value=str(idx))],
-                            box=bbox,
+                            bounding_box=bbox,
                         )
                     ],
                 ),

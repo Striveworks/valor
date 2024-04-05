@@ -5,7 +5,7 @@ import json
 import time
 import warnings
 from dataclasses import asdict, dataclass
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from valor.client import ClientConnection, connect, get_connection
 from valor.enums import AnnotationType, EvaluationStatus, TableStatus, TaskType
@@ -20,7 +20,7 @@ from valor.schemas import (
     Label,
 )
 from valor.schemas import List as SymbolicList
-from valor.schemas import StaticCollection, String
+from valor.schemas import StaticCollection, String, Symbol
 from valor.schemas.compatibility import decode_api_format, encode_api_format
 
 FilterType = Union[list, dict, Filter]  # TODO - Remove this
@@ -80,12 +80,11 @@ class GroundTruth(StaticCollection):
         owner="groundtruth", name="annotations"
     )
 
-    @classmethod
-    def create(
-        cls,
+    def __init__(
+        self,
         datum: Datum,
-        annotations: List[Annotation],
-        **_,
+        annotations: SymbolicList[Annotation],
+        symbol: Optional[Symbol] = None,
     ):
         """
         Creates a ground truth.
@@ -93,22 +92,82 @@ class GroundTruth(StaticCollection):
         Parameters
         ----------
         datum : Datum
-            The `Datum` associated with the `GroundTruth`.
+            The datum that the ground truth is operating over.
         annotations : List[Annotation]
-            The list of `Annotations` associated with the `GroundTruth`.
+            The list of ground truth annotations.
+        symbol : Symbol, optional
+            A symbolic representation of the object.
         """
-        return cls.definite(
+        super().__init__(
             datum=datum,
             annotations=annotations,
+            symbol=symbol,
         )
 
-    def __post_init__(self):
-        for annotation in self.annotations:
-            for label in annotation.labels:
-                if label.score.get_value() is not None:
-                    raise ValueError(
-                        "GroundTruth labels should not have scores."
-                    )
+        # validation
+        if not self.symbolic:
+            for annotation in self.annotations:
+                for label in annotation.labels:
+                    if label.score.get_value() is not None:
+                        raise ValueError(
+                            "GroundTruth labels should not have scores."
+                        )
+
+    @classmethod
+    def definite(
+        cls,
+        datum: Datum,
+        annotations: List[Annotation],
+    ):
+        """
+        Initialize object with a value.
+
+        Parameters
+        ----------
+        datum : Datum
+            The datum that the ground truth is defining.
+        annotations : List[Annotation]
+            The list of ground truth annotations.
+        """
+        return cls(
+            datum=datum,
+            annotations=SymbolicList[Annotation].definite(annotations),
+            symbol=None,
+        )
+
+    @classmethod
+    def symbolic(
+        cls,
+        name: Optional[str] = None,
+        key: Optional[str] = None,
+        attribute: Optional[str] = None,
+        owner: Optional[str] = None,
+    ):
+        """
+        Initializes the object as a symbol.
+
+        Parameters
+        ----------
+        name: str, optional
+            The name of the symbol. Defaults to the name of the parent class.
+        key: str, optional
+            An optional dictionary key.
+        attribute: str, optional
+            An optional attribute name.
+        owner: str, optional
+            An optional name describing the class that owns this symbol.
+        """
+        symbol = Symbol(
+            name=name if name else cls.__name__.lower(),
+            key=key,
+            attribute=attribute,
+            owner=owner,
+        )
+        return cls(
+            datum=cls.datum,
+            annotations=cls.annotations,
+            symbol=symbol,
+        )
 
 
 class Prediction(StaticCollection):
@@ -143,12 +202,11 @@ class Prediction(StaticCollection):
         owner="prediction", name="annotations"
     )
 
-    @classmethod
-    def create(
-        cls,
+    def __init__(
+        self,
         datum: Datum,
-        annotations: List[Annotation],
-        **_,
+        annotations: SymbolicList[Annotation],
+        symbol: Optional[Symbol] = None,
     ):
         """
         Creates a prediction.
@@ -156,47 +214,104 @@ class Prediction(StaticCollection):
         Parameters
         ----------
         datum : Datum
-            The `Datum` associated with the `Prediction`.
-        annotations : List[Annotation]
-            The list of `Annotations` associated with the `Prediction`.
+            The datum that the prediction is operating over.
+        annotations : SymbolicList[Annotation]
+            The list of predicted annotations.
+        symbol : Symbol, optional
+            A symbolic representation of the object.
         """
-        return cls.definite(
+        super().__init__(
             datum=datum,
             annotations=annotations,
+            symbol=symbol,
         )
 
-    def __post_init__(self):
-        """
-        Validate the inputs of the `Prediction` based on task type.
-        """
-        for annotation in self.annotations:
-            task_type = annotation.task_type.get_value()
-            if task_type in [
-                TaskType.CLASSIFICATION,
-                TaskType.OBJECT_DETECTION,
-            ]:
-                for label in annotation.labels:
-                    label_score = label.score._value
-                    if label_score is None:
-                        raise ValueError(
-                            f"For task type `{task_type}` prediction labels must have scores, but got `None`"
-                        )
-            if task_type == TaskType.CLASSIFICATION:
+        # validation
+        if not self.symbolic:
+            for annotation in self.annotations:
+                task_type = annotation.task_type.get_value()
+                if task_type in [
+                    TaskType.CLASSIFICATION,
+                    TaskType.OBJECT_DETECTION,
+                ]:
+                    for label in annotation.labels:
+                        label_score = label.score._value
+                        if label_score is None:
+                            raise ValueError(
+                                f"For task type `{task_type}` prediction labels must have scores, but got `None`"
+                            )
+                if task_type == TaskType.CLASSIFICATION:
 
-                label_keys_to_sum = {}
-                for scored_label in annotation.labels:
-                    label_key = scored_label.key.get_value()
-                    label_score = scored_label.score.get_value()
-                    if label_key not in label_keys_to_sum:
-                        label_keys_to_sum[label_key] = 0.0
-                    label_keys_to_sum[label_key] += label_score
+                    label_keys_to_sum = {}
+                    for scored_label in annotation.labels:
+                        label_key = scored_label.key.get_value()
+                        label_score = scored_label.score.get_value()
+                        if label_key not in label_keys_to_sum:
+                            label_keys_to_sum[label_key] = 0.0
+                        label_keys_to_sum[label_key] += label_score
 
-                for k, total_score in label_keys_to_sum.items():
-                    if abs(total_score - 1) > 1e-5:
-                        raise ValueError(
-                            "For each label key, prediction scores must sum to 1, but"
-                            f" for label key {k} got scores summing to {total_score}."
-                        )
+                    for k, total_score in label_keys_to_sum.items():
+                        if abs(total_score - 1) > 1e-5:
+                            raise ValueError(
+                                "For each label key, prediction scores must sum to 1, but"
+                                f" for label key {k} got scores summing to {total_score}."
+                            )
+
+    @classmethod
+    def definite(
+        cls,
+        datum: Datum,
+        annotations: List[Annotation],
+    ):
+        """
+        Initialize object with a value.
+
+        Parameters
+        ----------
+        datum : Datum
+            The datum that the prediction is operating over.
+        annotations : List[Annotation]
+            The list of predicted annotations.
+        """
+        return cls(
+            datum=datum,
+            annotations=SymbolicList[Annotation].definite(annotations),
+            symbol=None,
+        )
+
+    @classmethod
+    def symbolic(
+        cls,
+        name: Optional[str] = None,
+        key: Optional[str] = None,
+        attribute: Optional[str] = None,
+        owner: Optional[str] = None,
+    ):
+        """
+        Initializes the object as a symbol.
+
+        Parameters
+        ----------
+        name: str, optional
+            The name of the symbol. Defaults to the name of the parent class.
+        key: str, optional
+            An optional dictionary key.
+        attribute: str, optional
+            An optional attribute name.
+        owner: str, optional
+            An optional name describing the class that owns this symbol.
+        """
+        symbol = Symbol(
+            name=name if name else cls.__name__.lower(),
+            key=key,
+            attribute=attribute,
+            owner=owner,
+        )
+        return cls(
+            datum=cls.datum,
+            annotations=cls.annotations,
+            symbol=symbol,
+        )
 
 
 class Evaluation:
@@ -435,13 +550,100 @@ class Dataset(StaticCollection):
         owner="dataset", name="metadata"
     )
 
+    def __init__(
+        self,
+        name: String,
+        metadata: Dictionary,
+        connection: Optional[ClientConnection] = None,
+        symbol: Optional[Symbol] = None,
+    ):
+        """
+        Creates a local instance of a dataset.
+
+        Use 'Dataset.create' classmethod to create a dataset with persistence.
+
+        Parameters
+        ----------
+        name : String
+            The name of the dataset.
+        metadata : Dictionary
+            A dictionary of metadata that describes the dataset.
+        connection : ClientConnection, optional
+            An initialized client connection.
+        symbol : Symbol, optional
+            Symbol to represent a dataset.
+        """
+        self.conn = connection
+        super().__init__(
+            name=name,
+            metadata=metadata,
+            symbol=symbol,
+        )
+
+    @classmethod
+    def definite(
+        cls,
+        name: str,
+        metadata: Optional[Dict[str, Any]] = None,
+        connection: Optional[ClientConnection] = None,
+    ):
+        """
+        Initialize object with a value.
+
+        Parameters
+        ----------
+        name : str
+            The UID of the datum.
+        metadata : dict
+            A dictionary of metadata that describes the datum.
+        """
+        return cls(
+            name=String.definite(name),
+            metadata=Dictionary.definite(metadata if metadata else dict()),
+            connection=connection,
+            symbol=None,
+        )
+
+    @classmethod
+    def symbolic(
+        cls,
+        name: Optional[str] = None,
+        key: Optional[str] = None,
+        attribute: Optional[str] = None,
+        owner: Optional[str] = None,
+    ):
+        """
+        Initializes the object as a symbol.
+
+        Parameters
+        ----------
+        name: str, optional
+            The name of the symbol. Defaults to the name of the parent class.
+        key: str, optional
+            An optional dictionary key.
+        attribute: str, optional
+            An optional attribute name.
+        owner: str, optional
+            An optional name describing the class that owns this symbol.
+        """
+        symbol = Symbol(
+            name=name if name else cls.__name__.lower(),
+            key=key,
+            attribute=attribute,
+            owner=owner,
+        )
+        return cls(
+            name=cls.name,
+            metadata=cls.metadata,
+            symbol=symbol,
+        )
+
     @classmethod
     def create(
         cls,
         name: str,
-        metadata: Optional[dict] = None,
+        metadata: Optional[Dict[str, Any]] = None,
         connection: Optional[ClientConnection] = None,
-        **_,
     ) -> Dataset:
         """
         Creates a dataset that persists in the back end.
@@ -450,19 +652,14 @@ class Dataset(StaticCollection):
         ----------
         name : str
             The name of the dataset.
-        metadata : dict
+        metadata : dict, optional
             A dictionary of metadata that describes the dataset.
-
-        Returns
-        -------
-        valor.Dataset
-            The created dataset.
+        connection : ClientConnection, optional
+            An initialized client connection.
         """
         dataset = cls.definite(
-            name=name,
-            metadata=metadata,
+            name=name, metadata=metadata, connection=connection
         )
-        dataset.add_connection(connection)
         Client(dataset.conn).create_dataset(dataset)
         return dataset
 
@@ -486,20 +683,6 @@ class Dataset(StaticCollection):
             The dataset or 'None' if it doesn't exist.
         """
         return Client(connection).get_dataset(name)
-
-    def add_connection(
-        self,
-        connection: Optional[ClientConnection],
-    ):
-        """
-        Stores a pre-existing connection.
-
-        Parameters
-        ----------
-        connection : ClientConnnetion, optional
-            An optional Valor client object for interacting with the API.
-        """
-        self.conn = connection
 
     def add_groundtruth(
         self,
@@ -688,11 +871,99 @@ class Model(StaticCollection):
     name: String = String.symbolic(owner="model", name="name")
     metadata: Dictionary = Dictionary.symbolic(owner="model", name="metadata")
 
+    def __init__(
+        self,
+        name: String,
+        metadata: Dictionary,
+        connection: Optional[ClientConnection] = None,
+        symbol: Optional[Symbol] = None,
+    ):
+        """
+        Creates a local instance of a model.
+
+        Use 'Model.create' classmethod to create a model with persistence.
+
+        Parameters
+        ----------
+        name : String
+            The name of the model.
+        metadata : Dictionary
+            A dictionary of metadata that describes the model.
+        connection : ClientConnection, optional
+            An initialized client connection.
+        symbol : Symbol, optional
+            Symbol to represent a model.
+        """
+        self.conn = connection
+        super().__init__(
+            name=name,
+            metadata=metadata,
+            symbol=symbol,
+        )
+
+    @classmethod
+    def definite(
+        cls,
+        name: str,
+        metadata: Optional[Dict[str, Any]] = None,
+        connection: Optional[ClientConnection] = None,
+    ):
+        """
+        Initialize object with a value.
+
+        Parameters
+        ----------
+        name : str
+            The UID of the datum.
+        metadata : dict
+            A dictionary of metadata that describes the datum.
+        """
+        return cls(
+            name=String.definite(name),
+            metadata=Dictionary.definite(metadata if metadata else dict()),
+            connection=connection,
+            symbol=None,
+        )
+
+    @classmethod
+    def symbolic(
+        cls,
+        name: Optional[str] = None,
+        key: Optional[str] = None,
+        attribute: Optional[str] = None,
+        owner: Optional[str] = None,
+    ):
+        """
+        Initializes the object as a symbol.
+
+        Parameters
+        ----------
+        name: str, optional
+            The name of the symbol. Defaults to the name of the parent class.
+        key: str, optional
+            An optional dictionary key.
+        attribute: str, optional
+            An optional attribute name.
+        owner: str, optional
+            An optional name describing the class that owns this symbol.
+        """
+        symbol = Symbol(
+            name=name if name else cls.__name__.lower(),
+            key=key,
+            attribute=attribute,
+            owner=owner,
+        )
+        return cls(
+            name=cls.name,
+            metadata=cls.metadata,
+            symbol=symbol,
+        )
+
     @classmethod
     def create(
         cls,
         name: str,
-        metadata: Optional[dict] = None,
+        metadata: Optional[Dict[str, Any]] = None,
         connection: Optional[ClientConnection] = None,
         **_,
     ) -> Model:
@@ -703,19 +974,13 @@ class Model(StaticCollection):
         ----------
         name : str
             The name of the model.
-        metadata : dict
+        metadata : dict, optional
             A dictionary of metadata that describes the model.
-        connection : ClientConnnetion, optional
-            An optional Valor client object for interacting with the API.
-
-        Returns
-        -------
-        valor.Model
-            The created model.
+        connection : ClientConnection, optional
+            An initialized client connection.
         """
         model = cls.definite(
-            name=name,
-            metadata=metadata,
+            name=name, metadata=metadata, connection=connection
         )
         model.add_connection(connection)
         Client(connection).create_model(model)

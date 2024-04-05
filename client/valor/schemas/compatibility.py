@@ -46,9 +46,10 @@ def _encode_api_metadata(metadata: Dictionary) -> dict:
     return {k: _encode_api_metadata_values(v) for k, v in metadata.items()}
 
 
-def _encode_api_geometry(geometry: Union[Polygon, MultiPolygon, Box, Raster]):
-    value = geometry.get_value()
-    if value is None:
+def _encode_api_geometry(
+    geometry: Union[Box, Polygon, MultiPolygon, Raster, None]
+):
+    if geometry is None:
         return None
     elif isinstance(geometry, Box):
         return {

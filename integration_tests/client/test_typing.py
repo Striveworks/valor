@@ -70,7 +70,7 @@ def test_annotation_typing():
         task_type=enums.TaskType.CLASSIFICATION,
         labels=[],
         metadata={},
-        box=bbox,
+        bounding_box=bbox,
         polygon=polygon,
         raster=raster,
     )

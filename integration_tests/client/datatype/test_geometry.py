@@ -193,7 +193,9 @@ def test_add_raster_and_boundary_box(
             Annotation(
                 task_type=TaskType.OBJECT_DETECTION,
                 labels=[Label(key="k3", value="v3")],
-                box=Box.from_extrema(xmin=10, ymin=10, xmax=60, ymax=40),
+                bounding_box=Box.from_extrema(
+                    xmin=10, ymin=10, xmax=60, ymax=40
+                ),
                 raster=raster,
             )
         ],

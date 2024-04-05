@@ -73,7 +73,9 @@ def _generate_gt_annotation(
         task_type=task_type,
         labels=labels,
         raster=raster,
-        box=(bounding_box if task_type == TaskType.OBJECT_DETECTION else None),
+        bounding_box=(
+            bounding_box if task_type == TaskType.OBJECT_DETECTION else None
+        ),
     )
 
 
@@ -175,7 +177,7 @@ def _generate_prediction_annotation(
     return Annotation(
         task_type=TaskType.OBJECT_DETECTION,
         labels=labels,
-        box=box,
+        bounding_box=box,
     )
 
 
