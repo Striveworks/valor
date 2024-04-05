@@ -91,21 +91,6 @@ def _compute_curves(
             .alias()
         )
 
-        groundtruths_with_uids = (
-            select(
-                groundtruths.c.datum_id,
-                groundtruths.c.dataset_name,
-                groundtruths.c.label_id,
-                models.Datum.uid.label("datum_uid"),
-            )
-            .select_from(groundtruths)
-            .join(
-                models.Datum,
-                models.Datum.id == groundtruths.c.datum_id,
-            )
-            .subquery()
-        )
-
         b = Bundle(
             "cols",
             case(
@@ -124,29 +109,33 @@ def _compute_curves(
                 predictions_that_meet_criteria.c.datum_id,
                 predictions_that_meet_criteria.c.datum_uid,
                 predictions_that_meet_criteria.c.dataset_name,
-                groundtruths_with_uids.c.datum_id,
-                groundtruths_with_uids.c.datum_uid,
-                groundtruths_with_uids.c.dataset_name,
+                groundtruths.c.datum_id,
+                models.Datum.uid,
+                groundtruths.c.dataset_name,
             )
-            .select_from(groundtruths_with_uids)
+            .select_from(groundtruths)
             .join(
                 predictions_that_meet_criteria,  # type: ignore
-                groundtruths_with_uids.c.datum_id
+                groundtruths.c.datum_id
                 == predictions_that_meet_criteria.c.datum_id,
                 isouter=True,
             )
             .join(
                 models.Label,
-                models.Label.id == groundtruths_with_uids.c.label_id,
+                models.Label.id == groundtruths.c.label_id,
+            )
+            .join(
+                models.Datum,
+                models.Datum.id == groundtruths.c.datum_id,
             )
             .group_by(
                 b,  # type: ignore - SQLAlchemy Bundle not compatible with _first
                 predictions_that_meet_criteria.c.datum_id,
                 predictions_that_meet_criteria.c.datum_uid,
                 predictions_that_meet_criteria.c.dataset_name,
-                groundtruths_with_uids.c.datum_id,
-                groundtruths_with_uids.c.datum_uid,
-                groundtruths_with_uids.c.dataset_name,
+                groundtruths.c.datum_id,
+                models.Datum.uid,
+                groundtruths.c.dataset_name,
             )
         )
         res = list(db.execute(total_query).all())
