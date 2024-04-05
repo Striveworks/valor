@@ -14,7 +14,6 @@ from valor.schemas import (
     MultiLineString,
     MultiPoint,
     MultiPolygon,
-    Nullable,
     Point,
     Polygon,
     String,
@@ -84,7 +83,6 @@ def test__get_type_by_name():
         assert issubclass(type_, Variable)
         assert isinstance(type_name, str)
         assert _get_type_by_name(type_name) is type_
-        assert _get_type_by_name(f"optional[{type_name}]") is Nullable[type_]
         assert _get_type_by_name(f"list[{type_name}]") is List[type_]
     with pytest.raises(NotImplementedError):
         assert _get_type_by_name("some_nonexistent_type")

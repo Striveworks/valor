@@ -3,7 +3,7 @@ import typing
 import numpy as np
 import pytest
 
-from valor.schemas import Box, Embedding, Float, Nullable, Raster, TaskTypeEnum
+from valor.schemas import Box, Embedding, Float, Raster, TaskTypeEnum
 from valor.schemas.symbolic.operators import (
     AppendableFunction,
     TwoArgumentFunction,
@@ -138,7 +138,7 @@ def _test_unsupported(objcls, permutations, op):
 
 
 def test_score():
-    objcls = Nullable[Float]
+    objcls = Float
 
     # test supported methods
     permutations = [
@@ -165,10 +165,10 @@ def test_score():
             )
 
     # test nullable
-    assert Nullable[Float](1.0).is_none().get_value() is False  # type: ignore - always returns bool
-    assert Nullable[Float](1.0).is_not_none().get_value() is True  # type: ignore - always returns bool
-    assert Nullable[Float](None).is_none().get_value() is True  # type: ignore - always returns bool
-    assert Nullable[Float](None).is_not_none().get_value() is False  # type: ignore - always returns bool
+    assert Float.nullable(1.0).is_none().get_value() is False  # type: ignore - always returns bool
+    assert Float.nullable(1.0).is_not_none().get_value() is True  # type: ignore - always returns bool
+    assert Float.nullable(None).is_none().get_value() is True  # type: ignore - always returns bool
+    assert Float.nullable(None).is_not_none().get_value() is False  # type: ignore - always returns bool
 
     # test unsupported methods
     for op in [

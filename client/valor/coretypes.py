@@ -20,7 +20,7 @@ from valor.schemas import (
     Label,
 )
 from valor.schemas import List as SymbolicList
-from valor.schemas import StaticCollection, String, Symbol
+from valor.schemas import StaticCollection, String
 from valor.schemas.compatibility import decode_api_format, encode_api_format
 
 FilterType = Union[list, dict, Filter]  # TODO - Remove this
@@ -83,8 +83,7 @@ class GroundTruth(StaticCollection):
     def __init__(
         self,
         datum: Datum,
-        annotations: SymbolicList[Annotation],
-        symbol: Optional[Symbol] = None,
+        annotations: List[Annotation],
     ):
         """
         Creates a ground truth.
@@ -95,14 +94,10 @@ class GroundTruth(StaticCollection):
             The datum that the ground truth is operating over.
         annotations : List[Annotation]
             The list of ground truth annotations.
-        symbol : Symbol, optional
-            A symbolic representation of the object.
         """
-        super().__init__(
-            datum=datum,
-            annotations=annotations,
-            symbol=symbol,
-        )
+        self.datum = datum
+        self.annotations = SymbolicList[Annotation].definite(annotations)
+        super().__init__()
 
         # validation
         if not self.symbolic:
@@ -112,62 +107,6 @@ class GroundTruth(StaticCollection):
                         raise ValueError(
                             "GroundTruth labels should not have scores."
                         )
-
-    @classmethod
-    def definite(
-        cls,
-        datum: Datum,
-        annotations: List[Annotation],
-    ):
-        """
-        Initialize object with a value.
-
-        Parameters
-        ----------
-        datum : Datum
-            The datum that the ground truth is defining.
-        annotations : List[Annotation]
-            The list of ground truth annotations.
-        """
-        return cls(
-            datum=datum,
-            annotations=SymbolicList[Annotation].definite(annotations),
-            symbol=None,
-        )
-
-    @classmethod
-    def symbolic(
-        cls,
-        name: Optional[str] = None,
-        key: Optional[str] = None,
-        attribute: Optional[str] = None,
-        owner: Optional[str] = None,
-    ):
-        """
-        Initializes the object as a symbol.
-
-        Parameters
-        ----------
-        name: str, optional
-            The name of the symbol. Defaults to the name of the parent class.
-        key: str, optional
-            An optional dictionary key.
-        attribute: str, optional
-            An optional attribute name.
-        owner: str, optional
-            An optional name describing the class that owns this symbol.
-        """
-        symbol = Symbol(
-            name=name if name else cls.__name__.lower(),
-            key=key,
-            attribute=attribute,
-            owner=owner,
-        )
-        return cls(
-            datum=cls.datum,
-            annotations=cls.annotations,
-            symbol=symbol,
-        )
 
 
 class Prediction(StaticCollection):
@@ -205,8 +144,7 @@ class Prediction(StaticCollection):
     def __init__(
         self,
         datum: Datum,
-        annotations: SymbolicList[Annotation],
-        symbol: Optional[Symbol] = None,
+        annotations: List[Annotation],
     ):
         """
         Creates a prediction.
@@ -215,16 +153,12 @@ class Prediction(StaticCollection):
         ----------
         datum : Datum
             The datum that the prediction is operating over.
-        annotations : SymbolicList[Annotation]
+        annotations : List[Annotation]
             The list of predicted annotations.
-        symbol : Symbol, optional
-            A symbolic representation of the object.
         """
-        super().__init__(
-            datum=datum,
-            annotations=annotations,
-            symbol=symbol,
-        )
+        self.datum = datum
+        self.annotations = SymbolicList[Annotation].definite(annotations)
+        super().__init__()
 
         # validation
         if not self.symbolic:
@@ -256,62 +190,6 @@ class Prediction(StaticCollection):
                                 "For each label key, prediction scores must sum to 1, but"
                                 f" for label key {k} got scores summing to {total_score}."
                             )
-
-    @classmethod
-    def definite(
-        cls,
-        datum: Datum,
-        annotations: List[Annotation],
-    ):
-        """
-        Initialize object with a value.
-
-        Parameters
-        ----------
-        datum : Datum
-            The datum that the prediction is operating over.
-        annotations : List[Annotation]
-            The list of predicted annotations.
-        """
-        return cls(
-            datum=datum,
-            annotations=SymbolicList[Annotation].definite(annotations),
-            symbol=None,
-        )
-
-    @classmethod
-    def symbolic(
-        cls,
-        name: Optional[str] = None,
-        key: Optional[str] = None,
-        attribute: Optional[str] = None,
-        owner: Optional[str] = None,
-    ):
-        """
-        Initializes the object as a symbol.
-
-        Parameters
-        ----------
-        name: str, optional
-            The name of the symbol. Defaults to the name of the parent class.
-        key: str, optional
-            An optional dictionary key.
-        attribute: str, optional
-            An optional attribute name.
-        owner: str, optional
-            An optional name describing the class that owns this symbol.
-        """
-        symbol = Symbol(
-            name=name if name else cls.__name__.lower(),
-            key=key,
-            attribute=attribute,
-            owner=owner,
-        )
-        return cls(
-            datum=cls.datum,
-            annotations=cls.annotations,
-            symbol=symbol,
-        )
 
 
 class Evaluation:
@@ -552,10 +430,9 @@ class Dataset(StaticCollection):
 
     def __init__(
         self,
-        name: String,
-        metadata: Dictionary,
+        name: str,
+        metadata: Optional[dict] = None,
         connection: Optional[ClientConnection] = None,
-        symbol: Optional[Symbol] = None,
     ):
         """
         Creates a local instance of a dataset.
@@ -564,79 +441,17 @@ class Dataset(StaticCollection):
 
         Parameters
         ----------
-        name : String
+        name : str
             The name of the dataset.
-        metadata : Dictionary
+        metadata : dict, optional
             A dictionary of metadata that describes the dataset.
         connection : ClientConnection, optional
             An initialized client connection.
-        symbol : Symbol, optional
-            Symbol to represent a dataset.
         """
+        self.name = String.definite(name)
+        self.metadata = Dictionary.definite(metadata if metadata else dict())
         self.conn = connection
-        super().__init__(
-            name=name,
-            metadata=metadata,
-            symbol=symbol,
-        )
-
-    @classmethod
-    def definite(
-        cls,
-        name: str,
-        metadata: Optional[Dict[str, Any]] = None,
-        connection: Optional[ClientConnection] = None,
-    ):
-        """
-        Initialize object with a value.
-
-        Parameters
-        ----------
-        name : str
-            The UID of the datum.
-        metadata : dict
-            A dictionary of metadata that describes the datum.
-        """
-        return cls(
-            name=String.definite(name),
-            metadata=Dictionary.definite(metadata if metadata else dict()),
-            connection=connection,
-            symbol=None,
-        )
-
-    @classmethod
-    def symbolic(
-        cls,
-        name: Optional[str] = None,
-        key: Optional[str] = None,
-        attribute: Optional[str] = None,
-        owner: Optional[str] = None,
-    ):
-        """
-        Initializes the object as a symbol.
-
-        Parameters
-        ----------
-        name: str, optional
-            The name of the symbol. Defaults to the name of the parent class.
-        key: str, optional
-            An optional dictionary key.
-        attribute: str, optional
-            An optional attribute name.
-        owner: str, optional
-            An optional name describing the class that owns this symbol.
-        """
-        symbol = Symbol(
-            name=name if name else cls.__name__.lower(),
-            key=key,
-            attribute=attribute,
-            owner=owner,
-        )
-        return cls(
-            name=cls.name,
-            metadata=cls.metadata,
-            symbol=symbol,
-        )
+        super().__init__()
 
     @classmethod
     def create(
@@ -873,10 +688,9 @@ class Model(StaticCollection):
 
     def __init__(
         self,
-        name: String,
-        metadata: Dictionary,
+        name: str,
+        metadata: Optional[dict] = None,
         connection: Optional[ClientConnection] = None,
-        symbol: Optional[Symbol] = None,
     ):
         """
         Creates a local instance of a model.
@@ -894,70 +708,10 @@ class Model(StaticCollection):
         symbol : Symbol, optional
             Symbol to represent a model.
         """
+        self.name = String.definite(name)
+        self.metadata = Dictionary.definite(metadata if metadata else dict())
         self.conn = connection
-        super().__init__(
-            name=name,
-            metadata=metadata,
-            symbol=symbol,
-        )
-
-    @classmethod
-    def definite(
-        cls,
-        name: str,
-        metadata: Optional[Dict[str, Any]] = None,
-        connection: Optional[ClientConnection] = None,
-    ):
-        """
-        Initialize object with a value.
-
-        Parameters
-        ----------
-        name : str
-            The UID of the datum.
-        metadata : dict
-            A dictionary of metadata that describes the datum.
-        """
-        return cls(
-            name=String.definite(name),
-            metadata=Dictionary.definite(metadata if metadata else dict()),
-            connection=connection,
-            symbol=None,
-        )
-
-    @classmethod
-    def symbolic(
-        cls,
-        name: Optional[str] = None,
-        key: Optional[str] = None,
-        attribute: Optional[str] = None,
-        owner: Optional[str] = None,
-    ):
-        """
-        Initializes the object as a symbol.
-
-        Parameters
-        ----------
-        name: str, optional
-            The name of the symbol. Defaults to the name of the parent class.
-        key: str, optional
-            An optional dictionary key.
-        attribute: str, optional
-            An optional attribute name.
-        owner: str, optional
-            An optional name describing the class that owns this symbol.
-        """
-        symbol = Symbol(
-            name=name if name else cls.__name__.lower(),
-            key=key,
-            attribute=attribute,
-            owner=owner,
-        )
-        return cls(
-            name=cls.name,
-            metadata=cls.metadata,
-            symbol=symbol,
-        )
+        super().__init__()
 
     @classmethod
     def create(

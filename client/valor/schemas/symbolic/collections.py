@@ -1,5 +1,4 @@
-import typing
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
 from valor.enums import TaskType
 from valor.schemas.symbolic.types import (
@@ -35,32 +34,12 @@ class StaticCollection(Equatable):
     A static collection is a Variable that defines its contents by static attributes.
     """
 
-    def __init__(self, symbol: Optional[Symbol] = None, **kwargs):
-        # validate kwarg keys
-        map_key_to_type = self._get_static_types()
-        if set(map_key_to_type.keys()) != set(kwargs.keys()):
-            raise ValueError(
-                f"Input arguments do not match object. Received '{kwargs.keys()}'."
-            )
-        # validate kwarg values
-        kwargs = self.format(**kwargs)
-        if isinstance(symbol, Symbol) and not all(
-            [v.is_symbolic for v in kwargs.values()]
-        ):
-            raise ValueError("Expected all inputs to be symbolic.")
-        elif symbol is None and not all([v.is_value for v in kwargs.values()]):
-            raise ValueError("Expected all inputs to have a value.")
-        # set values
-        if symbol is None:
-            for k, v in kwargs.items():
-                self.__setattr__(k, v)
-        super().__init__(None, symbol)
+    def __init__(self):
+        super().__init__(value=None, symbol=None)
 
     @classmethod
     def definite(cls, *args, **kwargs):
-        raise NotImplementedError(
-            "Static collections do not define 'definite' by default."
-        )
+        return cls(*args, **kwargs)
 
     @classmethod
     def nullable(cls, *args, **kwargs):
@@ -69,10 +48,36 @@ class StaticCollection(Equatable):
         )
 
     @classmethod
-    def symbolic(cls, *args, **kwargs):
-        raise NotImplementedError(
-            "Static collections do not define 'symbolic' by default."
+    def symbolic(
+        cls,
+        name: Optional[str] = None,
+        key: Optional[str] = None,
+        attribute: Optional[str] = None,
+        owner: Optional[str] = None,
+    ):
+        """
+        Initialize object as a symbol.
+
+        Parameters
+        ----------
+        name: str, optional
+            The name of the symbol. Defaults to the name of the parent class.
+        key: str, optional
+            An optional dictionary key.
+        attribute: str, optional
+            An optional attribute name.
+        owner: str, optional
+            An optional name describing the class that owns this symbol.
+        """
+        symbol = Symbol(
+            name=name if name else cls.__name__.lower(),
+            key=key,
+            attribute=attribute,
+            owner=owner,
         )
+        obj = cls.__new__(cls)
+        obj._value = symbol
+        return obj
 
     @staticmethod
     def format(**kwargs) -> Dict[str, Any]:
@@ -161,96 +166,14 @@ class Label(StaticCollection):
 
     def __init__(
         self,
-        key: Union[str, String],
-        value: Union[str, String],
-        score: Union[float, Float, None],
-        symbol: Optional[Symbol] = None,
-    ):
-        super().__init__(
-            key=key,
-            value=value,
-            score=score,
-            symbol=symbol,
-        )
-
-    @staticmethod
-    def format(
-        key: Union[str, String],
-        value: Union[str, String],
-        score: Union[float, Float, None],
-    ) -> Dict[str, Any]:
-        if not isinstance(key, String):
-            key = String.definite(key)
-        if not isinstance(value, String):
-            value = String.definite(value)
-        if not isinstance(score, Float):
-            score = Float.nullable(score)
-        return {
-            "key": key,
-            "value": value,
-            "score": score,
-        }
-
-    @classmethod
-    def definite(
-        cls,
         key: str,
         value: str,
         score: Optional[float] = None,
     ):
-        """
-        Initialize object with a value.
-
-        Parameters
-        ----------
-        key : str
-            The class label key.
-        value : str
-            The class label value.
-        score : float, optional
-            The label score.
-        """
-        return cls(
-            key=key,
-            value=value,
-            score=score,
-            symbol=None,
-        )
-
-    @classmethod
-    def symbolic(
-        cls,
-        name: Optional[str] = None,
-        key: Optional[str] = None,
-        attribute: Optional[str] = None,
-        owner: Optional[str] = None,
-    ):
-        """
-        Initialize object as a symbol.
-
-        Parameters
-        ----------
-        name: str, optional
-            The name of the symbol. Defaults to the name of the parent class.
-        key: str, optional
-            An optional dictionary key.
-        attribute: str, optional
-            An optional attribute name.
-        owner: str, optional
-            An optional name describing the class that owns this symbol.
-        """
-        symbol = Symbol(
-            name=name if name else cls.__name__.lower(),
-            key=key,
-            attribute=attribute,
-            owner=owner,
-        )
-        return cls(
-            key=cls.key,
-            value=cls.value,
-            score=cls.score,
-            symbol=symbol,
-        )
+        self.key = String.definite(key)
+        self.value = String.definite(value)
+        self.score = Float.nullable(score)
+        super().__init__()
 
     def tuple(self):
         """
@@ -357,14 +280,13 @@ class Annotation(StaticCollection):
 
     def __init__(
         self,
-        task_type: Union[TaskType, TaskTypeEnum],
-        metadata: Union[dict, Dictionary, None],
-        labels: Union[List[Label], SymbolicList[Label], None],
-        bounding_box: Optional[Box],
-        polygon: Optional[Polygon],
-        raster: Optional[Raster],
-        embedding: Optional[Embedding],
-        symbol: Optional[Symbol] = None,
+        task_type: TaskType,
+        metadata: Optional[dict] = None,
+        labels: Optional[List[Label]] = None,
+        bounding_box: Optional[Box] = None,
+        polygon: Optional[Polygon] = None,
+        raster: Optional[Raster] = None,
+        embedding: Optional[Embedding] = None,
     ):
         """
         Constructs an annotation.
@@ -378,131 +300,24 @@ class Annotation(StaticCollection):
         labels: List[Label]
             A list of labels to use for the `Annotation`.
         bounding_box: Box, optional
-            A bounding box to assign to the `Annotation`.
-        polygon: BoundingPolygon, optional
-            A polygon to assign to the `Annotation`.
+            A bounding box annotation.
+        polygon: Polygon, optional
+            A polygon annotation.
         raster: Raster, optional
-            A raster to assign to the `Annotation`.
+            A raster annotation.
         embedding: List[float], optional
             An embedding, described by a list of values with type float and a maximum length of 16,000.
         """
-        super().__init__(
-            task_type=task_type,
-            metadata=metadata,
-            labels=labels,
-            bounding_box=bounding_box,
-            polygon=polygon,
-            raster=raster,
-            embedding=embedding,
-            symbol=symbol,
+        self.task_type = TaskTypeEnum.definite(task_type)
+        self.metadata = Dictionary.definite(metadata if metadata else dict())
+        self.labels = SymbolicList[Label].definite(
+            labels if labels else list()
         )
-
-    @classmethod
-    def definite(
-        cls,
-        task_type: TaskType,
-        metadata: Optional[dict] = None,
-        labels: Optional[List[Label]] = None,
-        bounding_box: Optional[Box] = None,
-        polygon: Optional[Polygon] = None,
-        raster: Optional[Raster] = None,
-        embedding: Optional[Embedding] = None,
-    ):
-        """
-        Initialize object with a value.
-
-        Parameters
-        ----------
-        task_type: TaskType
-            The task type associated with the `Annotation`.
-        metadata: Dict[str, Union[int, float, str, bool, datetime.datetime, datetime.date, datetime.time]]
-            A dictionary of metadata that describes the `Annotation`.
-        labels: List[Label], optional
-            A list of labels to use for the `Annotation`.
-        bounding_box: Box, optional
-            A bounding box to assign to the `Annotation`.
-        polygon: BoundingPolygon, optional
-            A polygon to assign to the `Annotation`.
-        raster: Raster, optional
-            A raster to assign to the `Annotation`.
-        embedding: List[float], optional
-            An embedding, described by a list of values with type float and a maximum length of 16,000.
-        """
-        return cls(
-            task_type=task_type,
-            metadata=metadata,
-            labels=labels,
-            bounding_box=bounding_box,
-            polygon=polygon,
-            raster=raster,
-            embedding=embedding,
-            symbol=None,
-        )
-
-    @classmethod
-    def symbolic(
-        cls,
-        name: Optional[str] = None,
-        key: Optional[str] = None,
-        attribute: Optional[str] = None,
-        owner: Optional[str] = None,
-    ):
-        """
-        Initialize object as a symbol.
-
-        Parameters
-        ----------
-        name: str, optional
-            The name of the symbol. Defaults to the name of the parent class.
-        key: str, optional
-            An optional dictionary key.
-        attribute: str, optional
-            An optional attribute name.
-        owner: str, optional
-            An optional name describing the class that owns this symbol.
-        """
-        symbol = Symbol(
-            name=name if name else cls.__name__.lower(),
-            key=key,
-            attribute=attribute,
-            owner=owner,
-        )
-        return cls(
-            task_type=cls.task_type,
-            metadata=cls.metadata,
-            labels=cls.labels,
-            bounding_box=cls.bounding_box,
-            polygon=cls.polygon,
-            raster=cls.raster,
-            embedding=cls.embedding,
-            symbol=symbol,
-        )
-
-    @staticmethod
-    def format(
-        task_type: Union[TaskType, TaskTypeEnum],
-        metadata: Optional[Dictionary],
-        labels: Union[List[Label], SymbolicList[Label]],
-        bounding_box: Optional[Box],
-        polygon: Optional[Polygon],
-        raster: Optional[Raster],
-        embedding: Optional[Embedding],
-    ) -> Dict[str, Any]:
-        if not isinstance(task_type, TaskTypeEnum):
-            task_type = TaskTypeEnum.definite(task_type)
-        if not isinstance(metadata, Dictionary):
-            metadata = Dictionary.definite(metadata if metadata else dict())
-        if not type(labels) is SymbolicList[Label]:
-            labels = SymbolicList[Label].definite(labels if labels else list())
-        return {
-            "task_type": task_type,
-            "metadata": metadata,
-            "labels": labels,
-            "bounding_box": bounding_box,
-            "polygon": polygon,
-            "raster": raster,
-            "embedding": embedding,
-        }
+        self.bounding_box = Box.nullable(bounding_box)
+        self.polygon = Polygon.nullable(polygon)
+        self.raster = Raster.nullable(raster)
+        self.embedding = Embedding.nullable(embedding)
+        super().__init__()
 
 
 class Datum(StaticCollection):
@@ -528,9 +343,8 @@ class Datum(StaticCollection):
 
     def __init__(
         self,
-        uid: Union[str, String],
-        metadata: Union[dict, Dictionary, None],
-        symbol: Optional[Symbol] = None,
+        uid: str,
+        metadata: Optional[dict] = None,
     ):
         """
         Constructs a datum.
@@ -542,81 +356,9 @@ class Datum(StaticCollection):
         metadata : dict, optional
             A dictionary of metadata that describes the datum.
         """
-        super().__init__(
-            uid=uid,
-            metadata=metadata,
-            symbol=symbol,
-        )
-
-    @staticmethod
-    def format(
-        uid: Union[str, String],
-        metadata: Union[dict, Dictionary, None],
-    ) -> Dict[str, Any]:
-        if not isinstance(uid, String):
-            uid = String.definite(uid)
-        if not isinstance(metadata, Dictionary):
-            metadata = Dictionary.definite(metadata if metadata else dict())
-        return {
-            "uid": uid,
-            "metadata": metadata,
-        }
-
-    @classmethod
-    def definite(
-        cls,
-        uid: str,
-        metadata: Optional[dict] = None,
-    ):
-        """
-        Initialize object with a value.
-
-        Parameters
-        ----------
-        uid : str
-            The UID of the datum.
-        metadata : dict
-            A dictionary of metadata that describes the datum.
-        """
-        return cls(
-            uid=uid,
-            metadata=metadata,
-            symbol=None,
-        )
-
-    @classmethod
-    def symbolic(
-        cls,
-        name: Optional[str] = None,
-        key: Optional[str] = None,
-        attribute: Optional[str] = None,
-        owner: Optional[str] = None,
-    ):
-        """
-        Initialize object as a symbol.
-
-        Parameters
-        ----------
-        name: str, optional
-            The name of the symbol. Defaults to the name of the parent class.
-        key: str, optional
-            An optional dictionary key.
-        attribute: str, optional
-            An optional attribute name.
-        owner: str, optional
-            An optional name describing the class that owns this symbol.
-        """
-        symbol = Symbol(
-            name=name if name else cls.__name__.lower(),
-            key=key,
-            attribute=attribute,
-            owner=owner,
-        )
-        return cls(
-            uid=cls.uid,
-            metadata=cls.metadata,
-            symbol=symbol,
-        )
+        self.uid = String.definite(uid)
+        self.metadata = Dictionary.definite(metadata if metadata else dict())
+        super().__init__()
 
     def get_uid(self) -> str:
         """Safely get UID."""

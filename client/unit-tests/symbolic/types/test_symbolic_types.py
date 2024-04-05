@@ -19,7 +19,6 @@ from valor.schemas.symbolic.types import (
     MultiLineString,
     MultiPoint,
     MultiPolygon,
-    Nullable,
     Point,
     Polygon,
     Quantifiable,
@@ -1109,7 +1108,7 @@ def test_multipolygon():
 
 def test_nullable():
     # interoperable with builtin 'str'
-    objcls = Nullable[String]
+    objcls = String.nullable
     resolvable = [
         ("hello", "hello"),
         ("hello", "world"),
@@ -1159,13 +1158,13 @@ def test_nullable():
     _test_encoding(objcls, "hello", "hello")
 
     # test usage
-    assert Nullable[Float](0.6).get_value() == 0.6
-    assert Nullable[Float](0.6).to_dict() == {
+    assert Float.nullable(0.6).get_value() == 0.6
+    assert Float.nullable(0.6).to_dict() == {
         "type": "optional[float]",
         "value": 0.6,
     }
-    assert Nullable[Float](None).get_value() is None
-    assert Nullable[Float](None).to_dict() == {
+    assert Float.nullable(None).get_value() is None
+    assert Float.nullable(None).to_dict() == {
         "type": "optional[float]",
         "value": None,
     }
