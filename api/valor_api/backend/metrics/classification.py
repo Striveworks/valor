@@ -149,16 +149,12 @@ def _compute_curves(
                 groundtruths_with_uids.c.dataset_name,
             )
         )
-
-        print("==================== TEST 1")
         res = list(db.execute(total_query).all())
-        print("==================== TEST 2")
         # handle edge case where there were multiple prediction labels for a single datum
         # first we sort, then we only increment fn below if the datum_id wasn't counted as a tp or fp
         res.sort(
             key=lambda x: ((x[1] is None, x[0][0] != x[0][1], x[1], x[2]))
         )
-        print("==================== TEST 3")
 
         for grouper_value in grouper_mappings["grouper_key_to_labels_mapping"][
             grouper_key
