@@ -426,7 +426,7 @@ class PrecisionRecallCurve(BaseModel):
                 int
                 | float
                 | list[tuple[str, int]]  # for classification tasks
-                | list[tuple[str, int, str]]  # for object detection tasks
+                | list[tuple[str, str, str]]  # for object detection tasks
                 | None,
             ],
         ],
