@@ -34,8 +34,8 @@ def _compute_curves(
             str,
             int
             | float
-            | list[tuple[str, int]]
-            | list[tuple[str, int, str]]
+            | list[tuple[str, str]]
+            | list[tuple[str, str, str]]
             | None,
         ],
     ],
@@ -58,7 +58,7 @@ def _compute_curves(
 
     Returns
     -------
-    dict[str, dict[float, dict[str, int | float | None]]]
+    dict[str,dict[float, dict[str, int | float | list[tuple[str, str]] | list[tuple[str, str, str]] | None]]
         A nested dictionary where the first key is the class label, the second key is the confidence threshold (e.g., 0.05), the third key is the metric name (e.g., "precision"), and the final key is either the value itself (for precision, recall, etc.) or a list of tuples containing the (dataset_name, datum_id) for each observation.
     """
 
@@ -70,6 +70,7 @@ def _compute_curves(
             select(
                 models.Label.value.label("pd_label_value"),
                 models.Annotation.datum_id.label("datum_id"),
+                models.Datum.uid.label("datum_uid"),
                 predictions.c.dataset_name,
                 predictions.c.score,
             )
@@ -81,6 +82,10 @@ def _compute_curves(
             .join(
                 models.Label,
                 models.Label.id == predictions.c.label_id,
+            )
+            .join(
+                models.Datum,
+                models.Datum.id == models.Annotation.datum_id,
             )
             .where(predictions.c.score >= threshold)
             .alias()
@@ -102,8 +107,10 @@ def _compute_curves(
             select(
                 b,
                 predictions_that_meet_criteria.c.datum_id,
+                predictions_that_meet_criteria.c.datum_uid,
                 predictions_that_meet_criteria.c.dataset_name,
                 groundtruths.c.datum_id,
+                models.Datum.uid,
                 groundtruths.c.dataset_name,
             )
             .select_from(groundtruths)
@@ -117,17 +124,21 @@ def _compute_curves(
                 models.Label,
                 models.Label.id == groundtruths.c.label_id,
             )
+            .join(
+                models.Datum,
+                models.Datum.id == groundtruths.c.datum_id,
+            )
             .group_by(
                 b,  # type: ignore - SQLAlchemy Bundle not compatible with _first
                 predictions_that_meet_criteria.c.datum_id,
+                predictions_that_meet_criteria.c.datum_uid,
                 predictions_that_meet_criteria.c.dataset_name,
                 groundtruths.c.datum_id,
+                models.Datum.uid,
                 groundtruths.c.dataset_name,
             )
         )
-
         res = list(db.execute(total_query).all())
-
         # handle edge case where there were multiple prediction labels for a single datum
         # first we sort, then we only increment fn below if the datum_id wasn't counted as a tp or fp
         res.sort(
@@ -144,31 +155,31 @@ def _compute_curves(
                 (
                     predicted_label,
                     actual_label,
-                    pd_datum_id,
+                    pd_datum_uid,
                     pd_dataset_name,
-                    gt_datum_id,
+                    gt_datum_uid,
                     gt_dataset_name,
                 ) = (
                     row[0][0],
                     row[0][1],
-                    row[1],
                     row[2],
                     row[3],
-                    row[4],
+                    row[5],
+                    row[6],
                 )
 
                 if predicted_label == grouper_value == actual_label:
-                    tp += [(pd_dataset_name, pd_datum_id)]
-                    seen_datums.add(gt_datum_id)
+                    tp += [(pd_dataset_name, pd_datum_uid)]
+                    seen_datums.add(gt_datum_uid)
                 elif predicted_label == grouper_value:
-                    fp += [(pd_dataset_name, pd_datum_id)]
-                    seen_datums.add(gt_datum_id)
+                    fp += [(pd_dataset_name, pd_datum_uid)]
+                    seen_datums.add(gt_datum_uid)
                 elif (
                     actual_label == grouper_value
-                    and gt_datum_id not in seen_datums
+                    and gt_datum_uid not in seen_datums
                 ):
-                    fn += [(gt_dataset_name, gt_datum_id)]
-                    seen_datums.add(gt_datum_id)
+                    fn += [(gt_dataset_name, gt_datum_uid)]
+                    seen_datums.add(gt_datum_uid)
 
             # calculate metrics
             tp_cnt, fp_cnt, fn_cnt = len(tp), len(fp), len(fn)
