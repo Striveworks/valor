@@ -956,10 +956,10 @@ def test_evaluate_classification_with_label_maps(
         }
         # other label keys not included for testing purposes
     ]
+
     eval_job = model.evaluate_classification(
         dataset, label_map=label_mapping, compute_pr_curves=True
     )
-
     assert eval_job.id
     assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
 
