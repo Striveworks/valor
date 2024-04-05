@@ -388,9 +388,6 @@ class Variable:
         )
 
 
-T = typing.TypeVar("T", bound=Variable)
-
-
 class Bool(Variable):
     """
     Implementation of the built-in type 'bool' as a Variable.
@@ -1386,129 +1383,7 @@ class MultiPolygon(Spatial):
         return [Polygon(poly) for poly in self.get_value()]
 
 
-# class Nullable(typing.Generic[T], Equatable):
-#     _registered_classes = dict()
-
-#     @classmethod
-#     def __class_getitem__(cls, item_class: typing.Type[T]):
-
-#         if item_class in cls._registered_classes:
-#             return cls._registered_classes[item_class]
-
-#         if not issubclass(item_class, Variable):
-#             raise TypeError("Provided type is not a subclass of Variable.")
-
-#         class OptionalVariable(item_class):
-#             def __init__(
-#                 self,
-#                 value: typing.Optional[typing.Any] = None,
-#                 symbol: typing.Optional[Symbol] = None,
-#             ):
-#                 if value is not None and isinstance(value, item_class):
-#                     value = value.get_value()
-#                 super().__init__(value, symbol)
-
-#             @classmethod
-#             def definite(cls, value: typing.Any):
-#                 """Initialize variable with a value."""
-#                 if isinstance(value, item_class):
-#                     value = value.get_value()
-#                 return cls(value=value, symbol=None)
-
-#             @classmethod
-#             def symbolic(
-#                 cls,
-#                 name: typing.Optional[str] = None,
-#                 key: typing.Optional[str] = None,
-#                 attribute: typing.Optional[str] = None,
-#                 owner: typing.Optional[str] = None,
-#             ):
-#                 if name is None:
-#                     name = f"optional[{item_class.__name__.lower()}]"
-#                 return cls(
-#                     value=None, symbol=Symbol(name, key, attribute, owner)
-#                 )
-
-#             @classmethod
-#             def __validate__(cls, value: typing.Any):
-#                 """
-#                 Validates typing.
-
-#                 Parameters
-#                 ----------
-#                 value : typing.Any
-#                     The value to validate.
-
-#                 Raises
-#                 ------
-#                 TypeError
-#                     If the value type is not supported.
-#                 """
-#                 if value is not None:
-#                     item_class.__validate__(value)
-
-#             @classmethod
-#             def decode_value(cls, value: typing.Any):
-#                 """Decode object from JSON compatible dictionary."""
-#                 if value is None:
-#                     return cls(None)
-#                 return cls(item_class.decode_value(value).get_value())
-
-#             def encode_value(self):
-#                 """Encode object to JSON compatible dictionary."""
-#                 value = self.get_value()
-#                 if value is None:
-#                     return None
-#                 return item_class(value).encode_value()
-
-#             def to_dict(self):
-#                 """Encode variable to a JSON-compatible dictionary."""
-#                 if isinstance(self._value, Symbol):
-#                     return self._value.to_dict()
-#                 else:
-#                     return {
-#                         "type": f"optional[{item_class.__name__.lower()}]",
-#                         "value": self.encode_value(),
-#                     }
-
-#             def is_none(self) -> typing.Union[Bool, IsNull]:
-#                 """Conditional whether variable is 'None'"""
-#                 if self.is_value:
-#                     return Bool(self.get_value() is None)
-#                 return IsNull(self)
-
-#             def is_not_none(self) -> typing.Union["Bool", IsNotNull]:
-#                 """Conditional whether variable is not 'None'"""
-#                 if self.is_value:
-#                     return Bool(self.get_value() is not None)
-#                 return IsNotNull(self)
-
-#             def get_value(self) -> typing.Optional[typing.Any]:
-#                 """Re-typed to output 'Optional[Any]'"""
-#                 return super().get_value()
-
-#             def unwrap(self) -> typing.Optional[T]:
-#                 """Unwraps the optional into a subclass of Variable or 'None'."""
-#                 value = self.get_value()
-#                 if value is None:
-#                     return None
-#                 return item_class(value)
-
-#         cls._registered_classes[item_class] = OptionalVariable
-#         return OptionalVariable
-
-#     @property
-#     def area(self) -> Float:
-#         raise NotImplementedError
-
-#     def is_none(self) -> typing.Union[Bool, IsNull]:
-#         raise NotImplementedError
-
-#     def is_not_none(self) -> typing.Union[Bool, IsNotNull]:
-#         raise NotImplementedError
-
-#     def unwrap(self) -> typing.Optional[T]:
-#         raise NotImplementedError
+T = typing.TypeVar("T", bound=Variable)
 
 
 class List(typing.Generic[T], Equatable):
@@ -2290,7 +2165,5 @@ def _get_type_by_name(
     )
     if "list" in name.lower():
         return List[type_]
-    elif "optional" in name.lower():
-        return Nullable[type_]
     else:
         raise NotImplementedError(name)
