@@ -66,13 +66,13 @@ def test_create_gt_detections_as_bbox_or_poly(
         select(models.Annotation).where(models.Annotation.model_id.is_(None))
     ).all()
     assert len(db_dets) == 2
-    assert set([db_det.bounding_box is not None for db_det in db_dets]) == {
+    assert set([db_det.box is not None for db_det in db_dets]) == {
         True,
         False,
     }
 
     assert (
-        str(db.scalar(ST_AsText(db_dets[0].bounding_box)))
+        str(db.scalar(ST_AsText(db_dets[0].box)))
         == "POLYGON((10 25,30 25,30 50,10 50,10 25))"
         == str(db.scalar(ST_AsText(db_dets[1].polygon)))
     )

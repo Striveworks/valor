@@ -2464,7 +2464,7 @@ def test_query_expression_types(
     assert db.scalar(q) == 10  # type: ignore - SQLAlchemy type issue
 
     # Test nested functions
-    q = Query(
-        func.max(func.ST_Area(models.Annotation.bounding_box))
-    ).groundtruths(as_subquery=False)
+    q = Query(func.max(func.ST_Area(models.Annotation.box))).groundtruths(
+        as_subquery=False
+    )
     assert db.scalar(q) == 100.0  # type: ignore - SQLAlchemy type issue

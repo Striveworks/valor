@@ -315,7 +315,7 @@ class Annotation(StaticCollection):
     labels: SymbolicList[Label] = SymbolicList[Label].symbolic(
         owner="annotation", name="labels"
     )
-    bounding_box: Box = Box.symbolic(owner="annotation", name="box")
+    bounding_box: Box = Box.symbolic(owner="annotation", name="bounding_box")
     polygon: Polygon = Polygon.symbolic(owner="annotation", name="polygon")
     raster: Raster = Raster.symbolic(owner="annotation", name="raster")
     embedding: Embedding = Embedding.symbolic(

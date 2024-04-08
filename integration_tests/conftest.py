@@ -698,10 +698,10 @@ def pred_poly_dets(pred_dets: list[Prediction]) -> list[Prediction]:
             annotations=[
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
-                    labels=annotation.labels,
+                    labels=annotation.labels.get_value(),
                     polygon=(
-                        Polygon([annotation.bounding_box.polygon.boundary])
-                        if annotation.bounding_box.polygon
+                        Polygon([annotation.bounding_box.boundary])
+                        if annotation.bounding_box.get_value()
                         else None
                     ),
                 )

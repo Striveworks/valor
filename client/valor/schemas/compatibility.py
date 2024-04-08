@@ -46,16 +46,14 @@ def _encode_api_metadata(metadata: Dictionary) -> dict:
     return {k: _encode_api_metadata_values(v) for k, v in metadata.items()}
 
 
-def _encode_api_geometry(
-    geometry: Union[Box, Polygon, MultiPolygon, Raster, None]
-):
-    if geometry is None:
+def _encode_api_geometry(geometry: Union[Box, Polygon, MultiPolygon, Raster]):
+    if geometry.get_value() is None:
         return None
     elif isinstance(geometry, Box):
         return {
             "polygon": {
                 "points": [
-                    {"x": pt[0], "y": pt[1]} for pt in geometry.boundary
+                    {"x": pt[0], "y": pt[1]} for pt in geometry.boundary[:-1]
                 ]
             }
         }
@@ -63,11 +61,11 @@ def _encode_api_geometry(
         return {
             "boundary": {
                 "points": [
-                    {"x": pt[0], "y": pt[1]} for pt in geometry.boundary
+                    {"x": pt[0], "y": pt[1]} for pt in geometry.boundary[:-1]
                 ]
             },
             "holes": [
-                {"points": [{"x": pt[0], "y": pt[1]} for pt in hole]}
+                {"points": [{"x": pt[0], "y": pt[1]} for pt in hole[:-1]]}
                 for hole in geometry.holes
             ],
         }
@@ -110,8 +108,7 @@ def encode_api_format(obj: Any) -> dict:
         json["metadata"] = _encode_api_metadata(obj.metadata)
 
     # geometry
-    if "box" in json:
-        json.pop("box")
+    if "bounding_box" in json:
         json["bounding_box"] = _encode_api_geometry(obj.bounding_box)
     if "polygon" in json:
         json["polygon"] = _encode_api_geometry(obj.polygon)
@@ -175,7 +172,7 @@ def _decode_api_geometry(value: Optional[dict]):
     elif set(value.keys()) == {"mask", "geometry"}:
         if value["geometry"] is not None:
             value["geometry"] = _decode_api_geometry(value["geometry"])
-        return Raster.decode_value(value).get_value()
+        return Raster.decode_value(value).get_value()  # type: ignore - none case already handled
 
 
 def decode_api_format(json: dict):
@@ -195,7 +192,7 @@ def decode_api_format(json: dict):
     if "dataset_name" in json:
         json.pop("dataset_name")
     if "bounding_box" in json:
-        json["bounding_box"] = _decode_api_geometry(json["box"])
+        json["bounding_box"] = _decode_api_geometry(json["bounding_box"])
     if "polygon" in json:
         json["polygon"] = _decode_api_geometry(json["polygon"])
     if "raster" in json:

@@ -195,7 +195,7 @@ def test_evaluate_detection(
 
     # now test if we set min_area and/or max_area
     areas = db.scalars(
-        select(ST_Area(models.Annotation.bounding_box)).where(
+        select(ST_Area(models.Annotation.box)).where(
             models.Annotation.model_id.isnot(None)
         )
     ).all()
@@ -224,7 +224,7 @@ def test_evaluate_detection(
         "datum_filter": {
             **default_filter_properties,
             "dataset_names": ["test_dataset"],
-            "box_area": [
+            "bounding_box_area": [
                 {
                     "operator": ">=",
                     "value": 10.0,
@@ -277,7 +277,7 @@ def test_evaluate_detection(
         "datum_filter": {
             **default_filter_properties,
             "dataset_names": ["test_dataset"],
-            "box_area": [
+            "bounding_box_area": [
                 {
                     "operator": ">=",
                     "value": 1200.0,
@@ -324,7 +324,7 @@ def test_evaluate_detection(
         "datum_filter": {
             **default_filter_properties,
             "dataset_names": ["test_dataset"],
-            "box_area": [
+            "bounding_box_area": [
                 {
                     "operator": "<=",
                     "value": 1200.0,
@@ -375,7 +375,7 @@ def test_evaluate_detection(
         "datum_filter": {
             **default_filter_properties,
             "dataset_names": ["test_dataset"],
-            "box_area": [
+            "bounding_box_area": [
                 {
                     "operator": ">=",
                     "value": 1200.0,
@@ -509,7 +509,7 @@ def test_evaluate_detection_with_json_filters(
         iou_thresholds_to_return=[0.1, 0.6],
         filter_by={
             **default_filter_properties,
-            "box_area": [
+            "bounding_box_area": [
                 {
                     "operator": ">=",
                     "value": 1200.0,
@@ -537,7 +537,7 @@ def test_evaluate_detection_with_json_filters(
         "datum_filter": {
             **default_filter_properties,
             "dataset_names": ["test_dataset"],
-            "box_area": [
+            "bounding_box_area": [
                 {
                     "operator": ">=",
                     "value": 1200.0,

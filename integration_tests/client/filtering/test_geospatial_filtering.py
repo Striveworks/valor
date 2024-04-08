@@ -135,15 +135,13 @@ def test_geospatial_filter(
     assert len(eval_job.metrics) == 12
 
     # passing in an incorrectly-formatted geojson dict should return a ValueError
-    geospatial_metadata = Datum.metadata["geospatial"]
+    geospatial_metadatum = Datum.metadata["geospatial"]
     with pytest.raises(NotImplementedError):
         model.evaluate_detection(
             dataset,
             iou_thresholds_to_compute=[0.1, 0.6],
             iou_thresholds_to_return=[0.1, 0.6],
-            filter_by=[
-                geospatial_metadata.inside({"incorrectly_formatted_dict": {}})
-            ],
+            filter_by=[geospatial_metadatum.inside({1234: {}})],
         )
 
     # test datums
@@ -151,7 +149,7 @@ def test_geospatial_filter(
         dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
-        filter_by=[geospatial_metadata.intersects(Polygon(coordinates))],
+        filter_by=[geospatial_metadatum.intersects(Polygon(coordinates))],
     )
     assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
 
