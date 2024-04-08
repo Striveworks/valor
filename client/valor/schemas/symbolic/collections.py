@@ -87,7 +87,7 @@ class StaticCollection(Equatable):
         return obj
 
     @staticmethod
-    def formatter() -> Dict[str, Any]:
+    def formatting() -> Dict[str, Any]:
         """Attribute format mapping."""
         return dict()
 
@@ -97,8 +97,8 @@ class StaticCollection(Equatable):
             __type = self._get_static_types()[__name]
             if not isinstance(__value, __type):
                 __fmt = (
-                    self.formatter()[__name]
-                    if __name in self.formatter()
+                    self.formatting()[__name]
+                    if __name in self.formatting()
                     else __type
                 )
                 if issubclass(__type, StaticCollection):
@@ -213,11 +213,9 @@ class Label(StaticCollection):
         super().__init__(key=key, value=value, score=score)
 
     @staticmethod
-    def formatter() -> Dict[str, Any]:
+    def formatting() -> Dict[str, Any]:
         """Attribute format mapping."""
         return {
-            "key": String,
-            "value": String,
             "score": Float.nullable,
         }
 
@@ -366,12 +364,9 @@ class Annotation(StaticCollection):
         )
 
     @staticmethod
-    def formatter() -> Dict[str, Any]:
+    def formatting() -> Dict[str, Any]:
         """Attribute format mapping."""
         return {
-            "task_type": TaskTypeEnum,
-            "metadata": Dictionary,
-            "labels": SymbolicList[Label],
             "bounding_box": Box.nullable,
             "polygon": Polygon.nullable,
             "raster": Raster.nullable,
@@ -417,11 +412,6 @@ class Datum(StaticCollection):
             A dictionary of metadata that describes the datum.
         """
         super().__init__(uid=uid, metadata=metadata if metadata else dict())
-
-    @staticmethod
-    def formatter() -> Dict[str, Any]:
-        """Attribute format mapping."""
-        return {"uid": String, "metadata": Dictionary}
 
     def get_uid(self) -> str:
         """Extracts the uid from a datum instance."""

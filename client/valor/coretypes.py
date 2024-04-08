@@ -105,11 +105,6 @@ class GroundTruth(StaticCollection):
                         "GroundTruth labels should not have scores."
                     )
 
-    @staticmethod
-    def formatter() -> Dict[str, Any]:
-        """Attribute format mapping."""
-        return {"datum": Datum, "annotations": SymbolicList[Annotation]}
-
 
 class Prediction(StaticCollection):
     """
@@ -190,11 +185,6 @@ class Prediction(StaticCollection):
                             "For each label key, prediction scores must sum to 1, but"
                             f" for label key {k} got scores summing to {total_score}."
                         )
-
-    @staticmethod
-    def formatter() -> Dict[str, Any]:
-        """Attribute format mapping."""
-        return {"datum": Datum, "annotations": SymbolicList[Annotation]}
 
 
 class Evaluation:
@@ -501,11 +491,6 @@ class Dataset(StaticCollection):
         """
         return Client(connection).get_dataset(name)
 
-    @staticmethod
-    def formatter() -> Dict[str, Any]:
-        """Attribute format mapping."""
-        return {"name": String, "metadata": Dictionary}
-
     def add_groundtruth(
         self,
         groundtruth: GroundTruth,
@@ -766,11 +751,6 @@ class Model(StaticCollection):
             The model or 'None' if it doesn't exist.
         """
         return Client(connection).get_model(name)
-
-    @staticmethod
-    def formatter() -> Dict[str, Any]:
-        """Attribute format mapping."""
-        return {"name": String, "metadata": Dictionary}
 
     def add_connection(self, connection: Optional[ClientConnection]):
         """
