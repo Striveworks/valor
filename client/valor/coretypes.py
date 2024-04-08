@@ -82,6 +82,7 @@ class GroundTruth(StaticCollection):
 
     def __init__(
         self,
+        *_,
         datum: Datum,
         annotations: List[Annotation],
     ):
@@ -95,18 +96,19 @@ class GroundTruth(StaticCollection):
         annotations : List[Annotation]
             The list of ground truth annotations.
         """
-        self.datum = datum
-        self.annotations = SymbolicList[Annotation].definite(annotations)
-        super().__init__()
+        super().__init__(datum=datum, annotations=annotations)
 
-        # validation
-        if not self.symbolic:
-            for annotation in self.annotations:
-                for label in annotation.labels:
-                    if label.score.get_value() is not None:
-                        raise ValueError(
-                            "GroundTruth labels should not have scores."
-                        )
+        for annotation in self.annotations:
+            for label in annotation.labels:
+                if label.score.get_value() is not None:
+                    raise ValueError(
+                        "GroundTruth labels should not have scores."
+                    )
+
+    @staticmethod
+    def formatter() -> Dict[str, Any]:
+        """Attribute format mapping."""
+        return {"datum": Datum, "annotations": SymbolicList[Annotation]}
 
 
 class Prediction(StaticCollection):
@@ -143,6 +145,7 @@ class Prediction(StaticCollection):
 
     def __init__(
         self,
+        *_,
         datum: Datum,
         annotations: List[Annotation],
     ):
@@ -156,40 +159,42 @@ class Prediction(StaticCollection):
         annotations : List[Annotation]
             The list of predicted annotations.
         """
-        self.datum = datum
-        self.annotations = SymbolicList[Annotation].definite(annotations)
-        super().__init__()
+        super().__init__(datum=datum, annotations=annotations)
 
         # validation
-        if not self.symbolic:
-            for annotation in self.annotations:
-                task_type = annotation.task_type.get_value()
-                if task_type in [
-                    TaskType.CLASSIFICATION,
-                    TaskType.OBJECT_DETECTION,
-                ]:
-                    for label in annotation.labels:
-                        label_score = label.score._value
-                        if label_score is None:
-                            raise ValueError(
-                                f"For task type `{task_type}` prediction labels must have scores, but got `None`"
-                            )
-                if task_type == TaskType.CLASSIFICATION:
+        for annotation in self.annotations:
+            task_type = annotation.task_type.get_value()
+            if task_type in [
+                TaskType.CLASSIFICATION,
+                TaskType.OBJECT_DETECTION,
+            ]:
+                for label in annotation.labels:
+                    label_score = label.score._value
+                    if label_score is None:
+                        raise ValueError(
+                            f"For task type `{task_type}` prediction labels must have scores, but got `None`"
+                        )
+            if task_type == TaskType.CLASSIFICATION:
 
-                    label_keys_to_sum = {}
-                    for scored_label in annotation.labels:
-                        label_key = scored_label.key.get_value()
-                        label_score = scored_label.score.get_value()
-                        if label_key not in label_keys_to_sum:
-                            label_keys_to_sum[label_key] = 0.0
-                        label_keys_to_sum[label_key] += label_score
+                label_keys_to_sum = {}
+                for scored_label in annotation.labels:
+                    label_key = scored_label.key.get_value()
+                    label_score = scored_label.score.get_value()
+                    if label_key not in label_keys_to_sum:
+                        label_keys_to_sum[label_key] = 0.0
+                    label_keys_to_sum[label_key] += label_score
 
-                    for k, total_score in label_keys_to_sum.items():
-                        if abs(total_score - 1) > 1e-5:
-                            raise ValueError(
-                                "For each label key, prediction scores must sum to 1, but"
-                                f" for label key {k} got scores summing to {total_score}."
-                            )
+                for k, total_score in label_keys_to_sum.items():
+                    if abs(total_score - 1) > 1e-5:
+                        raise ValueError(
+                            "For each label key, prediction scores must sum to 1, but"
+                            f" for label key {k} got scores summing to {total_score}."
+                        )
+
+    @staticmethod
+    def formatter() -> Dict[str, Any]:
+        """Attribute format mapping."""
+        return {"datum": Datum, "annotations": SymbolicList[Annotation]}
 
 
 class Evaluation:
@@ -430,6 +435,7 @@ class Dataset(StaticCollection):
 
     def __init__(
         self,
+        *_,
         name: str,
         metadata: Optional[dict] = None,
         connection: Optional[ClientConnection] = None,
@@ -448,10 +454,8 @@ class Dataset(StaticCollection):
         connection : ClientConnection, optional
             An initialized client connection.
         """
-        self.name = String.definite(name)
-        self.metadata = Dictionary.definite(metadata if metadata else dict())
         self.conn = connection
-        super().__init__()
+        super().__init__(name=name, metadata=metadata if metadata else dict())
 
     @classmethod
     def create(
@@ -472,9 +476,7 @@ class Dataset(StaticCollection):
         connection : ClientConnection, optional
             An initialized client connection.
         """
-        dataset = cls.definite(
-            name=name, metadata=metadata, connection=connection
-        )
+        dataset = cls(name=name, metadata=metadata, connection=connection)
         Client(dataset.conn).create_dataset(dataset)
         return dataset
 
@@ -498,6 +500,11 @@ class Dataset(StaticCollection):
             The dataset or 'None' if it doesn't exist.
         """
         return Client(connection).get_dataset(name)
+
+    @staticmethod
+    def formatter() -> Dict[str, Any]:
+        """Attribute format mapping."""
+        return {"name": String, "metadata": Dictionary}
 
     def add_groundtruth(
         self,
@@ -688,6 +695,7 @@ class Model(StaticCollection):
 
     def __init__(
         self,
+        *_,
         name: str,
         metadata: Optional[dict] = None,
         connection: Optional[ClientConnection] = None,
@@ -708,10 +716,8 @@ class Model(StaticCollection):
         symbol : Symbol, optional
             Symbol to represent a model.
         """
-        self.name = String.definite(name)
-        self.metadata = Dictionary.definite(metadata if metadata else dict())
         self.conn = connection
-        super().__init__()
+        super().__init__(name=name, metadata=metadata if metadata else dict())
 
     @classmethod
     def create(
@@ -733,9 +739,7 @@ class Model(StaticCollection):
         connection : ClientConnection, optional
             An initialized client connection.
         """
-        model = cls.definite(
-            name=name, metadata=metadata, connection=connection
-        )
+        model = cls(name=name, metadata=metadata, connection=connection)
         model.add_connection(connection)
         Client(connection).create_model(model)
         return model
@@ -762,6 +766,11 @@ class Model(StaticCollection):
             The model or 'None' if it doesn't exist.
         """
         return Client(connection).get_model(name)
+
+    @staticmethod
+    def formatter() -> Dict[str, Any]:
+        """Attribute format mapping."""
+        return {"name": String, "metadata": Dictionary}
 
     def add_connection(self, connection: Optional[ClientConnection]):
         """
@@ -1335,8 +1344,8 @@ class Client:
             resp = decode_api_format(self.conn.get_dataset(name))
             dataset = Dataset(
                 **resp,
+                connection=self.conn,
             )
-            dataset.add_connection(self.conn)
             return dataset
         except ClientException as e:
             if e.status_code == 404:
@@ -1366,8 +1375,7 @@ class Client:
         dataset_list = []
         for kwargs in self.conn.get_datasets(filter_):
             kwargs = decode_api_format(kwargs)
-            dataset = Dataset(**kwargs)
-            dataset.add_connection(self.conn)
+            dataset = Dataset(**kwargs, connection=self.conn)
             dataset_list.append(dataset)
         return dataset_list
 
@@ -1392,7 +1400,7 @@ class Client:
         if isinstance(filter_, Filter):
             filter_ = asdict(filter_)
         return [
-            Datum.create(**decode_api_format(datum))
+            Datum(**decode_api_format(datum))
             for datum in self.conn.get_datums(filter_)
         ]
 
@@ -1421,7 +1429,7 @@ class Client:
         try:
             resp = self.conn.get_datum(dataset_name=dataset_name, uid=uid)
             resp = decode_api_format(resp)
-            return Datum.create(**resp)
+            return Datum(**resp)
         except ClientException as e:
             if e.status_code == 404:
                 return None
@@ -1577,7 +1585,7 @@ class Client:
                 datum_uid=datum_uid,
             )
             resp = decode_api_format(resp)
-            return Prediction.create(**resp)
+            return Prediction(**resp)
         except ClientException as e:
             if e.status_code == 404:
                 return None

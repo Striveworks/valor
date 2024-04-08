@@ -112,31 +112,20 @@ class Variable:
     --------
     Creating a valued variable.
     >>> Variable(value=...)
-    or
-    >>> Variable.definite(...)
+
+    Creating a optionally valued variable.
+    >>> Variable.nullable(value=...)
 
     Creating a symbolic variable.
-    >>> Variable(symbol=Symbol(...))
-    or
     >>> Variable.symbolic(name=...)
     """
 
     def __init__(
         self,
-        value: typing.Optional[typing.Any] = None,
-        symbol: typing.Optional[Symbol] = None,
+        value: typing.Any,
     ):
-        if (value is not None) and (symbol is not None):
-            raise TypeError(
-                f"{type(self).__name__} cannot be symbolic and contain a value at the same time."
-            )
-        elif (symbol is not None) and (not isinstance(symbol, Symbol)):
-            raise TypeError(
-                f"{type(self).__name__} symbol should have type 'Symbol' or be set to 'None'"
-            )
-        elif (value is not None) and (symbol is None):
-            self.__validate__(value)
-        self._value = symbol if symbol else value
+        self.__validate__(value)
+        self._value = value
 
     def __repr__(self) -> str:
         return self._value.__repr__()
@@ -145,39 +134,24 @@ class Variable:
         return str(self._value)
 
     @classmethod
-    def definite(
-        cls,
-        value: typing.Any,
-    ):
-        """
-        Initialize variable with a value.
-
-        Parameters
-        ----------
-        value : typing.Any
-            The intended value of the variable.
-        """
-        if isinstance(value, cls):
-            value = value.get_value()
-        cls.__validate__(value)
-        return cls(value=value, symbol=None)
-
-    @classmethod
     def nullable(
         cls,
-        value: typing.Union[typing.Any, None],
+        value: typing.Optional[typing.Any],
     ):
         """
-        Initialize variable as an optional.
+        Initialize variable with an optional.
 
         Parameters
         ----------
-        value : Union[Any, None]
+        value : Any
             The intended value of the variable.
         """
-        if isinstance(value, cls):
-            value = value.get_value()
-        return cls(value=value, symbol=None)
+        if value is None:
+            obj = cls.__new__(cls)
+            obj._value = None
+            return obj
+        else:
+            return cls(value)
 
     @classmethod
     def symbolic(
@@ -201,15 +175,16 @@ class Variable:
         owner: str, optional
             An optional name describing the class that owns this symbol.
         """
-        name = cls.__name__ if not name else name
-        return cls(
-            symbol=Symbol(
-                name=name,
-                key=key,
-                attribute=attribute,
-                owner=owner,
-            )
+        name = cls.__name__.lower() if not name else name
+        symbol = Symbol(
+            name=name,
+            key=key,
+            attribute=attribute,
+            owner=owner,
         )
+        obj = cls.__new__(cls)
+        obj._value = symbol
+        return obj
 
     @classmethod
     def preprocess(cls, value: typing.Any):
@@ -231,7 +206,12 @@ class Variable:
         if isinstance(value, cls):
             return value
         elif isinstance(value, Symbol):
-            return cls(symbol=value)
+            return cls.symbolic(
+                name=value._name,
+                key=value._key,
+                attribute=value._attribute,
+                owner=value._owner,
+            )
         elif cls.supports(value):
             return cls(value=value)
         raise TypeError(
@@ -277,7 +257,7 @@ class Variable:
     def decode_value(cls, value: typing.Any):
         """Decode object from JSON compatible dictionary."""
         if value is None:
-            return cls()
+            return None
         return cls(value=value)
 
     def encode_value(self) -> typing.Any:
@@ -403,6 +383,9 @@ class Bool(Variable):
     --------
     >>> Bool(True)
     """
+
+    def __init__(self, value: bool):
+        super().__init__(value=value)
 
     @classmethod
     def __validate__(cls, value: typing.Any):
@@ -565,6 +548,9 @@ class Integer(Quantifiable):
     >>> Integer(123)
     """
 
+    def __init__(self, value: int):
+        super().__init__(value=value)
+
     @classmethod
     def __validate__(cls, value: typing.Any):
         if not isinstance(value, (int, np.integer)):
@@ -589,6 +575,9 @@ class Float(Quantifiable):
     >>> Float(3.14)
     """
 
+    def __init__(self, value: float):
+        super().__init__(value=value)
+
     @classmethod
     def __validate__(cls, value: typing.Any):
         if not isinstance(value, (int, float, np.floating)):
@@ -612,6 +601,9 @@ class String(Equatable):
     --------
     >>> String("hello world")
     """
+
+    def __init__(self, value: str):
+        super().__init__(value=value)
 
     @classmethod
     def __validate__(cls, value: typing.Any):
@@ -638,6 +630,9 @@ class DateTime(Quantifiable):
     >>> DateTime(datetime.datetime(year=2024, month=1, day=1))
     """
 
+    def __init__(self, value: datetime.datetime):
+        super().__init__(value=value)
+
     @classmethod
     def __validate__(cls, value: typing.Any):
         if not isinstance(value, datetime.datetime):
@@ -649,7 +644,7 @@ class DateTime(Quantifiable):
     def decode_value(cls, value: typing.Optional[str]):
         """Decode object from JSON compatible dictionary."""
         if value is None:
-            return cls()
+            return None
         return cls(value=datetime.datetime.fromisoformat(value))
 
     def encode_value(self):
@@ -677,6 +672,9 @@ class Date(Quantifiable):
     >>> Date(datetime.date(year=2024, month=1, day=1))
     """
 
+    def __init__(self, value: datetime.date):
+        super().__init__(value=value)
+
     @classmethod
     def __validate__(cls, value: typing.Any):
         if not isinstance(value, datetime.date):
@@ -688,7 +686,7 @@ class Date(Quantifiable):
     def decode_value(cls, value: typing.Optional[str]):
         """Decode object from JSON compatible dictionary."""
         if value is None:
-            return cls()
+            return None
         return cls(value=datetime.date.fromisoformat(value))
 
     def encode_value(self):
@@ -716,6 +714,9 @@ class Time(Quantifiable):
     >>> Time(datetime.time(hour=1, minute=1))
     """
 
+    def __init__(self, value: datetime.time):
+        super().__init__(value=value)
+
     @classmethod
     def __validate__(cls, value: typing.Any):
         if not isinstance(value, datetime.time):
@@ -727,7 +728,7 @@ class Time(Quantifiable):
     def decode_value(cls, value: typing.Optional[str]):
         """Decode object from JSON compatible dictionary."""
         if value is None:
-            return cls()
+            return None
         return cls(value=datetime.time.fromisoformat(value))
 
     def encode_value(self):
@@ -755,6 +756,9 @@ class Duration(Quantifiable):
     >>> Duration(datetime.timedelta(seconds=100))
     """
 
+    def __init__(self, value: datetime.timedelta):
+        super().__init__(value=value)
+
     @classmethod
     def __validate__(cls, value: typing.Any):
         if not isinstance(value, datetime.timedelta):
@@ -766,7 +770,7 @@ class Duration(Quantifiable):
     def decode_value(cls, value: typing.Optional[int]):
         """Decode object from JSON compatible dictionary."""
         if value is None:
-            return cls()
+            return None
         return cls(value=datetime.timedelta(seconds=value))
 
     def encode_value(self):
@@ -797,10 +801,9 @@ class Point(Spatial, Equatable):
 
     def __init__(
         self,
-        value: typing.Optional[typing.Tuple[float, float]] = None,
-        symbol: typing.Optional[Symbol] = None,
+        value: typing.Tuple[float, float],
     ):
-        super().__init__(value=value, symbol=symbol)
+        super().__init__(value=value)
 
     @classmethod
     def __validate__(cls, value: typing.Any):
@@ -820,7 +823,7 @@ class Point(Spatial, Equatable):
     def decode_value(cls, value: typing.Optional[typing.List[float]]):
         """Decode object from JSON compatible dictionary."""
         if value is None:
-            return cls()
+            return None
         return cls((value[0], value[1]))
 
     def encode_value(self) -> typing.Any:
@@ -874,10 +877,9 @@ class MultiPoint(Spatial):
 
     def __init__(
         self,
-        value: typing.Optional[typing.List[typing.Tuple[float, float]]] = None,
-        symbol: typing.Optional[Symbol] = None,
+        value: typing.List[typing.Tuple[float, float]],
     ):
-        super().__init__(value=value, symbol=symbol)
+        super().__init__(value=value)
 
     @classmethod
     def __validate__(cls, value: typing.Any):
@@ -894,7 +896,7 @@ class MultiPoint(Spatial):
     ):
         """Decode object from JSON compatible dictionary."""
         if value is None:
-            return cls()
+            return None
         return cls([(point[0], point[1]) for point in value])
 
 
@@ -924,12 +926,8 @@ class LineString(Spatial):
     >>> LineString([(0,0), (0,1), (1,1)])
     """
 
-    def __init__(
-        self,
-        value: typing.Optional[typing.List[typing.Tuple[float, float]]] = None,
-        symbol: typing.Optional[Symbol] = None,
-    ):
-        super().__init__(value=value, symbol=symbol)
+    def __init__(self, value: typing.List[typing.Tuple[float, float]]):
+        super().__init__(value=value)
 
     @classmethod
     def __validate__(cls, value: typing.Any):
@@ -945,7 +943,7 @@ class LineString(Spatial):
     ):
         """Decode object from JSON compatible dictionary."""
         if value is None:
-            return cls()
+            return None
         return cls([(point[0], point[1]) for point in value])
 
 
@@ -979,12 +977,9 @@ class MultiLineString(Spatial):
 
     def __init__(
         self,
-        value: typing.Optional[
-            typing.List[typing.List[typing.Tuple[float, float]]]
-        ] = None,
-        symbol: typing.Optional[Symbol] = None,
+        value: typing.List[typing.List[typing.Tuple[float, float]]],
     ):
-        super().__init__(value=value, symbol=symbol)
+        super().__init__(value=value)
 
     @classmethod
     def __validate__(cls, value: typing.Any):
@@ -1002,7 +997,7 @@ class MultiLineString(Spatial):
     ):
         """Decode object from JSON compatible dictionary."""
         if value is None:
-            return cls()
+            return None
         return cls(
             [[(point[0], point[1]) for point in line] for line in value]
         )
@@ -1047,13 +1042,9 @@ class Polygon(Spatial):
     """
 
     def __init__(
-        self,
-        value: typing.Optional[
-            typing.List[typing.List[typing.Tuple[float, float]]]
-        ] = None,
-        symbol: typing.Optional[Symbol] = None,
+        self, value: typing.List[typing.List[typing.Tuple[float, float]]]
     ):
-        super().__init__(value=value, symbol=symbol)
+        super().__init__(value=value)
 
     @classmethod
     def __validate__(cls, value: typing.Any):
@@ -1071,7 +1062,7 @@ class Polygon(Spatial):
     ):
         """Decode object from JSON compatible dictionary."""
         if value is None:
-            return cls()
+            return None
         return cls(
             [
                 [(point[0], point[1]) for point in subpolygon]
@@ -1203,6 +1194,11 @@ class Box(Polygon):
     ... )
     """
 
+    def __init__(
+        self, value: typing.List[typing.List[typing.Tuple[float, float]]]
+    ):
+        super().__init__(value=value)
+
     @classmethod
     def __validate__(cls, value: typing.Any):
         """
@@ -1231,7 +1227,7 @@ class Box(Polygon):
     ):
         """Decode object from JSON compatible dictionary."""
         if value is None:
-            return cls()
+            return None
         return super().decode_value(value)
 
     @classmethod
@@ -1320,12 +1316,11 @@ class MultiPolygon(Spatial):
 
     def __init__(
         self,
-        value: typing.Optional[
-            typing.List[typing.List[typing.List[typing.Tuple[float, float]]]]
-        ] = None,
-        symbol: typing.Optional[Symbol] = None,
+        value: typing.List[
+            typing.List[typing.List[typing.Tuple[float, float]]]
+        ],
     ):
-        super().__init__(value=value, symbol=symbol)
+        super().__init__(value=value)
 
     @classmethod
     def __validate__(cls, value: typing.Any):
@@ -1345,7 +1340,7 @@ class MultiPolygon(Spatial):
     ):
         """Decode object from JSON compatible dictionary."""
         if value is None:
-            return cls()
+            return None
         return cls(
             [
                 [
@@ -1419,8 +1414,7 @@ class List(typing.Generic[T], Equatable):
 
             def __init__(
                 self,
-                value: typing.Optional[typing.Any] = None,
-                symbol: typing.Optional[Symbol] = None,
+                value: typing.List[typing.Any],
             ):
                 if value is not None:
                     if not isinstance(value, list):
@@ -1435,18 +1429,11 @@ class List(typing.Generic[T], Equatable):
                             "type",
                             "value",
                         }:
-                            vlist.append(item_class.definite(**item))
+                            vlist.append(item_class(**item))
                         else:
-                            vlist.append(item_class.definite(item))
+                            vlist.append(item_class(item))
                     value = vlist
-                super().__init__(value=value, symbol=symbol)
-
-            @classmethod
-            def definite(cls, value: typing.Any):
-                """Initialize variable with a value."""
-                if value is None:
-                    value = list()
-                return super().definite(value)
+                super().__init__(value=value)
 
             @classmethod
             def symbolic(
@@ -1551,32 +1538,11 @@ class DictionaryValue(Variable):
             )
         if not symbol._key:
             raise ValueError("DictionaryValue symbol should contain key.")
-        super().__init__(value=None, symbol=symbol)
+        super().symbolic(name=symbol._name, owner=symbol._owner)
 
     @classmethod
-    def definite(cls, value: typing.Any):
-        """Assigning a value is not supported."""
-        raise NotImplementedError(
-            "DictionaryValue should only be initialized as a symbol."
-        )
-
-    @classmethod
-    def symbolic(
-        cls,
-        name: typing.Optional[str] = None,
-        key: typing.Optional[str] = None,
-        attribute: typing.Optional[str] = None,
-        owner: typing.Optional[str] = None,
-    ):
-        """Initialize variable as a symbol."""
-        return cls(
-            Symbol(
-                name=name if name else cls.__name__.lower(),
-                key=key,
-                attribute=attribute,
-                owner=owner,
-            )
-        )
+    def nullable(cls, value: typing.Any):
+        raise NotImplementedError("Dictionary values cannot be none.")
 
     def __eq__(self, other: typing.Any):
         return self._generate(fn="__eq__", other=other)
@@ -1638,7 +1604,7 @@ class DictionaryValue(Variable):
         return sym.__getattribute__(fn)(other)
 
 
-class Dictionary(MutableMapping, Equatable):
+class Dictionary(Equatable, MutableMapping):
     """
     Symbolic implementation of the built-in type 'dict'.
 
@@ -1661,36 +1627,24 @@ class Dictionary(MutableMapping, Equatable):
 
     def __init__(
         self,
-        value: typing.Optional[typing.Dict[str, typing.Any]] = None,
-        symbol: typing.Optional[Symbol] = None,
-    ):
-        if (symbol is None) and (value is None):
-            value = dict()
-        if isinstance(value, dict):
-            _value = dict()
-            for k, v in value.items():
-                if v is None:
-                    raise ValueError(
-                        "Dictionary does not accept 'None' as a value."
-                    )
-                elif isinstance(v, Variable):
-                    if v.is_symbolic:
-                        raise ValueError(
-                            "Dictionary does not accpet symbols as values."
-                        )
-                    _value[k] = v
-                else:
-                    _value[k] = _get_type_by_value(v).definite(v)
-            value = _value
-        super().__init__(value, symbol)
-
-    @classmethod
-    def definite(
-        cls,
         value: typing.Dict[str, typing.Any],
     ):
-        """Initialize variable with a value."""
-        return super().definite(value)
+        self.__validate__(value)
+        _value = value.copy()
+        for k, v in value.items():
+            if v is None:
+                raise ValueError(
+                    "Dictionary does not accept 'None' as a value."
+                )
+            elif isinstance(v, Variable):
+                if v.is_symbolic:
+                    raise ValueError(
+                        "Dictionary does not accpet symbols as values."
+                    )
+                _value[k] = v
+            else:
+                _value[k] = _get_type_by_value(v)(v)
+        super().__init__(_value)
 
     @classmethod
     def __validate__(cls, value: typing.Any):
@@ -1704,10 +1658,8 @@ class Dictionary(MutableMapping, Equatable):
                 raise TypeError("Dictionary keys must be of type 'str'")
 
     @classmethod
-    def decode_value(cls, value: typing.Optional[dict]) -> typing.Any:
+    def decode_value(cls, value: dict) -> typing.Any:
         """Decode object from JSON compatible dictionary."""
-        if value is None:
-            return cls()
         return cls(
             {
                 k: _get_type_by_name(v["type"]).decode_value(v["value"])
@@ -1740,7 +1692,7 @@ class Dictionary(MutableMapping, Equatable):
     def __setitem__(self, __key: str, __value: typing.Any):
         if not isinstance(__value, Variable):
             obj = _get_type_by_value(__value)
-            __value = obj.definite(__value)
+            __value = obj(__value)
         self.get_value()[__key] = __value
 
     def __delitem__(self, __key: str) -> None:
@@ -1776,12 +1728,11 @@ class TaskTypeEnum(String):
 
     def __init__(
         self,
-        value: typing.Optional[typing.Any] = None,
-        symbol: typing.Optional[Symbol] = None,
+        value: typing.Union[str, TaskType],
     ):
         if isinstance(value, str):
             value = TaskType(value)
-        super().__init__(value=value, symbol=symbol)
+        super().__init__(value=value)
 
     @classmethod
     def __validate__(cls, value: typing.Any):
@@ -1806,8 +1757,6 @@ class TaskTypeEnum(String):
     @classmethod
     def decode_value(cls, value: str):
         """Decode object from JSON compatible dictionary."""
-        if value is None:
-            return cls()
         return cls(TaskType(value))
 
     def encode_value(self) -> typing.Any:
@@ -1856,6 +1805,22 @@ class Raster(Spatial):
     Create Raster.
     >>> Raster.from_numpy(mask)
     """
+
+    def __init__(
+        self,
+        value: typing.Dict[
+            str, typing.Union[np.ndarray, Box, Polygon, MultiPolygon, None]
+        ],
+    ):
+        """
+        Initialize and instance of a raster.
+
+        Parameters
+        ----------
+        value : Dict[str, Union[np.ndarray, Box, Polygon, MultiPolygon, None]]
+            The raster in dictionary format {"mask": <np.ndarray>, "geometry": <geometry | None>}.
+        """
+        super().__init__(value)
 
     @classmethod
     def __validate__(cls, value: typing.Any):
@@ -1918,7 +1883,7 @@ class Raster(Spatial):
     def decode_value(cls, value: typing.Any):
         """Decode object from JSON compatible dictionary."""
         if value is None:
-            return cls()
+            return None
         if not (
             isinstance(value, dict)
             and set(value.keys()) == {"mask", "geometry"}
@@ -2049,6 +2014,19 @@ class Embedding(Spatial):
         A symbolic representation.
     """
 
+    def __init__(
+        self, value: typing.Union[typing.List[int], typing.List[float]]
+    ):
+        """
+        Initializes an embedding.
+
+        Parameters
+        ----------
+        value : List[float]
+            A list of floating point numbers representing the embedding.
+        """
+        super().__init__(value)
+
     @classmethod
     def __validate__(cls, value: typing.Any):
         """
@@ -2072,10 +2050,12 @@ class Embedding(Spatial):
             raise ValueError("embedding should have at least one dimension")
 
     @classmethod
-    def decode_value(cls, value: typing.Optional[typing.List[float]]):
+    def decode_value(
+        cls, value: typing.Optional[typing.List[typing.Union[float, int]]]
+    ):
         """Decode object from JSON compatible dictionary."""
         if value is None:
-            return cls()
+            return None
         return super().decode_value(value)
 
 

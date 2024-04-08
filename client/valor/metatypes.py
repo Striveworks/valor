@@ -56,7 +56,7 @@ class ImageMetadata:
         metadata["height"] = height
         metadata["width"] = width
         return cls(
-            datum=Datum.definite(
+            datum=Datum(
                 uid=uid,
                 metadata=metadata,
             )
@@ -146,7 +146,7 @@ class VideoFrameMetadata:
         metadata["width"] = width
         metadata["frame"] = frame
         return cls(
-            Datum.definite(
+            Datum(
                 uid=uid,
                 metadata=metadata,
             )

@@ -94,8 +94,8 @@ def create_combined_segmentation_mask(
     img_h = None
     img_w = None
     for annotation in annotated_datum.annotations:
-        raster = annotation.raster.unwrap()
-        if raster is None:
+        raster = annotation.raster
+        if raster.get_value() is None:
             raise ValueError("No raster exists.")
         if img_h is None:
             img_h = raster.height
@@ -155,8 +155,8 @@ def create_combined_segmentation_mask(
     # create mask
     combined_mask = np.zeros((img_h, img_w, 3), dtype=np.uint8)
     for annotation, color in zip(annotations, seg_colors):
-        raster = annotation.raster.unwrap()
-        if raster is None:
+        raster = annotation.raster
+        if raster.get_value() is None:
             raise ValueError("No raster exists.")
         if raster.array is not None:
             if raster.geometry is None:
@@ -254,16 +254,16 @@ def _draw_detection_on_image(
     text = ", ".join(
         [f"{label.key}:{label.value}" for label in detection.labels]
     )
-    box = detection.bounding_box.unwrap()
-    polygon = detection.polygon.unwrap()
-    if polygon is not None:
+    box = detection.bounding_box
+    polygon = detection.polygon
+    if polygon.get_value() is not None:
         img = _draw_bounding_polygon_on_image(
             polygon,
             img,
             inplace=inplace,
             text=text,
         )
-    elif box is not None:
+    elif box.get_value() is not None:
         img = _draw_bounding_polygon_on_image(
             box,
             img,

@@ -3,7 +3,7 @@ import copy
 import pytest
 
 from valor import Annotation, Datum, GroundTruth, Label, Prediction, enums
-from valor.schemas import Float
+from valor.schemas import Float, Polygon
 
 
 def test_datum():
@@ -66,31 +66,31 @@ def test_annotation(bbox, polygon, raster, labels, metadata):
     with pytest.raises(ValueError) as e:
         Annotation(task_type="something", labels=labels)  # type: ignore
     assert "TaskType" in str(e)
-    with pytest.raises(TypeError) as e:
+    with pytest.raises(TypeError):
         Annotation(
             task_type=enums.TaskType.OBJECT_DETECTION,
             labels=labels,
-            bounding_box=polygon,
+            bounding_box=Polygon([[(0, 0), (1, 0), (1, 1), (0, 0)]]),  # type: ignore
         )
-    with pytest.raises(TypeError) as e:
+    with pytest.raises(TypeError):
         Annotation(
             task_type=enums.TaskType.OBJECT_DETECTION,
             labels=labels,
             raster=bbox,
         )
-    with pytest.raises(TypeError) as e:
+    with pytest.raises(TypeError):
         Annotation(
             task_type=enums.TaskType.CLASSIFICATION,
             labels=labels,
             metadata=[1234],  # type: ignore
         )
-    with pytest.raises(TypeError) as e:
+    with pytest.raises(TypeError):
         Annotation(
             task_type=enums.TaskType.CLASSIFICATION,
             labels=labels,
             metadata={1: 1},  # type: ignore
         )
-    with pytest.raises(ValueError) as e:
+    with pytest.raises(ValueError):
         Annotation(
             task_type=enums.TaskType.CLASSIFICATION,
             labels=labels,
@@ -222,37 +222,37 @@ def test_prediction():
     string = str(Prediction(datum=datum, annotations=pds))
     assert (
         string
-        == "{'datum': {'uid': 'somefile', 'metadata': {}}, 'annotations': [{'task_type': 'classification', 'labels': [{'key': 'test', 'value': 'value', 'score': 1.0}], 'metadata': {}, 'bounding_box': None, 'polygon': None, 'raster': None, 'embedding': None}, {'task_type': 'classification', 'labels': [{'key': 'test', 'value': 'value', 'score': 1.0}], 'metadata': {}, 'bounding_box': None, 'polygon': None, 'raster': None, 'embedding': None}]}"
+        == "{'datum': {'uid': 'somefile', 'metadata': {}}, 'annotations': [{'task_type': 'classification', 'metadata': {}, 'labels': [{'key': 'test', 'value': 'value', 'score': 1.0}], 'bounding_box': None, 'polygon': None, 'raster': None, 'embedding': None}, {'task_type': 'classification', 'metadata': {}, 'labels': [{'key': 'test', 'value': 'value', 'score': 1.0}], 'bounding_box': None, 'polygon': None, 'raster': None, 'embedding': None}]}"
     )
     assert "dataset_name" not in string
 
     # test `__post_init__`
     with pytest.raises(TypeError) as e:
-        Prediction.create(datum="datum", annotations=pds)  # type: ignore
+        Prediction(datum="datum", annotations=pds)  # type: ignore
     assert "Datum" in str(e)
     with pytest.raises(TypeError) as e:
-        Prediction.create(
+        Prediction(
             datum=datum,
             annotations=pds[0],  # type: ignore
         )
     assert "List[Annotation]" in str(e)
 
     with pytest.raises(TypeError) as e:
-        Prediction.create(
+        Prediction(
             datum=datum,
             annotations=[pds[0], pds[1], "annotation"],  # type: ignore
         )
     assert "Annotation" in str(e)
 
     with pytest.raises(ValueError) as e:
-        Prediction.create(
+        Prediction(
             datum=datum,
             annotations=[
-                Annotation.create(
+                Annotation(
                     task_type=enums.TaskType.CLASSIFICATION,
                     labels=[
-                        Label.create(key="test", value="value", score=0.8),
-                        Label.create(key="test", value="other", score=0.1),
+                        Label(key="test", value="value", score=0.8),
+                        Label(key="test", value="other", score=0.1),
                     ],
                 )
             ],
@@ -261,8 +261,8 @@ def test_prediction():
 
     # test equalities
     with pytest.raises(TypeError):
-        _ = Prediction.create(datum=datum, annotations=pds) == 1
+        _ = Prediction(datum=datum, annotations=pds) == 1
 
-    assert Prediction.create(
+    assert Prediction(datum=datum, annotations=pds) == Prediction(
         datum=datum, annotations=pds
-    ) == Prediction.create(datum=datum, annotations=pds)
+    )

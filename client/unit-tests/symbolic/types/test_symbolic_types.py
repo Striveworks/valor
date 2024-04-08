@@ -81,17 +81,13 @@ def test_variable():
     # test symbolic variables
 
     var_method1 = Variable.symbolic(name="test")
-    var_method2 = Variable(symbol=Symbol(name="test"))
-    var_method3 = Variable.preprocess(value=Symbol(name="test"))
+    var_method2 = Variable.preprocess(value=Symbol(name="test"))
     _test_symbolic_outputs(var_method1)
     _test_symbolic_outputs(var_method2)
-    _test_symbolic_outputs(var_method3)
 
-    # valued variables are not supported in the base class
+    # nullable variables are not supported in the base class
     with pytest.raises(NotImplementedError):
-        Variable(value="hello")
-    with pytest.raises(NotImplementedError):
-        Variable.definite("hello")
+        Variable.nullable("hello")
 
 
 def _test_equatable(varA, varB, varC):
@@ -404,10 +400,9 @@ def test_modifiers():
     B = Equatable.symbolic("B")
     C = Equatable.symbolic("C")
     _test_equatable(A, B, C)
+    _test_nullable(A, B, C)
     with pytest.raises(AttributeError):
         _test_quantifiable(A, B, C)
-    with pytest.raises(AttributeError):
-        _test_nullable(A, B, C)
     with pytest.raises(AttributeError):
         _test_spatial(A, B, C)
 
@@ -417,8 +412,7 @@ def test_modifiers():
     C = Quantifiable.symbolic("C")
     _test_equatable(A, B, C)
     _test_quantifiable(A, B, C)
-    with pytest.raises(AttributeError):
-        _test_nullable(A, B, C)
+    _test_nullable(A, B, C)
     with pytest.raises(AttributeError):
         _test_spatial(A, B, C)
 
@@ -427,12 +421,11 @@ def test_modifiers():
     B = Spatial.symbolic("B")
     C = Spatial.symbolic("C")
     _test_spatial(A, B, C)
+    _test_nullable(A, B, C)
     with pytest.raises(AttributeError):
         _test_equatable(A, B, C)
     with pytest.raises(AttributeError):
         _test_quantifiable(A, B, C)
-    with pytest.raises(AttributeError):
-        _test_nullable(A, B, C)
 
 
 def get_function_name(fn: str) -> str:
@@ -469,8 +462,8 @@ def _test_to_dict(objcls, value, type_name: typing.Optional[str] = None):
         "type": type_name,
         "value": objcls(value).encode_value(),
     }
-    # test definite
-    assert objcls.definite(value).to_dict() == {
+    # test valued
+    assert objcls(value).to_dict() == {
         "type": type_name,
         "value": objcls(value).encode_value(),
     }
@@ -584,13 +577,21 @@ def test_bool():
         "__ge__",
         "__lt__",
         "__le__",
-        "is_none",
-        "is_not_none",
         "intersects",
         "inside",
         "outside",
     ]:
         _test_unsupported(objcls, permutations, op)
+
+    # test nullable
+    v1 = objcls.nullable(None)
+    assert v1.get_value() is None
+    assert v1.is_none().get_value() is True  # type: ignore - always a bool
+    assert v1.is_not_none().get_value() is False  # type: ignore - always a bool
+    v2 = objcls.nullable(permutations[0][0])
+    assert v2.get_value() is not None
+    assert v2.is_none().get_value() is False  # type: ignore - always a bool
+    assert v2.is_not_none().get_value() is True  # type: ignore - always a bool
 
     # test encoding
     _test_encoding(objcls, True, True)
@@ -616,13 +617,21 @@ def test_integer():
         "__and__",
         "__or__",
         "__xor__",
-        "is_none",
-        "is_not_none",
         "intersects",
         "inside",
         "outside",
     ]:
         _test_unsupported(objcls, permutations, op)
+
+    # test nullable
+    v1 = objcls.nullable(None)
+    assert v1.get_value() is None
+    assert v1.is_none().get_value() is True  # type: ignore - always a bool
+    assert v1.is_not_none().get_value() is False  # type: ignore - always a bool
+    v2 = objcls.nullable(permutations[0][0])
+    assert v2.get_value() is not None
+    assert v2.is_none().get_value() is False  # type: ignore - always a bool
+    assert v2.is_not_none().get_value() is True  # type: ignore - always a bool
 
     # test encoding
     _test_encoding(objcls, 10, 10)
@@ -647,13 +656,21 @@ def test_float():
         "__and__",
         "__or__",
         "__xor__",
-        "is_none",
-        "is_not_none",
         "intersects",
         "inside",
         "outside",
     ]:
         _test_unsupported(objcls, permutations, op)
+
+    # test nullable
+    v1 = objcls.nullable(None)
+    assert v1.get_value() is None
+    assert v1.is_none().get_value() is True  # type: ignore - always a bool
+    assert v1.is_not_none().get_value() is False  # type: ignore - always a bool
+    v2 = objcls.nullable(permutations[0][0])
+    assert v2.get_value() is not None
+    assert v2.is_none().get_value() is False  # type: ignore - always a bool
+    assert v2.is_not_none().get_value() is True  # type: ignore - always a bool
 
     # test encoding
     _test_encoding(objcls, 1.23, 1.23)
@@ -682,13 +699,21 @@ def test_string():
         "__and__",
         "__or__",
         "__xor__",
-        "is_none",
-        "is_not_none",
         "intersects",
         "inside",
         "outside",
     ]:
         _test_unsupported(objcls, permutations, op)
+
+    # test nullable
+    v1 = objcls.nullable(None)
+    assert v1.get_value() is None
+    assert v1.is_none().get_value() is True  # type: ignore - always a bool
+    assert v1.is_not_none().get_value() is False  # type: ignore - always a bool
+    v2 = objcls.nullable(permutations[0][0])
+    assert v2.get_value() is not None
+    assert v2.is_none().get_value() is False  # type: ignore - always a bool
+    assert v2.is_not_none().get_value() is True  # type: ignore - always a bool
 
     # test encoding
     _test_encoding(objcls, "hello", "hello")
@@ -725,13 +750,21 @@ def test_datetime():
         "__and__",
         "__or__",
         "__xor__",
-        "is_none",
-        "is_not_none",
         "intersects",
         "inside",
         "outside",
     ]:
         _test_unsupported(objcls, permutations, op)
+
+    # test nullable
+    v1 = objcls.nullable(None)
+    assert v1.get_value() is None
+    assert v1.is_none().get_value() is True  # type: ignore - always a bool
+    assert v1.is_not_none().get_value() is False  # type: ignore - always a bool
+    v2 = objcls.nullable(permutations[0][0])
+    assert v2.get_value() is not None
+    assert v2.is_none().get_value() is False  # type: ignore - always a bool
+    assert v2.is_not_none().get_value() is True  # type: ignore - always a bool
 
     # test encoding
     _test_encoding(
@@ -772,13 +805,21 @@ def test_date():
         "__and__",
         "__or__",
         "__xor__",
-        "is_none",
-        "is_not_none",
         "intersects",
         "inside",
         "outside",
     ]:
         _test_unsupported(objcls, permutations, op)
+
+    # test nullable
+    v1 = objcls.nullable(None)
+    assert v1.get_value() is None
+    assert v1.is_none().get_value() is True  # type: ignore - always a bool
+    assert v1.is_not_none().get_value() is False  # type: ignore - always a bool
+    v2 = objcls.nullable(permutations[0][0])
+    assert v2.get_value() is not None
+    assert v2.is_none().get_value() is False  # type: ignore - always a bool
+    assert v2.is_not_none().get_value() is True  # type: ignore - always a bool
 
     # test encoding
     _test_encoding(
@@ -805,13 +846,21 @@ def test_time():
         "__and__",
         "__or__",
         "__xor__",
-        "is_none",
-        "is_not_none",
         "intersects",
         "inside",
         "outside",
     ]:
         _test_unsupported(objcls, permutations, op)
+
+    # test nullable
+    v1 = objcls.nullable(None)
+    assert v1.get_value() is None
+    assert v1.is_none().get_value() is True  # type: ignore - always a bool
+    assert v1.is_not_none().get_value() is False  # type: ignore - always a bool
+    v2 = objcls.nullable(permutations[0][0])
+    assert v2.get_value() is not None
+    assert v2.is_none().get_value() is False  # type: ignore - always a bool
+    assert v2.is_not_none().get_value() is True  # type: ignore - always a bool
 
     # test encoding
     _test_encoding(objcls, datetime.time(hour=1), "01:00:00")
@@ -836,13 +885,21 @@ def test_duration():
         "__and__",
         "__or__",
         "__xor__",
-        "is_none",
-        "is_not_none",
         "intersects",
         "inside",
         "outside",
     ]:
         _test_unsupported(objcls, permutations, op)
+
+    # test nullable
+    v1 = objcls.nullable(None)
+    assert v1.get_value() is None
+    assert v1.is_none().get_value() is True  # type: ignore - always a bool
+    assert v1.is_not_none().get_value() is False  # type: ignore - always a bool
+    v2 = objcls.nullable(permutations[0][0])
+    assert v2.get_value() is not None
+    assert v2.is_none().get_value() is False  # type: ignore - always a bool
+    assert v2.is_not_none().get_value() is True  # type: ignore - always a bool
 
     # test encoding
     _test_encoding(objcls, datetime.timedelta(seconds=1), 1.0)
@@ -866,10 +923,18 @@ def test_point():
         "__and__",
         "__or__",
         "__xor__",
-        "is_none",
-        "is_not_none",
     ]:
         _test_unsupported(objcls, permutations, op)
+
+    # test nullable
+    v1 = objcls.nullable(None)
+    assert v1.get_value() is None
+    assert v1.is_none().get_value() is True  # type: ignore - always a bool
+    assert v1.is_not_none().get_value() is False  # type: ignore - always a bool
+    v2 = objcls.nullable(permutations[0][0])
+    assert v2.get_value() is not None
+    assert v2.is_none().get_value() is False  # type: ignore - always a bool
+    assert v2.is_not_none().get_value() is True  # type: ignore - always a bool
 
     # test encoding
     _test_encoding(objcls, (1, -1), (1, -1))
@@ -898,10 +963,18 @@ def test_multipoint():
         "__and__",
         "__or__",
         "__xor__",
-        "is_none",
-        "is_not_none",
     ]:
         _test_unsupported(objcls, permutations, op)
+
+    # test nullable
+    v1 = objcls.nullable(None)
+    assert v1.get_value() is None
+    assert v1.is_none().get_value() is True  # type: ignore - always a bool
+    assert v1.is_not_none().get_value() is False  # type: ignore - always a bool
+    v2 = objcls.nullable(permutations[0][0])
+    assert v2.get_value() is not None
+    assert v2.is_none().get_value() is False  # type: ignore - always a bool
+    assert v2.is_not_none().get_value() is True  # type: ignore - always a bool
 
     # test encoding
     _test_encoding(objcls, [(0, 0), (1, 1)], [(0, 0), (1, 1)])
@@ -930,10 +1003,18 @@ def test_linestring():
         "__and__",
         "__or__",
         "__xor__",
-        "is_none",
-        "is_not_none",
     ]:
         _test_unsupported(objcls, permutations, op)
+
+    # test nullable
+    v1 = objcls.nullable(None)
+    assert v1.get_value() is None
+    assert v1.is_none().get_value() is True  # type: ignore - always a bool
+    assert v1.is_not_none().get_value() is False  # type: ignore - always a bool
+    v2 = objcls.nullable(permutations[0][0])
+    assert v2.get_value() is not None
+    assert v2.is_none().get_value() is False  # type: ignore - always a bool
+    assert v2.is_not_none().get_value() is True  # type: ignore - always a bool
 
     # test encoding
     _test_encoding(objcls, [(0, 0), (1, 1)], [(0, 0), (1, 1)])
@@ -967,10 +1048,18 @@ def test_multilinestring():
         "__and__",
         "__or__",
         "__xor__",
-        "is_none",
-        "is_not_none",
     ]:
         _test_unsupported(objcls, permutations, op)
+
+    # test nullable
+    v1 = objcls.nullable(None)
+    assert v1.get_value() is None
+    assert v1.is_none().get_value() is True  # type: ignore - always a bool
+    assert v1.is_not_none().get_value() is False  # type: ignore - always a bool
+    v2 = objcls.nullable(permutations[0][0])
+    assert v2.get_value() is not None
+    assert v2.is_none().get_value() is False  # type: ignore - always a bool
+    assert v2.is_not_none().get_value() is True  # type: ignore - always a bool
 
     # test encoding
     _test_encoding(objcls, [[(0, 0), (1, 1)]], [[(0, 0), (1, 1)]])
@@ -1007,10 +1096,18 @@ def test_polygon():
         "__and__",
         "__or__",
         "__xor__",
-        "is_none",
-        "is_not_none",
     ]:
         _test_unsupported(objcls, permutations, op)
+
+    # test nullable
+    v1 = objcls.nullable(None)
+    assert v1.get_value() is None
+    assert v1.is_none().get_value() is True  # type: ignore - always a bool
+    assert v1.is_not_none().get_value() is False  # type: ignore - always a bool
+    v2 = objcls.nullable(permutations[0][0])
+    assert v2.get_value() is not None
+    assert v2.is_none().get_value() is False  # type: ignore - always a bool
+    assert v2.is_not_none().get_value() is True  # type: ignore - always a bool
 
     # test encoding
     _test_encoding(
@@ -1075,10 +1172,18 @@ def test_multipolygon():
         "__and__",
         "__or__",
         "__xor__",
-        "is_none",
-        "is_not_none",
     ]:
         _test_unsupported(objcls, permutations, op)
+
+    # test nullable
+    v1 = objcls.nullable(None)
+    assert v1.get_value() is None
+    assert v1.is_none().get_value() is True  # type: ignore - always a bool
+    assert v1.is_not_none().get_value() is False  # type: ignore - always a bool
+    v2 = objcls.nullable(permutations[0][0])
+    assert v2.get_value() is not None
+    assert v2.is_none().get_value() is False  # type: ignore - always a bool
+    assert v2.is_not_none().get_value() is True  # type: ignore - always a bool
 
     # test encoding
     _test_encoding(
@@ -1107,64 +1212,15 @@ def test_multipolygon():
 
 
 def test_nullable():
-    # interoperable with builtin 'str'
-    objcls = String.nullable
-    resolvable = [
-        ("hello", "hello"),
-        ("hello", "world"),
-        ("world", "hello"),
-        ("world", "world"),
-    ]
-
-    unresolvable = [
-        ("hello", None),
-        (None, "hello"),
-        (None, None),
-    ]
-
-    # test supported string methods
-    for op in ["__eq__", "__ne__"]:
-        _test_resolvable(objcls, resolvable, op, type_name="optional[string]")
-        _test_generic(objcls, unresolvable, op, type_name="optional[string]")
-        with pytest.raises((AssertionError, TypeError)):
-            _test_resolvable(
-                objcls, unresolvable, op, type_name="optional[string]"
-            )
-
-    # test is_none
-    assert objcls(None).is_none().get_value() is True  # type: ignore - guaranteed output
-    assert objcls("hello").is_none().get_value() is False  # type: ignore - guaranteed output
-
-    # test it_not_none
-    assert objcls(None).is_not_none().get_value() is False  # type: ignore - guaranteed output
-    assert objcls("hello").is_not_none().get_value() is True  # type: ignore - guaranteed output
-
-    # test unsupported methods
-    for op in [
-        "__gt__",
-        "__ge__",
-        "__lt__",
-        "__le__",
-        "__and__",
-        "__or__",
-        "__xor__",
-        "intersects",
-        "inside",
-        "outside",
-    ]:
-        _test_unsupported(objcls, resolvable, op)
-
-    # test encoding
-    _test_encoding(objcls, "hello", "hello")
 
     # test usage
     assert Float.nullable(0.6).get_value() == 0.6
     assert Float.nullable(0.6).to_dict() == {
-        "type": "optional[float]",
+        "type": "float",
         "value": 0.6,
     }
     assert Float.nullable(None).get_value() is None
     assert Float.nullable(None).to_dict() == {
-        "type": "optional[float]",
+        "type": "float",
         "value": None,
     }
