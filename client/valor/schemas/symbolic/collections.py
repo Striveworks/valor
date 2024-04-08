@@ -1,4 +1,6 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
+
+import numpy as np
 
 from valor.enums import TaskType
 from valor.schemas.symbolic.types import (
@@ -196,7 +198,7 @@ class Label(StaticCollection):
         *_,
         key: str,
         value: str,
-        score: Optional[float] = None,
+        score: Union[float, np.floating, None] = None,
     ):
         """
         Initializes an instance of a label.

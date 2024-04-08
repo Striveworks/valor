@@ -10,9 +10,9 @@ def test_label():
 
     # test validation
     with pytest.raises(TypeError):
-        assert Label(key=123, value="123")
+        assert Label(key=123, value="123")  # type: ignore - testing
     with pytest.raises(TypeError):
-        assert Label(key="123", value=123)
+        assert Label(key="123", value=123)  # type: ignore - testing
 
     # test member fn `tuple`
     assert l1.tuple() == ("test", "value", None)
