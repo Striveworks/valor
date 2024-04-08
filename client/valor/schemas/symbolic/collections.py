@@ -195,7 +195,7 @@ class Label(StaticCollection):
 
     def __init__(
         self,
-        *_,
+        *,
         key: str,
         value: str,
         score: Union[float, np.floating, None] = None,
@@ -326,7 +326,7 @@ class Annotation(StaticCollection):
 
     def __init__(
         self,
-        *_,
+        *,
         task_type: TaskType,
         metadata: Optional[dict] = None,
         labels: Optional[List[Label]] = None,
@@ -399,7 +399,7 @@ class Datum(StaticCollection):
 
     def __init__(
         self,
-        *_,
+        *,
         uid: str,
         metadata: Optional[dict] = None,
     ):

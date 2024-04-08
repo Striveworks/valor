@@ -82,7 +82,7 @@ class GroundTruth(StaticCollection):
 
     def __init__(
         self,
-        *_,
+        *,
         datum: Datum,
         annotations: List[Annotation],
     ):
@@ -140,7 +140,7 @@ class Prediction(StaticCollection):
 
     def __init__(
         self,
-        *_,
+        *,
         datum: Datum,
         annotations: List[Annotation],
     ):
@@ -425,7 +425,7 @@ class Dataset(StaticCollection):
 
     def __init__(
         self,
-        *_,
+        *,
         name: str,
         metadata: Optional[dict] = None,
         connection: Optional[ClientConnection] = None,
@@ -680,7 +680,7 @@ class Model(StaticCollection):
 
     def __init__(
         self,
-        *_,
+        *,
         name: str,
         metadata: Optional[dict] = None,
         connection: Optional[ClientConnection] = None,

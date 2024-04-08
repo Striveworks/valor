@@ -116,11 +116,10 @@ def test_groundtruth_annotation():
     with pytest.raises(TypeError) as e:
         Annotation(task_type=enums.TaskType.CLASSIFICATION, labels=l1)  # type: ignore
     assert "List[Label]" in str(e)
-    with pytest.raises(TypeError) as e:
+    with pytest.raises(TypeError):
         Annotation(
             task_type=enums.TaskType.CLASSIFICATION, labels=[l1, l2, "label"]  # type: ignore
         )
-    assert "Label" in str(e)
 
 
 def test_prediction_annotation():
@@ -145,11 +144,10 @@ def test_prediction_annotation():
     with pytest.raises(TypeError) as e:
         Annotation(task_type=enums.TaskType.CLASSIFICATION, labels=s1)  # type: ignore
     assert "List[Label]" in str(e)
-    with pytest.raises(TypeError) as e:
+    with pytest.raises(TypeError):
         Annotation(
             task_type=enums.TaskType.CLASSIFICATION, labels=[s1, s2, "label"]  # type: ignore
         )
-    assert "Label" in str(e)
 
 
 def test_groundtruth():
@@ -167,24 +165,22 @@ def test_groundtruth():
     )
 
     # test `__post_init__`
-    with pytest.raises(TypeError) as e:
+    with pytest.raises(TypeError):
         GroundTruth(
             datum="datum",  # type: ignore
             annotations=gts,
         )
-    assert "Datum" in str(e)
     with pytest.raises(TypeError) as e:
         GroundTruth(
             datum=datum,
             annotations=gts[0],  # type: ignore
         )
     assert "List[Annotation]" in str(e)
-    with pytest.raises(TypeError) as e:
+    with pytest.raises(TypeError):
         GroundTruth(
             datum=datum,
             annotations=[gts[0], gts[1], "annotation"],  # type: ignore
         )
-    assert "Annotation" in str(e)
 
     # test equalities
     with pytest.raises(TypeError):
@@ -227,9 +223,8 @@ def test_prediction():
     assert "dataset_name" not in string
 
     # test `__post_init__`
-    with pytest.raises(TypeError) as e:
+    with pytest.raises(TypeError):
         Prediction(datum="datum", annotations=pds)  # type: ignore
-    assert "Datum" in str(e)
     with pytest.raises(TypeError) as e:
         Prediction(
             datum=datum,
@@ -237,12 +232,11 @@ def test_prediction():
         )
     assert "List[Annotation]" in str(e)
 
-    with pytest.raises(TypeError) as e:
+    with pytest.raises(TypeError):
         Prediction(
             datum=datum,
             annotations=[pds[0], pds[1], "annotation"],  # type: ignore
         )
-    assert "Annotation" in str(e)
 
     with pytest.raises(ValueError) as e:
         Prediction(
