@@ -34,7 +34,9 @@ class StaticCollection(Equatable):
     A static collection is a Variable that defines its contents by static attributes.
     """
 
-    def __init__(self):
+    def __init__(self, **kwargs):
+        for k, v in kwargs.items():
+            setattr(self, k, v)
         super().__init__(value=None, symbol=None)
 
     @classmethod
@@ -80,8 +82,16 @@ class StaticCollection(Equatable):
         return obj
 
     @staticmethod
-    def format(**kwargs) -> Dict[str, Any]:
-        raise NotImplementedError
+    def formatter() -> Dict[str, Any]:
+        return dict()
+
+    def format(self, __name: str, __value: Any) -> Any:
+        if __name not in self.formatter() or isinstance(__value, Variable):
+            return __value
+        return self.formatter()[__name](__value)
+
+    def __setattr__(self, __name: str, __value: Any) -> None:
+        super().__setattr__(__name, self.format(__name, __value))
 
     @classmethod
     def __validate__(cls, value: Any):
@@ -170,10 +180,15 @@ class Label(StaticCollection):
         value: str,
         score: Optional[float] = None,
     ):
-        self.key = String.definite(key)
-        self.value = String.definite(value)
-        self.score = Float.nullable(score)
-        super().__init__()
+        super().__init__(key=key, value=value, score=score)
+
+    @staticmethod
+    def formatter() -> Dict[str, Any]:
+        return {
+            "key": String.definite,
+            "value": String.definite,
+            "score": Float.nullable,
+        }
 
     def tuple(self):
         """
@@ -308,16 +323,27 @@ class Annotation(StaticCollection):
         embedding: List[float], optional
             An embedding, described by a list of values with type float and a maximum length of 16,000.
         """
-        self.task_type = TaskTypeEnum.definite(task_type)
-        self.metadata = Dictionary.definite(metadata if metadata else dict())
-        self.labels = SymbolicList[Label].definite(
-            labels if labels else list()
+        super().__init__(
+            task_type=task_type,
+            metadata=metadata if metadata else dict(),
+            labels=labels if labels else list(),
+            bounding_box=bounding_box,
+            polygon=polygon,
+            raster=raster,
+            embedding=embedding,
         )
-        self.bounding_box = Box.nullable(bounding_box)
-        self.polygon = Polygon.nullable(polygon)
-        self.raster = Raster.nullable(raster)
-        self.embedding = Embedding.nullable(embedding)
-        super().__init__()
+
+    @staticmethod
+    def formatter() -> Dict[str, Any]:
+        return {
+            "task_type": TaskTypeEnum.definite,
+            "metadata": Dictionary.definite,
+            "labels": SymbolicList[Label].definite,
+            "bounding_box": Box.nullable,
+            "polygon": Polygon.nullable,
+            "raster": Raster.nullable,
+            "embedding": Embedding.nullable,
+        }
 
 
 class Datum(StaticCollection):
@@ -356,10 +382,12 @@ class Datum(StaticCollection):
         metadata : dict, optional
             A dictionary of metadata that describes the datum.
         """
-        self.uid = String.definite(uid)
-        self.metadata = Dictionary.definite(metadata if metadata else dict())
+        self.uid = self.format("uid", uid)
+        self.metadata = self.format(
+            "metadata", metadata if metadata else dict()
+        )
         super().__init__()
 
-    def get_uid(self) -> str:
-        """Safely get UID."""
-        return self.uid.get_value()
+    @staticmethod
+    def formatter() -> Dict[str, Any]:
+        return {"uid": String.definite, "metadata": Dictionary.definite}
