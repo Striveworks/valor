@@ -2,7 +2,7 @@ import pytest
 
 from valor.schemas import List as SymbolicList
 from valor.schemas.symbolic.collections import StaticCollection
-from valor.schemas.symbolic.types import Bool, Float, Integer, String, Symbol
+from valor.schemas.symbolic.types import Bool, Float, Integer, String
 
 
 def test_static_collection_init():
@@ -13,7 +13,7 @@ def test_static_collection_init():
         z: Bool
 
     # test that kwargs are required
-    with pytest.raises(TypeError):
+    with pytest.raises(ValueError):
         A()
 
 
@@ -26,7 +26,7 @@ def test_static_collection_symbol():
 
     # test that the 'symbolic' classmethod is the same as passing a symbol
     symA = A.symbolic()
-    assert symA.to_dict() == A(symbol=Symbol(name="a")).to_dict()
+    assert symA.to_dict() == A.symbolic(name="a").to_dict()
 
     # test symbolic usage
     assert symA.to_dict() == {
@@ -88,27 +88,17 @@ def test_static_collection_value():
     encoding = {"w": 101, "x": 0.123, "y": "foobar", "z": True}
 
     # test that casting to symbolics is implicit
-    v1 = A.definite(w=101, x=0.123, y="foobar", z=True)
-    v2 = A.definite(
-        w=Integer(101), x=Float(0.123), y=String("foobar"), z=Bool(True)
-    )
-    v3 = A.definite(w=101, x=Float(0.123), y=String("foobar"), z=True)
+    v1 = A(w=101, x=0.123, y="foobar", z=True)
+    v2 = A(w=Integer(101), x=Float(0.123), y=String("foobar"), z=Bool(True))
+    v3 = A(w=101, x=Float(0.123), y=String("foobar"), z=True)
     assert v1.to_dict() == v2.to_dict()
     assert v1.to_dict() == v3.to_dict()
 
     # test that kwargs can be loaded by dictionary
-    v4 = A.definite(**encoding)
+    v4 = A(**encoding)
     v5 = A(**encoding)
     assert v1.to_dict() == v4.to_dict()
     assert v1.to_dict() == v5.to_dict()
-
-    # test 'definite' classmethod strips symbol
-    assert (
-        v1.to_dict()
-        == A.definite(
-            w=101, x=0.123, y="foobar", z=True, symbol=Symbol(name="test")
-        ).to_dict()
-    )
 
     # test dictionary generation
     assert v1.to_dict() == {

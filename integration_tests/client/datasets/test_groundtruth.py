@@ -39,7 +39,7 @@ def test_create_gt_detections_as_bbox_or_poly(
             Annotation(
                 task_type=TaskType.OBJECT_DETECTION,
                 labels=[Label(key="k", value="v")],
-                box=Box.from_extrema(
+                bounding_box=Box.from_extrema(
                     xmin=xmin, ymin=ymin, xmax=xmax, ymax=ymax
                 ),
             ),
@@ -66,7 +66,10 @@ def test_create_gt_detections_as_bbox_or_poly(
         select(models.Annotation).where(models.Annotation.model_id.is_(None))
     ).all()
     assert len(db_dets) == 2
-    assert set([db_det.box is not None for db_det in db_dets]) == {True, False}
+    assert set([db_det.box is not None for db_det in db_dets]) == {
+        True,
+        False,
+    }
 
     assert (
         str(db.scalar(ST_AsText(db_dets[0].box)))

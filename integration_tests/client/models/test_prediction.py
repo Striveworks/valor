@@ -39,7 +39,7 @@ def test_create_pred_detections_as_bbox_or_poly(
             Annotation(
                 task_type=TaskType.OBJECT_DETECTION,
                 labels=[Label(key="k", value="v", score=0.6)],
-                box=Box.from_extrema(
+                bounding_box=Box.from_extrema(
                     xmin=xmin, ymin=ymin, xmax=xmax, ymax=ymax
                 ),
             ),

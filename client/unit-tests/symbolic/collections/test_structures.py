@@ -83,6 +83,7 @@ def test__get_type_by_name():
         assert issubclass(type_, Variable)
         assert isinstance(type_name, str)
         assert _get_type_by_name(type_name) is type_
+        assert _get_type_by_name(f"list[{type_name}]") is List[type_]
     with pytest.raises(NotImplementedError):
         assert _get_type_by_name("some_nonexistent_type")
 
@@ -113,8 +114,8 @@ def _test_to_dict(objcls, value):
         "type": objcls.__name__.lower(),
         "value": objcls(value).encode_value(),
     }
-    # test definite
-    assert objcls.definite(value).to_dict() == {
+    # test value
+    assert objcls(value).to_dict() == {
         "type": objcls.__name__.lower(),
         "value": objcls(value).encode_value(),
     }
@@ -197,7 +198,7 @@ def test_list():
     }
 
     # test creating valued lists
-    variable = List[Float].definite([0.1, 0.2, 0.3])
+    variable = List[Float]([0.1, 0.2, 0.3])
     assert variable.__str__() == "[0.1, 0.2, 0.3]"
     assert variable.to_dict() == {
         "type": "list[float]",
@@ -244,7 +245,7 @@ def test_list():
     }
 
     # test decode from json dict
-    assert List[Float].decode_value([0.1, 0.2, 0.3]).get_value() == [
+    assert List[Float].decode_value([0.1, 0.2, 0.3]).get_value() == [  # type: ignore
         0.1,
         0.2,
         0.3,
@@ -264,21 +265,15 @@ def test_list():
     with pytest.raises(TypeError):
         assert List[Integer]([String("hello")])
 
-    # test that type wrapper is not implemented
-    with pytest.raises(NotImplementedError):
-        List()[0]
-    with pytest.raises(NotImplementedError):
-        List()[0] = 1
-    with pytest.raises(NotImplementedError):
-        iter(List())
-    with pytest.raises(NotImplementedError):
-        len(List())
+    # test that untyped wrapper is not implemented
+    with pytest.raises(TypeError):
+        List()  # type: ignore - intentionally missing args
 
 
 def test_dictionary_value():
     # test cannot hold a value
-    with pytest.raises(NotImplementedError):
-        DictionaryValue.definite(1)
+    with pytest.raises(ValueError):
+        DictionaryValue(1)  # type: ignore - intentionally incorrect
 
     # test symbol cannot already attribute
     with pytest.raises(ValueError) as e:
@@ -384,13 +379,21 @@ def test_dictionary():
         "__and__",
         "__or__",
         "__xor__",
-        "is_none",
-        "is_not_none",
         "intersects",
         "inside",
         "outside",
     ]:
         _test_unsupported(objcls, permutations, op)
+
+    # test nullable
+    v1 = objcls.nullable(None)
+    assert v1.get_value() is None
+    assert v1.is_none().get_value() is True  # type: ignore - always a bool
+    assert v1.is_not_none().get_value() is False  # type: ignore - always a bool
+    v2 = objcls.nullable(permutations[0][0])
+    assert v2.get_value() is not None
+    assert v2.is_none().get_value() is False  # type: ignore - always a bool
+    assert v2.is_not_none().get_value() is True  # type: ignore - always a bool
 
     # test encoding
     assert {

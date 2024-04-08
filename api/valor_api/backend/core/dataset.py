@@ -263,7 +263,8 @@ def get_n_groundtruth_bounding_boxes_in_dataset(db: Session, name: str) -> int:
         .join(models.Dataset)
         .where(
             and_(
-                models.Dataset.name == name, models.Annotation.box.isnot(None)
+                models.Dataset.name == name,
+                models.Annotation.box.isnot(None),
             )
         )
         .distinct()

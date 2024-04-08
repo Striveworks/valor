@@ -46,7 +46,7 @@ def dataset_with_metadata(
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k", value="v")],
-                    box=Box([rect1]),
+                    bounding_box=Box([rect1]),
                 ),
             ],
         )

@@ -124,9 +124,9 @@ def test_raster(raster_raw_mask):
 
     # test validation
     with pytest.raises(TypeError):
-        assert Raster({"mask": "test", "geometry": None})
+        assert Raster({"mask": "test", "geometry": None})  # type: ignore testing
     with pytest.raises(TypeError) as e:
-        assert Raster(123)
+        assert Raster(123)  # type: ignore - testing
 
     # test classmethod `from_numpy`
     mask2 = np.ones((10, 10, 10)) == 1

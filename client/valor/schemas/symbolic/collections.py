@@ -1,5 +1,6 @@
-import typing
-from typing import Any, Optional
+from typing import Any, Dict, List, Optional, Union
+
+import numpy as np
 
 from valor.enums import TaskType
 from valor.schemas.symbolic.types import (
@@ -8,12 +9,12 @@ from valor.schemas.symbolic.types import (
     Embedding,
     Equatable,
     Float,
-    List,
-    Nullable,
+)
+from valor.schemas.symbolic.types import List as SymbolicList
+from valor.schemas.symbolic.types import (
     Polygon,
     Raster,
     String,
-    Symbol,
     TaskTypeEnum,
     Variable,
     _get_type_by_name,
@@ -35,54 +36,81 @@ class StaticCollection(Equatable):
     """
 
     def __init__(self, **kwargs):
-        symbol = kwargs.pop("symbol", None)
-        class_name = type(self).__name__
-
-        static_types = self._get_static_types()
-        static_types_keys = set(static_types.keys())
-
-        kwarg_keys = set(kwargs.keys())
-        if not kwarg_keys.issubset(static_types_keys):
-            raise TypeError(
-                f"{class_name}() does not take the following keyword arguments '{kwarg_keys - static_types_keys}'"
+        if set(kwargs.keys()) != set(self._get_static_types().keys()):
+            kwarg_keys = set(kwargs.keys())
+            static_keys = set(self._get_static_types().keys())
+            raise ValueError(
+                f"Expected the following keyword arguments '{static_keys}'. Received '{kwarg_keys}'."
             )
-
-        if isinstance(symbol, Symbol):
-            if kwargs:
-                raise ValueError(
-                    f"{class_name}() is being initialized as a symbol. The following keyword arguments are ignored: {kwarg_keys}"
-                )
-            for attr, obj in static_types.items():
-                self.__setattr__(
-                    attr, obj.symbolic(owner=class_name, name=attr)
-                )
-            super().__init__(value=None, symbol=symbol)
-        else:
-            for attr, obj in static_types.items():
-                value = kwargs[attr] if attr in kwargs else None
-                if not isinstance(value, obj):
-                    if issubclass(obj, StaticCollection):
-                        if not isinstance(value, dict):
-                            raise TypeError(
-                                f"{class_name}.{attr} expected a value with type '{obj.__name__}' received value with type '{type(value).__name__}'"
-                            )
-                        value = obj.definite(**value)
-                    else:
-                        value = obj.definite(value)
-                self.__setattr__(attr, value)
-            self.__post_init__()
-            super().__init__(value=None, symbol=None)
-
-    def __post_init__(self):
-        pass
+        for k, v in kwargs.items():
+            setattr(self, k, v)
+        super().__init__(value=None)
 
     @classmethod
-    def definite(cls, *args, **kwargs):
-        """Initialize variable with a value."""
-        if args:
-            raise TypeError(f"{cls.__name__}() takes no positional arguments.")
-        kwargs["symbol"] = None
-        return cls(**kwargs)
+    def nullable(cls, *args, **kwargs):
+        """
+        Initializes variable with an optional value.
+        """
+        raise NotImplementedError(
+            "Static collections do not define 'nullable'."
+        )
+
+    @classmethod
+    def symbolic(
+        cls,
+        name: Optional[str] = None,
+        key: Optional[str] = None,
+        attribute: Optional[str] = None,
+        owner: Optional[str] = None,
+    ):
+        """
+        Initializes the object and its attributes as symbols.
+
+        Parameters
+        ----------
+        name : str, optional
+            The name of the symbol.
+        key : str, optional
+            The key of the value if its a dictionary element.
+        attribute : str, optional
+            The name of a an attribute this symbol represents.
+        owner : str, optional
+            The name of an object that this symbol belongs to.
+        """
+        obj = super().symbolic(name, key, attribute, owner)
+        for __name, __type in obj._get_static_types().items():
+            if not issubclass(__type, Variable):
+                raise TypeError
+            setattr(
+                obj,
+                __name,
+                __type.symbolic(owner=cls.__name__.lower(), name=__name),
+            )
+        return obj
+
+    @staticmethod
+    def formatting() -> Dict[str, Any]:
+        """Attribute format mapping."""
+        return dict()
+
+    def format(self, __name: str, __value: Any) -> Any:
+        """Either formats or passes throught a name-value pair."""
+        if __name in self._get_static_types():
+            __type = self._get_static_types()[__name]
+            if not isinstance(__value, __type):
+                __fmt = (
+                    self.formatting()[__name]
+                    if __name in self.formatting()
+                    else __type
+                )
+                if issubclass(__type, StaticCollection):
+                    return __fmt(**__value)
+                else:
+                    return __fmt(__value)
+        return __value
+
+    def __setattr__(self, __name: str, __value: Any) -> None:
+        super().__setattr__(__name, self.format(__name, __value))
 
     @classmethod
     def __validate__(cls, value: Any):
@@ -104,7 +132,7 @@ class StaticCollection(Equatable):
         }
 
     @classmethod
-    def _get_static_types(cls):
+    def _get_static_types(cls) -> Dict[str, type]:
         """Returns any static members that inherit from 'Variable'."""
         fields = getattr(cls, "__annotations__", dict())
         retval = dict()
@@ -147,6 +175,10 @@ class StaticCollection(Equatable):
             return super().__str__()
         return str(self.encode_value())
 
+    @property
+    def is_symbolic(self) -> bool:
+        return super().is_symbolic
+
 
 class Label(StaticCollection):
     """
@@ -170,35 +202,35 @@ class Label(StaticCollection):
 
     key: String = String.symbolic(owner="label", name="key")
     value: String = String.symbolic(owner="label", name="value")
-    score: Nullable[Float] = Nullable[Float].symbolic(
-        owner="label", name="score"
-    )
+    score: Float = Float.symbolic(owner="label", name="score")
 
-    @classmethod
-    def create(
-        cls,
+    def __init__(
+        self,
+        *,
         key: str,
         value: str,
-        score: Optional[float] = None,
-        **_,
+        score: Union[float, np.floating, None] = None,
     ):
         """
-        Constructs a label.
+        Initializes an instance of a label.
 
-        Parameters
+        Attributes
         ----------
         key : str
-            The class key of the label.
+            The class label key.
         value : str
-            The class value of the label.
+            The class label value.
         score : float, optional
-            The score associated with the label (if applicable).
+            The label score.
         """
-        return cls.definite(
-            key=key,
-            value=value,
-            score=score,
-        )
+        super().__init__(key=key, value=value, score=score)
+
+    @staticmethod
+    def formatting() -> Dict[str, Any]:
+        """Attribute format mapping."""
+        return {
+            "score": Float.nullable,
+        }
 
     def tuple(self):
         """
@@ -224,11 +256,11 @@ class Annotation(StaticCollection):
     ----------
     task_type: TaskTypeEnum
         The task type associated with the `Annotation`.
-    labels: List[Label], optional
-        A list of labels to use for the `Annotation`.
     metadata: Dictionary
         A dictionary of metadata that describes the `Annotation`.
-    box: Box
+    labels: List[Label], optional
+        A list of labels to use for the `Annotation`.
+    bounding_box: Box
         A bounding box to assign to the `Annotation`.
     polygon: BoundingPolygon
         A polygon to assign to the `Annotation`.
@@ -253,7 +285,7 @@ class Annotation(StaticCollection):
     >>> annotation = Annotation.create(
     ...     task_type=TaskType.OBJECT_DETECTION,
     ...     labels=[Label(key="k1", value="v1")],
-    ...     box=box2,
+    ...    bounding_box=box2,
     ... )
 
     Object-Detection Polygon
@@ -281,7 +313,7 @@ class Annotation(StaticCollection):
     >>> Annotation.create(
     ...     task_type=TaskType.OBJECT_DETECTION,
     ...     labels=[Label(key="k1", value="v1")],
-    ...     box=Box(...),
+    ...     bounding_box=Box(...),
     ...     polygon=BoundingPolygon(...),
     ...     raster=Raster(...),
     ... )
@@ -290,64 +322,69 @@ class Annotation(StaticCollection):
     task_type: TaskTypeEnum = TaskTypeEnum.symbolic(
         owner="annotation", name="task_type"
     )
-    labels: List[Label] = List[Label].symbolic(
-        owner="annotation", name="labels"
-    )
     metadata: Dictionary = Dictionary.symbolic(
         owner="annotation", name="metadata"
     )
-    box: Nullable[Box] = Nullable[Box].symbolic(owner="annotation", name="box")
-    polygon: Nullable[Polygon] = Nullable[Polygon].symbolic(
-        owner="annotation", name="polygon"
+    labels: SymbolicList[Label] = SymbolicList[Label].symbolic(
+        owner="annotation", name="labels"
     )
-    raster: Nullable[Raster] = Nullable[Raster].symbolic(
-        owner="annotation", name="raster"
-    )
-    embedding: Nullable[Embedding] = Nullable[Embedding].symbolic(
+    bounding_box: Box = Box.symbolic(owner="annotation", name="bounding_box")
+    polygon: Polygon = Polygon.symbolic(owner="annotation", name="polygon")
+    raster: Raster = Raster.symbolic(owner="annotation", name="raster")
+    embedding: Embedding = Embedding.symbolic(
         owner="annotation", name="embedding"
     )
 
-    @classmethod
-    def create(
-        cls,
+    def __init__(
+        self,
+        *,
         task_type: TaskType,
-        labels: Optional[typing.List[Label]] = None,
         metadata: Optional[dict] = None,
-        box: Optional[Box] = None,
+        labels: Optional[List[Label]] = None,
+        bounding_box: Optional[Box] = None,
         polygon: Optional[Polygon] = None,
         raster: Optional[Raster] = None,
         embedding: Optional[Embedding] = None,
-        **_,
     ):
         """
         Constructs an annotation.
 
         Parameters
         ----------
-        task_type: TaskType
+        task_type: TaskTypeEnum
             The task type associated with the `Annotation`.
-        labels: List[Label], optional
-            A list of labels to use for the `Annotation`.
         metadata: Dict[str, Union[int, float, str, bool, datetime.datetime, datetime.date, datetime.time]]
             A dictionary of metadata that describes the `Annotation`.
-        box: Box, optional
-            A bounding box to assign to the `Annotation`.
-        polygon: BoundingPolygon, optional
-            A polygon to assign to the `Annotation`.
+        labels: List[Label]
+            A list of labels to use for the `Annotation`.
+        bounding_box: Box, optional
+            A bounding box annotation.
+        polygon: Polygon, optional
+            A polygon annotation.
         raster: Raster, optional
-            A raster to assign to the `Annotation`.
+            A raster annotation.
         embedding: List[float], optional
             An embedding, described by a list of values with type float and a maximum length of 16,000.
         """
-        return cls.definite(
+        super().__init__(
             task_type=task_type,
-            labels=labels,
-            metadata=metadata,
-            box=box,
+            metadata=metadata if metadata else dict(),
+            labels=labels if labels else list(),
+            bounding_box=bounding_box,
             polygon=polygon,
             raster=raster,
             embedding=embedding,
         )
+
+    @staticmethod
+    def formatting() -> Dict[str, Any]:
+        """Attribute format mapping."""
+        return {
+            "bounding_box": Box.nullable,
+            "polygon": Polygon.nullable,
+            "raster": Raster.nullable,
+            "embedding": Embedding.nullable,
+        }
 
 
 class Datum(StaticCollection):
@@ -371,12 +408,11 @@ class Datum(StaticCollection):
     uid: String = String.symbolic(owner="datum", name="uid")
     metadata: Dictionary = Dictionary.symbolic(owner="datum", name="metadata")
 
-    @classmethod
-    def create(
-        cls,
+    def __init__(
+        self,
+        *,
         uid: str,
         metadata: Optional[dict] = None,
-        **_,
     ):
         """
         Constructs a datum.
@@ -385,14 +421,11 @@ class Datum(StaticCollection):
         ----------
         uid : str
             The UID of the datum.
-        metadata : dict
+        metadata : dict, optional
             A dictionary of metadata that describes the datum.
         """
-        return cls.definite(
-            uid=uid,
-            metadata=metadata,
-        )
+        super().__init__(uid=uid, metadata=metadata if metadata else dict())
 
     def get_uid(self) -> str:
-        """Safely get UID."""
+        """Extracts the uid from a datum instance."""
         return self.uid.get_value()

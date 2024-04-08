@@ -3,7 +3,7 @@ import typing
 import numpy as np
 import pytest
 
-from valor.schemas import Box, Embedding, Float, Nullable, Raster, TaskTypeEnum
+from valor.schemas import Box, Embedding, Float, Raster, TaskTypeEnum
 from valor.schemas.symbolic.operators import (
     AppendableFunction,
     TwoArgumentFunction,
@@ -44,8 +44,8 @@ def _test_to_dict(objcls, value, type_name: typing.Optional[str] = None):
         "type": type_name,
         "value": objcls(value).encode_value(),
     }
-    # test definite
-    assert objcls.definite(value).to_dict() == {
+    # test value
+    assert objcls(value).to_dict() == {
         "type": type_name,
         "value": objcls(value).encode_value(),
     }
@@ -66,7 +66,7 @@ def _test_generic(
 ):
     """Tests expressions that can only be resolved to JSON."""
     for a, _ in permutations:
-        A = objcls(a)
+        A = objcls.nullable(a)
         C = objcls.symbolic()
         # test variable -> builtin against variable -> variable
         assert (
@@ -138,7 +138,7 @@ def _test_unsupported(objcls, permutations, op):
 
 
 def test_score():
-    objcls = Nullable[Float]
+    objcls = Float
 
     # test supported methods
     permutations = [
@@ -152,23 +152,29 @@ def test_score():
         (None, 0.9),
     ]
     for op in ["__eq__", "__ne__", "__gt__", "__ge__", "__lt__", "__le__"]:
-        _test_resolvable(objcls, permutations, op, type_name="optional[float]")
-        _test_generic(
-            objcls, unresolvable_permutations, op, type_name="optional[float]"
-        )
+        _test_resolvable(objcls, permutations, op, type_name="float")
+        with pytest.raises(TypeError):
+            _test_generic(
+                objcls, unresolvable_permutations, op, type_name="float"
+            )
+
         with pytest.raises((AssertionError, TypeError)):
             _test_resolvable(
                 objcls,
                 unresolvable_permutations,
                 op,
-                type_name="optional[float]",
+                type_name="float",
             )
 
     # test nullable
-    assert Nullable[Float](1.0).is_none().get_value() is False  # type: ignore - always returns bool
-    assert Nullable[Float](1.0).is_not_none().get_value() is True  # type: ignore - always returns bool
-    assert Nullable[Float](None).is_none().get_value() is True  # type: ignore - always returns bool
-    assert Nullable[Float](None).is_not_none().get_value() is False  # type: ignore - always returns bool
+    v1 = objcls.nullable(None)
+    assert v1.get_value() is None
+    assert v1.is_none().get_value() is True  # type: ignore - always a bool
+    assert v1.is_not_none().get_value() is False  # type: ignore - always a bool
+    v2 = objcls.nullable(permutations[0][0])
+    assert v2.get_value() is not None
+    assert v2.is_none().get_value() is False  # type: ignore - always a bool
+    assert v2.is_not_none().get_value() is True  # type: ignore - always a boolnullable(None).is_not_none().get_value() is False  # type: ignore - always returns bool
 
     # test unsupported methods
     for op in [
@@ -209,13 +215,21 @@ def test_tasktypeenum():
         "__and__",
         "__or__",
         "__xor__",
-        "is_none",
-        "is_not_none",
         "intersects",
         "inside",
         "outside",
     ]:
         _test_unsupported(objcls, permutations, op)
+
+    # test nullable
+    v1 = objcls.nullable(None)
+    assert v1.get_value() is None
+    assert v1.is_none().get_value() is True  # type: ignore - always a bool
+    assert v1.is_not_none().get_value() is False  # type: ignore - always a bool
+    v2 = objcls.nullable(permutations[0][0])
+    assert v2.get_value() is not None
+    assert v2.is_none().get_value() is False  # type: ignore - always a bool
+    assert v2.is_not_none().get_value() is True  # type: ignore - always a bool
 
     # test encoding
     _test_encoding(
@@ -260,10 +274,14 @@ def test_box():
         _test_generic(objcls, permutations, op)
 
     # test nullable
-    assert not hasattr(objcls, "is_none")
-    assert not hasattr(objcls, "is__not_none")
-    with pytest.raises(TypeError):
-        objcls(None)
+    v1 = objcls.nullable(None)
+    assert v1.get_value() is None
+    assert v1.is_none().get_value() is True  # type: ignore - always a bool
+    assert v1.is_not_none().get_value() is False  # type: ignore - always a bool
+    v2 = objcls.nullable(permutations[0][0])
+    assert v2.get_value() is not None
+    assert v2.is_none().get_value() is False  # type: ignore - always a bool
+    assert v2.is_not_none().get_value() is True  # type: ignore - always a bool
 
     # test unsupported methods
     for op in [
@@ -321,10 +339,14 @@ def test_raster():
         _test_generic(objcls, permutations, op)
 
     # test nullable
-    assert not hasattr(objcls, "is_none")
-    assert not hasattr(objcls, "is__not_none")
-    with pytest.raises(TypeError):
-        objcls(None)
+    v1 = objcls.nullable(None)
+    assert v1.get_value() is None
+    assert v1.is_none().get_value() is True  # type: ignore - always a bool
+    assert v1.is_not_none().get_value() is False  # type: ignore - always a bool
+    v2 = objcls.nullable(permutations[0][0])
+    assert v2.get_value() is not None
+    assert v2.is_none().get_value() is False  # type: ignore - always a bool
+    assert v2.is_not_none().get_value() is True  # type: ignore - always a bool
 
     # test 'from_numpy' classmethod
     assert Raster.from_numpy(bitmask1).to_dict() == Raster(value).to_dict()
@@ -336,11 +358,11 @@ def test_raster():
 
     # test type validation
     with pytest.raises(TypeError):
-        Raster(123)
+        Raster(123)  # type: ignore
     with pytest.raises(ValueError):
         Raster({})
     with pytest.raises(TypeError):
-        Raster({"mask": 123, "geometry": None})
+        Raster({"mask": 123, "geometry": None})  # type: ignore
     with pytest.raises(ValueError) as e:
         Raster({"mask": np.zeros((10,)), "geometry": None})
     assert "2d arrays" in str(e)
@@ -351,7 +373,7 @@ def test_raster():
         Raster({"mask": np.zeros((10, 10)), "geometry": None})
     assert "bool" in str(e)
     with pytest.raises(TypeError):
-        Raster({"mask": bitmask1, "geometry": 123})
+        Raster({"mask": bitmask1, "geometry": 123})  # type: ignore
 
     # test property 'area'
     assert objcls.symbolic().area.is_symbolic
@@ -404,10 +426,14 @@ def test_embedding():
         _test_generic(objcls, permutations, op)
 
     # test nullable
-    assert not hasattr(objcls, "is_none")
-    assert not hasattr(objcls, "is__not_none")
-    with pytest.raises(TypeError):
-        objcls(None)
+    v1 = objcls.nullable(None)
+    assert v1.get_value() is None
+    assert v1.is_none().get_value() is True  # type: ignore - always a bool
+    assert v1.is_not_none().get_value() is False  # type: ignore - always a bool
+    v2 = objcls.nullable(permutations[0][0])
+    assert v2.get_value() is not None
+    assert v2.is_none().get_value() is False  # type: ignore - always a bool
+    assert v2.is_not_none().get_value() is True  # type: ignore - always a bool
 
     # test unsupported methods
     for op in [
