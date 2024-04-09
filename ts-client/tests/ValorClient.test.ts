@@ -142,7 +142,13 @@ test('evaluation methods', async () => {
     let evaluation = await client.createOrGetEvaluation(
       modelName,
       datasetName,
-      'classification'
+      'classification',
+      null,
+      null,
+      null,
+      null,
+      true,
+      null
     );
     expect(['running', 'pending', 'done']).toContain(evaluation.status);
 
@@ -156,6 +162,11 @@ test('evaluation methods', async () => {
     // get the ROCAUC metric, and check that its null (backend returns -1 here)
     const rocaucMetric = evaluation.metrics.find((metric) => metric.type === 'ROCAUC');
     expect(rocaucMetric.value).toBeNull();
+
+    // get the PrecisionRecallCurve metric, and check that its a string
+    const prCurveMetric = evaluation.metrics.find((metric) => metric.type === 'PrecisionRecallCurve');
+    expect(Object.keys(prCurveMetric.value)).toStrictEqual(['label-value', 'label-value-with-no-prediction'])
+    expect(typeof prCurveMetric.value).toBe('object');
 
     // check the date is within one minute of the current time
     const now = new Date();
@@ -176,7 +187,7 @@ test('evaluation methods', async () => {
   expect((await client.getEvaluationsByModelNames([modelNames[0]])).length).toBe(2);
   expect((await client.getEvaluationsByModelNames(modelNames)).length).toBe(4);
   expect((await client.getEvaluationsByModelNames(['no-such-model'])).length).toBe(0);
-  // check we can get evaluations my dataset name
+  // check we can get evaluations by dataset name
   expect((await client.getEvaluationsByDatasetNames([datasetNames[0]])).length).toBe(2);
   expect((await client.getEvaluationsByDatasetNames(datasetNames)).length).toBe(4);
   expect((await client.getEvaluationsByDatasetNames(['no-such-dataset'])).length).toBe(0);
@@ -194,7 +205,7 @@ test('bulk create or get evaluations', async () => {
     let evaluations = await client.bulkCreateOrGetEvaluations(
       modelNames,
       datasetName,
-      'classification'
+      'classification',
     );
     expect(evaluations.length).toBe(2);
     // check all evaluations are pending
