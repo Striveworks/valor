@@ -4,6 +4,7 @@ that is no auth
 
 import io
 import json
+import warnings
 from typing import Any
 
 import numpy as np
@@ -432,9 +433,12 @@ def test_add_empty_prediction(
     with pytest.raises(TypeError):
         model.add_prediction(dataset, "not_a_pred")  # type: ignore
 
-    model.add_prediction(
-        dataset, Prediction(datum=extra_datum, annotations=[])
-    )
+    # ensure that adding an empty prediction results in no errors or warnings
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        model.add_prediction(
+            dataset, Prediction(datum=extra_datum, annotations=[])
+        )
 
     for pd in pred_dets:
         model.add_prediction(dataset, pd)

@@ -2,6 +2,8 @@
 that is no auth
 """
 
+import warnings
+
 import numpy as np
 import pytest
 from geoalchemy2.functions import ST_AsText, ST_Polygon
@@ -197,18 +199,21 @@ def test_add_groundtruth(
     with pytest.raises(TypeError):
         dataset.add_groundtruth("not_a_gt")  # type: ignore
 
-    dataset.add_groundtruth(
-        GroundTruth(
-            datum=Datum(
-                uid="uid",
-                metadata={
-                    "height": 200,
-                    "width": 150,
-                },
-            ),
-            annotations=[],
+    # ensure that adding an empty ground truth results in no errors or warnings
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        dataset.add_groundtruth(
+            GroundTruth(
+                datum=Datum(
+                    uid="uid",
+                    metadata={
+                        "height": 200,
+                        "width": 150,
+                    },
+                ),
+                annotations=[],
+            )
         )
-    )
 
     # make sure raster is not dependent on datum metadata
     dataset.add_groundtruth(gt_semantic_segs_mismatch)
