@@ -97,13 +97,17 @@ def geospatial_coordinates() -> dict[
 @pytest.fixture
 def metadata_1(geospatial_coordinates) -> dict[str, int | float | str | dict]:
     return {
-        "some_numeric_attribute": 0.4,
-        "some_str_attribute": "abc",
-        "height": 10,
-        "width": 10,
-        "some_bool_attribute": True,
+        "some_numeric_attribute": {
+            "type": "float",
+            "value": {"type": "float", "value": 0.4},
+        },
+        "some_str_attribute": {"type": "string", "value": "abc"},
+        "height": {"type": "integer", "value": 10},
+        "width": {"type": "integer", "value": 10},
+        "some_bool_attribute": {"type": "bool", "value": True},
         "some_geo_attribute": {
-            "geojson": geospatial_coordinates["polygon1"],
+            "type": "polygon",
+            "value": geospatial_coordinates["polygon1"]["coordinates"],
         },
     }
 
@@ -111,13 +115,14 @@ def metadata_1(geospatial_coordinates) -> dict[str, int | float | str | dict]:
 @pytest.fixture
 def metadata_2(geospatial_coordinates) -> dict[str, int | float | str | dict]:
     return {
-        "some_numeric_attribute": 0.6,
-        "some_str_attribute": "abc",
-        "height": 10,
-        "width": 10,
-        "some_bool_attribute": False,
+        "some_numeric_attribute": {"type": "float", "value": 0.6},
+        "some_str_attribute": {"type": "string", "value": "abc"},
+        "height": {"type": "integer", "value": 10},
+        "width": {"type": "integer", "value": 10},
+        "some_bool_attribute": {"type": "bool", "value": False},
         "some_geo_attribute": {
-            "geojson": geospatial_coordinates["multipolygon"],
+            "type": "multipolygon",
+            "value": geospatial_coordinates["multipolygon"]["coordinates"],
         },
     }
 
@@ -125,13 +130,14 @@ def metadata_2(geospatial_coordinates) -> dict[str, int | float | str | dict]:
 @pytest.fixture
 def metadata_3(geospatial_coordinates) -> dict[str, int | float | str | dict]:
     return {
-        "some_numeric_attribute": 0.4,
-        "some_str_attribute": "xyz",
-        "height": 10,
-        "width": 10,
-        "some_bool_attribute": True,
+        "some_numeric_attribute": {"type": "float", "value": 0.4},
+        "some_str_attribute": {"type": "string", "value": "xyz"},
+        "height": {"type": "integer", "value": 10},
+        "width": {"type": "integer", "value": 10},
+        "some_bool_attribute": {"type": "bool", "value": True},
         "some_geo_attribute": {
-            "geojson": geospatial_coordinates["polygon2"],
+            "type": "polygon",
+            "value": geospatial_coordinates["polygon2"]["coordinates"],
         },
     }
 
@@ -139,13 +145,14 @@ def metadata_3(geospatial_coordinates) -> dict[str, int | float | str | dict]:
 @pytest.fixture
 def metadata_4(geospatial_coordinates) -> dict[str, int | float | str | dict]:
     return {
-        "some_numeric_attribute": 0.6,
-        "some_str_attribute": "xyz",
-        "height": 10,
-        "width": 10,
-        "some_bool_attribute": False,
+        "some_numeric_attribute": {"type": "float", "value": 0.6},
+        "some_str_attribute": {"type": "string", "value": "xyz"},
+        "height": {"type": "integer", "value": 10},
+        "width": {"type": "integer", "value": 10},
+        "some_bool_attribute": {"type": "bool", "value": False},
         "some_geo_attribute": {
-            "geojson": geospatial_coordinates["polygon3"],
+            "type": "polygon",
+            "value": geospatial_coordinates["polygon3"]["coordinates"],
         },
     }
 
@@ -1417,11 +1424,11 @@ def datetime_metadata() -> list[schemas.DateTime]:
             value="2022-01-01",
         ),
         schemas.DateTime(
-            value="Apr 07 2023 16:34:56",
+            value="2023-04-07T16:34:56",
         ),
-        schemas.DateTime(value="Apr 07 2023 4:35:56 PM"),
+        schemas.DateTime(value="2023-04-07T16:35:56"),
         schemas.DateTime(
-            value="November 12, 2023",
+            value="2023-11-12",
         ),
         schemas.DateTime(
             value="2023-12-04T00:05:23+04:00",
@@ -1437,11 +1444,11 @@ def date_metadata() -> list[schemas.Date]:
             value="2022-01-01",
         ),
         schemas.Date(
-            value="Apr 07 2023",
+            value="2023-04-07",
         ),
-        schemas.Date(value="Apr 08 2023"),
+        schemas.Date(value="2023-04-08"),
         schemas.Date(
-            value="November 12, 2023",
+            value="2023-11-12",
         ),
         schemas.Date(
             value="2023-12-04",
@@ -1672,10 +1679,16 @@ def test_dataset_datetime_queries(
         dataset=schemas.Dataset(
             name="dataset1",
             metadata={
-                datetime_key: datetime_metadata[1].model_dump(),
-                date_key: date_metadata[1].model_dump(),
-                time_key: time_metadata[1].model_dump(),
-                duration_key: duration_metadata[1].model_dump(),
+                datetime_key: {
+                    "type": "datetime",
+                    "value": datetime_metadata[1].value,
+                },
+                date_key: {"type": "date", "value": date_metadata[1].value},
+                time_key: {"type": "time", "value": time_metadata[1].value},
+                duration_key: {
+                    "type": "duration",
+                    "value": duration_metadata[1].value,
+                },
             },
         ),
     )
@@ -1684,10 +1697,16 @@ def test_dataset_datetime_queries(
         dataset=schemas.Dataset(
             name="dataset2",
             metadata={
-                datetime_key: datetime_metadata[3].model_dump(),
-                date_key: date_metadata[3].model_dump(),
-                time_key: time_metadata[3].model_dump(),
-                duration_key: duration_metadata[3].model_dump(),
+                datetime_key: {
+                    "type": "datetime",
+                    "value": datetime_metadata[3].value,
+                },
+                date_key: {"type": "date", "value": date_metadata[3].value},
+                time_key: {"type": "time", "value": time_metadata[3].value},
+                duration_key: {
+                    "type": "duration",
+                    "value": duration_metadata[3].value,
+                },
             },
         ),
     )
@@ -1881,10 +1900,16 @@ def test_model_datetime_queries(
         model=schemas.Model(
             name="model1",
             metadata={
-                datetime_key: datetime_metadata[1].model_dump(),
-                date_key: date_metadata[1].model_dump(),
-                time_key: time_metadata[1].model_dump(),
-                duration_key: duration_metadata[1].model_dump(),
+                datetime_key: {
+                    "type": "datetime",
+                    "value": datetime_metadata[1].value,
+                },
+                date_key: {"type": "date", "value": date_metadata[1].value},
+                time_key: {"type": "time", "value": time_metadata[1].value},
+                duration_key: {
+                    "type": "duration",
+                    "value": duration_metadata[1].value,
+                },
             },
         ),
     )
@@ -1893,10 +1918,16 @@ def test_model_datetime_queries(
         model=schemas.Model(
             name="model2",
             metadata={
-                datetime_key: datetime_metadata[3].model_dump(),
-                date_key: date_metadata[3].model_dump(),
-                time_key: time_metadata[3].model_dump(),
-                duration_key: duration_metadata[3].model_dump(),
+                datetime_key: {
+                    "type": "datetime",
+                    "value": datetime_metadata[3].value,
+                },
+                date_key: {"type": "date", "value": date_metadata[3].value},
+                time_key: {"type": "time", "value": time_metadata[3].value},
+                duration_key: {
+                    "type": "duration",
+                    "value": duration_metadata[3].value,
+                },
             },
         ),
     )
@@ -2121,25 +2152,25 @@ def test_datum_datetime_queries(
     time_key = "a_third_key"
     duration_key = "some_duration"
 
-    datum_1.metadata[datetime_key] = datetime_metadata[1].model_dump()
-    datum_2.metadata[datetime_key] = datetime_metadata[2].model_dump()
-    datum_3.metadata[datetime_key] = datetime_metadata[2].model_dump()
-    datum_4.metadata[datetime_key] = datetime_metadata[3].model_dump()
+    datum_1.metadata[datetime_key] = datetime_metadata[1].value
+    datum_2.metadata[datetime_key] = datetime_metadata[2].value
+    datum_3.metadata[datetime_key] = datetime_metadata[2].value
+    datum_4.metadata[datetime_key] = datetime_metadata[3].value
 
-    datum_1.metadata[date_key] = date_metadata[1].model_dump()
-    datum_2.metadata[date_key] = date_metadata[2].model_dump()
-    datum_3.metadata[date_key] = date_metadata[2].model_dump()
-    datum_4.metadata[date_key] = date_metadata[3].model_dump()
+    datum_1.metadata[date_key] = date_metadata[1].value
+    datum_2.metadata[date_key] = date_metadata[2].value
+    datum_3.metadata[date_key] = date_metadata[2].value
+    datum_4.metadata[date_key] = date_metadata[3].value
 
-    datum_1.metadata[time_key] = time_metadata[1].model_dump()
-    datum_2.metadata[time_key] = time_metadata[2].model_dump()
-    datum_3.metadata[time_key] = time_metadata[2].model_dump()
-    datum_4.metadata[time_key] = time_metadata[3].model_dump()
+    datum_1.metadata[time_key] = time_metadata[1].value
+    datum_2.metadata[time_key] = time_metadata[2].value
+    datum_3.metadata[time_key] = time_metadata[2].value
+    datum_4.metadata[time_key] = time_metadata[3].value
 
-    datum_1.metadata[duration_key] = duration_metadata[1].model_dump()
-    datum_2.metadata[duration_key] = duration_metadata[2].model_dump()
-    datum_3.metadata[duration_key] = duration_metadata[2].model_dump()
-    datum_4.metadata[duration_key] = duration_metadata[3].model_dump()
+    datum_1.metadata[duration_key] = duration_metadata[1].value
+    datum_2.metadata[duration_key] = duration_metadata[2].value
+    datum_3.metadata[duration_key] = duration_metadata[2].value
+    datum_4.metadata[duration_key] = duration_metadata[3].value
 
     annotation = schemas.Annotation(
         task_type=enums.TaskType.CLASSIFICATION,
@@ -2183,9 +2214,12 @@ def test_datum_datetime_queries(
         model=schemas.Model(
             name="model1",
             metadata={
-                datetime_key: datetime_metadata[1].model_dump(),
-                date_key: date_metadata[1].model_dump(),
-                time_key: time_metadata[1].model_dump(),
+                datetime_key: {
+                    "type": "datetime",
+                    "value": datetime_metadata[1].value,
+                },
+                date_key: {"type": "date", "value": date_metadata[1].value},
+                time_key: {"type": "time", "value": time_metadata[1].value},
             },
         ),
     )
@@ -2194,9 +2228,12 @@ def test_datum_datetime_queries(
         model=schemas.Model(
             name="model2",
             metadata={
-                datetime_key: datetime_metadata[3].model_dump(),
-                date_key: date_metadata[3].model_dump(),
-                time_key: time_metadata[3].model_dump(),
+                datetime_key: {
+                    "type": "datetime",
+                    "value": datetime_metadata[3].value,
+                },
+                date_key: {"type": "date", "value": date_metadata[3].value},
+                time_key: {"type": "time", "value": time_metadata[3].value},
             },
         ),
     )
@@ -2362,40 +2399,64 @@ def test_annotation_datetime_queries(
         task_type=enums.TaskType.CLASSIFICATION,
         labels=[schemas.Label(key="k1", value="v1")],
         metadata={
-            datetime_key: datetime_metadata[1].model_dump(),
-            date_key: date_metadata[1].model_dump(),
-            time_key: time_metadata[1].model_dump(),
-            duration_key: duration_metadata[1].model_dump(),
+            datetime_key: {
+                "type": "datetime",
+                "value": datetime_metadata[1].value,
+            },
+            date_key: {"type": "date", "value": date_metadata[1].value},
+            time_key: {"type": "time", "value": time_metadata[1].value},
+            duration_key: {
+                "type": "duration",
+                "value": duration_metadata[1].value,
+            },
         },
     )
     annotation_2 = schemas.Annotation(
         task_type=enums.TaskType.CLASSIFICATION,
         labels=[schemas.Label(key="k2", value="v2")],
         metadata={
-            datetime_key: datetime_metadata[2].model_dump(),
-            date_key: date_metadata[2].model_dump(),
-            time_key: time_metadata[2].model_dump(),
-            duration_key: duration_metadata[2].model_dump(),
+            datetime_key: {
+                "type": "datetime",
+                "value": datetime_metadata[2].value,
+            },
+            date_key: {"type": "date", "value": date_metadata[2].value},
+            time_key: {"type": "time", "value": time_metadata[2].value},
+            duration_key: {
+                "type": "duration",
+                "value": duration_metadata[2].value,
+            },
         },
     )
     annotation_3 = schemas.Annotation(
         task_type=enums.TaskType.CLASSIFICATION,
         labels=[schemas.Label(key="k3", value="v3")],
         metadata={
-            datetime_key: datetime_metadata[2].model_dump(),
-            date_key: date_metadata[2].model_dump(),
-            time_key: time_metadata[2].model_dump(),
-            duration_key: duration_metadata[2].model_dump(),
+            datetime_key: {
+                "type": "datetime",
+                "value": datetime_metadata[2].value,
+            },
+            date_key: {"type": "date", "value": date_metadata[2].value},
+            time_key: {"type": "time", "value": time_metadata[2].value},
+            duration_key: {
+                "type": "duration",
+                "value": duration_metadata[2].value,
+            },
         },
     )
     annotation_4 = schemas.Annotation(
         task_type=enums.TaskType.CLASSIFICATION,
         labels=[schemas.Label(key="k4", value="v4")],
         metadata={
-            datetime_key: datetime_metadata[3].model_dump(),
-            date_key: date_metadata[3].model_dump(),
-            time_key: time_metadata[3].model_dump(),
-            duration_key: duration_metadata[3].model_dump(),
+            datetime_key: {
+                "type": "datetime",
+                "value": datetime_metadata[3].value,
+            },
+            date_key: {"type": "date", "value": date_metadata[3].value},
+            time_key: {"type": "time", "value": time_metadata[3].value},
+            duration_key: {
+                "type": "duration",
+                "value": duration_metadata[3].value,
+            },
         },
     )
 

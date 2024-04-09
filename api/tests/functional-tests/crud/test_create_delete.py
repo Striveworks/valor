@@ -119,6 +119,7 @@ def groundtruth_detections(
                                 (10, 30),
                                 (20, 30),
                                 (20, 20),
+                                (10, 20),
                             ]
                         ]
                     ),
@@ -189,9 +190,9 @@ def groundtruth_instance_segmentations(
     img1: schemas.Datum,
     img2: schemas.Datum,
 ) -> list[schemas.GroundTruth]:
-    assert isinstance(img2.metadata["height"], (int, float)) and isinstance(
-        img2.metadata["width"], (int, float)
-    )
+    assert isinstance(
+        img2.metadata["height"]["value"], (int, float)
+    ) and isinstance(img2.metadata["width"]["value"], (int, float))
     return [
         schemas.GroundTruth(
             dataset_name=dataset_name,
@@ -228,8 +229,8 @@ def groundtruth_instance_segmentations(
                                 poly_without_hole.value,
                             ],
                         ),
-                        height=img2.metadata["height"],
-                        width=img2.metadata["width"],
+                        height=img2.metadata["height"]["value"],
+                        width=img2.metadata["width"]["value"],
                     ),
                 ),
             ],
@@ -546,6 +547,7 @@ def test_create_detections_as_bbox_or_poly(
                     (xmax, ymin),
                     (xmax, ymax),
                     (xmin, ymax),
+                    (xmin, ymin),
                 ]
             ]
         ),

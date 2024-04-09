@@ -2,6 +2,8 @@ import datetime
 import re
 from typing import Any
 
+from pydantic import ValidationError
+
 from valor_api.enums import TaskType
 
 
@@ -61,7 +63,7 @@ def validate_type_float(v: Any):
     TypeError
         If the value is not of type 'float'.
     """
-    if not isinstance(v, float):
+    if not isinstance(v, (int, float)):
         raise generate_type_error(v, float.__name__)
 
 
@@ -539,28 +541,28 @@ def validate_dictionary(dictionary: dict):
             "type",
             "value",
         }:
-            raise TypeError(
+            raise ValidationError(
                 "Metadata values must be described using Valor's typing format."
             )
         # validate metadata type
-        type_ = value.get("type")
+        type_str = value.get("type")
         if (
-            not isinstance(type_, str)
-            or type_ not in map_str_to_type_validator
+            not isinstance(type_str, str)
+            or type_str not in map_str_to_type_validator
         ):
-            raise TypeError(
-                f"Metadata does not support values with type '{type_}'"
+            raise ValidationError(
+                f"Metadata does not support values with type '{type_str}'"
             )
         # validate metadata value
         value_ = value.get("value")
         try:
-            map_str_to_type_validator[type_](value_)
+            map_str_to_type_validator[type_str](value_)
         except (
             TypeError,
             ValueError,
         ) as e:
-            raise ValueError(
-                f"Metadata value '{value_}' failed validation for type '{type_}'. Validation error: {str(e)}"
+            raise ValidationError(
+                f"Metadata value '{value_}' failed validation for type '{type_str}'. Validation error: {str(e)}"
             )
 
 
