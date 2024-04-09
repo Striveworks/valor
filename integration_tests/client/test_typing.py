@@ -11,12 +11,12 @@ from valor import (
     enums,
 )
 from valor.schemas import (
-    BoundingBox,
-    BoundingPolygon,
+    Box,
     Dictionary,
+    Float,
     List,
+    Polygon,
     Raster,
-    Score,
     String,
     TaskTypeEnum,
 )
@@ -25,30 +25,30 @@ from valor.schemas import (
 def test_label_typing():
     assert type(Label.key) is String
     assert type(Label.value) is String
-    assert type(Label.score) is Score
+    assert type(Label.score) is Float
 
     label = Label(key="k1", value="v1")
     assert type(label.key) is String
     assert type(label.value) is String
-    assert type(label.score) is Score
+    assert type(label.score) is Float
 
     label = Label(key="k1", value="v1", score=None)
     assert type(label.key) is String
     assert type(label.value) is String
-    assert type(label.score) is Score
+    assert type(label.score) is Float
 
     label = Label(key="k1", value="v1", score=1.0)
     assert type(label.key) is String
     assert type(label.value) is String
-    assert type(label.score) is Score
+    assert type(label.score) is Float
 
 
 def test_annotation_typing():
     assert type(Annotation.task_type) is TaskTypeEnum
     assert type(Annotation.labels) is List[Label]
     assert type(Annotation.metadata) is Dictionary
-    assert type(Annotation.bounding_box) is BoundingBox
-    assert type(Annotation.polygon) is BoundingPolygon
+    assert type(Annotation.bounding_box) is Box
+    assert type(Annotation.polygon) is Polygon
     assert type(Annotation.raster) is Raster
 
     annotation = Annotation(
@@ -58,12 +58,12 @@ def test_annotation_typing():
     assert type(annotation.task_type) is TaskTypeEnum
     assert type(annotation.labels) is List[Label]
     assert type(annotation.metadata) is Dictionary
-    assert type(annotation.bounding_box) is BoundingBox
-    assert type(annotation.polygon) is BoundingPolygon
+    assert type(annotation.bounding_box) is Box
+    assert type(annotation.polygon) is Polygon
     assert type(annotation.raster) is Raster
 
-    bbox = BoundingBox.from_extrema(0, 1, 0, 1)
-    polygon = BoundingPolygon([bbox.boundary])
+    bbox = Box.from_extrema(0, 1, 0, 1)
+    polygon = Polygon([bbox.boundary])
     raster = Raster.from_numpy(np.zeros((10, 10)) == 0)
     annotation = Annotation(
         task_type=enums.TaskType.CLASSIFICATION,
@@ -76,8 +76,8 @@ def test_annotation_typing():
     assert type(annotation.task_type) is TaskTypeEnum
     assert type(annotation.labels) is List[Label]
     assert type(annotation.metadata) is Dictionary
-    assert type(annotation.bounding_box) is BoundingBox
-    assert type(annotation.polygon) is BoundingPolygon
+    assert type(annotation.bounding_box) is Box
+    assert type(annotation.polygon) is Polygon
     assert type(annotation.raster) is Raster
 
 

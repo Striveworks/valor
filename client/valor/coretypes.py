@@ -5,7 +5,7 @@ import json
 import time
 import warnings
 from dataclasses import asdict, dataclass
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from valor.client import ClientConnection, connect, get_connection
 from valor.enums import AnnotationType, EvaluationStatus, TableStatus, TaskType
@@ -80,12 +80,11 @@ class GroundTruth(StaticCollection):
         owner="groundtruth", name="annotations"
     )
 
-    @classmethod
-    def create(
-        cls,
+    def __init__(
+        self,
+        *,
         datum: Datum,
         annotations: List[Annotation],
-        **_,
     ):
         """
         Creates a ground truth.
@@ -93,16 +92,12 @@ class GroundTruth(StaticCollection):
         Parameters
         ----------
         datum : Datum
-            The `Datum` associated with the `GroundTruth`.
+            The datum that the ground truth is operating over.
         annotations : List[Annotation]
-            The list of `Annotations` associated with the `GroundTruth`.
+            The list of ground truth annotations.
         """
-        return cls.definite(
-            datum=datum,
-            annotations=annotations,
-        )
+        super().__init__(datum=datum, annotations=annotations)
 
-    def __post_init__(self):
         for annotation in self.annotations:
             for label in annotation.labels:
                 if label.score.get_value() is not None:
@@ -143,12 +138,11 @@ class Prediction(StaticCollection):
         owner="prediction", name="annotations"
     )
 
-    @classmethod
-    def create(
-        cls,
+    def __init__(
+        self,
+        *,
         datum: Datum,
         annotations: List[Annotation],
-        **_,
     ):
         """
         Creates a prediction.
@@ -156,19 +150,13 @@ class Prediction(StaticCollection):
         Parameters
         ----------
         datum : Datum
-            The `Datum` associated with the `Prediction`.
+            The datum that the prediction is operating over.
         annotations : List[Annotation]
-            The list of `Annotations` associated with the `Prediction`.
+            The list of predicted annotations.
         """
-        return cls.definite(
-            datum=datum,
-            annotations=annotations,
-        )
+        super().__init__(datum=datum, annotations=annotations)
 
-    def __post_init__(self):
-        """
-        Validate the inputs of the `Prediction` based on task type.
-        """
+        # validation
         for annotation in self.annotations:
             task_type = annotation.task_type.get_value()
             if task_type in [
@@ -435,13 +423,36 @@ class Dataset(StaticCollection):
         owner="dataset", name="metadata"
     )
 
+    def __init__(
+        self,
+        *,
+        name: str,
+        metadata: Optional[dict] = None,
+        connection: Optional[ClientConnection] = None,
+    ):
+        """
+        Creates a local instance of a dataset.
+
+        Use 'Dataset.create' classmethod to create a dataset with persistence.
+
+        Parameters
+        ----------
+        name : str
+            The name of the dataset.
+        metadata : dict, optional
+            A dictionary of metadata that describes the dataset.
+        connection : ClientConnection, optional
+            An initialized client connection.
+        """
+        self.conn = connection
+        super().__init__(name=name, metadata=metadata if metadata else dict())
+
     @classmethod
     def create(
         cls,
         name: str,
-        metadata: Optional[dict] = None,
+        metadata: Optional[Dict[str, Any]] = None,
         connection: Optional[ClientConnection] = None,
-        **_,
     ) -> Dataset:
         """
         Creates a dataset that persists in the back end.
@@ -450,19 +461,12 @@ class Dataset(StaticCollection):
         ----------
         name : str
             The name of the dataset.
-        metadata : dict
+        metadata : dict, optional
             A dictionary of metadata that describes the dataset.
-
-        Returns
-        -------
-        valor.Dataset
-            The created dataset.
+        connection : ClientConnection, optional
+            An initialized client connection.
         """
-        dataset = cls.definite(
-            name=name,
-            metadata=metadata,
-        )
-        dataset.add_connection(connection)
+        dataset = cls(name=name, metadata=metadata, connection=connection)
         Client(dataset.conn).create_dataset(dataset)
         return dataset
 
@@ -486,20 +490,6 @@ class Dataset(StaticCollection):
             The dataset or 'None' if it doesn't exist.
         """
         return Client(connection).get_dataset(name)
-
-    def add_connection(
-        self,
-        connection: Optional[ClientConnection],
-    ):
-        """
-        Stores a pre-existing connection.
-
-        Parameters
-        ----------
-        connection : ClientConnnetion, optional
-            An optional Valor client object for interacting with the API.
-        """
-        self.conn = connection
 
     def add_groundtruth(
         self,
@@ -688,11 +678,37 @@ class Model(StaticCollection):
     name: String = String.symbolic(owner="model", name="name")
     metadata: Dictionary = Dictionary.symbolic(owner="model", name="metadata")
 
+    def __init__(
+        self,
+        *,
+        name: str,
+        metadata: Optional[dict] = None,
+        connection: Optional[ClientConnection] = None,
+    ):
+        """
+        Creates a local instance of a model.
+
+        Use 'Model.create' classmethod to create a model with persistence.
+
+        Parameters
+        ----------
+        name : String
+            The name of the model.
+        metadata : Dictionary
+            A dictionary of metadata that describes the model.
+        connection : ClientConnection, optional
+            An initialized client connection.
+        symbol : Symbol, optional
+            Symbol to represent a model.
+        """
+        self.conn = connection
+        super().__init__(name=name, metadata=metadata if metadata else dict())
+
     @classmethod
     def create(
         cls,
         name: str,
-        metadata: Optional[dict] = None,
+        metadata: Optional[Dict[str, Any]] = None,
         connection: Optional[ClientConnection] = None,
         **_,
     ) -> Model:
@@ -703,20 +719,12 @@ class Model(StaticCollection):
         ----------
         name : str
             The name of the model.
-        metadata : dict
+        metadata : dict, optional
             A dictionary of metadata that describes the model.
-        connection : ClientConnnetion, optional
-            An optional Valor client object for interacting with the API.
-
-        Returns
-        -------
-        valor.Model
-            The created model.
+        connection : ClientConnection, optional
+            An initialized client connection.
         """
-        model = cls.definite(
-            name=name,
-            metadata=metadata,
-        )
+        model = cls(name=name, metadata=metadata, connection=connection)
         model.add_connection(connection)
         Client(connection).create_model(model)
         return model
@@ -1316,8 +1324,8 @@ class Client:
             resp = decode_api_format(self.conn.get_dataset(name))
             dataset = Dataset(
                 **resp,
+                connection=self.conn,
             )
-            dataset.add_connection(self.conn)
             return dataset
         except ClientException as e:
             if e.status_code == 404:
@@ -1347,8 +1355,7 @@ class Client:
         dataset_list = []
         for kwargs in self.conn.get_datasets(filter_):
             kwargs = decode_api_format(kwargs)
-            dataset = Dataset(**kwargs)
-            dataset.add_connection(self.conn)
+            dataset = Dataset(**kwargs, connection=self.conn)
             dataset_list.append(dataset)
         return dataset_list
 
@@ -1373,7 +1380,7 @@ class Client:
         if isinstance(filter_, Filter):
             filter_ = asdict(filter_)
         return [
-            Datum.create(**decode_api_format(datum))
+            Datum(**decode_api_format(datum))
             for datum in self.conn.get_datums(filter_)
         ]
 
@@ -1402,7 +1409,7 @@ class Client:
         try:
             resp = self.conn.get_datum(dataset_name=dataset_name, uid=uid)
             resp = decode_api_format(resp)
-            return Datum.create(**resp)
+            return Datum(**resp)
         except ClientException as e:
             if e.status_code == 404:
                 return None
@@ -1558,7 +1565,7 @@ class Client:
                 datum_uid=datum_uid,
             )
             resp = decode_api_format(resp)
-            return Prediction.create(**resp)
+            return Prediction(**resp)
         except ClientException as e:
             if e.status_code == 404:
                 return None
