@@ -38,9 +38,9 @@ class EvaluationParameters(BaseModel):
     iou_thresholds_to_compute: list[float] | None = None
     iou_thresholds_to_return: list[float] | None = None
     label_map: LabelMapType | None = None
-    recall_score_threshold: float = 0
+    recall_score_threshold: float | None = 0
     compute_pr_curves: bool | None = None
-    pr_curve_iou_threshold: float = 0.5
+    pr_curve_iou_threshold: float | None = 0.5
 
     # pydantic setting
     model_config = ConfigDict(extra="forbid")
