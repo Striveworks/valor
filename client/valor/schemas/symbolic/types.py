@@ -1662,7 +1662,7 @@ class Dictionary(Equatable, MutableMapping):
         """Decode object from JSON compatible dictionary."""
         return cls(
             {
-                k: _get_type_by_name(v["type"]).decode_value(v["value"])
+                k: get_type_by_name(v["type"]).decode_value(v["value"])
                 for k, v in value.items()
             }
         )
@@ -2105,7 +2105,7 @@ def _get_type_by_value(other: typing.Any):
         raise NotImplementedError(str(type(other).__name__))
 
 
-def _get_type_by_name(
+def get_type_by_name(
     name: str, additional_types: typing.Optional[typing.Dict[str, type]] = None
 ):
     """Retrieves variable type by name."""
@@ -2140,7 +2140,7 @@ def _get_type_by_name(
     if not match:
         raise NotImplementedError(name)
 
-    type_ = _get_type_by_name(
+    type_ = get_type_by_name(
         name=match.group(1), additional_types=additional_types
     )
     if "list" in name.lower():
