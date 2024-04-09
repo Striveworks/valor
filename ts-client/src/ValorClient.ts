@@ -254,18 +254,38 @@ export class ValorClient {
    * @param model name of the model
    * @param dataset name of the dataset
    * @param taskType type of task
+   * @param [iouThresholdsToCompute] list of floats describing which Intersection over Unions (IoUs) to use when calculating metrics (i.e., mAP)
+   * @param [iouThresholdsToReturn] list of floats describing which Intersection over Union (IoUs) thresholds to calculate a metric for. Must be a subset of `iou_thresholds_to_compute`
+   * @param [labelMap] mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models
+   * @param [recallScoreThreshold] confidence score threshold for use when determining whether to count a prediction as a true positive or not while calculating Average Recall
+   * @param [computePrCurves] boolean which determines whether we calculate precision-recall curves or not
+   * @param [prCurveIouThreshold] the IOU threshold to use when calculating precision-recall curves for object detection tasks. Defaults to 0.5. Does nothing when compute_pr_curves is set to False or None
    *
    * @returns {Promise<Evaluation>}
    */
   public async createOrGetEvaluation(
     model: string,
     dataset: string,
-    taskType: TaskType
+    taskType: TaskType,
+    iouThresholdsToCompute?: number[],
+    iouThresholdsToReturn?: number[],
+    labelMap?: number[][][],
+    recallScoreThreshold?: number,
+    computePrCurves?: boolean,
+    prCurveIouThreshold?: number
   ): Promise<Evaluation> {
     const response = await this.client.post('/evaluations', {
       model_names: [model],
       datum_filter: { dataset_names: [dataset] },
-      parameters: { task_type: taskType }
+      parameters: {
+        task_type: taskType,
+        iou_thresholds_to_compute:iouThresholdsToCompute,
+        iou_thresholds_to_return: iouThresholdsToReturn,
+        label_map: labelMap,
+        recall_score_threshold: recallScoreThreshold,
+        compute_pr_curves: computePrCurves,
+        pr_curve_iou_threshold: prCurveIouThreshold
+      }
     });
     return this.unmarshalEvaluation(response.data[0]);
   }
