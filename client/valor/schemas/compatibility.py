@@ -14,7 +14,7 @@ from valor.schemas.symbolic.types import (
     Polygon,
     Raster,
     Time,
-    _get_type_by_name,
+    get_type_by_name,
 )
 
 
@@ -122,11 +122,11 @@ def _decode_api_metadata_values(value: Any):
     if not isinstance(value, dict):
         return value
     elif set(value.keys()) == {"geojson"}:
-        obj = _get_type_by_name(value["geojson"]["type"])
+        obj = get_type_by_name(value["geojson"]["type"])
         return obj.decode_value(value["geojson"]["coordinates"])
     elif len(value) == 1:
         k, v = list(value.items())[0]
-        obj = _get_type_by_name(k)
+        obj = get_type_by_name(k)
         return obj.decode_value(v)
     else:
         raise NotImplementedError(str(value))

@@ -17,7 +17,7 @@ from valor.schemas.symbolic.types import (
     String,
     TaskTypeEnum,
     Variable,
-    _get_type_by_name,
+    get_type_by_name,
 )
 
 
@@ -27,7 +27,7 @@ def _get_schema_type_by_name(name: str):
         "annotation": Annotation,
         "datum": Datum,
     }
-    return _get_type_by_name(name=name, additional_types=types_)
+    return get_type_by_name(name=name, additional_types=types_)
 
 
 class StaticCollection(Equatable):

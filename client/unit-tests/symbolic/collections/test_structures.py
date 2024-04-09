@@ -28,8 +28,8 @@ from valor.schemas.symbolic.operators import (
 from valor.schemas.symbolic.types import (
     Dictionary,
     DictionaryValue,
-    _get_type_by_name,
     _get_type_by_value,
+    get_type_by_name,
 )
 
 
@@ -61,7 +61,7 @@ def test__get_type_by_value():
         assert _get_type_by_value(set()).__name__
 
 
-def test__get_type_by_name():
+def test_get_type_by_name():
     types_ = [
         Bool,
         String,
@@ -82,10 +82,10 @@ def test__get_type_by_name():
         type_name = type_.__name__
         assert issubclass(type_, Variable)
         assert isinstance(type_name, str)
-        assert _get_type_by_name(type_name) is type_
-        assert _get_type_by_name(f"list[{type_name}]") is List[type_]
+        assert get_type_by_name(type_name) is type_
+        assert get_type_by_name(f"list[{type_name}]") is List[type_]
     with pytest.raises(NotImplementedError):
-        assert _get_type_by_name("some_nonexistent_type")
+        assert get_type_by_name("some_nonexistent_type")
 
 
 def get_function_name(fn: str) -> str:
