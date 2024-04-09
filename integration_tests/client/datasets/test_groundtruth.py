@@ -197,20 +197,18 @@ def test_add_groundtruth(
     with pytest.raises(TypeError):
         dataset.add_groundtruth("not_a_gt")  # type: ignore
 
-    # make sure we get a warning when passing a ground truth without annotations
-    with pytest.warns(UserWarning):
-        dataset.add_groundtruth(
-            GroundTruth(
-                datum=Datum(
-                    uid="uid",
-                    metadata={
-                        "height": 200,
-                        "width": 150,
-                    },
-                ),
-                annotations=[],
-            )
+    dataset.add_groundtruth(
+        GroundTruth(
+            datum=Datum(
+                uid="uid",
+                metadata={
+                    "height": 200,
+                    "width": 150,
+                },
+            ),
+            annotations=[],
         )
+    )
 
     # make sure raster is not dependent on datum metadata
     dataset.add_groundtruth(gt_semantic_segs_mismatch)

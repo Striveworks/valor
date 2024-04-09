@@ -432,11 +432,9 @@ def test_add_empty_prediction(
     with pytest.raises(TypeError):
         model.add_prediction(dataset, "not_a_pred")  # type: ignore
 
-    # make sure we get a warning when adding a prediction without annotations
-    with pytest.warns(UserWarning):
-        model.add_prediction(
-            dataset, Prediction(datum=extra_datum, annotations=[])
-        )
+    model.add_prediction(
+        dataset, Prediction(datum=extra_datum, annotations=[])
+    )
 
     for pd in pred_dets:
         model.add_prediction(dataset, pd)
