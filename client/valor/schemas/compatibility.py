@@ -1,14 +1,10 @@
 from typing import Any, Optional, Union
 
-from valor.schemas.symbolic.collections import (
-    Dictionary,
-    _get_atomic_type_by_name,
-)
 from valor.schemas.symbolic.types import (
-    BoundingBox,
-    BoundingPolygon,
+    Box,
     Date,
     DateTime,
+    Dictionary,
     Duration,
     LineString,
     MultiLineString,
@@ -18,6 +14,7 @@ from valor.schemas.symbolic.types import (
     Polygon,
     Raster,
     Time,
+    get_type_by_name,
 )
 
 
@@ -49,38 +46,33 @@ def _encode_api_metadata(metadata: Dictionary) -> dict:
     return {k: _encode_api_metadata_values(v) for k, v in metadata.items()}
 
 
-def _encode_api_geometry(
-    geometry: Union[
-        Polygon, MultiPolygon, BoundingPolygon, BoundingBox, Raster
-    ]
-):
-    value = geometry.get_value()
-    if value is None:
+def _encode_api_geometry(geometry: Union[Box, Polygon, MultiPolygon, Raster]):
+    if geometry.get_value() is None:
         return None
-    elif isinstance(geometry, BoundingBox):
+    elif isinstance(geometry, Box):
         return {
             "polygon": {
                 "points": [
-                    {"x": pt[0], "y": pt[1]} for pt in geometry.boundary
+                    {"x": pt[0], "y": pt[1]} for pt in geometry.boundary[:-1]
                 ]
             }
         }
-    elif isinstance(geometry, (BoundingPolygon, Polygon)):
+    elif isinstance(geometry, Polygon):
         return {
             "boundary": {
                 "points": [
-                    {"x": pt[0], "y": pt[1]} for pt in geometry.boundary
+                    {"x": pt[0], "y": pt[1]} for pt in geometry.boundary[:-1]
                 ]
             },
             "holes": [
-                {"points": [{"x": pt[0], "y": pt[1]} for pt in hole]}
+                {"points": [{"x": pt[0], "y": pt[1]} for pt in hole[:-1]]}
                 for hole in geometry.holes
             ],
         }
     elif isinstance(geometry, MultiPolygon):
         return {
             "polygons": [
-                _encode_api_geometry(poly) for poly in geometry.polygons
+                _encode_api_geometry(poly) for poly in geometry.to_polygons()
             ]
         }
     elif isinstance(geometry, Raster):
@@ -130,11 +122,11 @@ def _decode_api_metadata_values(value: Any):
     if not isinstance(value, dict):
         return value
     elif set(value.keys()) == {"geojson"}:
-        obj = _get_atomic_type_by_name(value["geojson"]["type"])
+        obj = get_type_by_name(value["geojson"]["type"])
         return obj.decode_value(value["geojson"]["coordinates"])
     elif len(value) == 1:
         k, v = list(value.items())[0]
-        obj = _get_atomic_type_by_name(k)
+        obj = get_type_by_name(k)
         return obj.decode_value(v)
     else:
         raise NotImplementedError(str(value))
@@ -180,7 +172,7 @@ def _decode_api_geometry(value: Optional[dict]):
     elif set(value.keys()) == {"mask", "geometry"}:
         if value["geometry"] is not None:
             value["geometry"] = _decode_api_geometry(value["geometry"])
-        return Raster.decode_value(value).get_value()
+        return Raster.decode_value(value).get_value()  # type: ignore - none case already handled
 
 
 def decode_api_format(json: dict):

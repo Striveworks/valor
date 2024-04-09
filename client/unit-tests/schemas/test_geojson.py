@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from valor.schemas import BoundingBox, MultiPolygon, Point, Polygon, Raster
+from valor.schemas import Box, MultiPolygon, Point, Polygon, Raster
 
 
 def test_point():
@@ -74,18 +74,16 @@ def test_boundingbox():
     coords = [[p1, p2, p3, p4, p1]]
 
     # test validation
-    BoundingBox(coords)
+    Box(coords)
     with pytest.raises(TypeError) as e:
-        BoundingBox(polygon=p1)  # type: ignore
+        Box(polygon=p1)  # type: ignore
     with pytest.raises(ValueError) as e:
-        BoundingBox([[p1, p2, p3, p4]])
+        Box([[p1, p2, p3, p4]])
     assert "at least 4 points with the first point being repeated" in str(e)
 
     # test classmethod `from_extrema`
     assert (
-        BoundingBox.from_extrema(
-            xmin=-1, xmax=10, ymin=-2, ymax=11
-        ).get_value()
+        Box.from_extrema(xmin=-1, xmax=10, ymin=-2, ymax=11).get_value()
         == coords
     )
 
@@ -126,9 +124,9 @@ def test_raster(raster_raw_mask):
 
     # test validation
     with pytest.raises(TypeError):
-        assert Raster({"mask": "test", "geometry": None})
+        assert Raster({"mask": "test", "geometry": None})  # type: ignore testing
     with pytest.raises(TypeError) as e:
-        assert Raster(123)
+        assert Raster(123)  # type: ignore - testing
 
     # test classmethod `from_numpy`
     mask2 = np.ones((10, 10, 10)) == 1
