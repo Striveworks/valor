@@ -125,6 +125,8 @@ class GeospatialFilter(BaseModel):
     value: Point | Polygon | MultiPolygon
     operator: str = "intersect"
 
+    model_config = ConfigDict(extra="forbid")
+
     @field_validator("operator")
     @classmethod
     def _validate_comparison_operator(cls, op: str) -> str:
@@ -136,8 +138,7 @@ class GeospatialFilter(BaseModel):
             )
         return op
 
-    model_config = ConfigDict(extra="forbid")
-
+    @classmethod
 
 class DateTimeFilter(BaseModel):
     """

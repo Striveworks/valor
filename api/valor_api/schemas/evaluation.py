@@ -4,8 +4,8 @@ from pydantic import BaseModel, ConfigDict, model_validator
 
 from valor_api.enums import AnnotationType, EvaluationStatus, TaskType
 from valor_api.schemas.filters import Filter
-from valor_api.schemas.label import Label
 from valor_api.schemas.metrics import ConfusionMatrixResponse, Metric
+from valor_api.schemas.types import Label
 
 LabelMapType = list[list[list[str]]]
 
