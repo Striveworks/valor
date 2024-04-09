@@ -97,10 +97,7 @@ def geospatial_coordinates() -> dict[
 @pytest.fixture
 def metadata_1(geospatial_coordinates) -> dict[str, int | float | str | dict]:
     return {
-        "some_numeric_attribute": {
-            "type": "float",
-            "value": {"type": "float", "value": 0.4},
-        },
+        "some_numeric_attribute": {"type": "float", "value": 0.4},
         "some_str_attribute": {"type": "string", "value": "abc"},
         "height": {"type": "integer", "value": 10},
         "width": {"type": "integer", "value": 10},
@@ -236,13 +233,13 @@ def groundtruth_annotations_cat(
         schemas.Annotation(
             task_type=TaskType.OBJECT_DETECTION,
             labels=[label_cat],
-            box=schemas.Box.from_extrema(0, 0, 10, 10),
+            box=schemas.Box.from_extrema(xmin=0, ymin=0, xmax=10, ymax=10),
             metadata=metadata_1,
         ),
         schemas.Annotation(
             task_type=TaskType.OBJECT_DETECTION,
             labels=[label_cat],
-            box=schemas.Box.from_extrema(0, 0, 1, 50),
+            box=schemas.Box.from_extrema(xmin=0, ymin=0, xmax=1, ymax=50),
             metadata=metadata_2,
         ),
         schemas.Annotation(
@@ -276,13 +273,13 @@ def groundtruth_annotations_dog(
         schemas.Annotation(
             task_type=TaskType.OBJECT_DETECTION,
             labels=[label_dog],
-            box=schemas.Box.from_extrema(0, 0, 10, 10),
+            box=schemas.Box.from_extrema(xmin=0, ymin=0, xmax=10, ymax=10),
             metadata=metadata_3,
         ),
         schemas.Annotation(
             task_type=TaskType.OBJECT_DETECTION,
             labels=[label_dog],
-            box=schemas.Box.from_extrema(0, 0, 1, 50),
+            box=schemas.Box.from_extrema(xmin=0, ymin=0, xmax=1, ymax=50),
             metadata=metadata_4,
         ),
         schemas.Annotation(
@@ -321,7 +318,7 @@ def prediction_annotations_cat(
                 schemas.Label(key="class", value="cat", score=0.8),
                 schemas.Label(key="class", value="dog", score=0.2),
             ],
-            box=schemas.Box.from_extrema(0, 0, 10, 10),
+            box=schemas.Box.from_extrema(xmin=0, ymin=0, xmax=10, ymax=10),
             metadata=metadata_1,
         ),
         schemas.Annotation(
@@ -330,7 +327,7 @@ def prediction_annotations_cat(
                 schemas.Label(key="class", value="cat", score=0.7),
                 schemas.Label(key="class", value="dog", score=0.3),
             ],
-            box=schemas.Box.from_extrema(0, 0, 1, 50),
+            box=schemas.Box.from_extrema(xmin=0, ymin=0, xmax=1, ymax=50),
             metadata=metadata_2,
         ),
         schemas.Annotation(
@@ -375,7 +372,7 @@ def prediction_annotations_dog(
                 schemas.Label(key="class", value="cat", score=0.2),
                 schemas.Label(key="class", value="dog", score=0.8),
             ],
-            box=schemas.Box.from_extrema(0, 0, 10, 10),
+            box=schemas.Box.from_extrema(xmin=0, ymin=0, xmax=10, ymax=10),
             metadata=metadata_3,
         ),
         schemas.Annotation(
@@ -384,7 +381,7 @@ def prediction_annotations_dog(
                 schemas.Label(key="class", value="cat", score=0.3),
                 schemas.Label(key="class", value="dog", score=0.7),
             ],
-            box=schemas.Box.from_extrema(0, 0, 1, 50),
+            box=schemas.Box.from_extrema(xmin=0, ymin=0, xmax=1, ymax=50),
             metadata=metadata_4,
         ),
         schemas.Annotation(

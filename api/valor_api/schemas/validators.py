@@ -2,8 +2,6 @@ import datetime
 import re
 from typing import Any
 
-from pydantic import ValidationError
-
 from valor_api.enums import TaskType
 
 
@@ -541,7 +539,7 @@ def validate_dictionary(dictionary: dict):
             "type",
             "value",
         }:
-            raise ValidationError(
+            raise ValueError(
                 "Metadata values must be described using Valor's typing format."
             )
         # validate metadata type
@@ -550,7 +548,7 @@ def validate_dictionary(dictionary: dict):
             not isinstance(type_str, str)
             or type_str not in map_str_to_type_validator
         ):
-            raise ValidationError(
+            raise TypeError(
                 f"Metadata does not support values with type '{type_str}'"
             )
         # validate metadata value
@@ -561,44 +559,43 @@ def validate_dictionary(dictionary: dict):
             TypeError,
             ValueError,
         ) as e:
-            raise ValidationError(
+            raise ValueError(
                 f"Metadata value '{value_}' failed validation for type '{type_str}'. Validation error: {str(e)}"
             )
 
 
-def validate_geojson(class_name: str, geojson: dict):
+def validate_geojson(geojson: dict):
     map_str_to_geojson_validator = {
-        "point": validate_type_point,
-        "multipoint": validate_type_multipoint,
-        "linestring": validate_type_linestring,
-        "multilinestring": validate_type_multilinestring,
-        "polygon": validate_type_polygon,
-        "box": validate_type_box,
-        "multipolygon": validate_type_multipolygon,
+        "Point": validate_type_point,
+        "MultiPoint": validate_type_multipoint,
+        "LineString": validate_type_linestring,
+        "MultiLineString": validate_type_multilinestring,
+        "Polygon": validate_type_polygon,
+        "MultiPolygon": validate_type_multipolygon,
     }
     # validate geojson
-    if class_name.lower() not in map_str_to_geojson_validator:
+    if not (
+        isinstance(geojson, dict)
+        and set(geojson.keys()) == {"type", "coordinates"}
+        and (geometry_type := geojson.get("type"))
+        and (geometry_value := geojson.get("coordinates"))
+    ):
+        raise ValueError(
+            f"Expected geojson to be a dictionary with keys 'type' and 'coordinates'. Received value '{geojson}'."
+        )
+
+    # validate type
+    if geometry_type not in map_str_to_geojson_validator:
         raise TypeError(
-            f"Class '{class_name}' is not a supported GeoJSON geometry."
+            f"Class '{geometry_type}' is not a supported GeoJSON geometry type."
         )
-    elif not isinstance(geojson, dict):
-        raise TypeError(
-            "GeoJSON should be defined by an object of type 'dict'."
-        )
-    elif set(geojson.keys()) != {"type", "coordinates"}:
-        raise KeyError(
-            "Expected geojson to have keys 'type' and 'coordinates'."
-        )
-    elif geojson.get("type") != class_name:
-        raise TypeError(f"GeoJSON type does not match '{class_name}'.")
+
     # validate coordinates
     try:
-        map_str_to_geojson_validator[class_name.lower()](
-            geojson.get("coordinates")
-        )
+        map_str_to_geojson_validator[geometry_type](geometry_value)
     except (TypeError, ValueError) as e:
         raise ValueError(
-            f"Value does not conform to {class_name}. Validation error: {str(e)}"
+            f"Value does not conform to '{geometry_type}'. Validation error: {str(e)}"
         )
 
 
@@ -609,31 +606,5 @@ def deserialize(class_name: str, values: Any) -> Any:
             raise TypeError(
                 f"'{class_name}' received value with type '{values_type}'"
             )
-        values = values.pop("value")
-    map_str_to_validator = {
-        "bool": validate_type_bool,
-        "integer": validate_type_integer,
-        "float": validate_type_float,
-        "string": validate_type_string,
-        "datetime": validate_type_datetime,
-        "date": validate_type_date,
-        "time": validate_type_time,
-        "duration": validate_type_duration,
-        "point": validate_type_point,
-        "multipoint": validate_type_multipoint,
-        "linestring": validate_type_linestring,
-        "multilinestring": validate_type_multilinestring,
-        "polygon": validate_type_polygon,
-        "box": validate_type_box,
-        "multipolygon": validate_type_multipolygon,
-    }
-    if class_name.lower() in map_str_to_validator:
-        if not (isinstance(values, dict) and set(values.keys()) == {"value"}):
-            values = {"value": values}
-        try:
-            map_str_to_validator[class_name.lower()](values.get("value"))
-        except (TypeError, ValueError) as e:
-            raise ValueError(
-                f"Value '{values.get('value')}' does not conform to {class_name}. Validation error: {str(e)}"
-            )
+        values.pop("type")
     return values

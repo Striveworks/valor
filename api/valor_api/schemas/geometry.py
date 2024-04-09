@@ -20,7 +20,17 @@ from pydantic import (
 )
 from sqlalchemy import ScalarSelect, select
 
-from valor_api.schemas.validators import deserialize, validate_geojson
+from valor_api.schemas.validators import (
+    deserialize,
+    validate_geojson,
+    validate_type_box,
+    validate_type_linestring,
+    validate_type_multilinestring,
+    validate_type_multipoint,
+    validate_type_multipolygon,
+    validate_type_point,
+    validate_type_polygon,
+)
 
 
 class Point(BaseModel):
@@ -46,13 +56,18 @@ class Point(BaseModel):
     def deserialize_valor_type(cls, values: Any) -> Any:
         return deserialize(class_name=cls.__name__, values=values)
 
+    @field_validator("value")
+    @classmethod
+    def validate_value(cls, v):
+        validate_type_point(v)
+        return v
+
     @classmethod
     def from_geojson(cls, geojson: dict):
-        validate_geojson(class_name=cls.__name__, geojson=geojson)
-        value = geojson.get("coordinates")
-        if not isinstance(value, list):
-            raise TypeError("Coordinates should contain a list.")
-        return cls(value=tuple(value))
+        geometry = GeoJSON(**geojson).geometry
+        if type(geometry) is not Point:
+            raise TypeError(f"GeoJSON is for a different type '{geojson}'.")
+        return geometry
 
     def to_geojson(self) -> dict:
         return {"type": "Point", "coordinates": list(self.value)}
@@ -84,13 +99,18 @@ class MultiPoint(BaseModel):
     def deserialize_valor_type(cls, values: Any) -> Any:
         return deserialize(class_name=cls.__name__, values=values)
 
+    @field_validator("value")
+    @classmethod
+    def validate_value(cls, v):
+        validate_type_multipoint(v)
+        return v
+
     @classmethod
     def from_geojson(cls, geojson: dict):
-        validate_geojson(class_name=cls.__name__, geojson=geojson)
-        value = geojson.get("coordinates")
-        if not isinstance(value, list):
-            raise TypeError("Coordinates should contain a list.")
-        return cls(value=[tuple(point) for point in value])
+        geometry = GeoJSON(**geojson).geometry
+        if type(geometry) is not MultiPoint:
+            raise TypeError(f"GeoJSON is for a different type '{geojson}'.")
+        return geometry
 
     def to_geojson(self) -> dict:
         return {
@@ -128,13 +148,18 @@ class LineString(BaseModel):
     def deserialize_valor_type(cls, values: Any) -> Any:
         return deserialize(class_name=cls.__name__, values=values)
 
+    @field_validator("value")
+    @classmethod
+    def validate_value(cls, v):
+        validate_type_linestring(v)
+        return v
+
     @classmethod
     def from_geojson(cls, geojson: dict):
-        validate_geojson(class_name=cls.__name__, geojson=geojson)
-        value = geojson.get("coordinates")
-        if not isinstance(value, list):
-            raise TypeError("Coordinates should contain a list.")
-        return cls(value=[tuple(point) for point in value])
+        geometry = GeoJSON(**geojson).geometry
+        if type(geometry) is not LineString:
+            raise TypeError(f"GeoJSON is for a different type '{geojson}'.")
+        return geometry
 
     def to_geojson(self) -> dict:
         return {
@@ -170,13 +195,18 @@ class MultiLineString(BaseModel):
     def deserialize_valor_type(cls, values: Any) -> Any:
         return deserialize(class_name=cls.__name__, values=values)
 
+    @field_validator("value")
+    @classmethod
+    def validate_value(cls, v):
+        validate_type_multilinestring(v)
+        return v
+
     @classmethod
     def from_geojson(cls, geojson: dict):
-        validate_geojson(class_name=cls.__name__, geojson=geojson)
-        value = geojson.get("coordinates")
-        if not isinstance(value, list):
-            raise TypeError("Coordinates should contain a list.")
-        return cls(value=[[tuple(point) for point in line] for line in value])
+        geometry = GeoJSON(**geojson).geometry
+        if type(geometry) is not MultiLineString:
+            raise TypeError(f"GeoJSON is for a different type '{geojson}'.")
+        return geometry
 
     def to_geojson(self) -> dict:
         return {
@@ -219,17 +249,18 @@ class Polygon(BaseModel):
     def deserialize_valor_type(cls, values: Any) -> Any:
         return deserialize(class_name=cls.__name__, values=values)
 
+    @field_validator("value")
+    @classmethod
+    def validate_value(cls, v):
+        validate_type_polygon(v)
+        return v
+
     @classmethod
     def from_geojson(cls, geojson: dict):
-        validate_geojson(class_name=cls.__name__, geojson=geojson)
-        value = geojson.get("coordinates")
-        if not isinstance(value, list):
-            raise TypeError("Coordinates should contain a list.")
-        return cls(
-            value=[
-                [tuple(point) for point in subpolygon] for subpolygon in value
-            ]
-        )
+        geometry = GeoJSON(**geojson).geometry
+        if type(geometry) is not Polygon:
+            raise TypeError(f"GeoJSON is for a different type '{geojson}'.")
+        return geometry
 
     def to_geojson(self) -> dict:
         return {
@@ -272,6 +303,12 @@ class Box(BaseModel):
     @classmethod
     def deserialize_valor_type(cls, values: Any) -> Any:
         return deserialize(class_name=cls.__name__, values=values)
+
+    @field_validator("value")
+    @classmethod
+    def validate_value(cls, v):
+        validate_type_box(v)
+        return v
 
     @classmethod
     def from_extrema(
@@ -318,7 +355,6 @@ class Box(BaseModel):
 
     @classmethod
     def from_geojson(cls, geojson: dict):
-        validate_geojson(class_name="Polygon", geojson=geojson)
         return cls(value=Polygon.from_geojson(geojson).value)
 
     def to_geojson(self) -> dict:
@@ -350,7 +386,7 @@ class MultiPolygon(BaseModel):
 
     Attributes
     ----------
-    value : list[list[list[tuple[int | float, int | float]]]]
+    value : list[list[list[list[int | float]]]]
         A list of coordinates describing the MultiPolygon.
 
     Raises
@@ -367,21 +403,18 @@ class MultiPolygon(BaseModel):
     def deserialize_valor_type(cls, values: Any) -> Any:
         return deserialize(class_name=cls.__name__, values=values)
 
+    @field_validator("value")
+    @classmethod
+    def validate_value(cls, v):
+        validate_type_multipolygon(v)
+        return v
+
     @classmethod
     def from_geojson(cls, geojson: dict):
-        validate_geojson(class_name=cls.__name__, geojson=geojson)
-        value = geojson.get("coordinates")
-        if not isinstance(value, list):
-            raise TypeError("Coordinates should contain a list.")
-        return cls(
-            value=[
-                [
-                    [tuple(point) for point in subpolygon]
-                    for subpolygon in polygon
-                ]
-                for polygon in value
-            ]
-        )
+        geometry = GeoJSON(**geojson).geometry
+        if type(geometry) is not MultiPolygon:
+            raise TypeError(f"GeoJSON is for a different type '{geojson}'.")
+        return geometry
 
     def to_geojson(self) -> dict:
         return {
@@ -411,6 +444,37 @@ class MultiPolygon(BaseModel):
         ]
         coords = "),(".join(polygons)
         return f"MULTIPOLYGON (({coords}))"
+
+
+class GeoJSON(BaseModel):
+    type: str
+    coordinates: list[float] | list[list[float]] | list[
+        list[list[float]]
+    ] | list[list[list[list[float]]]]
+
+    @model_validator(mode="before")
+    @classmethod
+    def deserialize_valor_type(cls, values: Any) -> Any:
+        values = deserialize(class_name=cls.__name__, values=values)
+        validate_geojson(values)
+        return values
+
+    @property
+    def geometry(
+        self,
+    ) -> Point | MultiPoint | LineString | MultiLineString | Polygon | MultiPolygon:
+        map_str_to_type = {
+            "Point": Point,
+            "MultiPoint": MultiPoint,
+            "LineString": LineString,
+            "MultiLineString": MultiLineString,
+            "Polygon": Polygon,
+            "MultiPolygon": MultiPolygon,
+        }
+        return map_str_to_type[self.type](value=self.coordinates)
+
+    def to_wkt(self) -> str:
+        return self.geometry.to_wkt()
 
 
 class Raster(BaseModel):

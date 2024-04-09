@@ -154,19 +154,21 @@ class GeospatialFilter(BaseModel):
             "Box": Box,
             "MultiPolygon": MultiPolygon,
         }
-        if isinstance(values.value, dict):
-            if (type_str := values.value.get("type")) and (
-                coords := values.value.get("coordinates")
+        value = values.get("value")
+        if isinstance(value, dict):
+            if (type_str := value.get("type")) and (
+                coords := value.get("coordinates")
             ):
                 if not (type_ := map_str_to_type.get(type_str)):
                     raise ValidationError(
                         f"GeoJSON geometry with type '{type_str}' is not supported."
                     )
-                values.value = type_(value=coords)
+                values["value"] = type_(value=coords)
             else:
                 raise ValidationError(
                     "Geospatial filter received a value that does not conform to geojson."
                 )
+        return values
 
     @field_validator("operator")
     @classmethod

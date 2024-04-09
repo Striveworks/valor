@@ -1,12 +1,11 @@
 import math
-from typing import Any, Union
+from typing import Union
 
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 from valor_api.enums import TaskType
 from valor_api.schemas.geometry import Box, Polygon, Raster
 from valor_api.schemas.validators import (
-    deserialize,
     validate_annotation_by_task_type,
     validate_dictionary,
     validate_groundtruth_annotations,
@@ -28,11 +27,6 @@ class Label(BaseModel):
     value: str
     score: float | None = None
     model_config = ConfigDict(extra="forbid")
-
-    @model_validator(mode="before")
-    @classmethod
-    def deserialize_valor_type(cls, values: Any) -> Any:
-        return deserialize(class_name=cls.__name__, values=values)
 
     def __eq__(self, other):
         """
@@ -92,11 +86,6 @@ class Annotation(BaseModel):
     embedding: list[float] | None = None
     model_config = ConfigDict(extra="forbid")
 
-    @model_validator(mode="before")
-    @classmethod
-    def deserialize_valor_type(cls, values: Any) -> Any:
-        return deserialize(class_name=cls.__name__, values=values)
-
     @model_validator(mode="after")
     @classmethod
     def validate_by_task_type(cls, values):
@@ -115,11 +104,6 @@ class Datum(BaseModel):
     uid: str
     metadata: dict = dict()
     model_config = ConfigDict(extra="forbid")
-
-    @model_validator(mode="before")
-    @classmethod
-    def deserialize_valor_type(cls, values: Any) -> Any:
-        return deserialize(class_name=cls.__name__, values=values)
 
     @field_validator("uid")
     @classmethod
@@ -141,11 +125,6 @@ class GroundTruth(BaseModel):
     datum: Datum
     annotations: list[Annotation]
     model_config = ConfigDict(extra="forbid")
-
-    @model_validator(mode="before")
-    @classmethod
-    def deserialize_valor_type(cls, values: Any) -> Any:
-        return deserialize(class_name=cls.__name__, values=values)
 
     @field_validator("dataset_name")
     @classmethod
@@ -170,11 +149,6 @@ class Prediction(BaseModel):
     datum: Datum
     annotations: list[Annotation]
     model_config = ConfigDict(extra="forbid")
-
-    @model_validator(mode="before")
-    @classmethod
-    def deserialize_valor_type(cls, values: Any) -> Any:
-        return deserialize(class_name=cls.__name__, values=values)
 
     @field_validator("dataset_name")
     @classmethod
@@ -205,11 +179,6 @@ class Dataset(BaseModel):
     metadata: dict = dict()
     model_config = ConfigDict(extra="forbid")
 
-    @model_validator(mode="before")
-    @classmethod
-    def deserialize_valor_type(cls, values: Any) -> Any:
-        return deserialize(class_name=cls.__name__, values=values)
-
     @field_validator("name")
     @classmethod
     def validate_name(cls, v):
@@ -229,11 +198,6 @@ class Model(BaseModel):
     name: str
     metadata: dict = dict()
     model_config = ConfigDict(extra="forbid")
-
-    @model_validator(mode="before")
-    @classmethod
-    def deserialize_valor_type(cls, values: Any) -> Any:
-        return deserialize(class_name=cls.__name__, values=values)
 
     @field_validator("name")
     @classmethod
