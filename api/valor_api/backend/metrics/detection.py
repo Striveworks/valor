@@ -378,7 +378,7 @@ def _compute_detection_metrics(
         or parameters.pr_curve_iou_threshold is None
     ):
         raise ValueError(
-            "iou_thresholds_to_return and iou_thresholds_to_compute are required attributes of EvaluationParameters when evaluating detections."
+            "iou_thresholds_to_return, iou_thresholds_to_compute, recall_score_threshold, and pr_curve_iou_threshold are required attributes of EvaluationParameters when evaluating detections."
         )
 
     if (
