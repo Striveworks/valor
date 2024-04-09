@@ -198,7 +198,7 @@ def test_convert_geometry_input(
 
 def _load_polygon(db: Session, polygon: Polygon) -> Polygon:
     geom = json.loads(db.scalar(func.ST_AsGeoJSON(polygon)))
-    return schemas.metadata.geojson_from_dict(data=geom).geometry()  # type: ignore - type can't infer this is a polygon
+    return Polygon.from_geojson(geom)
 
 
 def _load_box(db: Session, box) -> Box:

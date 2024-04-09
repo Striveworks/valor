@@ -63,8 +63,8 @@ def img1() -> schemas.Datum:
     return schemas.Datum(
         uid="uid1",
         metadata={
-            "height": img1_size[0],
-            "width": img1_size[1],
+            "height": {"type": "integer", "value": img1_size[0]},
+            "width": {"type": "integer", "value": img1_size[1]},
         },
     )
 
@@ -74,8 +74,8 @@ def img2() -> schemas.Datum:
     return schemas.Datum(
         uid="uid2",
         metadata={
-            "height": img2_size[0],
-            "width": img2_size[1],
+            "height": {"type": "integer", "value": img2_size[0]},
+            "width": {"type": "integer", "value": img2_size[1]},
         },
     )
 
@@ -131,8 +131,8 @@ def images() -> list[schemas.Datum]:
         schemas.Datum(
             uid=f"{i}",
             metadata={
-                "height": 1000,
-                "width": 2000,
+                "height": {"type": "integer", "value": 1000},
+                "width": {"type": "integer", "value": 2000},
             },
         )
         for i in range(4)
@@ -152,7 +152,7 @@ def groundtruths(
         db=db,
         dataset=schemas.Dataset(
             name=dataset_name,
-            metadata={"type": "image"},
+            metadata={"type": {"type": "string", "value": "image"}},
         ),
     )
 
@@ -251,7 +251,7 @@ def predictions(
         db=db,
         model=schemas.Model(
             name=model_name,
-            metadata={"type": "image"},
+            metadata={"type": {"type": "string", "value": "image"}},
         ),
     )
 
@@ -361,7 +361,7 @@ def groundtruths_with_rasters(
         db=db,
         dataset=schemas.Dataset(
             name=dataset_name,
-            metadata={"type": "image"},
+            metadata={"type": {"type": "string", "value": "image"}},
         ),
     )
 
@@ -411,7 +411,7 @@ def predictions_with_rasters(
         db=db,
         model=schemas.Model(
             name=model_name,
-            metadata={"type": "image"},
+            metadata={"type": {"type": "string", "value": "image"}},
         ),
     )
 
@@ -599,7 +599,7 @@ def groundtruth_detections(
                         schemas.Label(key="k1", value="v1"),
                         schemas.Label(key="k2", value="v2"),
                     ],
-                    metadata={"int_key": 1},
+                    metadata={"int_key": {"type": "integer", "value": 1}},
                     box=schemas.Box(
                         value=[
                             [
@@ -669,7 +669,13 @@ def groundtruth_detections(
                 schemas.Annotation(
                     task_type=enums.TaskType.CLASSIFICATION,
                     labels=[schemas.Label(key="k2", value="v2")],
-                    metadata={"string_key": "string_val", "int_key": 1},
+                    metadata={
+                        "string_key": {
+                            "type": "string",
+                            "value": "string_val",
+                        },
+                        "int_key": {"type": "integer", "value": 1},
+                    },
                 ),
             ],
         ),
@@ -743,7 +749,7 @@ def dataset_model_create(
         dataset=schemas.Dataset(name=dataset_name),
     )
     for gt in groundtruth_detections:
-        gt.datum.dataset_name = dataset_name
+        gt.dataset_name = dataset_name
         crud.create_groundtruth(db=db, groundtruth=gt)
     crud.finalize(db=db, dataset_name=dataset_name)
 
@@ -752,8 +758,8 @@ def dataset_model_create(
 
     # Link model1 to dataset1
     for pd in prediction_detections:
+        pd.dataset_name = dataset_name
         pd.model_name = model_name
-        pd.datum.dataset_name = dataset_name
         crud.create_prediction(db=db, prediction=pd)
 
     # Finalize model1 over dataset1
@@ -796,7 +802,9 @@ def created_dataset(db: Session, dataset_name: str) -> str:
                 schemas.Annotation(
                     task_type=enums.TaskType.OBJECT_DETECTION,
                     labels=[schemas.Label(key="k1", value="v1")],
-                    box=schemas.Box.from_extrema(0, 0, 1, 1),
+                    box=schemas.Box.from_extrema(
+                        xmin=0, xmax=1, ymin=0, ymax=1
+                    ),
                 )
             ],
         ),
@@ -807,7 +815,10 @@ def created_dataset(db: Session, dataset_name: str) -> str:
             dataset_name=dataset_name,
             datum=schemas.Datum(
                 uid="uid3",
-                metadata={"height": 10, "width": 10},
+                metadata={
+                    "height": {"type": "integer", "value": 10},
+                    "width": {"type": "integer", "value": 10},
+                },
             ),
             annotations=[
                 schemas.Annotation(
@@ -849,7 +860,9 @@ def created_model(db: Session, model_name: str, created_dataset: str) -> str:
                 schemas.Annotation(
                     task_type=enums.TaskType.OBJECT_DETECTION,
                     labels=[schemas.Label(key="k1", value="v1", score=1.0)],
-                    box=schemas.Box.from_extrema(0, 0, 1, 1),
+                    box=schemas.Box.from_extrema(
+                        xmin=0, xmax=1, ymin=0, ymax=1
+                    ),
                 )
             ],
         ),
@@ -861,7 +874,10 @@ def created_model(db: Session, model_name: str, created_dataset: str) -> str:
             model_name=model_name,
             datum=schemas.Datum(
                 uid="uid3",
-                metadata={"height": 10, "width": 10},
+                metadata={
+                    "height": {"type": "integer", "value": 10},
+                    "width": {"type": "integer", "value": 10},
+                },
             ),
             annotations=[
                 schemas.Annotation(
@@ -882,16 +898,17 @@ def rotated_box_points() -> list[tuple[float, float]]:
         (1, 3),
         (4, 6),
         (7, 3),
+        (4, 0),
     ]
 
 
 @pytest.fixture
 def bbox(rotated_box_points) -> schemas.Box:
     """Defined as the envelope of `rotated_box_points`."""
-    minX = min([pt.x for pt in rotated_box_points])
-    maxX = max([pt.x for pt in rotated_box_points])
-    minY = min([pt.y for pt in rotated_box_points])
-    maxY = max([pt.y for pt in rotated_box_points])
+    minX = min([pt[0] for pt in rotated_box_points])
+    maxX = max([pt[0] for pt in rotated_box_points])
+    minY = min([pt[1] for pt in rotated_box_points])
+    maxY = max([pt[1] for pt in rotated_box_points])
     return schemas.Box(
         value=[
             [
@@ -899,6 +916,7 @@ def bbox(rotated_box_points) -> schemas.Box:
                 (minX, maxY),
                 (maxX, maxY),
                 (maxX, minY),
+                (minX, minY),
             ]
         ]
     )

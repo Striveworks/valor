@@ -253,9 +253,9 @@ class Filter:
         A list of task types to filter on.
     annotation_metadata : Dict[str, List[Constraint]], optional
         A dictionary of `Annotation` metadata to filter on.
-    require_box : bool, optional
+    require_bounding_box : bool, optional
         A toggle for filtering by bounding boxes.
-    box_area : bool, optional
+    bounding_box_area : bool, optional
         An optional constraint to filter by bounding box area.
     require_polygon : bool, optional
         A toggle for filtering by polygons.
@@ -299,8 +299,8 @@ class Filter:
     annotation_metadata: Optional[Dict[str, List[Constraint]]] = None
 
     # geometries
-    require_box: Optional[bool] = None
-    box_area: Optional[List[Constraint]] = None
+    require_bounding_box: Optional[bool] = None
+    bounding_box_area: Optional[List[Constraint]] = None
     require_polygon: Optional[bool] = None
     polygon_area: Optional[List[Constraint]] = None
     require_raster: Optional[bool] = None
@@ -372,7 +372,9 @@ class Filter:
         self.task_types = _unpack_list(self.task_types, TaskType)
 
         # unpack area
-        self.box_area = _unpack_list(self.box_area, Constraint)
+        self.bounding_box_area = _unpack_list(
+            self.bounding_box_area, Constraint
+        )
         self.polygon_area = _unpack_list(self.polygon_area, Constraint)
         self.raster_area = _unpack_list(self.raster_area, Constraint)
 
@@ -401,7 +403,7 @@ class Filter:
             "model_metadata",
             "datum_metadata",
             "annotation_metadata",
-            "box_area",
+            "bounding_box_area",
             "polygon_area",
             "raster_area",
             "label_scores",
@@ -411,7 +413,7 @@ class Filter:
 
         # boolean constraints
         for attr in [
-            "require_box",
+            "require_bounding_box",
             "require_polygon",
             "require_raster",
         ]:

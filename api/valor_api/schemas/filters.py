@@ -234,9 +234,9 @@ class Filter(BaseModel):
         A list of task types to filter on.
     annotation_metadata: Dict[str, list[StringFilter | NumericFilter | DateTimeFilter | BooleanFilter | GeospatialFilter]], default=None
         A dictionary of `Annotation` metadata to filter on.
-    require_box : bool, optional
+    require_bounding_box : bool, optional
         A toggle for filtering by bounding boxes.
-    box_area : bool, optional
+    bounding_box_area : bool, optional
         An optional constraint to filter by bounding box area.
     require_polygon : bool, optional
         A toggle for filtering by polygons.
@@ -319,8 +319,8 @@ class Filter(BaseModel):
         ]
         | None
     ) = None
-    require_box: bool | None = None
-    box_area: list[NumericFilter] | None = None
+    require_bounding_box: bool | None = None
+    bounding_box_area: list[NumericFilter] | None = None
     require_polygon: bool | None = None
     polygon_area: list[NumericFilter] | None = None
     require_raster: bool | None = None

@@ -364,14 +364,14 @@ def test_get_joint_labels(
         lhs=schemas.Filter(
             dataset_names=[dataset_name],
             task_types=[enums.TaskType.CLASSIFICATION],
-            require_box=False,
+            require_bounding_box=False,
             require_polygon=False,
             require_raster=False,
         ),
         rhs=schemas.Filter(
             model_names=[model_name],
             task_types=[enums.TaskType.CLASSIFICATION],
-            require_box=False,
+            require_bounding_box=False,
             require_polygon=False,
             require_raster=False,
         ),
@@ -415,14 +415,14 @@ def test_get_disjoint_labels(
         lhs=schemas.Filter(
             dataset_names=[dataset_name],
             task_types=[enums.TaskType.CLASSIFICATION],
-            require_box=False,
+            require_bounding_box=False,
             require_polygon=False,
             require_raster=False,
         ),
         rhs=schemas.Filter(
             model_names=[model_name],
             task_types=[enums.TaskType.CLASSIFICATION],
-            require_box=False,
+            require_bounding_box=False,
             require_polygon=False,
             require_raster=False,
         ),

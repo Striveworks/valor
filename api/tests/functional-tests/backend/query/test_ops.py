@@ -907,7 +907,7 @@ def test_complex_queries(
                 operator=">",
             )
         ],
-        require_box=True,
+        require_bounding_box=True,
     )
     q = Query(models.Datum.uid).filter(f).predictions()
     datum_uids = db.query(q).distinct().all()  # type: ignore - SQLAlchemy type issue
@@ -921,7 +921,7 @@ def test_query_by_annotation_geometry(
     model_sim,
 ):
     f = schemas.Filter(
-        box_area=[
+        bounding_box_area=[
             schemas.NumericFilter(
                 value=75,
                 operator=">",

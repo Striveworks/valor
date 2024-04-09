@@ -594,7 +594,7 @@ def test_create_classification_groundtruth_and_delete_dataset(
     crud.create_dataset(db=db, dataset=schemas.Dataset(name=dataset_name))
 
     for gt in gt_clfs_create:
-        gt.datum.dataset_name = dataset_name
+        gt.dataset_name = dataset_name
         crud.create_groundtruth(db=db, groundtruth=gt)
 
     # should have three GroundTruthClassification rows since one image has two
@@ -635,7 +635,6 @@ def test_create_predicted_classifications_and_delete_model(
     crud.create_dataset(db=db, dataset=schemas.Dataset(name=dataset_name))
 
     for gt in gt_clfs_create:
-        gt.datum.dataset_name = dataset_name
         crud.create_groundtruth(db=db, groundtruth=gt)
 
     # check this gives an error since the model does not exist
@@ -692,7 +691,6 @@ def _test_create_groundtruth_segmentations_and_delete_dataset(
     crud.create_dataset(db=db, dataset=schemas.Dataset(name=dataset_name))
 
     for gt in gts:
-        gt.datum.dataset_name = dataset_name
         crud.create_groundtruth(db=db, groundtruth=gt)
 
     assert db.scalar(func.count(models.Annotation.id)) == expected_anns
@@ -767,12 +765,10 @@ def test_create_predicted_segmentations_check_area_and_delete_model(
     # check this gives an error since the images haven't been added yet
     with pytest.raises(exceptions.ModelDoesNotExistError):
         for pd in prediction_instance_segmentations:
-            pd.model_name = model_name
             crud.create_prediction(db=db, prediction=pd)
 
     # create groundtruths
     for gt in groundtruth_instance_segmentations:
-        gt.datum.dataset_name = dataset_name
         crud.create_groundtruth(db=db, groundtruth=gt)
 
     # check this gives an error since the model has not been crated yet
@@ -860,9 +856,9 @@ def test_segmentation_area_no_hole(
     _check_db_empty(db=db)
 
     crud.create_dataset(db=db, dataset=schemas.Dataset(name=dataset_name))
-    assert isinstance(img1.metadata["height"], (int, float)) and isinstance(
-        img1.metadata["width"], (int, float)
-    )
+    assert isinstance(
+        img1.metadata["height"]["value"], (int, float)
+    ) and isinstance(img1.metadata["width"]["value"], (int, float))
 
     crud.create_groundtruth(
         db=db,
@@ -877,8 +873,8 @@ def test_segmentation_area_no_hole(
                         schemas.MultiPolygon(
                             value=[poly_without_hole.value],
                         ),
-                        height=img1.metadata["height"],
-                        width=img1.metadata["width"],
+                        height=img1.metadata["height"]["value"],
+                        width=img1.metadata["width"]["value"],
                     ),
                 )
             ],
@@ -900,9 +896,9 @@ def test_segmentation_area_with_hole(
     _check_db_empty(db=db)
 
     crud.create_dataset(db=db, dataset=schemas.Dataset(name=dataset_name))
-    assert isinstance(img1.metadata["height"], (int, float)) and isinstance(
-        img1.metadata["width"], (int, float)
-    )
+    assert isinstance(
+        img1.metadata["height"]["value"], (int, float)
+    ) and isinstance(img1.metadata["width"]["value"], (int, float))
 
     crud.create_groundtruth(
         db=db,
@@ -917,8 +913,8 @@ def test_segmentation_area_with_hole(
                         schemas.MultiPolygon(
                             value=[poly_with_hole.value],
                         ),
-                        height=img1.metadata["height"],
-                        width=img1.metadata["width"],
+                        height=img1.metadata["height"]["value"],
+                        width=img1.metadata["width"]["value"],
                     ),
                 )
             ],
@@ -941,9 +937,9 @@ def test_segmentation_area_multi_polygon(
 ):
     # sanity check nothing in db
     _check_db_empty(db=db)
-    assert isinstance(img1.metadata["height"], (int, float)) and isinstance(
-        img1.metadata["width"], (int, float)
-    )
+    assert isinstance(
+        img1.metadata["height"]["value"], (int, float)
+    ) and isinstance(img1.metadata["width"]["value"], (int, float))
     crud.create_dataset(db=db, dataset=schemas.Dataset(name=dataset_name))
 
     crud.create_groundtruth(
@@ -962,8 +958,8 @@ def test_segmentation_area_multi_polygon(
                                 poly_without_hole.value,
                             ],
                         ),
-                        height=img1.metadata["height"],
-                        width=img1.metadata["width"],
+                        height=img1.metadata["height"]["value"],
+                        width=img1.metadata["width"]["value"],
                     ),
                 )
             ],
@@ -995,8 +991,8 @@ def test_gt_seg_as_mask_or_polys(
     img = schemas.Datum(
         uid="uid",
         metadata={
-            "height": h,
-            "width": w,
+            "height": {"type": "integer", "value": h},
+            "width": {"type": "integer", "value": w},
         },
     )
 
@@ -1126,7 +1122,7 @@ def test_create_detection_metrics(
             datum_filter=schemas.Filter(
                 label_keys=[label_key],
                 dataset_names=["test_dataset"],
-                box_area=geometric_filters,
+                bounding_box_area=geometric_filters,
             ),
             parameters=schemas.EvaluationParameters(
                 task_type=enums.TaskType.OBJECT_DETECTION,
@@ -1296,7 +1292,7 @@ def test_create_detection_metrics(
         datum_filter=schemas.Filter(
             dataset_names=[dataset_name],
             label_keys=["class"],
-            box_area=[
+            bounding_box_area=[
                 schemas.NumericFilter(
                     value=min_area,
                     operator=">=",
@@ -1335,12 +1331,13 @@ def test_create_clf_metrics(
         dataset=schemas.Dataset(name=dataset_name),
     )
     for gt in gt_clfs_create:
-        gt.datum.dataset_name = dataset_name
+        gt.dataset_name = dataset_name
         crud.create_groundtruth(db=db, groundtruth=gt)
     crud.finalize(db=db, dataset_name=dataset_name)
 
     crud.create_model(db=db, model=schemas.Model(name=model_name))
     for pd in pred_clfs_create:
+        pd.dataset_name = dataset_name
         pd.model_name = model_name
         crud.create_prediction(db=db, prediction=pd)
     crud.finalize(db=db, model_name=model_name, dataset_name=dataset_name)

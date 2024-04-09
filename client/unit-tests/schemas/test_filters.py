@@ -16,8 +16,8 @@ def test_empty_filter():
         "datum_metadata": None,
         "task_types": None,
         "annotation_metadata": None,
-        "require_box": None,
-        "box_area": None,
+        "require_bounding_box": None,
+        "bounding_box_area": None,
         "require_polygon": None,
         "polygon_area": None,
         "require_raster": None,
@@ -82,8 +82,8 @@ def test_declarative_filtering():
             TaskType.CLASSIFICATION.value,
             TaskType.OBJECT_DETECTION.value,
         ],
-        "require_box": True,
-        "box_area": [
+        "require_bounding_box": True,
+        "bounding_box_area": [
             {"value": 1000, "operator": ">="},
             {"value": 5000, "operator": "<="},
         ],

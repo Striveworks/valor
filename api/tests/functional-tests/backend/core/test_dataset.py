@@ -226,15 +226,21 @@ def test_get_unique_datum_metadata_in_dataset(
     db: Session, dataset_name: str, dataset_model_create
 ):
     def _get_width(dct):
-        return dct["width"]
+        return dct["width"]["value"]
 
     unique_metadata = core.get_unique_datum_metadata_in_dataset(
         db=db, name=dataset_name
     )
     unique_metadata.sort(key=_get_width)
     assert unique_metadata == [
-        {"width": 32.0, "height": 80.0},
-        {"width": 200.0, "height": 100.0},
+        {
+            "width": {"type": "integer", "value": 32},
+            "height": {"type": "integer", "value": 80},
+        },
+        {
+            "width": {"type": "integer", "value": 200},
+            "height": {"type": "integer", "value": 100},
+        },
     ]
 
 
@@ -248,5 +254,8 @@ def test_get_unique_groundtruth_annotation_metadata_in_dataset(
     )
 
     assert len(unique_metadata) == 2
-    assert {"int_key": 1} in unique_metadata
-    assert {"string_key": "string_val", "int_key": 1} in unique_metadata
+    assert {"int_key": {"type": "integer", "value": 1}} in unique_metadata
+    assert {
+        "string_key": {"type": "string", "value": "string_val"},
+        "int_key": {"type": "integer", "value": 1},
+    } in unique_metadata
