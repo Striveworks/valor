@@ -18,36 +18,23 @@ def test_create_datum(
     created_dataset: str,
 ):
     assert db.scalar(select(func.count()).select_from(models.Datum)) == 0
+    dataset = core.fetch_dataset(db=db, name=created_dataset)
 
     # test successful
     core.create_datum(
         db=db,
-        datum=schemas.Datum(
-            uid="uid1",
-            dataset_name=created_dataset,
-        ),
+        datum=schemas.Datum(uid="uid1"),
+        dataset=dataset,
     )
 
     assert db.scalar(select(func.count()).select_from(models.Datum)) == 1
-
-    # test catch `DatasetDoesNotExistError`
-    with pytest.raises(exceptions.DatasetDoesNotExistError):
-        core.create_datum(
-            db=db,
-            datum=schemas.Datum(
-                uid="uid2",
-                dataset_name="dataset_that_doesnt_exist",
-            ),
-        )
 
     # test catch duplicate
     with pytest.raises(exceptions.DatumAlreadyExistsError):
         core.create_datum(
             db=db,
-            datum=schemas.Datum(
-                uid="uid1",
-                dataset_name=created_dataset,
-            ),
+            datum=schemas.Datum(uid="uid1"),
+            dataset=dataset,
         )
 
     assert db.scalar(select(func.count()).select_from(models.Datum)) == 1
@@ -55,10 +42,8 @@ def test_create_datum(
     # test successful 2nd datum
     core.create_datum(
         db=db,
-        datum=schemas.Datum(
-            uid="uid2",
-            dataset_name=created_dataset,
-        ),
+        datum=schemas.Datum(uid="uid2"),
+        dataset=dataset,
     )
 
     assert db.scalar(select(func.count()).select_from(models.Datum)) == 2
@@ -68,26 +53,22 @@ def test_get_datums(
     db: Session,
     created_dataset: str,
 ):
+    dataset = core.fetch_dataset(db=db, name=created_dataset)
+
     core.create_datum(
         db=db,
-        datum=schemas.Datum(
-            uid="uid1",
-            dataset_name=created_dataset,
-        ),
+        datum=schemas.Datum(uid="uid1"),
+        dataset=dataset,
     )
     core.create_datum(
         db=db,
-        datum=schemas.Datum(
-            uid="uid2",
-            dataset_name=created_dataset,
-        ),
+        datum=schemas.Datum(uid="uid2"),
+        dataset=dataset,
     )
     core.create_datum(
         db=db,
-        datum=schemas.Datum(
-            uid="uid3",
-            dataset_name=created_dataset,
-        ),
+        datum=schemas.Datum(uid="uid3"),
+        dataset=dataset,
     )
 
     # basic query

@@ -9,7 +9,6 @@ from sqlalchemy.orm.attributes import InstrumentedAttribute
 from valor_api import crud, enums, schemas
 from valor_api.backend import Query, models
 from valor_api.enums import TaskType
-from valor_api.schemas.geometry import 
 
 dset_name = "dataset1"
 model_name1 = "model1"
@@ -201,7 +200,7 @@ def datum_2(metadata_2) -> schemas.Datum:
 @pytest.fixture
 def datum_3(metadata_3) -> schemas.Datum:
     return schemas.Datum(
-        uid=datum_uid3,        
+        uid=datum_uid3,
         metadata=metadata_3,
     )
 
@@ -1017,7 +1016,7 @@ def _get_geospatial_names_from_filter(
             arg_name: {
                 "some_geo_attribute": [
                     schemas.GeospatialFilter(
-                        value=geodict,
+                        value=geodict,  # type: ignore - conversion should occur
                         operator=operator,
                     ),
                 ]
@@ -2410,6 +2409,7 @@ def test_annotation_datetime_queries(
     crud.create_groundtruth(
         db=db,
         groundtruth=schemas.GroundTruth(
+            dataset_name=dset_name,
             datum=datum_1,
             annotations=[
                 annotation_1,

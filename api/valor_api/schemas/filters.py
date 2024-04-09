@@ -1,9 +1,24 @@
 import json
 
-from pydantic import BaseModel, ConfigDict, create_model, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    ValidationError,
+    create_model,
+    field_validator,
+    model_validator,
+)
 
 from valor_api.enums import TaskType
-from valor_api.schemas.geometry import MultiPolygon, Point, Polygon
+from valor_api.schemas.geometry import (
+    Box,
+    LineString,
+    MultiLineString,
+    MultiPoint,
+    MultiPolygon,
+    Point,
+    Polygon,
+)
 from valor_api.schemas.timestamp import Date, DateTime, Duration, Time
 
 
@@ -127,6 +142,32 @@ class GeospatialFilter(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    @model_validator(mode="before")
+    @classmethod
+    def deserialize_value(cls, values):
+        map_str_to_type = {
+            "Point": Point,
+            "MultiPoint": MultiPoint,
+            "LineString": LineString,
+            "MultiLineString": MultiLineString,
+            "Polygon": Polygon,
+            "Box": Box,
+            "MultiPolygon": MultiPolygon,
+        }
+        if isinstance(values.value, dict):
+            if (type_str := values.value.get("type")) and (
+                coords := values.value.get("coordinates")
+            ):
+                if not (type_ := map_str_to_type.get(type_str)):
+                    raise ValidationError(
+                        f"GeoJSON geometry with type '{type_str}' is not supported."
+                    )
+                values.value = type_(value=coords)
+            else:
+                raise ValidationError(
+                    "Geospatial filter received a value that does not conform to geojson."
+                )
+
     @field_validator("operator")
     @classmethod
     def _validate_comparison_operator(cls, op: str) -> str:
@@ -138,7 +179,6 @@ class GeospatialFilter(BaseModel):
             )
         return op
 
-    @classmethod
 
 class DateTimeFilter(BaseModel):
     """
