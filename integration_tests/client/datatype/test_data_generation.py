@@ -21,7 +21,7 @@ from valor import (
 )
 from valor.enums import AnnotationType, EvaluationStatus, TaskType
 from valor.metatypes import ImageMetadata
-from valor.schemas import BoundingBox, Raster
+from valor.schemas import Box, Raster
 
 
 def _sample_without_replacement(array: list, n: int) -> list:
@@ -160,9 +160,7 @@ def _generate_bounding_box(
         y_min = 0
         y_max = max_height
 
-    return BoundingBox.from_extrema(
-        xmin=x_min, ymin=y_min, xmax=x_max, ymax=y_max
-    )
+    return Box.from_extrema(xmin=x_min, ymin=y_min, xmax=x_max, ymax=y_max)
 
 
 def _generate_prediction_annotation(

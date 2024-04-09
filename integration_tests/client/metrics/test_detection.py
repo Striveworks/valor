@@ -22,7 +22,7 @@ from valor import (
 )
 from valor.enums import AnnotationType, EvaluationStatus, TaskType
 from valor.exceptions import ClientException
-from valor.schemas import BoundingBox
+from valor.schemas import Box
 from valor_api.backend import models
 
 default_filter_properties = asdict(Filter())
@@ -773,22 +773,22 @@ def gts_det_with_label_maps(
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="class_name", value="maine coon cat")],
-                    bounding_box=BoundingBox([rect1]),
+                    bounding_box=Box([rect1]),
                 ),
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="class", value="british shorthair")],
-                    bounding_box=BoundingBox([rect3]),
+                    bounding_box=Box([rect3]),
                 ),
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k1", value="v1")],
-                    bounding_box=BoundingBox([rect1]),
+                    bounding_box=Box([rect1]),
                 ),
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k2", value="v2")],
-                    bounding_box=BoundingBox([rect3]),
+                    bounding_box=Box([rect3]),
                 ),
             ],
         ),
@@ -798,12 +798,12 @@ def gts_det_with_label_maps(
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="class", value="siamese cat")],
-                    bounding_box=BoundingBox([rect2]),
+                    bounding_box=Box([rect2]),
                 ),
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k1", value="v1")],
-                    bounding_box=BoundingBox([rect2]),
+                    bounding_box=Box([rect2]),
                 ),
             ],
         ),
@@ -824,12 +824,12 @@ def preds_det_with_label_maps(
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="class", value="cat", score=0.3)],
-                    bounding_box=BoundingBox([rect1]),
+                    bounding_box=Box([rect1]),
                 ),
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k1", value="v1", score=0.3)],
-                    bounding_box=BoundingBox([rect1]),
+                    bounding_box=Box([rect1]),
                 ),
             ],
         ),
@@ -839,12 +839,12 @@ def preds_det_with_label_maps(
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="class_name", value="cat", score=0.98)],
-                    bounding_box=BoundingBox([rect2]),
+                    bounding_box=Box([rect2]),
                 ),
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k2", value="v2", score=0.98)],
-                    bounding_box=BoundingBox([rect2]),
+                    bounding_box=Box([rect2]),
                 ),
             ],
         ),
