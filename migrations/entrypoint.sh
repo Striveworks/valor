@@ -15,8 +15,8 @@ wait_for_postgres() {
   retries=0
   until PGCONNECT_TIMEOUT=$WAIT_SECONDS PGPASSWORD=$POSTGRES_PASSWORD psql -c "select 1" "sslmode=$POSTGRES_SSLMODE dbname=$POSTGRES_DB host=$POSTGRES_HOST user=$POSTGRES_USERNAME port=$POSTGRES_PORT" >& /dev/null || [ $retries -eq $MAX_RETRIES ]; do
     echo "Waiting for PostgreSQL to be ready... (Retry $((retries+1)) of $MAX_RETRIES)"
-    retries=$((retries+1))
     sleep $WAIT_SECONDS
+    retries=$((retries+1))
   done
 
   if [ $retries -eq $MAX_RETRIES ]; then
@@ -29,6 +29,6 @@ wait_for_postgres() {
 
 wait_for_postgres
 
-# migrate -path /migrations/sql -database "postgres://${POSTGRES_USERNAME}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}?sslmode=${POSTGRES_SSLMODE}&application_name=valor_migrations" "$@"
+migrate -path /migrations/sql -database "postgres://${POSTGRES_USERNAME}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}?sslmode=${POSTGRES_SSLMODE}&application_name=valor_migrations" "$@"
 
-# echo "Migration complete."
+echo "Migration complete."
