@@ -7,7 +7,7 @@ import PIL.Image
 from geoalchemy2.functions import (
     ST_AddBand,
     ST_AsRaster,
-    ST_GeomFromGeoJSON,
+    ST_GeomFromText,
     ST_MakeEmptyRaster,
     ST_MapAlgebra,
 )
@@ -611,7 +611,7 @@ class Raster(BaseModel):
                 "8BUI",
             )
             geom_raster = ST_AsRaster(
-                ST_GeomFromGeoJSON(self.geometry.to_geojson()),
+                ST_GeomFromText(self.geometry.to_wkt()),
                 1.0,  # scalex
                 1.0,  # scaley
                 "8BUI",  # pixeltype
