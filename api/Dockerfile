@@ -2,7 +2,7 @@ FROM python:3.10-alpine
 
 ARG VERSION="0.0.0-dev"
 
-RUN apk add --update --no-cache build-base libpq-dev
+RUN apk add --update --no-cache build-base libpq-dev gcc libffi-dev
 
 COPY ./pyproject.toml /src/
 
