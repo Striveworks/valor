@@ -35,7 +35,7 @@ afterEach(async () => {
     (await client.getAllModels()).length > 0 &&
     (await client.getAllDatasets()).length > 0
   ) {
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    await new Promise((resolve) => setTimeout(resolve, 1000));
   }
 });
 
