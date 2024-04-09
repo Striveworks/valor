@@ -147,7 +147,7 @@ test('evaluation methods', async () => {
       null,
       null,
       null,
-      null,
+      true,
       null
     );
     expect(['running', 'pending', 'done']).toContain(evaluation.status);
@@ -164,8 +164,9 @@ test('evaluation methods', async () => {
     expect(rocaucMetric.value).toBeNull();
 
     // get the PrecisionRecallCurve metric, and check that its a string
-    // const prCurveMetric = evaluation.metrics.find((metric) => metric.type === 'PrecisionRecallCurve');
-    // expect(typeof prCurveMetric.value).toBe('string');
+    const prCurveMetric = evaluation.metrics.find((metric) => metric.type === 'PrecisionRecallCurve');
+    expect(Object.keys(prCurveMetric.value)).toStrictEqual(['label-value', 'label-value-with-no-prediction'])
+    expect(typeof prCurveMetric.value).toBe('object');
 
     // check the date is within one minute of the current time
     const now = new Date();

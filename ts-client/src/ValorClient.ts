@@ -312,7 +312,7 @@ export class ValorClient {
     taskType: TaskType,
     iouThresholdsToCompute?: number[],
     iouThresholdsToReturn?: number[],
-    labelMap?: number[][][],
+    labelMap?: any[][][],
     recallScoreThreshold?: number,
     computePrCurves?: boolean,
     prCurveIouThreshold?: number
