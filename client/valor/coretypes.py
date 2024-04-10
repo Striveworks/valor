@@ -3,7 +3,6 @@ from __future__ import annotations
 import datetime
 import json
 import time
-import warnings
 from dataclasses import asdict, dataclass
 from typing import Any, Dict, List, Optional, Tuple, Union
 
@@ -1232,10 +1231,6 @@ class Client:
                 )
             if not isinstance(groundtruth.annotations._value, list):
                 raise TypeError
-            if len(groundtruth.annotations._value) == 0:
-                warnings.warn(
-                    f"GroundTruth for datum with uid `{groundtruth.datum.uid}` contains no annotations."
-                )
             groundtruth_dict = groundtruth.encode_value()
             groundtruth_dict["dataset_name"] = dataset.get_name()
             groundtruths_json.append(groundtruth_dict)
@@ -1500,10 +1495,6 @@ class Client:
                 )
             if not isinstance(prediction.annotations._value, list):
                 raise TypeError
-            if len(prediction.annotations._value) == 0:
-                warnings.warn(
-                    f"Prediction for datum with uid `{prediction.datum.uid}` contains no annotations."
-                )
             prediction_dict = prediction.encode_value()
             prediction_dict["dataset_name"] = dataset.get_name()
             prediction_dict["model_name"] = model.get_name()

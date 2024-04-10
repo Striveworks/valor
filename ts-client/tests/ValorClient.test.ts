@@ -35,7 +35,7 @@ afterEach(async () => {
     (await client.getAllModels()).length > 0 &&
     (await client.getAllDatasets()).length > 0
   ) {
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    await new Promise((resolve) => setTimeout(resolve, 1000));
   }
 });
 
@@ -153,7 +153,7 @@ test('evaluation methods', async () => {
     expect(['running', 'pending', 'done']).toContain(evaluation.status);
 
     while (evaluation.status !== 'done') {
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       evaluation = await client.getEvaluationById(evaluation.id);
     }
     expect(evaluation.metrics.length).toBeGreaterThan(0);
@@ -211,7 +211,7 @@ test('bulk create or get evaluations', async () => {
     // check all evaluations are pending
 
     while (evaluations.every((evaluation) => evaluation.status !== 'done')) {
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       evaluations = await client.getEvaluationsByIds(
         evaluations.map((evaluation) => evaluation.id)
       );
