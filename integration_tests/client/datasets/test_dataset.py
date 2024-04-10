@@ -101,8 +101,8 @@ def test_create_image_dataset_with_href_and_description(
         select(models.Dataset.meta).where(models.Dataset.name == dataset_name)
     )
     assert dataset_metadata == {
-        "href": "http://a.com/b",
-        "description": "a description",
+        "href": {"type": "string", "value": href},
+        "description": {"type": "string", "value": description},
     }
 
 

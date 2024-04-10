@@ -1667,7 +1667,7 @@ class Dictionary(Equatable, MutableMapping):
         for k, v in value.items():
             if v["type"] == "geojson":
                 decoded_value[k] = get_type_by_name(
-                    v["value"]["type"]
+                    v["value"]["type"].lower()
                 ).decode_value(v["value"]["coordinates"])
             else:
                 decoded_value[k] = get_type_by_name(v["type"]).decode_value(

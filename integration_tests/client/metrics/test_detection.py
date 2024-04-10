@@ -154,7 +154,7 @@ def test_evaluate_detection(
         iou_thresholds_to_return=[0.1, 0.6],
         filter_by=[
             Annotation.labels == [Label(key="k1", value="v1")],
-            Annotation.box.is_not_none(),
+            Annotation.bounding_box.is_not_none(),
         ],
     )
     assert (
@@ -208,8 +208,8 @@ def test_evaluate_detection(
         iou_thresholds_to_return=[0.1, 0.6],
         filter_by=[
             Label.key == "k1",
-            Annotation.box.area >= 10,
-            Annotation.box.area <= 2000,
+            Annotation.bounding_box.area >= 10,
+            Annotation.bounding_box.area <= 2000,
         ],
         convert_annotations_to_type=AnnotationType.BOX,
     )
@@ -261,7 +261,7 @@ def test_evaluate_detection(
         iou_thresholds_to_return=[0.1, 0.6],
         filter_by=[
             Label.key == "k1",
-            Annotation.box.area >= 1200,
+            Annotation.bounding_box.area >= 1200,
         ],
         convert_annotations_to_type=AnnotationType.BOX,
     )
@@ -310,7 +310,7 @@ def test_evaluate_detection(
         iou_thresholds_to_return=[0.1, 0.6],
         filter_by=[
             Label.key == "k1",
-            Annotation.box.area <= 1200,
+            Annotation.bounding_box.area <= 1200,
         ],
         convert_annotations_to_type=AnnotationType.BOX,
     )
@@ -358,8 +358,8 @@ def test_evaluate_detection(
         iou_thresholds_to_return=[0.1, 0.6],
         filter_by=[
             Label.key == "k1",
-            Annotation.box.area >= 1200,
-            Annotation.box.area <= 1800,
+            Annotation.bounding_box.area >= 1200,
+            Annotation.bounding_box.area <= 1800,
         ],
         convert_annotations_to_type=AnnotationType.BOX,
     )
@@ -433,7 +433,7 @@ def test_evaluate_detection_with_json_filters(
         dataset,
         filter_by=[
             Label.key == "k1",
-            Annotation.box.is_not_none(),
+            Annotation.bounding_box.is_not_none(),
         ],
     )
     assert (
@@ -493,7 +493,7 @@ def test_evaluate_detection_with_json_filters(
         iou_thresholds_to_return=[0.1, 0.6],
         filter_by=[
             Label.key == "k1",
-            Annotation.box.area >= 1200,
+            Annotation.bounding_box.area >= 1200,
         ],
         convert_annotations_to_type=AnnotationType.BOX,
     )
@@ -596,7 +596,7 @@ def test_get_evaluations(
         iou_thresholds_to_return=[0.1, 0.6],
         filter_by=[
             Label.key == "k1",
-            Annotation.box.is_not_none(),
+            Annotation.bounding_box.is_not_none(),
         ],
     )
     eval_job.wait_for_completion(timeout=30)
@@ -715,7 +715,7 @@ def test_get_evaluations(
         iou_thresholds_to_return=[0.1, 0.6],
         filter_by=[
             Label.key == "k1",
-            Annotation.box.is_not_none(),
+            Annotation.bounding_box.is_not_none(),
         ],
     )
     eval_job2.wait_for_completion(timeout=30)

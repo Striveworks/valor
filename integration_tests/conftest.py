@@ -116,9 +116,9 @@ def model_name():
 def metadata():
     """Some sample metadata of different types"""
     return {
-        "metadatum1": "temporary",
-        "metadatum2": "a string",
-        "metadatum3": 0.45,
+        "metadatum1": {"type": "string", "value": "temporary"},
+        "metadatum2": {"type": "string", "value": "a string"},
+        "metadatum3": {"type": "float", "value": 0.45},
     }
 
 

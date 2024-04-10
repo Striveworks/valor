@@ -83,7 +83,7 @@ def validate_type_string(v: Any):
     """
     if not isinstance(v, str):
         raise generate_type_error(v, str.__name__)
-    allowed_special = ["-", "_", "/", "."]
+    allowed_special = ["-", "_", "/", ".", ":", " "]
     pattern = re.compile(f"^[a-zA-Z0-9{''.join(allowed_special)}]+$")
     if not pattern.match(v):
         raise ValueError(

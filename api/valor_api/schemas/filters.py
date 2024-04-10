@@ -1,24 +1,9 @@
 import json
 
-from pydantic import (
-    BaseModel,
-    ConfigDict,
-    ValidationError,
-    create_model,
-    field_validator,
-    model_validator,
-)
+from pydantic import BaseModel, ConfigDict, create_model, field_validator
 
 from valor_api.enums import TaskType
-from valor_api.schemas.geometry import (
-    Box,
-    LineString,
-    MultiLineString,
-    MultiPoint,
-    MultiPolygon,
-    Point,
-    Polygon,
-)
+from valor_api.schemas.geometry import GeoJSON
 from valor_api.schemas.timestamp import Date, DateTime, Duration, Time
 
 
@@ -109,6 +94,7 @@ class BooleanFilter(BaseModel):
 
     value: bool
     operator: str = "=="
+    model_config = ConfigDict(extra="forbid")
 
     @field_validator("operator")
     @classmethod
@@ -120,8 +106,6 @@ class BooleanFilter(BaseModel):
                 f"Invalid comparison operator '{op}'. Allowed operators are {', '.join(allowed_operators)}."
             )
         return op
-
-    model_config = ConfigDict(extra="forbid")
 
 
 class GeospatialFilter(BaseModel):
@@ -137,38 +121,9 @@ class GeospatialFilter(BaseModel):
 
     """
 
-    value: Point | Polygon | MultiPolygon
+    value: GeoJSON
     operator: str = "intersect"
-
     model_config = ConfigDict(extra="forbid")
-
-    @model_validator(mode="before")
-    @classmethod
-    def deserialize_value(cls, values):
-        map_str_to_type = {
-            "Point": Point,
-            "MultiPoint": MultiPoint,
-            "LineString": LineString,
-            "MultiLineString": MultiLineString,
-            "Polygon": Polygon,
-            "Box": Box,
-            "MultiPolygon": MultiPolygon,
-        }
-        value = values.get("value")
-        if isinstance(value, dict):
-            if (type_str := value.get("type")) and (
-                coords := value.get("coordinates")
-            ):
-                if not (type_ := map_str_to_type.get(type_str)):
-                    raise ValidationError(
-                        f"GeoJSON geometry with type '{type_str}' is not supported."
-                    )
-                values["value"] = type_(value=coords)
-            else:
-                raise ValidationError(
-                    "Geospatial filter received a value that does not conform to geojson."
-                )
-        return values
 
     @field_validator("operator")
     @classmethod

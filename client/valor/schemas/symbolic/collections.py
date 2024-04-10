@@ -123,7 +123,15 @@ class StaticCollection(Equatable):
     @classmethod
     def decode_value(cls, value: dict):
         """Decode object from JSON compatible dictionary."""
-        return cls(**value)
+        kwargs = dict()
+        types = cls._get_static_types()
+        for k, v in value.items():
+            type_ = types.get(k)
+            if type_ and issubclass(type_, Variable):
+                kwargs[k] = type_.decode_value(v)
+            else:
+                kwargs[k] = v
+        return cls(**kwargs)
 
     def encode_value(self):
         """Encode object to JSON compatible dictionary."""

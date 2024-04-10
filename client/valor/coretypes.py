@@ -1264,7 +1264,9 @@ class Client:
             resp = self.conn.get_groundtruth(
                 dataset_name=dataset_name, datum_uid=datum_uid
             )
-            return GroundTruth(**resp)
+            resp.pop("dataset_name")
+            print(json.dumps(resp, indent=2))
+            return GroundTruth.decode_value(resp)
         except ClientException as e:
             if e.status_code == 404:
                 return None
@@ -1302,9 +1304,11 @@ class Client:
             A Dataset with a matching name, or 'None' if one doesn't exist.
         """
         try:
-            dataset = Dataset(
-                **self.conn.get_dataset(name),
-                connection=self.conn,
+            dataset = Dataset.decode_value(
+                {
+                    **self.conn.get_dataset(name),
+                    "connection": self.conn,
+                }
             )
             return dataset
         except ClientException as e:
@@ -1334,7 +1338,7 @@ class Client:
             filter_ = asdict(filter_)
         dataset_list = []
         for kwargs in self.conn.get_datasets(filter_):
-            dataset = Dataset(**kwargs, connection=self.conn)
+            dataset = Dataset.decode_value({**kwargs, "connection": self.conn})
             dataset_list.append(dataset)
         return dataset_list
 
@@ -1358,7 +1362,10 @@ class Client:
         filter_ = _format_filter(filter_by)
         if isinstance(filter_, Filter):
             filter_ = asdict(filter_)
-        return [Datum(**datum) for datum in self.conn.get_datums(filter_)]
+        return [
+            Datum.decode_value(datum)
+            for datum in self.conn.get_datums(filter_)
+        ]
 
     def get_datum(
         self,
@@ -1384,7 +1391,7 @@ class Client:
         )
         try:
             resp = self.conn.get_datum(dataset_name=dataset_name, uid=uid)
-            return Datum(**resp)
+            return Datum.decode_value(resp)
         except ClientException as e:
             if e.status_code == 404:
                 return None
@@ -1535,7 +1542,9 @@ class Client:
                 model_name=model_name,
                 datum_uid=datum_uid,
             )
-            return Prediction(**resp)
+            resp.pop("dataset_name")
+            resp.pop("model_name")
+            return Prediction.decode_value(resp)
         except ClientException as e:
             if e.status_code == 404:
                 return None
@@ -1574,9 +1583,11 @@ class Client:
             A Model with matching name or 'None' if one doesn't exist.
         """
         try:
-            return Model(
-                **self.conn.get_model(name),
-                connection=self.conn,
+            return Model.decode_value(
+                {
+                    **self.conn.get_model(name),
+                    "connection": self.conn,
+                }
             )
         except ClientException as e:
             if e.status_code == 404:
@@ -1605,7 +1616,7 @@ class Client:
             filter_ = asdict(filter_)
         model_list = []
         for kwargs in self.conn.get_models(filter_):
-            model = Model(**kwargs, connection=self.conn)
+            model = Model.decode_value({**kwargs, "connection": self.conn})
             model_list.append(model)
         return model_list
 

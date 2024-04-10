@@ -1,7 +1,13 @@
 import math
 from typing import Union
 
-from pydantic import BaseModel, ConfigDict, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    field_serializer,
+    field_validator,
+    model_validator,
+)
 
 from valor_api.enums import TaskType
 from valor_api.schemas.geometry import Box, Polygon, Raster
@@ -98,6 +104,24 @@ class Annotation(BaseModel):
         """Validates the 'metadata' field."""
         validate_metadata(v)
         return v
+
+    @field_serializer("bounding_box")
+    def serialize_bounding_box(bounding_box: Box | None):  # type: ignore - pydantic field_serializer
+        if bounding_box is None:
+            return None
+        return bounding_box.model_dump()["value"]
+
+    @field_serializer("polygon")
+    def serialize_polygon(polygon: Polygon | None):  # type: ignore - pydantic field_serializer
+        if polygon is None:
+            return None
+        return polygon.model_dump()["value"]
+
+    @field_serializer("raster")
+    def serialize_raster(raster: Raster | None):  # type: ignore - pydantic field_serializer
+        if raster is None:
+            return None
+        return raster.model_dump()["value"]
 
 
 class Datum(BaseModel):
