@@ -512,7 +512,42 @@ def validate_prediction_annotations(annotations: list[Any]):
                 indices[label] = index
 
 
-def validate_dictionary(dictionary: dict):
+def validate_geojson(geojson: dict):
+    map_str_to_geojson_validator = {
+        "Point": validate_type_point,
+        "MultiPoint": validate_type_multipoint,
+        "LineString": validate_type_linestring,
+        "MultiLineString": validate_type_multilinestring,
+        "Polygon": validate_type_polygon,
+        "MultiPolygon": validate_type_multipolygon,
+    }
+    # validate geojson
+    if not (
+        isinstance(geojson, dict)
+        and set(geojson.keys()) == {"type", "coordinates"}
+        and (geometry_type := geojson.get("type"))
+        and (geometry_value := geojson.get("coordinates"))
+    ):
+        raise ValueError(
+            f"Expected geojson to be a dictionary with keys 'type' and 'coordinates'. Received value '{geojson}'."
+        )
+
+    # validate type
+    if geometry_type not in map_str_to_geojson_validator:
+        raise TypeError(
+            f"Class '{geometry_type}' is not a supported GeoJSON geometry type."
+        )
+
+    # validate coordinates
+    try:
+        map_str_to_geojson_validator[geometry_type](geometry_value)
+    except (TypeError, ValueError) as e:
+        raise ValueError(
+            f"Value does not conform to '{geometry_type}'. Validation error: {str(e)}"
+        )
+
+
+def validate_metadata(dictionary: dict):
     map_str_to_type_validator = {
         "bool": validate_type_bool,
         "integer": validate_type_integer,
@@ -522,12 +557,7 @@ def validate_dictionary(dictionary: dict):
         "date": validate_type_date,
         "time": validate_type_time,
         "duration": validate_type_duration,
-        "point": validate_type_point,
-        "multipoint": validate_type_multipoint,
-        "linestring": validate_type_linestring,
-        "multilinestring": validate_type_multilinestring,
-        "polygon": validate_type_polygon,
-        "multipolygon": validate_type_multipolygon,
+        "geojson": validate_geojson,
     }
     if not isinstance(dictionary, dict):
         raise TypeError("Expected 'metadata' to be a dictionary.")
@@ -562,41 +592,6 @@ def validate_dictionary(dictionary: dict):
             raise ValueError(
                 f"Metadata value '{value_}' failed validation for type '{type_str}'. Validation error: {str(e)}"
             )
-
-
-def validate_geojson(geojson: dict):
-    map_str_to_geojson_validator = {
-        "Point": validate_type_point,
-        "MultiPoint": validate_type_multipoint,
-        "LineString": validate_type_linestring,
-        "MultiLineString": validate_type_multilinestring,
-        "Polygon": validate_type_polygon,
-        "MultiPolygon": validate_type_multipolygon,
-    }
-    # validate geojson
-    if not (
-        isinstance(geojson, dict)
-        and set(geojson.keys()) == {"type", "coordinates"}
-        and (geometry_type := geojson.get("type"))
-        and (geometry_value := geojson.get("coordinates"))
-    ):
-        raise ValueError(
-            f"Expected geojson to be a dictionary with keys 'type' and 'coordinates'. Received value '{geojson}'."
-        )
-
-    # validate type
-    if geometry_type not in map_str_to_geojson_validator:
-        raise TypeError(
-            f"Class '{geometry_type}' is not a supported GeoJSON geometry type."
-        )
-
-    # validate coordinates
-    try:
-        map_str_to_geojson_validator[geometry_type](geometry_value)
-    except (TypeError, ValueError) as e:
-        raise ValueError(
-            f"Value does not conform to '{geometry_type}'. Validation error: {str(e)}"
-        )
 
 
 def deserialize(class_name: str, values: Any) -> Any:

@@ -1663,19 +1663,46 @@ class Dictionary(Equatable, MutableMapping):
     @classmethod
     def decode_value(cls, value: dict) -> typing.Any:
         """Decode object from JSON compatible dictionary."""
-        return cls(
-            {
-                k: get_type_by_name(v["type"]).decode_value(v["value"])
-                for k, v in value.items()
-            }
-        )
+        decoded_value = dict()
+        for k, v in value.items():
+            if v["type"] == "geojson":
+                decoded_value[k] = get_type_by_name(
+                    v["value"]["type"]
+                ).decode_value(v["value"]["coordinates"])
+            else:
+                decoded_value[k] = get_type_by_name(v["type"]).decode_value(
+                    v["value"]
+                )
+        return cls(decoded_value)
 
     def encode_value(self) -> dict:
         """Encode object to JSON compatible dictionary."""
+        encoding = dict()
         value = self.get_value()
         if value is None:
-            return dict()
-        return {k: v.to_dict() for k, v in self.items()}
+            return encoding
+        for k, v in self.items():
+            if isinstance(
+                v,
+                (
+                    Point,
+                    MultiPoint,
+                    LineString,
+                    MultiLineString,
+                    Polygon,
+                    MultiPolygon,
+                ),
+            ):
+                encoding[k] = {
+                    "type": "geojson",
+                    "value": {
+                        "type": type(v).__name__,
+                        "coordinates": v.encode_value(),
+                    },
+                }
+            else:
+                encoding[k] = v.to_dict()
+        return encoding
 
     def __getitem__(self, __key: str):
         if self.is_symbolic:

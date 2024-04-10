@@ -7,8 +7,8 @@ from valor_api.enums import TaskType
 from valor_api.schemas.geometry import Box, Polygon, Raster
 from valor_api.schemas.validators import (
     validate_annotation_by_task_type,
-    validate_dictionary,
     validate_groundtruth_annotations,
+    validate_metadata,
     validate_prediction_annotations,
     validate_type_string,
 )
@@ -94,9 +94,9 @@ class Annotation(BaseModel):
 
     @field_validator("metadata")
     @classmethod
-    def validate_metadata(cls, v: dict) -> dict:
+    def validate_metadata_values(cls, v: dict) -> dict:
         """Validates the 'metadata' field."""
-        validate_dictionary(v)
+        validate_metadata(v)
         return v
 
 
@@ -114,9 +114,9 @@ class Datum(BaseModel):
 
     @field_validator("metadata")
     @classmethod
-    def validate_metadata(cls, v: dict) -> dict:
+    def validate_metadata_values(cls, v: dict) -> dict:
         """Validates the 'metadata' field."""
-        validate_dictionary(v)
+        validate_metadata(v)
         return v
 
 
@@ -188,9 +188,9 @@ class Dataset(BaseModel):
 
     @field_validator("metadata")
     @classmethod
-    def validate_metadata(cls, v: dict) -> dict:
+    def validate_metadata_values(cls, v: dict) -> dict:
         """Validates the 'metadata' field."""
-        validate_dictionary(v)
+        validate_metadata(v)
         return v
 
 
@@ -208,7 +208,7 @@ class Model(BaseModel):
 
     @field_validator("metadata")
     @classmethod
-    def validate_metadata(cls, v: dict) -> dict:
+    def validate_metadata_values(cls, v: dict) -> dict:
         """Validates the 'metadata' field."""
-        validate_dictionary(v)
+        validate_metadata(v)
         return v

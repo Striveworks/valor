@@ -114,7 +114,7 @@ def _filter_by_metadatum(
         rhs = value_filter.value
     elif isinstance(value_filter, DateTimeFilter):
         lhs_operand = table.meta[key]["value"].astext
-        rhs_operand = (value_filter.value.value,)
+        rhs_operand = value_filter.value.value
         if isinstance(value_filter.value, Time):
             lhs = cast(lhs_operand, INTERVAL)
             rhs = cast(rhs_operand, INTERVAL)

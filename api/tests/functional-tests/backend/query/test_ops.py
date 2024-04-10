@@ -103,8 +103,8 @@ def metadata_1(geospatial_coordinates) -> dict[str, int | float | str | dict]:
         "width": {"type": "integer", "value": 10},
         "some_bool_attribute": {"type": "bool", "value": True},
         "some_geo_attribute": {
-            "type": "polygon",
-            "value": geospatial_coordinates["polygon1"]["coordinates"],
+            "type": "geojson",
+            "value": geospatial_coordinates["polygon1"],
         },
     }
 
@@ -118,8 +118,8 @@ def metadata_2(geospatial_coordinates) -> dict[str, int | float | str | dict]:
         "width": {"type": "integer", "value": 10},
         "some_bool_attribute": {"type": "bool", "value": False},
         "some_geo_attribute": {
-            "type": "multipolygon",
-            "value": geospatial_coordinates["multipolygon"]["coordinates"],
+            "type": "geojson",
+            "value": geospatial_coordinates["multipolygon"],
         },
     }
 
@@ -133,8 +133,8 @@ def metadata_3(geospatial_coordinates) -> dict[str, int | float | str | dict]:
         "width": {"type": "integer", "value": 10},
         "some_bool_attribute": {"type": "bool", "value": True},
         "some_geo_attribute": {
-            "type": "polygon",
-            "value": geospatial_coordinates["polygon2"]["coordinates"],
+            "type": "geojson",
+            "value": geospatial_coordinates["polygon2"],
         },
     }
 
@@ -148,8 +148,8 @@ def metadata_4(geospatial_coordinates) -> dict[str, int | float | str | dict]:
         "width": {"type": "integer", "value": 10},
         "some_bool_attribute": {"type": "bool", "value": False},
         "some_geo_attribute": {
-            "type": "polygon",
-            "value": geospatial_coordinates["polygon3"]["coordinates"],
+            "type": "geojson",
+            "value": geospatial_coordinates["polygon3"],
         },
     }
 
@@ -1417,19 +1417,13 @@ def test_model_geospatial_filters(
 def datetime_metadata() -> list[schemas.DateTime]:
     """List of datetimes using different formats."""
     return [
-        schemas.DateTime(
-            value="2022-01-01",
-        ),
+        schemas.DateTime(value="2022-01-01"),
         schemas.DateTime(
             value="2023-04-07T16:34:56",
         ),
         schemas.DateTime(value="2023-04-07T16:35:56"),
-        schemas.DateTime(
-            value="2023-11-12",
-        ),
-        schemas.DateTime(
-            value="2023-12-04T00:05:23+04:00",
-        ),
+        schemas.DateTime(value="2023-11-12"),
+        schemas.DateTime(value="2023-12-04T00:05:23+04:00"),
     ]
 
 
@@ -2149,25 +2143,28 @@ def test_datum_datetime_queries(
     time_key = "a_third_key"
     duration_key = "some_duration"
 
-    datum_1.metadata[datetime_key] = datetime_metadata[1].value
-    datum_2.metadata[datetime_key] = datetime_metadata[2].value
-    datum_3.metadata[datetime_key] = datetime_metadata[2].value
-    datum_4.metadata[datetime_key] = datetime_metadata[3].value
+    def add_metadata_typing(value):
+        return {"type": type(value).__name__.lower(), "value": value.value}
 
-    datum_1.metadata[date_key] = date_metadata[1].value
-    datum_2.metadata[date_key] = date_metadata[2].value
-    datum_3.metadata[date_key] = date_metadata[2].value
-    datum_4.metadata[date_key] = date_metadata[3].value
+    datum_1.metadata[datetime_key] = add_metadata_typing(datetime_metadata[1])
+    datum_2.metadata[datetime_key] = add_metadata_typing(datetime_metadata[2])
+    datum_3.metadata[datetime_key] = add_metadata_typing(datetime_metadata[2])
+    datum_4.metadata[datetime_key] = add_metadata_typing(datetime_metadata[3])
 
-    datum_1.metadata[time_key] = time_metadata[1].value
-    datum_2.metadata[time_key] = time_metadata[2].value
-    datum_3.metadata[time_key] = time_metadata[2].value
-    datum_4.metadata[time_key] = time_metadata[3].value
+    datum_1.metadata[date_key] = add_metadata_typing(date_metadata[1])
+    datum_2.metadata[date_key] = add_metadata_typing(date_metadata[2])
+    datum_3.metadata[date_key] = add_metadata_typing(date_metadata[2])
+    datum_4.metadata[date_key] = add_metadata_typing(date_metadata[3])
 
-    datum_1.metadata[duration_key] = duration_metadata[1].value
-    datum_2.metadata[duration_key] = duration_metadata[2].value
-    datum_3.metadata[duration_key] = duration_metadata[2].value
-    datum_4.metadata[duration_key] = duration_metadata[3].value
+    datum_1.metadata[time_key] = add_metadata_typing(time_metadata[1])
+    datum_2.metadata[time_key] = add_metadata_typing(time_metadata[2])
+    datum_3.metadata[time_key] = add_metadata_typing(time_metadata[2])
+    datum_4.metadata[time_key] = add_metadata_typing(time_metadata[3])
+
+    datum_1.metadata[duration_key] = add_metadata_typing(duration_metadata[1])
+    datum_2.metadata[duration_key] = add_metadata_typing(duration_metadata[2])
+    datum_3.metadata[duration_key] = add_metadata_typing(duration_metadata[2])
+    datum_4.metadata[duration_key] = add_metadata_typing(duration_metadata[3])
 
     annotation = schemas.Annotation(
         task_type=enums.TaskType.CLASSIFICATION,
