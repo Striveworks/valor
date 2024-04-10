@@ -724,7 +724,7 @@ def _average_ignore_minus_one(a):
         if x != -1:
             div0_flag = False
             num += x
-            denom += 1
+        denom += 1
     return -1 if div0_flag else num / denom
 
 

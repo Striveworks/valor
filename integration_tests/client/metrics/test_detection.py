@@ -989,7 +989,11 @@ def test_evaluate_detection_with_label_maps(
             "parameters": {"iou": 0.6},
             "value": 0.100990099009901,
         },
-        {"type": "mAR", "parameters": {"ious": [0.1, 0.6]}, "value": 0.1},
+        {
+            "type": "mAR",
+            "parameters": {"ious": [0.1, 0.6]},
+            "value": 0.07142857142857142,
+        },
         {
             "type": "APAveragedOverIOUs",
             "parameters": {"ious": [0.1, 0.6]},
@@ -1186,7 +1190,7 @@ def test_evaluate_detection_with_label_maps(
         {
             "type": "mAR",
             "parameters": {"ious": [0.1, 0.6]},
-            "value": 0.27777777777777773,
+            "value": 0.20833333333333331,
         },
         {
             "type": "APAveragedOverIOUs",

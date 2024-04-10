@@ -684,7 +684,7 @@ def test__compute_detection_metrics(
         # mAR METRICS
         {
             "ious": iou_thresholds,
-            "value": 0.652,
+            "value": 0.543,
         },
     ]
 
@@ -864,7 +864,7 @@ def test__compute_detection_metrics_with_rasters(
         # mAR METRICS
         {
             "ious": iou_thresholds,
-            "value": 0.667,
+            "value": 0.5,
         },
     ]
 
