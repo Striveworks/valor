@@ -719,13 +719,11 @@ def _compute_detection_metrics_averaged_over_ious_from_aps(
 def _average_ignore_minus_one(a):
     """Average a list of metrics, ignoring values of -1"""
     num, denom = 0.0, 0.0
-    div0_flag = True
     for x in a:
         if x != -1:
-            div0_flag = False
             num += x
         denom += 1
-    return -1 if div0_flag else num / denom
+    return num / denom if denom else -1
 
 
 def _compute_mean_ar_metrics(
