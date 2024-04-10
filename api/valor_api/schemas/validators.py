@@ -607,4 +607,6 @@ def deserialize(class_name: str, values: Any) -> Any:
                 f"'{class_name}' received value with type '{values_type}'"
             )
         values.pop("type")
+    elif not isinstance(values, dict):
+        values = {"value": values}
     return values
