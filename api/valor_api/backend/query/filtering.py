@@ -128,7 +128,7 @@ def _filter_by_metadatum(
     elif isinstance(value_filter, GeospatialFilter):
         op = _get_spatial_op(value_filter.operator)
         lhs = func.ST_GeomFromGeoJSON(table.meta[key]["value"])
-        rhs = func.ST_GeomFromGeoJSON(value_filter.value.to_geojson())
+        rhs = func.ST_GeomFromGeoJSON(value_filter.value.dumps())
     else:
         raise NotImplementedError(
             f"Filter with type `{type(value_filter)}` is currently not supported"

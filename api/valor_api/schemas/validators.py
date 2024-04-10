@@ -376,7 +376,7 @@ def _check_if_empty_annotation(values):
     """Checks if the annotation is empty."""
     return (
         not values.labels
-        and values.box is None
+        and values.bounding_box is None
         and values.polygon is None
         and values.raster is None
         and values.embedding is None
@@ -392,7 +392,7 @@ def validate_annotation_by_task_type(values):
         case TaskType.CLASSIFICATION:
             if not (
                 values.labels
-                and values.box is None
+                and values.bounding_box is None
                 and values.polygon is None
                 and values.raster is None
                 and values.embedding is None
@@ -404,7 +404,7 @@ def validate_annotation_by_task_type(values):
             if not (
                 values.labels
                 and (
-                    values.box is not None
+                    values.bounding_box is not None
                     or values.polygon is not None
                     or values.raster is not None
                 )
@@ -417,7 +417,7 @@ def validate_annotation_by_task_type(values):
             if not (
                 values.labels
                 and values.raster is not None
-                and values.box is None
+                and values.bounding_box is None
                 and values.polygon is None
                 and values.embedding is None
             ):
@@ -428,7 +428,7 @@ def validate_annotation_by_task_type(values):
             if not (
                 values.embedding is not None
                 and not values.labels
-                and values.box is None
+                and values.bounding_box is None
                 and values.polygon is None
                 and values.raster is None
             ):

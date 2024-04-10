@@ -96,7 +96,7 @@ def groundtruth_detections(
                         schemas.Label(key="k2", value="v2"),
                     ],
                     metadata={},
-                    box=schemas.Box(
+                    bounding_box=schemas.Box(
                         value=[
                             [
                                 (10, 20),
@@ -112,7 +112,7 @@ def groundtruth_detections(
                     task_type=enums.TaskType.OBJECT_DETECTION,
                     labels=[schemas.Label(key="k2", value="v2")],
                     metadata={},
-                    box=schemas.Box(
+                    bounding_box=schemas.Box(
                         value=[
                             [
                                 (10, 20),
@@ -147,7 +147,7 @@ def prediction_detections(
                         schemas.Label(key="k2", value="v1", score=0.8),
                         schemas.Label(key="k2", value="v2", score=0.2),
                     ],
-                    box=schemas.Box(
+                    bounding_box=schemas.Box(
                         value=[
                             [
                                 (107, 207),
@@ -165,7 +165,7 @@ def prediction_detections(
                         schemas.Label(key="k2", value="v1", score=0.1),
                         schemas.Label(key="k2", value="v2", score=0.9),
                     ],
-                    box=schemas.Box(
+                    bounding_box=schemas.Box(
                         value=[
                             [
                                 (107, 207),
@@ -455,7 +455,7 @@ def test_create_detection_ground_truth_and_delete_dataset(
 
         for gta, new_gta in zip(gt.annotations, new_gt.annotations):
             assert set(gta.labels) == set(new_gta.labels)
-            assert gta.box == new_gta.box
+            assert gta.bounding_box == new_gta.bounding_box
 
     # finalize to free job state
     crud.finalize(db=db, dataset_name=dataset_name)
@@ -556,7 +556,7 @@ def test_create_detections_as_bbox_or_poly(
     det2 = schemas.Annotation(
         task_type=enums.TaskType.OBJECT_DETECTION,
         labels=[schemas.Label(key="k", value="v")],
-        box=schemas.Box.from_extrema(
+        bounding_box=schemas.Box.from_extrema(
             xmin=xmin,
             ymin=ymin,
             xmax=xmax,

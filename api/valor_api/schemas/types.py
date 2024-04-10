@@ -80,7 +80,7 @@ class Annotation(BaseModel):
     task_type: TaskType
     metadata: dict = dict()
     labels: list[Label] = list()
-    box: Box | None = None
+    bounding_box: Box | None = None
     polygon: Polygon | None = None
     raster: Raster | None = None
     embedding: list[float] | None = None

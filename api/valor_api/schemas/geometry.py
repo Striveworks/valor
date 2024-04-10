@@ -64,15 +64,25 @@ class Point(BaseModel):
         return v
 
     @classmethod
-    def from_geojson(cls, geojson: dict):
+    def load(cls, geojson: dict):
+        """Load Point from GeoJSON dictionary."""
         geometry = GeoJSON(**geojson).geometry
         if type(geometry) is not Point:
             raise TypeError(f"GeoJSON is for a different type '{geojson}'.")
         return geometry
 
-    def to_geojson(self) -> str:
-        geojson = {"type": "Point", "coordinates": list(self.value)}
-        return json.dumps(geojson)
+    def dump(self) -> dict[str, str | list[int | float]]:
+        """Dump Point to GeoJSON dictionary."""
+        return {"type": "Point", "coordinates": list(self.value)}
+
+    @classmethod
+    def loads(cls, geojson: str):
+        """Load Point from GeoJSON string."""
+        return cls.load(json.loads(geojson))
+
+    def dumps(self) -> str:
+        """Dump Point to GeoJSON string."""
+        return json.dumps(self.dump())
 
     def to_wkt(self) -> str:
         return f"POINT ({self.value[0]} {self.value[1]})"
@@ -108,18 +118,28 @@ class MultiPoint(BaseModel):
         return v
 
     @classmethod
-    def from_geojson(cls, geojson: dict):
+    def load(cls, geojson: dict):
+        """Load MultiPoint from GeoJSON dictionary."""
         geometry = GeoJSON(**geojson).geometry
         if type(geometry) is not MultiPoint:
             raise TypeError(f"GeoJSON is for a different type '{geojson}'.")
         return geometry
 
-    def to_geojson(self) -> str:
-        geojson = {
+    def dump(self) -> dict[str, str | list[list[int | float]]]:
+        """Dump MultiPoint to GeoJSON dictionary."""
+        return {
             "type": "MultiPoint",
             "coordinates": [list(point) for point in self.value],
         }
-        return json.dumps(geojson)
+
+    @classmethod
+    def loads(cls, geojson: str):
+        """Load MultiPoint from GeoJSON string."""
+        return cls.load(json.loads(geojson))
+
+    def dumps(self) -> str:
+        """Dump MultiPoint to GeoJSON string."""
+        return json.dumps(self.dump())
 
     def to_wkt(self) -> str:
         points = ", ".join(
@@ -158,18 +178,28 @@ class LineString(BaseModel):
         return v
 
     @classmethod
-    def from_geojson(cls, geojson: dict):
+    def load(cls, geojson: dict):
+        """Load LineString from GeoJSON dictionary."""
         geometry = GeoJSON(**geojson).geometry
         if type(geometry) is not LineString:
             raise TypeError(f"GeoJSON is for a different type '{geojson}'.")
         return geometry
 
-    def to_geojson(self) -> str:
-        geojson = {
+    def dump(self) -> dict[str, str | list[list[int | float]]]:
+        """Dump LineString to GeoJSON dictionary."""
+        return {
             "type": "LineString",
             "coordinates": [list(point) for point in self.value],
         }
-        return json.dumps(geojson)
+
+    @classmethod
+    def loads(cls, geojson: str):
+        """Load LineString from GeoJSON string."""
+        return cls.load(json.loads(geojson))
+
+    def dumps(self) -> str:
+        """Dump LineString to GeoJSON string."""
+        return json.dumps(self.dump())
 
     def to_wkt(self) -> str:
         points = ", ".join([f"{point[0]} {point[1]}" for point in self.value])
@@ -206,20 +236,30 @@ class MultiLineString(BaseModel):
         return v
 
     @classmethod
-    def from_geojson(cls, geojson: dict):
+    def load(cls, geojson: dict):
+        """Load MultiLineString from GeoJSON dictionary."""
         geometry = GeoJSON(**geojson).geometry
         if type(geometry) is not MultiLineString:
             raise TypeError(f"GeoJSON is for a different type '{geojson}'.")
         return geometry
 
-    def to_geojson(self) -> str:
-        geojson = {
+    def dump(self) -> dict[str, str | list[list[list[int | float]]]]:
+        """Dump MultiLineString to GeoJSON dictionary."""
+        return {
             "type": "MultiLineString",
             "coordinates": [
                 [list(point) for point in line] for line in self.value
             ],
         }
-        return json.dumps(geojson)
+
+    @classmethod
+    def loads(cls, geojson: str):
+        """Load MultiLineString from GeoJSON string."""
+        return cls.load(json.loads(geojson))
+
+    def dumps(self) -> str:
+        """Dump MultiLineString to GeoJSON string."""
+        return json.dumps(self.dump())
 
     def to_wkt(self) -> str:
         points = "),(".join(
@@ -261,21 +301,31 @@ class Polygon(BaseModel):
         return v
 
     @classmethod
-    def from_geojson(cls, geojson: dict):
+    def load(cls, geojson: dict):
+        """Load Polygon from GeoJSON dictionary."""
         geometry = GeoJSON(**geojson).geometry
         if type(geometry) is not Polygon:
             raise TypeError(f"GeoJSON is for a different type '{geojson}'.")
         return geometry
 
-    def to_geojson(self) -> str:
-        geojson = {
+    def dump(self) -> dict[str, str | list[list[list[int | float]]]]:
+        """Dump Polygon to GeoJSON dictionary."""
+        return {
             "type": "Polygon",
             "coordinates": [
                 [list(point) for point in subpolygon]
                 for subpolygon in self.value
             ],
         }
-        return json.dumps(geojson)
+
+    @classmethod
+    def loads(cls, geojson: str):
+        """Load Polygon from GeoJSON string."""
+        return cls.load(json.loads(geojson))
+
+    def dumps(self) -> str:
+        """Dump Polygon to GeoJSON string."""
+        return json.dumps(self.dump())
 
     def to_wkt(self) -> str:
         coords = "),(".join(
@@ -360,12 +410,22 @@ class Box(BaseModel):
         )
 
     @classmethod
-    def from_geojson(cls, geojson: dict):
-        return cls(value=Polygon.from_geojson(geojson).value)
+    def load(cls, geojson: dict):
+        """Load Box from GeoJSON dictionary of a Polygon."""
+        return cls(value=Polygon.load(geojson).value)
 
-    def to_geojson(self) -> str:
-        geojson = Polygon(value=self.value).to_geojson()
-        return json.dumps(geojson)
+    def dump(self) -> dict[str, str | list[list[list[int | float]]]]:
+        """Dump Box to GeoJSON dictionary of a Polygon."""
+        return Polygon(value=self.value).dump()
+
+    @classmethod
+    def loads(cls, geojson: str):
+        """Load Box from GeoJSON string of a Polygon."""
+        return cls.load(json.loads(geojson))
+
+    def dumps(self) -> str:
+        """Dump Box to GeoJSON string."""
+        return json.dumps(self.dump())
 
     def to_wkt(self) -> str:
         return Polygon(value=self.value).to_wkt()
@@ -417,14 +477,21 @@ class MultiPolygon(BaseModel):
         return v
 
     @classmethod
-    def from_geojson(cls, geojson: dict):
+    def load(cls, geojson: dict):
+        """Load MultiPolygon from GeoJSON dictionary."""
         geometry = GeoJSON(**geojson).geometry
         if type(geometry) is not MultiPolygon:
             raise TypeError(f"GeoJSON is for a different type '{geojson}'.")
         return geometry
 
-    def to_geojson(self) -> str:
-        geojson = {
+    @classmethod
+    def loads(cls, geojson: str):
+        """Load MultiPolygon from GeoJSON string."""
+        return cls.load(json.loads(geojson))
+
+    def dump(self) -> dict[str, str | list[list[list[list[int | float]]]]]:
+        """Dump MultiPolygon to GeoJSON dictionary."""
+        return {
             "type": "MultiPolygon",
             "coordinates": [
                 [
@@ -434,7 +501,10 @@ class MultiPolygon(BaseModel):
                 for polygon in self.value
             ],
         }
-        return json.dumps(geojson)
+
+    def dumps(self) -> str:
+        """Dump MultiPolygon to GeoJSON string."""
+        return json.dumps(self.dump())
 
     def to_wkt(self) -> str:
         polygons = [

@@ -173,7 +173,7 @@ def test_annotation_without_scores(metadata, bbox, polygon, raster, labels):
         task_type=enums.TaskType.OBJECT_DETECTION,
         labels=labels,
         metadata={},
-        box=bbox,
+        bounding_box=bbox,
     )
     schemas.Annotation(
         task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
@@ -188,7 +188,7 @@ def test_annotation_without_scores(metadata, bbox, polygon, raster, labels):
     schemas.Annotation(
         task_type=enums.TaskType.OBJECT_DETECTION.value,  # type: ignore - purposefully throwing error
         labels=labels,
-        box=bbox,
+        bounding_box=bbox,
     )
     schemas.Annotation(
         task_type=enums.TaskType.SEMANTIC_SEGMENTATION.value,  # type: ignore - purposefully throwing error
@@ -230,7 +230,7 @@ def test_annotation_without_scores(metadata, bbox, polygon, raster, labels):
         schemas.Annotation(
             task_type=enums.TaskType.OBJECT_DETECTION,
             labels=labels,
-            box=polygon,
+            bounding_box=polygon,
         )
     with pytest.raises(ValidationError):
         schemas.Annotation(
@@ -263,7 +263,7 @@ def test_annotation_with_scores(
         task_type=enums.TaskType.OBJECT_DETECTION,
         labels=scored_labels,
         metadata={},
-        box=bbox,
+        bounding_box=bbox,
     )
     schemas.Annotation(
         task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
@@ -278,7 +278,7 @@ def test_annotation_with_scores(
     schemas.Annotation(
         task_type=enums.TaskType.OBJECT_DETECTION,
         labels=scored_labels,
-        box=bbox,
+        bounding_box=bbox,
     )
     schemas.Annotation(
         task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
@@ -322,7 +322,7 @@ def test_annotation_with_scores(
         schemas.Annotation(
             task_type=enums.TaskType.OBJECT_DETECTION,
             labels=scored_labels,
-            box=polygon,
+            bounding_box=polygon,
         )
     with pytest.raises(ValidationError):
         schemas.Annotation(
@@ -517,7 +517,7 @@ def test_prediction(metadata, predicted_annotations, labels, scored_labels):
                 schemas.Annotation(
                     task_type=enums.TaskType.OBJECT_DETECTION,
                     labels=labels,
-                    box=schemas.Box.from_extrema(0, 1, 0, 1),
+                    bounding_box=schemas.Box.from_extrema(0, 1, 0, 1),
                 )
             ],
         )

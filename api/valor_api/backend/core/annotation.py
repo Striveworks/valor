@@ -1,5 +1,3 @@
-import json
-
 from geoalchemy2.functions import ST_AsGeoJSON
 from sqlalchemy import and_, delete, select
 from sqlalchemy.exc import IntegrityError
@@ -72,8 +70,8 @@ def _create_annotation(
     # task-based conversion
     match annotation.task_type:
         case TaskType.OBJECT_DETECTION:
-            if annotation.box:
-                box = annotation.box.to_wkt()
+            if annotation.bounding_box:
+                box = annotation.bounding_box.to_wkt()
             if annotation.polygon:
                 polygon = annotation.polygon.to_wkt()
             if annotation.raster:
@@ -254,13 +252,13 @@ def get_annotation(
 
     # bounding box
     if annotation.box is not None:
-        geojson = json.loads(db.scalar(ST_AsGeoJSON(annotation.box)))
-        box = schemas.Box.from_geojson(geojson)
+        box = schemas.Box.loads(db.scalar(ST_AsGeoJSON(annotation.box)))
 
     # polygon
     if annotation.polygon is not None:
-        geojson = json.loads(db.scalar(ST_AsGeoJSON(annotation.polygon)))
-        polygon = schemas.Polygon.from_geojson(geojson)
+        polygon = schemas.Polygon.loads(
+            db.scalar(ST_AsGeoJSON(annotation.polygon))
+        )
 
     # raster
     if annotation.raster is not None:
@@ -288,7 +286,7 @@ def get_annotation(
         task_type=annotation.task_type,  # type: ignore - models.Annotation.task_type should be a string in psql
         labels=labels,
         metadata=annotation.meta,
-        box=box,
+        bounding_box=box,
         polygon=polygon,  # type: ignore - guaranteed to be a polygon in this case
         raster=raster,
         embedding=embedding,

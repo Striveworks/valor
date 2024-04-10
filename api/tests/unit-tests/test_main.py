@@ -224,7 +224,7 @@ def test_post_groundtruth_bbox_detection(client: TestClient):
                     "meta1": {"type": "float", "value": 0.4},
                     "meta2": {"type": "string", "value": "v1"},
                 },
-                "box": [
+                "bounding_box": [
                     [
                         [0, 0],
                         [0, 1],
@@ -374,7 +374,7 @@ def test_get_groundtruth(crud, client: TestClient):
                     "meta1": {"type": "float", "value": 0.4},
                     "meta2": {"type": "string", "value": "v1"},
                 },
-                "box": [
+                "bounding_box": [
                     [
                         [0, 0],
                         [0, 1],
@@ -514,7 +514,7 @@ def test_post_prediction_bbox_detection(client: TestClient):
                     "meta1": {"type": "float", "value": 0.4},
                     "meta2": {"type": "string", "value": "v1"},
                 },
-                "box": [
+                "bounding_box": [
                     [
                         [0, 0],
                         [0, 1],
@@ -673,7 +673,7 @@ def test_get_prediction(crud, client: TestClient):
                     "meta1": {"type": "float", "value": 0.4},
                     "meta2": {"type": "string", "value": "v1"},
                 },
-                "box": [
+                "bounding_box": [
                     [
                         [0, 0],
                         [0, 1],

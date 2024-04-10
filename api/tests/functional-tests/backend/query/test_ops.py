@@ -233,13 +233,17 @@ def groundtruth_annotations_cat(
         schemas.Annotation(
             task_type=TaskType.OBJECT_DETECTION,
             labels=[label_cat],
-            box=schemas.Box.from_extrema(xmin=0, ymin=0, xmax=10, ymax=10),
+            bounding_box=schemas.Box.from_extrema(
+                xmin=0, ymin=0, xmax=10, ymax=10
+            ),
             metadata=metadata_1,
         ),
         schemas.Annotation(
             task_type=TaskType.OBJECT_DETECTION,
             labels=[label_cat],
-            box=schemas.Box.from_extrema(xmin=0, ymin=0, xmax=1, ymax=50),
+            bounding_box=schemas.Box.from_extrema(
+                xmin=0, ymin=0, xmax=1, ymax=50
+            ),
             metadata=metadata_2,
         ),
         schemas.Annotation(
@@ -273,13 +277,17 @@ def groundtruth_annotations_dog(
         schemas.Annotation(
             task_type=TaskType.OBJECT_DETECTION,
             labels=[label_dog],
-            box=schemas.Box.from_extrema(xmin=0, ymin=0, xmax=10, ymax=10),
+            bounding_box=schemas.Box.from_extrema(
+                xmin=0, ymin=0, xmax=10, ymax=10
+            ),
             metadata=metadata_3,
         ),
         schemas.Annotation(
             task_type=TaskType.OBJECT_DETECTION,
             labels=[label_dog],
-            box=schemas.Box.from_extrema(xmin=0, ymin=0, xmax=1, ymax=50),
+            bounding_box=schemas.Box.from_extrema(
+                xmin=0, ymin=0, xmax=1, ymax=50
+            ),
             metadata=metadata_4,
         ),
         schemas.Annotation(
@@ -318,7 +326,9 @@ def prediction_annotations_cat(
                 schemas.Label(key="class", value="cat", score=0.8),
                 schemas.Label(key="class", value="dog", score=0.2),
             ],
-            box=schemas.Box.from_extrema(xmin=0, ymin=0, xmax=10, ymax=10),
+            bounding_box=schemas.Box.from_extrema(
+                xmin=0, ymin=0, xmax=10, ymax=10
+            ),
             metadata=metadata_1,
         ),
         schemas.Annotation(
@@ -327,7 +337,9 @@ def prediction_annotations_cat(
                 schemas.Label(key="class", value="cat", score=0.7),
                 schemas.Label(key="class", value="dog", score=0.3),
             ],
-            box=schemas.Box.from_extrema(xmin=0, ymin=0, xmax=1, ymax=50),
+            bounding_box=schemas.Box.from_extrema(
+                xmin=0, ymin=0, xmax=1, ymax=50
+            ),
             metadata=metadata_2,
         ),
         schemas.Annotation(
@@ -372,7 +384,9 @@ def prediction_annotations_dog(
                 schemas.Label(key="class", value="cat", score=0.2),
                 schemas.Label(key="class", value="dog", score=0.8),
             ],
-            box=schemas.Box.from_extrema(xmin=0, ymin=0, xmax=10, ymax=10),
+            bounding_box=schemas.Box.from_extrema(
+                xmin=0, ymin=0, xmax=10, ymax=10
+            ),
             metadata=metadata_3,
         ),
         schemas.Annotation(
@@ -381,7 +395,9 @@ def prediction_annotations_dog(
                 schemas.Label(key="class", value="cat", score=0.3),
                 schemas.Label(key="class", value="dog", score=0.7),
             ],
-            box=schemas.Box.from_extrema(xmin=0, ymin=0, xmax=1, ymax=50),
+            bounding_box=schemas.Box.from_extrema(
+                xmin=0, ymin=0, xmax=1, ymax=50
+            ),
             metadata=metadata_4,
         ),
         schemas.Annotation(

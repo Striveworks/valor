@@ -1,5 +1,3 @@
-import json
-
 import numpy as np
 import pytest
 from sqlalchemy import and_, func, or_, select
@@ -53,7 +51,6 @@ def create_object_detection_dataset(
     dataset_name: str,
     bbox: Box,
     polygon: Polygon,
-    multipolygon: MultiPolygon,
     raster: Raster,
 ):
     datum = Datum(uid="uid1")
@@ -66,7 +63,7 @@ def create_object_detection_dataset(
             Annotation(
                 task_type=task_type,
                 labels=labels,
-                box=bbox,
+                bounding_box=bbox,
             ),
             Annotation(
                 task_type=task_type,
@@ -90,7 +87,6 @@ def create_object_detection_dataset(
 def create_segmentation_dataset_from_geometries(
     db: Session,
     dataset_name: str,
-    bbox: Box,
     polygon: Polygon,
     multipolygon: MultiPolygon,
     raster: Raster,
@@ -197,8 +193,7 @@ def test_convert_geometry_input(
 
 
 def _load_polygon(db: Session, polygon: Polygon) -> Polygon:
-    geom = json.loads(db.scalar(func.ST_AsGeoJSON(polygon)))
-    return Polygon.from_geojson(geom)
+    return Polygon.loads(db.scalar(func.ST_AsGeoJSON(polygon)))
 
 
 def _load_box(db: Session, box) -> Box:
