@@ -388,11 +388,6 @@ class Box(BaseModel):
             The minimum y-coordinate.
         ymax: float
             The maximum y-coordinate.
-
-        Returns
-        -------
-        BoundingBox
-            The bounding box created from the extrema.
         """
         if xmin >= xmax or ymin >= ymax:
             raise ValueError(
@@ -564,7 +559,7 @@ class Raster(BaseModel):
     ----------
     mask : str
         The mask describing the raster.
-    geometry : BoundingBox | Polygon | MultiPolygon, optional
+    geometry : Box | Polygon | MultiPolygon, optional
         Option to define raster by a geometry. Overrides the bitmask.
 
     Raises
@@ -648,7 +643,7 @@ class Raster(BaseModel):
 
         Parameters
         ----------
-        geometry : BoundingBox | Polygon | MultiPolygon
+        geometry : Box | Polygon | MultiPolygon
             Defines the bitmask as a geometry. Overrides any existing mask.
         height : int | float
             The intended height of the binary mask.

@@ -1,5 +1,4 @@
 import datetime
-import re
 from typing import Any
 
 from valor_api.enums import TaskType
@@ -83,12 +82,6 @@ def validate_type_string(v: Any):
     """
     if not isinstance(v, str):
         raise generate_type_error(v, str.__name__)
-    allowed_special = ["-", "_", "/", ".", ":", " "]
-    pattern = re.compile(f"^[a-zA-Z0-9{''.join(allowed_special)}]+$")
-    if not pattern.match(v):
-        raise ValueError(
-            "The provided string contains illegal characters. Please ensure your input consists of only alphanumeric characters, hyphens, underscores, forward slashes, and periods."
-        )
 
 
 def validate_type_datetime(v: Any):
