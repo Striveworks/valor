@@ -445,133 +445,24 @@ def test_create_raster_from_polygons_with_decimal_coordinates(
     )
     assert groundtruth.annotations[0].raster
     # note that postgis rasterization is lossy
-    assert (
-        groundtruth.annotations[0].raster.array
-        == np.array(
+    arr = (
+        np.array(
             [
-                [
-                    False,
-                    False,
-                    False,
-                    False,
-                    False,
-                    False,
-                    False,
-                    False,
-                    False,
-                    False,
-                ],
-                [
-                    False,
-                    False,
-                    False,
-                    True,
-                    True,
-                    False,
-                    False,
-                    False,
-                    False,
-                    False,
-                ],
-                [
-                    False,
-                    False,
-                    True,
-                    True,
-                    True,
-                    True,
-                    False,
-                    False,
-                    False,
-                    False,
-                ],
-                [
-                    False,
-                    True,
-                    True,
-                    True,
-                    True,
-                    True,
-                    True,
-                    False,
-                    False,
-                    False,
-                ],
-                [
-                    False,
-                    False,
-                    True,
-                    True,
-                    True,
-                    True,
-                    False,
-                    False,
-                    False,
-                    False,
-                ],
-                [
-                    False,
-                    False,
-                    False,
-                    True,
-                    True,
-                    False,
-                    False,
-                    False,
-                    False,
-                    False,
-                ],
-                [
-                    False,
-                    False,
-                    False,
-                    False,
-                    False,
-                    False,
-                    False,
-                    False,
-                    False,
-                    False,
-                ],
-                [
-                    False,
-                    False,
-                    False,
-                    False,
-                    False,
-                    False,
-                    False,
-                    False,
-                    False,
-                    False,
-                ],
-                [
-                    False,
-                    False,
-                    False,
-                    False,
-                    False,
-                    False,
-                    False,
-                    False,
-                    False,
-                    False,
-                ],
-                [
-                    False,
-                    False,
-                    False,
-                    False,
-                    False,
-                    False,
-                    False,
-                    False,
-                    False,
-                    False,
-                ],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 1, 1, 0, 0, 0, 0, 0],
+                [0, 0, 1, 1, 1, 1, 0, 0, 0, 0],
+                [0, 1, 1, 1, 1, 1, 1, 0, 0, 0],
+                [0, 0, 1, 1, 1, 1, 0, 0, 0, 0],
+                [0, 0, 0, 1, 1, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             ]
         )
-    ).all()
+        == 1
+    )
+    assert (groundtruth.annotations[0].raster.array == arr).all()
 
     # convert raster into a polygon
     polygon_subquery = (
