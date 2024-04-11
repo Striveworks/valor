@@ -110,7 +110,7 @@ export type Metric = {
   type: string;
   parameters?: Partial<Record<string, any>>;
   value: number | any;
-  labe?: Label;
+  label?: Label;
 };
 
 export type Evaluation = {
