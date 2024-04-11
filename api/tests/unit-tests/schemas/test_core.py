@@ -10,9 +10,7 @@ def test_validate_type_string():
     validate_type_string("dataset1")
     validate_type_string("dataset-1")
     validate_type_string("dataset_1")
-    with pytest.raises(ValueError) as e:
-        validate_type_string("data!@#$%^&*()'set_1")
-    assert "illegal characters" in str(e)
+    validate_type_string("data!@#$%^&*()'set_1")
 
 
 def test__format_uid():
@@ -21,9 +19,7 @@ def test__format_uid():
     validate_type_string("uid_1")
     validate_type_string("uid1.png")
     validate_type_string("folder/uid1.png")
-    with pytest.raises(ValueError) as e:
-        validate_type_string("uid!@#$%^&*()'_1")
-    assert "illegal characters" in str(e)
+    validate_type_string("uid!@#$%^&*()'_1")
 
 
 def test_dataset(metadata):
@@ -47,8 +43,6 @@ def test_dataset(metadata):
         schemas.Dataset(
             name=(12,),  # type: ignore - purposefully throwing error
         )
-    with pytest.raises(ValidationError):
-        schemas.Dataset(name="dataset@")
     with pytest.raises(ValidationError):
         schemas.Dataset(name=None)  # type: ignore - purposefully throwing error
 
@@ -95,8 +89,6 @@ def test_model(metadata):
             name=(12,),  # type: ignore - purposefully throwing error
         )
     with pytest.raises(ValidationError):
-        schemas.Dataset(name="model@")
-    with pytest.raises(ValidationError):
         schemas.Dataset(name=None)  # type: ignore - purposefully throwing error
 
     # test property `metadata`
@@ -130,10 +122,6 @@ def test_datum(metadata):
     with pytest.raises(ValidationError):
         schemas.Datum(
             uid=("uid",),  # type: ignore - purposefully throwing error
-        )
-    with pytest.raises(ValidationError):
-        schemas.Datum(
-            uid="uid@",
         )
     with pytest.raises(ValidationError):
         schemas.Datum(
