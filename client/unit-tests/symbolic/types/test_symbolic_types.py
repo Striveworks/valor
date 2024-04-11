@@ -119,8 +119,11 @@ def test_variable():
             },
         },
     }
+    assert Variable.symbolic().get_symbol() == Symbol(name="variable")
     assert Variable(None).is_none().get_value() is True  # type: ignore - known output
     assert Variable(1234).is_none().get_value() is False  # type: ignore - known output
+    with pytest.raises(TypeError):
+        Variable(1234).get_symbol()
 
     # test is_not_none
     assert Variable.symbolic().is_not_none().to_dict() == {
@@ -502,6 +505,8 @@ def _test_encoding(objcls, value, encoded_value):
         objcls(value).to_dict() == objcls.decode_value(encoded_value).to_dict()
     )
     assert encoded_value == objcls(value).encode_value()
+    assert objcls.decode_value(None) is None
+    assert objcls.nullable(None).encode_value() is None
 
 
 def _test_to_dict(objcls, value, type_name: typing.Optional[str] = None):
@@ -667,6 +672,18 @@ def test_bool():
     # test negation operation
     assert (~Bool(True)).get_value() is False  # type: ignore - known output
     assert (~Bool(False)).get_value() is True  # type: ignore - known output
+    assert (~Bool.symbolic()).to_dict() == {
+        "op": "negate",
+        "arg": {
+            "type": "symbol",
+            "value": {
+                "owner": None,
+                "name": "bool",
+                "key": None,
+                "attribute": None,
+            },
+        },
+    }
 
 
 def test_integer():
@@ -693,6 +710,12 @@ def test_integer():
         "outside",
     ]:
         _test_unsupported(objcls, permutations, op)
+
+    # test equatable
+    assert (Integer.nullable(None) == Integer(1)).get_value() is False  # type: ignore - always a bool
+    assert (Integer(1) == Integer.nullable(None)).get_value() is False  # type: ignore - always a bool
+    assert (Integer.nullable(None) != Integer(1)).get_value() is True  # type: ignore - always a bool
+    assert (Integer(1) != Integer.nullable(None)).get_value() is True  # type: ignore - always a bool
 
     # test nullable
     v1 = objcls.nullable(None)
