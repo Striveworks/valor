@@ -140,9 +140,9 @@ def get_datasets(
     filters : schemas.Filter, optional
         Optional filter to constrain against.
     offset : int, optional
-        The start index of the models to return. Useful for pagination.
+        The start index of the items to return.
     limit : int, optional
-        The number of models to return. Returns all models when set to -1. Useful for pagination.
+        The number of items to return. Returns all models when set to -1.
 
     Returns
     ----------
@@ -169,6 +169,11 @@ def get_datasets(
         .scalar()
     )
 
+    if offset > count:
+        raise ValueError(
+            "Offset is greater than the total number of items returned in the query."
+        )
+
     # return all rows when limit is -1
     if limit == -1:
         limit = count
@@ -185,7 +190,9 @@ def get_datasets(
     content = [
         _load_dataset_schema(db=db, dataset=dataset) for dataset in datasets
     ]
-    end_index = limit if limit == count else offset + limit - 1
+    end_index = (
+        offset + len(datasets) - 1
+    )  # subtract one to make it zero-indexed
     headers = {"content-range": f"items {offset}-{end_index}/{count}"}
     return (content, headers)
 

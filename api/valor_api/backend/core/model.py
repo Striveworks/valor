@@ -177,9 +177,9 @@ def get_models(
     filters : schemas.Filter, optional
         Optional filter to constrain against.
     offset : int, optional
-        The start index of the models to return. Useful for pagination.
+        The start index of the items to return.
     limit : int, optional
-        The number of models to return. Returns all models when equal to -1. Useful for pagination.
+        The number of items to return. Returns all models when equal to -1.
 
 
     Returns
@@ -200,6 +200,11 @@ def get_models(
         .scalar()
     )
 
+    if offset > count:
+        raise ValueError(
+            "Offset is greater than the total number of items returned in the query."
+        )
+
     # return all rows when limit is -1
     if limit == -1:
         limit = count
@@ -214,7 +219,9 @@ def get_models(
     )
 
     content = [_load_model_schema(db=db, model=model) for model in models_]
-    end_index = limit if limit == count else offset + limit - 1
+    end_index = (
+        offset + len(models_) - 1
+    )  # subtract one to make it zero-indexed
     headers = {"content-range": f"items {offset}-{end_index}/{count}"}
     return (content, headers)
 

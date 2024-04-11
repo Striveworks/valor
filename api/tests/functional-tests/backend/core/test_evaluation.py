@@ -393,7 +393,7 @@ def test_get_evaluations(
     assert len(evaluations_by_id) == 2
 
     # make sure stratifying works by dataset and evaluation id
-    evaluations_by_dataset_and_eval_id = core.get_evaluations(
+    evaluations_by_dataset_and_eval_id, _ = core.get_evaluations(
         db=db,
         evaluation_ids=[created_1[0].id],
         dataset_names=[finalized_dataset],
@@ -402,7 +402,7 @@ def test_get_evaluations(
     assert evaluations_by_dataset_and_eval_id[0].id == created_1[0].id
 
     # make sure stratifying works by model and evaluation id
-    evaluations_by_model_and_eval_id = core.get_evaluations(
+    evaluations_by_model_and_eval_id, _ = core.get_evaluations(
         db=db,
         evaluation_ids=[created_2[0].id],
         model_names=[finalized_model],
@@ -411,7 +411,7 @@ def test_get_evaluations(
     assert evaluations_by_model_and_eval_id[0].id == created_2[0].id
 
     # make sure stratifying works by dataset, model and evaluation id
-    evaluations_by_dataset_model_eval_id = core.get_evaluations(
+    evaluations_by_dataset_model_eval_id, _ = core.get_evaluations(
         db=db,
         evaluation_ids=[created_2[0].id],
         dataset_names=[finalized_dataset],
@@ -421,12 +421,46 @@ def test_get_evaluations(
     assert evaluations_by_dataset_model_eval_id[0].id == created_2[0].id
 
     # make sure stratifying works by dataset and model
-    evaluations_by_dataset_model_eval_id = core.get_evaluations(
+    evaluations_by_dataset_model_eval_id, _ = core.get_evaluations(
         db=db,
         dataset_names=[finalized_dataset],
         model_names=[finalized_model],
     )
     assert len(evaluations_by_dataset_model_eval_id) == 2
+
+    # test pagination
+    with pytest.raises(ValueError):
+        # offset is greater than the number of items returned in query
+        evaluations, headers = core.get_evaluations(
+            db=db,
+            dataset_names=[finalized_dataset],
+            model_names=[finalized_model],
+            offset=6,
+            limit=1,
+        )
+
+    evaluations, headers = core.get_evaluations(
+        db=db,
+        dataset_names=[finalized_dataset],
+        model_names=[finalized_model],
+        offset=1,
+        limit=1,
+    )
+
+    assert len(evaluations) == 1
+    assert headers == {"content-range": "items 1-1/2"}
+
+    # check that having too high of a limit param doesn't throw an error
+    evaluations, headers = core.get_evaluations(
+        db=db,
+        dataset_names=[finalized_dataset],
+        model_names=[finalized_model],
+        offset=0,
+        limit=6,
+    )
+
+    assert len(evaluations) == 2
+    assert headers == {"content-range": "items 0-1/2"}
 
 
 def test_get_evaluation_requests_from_model(

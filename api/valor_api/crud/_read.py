@@ -171,9 +171,9 @@ def get_datasets(
     filters : schemas.Filter, optional
         An optional filter to apply.
     offset : int, optional
-        The start index of the models to return. Useful for pagination.
+        The start index of the items to return.
     limit : int, optional
-        The number of models to return. Returns all models when set to -1. Useful for pagination.
+        The number of items to return. Returns all models when set to -1.
 
 
     Returns
@@ -262,9 +262,9 @@ def get_models(
     filters : schemas.FilterQueryParams, optional
         An optional filter to constrain results by.
     offset : int, optional
-        The start index of the models to return. Useful for pagination.
+        The start index of the items to return.
     limit : int, optional
-        The number of models to return. Returns all models when set to -1. Useful for pagination.
+        The number of items to return. Returns all models when set to -1.
     db : Session
         The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
 
@@ -321,7 +321,9 @@ def get_evaluations(
     evaluation_ids: list[int] | None = None,
     dataset_names: list[str] | None = None,
     model_names: list[str] | None = None,
-) -> list[schemas.EvaluationResponse]:
+    offset: int = 0,
+    limit: int = -1,
+) -> tuple[list[schemas.EvaluationResponse], dict[str, str]]:
     """
     Returns all evaluations that conform to user-supplied constraints.
 
@@ -335,11 +337,15 @@ def get_evaluations(
         A list of dataset names to constrain by.
     model_names
         A list of model names to constrain by.
+    offset : int, optional
+        The start index of the items to return.
+    limit : int, optional
+        The number of items to return. Returns all models when set to -1.
 
     Returns
     ----------
-    list[schemas.EvaluationResponse]
-        A list of evaluations.
+    tuple[list[schemas.Dataset], dict[str, str]]
+        A tuple containing the evaluations and response headers to return to the user.
     """
     # get evaluations that conform to input args
     return backend.get_evaluations(
@@ -347,6 +353,8 @@ def get_evaluations(
         evaluation_ids=evaluation_ids,
         dataset_names=dataset_names,
         model_names=model_names,
+        offset=offset,
+        limit=limit,
     )
 
 

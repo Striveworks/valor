@@ -403,9 +403,9 @@ def get_datasets(
     filters : schemas.FilterQueryParams, optional
         An optional filter to constrain results by. All fields should be specified as strings in a JSON.
     offset : int, optional
-        The start index of the models to return. Useful for pagination.
+        The start index of the items to return.
     limit : int, optional
-        The number of models to return. Returns all models when set to -1. Useful for pagination.
+        The number of items to return. Returns all models when set to -1.
 
     db : Session
         The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
@@ -762,9 +762,9 @@ def get_models(
     filters : schemas.FilterQueryParams, optional
         An optional filter to constrain results by.
     offset : int, optional
-        The start index of the models to return. Useful for pagination.
+        The start index of the items to return.
     limit : int, optional
-        The number of models to return. Returns all models when set to -1. Useful for pagination.
+        The number of items to return. Returns all models when set to -1.
     db : Session
         The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
 
@@ -1032,9 +1032,12 @@ def create_or_get_evaluations(
     tags=["Evaluations"],
 )
 def get_evaluations(
+    response: Response,
     datasets: str | None = None,
     models: str | None = None,
     evaluation_ids: str | None = None,
+    offset: int = 0,
+    limit: int = -1,
     db: Session = Depends(get_db),
 ) -> list[schemas.EvaluationResponse]:
     """
@@ -1050,6 +1053,8 @@ def get_evaluations(
 
     Parameters
     ----------
+    response: Response
+        The FastAPI response object. Used to return a content-range header to the user.
     datasets : str
         An optional set of dataset names to return metrics for
     models : str
@@ -1058,6 +1063,10 @@ def get_evaluations(
         An optional set of evaluation_ids to return metrics for
     db : Session
         The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
+    offset : int, optional
+        The start index of the items to return.
+    limit : int, optional
+        The number of items to return. Returns all models when set to -1.
 
     Returns
     -------
@@ -1084,12 +1093,16 @@ def get_evaluations(
         evaluation_ids_ints = None
 
     try:
-        return crud.get_evaluations(
+        content, headers = crud.get_evaluations(
             db=db,
             evaluation_ids=evaluation_ids_ints,
             dataset_names=dataset_names,
             model_names=model_names,
+            offset=offset,
+            limit=limit,
         )
+        response.headers.update(headers)
+        return content
     except Exception as e:
         raise exceptions.create_http_error(e)
 

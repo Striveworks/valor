@@ -52,9 +52,13 @@ def test_get_datasets(db: Session, created_datasets):
     datasets, headers = core.get_datasets(db)
     for dataset in datasets:
         assert dataset.name in created_datasets
-    assert headers == {"content-range": "items 0-10/10"}
+    assert headers == {"content-range": "items 0-9/10"}
 
     # test pagination
+    with pytest.raises(ValueError):
+        # offset is greater than the number of items returned in query
+        datasets, headers = core.get_datasets(db, offset=100, limit=2)
+
     datasets, headers = core.get_datasets(db, offset=5, limit=2)
     assert [dataset.name for dataset in datasets] == ["dataset5", "dataset6"]
     assert headers == {"content-range": "items 5-6/10"}

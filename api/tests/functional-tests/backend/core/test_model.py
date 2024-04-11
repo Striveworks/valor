@@ -52,9 +52,13 @@ def test_get_models(db: Session, created_models):
     models, headers = core.get_models(db)
     for model in models:
         assert model.name in created_models
-    assert headers == {"content-range": "items 0-10/10"}
+    assert headers == {"content-range": "items 0-9/10"}
 
     # test pagination
+    with pytest.raises(ValueError):
+        # offset is greater than the number of items returned in query
+        models, headers = core.get_models(db, offset=100, limit=2)
+
     models, headers = core.get_models(db, offset=5, limit=2)
     assert [model.name for model in models] == ["model5", "model6"]
     assert headers == {"content-range": "items 5-6/10"}

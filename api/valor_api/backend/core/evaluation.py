@@ -555,7 +555,9 @@ def get_evaluations(
     evaluation_ids: list[int] | None = None,
     dataset_names: list[str] | None = None,
     model_names: list[str] | None = None,
-) -> list[schemas.EvaluationResponse]:
+    offset: int = 0,
+    limit: int = -1,
+) -> tuple[list[schemas.EvaluationResponse], dict[str, str]]:
     """
     Returns all evaluations that conform to user-supplied constraints.
 
@@ -569,17 +571,47 @@ def get_evaluations(
         A list of dataset names to constrain by.
     model_names : list[str], optional
         A list of model names to constrain by.
+    offset : int, optional
+        The start index of the items to return.
+    limit : int, optional
+        The number of items to return. Returns all models when set to -1.
 
     Returns
     ----------
-    list[schemas.EvaluationResponse]
-        A list of evaluations.
+    tuple[list[schemas.Dataset], dict[str, str]]
+        A tuple containing the evaluations and response headers to return to the user.
     """
+    if offset < 0 or limit < -1:
+        raise ValueError(
+            "Offset should be an int greater than or equal to zero. Limit should be an int greater than or equal to -1."
+        )
+
     expr = _create_bulk_expression(
         evaluation_ids=evaluation_ids,
         dataset_names=dataset_names,
         model_names=model_names,
     )
+
+    count = (
+        db.query(func.count(models.Evaluation.id))
+        .where(
+            and_(
+                *expr,
+                models.Evaluation.status != enums.EvaluationStatus.DELETING,
+            )
+        )
+        .scalar()
+    )
+
+    if offset > count:
+        raise ValueError(
+            "Offset is greater than the total number of items returned in the query."
+        )
+
+    # return all rows when limit is -1
+    if limit == -1:
+        limit = count
+
     evaluations = (
         db.query(models.Evaluation)
         .where(
@@ -588,9 +620,18 @@ def get_evaluations(
                 models.Evaluation.status != enums.EvaluationStatus.DELETING,
             )
         )
+        .offset(offset)
+        .limit(limit)
         .all()
     )
-    return _create_responses(db, evaluations)
+
+    content = _create_responses(db, evaluations)
+
+    end_index = (
+        offset + len(evaluations) - 1
+    )  # subtract one to make it zero-indexed
+    headers = {"content-range": f"items {offset}-{end_index}/{count}"}
+    return (content, headers)
 
 
 def get_evaluation_requests_from_model(

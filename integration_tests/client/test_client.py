@@ -224,7 +224,7 @@ def test_get_datasets(
     # check that the content-range header exists on the raw response
     requests_method = getattr(requests, "get")
     resp = requests_method("http://localhost:8000/datasets")
-    assert resp.headers["content-range"] == "items 0-1/1"
+    assert resp.headers["content-range"] == "items 0-0/1"
 
 
 def test_get_models(
@@ -248,7 +248,7 @@ def test_get_models(
     # check that the content-range header exists on the raw response
     requests_method = getattr(requests, "get")
     resp = requests_method("http://localhost:8000/models")
-    assert resp.headers["content-range"] == "items 0-1/1"
+    assert resp.headers["content-range"] == "items 0-0/1"
 
 
 def test_get_datums(
