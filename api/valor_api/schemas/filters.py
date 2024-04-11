@@ -1,6 +1,12 @@
 import json
 
-from pydantic import BaseModel, ConfigDict, create_model, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    create_model,
+    field_validator,
+    model_validator,
+)
 
 from valor_api.enums import TaskType
 from valor_api.schemas.geometry import GeoJSON
@@ -156,6 +162,22 @@ class DateTimeFilter(BaseModel):
 
     value: DateTime | Date | Time | Duration
     operator: str = "=="
+
+    @model_validator(mode="before")
+    @classmethod
+    def _unpack_timestamp_value(cls, values):
+        value = values.get("value")
+        assert value
+        k, v = list(value.items())[0]
+        types = {
+            "datetime": DateTime,
+            "date": Date,
+            "time": Time,
+            "duration": Duration,
+        }
+        values["value"] = types[k](value=v)
+        print(values)
+        return values
 
     @field_validator("operator")
     @classmethod

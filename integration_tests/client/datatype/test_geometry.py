@@ -212,7 +212,7 @@ def test_add_raster_and_boundary_box(
         fetched_gt.annotations[0].raster is not None
     ), "Raster doesn't exist on fetched gt"
     assert (
-        fetched_gt.annotations[0].box is not None
+        fetched_gt.annotations[0].bounding_box is not None
     ), "Bounding box doesn't exist on fetched gt"
 
     client.delete_dataset(dataset_name, timeout=30)

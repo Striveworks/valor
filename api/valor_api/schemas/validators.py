@@ -579,7 +579,7 @@ def validate_metadata(dictionary: dict):
             or type_str not in map_str_to_type_validator
         ):
             raise TypeError(
-                f"Metadata does not support values with type '{type_str}'"
+                f"Metadata does not support values with type '{type_str}'. Received value '{value.get('value')}'."
             )
         # validate metadata value
         value_ = value.get("value")

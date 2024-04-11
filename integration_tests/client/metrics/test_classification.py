@@ -589,6 +589,14 @@ def test_stratify_clf_metrics_by_time(
         model.add_prediction(dataset, pd)
     model.finalize_inferences(dataset)
 
+    from valor import Filter
+
+    print(
+        Filter.create(
+            [Datum.metadata["md1"] == date.fromisoformat("2002-01-01")]
+        )
+    )
+
     eval_results_val2 = model.evaluate_classification(
         dataset,
         filter_by=[

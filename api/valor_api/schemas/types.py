@@ -121,7 +121,7 @@ class Annotation(BaseModel):
     def serialize_raster(raster: Raster | None):  # type: ignore - pydantic field_serializer
         if raster is None:
             return None
-        return raster.model_dump()["value"]
+        return raster.model_dump()
 
 
 class Datum(BaseModel):

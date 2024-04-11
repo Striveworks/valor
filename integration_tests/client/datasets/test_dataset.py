@@ -273,14 +273,20 @@ def test_create_tabular_dataset_and_add_groundtruth(
     metadata_links = data[0].meta
     assert len(metadata_links) == 1
     assert "metadatum1" in metadata_links
-    assert metadata_links["metadatum1"] == "temporary"
+    assert metadata_links["metadatum1"] == {
+        "type": "string",
+        "value": "temporary",
+    }
 
     metadata_links = data[1].meta
     assert len(metadata_links) == 2
     assert "metadatum2" in metadata_links
-    assert metadata_links["metadatum2"] == "a string"
+    assert metadata_links["metadatum2"] == {
+        "type": "string",
+        "value": "a string",
+    }
     assert "metadatum3" in metadata_links
-    assert metadata_links["metadatum3"] == 0.45
+    assert metadata_links["metadatum3"] == {"type": "float", "value": 0.45}
 
     # check that we can add data with specified uids
     new_gts = [

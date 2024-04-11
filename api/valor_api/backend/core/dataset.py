@@ -323,7 +323,7 @@ def get_unique_datum_metadata_in_dataset(
     db: Session, name: str
 ) -> list[MetadataType]:
     md = db.scalars(
-        select(models.Datum.meta["value"])
+        select(models.Datum.meta)
         .join(models.Dataset)
         .where(models.Dataset.name == name)
         .distinct()
@@ -338,7 +338,7 @@ def get_unique_groundtruth_annotation_metadata_in_dataset(
     db: Session, name: str
 ) -> list[MetadataType]:
     md = db.scalars(
-        select(models.Annotation.meta["value"])
+        select(models.Annotation.meta)
         .join(models.GroundTruth)
         .join(models.Datum)
         .join(models.Dataset)
