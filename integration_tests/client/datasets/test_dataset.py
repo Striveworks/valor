@@ -395,11 +395,12 @@ def test_get_summary(
 
     assert len(summary.datum_metadata) == 2
     assert {
-        "height": 900,
-        "width": 300,
+        "height": {"type": "integer", "value": 900},
+        "width": {"type": "integer", "value": 300},
         "geospatial": {
-            "geojson": {
-                "type": "polygon",
+            "type": "geojson",
+            "value": {
+                "type": "Polygon",
                 "coordinates": [
                     [
                         [125.2750725, 38.760525],
@@ -413,14 +414,15 @@ def test_get_summary(
                         [125.2750725, 38.760525],
                     ]
                 ],
-            }
+            },
         },
     } in summary.datum_metadata  # uid1
     assert {
-        "height": image_height,
-        "width": image_width,
+        "height": {"type": "integer", "value": image_height},
+        "width": {"type": "integer", "value": image_width},
         "geospatial": {
-            "geojson": {"coordinates": [44.1, 22.4], "type": "point"}
+            "type": "geojson",
+            "value": {"coordinates": [44.1, 22.4], "type": "Point"},
         },
     } in summary.datum_metadata  # uid2
 

@@ -391,10 +391,7 @@ def test_create_raster_from_polygons_with_decimal_coordinates(
     raster: Raster,
 ):
     # alter polygon to be offset by 0.1
-    assert (
-        polygon.to_wkt()
-        == "POLYGON ((4.0 0.0, 1.0 3.0, 4.0 6.0, 7.0 3.0, 4.0 0.0))"
-    )
+    assert polygon.to_wkt() == "POLYGON ((4 0, 1 3, 4 6, 7 3, 4 0))"
     polygon.value = [
         [(point[0] + 0.1, point[1] + 0.5) for point in subpolygon]
         for subpolygon in polygon.value

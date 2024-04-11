@@ -166,17 +166,22 @@ class DateTimeFilter(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def _unpack_timestamp_value(cls, values):
-        value = values.get("value")
-        assert value
-        k, v = list(value.items())[0]
-        types = {
-            "datetime": DateTime,
-            "date": Date,
-            "time": Time,
-            "duration": Duration,
-        }
-        values["value"] = types[k](value=v)
-        print(values)
+        # TODO - This will be addressed in Issue #526
+        if isinstance(values, dict) and (value := values.get("value")):
+            if isinstance(value, dict) and (
+                "datetime" in value
+                or "date" in value
+                or "time" in value
+                or "duration" in value
+            ):
+                k, v = list(value.items())[0]
+                types = {
+                    "datetime": DateTime,
+                    "date": Date,
+                    "time": Time,
+                    "duration": Duration,
+                }
+                values["value"] = types[k](value=v)
         return values
 
     @field_validator("operator")

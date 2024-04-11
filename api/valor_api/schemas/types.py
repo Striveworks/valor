@@ -25,7 +25,8 @@ GeometryType = Union[
     list[list[tuple[float, float]]],
     list[list[list[tuple[float, float]]]],
 ]
-MetadataType = dict[str, dict[str, bool | int | float | str | GeometryType]]
+GeoJSONType = dict[str, str | GeometryType]
+MetadataType = dict[str, dict[str, bool | int | float | str | GeoJSONType]]
 
 
 class Label(BaseModel):
