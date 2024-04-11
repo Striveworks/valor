@@ -2,11 +2,23 @@ import axios, { AxiosInstance } from 'axios';
 
 type GeoJSONType = "Point" | "LineString" | "Polygon" | "MultiPoint" | "MultiLineString" | "MultiPolygon" | "GeometryCollection" | "Feature" | "FeatureCollection";
 
+/**
+ * Checks if value conforms to the GeoJSON specification.
+ *
+ * @param value The value to type check.
+ * @returns A boolean result.
+ */
 function isGeoJSONObject(value: any): value is { type: GeoJSONType, coordinates: any } {
   const geoJSONTypes: GeoJSONType[] = ["Point", "LineString", "Polygon", "MultiPoint", "MultiLineString", "MultiPolygon", "GeometryCollection", "Feature", "FeatureCollection"];
   return typeof value === 'object' && value !== null && 'type' in value && geoJSONTypes.includes(value.type as GeoJSONType);
 }
 
+/**
+ * Encodes metadata into the Valor API format.
+ *
+ * @param input An object containing metadata.
+ * @returns The encoded object.
+ */
 function encodeMetadata(input: { [key: string]: any }): { [key: string]: {type: string; value: any;} } {
   const output: { [key: string]: {type: string; value: any;} } = {};
 
@@ -36,6 +48,12 @@ function encodeMetadata(input: { [key: string]: any }): { [key: string]: {type: 
   return output;
 }
 
+/**
+ * Decodes metadata from the Valor API format.
+ *
+ * @param input An encoded Valor metadata object.
+ * @returns The decoded object.
+ */
 function decodeMetadata(input: { [key: string]: {type: string; value: any;} }): { [key: string]: any } {
   const output: { [key: string]: any } = {};
 
@@ -95,7 +113,7 @@ export type Datum = {
 }
 
 export type Annotation = {
-  task_type: string;
+  task_type: TaskType;
   metadata: Partial<Record<string, any>>;
   labels: Label[];
   bounding_box: number[][][]?;
@@ -493,8 +511,8 @@ export class ValorClient {
    * Adds ground truth annotations to a dataset
    *
    * @param datasetName name of the dataset
-   * @param datumUid uid of the datum
-   * @param annotations annotations to add
+   * @param datum valor datum
+   * @param annotations valor annotations
    *
    * @returns {Promise<void>}
    */
@@ -519,16 +537,16 @@ export class ValorClient {
   /**
    * Adds predictions from a model
    *
-   * @param modelName name of the model
    * @param datasetName name of the dataset
-   * @param datumUid uid of the datum
-   * @param annotations annotations to add
+   * @param modelName name of the model
+   * @param datum valor datum
+   * @param annotations valor annotations
    *
    * @returns {Promise<void>}
    */
   public async addPredictions(
-    modelName: string,
     datasetName: string,
+    modelName: string,
     datum: Datum,
     annotations: Annotation[]
   ): Promise<void> {

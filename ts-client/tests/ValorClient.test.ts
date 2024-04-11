@@ -85,6 +85,7 @@ test('model methods', async () => {
  * Helper method that creates two datasets with groundtruth and two models with predictions
  * on each dataset
  */
+
 const createDatasetsAndModels = async () => {
   const datasetNames = ['test-dataset1', 'test-dataset2'];
   const modelNames = ['test-model1', 'test-model2'];
@@ -92,17 +93,39 @@ const createDatasetsAndModels = async () => {
   // create datasets and add groundtruths
   for (const datasetName of datasetNames) {
     await client.createDataset(datasetName, {});
-    await client.addGroundTruth(datasetName, 'uid1', [
+    await client.addGroundTruth(
+      datasetName,
       {
-        task_type: 'classification',
-        labels: [{ key: 'label-key', value: 'label-value' }]
-      }
+        uid: 'uid1',
+        metadata: {}
+      },
+      [
+        {
+          task_type: 'classification',
+          metadata: {},
+          labels: [{ key: 'label-key', value: 'label-value' }],
+          bounding_box: null,
+          polygon: null,
+          raster: null,
+          embedding: null
+        }
     ]);
-    await client.addGroundTruth(datasetName, 'uid2', [
+    await client.addGroundTruth(
+      datasetName,
       {
-        task_type: 'classification',
-        labels: [{ key: 'label-key', value: 'label-value-with-no-prediction' }]
-      }
+        uid: 'uid2',
+        metadata: {}
+      },
+      [
+        {
+          task_type: 'classification',
+          metadata: {},
+          labels: [{ key: 'label-key', value: 'label-value-with-no-prediction' }],
+          bounding_box: null,
+          polygon: null,
+          raster: null,
+          embedding: null
+        }
     ]);
     await client.finalizeDataset(datasetName);
   }
@@ -114,16 +137,35 @@ const createDatasetsAndModels = async () => {
 
       await Promise.all(
         datasetNames.map(async (datasetName) => {
-          await client.addPredictions(modelName, datasetName, 'uid1', [
+          await client.addPredictions(
+            datasetName,
+            modelName,
+            {
+              uid: 'uid1',
+              metadata: {}
+            }, [
             {
               task_type: 'classification',
-              labels: [{ key: 'label-key', value: 'label-value', score: 1.0 }]
+              metadata: {},
+              labels: [{ key: 'label-key', value: 'label-value', score: 1.0 }],
+              bounding_box: null,
+              polygon: null,
+              raster: null,
+              embedding: null
             }
           ]);
-          await client.addPredictions(modelName, datasetName, 'uid2', [
+          await client.addPredictions(datasetName, modelName, {
+              uid: 'uid2',
+              metadata: {}
+            }, [
             {
               task_type: 'classification',
-              labels: [{ key: 'label-key', value: 'label-value', score: 1.0 }]
+              metadata: {},
+              labels: [{ key: 'label-key', value: 'label-value', score: 1.0 }],
+              bounding_box: null,
+              polygon: null,
+              raster: null,
+              embedding: null
             }
           ]);
         })
