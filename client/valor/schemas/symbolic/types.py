@@ -233,9 +233,7 @@ class Variable:
         NotImplementedError
             This function is not implemented in the base class.
         """
-        raise NotImplementedError(
-            f"Variable of type `{cls.__name__}` cannot be assigned a value."
-        )
+        pass
 
     @classmethod
     def supports(cls, value: typing.Any) -> bool:
@@ -263,15 +261,6 @@ class Variable:
     def encode_value(self) -> typing.Any:
         """Encode object to JSON compatible dictionary."""
         return self.get_value()
-
-    @classmethod
-    def from_dict(cls, value: dict):
-        """Decode a JSON-compatible dictionary into an instance of the variable."""
-        if set(value.keys()) != {"type", "value"}:
-            raise KeyError
-        elif value["type"] != cls.__name__.lower():
-            raise TypeError
-        return cls.decode_value(value["value"])
 
     def to_dict(self) -> dict:
         """Encode variable to a JSON-compatible dictionary."""

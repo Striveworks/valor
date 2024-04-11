@@ -65,6 +65,27 @@ def test_symbol():
         },
     }
 
+    # test '__eq__'
+    assert s == Symbol(
+        owner="some_owner",
+        name="some_name",
+        attribute="some_attribute",
+        key="some_key",
+    )
+    assert not (s == "symbol")
+
+    # test '__ne__'
+    assert not (
+        s
+        != Symbol(
+            owner="some_owner",
+            name="some_name",
+            attribute="some_attribute",
+            key="some_key",
+        )
+    )
+    assert s != "symbol"
+
 
 def _test_symbolic_outputs(v, s=Symbol(name="test")):
     assert s.to_dict() == v.to_dict()
@@ -85,9 +106,37 @@ def test_variable():
     _test_symbolic_outputs(var_method1)
     _test_symbolic_outputs(var_method2)
 
-    # nullable variables are not supported in the base class
-    with pytest.raises(NotImplementedError):
-        Variable.nullable("hello")
+    # test is_none
+    assert Variable.symbolic().is_none().to_dict() == {
+        "op": "isnull",
+        "arg": {
+            "type": "symbol",
+            "value": {
+                "name": "variable",
+                "owner": None,
+                "key": None,
+                "attribute": None,
+            },
+        },
+    }
+    assert Variable(None).is_none().get_value() is True  # type: ignore - known output
+    assert Variable(1234).is_none().get_value() is False  # type: ignore - known output
+
+    # test is_not_none
+    assert Variable.symbolic().is_not_none().to_dict() == {
+        "op": "isnotnull",
+        "arg": {
+            "type": "symbol",
+            "value": {
+                "name": "variable",
+                "owner": None,
+                "key": None,
+                "attribute": None,
+            },
+        },
+    }
+    assert Variable(None).is_not_none().get_value() is False  # type: ignore - known output
+    assert Variable(1234).is_not_none().get_value() is True  # type: ignore - known output
 
 
 def _test_equatable(varA, varB, varC):
@@ -596,6 +645,28 @@ def test_bool():
     # test encoding
     _test_encoding(objcls, True, True)
     _test_encoding(objcls, False, False)
+
+    # test and operation
+    assert (Bool(True) & Bool(True)).get_value() is True  # type: ignore - known output
+    assert (Bool(True) & Bool(False)).get_value() is False  # type: ignore - known output
+    assert (Bool(False) & Bool(True)).get_value() is False  # type: ignore - known output
+    assert (Bool(False) & Bool(False)).get_value() is False  # type: ignore - known output
+
+    # test or operation
+    assert (Bool(True) | Bool(True)).get_value() is True  # type: ignore - known output
+    assert (Bool(True) | Bool(False)).get_value() is True  # type: ignore - known output
+    assert (Bool(False) | Bool(True)).get_value() is True  # type: ignore - known output
+    assert (Bool(False) | Bool(False)).get_value() is False  # type: ignore - known output
+
+    # test xor operation
+    assert (Bool(True) ^ Bool(True)).get_value() is False  # type: ignore - known output
+    assert (Bool(True) ^ Bool(False)).get_value() is True  # type: ignore - known output
+    assert (Bool(False) ^ Bool(True)).get_value() is True  # type: ignore - known output
+    assert (Bool(False) ^ Bool(False)).get_value() is False  # type: ignore - known output
+
+    # test negation operation
+    assert (~Bool(True)).get_value() is False  # type: ignore - known output
+    assert (~Bool(False)).get_value() is True  # type: ignore - known output
 
 
 def test_integer():
