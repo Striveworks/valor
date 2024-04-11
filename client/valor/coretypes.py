@@ -397,19 +397,6 @@ class DatasetSummary:
             if isinstance(label, dict):
                 self.labels[i] = Label(**label)
 
-    @classmethod
-    def decode_value(cls, value):
-        return cls(**value)
-        # value["datum_metadata"] = [
-        #     Dictionary.decode_value(element)
-        #     for element in value["datum_metadata"]
-        # ]
-        # value["annotation_metadata"] = [
-        #     Dictionary.decode_value(element)
-        #     for element in value["annotation_metadata"]
-        # ]
-        # return cls(**value)
-
 
 class Dataset(StaticCollection):
     """
@@ -1448,7 +1435,7 @@ class Client:
         DatasetSummary
             A dataclass containing the dataset summary.
         """
-        return DatasetSummary.decode_value(self.conn.get_dataset_summary(name))
+        return DatasetSummary(**self.conn.get_dataset_summary(name))
 
     def delete_dataset(self, name: str, timeout: int = 0) -> None:
         """
