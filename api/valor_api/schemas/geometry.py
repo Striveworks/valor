@@ -10,6 +10,7 @@ from geoalchemy2.functions import (
     ST_GeomFromText,
     ST_MakeEmptyRaster,
     ST_MapAlgebra,
+    ST_SnapToGrid,
 )
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import ScalarSelect, select
@@ -1160,7 +1161,10 @@ class Raster(BaseModel):
                 "8BUI",
             )
             geom_raster = ST_AsRaster(
-                ST_GeomFromText(self.geometry.wkt()),
+                ST_SnapToGrid(
+                    ST_GeomFromText(self.geometry.wkt()),
+                    1.0,
+                ),
                 1.0,  # scalex
                 1.0,  # scaley
                 "8BUI",  # pixeltype
@@ -1168,7 +1172,6 @@ class Raster(BaseModel):
                 0,  # nodataval
             )
             return select(
-                # geom_raster,
                 ST_MapAlgebra(
                     empty_raster,
                     geom_raster,
