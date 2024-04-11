@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from valor_api import enums, schemas
 from valor_api.backend import models
-from valor_api.backend.core import fetch_dataset
+from valor_api.backend.core import fetch_dataset, get_groundtruth
 from valor_api.backend.core.geometry import (
     _convert_polygon_to_box,
     _convert_raster_to_box,
@@ -278,7 +278,7 @@ def test_convert_polygon_to_box(
     assert converted_box == bbox
 
 
-def test_create_segmentations_from_polygons(
+def test_create_raster_from_polygons(
     db: Session,
     create_segmentation_dataset_from_geometries: str,
     bbox: Box,
@@ -382,3 +382,88 @@ def test_create_segmentations_from_polygons(
     assert (
         polygons[2] == polygon
     )  # uncorrupted raster converts to correct polygon
+
+
+def test_create_raster_from_polygons_with_decimal_coordinates(
+    db: Session,
+    dataset_name: str,
+    polygon: Polygon,
+    raster: Raster,
+):
+    # alter polygon to be offset by 0.1
+    assert (
+        polygon.to_wkt()
+        == "POLYGON ((4.0 0.0, 1.0 3.0, 4.0 6.0, 7.0 3.0, 4.0 0.0))"
+    )
+    polygon.value = [
+        [(point[0] + 0.1, point[1] + 0.5) for point in subpolygon]
+        for subpolygon in polygon.value
+    ]
+    assert (
+        polygon.to_wkt()
+        == "POLYGON ((4.1 0.5, 1.1 3.5, 4.1 6.5, 7.1 3.5, 4.1 0.5))"
+    )
+
+    # create raster annotation
+    datum = Datum(uid="uid1")
+    task_type = enums.TaskType.OBJECT_DETECTION
+    labels = [schemas.Label(key="k1", value="v1")]
+    groundtruth = GroundTruth(
+        dataset_name=dataset_name,
+        datum=datum,
+        annotations=[
+            Annotation(
+                task_type=task_type,
+                labels=labels,
+                raster=Raster(
+                    mask=raster.mask,
+                    geometry=polygon,
+                ),
+            ),
+        ],
+    )
+    dataset = schemas.Dataset(name=dataset_name)
+    create_dataset(db=db, dataset=dataset)
+    create_groundtruth(db=db, groundtruth=groundtruth)
+
+    # retrieve the raster from the database to see if it has been converted.
+    groundtruth = get_groundtruth(
+        db=db, dataset_name=dataset_name, datum_uid="uid1"
+    )
+    assert groundtruth.annotations[0].raster
+    # note that postgis rasterization is lossy
+    arr = (
+        np.array(
+            [
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 1, 1, 0, 0, 0, 0, 0],
+                [0, 0, 1, 1, 1, 1, 0, 0, 0, 0],
+                [0, 1, 1, 1, 1, 1, 1, 0, 0, 0],
+                [0, 0, 1, 1, 1, 1, 0, 0, 0, 0],
+                [0, 0, 0, 1, 1, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            ]
+        )
+        == 1
+    )
+    assert (groundtruth.annotations[0].raster.array == arr).all()
+
+    # convert raster into a polygon
+    polygon_subquery = (
+        select(models.Annotation.polygon)
+        .where(models.Annotation.polygon.isnot(None))
+        .subquery()
+    )
+    assert len(db.query(polygon_subquery).all()) == 0
+    q = _convert_raster_to_polygon([])
+    db.execute(q)
+    assert len(db.query(polygon_subquery).all()) == 1
+
+    # check polygon in WKT format
+    db_polygon = db.scalar(select(func.ST_AsText(models.Annotation.polygon)))
+    assert db_polygon
+    # note that postgis rasterization is lossy
+    assert db_polygon == "POLYGON((3 1,1 3,3 5,4 5,6 3,4 1,3 1))"
