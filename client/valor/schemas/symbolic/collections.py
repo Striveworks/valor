@@ -147,17 +147,6 @@ class StaticCollection(Equatable):
         for k, v in fields.items():
             if isinstance(v, type) and issubclass(v, Variable):
                 retval[k] = v
-            # elif (
-            #     '__origin__' in v.__dict__
-            #     and '__args__' in v.__dict__
-            # ):
-            #     origin = v.__dict__.get('__origin__')
-            #     args = v.__dict__.get('__args__')
-            #     if not origin or origin not in {List, Nullable}:
-            #         raise NotImplementedError(origin)
-            #     elif not args or len(args) != 1:
-            #         raise NotImplementedError(args)
-            #     retval[k] = origin[args[0]]
             elif isinstance(v, str):
                 retval[k] = _get_schema_type_by_name(v)
             else:
@@ -182,10 +171,6 @@ class StaticCollection(Equatable):
         if self.is_symbolic:
             return super().__str__()
         return str(self.encode_value())
-
-    @property
-    def is_symbolic(self) -> bool:
-        return super().is_symbolic
 
 
 class Label(StaticCollection):
