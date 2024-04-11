@@ -29,7 +29,7 @@ function encodeMetadata(input: { [key: string]: any }): { [key: string]: {type: 
     if (value instanceof Date) {
       valueType = 'datetime';
       output[key] = { type: valueType, value: value.toISOString() };
-    } else if (Metadata.isGeoJSONObject(value)) {
+    } else if (isGeoJSONObject(value)) {
       valueType = 'geojson';
       output[key] = { type: valueType, value };
     } else if (typeof value === 'string') {
