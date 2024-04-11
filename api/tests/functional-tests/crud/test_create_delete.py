@@ -383,7 +383,7 @@ def test_create_and_get_datasets(
         db=db,
         dataset=schemas.Dataset(name="other_dataset"),
     )
-    datasets = crud.get_datasets(db=db)
+    datasets, _ = crud.get_datasets(db=db)
     assert len(datasets) == 2
     assert set([d.name for d in datasets]) == {dataset_name, "other_dataset"}
 

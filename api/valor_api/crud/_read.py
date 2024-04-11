@@ -1,5 +1,3 @@
-from collections.abc import Mapping
-
 from sqlalchemy.orm import Session
 
 from valor_api import backend, enums, schemas
@@ -158,7 +156,9 @@ def get_datasets(
     *,
     db: Session,
     filters: schemas.Filter | None = None,
-) -> list[schemas.Dataset]:
+    offset: int = 0,
+    limit: int = -1,
+) -> tuple[list[schemas.Dataset], dict[str, str]]:
     """
     Get datasets with optional filter.
 
@@ -170,13 +170,20 @@ def get_datasets(
         The database Session to query against.
     filters : schemas.Filter, optional
         An optional filter to apply.
+    offset : int, optional
+        The start index of the models to return. Useful for pagination.
+    limit : int, optional
+        The number of models to return. Returns all models when set to -1. Useful for pagination.
+
 
     Returns
     ----------
-    list[schemas.Dataset]
-        A list of all datasets.
+    tuple[list[schemas.Dataset], dict[str, str]]:
+        A tuple containing the datasets and response headers to return to the user.
     """
-    return backend.get_datasets(db=db, filters=filters)
+    return backend.get_datasets(
+        db=db, filters=filters, offset=offset, limit=limit
+    )
 
 
 def get_dataset_summary(*, db: Session, name: str) -> schemas.DatasetSummary:
@@ -242,7 +249,7 @@ def get_models(
     filters: schemas.Filter | None = None,
     offset: int = 0,
     limit: int = -1,
-) -> tuple[list[schemas.Model], Mapping[str, str]]:
+) -> tuple[list[schemas.Model], dict[str, str]]:
     """
     Get models with optional filter.
 
@@ -263,7 +270,7 @@ def get_models(
 
     Returns
     ----------
-    tuple[list[schemas.Model], Mapping[str, str]]
+    tuple[list[schemas.Model], dict[str, str]]
         A tuple containing the models and response headers to return to the user.
     """
     return backend.get_models(

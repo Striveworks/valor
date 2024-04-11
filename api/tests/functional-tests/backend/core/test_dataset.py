@@ -8,11 +8,13 @@ from valor_api.backend import core, models
 
 @pytest.fixture
 def created_datasets(db: Session) -> list[str]:
-    dataset1 = schemas.Dataset(name="dataset1")
-    dataset2 = schemas.Dataset(name="dataset2")
-    core.create_dataset(db, dataset=dataset1)
-    core.create_dataset(db, dataset=dataset2)
-    return ["dataset1", "dataset2"]
+    datasets = []
+    for i in range(10):
+        dataset = schemas.Dataset(name=f"dataset{i}")
+        core.create_dataset(db, dataset=dataset)
+        datasets.append(f"dataset{i}")
+
+    return datasets
 
 
 def test_create_dataset(db: Session, created_dataset):
@@ -47,9 +49,15 @@ def test_get_dataset(db: Session, created_dataset):
 
 
 def test_get_datasets(db: Session, created_datasets):
-    datasets = core.get_datasets(db)
+    datasets, headers = core.get_datasets(db)
     for dataset in datasets:
         assert dataset.name in created_datasets
+    assert headers == {"content-range": "items 0-10/10"}
+
+    # test pagination
+    datasets, headers = core.get_datasets(db, offset=5, limit=2)
+    assert [dataset.name for dataset in datasets] == ["dataset5", "dataset6"]
+    assert headers == {"content-range": "items 5-6/10"}
 
 
 def test_dataset_status(db: Session, created_dataset):

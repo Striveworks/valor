@@ -52,18 +52,18 @@ def test_get_models(db: Session, created_models):
     models, headers = core.get_models(db)
     for model in models:
         assert model.name in created_models
-    assert headers == {"Content-Range": "items 0-10/10"}
+    assert headers == {"content-range": "items 0-10/10"}
 
     # test pagination
     models, headers = core.get_models(db, offset=5, limit=2)
     assert [model.name for model in models] == ["model5", "model6"]
-    assert headers == {"Content-Range": "items 5-6/10"}
+    assert headers == {"content-range": "items 5-6/10"}
 
     models, headers = core.get_models(db, offset=2, limit=7)
     assert [model.name for model in models] == [
         f"model{i}" for i in range(2, 9)
     ]
-    assert headers == {"Content-Range": "items 2-8/10"}
+    assert headers == {"content-range": "items 2-8/10"}
 
 
 def test_model_status(db: Session, created_model, created_dataset):

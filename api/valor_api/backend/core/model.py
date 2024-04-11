@@ -1,5 +1,3 @@
-from collections.abc import Mapping
-
 from sqlalchemy import and_, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -168,7 +166,7 @@ def get_models(
     filters: schemas.Filter | None = None,
     offset: int = 0,
     limit: int = -1,
-) -> tuple[list[schemas.Model], Mapping[str, str]]:
+) -> tuple[list[schemas.Model], dict[str, str]]:
     """
     Get models with optional filter constraint.
 
@@ -186,7 +184,7 @@ def get_models(
 
     Returns
     ----------
-    tuple[list[schemas.Model], Mapping[str, str]]
+    tuple[list[schemas.Model], dict[str, str]]
         A tuple containing the models and response headers to return to the user.
     """
     if offset < 0 or limit < -1:
@@ -217,7 +215,7 @@ def get_models(
 
     content = [_load_model_schema(db=db, model=model) for model in models_]
     end_index = limit if limit == count else offset + limit - 1
-    headers = {"Content-Range": f"items {offset}-{end_index}/{count}"}
+    headers = {"content-range": f"items {offset}-{end_index}/{count}"}
     return (content, headers)
 
 

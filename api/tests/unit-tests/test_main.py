@@ -747,7 +747,7 @@ def test_post_datasets(client: TestClient):
 
 @patch("valor_api.main.crud")
 def test_get_datasets(crud, client: TestClient):
-    crud.get_datasets.return_value = []
+    crud.get_datasets.return_value = ([], {"headers": "headers"})
     resp = client.get("/datasets")
     assert resp.status_code == 200
     crud.get_datasets.assert_called_once()

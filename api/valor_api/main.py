@@ -385,7 +385,10 @@ def create_dataset(dataset: schemas.Dataset, db: Session = Depends(get_db)):
     description="Fetch datasets using optional JSON strings as query parameters.",
 )
 def get_datasets(
+    response: Response,
     filters: schemas.FilterQueryParams = Depends(),
+    offset: int = 0,
+    limit: int = -1,
     db: Session = Depends(get_db),
 ) -> list[schemas.Dataset]:
     """
@@ -395,8 +398,15 @@ def get_datasets(
 
     Parameters
     ----------
+    response: Response
+        The FastAPI response object. Used to return a content-range header to the user.
     filters : schemas.FilterQueryParams, optional
         An optional filter to constrain results by. All fields should be specified as strings in a JSON.
+    offset : int, optional
+        The start index of the models to return. Useful for pagination.
+    limit : int, optional
+        The number of models to return. Returns all models when set to -1. Useful for pagination.
+
     db : Session
         The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
 
@@ -406,10 +416,14 @@ def get_datasets(
         A list of all datasets stored in the database.
     """
     try:
-        return crud.get_datasets(
+        content, headers = crud.get_datasets(
             db=db,
             filters=schemas.convert_filter_query_params_to_filter_obj(filters),
+            offset=offset,
+            limit=limit,
         )
+        response.headers.update(headers)
+        return content
     except Exception as e:
         raise exceptions.create_http_error(e)
 

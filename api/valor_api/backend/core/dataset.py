@@ -1,4 +1,4 @@
-from sqlalchemy import and_, select
+from sqlalchemy import and_, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -127,7 +127,9 @@ def get_dataset(
 def get_datasets(
     db: Session,
     filters: schemas.Filter | None = None,
-) -> list[schemas.Dataset]:
+    offset: int = 0,
+    limit: int = -1,
+) -> tuple[list[schemas.Dataset], dict[str, str]]:
     """
     Get datasets with optional filter constraint.
 
@@ -137,12 +139,21 @@ def get_datasets(
         The database Session to query against.
     filters : schemas.Filter, optional
         Optional filter to constrain against.
+    offset : int, optional
+        The start index of the models to return. Useful for pagination.
+    limit : int, optional
+        The number of models to return. Returns all models when set to -1. Useful for pagination.
 
     Returns
     ----------
-    list[schemas.Dataset]
-        A list of all datasets.
+    tuple[list[schemas.Dataset], dict[str, str]]:
+        A tuple containing the datasets and response headers to return to the user.
     """
+    if offset < 0 or limit < -1:
+        raise ValueError(
+            "Offset should be an int greater than or equal to zero. Limit should be an int greater than or equal to -1."
+        )
+
     datasets_subquery = (
         Query(models.Dataset.id.label("id")).filter(filters).any()
     )
@@ -152,14 +163,31 @@ def get_datasets(
             "psql unexpectedly returned None instead of a Subquery."
         )
 
+    count = (
+        db.query(func.count(models.Dataset.id))
+        .where(models.Dataset.id == datasets_subquery.c.id)
+        .scalar()
+    )
+
+    # return all rows when limit is -1
+    if limit == -1:
+        limit = count
+
     datasets = (
         db.query(models.Dataset)
         .where(models.Dataset.id == datasets_subquery.c.id)
+        .order_by(models.Dataset.created_at)
+        .offset(offset)
+        .limit(limit)
         .all()
     )
-    return [
+
+    content = [
         _load_dataset_schema(db=db, dataset=dataset) for dataset in datasets
     ]
+    end_index = limit if limit == count else offset + limit - 1
+    headers = {"content-range": f"items {offset}-{end_index}/{count}"}
+    return (content, headers)
 
 
 def get_dataset_status(
