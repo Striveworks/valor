@@ -696,8 +696,6 @@ class Model(StaticCollection):
             A dictionary of metadata that describes the model.
         connection : ClientConnection, optional
             An initialized client connection.
-        symbol : Symbol, optional
-            Symbol to represent a model.
         """
         self.conn = connection
         super().__init__(name=name, metadata=metadata if metadata else dict())
