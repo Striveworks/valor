@@ -1,16 +1,14 @@
 import axios, { AxiosInstance } from 'axios';
 
-function isGeoJSONObject(value: any): boolean {
-  if (typeof value !== 'object' || value === null) {
-    return false;
-  }
+type GeoJSONType = "Point" | "LineString" | "Polygon" | "MultiPoint" | "MultiLineString" | "MultiPolygon" | "GeometryCollection" | "Feature" | "FeatureCollection";
 
-  const geoJSONTypes = ["Point", "LineString", "Polygon", "MultiPoint", "MultiLineString", "MultiPolygon"];
-  return 'type' in value && geoJSONTypes.includes(value.type) && 'coordinates' in value;
+function isGeoJSONObject(value: any): value is { type: GeoJSONType, coordinates: any } {
+  const geoJSONTypes: GeoJSONType[] = ["Point", "LineString", "Polygon", "MultiPoint", "MultiLineString", "MultiPolygon", "GeometryCollection", "Feature", "FeatureCollection"];
+  return typeof value === 'object' && value !== null && 'type' in value && geoJSONTypes.includes(value.type as GeoJSONType);
 }
 
-function encodeMetadata(input: { [key: string]: any }): { [key: string]: { type: string; value: any } } {
-  const output: { [key: string]: { type: string; value: any } } = {};
+function encodeMetadata(input: { [key: string]: any }): { [key: string]: {type: string; value: any;} } {
+  const output: { [key: string]: {type: string; value: any;} } = {};
 
   for (const key in input) {
     const value = input[key];
@@ -19,7 +17,7 @@ function encodeMetadata(input: { [key: string]: any }): { [key: string]: { type:
     if (value instanceof Date) {
       valueType = 'datetime';
       output[key] = { type: valueType, value: value.toISOString() };
-    } else if (isGeoJSONObject(value)) {
+    } else if (Metadata.isGeoJSONObject(value)) {
       valueType = 'geojson';
       output[key] = { type: valueType, value };
     } else if (typeof value === 'string') {
@@ -30,7 +28,7 @@ function encodeMetadata(input: { [key: string]: any }): { [key: string]: { type:
       output[key] = { type: valueType, value };
     } else {
       console.warn(`Unknown type for key "${key}".`);
-      valueType = "unknown"; // Handling unknown types
+      valueType = "unknown";
       output[key] = { type: valueType, value };
     }
   }
@@ -38,7 +36,7 @@ function encodeMetadata(input: { [key: string]: any }): { [key: string]: { type:
   return output;
 }
 
-function decodeMetadata(input: { [key: string]: { type: string; value: any } }): { [key: string]: any } {
+function decodeMetadata(input: { [key: string]: {type: string; value: any;} }): { [key: string]: any } {
   const output: { [key: string]: any } = {};
 
   for (const key in input) {
@@ -47,20 +45,19 @@ function decodeMetadata(input: { [key: string]: { type: string; value: any } }):
 
     switch (type) {
       case 'datetime':
-      case 'date':
-      case 'time':
         output[key] = new Date(value);
         break;
       case 'geojson':
+        output[key] = value;
+        break;
       case 'string':
       case 'integer':
       case 'float':
-      case 'duration':
         output[key] = value;
         break;
       default:
         console.warn(`Unknown type for key "${key}".`);
-        output[key] = value; // Preserve unknown types
+        output[key] = value;
         break;
     }
   }
@@ -99,6 +96,7 @@ export type Datum = {
 
 export type Annotation = {
   task_type: string;
+  metadata: Partial<Record<string, any>>;
   labels: Label[];
   bounding_box: number[][][]?;
   polygon: number[][][]?;
@@ -162,7 +160,11 @@ export class ValorClient {
    */
   private async getDatasets(queryParams: object): Promise<Dataset[]> {
     const response = await this.client.get('/datasets', { params: queryParams });
-    return response.data;
+    var datasets: Dataset[] = response.data;
+    for (let index = 0, length = datasets.length; index < length; ++index) {
+      datasets[index].metadata = decodeMetadata(datasets[index].metadata);
+    }
+    return datasets;
   }
 
   /**
@@ -201,6 +203,7 @@ export class ValorClient {
    */
   public async getDatasetByName(name: string): Promise<Dataset> {
     const response = await this.client.get(`/datasets/${name}`);
+    response.data.metadata = decodeMetadata(response.data.metadata);
     return response.data;
   }
 
@@ -249,7 +252,11 @@ export class ValorClient {
    */
   private async getModels(queryParams: object): Promise<Model[]> {
     const response = await this.client.get('/models', { params: queryParams });
-    return response.data;
+    var models: Model[] = response.data;
+    for (let index = 0, length = models.length; index < length; ++index) {
+      models[index].metadata = decodeMetadata(models[index].metadata);
+    }
+    return models;
   }
 
   /**
@@ -492,13 +499,20 @@ export class ValorClient {
    * @returns {Promise<void>}
    */
   public async addGroundTruth(
-    datasetName: string,
-    datumUid: string,
-    annotations: object[]
+    datasetName: string
+    datum: Datum,
+    annotations: Annotation[]
   ): Promise<void> {
-    for annot
+    datum.metadata = encodeMetadata(datum.metadata)
+    for (let index = 0, length = annotations.length; index < length; ++index) {
+      annotations[index].metadata = encodeMetadata(annotations[index].metadata);
+    }
     return this.client.post('/groundtruths', [
-      { datum: { uid: datumUid, dataset_name: datasetName }, annotations: annotations }
+      {
+        dataset_name: datasetName,
+        datum: datum,
+        annotations: annotations
+      }
     ]);
   }
 
@@ -515,14 +529,18 @@ export class ValorClient {
   public async addPredictions(
     modelName: string,
     datasetName: string,
-    datumUid: string,
-    annotations: object[]
+    datum: Datum,
+    annotations: Annotation[]
   ): Promise<void> {
-    for (annotation in annotations)
+    datum.metadata = encodeMetadata(datum.metadata)
+    for (let index = 0, length = annotations.length; index < length; ++index) {
+      annotations[index].metadata = encodeMetadata(annotations[index].metadata);
+    }
     return this.client.post('/predictions', [
       {
+        dataset_name: datasetName,
         model_name: modelName,
-        datum: { uid: datumUid, dataset_name: datasetName },
+        datum: datum,
         annotations: annotations
       }
     ]);
