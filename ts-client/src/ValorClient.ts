@@ -116,10 +116,10 @@ export type Annotation = {
   task_type: TaskType;
   metadata: Partial<Record<string, any>>;
   labels: Label[];
-  bounding_box: number[][][]?;
-  polygon: number[][][]?;
-  raster: object?;
-  embedding: number[]?;
+  bounding_box?: number[][][];
+  polygon?: number[][][];
+  raster?: object;
+  embedding?: number[];
 }
 
 export type Metric = {
@@ -517,7 +517,7 @@ export class ValorClient {
    * @returns {Promise<void>}
    */
   public async addGroundTruth(
-    datasetName: string
+    datasetName: string,
     datum: Datum,
     annotations: Annotation[]
   ): Promise<void> {
