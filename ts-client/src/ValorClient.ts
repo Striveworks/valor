@@ -68,16 +68,6 @@ function decodeMetadata(input: { [key: string]: { type: string; value: any } }):
   return output;
 }
 
-export type Dataset = {
-  name: string;
-  metadata: Partial<Record<string, any>>;
-};
-
-export type Model = {
-  name: string;
-  metadata: Partial<Record<string, any>>;
-};
-
 export type TaskType =
   | 'skip'
   | 'empty'
@@ -91,6 +81,30 @@ export type Label = {
   value: string;
   score?: number;
 };
+
+export type Dataset = {
+  name: string;
+  metadata: Partial<Record<string, any>>;
+};
+
+export type Model = {
+  name: string;
+  metadata: Partial<Record<string, any>>;
+};
+
+export type Datum = {
+  uid: string;
+  metadata: Partial<Record<string, any>>;
+}
+
+export type Annotation = {
+  task_type: string;
+  labels: Label[];
+  bounding_box: number[][][]?;
+  polygon: number[][][]?;
+  raster: object?;
+  embedding: number[]?;
+}
 
 export type Metric = {
   type: string;
@@ -482,6 +496,7 @@ export class ValorClient {
     datumUid: string,
     annotations: object[]
   ): Promise<void> {
+    for annot
     return this.client.post('/groundtruths', [
       { datum: { uid: datumUid, dataset_name: datasetName }, annotations: annotations }
     ]);
@@ -503,6 +518,7 @@ export class ValorClient {
     datumUid: string,
     annotations: object[]
   ): Promise<void> {
+    for (annotation in annotations)
     return this.client.post('/predictions', [
       {
         model_name: modelName,
