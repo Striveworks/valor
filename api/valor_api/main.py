@@ -1,7 +1,7 @@
 import os
 from typing import Annotated
 
-from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
@@ -727,9 +727,13 @@ def create_model(model: schemas.Model, db: Session = Depends(get_db)):
     dependencies=[Depends(token_auth_scheme)],
     tags=["Models"],
     description="Fetch models using optional JSON strings as query parameters.",
+    response_model=list[schemas.Model],
 )
 def get_models(
+    response: Response,
     filters: schemas.FilterQueryParams = Depends(),
+    offset: int = 0,
+    limit: int = -1,
     db: Session = Depends(get_db),
 ) -> list[schemas.Model]:
     """
@@ -739,8 +743,14 @@ def get_models(
 
     Parameters
     ----------
+    response: Response
+        The FastAPI response object. Used to return a content-range header to the user.
     filters : schemas.FilterQueryParams, optional
         An optional filter to constrain results by.
+    offset : int, optional
+        The start index of the models to return. Useful for pagination.
+    limit : int, optional
+        The number of models to return. Returns all models when set to -1. Useful for pagination.
     db : Session
         The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
 
@@ -749,10 +759,16 @@ def get_models(
     list[schemas.Model]
         A list of models.
     """
-    return crud.get_models(
+    content, headers = crud.get_models(
         db=db,
         filters=schemas.convert_filter_query_params_to_filter_obj(filters),
+        offset=offset,
+        limit=limit,
     )
+
+    response.headers.update(headers)
+
+    return content
 
 
 @app.get(

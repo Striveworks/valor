@@ -863,7 +863,7 @@ def test_post_models(client: TestClient):
 
 @patch("valor_api.main.crud")
 def test_get_models(crud, client: TestClient):
-    crud.get_models.return_value = []
+    crud.get_models.return_value = ([], {"headers": "headers"})
     resp = client.get("/models")
     assert resp.status_code == 200
     crud.get_models.assert_called_once()

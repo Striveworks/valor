@@ -5,6 +5,7 @@ that is no auth
 from typing import List
 
 import pytest
+import requests
 
 from valor import (
     Annotation,
@@ -238,6 +239,11 @@ def test_get_models(
 
     neg_query = client.get_models(Filter(labels=[{"some_other_class": "1"}]))
     assert len(neg_query) == 0
+
+    # check that the content-range header exists on the raw response
+    requests_method = getattr(requests, "get")
+    resp = requests_method("http://localhost:8000/models")
+    assert resp.headers["content-range"] == "items 0-1/1"
 
 
 def test_get_datums(

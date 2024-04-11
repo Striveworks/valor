@@ -1,3 +1,5 @@
+from collections.abc import Mapping
+
 from sqlalchemy import and_, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -164,7 +166,9 @@ def get_model(
 def get_models(
     db: Session,
     filters: schemas.Filter | None = None,
-) -> list[schemas.Model]:
+    offset: int = 0,
+    limit: int = -1,
+) -> tuple[list[schemas.Model], Mapping[str, str]]:
     """
     Get models with optional filter constraint.
 
@@ -174,17 +178,47 @@ def get_models(
         The database Session to query against.
     filters : schemas.Filter, optional
         Optional filter to constrain against.
+    offset : int, optional
+        The start index of the models to return. Useful for pagination.
+    limit : int, optional
+        The number of models to return. Returns all models when equal to -1. Useful for pagination.
+
 
     Returns
     ----------
-    list[schemas.Model]
-        A list of all models.
+    tuple[list[schemas.Model], Mapping[str, str]]
+        A tuple containing the models and response headers to return to the user.
     """
+    if offset < 0 or limit < -1:
+        raise ValueError(
+            "Offset should be an int greater than or equal to zero. Limit should be an int greater than or equal to -1."
+        )
+
     subquery = Query(models.Model.id.label("id")).filter(filters).any()
-    models_ = (
-        db.query(models.Model).where(models.Model.id == subquery.c.id).all()
+
+    count = (
+        db.query(func.count(models.Model.id))
+        .where(models.Model.id == subquery.c.id)
+        .scalar()
     )
-    return [_load_model_schema(db=db, model=model) for model in models_]
+
+    # return all rows when limit is -1
+    if limit == -1:
+        limit = count
+
+    models_ = (
+        db.query(models.Model)
+        .where(models.Model.id == subquery.c.id)
+        .order_by(models.Model.created_at)
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
+
+    content = [_load_model_schema(db=db, model=model) for model in models_]
+    end_index = limit if limit == count else offset + limit - 1
+    headers = {"Content-Range": f"items {offset}-{end_index}/{count}"}
+    return (content, headers)
 
 
 def get_model_status(

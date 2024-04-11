@@ -1,3 +1,5 @@
+from collections.abc import Mapping
+
 from sqlalchemy.orm import Session
 
 from valor_api import backend, enums, schemas
@@ -238,7 +240,9 @@ def get_models(
     *,
     db: Session,
     filters: schemas.Filter | None = None,
-) -> list[schemas.Model]:
+    offset: int = 0,
+    limit: int = -1,
+) -> tuple[list[schemas.Model], Mapping[str, str]]:
     """
     Get models with optional filter.
 
@@ -248,13 +252,23 @@ def get_models(
     ----------
     db : Session
         The database Session to query against.
+    filters : schemas.FilterQueryParams, optional
+        An optional filter to constrain results by.
+    offset : int, optional
+        The start index of the models to return. Useful for pagination.
+    limit : int, optional
+        The number of models to return. Returns all models when set to -1. Useful for pagination.
+    db : Session
+        The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
 
     Returns
     ----------
-    list[schemas.Model]
-        A list of all models.
+    tuple[list[schemas.Model], Mapping[str, str]]
+        A tuple containing the models and response headers to return to the user.
     """
-    return backend.get_models(db=db, filters=filters)
+    return backend.get_models(
+        db=db, filters=filters, offset=offset, limit=limit
+    )
 
 
 def get_prediction(

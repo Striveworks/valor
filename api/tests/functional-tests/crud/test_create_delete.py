@@ -403,7 +403,7 @@ def test_create_and_get_models(
     assert "already exists" in str(exc_info)
 
     crud.create_model(db=db, model=schemas.Model(name="other_model"))
-    db_models = crud.get_models(db=db)
+    db_models, _ = crud.get_models(db=db)
     assert len(db_models) == 2
     assert set([m.name for m in db_models]) == {model_name, "other_model"}
 

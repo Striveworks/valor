@@ -8,11 +8,13 @@ from valor_api.backend import core, models
 
 @pytest.fixture
 def created_models(db: Session) -> list[str]:
-    model1 = schemas.Model(name="model1")
-    model2 = schemas.Model(name="model2")
-    core.create_model(db, model=model1)
-    core.create_model(db, model=model2)
-    return ["model1", "model2"]
+    models = []
+    for i in range(10):
+        model = schemas.Model(name=f"model{i}")
+        core.create_model(db, model=model)
+        models.append(f"model{i}")
+
+    return models
 
 
 def test_create_model(db: Session, created_model):
@@ -47,9 +49,21 @@ def test_get_model(db: Session, created_model):
 
 
 def test_get_models(db: Session, created_models):
-    models = core.get_models(db)
+    models, headers = core.get_models(db)
     for model in models:
         assert model.name in created_models
+    assert headers == {"Content-Range": "items 0-10/10"}
+
+    # test pagination
+    models, headers = core.get_models(db, offset=5, limit=2)
+    assert [model.name for model in models] == ["model5", "model6"]
+    assert headers == {"Content-Range": "items 5-6/10"}
+
+    models, headers = core.get_models(db, offset=2, limit=7)
+    assert [model.name for model in models] == [
+        f"model{i}" for i in range(2, 9)
+    ]
+    assert headers == {"Content-Range": "items 2-8/10"}
 
 
 def test_model_status(db: Session, created_model, created_dataset):
