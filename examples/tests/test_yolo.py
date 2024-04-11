@@ -207,8 +207,7 @@ def test_parse_yolo_image_classification(image, names):
         probs=probs,
     )
 
-    valor_image = ImageMetadata(
-        dataset="dataset",
+    valor_image = ImageMetadata.create(
         uid=image["uid"],
         height=image["height"],
         width=image["width"],
@@ -220,8 +219,8 @@ def test_parse_yolo_image_classification(image, names):
 
     assert isinstance(prediction, Prediction)
 
-    image_datum = ImageMetadata.from_datum(prediction.datum)
-    assert image_datum.uid == image["uid"]
+    image_datum = ImageMetadata(prediction.datum)
+    assert prediction.datum.uid == image["uid"]
     assert image_datum.height == image["height"]
     assert image_datum.width == image["width"]
 
@@ -256,8 +255,7 @@ def test_parse_yolo_image_segmentation(
         masks=masks,
     )
 
-    valor_image = ImageMetadata(
-        dataset="dataset",
+    valor_image = ImageMetadata.create(
         uid=image["uid"],
         height=image["height"],
         width=image["width"],
@@ -267,8 +265,8 @@ def test_parse_yolo_image_segmentation(
         results, valor_image, label_key="class"
     )
 
-    image_datum = ImageMetadata.from_datum(prediction.datum)
-    assert image_datum.uid == image["uid"]
+    image_datum = ImageMetadata(prediction.datum)
+    assert image_datum.datum.uid == image["uid"]
     assert image_datum.height == image["height"]
     assert image_datum.width == image["width"]
 
@@ -279,9 +277,7 @@ def test_parse_yolo_image_segmentation(
         assert prediction.annotations[i].labels[0].key == "class"
         assert prediction.annotations[i].labels[0].value == names[i]
         assert prediction.annotations[i].labels[0].score == bboxes[i][4]
-        assert (
-            prediction.annotations[i].raster.to_numpy() == valor_mask
-        ).all()
+        assert (prediction.annotations[i].raster.array == valor_mask).all()
 
 
 def test_parse_yolo_object_detection(image, bboxes, names):
@@ -291,8 +287,7 @@ def test_parse_yolo_object_detection(image, bboxes, names):
         orig_img=img, path=image["path"], names=names, boxes=bboxes
     )
 
-    valor_image = ImageMetadata(
-        dataset="dataset",
+    valor_image = ImageMetadata.create(
         uid=image["uid"],
         height=image["height"],
         width=image["width"],
@@ -302,8 +297,8 @@ def test_parse_yolo_object_detection(image, bboxes, names):
         results, valor_image, label_key="class"
     )
 
-    image_datum = ImageMetadata.from_datum(prediction.datum)
-    assert image_datum.uid == image["uid"]
+    image_datum = ImageMetadata(prediction.datum)
+    assert image_datum.datum.uid == image["uid"]
     assert image_datum.height == image["height"]
     assert image_datum.width == image["width"]
 
@@ -314,7 +309,7 @@ def test_parse_yolo_object_detection(image, bboxes, names):
         assert prediction.annotations[i].labels[0].key == "class"
         assert prediction.annotations[i].labels[0].value == names[i]
         assert prediction.annotations[i].labels[0].score == bboxes[i][4]
-        assert prediction.annotations[i].box.xmin == bboxes[i][0]
-        assert prediction.annotations[i].box.ymin == bboxes[i][1]
-        assert prediction.annotations[i].box.xmax == bboxes[i][2]
-        assert prediction.annotations[i].box.ymax == bboxes[i][3]
+        assert prediction.annotations[i].bounding_box.xmin == bboxes[i][0]
+        assert prediction.annotations[i].bounding_box.ymin == bboxes[i][1]
+        assert prediction.annotations[i].bounding_box.xmax == bboxes[i][2]
+        assert prediction.annotations[i].bounding_box.ymax == bboxes[i][3]

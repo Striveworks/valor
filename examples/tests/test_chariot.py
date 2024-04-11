@@ -13,7 +13,7 @@ from integrations.chariot.models import (
 
 from valor import enums
 from valor.metatypes import ImageMetadata
-from valor.schemas import BoundingBox, Point
+from valor.schemas import Box
 
 chariot_integration = pytest.importorskip("integration_utils.chariot")
 
@@ -221,7 +221,7 @@ def _test_obj_det_manifest(groundtruths):
     assert len(gt.annotations[0].labels) == 1
     assert gt.annotations[0].labels[0].tuple() == ("class_label", "dog", None)
     assert gt.annotations[0].polygon is None
-    assert gt.annotations[0].box == BoundingBox.from_extrema(
+    assert gt.annotations[0].bounding_box == Box.from_extrema(
         xmin=16, ymin=130, xmax=70, ymax=150
     )
 
@@ -233,7 +233,7 @@ def _test_obj_det_manifest(groundtruths):
         None,
     )
     assert gt.annotations[1].polygon is None
-    assert gt.annotations[1].box == BoundingBox.from_extrema(
+    assert gt.annotations[1].bounding_box == Box.from_extrema(
         xmin=89, ymin=10, xmax=97, ymax=110
     )
 
@@ -244,7 +244,7 @@ def _test_obj_det_manifest(groundtruths):
     assert len(gt.annotations[0].labels) == 1
     assert gt.annotations[0].labels[0].tuple() == ("class_label", "cat", None)
     assert gt.annotations[0].polygon is None
-    assert gt.annotations[0].box == BoundingBox.from_extrema(
+    assert gt.annotations[0].bounding_box == Box.from_extrema(
         xmin=500, ymin=220, xmax=530, ymax=260
     )
 
@@ -258,13 +258,14 @@ def _test_img_seg_manifest(groundtruths):
     assert len(gt.annotations) == 1
     assert len(gt.annotations[0].labels) == 1
     assert gt.annotations[0].labels[0].tuple() == ("class_label", "dog", None)
-
-    assert gt.annotations[0].polygon.boundary.points == [
-        Point(10.0, 15.5),
-        Point(20.9, 50.2),
-        Point(25.9, 28.4),
+    assert gt.annotations[0].polygon.get_value() == [
+        [
+            (10.0, 15.5),
+            (20.9, 50.2),
+            (25.9, 28.4),
+            (10.0, 15.5),
+        ]
     ]
-    assert gt.annotations[0].polygon.holes is None
 
     # Item 2
     gt = groundtruths[1]
@@ -272,16 +273,19 @@ def _test_img_seg_manifest(groundtruths):
     assert len(gt.annotations) == 1
     assert len(gt.annotations[0].labels) == 1
     assert gt.annotations[0].labels[0].tuple() == ("class_label", "car", None)
-
-    assert gt.annotations[0].polygon.boundary.points == [
-        Point(97.2, 40.2),
-        Point(33.33, 44.3),
-        Point(10.9, 18.7),
-    ]
-    assert gt.annotations[0].polygon.holes[0].points == [
-        Point(60.0, 15.5),
-        Point(70.9, 50.2),
-        Point(75.9, 28.4),
+    assert gt.annotations[0].polygon.get_value() == [
+        [
+            (97.2, 40.2),
+            (33.33, 44.3),
+            (10.9, 18.7),
+            (97.2, 40.2),
+        ],
+        [
+            (60.0, 15.5),
+            (70.9, 50.2),
+            (75.9, 28.4),
+            (60.0, 15.5),
+        ],
     ]
 
 
@@ -393,7 +397,7 @@ def test__parse_chariot_predict_image_classification(
 ):
     chariot_classifications, chariot_labels = img_clf_prediction
 
-    datum = ImageMetadata(uid="", width=1000, height=2000).to_datum()
+    datum = ImageMetadata.create(uid="", width=1000, height=2000).datum
 
     valor_classifications = _parse_chariot_predict_image_classification(
         datum,
@@ -439,7 +443,7 @@ def test__parse_chariot_predict_proba_image_classification(
 ):
     chariot_classifications, chariot_labels = img_clf_prediction_proba
 
-    datum = ImageMetadata(uid="", width=1000, height=2000).to_datum()
+    datum = ImageMetadata.create(uid="", width=1000, height=2000).datum
 
     valor_classifications = _parse_chariot_predict_proba_image_classification(
         datum,
@@ -481,7 +485,7 @@ def test__parse_chariot_predict_proba_image_classification(
 def test__parse_chariot_detect_image_object_detection(
     obj_det_prediction,
 ):
-    datum = ImageMetadata(uid="", width=1000, height=2000).to_datum()
+    datum = ImageMetadata.create(uid="", width=1000, height=2000).datum
 
     # test parsing
     valor_detections = _parse_chariot_detect_image_object_detection(
@@ -507,9 +511,9 @@ def test__parse_chariot_detect_image_object_detection(
     chariot_detection_boxes = obj_det_prediction[0]["detection_boxes"]
     for i, valor_det in enumerate(valor_detections.annotations):
         assert [
-            valor_det.box.ymin,
-            valor_det.box.xmin,
-            valor_det.box.ymax,
-            valor_det.box.xmax,
+            valor_det.bounding_box.ymin,
+            valor_det.bounding_box.xmin,
+            valor_det.bounding_box.ymax,
+            valor_det.bounding_box.xmax,
         ] in chariot_detection_boxes
         assert valor_det.polygon is None
