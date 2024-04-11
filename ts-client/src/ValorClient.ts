@@ -63,6 +63,8 @@ function decodeMetadata(input: { [key: string]: {type: string; value: any;} }): 
 
     switch (type) {
       case 'datetime':
+      case 'date':
+      case 'time':
         output[key] = new Date(value);
         break;
       case 'geojson':
