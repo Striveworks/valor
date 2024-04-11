@@ -1,5 +1,73 @@
 import axios, { AxiosInstance } from 'axios';
 
+function isGeoJSONObject(value: any): boolean {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+
+  const geoJSONTypes = ["Point", "LineString", "Polygon", "MultiPoint", "MultiLineString", "MultiPolygon"];
+  return 'type' in value && geoJSONTypes.includes(value.type) && 'coordinates' in value;
+}
+
+function encodeMetadata(input: { [key: string]: any }): { [key: string]: { type: string; value: any } } {
+  const output: { [key: string]: { type: string; value: any } } = {};
+
+  for (const key in input) {
+    const value = input[key];
+    let valueType: string;
+
+    if (value instanceof Date) {
+      valueType = 'datetime';
+      output[key] = { type: valueType, value: value.toISOString() };
+    } else if (isGeoJSONObject(value)) {
+      valueType = 'geojson';
+      output[key] = { type: valueType, value };
+    } else if (typeof value === 'string') {
+      valueType = 'string';
+      output[key] = { type: valueType, value };
+    } else if (typeof value === 'number') {
+      valueType = Number.isInteger(value) ? 'integer' : 'float';
+      output[key] = { type: valueType, value };
+    } else {
+      console.warn(`Unknown type for key "${key}".`);
+      valueType = "unknown"; // Handling unknown types
+      output[key] = { type: valueType, value };
+    }
+  }
+
+  return output;
+}
+
+function decodeMetadata(input: { [key: string]: { type: string; value: any } }): { [key: string]: any } {
+  const output: { [key: string]: any } = {};
+
+  for (const key in input) {
+    const item = input[key];
+    const { type, value } = item;
+
+    switch (type) {
+      case 'datetime':
+      case 'date':
+      case 'time':
+        output[key] = new Date(value);
+        break;
+      case 'geojson':
+      case 'string':
+      case 'integer':
+      case 'float':
+      case 'duration':
+        output[key] = value;
+        break;
+      default:
+        console.warn(`Unknown type for key "${key}".`);
+        output[key] = value; // Preserve unknown types
+        break;
+    }
+  }
+
+  return output;
+}
+
 export type Dataset = {
   name: string;
   metadata: Partial<Record<string, any>>;
@@ -131,6 +199,7 @@ export class ValorClient {
    * @returns {Promise<void>}
    */
   public async createDataset(name: string, metadata: object): Promise<void> {
+    metadata = encodeMetadata(metadata)
     await this.client.post('/datasets', { name, metadata });
   }
 
@@ -204,6 +273,7 @@ export class ValorClient {
    */
   public async getModelByName(name: string): Promise<Model> {
     const response = await this.client.get(`/models/${name}`);
+    response.data.metadata = decodeMetadata(response.data.metadata)
     return response.data;
   }
 
@@ -216,6 +286,7 @@ export class ValorClient {
    * @returns {Promise<void>}
    */
   public async createModel(name: string, metadata: object): Promise<void> {
+    metadata = encodeMetadata(metadata)
     await this.client.post('/models', { name, metadata });
   }
 
