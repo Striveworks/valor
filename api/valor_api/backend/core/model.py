@@ -179,7 +179,7 @@ def get_models(
     offset : int, optional
         The start index of the items to return.
     limit : int, optional
-        The number of items to return. Returns all models when equal to -1.
+        The number of items to return. Returns all items when equal to -1.
 
 
     Returns
@@ -219,10 +219,18 @@ def get_models(
     )
 
     content = [_load_model_schema(db=db, model=model) for model in models_]
-    end_index = (
-        offset + len(models_) - 1
-    )  # subtract one to make it zero-indexed
-    headers = {"content-range": f"items {offset}-{end_index}/{count}"}
+
+    if models_:
+        end_index = (
+            offset + len(models_) - 1
+        )  # subtract one to make it zero-indexed
+
+        range_indicator = f"{offset}-{end_index}"
+    else:
+        range_indicator = "*"
+
+    headers = {"content-range": f"items {range_indicator}/{count}"}
+
     return (content, headers)
 
 

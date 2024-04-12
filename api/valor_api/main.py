@@ -229,7 +229,10 @@ def get_prediction(
     description="Fetch labels using optional JSON strings as query parameters.",
 )
 def get_labels(
+    response: Response,
     filters: schemas.FilterQueryParams = Depends(),
+    offset: int = 0,
+    limit: int = -1,
     db: Session = Depends(get_db),
 ) -> list[schemas.Label]:
     """
@@ -239,10 +242,16 @@ def get_labels(
 
     Parameters
     ----------
+    response: Response
+        The FastAPI response object. Used to return a content-range header to the user.
     filters : schemas.FilterQueryParams, optional
         An optional filter to constrain results by.
     db : Session
         The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
+    offset : int, optional
+        The start index of the items to return.
+    limit : int, optional
+        The number of items to return. Returns all items when set to -1.
 
     Returns
     -------
@@ -250,10 +259,14 @@ def get_labels(
         A list of all labels in the database.
     """
     try:
-        return crud.get_labels(
+        content, headers = crud.get_labels(
             db=db,
             filters=schemas.convert_filter_query_params_to_filter_obj(filters),
+            offset=offset,
+            limit=limit,
         )
+        response.headers.update(headers)
+        return list(content)
     except Exception as e:
         raise exceptions.create_http_error(e)
 
@@ -265,7 +278,11 @@ def get_labels(
     tags=["Labels"],
 )
 def get_labels_from_dataset(
-    dataset_name: str, db: Session = Depends(get_db)
+    response: Response,
+    dataset_name: str,
+    offset: int = 0,
+    limit: int = -1,
+    db: Session = Depends(get_db),
 ) -> list[schemas.Label]:
     """
     Fetch all labels for a particular dataset from the database.
@@ -274,12 +291,16 @@ def get_labels_from_dataset(
 
     Parameters
     ----------
+    response: Response
+        The FastAPI response object. Used to return a content-range header to the user.
     dataset_name : str
         The name of the dataset.
+    offset : int, optional
+        The start index of the items to return.
+    limit : int, optional
+        The number of items to return. Returns all items when set to -1. Returns all items when set to -1.
     db : Session
-        The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
-
-    Returns
+        The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user
     -------
     list[schemas.Label]
         A list of all labels associated with the dataset in the database.
@@ -290,13 +311,18 @@ def get_labels_from_dataset(
         If the dataset doesn't exist.
     """
     try:
-        return crud.get_labels(
+        content, headers = crud.get_labels(
             db=db,
             filters=schemas.Filter(
                 dataset_names=[dataset_name],
             ),
             ignore_prediction_labels=True,
+            offset=offset,
+            limit=limit,
         )
+        response.headers.update(headers)
+        return list(content)
+
     except Exception as e:
         raise exceptions.create_http_error(e)
 
@@ -308,7 +334,11 @@ def get_labels_from_dataset(
     tags=["Labels"],
 )
 def get_labels_from_model(
-    model_name: str, db: Session = Depends(get_db)
+    response: Response,
+    model_name: str,
+    offset: int = 0,
+    limit: int = -1,
+    db: Session = Depends(get_db),
 ) -> list[schemas.Label]:
     """
     Fetch all labels for a particular model from the database.
@@ -317,8 +347,14 @@ def get_labels_from_model(
 
     Parameters
     ----------
+    response: Response
+        The FastAPI response object. Used to return a content-range header to the user.
     model_name : str
         The name of the model.
+    offset : int, optional
+        The start index of the items to return.
+    limit : int, optional
+        The number of items to return. Returns all items when set to -1.
     db : Session
         The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
 
@@ -333,13 +369,18 @@ def get_labels_from_model(
         If the model doesn't exist.
     """
     try:
-        return crud.get_labels(
+        content, headers = crud.get_labels(
             db=db,
             filters=schemas.Filter(
                 model_names=[model_name],
             ),
             ignore_groundtruth_labels=True,
+            offset=offset,
+            limit=limit,
         )
+        response.headers.update(headers)
+        return list(content)
+
     except Exception as e:
         raise exceptions.create_http_error(e)
 
@@ -405,7 +446,7 @@ def get_datasets(
     offset : int, optional
         The start index of the items to return.
     limit : int, optional
-        The number of items to return. Returns all models when set to -1.
+        The number of items to return. Returns all items when set to -1.
 
     db : Session
         The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
@@ -764,7 +805,7 @@ def get_models(
     offset : int, optional
         The start index of the items to return.
     limit : int, optional
-        The number of items to return. Returns all models when set to -1.
+        The number of items to return. Returns all items when set to -1.
     db : Session
         The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
 
@@ -1066,7 +1107,7 @@ def get_evaluations(
     offset : int, optional
         The start index of the items to return.
     limit : int, optional
-        The number of items to return. Returns all models when set to -1.
+        The number of items to return. Returns all items when set to -1.
 
     Returns
     -------

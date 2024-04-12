@@ -66,7 +66,9 @@ def get_labels(
     filters: schemas.Filter | None = None,
     ignore_prediction_labels=False,
     ignore_groundtruth_labels=False,
-) -> list[schemas.Label]:
+    offset: int = 0,
+    limit: int = -1,
+) -> tuple[set[schemas.Label], dict[str, str]]:
     """
     Fetch a list of labels from the database.
 
@@ -82,19 +84,23 @@ def get_labels(
         Option to ignore prediction labels in the result.
     ignore_groundtruths : bool, default=False
         Option to ignore ground truth labels in the result.
+    offset : int, optional
+        The start index of the items to return.
+    limit : int, optional
+        The number of items to return. Returns all models when set to -1.
 
     Returns
     ----------
-    list[schemas.Label]
-        A list of labels.
+    tuple[set[schemas.Label], dict[str, str]]
+        A tuple containing the labels and response headers to return to the user.
     """
-    return list(
-        backend.get_labels(
-            db=db,
-            filters=filters,
-            ignore_predictions=ignore_prediction_labels,
-            ignore_groundtruths=ignore_groundtruth_labels,
-        )
+    return backend.get_paginated_labels(
+        db=db,
+        filters=filters,
+        ignore_predictions=ignore_prediction_labels,
+        ignore_groundtruths=ignore_groundtruth_labels,
+        offset=offset,
+        limit=limit,
     )
 
 
@@ -173,12 +179,12 @@ def get_datasets(
     offset : int, optional
         The start index of the items to return.
     limit : int, optional
-        The number of items to return. Returns all models when set to -1.
+        The number of items to return. Returns all items when set to -1.
 
 
     Returns
     ----------
-    tuple[list[schemas.Dataset], dict[str, str]]:
+    tuple[list[schemas.Dataset], dict[str, str]]
         A tuple containing the datasets and response headers to return to the user.
     """
     return backend.get_datasets(
@@ -264,7 +270,7 @@ def get_models(
     offset : int, optional
         The start index of the items to return.
     limit : int, optional
-        The number of items to return. Returns all models when set to -1.
+        The number of items to return. Returns all items when set to -1.
     db : Session
         The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
 
@@ -340,11 +346,11 @@ def get_evaluations(
     offset : int, optional
         The start index of the items to return.
     limit : int, optional
-        The number of items to return. Returns all models when set to -1.
+        The number of items to return. Returns all items when set to -1.
 
     Returns
     ----------
-    tuple[list[schemas.Dataset], dict[str, str]]
+    tuple[list[schemas.EvaluationResponse], dict[str, str]]
         A tuple containing the evaluations and response headers to return to the user.
     """
     # get evaluations that conform to input args

@@ -202,6 +202,11 @@ def test_get_labels(
     for label in low_score_labels:
         assert int(label.value.get_value()) % 2 == 0
 
+    # check that the content-range header exists on the raw response
+    requests_method = getattr(requests, "get")
+    resp = requests_method("http://localhost:8000/labels")
+    assert resp.headers["content-range"] == "items 0-9/10"
+
 
 def test_get_datasets(
     client: Client,

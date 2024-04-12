@@ -320,6 +320,80 @@ def get_labels(
     }
 
 
+def get_paginated_labels(
+    db: Session,
+    filters: schemas.Filter | None = None,
+    ignore_groundtruths: bool = False,
+    ignore_predictions: bool = False,
+    offset: int = 0,
+    limit: int = -1,
+) -> tuple[set[schemas.Label], dict[str, str]]:
+    """
+    Returns a set of unique labels from a union of sources (dataset, model, datum, annotation) optionally filtered by (label key, task_type), along with a header that provides pagination details.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    filters : schemas.Filter
+        An optional filter to apply.
+    ignore_groundtruths : bool, default=False
+        An optional toggle to ignore labels associated with groundtruths.
+    ignore_predictions : bool, default=False
+        An optional toggle to ignore labels associated with predictions.
+    offset : int, optional
+        The start index of the items to return.
+    limit : int, optional
+        The number of items to return. Returns all items when set to -1.
+
+    Returns
+    ----------
+    tuple[set[schemas.Label], dict[str, str]]
+        A tuple containing the labels and response headers to return to the user.
+    """
+    subquery = _getter_statement(
+        selection=models.Label,
+        filters=filters,
+        ignore_groundtruths=ignore_groundtruths,
+        ignore_predictions=ignore_predictions,
+    )
+
+    if offset < 0 or limit < -1:
+        raise ValueError(
+            "Offset should be an int greater than or equal to zero. Limit should be an int greater than or equal to -1."
+        )
+
+    count = len(db.query(subquery.subquery()).distinct().all())  # type: ignore - sqlalchemy type error
+
+    if offset > count:
+        raise ValueError(
+            "Offset is greater than the total number of items returned in the query."
+        )
+
+    # return all rows when limit is -1
+    if limit == -1:
+        limit = count
+
+    labels = db.query(subquery.subquery()).distinct().offset(offset).limit(limit).all()  # type: ignore - sqlalchemy type error
+
+    contents = {
+        schemas.Label(key=label.key, value=label.value) for label in labels
+    }
+
+    if labels:
+        end_index = (
+            offset + len(labels) - 1
+        )  # subtract one to make it zero-indexed
+
+        range_indicator = f"{offset}-{end_index}"
+    else:
+        range_indicator = "*"
+
+    headers = {"content-range": f"items {range_indicator}/{count}"}
+
+    return (contents, headers)
+
+
 def get_label_keys(
     db: Session,
     filters: schemas.Filter | None = None,

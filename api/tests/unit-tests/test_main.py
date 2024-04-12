@@ -1035,7 +1035,7 @@ def test_post_semenatic_segmentation_metrics(client: TestClient):
 
 @patch("valor_api.main.crud")
 def test_get_dataset_labels(crud, client: TestClient):
-    crud.get_labels.return_value = []
+    crud.get_labels.return_value = ([], {"headers": "headers"})
     resp = client.get("/labels/dataset/dsetname")
     assert resp.status_code == 200
     crud.get_labels.assert_called_once()
@@ -1056,7 +1056,7 @@ def test_get_dataset_labels(crud, client: TestClient):
 
 @patch("valor_api.main.crud")
 def test_get_model_labels(crud, client: TestClient):
-    crud.get_labels.return_value = []
+    crud.get_labels.return_value = ([], {"headers": "headers"})
     resp = client.get("/labels/model/modelname")
     assert resp.status_code == 200
     crud.get_labels.assert_called_once()
@@ -1119,7 +1119,7 @@ def test_get_datum(crud, client: TestClient):
 
 @patch("valor_api.main.crud")
 def test_get_labels(crud, client: TestClient):
-    crud.get_labels.return_value = []
+    crud.get_labels.return_value = ([], {"headers": "headers"})
     resp = client.get("/labels")
     assert resp.status_code == 200
     crud.get_labels.assert_called_once()

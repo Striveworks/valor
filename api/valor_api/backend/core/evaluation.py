@@ -574,11 +574,11 @@ def get_evaluations(
     offset : int, optional
         The start index of the items to return.
     limit : int, optional
-        The number of items to return. Returns all models when set to -1.
+        The number of items to return. Returns all items when set to -1.
 
     Returns
     ----------
-    tuple[list[schemas.Dataset], dict[str, str]]
+    tuple[list[schemas.EvaluationResponse], dict[str, str]]
         A tuple containing the evaluations and response headers to return to the user.
     """
     if offset < 0 or limit < -1:
@@ -627,10 +627,17 @@ def get_evaluations(
 
     content = _create_responses(db, evaluations)
 
-    end_index = (
-        offset + len(evaluations) - 1
-    )  # subtract one to make it zero-indexed
-    headers = {"content-range": f"items {offset}-{end_index}/{count}"}
+    if evaluations:
+        end_index = (
+            offset + len(evaluations) - 1
+        )  # subtract one to make it zero-indexed
+
+        range_indicator = f"{offset}-{end_index}"
+    else:
+        range_indicator = "*"
+
+    headers = {"content-range": f"items {range_indicator}/{count}"}
+
     return (content, headers)
 
 

@@ -52,6 +52,7 @@ from .label import (
     get_joint_labels,
     get_label_keys,
     get_labels,
+    get_paginated_labels,
     validate_matching_label_keys,
 )
 from .model import (
@@ -109,6 +110,7 @@ __all__ = [
     "get_joint_labels",
     "get_label_keys",
     "get_labels",
+    "get_paginated_labels",
     "fetch_labels",
     "fetch_union_of_labels",
     "create_model",
