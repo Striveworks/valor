@@ -84,7 +84,7 @@ def fetch_datum(
     return datum
 
 
-def get_datums(
+def get_paginated_datums(
     db: Session,
     filters: schemas.Filter | None = None,
     offset: int = 0,

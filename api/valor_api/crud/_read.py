@@ -136,7 +136,7 @@ def get_datums(
     tuple[list[schemas.Datum], dict[str, str]]
         A tuple containing the datums and response headers to return to the user.
     """
-    return backend.get_datums(
+    return backend.get_paginated_datums(
         db=db, filters=filters, offset=offset, limit=limit
     )
 
@@ -196,7 +196,7 @@ def get_datasets(
     tuple[list[schemas.Dataset], dict[str, str]]
         A tuple containing the datasets and response headers to return to the user.
     """
-    return backend.get_datasets(
+    return backend.get_paginated_datasets(
         db=db, filters=filters, offset=offset, limit=limit
     )
 
@@ -288,7 +288,7 @@ def get_models(
     tuple[list[schemas.Model], dict[str, str]]
         A tuple containing the models and response headers to return to the user.
     """
-    return backend.get_models(
+    return backend.get_paginated_models(
         db=db, filters=filters, offset=offset, limit=limit
     )
 
@@ -363,7 +363,7 @@ def get_evaluations(
         A tuple containing the evaluations and response headers to return to the user.
     """
     # get evaluations that conform to input args
-    return backend.get_evaluations(
+    return backend.get_paginated_evaluations(
         db=db,
         evaluation_ids=evaluation_ids,
         dataset_names=dataset_names,

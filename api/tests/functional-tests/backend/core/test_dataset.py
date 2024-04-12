@@ -48,8 +48,8 @@ def test_get_dataset(db: Session, created_dataset):
         core.get_dataset(db, "some_nonexistent_dataset")
 
 
-def test_get_datasets(db: Session, created_datasets):
-    datasets, headers = core.get_datasets(db)
+def test_get_paginated_datasets(db: Session, created_datasets):
+    datasets, headers = core.get_paginated_datasets(db)
     for dataset in datasets:
         assert dataset.name in created_datasets
     assert headers == {"content-range": "items 0-9/10"}
@@ -57,16 +57,18 @@ def test_get_datasets(db: Session, created_datasets):
     # test pagination
     with pytest.raises(ValueError):
         # offset is greater than the number of items returned in query
-        datasets, headers = core.get_datasets(db, offset=100, limit=2)
+        datasets, headers = core.get_paginated_datasets(
+            db, offset=100, limit=2
+        )
 
-    datasets, headers = core.get_datasets(db, offset=5, limit=2)
+    datasets, headers = core.get_paginated_datasets(db, offset=5, limit=2)
     assert [dataset.name for dataset in datasets] == [
         "dataset4",
         "dataset3",
     ]  # newest items are returned first
     assert headers == {"content-range": "items 5-6/10"}
 
-    datasets, headers = core.get_datasets(db, offset=2, limit=7)
+    datasets, headers = core.get_paginated_datasets(db, offset=2, limit=7)
     assert [dataset.name for dataset in datasets] == [
         f"dataset{i}" for i in range(7, 0, -1)
     ]

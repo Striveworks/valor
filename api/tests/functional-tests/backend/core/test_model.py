@@ -48,8 +48,8 @@ def test_get_model(db: Session, created_model):
         core.get_model(db, "some_nonexistent_model")
 
 
-def test_get_models(db: Session, created_models):
-    models, headers = core.get_models(db)
+def test_get_paginated_models(db: Session, created_models):
+    models, headers = core.get_paginated_models(db)
     for model in models:
         assert model.name in created_models
     assert headers == {"content-range": "items 0-9/10"}
@@ -57,13 +57,13 @@ def test_get_models(db: Session, created_models):
     # test pagination
     with pytest.raises(ValueError):
         # offset is greater than the number of items returned in query
-        models, headers = core.get_models(db, offset=100, limit=2)
+        models, headers = core.get_paginated_models(db, offset=100, limit=2)
 
-    models, headers = core.get_models(db, offset=5, limit=2)
+    models, headers = core.get_paginated_models(db, offset=5, limit=2)
     assert [model.name for model in models] == ["model4", "model3"]
     assert headers == {"content-range": "items 5-6/10"}
 
-    models, headers = core.get_models(db, offset=2, limit=7)
+    models, headers = core.get_paginated_models(db, offset=2, limit=7)
     assert [model.name for model in models] == [
         f"model{i}" for i in range(7, 0, -1)
     ]

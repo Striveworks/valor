@@ -124,7 +124,7 @@ def get_dataset(
     return _load_dataset_schema(db=db, dataset=dataset)
 
 
-def get_datasets(
+def get_paginated_datasets(
     db: Session,
     filters: schemas.Filter | None = None,
     offset: int = 0,

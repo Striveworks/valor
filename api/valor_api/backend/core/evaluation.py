@@ -550,7 +550,7 @@ def fetch_evaluation_from_id(
     return evaluation
 
 
-def get_evaluations(
+def get_paginated_evaluations(
     db: Session,
     evaluation_ids: list[int] | None = None,
     dataset_names: list[str] | None = None,

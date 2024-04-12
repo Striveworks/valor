@@ -64,7 +64,7 @@ def test_create_datum(
     assert db.scalar(select(func.count()).select_from(models.Datum)) == 2
 
 
-def test_get_datums(
+def test_get_paginated_datums(
     db: Session,
     created_dataset: str,
 ):
@@ -91,7 +91,7 @@ def test_get_datums(
     )
 
     # basic query
-    datums, headers = core.get_datums(db=db)
+    datums, headers = core.get_paginated_datums(db=db)
     assert {datum.uid for datum in datums} == {
         "uid1",
         "uid2",

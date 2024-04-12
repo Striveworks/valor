@@ -161,7 +161,7 @@ def get_model(
     return _load_model_schema(db=db, model=model)
 
 
-def get_models(
+def get_paginated_models(
     db: Session,
     filters: schemas.Filter | None = None,
     offset: int = 0,
