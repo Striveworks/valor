@@ -298,16 +298,33 @@ def test_get_paginated_labels(
     }
     assert headers == {"content-range": "items 0-4/5"}
 
-    pred_labels, headers = get_paginated_labels(
-        db, ignore_groundtruths=True, offset=1, limit=100
-    )
-    assert len(pred_labels) == 2
+    # test that we can reconstitute the full set using paginated calls
 
+    first_set, header = get_paginated_labels(db, offset=1, limit=2)
+    assert len(first_set) == 2
+    assert header == {"content-range": "items 1-2/5"}
+
+    second_set, header = get_paginated_labels(db, offset=0, limit=1)
+    assert len(second_set) == 1
+    assert header == {"content-range": "items 0-0/5"}
+
+    third_set, header = get_paginated_labels(db, offset=3, limit=2)
+    assert len(third_set) == 2
+    assert header == {"content-range": "items 3-4/5"}
+
+    combined_set = first_set | second_set | third_set
+
+    assert combined_set == {
+        schemas.Label(key="k1", value="v1"),
+        schemas.Label(key="k2", value="v3"),
+        schemas.Label(key="k1", value="v2"),
+        schemas.Label(key="k1", value="v3"),
+        schemas.Label(key="k3", value="v3"),
+    }
+
+    # test that we get an error if the offset is set too high
     with pytest.raises(ValueError):
-        # offset is higher than the number of labels
-        _ = get_paginated_labels(
-            db, ignore_groundtruths=True, offset=100, limit=100
-        )
+        _ = get_paginated_labels(db, offset=100, limit=1)
 
 
 def test_get_labels_filtered(
