@@ -56,7 +56,7 @@ class Point(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def deserialize_valor_type(cls, values: Any) -> Any:
-        """Deserialize if values are in the the valor {type, value} syntax."""
+        """Special deseraializer for Valor {type, value} formatting."""
         return deserialize(class_name=cls.__name__, values=values)
 
     @field_validator("value")
@@ -139,7 +139,7 @@ class MultiPoint(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def deserialize_valor_type(cls, values: Any) -> Any:
-        """Deserialize if values are in the the valor schema {type, value} syntax."""
+        """Special deseraializer for Valor {type, value} formatting."""
         return deserialize(class_name=cls.__name__, values=values)
 
     @field_validator("value")
@@ -228,7 +228,7 @@ class LineString(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def deserialize_valor_type(cls, values: Any) -> Any:
-        """Deserialize if values are in the the valor {type, value} syntax."""
+        """Special deseraializer for Valor {type, value} formatting."""
         return deserialize(class_name=cls.__name__, values=values)
 
     @field_validator("value")
@@ -315,7 +315,7 @@ class MultiLineString(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def deserialize_valor_type(cls, values: Any) -> Any:
-        """Deserialize if values are in the the valor {type, value} syntax."""
+        """Special deseraializer for Valor {type, value} formatting."""
         return deserialize(class_name=cls.__name__, values=values)
 
     @field_validator("value")
@@ -409,7 +409,7 @@ class Polygon(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def deserialize_valor_type(cls, values: Any) -> Any:
-        """Deserialize if values are in the the valor {type, value} syntax."""
+        """Special deseraializer for Valor {type, value} formatting."""
         return deserialize(class_name=cls.__name__, values=values)
 
     @field_validator("value")
@@ -504,7 +504,7 @@ class Box(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def deserialize_valor_type(cls, values: Any) -> Any:
-        """Deserialize if values are in the the valor {type, value} syntax."""
+        """Special deseraializer for Valor {type, value} formatting."""
         return deserialize(class_name=cls.__name__, values=values)
 
     @field_validator("value")
@@ -638,7 +638,7 @@ class MultiPolygon(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def deserialize_valor_type(cls, values: Any) -> Any:
-        """Deserialize if values are in the the valor {type, value} syntax."""
+        """Special deseraializer for Valor {type, value} formatting."""
         return deserialize(class_name=cls.__name__, values=values)
 
     @field_validator("value")
@@ -732,7 +732,7 @@ class GeoJSON(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def deserialize_valor_type(cls, values: Any) -> Any:
-        """Deserialize if values are in the the valor {type, value} syntax."""
+        """Special deseraializer for Valor {type, value} formatting."""
         values = deserialize(class_name=cls.__name__, values=values)
         validate_geojson(values)
         return values
@@ -780,7 +780,7 @@ class Raster(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def deserialize_valor_type(cls, values: Any) -> Any:
-        """Deserialize if values are in the the valor {type, value} syntax."""
+        """Special deseraializer for Valor {type, value} formatting."""
         return deserialize(class_name=cls.__name__, values=values)
 
     @field_validator("mask")
