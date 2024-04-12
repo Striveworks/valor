@@ -1,3 +1,4 @@
+import bisect
 import heapq
 import math
 from collections import defaultdict
@@ -23,9 +24,9 @@ from valor_api.enums import AnnotationType
 @dataclass
 class RankedPair:
     dataset_name: str
-    gt_datum_uid: str
-    gt_geojson: str
-    gt_id: int
+    gt_datum_uid: str | None
+    gt_geojson: str | None
+    gt_id: int | None
     pd_id: int
     score: float
     iou: float
@@ -582,6 +583,42 @@ def _compute_detection_metrics(
                 )
             )
 
+    # get pds not appearing
+    predictions = db.query(
+        Query(
+            models.Prediction.id,
+            models.Prediction.score,
+            models.Dataset.name,
+            case(
+                grouper_mappings["label_id_to_grouper_id_mapping"],
+                value=models.Prediction.label_id,
+            ).label("label_id_grouper"),
+        )
+        .filter(prediction_filter)
+        .predictions(as_subquery=False)
+        .where(models.Prediction.id.notin_(pd_set))  # type: ignore - SQLAlchemy type issue
+        .subquery()
+    ).all()
+
+    for pd_id, score, dataset_name, grouper_id in predictions:
+        if (
+            grouper_id in ranking and pd_id not in pd_set
+        ):  # how come grouper_id may not be in ranking??
+            # add to ranking in sorted order
+            bisect.insort(  # type: ignore - bisect type issue
+                ranking[grouper_id],
+                RankedPair(
+                    dataset_name=dataset_name,
+                    gt_datum_uid=None,
+                    gt_geojson=None,
+                    gt_id=None,
+                    pd_id=pd_id,
+                    score=score,
+                    iou=0,
+                ),
+                key=lambda rp: -rp.score,  # bisect assumes decreasing order
+            )
+
     # Get the groundtruths per grouper_id
     groundtruths_per_grouper = defaultdict(list)
     number_of_groundtruths_per_grouper = defaultdict(int)
@@ -607,7 +644,6 @@ def _compute_detection_metrics(
 
     for gt_id, grouper_id, datum_uid, dset_name, gt_geojson in groundtruths:
         # we're ok with duplicates since they indicate multiple groundtruths for a given dataset/datum_id
-        # i think this is wrong?
         groundtruths_per_grouper[grouper_id].append(
             (dset_name, datum_uid, gt_id, gt_geojson)
         )
