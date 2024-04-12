@@ -23,11 +23,7 @@ from valor_api.enums import AnnotationType
 @dataclass
 class RankedPair:
     dataset_name: str
-    pd_datum_id: int
-    gt_datum_id: int
-    pd_datum_uid: str
     gt_datum_uid: str
-    pd_geojson: str
     gt_geojson: str
     gt_id: int
     pd_id: int
@@ -91,6 +87,7 @@ def _compute_curves(
         A nested dictionary where the first key is the class label, the second key is the confidence threshold (e.g., 0.05), the third key is the metric name (e.g., "precision"), and the final key is either the value itself (for precision, recall, etc.) or a list of tuples containing the (dataset_name, datum_id, bounding boxes) for each observation.
     """
 
+    # TODO: update this
     output = defaultdict(dict)
 
     for grouper_id, grouper_label in grouper_mappings[
@@ -230,6 +227,7 @@ def _calculate_ap_and_ar(
             precision_cnt_fp = 0
 
             if grouper_id in sorted_ranked_pairs:
+                matched_gts = set()
                 for row in sorted_ranked_pairs[grouper_id]:
 
                     precision_score_conditional = row.score > 0
@@ -251,7 +249,12 @@ def _calculate_ap_and_ar(
                     else:
                         recall_cnt_fp += 1
 
-                    if precision_score_conditional and iou_conditional:
+                    if (
+                        precision_score_conditional
+                        and iou_conditional
+                        and row.gt_id not in matched_gts
+                    ):
+                        matched_gts.add(row.gt_id)
                         precision_cnt_tp += 1
                     else:
                         precision_cnt_fp += 1
@@ -536,16 +539,16 @@ def _compute_detection_metrics(
         db.query(ious).order_by(-ious.c.score, -ious.c.iou, ious.c.gt_id).all()
     )
 
-    # Filter out repeated id's
-    gt_set = set()
+    # Filter out repeated predictions
+    # gt_set = set()
     pd_set = set()
     ranking = {}
     for row in ordered_ious:
         (
             dataset_name,
-            pd_datum_id,
-            gt_datum_id,
-            pd_datum_uid,
+            _,
+            _,
+            _,
             gt_datum_uid,
             gt_id,
             pd_id,
@@ -556,25 +559,21 @@ def _compute_detection_metrics(
             score,
             iou,
             gt_geojson,
-            pd_geojson,
+            _,
         ) = row
 
-        # Check if gt or pd already found
-        if gt_id not in gt_set and pd_id not in pd_set:
-            gt_set.add(gt_id)
+        # there should only be one rankedpair per prediction but
+        # there can be multiple rankedpairs per groundtruth at this point (i.e. before
+        # an iou threshold is specified)
+        if pd_id not in pd_set:
             pd_set.add(pd_id)
-
             if gt_label_id_grouper not in ranking:
                 ranking[gt_label_id_grouper] = []
 
             ranking[gt_label_id_grouper].append(
                 RankedPair(
                     dataset_name=dataset_name,
-                    pd_datum_id=pd_datum_id,
-                    gt_datum_id=gt_datum_id,
-                    pd_datum_uid=pd_datum_uid,
                     gt_datum_uid=gt_datum_uid,
-                    pd_geojson=pd_geojson,
                     gt_geojson=gt_geojson,
                     gt_id=gt_id,
                     pd_id=pd_id,
