@@ -118,7 +118,7 @@ create table annotation
     box          geometry(Polygon),
     polygon      geometry(Polygon),
     multipolygon geometry(MultiPolygon),
-    raster       raster,
+    raster       raster
 );
 
 create index idx_annotation_box
