@@ -1,17 +1,9 @@
-from sqlalchemy import and_, select
+from sqlalchemy import and_, desc, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from valor_api import enums, exceptions, schemas
-from valor_api.backend import models
-from valor_api.backend.core.annotation import delete_dataset_annotations
-from valor_api.backend.core.evaluation import (
-    count_active_evaluations,
-    delete_evaluations,
-)
-from valor_api.backend.core.groundtruth import delete_groundtruths
-from valor_api.backend.core.label import get_labels
-from valor_api.backend.core.prediction import delete_dataset_predictions
+from valor_api import api_utils, enums, exceptions, schemas
+from valor_api.backend import core, models
 from valor_api.backend.query import Query
 from valor_api.schemas.core import MetadataType
 
@@ -124,10 +116,12 @@ def get_dataset(
     return _load_dataset_schema(db=db, dataset=dataset)
 
 
-def get_datasets(
+def get_paginated_datasets(
     db: Session,
     filters: schemas.Filter | None = None,
-) -> list[schemas.Dataset]:
+    offset: int = 0,
+    limit: int = -1,
+) -> tuple[list[schemas.Dataset], dict[str, str]]:
     """
     Get datasets with optional filter constraint.
 
@@ -137,12 +131,21 @@ def get_datasets(
         The database Session to query against.
     filters : schemas.Filter, optional
         Optional filter to constrain against.
+    offset : int, optional
+        The start index of the items to return.
+    limit : int, optional
+        The number of items to return. Returns all items when set to -1.
 
     Returns
     ----------
-    list[schemas.Dataset]
-        A list of all datasets.
+    tuple[list[schemas.Dataset], dict[str, str]]
+        A tuple containing the datasets and response headers to return to the user.
     """
+    if offset < 0 or limit < -1:
+        raise ValueError(
+            "Offset should be an int greater than or equal to zero. Limit should be an int greater than or equal to -1."
+        )
+
     datasets_subquery = (
         Query(models.Dataset.id.label("id")).filter(filters).any()
     )
@@ -152,14 +155,41 @@ def get_datasets(
             "psql unexpectedly returned None instead of a Subquery."
         )
 
+    count = (
+        db.query(func.count(models.Dataset.id))
+        .where(models.Dataset.id == datasets_subquery.c.id)
+        .scalar()
+    )
+
+    if offset > count:
+        raise ValueError(
+            "Offset is greater than the total number of items returned in the query."
+        )
+
+    # return all rows when limit is -1
+    if limit == -1:
+        limit = count
+
     datasets = (
         db.query(models.Dataset)
         .where(models.Dataset.id == datasets_subquery.c.id)
+        .order_by(desc(models.Dataset.created_at))
+        .offset(offset)
+        .limit(limit)
         .all()
     )
-    return [
+
+    content = [
         _load_dataset_schema(db=db, dataset=dataset) for dataset in datasets
     ]
+
+    headers = api_utils._get_pagination_header(
+        offset=offset,
+        number_of_returned_items=len(datasets),
+        total_number_of_items=count,
+    )
+
+    return (content, headers)
 
 
 def get_dataset_status(
@@ -219,7 +249,7 @@ def set_dataset_status(
         raise exceptions.DatasetStateError(name, active_status, status)
 
     if status == enums.TableStatus.DELETING:
-        if count_active_evaluations(
+        if core.count_active_evaluations(
             db=db,
             dataset_names=[name],
         ):
@@ -352,7 +382,7 @@ def get_unique_groundtruth_annotation_metadata_in_dataset(
 
 
 def get_dataset_summary(db: Session, name: str) -> schemas.DatasetSummary:
-    gt_labels = get_labels(
+    gt_labels = core.get_labels(
         db,
         schemas.Filter(dataset_names=[name]),
         ignore_predictions=True,
@@ -392,10 +422,10 @@ def delete_dataset(
     set_dataset_status(db, name, enums.TableStatus.DELETING)
     dataset = fetch_dataset(db, name=name)
 
-    delete_evaluations(db=db, dataset_names=[name])
-    delete_dataset_predictions(db, dataset)
-    delete_groundtruths(db, dataset)
-    delete_dataset_annotations(db, dataset)
+    core.delete_evaluations(db=db, dataset_names=[name])
+    core.delete_dataset_predictions(db, dataset)
+    core.delete_groundtruths(db, dataset)
+    core.delete_dataset_annotations(db, dataset)
 
     try:
         db.delete(dataset)

@@ -66,7 +66,9 @@ def get_labels(
     filters: schemas.Filter | None = None,
     ignore_prediction_labels=False,
     ignore_groundtruth_labels=False,
-) -> list[schemas.Label]:
+    offset: int = 0,
+    limit: int = -1,
+) -> tuple[set[schemas.Label], dict[str, str]]:
     """
     Fetch a list of labels from the database.
 
@@ -82,19 +84,23 @@ def get_labels(
         Option to ignore prediction labels in the result.
     ignore_groundtruths : bool, default=False
         Option to ignore ground truth labels in the result.
+    offset : int, optional
+        The start index of the items to return.
+    limit : int, optional
+        The number of items to return. Returns all models when set to -1.
 
     Returns
     ----------
-    list[schemas.Label]
-        A list of labels.
+    tuple[set[schemas.Label], dict[str, str]]
+        A tuple containing the labels and response headers to return to the user.
     """
-    return list(
-        backend.get_labels(
-            db=db,
-            filters=filters,
-            ignore_predictions=ignore_prediction_labels,
-            ignore_groundtruths=ignore_groundtruth_labels,
-        )
+    return backend.get_paginated_labels(
+        db=db,
+        filters=filters,
+        ignore_predictions=ignore_prediction_labels,
+        ignore_groundtruths=ignore_groundtruth_labels,
+        offset=offset,
+        limit=limit,
     )
 
 
@@ -105,7 +111,9 @@ def get_datums(
     *,
     db: Session,
     filters: schemas.Filter | None = None,
-) -> list[schemas.Datum]:
+    offset: int = 0,
+    limit: int = -1,
+) -> tuple[list[schemas.Datum], dict[str, str]]:
     """
     Get datums with optional filter.
 
@@ -117,13 +125,20 @@ def get_datums(
         The database Session to query against.
     filters : schemas.Filter, optional
         An optional filter to apply.
+    offset : int, optional
+        The start index of the items to return.
+    limit : int, optional
+        The number of items to return. Returns all items when set to -1.
+
 
     Returns
     ----------
-    list[schemas.Datum]
-        A list of datums.
+    tuple[list[schemas.Datum], dict[str, str]]
+        A tuple containing the datums and response headers to return to the user.
     """
-    return backend.get_datums(db=db, filters=filters)
+    return backend.get_paginated_datums(
+        db=db, filters=filters, offset=offset, limit=limit
+    )
 
 
 """ Datasets """
@@ -156,7 +171,9 @@ def get_datasets(
     *,
     db: Session,
     filters: schemas.Filter | None = None,
-) -> list[schemas.Dataset]:
+    offset: int = 0,
+    limit: int = -1,
+) -> tuple[list[schemas.Dataset], dict[str, str]]:
     """
     Get datasets with optional filter.
 
@@ -168,13 +185,20 @@ def get_datasets(
         The database Session to query against.
     filters : schemas.Filter, optional
         An optional filter to apply.
+    offset : int, optional
+        The start index of the items to return.
+    limit : int, optional
+        The number of items to return. Returns all items when set to -1.
+
 
     Returns
     ----------
-    list[schemas.Dataset]
-        A list of all datasets.
+    tuple[list[schemas.Dataset], dict[str, str]]
+        A tuple containing the datasets and response headers to return to the user.
     """
-    return backend.get_datasets(db=db, filters=filters)
+    return backend.get_paginated_datasets(
+        db=db, filters=filters, offset=offset, limit=limit
+    )
 
 
 def get_dataset_summary(*, db: Session, name: str) -> schemas.DatasetSummary:
@@ -238,7 +262,9 @@ def get_models(
     *,
     db: Session,
     filters: schemas.Filter | None = None,
-) -> list[schemas.Model]:
+    offset: int = 0,
+    limit: int = -1,
+) -> tuple[list[schemas.Model], dict[str, str]]:
     """
     Get models with optional filter.
 
@@ -248,13 +274,23 @@ def get_models(
     ----------
     db : Session
         The database Session to query against.
+    filters : schemas.FilterQueryParams, optional
+        An optional filter to constrain results by.
+    offset : int, optional
+        The start index of the items to return.
+    limit : int, optional
+        The number of items to return. Returns all items when set to -1.
+    db : Session
+        The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
 
     Returns
     ----------
-    list[schemas.Model]
-        A list of all models.
+    tuple[list[schemas.Model], dict[str, str]]
+        A tuple containing the models and response headers to return to the user.
     """
-    return backend.get_models(db=db, filters=filters)
+    return backend.get_paginated_models(
+        db=db, filters=filters, offset=offset, limit=limit
+    )
 
 
 def get_prediction(
@@ -300,7 +336,9 @@ def get_evaluations(
     evaluation_ids: list[int] | None = None,
     dataset_names: list[str] | None = None,
     model_names: list[str] | None = None,
-) -> list[schemas.EvaluationResponse]:
+    offset: int = 0,
+    limit: int = -1,
+) -> tuple[list[schemas.EvaluationResponse], dict[str, str]]:
     """
     Returns all evaluations that conform to user-supplied constraints.
 
@@ -314,18 +352,24 @@ def get_evaluations(
         A list of dataset names to constrain by.
     model_names
         A list of model names to constrain by.
+    offset : int, optional
+        The start index of the items to return.
+    limit : int, optional
+        The number of items to return. Returns all items when set to -1.
 
     Returns
     ----------
-    list[schemas.EvaluationResponse]
-        A list of evaluations.
+    tuple[list[schemas.EvaluationResponse], dict[str, str]]
+        A tuple containing the evaluations and response headers to return to the user.
     """
     # get evaluations that conform to input args
-    return backend.get_evaluations(
+    return backend.get_paginated_evaluations(
         db=db,
         evaluation_ids=evaluation_ids,
         dataset_names=dataset_names,
         model_names=model_names,
+        offset=offset,
+        limit=limit,
     )
 
 

@@ -747,7 +747,7 @@ def test_post_datasets(client: TestClient):
 
 @patch("valor_api.main.crud")
 def test_get_datasets(crud, client: TestClient):
-    crud.get_datasets.return_value = []
+    crud.get_datasets.return_value = ([], {"headers": "headers"})
     resp = client.get("/datasets")
     assert resp.status_code == 200
     crud.get_datasets.assert_called_once()
@@ -863,7 +863,7 @@ def test_post_models(client: TestClient):
 
 @patch("valor_api.main.crud")
 def test_get_models(crud, client: TestClient):
-    crud.get_models.return_value = []
+    crud.get_models.return_value = ([], {"headers": "headers"})
     resp = client.get("/models")
     assert resp.status_code == 200
     crud.get_models.assert_called_once()
@@ -1035,7 +1035,7 @@ def test_post_semenatic_segmentation_metrics(client: TestClient):
 
 @patch("valor_api.main.crud")
 def test_get_dataset_labels(crud, client: TestClient):
-    crud.get_labels.return_value = []
+    crud.get_labels.return_value = ([], {"headers": "headers"})
     resp = client.get("/labels/dataset/dsetname")
     assert resp.status_code == 200
     crud.get_labels.assert_called_once()
@@ -1056,7 +1056,7 @@ def test_get_dataset_labels(crud, client: TestClient):
 
 @patch("valor_api.main.crud")
 def test_get_model_labels(crud, client: TestClient):
-    crud.get_labels.return_value = []
+    crud.get_labels.return_value = ([], {"headers": "headers"})
     resp = client.get("/labels/model/modelname")
     assert resp.status_code == 200
     crud.get_labels.assert_called_once()
@@ -1074,7 +1074,7 @@ def test_get_model_labels(crud, client: TestClient):
 
 @patch("valor_api.main.crud")
 def test_get_datums(crud, client: TestClient):
-    crud.get_datums.return_value = []
+    crud.get_datums.return_value = ([], {"headers": "headers"})
     resp = client.get("/data")
     assert resp.status_code == 200
     crud.get_datums.assert_called_once()
@@ -1095,9 +1095,10 @@ def test_get_datums(crud, client: TestClient):
 
 @patch("valor_api.main.crud")
 def test_get_datum(crud, client: TestClient):
-    crud.get_datums.return_value = [
-        schemas.Datum(uid="uid", dataset_name="dataset_name")
-    ]
+    crud.get_datums.return_value = (
+        [schemas.Datum(uid="uid", dataset_name="dataset_name")],
+        {},
+    )
 
     resp = client.get("/data/dataset/dsetname/uid/uid")
     assert resp.status_code == 200
@@ -1119,7 +1120,7 @@ def test_get_datum(crud, client: TestClient):
 
 @patch("valor_api.main.crud")
 def test_get_labels(crud, client: TestClient):
-    crud.get_labels.return_value = []
+    crud.get_labels.return_value = ([], {"headers": "headers"})
     resp = client.get("/labels")
     assert resp.status_code == 200
     crud.get_labels.assert_called_once()
