@@ -91,9 +91,22 @@ def test_get_paginated_datums(
     )
 
     # basic query
-    datums, headers = core.get_paginated_datums(db=db)
+    datums, _ = core.get_paginated_datums(db=db)
     assert {datum.uid for datum in datums} == {
         "uid1",
         "uid2",
         "uid3",
     }
+
+    # test that we can reconstitute the full set using paginated calls
+    first, header = core.get_paginated_datums(db, offset=1, limit=2)
+    assert len(first) == 2
+    assert header == {"content-range": "items 1-2/3"}
+
+    second, header = core.get_paginated_datums(db, offset=0, limit=1)
+    assert len(second) == 1
+    assert header == {"content-range": "items 0-0/3"}
+
+    combined = [entry.uid for entry in first + second]
+
+    assert set(combined) == set([f"uid{i}" for i in range(1, 4)])

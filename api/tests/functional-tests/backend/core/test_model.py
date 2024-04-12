@@ -69,6 +69,23 @@ def test_get_paginated_models(db: Session, created_models):
     ]
     assert headers == {"content-range": "items 2-8/10"}
 
+    # test that we can reconstitute the full set using paginated calls
+    first, header = core.get_paginated_models(db, offset=1, limit=2)
+    assert len(first) == 2
+    assert header == {"content-range": "items 1-2/10"}
+
+    second, header = core.get_paginated_models(db, offset=0, limit=1)
+    assert len(second) == 1
+    assert header == {"content-range": "items 0-0/10"}
+
+    third, header = core.get_paginated_models(db, offset=3, limit=20)
+    assert len(third) == 7
+    assert header == {"content-range": "items 3-9/10"}
+
+    combined = [entry.name for entry in first + second + third]
+
+    assert set(combined) == set([f"model{i}" for i in range(0, 10)])
+
 
 def test_model_status(db: Session, created_model, created_dataset):
     # creating
