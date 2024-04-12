@@ -105,7 +105,7 @@ def _compute_curves(
                 fn = (
                     [
                         (dataset_name, datum_uid, gt_geojson)
-                        for dataset_name, datum_uid, gt_id, gt_geojson in groundtruths_per_grouper[
+                        for dataset_name, datum_uid, _, gt_geojson in groundtruths_per_grouper[
                             grouper_id
                         ]
                     ]
@@ -121,6 +121,7 @@ def _compute_curves(
                     if (
                         row.score >= confidence_threshold
                         and row.iou >= iou_threshold
+                        and row.gt_id not in seen_gts
                     ):
                         tp += [
                             (
@@ -141,7 +142,7 @@ def _compute_curves(
 
             fp = [
                 (dset_name, pd_datum_uid, pd_geojson)
-                for dset_name, gt_datum_uid, pd_datum_uid, gt_label_id, pd_label_id, pd_score, pd_geojson in false_positive_entries
+                for dset_name, _, pd_datum_uid, gt_label_id, pd_label_id, pd_score, pd_geojson in false_positive_entries
                 if pd_score >= confidence_threshold
                 and pd_label_id == grouper_id
                 and gt_label_id is None
