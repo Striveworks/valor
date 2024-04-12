@@ -1786,4 +1786,83 @@ def test_evaluate_detection_false_negatives_two_images_one_empty(
 def test_evaluate_detection_false_negatives_two_images_one_only_with_different_class(
     db: Session, dataset_name: str, model_name: str, client: Client
 ):
-    pass
+    """Similar to the above test except instead of having no groundtruth the second image
+    has a groundtruth of a different class
+    """
+    dset = Dataset.create(dataset_name)
+    dset.add_groundtruths(
+        [
+            GroundTruth(
+                datum=Datum(uid="uid1"),
+                annotations=[
+                    Annotation(
+                        task_type=TaskType.OBJECT_DETECTION,
+                        bounding_box=Box.from_extrema(
+                            xmin=10, xmax=20, ymin=10, ymax=20
+                        ),
+                        labels=[Label(key="key", value="value")],
+                    )
+                ],
+            ),
+            GroundTruth(
+                datum=Datum(uid="uid2"),
+                annotations=[
+                    Annotation(
+                        task_type=TaskType.OBJECT_DETECTION,
+                        bounding_box=Box.from_extrema(
+                            xmin=10, xmax=20, ymin=10, ymax=20
+                        ),
+                        labels=[Label(key="key", value="other value")],
+                    )
+                ],
+            ),
+        ]
+    )
+    dset.finalize()
+
+    model = Model.create(model_name)
+    model.add_predictions(
+        dset,
+        [
+            Prediction(
+                datum=Datum(uid="uid1"),
+                annotations=[
+                    Annotation(
+                        task_type=TaskType.OBJECT_DETECTION,
+                        bounding_box=Box.from_extrema(
+                            xmin=10, xmax=20, ymin=10, ymax=20
+                        ),
+                        labels=[Label(key="key", value="value", score=0.8)],
+                    ),
+                ],
+            ),
+            Prediction(
+                datum=Datum(uid="uid2"),
+                annotations=[
+                    Annotation(
+                        task_type=TaskType.OBJECT_DETECTION,
+                        bounding_box=Box.from_extrema(
+                            xmin=10, xmax=20, ymin=10, ymax=20
+                        ),
+                        labels=[Label(key="key", value="value", score=0.7)],
+                    ),
+                ],
+            ),
+        ],
+    )
+
+    evaluation = model.evaluate_detection(
+        dset, iou_thresholds_to_compute=[0.5], iou_thresholds_to_return=[0.5]
+    )
+    evaluation.wait_for_completion(timeout=30)
+    ap_metric = [
+        m
+        for m in evaluation.metrics
+        if m["type"] == "AP" and m["label"] == {"key": "key", "value": "value"}
+    ][0]
+    assert ap_metric == {
+        "type": "AP",
+        "parameters": {"iou": 0.5},
+        "value": 0.5,
+        "label": {"key": "key", "value": "value"},
+    }
