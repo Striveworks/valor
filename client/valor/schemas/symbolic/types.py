@@ -16,6 +16,7 @@ from valor.schemas.symbolic.operators import (
     Eq,
     Ge,
     Gt,
+    In,
     Inside,
     Intersects,
     IsNotNull,
@@ -474,9 +475,13 @@ class Equatable(Variable):
                 return Bool(lhs != rhs)
         return Ne(self, other)
 
-    def in_(self, vlist: typing.List[typing.Any]) -> Or:
-        """Returns Or(*[(self == v) for v in vlist])"""
-        return Or(*[(self == v) for v in vlist])
+    def in_(self, value: typing.List[typing.Any]) -> In:
+        """Returns the conditional of lhs existing in rhs list of values."""
+        if not isinstance(value, list) or not value:
+            raise TypeError("Expected value to be a list.")
+        item_type = _get_type_by_value(value[0])
+        symbolic_list = List[item_type](value)
+        return In(lhs=self, rhs=symbolic_list)
 
     def __hash__(self):
         if self.is_symbolic:
@@ -2065,6 +2070,10 @@ def _get_type_by_value(other: typing.Any):
 
     Order of checking is very important as certain types are subsets of others.
     """
+    if issubclass(type(other), Variable):
+        return type(other)
+    if isinstance(other, Symbol):
+        return Symbol
     if Bool.supports(other):
         return Bool
     elif String.supports(other):

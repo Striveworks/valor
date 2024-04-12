@@ -181,6 +181,12 @@ class Ne(TwoArgumentFunction):
     _operator = "!="
 
 
+class In(TwoArgumentFunction):
+    """Check that the lhs value exists within a rhs list."""
+
+    _operator = "in"
+
+
 class Gt(TwoArgumentFunction):
     """Implementation of the greater-than operator '>'."""
 

@@ -142,51 +142,33 @@ def _test_equatable(varA, varB, varC):
 
     # in (exists within list)
     assert varA.in_([varB, varC]).to_dict() == {
-        "op": "or",
-        "args": [
-            {
-                "op": "eq",
-                "lhs": {
-                    "type": "symbol",
-                    "value": {
-                        "owner": None,
-                        "name": "a",
-                        "key": None,
-                        "attribute": None,
-                    },
-                },
-                "rhs": {
-                    "type": "symbol",
-                    "value": {
-                        "owner": None,
-                        "name": "b",
-                        "key": None,
-                        "attribute": None,
-                    },
-                },
+        "op": "eq",
+        "lhs": {
+            "type": "symbol",
+            "value": {
+                "owner": None,
+                "name": "a",
+                "key": None,
+                "attribute": None,
             },
-            {
-                "op": "eq",
-                "lhs": {
-                    "type": "symbol",
-                    "value": {
-                        "owner": None,
-                        "name": "a",
-                        "key": None,
-                        "attribute": None,
-                    },
+        },
+        "rhs": {
+            "type": "list[symbol]",
+            "value": [
+                {
+                    "owner": None,
+                    "name": "b",
+                    "key": None,
+                    "attribute": None,
                 },
-                "rhs": {
-                    "type": "symbol",
-                    "value": {
-                        "owner": None,
-                        "name": "c",
-                        "key": None,
-                        "attribute": None,
-                    },
+                {
+                    "owner": None,
+                    "name": "c",
+                    "key": None,
+                    "attribute": None,
                 },
-            },
-        ],
+            ],
+        },
     }
     assert (
         varA.in_([varB, varC]).to_dict()
