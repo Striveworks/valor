@@ -65,8 +65,9 @@ def test_set_and_get_geospatial(
         dataset.get_datums()[1].metadata["geospatial"].get_value()
     )
 
-    assert expected_coords[0] == returned_datum1
-    assert expected_coords[1] == returned_datum2
+    # newer datums are returned near the top
+    assert expected_coords[1] == returned_datum1
+    assert expected_coords[0] == returned_datum2
 
     dets1 = dataset.get_groundtruth("uid1")
     assert dets1
