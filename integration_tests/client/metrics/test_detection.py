@@ -1642,7 +1642,7 @@ def test_evaluate_detection_false_negatives_single_image_baseline(
     assert evaluation.metrics[0] == {
         "type": "AP",
         "parameters": {"iou": 0.5},
-        "value": 0.5,
+        "value": 1,
         "label": {"key": "key", "value": "value"},
     }
 
@@ -1707,10 +1707,79 @@ def test_evaluate_detection_false_negatives_single_image(
     }
 
 
-def test_evaluate_detection_false_negatives_two_images(
+def test_evaluate_detection_false_negatives_two_images_one_empty(
     db: Session, dataset_name: str, model_name: str, client: Client
 ):
     """Similar to the above tests except the false detection is on a second
     image
     """
+    dset = Dataset.create(dataset_name)
+    dset.add_groundtruths(
+        [
+            GroundTruth(
+                datum=Datum(uid="uid1"),
+                annotations=[
+                    Annotation(
+                        task_type=TaskType.OBJECT_DETECTION,
+                        bounding_box=Box.from_extrema(
+                            xmin=10, xmax=20, ymin=10, ymax=20
+                        ),
+                        labels=[Label(key="key", value="value")],
+                    )
+                ],
+            ),
+            GroundTruth(
+                datum=Datum(uid="uid2"),
+                annotations=[Annotation(task_type=TaskType.EMPTY)],
+            ),
+        ]
+    )
+    dset.finalize()
+
+    model = Model.create(model_name)
+    model.add_predictions(
+        dset,
+        [
+            Prediction(
+                datum=Datum(uid="uid1"),
+                annotations=[
+                    Annotation(
+                        task_type=TaskType.OBJECT_DETECTION,
+                        bounding_box=Box.from_extrema(
+                            xmin=10, xmax=20, ymin=10, ymax=20
+                        ),
+                        labels=[Label(key="key", value="value", score=0.8)],
+                    ),
+                ],
+            ),
+            Prediction(
+                datum=Datum(uid="uid2"),
+                annotations=[
+                    Annotation(
+                        task_type=TaskType.OBJECT_DETECTION,
+                        bounding_box=Box.from_extrema(
+                            xmin=10, xmax=20, ymin=10, ymax=20
+                        ),
+                        labels=[Label(key="key", value="value", score=0.7)],
+                    ),
+                ],
+            ),
+        ],
+    )
+
+    evaluation = model.evaluate_detection(
+        dset, iou_thresholds_to_compute=[0.5], iou_thresholds_to_return=[0.5]
+    )
+    evaluation.wait_for_completion(timeout=30)
+    assert evaluation.metrics[0] == {
+        "type": "AP",
+        "parameters": {"iou": 0.5},
+        "value": 0.5,
+        "label": {"key": "key", "value": "value"},
+    }
+
+
+def test_evaluate_detection_false_negatives_two_images_one_only_with_different_class(
+    db: Session, dataset_name: str, model_name: str, client: Client
+):
     pass
