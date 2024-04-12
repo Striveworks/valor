@@ -60,12 +60,12 @@ def test_get_models(db: Session, created_models):
         models, headers = core.get_models(db, offset=100, limit=2)
 
     models, headers = core.get_models(db, offset=5, limit=2)
-    assert [model.name for model in models] == ["model5", "model6"]
+    assert [model.name for model in models] == ["model4", "model3"]
     assert headers == {"content-range": "items 5-6/10"}
 
     models, headers = core.get_models(db, offset=2, limit=7)
     assert [model.name for model in models] == [
-        f"model{i}" for i in range(2, 9)
+        f"model{i}" for i in range(7, 0, -1)
     ]
     assert headers == {"content-range": "items 2-8/10"}
 

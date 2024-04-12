@@ -1251,7 +1251,7 @@ def test_create_detection_metrics(
     # Don't examine metrics
     model_evals[0].metrics = []
     model_evals[1].metrics = []
-    assert model_evals[0] == schemas.EvaluationResponse(
+    assert model_evals[1] == schemas.EvaluationResponse(
         model_name=model_name,
         datum_filter=schemas.Filter(
             label_keys=["class"], dataset_names=[dataset_name]
@@ -1262,7 +1262,7 @@ def test_create_detection_metrics(
             iou_thresholds_to_compute=[0.2, 0.6],
             iou_thresholds_to_return=[0.2],
         ),
-        id=model_evals[0].id,
+        id=model_evals[1].id,
         status=enums.EvaluationStatus.DONE,
         metrics=[],
         confusion_matrices=[],
@@ -1270,9 +1270,9 @@ def test_create_detection_metrics(
         ignored_pred_labels=[
             schemas.Label(key="class", value="3", score=None)
         ],
-        created_at=model_evals[0].created_at,
+        created_at=model_evals[1].created_at,
     )
-    assert model_evals[1] == schemas.EvaluationResponse(
+    assert model_evals[0] == schemas.EvaluationResponse(
         model_name=model_name,
         datum_filter=schemas.Filter(
             dataset_names=[dataset_name],
@@ -1294,13 +1294,13 @@ def test_create_detection_metrics(
             iou_thresholds_to_compute=[0.2, 0.6],
             iou_thresholds_to_return=[0.2],
         ),
-        id=model_evals[1].id,
+        id=model_evals[0].id,
         status=enums.EvaluationStatus.DONE,
         metrics=[],
         confusion_matrices=[],
         missing_pred_labels=[],
         ignored_pred_labels=[],
-        created_at=model_evals[1].created_at,
+        created_at=model_evals[0].created_at,
     )
 
 

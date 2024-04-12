@@ -1,4 +1,4 @@
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, desc, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -181,7 +181,7 @@ def get_datasets(
     datasets = (
         db.query(models.Dataset)
         .where(models.Dataset.id == datasets_subquery.c.id)
-        .order_by(models.Dataset.created_at)
+        .order_by(desc(models.Dataset.created_at))
         .offset(offset)
         .limit(limit)
         .all()

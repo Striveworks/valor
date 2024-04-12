@@ -1,4 +1,4 @@
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, desc, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -136,7 +136,7 @@ def get_datums(
     datums = (
         db.query(models.Datum)
         .where(models.Datum.id == subquery.c.id)
-        .order_by(models.Datum.created_at)
+        .order_by(desc(models.Datum.created_at))
         .offset(offset)
         .limit(limit)
         .all()

@@ -60,12 +60,15 @@ def test_get_datasets(db: Session, created_datasets):
         datasets, headers = core.get_datasets(db, offset=100, limit=2)
 
     datasets, headers = core.get_datasets(db, offset=5, limit=2)
-    assert [dataset.name for dataset in datasets] == ["dataset5", "dataset6"]
+    assert [dataset.name for dataset in datasets] == [
+        "dataset4",
+        "dataset3",
+    ]  # newest items are returned first
     assert headers == {"content-range": "items 5-6/10"}
 
     datasets, headers = core.get_datasets(db, offset=2, limit=7)
     assert [dataset.name for dataset in datasets] == [
-        f"dataset{i}" for i in range(2, 9)
+        f"dataset{i}" for i in range(7, 0, -1)
     ]
     assert headers == {"content-range": "items 2-8/10"}
 

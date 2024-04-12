@@ -1,4 +1,4 @@
-from sqlalchemy import Subquery, and_, func, or_, select
+from sqlalchemy import Subquery, and_, desc, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.selectable import Select
@@ -374,7 +374,7 @@ def get_paginated_labels(
     if limit == -1:
         limit = count
 
-    labels = db.query(subquery.subquery()).distinct().order_by("created_at").offset(offset).limit(limit).all()  # type: ignore - sqlalchemy type error
+    labels = db.query(subquery.subquery()).distinct().order_by(desc("created_at")).offset(offset).limit(limit).all()  # type: ignore - sqlalchemy type error
 
     contents = {
         schemas.Label(key=label.key, value=label.value) for label in labels

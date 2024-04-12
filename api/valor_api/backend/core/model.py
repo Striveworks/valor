@@ -1,4 +1,4 @@
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, desc, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -212,7 +212,7 @@ def get_models(
     models_ = (
         db.query(models.Model)
         .where(models.Model.id == subquery.c.id)
-        .order_by(models.Model.created_at)
+        .order_by(desc(models.Model.created_at))
         .offset(offset)
         .limit(limit)
         .all()

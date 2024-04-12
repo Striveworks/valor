@@ -1,7 +1,7 @@
 from datetime import timezone
 from typing import Sequence
 
-from sqlalchemy import and_, func, or_, select, update
+from sqlalchemy import and_, desc, func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.elements import BinaryExpression
@@ -620,7 +620,7 @@ def get_evaluations(
                 models.Evaluation.status != enums.EvaluationStatus.DELETING,
             )
         )
-        .order_by(models.Evaluation.created_at)
+        .order_by(desc(models.Evaluation.created_at))
         .offset(offset)
         .limit(limit)
         .all()
