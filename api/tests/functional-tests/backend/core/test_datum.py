@@ -91,7 +91,8 @@ def test_get_datums(
     )
 
     # basic query
-    assert {datum.uid for datum in core.get_datums(db=db)} == {
+    datums, headers = core.get_datums(db=db)
+    assert {datum.uid for datum in datums} == {
         "uid1",
         "uid2",
         "uid3",

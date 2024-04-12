@@ -374,7 +374,7 @@ def get_paginated_labels(
     if limit == -1:
         limit = count
 
-    labels = db.query(subquery.subquery()).distinct().offset(offset).limit(limit).all()  # type: ignore - sqlalchemy type error
+    labels = db.query(subquery.subquery()).distinct().order_by("created_at").offset(offset).limit(limit).all()  # type: ignore - sqlalchemy type error
 
     contents = {
         schemas.Label(key=label.key, value=label.value) for label in labels

@@ -1074,7 +1074,7 @@ def test_get_model_labels(crud, client: TestClient):
 
 @patch("valor_api.main.crud")
 def test_get_datums(crud, client: TestClient):
-    crud.get_datums.return_value = []
+    crud.get_datums.return_value = ([], {"headers": "headers"})
     resp = client.get("/data")
     assert resp.status_code == 200
     crud.get_datums.assert_called_once()
@@ -1095,9 +1095,10 @@ def test_get_datums(crud, client: TestClient):
 
 @patch("valor_api.main.crud")
 def test_get_datum(crud, client: TestClient):
-    crud.get_datums.return_value = [
-        schemas.Datum(uid="uid", dataset_name="dataset_name")
-    ]
+    crud.get_datums.return_value = (
+        [schemas.Datum(uid="uid", dataset_name="dataset_name")],
+        {},
+    )
 
     resp = client.get("/data/dataset/dsetname/uid/uid")
     assert resp.status_code == 200

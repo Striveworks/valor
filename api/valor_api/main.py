@@ -447,7 +447,6 @@ def get_datasets(
         The start index of the items to return.
     limit : int, optional
         The number of items to return. Returns all items when set to -1.
-
     db : Session
         The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
 
@@ -661,7 +660,10 @@ def delete_dataset(
     description="Fetch datums using optional JSON strings as query parameters.",
 )
 def get_datums(
+    response: Response,
     filters: schemas.FilterQueryParams = Depends(),
+    offset: int = 0,
+    limit: int = -1,
     db: Session = Depends(get_db),
 ) -> list[schemas.Datum]:
     """
@@ -671,8 +673,14 @@ def get_datums(
 
     Parameters
     ----------
+    response: Response
+        The FastAPI response object. Used to return a content-range header to the user.
     filters : schemas.FilterQueryParams, optional
         An optional filter to constrain results by.
+    offset : int, optional
+        The start index of the items to return.
+    limit : int, optional
+        The number of items to return. Returns all items when set to -1.
     db : Session
         The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
 
@@ -687,10 +695,14 @@ def get_datums(
         If the dataset or datum doesn't exist.
     """
     try:
-        return crud.get_datums(
+        content, headers = crud.get_datums(
             db=db,
             filters=schemas.convert_filter_query_params_to_filter_obj(filters),
+            offset=offset,
+            limit=limit,
         )
+        response.headers.update(headers)
+        return content
     except Exception as e:
         raise exceptions.create_http_error(e)
 
@@ -725,7 +737,7 @@ def get_datum(
         If the dataset or datum doesn't exist.
     """
     try:
-        datums = crud.get_datums(
+        datums, _ = crud.get_datums(
             db=db,
             filters=schemas.Filter(
                 dataset_names=[dataset_name],

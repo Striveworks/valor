@@ -111,7 +111,9 @@ def get_datums(
     *,
     db: Session,
     filters: schemas.Filter | None = None,
-) -> list[schemas.Datum]:
+    offset: int = 0,
+    limit: int = -1,
+) -> tuple[list[schemas.Datum], dict[str, str]]:
     """
     Get datums with optional filter.
 
@@ -123,13 +125,20 @@ def get_datums(
         The database Session to query against.
     filters : schemas.Filter, optional
         An optional filter to apply.
+    offset : int, optional
+        The start index of the items to return.
+    limit : int, optional
+        The number of items to return. Returns all items when set to -1.
+
 
     Returns
     ----------
-    list[schemas.Datum]
-        A list of datums.
+    tuple[list[schemas.Datum], dict[str, str]]
+        A tuple containing the datums and response headers to return to the user.
     """
-    return backend.get_datums(db=db, filters=filters)
+    return backend.get_datums(
+        db=db, filters=filters, offset=offset, limit=limit
+    )
 
 
 """ Datasets """

@@ -620,6 +620,7 @@ def get_evaluations(
                 models.Evaluation.status != enums.EvaluationStatus.DELETING,
             )
         )
+        .order_by(models.Evaluation.created_at)
         .offset(offset)
         .limit(limit)
         .all()

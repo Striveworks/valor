@@ -273,3 +273,8 @@ def test_get_datums(
 
     neg_query = client.get_datums(Filter(labels=[{"some_other_class": "1"}]))
     assert len(neg_query) == 0
+
+    # check that the content-range header exists on the raw response
+    requests_method = getattr(requests, "get")
+    resp = requests_method("http://localhost:8000/data")
+    assert resp.headers["content-range"] == "items 0-0/1"

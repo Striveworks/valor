@@ -63,6 +63,12 @@ def test_get_datasets(db: Session, created_datasets):
     assert [dataset.name for dataset in datasets] == ["dataset5", "dataset6"]
     assert headers == {"content-range": "items 5-6/10"}
 
+    datasets, headers = core.get_datasets(db, offset=2, limit=7)
+    assert [dataset.name for dataset in datasets] == [
+        f"dataset{i}" for i in range(2, 9)
+    ]
+    assert headers == {"content-range": "items 2-8/10"}
+
 
 def test_dataset_status(db: Session, created_dataset):
     # creating
