@@ -252,11 +252,11 @@ def get_annotation(
 
     # bounding box
     if annotation.box is not None:
-        box = schemas.Box.loads(db.scalar(ST_AsGeoJSON(annotation.box)))
+        box = schemas.Box.from_json(db.scalar(ST_AsGeoJSON(annotation.box)))
 
     # polygon
     if annotation.polygon is not None:
-        polygon = schemas.Polygon.loads(
+        polygon = schemas.Polygon.from_json(
             db.scalar(ST_AsGeoJSON(annotation.polygon))
         )
 

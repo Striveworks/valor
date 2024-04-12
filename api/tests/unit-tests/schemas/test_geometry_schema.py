@@ -46,8 +46,8 @@ def test_point():
 
     # test geojson conversion
     geojson = {"type": "Point", "coordinates": [3.14, -3.14]}
-    assert p1.dump() == geojson
-    assert Point.load(geojson).value == (3.14, -3.14)
+    assert p1.to_dict() == geojson
+    assert Point.from_dict(geojson).value == (3.14, -3.14)
 
     # test wkt conversion
     wkt = "POINT (3.14 -3.14)"
@@ -82,8 +82,8 @@ def test_multipoint(box_points):
         "type": "MultiPoint",
         "coordinates": [[point[0], point[1]] for point in box_points],
     }
-    assert MultiPoint(value=box_points).dump() == geojson
-    assert MultiPoint.load(geojson).value == box_points
+    assert MultiPoint(value=box_points).to_dict() == geojson
+    assert MultiPoint.from_dict(geojson).value == box_points
 
     # test wkt conversion
     wkt = "MULTIPOINT ((-5 -5), (5 -5), (5 5), (-5 5), (-5 -5))"
@@ -114,8 +114,8 @@ def test_linestring(box_points):
         "type": "LineString",
         "coordinates": [[point[0], point[1]] for point in box_points],
     }
-    assert LineString(value=box_points).dump() == geojson
-    assert LineString.load(geojson).value == box_points
+    assert LineString(value=box_points).to_dict() == geojson
+    assert LineString.from_dict(geojson).value == box_points
 
     # test wkt conversion
     wkt = "LINESTRING (-5 -5, 5 -5, 5 5, -5 5, -5 -5)"
@@ -159,10 +159,10 @@ def test_multilinestring(
         ],
     }
     assert (
-        MultiLineString(value=[box_points, skewed_box_points]).dump()
+        MultiLineString(value=[box_points, skewed_box_points]).to_dict()
         == geojson
     )
-    assert MultiLineString.load(geojson).value == [
+    assert MultiLineString.from_dict(geojson).value == [
         box_points,
         skewed_box_points,
     ]
@@ -208,8 +208,8 @@ def test_polygon(
             [[point[0], point[1]] for point in skewed_box_points],
         ],
     }
-    assert Polygon(value=[box_points, skewed_box_points]).dump() == geojson
-    assert Polygon.load(geojson).value == [
+    assert Polygon(value=[box_points, skewed_box_points]).to_dict() == geojson
+    assert Polygon.from_dict(geojson).value == [
         box_points,
         skewed_box_points,
     ]
@@ -267,8 +267,8 @@ def test_box(
         "type": "Polygon",
         "coordinates": [[[point[0], point[1]] for point in box_points]],
     }
-    assert Box(value=[box_points]).dump() == geojson
-    assert Box.load(geojson).value == [box_points]
+    assert Box(value=[box_points]).to_dict() == geojson
+    assert Box.from_dict(geojson).value == [box_points]
 
     # test wkt conversion
     assert (
@@ -322,10 +322,10 @@ def test_multipolygon(
     assert (
         MultiPolygon(
             value=[[skewed_box_points, box_points], [rotated_box_points]]
-        ).dump()
+        ).to_dict()
         == geojson
     )
-    assert MultiPolygon.load(geojson).value == [
+    assert MultiPolygon.from_dict(geojson).value == [
         [skewed_box_points, box_points],
         [rotated_box_points],
     ]

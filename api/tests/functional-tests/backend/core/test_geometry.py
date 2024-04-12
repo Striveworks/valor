@@ -193,7 +193,7 @@ def test_convert_geometry_input(
 
 
 def _load_polygon(db: Session, polygon: Polygon) -> Polygon:
-    return Polygon.loads(db.scalar(func.ST_AsGeoJSON(polygon)))
+    return Polygon.from_json(db.scalar(func.ST_AsGeoJSON(polygon)))
 
 
 def _load_box(db: Session, box) -> Box:
