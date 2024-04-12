@@ -1585,3 +1585,123 @@ def test_evaluate_detection_with_label_maps(
         [["class", "cat"], ["foo", "bar"]],
         [["class_name", "cat"], ["foo", "bar"]],
     ]
+
+
+def test_evaluate_detection_false_negatives_single_image_baseline(
+    db: Session, dataset_name: str, model_name: str, client: Client
+):
+    """This is the baseline for the below test. In this case there are two predictions and
+    one groundtruth, but the highest confident prediction overlaps sufficiently with the groundtruth
+    so there is not a penalty for the false negative so the AP is 1
+    """
+    dset = Dataset.create(dataset_name)
+    dset.add_groundtruth(
+        GroundTruth(
+            datum=Datum(uid="uid1"),
+            annotations=[
+                Annotation(
+                    task_type=TaskType.OBJECT_DETECTION,
+                    bounding_box=Box.from_extrema(
+                        xmin=10, xmax=20, ymin=10, ymax=20
+                    ),
+                    labels=[Label(key="key", value="value")],
+                )
+            ],
+        )
+    )
+    dset.finalize()
+
+    model = Model.create(model_name)
+    model.add_prediction(
+        dset,
+        Prediction(
+            datum=Datum(uid="uid1"),
+            annotations=[
+                Annotation(
+                    task_type=TaskType.OBJECT_DETECTION,
+                    bounding_box=Box.from_extrema(
+                        xmin=10, xmax=20, ymin=10, ymax=20
+                    ),
+                    labels=[Label(key="key", value="value", score=0.8)],
+                ),
+                Annotation(
+                    task_type=TaskType.OBJECT_DETECTION,
+                    bounding_box=Box.from_extrema(
+                        xmin=100, xmax=110, ymin=100, ymax=200
+                    ),
+                    labels=[Label(key="key", value="value", score=0.9)],
+                ),
+            ],
+        ),
+    )
+
+    evaluation = model.evaluate_detection(
+        dset, iou_thresholds_to_compute=[0.5], iou_thresholds_to_return=[0.5]
+    )
+    evaluation.wait_for_completion(timeout=30)
+    assert evaluation.metrics[0] == {
+        "type": "AP",
+        "parameters": {"iou": 0.5},
+        "value": 0.5,
+        "label": {"key": "key", "value": "value"},
+    }
+
+
+def test_evaluate_detection_false_negatives_single_image(
+    db: Session, dataset_name: str, model_name: str, client: Client
+):
+    """Tests fix for a bug where high confidence false negative was not being penalized. The
+    difference between this test and the above is that here the prediction with higher confidence
+    does not sufficiently overlap the groundtruth and so is penalized and we get an AP of 0.5
+    """
+    dset = Dataset.create(dataset_name)
+    dset.add_groundtruth(
+        GroundTruth(
+            datum=Datum(uid="uid1"),
+            annotations=[
+                Annotation(
+                    task_type=TaskType.OBJECT_DETECTION,
+                    bounding_box=Box.from_extrema(
+                        xmin=10, xmax=20, ymin=10, ymax=20
+                    ),
+                    labels=[Label(key="key", value="value")],
+                )
+            ],
+        )
+    )
+    dset.finalize()
+
+    model = Model.create(model_name)
+    model.add_prediction(
+        dset,
+        Prediction(
+            datum=Datum(uid="uid1"),
+            annotations=[
+                Annotation(
+                    task_type=TaskType.OBJECT_DETECTION,
+                    bounding_box=Box.from_extrema(
+                        xmin=10, xmax=20, ymin=10, ymax=20
+                    ),
+                    labels=[Label(key="key", value="value", score=0.8)],
+                ),
+                Annotation(
+                    task_type=TaskType.OBJECT_DETECTION,
+                    bounding_box=Box.from_extrema(
+                        xmin=100, xmax=110, ymin=100, ymax=200
+                    ),
+                    labels=[Label(key="key", value="value", score=0.9)],
+                ),
+            ],
+        ),
+    )
+
+    evaluation = model.evaluate_detection(
+        dset, iou_thresholds_to_compute=[0.5], iou_thresholds_to_return=[0.5]
+    )
+    evaluation.wait_for_completion(timeout=30)
+    assert evaluation.metrics[0] == {
+        "type": "AP",
+        "parameters": {"iou": 0.5},
+        "value": 0.5,
+        "label": {"key": "key", "value": "value"},
+    }
