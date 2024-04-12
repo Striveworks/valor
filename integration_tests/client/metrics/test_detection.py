@@ -1639,7 +1639,8 @@ def test_evaluate_detection_false_negatives_single_image_baseline(
         dset, iou_thresholds_to_compute=[0.5], iou_thresholds_to_return=[0.5]
     )
     evaluation.wait_for_completion(timeout=30)
-    assert evaluation.metrics[0] == {
+    ap_metric = [m for m in evaluation.metrics if m["type"] == "AP"][0]
+    assert ap_metric == {
         "type": "AP",
         "parameters": {"iou": 0.5},
         "value": 1,
@@ -1699,7 +1700,9 @@ def test_evaluate_detection_false_negatives_single_image(
         dset, iou_thresholds_to_compute=[0.5], iou_thresholds_to_return=[0.5]
     )
     evaluation.wait_for_completion(timeout=30)
-    assert evaluation.metrics[0] == {
+
+    ap_metric = [m for m in evaluation.metrics if m["type"] == "AP"][0]
+    assert ap_metric == {
         "type": "AP",
         "parameters": {"iou": 0.5},
         "value": 0.5,
@@ -1771,7 +1774,8 @@ def test_evaluate_detection_false_negatives_two_images_one_empty(
         dset, iou_thresholds_to_compute=[0.5], iou_thresholds_to_return=[0.5]
     )
     evaluation.wait_for_completion(timeout=30)
-    assert evaluation.metrics[0] == {
+    ap_metric = [m for m in evaluation.metrics if m["type"] == "AP"][0]
+    assert ap_metric == {
         "type": "AP",
         "parameters": {"iou": 0.5},
         "value": 0.5,
