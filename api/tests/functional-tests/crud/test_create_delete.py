@@ -400,7 +400,7 @@ def test_create_and_get_datasets(
         db=db,
         dataset=schemas.Dataset(name="other_dataset"),
     )
-    datasets = crud.get_datasets(db=db)
+    datasets, _ = crud.get_datasets(db=db)
     assert len(datasets) == 2
     assert set([d.name for d in datasets]) == {dataset_name, "other_dataset"}
 
@@ -420,7 +420,7 @@ def test_create_and_get_models(
     assert "already exists" in str(exc_info)
 
     crud.create_model(db=db, model=schemas.Model(name="other_model"))
-    db_models = crud.get_models(db=db)
+    db_models, _ = crud.get_models(db=db)
     assert len(db_models) == 2
     assert set([m.name for m in db_models]) == {model_name, "other_model"}
 
@@ -1158,7 +1158,8 @@ def test_create_detection_metrics(
     ) = method_to_test(label_key="class")
 
     # check we have one evaluation
-    assert len(crud.get_evaluations(db=db, model_names=[model_name])) == 1
+    evaluations, _ = crud.get_evaluations(db=db, model_names=[model_name])
+    assert len(evaluations) == 1
 
     assert missing_pred_labels == []
     assert ignored_pred_labels == [schemas.Label(key="class", value="3")]
@@ -1197,7 +1198,7 @@ def test_create_detection_metrics(
     )
 
     # test getting metrics from evaluation settings id
-    pydantic_metrics = crud.get_evaluations(
+    pydantic_metrics, _ = crud.get_evaluations(
         db=db, evaluation_ids=[evaluation_id]
     )
     assert pydantic_metrics[0].metrics is not None
@@ -1219,11 +1220,12 @@ def test_create_detection_metrics(
     assert sorted(metric_ids) == sorted(metric_ids_again)
 
     # test crud.get_model_metrics
-    metrics_pydantic = crud.get_evaluations(
+    evaluations, _ = crud.get_evaluations(
         db=db,
         model_names=["test_model"],
         evaluation_ids=[evaluation_id],
-    )[0].metrics
+    )
+    metrics_pydantic = evaluations[0].metrics
 
     assert metrics_pydantic
     assert len(metrics_pydantic) == len(metrics)
@@ -1246,11 +1248,12 @@ def test_create_detection_metrics(
         ignored_pred_labels,
     ) = method_to_test(label_key="class", min_area=min_area, max_area=max_area)
 
-    metrics_pydantic = crud.get_evaluations(
+    evaluations, _ = crud.get_evaluations(
         db=db,
         model_names=["test_model"],
         evaluation_ids=[evaluation_id],
-    )[0].metrics
+    )
+    metrics_pydantic = evaluations[0].metrics
     assert metrics_pydantic
     for m in metrics_pydantic:
         assert m.type in {
@@ -1263,12 +1266,12 @@ def test_create_detection_metrics(
         }
 
     # check we have the right evaluations
-    model_evals = crud.get_evaluations(db=db, model_names=[model_name])
+    model_evals, _ = crud.get_evaluations(db=db, model_names=[model_name])
     assert len(model_evals) == 2
     # Don't examine metrics
     model_evals[0].metrics = []
     model_evals[1].metrics = []
-    assert model_evals[0] == schemas.EvaluationResponse(
+    assert model_evals[1] == schemas.EvaluationResponse(
         model_name=model_name,
         datum_filter=schemas.Filter(
             label_keys=["class"], dataset_names=[dataset_name]
@@ -1279,7 +1282,7 @@ def test_create_detection_metrics(
             iou_thresholds_to_compute=[0.2, 0.6],
             iou_thresholds_to_return=[0.2],
         ),
-        id=model_evals[0].id,
+        id=model_evals[1].id,
         status=enums.EvaluationStatus.DONE,
         metrics=[],
         confusion_matrices=[],
@@ -1287,9 +1290,9 @@ def test_create_detection_metrics(
         ignored_pred_labels=[
             schemas.Label(key="class", value="3", score=None)
         ],
-        created_at=model_evals[0].created_at,
+        created_at=model_evals[1].created_at,
     )
-    assert model_evals[1] == schemas.EvaluationResponse(
+    assert model_evals[0] == schemas.EvaluationResponse(
         model_name=model_name,
         datum_filter=schemas.Filter(
             dataset_names=[dataset_name],
@@ -1311,13 +1314,13 @@ def test_create_detection_metrics(
             iou_thresholds_to_compute=[0.2, 0.6],
             iou_thresholds_to_return=[0.2],
         ),
-        id=model_evals[1].id,
+        id=model_evals[0].id,
         status=enums.EvaluationStatus.DONE,
         metrics=[],
         confusion_matrices=[],
         missing_pred_labels=[],
         ignored_pred_labels=[],
-        created_at=model_evals[1].created_at,
+        created_at=model_evals[0].created_at,
     )
 
 
@@ -1409,7 +1412,9 @@ def test_create_clf_metrics(
     assert len(confusion_matrices) == 2
 
     # test getting metrics from evaluation settings id
-    evaluations = crud.get_evaluations(db=db, evaluation_ids=[evaluation_id])
+    evaluations, _ = crud.get_evaluations(
+        db=db, evaluation_ids=[evaluation_id]
+    )
     assert len(evaluations) == 1
     assert evaluations[0].metrics
     for m in evaluations[0].metrics:

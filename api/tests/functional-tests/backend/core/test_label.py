@@ -15,6 +15,7 @@ from valor_api.backend.core.label import (
     get_joint_labels,
     get_label_keys,
     get_labels,
+    get_paginated_labels,
 )
 from valor_api.crud import (
     create_dataset,
@@ -283,6 +284,51 @@ def test_get_labels(
     }
 
 
+def test_get_paginated_labels(
+    db: Session,
+    create_dataset_model,
+):
+    assert len(db.query(models.Label).all()) == 5
+    labels, headers = get_paginated_labels(db)
+    assert len(labels) == 5
+    assert set(labels) == {
+        schemas.Label(key="k1", value="v1"),
+        schemas.Label(key="k2", value="v3"),
+        schemas.Label(key="k1", value="v2"),
+        schemas.Label(key="k1", value="v3"),
+        schemas.Label(key="k3", value="v3"),
+    }
+    assert headers == {"content-range": "items 0-4/5"}
+
+    # test that we can reconstitute the full set using paginated calls
+
+    first_set, header = get_paginated_labels(db, offset=1, limit=2)
+    assert len(first_set) == 2
+    assert header == {"content-range": "items 1-2/5"}
+
+    second_set, header = get_paginated_labels(db, offset=0, limit=1)
+    assert len(second_set) == 1
+    assert header == {"content-range": "items 0-0/5"}
+
+    third_set, header = get_paginated_labels(db, offset=3, limit=2)
+    assert len(third_set) == 2
+    assert header == {"content-range": "items 3-4/5"}
+
+    combined_set = first_set | second_set | third_set
+
+    assert combined_set == {
+        schemas.Label(key="k1", value="v1"),
+        schemas.Label(key="k2", value="v3"),
+        schemas.Label(key="k1", value="v2"),
+        schemas.Label(key="k1", value="v3"),
+        schemas.Label(key="k3", value="v3"),
+    }
+
+    # test that we get an error if the offset is set too high
+    with pytest.raises(ValueError):
+        _ = get_paginated_labels(db, offset=100, limit=1)
+
+
 def test_get_labels_filtered(
     db: Session,
     create_dataset_model,
@@ -293,21 +339,21 @@ def test_get_labels_filtered(
 
     labels = get_labels(db, filters=filters)
     assert len(labels) == 3
-    assert set(labels) == {
+    assert labels == {
         schemas.Label(key="k1", value="v1"),
         schemas.Label(key="k1", value="v2"),
         schemas.Label(key="k1", value="v3"),
     }
     pred_labels = get_labels(db, filters=filters, ignore_groundtruths=True)
     assert len(pred_labels) == 2
-    assert set(pred_labels) == {
+    assert pred_labels == {
         schemas.Label(key="k1", value="v2"),
         schemas.Label(key="k1", value="v3"),
     }
 
     gt_labels = get_labels(db, filters=filters, ignore_predictions=True)
     assert len(gt_labels) == 2
-    assert set(gt_labels) == {
+    assert gt_labels == {
         schemas.Label(key="k1", value="v1"),
         schemas.Label(key="k1", value="v2"),
     }

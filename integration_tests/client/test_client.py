@@ -5,6 +5,7 @@ that is no auth
 from typing import List
 
 import pytest
+import requests
 
 from valor import (
     Annotation,
@@ -201,6 +202,11 @@ def test_get_labels(
     for label in low_score_labels:
         assert int(label.value.get_value()) % 2 == 0
 
+    # check that the content-range header exists on the raw response
+    requests_method = getattr(requests, "get")
+    resp = requests_method("http://localhost:8000/labels")
+    assert resp.headers["content-range"] == "items 0-9/10"
+
 
 def test_get_datasets(
     client: Client,
@@ -219,6 +225,11 @@ def test_get_datasets(
 
     neg_query = client.get_datasets(Filter(labels=[{"some_other_class": "1"}]))
     assert len(neg_query) == 0
+
+    # check that the content-range header exists on the raw response
+    requests_method = getattr(requests, "get")
+    resp = requests_method("http://localhost:8000/datasets")
+    assert resp.headers["content-range"] == "items 0-0/1"
 
 
 def test_get_models(
@@ -239,6 +250,11 @@ def test_get_models(
     neg_query = client.get_models(Filter(labels=[{"some_other_class": "1"}]))
     assert len(neg_query) == 0
 
+    # check that the content-range header exists on the raw response
+    requests_method = getattr(requests, "get")
+    resp = requests_method("http://localhost:8000/models")
+    assert resp.headers["content-range"] == "items 0-0/1"
+
 
 def test_get_datums(
     client: Client,
@@ -257,3 +273,8 @@ def test_get_datums(
 
     neg_query = client.get_datums(Filter(labels=[{"some_other_class": "1"}]))
     assert len(neg_query) == 0
+
+    # check that the content-range header exists on the raw response
+    requests_method = getattr(requests, "get")
+    resp = requests_method("http://localhost:8000/data")
+    assert resp.headers["content-range"] == "items 0-0/1"

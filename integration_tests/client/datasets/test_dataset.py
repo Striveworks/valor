@@ -53,7 +53,6 @@ def _test_create_image_dataset_with_gts(
     assert len(images) == len(expected_image_uids)
     assert set([image.uid for image in images]) == expected_image_uids
 
-    # check that there are two labels
     labels = dataset.get_labels()
     assert len(labels) == len(expected_labels_tuples)
     assert (
