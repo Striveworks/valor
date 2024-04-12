@@ -223,15 +223,12 @@ class Variable:
         """
         Validates typing.
 
+        Intended to be overridden in subclasses.
+
         Parameters
         ----------
         value : typing.Any
             The value to validate.
-
-        Raises
-        ------
-        NotImplementedError
-            This function is not implemented in the base class.
         """
         pass
 
