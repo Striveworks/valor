@@ -12,5 +12,3 @@ create index ix_embedding_id
 
 alter table annotation add column embedding_id integer references embedding;
 
-create index idx_annotation_polygon
-    on annotation using gist (polygon);
