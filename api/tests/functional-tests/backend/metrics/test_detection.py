@@ -596,15 +596,37 @@ def test__compute_detection_metrics(
         target_type=enums.AnnotationType.BOX,
     )
 
-    metrics = [m.model_dump(exclude_none=True) for m in metrics]
-
-    for m in metrics:
+    def _metric_to_dict(m) -> dict:
+        m = m.model_dump(exclude_none=True)
         _round_dict(m, 3)
+        return m
+
+    ap_metrics = [
+        _metric_to_dict(m) for m in metrics if isinstance(m, schemas.APMetric)
+    ]
+    map_metrics = [
+        _metric_to_dict(m) for m in metrics if isinstance(m, schemas.mAPMetric)
+    ]
+    ap_metrics_ave_over_ious = [
+        _metric_to_dict(m)
+        for m in metrics
+        if isinstance(m, schemas.APMetricAveragedOverIOUs)
+    ]
+    map_metrics_ave_over_ious = [
+        _metric_to_dict(m)
+        for m in metrics
+        if isinstance(m, schemas.mAPMetricAveragedOverIOUs)
+    ]
+    ar_metrics = [
+        _metric_to_dict(m) for m in metrics if isinstance(m, schemas.ARMetric)
+    ]
+    mar_metrics = [
+        _metric_to_dict(m) for m in metrics if isinstance(m, schemas.mARMetric)
+    ]
 
     # cf with torch metrics/pycocotools results listed here:
     # https://github.com/Lightning-AI/metrics/blob/107dbfd5fb158b7ae6d76281df44bd94c836bfce/tests/unittests/detection/test_map.py#L231
-    expected = [
-        # AP METRICS
+    expected_ap_metrics = [
         {"iou": 0.5, "value": 0.505, "label": {"key": "class", "value": "2"}},
         {"iou": 0.75, "value": 0.505, "label": {"key": "class", "value": "2"}},
         {"iou": 0.5, "value": 0.79, "label": {"key": "class", "value": "49"}},
@@ -619,10 +641,12 @@ def test__compute_detection_metrics(
         {"iou": 0.75, "value": 1.0, "label": {"key": "class", "value": "1"}},
         {"iou": 0.5, "value": 1.0, "label": {"key": "class", "value": "4"}},
         {"iou": 0.75, "value": 1.0, "label": {"key": "class", "value": "4"}},
-        # mAP METRICS
+    ]
+    expected_map_metrics = [
         {"iou": 0.5, "value": 0.859},
         {"iou": 0.75, "value": 0.761},
-        # AP METRICS AVERAGED OVER IOUS
+    ]
+    expected_ap_metrics_ave_over_ious = [
         {
             "ious": iou_thresholds,
             "value": 0.454,
@@ -648,9 +672,11 @@ def test__compute_detection_metrics(
             "value": 0.650,
             "label": {"key": "class", "value": "4"},
         },
-        # mAP METRICS AVERAGED OVER IOUS
-        {"ious": iou_thresholds, "value": 0.637},
-        # AR METRICS
+    ]
+    expected_map_metrics_ave_over_ious = [
+        {"ious": iou_thresholds, "value": 0.637}
+    ]
+    expected_ar_metrics = [
         {
             "ious": iou_thresholds,
             "value": 0.45,
@@ -681,20 +707,37 @@ def test__compute_detection_metrics(
             "value": 0.65,
             "label": {"key": "class", "value": "4"},
         },
-        # mAR METRICS
+    ]
+    expected_mar_metrics = [
         {
             "ious": iou_thresholds,
             "value": 0.652,
         },
     ]
 
-    non_pr_metrics = metrics[:-1]
-    pr_metrics = metrics[-1]
-    for m in non_pr_metrics:
-        assert m in expected
+    for metric_type, actual_metrics, expected_metrics in [
+        ("AP", ap_metrics, expected_ap_metrics),
+        ("mAP", map_metrics, expected_map_metrics),
+        (
+            "APAveOverIOUs",
+            ap_metrics_ave_over_ious,
+            expected_ap_metrics_ave_over_ious,
+        ),
+        (
+            "mAPAveOverIOUs",
+            map_metrics_ave_over_ious,
+            expected_map_metrics_ave_over_ious,
+        ),
+        ("AR", ar_metrics, expected_ar_metrics),
+        ("mAR", mar_metrics, expected_mar_metrics),
+    ]:
 
-    for m in expected:
-        assert m in non_pr_metrics
+        for m in actual_metrics:
+            assert m in expected_metrics, f"{metric_type} {m} not in expected"
+        for m in expected_metrics:
+            assert m in actual_metrics, f"{metric_type} {m} not in actual"
+
+    pr_metrics = metrics[-1].model_dump(exclude_none=True)
 
     pr_expected_answers = {
         # (class, 4)
@@ -728,7 +771,7 @@ def test__compute_detection_metrics(
     }
 
     for (
-        key,
+        _,
         value,
         threshold,
         metric,
