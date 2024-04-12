@@ -1,7 +1,7 @@
 import os
 from typing import Annotated
 
-from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
@@ -229,7 +229,10 @@ def get_prediction(
     description="Fetch labels using optional JSON strings as query parameters.",
 )
 def get_labels(
+    response: Response,
     filters: schemas.FilterQueryParams = Depends(),
+    offset: int = 0,
+    limit: int = -1,
     db: Session = Depends(get_db),
 ) -> list[schemas.Label]:
     """
@@ -239,10 +242,16 @@ def get_labels(
 
     Parameters
     ----------
+    response: Response
+        The FastAPI response object. Used to return a content-range header to the user.
     filters : schemas.FilterQueryParams, optional
         An optional filter to constrain results by.
     db : Session
         The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
+    offset : int, optional
+        The start index of the items to return.
+    limit : int, optional
+        The number of items to return. Returns all items when set to -1.
 
     Returns
     -------
@@ -250,10 +259,14 @@ def get_labels(
         A list of all labels in the database.
     """
     try:
-        return crud.get_labels(
+        content, headers = crud.get_labels(
             db=db,
             filters=schemas.convert_filter_query_params_to_filter_obj(filters),
+            offset=offset,
+            limit=limit,
         )
+        response.headers.update(headers)
+        return list(content)
     except Exception as e:
         raise exceptions.create_http_error(e)
 
@@ -265,7 +278,11 @@ def get_labels(
     tags=["Labels"],
 )
 def get_labels_from_dataset(
-    dataset_name: str, db: Session = Depends(get_db)
+    response: Response,
+    dataset_name: str,
+    offset: int = 0,
+    limit: int = -1,
+    db: Session = Depends(get_db),
 ) -> list[schemas.Label]:
     """
     Fetch all labels for a particular dataset from the database.
@@ -274,12 +291,16 @@ def get_labels_from_dataset(
 
     Parameters
     ----------
+    response: Response
+        The FastAPI response object. Used to return a content-range header to the user.
     dataset_name : str
         The name of the dataset.
+    offset : int, optional
+        The start index of the items to return.
+    limit : int, optional
+        The number of items to return. Returns all items when set to -1. Returns all items when set to -1.
     db : Session
-        The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
-
-    Returns
+        The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user
     -------
     list[schemas.Label]
         A list of all labels associated with the dataset in the database.
@@ -290,13 +311,18 @@ def get_labels_from_dataset(
         If the dataset doesn't exist.
     """
     try:
-        return crud.get_labels(
+        content, headers = crud.get_labels(
             db=db,
             filters=schemas.Filter(
                 dataset_names=[dataset_name],
             ),
             ignore_prediction_labels=True,
+            offset=offset,
+            limit=limit,
         )
+        response.headers.update(headers)
+        return list(content)
+
     except Exception as e:
         raise exceptions.create_http_error(e)
 
@@ -308,7 +334,11 @@ def get_labels_from_dataset(
     tags=["Labels"],
 )
 def get_labels_from_model(
-    model_name: str, db: Session = Depends(get_db)
+    response: Response,
+    model_name: str,
+    offset: int = 0,
+    limit: int = -1,
+    db: Session = Depends(get_db),
 ) -> list[schemas.Label]:
     """
     Fetch all labels for a particular model from the database.
@@ -317,8 +347,14 @@ def get_labels_from_model(
 
     Parameters
     ----------
+    response: Response
+        The FastAPI response object. Used to return a content-range header to the user.
     model_name : str
         The name of the model.
+    offset : int, optional
+        The start index of the items to return.
+    limit : int, optional
+        The number of items to return. Returns all items when set to -1.
     db : Session
         The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
 
@@ -333,13 +369,18 @@ def get_labels_from_model(
         If the model doesn't exist.
     """
     try:
-        return crud.get_labels(
+        content, headers = crud.get_labels(
             db=db,
             filters=schemas.Filter(
                 model_names=[model_name],
             ),
             ignore_groundtruth_labels=True,
+            offset=offset,
+            limit=limit,
         )
+        response.headers.update(headers)
+        return list(content)
+
     except Exception as e:
         raise exceptions.create_http_error(e)
 
@@ -385,7 +426,10 @@ def create_dataset(dataset: schemas.Dataset, db: Session = Depends(get_db)):
     description="Fetch datasets using optional JSON strings as query parameters.",
 )
 def get_datasets(
+    response: Response,
     filters: schemas.FilterQueryParams = Depends(),
+    offset: int = 0,
+    limit: int = -1,
     db: Session = Depends(get_db),
 ) -> list[schemas.Dataset]:
     """
@@ -395,8 +439,14 @@ def get_datasets(
 
     Parameters
     ----------
+    response: Response
+        The FastAPI response object. Used to return a content-range header to the user.
     filters : schemas.FilterQueryParams, optional
         An optional filter to constrain results by. All fields should be specified as strings in a JSON.
+    offset : int, optional
+        The start index of the items to return.
+    limit : int, optional
+        The number of items to return. Returns all items when set to -1.
     db : Session
         The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
 
@@ -406,10 +456,14 @@ def get_datasets(
         A list of all datasets stored in the database.
     """
     try:
-        return crud.get_datasets(
+        content, headers = crud.get_datasets(
             db=db,
             filters=schemas.convert_filter_query_params_to_filter_obj(filters),
+            offset=offset,
+            limit=limit,
         )
+        response.headers.update(headers)
+        return content
     except Exception as e:
         raise exceptions.create_http_error(e)
 
@@ -606,7 +660,10 @@ def delete_dataset(
     description="Fetch datums using optional JSON strings as query parameters.",
 )
 def get_datums(
+    response: Response,
     filters: schemas.FilterQueryParams = Depends(),
+    offset: int = 0,
+    limit: int = -1,
     db: Session = Depends(get_db),
 ) -> list[schemas.Datum]:
     """
@@ -616,8 +673,14 @@ def get_datums(
 
     Parameters
     ----------
+    response: Response
+        The FastAPI response object. Used to return a content-range header to the user.
     filters : schemas.FilterQueryParams, optional
         An optional filter to constrain results by.
+    offset : int, optional
+        The start index of the items to return.
+    limit : int, optional
+        The number of items to return. Returns all items when set to -1.
     db : Session
         The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
 
@@ -632,10 +695,14 @@ def get_datums(
         If the dataset or datum doesn't exist.
     """
     try:
-        return crud.get_datums(
+        content, headers = crud.get_datums(
             db=db,
             filters=schemas.convert_filter_query_params_to_filter_obj(filters),
+            offset=offset,
+            limit=limit,
         )
+        response.headers.update(headers)
+        return content
     except Exception as e:
         raise exceptions.create_http_error(e)
 
@@ -670,7 +737,7 @@ def get_datum(
         If the dataset or datum doesn't exist.
     """
     try:
-        datums = crud.get_datums(
+        datums, _ = crud.get_datums(
             db=db,
             filters=schemas.Filter(
                 dataset_names=[dataset_name],
@@ -727,9 +794,13 @@ def create_model(model: schemas.Model, db: Session = Depends(get_db)):
     dependencies=[Depends(token_auth_scheme)],
     tags=["Models"],
     description="Fetch models using optional JSON strings as query parameters.",
+    response_model=list[schemas.Model],
 )
 def get_models(
+    response: Response,
     filters: schemas.FilterQueryParams = Depends(),
+    offset: int = 0,
+    limit: int = -1,
     db: Session = Depends(get_db),
 ) -> list[schemas.Model]:
     """
@@ -739,8 +810,14 @@ def get_models(
 
     Parameters
     ----------
+    response: Response
+        The FastAPI response object. Used to return a content-range header to the user.
     filters : schemas.FilterQueryParams, optional
         An optional filter to constrain results by.
+    offset : int, optional
+        The start index of the items to return.
+    limit : int, optional
+        The number of items to return. Returns all items when set to -1.
     db : Session
         The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
 
@@ -749,10 +826,16 @@ def get_models(
     list[schemas.Model]
         A list of models.
     """
-    return crud.get_models(
+    content, headers = crud.get_models(
         db=db,
         filters=schemas.convert_filter_query_params_to_filter_obj(filters),
+        offset=offset,
+        limit=limit,
     )
+
+    response.headers.update(headers)
+
+    return content
 
 
 @app.get(
@@ -1002,9 +1085,12 @@ def create_or_get_evaluations(
     tags=["Evaluations"],
 )
 def get_evaluations(
+    response: Response,
     datasets: str | None = None,
     models: str | None = None,
     evaluation_ids: str | None = None,
+    offset: int = 0,
+    limit: int = -1,
     db: Session = Depends(get_db),
 ) -> list[schemas.EvaluationResponse]:
     """
@@ -1020,6 +1106,8 @@ def get_evaluations(
 
     Parameters
     ----------
+    response: Response
+        The FastAPI response object. Used to return a content-range header to the user.
     datasets : str
         An optional set of dataset names to return metrics for
     models : str
@@ -1028,6 +1116,10 @@ def get_evaluations(
         An optional set of evaluation_ids to return metrics for
     db : Session
         The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
+    offset : int, optional
+        The start index of the items to return.
+    limit : int, optional
+        The number of items to return. Returns all items when set to -1.
 
     Returns
     -------
@@ -1054,12 +1146,16 @@ def get_evaluations(
         evaluation_ids_ints = None
 
     try:
-        return crud.get_evaluations(
+        content, headers = crud.get_evaluations(
             db=db,
             evaluation_ids=evaluation_ids_ints,
             dataset_names=dataset_names,
             model_names=model_names,
+            offset=offset,
+            limit=limit,
         )
+        response.headers.update(headers)
+        return content
     except Exception as e:
         raise exceptions.create_http_error(e)
 
