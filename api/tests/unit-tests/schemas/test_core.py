@@ -47,7 +47,7 @@ def test_dataset(metadata):
         schemas.Dataset(name=None)  # type: ignore - purposefully throwing error
 
     # test property `metadata`
-    with pytest.raises(TypeError):
+    with pytest.raises(ValidationError):
         schemas.Dataset(
             name="123",
             metadata={123: 12434},  # type: ignore - purposefully throwing error
@@ -92,7 +92,7 @@ def test_model(metadata):
         schemas.Dataset(name=None)  # type: ignore - purposefully throwing error
 
     # test property `metadata`
-    with pytest.raises(TypeError):
+    with pytest.raises(ValidationError):
         schemas.Model(
             name="123",
             metadata={123: 123},  # type: ignore - purposefully throwing error
@@ -133,7 +133,7 @@ def test_datum(metadata):
         )
 
     # test property `metadata`
-    with pytest.raises(TypeError):
+    with pytest.raises(ValidationError):
         schemas.Datum(
             uid="123",
             metadata={123: 123},  # type: ignore - purposefully throwing error
@@ -206,7 +206,7 @@ def test_annotation_without_scores(metadata, bbox, polygon, raster, labels):
     assert gt.labels == labels
 
     # test property `metadata`
-    with pytest.raises(TypeError):
+    with pytest.raises(ValidationError):
         schemas.Annotation(
             task_type=enums.TaskType.CLASSIFICATION.value,  # type: ignore - purposefully throwing error
             labels=labels,
@@ -298,7 +298,7 @@ def test_annotation_with_scores(
             labels=scored_labels,
             metadata=123,  # type: ignore - purposefully throwing error
         )
-    with pytest.raises(TypeError):
+    with pytest.raises(ValidationError):
         schemas.Annotation(
             task_type=enums.TaskType.CLASSIFICATION,
             labels=scored_labels,
