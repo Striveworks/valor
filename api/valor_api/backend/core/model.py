@@ -2,18 +2,8 @@ from sqlalchemy import and_, desc, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from valor_api import exceptions, schemas
-from valor_api.backend import models
-from valor_api.backend.core.annotation import (
-    create_skipped_annotations,
-    delete_model_annotations,
-)
-from valor_api.backend.core.dataset import fetch_dataset, get_dataset_status
-from valor_api.backend.core.evaluation import (
-    count_active_evaluations,
-    delete_evaluations,
-)
-from valor_api.backend.core.prediction import delete_model_predictions
+from valor_api import api_utils, exceptions, schemas
+from valor_api.backend import core, models
 from valor_api.backend.query import Query
 from valor_api.enums import ModelStatus, TableStatus
 
@@ -49,7 +39,7 @@ def _fetch_disjoint_datums(
     list[models.Datum]
         List of Datums.
     """
-    dataset = fetch_dataset(db=db, name=dataset_name)
+    dataset = core.fetch_dataset(db=db, name=dataset_name)
     model = fetch_model(db=db, name=model_name)
     disjoint_datums = (
         select(models.Datum)
@@ -220,16 +210,11 @@ def get_paginated_models(
 
     content = [_load_model_schema(db=db, model=model) for model in models_]
 
-    if models_:
-        end_index = (
-            offset + len(models_) - 1
-        )  # subtract one to make it zero-indexed
-
-        range_indicator = f"{offset}-{end_index}"
-    else:
-        range_indicator = "*"
-
-    headers = {"content-range": f"items {range_indicator}/{count}"}
+    headers = api_utils._get_pagination_header(
+        offset=offset,
+        number_of_returned_items=len(models_),
+        total_number_of_items=count,
+    )
 
     return (content, headers)
 
@@ -254,7 +239,7 @@ def get_model_status(
     enums.TableStatus
         The status of the model.
     """
-    dataset = fetch_dataset(db, dataset_name)
+    dataset = core.fetch_dataset(db, dataset_name)
     model = fetch_model(db, model_name)
 
     # format statuses
@@ -323,7 +308,7 @@ def set_model_status(
     exceptions.EvaluationRunningError
         If the requested state is DELETING while an evaluation is running.
     """
-    dataset_status = get_dataset_status(db, dataset_name)
+    dataset_status = core.get_dataset_status(db, dataset_name)
     if dataset_status == TableStatus.DELETING:
         raise exceptions.DatasetDoesNotExistError(dataset_name)
 
@@ -347,14 +332,14 @@ def set_model_status(
                 dataset_name, "finalize inferences"
             )
         # edge case - check that there exists at least one prediction per datum
-        create_skipped_annotations(
+        core.create_skipped_annotations(
             db=db,
             datums=_fetch_disjoint_datums(db, dataset_name, model_name),
             model=model,
         )
 
     elif status == TableStatus.DELETING:
-        if count_active_evaluations(
+        if core.count_active_evaluations(
             db=db,
             model_names=[model_name],
         ):
@@ -398,9 +383,9 @@ def delete_model(
         db.rollback()
         raise e
 
-    delete_evaluations(db=db, model_names=[name])
-    delete_model_predictions(db=db, model=model)
-    delete_model_annotations(db=db, model=model)
+    core.delete_evaluations(db=db, model_names=[name])
+    core.delete_model_predictions(db=db, model=model)
+    core.delete_model_annotations(db=db, model=model)
 
     try:
         db.delete(model)

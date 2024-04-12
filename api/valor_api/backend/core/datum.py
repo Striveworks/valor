@@ -2,9 +2,8 @@ from sqlalchemy import and_, desc, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from valor_api import exceptions, schemas
-from valor_api.backend import models
-from valor_api.backend.core.dataset import fetch_dataset
+from valor_api import api_utils, exceptions, schemas
+from valor_api.backend import core, models
 from valor_api.backend.query import Query
 
 
@@ -28,7 +27,7 @@ def create_datum(
         The datum.
     """
     # retrieve dataset
-    dataset = fetch_dataset(db, datum.dataset_name)
+    dataset = core.fetch_dataset(db, datum.dataset_name)
 
     # create datum
     try:
@@ -155,15 +154,10 @@ def get_paginated_datums(
         for datum in datums
     ]
 
-    if datums:
-        end_index = (
-            offset + len(datums) - 1
-        )  # subtract one to make it zero-indexed
-
-        range_indicator = f"{offset}-{end_index}"
-    else:
-        range_indicator = "*"
-
-    headers = {"content-range": f"items {range_indicator}/{count}"}
+    headers = api_utils._get_pagination_header(
+        offset=offset,
+        number_of_returned_items=len(datums),
+        total_number_of_items=count,
+    )
 
     return (content, headers)

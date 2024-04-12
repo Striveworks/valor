@@ -2,16 +2,8 @@ from sqlalchemy import and_, desc, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from valor_api import enums, exceptions, schemas
-from valor_api.backend import models
-from valor_api.backend.core.annotation import delete_dataset_annotations
-from valor_api.backend.core.evaluation import (
-    count_active_evaluations,
-    delete_evaluations,
-)
-from valor_api.backend.core.groundtruth import delete_groundtruths
-from valor_api.backend.core.label import get_labels
-from valor_api.backend.core.prediction import delete_dataset_predictions
+from valor_api import api_utils, enums, exceptions, schemas
+from valor_api.backend import core, models
 from valor_api.backend.query import Query
 from valor_api.schemas.core import MetadataType
 
@@ -191,16 +183,11 @@ def get_paginated_datasets(
         _load_dataset_schema(db=db, dataset=dataset) for dataset in datasets
     ]
 
-    if datasets:
-        end_index = (
-            offset + len(datasets) - 1
-        )  # subtract one to make it zero-indexed
-
-        range_indicator = f"{offset}-{end_index}"
-    else:
-        range_indicator = "*"
-
-    headers = {"content-range": f"items {range_indicator}/{count}"}
+    headers = api_utils._get_pagination_header(
+        offset=offset,
+        number_of_returned_items=len(datasets),
+        total_number_of_items=count,
+    )
 
     return (content, headers)
 
@@ -262,7 +249,7 @@ def set_dataset_status(
         raise exceptions.DatasetStateError(name, active_status, status)
 
     if status == enums.TableStatus.DELETING:
-        if count_active_evaluations(
+        if core.count_active_evaluations(
             db=db,
             dataset_names=[name],
         ):
@@ -395,7 +382,7 @@ def get_unique_groundtruth_annotation_metadata_in_dataset(
 
 
 def get_dataset_summary(db: Session, name: str) -> schemas.DatasetSummary:
-    gt_labels = get_labels(
+    gt_labels = core.get_labels(
         db,
         schemas.Filter(dataset_names=[name]),
         ignore_predictions=True,
@@ -435,10 +422,10 @@ def delete_dataset(
     set_dataset_status(db, name, enums.TableStatus.DELETING)
     dataset = fetch_dataset(db, name=name)
 
-    delete_evaluations(db=db, dataset_names=[name])
-    delete_dataset_predictions(db, dataset)
-    delete_groundtruths(db, dataset)
-    delete_dataset_annotations(db, dataset)
+    core.delete_evaluations(db=db, dataset_names=[name])
+    core.delete_dataset_predictions(db, dataset)
+    core.delete_groundtruths(db, dataset)
+    core.delete_dataset_annotations(db, dataset)
 
     try:
         db.delete(dataset)

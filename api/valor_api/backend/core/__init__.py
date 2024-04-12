@@ -28,6 +28,7 @@ from .datum import create_datum, fetch_datum, get_paginated_datums
 from .evaluation import (
     count_active_evaluations,
     create_or_get_evaluations,
+    delete_evaluations,
     fetch_evaluation_from_id,
     get_evaluation_requests_from_model,
     get_evaluation_status,
@@ -121,6 +122,7 @@ __all__ = [
     "get_model_status",
     "set_model_status",
     "create_prediction",
+    "delete_evaluations",
     "get_prediction",
     "create_or_get_evaluations",
     "fetch_evaluation_from_id",

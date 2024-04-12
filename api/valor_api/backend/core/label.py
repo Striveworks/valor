@@ -3,7 +3,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.selectable import Select
 
-from valor_api import schemas
+from valor_api import api_utils, schemas
 from valor_api.backend import models
 from valor_api.backend.query import Query
 
@@ -380,16 +380,11 @@ def get_paginated_labels(
         schemas.Label(key=label.key, value=label.value) for label in labels
     }
 
-    if labels:
-        end_index = (
-            offset + len(labels) - 1
-        )  # subtract one to make it zero-indexed
-
-        range_indicator = f"{offset}-{end_index}"
-    else:
-        range_indicator = "*"
-
-    headers = {"content-range": f"items {range_indicator}/{count}"}
+    headers = api_utils._get_pagination_header(
+        offset=offset,
+        number_of_returned_items=len(labels),
+        total_number_of_items=count,
+    )
 
     return (contents, headers)
 
