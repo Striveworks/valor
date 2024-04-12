@@ -365,81 +365,111 @@ def validate_type_multipolygon(v: Any):
         validate_type_polygon(polygon)
 
 
-def _check_if_empty_annotation(values):
-    """Checks if the annotation is empty."""
+def _check_if_empty_annotation(annotation):
+    """
+    Checks if the annotation is empty.
+
+
+    """
     return (
-        not values.labels
-        and values.bounding_box is None
-        and values.polygon is None
-        and values.raster is None
-        and values.embedding is None
+        not annotation.labels
+        and annotation.bounding_box is None
+        and annotation.polygon is None
+        and annotation.raster is None
+        and annotation.embedding is None
     )
 
 
-def validate_annotation_by_task_type(values):
-    """Validates the contents of an annotation by task type."""
-    if _check_if_empty_annotation(values):
-        if values.task_type != TaskType.SKIP:
-            values.task_type = TaskType.EMPTY
-    match values.task_type:
+def validate_annotation_by_task_type(annotation):
+    """
+    Validates the contents of an annotation by task type.
+
+    Parameters
+    ----------
+    annotation: Annotation
+        The annotation to validate.
+
+    Raises
+    ------
+    ValueError
+        If the contents of the annotation do not match the task type.
+    NotImplementedError
+        If the task type is not recognized.
+    """
+    if _check_if_empty_annotation(annotation):
+        if annotation.task_type != TaskType.SKIP:
+            annotation.task_type = TaskType.EMPTY
+    match annotation.task_type:
         case TaskType.CLASSIFICATION:
             if not (
-                values.labels
-                and values.bounding_box is None
-                and values.polygon is None
-                and values.raster is None
-                and values.embedding is None
+                annotation.labels
+                and annotation.bounding_box is None
+                and annotation.polygon is None
+                and annotation.raster is None
+                and annotation.embedding is None
             ):
                 raise ValueError(
                     "Annotations with task type `classification` do not support geometries or embeddings."
                 )
         case TaskType.OBJECT_DETECTION:
             if not (
-                values.labels
+                annotation.labels
                 and (
-                    values.bounding_box is not None
-                    or values.polygon is not None
-                    or values.raster is not None
+                    annotation.bounding_box is not None
+                    or annotation.polygon is not None
+                    or annotation.raster is not None
                 )
-                and values.embedding is None
+                and annotation.embedding is None
             ):
                 raise ValueError(
                     "Annotations with task type `object-detection` do not support embeddings."
                 )
         case TaskType.SEMANTIC_SEGMENTATION:
             if not (
-                values.labels
-                and values.raster is not None
-                and values.bounding_box is None
-                and values.polygon is None
-                and values.embedding is None
+                annotation.labels
+                and annotation.raster is not None
+                and annotation.bounding_box is None
+                and annotation.polygon is None
+                and annotation.embedding is None
             ):
                 raise ValueError(
                     "Annotations with task type `semantic-segmentation` only supports rasters."
                 )
         case TaskType.EMBEDDING:
             if not (
-                values.embedding is not None
-                and not values.labels
-                and values.bounding_box is None
-                and values.polygon is None
-                and values.raster is None
+                annotation.embedding is not None
+                and not annotation.labels
+                and annotation.bounding_box is None
+                and annotation.polygon is None
+                and annotation.raster is None
             ):
                 raise ValueError(
                     "Annotation with task type `embedding` do not support labels or geometries."
                 )
         case TaskType.EMPTY | TaskType.SKIP:
-            if not _check_if_empty_annotation(values):
+            if not _check_if_empty_annotation(annotation):
                 raise ValueError("Annotation is not empty.")
         case _:
             raise NotImplementedError(
-                f"Task type `{values.task_type}` is not supported."
+                f"Task type `{annotation.task_type}` is not supported."
             )
-    return values
+    return annotation
 
 
 def validate_groundtruth_annotations(annotations: list[Any]):
-    """Check that a label appears once in the annotations for semenatic segmentations"""
+    """
+    Check that a label appears once in the annotations for semenatic segmentations.
+
+    Parameters
+    ----------
+    annotations: list[Annotation]
+        The annotations to validate.
+
+    Raises
+    ------
+    ValueError
+        If the contents of an annotation does not match the task type.
+    """
     labels = []
     indices = dict()
     for index, annotation in enumerate(annotations):
@@ -455,8 +485,19 @@ def validate_groundtruth_annotations(annotations: list[Any]):
 
 
 def validate_prediction_annotations(annotations: list[Any]):
-    """Validate prediction annotations by task type."""
+    """
+    Validate prediction annotations by task type.
 
+    Parameters
+    ----------
+    annotations: list[Annotation]
+        The annotations to validate.
+
+    Raises
+    ------
+    ValueError
+        If the contents of an annotation does not match the task type.
+    """
     labels = []
     indices = dict()
     for index, annotation in enumerate(annotations):
@@ -506,6 +547,22 @@ def validate_prediction_annotations(annotations: list[Any]):
 
 
 def validate_geojson(geojson: dict):
+    """
+    Validates that a dictionary conforms to the GeoJSON geometry specification.
+
+    Parameters
+    ----------
+    geojson: dict
+        The dictionary to validate.
+
+    Raises
+    ------
+    TypeError
+        If the passed in value is not a dictionary.
+        If the GeoJSON 'type' attribute is not supported.
+    ValueError
+        If the dictionary does not conform to the GeoJSON format.
+    """
     map_str_to_geojson_validator = {
         "Point": validate_type_point,
         "MultiPoint": validate_type_multipoint,
@@ -515,9 +572,12 @@ def validate_geojson(geojson: dict):
         "MultiPolygon": validate_type_multipolygon,
     }
     # validate geojson
-    if not (
-        isinstance(geojson, dict)
-        and set(geojson.keys()) == {"type", "coordinates"}
+    if not isinstance(geojson, dict):
+        raise TypeError(
+            f"Expected a GeoJSON dictionary as input, received '{geojson}'."
+        )
+    elif not (
+        set(geojson.keys()) == {"type", "coordinates"}
         and (geometry_type := geojson.get("type"))
         and (geometry_value := geojson.get("coordinates"))
     ):
@@ -541,6 +601,24 @@ def validate_geojson(geojson: dict):
 
 
 def validate_metadata(dictionary: dict):
+    """
+    Validates that a dictionary conforms to Valor's metadata specification.
+
+    Parameters
+    ----------
+    dictionary: dict
+        The dictionary to validate.
+
+    Raises
+    ------
+    TypeError
+        If the passed in value is not a dictionary.
+        If the dictionary keys are not strings.
+        If a value type is not supported.
+    ValueError
+        If the dictionary does not conform to the Valor metadata format.
+        If a value is not properly formatted.
+    """
     map_str_to_type_validator = {
         "bool": validate_type_bool,
         "integer": validate_type_integer,
@@ -588,6 +666,26 @@ def validate_metadata(dictionary: dict):
 
 
 def deserialize(class_name: str, values: Any) -> Any:
+    """
+    Deserializes a value from Valor schema formatting into a API schema.
+
+    Parameters
+    ----------
+    class_name: str
+        The name of the schema class.
+    values: Any
+        The value that is being deserialized.
+
+    Returns
+    -------
+    Any
+        The deserialized value.
+
+    Raises
+    ------
+    TypeError
+        If the value type does not match the calling class.
+    """
     if isinstance(values, dict) and set(values.keys()) == {"type", "value"}:
         values_type = values.pop("type")
         if values_type != class_name.lower():

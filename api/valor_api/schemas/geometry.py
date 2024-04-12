@@ -62,6 +62,7 @@ class Point(BaseModel):
     @field_validator("value")
     @classmethod
     def validate_value(cls, v):
+        """Type validator."""
         validate_type_point(v)
         return v
 
@@ -145,6 +146,7 @@ class MultiPoint(BaseModel):
     @field_validator("value")
     @classmethod
     def validate_value(cls, v):
+        """Type validator."""
         validate_type_multipoint(v)
         return v
 
@@ -234,6 +236,7 @@ class LineString(BaseModel):
     @field_validator("value")
     @classmethod
     def validate_value(cls, v):
+        """Type validator."""
         validate_type_linestring(v)
         return v
 
@@ -321,6 +324,7 @@ class MultiLineString(BaseModel):
     @field_validator("value")
     @classmethod
     def validate_value(cls, v):
+        """Type validator."""
         validate_type_multilinestring(v)
         return v
 
@@ -415,6 +419,7 @@ class Polygon(BaseModel):
     @field_validator("value")
     @classmethod
     def validate_value(cls, v):
+        """Type validator."""
         validate_type_polygon(v)
         return v
 
@@ -510,6 +515,7 @@ class Box(BaseModel):
     @field_validator("value")
     @classmethod
     def validate_value(cls, v):
+        """Type validator."""
         validate_type_box(v)
         return v
 
@@ -644,6 +650,7 @@ class MultiPolygon(BaseModel):
     @field_validator("value")
     @classmethod
     def validate_value(cls, v):
+        """Type validator."""
         validate_type_multipolygon(v)
         return v
 

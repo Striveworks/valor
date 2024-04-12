@@ -30,6 +30,19 @@ MetadataType = dict[str, dict[str, bool | int | float | str | GeoJSONType]]
 
 
 class Label(BaseModel):
+    """
+    An object for labeling datasets, models, and annotations.
+
+    Attributes
+    ----------
+    key : str
+        The label key. (e.g. 'class', 'category')
+    value : str
+        The label's value. (e.g. 'dog', 'cat')
+    score : float, optional
+        A score assigned to the label in the case of a prediction.
+    """
+
     key: str
     value: str
     score: float | None = None
@@ -73,19 +86,40 @@ class Label(BaseModel):
 
     def __hash__(self) -> int:
         """
-        Defines how a `Label` is hashed.
+        Defines how a 'Label' is hashed.
 
         Returns
         ----------
         int
-            The hashed 'Label`.
+            The hashed 'Label'.
         """
         return hash(f"key:{self.key},value:{self.value},score:{self.score}")
 
 
 class Annotation(BaseModel):
+    """
+    A class used to annotate 'GroundTruths' and 'Predictions'.
+
+    Attributes
+    ----------
     task_type: TaskType
-    metadata: dict = dict()
+        The task type associated with the 'Annotation'.
+    metadata: dict, optional
+        A dictionary of metadata that describes the 'Annotation'.
+    labels: List[Label], optional
+        A list of labels to use for the 'Annotation'.
+    bounding_box: BoundingBox, optional
+        A bounding box to assign to the 'Annotation'.
+    polygon: Polygon, optional
+        A polygon to assign to the 'Annotation'.
+    raster: Raster, optional
+        A raster to assign to the 'Annotation'.
+    embedding: list[float], optional
+        A jsonb to assign to the 'Annotation'.
+    """
+
+    task_type: TaskType
+    metadata: MetadataType = dict()
     labels: list[Label] = list()
     bounding_box: Box | None = None
     polygon: Polygon | None = None
@@ -108,26 +142,40 @@ class Annotation(BaseModel):
 
     @field_serializer("bounding_box")
     def serialize_bounding_box(bounding_box: Box | None):  # type: ignore - pydantic field_serializer
+        """Serializes the 'bounding_box' attribute."""
         if bounding_box is None:
             return None
         return bounding_box.model_dump()["value"]
 
     @field_serializer("polygon")
     def serialize_polygon(polygon: Polygon | None):  # type: ignore - pydantic field_serializer
+        """Serializes the 'polygon' attribute."""
         if polygon is None:
             return None
         return polygon.model_dump()["value"]
 
     @field_serializer("raster")
     def serialize_raster(raster: Raster | None):  # type: ignore - pydantic field_serializer
+        """Serializes the 'raster' attribute."""
         if raster is None:
             return None
         return raster.model_dump()
 
 
 class Datum(BaseModel):
+    """
+    A class used to store datum information about 'GroundTruths' and 'Predictions'.
+
+    Attributes
+    ----------
+    uid : str
+        The UID of the datum.
+    metadata : dict, optional
+        A dictionary of metadata that describes the datum.
+    """
+
     uid: str
-    metadata: dict = dict()
+    metadata: MetadataType = dict()
     model_config = ConfigDict(extra="forbid")
 
     @field_validator("uid")
@@ -146,6 +194,19 @@ class Datum(BaseModel):
 
 
 class GroundTruth(BaseModel):
+    """
+    An object describing a ground truth (e.g., a human-drawn bounding box on an image).
+
+    Attributes
+    ----------
+    dataset_name: str
+        The name of the dataset this ground truth belongs to.
+    datum : Datum
+        The datum this ground truth annotates.
+    annotations : List[Annotation]
+        The list of annotations that this ground truth applies.
+    """
+
     dataset_name: str
     datum: Datum
     annotations: list[Annotation]
@@ -161,7 +222,7 @@ class GroundTruth(BaseModel):
     @field_validator("annotations")
     @classmethod
     def validate_annotations(cls, v: list[Annotation]):
-        """Validate annotations."""
+        """Validates the 'annotations' attribute."""
         if not v:
             v = [Annotation(task_type=TaskType.EMPTY)]
         validate_groundtruth_annotations(v)
@@ -169,6 +230,21 @@ class GroundTruth(BaseModel):
 
 
 class Prediction(BaseModel):
+    """
+    An object describing a prediction (e.g., a machine-drawn bounding box on an image).
+
+    Attributes
+    ----------
+    dataset_name: str
+        The name of the dataset this ground truth belongs to.
+    model_name : str
+        The name of the model that produced the prediction.
+    datum : Datum
+        The datum this ground truth annotates.
+    annotations : List[Annotation]
+        The list of annotations that this ground truth applies.
+    """
+
     dataset_name: str
     model_name: str
     datum: Datum
@@ -178,21 +254,21 @@ class Prediction(BaseModel):
     @field_validator("dataset_name")
     @classmethod
     def validate_dataset_name(cls, v):
-        """Validates the 'dataset_name' field."""
+        """Validates the 'dataset_name' attribute."""
         validate_type_string(v)
         return v
 
     @field_validator("model_name")
     @classmethod
     def validate_model_name(cls, v):
-        """Validates the 'model_name' field."""
+        """Validates the 'model_name' attribute."""
         validate_type_string(v)
         return v
 
     @field_validator("annotations")
     @classmethod
     def validate_annotations(cls, v: list[Annotation]):
-        """Validate annotations."""
+        """Validates the 'annotations' attribute."""
         if not v:
             v = [Annotation(task_type=TaskType.EMPTY)]
         validate_prediction_annotations(v)
@@ -200,8 +276,19 @@ class Prediction(BaseModel):
 
 
 class Dataset(BaseModel):
+    """
+    A class describing a given dataset.
+
+    Attributes
+    ----------
+    name : str
+        The name of the dataset.
+    metadata : dict, optional
+        A dictionary of metadata that describes the dataset.
+    """
+
     name: str
-    metadata: dict = dict()
+    metadata: MetadataType = dict()
     model_config = ConfigDict(extra="forbid")
 
     @field_validator("name")
@@ -220,8 +307,19 @@ class Dataset(BaseModel):
 
 
 class Model(BaseModel):
+    """
+    A class describing a model that was trained on a particular dataset.
+
+    Attributes
+    ----------
+    name : str
+        The name of the model.
+    metadata : dict, optional
+        A dictionary of metadata that describes the model.
+    """
+
     name: str
-    metadata: dict = dict()
+    metadata: MetadataType = dict()
     model_config = ConfigDict(extra="forbid")
 
     @field_validator("name")
