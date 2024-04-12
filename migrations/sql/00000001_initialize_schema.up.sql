@@ -1,6 +1,5 @@
 create extension if not exists "postgis";
 create extension if not exists "postgis_raster";
-create extension if not exists "vector";
 
 drop table if exists metric cascade;
 drop table if exists confusion_matrix cascade;
@@ -24,16 +23,6 @@ create table label
 
 create index ix_label_id
     on label (id);
-
-create table embedding
-(
-    id         serial primary key,
-    value      vector not null,
-    created_at timestamp not null
-);
-
-create index ix_embedding_id
-    on embedding (id);
 
 create table model
 (
@@ -129,8 +118,7 @@ create table annotation
     box          geometry(Polygon),
     polygon      geometry(Polygon),
     multipolygon geometry(MultiPolygon),
-    raster       raster,
-    embedding_id integer references embedding
+    raster       raster
 );
 
 create index idx_annotation_box
