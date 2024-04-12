@@ -58,7 +58,7 @@ def create_combined_segmentation_mask(
 
     Parameters
     -------
-    annotated_datum : nion[GroundTruth, Prediction]
+    annotated_datum : Union[GroundTruth, Prediction]
         A list of segmentations. These all must have the same `image` attribute.
     label_key : str
         The label key to use.
