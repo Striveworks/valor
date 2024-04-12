@@ -24,6 +24,7 @@ from .geometry import (
     Polygon,
     Raster,
 )
+from .info import APIVersion
 from .metrics import (
     AccuracyMetric,
     APMetric,
@@ -44,7 +45,7 @@ from .metrics import (
     mARMetric,
     mIOUMetric,
 )
-from .status import APIVersion, Health, Readiness
+from .status import Health, Readiness
 from .summary import DatasetSummary
 from .timestamp import Date, DateTime, Duration, Time
 from .types import (
