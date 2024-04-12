@@ -540,7 +540,6 @@ def _compute_detection_metrics(
     )
 
     # Filter out repeated predictions
-    # gt_set = set()
     pd_set = set()
     ranking = {}
     for row in ordered_ious:
@@ -607,6 +606,7 @@ def _compute_detection_metrics(
 
     for gt_id, grouper_id, datum_uid, dset_name, gt_geojson in groundtruths:
         # we're ok with duplicates since they indicate multiple groundtruths for a given dataset/datum_id
+        # i think this is wrong?
         groundtruths_per_grouper[grouper_id].append(
             (dset_name, datum_uid, gt_id, gt_geojson)
         )

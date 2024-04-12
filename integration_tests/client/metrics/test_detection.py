@@ -1629,7 +1629,7 @@ def test_evaluate_detection_false_negatives_single_image_baseline(
                     bounding_box=Box.from_extrema(
                         xmin=100, xmax=110, ymin=100, ymax=200
                     ),
-                    labels=[Label(key="key", value="value", score=0.9)],
+                    labels=[Label(key="key", value="value", score=0.7)],
                 ),
             ],
         ),
@@ -1705,3 +1705,12 @@ def test_evaluate_detection_false_negatives_single_image(
         "value": 0.5,
         "label": {"key": "key", "value": "value"},
     }
+
+
+def test_evaluate_detection_false_negatives_two_images(
+    db: Session, dataset_name: str, model_name: str, client: Client
+):
+    """Similar to the above tests except the false detection is on a second
+    image
+    """
+    pass
