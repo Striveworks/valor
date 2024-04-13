@@ -6,7 +6,7 @@ else:
     import importlib_metadata  # type: ignore
 
 try:
-    __version__ = importlib_metadata.version("valor")
+    __version__ = importlib_metadata.version("valor-client")
 except importlib_metadata.PackageNotFoundError:
     __version__ = ""
 
