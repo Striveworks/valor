@@ -8,11 +8,13 @@ from valor_api.backend import core, models
 
 @pytest.fixture
 def created_models(db: Session) -> list[str]:
-    model1 = schemas.Model(name="model1")
-    model2 = schemas.Model(name="model2")
-    core.create_model(db, model=model1)
-    core.create_model(db, model=model2)
-    return ["model1", "model2"]
+    models = []
+    for i in range(10):
+        model = schemas.Model(name=f"model{i}")
+        core.create_model(db, model=model)
+        models.append(f"model{i}")
+
+    return models
 
 
 def test_create_model(db: Session, created_model):
@@ -46,10 +48,43 @@ def test_get_model(db: Session, created_model):
         core.get_model(db, "some_nonexistent_model")
 
 
-def test_get_models(db: Session, created_models):
-    models = core.get_models(db)
+def test_get_paginated_models(db: Session, created_models):
+    models, headers = core.get_paginated_models(db)
     for model in models:
         assert model.name in created_models
+    assert headers == {"content-range": "items 0-9/10"}
+
+    # test pagination
+    with pytest.raises(ValueError):
+        # offset is greater than the number of items returned in query
+        models, headers = core.get_paginated_models(db, offset=100, limit=2)
+
+    models, headers = core.get_paginated_models(db, offset=5, limit=2)
+    assert [model.name for model in models] == ["model4", "model3"]
+    assert headers == {"content-range": "items 5-6/10"}
+
+    models, headers = core.get_paginated_models(db, offset=2, limit=7)
+    assert [model.name for model in models] == [
+        f"model{i}" for i in range(7, 0, -1)
+    ]
+    assert headers == {"content-range": "items 2-8/10"}
+
+    # test that we can reconstitute the full set using paginated calls
+    first, header = core.get_paginated_models(db, offset=1, limit=2)
+    assert len(first) == 2
+    assert header == {"content-range": "items 1-2/10"}
+
+    second, header = core.get_paginated_models(db, offset=0, limit=1)
+    assert len(second) == 1
+    assert header == {"content-range": "items 0-0/10"}
+
+    third, header = core.get_paginated_models(db, offset=3, limit=20)
+    assert len(third) == 7
+    assert header == {"content-range": "items 3-9/10"}
+
+    combined = [entry.name for entry in first + second + third]
+
+    assert set(combined) == set([f"model{i}" for i in range(0, 10)])
 
 
 def test_model_status(db: Session, created_model, created_dataset):

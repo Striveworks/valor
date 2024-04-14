@@ -5,6 +5,7 @@ that is no auth
 from dataclasses import asdict
 
 import pytest
+import requests
 from geoalchemy2.functions import ST_Area
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -756,6 +757,13 @@ def test_get_evaluations(
     assert {both_evaluations[0].id, both_evaluations[1].id} == {
         eval_.id for eval_ in both_evaluations_from_evaluation_ids
     }
+
+    # check that the content-range header exists on the raw response
+    requests_method = getattr(requests, "get")
+    resp = requests_method(
+        "http://localhost:8000/evaluations?offset=1&limit=50"
+    )
+    assert resp.headers["content-range"] == "items 1-1/2"
 
 
 @pytest.fixture
