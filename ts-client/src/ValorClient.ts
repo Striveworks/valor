@@ -1,16 +1,14 @@
 import axios, { AxiosInstance } from 'axios';
 
-type GeoJSONType = "Point" | "LineString" | "Polygon" | "MultiPoint" | "MultiLineString" | "MultiPolygon";
-
 /**
  * Checks if value conforms to the GeoJSON specification.
  *
  * @param value The value to type check.
  * @returns A boolean result.
  */
-function isGeoJSONObject(value: any): value is { type: GeoJSONType, coordinates: any } {
-  const geoJSONTypes: GeoJSONType[] = ["Point", "LineString", "Polygon", "MultiPoint", "MultiLineString", "MultiPolygon", "GeometryCollection", "Feature", "FeatureCollection"];
-  return typeof value === 'object' && value !== null && 'type' in value && geoJSONTypes.includes(value.type as GeoJSONType);
+function isGeoJSONObject(value: any): value is { type: string, coordinates: any } {
+  const geoJSONTypes: string[] = ["point", "linestring", "polygon", "multipoint", "multilinestring", "multipolygon"];
+  return typeof value === 'object' && value !== null && 'type' in value && geoJSONTypes.includes((value.type as string).toLowerCase());
 }
 
 /**
@@ -57,7 +55,7 @@ function decodeMetadata(input: { [key: string]: {type: string; value: any;} | bo
 
     if (typeof item == "object"){
       const { type, value } = item;
-      switch (type) {
+      switch (type.toLowerCase()) {
         case 'datetime':
         case 'date':
         case 'time':

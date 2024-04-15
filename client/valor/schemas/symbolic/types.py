@@ -1661,14 +1661,14 @@ class Dictionary(Equatable, MutableMapping):
                 ),
             ):
                 decoded_value[k] = v
-            elif v["type"] == "geojson":
+            elif v["type"].lower() == "geojson":
                 decoded_value[k] = get_type_by_name(
                     v["value"]["type"].lower()
                 ).decode_value(v["value"]["coordinates"])
             else:
-                decoded_value[k] = get_type_by_name(v["type"]).decode_value(
-                    v["value"]
-                )
+                decoded_value[k] = get_type_by_name(
+                    v["type"].lower()
+                ).decode_value(v["value"])
         return cls(decoded_value)
 
     def encode_value(self) -> dict:

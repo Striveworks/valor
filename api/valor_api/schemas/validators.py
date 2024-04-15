@@ -381,12 +381,12 @@ def validate_geojson(geojson: dict):
         If the dictionary does not conform to the GeoJSON format.
     """
     map_str_to_geojson_validator = {
-        "Point": validate_type_point,
-        "MultiPoint": validate_type_multipoint,
-        "LineString": validate_type_linestring,
-        "MultiLineString": validate_type_multilinestring,
-        "Polygon": validate_type_polygon,
-        "MultiPolygon": validate_type_multipolygon,
+        "point": validate_type_point,
+        "multipoint": validate_type_multipoint,
+        "linestring": validate_type_linestring,
+        "multilinestring": validate_type_multilinestring,
+        "polygon": validate_type_polygon,
+        "multipolygon": validate_type_multipolygon,
     }
     # validate geojson
     if not isinstance(geojson, dict):
@@ -403,6 +403,7 @@ def validate_geojson(geojson: dict):
         )
 
     # validate type
+    geometry_type = geometry_type.lower()
     if geometry_type not in map_str_to_geojson_validator:
         raise TypeError(
             f"Class '{geometry_type}' is not a supported GeoJSON geometry type."
