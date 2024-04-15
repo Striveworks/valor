@@ -1,6 +1,6 @@
 import axios, { AxiosInstance } from 'axios';
 
-type GeoJSONType = "Point" | "LineString" | "Polygon" | "MultiPoint" | "MultiLineString" | "MultiPolygon" | "GeometryCollection" | "Feature" | "FeatureCollection";
+type GeoJSONType = "Point" | "LineString" | "Polygon" | "MultiPoint" | "MultiLineString" | "MultiPolygon";
 
 /**
  * Checks if value conforms to the GeoJSON specification.
