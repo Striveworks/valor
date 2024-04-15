@@ -1,3 +1,4 @@
+import bisect
 import heapq
 import math
 from collections import defaultdict
@@ -23,13 +24,9 @@ from valor_api.enums import AnnotationType
 @dataclass
 class RankedPair:
     dataset_name: str
-    pd_datum_id: int
-    gt_datum_id: int
-    pd_datum_uid: str
-    gt_datum_uid: str
-    pd_geojson: str
-    gt_geojson: str
-    gt_id: int
+    gt_datum_uid: str | None
+    gt_geojson: str | None
+    gt_id: int | None
     pd_id: int
     score: float
     iou: float
@@ -108,7 +105,7 @@ def _compute_curves(
                 fn = (
                     [
                         (dataset_name, datum_uid, gt_geojson)
-                        for dataset_name, datum_uid, gt_id, gt_geojson in groundtruths_per_grouper[
+                        for dataset_name, datum_uid, _, gt_geojson in groundtruths_per_grouper[
                             grouper_id
                         ]
                     ]
@@ -124,6 +121,7 @@ def _compute_curves(
                     if (
                         row.score >= confidence_threshold
                         and row.iou >= iou_threshold
+                        and row.gt_id not in seen_gts
                     ):
                         tp += [
                             (
@@ -144,7 +142,7 @@ def _compute_curves(
 
             fp = [
                 (dset_name, pd_datum_uid, pd_geojson)
-                for dset_name, gt_datum_uid, pd_datum_uid, gt_label_id, pd_label_id, pd_score, pd_geojson in false_positive_entries
+                for dset_name, _, pd_datum_uid, gt_label_id, pd_label_id, pd_score, pd_geojson in false_positive_entries
                 if pd_score >= confidence_threshold
                 and pd_label_id == grouper_id
                 and gt_label_id is None
@@ -230,6 +228,8 @@ def _calculate_ap_and_ar(
             precision_cnt_fp = 0
 
             if grouper_id in sorted_ranked_pairs:
+                matched_gts_for_precision = set()
+                matched_gts_for_recall = set()
                 for row in sorted_ranked_pairs[grouper_id]:
 
                     precision_score_conditional = row.score > 0
@@ -246,19 +246,29 @@ def _calculate_ap_and_ar(
                         row.iou >= iou_threshold and iou_threshold > 0
                     )
 
-                    if recall_score_conditional and iou_conditional:
+                    if (
+                        recall_score_conditional
+                        and iou_conditional
+                        and row.gt_id not in matched_gts_for_recall
+                    ):
                         recall_cnt_tp += 1
+                        matched_gts_for_recall.add(row.gt_id)
                     else:
                         recall_cnt_fp += 1
 
-                    if precision_score_conditional and iou_conditional:
+                    if (
+                        precision_score_conditional
+                        and iou_conditional
+                        and row.gt_id not in matched_gts_for_precision
+                    ):
+                        matched_gts_for_precision.add(row.gt_id)
                         precision_cnt_tp += 1
                     else:
                         precision_cnt_fp += 1
 
                     recall_cnt_fn = (
                         number_of_groundtruths_per_grouper[grouper_id]
-                        - precision_cnt_tp
+                        - recall_cnt_tp
                     )
 
                     precision_cnt_fn = (
@@ -536,16 +546,15 @@ def _compute_detection_metrics(
         db.query(ious).order_by(-ious.c.score, -ious.c.iou, ious.c.gt_id).all()
     )
 
-    # Filter out repeated id's
-    gt_set = set()
+    # Filter out repeated predictions
     pd_set = set()
     ranking = {}
     for row in ordered_ious:
         (
             dataset_name,
-            pd_datum_id,
-            gt_datum_id,
-            pd_datum_uid,
+            _,
+            _,
+            _,
             gt_datum_uid,
             gt_id,
             pd_id,
@@ -556,31 +565,61 @@ def _compute_detection_metrics(
             score,
             iou,
             gt_geojson,
-            pd_geojson,
+            _,
         ) = row
 
-        # Check if gt or pd already found
-        if gt_id not in gt_set and pd_id not in pd_set:
-            gt_set.add(gt_id)
+        # there should only be one rankedpair per prediction but
+        # there can be multiple rankedpairs per groundtruth at this point (i.e. before
+        # an iou threshold is specified)
+        if pd_id not in pd_set:
             pd_set.add(pd_id)
-
             if gt_label_id_grouper not in ranking:
                 ranking[gt_label_id_grouper] = []
 
             ranking[gt_label_id_grouper].append(
                 RankedPair(
                     dataset_name=dataset_name,
-                    pd_datum_id=pd_datum_id,
-                    gt_datum_id=gt_datum_id,
-                    pd_datum_uid=pd_datum_uid,
                     gt_datum_uid=gt_datum_uid,
-                    pd_geojson=pd_geojson,
                     gt_geojson=gt_geojson,
                     gt_id=gt_id,
                     pd_id=pd_id,
                     score=score,
                     iou=iou,
                 )
+            )
+
+    # get pds not appearing
+    predictions = db.query(
+        Query(
+            models.Prediction.id,
+            models.Prediction.score,
+            models.Dataset.name,
+            case(
+                grouper_mappings["label_id_to_grouper_id_mapping"],
+                value=models.Prediction.label_id,
+            ).label("label_id_grouper"),
+        )
+        .filter(prediction_filter)
+        .predictions(as_subquery=False)
+        .where(models.Prediction.id.notin_(pd_set))  # type: ignore - SQLAlchemy type issue
+        .subquery()
+    ).all()
+
+    for pd_id, score, dataset_name, grouper_id in predictions:
+        if grouper_id in ranking and pd_id not in pd_set:
+            # add to ranking in sorted order
+            bisect.insort(  # type: ignore - bisect type issue
+                ranking[grouper_id],
+                RankedPair(
+                    dataset_name=dataset_name,
+                    gt_datum_uid=None,
+                    gt_geojson=None,
+                    gt_id=None,
+                    pd_id=pd_id,
+                    score=score,
+                    iou=0,
+                ),
+                key=lambda rp: -rp.score,  # bisect assumes decreasing order
             )
 
     # Get the groundtruths per grouper_id
