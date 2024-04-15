@@ -141,21 +141,21 @@ class Annotation(BaseModel):
         return v
 
     @field_serializer("bounding_box")
-    def serialize_bounding_box(bounding_box: Box | None):  # type: ignore - pydantic field_serializer
+    def serialize_bounding_box(bounding_box: Box | None) -> dict | None:  # type: ignore - pydantic field_serializer
         """Serializes the 'bounding_box' attribute."""
         if bounding_box is None:
             return None
         return bounding_box.model_dump()["value"]
 
     @field_serializer("polygon")
-    def serialize_polygon(polygon: Polygon | None):  # type: ignore - pydantic field_serializer
+    def serialize_polygon(polygon: Polygon | None) -> dict | None:  # type: ignore - pydantic field_serializer
         """Serializes the 'polygon' attribute."""
         if polygon is None:
             return None
         return polygon.model_dump()["value"]
 
     @field_serializer("raster")
-    def serialize_raster(raster: Raster | None):  # type: ignore - pydantic field_serializer
+    def serialize_raster(raster: Raster | None) -> dict | None:  # type: ignore - pydantic field_serializer
         """Serializes the 'raster' attribute."""
         if raster is None:
             return None
@@ -180,7 +180,7 @@ class Datum(BaseModel):
 
     @field_validator("uid")
     @classmethod
-    def validate_uid(cls, v):
+    def validate_uid(cls, v) -> str:
         """Validates the 'uid' field."""
         validate_type_string(v)
         return v
@@ -253,21 +253,21 @@ class Prediction(BaseModel):
 
     @field_validator("dataset_name")
     @classmethod
-    def validate_dataset_name(cls, v):
+    def validate_dataset_name(cls, v) -> str:
         """Validates the 'dataset_name' attribute."""
         validate_type_string(v)
         return v
 
     @field_validator("model_name")
     @classmethod
-    def validate_model_name(cls, v):
+    def validate_model_name(cls, v) -> str:
         """Validates the 'model_name' attribute."""
         validate_type_string(v)
         return v
 
     @field_validator("annotations")
     @classmethod
-    def validate_annotations(cls, v: list[Annotation]):
+    def validate_annotations(cls, v: list[Annotation]) -> list[Annotation]:
         """Validates the 'annotations' attribute."""
         if not v:
             v = [Annotation(task_type=TaskType.EMPTY)]
@@ -293,7 +293,7 @@ class Dataset(BaseModel):
 
     @field_validator("name")
     @classmethod
-    def validate_name(cls, v):
+    def validate_name(cls, v) -> str:
         """Validates the 'name' field."""
         validate_type_string(v)
         return v
@@ -324,7 +324,7 @@ class Model(BaseModel):
 
     @field_validator("name")
     @classmethod
-    def validate_name(cls, v):
+    def validate_name(cls, v) -> str:
         """Validates the 'name' field."""
         validate_type_string(v)
         return v
