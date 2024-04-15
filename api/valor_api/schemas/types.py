@@ -1,5 +1,5 @@
 import math
-from typing import Union
+from typing import Any, Union
 
 from pydantic import (
     BaseModel,
@@ -129,7 +129,7 @@ class Annotation(BaseModel):
 
     @model_validator(mode="after")
     @classmethod
-    def validate_by_task_type(cls, values):
+    def validate_by_task_type(cls, values: Any) -> Any:
         """Validates the annotation by task type."""
         return validate_annotation_by_task_type(values)
 
@@ -180,7 +180,7 @@ class Datum(BaseModel):
 
     @field_validator("uid")
     @classmethod
-    def validate_uid(cls, v) -> str:
+    def validate_uid(cls, v: str) -> str:
         """Validates the 'uid' field."""
         validate_type_string(v)
         return v
@@ -214,14 +214,14 @@ class GroundTruth(BaseModel):
 
     @field_validator("dataset_name")
     @classmethod
-    def validate_dataset_name(cls, v):
+    def validate_dataset_name(cls, v: str) -> str:
         """Validates the 'dataset_name' field."""
         validate_type_string(v)
         return v
 
     @field_validator("annotations")
     @classmethod
-    def validate_annotations(cls, v: list[Annotation]):
+    def validate_annotations(cls, v: list[Annotation]) -> list[Annotation]:
         """Validates the 'annotations' attribute."""
         if not v:
             v = [Annotation(task_type=TaskType.EMPTY)]
@@ -253,14 +253,14 @@ class Prediction(BaseModel):
 
     @field_validator("dataset_name")
     @classmethod
-    def validate_dataset_name(cls, v) -> str:
+    def validate_dataset_name(cls, v: str) -> str:
         """Validates the 'dataset_name' attribute."""
         validate_type_string(v)
         return v
 
     @field_validator("model_name")
     @classmethod
-    def validate_model_name(cls, v) -> str:
+    def validate_model_name(cls, v: str) -> str:
         """Validates the 'model_name' attribute."""
         validate_type_string(v)
         return v
@@ -293,7 +293,7 @@ class Dataset(BaseModel):
 
     @field_validator("name")
     @classmethod
-    def validate_name(cls, v) -> str:
+    def validate_name(cls, v: str) -> str:
         """Validates the 'name' field."""
         validate_type_string(v)
         return v
@@ -324,7 +324,7 @@ class Model(BaseModel):
 
     @field_validator("name")
     @classmethod
-    def validate_name(cls, v) -> str:
+    def validate_name(cls, v: str) -> str:
         """Validates the 'name' field."""
         validate_type_string(v)
         return v

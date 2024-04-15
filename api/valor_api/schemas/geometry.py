@@ -163,7 +163,7 @@ class MultiPoint(BaseModel):
         return v
 
     @classmethod
-    def from_dict(cls, geojson: dict):
+    def from_dict(cls, geojson: dict) -> "MultiPoint":
         """
         Create a MultiPoint from a GeoJSON in dictionary format.
 
@@ -192,7 +192,7 @@ class MultiPoint(BaseModel):
         }
 
     @classmethod
-    def from_json(cls, geojson: str):
+    def from_json(cls, geojson: str) -> "MultiPoint":
         """
         Create a MultiPoint from a GeoJSON in json format.
 
@@ -263,7 +263,7 @@ class LineString(BaseModel):
         return v
 
     @classmethod
-    def from_dict(cls, geojson: dict):
+    def from_dict(cls, geojson: dict) -> "LineString":
         """
         Create a LineString from a GeoJSON in dictionary format.
 
@@ -292,7 +292,7 @@ class LineString(BaseModel):
         }
 
     @classmethod
-    def from_json(cls, geojson: str):
+    def from_json(cls, geojson: str) -> "LineString":
         """
         Create a LineString from a GeoJSON in json format.
 
@@ -361,7 +361,7 @@ class MultiLineString(BaseModel):
         return v
 
     @classmethod
-    def from_dict(cls, geojson: dict):
+    def from_dict(cls, geojson: dict) -> "MultiLineString":
         """
         Create a MultiLineString from a GeoJSON in dictionary format.
 
@@ -392,7 +392,7 @@ class MultiLineString(BaseModel):
         }
 
     @classmethod
-    def from_json(cls, geojson: str):
+    def from_json(cls, geojson: str) -> "MultiLineString":
         """
         Create a MultiLineString from a GeoJSON in json format.
 
@@ -466,7 +466,7 @@ class Polygon(BaseModel):
         return v
 
     @classmethod
-    def from_dict(cls, geojson: dict):
+    def from_dict(cls, geojson: dict) -> "Polygon":
         """
         Create a Polygon from a GeoJSON in dictionary format.
 
@@ -498,7 +498,7 @@ class Polygon(BaseModel):
         }
 
     @classmethod
-    def from_json(cls, geojson: str):
+    def from_json(cls, geojson: str) -> "Polygon":
         """
         Create a Polygon from a GeoJSON in json format.
 
@@ -610,7 +610,7 @@ class Box(BaseModel):
         )
 
     @classmethod
-    def from_dict(cls, geojson: dict):
+    def from_dict(cls, geojson: dict) -> "Box":
         """
         Create a Box from a GeoJSON Polygon in dictionary format.
 
@@ -633,7 +633,7 @@ class Box(BaseModel):
         return Polygon(value=self.value).to_dict()
 
     @classmethod
-    def from_json(cls, geojson: str):
+    def from_json(cls, geojson: str) -> "Box":
         """
         Create a Box from a GeoJSON Polygon in json format.
 
@@ -719,7 +719,7 @@ class MultiPolygon(BaseModel):
         return v
 
     @classmethod
-    def from_dict(cls, geojson: dict):
+    def from_dict(cls, geojson: dict) -> "MultiPolygon":
         """
         Create a MultiPolygon from a GeoJSON in dictionary format.
 
@@ -734,7 +734,7 @@ class MultiPolygon(BaseModel):
         return geometry
 
     @classmethod
-    def from_json(cls, geojson: str):
+    def from_json(cls, geojson: str) -> "MultiPolygon":
         """
         Create a dictionary that represents the MultiPolygon in GeoJSON format.
 
@@ -831,6 +831,14 @@ class GeoJSON(BaseModel):
         return map_str_to_type[self.type](value=self.coordinates)
 
     def to_wkt(self) -> str:
+        """
+        Converts the GeoJSON to a string in Well-Known-Text (WKT) formatting.
+
+        Returns
+        -------
+        str
+            The geometry in WKT format.
+        """
         return self.geometry.to_wkt()
 
 
