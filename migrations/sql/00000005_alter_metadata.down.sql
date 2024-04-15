@@ -21,7 +21,7 @@ FROM (
     ) AS subquery2
     GROUP BY id
 ) AS subquery1
-WHERE dataset.id = subquery1.id
+WHERE dataset.id = subquery1.id;
 
 UPDATE model SET meta = subquery1.value
 FROM (
@@ -46,7 +46,7 @@ FROM (
     ) AS subquery2
     GROUP BY id
 ) AS subquery1
-WHERE model.id = subquery1.id
+WHERE model.id = subquery1.id;
 
 UPDATE datum SET meta = subquery1.value
 FROM (
@@ -71,7 +71,7 @@ FROM (
     ) AS subquery2
     GROUP BY id
 ) AS subquery1
-WHERE datum.id = subquery1.id
+WHERE datum.id = subquery1.id;
 
 UPDATE annotation SET meta = subquery1.value
 FROM (
@@ -96,4 +96,4 @@ FROM (
     ) AS subquery2
     GROUP BY id
 ) AS subquery1
-WHERE annotation.id = subquery1.id
+WHERE annotation.id = subquery1.id;
