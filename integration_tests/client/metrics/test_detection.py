@@ -1455,13 +1455,13 @@ def test_evaluate_detection_with_label_maps(
         {
             "type": "AR",
             "parameters": {"ious": [0.1, 0.6]},
-            "value": 0.5,  # recall of 0 for the first image, and 1 for the second image
+            "value": 0.3333333333333333,  # two missed groundtruth on the first image, and 1 hit for the second image
             "label": {"key": "foo", "value": "bar"},
         },
         {
             "type": "mAR",
             "parameters": {"ious": [0.1, 0.6]},
-            "value": 0.16666666666666666,
+            "value": 0.1111111111111111,
         },
         {
             "type": "mAP",
@@ -1885,7 +1885,7 @@ def test_evaluate_detection_false_negatives_two_images_one_only_with_different_c
 ):
     """In this test we have
         1. An image with a matching groundtruth and prediction (same class, `"value"`, and high IOU)
-        2. A second image with a groundtruth annotation with clas `"other value"` and a prediction with lower confidence
+        2. A second image with a groundtruth annotation with class `"other value"` and a prediction with lower confidence
         then the prediction on the first image.
 
     In this case, the AP for class `"value"` should be 1 since the false positive has lower confidence than the true positive.
