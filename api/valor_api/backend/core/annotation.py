@@ -75,10 +75,10 @@ def _create_annotation(
             if annotation.polygon:
                 polygon = annotation.polygon.to_wkt()
             if annotation.raster:
-                raster = annotation.raster.to_wkt()
+                raster = annotation.raster.to_psql()
         case TaskType.SEMANTIC_SEGMENTATION:
             if annotation.raster:
-                raster = annotation.raster.to_wkt()
+                raster = annotation.raster.to_psql()
         case TaskType.EMBEDDING:
             if annotation.embedding:
                 embedding_id = _create_embedding(

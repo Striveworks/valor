@@ -61,13 +61,15 @@ class Point(BaseModel):
 
     @field_validator("value")
     @classmethod
-    def validate_value(cls, v):
+    def validate_value(
+        cls, v: tuple[int | float, int | float]
+    ) -> tuple[int | float, int | float]:
         """Type validator."""
         validate_type_point(v)
         return v
 
     @classmethod
-    def from_dict(cls, geojson: dict):
+    def from_dict(cls, geojson: dict) -> "Point":
         """
         Create a Point from a GeoJSON in dictionary format.
 
@@ -93,7 +95,7 @@ class Point(BaseModel):
         return {"type": "Point", "coordinates": list(self.value)}
 
     @classmethod
-    def from_json(cls, geojson: str):
+    def from_json(cls, geojson: str) -> "Point":
         """
         Create a Point from a GeoJSON in json format.
 
@@ -116,6 +118,14 @@ class Point(BaseModel):
         return json.dumps(self.to_dict())
 
     def to_wkt(self) -> str:
+        """
+        Casts the geometric object into a string using Well-Known-Text (WKT) Format.
+
+        Returns
+        -------
+        str
+            The WKT formatted string.
+        """
         return f"POINT ({self.value[0]} {self.value[1]})"
 
 
@@ -145,7 +155,9 @@ class MultiPoint(BaseModel):
 
     @field_validator("value")
     @classmethod
-    def validate_value(cls, v):
+    def validate_value(
+        cls, v: list[tuple[int | float, int | float]]
+    ) -> list[tuple[int | float, int | float]]:
         """Type validator."""
         validate_type_multipoint(v)
         return v
@@ -203,6 +215,14 @@ class MultiPoint(BaseModel):
         return json.dumps(self.to_dict())
 
     def to_wkt(self) -> str:
+        """
+        Casts the geometric object into a string using Well-Known-Text (WKT) Format.
+
+        Returns
+        -------
+        str
+            The WKT formatted string.
+        """
         points = ", ".join(
             [f"({point[0]} {point[1]})" for point in self.value]
         )
@@ -235,7 +255,9 @@ class LineString(BaseModel):
 
     @field_validator("value")
     @classmethod
-    def validate_value(cls, v):
+    def validate_value(
+        cls, v: list[tuple[int | float, int | float]]
+    ) -> list[tuple[int | float, int | float]]:
         """Type validator."""
         validate_type_linestring(v)
         return v
@@ -293,6 +315,14 @@ class LineString(BaseModel):
         return json.dumps(self.to_dict())
 
     def to_wkt(self) -> str:
+        """
+        Casts the geometric object into a string using Well-Known-Text (WKT) Format.
+
+        Returns
+        -------
+        str
+            The WKT formatted string.
+        """
         points = ", ".join([f"{point[0]} {point[1]}" for point in self.value])
         return f"LINESTRING ({points})"
 
@@ -323,7 +353,9 @@ class MultiLineString(BaseModel):
 
     @field_validator("value")
     @classmethod
-    def validate_value(cls, v):
+    def validate_value(
+        cls, v: list[list[tuple[int | float, int | float]]]
+    ) -> list[list[tuple[int | float, int | float]]]:
         """Type validator."""
         validate_type_multilinestring(v)
         return v
@@ -383,6 +415,14 @@ class MultiLineString(BaseModel):
         return json.dumps(self.to_dict())
 
     def to_wkt(self) -> str:
+        """
+        Casts the geometric object into a string using Well-Known-Text (WKT) Format.
+
+        Returns
+        -------
+        str
+            The WKT formatted string.
+        """
         points = "),(".join(
             [
                 ", ".join([f"{point[0]} {point[1]}" for point in line])
@@ -418,7 +458,9 @@ class Polygon(BaseModel):
 
     @field_validator("value")
     @classmethod
-    def validate_value(cls, v):
+    def validate_value(
+        cls, v: list[list[tuple[int | float, int | float]]]
+    ) -> list[list[tuple[int | float, int | float]]]:
         """Type validator."""
         validate_type_polygon(v)
         return v
@@ -479,6 +521,14 @@ class Polygon(BaseModel):
         return json.dumps(self.to_dict())
 
     def to_wkt(self) -> str:
+        """
+        Casts the geometric object into a string using Well-Known-Text (WKT) Format.
+
+        Returns
+        -------
+        str
+            The WKT formatted string.
+        """
         coords = "),(".join(
             [
                 ", ".join([f"{point[0]} {point[1]}" for point in subpolygon])
@@ -514,7 +564,9 @@ class Box(BaseModel):
 
     @field_validator("value")
     @classmethod
-    def validate_value(cls, v):
+    def validate_value(
+        cls, v: list[list[tuple[int | float, int | float]]]
+    ) -> list[list[tuple[int | float, int | float]]]:
         """Type validator."""
         validate_type_box(v)
         return v
@@ -604,6 +656,16 @@ class Box(BaseModel):
         return json.dumps(self.to_dict())
 
     def to_wkt(self) -> str:
+        """
+        Casts the geometric object into a string using Well-Known-Text (WKT) Format.
+
+        Note that 'Box' is not a supported geometry so the output will use the format for 'Polygon'.
+
+        Returns
+        -------
+        str
+            The WKT formatted string.
+        """
         return Polygon(value=self.value).to_wkt()
 
     @property
@@ -649,7 +711,9 @@ class MultiPolygon(BaseModel):
 
     @field_validator("value")
     @classmethod
-    def validate_value(cls, v):
+    def validate_value(
+        cls, v: list[list[list[tuple[int | float, int | float]]]]
+    ) -> list[list[list[tuple[int | float, int | float]]]]:
         """Type validator."""
         validate_type_multipolygon(v)
         return v
@@ -713,6 +777,14 @@ class MultiPolygon(BaseModel):
         return json.dumps(self.to_dict())
 
     def to_wkt(self) -> str:
+        """
+        Casts the geometric object into a string using Well-Known-Text (WKT) Format.
+
+        Returns
+        -------
+        str
+            The WKT formatted string.
+        """
         polygons = [
             "("
             + "),(".join(
@@ -792,7 +864,7 @@ class Raster(BaseModel):
 
     @field_validator("mask")
     @classmethod
-    def _check_png_and_mode(cls, v):
+    def _check_png_and_mode(cls, v: str) -> str:
         """Check that the bytes are for a png file and is binary"""
         f = io.BytesIO(b64decode(v))
         img = PIL.Image.open(f)
@@ -808,7 +880,7 @@ class Raster(BaseModel):
         return v
 
     @classmethod
-    def from_numpy(cls, mask: np.ndarray):
+    def from_numpy(cls, mask: np.ndarray) -> "Raster":
         """
         Create a mask from a numpy array.
 
@@ -849,7 +921,7 @@ class Raster(BaseModel):
         geometry: Box | Polygon | MultiPolygon,
         height: int | float,
         width: int | float,
-    ):
+    ) -> "Raster":
         """
         Create a Raster object from a geometry.
 
@@ -936,7 +1008,7 @@ class Raster(BaseModel):
         """
         return self.array.shape[1]
 
-    def to_wkt(self) -> ScalarSelect | bytes:
+    def to_psql(self) -> ScalarSelect | bytes:
         """
         Converts raster schema into a postgis-compatible type.
 
