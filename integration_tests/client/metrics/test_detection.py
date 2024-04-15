@@ -1455,13 +1455,13 @@ def test_evaluate_detection_with_label_maps(
         {
             "type": "AR",
             "parameters": {"ious": [0.1, 0.6]},
-            "value": 0.5,  # recall of 0 for the first image, and 1 for the second image
+            "value": 0.3333333333333333,  # two missed groundtruth on the first image, and 1 hit for the second image
             "label": {"key": "foo", "value": "bar"},
         },
         {
             "type": "mAR",
             "parameters": {"ious": [0.1, 0.6]},
-            "value": 0.16666666666666666,
+            "value": 0.1111111111111111,
         },
         {
             "type": "mAP",
@@ -1562,7 +1562,7 @@ def test_evaluate_detection_with_label_maps(
 
     for (
         index,
-        key,
+        _,
         value,
         threshold,
         metric,
@@ -1573,16 +1573,23 @@ def test_evaluate_detection_with_label_maps(
         )
 
     # spot check a few geojson results
+    pr_metric = [
+        m for m in pr_metrics if m["parameters"]["label_key"] == "foo"
+    ][0]
     assert (
-        pr_metrics[0]["value"]["bar"]["0.4"]["fn"][0][2]
+        pr_metric["value"]["bar"]["0.4"]["fn"][0][2]
         == '{"type":"Polygon","coordinates":[[[10,10],[60,10],[60,40],[10,40],[10,10]]]}'
     )
     assert (
-        pr_metrics[0]["value"]["bar"]["0.4"]["tp"][0][2]
+        pr_metric["value"]["bar"]["0.4"]["tp"][0][2]
         == '{"type":"Polygon","coordinates":[[[15,0],[70,0],[70,20],[15,20],[15,0]]]}'
     )
+
+    pr_metric = [
+        m for m in pr_metrics if m["parameters"]["label_key"] == "k2"
+    ][0]
     assert (
-        pr_metrics[2]["value"]["v2"]["0.1"]["fp"][0][2]
+        pr_metric["value"]["v2"]["0.1"]["fp"][0][2]
         == '{"type":"Polygon","coordinates":[[[15,0],[70,0],[70,20],[15,20],[15,0]]]}'
     )
 
@@ -1593,3 +1600,489 @@ def test_evaluate_detection_with_label_maps(
         [["class", "cat"], ["foo", "bar"]],
         [["class_name", "cat"], ["foo", "bar"]],
     ]
+
+
+def test_evaluate_detection_false_negatives_single_image_baseline(
+    db: Session, dataset_name: str, model_name: str, client: Client
+):
+    """This is the baseline for the below test. In this case there are two predictions and
+    one groundtruth, but the highest confident prediction overlaps sufficiently with the groundtruth
+    so there is not a penalty for the false negative so the AP is 1
+    """
+    dset = Dataset.create(dataset_name)
+    dset.add_groundtruth(
+        GroundTruth(
+            datum=Datum(uid="uid1"),
+            annotations=[
+                Annotation(
+                    task_type=TaskType.OBJECT_DETECTION,
+                    bounding_box=Box.from_extrema(
+                        xmin=10, xmax=20, ymin=10, ymax=20
+                    ),
+                    labels=[Label(key="key", value="value")],
+                )
+            ],
+        )
+    )
+    dset.finalize()
+
+    model = Model.create(model_name)
+    model.add_prediction(
+        dset,
+        Prediction(
+            datum=Datum(uid="uid1"),
+            annotations=[
+                Annotation(
+                    task_type=TaskType.OBJECT_DETECTION,
+                    bounding_box=Box.from_extrema(
+                        xmin=10, xmax=20, ymin=10, ymax=20
+                    ),
+                    labels=[Label(key="key", value="value", score=0.8)],
+                ),
+                Annotation(
+                    task_type=TaskType.OBJECT_DETECTION,
+                    bounding_box=Box.from_extrema(
+                        xmin=100, xmax=110, ymin=100, ymax=200
+                    ),
+                    labels=[Label(key="key", value="value", score=0.7)],
+                ),
+            ],
+        ),
+    )
+
+    evaluation = model.evaluate_detection(
+        dset, iou_thresholds_to_compute=[0.5], iou_thresholds_to_return=[0.5]
+    )
+    evaluation.wait_for_completion(timeout=30)
+    ap_metric = [m for m in evaluation.metrics if m["type"] == "AP"][0]
+    assert ap_metric == {
+        "type": "AP",
+        "parameters": {"iou": 0.5},
+        "value": 1,
+        "label": {"key": "key", "value": "value"},
+    }
+
+
+def test_evaluate_detection_false_negatives_single_image(
+    db: Session, dataset_name: str, model_name: str, client: Client
+):
+    """Tests fix for a bug where high confidence false negative was not being penalized. The
+    difference between this test and the above is that here the prediction with higher confidence
+    does not sufficiently overlap the groundtruth and so is penalized and we get an AP of 0.5
+    """
+    dset = Dataset.create(dataset_name)
+    dset.add_groundtruth(
+        GroundTruth(
+            datum=Datum(uid="uid1"),
+            annotations=[
+                Annotation(
+                    task_type=TaskType.OBJECT_DETECTION,
+                    bounding_box=Box.from_extrema(
+                        xmin=10, xmax=20, ymin=10, ymax=20
+                    ),
+                    labels=[Label(key="key", value="value")],
+                )
+            ],
+        )
+    )
+    dset.finalize()
+
+    model = Model.create(model_name)
+    model.add_prediction(
+        dset,
+        Prediction(
+            datum=Datum(uid="uid1"),
+            annotations=[
+                Annotation(
+                    task_type=TaskType.OBJECT_DETECTION,
+                    bounding_box=Box.from_extrema(
+                        xmin=10, xmax=20, ymin=10, ymax=20
+                    ),
+                    labels=[Label(key="key", value="value", score=0.8)],
+                ),
+                Annotation(
+                    task_type=TaskType.OBJECT_DETECTION,
+                    bounding_box=Box.from_extrema(
+                        xmin=100, xmax=110, ymin=100, ymax=200
+                    ),
+                    labels=[Label(key="key", value="value", score=0.9)],
+                ),
+            ],
+        ),
+    )
+
+    evaluation = model.evaluate_detection(
+        dset, iou_thresholds_to_compute=[0.5], iou_thresholds_to_return=[0.5]
+    )
+    evaluation.wait_for_completion(timeout=30)
+
+    ap_metric = [m for m in evaluation.metrics if m["type"] == "AP"][0]
+    assert ap_metric == {
+        "type": "AP",
+        "parameters": {"iou": 0.5},
+        "value": 0.5,
+        "label": {"key": "key", "value": "value"},
+    }
+
+
+def test_evaluate_detection_false_negatives_two_images_one_empty_low_confidence_of_fp(
+    db: Session, dataset_name: str, model_name: str, client: Client
+):
+    """In this test we have
+        1. An image with a matching groundtruth and prediction (same class and high IOU)
+        2. A second image with empty groundtruth annotation but a prediction with lower confidence
+        then the prediction on the first image.
+
+    In this case, the AP should be 1.0 since the false positive has lower confidence than the true positive
+
+    """
+    dset = Dataset.create(dataset_name)
+    dset.add_groundtruths(
+        [
+            GroundTruth(
+                datum=Datum(uid="uid1"),
+                annotations=[
+                    Annotation(
+                        task_type=TaskType.OBJECT_DETECTION,
+                        bounding_box=Box.from_extrema(
+                            xmin=10, xmax=20, ymin=10, ymax=20
+                        ),
+                        labels=[Label(key="key", value="value")],
+                    )
+                ],
+            ),
+            GroundTruth(
+                datum=Datum(uid="uid2"),
+                annotations=[Annotation(task_type=TaskType.EMPTY)],
+            ),
+        ]
+    )
+    dset.finalize()
+
+    model = Model.create(model_name)
+    model.add_predictions(
+        dset,
+        [
+            Prediction(
+                datum=Datum(uid="uid1"),
+                annotations=[
+                    Annotation(
+                        task_type=TaskType.OBJECT_DETECTION,
+                        bounding_box=Box.from_extrema(
+                            xmin=10, xmax=20, ymin=10, ymax=20
+                        ),
+                        labels=[Label(key="key", value="value", score=0.8)],
+                    ),
+                ],
+            ),
+            Prediction(
+                datum=Datum(uid="uid2"),
+                annotations=[
+                    Annotation(
+                        task_type=TaskType.OBJECT_DETECTION,
+                        bounding_box=Box.from_extrema(
+                            xmin=10, xmax=20, ymin=10, ymax=20
+                        ),
+                        labels=[Label(key="key", value="value", score=0.7)],
+                    ),
+                ],
+            ),
+        ],
+    )
+
+    evaluation = model.evaluate_detection(
+        dset, iou_thresholds_to_compute=[0.5], iou_thresholds_to_return=[0.5]
+    )
+    evaluation.wait_for_completion(timeout=30)
+    ap_metric = [m for m in evaluation.metrics if m["type"] == "AP"][0]
+    assert ap_metric == {
+        "type": "AP",
+        "parameters": {"iou": 0.5},
+        "value": 1.0,
+        "label": {"key": "key", "value": "value"},
+    }
+
+
+def test_evaluate_detection_false_negatives_two_images_one_empty_high_confidence_of_fp(
+    db: Session, dataset_name: str, model_name: str, client: Client
+):
+    """In this test we have
+        1. An image with a matching groundtruth and prediction (same class and high IOU)
+        2. A second image with empty groundtruth annotation and a prediction with higher confidence
+        then the prediction on the first image.
+
+    In this case, the AP should be 0.5 since the false positive has higher confidence than the true positive
+    """
+    dset = Dataset.create(dataset_name)
+    dset.add_groundtruths(
+        [
+            GroundTruth(
+                datum=Datum(uid="uid1"),
+                annotations=[
+                    Annotation(
+                        task_type=TaskType.OBJECT_DETECTION,
+                        bounding_box=Box.from_extrema(
+                            xmin=10, xmax=20, ymin=10, ymax=20
+                        ),
+                        labels=[Label(key="key", value="value")],
+                    )
+                ],
+            ),
+            GroundTruth(
+                datum=Datum(uid="uid2"),
+                annotations=[Annotation(task_type=TaskType.EMPTY)],
+            ),
+        ]
+    )
+    dset.finalize()
+
+    model = Model.create(model_name)
+    model.add_predictions(
+        dset,
+        [
+            Prediction(
+                datum=Datum(uid="uid1"),
+                annotations=[
+                    Annotation(
+                        task_type=TaskType.OBJECT_DETECTION,
+                        bounding_box=Box.from_extrema(
+                            xmin=10, xmax=20, ymin=10, ymax=20
+                        ),
+                        labels=[Label(key="key", value="value", score=0.8)],
+                    ),
+                ],
+            ),
+            Prediction(
+                datum=Datum(uid="uid2"),
+                annotations=[
+                    Annotation(
+                        task_type=TaskType.OBJECT_DETECTION,
+                        bounding_box=Box.from_extrema(
+                            xmin=10, xmax=20, ymin=10, ymax=20
+                        ),
+                        labels=[Label(key="key", value="value", score=0.9)],
+                    ),
+                ],
+            ),
+        ],
+    )
+
+    evaluation = model.evaluate_detection(
+        dset, iou_thresholds_to_compute=[0.5], iou_thresholds_to_return=[0.5]
+    )
+    evaluation.wait_for_completion(timeout=30)
+    ap_metric = [m for m in evaluation.metrics if m["type"] == "AP"][0]
+    assert ap_metric == {
+        "type": "AP",
+        "parameters": {"iou": 0.5},
+        "value": 0.5,
+        "label": {"key": "key", "value": "value"},
+    }
+
+
+def test_evaluate_detection_false_negatives_two_images_one_only_with_different_class_low_confidence_of_fp(
+    db: Session, dataset_name: str, model_name: str, client: Client
+):
+    """In this test we have
+        1. An image with a matching groundtruth and prediction (same class, `"value"`, and high IOU)
+        2. A second image with a groundtruth annotation with class `"other value"` and a prediction with lower confidence
+        then the prediction on the first image.
+
+    In this case, the AP for class `"value"` should be 1 since the false positive has lower confidence than the true positive.
+    AP for class `"other value"` should be 0 since there is no prediction for the `"other value"` groundtruth
+    """
+    dset = Dataset.create(dataset_name)
+    dset.add_groundtruths(
+        [
+            GroundTruth(
+                datum=Datum(uid="uid1"),
+                annotations=[
+                    Annotation(
+                        task_type=TaskType.OBJECT_DETECTION,
+                        bounding_box=Box.from_extrema(
+                            xmin=10, xmax=20, ymin=10, ymax=20
+                        ),
+                        labels=[Label(key="key", value="value")],
+                    )
+                ],
+            ),
+            GroundTruth(
+                datum=Datum(uid="uid2"),
+                annotations=[
+                    Annotation(
+                        task_type=TaskType.OBJECT_DETECTION,
+                        bounding_box=Box.from_extrema(
+                            xmin=10, xmax=20, ymin=10, ymax=20
+                        ),
+                        labels=[Label(key="key", value="other value")],
+                    )
+                ],
+            ),
+        ]
+    )
+    dset.finalize()
+
+    model = Model.create(model_name)
+    model.add_predictions(
+        dset,
+        [
+            Prediction(
+                datum=Datum(uid="uid1"),
+                annotations=[
+                    Annotation(
+                        task_type=TaskType.OBJECT_DETECTION,
+                        bounding_box=Box.from_extrema(
+                            xmin=10, xmax=20, ymin=10, ymax=20
+                        ),
+                        labels=[Label(key="key", value="value", score=0.8)],
+                    ),
+                ],
+            ),
+            Prediction(
+                datum=Datum(uid="uid2"),
+                annotations=[
+                    Annotation(
+                        task_type=TaskType.OBJECT_DETECTION,
+                        bounding_box=Box.from_extrema(
+                            xmin=10, xmax=20, ymin=10, ymax=20
+                        ),
+                        labels=[Label(key="key", value="value", score=0.7)],
+                    ),
+                ],
+            ),
+        ],
+    )
+
+    evaluation = model.evaluate_detection(
+        dset, iou_thresholds_to_compute=[0.5], iou_thresholds_to_return=[0.5]
+    )
+    evaluation.wait_for_completion(timeout=30)
+    ap_metric1 = [
+        m
+        for m in evaluation.metrics
+        if m["type"] == "AP" and m["label"] == {"key": "key", "value": "value"}
+    ][0]
+    assert ap_metric1 == {
+        "type": "AP",
+        "parameters": {"iou": 0.5},
+        "value": 1.0,
+        "label": {"key": "key", "value": "value"},
+    }
+
+    # label `"other value"` is not in the predictions so we should get an AP of 0
+    ap_metric2 = [
+        m
+        for m in evaluation.metrics
+        if m["type"] == "AP"
+        and m["label"] == {"key": "key", "value": "other value"}
+    ][0]
+    assert ap_metric2 == {
+        "type": "AP",
+        "parameters": {"iou": 0.5},
+        "value": 0,
+        "label": {"key": "key", "value": "other value"},
+    }
+
+
+def test_evaluate_detection_false_negatives_two_images_one_only_with_different_class_high_confidence_of_fp(
+    db: Session, dataset_name: str, model_name: str, client: Client
+):
+    """In this test we have
+        1. An image with a matching groundtruth and prediction (same class, `"value"`, and high IOU)
+        2. A second image with a groundtruth annotation with clas `"other value"` and a prediction with higher confidence
+        then the prediction on the first image.
+
+    In this case, the AP for class `"value"` should be 0.5 since the false positive has higher confidence than the true positive.
+    AP for class `"other value"` should be 0 since there is no prediction for the `"other value"` groundtruth
+    """
+    dset = Dataset.create(dataset_name)
+    dset.add_groundtruths(
+        [
+            GroundTruth(
+                datum=Datum(uid="uid1"),
+                annotations=[
+                    Annotation(
+                        task_type=TaskType.OBJECT_DETECTION,
+                        bounding_box=Box.from_extrema(
+                            xmin=10, xmax=20, ymin=10, ymax=20
+                        ),
+                        labels=[Label(key="key", value="value")],
+                    )
+                ],
+            ),
+            GroundTruth(
+                datum=Datum(uid="uid2"),
+                annotations=[
+                    Annotation(
+                        task_type=TaskType.OBJECT_DETECTION,
+                        bounding_box=Box.from_extrema(
+                            xmin=10, xmax=20, ymin=10, ymax=20
+                        ),
+                        labels=[Label(key="key", value="other value")],
+                    )
+                ],
+            ),
+        ]
+    )
+    dset.finalize()
+
+    model = Model.create(model_name)
+    model.add_predictions(
+        dset,
+        [
+            Prediction(
+                datum=Datum(uid="uid1"),
+                annotations=[
+                    Annotation(
+                        task_type=TaskType.OBJECT_DETECTION,
+                        bounding_box=Box.from_extrema(
+                            xmin=10, xmax=20, ymin=10, ymax=20
+                        ),
+                        labels=[Label(key="key", value="value", score=0.8)],
+                    ),
+                ],
+            ),
+            Prediction(
+                datum=Datum(uid="uid2"),
+                annotations=[
+                    Annotation(
+                        task_type=TaskType.OBJECT_DETECTION,
+                        bounding_box=Box.from_extrema(
+                            xmin=10, xmax=20, ymin=10, ymax=20
+                        ),
+                        labels=[Label(key="key", value="value", score=0.9)],
+                    ),
+                ],
+            ),
+        ],
+    )
+
+    evaluation = model.evaluate_detection(
+        dset, iou_thresholds_to_compute=[0.5], iou_thresholds_to_return=[0.5]
+    )
+    evaluation.wait_for_completion(timeout=30)
+    ap_metric1 = [
+        m
+        for m in evaluation.metrics
+        if m["type"] == "AP" and m["label"] == {"key": "key", "value": "value"}
+    ][0]
+    assert ap_metric1 == {
+        "type": "AP",
+        "parameters": {"iou": 0.5},
+        "value": 0.5,
+        "label": {"key": "key", "value": "value"},
+    }
+
+    # label `"other value"` is not in the predictions so we should get an AP of 0
+    ap_metric2 = [
+        m
+        for m in evaluation.metrics
+        if m["type"] == "AP"
+        and m["label"] == {"key": "key", "value": "other value"}
+    ][0]
+    assert ap_metric2 == {
+        "type": "AP",
+        "parameters": {"iou": 0.5},
+        "value": 0,
+        "label": {"key": "key", "value": "other value"},
+    }
