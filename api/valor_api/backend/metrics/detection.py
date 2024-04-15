@@ -228,7 +228,8 @@ def _calculate_ap_and_ar(
             precision_cnt_fp = 0
 
             if grouper_id in sorted_ranked_pairs:
-                matched_gts = set()
+                matched_gts_for_precision = set()
+                matched_gts_for_recall = set()
                 for row in sorted_ranked_pairs[grouper_id]:
 
                     precision_score_conditional = row.score > 0
@@ -245,24 +246,29 @@ def _calculate_ap_and_ar(
                         row.iou >= iou_threshold and iou_threshold > 0
                     )
 
-                    if recall_score_conditional and iou_conditional:
+                    if (
+                        recall_score_conditional
+                        and iou_conditional
+                        and row.gt_id not in matched_gts_for_recall
+                    ):
                         recall_cnt_tp += 1
+                        matched_gts_for_recall.add(row.gt_id)
                     else:
                         recall_cnt_fp += 1
 
                     if (
                         precision_score_conditional
                         and iou_conditional
-                        and row.gt_id not in matched_gts
+                        and row.gt_id not in matched_gts_for_precision
                     ):
-                        matched_gts.add(row.gt_id)
+                        matched_gts_for_precision.add(row.gt_id)
                         precision_cnt_tp += 1
                     else:
                         precision_cnt_fp += 1
 
                     recall_cnt_fn = (
                         number_of_groundtruths_per_grouper[grouper_id]
-                        - precision_cnt_tp
+                        - recall_cnt_tp
                     )
 
                     precision_cnt_fn = (
@@ -600,9 +606,7 @@ def _compute_detection_metrics(
     ).all()
 
     for pd_id, score, dataset_name, grouper_id in predictions:
-        if (
-            grouper_id in ranking and pd_id not in pd_set
-        ):  # how come grouper_id may not be in ranking??
+        if grouper_id in ranking and pd_id not in pd_set:
             # add to ranking in sorted order
             bisect.insort(  # type: ignore - bisect type issue
                 ranking[grouper_id],

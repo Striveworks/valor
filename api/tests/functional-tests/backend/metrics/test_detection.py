@@ -617,7 +617,7 @@ def test__compute_detection_metrics(
         },
         {
             "ious": iou_thresholds,
-            "value": 0.592,
+            "value": 0.58,
             "label": {"key": "class", "value": "49"},
         },
         {
@@ -639,7 +639,7 @@ def test__compute_detection_metrics(
     expected_mar_metrics = [
         {
             "ious": iou_thresholds,
-            "value": 0.654,
+            "value": 0.652,
         },
     ]
 
@@ -860,7 +860,7 @@ def test__compute_detection_metrics_with_rasters(
     }
 
     for (
-        key,
+        _,
         value,
         threshold,
         metric,
