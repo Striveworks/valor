@@ -40,7 +40,7 @@ afterEach(async () => {
 });
 
 test('dataset methods', async () => {
-  await client.createDataset('test-dataset1', { k1: 'v1', k2: 'v2' });
+  await client.createDataset('test-dataset1', { k1: 'v1', k2: 'v2', k3: {type: 'Point', coordinates: [1.2, 3.4]} });
   await client.createDataset('test-dataset2', { k1: 'v2', k3: 'v3' });
 
   // check we can get all datasets
