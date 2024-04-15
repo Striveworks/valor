@@ -19,8 +19,8 @@ function isGeoJSONObject(value: any): value is { type: GeoJSONType, coordinates:
  * @param input An object containing metadata.
  * @returns The encoded object.
  */
-function encodeMetadata(input: { [key: string]: any }): { [key: string]: {type: string; value: any;} } {
-  const output: { [key: string]: {type: string; value: any;} } = {};
+function encodeMetadata(input: { [key: string]: any }): { [key: string]: {type: string; value: any;} | boolean | number | string } {
+  const output: { [key: string]: {type: string; value: any;} | boolean | number | string } = {};
 
   for (const key in input) {
     const value = input[key];
@@ -32,16 +32,11 @@ function encodeMetadata(input: { [key: string]: any }): { [key: string]: {type: 
     } else if (isGeoJSONObject(value)) {
       valueType = 'geojson';
       output[key] = { type: valueType, value };
-    } else if (typeof value === 'string') {
-      valueType = 'string';
-      output[key] = { type: valueType, value };
-    } else if (typeof value === 'number') {
-      valueType = Number.isInteger(value) ? 'integer' : 'float';
-      output[key] = { type: valueType, value };
+    } else if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+      output[key] = value;
     } else {
       console.warn(`Unknown type for key "${key}".`);
-      valueType = "unknown";
-      output[key] = { type: valueType, value };
+      output[key] = { type: typeof value, value: value };
     }
   }
 
@@ -54,31 +49,30 @@ function encodeMetadata(input: { [key: string]: any }): { [key: string]: {type: 
  * @param input An encoded Valor metadata object.
  * @returns The decoded object.
  */
-function decodeMetadata(input: { [key: string]: {type: string; value: any;} }): { [key: string]: any } {
+function decodeMetadata(input: { [key: string]: {type: string; value: any;} | boolean | number | string}): { [key: string]: any } {
   const output: { [key: string]: any } = {};
 
   for (const key in input) {
     const item = input[key];
-    const { type, value } = item;
 
-    switch (type) {
-      case 'datetime':
-      case 'date':
-      case 'time':
-        output[key] = new Date(value);
-        break;
-      case 'geojson':
-        output[key] = value;
-        break;
-      case 'string':
-      case 'integer':
-      case 'float':
-        output[key] = value;
-        break;
-      default:
-        console.warn(`Unknown type for key "${key}".`);
-        output[key] = value;
-        break;
+    if (typeof item == "object"){
+      const { type, value } = item;
+      switch (type) {
+        case 'datetime':
+        case 'date':
+        case 'time':
+          output[key] = new Date(value);
+          break;
+        case 'geojson':
+          output[key] = value;
+          break;
+        default:
+          console.warn(`Unknown type for key "${key}".`);
+          output[key] = value;
+          break;
+      }
+    } else {
+      output[key] = item
     }
   }
 
