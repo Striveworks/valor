@@ -63,8 +63,8 @@ def img1() -> schemas.Datum:
     return schemas.Datum(
         uid="uid1",
         metadata={
-            "height": {"type": "integer", "value": img1_size[0]},
-            "width": {"type": "integer", "value": img1_size[1]},
+            "height": img1_size[0],
+            "width": img1_size[1],
         },
     )
 
@@ -74,8 +74,8 @@ def img2() -> schemas.Datum:
     return schemas.Datum(
         uid="uid2",
         metadata={
-            "height": {"type": "integer", "value": img2_size[0]},
-            "width": {"type": "integer", "value": img2_size[1]},
+            "height": img2_size[0],
+            "width": img2_size[1],
         },
     )
 
@@ -131,8 +131,8 @@ def images() -> list[schemas.Datum]:
         schemas.Datum(
             uid=f"{i}",
             metadata={
-                "height": {"type": "integer", "value": 1000},
-                "width": {"type": "integer", "value": 2000},
+                "height": 1000,
+                "width": 2000,
             },
         )
         for i in range(4)
@@ -152,7 +152,7 @@ def groundtruths(
         db=db,
         dataset=schemas.Dataset(
             name=dataset_name,
-            metadata={"type": {"type": "string", "value": "image"}},
+            metadata={"type": "image"},
         ),
     )
 
@@ -251,7 +251,7 @@ def predictions(
         db=db,
         model=schemas.Model(
             name=model_name,
-            metadata={"type": {"type": "string", "value": "image"}},
+            metadata={"type": "image"},
         ),
     )
 
@@ -361,7 +361,7 @@ def groundtruths_with_rasters(
         db=db,
         dataset=schemas.Dataset(
             name=dataset_name,
-            metadata={"type": {"type": "string", "value": "image"}},
+            metadata={"type": "image"},
         ),
     )
 
@@ -411,7 +411,7 @@ def predictions_with_rasters(
         db=db,
         model=schemas.Model(
             name=model_name,
-            metadata={"type": {"type": "string", "value": "image"}},
+            metadata={"type": "image"},
         ),
     )
 
@@ -599,7 +599,7 @@ def groundtruth_detections(
                         schemas.Label(key="k1", value="v1"),
                         schemas.Label(key="k2", value="v2"),
                     ],
-                    metadata={"int_key": {"type": "integer", "value": 1}},
+                    metadata={"int_key": 1},
                     bounding_box=schemas.Box(
                         value=[
                             [
@@ -670,11 +670,8 @@ def groundtruth_detections(
                     task_type=enums.TaskType.CLASSIFICATION,
                     labels=[schemas.Label(key="k2", value="v2")],
                     metadata={
-                        "string_key": {
-                            "type": "string",
-                            "value": "string_val",
-                        },
-                        "int_key": {"type": "integer", "value": 1},
+                        "string_key": "string_val",
+                        "int_key": 1,
                     },
                 ),
             ],
@@ -816,8 +813,8 @@ def created_dataset(db: Session, dataset_name: str) -> str:
             datum=schemas.Datum(
                 uid="uid3",
                 metadata={
-                    "height": {"type": "integer", "value": 10},
-                    "width": {"type": "integer", "value": 10},
+                    "height": 10,
+                    "width": 10,
                 },
             ),
             annotations=[
@@ -875,8 +872,8 @@ def created_model(db: Session, model_name: str, created_dataset: str) -> str:
             datum=schemas.Datum(
                 uid="uid3",
                 metadata={
-                    "height": {"type": "integer", "value": 10},
-                    "width": {"type": "integer", "value": 10},
+                    "height": 10,
+                    "width": 10,
                 },
             ),
             annotations=[

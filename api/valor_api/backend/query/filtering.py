@@ -102,15 +102,15 @@ def _filter_by_metadatum(
     """
     if isinstance(value_filter, NumericFilter):
         op = _get_numeric_op(value_filter.operator)
-        lhs = table.meta[key]["value"].astext.cast(Float)
+        lhs = table.meta[key].astext.cast(Float)
         rhs = value_filter.value
     elif isinstance(value_filter, StringFilter):
         op = _get_string_op(value_filter.operator)
-        lhs = table.meta[key]["value"].astext
+        lhs = table.meta[key].astext
         rhs = value_filter.value
     elif isinstance(value_filter, BooleanFilter):
         op = _get_boolean_op(value_filter.operator)
-        lhs = table.meta[key]["value"].astext.cast(Boolean)
+        lhs = table.meta[key].astext.cast(Boolean)
         rhs = value_filter.value
     elif isinstance(value_filter, DateTimeFilter):
         lhs_operand = table.meta[key]["value"].astext

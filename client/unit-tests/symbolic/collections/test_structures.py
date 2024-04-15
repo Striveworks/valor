@@ -397,10 +397,10 @@ def test_dictionary():
 
     # test encoding
     assert {
-        "k0": {"type": "bool", "value": True},
-        "k1": {"type": "string", "value": "v1"},
-        "k2": {"type": "integer", "value": 123},
-        "k3": {"type": "float", "value": 1.24},
+        "k0": True,
+        "k1": "v1",
+        "k2": 123,
+        "k3": 1.24,
         "k4": {"type": "datetime", "value": "2024-01-01T00:00:00"},
         "k5": {"type": "date", "value": "2024-01-01"},
         "k6": {"type": "time", "value": "01:00:00"},

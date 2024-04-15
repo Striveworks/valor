@@ -190,9 +190,9 @@ def groundtruth_instance_segmentations(
     img1: schemas.Datum,
     img2: schemas.Datum,
 ) -> list[schemas.GroundTruth]:
-    assert isinstance(
-        img2.metadata["height"]["value"], (int, float)
-    ) and isinstance(img2.metadata["width"]["value"], (int, float))
+    assert isinstance(img2.metadata["height"], (int, float)) and isinstance(
+        img2.metadata["width"], (int, float)
+    )
     return [
         schemas.GroundTruth(
             dataset_name=dataset_name,
@@ -229,8 +229,8 @@ def groundtruth_instance_segmentations(
                                 poly_without_hole.value,
                             ],
                         ),
-                        height=img2.metadata["height"]["value"],
-                        width=img2.metadata["width"]["value"],
+                        height=img2.metadata["height"],
+                        width=img2.metadata["width"],
                     ),
                 ),
             ],
@@ -858,9 +858,9 @@ def test_segmentation_area_no_hole(
     _check_db_empty(db=db)
 
     crud.create_dataset(db=db, dataset=schemas.Dataset(name=dataset_name))
-    assert isinstance(
-        img1.metadata["height"]["value"], (int, float)
-    ) and isinstance(img1.metadata["width"]["value"], (int, float))
+    assert isinstance(img1.metadata["height"], (int, float)) and isinstance(
+        img1.metadata["width"], (int, float)
+    )
 
     crud.create_groundtruth(
         db=db,
@@ -875,8 +875,8 @@ def test_segmentation_area_no_hole(
                         schemas.MultiPolygon(
                             value=[poly_without_hole.value],
                         ),
-                        height=img1.metadata["height"]["value"],
-                        width=img1.metadata["width"]["value"],
+                        height=img1.metadata["height"],
+                        width=img1.metadata["width"],
                     ),
                 )
             ],
@@ -898,9 +898,9 @@ def test_segmentation_area_with_hole(
     _check_db_empty(db=db)
 
     crud.create_dataset(db=db, dataset=schemas.Dataset(name=dataset_name))
-    assert isinstance(
-        img1.metadata["height"]["value"], (int, float)
-    ) and isinstance(img1.metadata["width"]["value"], (int, float))
+    assert isinstance(img1.metadata["height"], (int, float)) and isinstance(
+        img1.metadata["width"], (int, float)
+    )
 
     crud.create_groundtruth(
         db=db,
@@ -915,8 +915,8 @@ def test_segmentation_area_with_hole(
                         schemas.MultiPolygon(
                             value=[poly_with_hole.value],
                         ),
-                        height=img1.metadata["height"]["value"],
-                        width=img1.metadata["width"]["value"],
+                        height=img1.metadata["height"],
+                        width=img1.metadata["width"],
                     ),
                 )
             ],
@@ -939,9 +939,9 @@ def test_segmentation_area_multi_polygon(
 ):
     # sanity check nothing in db
     _check_db_empty(db=db)
-    assert isinstance(
-        img1.metadata["height"]["value"], (int, float)
-    ) and isinstance(img1.metadata["width"]["value"], (int, float))
+    assert isinstance(img1.metadata["height"], (int, float)) and isinstance(
+        img1.metadata["width"], (int, float)
+    )
     crud.create_dataset(db=db, dataset=schemas.Dataset(name=dataset_name))
 
     crud.create_groundtruth(
@@ -960,8 +960,8 @@ def test_segmentation_area_multi_polygon(
                                 poly_without_hole.value,
                             ],
                         ),
-                        height=img1.metadata["height"]["value"],
-                        width=img1.metadata["width"]["value"],
+                        height=img1.metadata["height"],
+                        width=img1.metadata["width"],
                     ),
                 )
             ],
@@ -993,8 +993,8 @@ def test_gt_seg_as_mask_or_polys(
     img = schemas.Datum(
         uid="uid",
         metadata={
-            "height": {"type": "integer", "value": h},
-            "width": {"type": "integer", "value": w},
+            "height": h,
+            "width": w,
         },
     )
 

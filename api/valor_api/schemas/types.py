@@ -23,7 +23,10 @@ GeometryType = Union[
     list[list[list[tuple[float, float]]]],
 ]
 GeoJSONType = dict[str, str | GeometryType]
-MetadataType = dict[str, dict[str, bool | int | float | str | GeoJSONType]]
+DateTimeType = str | float
+MetadataType = dict[
+    str, bool | int | float | str | dict[str, DateTimeType | GeoJSONType]
+]
 
 
 def _check_if_empty_annotation(annotation: "Annotation") -> bool:

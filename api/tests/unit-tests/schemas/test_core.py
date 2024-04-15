@@ -145,9 +145,7 @@ def test_datum(metadata):
     )
     assert valid_datum == other_datum
 
-    other_datum = schemas.Datum(
-        uid="123", metadata={"fake": {"type": "string", "value": "metadata"}}
-    )
+    other_datum = schemas.Datum(uid="123", metadata={"fake": "metadata"})
     assert not valid_datum == other_datum
 
 
@@ -518,8 +516,8 @@ def test_prediction(metadata, predicted_annotations, labels, scored_labels):
             datum=schemas.Datum(
                 uid="uid",
                 metadata={
-                    "height": {"type": "integer", "value": 10},
-                    "width": {"type": "integer", "value": 10},
+                    "height": 10,
+                    "width": 10,
                 },
             ),
             annotations=[

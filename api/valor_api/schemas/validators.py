@@ -453,6 +453,10 @@ def validate_metadata(dictionary: dict):
         # validate metadata structure
         if not isinstance(key, str):
             raise TypeError("Metadata keys must be of type 'str'.")
+        # atomic values don't require explicit typing.
+        elif isinstance(value, (bool, int, float, str)):
+            continue
+        # if a value is not atomic, explicit typing it required.
         elif not isinstance(value, dict) or set(value.keys()) != {
             "type",
             "value",

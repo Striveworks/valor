@@ -53,10 +53,10 @@ def classification_test_data(db: Session, dataset_name: str, model_name: str):
         schemas.Datum(
             uid=f"uid{i}",
             metadata={
-                "height": {"type": "integer", "value": 128},
-                "width": {"type": "integer", "value": 256},
-                "md1": {"type": "string", "value": f"md1-val{int(i == 4)}"},
-                "md2": {"type": "string", "value": f"md1-val{i % 3}"},
+                "height": 128,
+                "width": 256,
+                "md1": f"md1-val{int(i == 4)}",
+                "md2": f"md1-val{i % 3}",
             },
         )
         for i in range(6)
@@ -105,7 +105,7 @@ def classification_test_data(db: Session, dataset_name: str, model_name: str):
         db=db,
         dataset=schemas.Dataset(
             name=dataset_name,
-            metadata={"type": {"type": "string", "value": "image"}},
+            metadata={"type": "image"},
         ),
     )
     for gt in gts:
@@ -116,7 +116,7 @@ def classification_test_data(db: Session, dataset_name: str, model_name: str):
         db=db,
         model=schemas.Model(
             name=model_name,
-            metadata={"type": {"type": "string", "value": "image"}},
+            metadata={"type": "image"},
         ),
     )
     for pd in preds:

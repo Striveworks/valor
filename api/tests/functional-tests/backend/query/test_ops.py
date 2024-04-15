@@ -97,11 +97,11 @@ def geospatial_coordinates() -> dict[
 @pytest.fixture
 def metadata_1(geospatial_coordinates) -> dict[str, int | float | str | dict]:
     return {
-        "some_numeric_attribute": {"type": "float", "value": 0.4},
-        "some_str_attribute": {"type": "string", "value": "abc"},
-        "height": {"type": "integer", "value": 10},
-        "width": {"type": "integer", "value": 10},
-        "some_bool_attribute": {"type": "bool", "value": True},
+        "some_numeric_attribute": 0.4,
+        "some_str_attribute": "abc",
+        "height": 10,
+        "width": 10,
+        "some_bool_attribute": True,
         "some_geo_attribute": {
             "type": "geojson",
             "value": geospatial_coordinates["polygon1"],
@@ -112,11 +112,11 @@ def metadata_1(geospatial_coordinates) -> dict[str, int | float | str | dict]:
 @pytest.fixture
 def metadata_2(geospatial_coordinates) -> dict[str, int | float | str | dict]:
     return {
-        "some_numeric_attribute": {"type": "float", "value": 0.6},
-        "some_str_attribute": {"type": "string", "value": "abc"},
-        "height": {"type": "integer", "value": 10},
-        "width": {"type": "integer", "value": 10},
-        "some_bool_attribute": {"type": "bool", "value": False},
+        "some_numeric_attribute": 0.6,
+        "some_str_attribute": "abc",
+        "height": 10,
+        "width": 10,
+        "some_bool_attribute": False,
         "some_geo_attribute": {
             "type": "geojson",
             "value": geospatial_coordinates["multipolygon"],
@@ -127,11 +127,11 @@ def metadata_2(geospatial_coordinates) -> dict[str, int | float | str | dict]:
 @pytest.fixture
 def metadata_3(geospatial_coordinates) -> dict[str, int | float | str | dict]:
     return {
-        "some_numeric_attribute": {"type": "float", "value": 0.4},
-        "some_str_attribute": {"type": "string", "value": "xyz"},
-        "height": {"type": "integer", "value": 10},
-        "width": {"type": "integer", "value": 10},
-        "some_bool_attribute": {"type": "bool", "value": True},
+        "some_numeric_attribute": 0.4,
+        "some_str_attribute": "xyz",
+        "height": 10,
+        "width": 10,
+        "some_bool_attribute": True,
         "some_geo_attribute": {
             "type": "geojson",
             "value": geospatial_coordinates["polygon2"],
@@ -142,11 +142,11 @@ def metadata_3(geospatial_coordinates) -> dict[str, int | float | str | dict]:
 @pytest.fixture
 def metadata_4(geospatial_coordinates) -> dict[str, int | float | str | dict]:
     return {
-        "some_numeric_attribute": {"type": "float", "value": 0.6},
-        "some_str_attribute": {"type": "string", "value": "xyz"},
-        "height": {"type": "integer", "value": 10},
-        "width": {"type": "integer", "value": 10},
-        "some_bool_attribute": {"type": "bool", "value": False},
+        "some_numeric_attribute": 0.6,
+        "some_str_attribute": "xyz",
+        "height": 10,
+        "width": 10,
+        "some_bool_attribute": False,
         "some_geo_attribute": {
             "type": "geojson",
             "value": geospatial_coordinates["polygon3"],

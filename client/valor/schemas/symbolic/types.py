@@ -1651,7 +1651,17 @@ class Dictionary(Equatable, MutableMapping):
         """Decode object from JSON compatible dictionary."""
         decoded_value = dict()
         for k, v in value.items():
-            if v["type"] == "geojson":
+            if isinstance(
+                v,
+                (
+                    bool,
+                    int,
+                    float,
+                    str,
+                ),
+            ):
+                decoded_value[k] = v
+            elif v["type"] == "geojson":
                 decoded_value[k] = get_type_by_name(
                     v["value"]["type"].lower()
                 ).decode_value(v["value"]["coordinates"])
@@ -1686,6 +1696,16 @@ class Dictionary(Equatable, MutableMapping):
                         "coordinates": v.encode_value(),
                     },
                 }
+            elif isinstance(
+                v,
+                (
+                    Bool,
+                    Integer,
+                    Float,
+                    String,
+                ),
+            ):
+                encoding[k] = v.encode_value()
             else:
                 encoding[k] = v.to_dict()
         return encoding

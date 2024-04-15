@@ -74,21 +74,15 @@ def test_create_images_with_metadata(
     assert set(d.uid for d in data) == {"uid1", "uid2"}
 
     assert len(data[0].meta) == 3
-    assert data[0].meta["metadatum1"] == {
-        "type": "string",
-        "value": "temporary",
-    }
-    assert data[0].meta["height"] == {"type": "integer", "value": 100}
-    assert data[0].meta["width"] == {"type": "integer", "value": 200}
+    assert data[0].meta["metadatum1"] == "temporary"
+    assert data[0].meta["height"] == 100
+    assert data[0].meta["width"] == 200
 
     assert len(data[1].meta) == 4
-    assert data[1].meta["metadatum2"] == {
-        "type": "string",
-        "value": "a string",
-    }
-    assert data[1].meta["metadatum3"] == {"type": "float", "value": 0.45}
-    assert data[1].meta["height"] == {"type": "integer", "value": 200}
-    assert data[1].meta["width"] == {"type": "integer", "value": 100}
+    assert data[1].meta["metadatum2"] == "a string"
+    assert data[1].meta["metadatum3"] == 0.45
+    assert data[1].meta["height"] == 200
+    assert data[1].meta["width"] == 100
 
 
 def test_get_datums(

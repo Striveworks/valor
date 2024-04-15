@@ -165,8 +165,8 @@ def test_post_groundtruth_classification(client: TestClient):
         "datum": {
             "uid": "file_uid",
             "metadata": {
-                "meta1": {"type": "float", "value": 0.4},
-                "meta2": {"type": "string", "value": "v1"},
+                "meta1": 0.4,
+                "meta2": "v1",
             },
         },
         "annotations": [
@@ -177,8 +177,8 @@ def test_post_groundtruth_classification(client: TestClient):
                 ],
                 "task_type": TaskType.CLASSIFICATION.value,
                 "metadata": {
-                    "meta1": {"type": "float", "value": 0.4},
-                    "meta2": {"type": "string", "value": "v1"},
+                    "meta1": 0.4,
+                    "meta2": "v1",
                 },
             },
             {
@@ -188,8 +188,8 @@ def test_post_groundtruth_classification(client: TestClient):
                 ],
                 "task_type": TaskType.CLASSIFICATION.value,
                 "metadata": {
-                    "meta1": {"type": "float", "value": 0.4},
-                    "meta2": {"type": "string", "value": "v1"},
+                    "meta1": 0.4,
+                    "meta2": "v1",
                 },
             },
         ],
@@ -209,8 +209,8 @@ def test_post_groundtruth_bbox_detection(client: TestClient):
         "datum": {
             "uid": "file_uid",
             "metadata": {
-                "meta1": {"type": "float", "value": 0.4},
-                "meta2": {"type": "string", "value": "v1"},
+                "meta1": 0.4,
+                "meta2": "v1",
             },
         },
         "annotations": [
@@ -221,8 +221,8 @@ def test_post_groundtruth_bbox_detection(client: TestClient):
                 ],
                 "task_type": TaskType.OBJECT_DETECTION.value,
                 "metadata": {
-                    "meta1": {"type": "float", "value": 0.4},
-                    "meta2": {"type": "string", "value": "v1"},
+                    "meta1": 0.4,
+                    "meta2": "v1",
                 },
                 "bounding_box": [
                     [
@@ -250,8 +250,8 @@ def test_post_groundtruth_polygon_detection(client: TestClient):
         "datum": {
             "uid": "file_uid",
             "metadata": {
-                "meta1": {"type": "float", "value": 0.4},
-                "meta2": {"type": "string", "value": "v1"},
+                "meta1": 0.4,
+                "meta2": "v1",
             },
         },
         "annotations": [
@@ -262,8 +262,8 @@ def test_post_groundtruth_polygon_detection(client: TestClient):
                 ],
                 "task_type": TaskType.OBJECT_DETECTION.value,
                 "metadata": {
-                    "meta1": {"type": "float", "value": 0.4},
-                    "meta2": {"type": "string", "value": "v1"},
+                    "meta1": 0.4,
+                    "meta2": "v1",
                 },
                 "polygon": [
                     [
@@ -306,8 +306,8 @@ def test_post_groundtruth_raster_segmentation(client: TestClient):
         "datum": {
             "uid": "file_uid",
             "metadata": {
-                "height": {"type": "integer", "value": 20},
-                "width": {"type": "integer", "value": 20},
+                "height": 20,
+                "width": 20,
             },
         },
         "annotations": [
@@ -318,8 +318,8 @@ def test_post_groundtruth_raster_segmentation(client: TestClient):
                 ],
                 "task_type": TaskType.OBJECT_DETECTION.value,
                 "metadata": {
-                    "meta1": {"type": "float", "value": 0.4},
-                    "meta2": {"type": "string", "value": "v1"},
+                    "meta1": 0.4,
+                    "meta2": "v1",
                 },
                 "raster": {
                     "mask": "iVBORw0KGgoAAAANSUhEUgAAABQAAAAUAQAAAACl8iCgAAAAF0lEQVR4nGP4f4CBiYGBIGZgsP9AjDoAuysDE0GVDN8AAAAASUVORK5CYII=",
@@ -332,8 +332,8 @@ def test_post_groundtruth_raster_segmentation(client: TestClient):
                 ],
                 "task_type": TaskType.SEMANTIC_SEGMENTATION.value,
                 "metadata": {
-                    "meta1": {"type": "float", "value": 0.4},
-                    "meta2": {"type": "string", "value": "v1"},
+                    "meta1": 0.4,
+                    "meta2": "v1",
                 },
                 "raster": {
                     "mask": "iVBORw0KGgoAAAANSUhEUgAAABQAAAAUAQAAAACl8iCgAAAAF0lEQVR4nGP4f4CBiYGBIGZgsP9AjDoAuysDE0GVDN8AAAAASUVORK5CYII=",
@@ -359,8 +359,8 @@ def test_get_groundtruth(crud, client: TestClient):
         "datum": {
             "uid": "file_uid",
             "metadata": {
-                "meta1": {"type": "float", "value": 0.4},
-                "meta2": {"type": "string", "value": "v1"},
+                "meta1": 0.4,
+                "meta2": "v1",
             },
         },
         "annotations": [
@@ -371,8 +371,8 @@ def test_get_groundtruth(crud, client: TestClient):
                 ],
                 "task_type": TaskType.OBJECT_DETECTION.value,
                 "metadata": {
-                    "meta1": {"type": "float", "value": 0.4},
-                    "meta2": {"type": "string", "value": "v1"},
+                    "meta1": 0.4,
+                    "meta2": "v1",
                 },
                 "bounding_box": [
                     [
@@ -455,8 +455,8 @@ def test_post_prediction_classification(client: TestClient):
         "datum": {
             "uid": "file_uid",
             "metadata": {
-                "meta1": {"type": "float", "value": 0.4},
-                "meta2": {"type": "string", "value": "v1"},
+                "meta1": 0.4,
+                "meta2": "v1",
             },
         },
         "annotations": [
@@ -467,8 +467,8 @@ def test_post_prediction_classification(client: TestClient):
                 ],
                 "task_type": TaskType.CLASSIFICATION.value,
                 "metadata": {
-                    "meta1": {"type": "float", "value": 0.4},
-                    "meta2": {"type": "string", "value": "v1"},
+                    "meta1": 0.4,
+                    "meta2": "v1",
                 },
             },
             {
@@ -478,8 +478,8 @@ def test_post_prediction_classification(client: TestClient):
                 ],
                 "task_type": TaskType.CLASSIFICATION.value,
                 "metadata": {
-                    "meta1": {"type": "float", "value": 0.4},
-                    "meta2": {"type": "string", "value": "v1"},
+                    "meta1": 0.4,
+                    "meta2": "v1",
                 },
             },
         ],
@@ -499,8 +499,8 @@ def test_post_prediction_bbox_detection(client: TestClient):
         "datum": {
             "uid": "file_uid",
             "metadata": {
-                "meta1": {"type": "float", "value": 0.4},
-                "meta2": {"type": "string", "value": "v1"},
+                "meta1": 0.4,
+                "meta2": "v1",
             },
         },
         "annotations": [
@@ -511,8 +511,8 @@ def test_post_prediction_bbox_detection(client: TestClient):
                 ],
                 "task_type": TaskType.OBJECT_DETECTION.value,
                 "metadata": {
-                    "meta1": {"type": "float", "value": 0.4},
-                    "meta2": {"type": "string", "value": "v1"},
+                    "meta1": 0.4,
+                    "meta2": "v1",
                 },
                 "bounding_box": [
                     [
@@ -542,8 +542,8 @@ def test_post_prediction_polygon_detection(client: TestClient):
         "datum": {
             "uid": "file_uid",
             "metadata": {
-                "meta1": {"type": "float", "value": 0.4},
-                "meta2": {"type": "string", "value": "v1"},
+                "meta1": 0.4,
+                "meta2": "v1",
             },
         },
         "annotations": [
@@ -554,8 +554,8 @@ def test_post_prediction_polygon_detection(client: TestClient):
                 ],
                 "task_type": TaskType.OBJECT_DETECTION.value,
                 "metadata": {
-                    "meta1": {"type": "float", "value": 0.4},
-                    "meta2": {"type": "string", "value": "v1"},
+                    "meta1": 0.4,
+                    "meta2": "v1",
                 },
                 "polygon": [
                     [
@@ -603,8 +603,8 @@ def test_post_prediction_raster_segmentation(client: TestClient):
             "datum": {
                 "uid": "file_uid",
                 "metadata": {
-                    "height": {"type": "integer", "value": 20},
-                    "width": {"type": "integer", "value": 20},
+                    "height": 20,
+                    "width": 20,
                 },
             },
             "annotations": [
@@ -615,8 +615,8 @@ def test_post_prediction_raster_segmentation(client: TestClient):
                     ],
                     "task_type": TaskType.OBJECT_DETECTION.value,
                     "metadata": {
-                        "meta1": {"type": "float", "value": 0.4},
-                        "meta2": {"type": "string", "value": "v1"},
+                        "meta1": 0.4,
+                        "meta2": "v1",
                     },
                     "raster": {
                         "mask": "iVBORw0KGgoAAAANSUhEUgAAABQAAAAUAQAAAACl8iCgAAAAF0lEQVR4nGP4f4CBiYGBIGZgsP9AjDoAuysDE0GVDN8AAAAASUVORK5CYII=",
@@ -629,8 +629,8 @@ def test_post_prediction_raster_segmentation(client: TestClient):
                     ],
                     "task_type": TaskType.SEMANTIC_SEGMENTATION.value,
                     "metadata": {
-                        "meta1": {"type": "float", "value": 0.4},
-                        "meta2": {"type": "string", "value": "v1"},
+                        "meta1": 0.4,
+                        "meta2": "v1",
                     },
                     "raster": {
                         "mask": "iVBORw0KGgoAAAANSUhEUgAAABQAAAAUAQAAAACl8iCgAAAAF0lEQVR4nGP4f4CBiYGBIGZgsP9AjDoAuysDE0GVDN8AAAAASUVORK5CYII=",
@@ -658,8 +658,8 @@ def test_get_prediction(crud, client: TestClient):
         "datum": {
             "uid": "file_uid",
             "metadata": {
-                "meta1": {"type": "float", "value": 0.4},
-                "meta2": {"type": "string", "value": "v1"},
+                "meta1": 0.4,
+                "meta2": "v1",
             },
         },
         "annotations": [
@@ -670,8 +670,8 @@ def test_get_prediction(crud, client: TestClient):
                 ],
                 "task_type": TaskType.OBJECT_DETECTION.value,
                 "metadata": {
-                    "meta1": {"type": "float", "value": 0.4},
-                    "meta2": {"type": "string", "value": "v1"},
+                    "meta1": 0.4,
+                    "meta2": "v1",
                 },
                 "bounding_box": [
                     [
@@ -707,8 +707,8 @@ def test_post_datasets(client: TestClient):
     example_json = {
         "name": "dataset1",
         "metadata": {
-            "meta1": {"type": "float", "value": 0.4},
-            "meta2": {"type": "string", "value": "v1"},
+            "meta1": 0.4,
+            "meta2": "v1",
         },
     }
     _test_post_endpoints(
@@ -823,8 +823,8 @@ def test_post_models(client: TestClient):
     example_json = {
         "name": "model1",
         "metadata": {
-            "meta1": {"type": "float", "value": 0.4},
-            "meta2": {"type": "string", "value": "v1"},
+            "meta1": 0.4,
+            "meta2": "v1",
         },
     }
     _test_post_endpoints(

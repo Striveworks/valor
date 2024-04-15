@@ -100,8 +100,8 @@ def test_create_image_dataset_with_href_and_description(
         select(models.Dataset.meta).where(models.Dataset.name == dataset_name)
     )
     assert dataset_metadata == {
-        "href": {"type": "string", "value": href},
-        "description": {"type": "string", "value": description},
+        "href": href,
+        "description": description,
     }
 
 
@@ -272,20 +272,14 @@ def test_create_tabular_dataset_and_add_groundtruth(
     metadata_links = data[0].meta
     assert len(metadata_links) == 1
     assert "metadatum1" in metadata_links
-    assert metadata_links["metadatum1"] == {
-        "type": "string",
-        "value": "temporary",
-    }
+    assert metadata_links["metadatum1"] == "temporary"
 
     metadata_links = data[1].meta
     assert len(metadata_links) == 2
     assert "metadatum2" in metadata_links
-    assert metadata_links["metadatum2"] == {
-        "type": "string",
-        "value": "a string",
-    }
+    assert metadata_links["metadatum2"] == "a string"
     assert "metadatum3" in metadata_links
-    assert metadata_links["metadatum3"] == {"type": "float", "value": 0.45}
+    assert metadata_links["metadatum3"] == 0.45
 
     # check that we can add data with specified uids
     new_gts = [
@@ -394,8 +388,8 @@ def test_get_summary(
 
     assert len(summary.datum_metadata) == 2
     assert {
-        "height": {"type": "integer", "value": 900},
-        "width": {"type": "integer", "value": 300},
+        "height": 900,
+        "width": 300,
         "geospatial": {
             "type": "geojson",
             "value": {
@@ -417,8 +411,8 @@ def test_get_summary(
         },
     } in summary.datum_metadata  # uid1
     assert {
-        "height": {"type": "integer", "value": image_height},
-        "width": {"type": "integer", "value": image_width},
+        "height": image_height,
+        "width": image_width,
         "geospatial": {
             "type": "geojson",
             "value": {"coordinates": [44.1, 22.4], "type": "Point"},
