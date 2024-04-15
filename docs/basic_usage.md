@@ -27,10 +27,8 @@ from valor import (
     Label,
 )
 from valor.schemas import (
-    Box,
-    Polygon,
-    BasicPolygon,
     Point,
+    Box,
 )
 from valor.enums import TaskType
 ```
@@ -54,12 +52,12 @@ First, we define our `Dataset` object using `Dataset.create()`.
 dataset = Dataset(
     client=client,
     name="myDataset",
-    metadata={        # optional, metadata can take `str`, `int`, `float` value types.
+    metadata={        # optional
         "some_string": "hello_world",
         "some_number": 1234,
         "a_different_number": 1.234,
+        "a_geospatial_reference": Point((1.23, 3.21)),
     },
-    geospatial=None,  # optional, define a GeoJSON
 )
 ```
 

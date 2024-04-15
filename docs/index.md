@@ -87,14 +87,14 @@ To get started with Valor, we'd recommend reviewing our [sample notebooks](https
 
 ```python
 from valor.metatypes import ImageMetadata
-image = ImageMetadata(
+image = ImageMetadata.create(
   uid = "1234",
   height = 100,
   width = 100,
 )
 
-# convert metatype to datum
-datum = image.to_datum()
+# access the datum
+datum = image.datum
 ```
 
 **Q. What is a GroundTruth?**
@@ -108,6 +108,11 @@ datum = image.to_datum()
 **Q. Can Valor handle multiple data types?**
 
 **A.** Valor abstracts data types through metadata. An example of this can be seen in `valor.metatypes.ImageMetadata` which describes the mapping of an image to a `valor.Datum`.
+
+**Q. Does Valor support geospatial queries?**
+
+**A.** Valor follows the [GeoJSON](https://geojson.org/) specification (RFC 7946) in the implementation of `Point`, `MulitPoint`, `LineString`, `MultiLineString`, `Polygon` and
+`MulitPolygon` geometries. These objects are used to define annotations and facilitate the creation of geospatial metadata.
 
 # Troubleshooting
 
