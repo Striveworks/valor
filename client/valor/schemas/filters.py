@@ -5,7 +5,9 @@ from valor.enums import TaskType
 from valor.schemas.symbolic.operators import (
     And,
     AppendableFunction,
+    BulkComparisionFunction,
     Function,
+    In,
     Inside,
     Intersects,
     IsNotNull,
@@ -188,6 +190,15 @@ def _scan_appendable_function(fn: AppendableFunction):
         )
 
 
+def _scan_bulk_comparison_function(fn: BulkComparisionFunction):
+    if not fn.lhs.is_symbolic:
+        raise ValueError("Lhs argument should take a symbol as input.")
+    elif not all([value.is_value for value in fn.rhs]):
+        raise ValueError("Rhs argument should take a list of values.")
+    elif type(fn) is not In:
+        raise TypeError("The only supported 'BulkComparisonFunction' is 'In'.")
+
+
 def _parse_listed_expressions(flist):
     expressions = {}
     for row in flist:
@@ -195,7 +206,7 @@ def _parse_listed_expressions(flist):
             raise ValueError(
                 f"Expected a function but received value with type '{type(row)}'"
             )
-        elif isinstance(row, AppendableFunction):
+        if isinstance(row, AppendableFunction):
             _scan_appendable_function(row)
             symbol = row._args[0]._args[0].get_symbol()
             constraints = [
@@ -209,6 +220,17 @@ def _parse_listed_expressions(flist):
             _scan_one_arg_function(row)
             symbol = row.arg.get_symbol()
             constraints = [_convert_expression_to_constraint(row)]
+        elif isinstance(row, BulkComparisionFunction):
+            _scan_bulk_comparison_function(row)
+            symbol = row.lhs.get_symbol()
+            constraints = [
+                Constraint(
+                    value=value.get_value(),
+                    operator="==",
+                )
+                for value in row.rhs
+            ]
+            print(constraints)
         else:
             raise NotImplementedError
 

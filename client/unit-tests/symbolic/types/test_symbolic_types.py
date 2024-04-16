@@ -194,7 +194,7 @@ def _test_equatable(varA, varB, varC):
 
     # in (exists within list)
     assert varA.in_([varB, varC]).to_dict() == {
-        "op": "eq",
+        "op": "in",
         "lhs": {
             "type": "symbol",
             "value": {
@@ -204,23 +204,26 @@ def _test_equatable(varA, varB, varC):
                 "attribute": None,
             },
         },
-        "rhs": {
-            "type": "list[symbol]",
-            "value": [
-                {
+        "rhs": [
+            {
+                "type": "symbol",
+                "value": {
                     "owner": None,
                     "name": "b",
                     "key": None,
                     "attribute": None,
                 },
-                {
+            },
+            {
+                "type": "symbol",
+                "value": {
                     "owner": None,
                     "name": "c",
                     "key": None,
                     "attribute": None,
                 },
-            ],
-        },
+            },
+        ],
     }
     assert (
         varA.in_([varB, varC]).to_dict()

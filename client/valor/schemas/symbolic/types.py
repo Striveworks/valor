@@ -464,13 +464,17 @@ class Equatable(Variable):
                 return Bool(lhs != rhs)
         return Ne(self, other)
 
-    def in_(self, value: typing.List[typing.Any]) -> In:
+    def in_(self, values: typing.List[typing.Any]) -> In:
         """Returns the conditional of lhs existing in rhs list of values."""
-        if not isinstance(value, list) or not value:
+        if not isinstance(values, list) or len(values) < 1:
             raise TypeError("Expected value to be a list.")
-        item_type = _get_type_by_value(value[0])
-        symbolic_list = List[item_type](value)
-        return In(lhs=self, rhs=symbolic_list)
+        values = [
+            value
+            if issubclass(type(value), Variable)
+            else _get_type_by_value(value)(value)
+            for value in values
+        ]
+        return In(self, values)
 
     def __hash__(self):
         if self.is_symbolic:
@@ -2106,10 +2110,6 @@ def _get_type_by_value(other: typing.Any):
 
     Order of checking is very important as certain types are subsets of others.
     """
-    if issubclass(type(other), Variable):
-        return type(other)
-    if isinstance(other, Symbol):
-        return Symbol
     if Bool.supports(other):
         return Bool
     elif String.supports(other):

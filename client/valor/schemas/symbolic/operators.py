@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, List
 
 
 class Function:
@@ -8,7 +8,7 @@ class Function:
 
     def __init__(self, *args) -> None:
         for arg in args:
-            if not hasattr(arg, "to_dict"):
+            if not hasattr(arg, "to_dict") and not isinstance(arg, list):
                 raise ValueError(
                     "Functions can only take arguments that have a 'to_dict' method defined."
                 )
@@ -117,6 +117,37 @@ class AppendableFunction(Function):
         return self
 
 
+class BulkComparisionFunction(Function):
+    """Base class for defining two argument functions from a list of values."""
+
+    def __init__(self, lhs: Any, rhs: List[Any]) -> None:
+        if not isinstance(rhs, list) or len(rhs) < 1:
+            raise ValueError(
+                "Expected 'in' operator to received a list of at least one item."
+            )
+        self._lhs = lhs
+        self._rhs = rhs
+        super().__init__(lhs, *rhs)
+
+    @property
+    def lhs(self):
+        """Returns the lhs operand."""
+        return self._lhs
+
+    @property
+    def rhs(self):
+        """Returns the rhs operand."""
+        return self._rhs
+
+    def to_dict(self):
+        """Encode to a JSON-compatible dictionary."""
+        return {
+            "op": type(self).__name__.lower(),
+            "lhs": self.lhs.to_dict(),
+            "rhs": [value.to_dict() for value in self.rhs],
+        }
+
+
 class And(AppendableFunction):
     """Implementation of logical AND (&)."""
 
@@ -181,12 +212,6 @@ class Ne(TwoArgumentFunction):
     _operator = "!="
 
 
-class In(TwoArgumentFunction):
-    """Check that the lhs value exists within a rhs list."""
-
-    _operator = "in"
-
-
 class Gt(TwoArgumentFunction):
     """Implementation of the greater-than operator '>'."""
 
@@ -227,3 +252,9 @@ class Outside(TwoArgumentFunction):
     """Implementation of the spatial 'outside' operator."""
 
     pass
+
+
+class In(BulkComparisionFunction):
+    """Implements a bulk equality comparision between a value and a list of values."""
+
+    _operator = "in"
