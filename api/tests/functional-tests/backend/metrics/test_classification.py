@@ -953,6 +953,7 @@ def test__compute_curves(
         ("bird", 0.3, "tp"): 1,
         ("bird", 0.3, "fn"): 2,
         ("bird", 0.3, "fp"): 0,
+        ("bird", 0.3, "tn"): 3,
         ("bird", 0.65, "fn"): 3,
         ("bird", 0.65, "tn"): 3,
         # dog
@@ -961,6 +962,7 @@ def test__compute_curves(
         ("dog", 0.05, "tn"): 1,
         ("dog", 0.45, "fn"): 2,
         ("dog", 0.45, "fp"): 1,
+        ("dog", 0.45, "tn"): 3,
         ("dog", 0.8, "fn"): 2,
         ("dog", 0.8, "fp"): 0,
         ("dog", 0.8, "tn"): 4,
