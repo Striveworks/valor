@@ -706,7 +706,7 @@ def test_compute_classification(
     )
 
     confusion, metrics = _compute_clf_metrics(
-        db, model_filter, datum_filter, label_map=None, compute_pr_curves=False
+        db, model_filter, datum_filter, label_map=None, compute_pr_curves=True
     )
 
     # Make matrices accessible by label_key
