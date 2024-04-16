@@ -6,7 +6,6 @@ from valor_api.backend import models
 from valor_api.backend.core import (
     create_or_get_evaluations,
     fetch_union_of_labels,
-    get_paginated_datums,
 )
 from valor_api.backend.metrics.classification import (
     _compute_accuracy_from_cm,
@@ -923,19 +922,17 @@ def test__compute_curves(
 
     # calculate the number of unique datums
     # used to determine the number of true negatives
-    pd_datums, _ = get_paginated_datums(db=db, filters=prediction_filter)
-
-    gt_datums, _ = get_paginated_datums(db=db, filters=groundtruth_filter)
-
-    unique_datums = set(
-        [
-            (
-                datum.dataset_name,
-                datum.uid,
-            )
-            for datum in pd_datums + gt_datums
-        ]
-    )
+    pd_datums = db.query(
+        Query(models.Dataset.name, models.Datum.uid)  # type: ignore - sqlalchemy issues
+        .filter(prediction_filter)
+        .predictions()
+    ).all()
+    gt_datums = db.query(
+        Query(models.Dataset.name, models.Datum.uid)  # type: ignore - sqlalchemy issues
+        .filter(groundtruth_filter)
+        .groundtruths()
+    ).all()
+    unique_datums = set(pd_datums + gt_datums)
 
     curves = _compute_curves(
         db=db,

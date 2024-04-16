@@ -716,23 +716,17 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
     if compute_pr_curves:
         # calculate the number of unique datums
         # used to determine the number of true negatives
-        pd_datums, _ = core.get_paginated_datums(
-            db=db, filters=prediction_filter
-        )
-
-        gt_datums, _ = core.get_paginated_datums(
-            db=db, filters=groundtruth_filter
-        )
-
-        unique_datums = set(
-            [
-                (
-                    datum.dataset_name,
-                    datum.uid,
-                )
-                for datum in pd_datums + gt_datums
-            ]
-        )
+        pd_datums = db.query(
+            Query(models.Dataset.name, models.Datum.uid)  # type: ignore - sqlalchemy issues
+            .filter(prediction_filter)
+            .predictions()
+        ).all()
+        gt_datums = db.query(
+            Query(models.Dataset.name, models.Datum.uid)  # type: ignore - sqlalchemy issues
+            .filter(groundtruth_filter)
+            .groundtruths()
+        ).all()
+        unique_datums = set(pd_datums + gt_datums)
 
         pr_curves = _compute_curves(
             db=db,
