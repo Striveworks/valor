@@ -26,6 +26,7 @@ def _compute_curves(
     groundtruths: Subquery | NamedFromClause,
     grouper_key: str,
     grouper_mappings: dict[str, dict[str, dict]],
+    unique_datums: set[tuple[str, str]],
 ) -> dict[
     str,
     dict[
@@ -55,6 +56,8 @@ def _compute_curves(
         The key of the grouper used to calculate the PR curves.
     grouper_mappings: dict[str, dict[str, dict]]
         A dictionary of mappings that connect groupers to their related labels.
+    unique_datums: list[tuple[str, str]]
+        All of the unique datums associated with the ground truth and prediction filters.
 
     Returns
     -------
@@ -148,7 +151,7 @@ def _compute_curves(
         for grouper_value in grouper_mappings["grouper_key_to_labels_mapping"][
             grouper_key
         ].keys():
-            tp, fp, fn = [], [], []
+            tp, tn, fp, fn = [], [], [], []
             seen_datums = set()
 
             for row in res:
@@ -182,12 +185,29 @@ def _compute_curves(
                     seen_datums.add(gt_datum_uid)
 
             # calculate metrics
-            tp_cnt, fp_cnt, fn_cnt = len(tp), len(fp), len(fn)
+            tn = [
+                datum_uid_pair
+                for datum_uid_pair in unique_datums
+                if datum_uid_pair not in tp + fp + fn
+                and None not in datum_uid_pair
+            ]
+            tp_cnt, fp_cnt, fn_cnt, tn_cnt = (
+                len(tp),
+                len(fp),
+                len(fn),
+                len(tn),
+            )
+
             precision = (
                 (tp_cnt) / (tp_cnt + fp_cnt) if (tp_cnt + fp_cnt) > 0 else -1
             )
             recall = (
                 tp_cnt / (tp_cnt + fn_cnt) if (tp_cnt + fn_cnt) > 0 else -1
+            )
+            accuracy = (
+                (tp_cnt + tn_cnt) / len(unique_datums)
+                if len(unique_datums) > 0
+                else -1
             )
             f1_score = (
                 (2 * precision * recall) / (precision + recall)
@@ -199,6 +219,8 @@ def _compute_curves(
                 "tp": tp,
                 "fp": fp,
                 "fn": fn,
+                "tn": tn,
+                "accuracy": accuracy,
                 "precision": precision,
                 "recall": recall,
                 "f1_score": f1_score,
@@ -652,7 +674,11 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
     )
 
     predictions = (
-        Query(models.Prediction, models.Dataset.name.label("dataset_name"))
+        Query(
+            models.Prediction,
+            models.Annotation.datum_id.label("datum_id"),
+            models.Dataset.name.label("dataset_name"),
+        )
         .filter(pFilter)
         .predictions(as_subquery=False)
         .alias()
@@ -688,12 +714,33 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
     ]
 
     if compute_pr_curves:
+        # calculate the number of unique datums
+        # used to determine the number of true negatives
+        pd_datums, _ = core.get_paginated_datums(
+            db=db, filters=prediction_filter
+        )
+
+        gt_datums, _ = core.get_paginated_datums(
+            db=db, filters=groundtruth_filter
+        )
+
+        unique_datums = set(
+            [
+                (
+                    datum.dataset_name,
+                    datum.uid,
+                )
+                for datum in pd_datums + gt_datums
+            ]
+        )
+
         pr_curves = _compute_curves(
             db=db,
             groundtruths=groundtruths,
             predictions=predictions,
             grouper_key=grouper_key,
             grouper_mappings=grouper_mappings,
+            unique_datums=unique_datums,
         )
         output = schemas.PrecisionRecallCurve(
             label_key=grouper_key, value=pr_curves

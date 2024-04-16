@@ -963,26 +963,60 @@ def test_evaluate_classification_with_label_maps(
     assert eval_job.id
     assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
 
-    pr_expected_answers = {
+    pr_expected_lengths = {
         # k3
         (0, "k3", "v1", "0.1", "fp"): 1,
+        (0, "k3", "v1", "0.1", "tn"): 2,
         (0, "k3", "v3", "0.1", "fn"): 1,
+        (0, "k3", "v3", "0.1", "tn"): 2,
         # k4
         (1, "k4", "v1", "0.1", "fp"): 1,
+        (1, "k4", "v1", "0.1", "tn"): 2,
         (1, "k4", "v4", "0.1", "fn"): 1,
+        (1, "k4", "v4", "0.1", "tn"): 1,
         (1, "k4", "v4", "0.1", "tp"): 1,
         (1, "k4", "v4", "0.9", "tp"): 0,
+        (1, "k4", "v4", "0.9", "tn"): 1,
         (1, "k4", "v4", "0.9", "fn"): 2,
         (1, "k4", "v5", "0.1", "fp"): 1,
+        (1, "k4", "v5", "0.1", "tn"): 2,
         (1, "k4", "v5", "0.3", "fp"): 0,
-        (1, "k4", "v8", "0.1", "fp"): 1,
+        (1, "k4", "v5", "0.3", "tn"): 3,
+        (1, "k4", "v8", "0.1", "tn"): 2,
         (1, "k4", "v8", "0.6", "fp"): 0,
+        (1, "k4", "v8", "0.6", "tn"): 3,
         # k5
         (2, "k5", "v1", "0.1", "fp"): 1,
+        (2, "k5", "v1", "0.1", "tn"): 2,
         (2, "k5", "v5", "0.1", "fn"): 1,
-        # special_class
+        (
+            2,
+            "k5",
+            "v5",
+            "0.1",
+            "tn",
+        ): 2,
         (3, "special_class", "cat_type1", "0.1", "tp"): 3,
+        (3, "special_class", "cat_type1", "0.1", "tn"): 0,
         (3, "special_class", "cat_type1", "0.95", "tp"): 3,
+    }
+
+    pr_expected_metrics = {
+        # k3, v3
+        (0, "k3", "v3", "0.1", "accuracy"): 2 / 3,
+        (0, "k3", "v3", "0.1", "precision"): -1,
+        (0, "k3", "v3", "0.1", "recall"): 0,
+        (0, "k3", "v3", "0.1", "f1_score"): -1,
+        # k5, v1
+        (2, "k5", "v1", "0.1", "accuracy"): 2 / 3,
+        (2, "k5", "v1", "0.1", "precision"): 0,
+        (2, "k5", "v1", "0.1", "recall"): -1,
+        (2, "k5", "v1", "0.1", "f1_score"): -1,
+        # special_class, cat_type1
+        (3, "special_class", "cat_type1", "0.1", "accuracy"): 1,
+        (3, "special_class", "cat_type1", "0.1", "precision"): 1,
+        (3, "special_class", "cat_type1", "0.1", "recall"): 1,
+        (3, "special_class", "cat_type1", "0.1", "f1_score"): 1,
     }
 
     metrics = eval_job.metrics
@@ -1005,11 +1039,22 @@ def test_evaluate_classification_with_label_maps(
         value,
         threshold,
         metric,
-    ), expected_length in pr_expected_answers.items():
+    ), expected_length in pr_expected_lengths.items():
         assert (
             len(pr_metrics[index]["value"][value][threshold][metric])
             == expected_length
         )
+
+    for (
+        index,
+        key,
+        value,
+        threshold,
+        metric,
+    ), expected_length in pr_expected_metrics.items():
+        assert (
+            pr_metrics[index]["value"][value][threshold][metric]
+        ) == expected_length
 
     confusion_matrix = eval_job.confusion_matrices
 
