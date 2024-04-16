@@ -23,18 +23,18 @@ def create_prediction(
     # check model status
     model_status = core.get_model_status(
         db=db,
-        dataset_name=prediction.datum.dataset_name,
+        dataset_name=prediction.dataset_name,
         model_name=prediction.model_name,
     )
     if model_status != enums.TableStatus.CREATING:
         raise exceptions.ModelFinalizedError(
-            dataset_name=prediction.datum.dataset_name,
+            dataset_name=prediction.dataset_name,
             model_name=prediction.model_name,
         )
 
     # retrieve existing table entries
     model = core.fetch_model(db, name=prediction.model_name)
-    dataset = core.fetch_dataset(db, name=prediction.datum.dataset_name)
+    dataset = core.fetch_dataset(db, name=prediction.dataset_name)
     datum = core.fetch_datum(
         db, dataset_id=dataset.id, uid=prediction.datum.uid
     )
@@ -114,10 +114,10 @@ def get_prediction(
             datum_uid=datum_uid,
         )
     return schemas.Prediction(
+        dataset_name=dataset.name,
         model_name=model_name,
         datum=schemas.Datum(
             uid=datum.uid,
-            dataset_name=dataset.name,
             metadata=datum.meta,
         ),
         annotations=annotations,

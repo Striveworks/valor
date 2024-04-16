@@ -30,81 +30,57 @@ def cm() -> schemas.ConfusionMatrix:
 
 
 @pytest.fixture
-def metadata() -> dict[str, str | float]:
+def metadata() -> dict[str, dict[str, str | float]]:
     return {
-        "m1": "v1",
-        "m2": 0.1,
+        "m1": {"type": "string", "value": "v1"},
+        "m2": {"type": "float", "value": 0.1},
     }
 
 
 @pytest.fixture
-def box_points() -> list[schemas.geometry.Point]:
+def box_points() -> list[tuple[float, float]]:
     return [
-        schemas.geometry.Point(x=-5, y=-5),
-        schemas.geometry.Point(x=5, y=-5),
-        schemas.geometry.Point(x=5, y=5),
-        schemas.geometry.Point(x=-5, y=5),
+        (-5, -5),
+        (5, -5),
+        (5, 5),
+        (-5, 5),
+        (-5, -5),
     ]
 
 
 @pytest.fixture
-def rotated_box_points() -> list[schemas.geometry.Point]:
+def rotated_box_points() -> list[tuple[float, float]]:
     """Same area and sides as box_points, but rotated 45 degrees."""
     d = 5.0 * math.sqrt(2)
     return [
-        schemas.geometry.Point(x=0, y=d),
-        schemas.geometry.Point(x=d, y=0),
-        schemas.geometry.Point(x=0, y=-d),
-        schemas.geometry.Point(x=-d, y=0),
+        (0, d),
+        (d, 0),
+        (0, -d),
+        (-d, 0),
+        (0, d),
     ]
 
 
 @pytest.fixture
-def skewed_box_points() -> list[schemas.geometry.Point]:
+def skewed_box_points() -> list[tuple[float, float]]:
     """Skewed box_points."""
     return [
-        schemas.geometry.Point(x=0, y=0),
-        schemas.geometry.Point(x=10, y=0),
-        schemas.geometry.Point(x=15, y=10),
-        schemas.geometry.Point(x=5, y=10),
+        (0, 0),
+        (10, 0),
+        (15, 10),
+        (5, 10),
+        (0, 0),
     ]
 
 
 @pytest.fixture
-def component_polygon_box(box_points) -> schemas.geometry.BasicPolygon:
-    return schemas.geometry.BasicPolygon(
-        points=box_points,
-    )
+def bbox(box_points) -> schemas.Box:
+    return schemas.Box(value=[box_points])
 
 
 @pytest.fixture
-def component_polygon_rotated_box(
-    rotated_box_points,
-) -> schemas.geometry.BasicPolygon:
-    return schemas.geometry.BasicPolygon(
-        points=rotated_box_points,
-    )
-
-
-@pytest.fixture
-def component_polygon_skewed_box(
-    skewed_box_points,
-) -> schemas.geometry.BasicPolygon:
-    return schemas.geometry.BasicPolygon(
-        points=skewed_box_points,
-    )
-
-
-@pytest.fixture
-def bbox(component_polygon_box) -> schemas.BoundingBox:
-    return schemas.BoundingBox(
-        polygon=component_polygon_box,
-    )
-
-
-@pytest.fixture
-def polygon(component_polygon_box) -> schemas.Polygon:
-    return schemas.Polygon(boundary=component_polygon_box)
+def polygon(box_points) -> schemas.Polygon:
+    return schemas.Polygon(value=[box_points])
 
 
 @pytest.fixture

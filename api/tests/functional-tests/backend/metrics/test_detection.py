@@ -35,11 +35,7 @@ def test__compute_curves(db: Session):
         -1519138795911397979: [
             RankedPair(
                 dataset_name="test_dataset",
-                pd_datum_id=526,
-                gt_datum_id=526,
-                pd_datum_uid="uid526",
                 gt_datum_uid="uid526",
-                pd_geojson='{"type":"Polygon","coordinates":[[[276.11,103.84],[291.44,103.84],[291.44,150.72],[276.11,150.72],[276.11,103.84]]]}',
                 gt_geojson='{"type":"Polygon","coordinates":[[[277.11,103.84],[292.44,103.84],[292.44,150.72],[277.11,150.72],[277.11,103.84]]]}',
                 gt_id=1340,
                 pd_id=2389,
@@ -48,11 +44,7 @@ def test__compute_curves(db: Session):
             ),
             RankedPair(
                 dataset_name="test_dataset",
-                pd_datum_id=526,
-                gt_datum_id=526,
-                pd_datum_uid="uid526",
                 gt_datum_uid="uid526",
-                pd_geojson='{"type":"Polygon","coordinates":[[[464.08,105.09],[495.74,105.09],[495.74,146.99],[464.08,146.99],[464.08,105.09]]]}',
                 gt_geojson='{"type":"Polygon","coordinates":[[[462.08,105.09],[493.74,105.09],[493.74,146.99],[462.08,146.99],[462.08,105.09]]]}',
                 gt_id=1339,
                 pd_id=2388,
@@ -61,11 +53,7 @@ def test__compute_curves(db: Session):
             ),
             RankedPair(
                 dataset_name="test_dataset",
-                pd_datum_id=526,
-                gt_datum_id=526,
-                pd_datum_uid="uid526",
                 gt_datum_uid="uid526",
-                pd_geojson='{"type":"Polygon","coordinates":[[[328.94,97.05],[342.49,97.05],[342.49,122.98],[328.94,122.98],[328.94,97.05]]]}',
                 gt_geojson='{"type":"Polygon","coordinates":[[[326.94,97.05],[340.49,97.05],[340.49,122.98],[326.94,122.98],[326.94,97.05]]]}',
                 gt_id=1337,
                 pd_id=2386,
@@ -74,11 +62,7 @@ def test__compute_curves(db: Session):
             ),
             RankedPair(
                 dataset_name="test_dataset",
-                pd_datum_id=526,
-                gt_datum_id=526,
-                pd_datum_uid="uid526",
                 gt_datum_uid="uid526",
-                pd_geojson='{"type":"Polygon","coordinates":[[[296.55,93.96],[314.97,93.96],[314.97,152.79],[296.55,152.79],[296.55,93.96]]]}',
                 gt_geojson='{"type":"Polygon","coordinates":[[[295.55,93.96],[313.97,93.96],[313.97,152.79],[295.55,152.79],[295.55,93.96]]]}',
                 gt_id=1336,
                 pd_id=2385,
@@ -87,11 +71,7 @@ def test__compute_curves(db: Session):
             ),
             RankedPair(
                 dataset_name="test_dataset",
-                pd_datum_id=526,
-                gt_datum_id=526,
-                pd_datum_uid="uid526",
                 gt_datum_uid="uid526",
-                pd_geojson='{"type":"Polygon","coordinates":[[[356.62,95.47],[372.33,95.47],[372.33,147.55],[356.62,147.55],[356.62,95.47]]]}',
                 gt_geojson='{"type":"Polygon","coordinates":[[[356.62,95.47],[372.33,95.47],[372.33,147.55],[356.62,147.55],[356.62,95.47]]]}',
                 gt_id=1338,
                 pd_id=2387,
@@ -102,11 +82,7 @@ def test__compute_curves(db: Session):
         564624103770992353: [
             RankedPair(
                 dataset_name="test_dataset",
-                pd_datum_id=527,
-                gt_datum_id=527,
-                pd_datum_uid="uid527",
                 gt_datum_uid="uid527",
-                pd_geojson='{"type":"Polygon","coordinates":[[[75.29,23.01],[91.85,23.01],[91.85,50.85],[75.29,50.85],[75.29,23.01]]]}',
                 gt_geojson='{"type":"Polygon","coordinates":[[[75.29,23.01],[91.85,23.01],[91.85,50.85],[75.29,50.85],[75.29,23.01]]]}',
                 gt_id=1345,
                 pd_id=2394,
@@ -115,11 +91,7 @@ def test__compute_curves(db: Session):
             ),
             RankedPair(
                 dataset_name="test_dataset",
-                pd_datum_id=527,
-                gt_datum_id=527,
-                pd_datum_uid="uid527",
                 gt_datum_uid="uid527",
-                pd_geojson='{"type":"Polygon","coordinates":[[[82.28,47.04],[99.66,47.04],[99.66,78.5],[82.28,78.5],[82.28,47.04]]]}',
                 gt_geojson='{"type":"Polygon","coordinates":[[[81.28,47.04],[98.66,47.04],[98.66,78.5],[81.28,78.5],[81.28,47.04]]]}',
                 gt_id=1343,
                 pd_id=2392,
@@ -128,11 +100,7 @@ def test__compute_curves(db: Session):
             ),
             RankedPair(
                 dataset_name="test_dataset",
-                pd_datum_id=527,
-                gt_datum_id=527,
-                pd_datum_uid="uid527",
                 gt_datum_uid="uid527",
-                pd_geojson='{"type":"Polygon","coordinates":[[[61.34,55.23],[77.14,55.23],[77.14,79.57],[61.34,79.57],[61.34,55.23]]]}',
                 gt_geojson='{"type":"Polygon","coordinates":[[[62.34,55.23],[78.14,55.23],[78.14,79.57],[62.34,79.57],[62.34,55.23]]]}',
                 gt_id=1348,
                 pd_id=2396,
@@ -141,11 +109,7 @@ def test__compute_curves(db: Session):
             ),
             RankedPair(
                 dataset_name="test_dataset",
-                pd_datum_id=527,
-                gt_datum_id=527,
-                pd_datum_uid="uid527",
                 gt_datum_uid="uid527",
-                pd_geojson='{"type":"Polygon","coordinates":[[[72.92,45.96],[91.23,45.96],[91.23,80.57],[72.92,80.57],[72.92,45.96]]]}',
                 gt_geojson='{"type":"Polygon","coordinates":[[[72.92,45.96],[91.23,45.96],[91.23,80.57],[72.92,80.57],[72.92,45.96]]]}',
                 gt_id=1341,
                 pd_id=2390,
@@ -154,11 +118,7 @@ def test__compute_curves(db: Session):
             ),
             RankedPair(
                 dataset_name="test_dataset",
-                pd_datum_id=527,
-                gt_datum_id=527,
-                pd_datum_uid="uid527",
                 gt_datum_uid="uid527",
-                pd_geojson='{"type":"Polygon","coordinates":[[[56.18,44.8],[64.42,44.8],[64.42,56.25],[56.18,56.25],[56.18,44.8]]]}',
                 gt_geojson='{"type":"Polygon","coordinates":[[[58.18,44.8],[66.42,44.8],[66.42,56.25],[58.18,56.25],[58.18,44.8]]]}',
                 gt_id=1350,
                 pd_id=2398,
@@ -167,11 +127,7 @@ def test__compute_curves(db: Session):
             ),
             RankedPair(
                 dataset_name="test_dataset",
-                pd_datum_id=527,
-                gt_datum_id=527,
-                pd_datum_uid="uid527",
                 gt_datum_uid="uid527",
-                pd_geojson='{"type":"Polygon","coordinates":[[[71.14,1.1],[96.96,1.1],[96.96,28.33],[71.14,28.33],[71.14,1.1]]]}',
                 gt_geojson='{"type":"Polygon","coordinates":[[[73.14,1.1],[98.96,1.1],[98.96,28.33],[73.14,28.33],[73.14,1.1]]]}',
                 gt_id=1347,
                 pd_id=2395,
@@ -180,11 +136,7 @@ def test__compute_curves(db: Session):
             ),
             RankedPair(
                 dataset_name="test_dataset",
-                pd_datum_id=527,
-                gt_datum_id=527,
-                pd_datum_uid="uid527",
                 gt_datum_uid="uid527",
-                pd_geojson='{"type":"Polygon","coordinates":[[[45.17,45.34],[66.28,45.34],[66.28,79.83],[45.17,79.83],[45.17,45.34]]]}',
                 gt_geojson='{"type":"Polygon","coordinates":[[[44.17,45.78],[63.99,45.78],[63.99,78.48],[44.17,78.48],[44.17,45.78]]]}',
                 gt_id=1349,
                 pd_id=2391,
@@ -193,11 +145,7 @@ def test__compute_curves(db: Session):
             ),
             RankedPair(
                 dataset_name="test_dataset",
-                pd_datum_id=527,
-                gt_datum_id=527,
-                pd_datum_uid="uid527",
                 gt_datum_uid="uid527",
-                pd_geojson='{"type":"Polygon","coordinates":[[[41.17,45.78],[60.99,45.78],[60.99,78.48],[41.17,78.48],[41.17,45.78]]]}',
                 gt_geojson='{"type":"Polygon","coordinates":[[[50.17,45.34],[71.28,45.34],[71.28,79.83],[50.17,79.83],[50.17,45.34]]]}',
                 gt_id=1342,
                 pd_id=2397,
@@ -206,11 +154,7 @@ def test__compute_curves(db: Session):
             ),
             RankedPair(
                 dataset_name="test_dataset",
-                pd_datum_id=527,
-                gt_datum_id=527,
-                pd_datum_uid="uid527",
                 gt_datum_uid="uid527",
-                pd_geojson='{"type":"Polygon","coordinates":[[[59.96,46.17],[80.35,46.17],[80.35,80.48],[59.96,80.48],[59.96,46.17]]]}',
                 gt_geojson='{"type":"Polygon","coordinates":[[[63.96,46.17],[84.35,46.17],[84.35,80.48],[63.96,80.48],[63.96,46.17]]]}',
                 gt_id=1344,
                 pd_id=2393,
@@ -221,11 +165,7 @@ def test__compute_curves(db: Session):
         7641129594263252302: [
             RankedPair(
                 dataset_name="test_dataset",
-                pd_datum_id=525,
-                gt_datum_id=525,
-                pd_datum_uid="uid525",
                 gt_datum_uid="uid525",
-                pd_geojson='{"type":"Polygon","coordinates":[[[12.66,3.32],[281.26,3.32],[281.26,275.23],[12.66,275.23],[12.66,3.32]]]}',
                 gt_geojson='{"type":"Polygon","coordinates":[[[1.66,3.32],[270.26,3.32],[270.26,275.23],[1.66,275.23],[1.66,3.32]]]}',
                 gt_id=1333,
                 pd_id=2382,
@@ -236,11 +176,7 @@ def test__compute_curves(db: Session):
         7594118964129415143: [
             RankedPair(
                 dataset_name="test_dataset",
-                pd_datum_id=526,
-                gt_datum_id=526,
-                pd_datum_uid="uid526",
                 gt_datum_uid="uid526",
-                pd_geojson='{"type":"Polygon","coordinates":[[[87.87,276.25],[384.29,276.25],[384.29,379.43],[87.87,379.43],[87.87,276.25]]]}',
                 gt_geojson='{"type":"Polygon","coordinates":[[[61.87,276.25],[358.29,276.25],[358.29,379.43],[61.87,379.43],[61.87,276.25]]]}',
                 gt_id=1334,
                 pd_id=2383,
@@ -249,11 +185,7 @@ def test__compute_curves(db: Session):
             ),
             RankedPair(
                 dataset_name="test_dataset",
-                pd_datum_id=524,
-                gt_datum_id=524,
-                pd_datum_uid="uid524",
                 gt_datum_uid="uid524",
-                pd_geojson='{"type":"Polygon","coordinates":[[[258.15,41.29],[606.41,41.29],[606.41,285.07],[258.15,285.07],[258.15,41.29]]]}',
                 gt_geojson='{"type":"Polygon","coordinates":[[[214.15,41.29],[562.41,41.29],[562.41,285.07],[214.15,285.07],[214.15,41.29]]]}',
                 gt_id=1331,
                 pd_id=2380,
@@ -264,11 +196,7 @@ def test__compute_curves(db: Session):
         8707070029533313719: [
             RankedPair(
                 dataset_name="test_dataset",
-                pd_datum_id=526,
-                gt_datum_id=526,
-                pd_datum_uid="uid526",
                 gt_datum_uid="uid526",
-                pd_geojson='{"type":"Polygon","coordinates":[[[0,3.66],[142.15,3.66],[142.15,316.06],[0,316.06],[0,3.66]]]}',
                 gt_geojson='{"type":"Polygon","coordinates":[[[2.75,3.66],[162.15,3.66],[162.15,316.06],[2.75,316.06],[2.75,3.66]]]}',
                 gt_id=1335,
                 pd_id=2384,
@@ -596,15 +524,37 @@ def test__compute_detection_metrics(
         target_type=enums.AnnotationType.BOX,
     )
 
-    metrics = [m.model_dump(exclude_none=True) for m in metrics]
-
-    for m in metrics:
+    def _metric_to_dict(m) -> dict:
+        m = m.model_dump(exclude_none=True)
         _round_dict(m, 3)
+        return m
+
+    ap_metrics = [
+        _metric_to_dict(m) for m in metrics if isinstance(m, schemas.APMetric)
+    ]
+    map_metrics = [
+        _metric_to_dict(m) for m in metrics if isinstance(m, schemas.mAPMetric)
+    ]
+    ap_metrics_ave_over_ious = [
+        _metric_to_dict(m)
+        for m in metrics
+        if isinstance(m, schemas.APMetricAveragedOverIOUs)
+    ]
+    map_metrics_ave_over_ious = [
+        _metric_to_dict(m)
+        for m in metrics
+        if isinstance(m, schemas.mAPMetricAveragedOverIOUs)
+    ]
+    ar_metrics = [
+        _metric_to_dict(m) for m in metrics if isinstance(m, schemas.ARMetric)
+    ]
+    mar_metrics = [
+        _metric_to_dict(m) for m in metrics if isinstance(m, schemas.mARMetric)
+    ]
 
     # cf with torch metrics/pycocotools results listed here:
     # https://github.com/Lightning-AI/metrics/blob/107dbfd5fb158b7ae6d76281df44bd94c836bfce/tests/unittests/detection/test_map.py#L231
-    expected = [
-        # AP METRICS
+    expected_ap_metrics = [
         {"iou": 0.5, "value": 0.505, "label": {"key": "class", "value": "2"}},
         {"iou": 0.75, "value": 0.505, "label": {"key": "class", "value": "2"}},
         {"iou": 0.5, "value": 0.79, "label": {"key": "class", "value": "49"}},
@@ -619,10 +569,12 @@ def test__compute_detection_metrics(
         {"iou": 0.75, "value": 1.0, "label": {"key": "class", "value": "1"}},
         {"iou": 0.5, "value": 1.0, "label": {"key": "class", "value": "4"}},
         {"iou": 0.75, "value": 1.0, "label": {"key": "class", "value": "4"}},
-        # mAP METRICS
+    ]
+    expected_map_metrics = [
         {"iou": 0.5, "value": 0.859},
         {"iou": 0.75, "value": 0.761},
-        # AP METRICS AVERAGED OVER IOUS
+    ]
+    expected_ap_metrics_ave_over_ious = [
         {
             "ious": iou_thresholds,
             "value": 0.454,
@@ -648,9 +600,11 @@ def test__compute_detection_metrics(
             "value": 0.650,
             "label": {"key": "class", "value": "4"},
         },
-        # mAP METRICS AVERAGED OVER IOUS
-        {"ious": iou_thresholds, "value": 0.637},
-        # AR METRICS
+    ]
+    expected_map_metrics_ave_over_ious = [
+        {"ious": iou_thresholds, "value": 0.637}
+    ]
+    expected_ar_metrics = [
         {
             "ious": iou_thresholds,
             "value": 0.45,
@@ -681,20 +635,37 @@ def test__compute_detection_metrics(
             "value": 0.65,
             "label": {"key": "class", "value": "4"},
         },
-        # mAR METRICS
+    ]
+    expected_mar_metrics = [
         {
             "ious": iou_thresholds,
             "value": 0.652,
         },
     ]
 
-    non_pr_metrics = metrics[:-1]
-    pr_metrics = metrics[-1]
-    for m in non_pr_metrics:
-        assert m in expected
+    for metric_type, actual_metrics, expected_metrics in [
+        ("AP", ap_metrics, expected_ap_metrics),
+        ("mAP", map_metrics, expected_map_metrics),
+        (
+            "APAveOverIOUs",
+            ap_metrics_ave_over_ious,
+            expected_ap_metrics_ave_over_ious,
+        ),
+        (
+            "mAPAveOverIOUs",
+            map_metrics_ave_over_ious,
+            expected_map_metrics_ave_over_ious,
+        ),
+        ("AR", ar_metrics, expected_ar_metrics),
+        ("mAR", mar_metrics, expected_mar_metrics),
+    ]:
 
-    for m in expected:
-        assert m in non_pr_metrics
+        for m in actual_metrics:
+            assert m in expected_metrics, f"{metric_type} {m} not in expected"
+        for m in expected_metrics:
+            assert m in actual_metrics, f"{metric_type} {m} not in actual"
+
+    pr_metrics = metrics[-1].model_dump(exclude_none=True)
 
     pr_expected_answers = {
         # (class, 4)
@@ -728,7 +699,7 @@ def test__compute_detection_metrics(
     }
 
     for (
-        key,
+        _,
         value,
         threshold,
         metric,
@@ -889,7 +860,7 @@ def test__compute_detection_metrics_with_rasters(
     }
 
     for (
-        key,
+        _,
         value,
         threshold,
         metric,
@@ -959,12 +930,13 @@ def test_detection_exceptions(db: Session):
     crud.create_groundtruth(
         db=db,
         groundtruth=schemas.GroundTruth(
-            datum=schemas.Datum(dataset_name=dataset_name, uid="uid"),
+            dataset_name=dataset_name,
+            datum=schemas.Datum(uid="uid"),
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.OBJECT_DETECTION,
                     labels=[schemas.Label(key="k1", value="v1")],
-                    bounding_box=schemas.BoundingBox.from_extrema(
+                    bounding_box=schemas.Box.from_extrema(
                         xmin=0, xmax=1, ymin=0, ymax=1
                     ),
                 )
@@ -981,13 +953,14 @@ def test_detection_exceptions(db: Session):
     crud.create_prediction(
         db=db,
         prediction=schemas.Prediction(
+            dataset_name=dataset_name,
             model_name=model_name,
-            datum=schemas.Datum(dataset_name=dataset_name, uid="uid"),
+            datum=schemas.Datum(uid="uid"),
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.OBJECT_DETECTION,
                     labels=[schemas.Label(key="k1", value="v1", score=1.0)],
-                    bounding_box=schemas.BoundingBox.from_extrema(
+                    bounding_box=schemas.Box.from_extrema(
                         xmin=0, xmax=1, ymin=0, ymax=1
                     ),
                 )

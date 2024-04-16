@@ -44,9 +44,9 @@ def test_dump_metadata_to_json():
     assert Dictionary(metadata).to_dict() == {
         "type": "dictionary",
         "value": {
-            "a": {"type": "integer", "value": 123},
-            "b": {"type": "float", "value": 123.4},
-            "c": {"type": "string", "value": "123.4"},
+            "a": 123,
+            "b": 123.4,
+            "c": "123.4",
             "d": {"type": "datetime", "value": "2023-01-01T12:12:12"},
             "e": {"type": "date", "value": "2023-01-01"},
             "f": {"type": "time", "value": "12:12:12.100000"},
@@ -66,9 +66,9 @@ def test_dictionary_encoding():
     metadata["g"] = datetime.timedelta(days=1)
 
     metadata_json = {
-        "a": {"type": "integer", "value": 123},
-        "b": {"type": "float", "value": 123.4},
-        "c": {"type": "string", "value": "123.4"},
+        "a": 123,
+        "b": 123.4,
+        "c": "123.4",
         "d": {"type": "datetime", "value": "2023-01-01T12:12:12"},
         "e": {"type": "date", "value": "2023-01-01"},
         "f": {"type": "time", "value": "12:12:12.100000"},

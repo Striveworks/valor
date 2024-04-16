@@ -51,7 +51,6 @@ def classification_test_data(db: Session, dataset_name: str, model_name: str):
 
     imgs = [
         schemas.Datum(
-            dataset_name=dataset_name,
             uid=f"uid{i}",
             metadata={
                 "height": 128,
@@ -65,6 +64,7 @@ def classification_test_data(db: Session, dataset_name: str, model_name: str):
 
     gts = [
         schemas.GroundTruth(
+            dataset_name=dataset_name,
             datum=imgs[i],
             annotations=[
                 schemas.Annotation(
@@ -81,6 +81,7 @@ def classification_test_data(db: Session, dataset_name: str, model_name: str):
 
     preds = [
         schemas.Prediction(
+            dataset_name=dataset_name,
             model_name=model_name,
             datum=imgs[i],
             annotations=[

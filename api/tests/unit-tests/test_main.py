@@ -126,9 +126,9 @@ def _test_post_evaluation_endpoint(
 
 def test_post_groundtruth(client: TestClient):
     example_json = {
+        "dataset_name": "dataset1",
         "datum": {
             "uid": "file_uid",
-            "dataset_name": "dataset1",
             "metadata": {},
         },
         "annotations": [
@@ -161,9 +161,9 @@ def test_post_groundtruth(client: TestClient):
 
 def test_post_groundtruth_classification(client: TestClient):
     example_json = {
+        "dataset_name": "dataset1",
         "datum": {
             "uid": "file_uid",
-            "dataset_name": "dataset1",
             "metadata": {
                 "meta1": 0.4,
                 "meta2": "v1",
@@ -205,9 +205,9 @@ def test_post_groundtruth_classification(client: TestClient):
 
 def test_post_groundtruth_bbox_detection(client: TestClient):
     example_json = {
+        "dataset_name": "dataset1",
         "datum": {
             "uid": "file_uid",
-            "dataset_name": "dataset1",
             "metadata": {
                 "meta1": 0.4,
                 "meta2": "v1",
@@ -224,17 +224,16 @@ def test_post_groundtruth_bbox_detection(client: TestClient):
                     "meta1": 0.4,
                     "meta2": "v1",
                 },
-                "bounding_box": {
-                    "polygon": {
-                        "points": [
-                            {"x": 0, "y": 0},
-                            {"x": 0, "y": 1},
-                            {"x": 1, "y": 1},
-                            {"x": 1, "y": 0},
-                        ]
-                    }
-                },
-            },
+                "bounding_box": [
+                    [
+                        [0, 0],
+                        [0, 1],
+                        [1, 1],
+                        [1, 0],
+                        [0, 0],
+                    ]
+                ],
+            }
         ],
     }
     _test_post_endpoints(
@@ -247,9 +246,9 @@ def test_post_groundtruth_bbox_detection(client: TestClient):
 
 def test_post_groundtruth_polygon_detection(client: TestClient):
     example_json = {
+        "dataset_name": "dataset1",
         "datum": {
             "uid": "file_uid",
-            "dataset_name": "dataset1",
             "metadata": {
                 "meta1": 0.4,
                 "meta2": "v1",
@@ -266,36 +265,31 @@ def test_post_groundtruth_polygon_detection(client: TestClient):
                     "meta1": 0.4,
                     "meta2": "v1",
                 },
-                "polygon": {
-                    "boundary": {
-                        "points": [
-                            {"x": 0, "y": 0},
-                            {"x": 0, "y": 10},
-                            {"x": 10, "y": 10},
-                            {"x": 10, "y": 0},
-                        ]
-                    },
-                    "holes": [
-                        {
-                            "points": [
-                                {"x": 1, "y": 1},
-                                {"x": 1, "y": 2},
-                                {"x": 3, "y": 3},
-                                {"x": 2, "y": 1},
-                            ]
-                        },
-                        {
-                            "points": [
-                                {"x": 4, "y": 4},
-                                {"x": 4, "y": 5},
-                                {"x": 4.5, "y": 5.5},
-                                {"x": 5, "y": 5},
-                                {"x": 5, "y": 4},
-                            ]
-                        },
+                "polygon": [
+                    [
+                        [0, 0],
+                        [0, 10],
+                        [10, 10],
+                        [10, 0],
+                        [0, 0],
                     ],
-                },
-            },
+                    [
+                        [1, 1],
+                        [1, 2],
+                        [3, 3],
+                        [2, 1],
+                        [1, 1],
+                    ],
+                    [
+                        [4, 4],
+                        [4, 5],
+                        [4.5, 5.5],
+                        [5, 5],
+                        [5, 4],
+                        [4, 4],
+                    ],
+                ],
+            }
         ],
     }
     _test_post_endpoints(
@@ -308,9 +302,9 @@ def test_post_groundtruth_polygon_detection(client: TestClient):
 
 def test_post_groundtruth_raster_segmentation(client: TestClient):
     example_json = {
+        "dataset_name": "dataset1",
         "datum": {
             "uid": "file_uid",
-            "dataset_name": "dataset1",
             "metadata": {
                 "height": 20,
                 "width": 20,
@@ -361,9 +355,9 @@ def test_post_groundtruth_raster_segmentation(client: TestClient):
 @patch("valor_api.main.crud")
 def test_get_groundtruth(crud, client: TestClient):
     crud.get_groundtruth.return_value = {
+        "dataset_name": "dataset1",
         "datum": {
             "uid": "file_uid",
-            "dataset_name": "dataset1",
             "metadata": {
                 "meta1": 0.4,
                 "meta2": "v1",
@@ -380,17 +374,16 @@ def test_get_groundtruth(crud, client: TestClient):
                     "meta1": 0.4,
                     "meta2": "v1",
                 },
-                "bounding_box": {
-                    "polygon": {
-                        "points": [
-                            {"x": 0, "y": 0},
-                            {"x": 0, "y": 1},
-                            {"x": 1, "y": 1},
-                            {"x": 1, "y": 0},
-                        ]
-                    }
-                },
-            },
+                "bounding_box": [
+                    [
+                        [0, 0],
+                        [0, 1],
+                        [1, 1],
+                        [1, 0],
+                        [0, 0],
+                    ]
+                ],
+            }
         ],
     }
 
@@ -412,10 +405,10 @@ def test_get_groundtruth(crud, client: TestClient):
 
 def test_post_prediction(client: TestClient):
     example_json = {
+        "dataset_name": "dataset1",
         "model_name": "model1",
         "datum": {
             "uid": "file_uid",
-            "dataset_name": "dataset1",
             "metadata": {},
         },
         "annotations": [
@@ -457,10 +450,10 @@ def test_post_prediction(client: TestClient):
 
 def test_post_prediction_classification(client: TestClient):
     example_json = {
+        "dataset_name": "dataset1",
         "model_name": "model1",
         "datum": {
             "uid": "file_uid",
-            "dataset_name": "dataset1",
             "metadata": {
                 "meta1": 0.4,
                 "meta2": "v1",
@@ -501,10 +494,10 @@ def test_post_prediction_classification(client: TestClient):
 
 def test_post_prediction_bbox_detection(client: TestClient):
     example_json = {
+        "dataset_name": "dataset1",
         "model_name": "model1",
         "datum": {
             "uid": "file_uid",
-            "dataset_name": "dataset1",
             "metadata": {
                 "meta1": 0.4,
                 "meta2": "v1",
@@ -521,16 +514,15 @@ def test_post_prediction_bbox_detection(client: TestClient):
                     "meta1": 0.4,
                     "meta2": "v1",
                 },
-                "bounding_box": {
-                    "polygon": {
-                        "points": [
-                            {"x": 0, "y": 0},
-                            {"x": 0, "y": 1},
-                            {"x": 1, "y": 1},
-                            {"x": 1, "y": 0},
-                        ]
-                    }
-                },
+                "bounding_box": [
+                    [
+                        [0, 0],
+                        [0, 1],
+                        [1, 1],
+                        [1, 0],
+                        [0, 0],
+                    ]
+                ],
             },
         ],
     }
@@ -545,10 +537,10 @@ def test_post_prediction_bbox_detection(client: TestClient):
 
 def test_post_prediction_polygon_detection(client: TestClient):
     example_json = {
+        "dataset_name": "dataset1",
         "model_name": "model1",
         "datum": {
             "uid": "file_uid",
-            "dataset_name": "dataset1",
             "metadata": {
                 "meta1": 0.4,
                 "meta2": "v1",
@@ -565,36 +557,31 @@ def test_post_prediction_polygon_detection(client: TestClient):
                     "meta1": 0.4,
                     "meta2": "v1",
                 },
-                "polygon": {
-                    "boundary": {
-                        "points": [
-                            {"x": 0, "y": 0},
-                            {"x": 0, "y": 10},
-                            {"x": 10, "y": 10},
-                            {"x": 10, "y": 0},
-                        ]
-                    },
-                    "holes": [
-                        {
-                            "points": [
-                                {"x": 1, "y": 1},
-                                {"x": 1, "y": 2},
-                                {"x": 3, "y": 3},
-                                {"x": 2, "y": 1},
-                            ]
-                        },
-                        {
-                            "points": [
-                                {"x": 4, "y": 4},
-                                {"x": 4, "y": 5},
-                                {"x": 4.5, "y": 5.5},
-                                {"x": 5, "y": 5},
-                                {"x": 5, "y": 4},
-                            ]
-                        },
+                "polygon": [
+                    [
+                        [0, 0],
+                        [0, 10],
+                        [10, 10],
+                        [10, 0],
+                        [0, 0],
                     ],
-                },
-            },
+                    [
+                        [1, 1],
+                        [1, 2],
+                        [3, 3],
+                        [2, 1],
+                        [1, 1],
+                    ],
+                    [
+                        [4, 4],
+                        [4, 5],
+                        [4.5, 5.5],
+                        [5, 5],
+                        [5, 4],
+                        [4, 4],
+                    ],
+                ],
+            }
         ],
     }
 
@@ -611,10 +598,10 @@ def test_post_prediction_polygon_detection(client: TestClient):
 def test_post_prediction_raster_segmentation(client: TestClient):
     example_json = [
         {
+            "dataset_name": "dataset1",
             "model_name": "model1",
             "datum": {
                 "uid": "file_uid",
-                "dataset_name": "dataset1",
                 "metadata": {
                     "height": 20,
                     "width": 20,
@@ -666,10 +653,10 @@ def test_post_prediction_raster_segmentation(client: TestClient):
 @patch("valor_api.main.crud")
 def test_get_prediction(crud, client: TestClient):
     crud.get_prediction.return_value = {
+        "dataset_name": "dataset1",
         "model_name": "model1",
         "datum": {
             "uid": "file_uid",
-            "dataset_name": "dataset1",
             "metadata": {
                 "meta1": 0.4,
                 "meta2": "v1",
@@ -686,16 +673,15 @@ def test_get_prediction(crud, client: TestClient):
                     "meta1": 0.4,
                     "meta2": "v1",
                 },
-                "bounding_box": {
-                    "polygon": {
-                        "points": [
-                            {"x": 0, "y": 0},
-                            {"x": 0, "y": 1},
-                            {"x": 1, "y": 1},
-                            {"x": 1, "y": 0},
-                        ]
-                    }
-                },
+                "bounding_box": [
+                    [
+                        [0, 0],
+                        [0, 1],
+                        [1, 1],
+                        [1, 0],
+                        [0, 0],
+                    ]
+                ],
             },
         ],
     }
@@ -747,7 +733,7 @@ def test_post_datasets(client: TestClient):
 
 @patch("valor_api.main.crud")
 def test_get_datasets(crud, client: TestClient):
-    crud.get_datasets.return_value = []
+    crud.get_datasets.return_value = ([], {"headers": "headers"})
     resp = client.get("/datasets")
     assert resp.status_code == 200
     crud.get_datasets.assert_called_once()
@@ -863,7 +849,7 @@ def test_post_models(client: TestClient):
 
 @patch("valor_api.main.crud")
 def test_get_models(crud, client: TestClient):
-    crud.get_models.return_value = []
+    crud.get_models.return_value = ([], {"headers": "headers"})
     resp = client.get("/models")
     assert resp.status_code == 200
     crud.get_models.assert_called_once()
@@ -1035,7 +1021,7 @@ def test_post_semenatic_segmentation_metrics(client: TestClient):
 
 @patch("valor_api.main.crud")
 def test_get_dataset_labels(crud, client: TestClient):
-    crud.get_labels.return_value = []
+    crud.get_labels.return_value = ([], {"headers": "headers"})
     resp = client.get("/labels/dataset/dsetname")
     assert resp.status_code == 200
     crud.get_labels.assert_called_once()
@@ -1056,7 +1042,7 @@ def test_get_dataset_labels(crud, client: TestClient):
 
 @patch("valor_api.main.crud")
 def test_get_model_labels(crud, client: TestClient):
-    crud.get_labels.return_value = []
+    crud.get_labels.return_value = ([], {"headers": "headers"})
     resp = client.get("/labels/model/modelname")
     assert resp.status_code == 200
     crud.get_labels.assert_called_once()
@@ -1074,7 +1060,7 @@ def test_get_model_labels(crud, client: TestClient):
 
 @patch("valor_api.main.crud")
 def test_get_datums(crud, client: TestClient):
-    crud.get_datums.return_value = []
+    crud.get_datums.return_value = ([], {"headers": "headers"})
     resp = client.get("/data")
     assert resp.status_code == 200
     crud.get_datums.assert_called_once()
@@ -1095,9 +1081,10 @@ def test_get_datums(crud, client: TestClient):
 
 @patch("valor_api.main.crud")
 def test_get_datum(crud, client: TestClient):
-    crud.get_datums.return_value = [
-        schemas.Datum(uid="uid", dataset_name="dataset_name")
-    ]
+    crud.get_datums.return_value = (
+        [schemas.Datum(uid="uid")],
+        {},
+    )
 
     resp = client.get("/data/dataset/dsetname/uid/uid")
     assert resp.status_code == 200
@@ -1119,7 +1106,7 @@ def test_get_datum(crud, client: TestClient):
 
 @patch("valor_api.main.crud")
 def test_get_labels(crud, client: TestClient):
-    crud.get_labels.return_value = []
+    crud.get_labels.return_value = ([], {"headers": "headers"})
     resp = client.get("/labels")
     assert resp.status_code == 200
     crud.get_labels.assert_called_once()

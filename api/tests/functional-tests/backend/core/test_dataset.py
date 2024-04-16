@@ -8,11 +8,13 @@ from valor_api.backend import core, models
 
 @pytest.fixture
 def created_datasets(db: Session) -> list[str]:
-    dataset1 = schemas.Dataset(name="dataset1")
-    dataset2 = schemas.Dataset(name="dataset2")
-    core.create_dataset(db, dataset=dataset1)
-    core.create_dataset(db, dataset=dataset2)
-    return ["dataset1", "dataset2"]
+    datasets = []
+    for i in range(10):
+        dataset = schemas.Dataset(name=f"dataset{i}")
+        core.create_dataset(db, dataset=dataset)
+        datasets.append(f"dataset{i}")
+
+    return datasets
 
 
 def test_create_dataset(db: Session, created_dataset):
@@ -46,10 +48,48 @@ def test_get_dataset(db: Session, created_dataset):
         core.get_dataset(db, "some_nonexistent_dataset")
 
 
-def test_get_datasets(db: Session, created_datasets):
-    datasets = core.get_datasets(db)
+def test_get_paginated_datasets(db: Session, created_datasets):
+    datasets, headers = core.get_paginated_datasets(db)
     for dataset in datasets:
         assert dataset.name in created_datasets
+    assert headers == {"content-range": "items 0-9/10"}
+
+    # test pagination
+    with pytest.raises(ValueError):
+        # offset is greater than the number of items returned in query
+        datasets, headers = core.get_paginated_datasets(
+            db, offset=100, limit=2
+        )
+
+    datasets, headers = core.get_paginated_datasets(db, offset=5, limit=2)
+    assert [dataset.name for dataset in datasets] == [
+        "dataset4",
+        "dataset3",
+    ]  # newest items are returned first
+    assert headers == {"content-range": "items 5-6/10"}
+
+    datasets, headers = core.get_paginated_datasets(db, offset=2, limit=7)
+    assert [dataset.name for dataset in datasets] == [
+        f"dataset{i}" for i in range(7, 0, -1)
+    ]
+    assert headers == {"content-range": "items 2-8/10"}
+
+    # test that we can reconstitute the full set using paginated calls
+    first, header = core.get_paginated_datasets(db, offset=1, limit=2)
+    assert len(first) == 2
+    assert header == {"content-range": "items 1-2/10"}
+
+    second, header = core.get_paginated_datasets(db, offset=0, limit=1)
+    assert len(second) == 1
+    assert header == {"content-range": "items 0-0/10"}
+
+    third, header = core.get_paginated_datasets(db, offset=3, limit=20)
+    assert len(third) == 7
+    assert header == {"content-range": "items 3-9/10"}
+
+    combined = [entry.name for entry in first + second + third]
+
+    assert set(combined) == set([f"dataset{i}" for i in range(0, 10)])
 
 
 def test_dataset_status(db: Session, created_dataset):
@@ -233,8 +273,14 @@ def test_get_unique_datum_metadata_in_dataset(
     )
     unique_metadata.sort(key=_get_width)
     assert unique_metadata == [
-        {"width": 32.0, "height": 80.0},
-        {"width": 200.0, "height": 100.0},
+        {
+            "width": 32,
+            "height": 80,
+        },
+        {
+            "width": 200,
+            "height": 100,
+        },
     ]
 
 
@@ -249,4 +295,7 @@ def test_get_unique_groundtruth_annotation_metadata_in_dataset(
 
     assert len(unique_metadata) == 2
     assert {"int_key": 1} in unique_metadata
-    assert {"string_key": "string_val", "int_key": 1} in unique_metadata
+    assert {
+        "string_key": "string_val",
+        "int_key": 1,
+    } in unique_metadata

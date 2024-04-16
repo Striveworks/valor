@@ -53,7 +53,6 @@ def _test_create_image_dataset_with_gts(
     assert len(images) == len(expected_image_uids)
     assert set([image.uid for image in images]) == expected_image_uids
 
-    # check that there are two labels
     labels = dataset.get_labels()
     assert len(labels) == len(expected_labels_tuples)
     assert (
@@ -101,8 +100,8 @@ def test_create_image_dataset_with_href_and_description(
         select(models.Dataset.meta).where(models.Dataset.name == dataset_name)
     )
     assert dataset_metadata == {
-        "href": "http://a.com/b",
-        "description": "a description",
+        "href": href,
+        "description": description,
     }
 
 
@@ -392,8 +391,9 @@ def test_get_summary(
         "height": 900,
         "width": 300,
         "geospatial": {
-            "geojson": {
-                "type": "polygon",
+            "type": "geojson",
+            "value": {
+                "type": "Polygon",
                 "coordinates": [
                     [
                         [125.2750725, 38.760525],
@@ -407,14 +407,15 @@ def test_get_summary(
                         [125.2750725, 38.760525],
                     ]
                 ],
-            }
+            },
         },
     } in summary.datum_metadata  # uid1
     assert {
         "height": image_height,
         "width": image_width,
         "geospatial": {
-            "geojson": {"coordinates": [44.1, 22.4], "type": "point"}
+            "type": "geojson",
+            "value": {"coordinates": [44.1, 22.4], "type": "Point"},
         },
     } in summary.datum_metadata  # uid2
 

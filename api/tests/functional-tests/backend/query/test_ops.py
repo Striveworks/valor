@@ -103,7 +103,8 @@ def metadata_1(geospatial_coordinates) -> dict[str, int | float | str | dict]:
         "width": 10,
         "some_bool_attribute": True,
         "some_geo_attribute": {
-            "geojson": geospatial_coordinates["polygon1"],
+            "type": "geojson",
+            "value": geospatial_coordinates["polygon1"],
         },
     }
 
@@ -117,7 +118,8 @@ def metadata_2(geospatial_coordinates) -> dict[str, int | float | str | dict]:
         "width": 10,
         "some_bool_attribute": False,
         "some_geo_attribute": {
-            "geojson": geospatial_coordinates["multipolygon"],
+            "type": "geojson",
+            "value": geospatial_coordinates["multipolygon"],
         },
     }
 
@@ -131,7 +133,8 @@ def metadata_3(geospatial_coordinates) -> dict[str, int | float | str | dict]:
         "width": 10,
         "some_bool_attribute": True,
         "some_geo_attribute": {
-            "geojson": geospatial_coordinates["polygon2"],
+            "type": "geojson",
+            "value": geospatial_coordinates["polygon2"],
         },
     }
 
@@ -145,7 +148,8 @@ def metadata_4(geospatial_coordinates) -> dict[str, int | float | str | dict]:
         "width": 10,
         "some_bool_attribute": False,
         "some_geo_attribute": {
-            "geojson": geospatial_coordinates["polygon3"],
+            "type": "geojson",
+            "value": geospatial_coordinates["polygon3"],
         },
     }
 
@@ -185,7 +189,6 @@ def raster_2():
 def datum_1(metadata_1) -> schemas.Datum:
     return schemas.Datum(
         uid=datum_uid1,
-        dataset_name=dset_name,
         metadata=metadata_1,
     )
 
@@ -194,7 +197,6 @@ def datum_1(metadata_1) -> schemas.Datum:
 def datum_2(metadata_2) -> schemas.Datum:
     return schemas.Datum(
         uid=datum_uid2,
-        dataset_name=dset_name,
         metadata=metadata_2,
     )
 
@@ -203,7 +205,6 @@ def datum_2(metadata_2) -> schemas.Datum:
 def datum_3(metadata_3) -> schemas.Datum:
     return schemas.Datum(
         uid=datum_uid3,
-        dataset_name=dset_name,
         metadata=metadata_3,
     )
 
@@ -212,7 +213,6 @@ def datum_3(metadata_3) -> schemas.Datum:
 def datum_4(metadata_4) -> schemas.Datum:
     return schemas.Datum(
         uid=datum_uid4,
-        dataset_name=dset_name,
         metadata=metadata_4,
     )
 
@@ -233,13 +233,17 @@ def groundtruth_annotations_cat(
         schemas.Annotation(
             task_type=TaskType.OBJECT_DETECTION,
             labels=[label_cat],
-            bounding_box=schemas.BoundingBox.from_extrema(0, 0, 10, 10),
+            bounding_box=schemas.Box.from_extrema(
+                xmin=0, ymin=0, xmax=10, ymax=10
+            ),
             metadata=metadata_1,
         ),
         schemas.Annotation(
             task_type=TaskType.OBJECT_DETECTION,
             labels=[label_cat],
-            bounding_box=schemas.BoundingBox.from_extrema(0, 0, 1, 50),
+            bounding_box=schemas.Box.from_extrema(
+                xmin=0, ymin=0, xmax=1, ymax=50
+            ),
             metadata=metadata_2,
         ),
         schemas.Annotation(
@@ -273,13 +277,17 @@ def groundtruth_annotations_dog(
         schemas.Annotation(
             task_type=TaskType.OBJECT_DETECTION,
             labels=[label_dog],
-            bounding_box=schemas.BoundingBox.from_extrema(0, 0, 10, 10),
+            bounding_box=schemas.Box.from_extrema(
+                xmin=0, ymin=0, xmax=10, ymax=10
+            ),
             metadata=metadata_3,
         ),
         schemas.Annotation(
             task_type=TaskType.OBJECT_DETECTION,
             labels=[label_dog],
-            bounding_box=schemas.BoundingBox.from_extrema(0, 0, 1, 50),
+            bounding_box=schemas.Box.from_extrema(
+                xmin=0, ymin=0, xmax=1, ymax=50
+            ),
             metadata=metadata_4,
         ),
         schemas.Annotation(
@@ -318,7 +326,9 @@ def prediction_annotations_cat(
                 schemas.Label(key="class", value="cat", score=0.8),
                 schemas.Label(key="class", value="dog", score=0.2),
             ],
-            bounding_box=schemas.BoundingBox.from_extrema(0, 0, 10, 10),
+            bounding_box=schemas.Box.from_extrema(
+                xmin=0, ymin=0, xmax=10, ymax=10
+            ),
             metadata=metadata_1,
         ),
         schemas.Annotation(
@@ -327,7 +337,9 @@ def prediction_annotations_cat(
                 schemas.Label(key="class", value="cat", score=0.7),
                 schemas.Label(key="class", value="dog", score=0.3),
             ],
-            bounding_box=schemas.BoundingBox.from_extrema(0, 0, 1, 50),
+            bounding_box=schemas.Box.from_extrema(
+                xmin=0, ymin=0, xmax=1, ymax=50
+            ),
             metadata=metadata_2,
         ),
         schemas.Annotation(
@@ -372,7 +384,9 @@ def prediction_annotations_dog(
                 schemas.Label(key="class", value="cat", score=0.2),
                 schemas.Label(key="class", value="dog", score=0.8),
             ],
-            bounding_box=schemas.BoundingBox.from_extrema(0, 0, 10, 10),
+            bounding_box=schemas.Box.from_extrema(
+                xmin=0, ymin=0, xmax=10, ymax=10
+            ),
             metadata=metadata_3,
         ),
         schemas.Annotation(
@@ -381,7 +395,9 @@ def prediction_annotations_dog(
                 schemas.Label(key="class", value="cat", score=0.3),
                 schemas.Label(key="class", value="dog", score=0.7),
             ],
-            bounding_box=schemas.BoundingBox.from_extrema(0, 0, 1, 50),
+            bounding_box=schemas.Box.from_extrema(
+                xmin=0, ymin=0, xmax=1, ymax=50
+            ),
             metadata=metadata_4,
         ),
         schemas.Annotation(
@@ -411,6 +427,7 @@ def groundtruth_cat_datum_1(
     groundtruth_annotations_cat,
 ) -> schemas.GroundTruth:
     return schemas.GroundTruth(
+        dataset_name=dset_name,
         datum=datum_1,
         annotations=groundtruth_annotations_cat,
     )
@@ -422,6 +439,7 @@ def groundtruth_cat_datum_2(
     groundtruth_annotations_cat,
 ) -> schemas.GroundTruth:
     return schemas.GroundTruth(
+        dataset_name=dset_name,
         datum=datum_2,
         annotations=groundtruth_annotations_cat,
     )
@@ -433,6 +451,7 @@ def groundtruth_dog_datum_3(
     groundtruth_annotations_dog,
 ) -> schemas.GroundTruth:
     return schemas.GroundTruth(
+        dataset_name=dset_name,
         datum=datum_3,
         annotations=groundtruth_annotations_dog,
     )
@@ -444,6 +463,7 @@ def groundtruth_dog_datum_4(
     groundtruth_annotations_dog,
 ) -> schemas.GroundTruth:
     return schemas.GroundTruth(
+        dataset_name=dset_name,
         datum=datum_4,
         annotations=groundtruth_annotations_dog,
     )
@@ -455,6 +475,7 @@ def prediction_cat_datum1_model1(
     prediction_annotations_cat,
 ) -> schemas.Prediction:
     return schemas.Prediction(
+        dataset_name=dset_name,
         model_name=model_name1,
         datum=datum_1,
         annotations=prediction_annotations_cat,
@@ -467,6 +488,7 @@ def prediction_cat_datum2_model1(
     prediction_annotations_cat,
 ) -> schemas.Prediction:
     return schemas.Prediction(
+        dataset_name=dset_name,
         model_name=model_name1,
         datum=datum_2,
         annotations=prediction_annotations_cat,
@@ -479,6 +501,7 @@ def prediction_dog_datum3_model1(
     prediction_annotations_dog,
 ) -> schemas.Prediction:
     return schemas.Prediction(
+        dataset_name=dset_name,
         model_name=model_name1,
         datum=datum_3,
         annotations=prediction_annotations_dog,
@@ -491,6 +514,7 @@ def prediction_dog_datum4_model1(
     prediction_annotations_dog,
 ) -> schemas.Prediction:
     return schemas.Prediction(
+        dataset_name=dset_name,
         model_name=model_name1,
         datum=datum_4,
         annotations=prediction_annotations_dog,
@@ -503,6 +527,7 @@ def prediction_dog_datum1_model2(
     prediction_annotations_dog,
 ) -> schemas.Prediction:
     return schemas.Prediction(
+        dataset_name=dset_name,
         model_name=model_name2,
         datum=datum_1,
         annotations=prediction_annotations_dog,
@@ -515,6 +540,7 @@ def prediction_dog_datum2_model2(
     prediction_annotations_dog,
 ) -> schemas.Prediction:
     return schemas.Prediction(
+        dataset_name=dset_name,
         model_name=model_name2,
         datum=datum_2,
         annotations=prediction_annotations_dog,
@@ -527,6 +553,7 @@ def prediction_cat_datum3_model2(
     prediction_annotations_cat,
 ) -> schemas.Prediction:
     return schemas.Prediction(
+        dataset_name=dset_name,
         model_name=model_name2,
         datum=datum_3,
         annotations=prediction_annotations_cat,
@@ -539,6 +566,7 @@ def prediction_cat_datum4_model2(
     prediction_annotations_cat,
 ) -> schemas.Prediction:
     return schemas.Prediction(
+        dataset_name=dset_name,
         model_name=model_name2,
         datum=datum_4,
         annotations=prediction_annotations_cat,
@@ -1008,7 +1036,7 @@ def _get_geospatial_names_from_filter(
             arg_name: {
                 "some_geo_attribute": [
                     schemas.GeospatialFilter(
-                        value=schemas.metadata.geojson_from_dict(geodict),
+                        value=geodict,  # type: ignore - conversion should occur
                         operator=operator,
                     ),
                 ]
@@ -1405,19 +1433,13 @@ def test_model_geospatial_filters(
 def datetime_metadata() -> list[schemas.DateTime]:
     """List of datetimes using different formats."""
     return [
+        schemas.DateTime(value="2022-01-01"),
         schemas.DateTime(
-            datetime="2022-01-01",
+            value="2023-04-07T16:34:56",
         ),
-        schemas.DateTime(
-            datetime="Apr 07 2023 16:34:56",
-        ),
-        schemas.DateTime(datetime="Apr 07 2023 4:35:56 PM"),
-        schemas.DateTime(
-            datetime="November 12, 2023",
-        ),
-        schemas.DateTime(
-            datetime="2023-12-04T00:05:23+04:00",
-        ),
+        schemas.DateTime(value="2023-04-07T16:35:56"),
+        schemas.DateTime(value="2023-11-12"),
+        schemas.DateTime(value="2023-12-04T00:05:23+04:00"),
     ]
 
 
@@ -1426,17 +1448,17 @@ def date_metadata() -> list[schemas.Date]:
     """List of dates using different formats."""
     return [
         schemas.Date(
-            date="2022-01-01",
+            value="2022-01-01",
         ),
         schemas.Date(
-            date="Apr 07 2023",
+            value="2023-04-07",
         ),
-        schemas.Date(date="Apr 08 2023"),
+        schemas.Date(value="2023-04-08"),
         schemas.Date(
-            date="November 12, 2023",
+            value="2023-11-12",
         ),
         schemas.Date(
-            date="2023-12-04",
+            value="2023-12-04",
         ),
     ]
 
@@ -1446,17 +1468,17 @@ def time_metadata() -> list[schemas.Time]:
     """List of times using different formats."""
     return [
         schemas.Time(
-            time="00:05:23",
+            value="00:05:23",
         ),
         schemas.Time(
-            time="16:34:56",
+            value="16:34:56",
         ),
-        schemas.Time(time="16:35:56.000283"),
+        schemas.Time(value="16:35:56.000283"),
         schemas.Time(
-            time="18:02:23",
+            value="18:02:23",
         ),
         schemas.Time(
-            time="22:05:23",
+            value="22:05:23",
         ),
     ]
 
@@ -1466,17 +1488,17 @@ def duration_metadata() -> list[schemas.Duration]:
     """List of time durations using different formats."""
     return [
         schemas.Duration(
-            duration="0.0001",
+            value=0.0001,
         ),
         schemas.Duration(
-            duration="324.01",
+            value=324.01,
         ),
-        schemas.Duration(duration="324.02"),
+        schemas.Duration(value=324.02),
         schemas.Duration(
-            duration="180223.0",
+            value=180223.0,
         ),
         schemas.Duration(
-            duration="220523.0",
+            value=220523.0,
         ),
     ]
 
@@ -1664,10 +1686,16 @@ def test_dataset_datetime_queries(
         dataset=schemas.Dataset(
             name="dataset1",
             metadata={
-                datetime_key: datetime_metadata[1].model_dump(),
-                date_key: date_metadata[1].model_dump(),
-                time_key: time_metadata[1].model_dump(),
-                duration_key: duration_metadata[1].model_dump(),
+                datetime_key: {
+                    "type": "datetime",
+                    "value": datetime_metadata[1].value,
+                },
+                date_key: {"type": "date", "value": date_metadata[1].value},
+                time_key: {"type": "time", "value": time_metadata[1].value},
+                duration_key: {
+                    "type": "duration",
+                    "value": duration_metadata[1].value,
+                },
             },
         ),
     )
@@ -1676,10 +1704,16 @@ def test_dataset_datetime_queries(
         dataset=schemas.Dataset(
             name="dataset2",
             metadata={
-                datetime_key: datetime_metadata[3].model_dump(),
-                date_key: date_metadata[3].model_dump(),
-                time_key: time_metadata[3].model_dump(),
-                duration_key: duration_metadata[3].model_dump(),
+                datetime_key: {
+                    "type": "datetime",
+                    "value": datetime_metadata[3].value,
+                },
+                date_key: {"type": "date", "value": date_metadata[3].value},
+                time_key: {"type": "time", "value": time_metadata[3].value},
+                duration_key: {
+                    "type": "duration",
+                    "value": duration_metadata[3].value,
+                },
             },
         ),
     )
@@ -1873,10 +1907,16 @@ def test_model_datetime_queries(
         model=schemas.Model(
             name="model1",
             metadata={
-                datetime_key: datetime_metadata[1].model_dump(),
-                date_key: date_metadata[1].model_dump(),
-                time_key: time_metadata[1].model_dump(),
-                duration_key: duration_metadata[1].model_dump(),
+                datetime_key: {
+                    "type": "datetime",
+                    "value": datetime_metadata[1].value,
+                },
+                date_key: {"type": "date", "value": date_metadata[1].value},
+                time_key: {"type": "time", "value": time_metadata[1].value},
+                duration_key: {
+                    "type": "duration",
+                    "value": duration_metadata[1].value,
+                },
             },
         ),
     )
@@ -1885,10 +1925,16 @@ def test_model_datetime_queries(
         model=schemas.Model(
             name="model2",
             metadata={
-                datetime_key: datetime_metadata[3].model_dump(),
-                date_key: date_metadata[3].model_dump(),
-                time_key: time_metadata[3].model_dump(),
-                duration_key: duration_metadata[3].model_dump(),
+                datetime_key: {
+                    "type": "datetime",
+                    "value": datetime_metadata[3].value,
+                },
+                date_key: {"type": "date", "value": date_metadata[3].value},
+                time_key: {"type": "time", "value": time_metadata[3].value},
+                duration_key: {
+                    "type": "duration",
+                    "value": duration_metadata[3].value,
+                },
             },
         ),
     )
@@ -2113,25 +2159,28 @@ def test_datum_datetime_queries(
     time_key = "a_third_key"
     duration_key = "some_duration"
 
-    datum_1.metadata[datetime_key] = datetime_metadata[1].model_dump()
-    datum_2.metadata[datetime_key] = datetime_metadata[2].model_dump()
-    datum_3.metadata[datetime_key] = datetime_metadata[2].model_dump()
-    datum_4.metadata[datetime_key] = datetime_metadata[3].model_dump()
+    def add_metadata_typing(value):
+        return {"type": type(value).__name__.lower(), "value": value.value}
 
-    datum_1.metadata[date_key] = date_metadata[1].model_dump()
-    datum_2.metadata[date_key] = date_metadata[2].model_dump()
-    datum_3.metadata[date_key] = date_metadata[2].model_dump()
-    datum_4.metadata[date_key] = date_metadata[3].model_dump()
+    datum_1.metadata[datetime_key] = add_metadata_typing(datetime_metadata[1])
+    datum_2.metadata[datetime_key] = add_metadata_typing(datetime_metadata[2])
+    datum_3.metadata[datetime_key] = add_metadata_typing(datetime_metadata[2])
+    datum_4.metadata[datetime_key] = add_metadata_typing(datetime_metadata[3])
 
-    datum_1.metadata[time_key] = time_metadata[1].model_dump()
-    datum_2.metadata[time_key] = time_metadata[2].model_dump()
-    datum_3.metadata[time_key] = time_metadata[2].model_dump()
-    datum_4.metadata[time_key] = time_metadata[3].model_dump()
+    datum_1.metadata[date_key] = add_metadata_typing(date_metadata[1])
+    datum_2.metadata[date_key] = add_metadata_typing(date_metadata[2])
+    datum_3.metadata[date_key] = add_metadata_typing(date_metadata[2])
+    datum_4.metadata[date_key] = add_metadata_typing(date_metadata[3])
 
-    datum_1.metadata[duration_key] = duration_metadata[1].model_dump()
-    datum_2.metadata[duration_key] = duration_metadata[2].model_dump()
-    datum_3.metadata[duration_key] = duration_metadata[2].model_dump()
-    datum_4.metadata[duration_key] = duration_metadata[3].model_dump()
+    datum_1.metadata[time_key] = add_metadata_typing(time_metadata[1])
+    datum_2.metadata[time_key] = add_metadata_typing(time_metadata[2])
+    datum_3.metadata[time_key] = add_metadata_typing(time_metadata[2])
+    datum_4.metadata[time_key] = add_metadata_typing(time_metadata[3])
+
+    datum_1.metadata[duration_key] = add_metadata_typing(duration_metadata[1])
+    datum_2.metadata[duration_key] = add_metadata_typing(duration_metadata[2])
+    datum_3.metadata[duration_key] = add_metadata_typing(duration_metadata[2])
+    datum_4.metadata[duration_key] = add_metadata_typing(duration_metadata[3])
 
     annotation = schemas.Annotation(
         task_type=enums.TaskType.CLASSIFICATION,
@@ -2148,25 +2197,25 @@ def test_datum_datetime_queries(
     crud.create_groundtruth(
         db=db,
         groundtruth=schemas.GroundTruth(
-            datum=datum_1, annotations=[annotation]
+            dataset_name=dset_name, datum=datum_1, annotations=[annotation]
         ),
     )
     crud.create_groundtruth(
         db=db,
         groundtruth=schemas.GroundTruth(
-            datum=datum_2, annotations=[annotation]
+            dataset_name=dset_name, datum=datum_2, annotations=[annotation]
         ),
     )
     crud.create_groundtruth(
         db=db,
         groundtruth=schemas.GroundTruth(
-            datum=datum_3, annotations=[annotation]
+            dataset_name=dset_name, datum=datum_3, annotations=[annotation]
         ),
     )
     crud.create_groundtruth(
         db=db,
         groundtruth=schemas.GroundTruth(
-            datum=datum_4, annotations=[annotation]
+            dataset_name=dset_name, datum=datum_4, annotations=[annotation]
         ),
     )
 
@@ -2175,9 +2224,12 @@ def test_datum_datetime_queries(
         model=schemas.Model(
             name="model1",
             metadata={
-                datetime_key: datetime_metadata[1].model_dump(),
-                date_key: date_metadata[1].model_dump(),
-                time_key: time_metadata[1].model_dump(),
+                datetime_key: {
+                    "type": "datetime",
+                    "value": datetime_metadata[1].value,
+                },
+                date_key: {"type": "date", "value": date_metadata[1].value},
+                time_key: {"type": "time", "value": time_metadata[1].value},
             },
         ),
     )
@@ -2186,9 +2238,12 @@ def test_datum_datetime_queries(
         model=schemas.Model(
             name="model2",
             metadata={
-                datetime_key: datetime_metadata[3].model_dump(),
-                date_key: date_metadata[3].model_dump(),
-                time_key: time_metadata[3].model_dump(),
+                datetime_key: {
+                    "type": "datetime",
+                    "value": datetime_metadata[3].value,
+                },
+                date_key: {"type": "date", "value": date_metadata[3].value},
+                time_key: {"type": "time", "value": time_metadata[3].value},
             },
         ),
     )
@@ -2354,40 +2409,64 @@ def test_annotation_datetime_queries(
         task_type=enums.TaskType.CLASSIFICATION,
         labels=[schemas.Label(key="k1", value="v1")],
         metadata={
-            datetime_key: datetime_metadata[1].model_dump(),
-            date_key: date_metadata[1].model_dump(),
-            time_key: time_metadata[1].model_dump(),
-            duration_key: duration_metadata[1].model_dump(),
+            datetime_key: {
+                "type": "datetime",
+                "value": datetime_metadata[1].value,
+            },
+            date_key: {"type": "date", "value": date_metadata[1].value},
+            time_key: {"type": "time", "value": time_metadata[1].value},
+            duration_key: {
+                "type": "duration",
+                "value": duration_metadata[1].value,
+            },
         },
     )
     annotation_2 = schemas.Annotation(
         task_type=enums.TaskType.CLASSIFICATION,
         labels=[schemas.Label(key="k2", value="v2")],
         metadata={
-            datetime_key: datetime_metadata[2].model_dump(),
-            date_key: date_metadata[2].model_dump(),
-            time_key: time_metadata[2].model_dump(),
-            duration_key: duration_metadata[2].model_dump(),
+            datetime_key: {
+                "type": "datetime",
+                "value": datetime_metadata[2].value,
+            },
+            date_key: {"type": "date", "value": date_metadata[2].value},
+            time_key: {"type": "time", "value": time_metadata[2].value},
+            duration_key: {
+                "type": "duration",
+                "value": duration_metadata[2].value,
+            },
         },
     )
     annotation_3 = schemas.Annotation(
         task_type=enums.TaskType.CLASSIFICATION,
         labels=[schemas.Label(key="k3", value="v3")],
         metadata={
-            datetime_key: datetime_metadata[2].model_dump(),
-            date_key: date_metadata[2].model_dump(),
-            time_key: time_metadata[2].model_dump(),
-            duration_key: duration_metadata[2].model_dump(),
+            datetime_key: {
+                "type": "datetime",
+                "value": datetime_metadata[2].value,
+            },
+            date_key: {"type": "date", "value": date_metadata[2].value},
+            time_key: {"type": "time", "value": time_metadata[2].value},
+            duration_key: {
+                "type": "duration",
+                "value": duration_metadata[2].value,
+            },
         },
     )
     annotation_4 = schemas.Annotation(
         task_type=enums.TaskType.CLASSIFICATION,
         labels=[schemas.Label(key="k4", value="v4")],
         metadata={
-            datetime_key: datetime_metadata[3].model_dump(),
-            date_key: date_metadata[3].model_dump(),
-            time_key: time_metadata[3].model_dump(),
-            duration_key: duration_metadata[3].model_dump(),
+            datetime_key: {
+                "type": "datetime",
+                "value": datetime_metadata[3].value,
+            },
+            date_key: {"type": "date", "value": date_metadata[3].value},
+            time_key: {"type": "time", "value": time_metadata[3].value},
+            duration_key: {
+                "type": "duration",
+                "value": duration_metadata[3].value,
+            },
         },
     )
 
@@ -2401,6 +2480,7 @@ def test_annotation_datetime_queries(
     crud.create_groundtruth(
         db=db,
         groundtruth=schemas.GroundTruth(
+            dataset_name=dset_name,
             datum=datum_1,
             annotations=[
                 annotation_1,

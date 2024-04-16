@@ -41,12 +41,13 @@ def test_get_labels(
     for gt in groundtruth_detections:
         crud.create_groundtruth(db=db, groundtruth=gt)
 
-    labels = crud.get_labels(db=db)
+    labels, headers = crud.get_labels(db=db)
 
     assert len(labels) == 2
     assert set([(label.key, label.value) for label in labels]) == set(
         [("k1", "v1"), ("k2", "v2")]
     )
+    assert headers == {"content-range": "items 0-1/2"}
 
 
 def test_get_labels_from_dataset(
@@ -55,7 +56,7 @@ def test_get_labels_from_dataset(
     dataset_model_create,
 ):
     # Test get all from dataset 1
-    ds1 = crud.get_labels(
+    ds1, headers = crud.get_labels(
         db=db,
         filters=schemas.Filter(
             dataset_names=[dataset_name],
@@ -65,9 +66,10 @@ def test_get_labels_from_dataset(
     assert len(ds1) == 2
     assert schemas.Label(key="k1", value="v1") in ds1
     assert schemas.Label(key="k2", value="v2") in ds1
+    assert headers == {"content-range": "items 0-1/2"}
 
     # NEGATIVE - Test filter by task type
-    ds1 = crud.get_labels(
+    ds1, _ = crud.get_labels(
         db=db,
         filters=schemas.Filter(
             dataset_names=[dataset_name],
@@ -78,10 +80,10 @@ def test_get_labels_from_dataset(
         ),
         ignore_prediction_labels=True,
     )
-    assert ds1 == [schemas.Label(key="k2", value="v2")]
+    assert ds1 == {schemas.Label(key="k2", value="v2")}
 
     # POSITIVE - Test filter by task type
-    ds1 = crud.get_labels(
+    ds1, _ = crud.get_labels(
         db=db,
         filters=schemas.Filter(
             dataset_names=[dataset_name],
@@ -94,7 +96,7 @@ def test_get_labels_from_dataset(
     assert schemas.Label(key="k2", value="v2") in ds1
 
     # NEGATIVE - Test filter by annotation type
-    ds1 = crud.get_labels(
+    ds1, _ = crud.get_labels(
         db=db,
         filters=schemas.Filter(
             dataset_names=[dataset_name], require_bounding_box=False
@@ -105,7 +107,7 @@ def test_get_labels_from_dataset(
     assert schemas.Label(key="k2", value="v2") in ds1
 
     # POSITIVE - Test filter by annotation type
-    ds1 = crud.get_labels(
+    ds1, _ = crud.get_labels(
         db=db,
         filters=schemas.Filter(
             dataset_names=[dataset_name], require_polygon=True
@@ -116,7 +118,7 @@ def test_get_labels_from_dataset(
     assert schemas.Label(key="k2", value="v2") in ds1
 
     # POSITIVE - Test filter by annotation type
-    ds1 = crud.get_labels(
+    ds1, _ = crud.get_labels(
         db=db,
         filters=schemas.Filter(
             dataset_names=[dataset_name],
@@ -135,7 +137,7 @@ def test_get_labels_from_model(
     dataset_model_create,
 ):
     # Test get all labels from model 1
-    md1 = crud.get_labels(
+    md1, _ = crud.get_labels(
         db=db,
         filters=schemas.Filter(
             model_names=[model_name],
@@ -149,7 +151,7 @@ def test_get_labels_from_model(
     assert schemas.Label(key="k2", value="v2") in md1
 
     # Test get all but polygon labels from model 1
-    md1 = crud.get_labels(
+    md1, _ = crud.get_labels(
         db=db,
         filters=schemas.Filter(
             model_names=[model_name],
@@ -157,10 +159,10 @@ def test_get_labels_from_model(
         ),
         ignore_groundtruth_labels=True,
     )
-    assert md1 == []
+    assert md1 == set()
 
     # Test get only polygon labels from model 1
-    md1 = crud.get_labels(
+    md1, _ = crud.get_labels(
         db=db,
         filters=schemas.Filter(
             model_names=[model_name],
@@ -192,10 +194,19 @@ def test_get_dataset_summary(
         ]
     )
     assert summary.datum_metadata == [
-        {"width": 32.0, "height": 80.0},
-        {"width": 200.0, "height": 100.0},
+        {
+            "width": 32,
+            "height": 80,
+        },
+        {
+            "width": 200,
+            "height": 100,
+        },
     ]
     assert summary.annotation_metadata == [
         {"int_key": 1},
-        {"string_key": "string_val", "int_key": 1},
+        {
+            "string_key": "string_val",
+            "int_key": 1,
+        },
     ]

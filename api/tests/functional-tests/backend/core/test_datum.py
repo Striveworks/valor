@@ -18,36 +18,23 @@ def test_create_datum(
     created_dataset: str,
 ):
     assert db.scalar(select(func.count()).select_from(models.Datum)) == 0
+    dataset = core.fetch_dataset(db=db, name=created_dataset)
 
     # test successful
     core.create_datum(
         db=db,
-        datum=schemas.Datum(
-            uid="uid1",
-            dataset_name=created_dataset,
-        ),
+        datum=schemas.Datum(uid="uid1"),
+        dataset=dataset,
     )
 
     assert db.scalar(select(func.count()).select_from(models.Datum)) == 1
-
-    # test catch `DatasetDoesNotExistError`
-    with pytest.raises(exceptions.DatasetDoesNotExistError):
-        core.create_datum(
-            db=db,
-            datum=schemas.Datum(
-                uid="uid2",
-                dataset_name="dataset_that_doesnt_exist",
-            ),
-        )
 
     # test catch duplicate
     with pytest.raises(exceptions.DatumAlreadyExistsError):
         core.create_datum(
             db=db,
-            datum=schemas.Datum(
-                uid="uid1",
-                dataset_name=created_dataset,
-            ),
+            datum=schemas.Datum(uid="uid1"),
+            dataset=dataset,
         )
 
     assert db.scalar(select(func.count()).select_from(models.Datum)) == 1
@@ -55,44 +42,52 @@ def test_create_datum(
     # test successful 2nd datum
     core.create_datum(
         db=db,
-        datum=schemas.Datum(
-            uid="uid2",
-            dataset_name=created_dataset,
-        ),
+        datum=schemas.Datum(uid="uid2"),
+        dataset=dataset,
     )
 
     assert db.scalar(select(func.count()).select_from(models.Datum)) == 2
 
 
-def test_get_datums(
+def test_get_paginated_datums(
     db: Session,
     created_dataset: str,
 ):
+    dataset = core.fetch_dataset(db=db, name=created_dataset)
+
     core.create_datum(
         db=db,
-        datum=schemas.Datum(
-            uid="uid1",
-            dataset_name=created_dataset,
-        ),
+        datum=schemas.Datum(uid="uid1"),
+        dataset=dataset,
     )
     core.create_datum(
         db=db,
-        datum=schemas.Datum(
-            uid="uid2",
-            dataset_name=created_dataset,
-        ),
+        datum=schemas.Datum(uid="uid2"),
+        dataset=dataset,
     )
     core.create_datum(
         db=db,
-        datum=schemas.Datum(
-            uid="uid3",
-            dataset_name=created_dataset,
-        ),
+        datum=schemas.Datum(uid="uid3"),
+        dataset=dataset,
     )
 
     # basic query
-    assert {datum.uid for datum in core.get_datums(db=db)} == {
+    datums, _ = core.get_paginated_datums(db=db)
+    assert {datum.uid for datum in datums} == {
         "uid1",
         "uid2",
         "uid3",
     }
+
+    # test that we can reconstitute the full set using paginated calls
+    first, header = core.get_paginated_datums(db, offset=1, limit=2)
+    assert len(first) == 2
+    assert header == {"content-range": "items 1-2/3"}
+
+    second, header = core.get_paginated_datums(db, offset=0, limit=1)
+    assert len(second) == 1
+    assert header == {"content-range": "items 0-0/3"}
+
+    combined = [entry.uid for entry in first + second]
+
+    assert set(combined) == set([f"uid{i}" for i in range(1, 4)])

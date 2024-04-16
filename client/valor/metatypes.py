@@ -10,21 +10,19 @@ class ImageMetadata:
     """
     A class describing the metadata for a particular image.
 
-    Parameters
+    Attributes
     ----------
-    uid : str
-        The UID of the image.
-    height : int
-        The height of the image.
-    width : int
-        The width of the image.
-    metadata : dict
-        A dictionary of metadata that describes the image.
+    datum : valor.Datum
+        The underlying datum object.
+    height: int
+        The height of the image in pixels.
+    width: int
+        The width of the image in pixels.
     """
 
     def __init__(self, datum: Datum):
         """
-        Creates an `ImageMetadata` object from a `Datum`.
+        Creates an `ImageMetadata` object from a `valor.Datum`.
 
         Parameters
         ----------
@@ -50,6 +48,20 @@ class ImageMetadata:
         width: int,
         metadata: Optional[dict] = None,
     ):
+        """
+        Create an instance of ImageMetadata using components.
+
+        Parameters
+        ----------
+        uid: str
+            The uid of the image.
+        height: int
+            The height of the image in pixels.
+        width: int
+            The width of the image in pixels.
+        metadata: dict, optional
+            Any other associated metadata.
+        """
         if not isinstance(height, int) or not isinstance(width, int):
             raise TypeError("Height and width must be integers.")
         metadata = metadata if metadata else dict()
@@ -79,6 +91,7 @@ class ImageMetadata:
 
     @property
     def height(self) -> int:
+        """Returns image height in pixels."""
         value = self.datum.metadata["height"].get_value()
         if not isinstance(value, int):
             raise TypeError
@@ -86,6 +99,7 @@ class ImageMetadata:
 
     @property
     def width(self) -> int:
+        """Returns image width in pixels."""
         value = self.datum.metadata["width"].get_value()
         if not isinstance(value, int):
             raise TypeError
@@ -96,10 +110,14 @@ class VideoFrameMetadata:
     """
     A class describing the metadata for the frame of a video.
 
-    Parameters
+    Attributes
     ----------
-    image : ImageMetadata
-        Metadata describing the frame of the video.
+    datum : valor.Datum
+        The underlying datum object.
+    height: int
+        The height of the image in pixels.
+    width: int
+        The width of the image in pixels.
     frame: int
         The number of seconds into the video that the frame was taken.
     """
@@ -135,6 +153,22 @@ class VideoFrameMetadata:
         frame: int,
         metadata: Optional[dict] = None,
     ):
+        """
+        Create an instance of VideoFrameMetadata using components.
+
+        Parameters
+        ----------
+        uid: str
+            The uid of the image.
+        height: int
+            The height of the image in pixels.
+        width: int
+            The width of the image in pixels.
+        frame: int
+            The video frame index.
+        metadata: dict, optional
+            Any other associated metadata.
+        """
         if (
             not isinstance(height, int)
             or not isinstance(width, int)
@@ -154,6 +188,7 @@ class VideoFrameMetadata:
 
     @property
     def height(self) -> int:
+        """Returns image height in pixels."""
         value = self.datum.metadata["height"].get_value()
         if not isinstance(value, int):
             raise TypeError
@@ -161,6 +196,7 @@ class VideoFrameMetadata:
 
     @property
     def width(self) -> int:
+        """Returns image width in pixels."""
         value = self.datum.metadata["width"].get_value()
         if not isinstance(value, int):
             raise TypeError
@@ -168,6 +204,7 @@ class VideoFrameMetadata:
 
     @property
     def frame(self) -> int:
+        """Returns the video frame number."""
         value = self.datum.metadata["frame"].get_value()
         if not isinstance(value, int):
             raise TypeError

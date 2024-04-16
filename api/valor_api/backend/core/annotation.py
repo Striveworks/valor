@@ -1,5 +1,3 @@
-import json
-
 from geoalchemy2.functions import ST_AsGeoJSON
 from sqlalchemy import and_, delete, select
 from sqlalchemy.exc import IntegrityError
@@ -73,14 +71,14 @@ def _create_annotation(
     match annotation.task_type:
         case TaskType.OBJECT_DETECTION:
             if annotation.bounding_box:
-                box = annotation.bounding_box.wkt()
+                box = annotation.bounding_box.to_wkt()
             if annotation.polygon:
-                polygon = annotation.polygon.wkt()
+                polygon = annotation.polygon.to_wkt()
             if annotation.raster:
-                raster = annotation.raster.wkt()
+                raster = annotation.raster.to_psql()
         case TaskType.SEMANTIC_SEGMENTATION:
             if annotation.raster:
-                raster = annotation.raster.wkt()
+                raster = annotation.raster.to_psql()
         case TaskType.EMBEDDING:
             if annotation.embedding:
                 embedding_id = _create_embedding(
@@ -247,26 +245,20 @@ def get_annotation(
         ]
 
     # initialize
-    bounding_box = None
+    box = None
     polygon = None
     raster = None
     embedding = None
 
     # bounding box
     if annotation.box is not None:
-        geojson = json.loads(db.scalar(ST_AsGeoJSON(annotation.box)))
-        bounding_box = schemas.BoundingBox(
-            polygon=schemas.metadata.geojson_from_dict(data=geojson)
-            .geometry()
-            .boundary,  # type: ignore - this is guaranteed to be a polygon
-        )
+        box = schemas.Box.from_json(db.scalar(ST_AsGeoJSON(annotation.box)))
 
     # polygon
     if annotation.polygon is not None:
-        geojson = json.loads(db.scalar(ST_AsGeoJSON(annotation.polygon)))
-        polygon = schemas.metadata.geojson_from_dict(
-            data=geojson
-        ).geometry()  # type: ignore - guaranteed to be a polygon in this case
+        polygon = schemas.Polygon.from_json(
+            db.scalar(ST_AsGeoJSON(annotation.polygon))
+        )
 
     # raster
     if annotation.raster is not None:
@@ -294,7 +286,7 @@ def get_annotation(
         task_type=annotation.task_type,  # type: ignore - models.Annotation.task_type should be a string in psql
         labels=labels,
         metadata=annotation.meta,
-        bounding_box=bounding_box,
+        bounding_box=box,
         polygon=polygon,  # type: ignore - guaranteed to be a polygon in this case
         raster=raster,
         embedding=embedding,

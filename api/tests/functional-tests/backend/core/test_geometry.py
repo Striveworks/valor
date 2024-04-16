@@ -1,5 +1,3 @@
-import json
-
 import numpy as np
 import pytest
 from sqlalchemy import and_, func, or_, select
@@ -20,12 +18,10 @@ from valor_api.backend.core.geometry import (
 from valor_api.crud import create_dataset, create_groundtruth
 from valor_api.schemas import (
     Annotation,
-    BasicPolygon,
-    BoundingBox,
+    Box,
     Datum,
     GroundTruth,
     MultiPolygon,
-    Point,
     Polygon,
     Raster,
 )
@@ -37,7 +33,8 @@ def create_classification_dataset(db: Session, dataset_name: str):
     create_groundtruth(
         db=db,
         groundtruth=schemas.GroundTruth(
-            datum=schemas.Datum(uid="uid1", dataset_name=dataset_name),
+            dataset_name=dataset_name,
+            datum=schemas.Datum(uid="uid1"),
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.CLASSIFICATION,
@@ -52,18 +49,15 @@ def create_classification_dataset(db: Session, dataset_name: str):
 def create_object_detection_dataset(
     db: Session,
     dataset_name: str,
-    bbox: BoundingBox,
+    bbox: Box,
     polygon: Polygon,
-    multipolygon: MultiPolygon,
     raster: Raster,
 ):
-    datum = Datum(
-        uid="uid1",
-        dataset_name=dataset_name,
-    )
+    datum = Datum(uid="uid1")
     task_type = enums.TaskType.OBJECT_DETECTION
     labels = [schemas.Label(key="k1", value="v1")]
     groundtruth = GroundTruth(
+        dataset_name=dataset_name,
         datum=datum,
         annotations=[
             Annotation(
@@ -93,18 +87,15 @@ def create_object_detection_dataset(
 def create_segmentation_dataset_from_geometries(
     db: Session,
     dataset_name: str,
-    bbox: BoundingBox,
     polygon: Polygon,
     multipolygon: MultiPolygon,
     raster: Raster,
 ):
-    datum = Datum(
-        uid="uid1",
-        dataset_name=dataset_name,
-    )
+    datum = Datum(uid="uid1")
     task_type = enums.TaskType.OBJECT_DETECTION
     labels = [schemas.Label(key="k1", value="v1")]
     groundtruth = GroundTruth(
+        dataset_name=dataset_name,
         datum=datum,
         annotations=[
             Annotation(
@@ -202,18 +193,17 @@ def test_convert_geometry_input(
 
 
 def _load_polygon(db: Session, polygon: Polygon) -> Polygon:
-    geom = json.loads(db.scalar(func.ST_AsGeoJSON(polygon)))
-    return schemas.metadata.geojson_from_dict(data=geom).geometry()  # type: ignore - type can't infer this is a polygon
+    return Polygon.from_json(db.scalar(func.ST_AsGeoJSON(polygon)))
 
 
-def _load_box(db: Session, box) -> BoundingBox:
-    return schemas.BoundingBox(polygon=_load_polygon(db, box).boundary)
+def _load_box(db: Session, box) -> Box:
+    return schemas.Box(value=_load_polygon(db, box).value)
 
 
 def test_convert_from_raster(
     db: Session,
     create_object_detection_dataset: str,
-    bbox: BoundingBox,
+    bbox: Box,
     polygon: Polygon,
 ):
     annotation_id = db.scalar(
@@ -255,7 +245,7 @@ def test_convert_from_raster(
 def test_convert_polygon_to_box(
     db: Session,
     create_object_detection_dataset: str,
-    bbox: BoundingBox,
+    bbox: Box,
 ):
     annotation_id = db.scalar(
         select(models.Annotation.id).where(
@@ -291,7 +281,7 @@ def test_convert_polygon_to_box(
 def test_create_raster_from_polygons(
     db: Session,
     create_segmentation_dataset_from_geometries: str,
-    bbox: BoundingBox,
+    bbox: Box,
     polygon: Polygon,
     multipolygon: MultiPolygon,
     raster: Raster,
@@ -373,16 +363,17 @@ def test_create_raster_from_polygons(
 
     # NOTE - Due to the issues in rasterization, converting back to polygon results in a new polygon.
     converted_polygon = Polygon(
-        boundary=schemas.BasicPolygon(
-            points=[
-                schemas.Point(x=4, y=0),
-                schemas.Point(x=2, y=2),
-                schemas.Point(x=2, y=3),
-                schemas.Point(x=4, y=5),
-                schemas.Point(x=6, y=3),
-                schemas.Point(x=6, y=2),
+        value=[
+            [
+                (4, 0),
+                (2, 2),
+                (2, 3),
+                (4, 5),
+                (6, 3),
+                (6, 2),
+                (4, 0),
             ]
-        )
+        ]
     )
     assert polygons[0] == polygons[1]
     assert (
@@ -400,29 +391,22 @@ def test_create_raster_from_polygons_with_decimal_coordinates(
     raster: Raster,
 ):
     # alter polygon to be offset by 0.1
+    assert polygon.to_wkt() == "POLYGON ((4 0, 1 3, 4 6, 7 3, 4 0))"
+    polygon.value = [
+        [(point[0] + 0.1, point[1] + 0.5) for point in subpolygon]
+        for subpolygon in polygon.value
+    ]
     assert (
-        polygon.wkt()
-        == "POLYGON ((4.0 0.0, 1.0 3.0, 4.0 6.0, 7.0 3.0, 4.0 0.0))"
-    )
-    polygon.boundary = BasicPolygon(
-        points=[
-            Point(x=point.x + 0.1, y=point.y + 0.5)
-            for point in polygon.boundary.points
-        ]
-    )
-    assert (
-        polygon.wkt()
+        polygon.to_wkt()
         == "POLYGON ((4.1 0.5, 1.1 3.5, 4.1 6.5, 7.1 3.5, 4.1 0.5))"
     )
 
     # create raster annotation
-    datum = Datum(
-        uid="uid1",
-        dataset_name=dataset_name,
-    )
+    datum = Datum(uid="uid1")
     task_type = enums.TaskType.OBJECT_DETECTION
     labels = [schemas.Label(key="k1", value="v1")]
     groundtruth = GroundTruth(
+        dataset_name=dataset_name,
         datum=datum,
         annotations=[
             Annotation(
