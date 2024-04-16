@@ -168,6 +168,7 @@ def _compute_curves(
                 "fn": fn,
                 "precision": precision,
                 "recall": recall,
+                "accuracy": None,  # accuracy isn't applicable to detection tasks because there's an infinite number of true negatives
                 "f1_score": f1_score,
             }
 

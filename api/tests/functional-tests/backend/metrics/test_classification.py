@@ -6,6 +6,7 @@ from valor_api.backend import models
 from valor_api.backend.core import (
     create_or_get_evaluations,
     fetch_union_of_labels,
+    get_paginated_datums,
 )
 from valor_api.backend.metrics.classification import (
     _compute_accuracy_from_cm,
@@ -919,35 +920,58 @@ def test__compute_curves(
         .alias()
     )
 
+    # calculate the number of unique datums
+    # used to determine the number of true negatives
+    pd_datums, _ = get_paginated_datums(db=db, filters=prediction_filter)
+
+    gt_datums, _ = get_paginated_datums(db=db, filters=groundtruth_filter)
+
+    unique_datums = set(
+        [
+            (
+                datum.dataset_name,
+                datum.uid,
+            )
+            for datum in pd_datums + gt_datums
+        ]
+    )
+
     curves = _compute_curves(
         db=db,
         predictions=predictions,
         groundtruths=groundtruths,
         grouper_key="animal",
         grouper_mappings=grouper_mappings,
+        unique_datums=unique_datums,
     )
 
     pr_expected_answers = {
         # bird
         ("bird", 0.05, "tp"): 3,
         ("bird", 0.05, "fp"): 1,
+        ("bird", 0.05, "tn"): 2,
         ("bird", 0.3, "tp"): 1,
         ("bird", 0.3, "fn"): 2,
         ("bird", 0.3, "fp"): 0,
         ("bird", 0.65, "fn"): 3,
+        ("bird", 0.65, "tn"): 3,
         # dog
         ("dog", 0.05, "tp"): 2,
         ("dog", 0.05, "fp"): 3,
+        ("dog", 0.05, "tn"): 1,
         ("dog", 0.45, "fn"): 2,
         ("dog", 0.45, "fp"): 1,
         ("dog", 0.8, "fn"): 2,
         ("dog", 0.8, "fp"): 0,
+        ("dog", 0.8, "tn"): 4,
         # cat
         ("cat", 0.05, "tp"): 1,
+        ("cat", 0.05, "tn"): 0,
         ("cat", 0.05, "fp"): 5,
         ("cat", 0.05, "fn"): 0,
         ("cat", 0.95, "tp"): 1,
         ("cat", 0.95, "fp"): 0,
+        ("cat", 0.95, "tn"): 5,
         ("cat", 0.95, "fn"): 0,
     }
 
