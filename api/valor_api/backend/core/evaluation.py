@@ -11,6 +11,35 @@ from valor_api.backend import core, models
 from valor_api.backend.query import Query
 
 
+def _validate_classification_task(
+    db: Session,
+    evaluation: models.Evaluation,
+):
+    """
+    Validate that a classification evaluation is possible.
+
+    Parameters
+    ----------
+    db : Session
+        The database session.
+    evaluation : models.Evaluation
+        The uncommitted evaluation row.
+    """
+    # unpack filters and params
+    groundtruth_filter = schemas.Filter(**evaluation.datum_filter)
+    prediction_filter = groundtruth_filter.model_copy()
+    prediction_filter.model_names = [evaluation.model_name]
+    parameters = schemas.EvaluationParameters(**evaluation.parameters)
+
+    # check that prediction label keys match ground truth label keys
+    core.validate_matching_label_keys(
+        db=db,
+        label_map=parameters.label_map,
+        groundtruth_filter=groundtruth_filter,
+        prediction_filter=prediction_filter,
+    )
+
+
 def _create_dataset_expr_from_list(
     dataset_names: list[str],
 ) -> BinaryExpression | None:
@@ -448,6 +477,13 @@ def create_or_get_evaluations(
                 parameters=subrequest.parameters.model_dump(),
                 status=enums.EvaluationStatus.PENDING,
             )
+
+            if (
+                subrequest.parameters.task_type
+                == enums.TaskType.CLASSIFICATION
+            ):
+                _validate_classification_task(db=db, evaluation=evaluation)
+
             created_rows.append(evaluation)
 
     try:

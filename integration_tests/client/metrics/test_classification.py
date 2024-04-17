@@ -783,11 +783,9 @@ def test_evaluate_classification_with_label_maps(
     model.finalize_inferences(dataset)
 
     # check baseline case, where we have mismatched ground truth and prediction label keys
-    result = model.evaluate_classification(dataset).wait_for_completion(
-        timeout=30
-    )
-
-    assert result.value == "failed"
+    with pytest.raises(ClientException) as e:
+        model.evaluate_classification(dataset)
+    assert "label keys must match" in str(e)
 
     # now try using a label map to connect all the cats
 
@@ -1173,8 +1171,6 @@ def test_evaluate_classification_mismatched_label_keys(
 
     model.finalize_inferences(dataset)
 
-    result = model.evaluate_classification(dataset).wait_for_completion(
-        timeout=30
-    )
-
-    assert result.value == "failed"
+    with pytest.raises(ClientException) as e:
+        model.evaluate_classification(dataset)
+    assert "label keys must match" in str(e)
