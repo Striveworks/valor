@@ -478,7 +478,6 @@ def create_or_get_evaluations(
                 status=enums.EvaluationStatus.PENDING,
             )
 
-            # validation
             if (
                 subrequest.parameters.task_type
                 == enums.TaskType.CLASSIFICATION
