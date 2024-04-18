@@ -284,8 +284,9 @@ export class ValorClient {
         label_map: labelMap,
         recall_score_threshold: recallScoreThreshold,
         compute_pr_curves: computePrCurves,
-        pr_curve_iou_threshold: prCurveIouThreshold
-      }
+        pr_curve_iou_threshold: prCurveIouThreshold,
+       },
+       meta: {}
     });
     return this.unmarshalEvaluation(response.data[0]);
   }
@@ -327,8 +328,9 @@ export class ValorClient {
         label_map: labelMap,
         recall_score_threshold: recallScoreThreshold,
         compute_pr_curves: computePrCurves,
-        pr_curve_iou_threshold: prCurveIouThreshold
-       }
+        pr_curve_iou_threshold: prCurveIouThreshold,
+       },
+       meta: {}
     });
     return response.data.map(this.unmarshalEvaluation);
   }

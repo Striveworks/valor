@@ -263,7 +263,7 @@ def log_evaluation_analytics(
     groundtruth_filter: schemas.Filter,
 ):
     """
-    Store analytics regarding the evaluations execution in the metadata field of the evaluation table.
+    Store analytics regarding the evaluation's execution in the metadata field of the evaluation table.
 
     Parameters
     ----------
