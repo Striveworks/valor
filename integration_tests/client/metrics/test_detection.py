@@ -283,7 +283,8 @@ def test_evaluate_detection(
         == EvaluationStatus.DONE
     )
     result = eval_job_min_area_1200.to_dict()
-    min_area_1200_metrics = result.pop("metrics").pop("meta")
+    result.pop("meta")
+    min_area_1200_metrics = result.pop("metrics")
     assert result == {
         "id": eval_job_min_area_1200.id,
         "model_name": model_name,
@@ -330,7 +331,8 @@ def test_evaluate_detection(
     # this computation will return 'EvaluationStatus.FAILED' as no predictions exist that meet the filter requirements.
     eval_job_max_area_1200.wait_for_completion(timeout=30)
     result = eval_job_max_area_1200.to_dict()
-    max_area_1200_metrics = result.pop("metrics").pop("meta")
+    result.pop("meta")
+    max_area_1200_metrics = result.pop("metrics")
     assert result == {
         "id": eval_job_max_area_1200.id,
         "model_name": model_name,
@@ -381,7 +383,8 @@ def test_evaluate_detection(
         == EvaluationStatus.DONE
     )
     result = eval_job_bounded_area_1200_1800.to_dict()
-    bounded_area_metrics = result.pop("metrics").pop("meta")
+    result.pop("meta")
+    bounded_area_metrics = result.pop("metrics")
     assert result == {
         "id": eval_job_bounded_area_1200_1800.id,
         "model_name": model_name,
