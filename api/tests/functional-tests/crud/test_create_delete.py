@@ -1112,6 +1112,7 @@ def test_create_detection_metrics(
                 iou_thresholds_to_compute=[0.2, 0.6],
                 iou_thresholds_to_return=[0.2],
             ),
+            meta={},
         )
 
         # create evaluation (return AP Response)
@@ -1251,6 +1252,15 @@ def test_create_detection_metrics(
     # Don't examine metrics
     model_evals[0].metrics = []
     model_evals[1].metrics = []
+    # pop metadata since the duration isn't deterministic
+    assert model_evals[1].meta
+    assert model_evals[1].meta["datums"] == 4
+    assert model_evals[1].meta["annotations"] == 39
+    assert model_evals[1].meta["labels"] == 6
+
+    model_evals[1].meta = {}
+    model_evals[0].meta = {}
+
     assert model_evals[1] == schemas.EvaluationResponse(
         model_name=model_name,
         datum_filter=schemas.Filter(
@@ -1271,6 +1281,7 @@ def test_create_detection_metrics(
             schemas.Label(key="class", value="3", score=None)
         ],
         created_at=model_evals[1].created_at,
+        meta={},
     )
     assert model_evals[0] == schemas.EvaluationResponse(
         model_name=model_name,
@@ -1301,6 +1312,7 @@ def test_create_detection_metrics(
         missing_pred_labels=[],
         ignored_pred_labels=[],
         created_at=model_evals[0].created_at,
+        meta={},
     )
 
 
@@ -1332,6 +1344,7 @@ def test_create_clf_metrics(
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.CLASSIFICATION
         ),
+        meta={},
     )
 
     # create clf evaluation (returns Clf Response)

@@ -46,6 +46,12 @@ def test_evaluate_segmentation(
     ) == {("k2", "v2"), ("k3", "v3")}
     assert set([m["type"] for m in metrics]) == {"IOU", "mIOU"}
 
+    # check metadata
+    assert eval_job.meta["datums"] == 1
+    assert eval_job.meta["labels"] == 1
+    assert eval_job.meta["annotations"] == 1
+    assert eval_job.meta["duration"] <= 5  # usually ~.25
+
 
 def test_evaluate_segmentation_with_filter(
     client: Client,
@@ -171,3 +177,9 @@ def test_evaluate_segmentation_with_label_maps(
         ]
     ) == {("foo", "bar"), ("foo", "bar")}
     assert set([m["type"] for m in metrics]) == {"IOU", "mIOU"}
+
+    # check metadata
+    assert eval_job.meta["datums"] == 2
+    assert eval_job.meta["labels"] == 3
+    assert eval_job.meta["annotations"] == 4
+    assert eval_job.meta["duration"] <= 5  # usually .35

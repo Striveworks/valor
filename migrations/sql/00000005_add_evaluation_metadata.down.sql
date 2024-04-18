@@ -1,1 +1,1 @@
-ALTER TABLE evaluation DROP COLUMN metadata;
+ALTER TABLE evaluation DROP COLUMN meta;

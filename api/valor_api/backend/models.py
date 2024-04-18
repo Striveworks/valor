@@ -214,6 +214,7 @@ class Evaluation(Base):
     parameters = mapped_column(JSONB, nullable=False)
     status: Mapped[str] = mapped_column(nullable=False)
     created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
+    meta = mapped_column(JSONB, nullable=False)
 
     # relationships
     metrics: Mapped[list["Metric"]] = relationship(

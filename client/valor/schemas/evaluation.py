@@ -54,11 +54,14 @@ class EvaluationRequest:
         The filter object used to define what the model(s) is evaluating against.
     parameters : EvaluationParameters
         Any parameters that are used to modify an evaluation method.
+    meta: dict[str, str | float | dict], optional
+        Metadata about the evaluation run.
     """
 
     model_names: Union[str, List[str]]
     datum_filter: Filter
     parameters: EvaluationParameters
+    meta: dict[str, str | float | dict] | None
 
     def __post_init__(self):
         if isinstance(self.datum_filter, dict):

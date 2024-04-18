@@ -175,6 +175,20 @@ def test_evaluate_image_clf(
     for m in expected_confusion_matrices:
         assert m in confusion_matrices
 
+    # test evaluation metadata
+    expected_metadata = {
+        "datums": 3,
+        "labels": 8,
+        "annotations": 6,
+    }
+
+    for key, value in expected_metadata.items():
+        assert eval_job.meta[key] == value
+
+    assert (
+        eval_job.meta["duration"] <= 5
+    )  # eval should definitely take less than 5 seconds, usually around .4
+
 
 def test_evaluate_tabular_clf(
     client: Client,
@@ -1055,6 +1069,12 @@ def test_evaluate_classification_with_label_maps(
         ) == expected_length
 
     confusion_matrix = eval_job.confusion_matrices
+
+    # check metadata
+    assert eval_job.meta["datums"] == 3
+    assert eval_job.meta["labels"] == 13
+    assert eval_job.meta["annotations"] == 6
+    assert eval_job.meta["duration"] <= 10  # usually 2
 
     for row in confusion_matrix:
         if row["label_key"] == "special_class":

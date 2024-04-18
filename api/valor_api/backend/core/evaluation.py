@@ -275,6 +275,7 @@ def _split_request(
             model_names=[model.name],
             datum_filter=job_request.datum_filter,
             parameters=job_request.parameters,
+            meta={},
         )
         for model in model_to_evaluate
     ]
@@ -317,6 +318,7 @@ def _create_response(
             for matrix in confusion_matrices
         ],
         created_at=evaluation.created_at.replace(tzinfo=timezone.utc),
+        meta=evaluation.meta,
         **kwargs,
     )
 
@@ -476,6 +478,7 @@ def create_or_get_evaluations(
                 datum_filter=subrequest.datum_filter.model_dump(),
                 parameters=subrequest.parameters.model_dump(),
                 status=enums.EvaluationStatus.PENDING,
+                meta={},  # meta stores data about the run after it completes; should be an empty dictionary at creation time
             )
 
             if (
@@ -709,6 +712,7 @@ def get_evaluation_requests_from_model(
             parameters=eval_.parameters,
             status=eval_.status,  # type: ignore - must be str in psql
             created_at=eval_.created_at.replace(tzinfo=timezone.utc),
+            meta=eval_.meta,
         )
         for eval_ in evaluations
     ]

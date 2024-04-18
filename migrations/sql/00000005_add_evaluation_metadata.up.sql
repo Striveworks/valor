@@ -1,1 +1,1 @@
-ALTER TABLE evaluation ADD COLUMN metadata jsonb;
+ALTER TABLE evaluation ADD COLUMN meta jsonb;

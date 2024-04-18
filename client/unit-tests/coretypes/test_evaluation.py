@@ -56,6 +56,7 @@ def test_to_dataframe():
             year=2024, month=1, day=1, microsecond=1
         ).strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
         connection=Mock(),
+        meta={},
     ).to_dataframe()
 
     df_str = """                                        value

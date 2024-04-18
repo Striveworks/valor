@@ -1,10 +1,10 @@
 from collections import defaultdict
-from datetime import datetime
 from typing import Callable, Sequence
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+from sqlalchemy.sql import func
 
 from valor_api import enums, logger, schemas
 from valor_api.backend import core, models
@@ -288,13 +288,16 @@ def log_evaluation_analytics(
 
     gts = db.execute(
         select(
-            gt_subquery.c.id,
             gt_subquery.c.annotation_id,
             gt_subquery.c.label_id,
         ).select_from(gt_subquery)
     ).all()
 
-    gt_id, gt_annotation_id, gt_label_id = map(set, zip(*gts))
+    # handle edge case where no gts come back
+    if not gts:
+        gt_annotation_id, gt_label_id = set(), set()
+    else:
+        gt_annotation_id, gt_label_id = map(set, zip(*gts))
 
     pd_subquery = (
         Query(
@@ -307,16 +310,16 @@ def log_evaluation_analytics(
 
     pds = db.execute(
         select(
-            pd_subquery.c.id,
             pd_subquery.c.annotation_id,
             pd_subquery.c.label_id,
         ).select_from(pd_subquery)
     ).all()
 
-    pd_id, pd_annotation_id, pd_label_id = map(set, zip(*pds))
+    if not pds:
+        pd_annotation_id, pd_label_id = set(), set()
+    else:
+        pd_annotation_id, pd_label_id = map(set, zip(*pds))
 
-    gt_cnt = len(gt_id)
-    pd_cnt = len(pd_id)
     annotation_cnt = len(gt_annotation_id | pd_annotation_id)
     label_cnt = len(gt_label_id | pd_label_id)
 
@@ -335,11 +338,11 @@ def log_evaluation_analytics(
     datum_cnt = len(unique_datums)
 
     evaluation = core.fetch_evaluation_from_id(db, evaluation_id)
-    duration = (datetime.now() - evaluation.created_at).total_seconds()
+
+    server_time = db.execute(func.now()).scalar().replace(tzinfo=None)  # type: ignore - guaranteed to return server time if psql is running
+    duration = (server_time - evaluation.created_at).total_seconds()
 
     output = {
-        "groundtruths": gt_cnt,
-        "predictions": pd_cnt,
         "annotations": annotation_cnt,
         "labels": label_cnt,
         "datums": datum_cnt,
@@ -347,7 +350,9 @@ def log_evaluation_analytics(
     }
 
     try:
-        evaluation.metadata = output
+        metadata = dict(evaluation.meta) if evaluation.meta else {}
+        metadata.update(output)
+        evaluation.meta = metadata
         db.commit()
     except IntegrityError as e:
         db.rollback()

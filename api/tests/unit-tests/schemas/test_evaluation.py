@@ -83,6 +83,7 @@ def test_EvaluationRequest():
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.CLASSIFICATION
         ),
+        meta={},
     )
     schemas.EvaluationRequest(
         model_names=["name"],
@@ -90,6 +91,7 @@ def test_EvaluationRequest():
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.CLASSIFICATION
         ),
+        meta={},
     )
     schemas.EvaluationRequest(
         model_names=["name", "other"],
@@ -97,6 +99,7 @@ def test_EvaluationRequest():
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.CLASSIFICATION
         ),
+        meta={},
     )
 
     # test missing args
@@ -131,6 +134,7 @@ def test_EvaluationRequest():
             parameters=schemas.EvaluationParameters(
                 task_type=enums.TaskType.CLASSIFICATION
             ),
+            meta={},
         )
 
     # test `datum_filter` validator
@@ -158,6 +162,7 @@ def test_EvaluationResponse():
         metrics=[],
         confusion_matrices=[],
         created_at=datetime.now(),
+        meta={},
     )
 
     # test missing evaluation_id
@@ -173,6 +178,7 @@ def test_EvaluationResponse():
             metrics=[],
             confusion_matrices=[],
             created_at=datetime.now(),
+            meta={},
         )
 
     # test missing model name
@@ -188,6 +194,7 @@ def test_EvaluationResponse():
             metrics=[],
             confusion_matrices=[],
             created_at=datetime.now(),
+            meta={},
         )
 
     # test missing EvaluationParameters
@@ -201,6 +208,7 @@ def test_EvaluationResponse():
             metrics=[],
             confusion_matrices=[],
             created_at=datetime.now(),
+            meta={},
         )
 
     # test missing EvaluationStatus
@@ -216,4 +224,5 @@ def test_EvaluationResponse():
             metrics=[],
             confusion_matrices=[],
             created_at=datetime.now(),
+            meta={},
         )
