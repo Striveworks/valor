@@ -61,7 +61,7 @@ class EvaluationRequest:
     model_names: Union[str, List[str]]
     datum_filter: Filter
     parameters: EvaluationParameters
-    meta: Optional[dict[str, str | float | dict]]
+    meta: Optional[dict]
 
     def __post_init__(self):
         if isinstance(self.datum_filter, dict):
