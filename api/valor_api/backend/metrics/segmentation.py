@@ -8,6 +8,7 @@ from valor_api.backend.metrics.metric_utils import (
     create_grouper_mappings,
     create_metric_mappings,
     get_or_create_row,
+    log_evaluation_analytics,
     validate_computation,
 )
 from valor_api.backend.query import Query
@@ -264,5 +265,12 @@ def compute_semantic_segmentation_metrics(
             mapping,
             columns_to_ignore=["value"],
         )
+
+    log_evaluation_analytics(
+        evaluation_id=evaluation_id,
+        db=db,
+        groundtruth_filter=groundtruth_filter,
+        prediction_filter=prediction_filter,
+    )
 
     return evaluation_id

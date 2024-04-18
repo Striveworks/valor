@@ -1,11 +1,14 @@
 from collections import defaultdict
+from datetime import datetime
 from typing import Callable, Sequence
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from valor_api import enums, logger, schemas
 from valor_api.backend import core, models
+from valor_api.backend.query import Query
 
 LabelMapType = list[list[list[str]]]
 
@@ -251,6 +254,104 @@ def create_metric_mappings(
             ret.append(metric.db_mapping(evaluation_id=evaluation_id))  # type: ignore - unnecessary since we're checking for label attribute above
 
     return ret
+
+
+def log_evaluation_analytics(
+    db: Session,
+    evaluation_id: int,
+    prediction_filter: schemas.Filter,
+    groundtruth_filter: schemas.Filter,
+):
+    """
+    Store analytics regarding the evaluations execution in the metadata field of the evaluation table.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    evaluation_id : int
+        The job ID to create metrics for.
+    prediction_filter : schemas.Filter
+        The filter to be used to query predictions.
+    groundtruth_filter : schemas.Filter
+        The filter to be used to query groundtruths.
+    """
+    # get ground truth, prediction, annotation, and label counts
+    gt_subquery = (
+        Query(
+            models.GroundTruth,
+        )
+        .filter(groundtruth_filter)
+        .groundtruths(as_subquery=False)
+        .alias()
+    )
+
+    gts = db.execute(
+        select(
+            gt_subquery.c.id,
+            gt_subquery.c.annotation_id,
+            gt_subquery.c.label_id,
+        ).select_from(gt_subquery)
+    ).all()
+
+    gt_id, gt_annotation_id, gt_label_id = map(set, zip(*gts))
+
+    pd_subquery = (
+        Query(
+            models.Prediction,
+        )
+        .filter(prediction_filter)
+        .predictions(as_subquery=False)
+        .alias()
+    )
+
+    pds = db.execute(
+        select(
+            pd_subquery.c.id,
+            pd_subquery.c.annotation_id,
+            pd_subquery.c.label_id,
+        ).select_from(pd_subquery)
+    ).all()
+
+    pd_id, pd_annotation_id, pd_label_id = map(set, zip(*pds))
+
+    gt_cnt = len(gt_id)
+    pd_cnt = len(pd_id)
+    annotation_cnt = len(gt_annotation_id | pd_annotation_id)
+    label_cnt = len(gt_label_id | pd_label_id)
+
+    # get datum count
+    pd_datums = db.query(
+        Query(models.Dataset.name, models.Datum.id)  # type: ignore - sqlalchemy issues
+        .filter(prediction_filter)
+        .predictions()
+    ).all()
+    gt_datums = db.query(
+        Query(models.Dataset.name, models.Datum.id)  # type: ignore - sqlalchemy issues
+        .filter(groundtruth_filter)
+        .groundtruths()
+    ).all()
+    unique_datums = set(pd_datums + gt_datums)
+    datum_cnt = len(unique_datums)
+
+    evaluation = core.fetch_evaluation_from_id(db, evaluation_id)
+    duration = (datetime.now() - evaluation.created_at).total_seconds()
+
+    output = {
+        "groundtruths": gt_cnt,
+        "predictions": pd_cnt,
+        "annotations": annotation_cnt,
+        "labels": label_cnt,
+        "datums": datum_cnt,
+        "duration": duration,
+    }
+
+    try:
+        evaluation.metadata = output
+        db.commit()
+    except IntegrityError as e:
+        db.rollback()
+        raise e
 
 
 def validate_computation(fn: Callable) -> Callable:
