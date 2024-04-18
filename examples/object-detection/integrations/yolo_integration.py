@@ -4,7 +4,7 @@ from PIL.Image import Resampling
 
 from valor import Annotation, Datum, Label, Prediction, enums
 from valor.metatypes import ImageMetadata
-from valor.schemas import BoundingBox, Raster
+from valor.schemas import Box, Raster
 
 
 def parse_detection_into_bounding_box(
@@ -33,7 +33,7 @@ def parse_detection_into_bounding_box(
 
     # Extract Bounding Boxes
     bboxes = [
-        BoundingBox.from_extrema(
+        Box.from_extrema(
             xmin=int(box[0]),
             ymin=int(box[1]),
             xmax=int(box[2]),
