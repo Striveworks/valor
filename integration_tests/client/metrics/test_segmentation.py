@@ -47,8 +47,8 @@ def test_evaluate_segmentation(
     assert set([m["type"] for m in metrics]) == {"IOU", "mIOU"}
 
     # check metadata
-    assert eval_job.meta["datums"] == 1
-    assert eval_job.meta["labels"] == 1
+    assert eval_job.meta["datums"] == 2
+    assert eval_job.meta["labels"] == 3
     assert eval_job.meta["duration"] <= 5  # usually ~.25
 
 

@@ -311,6 +311,7 @@ def log_evaluation_item_counts(
     # get ground truth, prediction, annotation, and label counts
     gt_subquery = (
         Query(
+            models.Datum.id.label("datum_id"),
             models.GroundTruth,
         )
         .filter(groundtruth_filter)
@@ -320,6 +321,7 @@ def log_evaluation_item_counts(
 
     gts = db.execute(
         select(
+            gt_subquery.c.datum_id,
             gt_subquery.c.annotation_id,
             gt_subquery.c.label_id,
         ).select_from(gt_subquery)
@@ -327,12 +329,13 @@ def log_evaluation_item_counts(
 
     # handle edge case where no gts come back
     if not gts:
-        gt_annotation_id, gt_label_id = set(), set()
+        gt_datums, gt_annotation_id, gt_label_id = set(), set(), set()
     else:
-        gt_annotation_id, gt_label_id = map(set, zip(*gts))
+        gt_datums, gt_annotation_id, gt_label_id = map(set, zip(*gts))
 
     pd_subquery = (
         Query(
+            models.Datum.id.label("datum_id"),
             models.Prediction,
         )
         .filter(prediction_filter)
@@ -342,32 +345,20 @@ def log_evaluation_item_counts(
 
     pds = db.execute(
         select(
+            pd_subquery.c.datum_id,
             pd_subquery.c.annotation_id,
             pd_subquery.c.label_id,
         ).select_from(pd_subquery)
     ).all()
 
     if not pds:
-        pd_annotation_id, pd_label_id = set(), set()
+        pd_datums, pd_annotation_id, pd_label_id = set(), set(), set()
     else:
-        pd_annotation_id, pd_label_id = map(set, zip(*pds))
+        pd_datums, pd_annotation_id, pd_label_id = map(set, zip(*pds))
 
+    datum_cnt = len(gt_datums | pd_datums)
     annotation_cnt = len(gt_annotation_id | pd_annotation_id)
     label_cnt = len(gt_label_id | pd_label_id)
-
-    # get datum count
-    pd_datums = db.query(
-        Query(models.Dataset.name, models.Datum.id)  # type: ignore - sqlalchemy issues
-        .filter(prediction_filter)
-        .predictions()
-    ).all()
-    gt_datums = db.query(
-        Query(models.Dataset.name, models.Datum.id)  # type: ignore - sqlalchemy issues
-        .filter(groundtruth_filter)
-        .groundtruths()
-    ).all()
-    unique_datums = set(pd_datums + gt_datums)
-    datum_cnt = len(unique_datums)
 
     output = {
         "annotations": annotation_cnt,
