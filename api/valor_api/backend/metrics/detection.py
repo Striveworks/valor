@@ -15,7 +15,8 @@ from valor_api.backend.metrics.metric_utils import (
     create_grouper_mappings,
     create_metric_mappings,
     get_or_create_row,
-    log_evaluation_analytics,
+    log_evaluation_duration,
+    log_evaluation_item_counts,
     validate_computation,
 )
 from valor_api.backend.query import Query
@@ -921,6 +922,13 @@ def compute_detection_metrics(*_, db: Session, evaluation_id: int):
     groundtruth_filter.task_types = [parameters.task_type]
     prediction_filter.task_types = [parameters.task_type]
 
+    log_evaluation_item_counts(
+        db=db,
+        evaluation=evaluation,
+        prediction_filter=prediction_filter,
+        groundtruth_filter=groundtruth_filter,
+    )
+
     # fetch model and datasets
     datasets = (
         db.query(Query(models.Dataset).filter(groundtruth_filter).any())  # type: ignore - SQLAlchemy type issue
@@ -985,11 +993,9 @@ def compute_detection_metrics(*_, db: Session, evaluation_id: int):
         )
     db.commit()
 
-    log_evaluation_analytics(
-        evaluation_id=evaluation_id,
+    log_evaluation_duration(
+        evaluation=evaluation,
         db=db,
-        groundtruth_filter=groundtruth_filter,
-        prediction_filter=prediction_filter,
     )
 
     return evaluation_id

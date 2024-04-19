@@ -256,21 +256,53 @@ def create_metric_mappings(
     return ret
 
 
-def log_evaluation_analytics(
+def log_evaluation_duration(
     db: Session,
-    evaluation_id: int,
-    prediction_filter: schemas.Filter,
-    groundtruth_filter: schemas.Filter,
+    evaluation: models.Evaluation,
 ):
     """
-    Store analytics regarding the evaluation's execution in the metadata field of the evaluation table.
+    Store analytics regarding the evaluation's runtime in the metadata field of the evaluation table.
 
     Parameters
     ----------
     db : Session
         The database Session to query against.
-    evaluation_id : int
-        The job ID to create metrics for.
+    evaluation : models.Evaluation
+        The evaluation to log to.
+    prediction_filter : schemas.Filter
+        The filter to be used to query predictions.
+    groundtruth_filter : schemas.Filter
+        The filter to be used to query groundtruths.
+    """
+
+    server_time = db.execute(func.now()).scalar().replace(tzinfo=None)  # type: ignore - guaranteed to return server time if psql is running
+    duration = (server_time - evaluation.created_at).total_seconds()
+
+    try:
+        metadata = dict(evaluation.meta) if evaluation.meta else {}
+        metadata.update({"duration": duration})
+        evaluation.meta = metadata
+        db.commit()
+    except IntegrityError as e:
+        db.rollback()
+        raise e
+
+
+def log_evaluation_item_counts(
+    db: Session,
+    evaluation: models.Evaluation,
+    prediction_filter: schemas.Filter,
+    groundtruth_filter: schemas.Filter,
+):
+    """
+    Store analytics regarding the number of elements processed by the evaluation in the metadata field of the evaluation table.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    evaluation : models.Evaluation
+        The evaluation to log to.
     prediction_filter : schemas.Filter
         The filter to be used to query predictions.
     groundtruth_filter : schemas.Filter
@@ -337,16 +369,10 @@ def log_evaluation_analytics(
     unique_datums = set(pd_datums + gt_datums)
     datum_cnt = len(unique_datums)
 
-    evaluation = core.fetch_evaluation_from_id(db, evaluation_id)
-
-    server_time = db.execute(func.now()).scalar().replace(tzinfo=None)  # type: ignore - guaranteed to return server time if psql is running
-    duration = (server_time - evaluation.created_at).total_seconds()
-
     output = {
         "annotations": annotation_cnt,
         "labels": label_cnt,
         "datums": datum_cnt,
-        "duration": duration,
     }
 
     try:

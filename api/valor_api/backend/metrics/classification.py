@@ -13,7 +13,8 @@ from valor_api.backend.metrics.metric_utils import (
     create_grouper_mappings,
     create_metric_mappings,
     get_or_create_row,
-    log_evaluation_analytics,
+    log_evaluation_duration,
+    log_evaluation_item_counts,
     validate_computation,
 )
 from valor_api.backend.query import Query
@@ -889,6 +890,13 @@ def compute_clf_metrics(
     groundtruth_filter.task_types = [parameters.task_type]
     prediction_filter.task_types = [parameters.task_type]
 
+    log_evaluation_item_counts(
+        db=db,
+        evaluation=evaluation,
+        prediction_filter=prediction_filter,
+        groundtruth_filter=groundtruth_filter,
+    )
+
     confusion_matrices, metrics = _compute_clf_metrics(
         db=db,
         prediction_filter=prediction_filter,
@@ -931,11 +939,9 @@ def compute_clf_metrics(
             columns_to_ignore=["value"],
         )
 
-    log_evaluation_analytics(
-        evaluation_id=evaluation_id,
+    log_evaluation_duration(
+        evaluation=evaluation,
         db=db,
-        groundtruth_filter=groundtruth_filter,
-        prediction_filter=prediction_filter,
     )
 
     return evaluation_id
