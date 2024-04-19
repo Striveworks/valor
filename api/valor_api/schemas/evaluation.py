@@ -98,11 +98,14 @@ class EvaluationRequest(BaseModel):
         The filter object used to define what datums the model is evaluating over.
     parameters : DetectionParameters, optional
         Any parameters that are used to modify an evaluation method.
+    meta: dict[str, str | int | float]
+        Metadata about the evaluation run
     """
 
     model_names: list[str]
     datum_filter: Filter
     parameters: EvaluationParameters
+    meta: dict[str, str | int | float] | None
 
     # pydantic setting
     model_config = ConfigDict(
@@ -159,6 +162,8 @@ class EvaluationResponse(BaseModel):
         A list of ground truth labels that aren't associated with any predictions.
     ignored_pred_labels: List[Label], optional
         A list of prediction labels that aren't associated with any ground truths.
+    meta: dict[str, str | int | float]
+        Metadata about the evaluation run.
     """
 
     id: int
@@ -167,6 +172,7 @@ class EvaluationResponse(BaseModel):
     parameters: EvaluationParameters
     status: EvaluationStatus
     created_at: datetime.datetime
+    meta: dict[str, str | int | float] | None
     metrics: list[Metric] | None = None
     confusion_matrices: list[ConfusionMatrixResponse] | None = None
     ignored_pred_labels: list[Label] | None = None

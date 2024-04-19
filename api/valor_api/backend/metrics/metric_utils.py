@@ -2,10 +2,13 @@ from collections import defaultdict
 from typing import Callable, Sequence
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+from sqlalchemy.sql import func
 
 from valor_api import enums, logger, schemas
 from valor_api.backend import core, models
+from valor_api.backend.query import Query
 
 LabelMapType = list[list[list[str]]]
 
@@ -251,6 +254,126 @@ def create_metric_mappings(
             ret.append(metric.db_mapping(evaluation_id=evaluation_id))  # type: ignore - unnecessary since we're checking for label attribute above
 
     return ret
+
+
+def log_evaluation_duration(
+    db: Session,
+    evaluation: models.Evaluation,
+):
+    """
+    Store analytics regarding the evaluation's runtime in the metadata field of the evaluation table.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    evaluation : models.Evaluation
+        The evaluation to log to.
+    prediction_filter : schemas.Filter
+        The filter to be used to query predictions.
+    groundtruth_filter : schemas.Filter
+        The filter to be used to query groundtruths.
+    """
+
+    server_time = db.execute(func.now()).scalar().replace(tzinfo=None)  # type: ignore - guaranteed to return server time if psql is running
+    duration = (server_time - evaluation.created_at).total_seconds()
+
+    try:
+        metadata = dict(evaluation.meta) if evaluation.meta else {}
+        metadata.update({"duration": duration})
+        evaluation.meta = metadata
+        db.commit()
+    except IntegrityError as e:
+        db.rollback()
+        raise e
+
+
+def log_evaluation_item_counts(
+    db: Session,
+    evaluation: models.Evaluation,
+    prediction_filter: schemas.Filter,
+    groundtruth_filter: schemas.Filter,
+):
+    """
+    Store analytics regarding the number of elements processed by the evaluation in the metadata field of the evaluation table.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    evaluation : models.Evaluation
+        The evaluation to log to.
+    prediction_filter : schemas.Filter
+        The filter to be used to query predictions.
+    groundtruth_filter : schemas.Filter
+        The filter to be used to query groundtruths.
+    """
+    # get ground truth, prediction, annotation, and label counts
+    gt_subquery = (
+        Query(
+            models.Datum.id.label("datum_id"),
+            models.GroundTruth,
+        )
+        .filter(groundtruth_filter)
+        .groundtruths(as_subquery=False)
+        .alias()
+    )
+
+    gts = db.execute(
+        select(
+            gt_subquery.c.datum_id,
+            gt_subquery.c.annotation_id,
+            gt_subquery.c.label_id,
+        ).select_from(gt_subquery)
+    ).all()
+
+    # handle edge case where no gts come back
+    if not gts:
+        gt_datums, gt_annotation_id, gt_label_id = set(), set(), set()
+    else:
+        gt_datums, gt_annotation_id, gt_label_id = map(set, zip(*gts))
+
+    pd_subquery = (
+        Query(
+            models.Datum.id.label("datum_id"),
+            models.Prediction,
+        )
+        .filter(prediction_filter)
+        .predictions(as_subquery=False)
+        .alias()
+    )
+
+    pds = db.execute(
+        select(
+            pd_subquery.c.datum_id,
+            pd_subquery.c.annotation_id,
+            pd_subquery.c.label_id,
+        ).select_from(pd_subquery)
+    ).all()
+
+    if not pds:
+        pd_datums, pd_annotation_id, pd_label_id = set(), set(), set()
+    else:
+        pd_datums, pd_annotation_id, pd_label_id = map(set, zip(*pds))
+
+    datum_cnt = len(gt_datums | pd_datums)
+    annotation_cnt = len(gt_annotation_id | pd_annotation_id)
+    label_cnt = len(gt_label_id | pd_label_id)
+
+    output = {
+        "annotations": annotation_cnt,
+        "labels": label_cnt,
+        "datums": datum_cnt,
+    }
+
+    try:
+        metadata = dict(evaluation.meta) if evaluation.meta else {}
+        metadata.update(output)
+        evaluation.meta = metadata
+        db.commit()
+    except IntegrityError as e:
+        db.rollback()
+        raise e
 
 
 def validate_computation(fn: Callable) -> Callable:

@@ -11,5 +11,6 @@ def test_evaluation_request():
             "task_type": enums.TaskType.OBJECT_DETECTION.value,
             "convert_annotations_to_type": enums.AnnotationType.BOX.value,
         },
+        "meta": {},
     }
     schemas.EvaluationRequest(**params)

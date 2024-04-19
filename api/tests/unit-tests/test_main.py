@@ -930,6 +930,7 @@ def test_post_detection_metrics(client: TestClient):
         confusion_matrices=[],
         missing_pred_labels=[],
         ignored_pred_labels=[],
+        meta={},
         created_at=datetime.now(),
     ).model_dump()
 
@@ -941,6 +942,7 @@ def test_post_detection_metrics(client: TestClient):
         parameters=schemas.EvaluationParameters(
             task_type=TaskType.OBJECT_DETECTION
         ),
+        meta={},
     ).model_dump()
 
     _test_post_evaluation_endpoint(
@@ -964,6 +966,7 @@ def test_post_clf_metrics(client: TestClient):
         metrics=[],
         confusion_matrices=[],
         created_at=datetime.now(),
+        meta={},
     ).model_dump()
 
     example_json = schemas.EvaluationRequest(
@@ -972,6 +975,7 @@ def test_post_clf_metrics(client: TestClient):
         parameters=schemas.EvaluationParameters(
             task_type=TaskType.CLASSIFICATION
         ),
+        meta={},
     ).model_dump()
 
     _test_post_evaluation_endpoint(
@@ -997,6 +1001,7 @@ def test_post_semenatic_segmentation_metrics(client: TestClient):
         missing_pred_labels=[],
         ignored_pred_labels=[],
         created_at=datetime.now(),
+        meta={},
     ).model_dump()
 
     example_json = schemas.EvaluationRequest(
@@ -1005,6 +1010,7 @@ def test_post_semenatic_segmentation_metrics(client: TestClient):
         parameters=schemas.EvaluationParameters(
             task_type=TaskType.SEMANTIC_SEGMENTATION
         ),
+        meta={},
     ).model_dump()
 
     _test_post_evaluation_endpoint(

@@ -347,8 +347,6 @@ def test_generate_prediction_data(client: Client):
     """Check that our generated predictions correctly matches our input parameters"""
 
     n_images = 10
-    n_annotations = 10
-    n_labels = 10
     dataset_name = "dset"
     model_name = "model"
 
@@ -356,8 +354,8 @@ def test_generate_prediction_data(client: Client):
         client=client,
         dataset_name=dataset_name,
         n_images=n_images,
-        n_annotations=n_annotations,
-        n_labels=n_labels,
+        n_annotations=10,
+        n_labels=10,
     )
     assert len(dataset.get_datums()) == n_images
 
@@ -389,6 +387,14 @@ def test_generate_prediction_data(client: Client):
     ]:
         eval_dict.pop(key)
 
+    # check meta separately since duration isn't deterministic
+    assert eval_dict["meta"]["datums"] == 10
+    assert (
+        eval_dict["meta"]["labels"] == 1
+    )  # we're filtering on one label above
+    assert eval_dict["meta"]["duration"] <= 30
+    eval_dict["meta"] = {}
+
     assert eval_dict == {
         "model_name": model_name,
         "datum_filter": {
@@ -408,5 +414,6 @@ def test_generate_prediction_data(client: Client):
             "compute_pr_curves": False,
             "pr_curve_iou_threshold": 0.5,
         },
+        "meta": {},
     }
     assert len(eval_job.metrics) > 0

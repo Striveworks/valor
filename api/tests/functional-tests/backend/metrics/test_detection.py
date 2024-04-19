@@ -906,6 +906,7 @@ def test_detection_exceptions(db: Session):
             iou_thresholds_to_return=[0.5],
         ).model_dump(),
         status=enums.EvaluationStatus.PENDING,
+        meta={},
     )
     try:
         db.add(dataset)

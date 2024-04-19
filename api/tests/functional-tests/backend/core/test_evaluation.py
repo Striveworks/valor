@@ -183,6 +183,7 @@ def test__fetch_evaluation_from_subrequest(
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.CLASSIFICATION,
         ),
+        meta={},
     )
     created_1, _ = core.create_or_get_evaluations(db, job_request_1)
     assert len(created_1) == 1
@@ -194,6 +195,7 @@ def test__fetch_evaluation_from_subrequest(
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
         ),
+        meta={},
     )
     created_2, _ = core.create_or_get_evaluations(db, job_request_2)
     assert len(created_2) == 1
@@ -207,6 +209,7 @@ def test__fetch_evaluation_from_subrequest(
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.CLASSIFICATION,
         ),
+        meta={},
     )
     existing = _fetch_evaluation_from_subrequest(
         db=db,
@@ -240,6 +243,7 @@ def test_create_evaluation(
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.CLASSIFICATION,
         ),
+        meta={},
     )
     created, existing = core.create_or_get_evaluations(db, job_request_1)
     assert len(existing) == 0
@@ -287,6 +291,7 @@ def test_create_evaluation(
             parameters=schemas.EvaluationParameters(
                 task_type=enums.TaskType.CLASSIFICATION,
             ),
+            meta={},
         )
         core.create_or_get_evaluations(db, job_request_1)
     assert "No datasets" in str(e)
@@ -297,6 +302,7 @@ def test_create_evaluation(
             parameters=schemas.EvaluationParameters(
                 task_type=enums.TaskType.CLASSIFICATION,
             ),
+            meta={},
         )
         core.create_or_get_evaluations(db, job_request_1)
     assert "No models" in str(e)
@@ -314,6 +320,7 @@ def test_fetch_evaluation_from_id(
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.CLASSIFICATION,
         ),
+        meta={},
     )
     created_1, _ = core.create_or_get_evaluations(db, job_request_1)
     assert len(created_1) == 1
@@ -326,6 +333,7 @@ def test_fetch_evaluation_from_id(
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
         ),
+        meta={},
     )
     created_2, _ = core.create_or_get_evaluations(db, job_request_2)
     assert len(created_2) == 1
@@ -359,6 +367,7 @@ def test_get_evaluations(
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.CLASSIFICATION,
         ),
+        meta={},
     )
     created_1, _ = core.create_or_get_evaluations(db, job_request_1)
     assert len(created_1) == 1
@@ -370,6 +379,7 @@ def test_get_evaluations(
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
         ),
+        meta={},
     )
     created_2, _ = core.create_or_get_evaluations(db, job_request_2)
     assert len(created_2) == 1
@@ -488,6 +498,7 @@ def test_get_evaluation_requests_from_model(
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.CLASSIFICATION,
         ),
+        meta={},
     )
     core.create_or_get_evaluations(db, job_request_1)
 
@@ -498,6 +509,7 @@ def test_get_evaluation_requests_from_model(
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
         ),
+        meta={},
     )
     core.create_or_get_evaluations(db, job_request_2)
 
@@ -528,6 +540,7 @@ def test_evaluation_status(
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.CLASSIFICATION,
         ),
+        meta={},
     )
     created_1, existing = core.create_or_get_evaluations(db, job_request_1)
     assert len(existing) == 0
@@ -641,6 +654,7 @@ def test_count_active_evaluations(
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.CLASSIFICATION,
         ),
+        meta={},
     )
     created, _ = core.create_or_get_evaluations(db, job_request_1)
     assert len(created) == 1
@@ -653,6 +667,7 @@ def test_count_active_evaluations(
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
         ),
+        meta={},
     )
     created, _ = core.create_or_get_evaluations(db, job_request_2)
     assert len(created) == 1
@@ -699,6 +714,7 @@ def test_count_active_evaluations(
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.OBJECT_DETECTION,
         ),
+        meta={},
     )
     evaluation_3, _ = core.create_or_get_evaluations(db, job_request_3)
     evaluation_3 = evaluation_3[0].id
@@ -808,6 +824,7 @@ def test__fetch_evaluations_and_mark_for_deletion(
                     task_type=enums.TaskType.CLASSIFICATION,
                     compute_pr_curves=pr_curves,
                 ),
+                meta={},
             ),
         )
 
@@ -815,6 +832,7 @@ def test__fetch_evaluations_and_mark_for_deletion(
     evals = db.query(models.Evaluation).all()
     assert len(evals) == 2
     assert all([e.status != enums.EvaluationStatus.DELETING for e in evals])
+    assert all(e.meta == {} for e in evals)
 
     eval_ids = [e.id for e in evals]
     # fetch and update all evaluations, check they're in deleting status

@@ -123,7 +123,15 @@ def test_evaluate_detection(
     assert eval_job.status == EvaluationStatus.DONE
 
     result = eval_job
-    assert result.to_dict() == {
+    result_dict = result.to_dict()
+    # duration isn't deterministic, so test meta separately
+    assert result_dict["meta"]["datums"] == 2
+    assert result_dict["meta"]["labels"] == 1  # we're filtering on one label
+    assert result_dict["meta"]["annotations"] == 3
+    assert result_dict["meta"]["duration"] <= 5
+    result_dict.pop("meta")
+
+    assert result_dict == {
         "id": eval_job.id,
         "model_name": model_name,
         "datum_filter": {
@@ -219,7 +227,11 @@ def test_evaluate_detection(
         eval_job_bounded_area_10_2000.wait_for_completion(timeout=30)
         == EvaluationStatus.DONE
     )
-    assert eval_job_bounded_area_10_2000.to_dict() == {
+    eval_job_bounded_area_10_2000_dict = (
+        eval_job_bounded_area_10_2000.to_dict()
+    )
+    eval_job_bounded_area_10_2000_dict.pop("meta")
+    assert eval_job_bounded_area_10_2000_dict == {
         "id": eval_job_bounded_area_10_2000.id,
         "model_name": model_name,
         "datum_filter": {
@@ -271,6 +283,7 @@ def test_evaluate_detection(
         == EvaluationStatus.DONE
     )
     result = eval_job_min_area_1200.to_dict()
+    result.pop("meta")
     min_area_1200_metrics = result.pop("metrics")
     assert result == {
         "id": eval_job_min_area_1200.id,
@@ -318,6 +331,7 @@ def test_evaluate_detection(
     # this computation will return 'EvaluationStatus.FAILED' as no predictions exist that meet the filter requirements.
     eval_job_max_area_1200.wait_for_completion(timeout=30)
     result = eval_job_max_area_1200.to_dict()
+    result.pop("meta")
     max_area_1200_metrics = result.pop("metrics")
     assert result == {
         "id": eval_job_max_area_1200.id,
@@ -369,6 +383,7 @@ def test_evaluate_detection(
         == EvaluationStatus.DONE
     )
     result = eval_job_bounded_area_1200_1800.to_dict()
+    result.pop("meta")
     bounded_area_metrics = result.pop("metrics")
     assert result == {
         "id": eval_job_bounded_area_1200_1800.id,
@@ -530,7 +545,7 @@ def test_evaluate_detection_with_json_filters(
         == EvaluationStatus.DONE
     )
     result = eval_job_bounded_area_1200_1800.to_dict()
-
+    result.pop("meta")
     bounded_area_metrics = result.pop("metrics")
     assert result == {
         "id": eval_job_bounded_area_1200_1800.id,

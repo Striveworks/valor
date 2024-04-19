@@ -210,6 +210,8 @@ class Evaluation:
             A list of metric dictionaries returned by the job.
         confusion_matrices : List[dict]
             A list of confusion matrix dictionaries returned by the job.
+        meta: dict[str, str | float | dict], optional
+            A dictionary of metadata describing the evaluation run.
         """
         if not connection:
             connection = get_connection()
@@ -227,6 +229,7 @@ class Evaluation:
         metrics: List[Dict],
         confusion_matrices: List[Dict],
         created_at: str,
+        meta: dict[str, str | float | dict] | None,
         **kwargs,
     ):
         self.id = id
@@ -243,6 +246,7 @@ class Evaluation:
         )
         self.status = EvaluationStatus(status)
         self.metrics = metrics
+        self.meta = meta
         self.confusion_matrices = confusion_matrices
         self.kwargs = kwargs
         self.ignored_pred_labels: Optional[List[Label]] = None
@@ -323,6 +327,7 @@ class Evaluation:
             "status": self.status.value,
             "metrics": self.metrics,
             "confusion_matrices": self.confusion_matrices,
+            "meta": self.meta,
             **self.kwargs,
         }
 
@@ -930,6 +935,7 @@ class Model(StaticCollection):
                 label_map=self._create_label_map(label_map=label_map),
                 compute_pr_curves=compute_pr_curves,
             ),
+            meta={},
         )
 
         # create evaluation
@@ -1003,6 +1009,7 @@ class Model(StaticCollection):
             model_names=[self.get_name()],
             datum_filter=datum_filter,
             parameters=parameters,
+            meta={},
         )
 
         # create evaluation
@@ -1043,6 +1050,7 @@ class Model(StaticCollection):
                 task_type=TaskType.SEMANTIC_SEGMENTATION,
                 label_map=self._create_label_map(label_map=label_map),
             ),
+            meta={},
         )
 
         # create evaluation
