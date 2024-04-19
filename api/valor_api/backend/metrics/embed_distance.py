@@ -1,6 +1,6 @@
 from geoalchemy2.functions import ST_Count, ST_MapAlgebra
 from sqlalchemy.orm import Session, aliased
-from sqlalchemy.sql import Select, func, select, and_
+from sqlalchemy.sql import Select, and_, func, select
 
 from valor_api import enums, schemas
 from valor_api.backend import core, models
@@ -22,8 +22,7 @@ def _compute_embedding_distance(
 ):
     pd_embeddings = (
         Query(
-            models.Annotation.embedding_id,
-            models.Label.id.label("label_id")
+            models.Annotation.embedding_id, models.Label.id.label("label_id")
         )
         .filter(prediction_filter)
         .predictions(as_subquery=False)
@@ -40,15 +39,15 @@ def _compute_embedding_distance(
             emb1.id,
             emb2.id,
             emb1.value.l2_distance(emb2.value).label("l2"),
-            emb1.value.cosine_distance(emb2.value).label("cosine_distance")
+            emb1.value.cosine_distance(emb2.value).label("cosine_distance"),
         )
         .select_from(pds1)
         .join(
             pds2,
             and_(
                 pds1.c.label_id == pds2.c.label_id,
-                pds1.c.embedding_id > pds2.c.embedding_id
-            )
+                pds1.c.embedding_id > pds2.c.embedding_id,
+            ),
         )
         .join(emb1, emb1.id == pds1.c.embedding_id)
         .join(emb2, emb2.id == pds2.c.embedding_id)
