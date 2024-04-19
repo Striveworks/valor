@@ -79,7 +79,7 @@ class Point(BaseModel):
             A Point value in GeoJSON format.
         """
         geometry = GeoJSON(**geojson).geometry
-        if type(geometry) is not Point:
+        if not isinstance(geometry, Point):
             raise TypeError(f"GeoJSON is for a different type '{geojson}'.")
         return geometry
 
@@ -173,7 +173,7 @@ class MultiPoint(BaseModel):
             A MultiPoint value in GeoJSON format.
         """
         geometry = GeoJSON(**geojson).geometry
-        if type(geometry) is not MultiPoint:
+        if not isinstance(geometry, MultiPoint):
             raise TypeError(f"GeoJSON is for a different type '{geojson}'.")
         return geometry
 
@@ -273,7 +273,7 @@ class LineString(BaseModel):
             A LineString value in GeoJSON format.
         """
         geometry = GeoJSON(**geojson).geometry
-        if type(geometry) is not LineString:
+        if not isinstance(geometry, LineString):
             raise TypeError(f"GeoJSON is for a different type '{geojson}'.")
         return geometry
 
@@ -371,7 +371,7 @@ class MultiLineString(BaseModel):
             A MultiLineString value in GeoJSON format.
         """
         geometry = GeoJSON(**geojson).geometry
-        if type(geometry) is not MultiLineString:
+        if not isinstance(geometry, MultiLineString):
             raise TypeError(f"GeoJSON is for a different type '{geojson}'.")
         return geometry
 
@@ -476,7 +476,7 @@ class Polygon(BaseModel):
             A Polygon value in GeoJSON format.
         """
         geometry = GeoJSON(**geojson).geometry
-        if type(geometry) is not Polygon:
+        if not isinstance(geometry, Polygon):
             raise TypeError(f"GeoJSON is for a different type '{geojson}'.")
         return geometry
 
@@ -729,7 +729,7 @@ class MultiPolygon(BaseModel):
             A MultiPolygon value in GeoJSON format.
         """
         geometry = GeoJSON(**geojson).geometry
-        if type(geometry) is not MultiPolygon:
+        if not isinstance(geometry, MultiPolygon):
             raise TypeError(f"GeoJSON is for a different type '{geojson}'.")
         return geometry
 
