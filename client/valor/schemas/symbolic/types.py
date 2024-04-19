@@ -354,9 +354,6 @@ class Variable:
         )
 
 
-T = typing.TypeVar("T", bound=Variable)
-
-
 class Bool(Variable):
     """
     Implementation of the built-in type 'bool' as a Variable.
