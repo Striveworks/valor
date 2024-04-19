@@ -1,4 +1,4 @@
-::: valor.metatypes.ImageMetadata
+::: valor.schemas.MultiPoint
     handler: python
     options:
         show_root_heading: false

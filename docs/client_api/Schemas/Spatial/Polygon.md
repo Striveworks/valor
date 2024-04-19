@@ -1,4 +1,4 @@
-::: valor.metatypes.VideoFrameMetadata
+::: valor.schemas.Polygon
     handler: python
     options:
         show_root_heading: false
