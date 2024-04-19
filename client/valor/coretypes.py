@@ -1263,7 +1263,6 @@ class Client:
                 dataset_name=dataset_name, datum_uid=datum_uid
             )
             resp.pop("dataset_name")
-            print(json.dumps(resp, indent=2))
             return GroundTruth.decode_value(resp)
         except ClientException as e:
             if e.status_code == 404:
