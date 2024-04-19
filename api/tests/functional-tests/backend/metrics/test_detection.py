@@ -873,11 +873,11 @@ def test__compute_detection_metrics_with_rasters(
     # spot check a few geojson results
     assert (
         pr_metrics["value"]["label1"][0.05]["tp"][0][2]
-        == '{"type":"Polygon","coordinates":[[[0,80],[32,80],[32,0],[0,0],[0,80]]]}'
+        == '{"type":"Polygon","coordinates":[[[0,0],[0,80],[32,80],[32,0],[0,0]]]}'
     )
     assert (
         pr_metrics["value"]["label2"][0.85]["tp"][0][2]
-        == '{"type":"Polygon","coordinates":[[[0,80],[32,80],[32,0],[0,0],[0,80]]]}'
+        == '{"type":"Polygon","coordinates":[[[0,0],[0,80],[32,80],[32,0],[0,0]]]}'
     )
 
     assert pr_metrics["value"]["label3"][0.85]["tp"] == []
