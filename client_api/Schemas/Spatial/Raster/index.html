@@ -1,0 +1,1973 @@
+
+<!DOCTYPE html>
+
+<html class="no-js" lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width,initial-scale=1" name="viewport"/>
+<link href="../Polygon/" rel="prev"/>
+<link href="../../../../assets/images/favicon.png" rel="icon"/>
+<meta content="mkdocs-1.5.3, mkdocs-material-9.5.18" name="generator"/>
+<title>Raster - Valor</title>
+<link href="../../../../assets/stylesheets/main.66ac8b77.min.css" rel="stylesheet"/>
+<link href="../../../../assets/stylesheets/palette.06af60db.min.css" rel="stylesheet"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&amp;display=fallback" rel="stylesheet"/>
+<style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+<link href="../../../../assets/_mkdocstrings.css" rel="stylesheet"/>
+<script>__md_scope=new URL("../../../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+</head>
+<body data-md-color-accent="indigo" data-md-color-primary="deep-purple" data-md-color-scheme="slate" dir="ltr">
+<input autocomplete="off" class="md-toggle" data-md-toggle="drawer" id="__drawer" type="checkbox"/>
+<input autocomplete="off" class="md-toggle" data-md-toggle="search" id="__search" type="checkbox"/>
+<label class="md-overlay" for="__drawer"></label>
+<div data-md-component="skip">
+<a class="md-skip" href="#valor.schemas.Raster-attributes">
+          Skip to content
+        </a>
+</div>
+<div data-md-component="announce">
+</div>
+<header class="md-header md-header--shadow" data-md-component="header">
+<nav aria-label="Header" class="md-header__inner md-grid">
+<a aria-label="Valor" class="md-header__button md-logo" data-md-component="logo" href="../../../.." title="Valor">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"></path></svg>
+</a>
+<label class="md-header__button md-icon" for="__drawer">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"></path></svg>
+</label>
+<div class="md-header__title" data-md-component="header-title">
+<div class="md-header__ellipsis">
+<div class="md-header__topic">
+<span class="md-ellipsis">
+            Valor
+          </span>
+</div>
+<div class="md-header__topic" data-md-component="header-topic">
+<span class="md-ellipsis">
+            
+              Raster
+            
+          </span>
+</div>
+</div>
+</div>
+<label class="md-header__button md-icon" for="__search">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"></path></svg>
+</label>
+<div class="md-search" data-md-component="search" role="dialog">
+<label class="md-search__overlay" for="__search"></label>
+<div class="md-search__inner" role="search">
+<form class="md-search__form" name="search">
+<input aria-label="Search" autocapitalize="off" autocomplete="off" autocorrect="off" class="md-search__input" data-md-component="search-query" name="query" placeholder="Search" required="" spellcheck="false" type="text"/>
+<label class="md-search__icon md-icon" for="__search">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"></path></svg>
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"></path></svg>
+</label>
+<nav aria-label="Search" class="md-search__options">
+<button aria-label="Clear" class="md-search__icon md-icon" tabindex="-1" title="Clear" type="reset">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"></path></svg>
+</button>
+</nav>
+</form>
+<div class="md-search__output">
+<div class="md-search__scrollwrap" data-md-scrollfix="">
+<div class="md-search-result" data-md-component="search-result">
+<div class="md-search-result__meta">
+            Initializing search
+          </div>
+<ol class="md-search-result__list" role="presentation"></ol>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="md-header__source">
+<a class="md-source" data-md-component="source" href="https://github.com/striveworks/valor" title="Go to repository">
+<div class="md-source__icon md-icon">
+<svg viewbox="0 0 448 512" xmlns="http://www.w3.org/2000/svg"><!--! Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"></path></svg>
+</div>
+<div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+</div>
+</nav>
+</header>
+<div class="md-container" data-md-component="container">
+<main class="md-main" data-md-component="main">
+<div class="md-main__inner md-grid">
+<div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation">
+<div class="md-sidebar__scrollwrap">
+<div class="md-sidebar__inner">
+<nav aria-label="Navigation" class="md-nav md-nav--primary" data-md-level="0">
+<label class="md-nav__title" for="__drawer">
+<a aria-label="Valor" class="md-nav__button md-logo" data-md-component="logo" href="../../../.." title="Valor">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"></path></svg>
+</a>
+    Valor
+  </label>
+<div class="md-nav__source">
+<a class="md-source" data-md-component="source" href="https://github.com/striveworks/valor" title="Go to repository">
+<div class="md-source__icon md-icon">
+<svg viewbox="0 0 448 512" xmlns="http://www.w3.org/2000/svg"><!--! Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"></path></svg>
+</div>
+<div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+</div>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../../..">
+<span class="md-ellipsis">
+    Overview
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../../../installation/">
+<span class="md-ellipsis">
+    Installation
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../../../basic_usage/">
+<span class="md-ellipsis">
+    Basic Usage
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="https://github.com/Striveworks/valor/blob/main/examples/">
+<span class="md-ellipsis">
+    Sample Notebooks
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../../../metadata_and_filtering/">
+<span class="md-ellipsis">
+    Metadata &amp; Filtering
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../../../metrics/">
+<span class="md-ellipsis">
+    Metrics
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../../../endpoints/">
+<span class="md-ellipsis">
+    Endpoints
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../../../technical_concepts/">
+<span class="md-ellipsis">
+    Technical Concepts
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../../../contributing/">
+<span class="md-ellipsis">
+    Contributing &amp; Development
+  </span>
+</a>
+</li>
+<li class="md-nav__item md-nav__item--active md-nav__item--nested">
+<input checked="" class="md-nav__toggle md-toggle" id="__nav_10" type="checkbox"/>
+<label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="0">
+<span class="md-ellipsis">
+    Python Client API
+  </span>
+<span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-expanded="true" aria-labelledby="__nav_10_label" class="md-nav" data-md-level="1">
+<label class="md-nav__title" for="__nav_10">
+<span class="md-nav__icon md-icon"></span>
+            Python Client API
+          </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../../Annotation/">
+<span class="md-ellipsis">
+    Annotation
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../../Client/">
+<span class="md-ellipsis">
+    Client
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../../Dataset/">
+<span class="md-ellipsis">
+    Dataset
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../../Datum/">
+<span class="md-ellipsis">
+    Datum
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../../Evaluation/">
+<span class="md-ellipsis">
+    Evaluation
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../../Groundtruth/">
+<span class="md-ellipsis">
+    Groundtruth
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../../Label/">
+<span class="md-ellipsis">
+    Label
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../../Model/">
+<span class="md-ellipsis">
+    Model
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../../Prediction/">
+<span class="md-ellipsis">
+    Prediction
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../../Viz/">
+<span class="md-ellipsis">
+    Viz
+  </span>
+</a>
+</li>
+<li class="md-nav__item md-nav__item--active md-nav__item--nested">
+<input checked="" class="md-nav__toggle md-toggle" id="__nav_10_11" type="checkbox"/>
+<label class="md-nav__link" for="__nav_10_11" id="__nav_10_11_label" tabindex="0">
+<span class="md-ellipsis">
+    Schemas
+  </span>
+<span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-expanded="true" aria-labelledby="__nav_10_11_label" class="md-nav" data-md-level="2">
+<label class="md-nav__title" for="__nav_10_11">
+<span class="md-nav__icon md-icon"></span>
+            Schemas
+          </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../Filters/">
+<span class="md-ellipsis">
+    Filters
+  </span>
+</a>
+</li>
+<li class="md-nav__item md-nav__item--nested">
+<input class="md-nav__toggle md-toggle md-toggle--indeterminate" id="__nav_10_11_2" type="checkbox"/>
+<label class="md-nav__link" for="__nav_10_11_2" id="__nav_10_11_2_label" tabindex="0">
+<span class="md-ellipsis">
+    Evaluation
+  </span>
+<span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-expanded="false" aria-labelledby="__nav_10_11_2_label" class="md-nav" data-md-level="3">
+<label class="md-nav__title" for="__nav_10_11_2">
+<span class="md-nav__icon md-icon"></span>
+            Evaluation
+          </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../Evaluation/EvaluationParameters/">
+<span class="md-ellipsis">
+    EvaluationParameters
+  </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item md-nav__item--active md-nav__item--nested">
+<input checked="" class="md-nav__toggle md-toggle" id="__nav_10_11_3" type="checkbox"/>
+<label class="md-nav__link" for="__nav_10_11_3" id="__nav_10_11_3_label" tabindex="0">
+<span class="md-ellipsis">
+    Spatial
+  </span>
+<span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-expanded="true" aria-labelledby="__nav_10_11_3_label" class="md-nav" data-md-level="3">
+<label class="md-nav__title" for="__nav_10_11_3">
+<span class="md-nav__icon md-icon"></span>
+            Spatial
+          </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../Box/">
+<span class="md-ellipsis">
+    Box
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../LineString/">
+<span class="md-ellipsis">
+    LineString
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../MultiLineString/">
+<span class="md-ellipsis">
+    MultiLineString
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../MultiPoint/">
+<span class="md-ellipsis">
+    MultiPoint
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../Point/">
+<span class="md-ellipsis">
+    Point
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../Polygon/">
+<span class="md-ellipsis">
+    Polygon
+  </span>
+</a>
+</li>
+<li class="md-nav__item md-nav__item--active">
+<input class="md-nav__toggle md-toggle" id="__toc" type="checkbox"/>
+<label class="md-nav__link md-nav__link--active" for="__toc">
+<span class="md-ellipsis">
+    Raster
+  </span>
+<span class="md-nav__icon md-icon"></span>
+</label>
+<a class="md-nav__link md-nav__link--active" href="./">
+<span class="md-ellipsis">
+    Raster
+  </span>
+</a>
+<nav aria-label="Table of contents" class="md-nav md-nav--secondary">
+<label class="md-nav__title" for="__toc">
+<span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+<ul class="md-nav__list" data-md-component="toc" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#valor.schemas.Raster-attributes">
+<span class="md-ellipsis">
+      Attributes
+    </span>
+</a>
+<nav aria-label="Attributes" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#valor.schemas.Raster.area">
+<span class="md-ellipsis">
+      area
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#valor.schemas.Raster.array">
+<span class="md-ellipsis">
+      array
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#valor.schemas.Raster.geometry">
+<span class="md-ellipsis">
+      geometry
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#valor.schemas.Raster.height">
+<span class="md-ellipsis">
+      height
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#valor.schemas.Raster.width">
+<span class="md-ellipsis">
+      width
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#valor.schemas.Raster-functions">
+<span class="md-ellipsis">
+      Functions
+    </span>
+</a>
+<nav aria-label="Functions" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#valor.schemas.Raster.__init__">
+<span class="md-ellipsis">
+      __init__
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#valor.schemas.Raster.__validate__">
+<span class="md-ellipsis">
+      __validate__
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#valor.schemas.Raster.decode_value">
+<span class="md-ellipsis">
+      decode_value
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#valor.schemas.Raster.encode_value">
+<span class="md-ellipsis">
+      encode_value
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#valor.schemas.Raster.from_geometry">
+<span class="md-ellipsis">
+      from_geometry
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#valor.schemas.Raster.from_numpy">
+<span class="md-ellipsis">
+      from_numpy
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+</ul>
+</nav>
+</li>
+</ul>
+</nav>
+</li>
+</ul>
+</nav>
+</li>
+</ul>
+</nav>
+</li>
+</ul>
+</nav>
+</div>
+</div>
+</div>
+<div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc">
+<div class="md-sidebar__scrollwrap">
+<div class="md-sidebar__inner">
+<nav aria-label="Table of contents" class="md-nav md-nav--secondary">
+<label class="md-nav__title" for="__toc">
+<span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+<ul class="md-nav__list" data-md-component="toc" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#valor.schemas.Raster-attributes">
+<span class="md-ellipsis">
+      Attributes
+    </span>
+</a>
+<nav aria-label="Attributes" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#valor.schemas.Raster.area">
+<span class="md-ellipsis">
+      area
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#valor.schemas.Raster.array">
+<span class="md-ellipsis">
+      array
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#valor.schemas.Raster.geometry">
+<span class="md-ellipsis">
+      geometry
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#valor.schemas.Raster.height">
+<span class="md-ellipsis">
+      height
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#valor.schemas.Raster.width">
+<span class="md-ellipsis">
+      width
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#valor.schemas.Raster-functions">
+<span class="md-ellipsis">
+      Functions
+    </span>
+</a>
+<nav aria-label="Functions" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#valor.schemas.Raster.__init__">
+<span class="md-ellipsis">
+      __init__
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#valor.schemas.Raster.__validate__">
+<span class="md-ellipsis">
+      __validate__
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#valor.schemas.Raster.decode_value">
+<span class="md-ellipsis">
+      decode_value
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#valor.schemas.Raster.encode_value">
+<span class="md-ellipsis">
+      encode_value
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#valor.schemas.Raster.from_geometry">
+<span class="md-ellipsis">
+      from_geometry
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#valor.schemas.Raster.from_numpy">
+<span class="md-ellipsis">
+      from_numpy
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+</ul>
+</nav>
+</div>
+</div>
+</div>
+<div class="md-content" data-md-component="content">
+<article class="md-content__inner md-typeset">
+<h1>Raster</h1>
+<div class="doc doc-object doc-class">
+<div class="doc doc-contents first">
+<p class="doc doc-class-bases">
+            Bases: <code><span title="valor.schemas.symbolic.types.Spatial">Spatial</span></code></p>
+<p>Represents a binary mask.</p>
+<p><span class="doc-section-title">Parameters:</span></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr class="doc-section-item">
+<td><code>value</code></td>
+<td>
+<code>Dict[str, <span title="typing.Union">Union</span>[<span title="numpy.ndarray">ndarray</span>, str, None]]</code>
+</td>
+<td>
+<div class="doc-md-description">
+<p>An raster value.</p>
+</div>
+</td>
+<td>
+<em>required</em>
+</td>
+</tr>
+</tbody>
+</table>
+<p><span class="doc-section-title">Attributes:</span></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="doc-section-item">
+<td><code><a class="autorefs autorefs-internal" title="valor.schemas.Raster.area" href="#valor.schemas.Raster.area">area</a></code></td>
+<td>
+<code><span title="valor.schemas.symbolic.types.Float">Float</span></code>
+</td>
+<td>
+<div class="doc-md-description">
+</div>
+</td>
+</tr>
+<tr class="doc-section-item">
+<td><code><a class="autorefs autorefs-internal" title="valor.schemas.Raster.array" href="#valor.schemas.Raster.array">array</a></code></td>
+<td>
+<code><span title="numpy.ndarray">ndarray</span></code>
+</td>
+<td>
+<div class="doc-md-description">
+</div>
+</td>
+</tr>
+<tr class="doc-section-item">
+<td><code><a class="autorefs autorefs-internal" title="valor.schemas.Raster.geometry" href="#valor.schemas.Raster.geometry">geometry</a></code></td>
+<td>
+<code><span title="typing.Union">Union</span>[<span title="valor.schemas.symbolic.types.Box">Box</span>, <span title="valor.schemas.symbolic.types.Polygon">Polygon</span>, <span title="valor.schemas.symbolic.types.MultiPolygon">MultiPolygon</span>]</code>
+</td>
+<td>
+<div class="doc-md-description">
+</div>
+</td>
+</tr>
+<tr class="doc-section-item">
+<td><code><a class="autorefs autorefs-internal" title="valor.schemas.Raster.height" href="#valor.schemas.Raster.height">height</a></code></td>
+<td>
+<code>int</code>
+</td>
+<td>
+<div class="doc-md-description">
+</div>
+</td>
+</tr>
+<tr class="doc-section-item">
+<td><code><a class="autorefs autorefs-internal" title="valor.schemas.Raster.width" href="#valor.schemas.Raster.width">width</a></code></td>
+<td>
+<code>int</code>
+</td>
+<td>
+<div class="doc-md-description">
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+<p><span class="doc-section-title">Raises:</span></p>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="doc-section-item">
+<td>
+<code>TypeError</code>
+</td>
+<td>
+<div class="doc-md-description">
+<p>If <code>encoding</code> is not a string.</p>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+<p><span class="doc-section-title">Examples:</span></p>
+<p>Generate a random mask.</p>
+<div class="language-pycon highlight"><pre><span></span><code><span id="__span-0-1"><a href="#__codelineno-0-1" id="__codelineno-0-1" name="__codelineno-0-1"></a><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">numpy.random</span>
+</span><span id="__span-0-2"><a href="#__codelineno-0-2" id="__codelineno-0-2" name="__codelineno-0-2"></a><span class="gp">&gt;&gt;&gt; </span><span class="n">height</span> <span class="o">=</span> <span class="mi">640</span>
+</span><span id="__span-0-3"><a href="#__codelineno-0-3" id="__codelineno-0-3" name="__codelineno-0-3"></a><span class="gp">&gt;&gt;&gt; </span><span class="n">width</span> <span class="o">=</span> <span class="mi">480</span>
+</span><span id="__span-0-4"><a href="#__codelineno-0-4" id="__codelineno-0-4" name="__codelineno-0-4"></a><span class="gp">&gt;&gt;&gt; </span><span class="n">array</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="n">height</span><span class="p">,</span> <span class="n">width</span><span class="p">)</span>
+</span></code></pre></div>
+<p>Convert to binary mask.</p>
+<div class="language-pycon highlight"><pre><span></span><code><span id="__span-0-1"><a href="#__codelineno-0-1" id="__codelineno-0-1" name="__codelineno-0-1"></a><span class="gp">&gt;&gt;&gt; </span><span class="n">mask</span> <span class="o">=</span> <span class="p">(</span><span class="n">array</span> <span class="o">&gt;</span> <span class="mf">0.5</span><span class="p">)</span>
+</span></code></pre></div>
+<p>Create Raster.</p>
+<div class="language-pycon highlight"><pre><span></span><code><span id="__span-0-1"><a href="#__codelineno-0-1" id="__codelineno-0-1" name="__codelineno-0-1"></a><span class="gp">&gt;&gt;&gt; </span><span class="n">Raster</span><span class="o">.</span><span class="n">from_numpy</span><span class="p">(</span><span class="n">mask</span><span class="p">)</span>
+</span></code></pre></div>
+<details class="quote">
+<summary>Source code in <code>valor/schemas/symbolic/types.py</code></summary>
+<div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-1767">1767</a></span>
+<span class="normal"><a href="#__codelineno-0-1768">1768</a></span>
+<span class="normal"><a href="#__codelineno-0-1769">1769</a></span>
+<span class="normal"><a href="#__codelineno-0-1770">1770</a></span>
+<span class="normal"><a href="#__codelineno-0-1771">1771</a></span>
+<span class="normal"><a href="#__codelineno-0-1772">1772</a></span>
+<span class="normal"><a href="#__codelineno-0-1773">1773</a></span>
+<span class="normal"><a href="#__codelineno-0-1774">1774</a></span>
+<span class="normal"><a href="#__codelineno-0-1775">1775</a></span>
+<span class="normal"><a href="#__codelineno-0-1776">1776</a></span>
+<span class="normal"><a href="#__codelineno-0-1777">1777</a></span>
+<span class="normal"><a href="#__codelineno-0-1778">1778</a></span>
+<span class="normal"><a href="#__codelineno-0-1779">1779</a></span>
+<span class="normal"><a href="#__codelineno-0-1780">1780</a></span>
+<span class="normal"><a href="#__codelineno-0-1781">1781</a></span>
+<span class="normal"><a href="#__codelineno-0-1782">1782</a></span>
+<span class="normal"><a href="#__codelineno-0-1783">1783</a></span>
+<span class="normal"><a href="#__codelineno-0-1784">1784</a></span>
+<span class="normal"><a href="#__codelineno-0-1785">1785</a></span>
+<span class="normal"><a href="#__codelineno-0-1786">1786</a></span>
+<span class="normal"><a href="#__codelineno-0-1787">1787</a></span>
+<span class="normal"><a href="#__codelineno-0-1788">1788</a></span>
+<span class="normal"><a href="#__codelineno-0-1789">1789</a></span>
+<span class="normal"><a href="#__codelineno-0-1790">1790</a></span>
+<span class="normal"><a href="#__codelineno-0-1791">1791</a></span>
+<span class="normal"><a href="#__codelineno-0-1792">1792</a></span>
+<span class="normal"><a href="#__codelineno-0-1793">1793</a></span>
+<span class="normal"><a href="#__codelineno-0-1794">1794</a></span>
+<span class="normal"><a href="#__codelineno-0-1795">1795</a></span>
+<span class="normal"><a href="#__codelineno-0-1796">1796</a></span>
+<span class="normal"><a href="#__codelineno-0-1797">1797</a></span>
+<span class="normal"><a href="#__codelineno-0-1798">1798</a></span>
+<span class="normal"><a href="#__codelineno-0-1799">1799</a></span>
+<span class="normal"><a href="#__codelineno-0-1800">1800</a></span>
+<span class="normal"><a href="#__codelineno-0-1801">1801</a></span>
+<span class="normal"><a href="#__codelineno-0-1802">1802</a></span>
+<span class="normal"><a href="#__codelineno-0-1803">1803</a></span>
+<span class="normal"><a href="#__codelineno-0-1804">1804</a></span>
+<span class="normal"><a href="#__codelineno-0-1805">1805</a></span>
+<span class="normal"><a href="#__codelineno-0-1806">1806</a></span>
+<span class="normal"><a href="#__codelineno-0-1807">1807</a></span>
+<span class="normal"><a href="#__codelineno-0-1808">1808</a></span>
+<span class="normal"><a href="#__codelineno-0-1809">1809</a></span>
+<span class="normal"><a href="#__codelineno-0-1810">1810</a></span>
+<span class="normal"><a href="#__codelineno-0-1811">1811</a></span>
+<span class="normal"><a href="#__codelineno-0-1812">1812</a></span>
+<span class="normal"><a href="#__codelineno-0-1813">1813</a></span>
+<span class="normal"><a href="#__codelineno-0-1814">1814</a></span>
+<span class="normal"><a href="#__codelineno-0-1815">1815</a></span>
+<span class="normal"><a href="#__codelineno-0-1816">1816</a></span>
+<span class="normal"><a href="#__codelineno-0-1817">1817</a></span>
+<span class="normal"><a href="#__codelineno-0-1818">1818</a></span>
+<span class="normal"><a href="#__codelineno-0-1819">1819</a></span>
+<span class="normal"><a href="#__codelineno-0-1820">1820</a></span>
+<span class="normal"><a href="#__codelineno-0-1821">1821</a></span>
+<span class="normal"><a href="#__codelineno-0-1822">1822</a></span>
+<span class="normal"><a href="#__codelineno-0-1823">1823</a></span>
+<span class="normal"><a href="#__codelineno-0-1824">1824</a></span>
+<span class="normal"><a href="#__codelineno-0-1825">1825</a></span>
+<span class="normal"><a href="#__codelineno-0-1826">1826</a></span>
+<span class="normal"><a href="#__codelineno-0-1827">1827</a></span>
+<span class="normal"><a href="#__codelineno-0-1828">1828</a></span>
+<span class="normal"><a href="#__codelineno-0-1829">1829</a></span>
+<span class="normal"><a href="#__codelineno-0-1830">1830</a></span>
+<span class="normal"><a href="#__codelineno-0-1831">1831</a></span>
+<span class="normal"><a href="#__codelineno-0-1832">1832</a></span>
+<span class="normal"><a href="#__codelineno-0-1833">1833</a></span>
+<span class="normal"><a href="#__codelineno-0-1834">1834</a></span>
+<span class="normal"><a href="#__codelineno-0-1835">1835</a></span>
+<span class="normal"><a href="#__codelineno-0-1836">1836</a></span>
+<span class="normal"><a href="#__codelineno-0-1837">1837</a></span>
+<span class="normal"><a href="#__codelineno-0-1838">1838</a></span>
+<span class="normal"><a href="#__codelineno-0-1839">1839</a></span>
+<span class="normal"><a href="#__codelineno-0-1840">1840</a></span>
+<span class="normal"><a href="#__codelineno-0-1841">1841</a></span>
+<span class="normal"><a href="#__codelineno-0-1842">1842</a></span>
+<span class="normal"><a href="#__codelineno-0-1843">1843</a></span>
+<span class="normal"><a href="#__codelineno-0-1844">1844</a></span>
+<span class="normal"><a href="#__codelineno-0-1845">1845</a></span>
+<span class="normal"><a href="#__codelineno-0-1846">1846</a></span>
+<span class="normal"><a href="#__codelineno-0-1847">1847</a></span>
+<span class="normal"><a href="#__codelineno-0-1848">1848</a></span>
+<span class="normal"><a href="#__codelineno-0-1849">1849</a></span>
+<span class="normal"><a href="#__codelineno-0-1850">1850</a></span>
+<span class="normal"><a href="#__codelineno-0-1851">1851</a></span>
+<span class="normal"><a href="#__codelineno-0-1852">1852</a></span>
+<span class="normal"><a href="#__codelineno-0-1853">1853</a></span>
+<span class="normal"><a href="#__codelineno-0-1854">1854</a></span>
+<span class="normal"><a href="#__codelineno-0-1855">1855</a></span>
+<span class="normal"><a href="#__codelineno-0-1856">1856</a></span>
+<span class="normal"><a href="#__codelineno-0-1857">1857</a></span>
+<span class="normal"><a href="#__codelineno-0-1858">1858</a></span>
+<span class="normal"><a href="#__codelineno-0-1859">1859</a></span>
+<span class="normal"><a href="#__codelineno-0-1860">1860</a></span>
+<span class="normal"><a href="#__codelineno-0-1861">1861</a></span>
+<span class="normal"><a href="#__codelineno-0-1862">1862</a></span>
+<span class="normal"><a href="#__codelineno-0-1863">1863</a></span>
+<span class="normal"><a href="#__codelineno-0-1864">1864</a></span>
+<span class="normal"><a href="#__codelineno-0-1865">1865</a></span>
+<span class="normal"><a href="#__codelineno-0-1866">1866</a></span>
+<span class="normal"><a href="#__codelineno-0-1867">1867</a></span>
+<span class="normal"><a href="#__codelineno-0-1868">1868</a></span>
+<span class="normal"><a href="#__codelineno-0-1869">1869</a></span>
+<span class="normal"><a href="#__codelineno-0-1870">1870</a></span>
+<span class="normal"><a href="#__codelineno-0-1871">1871</a></span>
+<span class="normal"><a href="#__codelineno-0-1872">1872</a></span>
+<span class="normal"><a href="#__codelineno-0-1873">1873</a></span>
+<span class="normal"><a href="#__codelineno-0-1874">1874</a></span>
+<span class="normal"><a href="#__codelineno-0-1875">1875</a></span>
+<span class="normal"><a href="#__codelineno-0-1876">1876</a></span>
+<span class="normal"><a href="#__codelineno-0-1877">1877</a></span>
+<span class="normal"><a href="#__codelineno-0-1878">1878</a></span>
+<span class="normal"><a href="#__codelineno-0-1879">1879</a></span>
+<span class="normal"><a href="#__codelineno-0-1880">1880</a></span>
+<span class="normal"><a href="#__codelineno-0-1881">1881</a></span>
+<span class="normal"><a href="#__codelineno-0-1882">1882</a></span>
+<span class="normal"><a href="#__codelineno-0-1883">1883</a></span>
+<span class="normal"><a href="#__codelineno-0-1884">1884</a></span>
+<span class="normal"><a href="#__codelineno-0-1885">1885</a></span>
+<span class="normal"><a href="#__codelineno-0-1886">1886</a></span>
+<span class="normal"><a href="#__codelineno-0-1887">1887</a></span>
+<span class="normal"><a href="#__codelineno-0-1888">1888</a></span>
+<span class="normal"><a href="#__codelineno-0-1889">1889</a></span>
+<span class="normal"><a href="#__codelineno-0-1890">1890</a></span>
+<span class="normal"><a href="#__codelineno-0-1891">1891</a></span>
+<span class="normal"><a href="#__codelineno-0-1892">1892</a></span>
+<span class="normal"><a href="#__codelineno-0-1893">1893</a></span>
+<span class="normal"><a href="#__codelineno-0-1894">1894</a></span>
+<span class="normal"><a href="#__codelineno-0-1895">1895</a></span>
+<span class="normal"><a href="#__codelineno-0-1896">1896</a></span>
+<span class="normal"><a href="#__codelineno-0-1897">1897</a></span>
+<span class="normal"><a href="#__codelineno-0-1898">1898</a></span>
+<span class="normal"><a href="#__codelineno-0-1899">1899</a></span>
+<span class="normal"><a href="#__codelineno-0-1900">1900</a></span>
+<span class="normal"><a href="#__codelineno-0-1901">1901</a></span>
+<span class="normal"><a href="#__codelineno-0-1902">1902</a></span>
+<span class="normal"><a href="#__codelineno-0-1903">1903</a></span>
+<span class="normal"><a href="#__codelineno-0-1904">1904</a></span>
+<span class="normal"><a href="#__codelineno-0-1905">1905</a></span>
+<span class="normal"><a href="#__codelineno-0-1906">1906</a></span>
+<span class="normal"><a href="#__codelineno-0-1907">1907</a></span>
+<span class="normal"><a href="#__codelineno-0-1908">1908</a></span>
+<span class="normal"><a href="#__codelineno-0-1909">1909</a></span>
+<span class="normal"><a href="#__codelineno-0-1910">1910</a></span>
+<span class="normal"><a href="#__codelineno-0-1911">1911</a></span>
+<span class="normal"><a href="#__codelineno-0-1912">1912</a></span>
+<span class="normal"><a href="#__codelineno-0-1913">1913</a></span>
+<span class="normal"><a href="#__codelineno-0-1914">1914</a></span>
+<span class="normal"><a href="#__codelineno-0-1915">1915</a></span>
+<span class="normal"><a href="#__codelineno-0-1916">1916</a></span>
+<span class="normal"><a href="#__codelineno-0-1917">1917</a></span>
+<span class="normal"><a href="#__codelineno-0-1918">1918</a></span>
+<span class="normal"><a href="#__codelineno-0-1919">1919</a></span>
+<span class="normal"><a href="#__codelineno-0-1920">1920</a></span>
+<span class="normal"><a href="#__codelineno-0-1921">1921</a></span>
+<span class="normal"><a href="#__codelineno-0-1922">1922</a></span>
+<span class="normal"><a href="#__codelineno-0-1923">1923</a></span>
+<span class="normal"><a href="#__codelineno-0-1924">1924</a></span>
+<span class="normal"><a href="#__codelineno-0-1925">1925</a></span>
+<span class="normal"><a href="#__codelineno-0-1926">1926</a></span>
+<span class="normal"><a href="#__codelineno-0-1927">1927</a></span>
+<span class="normal"><a href="#__codelineno-0-1928">1928</a></span>
+<span class="normal"><a href="#__codelineno-0-1929">1929</a></span>
+<span class="normal"><a href="#__codelineno-0-1930">1930</a></span>
+<span class="normal"><a href="#__codelineno-0-1931">1931</a></span>
+<span class="normal"><a href="#__codelineno-0-1932">1932</a></span>
+<span class="normal"><a href="#__codelineno-0-1933">1933</a></span>
+<span class="normal"><a href="#__codelineno-0-1934">1934</a></span>
+<span class="normal"><a href="#__codelineno-0-1935">1935</a></span>
+<span class="normal"><a href="#__codelineno-0-1936">1936</a></span>
+<span class="normal"><a href="#__codelineno-0-1937">1937</a></span>
+<span class="normal"><a href="#__codelineno-0-1938">1938</a></span>
+<span class="normal"><a href="#__codelineno-0-1939">1939</a></span>
+<span class="normal"><a href="#__codelineno-0-1940">1940</a></span>
+<span class="normal"><a href="#__codelineno-0-1941">1941</a></span>
+<span class="normal"><a href="#__codelineno-0-1942">1942</a></span>
+<span class="normal"><a href="#__codelineno-0-1943">1943</a></span>
+<span class="normal"><a href="#__codelineno-0-1944">1944</a></span>
+<span class="normal"><a href="#__codelineno-0-1945">1945</a></span>
+<span class="normal"><a href="#__codelineno-0-1946">1946</a></span>
+<span class="normal"><a href="#__codelineno-0-1947">1947</a></span>
+<span class="normal"><a href="#__codelineno-0-1948">1948</a></span>
+<span class="normal"><a href="#__codelineno-0-1949">1949</a></span>
+<span class="normal"><a href="#__codelineno-0-1950">1950</a></span>
+<span class="normal"><a href="#__codelineno-0-1951">1951</a></span>
+<span class="normal"><a href="#__codelineno-0-1952">1952</a></span>
+<span class="normal"><a href="#__codelineno-0-1953">1953</a></span>
+<span class="normal"><a href="#__codelineno-0-1954">1954</a></span>
+<span class="normal"><a href="#__codelineno-0-1955">1955</a></span>
+<span class="normal"><a href="#__codelineno-0-1956">1956</a></span>
+<span class="normal"><a href="#__codelineno-0-1957">1957</a></span>
+<span class="normal"><a href="#__codelineno-0-1958">1958</a></span>
+<span class="normal"><a href="#__codelineno-0-1959">1959</a></span>
+<span class="normal"><a href="#__codelineno-0-1960">1960</a></span>
+<span class="normal"><a href="#__codelineno-0-1961">1961</a></span>
+<span class="normal"><a href="#__codelineno-0-1962">1962</a></span>
+<span class="normal"><a href="#__codelineno-0-1963">1963</a></span>
+<span class="normal"><a href="#__codelineno-0-1964">1964</a></span>
+<span class="normal"><a href="#__codelineno-0-1965">1965</a></span>
+<span class="normal"><a href="#__codelineno-0-1966">1966</a></span>
+<span class="normal"><a href="#__codelineno-0-1967">1967</a></span>
+<span class="normal"><a href="#__codelineno-0-1968">1968</a></span>
+<span class="normal"><a href="#__codelineno-0-1969">1969</a></span>
+<span class="normal"><a href="#__codelineno-0-1970">1970</a></span>
+<span class="normal"><a href="#__codelineno-0-1971">1971</a></span>
+<span class="normal"><a href="#__codelineno-0-1972">1972</a></span>
+<span class="normal"><a href="#__codelineno-0-1973">1973</a></span>
+<span class="normal"><a href="#__codelineno-0-1974">1974</a></span>
+<span class="normal"><a href="#__codelineno-0-1975">1975</a></span>
+<span class="normal"><a href="#__codelineno-0-1976">1976</a></span>
+<span class="normal"><a href="#__codelineno-0-1977">1977</a></span>
+<span class="normal"><a href="#__codelineno-0-1978">1978</a></span>
+<span class="normal"><a href="#__codelineno-0-1979">1979</a></span>
+<span class="normal"><a href="#__codelineno-0-1980">1980</a></span>
+<span class="normal"><a href="#__codelineno-0-1981">1981</a></span>
+<span class="normal"><a href="#__codelineno-0-1982">1982</a></span>
+<span class="normal"><a href="#__codelineno-0-1983">1983</a></span>
+<span class="normal"><a href="#__codelineno-0-1984">1984</a></span>
+<span class="normal"><a href="#__codelineno-0-1985">1985</a></span>
+<span class="normal"><a href="#__codelineno-0-1986">1986</a></span>
+<span class="normal"><a href="#__codelineno-0-1987">1987</a></span>
+<span class="normal"><a href="#__codelineno-0-1988">1988</a></span>
+<span class="normal"><a href="#__codelineno-0-1989">1989</a></span>
+<span class="normal"><a href="#__codelineno-0-1990">1990</a></span>
+<span class="normal"><a href="#__codelineno-0-1991">1991</a></span>
+<span class="normal"><a href="#__codelineno-0-1992">1992</a></span>
+<span class="normal"><a href="#__codelineno-0-1993">1993</a></span>
+<span class="normal"><a href="#__codelineno-0-1994">1994</a></span>
+<span class="normal"><a href="#__codelineno-0-1995">1995</a></span>
+<span class="normal"><a href="#__codelineno-0-1996">1996</a></span>
+<span class="normal"><a href="#__codelineno-0-1997">1997</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-1767"><a id="__codelineno-0-1767" name="__codelineno-0-1767"></a><span class="k">class</span> <span class="nc">Raster</span><span class="p">(</span><span class="n">Spatial</span><span class="p">):</span>
+</span><span id="__span-0-1768"><a id="__codelineno-0-1768" name="__codelineno-0-1768"></a><span class="w">    </span><span class="sd">"""</span>
+</span><span id="__span-0-1769"><a id="__codelineno-0-1769" name="__codelineno-0-1769"></a><span class="sd">    Represents a binary mask.</span>
+</span><span id="__span-0-1770"><a id="__codelineno-0-1770" name="__codelineno-0-1770"></a>
+</span><span id="__span-0-1771"><a id="__codelineno-0-1771" name="__codelineno-0-1771"></a><span class="sd">    Parameters</span>
+</span><span id="__span-0-1772"><a id="__codelineno-0-1772" name="__codelineno-0-1772"></a><span class="sd">    ----------</span>
+</span><span id="__span-0-1773"><a id="__codelineno-0-1773" name="__codelineno-0-1773"></a><span class="sd">    value : Dict[str, typing.Union[np.ndarray, str, None]], optional</span>
+</span><span id="__span-0-1774"><a id="__codelineno-0-1774" name="__codelineno-0-1774"></a><span class="sd">        An raster value.</span>
+</span><span id="__span-0-1775"><a id="__codelineno-0-1775" name="__codelineno-0-1775"></a>
+</span><span id="__span-0-1776"><a id="__codelineno-0-1776" name="__codelineno-0-1776"></a><span class="sd">    Attributes</span>
+</span><span id="__span-0-1777"><a id="__codelineno-0-1777" name="__codelineno-0-1777"></a><span class="sd">    ----------</span>
+</span><span id="__span-0-1778"><a id="__codelineno-0-1778" name="__codelineno-0-1778"></a><span class="sd">    area</span>
+</span><span id="__span-0-1779"><a id="__codelineno-0-1779" name="__codelineno-0-1779"></a><span class="sd">    array</span>
+</span><span id="__span-0-1780"><a id="__codelineno-0-1780" name="__codelineno-0-1780"></a><span class="sd">    geometry</span>
+</span><span id="__span-0-1781"><a id="__codelineno-0-1781" name="__codelineno-0-1781"></a><span class="sd">    height</span>
+</span><span id="__span-0-1782"><a id="__codelineno-0-1782" name="__codelineno-0-1782"></a><span class="sd">    width</span>
+</span><span id="__span-0-1783"><a id="__codelineno-0-1783" name="__codelineno-0-1783"></a>
+</span><span id="__span-0-1784"><a id="__codelineno-0-1784" name="__codelineno-0-1784"></a><span class="sd">    Raises</span>
+</span><span id="__span-0-1785"><a id="__codelineno-0-1785" name="__codelineno-0-1785"></a><span class="sd">    ------</span>
+</span><span id="__span-0-1786"><a id="__codelineno-0-1786" name="__codelineno-0-1786"></a><span class="sd">    TypeError</span>
+</span><span id="__span-0-1787"><a id="__codelineno-0-1787" name="__codelineno-0-1787"></a><span class="sd">        If `encoding` is not a string.</span>
+</span><span id="__span-0-1788"><a id="__codelineno-0-1788" name="__codelineno-0-1788"></a>
+</span><span id="__span-0-1789"><a id="__codelineno-0-1789" name="__codelineno-0-1789"></a><span class="sd">    Examples</span>
+</span><span id="__span-0-1790"><a id="__codelineno-0-1790" name="__codelineno-0-1790"></a><span class="sd">    --------</span>
+</span><span id="__span-0-1791"><a id="__codelineno-0-1791" name="__codelineno-0-1791"></a><span class="sd">    Generate a random mask.</span>
+</span><span id="__span-0-1792"><a id="__codelineno-0-1792" name="__codelineno-0-1792"></a><span class="sd">    &gt;&gt;&gt; import numpy.random</span>
+</span><span id="__span-0-1793"><a id="__codelineno-0-1793" name="__codelineno-0-1793"></a><span class="sd">    &gt;&gt;&gt; height = 640</span>
+</span><span id="__span-0-1794"><a id="__codelineno-0-1794" name="__codelineno-0-1794"></a><span class="sd">    &gt;&gt;&gt; width = 480</span>
+</span><span id="__span-0-1795"><a id="__codelineno-0-1795" name="__codelineno-0-1795"></a><span class="sd">    &gt;&gt;&gt; array = numpy.random.rand(height, width)</span>
+</span><span id="__span-0-1796"><a id="__codelineno-0-1796" name="__codelineno-0-1796"></a>
+</span><span id="__span-0-1797"><a id="__codelineno-0-1797" name="__codelineno-0-1797"></a><span class="sd">    Convert to binary mask.</span>
+</span><span id="__span-0-1798"><a id="__codelineno-0-1798" name="__codelineno-0-1798"></a><span class="sd">    &gt;&gt;&gt; mask = (array &gt; 0.5)</span>
+</span><span id="__span-0-1799"><a id="__codelineno-0-1799" name="__codelineno-0-1799"></a>
+</span><span id="__span-0-1800"><a id="__codelineno-0-1800" name="__codelineno-0-1800"></a><span class="sd">    Create Raster.</span>
+</span><span id="__span-0-1801"><a id="__codelineno-0-1801" name="__codelineno-0-1801"></a><span class="sd">    &gt;&gt;&gt; Raster.from_numpy(mask)</span>
+</span><span id="__span-0-1802"><a id="__codelineno-0-1802" name="__codelineno-0-1802"></a><span class="sd">    """</span>
+</span><span id="__span-0-1803"><a id="__codelineno-0-1803" name="__codelineno-0-1803"></a>
+</span><span id="__span-0-1804"><a id="__codelineno-0-1804" name="__codelineno-0-1804"></a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+</span><span id="__span-0-1805"><a id="__codelineno-0-1805" name="__codelineno-0-1805"></a>        <span class="bp">self</span><span class="p">,</span>
+</span><span id="__span-0-1806"><a id="__codelineno-0-1806" name="__codelineno-0-1806"></a>        <span class="n">value</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Dict</span><span class="p">[</span>
+</span><span id="__span-0-1807"><a id="__codelineno-0-1807" name="__codelineno-0-1807"></a>            <span class="nb">str</span><span class="p">,</span> <span class="n">typing</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">Box</span><span class="p">,</span> <span class="n">Polygon</span><span class="p">,</span> <span class="n">MultiPolygon</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span>
+</span><span id="__span-0-1808"><a id="__codelineno-0-1808" name="__codelineno-0-1808"></a>        <span class="p">],</span>
+</span><span id="__span-0-1809"><a id="__codelineno-0-1809" name="__codelineno-0-1809"></a>    <span class="p">):</span>
+</span><span id="__span-0-1810"><a id="__codelineno-0-1810" name="__codelineno-0-1810"></a><span class="w">        </span><span class="sd">"""</span>
+</span><span id="__span-0-1811"><a id="__codelineno-0-1811" name="__codelineno-0-1811"></a><span class="sd">        Initialize and instance of a raster.</span>
+</span><span id="__span-0-1812"><a id="__codelineno-0-1812" name="__codelineno-0-1812"></a>
+</span><span id="__span-0-1813"><a id="__codelineno-0-1813" name="__codelineno-0-1813"></a><span class="sd">        Parameters</span>
+</span><span id="__span-0-1814"><a id="__codelineno-0-1814" name="__codelineno-0-1814"></a><span class="sd">        ----------</span>
+</span><span id="__span-0-1815"><a id="__codelineno-0-1815" name="__codelineno-0-1815"></a><span class="sd">        value : Dict[str, Union[np.ndarray, Box, Polygon, MultiPolygon, None]]</span>
+</span><span id="__span-0-1816"><a id="__codelineno-0-1816" name="__codelineno-0-1816"></a><span class="sd">            The raster in dictionary format {"mask": &lt;np.ndarray&gt;, "geometry": &lt;geometry | None&gt;}.</span>
+</span><span id="__span-0-1817"><a id="__codelineno-0-1817" name="__codelineno-0-1817"></a><span class="sd">        """</span>
+</span><span id="__span-0-1818"><a id="__codelineno-0-1818" name="__codelineno-0-1818"></a>        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+</span><span id="__span-0-1819"><a id="__codelineno-0-1819" name="__codelineno-0-1819"></a>
+</span><span id="__span-0-1820"><a id="__codelineno-0-1820" name="__codelineno-0-1820"></a>    <span class="nd">@classmethod</span>
+</span><span id="__span-0-1821"><a id="__codelineno-0-1821" name="__codelineno-0-1821"></a>    <span class="k">def</span> <span class="nf">__validate__</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Any</span><span class="p">):</span>
+</span><span id="__span-0-1822"><a id="__codelineno-0-1822" name="__codelineno-0-1822"></a><span class="w">        </span><span class="sd">"""</span>
+</span><span id="__span-0-1823"><a id="__codelineno-0-1823" name="__codelineno-0-1823"></a><span class="sd">        Validates typing.</span>
+</span><span id="__span-0-1824"><a id="__codelineno-0-1824" name="__codelineno-0-1824"></a>
+</span><span id="__span-0-1825"><a id="__codelineno-0-1825" name="__codelineno-0-1825"></a><span class="sd">        Parameters</span>
+</span><span id="__span-0-1826"><a id="__codelineno-0-1826" name="__codelineno-0-1826"></a><span class="sd">        ----------</span>
+</span><span id="__span-0-1827"><a id="__codelineno-0-1827" name="__codelineno-0-1827"></a><span class="sd">        value : Any</span>
+</span><span id="__span-0-1828"><a id="__codelineno-0-1828" name="__codelineno-0-1828"></a><span class="sd">            The value to validate.</span>
+</span><span id="__span-0-1829"><a id="__codelineno-0-1829" name="__codelineno-0-1829"></a>
+</span><span id="__span-0-1830"><a id="__codelineno-0-1830" name="__codelineno-0-1830"></a><span class="sd">        Raises</span>
+</span><span id="__span-0-1831"><a id="__codelineno-0-1831" name="__codelineno-0-1831"></a><span class="sd">        ------</span>
+</span><span id="__span-0-1832"><a id="__codelineno-0-1832" name="__codelineno-0-1832"></a><span class="sd">        TypeError</span>
+</span><span id="__span-0-1833"><a id="__codelineno-0-1833" name="__codelineno-0-1833"></a><span class="sd">            If the value type is not supported.</span>
+</span><span id="__span-0-1834"><a id="__codelineno-0-1834" name="__codelineno-0-1834"></a><span class="sd">        """</span>
+</span><span id="__span-0-1835"><a id="__codelineno-0-1835" name="__codelineno-0-1835"></a>        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+</span><span id="__span-0-1836"><a id="__codelineno-0-1836" name="__codelineno-0-1836"></a>            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+</span><span id="__span-0-1837"><a id="__codelineno-0-1837" name="__codelineno-0-1837"></a>                <span class="s2">"Raster should contain a dictionary describing a mask and optionally a geometry."</span>
+</span><span id="__span-0-1838"><a id="__codelineno-0-1838" name="__codelineno-0-1838"></a>            <span class="p">)</span>
+</span><span id="__span-0-1839"><a id="__codelineno-0-1839" name="__codelineno-0-1839"></a>        <span class="k">elif</span> <span class="nb">set</span><span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span> <span class="o">!=</span> <span class="p">{</span><span class="s2">"mask"</span><span class="p">,</span> <span class="s2">"geometry"</span><span class="p">}:</span>
+</span><span id="__span-0-1840"><a id="__codelineno-0-1840" name="__codelineno-0-1840"></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="__span-0-1841"><a id="__codelineno-0-1841" name="__codelineno-0-1841"></a>                <span class="s2">"Raster should be described by a dictionary with keys 'mask' and 'geometry'"</span>
+</span><span id="__span-0-1842"><a id="__codelineno-0-1842" name="__codelineno-0-1842"></a>            <span class="p">)</span>
+</span><span id="__span-0-1843"><a id="__codelineno-0-1843" name="__codelineno-0-1843"></a>        <span class="k">elif</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">[</span><span class="s2">"mask"</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+</span><span id="__span-0-1844"><a id="__codelineno-0-1844" name="__codelineno-0-1844"></a>            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+</span><span id="__span-0-1845"><a id="__codelineno-0-1845" name="__codelineno-0-1845"></a>                <span class="sa">f</span><span class="s2">"Expected mask to have type '</span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="si">}</span><span class="s2">' receieved type '</span><span class="si">{</span><span class="n">value</span><span class="p">[</span><span class="s1">'mask'</span><span class="p">]</span><span class="si">}</span><span class="s2">'"</span>
+</span><span id="__span-0-1846"><a id="__codelineno-0-1846" name="__codelineno-0-1846"></a>            <span class="p">)</span>
+</span><span id="__span-0-1847"><a id="__codelineno-0-1847" name="__codelineno-0-1847"></a>        <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">value</span><span class="p">[</span><span class="s2">"mask"</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
+</span><span id="__span-0-1848"><a id="__codelineno-0-1848" name="__codelineno-0-1848"></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"raster only supports 2d arrays"</span><span class="p">)</span>
+</span><span id="__span-0-1849"><a id="__codelineno-0-1849" name="__codelineno-0-1849"></a>        <span class="k">elif</span> <span class="n">value</span><span class="p">[</span><span class="s2">"mask"</span><span class="p">]</span><span class="o">.</span><span class="n">dtype</span> <span class="o">!=</span> <span class="nb">bool</span><span class="p">:</span>
+</span><span id="__span-0-1850"><a id="__codelineno-0-1850" name="__codelineno-0-1850"></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="__span-0-1851"><a id="__codelineno-0-1851" name="__codelineno-0-1851"></a>                <span class="sa">f</span><span class="s2">"Expecting a binary mask (i.e. of dtype bool) but got dtype </span><span class="si">{</span><span class="n">value</span><span class="p">[</span><span class="s1">'mask'</span><span class="p">]</span><span class="o">.</span><span class="n">dtype</span><span class="si">}</span><span class="s2">"</span>
+</span><span id="__span-0-1852"><a id="__codelineno-0-1852" name="__codelineno-0-1852"></a>            <span class="p">)</span>
+</span><span id="__span-0-1853"><a id="__codelineno-0-1853" name="__codelineno-0-1853"></a>        <span class="k">elif</span> <span class="p">(</span>
+</span><span id="__span-0-1854"><a id="__codelineno-0-1854" name="__codelineno-0-1854"></a>            <span class="n">value</span><span class="p">[</span><span class="s2">"geometry"</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+</span><span id="__span-0-1855"><a id="__codelineno-0-1855" name="__codelineno-0-1855"></a>            <span class="ow">and</span> <span class="ow">not</span> <span class="n">Polygon</span><span class="o">.</span><span class="n">supports</span><span class="p">(</span><span class="n">value</span><span class="p">[</span><span class="s2">"geometry"</span><span class="p">])</span>
+</span><span id="__span-0-1856"><a id="__codelineno-0-1856" name="__codelineno-0-1856"></a>            <span class="ow">and</span> <span class="ow">not</span> <span class="n">MultiPolygon</span><span class="o">.</span><span class="n">supports</span><span class="p">(</span><span class="n">value</span><span class="p">[</span><span class="s2">"geometry"</span><span class="p">])</span>
+</span><span id="__span-0-1857"><a id="__codelineno-0-1857" name="__codelineno-0-1857"></a>        <span class="p">):</span>
+</span><span id="__span-0-1858"><a id="__codelineno-0-1858" name="__codelineno-0-1858"></a>            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+</span><span id="__span-0-1859"><a id="__codelineno-0-1859" name="__codelineno-0-1859"></a>                <span class="s2">"Expected geometry to conform to either Polygon or MultiPolygon or be 'None'"</span>
+</span><span id="__span-0-1860"><a id="__codelineno-0-1860" name="__codelineno-0-1860"></a>            <span class="p">)</span>
+</span><span id="__span-0-1861"><a id="__codelineno-0-1861" name="__codelineno-0-1861"></a>
+</span><span id="__span-0-1862"><a id="__codelineno-0-1862" name="__codelineno-0-1862"></a>    <span class="k">def</span> <span class="nf">encode_value</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">typing</span><span class="o">.</span><span class="n">Any</span><span class="p">:</span>
+</span><span id="__span-0-1863"><a id="__codelineno-0-1863" name="__codelineno-0-1863"></a><span class="w">        </span><span class="sd">"""Encode object to JSON compatible dictionary."""</span>
+</span><span id="__span-0-1864"><a id="__codelineno-0-1864" name="__codelineno-0-1864"></a>        <span class="n">value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_value</span><span class="p">()</span>
+</span><span id="__span-0-1865"><a id="__codelineno-0-1865" name="__codelineno-0-1865"></a>        <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="__span-0-1866"><a id="__codelineno-0-1866" name="__codelineno-0-1866"></a>            <span class="k">return</span> <span class="kc">None</span>
+</span><span id="__span-0-1867"><a id="__codelineno-0-1867" name="__codelineno-0-1867"></a>        <span class="n">f</span> <span class="o">=</span> <span class="n">io</span><span class="o">.</span><span class="n">BytesIO</span><span class="p">()</span>
+</span><span id="__span-0-1868"><a id="__codelineno-0-1868" name="__codelineno-0-1868"></a>        <span class="n">PIL</span><span class="o">.</span><span class="n">Image</span><span class="o">.</span><span class="n">fromarray</span><span class="p">(</span><span class="n">value</span><span class="p">[</span><span class="s2">"mask"</span><span class="p">])</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s2">"PNG"</span><span class="p">)</span>
+</span><span id="__span-0-1869"><a id="__codelineno-0-1869" name="__codelineno-0-1869"></a>        <span class="n">f</span><span class="o">.</span><span class="n">seek</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+</span><span id="__span-0-1870"><a id="__codelineno-0-1870" name="__codelineno-0-1870"></a>        <span class="n">mask_bytes</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+</span><span id="__span-0-1871"><a id="__codelineno-0-1871" name="__codelineno-0-1871"></a>        <span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</span><span id="__span-0-1872"><a id="__codelineno-0-1872" name="__codelineno-0-1872"></a>        <span class="k">return</span> <span class="p">{</span>
+</span><span id="__span-0-1873"><a id="__codelineno-0-1873" name="__codelineno-0-1873"></a>            <span class="s2">"mask"</span><span class="p">:</span> <span class="n">b64encode</span><span class="p">(</span><span class="n">mask_bytes</span><span class="p">)</span><span class="o">.</span><span class="n">decode</span><span class="p">(),</span>
+</span><span id="__span-0-1874"><a id="__codelineno-0-1874" name="__codelineno-0-1874"></a>            <span class="s2">"geometry"</span><span class="p">:</span> <span class="n">value</span><span class="p">[</span><span class="s2">"geometry"</span><span class="p">],</span>
+</span><span id="__span-0-1875"><a id="__codelineno-0-1875" name="__codelineno-0-1875"></a>        <span class="p">}</span>
+</span><span id="__span-0-1876"><a id="__codelineno-0-1876" name="__codelineno-0-1876"></a>
+</span><span id="__span-0-1877"><a id="__codelineno-0-1877" name="__codelineno-0-1877"></a>    <span class="nd">@classmethod</span>
+</span><span id="__span-0-1878"><a id="__codelineno-0-1878" name="__codelineno-0-1878"></a>    <span class="k">def</span> <span class="nf">decode_value</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Any</span><span class="p">):</span>
+</span><span id="__span-0-1879"><a id="__codelineno-0-1879" name="__codelineno-0-1879"></a><span class="w">        </span><span class="sd">"""Decode object from JSON compatible dictionary."""</span>
+</span><span id="__span-0-1880"><a id="__codelineno-0-1880" name="__codelineno-0-1880"></a>        <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="__span-0-1881"><a id="__codelineno-0-1881" name="__codelineno-0-1881"></a>            <span class="k">return</span> <span class="kc">None</span>
+</span><span id="__span-0-1882"><a id="__codelineno-0-1882" name="__codelineno-0-1882"></a>        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span>
+</span><span id="__span-0-1883"><a id="__codelineno-0-1883" name="__codelineno-0-1883"></a>            <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span>
+</span><span id="__span-0-1884"><a id="__codelineno-0-1884" name="__codelineno-0-1884"></a>            <span class="ow">and</span> <span class="nb">set</span><span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span> <span class="o">==</span> <span class="p">{</span><span class="s2">"mask"</span><span class="p">,</span> <span class="s2">"geometry"</span><span class="p">}</span>
+</span><span id="__span-0-1885"><a id="__codelineno-0-1885" name="__codelineno-0-1885"></a>        <span class="p">):</span>
+</span><span id="__span-0-1886"><a id="__codelineno-0-1886" name="__codelineno-0-1886"></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="__span-0-1887"><a id="__codelineno-0-1887" name="__codelineno-0-1887"></a>                <span class="sa">f</span><span class="s2">"Improperly formatted raster encoding. Received '</span><span class="si">{</span><span class="n">value</span><span class="si">}</span><span class="s2">'"</span>
+</span><span id="__span-0-1888"><a id="__codelineno-0-1888" name="__codelineno-0-1888"></a>            <span class="p">)</span>
+</span><span id="__span-0-1889"><a id="__codelineno-0-1889" name="__codelineno-0-1889"></a>        <span class="n">mask_bytes</span> <span class="o">=</span> <span class="n">b64decode</span><span class="p">(</span><span class="n">value</span><span class="p">[</span><span class="s2">"mask"</span><span class="p">])</span>
+</span><span id="__span-0-1890"><a id="__codelineno-0-1890" name="__codelineno-0-1890"></a>        <span class="k">with</span> <span class="n">io</span><span class="o">.</span><span class="n">BytesIO</span><span class="p">(</span><span class="n">mask_bytes</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+</span><span id="__span-0-1891"><a id="__codelineno-0-1891" name="__codelineno-0-1891"></a>            <span class="n">img</span> <span class="o">=</span> <span class="n">PIL</span><span class="o">.</span><span class="n">Image</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+</span><span id="__span-0-1892"><a id="__codelineno-0-1892" name="__codelineno-0-1892"></a>            <span class="n">value</span> <span class="o">=</span> <span class="p">{</span>
+</span><span id="__span-0-1893"><a id="__codelineno-0-1893" name="__codelineno-0-1893"></a>                <span class="s2">"mask"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">img</span><span class="p">),</span>
+</span><span id="__span-0-1894"><a id="__codelineno-0-1894" name="__codelineno-0-1894"></a>                <span class="s2">"geometry"</span><span class="p">:</span> <span class="n">value</span><span class="p">[</span><span class="s2">"geometry"</span><span class="p">],</span>
+</span><span id="__span-0-1895"><a id="__codelineno-0-1895" name="__codelineno-0-1895"></a>            <span class="p">}</span>
+</span><span id="__span-0-1896"><a id="__codelineno-0-1896" name="__codelineno-0-1896"></a>        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="n">value</span><span class="p">)</span>
+</span><span id="__span-0-1897"><a id="__codelineno-0-1897" name="__codelineno-0-1897"></a>
+</span><span id="__span-0-1898"><a id="__codelineno-0-1898" name="__codelineno-0-1898"></a>    <span class="nd">@classmethod</span>
+</span><span id="__span-0-1899"><a id="__codelineno-0-1899" name="__codelineno-0-1899"></a>    <span class="k">def</span> <span class="nf">from_numpy</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">mask</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+</span><span id="__span-0-1900"><a id="__codelineno-0-1900" name="__codelineno-0-1900"></a><span class="w">        </span><span class="sd">"""</span>
+</span><span id="__span-0-1901"><a id="__codelineno-0-1901" name="__codelineno-0-1901"></a><span class="sd">        Create a Raster object from a NumPy array.</span>
+</span><span id="__span-0-1902"><a id="__codelineno-0-1902" name="__codelineno-0-1902"></a>
+</span><span id="__span-0-1903"><a id="__codelineno-0-1903" name="__codelineno-0-1903"></a><span class="sd">        Parameters</span>
+</span><span id="__span-0-1904"><a id="__codelineno-0-1904" name="__codelineno-0-1904"></a><span class="sd">        ----------</span>
+</span><span id="__span-0-1905"><a id="__codelineno-0-1905" name="__codelineno-0-1905"></a><span class="sd">        mask : np.ndarray</span>
+</span><span id="__span-0-1906"><a id="__codelineno-0-1906" name="__codelineno-0-1906"></a><span class="sd">            The 2D binary array representing the mask.</span>
+</span><span id="__span-0-1907"><a id="__codelineno-0-1907" name="__codelineno-0-1907"></a>
+</span><span id="__span-0-1908"><a id="__codelineno-0-1908" name="__codelineno-0-1908"></a><span class="sd">        Returns</span>
+</span><span id="__span-0-1909"><a id="__codelineno-0-1909" name="__codelineno-0-1909"></a><span class="sd">        -------</span>
+</span><span id="__span-0-1910"><a id="__codelineno-0-1910" name="__codelineno-0-1910"></a><span class="sd">        Raster</span>
+</span><span id="__span-0-1911"><a id="__codelineno-0-1911" name="__codelineno-0-1911"></a>
+</span><span id="__span-0-1912"><a id="__codelineno-0-1912" name="__codelineno-0-1912"></a><span class="sd">        Raises</span>
+</span><span id="__span-0-1913"><a id="__codelineno-0-1913" name="__codelineno-0-1913"></a><span class="sd">        ------</span>
+</span><span id="__span-0-1914"><a id="__codelineno-0-1914" name="__codelineno-0-1914"></a><span class="sd">        ValueError</span>
+</span><span id="__span-0-1915"><a id="__codelineno-0-1915" name="__codelineno-0-1915"></a><span class="sd">            If the input array is not 2D or not of dtype bool.</span>
+</span><span id="__span-0-1916"><a id="__codelineno-0-1916" name="__codelineno-0-1916"></a><span class="sd">        """</span>
+</span><span id="__span-0-1917"><a id="__codelineno-0-1917" name="__codelineno-0-1917"></a>        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="p">{</span><span class="s2">"mask"</span><span class="p">:</span> <span class="n">mask</span><span class="p">,</span> <span class="s2">"geometry"</span><span class="p">:</span> <span class="kc">None</span><span class="p">})</span>
+</span><span id="__span-0-1918"><a id="__codelineno-0-1918" name="__codelineno-0-1918"></a>
+</span><span id="__span-0-1919"><a id="__codelineno-0-1919" name="__codelineno-0-1919"></a>    <span class="nd">@classmethod</span>
+</span><span id="__span-0-1920"><a id="__codelineno-0-1920" name="__codelineno-0-1920"></a>    <span class="k">def</span> <span class="nf">from_geometry</span><span class="p">(</span>
+</span><span id="__span-0-1921"><a id="__codelineno-0-1921" name="__codelineno-0-1921"></a>        <span class="bp">cls</span><span class="p">,</span>
+</span><span id="__span-0-1922"><a id="__codelineno-0-1922" name="__codelineno-0-1922"></a>        <span class="n">geometry</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="n">Box</span><span class="p">,</span> <span class="n">Polygon</span><span class="p">,</span> <span class="n">MultiPolygon</span><span class="p">],</span>
+</span><span id="__span-0-1923"><a id="__codelineno-0-1923" name="__codelineno-0-1923"></a>        <span class="n">height</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+</span><span id="__span-0-1924"><a id="__codelineno-0-1924" name="__codelineno-0-1924"></a>        <span class="n">width</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+</span><span id="__span-0-1925"><a id="__codelineno-0-1925" name="__codelineno-0-1925"></a>    <span class="p">):</span>
+</span><span id="__span-0-1926"><a id="__codelineno-0-1926" name="__codelineno-0-1926"></a><span class="w">        </span><span class="sd">"""</span>
+</span><span id="__span-0-1927"><a id="__codelineno-0-1927" name="__codelineno-0-1927"></a><span class="sd">        Create a Raster object from a geometric mask.</span>
+</span><span id="__span-0-1928"><a id="__codelineno-0-1928" name="__codelineno-0-1928"></a>
+</span><span id="__span-0-1929"><a id="__codelineno-0-1929" name="__codelineno-0-1929"></a><span class="sd">        Parameters</span>
+</span><span id="__span-0-1930"><a id="__codelineno-0-1930" name="__codelineno-0-1930"></a><span class="sd">        ----------</span>
+</span><span id="__span-0-1931"><a id="__codelineno-0-1931" name="__codelineno-0-1931"></a><span class="sd">        geometry : Union[Box, Polygon, MultiPolygon]</span>
+</span><span id="__span-0-1932"><a id="__codelineno-0-1932" name="__codelineno-0-1932"></a><span class="sd">            Defines the bitmask as a geometry. Overrides any existing mask.</span>
+</span><span id="__span-0-1933"><a id="__codelineno-0-1933" name="__codelineno-0-1933"></a><span class="sd">        height : int</span>
+</span><span id="__span-0-1934"><a id="__codelineno-0-1934" name="__codelineno-0-1934"></a><span class="sd">            The intended height of the binary mask.</span>
+</span><span id="__span-0-1935"><a id="__codelineno-0-1935" name="__codelineno-0-1935"></a><span class="sd">        width : int</span>
+</span><span id="__span-0-1936"><a id="__codelineno-0-1936" name="__codelineno-0-1936"></a><span class="sd">            The intended width of the binary mask.</span>
+</span><span id="__span-0-1937"><a id="__codelineno-0-1937" name="__codelineno-0-1937"></a>
+</span><span id="__span-0-1938"><a id="__codelineno-0-1938" name="__codelineno-0-1938"></a><span class="sd">        Returns</span>
+</span><span id="__span-0-1939"><a id="__codelineno-0-1939" name="__codelineno-0-1939"></a><span class="sd">        -------</span>
+</span><span id="__span-0-1940"><a id="__codelineno-0-1940" name="__codelineno-0-1940"></a><span class="sd">        Raster</span>
+</span><span id="__span-0-1941"><a id="__codelineno-0-1941" name="__codelineno-0-1941"></a><span class="sd">        """</span>
+</span><span id="__span-0-1942"><a id="__codelineno-0-1942" name="__codelineno-0-1942"></a>        <span class="n">bitmask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="nb">int</span><span class="p">(</span><span class="n">height</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">width</span><span class="p">)),</span> <span class="kc">False</span><span class="p">)</span>
+</span><span id="__span-0-1943"><a id="__codelineno-0-1943" name="__codelineno-0-1943"></a>        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="p">{</span><span class="s2">"mask"</span><span class="p">:</span> <span class="n">bitmask</span><span class="p">,</span> <span class="s2">"geometry"</span><span class="p">:</span> <span class="n">geometry</span><span class="o">.</span><span class="n">get_value</span><span class="p">()})</span>
+</span><span id="__span-0-1944"><a id="__codelineno-0-1944" name="__codelineno-0-1944"></a>
+</span><span id="__span-0-1945"><a id="__codelineno-0-1945" name="__codelineno-0-1945"></a>    <span class="nd">@property</span>
+</span><span id="__span-0-1946"><a id="__codelineno-0-1946" name="__codelineno-0-1946"></a>    <span class="k">def</span> <span class="nf">area</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Float</span><span class="p">:</span>
+</span><span id="__span-0-1947"><a id="__codelineno-0-1947" name="__codelineno-0-1947"></a><span class="w">        </span><span class="sd">"""</span>
+</span><span id="__span-0-1948"><a id="__codelineno-0-1948" name="__codelineno-0-1948"></a><span class="sd">        Symbolic representation of area.</span>
+</span><span id="__span-0-1949"><a id="__codelineno-0-1949" name="__codelineno-0-1949"></a><span class="sd">        """</span>
+</span><span id="__span-0-1950"><a id="__codelineno-0-1950" name="__codelineno-0-1950"></a>        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_value</span><span class="p">,</span> <span class="n">Symbol</span><span class="p">):</span>
+</span><span id="__span-0-1951"><a id="__codelineno-0-1951" name="__codelineno-0-1951"></a>            <span class="k">raise</span> <span class="ne">ValueError</span>
+</span><span id="__span-0-1952"><a id="__codelineno-0-1952" name="__codelineno-0-1952"></a>        <span class="k">return</span> <span class="n">Float</span><span class="o">.</span><span class="n">symbolic</span><span class="p">(</span>
+</span><span id="__span-0-1953"><a id="__codelineno-0-1953" name="__codelineno-0-1953"></a>            <span class="n">owner</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_value</span><span class="o">.</span><span class="n">_owner</span><span class="p">,</span>
+</span><span id="__span-0-1954"><a id="__codelineno-0-1954" name="__codelineno-0-1954"></a>            <span class="n">name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_value</span><span class="o">.</span><span class="n">_name</span><span class="p">,</span>
+</span><span id="__span-0-1955"><a id="__codelineno-0-1955" name="__codelineno-0-1955"></a>            <span class="n">key</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_value</span><span class="o">.</span><span class="n">_key</span><span class="p">,</span>
+</span><span id="__span-0-1956"><a id="__codelineno-0-1956" name="__codelineno-0-1956"></a>            <span class="n">attribute</span><span class="o">=</span><span class="s2">"area"</span><span class="p">,</span>
+</span><span id="__span-0-1957"><a id="__codelineno-0-1957" name="__codelineno-0-1957"></a>        <span class="p">)</span>
+</span><span id="__span-0-1958"><a id="__codelineno-0-1958" name="__codelineno-0-1958"></a>
+</span><span id="__span-0-1959"><a id="__codelineno-0-1959" name="__codelineno-0-1959"></a>    <span class="nd">@property</span>
+</span><span id="__span-0-1960"><a id="__codelineno-0-1960" name="__codelineno-0-1960"></a>    <span class="k">def</span> <span class="nf">array</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+</span><span id="__span-0-1961"><a id="__codelineno-0-1961" name="__codelineno-0-1961"></a><span class="w">        </span><span class="sd">"""</span>
+</span><span id="__span-0-1962"><a id="__codelineno-0-1962" name="__codelineno-0-1962"></a><span class="sd">        The bitmask as a numpy array.</span>
+</span><span id="__span-0-1963"><a id="__codelineno-0-1963" name="__codelineno-0-1963"></a>
+</span><span id="__span-0-1964"><a id="__codelineno-0-1964" name="__codelineno-0-1964"></a><span class="sd">        Returns</span>
+</span><span id="__span-0-1965"><a id="__codelineno-0-1965" name="__codelineno-0-1965"></a><span class="sd">        -------</span>
+</span><span id="__span-0-1966"><a id="__codelineno-0-1966" name="__codelineno-0-1966"></a><span class="sd">        Optional[np.ndarray]</span>
+</span><span id="__span-0-1967"><a id="__codelineno-0-1967" name="__codelineno-0-1967"></a><span class="sd">            A 2D binary array representing the mask if it exists.</span>
+</span><span id="__span-0-1968"><a id="__codelineno-0-1968" name="__codelineno-0-1968"></a><span class="sd">        """</span>
+</span><span id="__span-0-1969"><a id="__codelineno-0-1969" name="__codelineno-0-1969"></a>        <span class="n">value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_value</span><span class="p">()</span>
+</span><span id="__span-0-1970"><a id="__codelineno-0-1970" name="__codelineno-0-1970"></a>        <span class="k">if</span> <span class="n">value</span><span class="p">[</span><span class="s2">"geometry"</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="__span-0-1971"><a id="__codelineno-0-1971" name="__codelineno-0-1971"></a>            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+</span><span id="__span-0-1972"><a id="__codelineno-0-1972" name="__codelineno-0-1972"></a>                <span class="s2">"Raster array does not contain bitmask as this is a geometry-defined raster."</span><span class="p">,</span>
+</span><span id="__span-0-1973"><a id="__codelineno-0-1973" name="__codelineno-0-1973"></a>                <span class="ne">RuntimeWarning</span><span class="p">,</span>
+</span><span id="__span-0-1974"><a id="__codelineno-0-1974" name="__codelineno-0-1974"></a>            <span class="p">)</span>
+</span><span id="__span-0-1975"><a id="__codelineno-0-1975" name="__codelineno-0-1975"></a>        <span class="k">return</span> <span class="n">value</span><span class="p">[</span><span class="s2">"mask"</span><span class="p">]</span>
+</span><span id="__span-0-1976"><a id="__codelineno-0-1976" name="__codelineno-0-1976"></a>
+</span><span id="__span-0-1977"><a id="__codelineno-0-1977" name="__codelineno-0-1977"></a>    <span class="nd">@property</span>
+</span><span id="__span-0-1978"><a id="__codelineno-0-1978" name="__codelineno-0-1978"></a>    <span class="k">def</span> <span class="nf">geometry</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">typing</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="n">Box</span><span class="p">,</span> <span class="n">Polygon</span><span class="p">,</span> <span class="n">MultiPolygon</span><span class="p">]:</span>
+</span><span id="__span-0-1979"><a id="__codelineno-0-1979" name="__codelineno-0-1979"></a><span class="w">        </span><span class="sd">"""</span>
+</span><span id="__span-0-1980"><a id="__codelineno-0-1980" name="__codelineno-0-1980"></a><span class="sd">        The geometric mask if it exists.</span>
+</span><span id="__span-0-1981"><a id="__codelineno-0-1981" name="__codelineno-0-1981"></a>
+</span><span id="__span-0-1982"><a id="__codelineno-0-1982" name="__codelineno-0-1982"></a><span class="sd">        Returns</span>
+</span><span id="__span-0-1983"><a id="__codelineno-0-1983" name="__codelineno-0-1983"></a><span class="sd">        -------</span>
+</span><span id="__span-0-1984"><a id="__codelineno-0-1984" name="__codelineno-0-1984"></a><span class="sd">        Box | Polygon | MultiPolygon | None</span>
+</span><span id="__span-0-1985"><a id="__codelineno-0-1985" name="__codelineno-0-1985"></a><span class="sd">            The geometry if it exists.</span>
+</span><span id="__span-0-1986"><a id="__codelineno-0-1986" name="__codelineno-0-1986"></a><span class="sd">        """</span>
+</span><span id="__span-0-1987"><a id="__codelineno-0-1987" name="__codelineno-0-1987"></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_value</span><span class="p">()[</span><span class="s2">"geometry"</span><span class="p">]</span>
+</span><span id="__span-0-1988"><a id="__codelineno-0-1988" name="__codelineno-0-1988"></a>
+</span><span id="__span-0-1989"><a id="__codelineno-0-1989" name="__codelineno-0-1989"></a>    <span class="nd">@property</span>
+</span><span id="__span-0-1990"><a id="__codelineno-0-1990" name="__codelineno-0-1990"></a>    <span class="k">def</span> <span class="nf">height</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+</span><span id="__span-0-1991"><a id="__codelineno-0-1991" name="__codelineno-0-1991"></a><span class="w">        </span><span class="sd">"""Returns the height of the raster if it exists."""</span>
+</span><span id="__span-0-1992"><a id="__codelineno-0-1992" name="__codelineno-0-1992"></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+</span><span id="__span-0-1993"><a id="__codelineno-0-1993" name="__codelineno-0-1993"></a>
+</span><span id="__span-0-1994"><a id="__codelineno-0-1994" name="__codelineno-0-1994"></a>    <span class="nd">@property</span>
+</span><span id="__span-0-1995"><a id="__codelineno-0-1995" name="__codelineno-0-1995"></a>    <span class="k">def</span> <span class="nf">width</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+</span><span id="__span-0-1996"><a id="__codelineno-0-1996" name="__codelineno-0-1996"></a><span class="w">        </span><span class="sd">"""Returns the width of the raster if it exists."""</span>
+</span><span id="__span-0-1997"><a id="__codelineno-0-1997" name="__codelineno-0-1997"></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+</span></code></pre></div></td></tr></table></div>
+</details>
+<div class="doc doc-children">
+<h2 id="valor.schemas.Raster-attributes">Attributes</h2>
+<div class="doc doc-object doc-attribute">
+<h3 class="doc doc-heading" id="valor.schemas.Raster.area">
+<code class="highlight language-python"><span class="n">valor</span><span class="o">.</span><span class="n">schemas</span><span class="o">.</span><span class="n">Raster</span><span class="o">.</span><span class="n">area</span><span class="p">:</span> <span class="n">Float</span></code>
+<span class="doc doc-labels">
+<small class="doc doc-label doc-label-property"><code>property</code></small>
+</span>
+</h3>
+<div class="doc doc-contents">
+<p>Symbolic representation of area.</p>
+</div>
+</div>
+<div class="doc doc-object doc-attribute">
+<h3 class="doc doc-heading" id="valor.schemas.Raster.array">
+<code class="highlight language-python"><span class="n">valor</span><span class="o">.</span><span class="n">schemas</span><span class="o">.</span><span class="n">Raster</span><span class="o">.</span><span class="n">array</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span></code>
+<span class="doc doc-labels">
+<small class="doc doc-label doc-label-property"><code>property</code></small>
+</span>
+</h3>
+<div class="doc doc-contents">
+<p>The bitmask as a numpy array.</p>
+<p><span class="doc-section-title">Returns:</span></p>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="doc-section-item">
+<td>
+<code>Optional[<span title="numpy.ndarray">ndarray</span>]</code>
+</td>
+<td>
+<div class="doc-md-description">
+<p>A 2D binary array representing the mask if it exists.</p>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="doc doc-object doc-attribute">
+<h3 class="doc doc-heading" id="valor.schemas.Raster.geometry">
+<code class="highlight language-python"><span class="n">valor</span><span class="o">.</span><span class="n">schemas</span><span class="o">.</span><span class="n">Raster</span><span class="o">.</span><span class="n">geometry</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="n">Box</span><span class="p">,</span> <span class="n">Polygon</span><span class="p">,</span> <span class="n">MultiPolygon</span><span class="p">]</span></code>
+<span class="doc doc-labels">
+<small class="doc doc-label doc-label-property"><code>property</code></small>
+</span>
+</h3>
+<div class="doc doc-contents">
+<p>The geometric mask if it exists.</p>
+<p><span class="doc-section-title">Returns:</span></p>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="doc-section-item">
+<td>
+<code><span title="valor.schemas.symbolic.types.Box">Box</span> | <span title="valor.schemas.symbolic.types.Polygon">Polygon</span> | <span title="valor.schemas.symbolic.types.MultiPolygon">MultiPolygon</span> | None</code>
+</td>
+<td>
+<div class="doc-md-description">
+<p>The geometry if it exists.</p>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="doc doc-object doc-attribute">
+<h3 class="doc doc-heading" id="valor.schemas.Raster.height">
+<code class="highlight language-python"><span class="n">valor</span><span class="o">.</span><span class="n">schemas</span><span class="o">.</span><span class="n">Raster</span><span class="o">.</span><span class="n">height</span><span class="p">:</span> <span class="nb">int</span></code>
+<span class="doc doc-labels">
+<small class="doc doc-label doc-label-property"><code>property</code></small>
+</span>
+</h3>
+<div class="doc doc-contents">
+<p>Returns the height of the raster if it exists.</p>
+</div>
+</div>
+<div class="doc doc-object doc-attribute">
+<h3 class="doc doc-heading" id="valor.schemas.Raster.width">
+<code class="highlight language-python"><span class="n">valor</span><span class="o">.</span><span class="n">schemas</span><span class="o">.</span><span class="n">Raster</span><span class="o">.</span><span class="n">width</span><span class="p">:</span> <span class="nb">int</span></code>
+<span class="doc doc-labels">
+<small class="doc doc-label doc-label-property"><code>property</code></small>
+</span>
+</h3>
+<div class="doc doc-contents">
+<p>Returns the width of the raster if it exists.</p>
+</div>
+</div>
+<h2 id="valor.schemas.Raster-functions">Functions</h2>
+<div class="doc doc-object doc-function">
+<h3 class="doc doc-heading" id="valor.schemas.Raster.__init__">
+<code class="highlight language-python"><span class="n">valor</span><span class="o">.</span><span class="n">schemas</span><span class="o">.</span><span class="n">Raster</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">value</span><span class="p">)</span></code>
+</h3>
+<div class="doc doc-contents">
+<p>Initialize and instance of a raster.</p>
+<p><span class="doc-section-title">Parameters:</span></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr class="doc-section-item">
+<td><code>value</code></td>
+<td>
+<code>Dict[str, Union[<span title="numpy.ndarray">ndarray</span>, <span title="valor.schemas.symbolic.types.Box">Box</span>, <span title="valor.schemas.symbolic.types.Polygon">Polygon</span>, <span title="valor.schemas.symbolic.types.MultiPolygon">MultiPolygon</span>, None]]</code>
+</td>
+<td>
+<div class="doc-md-description">
+<p>The raster in dictionary format {"mask": <np.ndarray>, "geometry": <geometry none="" |="">}.</geometry></np.ndarray></p>
+</div>
+</td>
+<td>
+<em>required</em>
+</td>
+</tr>
+</tbody>
+</table>
+<details class="quote">
+<summary>Source code in <code>valor/schemas/symbolic/types.py</code></summary>
+<div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-1804">1804</a></span>
+<span class="normal"><a href="#__codelineno-0-1805">1805</a></span>
+<span class="normal"><a href="#__codelineno-0-1806">1806</a></span>
+<span class="normal"><a href="#__codelineno-0-1807">1807</a></span>
+<span class="normal"><a href="#__codelineno-0-1808">1808</a></span>
+<span class="normal"><a href="#__codelineno-0-1809">1809</a></span>
+<span class="normal"><a href="#__codelineno-0-1810">1810</a></span>
+<span class="normal"><a href="#__codelineno-0-1811">1811</a></span>
+<span class="normal"><a href="#__codelineno-0-1812">1812</a></span>
+<span class="normal"><a href="#__codelineno-0-1813">1813</a></span>
+<span class="normal"><a href="#__codelineno-0-1814">1814</a></span>
+<span class="normal"><a href="#__codelineno-0-1815">1815</a></span>
+<span class="normal"><a href="#__codelineno-0-1816">1816</a></span>
+<span class="normal"><a href="#__codelineno-0-1817">1817</a></span>
+<span class="normal"><a href="#__codelineno-0-1818">1818</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-1804"><a id="__codelineno-0-1804" name="__codelineno-0-1804"></a><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+</span><span id="__span-0-1805"><a id="__codelineno-0-1805" name="__codelineno-0-1805"></a>    <span class="bp">self</span><span class="p">,</span>
+</span><span id="__span-0-1806"><a id="__codelineno-0-1806" name="__codelineno-0-1806"></a>    <span class="n">value</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Dict</span><span class="p">[</span>
+</span><span id="__span-0-1807"><a id="__codelineno-0-1807" name="__codelineno-0-1807"></a>        <span class="nb">str</span><span class="p">,</span> <span class="n">typing</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">Box</span><span class="p">,</span> <span class="n">Polygon</span><span class="p">,</span> <span class="n">MultiPolygon</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span>
+</span><span id="__span-0-1808"><a id="__codelineno-0-1808" name="__codelineno-0-1808"></a>    <span class="p">],</span>
+</span><span id="__span-0-1809"><a id="__codelineno-0-1809" name="__codelineno-0-1809"></a><span class="p">):</span>
+</span><span id="__span-0-1810"><a id="__codelineno-0-1810" name="__codelineno-0-1810"></a><span class="w">    </span><span class="sd">"""</span>
+</span><span id="__span-0-1811"><a id="__codelineno-0-1811" name="__codelineno-0-1811"></a><span class="sd">    Initialize and instance of a raster.</span>
+</span><span id="__span-0-1812"><a id="__codelineno-0-1812" name="__codelineno-0-1812"></a>
+</span><span id="__span-0-1813"><a id="__codelineno-0-1813" name="__codelineno-0-1813"></a><span class="sd">    Parameters</span>
+</span><span id="__span-0-1814"><a id="__codelineno-0-1814" name="__codelineno-0-1814"></a><span class="sd">    ----------</span>
+</span><span id="__span-0-1815"><a id="__codelineno-0-1815" name="__codelineno-0-1815"></a><span class="sd">    value : Dict[str, Union[np.ndarray, Box, Polygon, MultiPolygon, None]]</span>
+</span><span id="__span-0-1816"><a id="__codelineno-0-1816" name="__codelineno-0-1816"></a><span class="sd">        The raster in dictionary format {"mask": &lt;np.ndarray&gt;, "geometry": &lt;geometry | None&gt;}.</span>
+</span><span id="__span-0-1817"><a id="__codelineno-0-1817" name="__codelineno-0-1817"></a><span class="sd">    """</span>
+</span><span id="__span-0-1818"><a id="__codelineno-0-1818" name="__codelineno-0-1818"></a>    <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+</span></code></pre></div></td></tr></table></div>
+</details>
+</div>
+</div>
+<div class="doc doc-object doc-function">
+<h3 class="doc doc-heading" id="valor.schemas.Raster.__validate__">
+<code class="highlight language-python"><span class="n">valor</span><span class="o">.</span><span class="n">schemas</span><span class="o">.</span><span class="n">Raster</span><span class="o">.</span><span class="n">__validate__</span><span class="p">(</span><span class="n">value</span><span class="p">)</span></code>
+<span class="doc doc-labels">
+<small class="doc doc-label doc-label-classmethod"><code>classmethod</code></small>
+</span>
+</h3>
+<div class="doc doc-contents">
+<p>Validates typing.</p>
+<p><span class="doc-section-title">Parameters:</span></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr class="doc-section-item">
+<td><code>value</code></td>
+<td>
+<code>Any</code>
+</td>
+<td>
+<div class="doc-md-description">
+<p>The value to validate.</p>
+</div>
+</td>
+<td>
+<em>required</em>
+</td>
+</tr>
+</tbody>
+</table>
+<p><span class="doc-section-title">Raises:</span></p>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="doc-section-item">
+<td>
+<code>TypeError</code>
+</td>
+<td>
+<div class="doc-md-description">
+<p>If the value type is not supported.</p>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+<details class="quote">
+<summary>Source code in <code>valor/schemas/symbolic/types.py</code></summary>
+<div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-1820">1820</a></span>
+<span class="normal"><a href="#__codelineno-0-1821">1821</a></span>
+<span class="normal"><a href="#__codelineno-0-1822">1822</a></span>
+<span class="normal"><a href="#__codelineno-0-1823">1823</a></span>
+<span class="normal"><a href="#__codelineno-0-1824">1824</a></span>
+<span class="normal"><a href="#__codelineno-0-1825">1825</a></span>
+<span class="normal"><a href="#__codelineno-0-1826">1826</a></span>
+<span class="normal"><a href="#__codelineno-0-1827">1827</a></span>
+<span class="normal"><a href="#__codelineno-0-1828">1828</a></span>
+<span class="normal"><a href="#__codelineno-0-1829">1829</a></span>
+<span class="normal"><a href="#__codelineno-0-1830">1830</a></span>
+<span class="normal"><a href="#__codelineno-0-1831">1831</a></span>
+<span class="normal"><a href="#__codelineno-0-1832">1832</a></span>
+<span class="normal"><a href="#__codelineno-0-1833">1833</a></span>
+<span class="normal"><a href="#__codelineno-0-1834">1834</a></span>
+<span class="normal"><a href="#__codelineno-0-1835">1835</a></span>
+<span class="normal"><a href="#__codelineno-0-1836">1836</a></span>
+<span class="normal"><a href="#__codelineno-0-1837">1837</a></span>
+<span class="normal"><a href="#__codelineno-0-1838">1838</a></span>
+<span class="normal"><a href="#__codelineno-0-1839">1839</a></span>
+<span class="normal"><a href="#__codelineno-0-1840">1840</a></span>
+<span class="normal"><a href="#__codelineno-0-1841">1841</a></span>
+<span class="normal"><a href="#__codelineno-0-1842">1842</a></span>
+<span class="normal"><a href="#__codelineno-0-1843">1843</a></span>
+<span class="normal"><a href="#__codelineno-0-1844">1844</a></span>
+<span class="normal"><a href="#__codelineno-0-1845">1845</a></span>
+<span class="normal"><a href="#__codelineno-0-1846">1846</a></span>
+<span class="normal"><a href="#__codelineno-0-1847">1847</a></span>
+<span class="normal"><a href="#__codelineno-0-1848">1848</a></span>
+<span class="normal"><a href="#__codelineno-0-1849">1849</a></span>
+<span class="normal"><a href="#__codelineno-0-1850">1850</a></span>
+<span class="normal"><a href="#__codelineno-0-1851">1851</a></span>
+<span class="normal"><a href="#__codelineno-0-1852">1852</a></span>
+<span class="normal"><a href="#__codelineno-0-1853">1853</a></span>
+<span class="normal"><a href="#__codelineno-0-1854">1854</a></span>
+<span class="normal"><a href="#__codelineno-0-1855">1855</a></span>
+<span class="normal"><a href="#__codelineno-0-1856">1856</a></span>
+<span class="normal"><a href="#__codelineno-0-1857">1857</a></span>
+<span class="normal"><a href="#__codelineno-0-1858">1858</a></span>
+<span class="normal"><a href="#__codelineno-0-1859">1859</a></span>
+<span class="normal"><a href="#__codelineno-0-1860">1860</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-1820"><a id="__codelineno-0-1820" name="__codelineno-0-1820"></a><span class="nd">@classmethod</span>
+</span><span id="__span-0-1821"><a id="__codelineno-0-1821" name="__codelineno-0-1821"></a><span class="k">def</span> <span class="nf">__validate__</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Any</span><span class="p">):</span>
+</span><span id="__span-0-1822"><a id="__codelineno-0-1822" name="__codelineno-0-1822"></a><span class="w">    </span><span class="sd">"""</span>
+</span><span id="__span-0-1823"><a id="__codelineno-0-1823" name="__codelineno-0-1823"></a><span class="sd">    Validates typing.</span>
+</span><span id="__span-0-1824"><a id="__codelineno-0-1824" name="__codelineno-0-1824"></a>
+</span><span id="__span-0-1825"><a id="__codelineno-0-1825" name="__codelineno-0-1825"></a><span class="sd">    Parameters</span>
+</span><span id="__span-0-1826"><a id="__codelineno-0-1826" name="__codelineno-0-1826"></a><span class="sd">    ----------</span>
+</span><span id="__span-0-1827"><a id="__codelineno-0-1827" name="__codelineno-0-1827"></a><span class="sd">    value : Any</span>
+</span><span id="__span-0-1828"><a id="__codelineno-0-1828" name="__codelineno-0-1828"></a><span class="sd">        The value to validate.</span>
+</span><span id="__span-0-1829"><a id="__codelineno-0-1829" name="__codelineno-0-1829"></a>
+</span><span id="__span-0-1830"><a id="__codelineno-0-1830" name="__codelineno-0-1830"></a><span class="sd">    Raises</span>
+</span><span id="__span-0-1831"><a id="__codelineno-0-1831" name="__codelineno-0-1831"></a><span class="sd">    ------</span>
+</span><span id="__span-0-1832"><a id="__codelineno-0-1832" name="__codelineno-0-1832"></a><span class="sd">    TypeError</span>
+</span><span id="__span-0-1833"><a id="__codelineno-0-1833" name="__codelineno-0-1833"></a><span class="sd">        If the value type is not supported.</span>
+</span><span id="__span-0-1834"><a id="__codelineno-0-1834" name="__codelineno-0-1834"></a><span class="sd">    """</span>
+</span><span id="__span-0-1835"><a id="__codelineno-0-1835" name="__codelineno-0-1835"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+</span><span id="__span-0-1836"><a id="__codelineno-0-1836" name="__codelineno-0-1836"></a>        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+</span><span id="__span-0-1837"><a id="__codelineno-0-1837" name="__codelineno-0-1837"></a>            <span class="s2">"Raster should contain a dictionary describing a mask and optionally a geometry."</span>
+</span><span id="__span-0-1838"><a id="__codelineno-0-1838" name="__codelineno-0-1838"></a>        <span class="p">)</span>
+</span><span id="__span-0-1839"><a id="__codelineno-0-1839" name="__codelineno-0-1839"></a>    <span class="k">elif</span> <span class="nb">set</span><span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span> <span class="o">!=</span> <span class="p">{</span><span class="s2">"mask"</span><span class="p">,</span> <span class="s2">"geometry"</span><span class="p">}:</span>
+</span><span id="__span-0-1840"><a id="__codelineno-0-1840" name="__codelineno-0-1840"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="__span-0-1841"><a id="__codelineno-0-1841" name="__codelineno-0-1841"></a>            <span class="s2">"Raster should be described by a dictionary with keys 'mask' and 'geometry'"</span>
+</span><span id="__span-0-1842"><a id="__codelineno-0-1842" name="__codelineno-0-1842"></a>        <span class="p">)</span>
+</span><span id="__span-0-1843"><a id="__codelineno-0-1843" name="__codelineno-0-1843"></a>    <span class="k">elif</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">[</span><span class="s2">"mask"</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+</span><span id="__span-0-1844"><a id="__codelineno-0-1844" name="__codelineno-0-1844"></a>        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+</span><span id="__span-0-1845"><a id="__codelineno-0-1845" name="__codelineno-0-1845"></a>            <span class="sa">f</span><span class="s2">"Expected mask to have type '</span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="si">}</span><span class="s2">' receieved type '</span><span class="si">{</span><span class="n">value</span><span class="p">[</span><span class="s1">'mask'</span><span class="p">]</span><span class="si">}</span><span class="s2">'"</span>
+</span><span id="__span-0-1846"><a id="__codelineno-0-1846" name="__codelineno-0-1846"></a>        <span class="p">)</span>
+</span><span id="__span-0-1847"><a id="__codelineno-0-1847" name="__codelineno-0-1847"></a>    <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">value</span><span class="p">[</span><span class="s2">"mask"</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
+</span><span id="__span-0-1848"><a id="__codelineno-0-1848" name="__codelineno-0-1848"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"raster only supports 2d arrays"</span><span class="p">)</span>
+</span><span id="__span-0-1849"><a id="__codelineno-0-1849" name="__codelineno-0-1849"></a>    <span class="k">elif</span> <span class="n">value</span><span class="p">[</span><span class="s2">"mask"</span><span class="p">]</span><span class="o">.</span><span class="n">dtype</span> <span class="o">!=</span> <span class="nb">bool</span><span class="p">:</span>
+</span><span id="__span-0-1850"><a id="__codelineno-0-1850" name="__codelineno-0-1850"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="__span-0-1851"><a id="__codelineno-0-1851" name="__codelineno-0-1851"></a>            <span class="sa">f</span><span class="s2">"Expecting a binary mask (i.e. of dtype bool) but got dtype </span><span class="si">{</span><span class="n">value</span><span class="p">[</span><span class="s1">'mask'</span><span class="p">]</span><span class="o">.</span><span class="n">dtype</span><span class="si">}</span><span class="s2">"</span>
+</span><span id="__span-0-1852"><a id="__codelineno-0-1852" name="__codelineno-0-1852"></a>        <span class="p">)</span>
+</span><span id="__span-0-1853"><a id="__codelineno-0-1853" name="__codelineno-0-1853"></a>    <span class="k">elif</span> <span class="p">(</span>
+</span><span id="__span-0-1854"><a id="__codelineno-0-1854" name="__codelineno-0-1854"></a>        <span class="n">value</span><span class="p">[</span><span class="s2">"geometry"</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+</span><span id="__span-0-1855"><a id="__codelineno-0-1855" name="__codelineno-0-1855"></a>        <span class="ow">and</span> <span class="ow">not</span> <span class="n">Polygon</span><span class="o">.</span><span class="n">supports</span><span class="p">(</span><span class="n">value</span><span class="p">[</span><span class="s2">"geometry"</span><span class="p">])</span>
+</span><span id="__span-0-1856"><a id="__codelineno-0-1856" name="__codelineno-0-1856"></a>        <span class="ow">and</span> <span class="ow">not</span> <span class="n">MultiPolygon</span><span class="o">.</span><span class="n">supports</span><span class="p">(</span><span class="n">value</span><span class="p">[</span><span class="s2">"geometry"</span><span class="p">])</span>
+</span><span id="__span-0-1857"><a id="__codelineno-0-1857" name="__codelineno-0-1857"></a>    <span class="p">):</span>
+</span><span id="__span-0-1858"><a id="__codelineno-0-1858" name="__codelineno-0-1858"></a>        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+</span><span id="__span-0-1859"><a id="__codelineno-0-1859" name="__codelineno-0-1859"></a>            <span class="s2">"Expected geometry to conform to either Polygon or MultiPolygon or be 'None'"</span>
+</span><span id="__span-0-1860"><a id="__codelineno-0-1860" name="__codelineno-0-1860"></a>        <span class="p">)</span>
+</span></code></pre></div></td></tr></table></div>
+</details>
+</div>
+</div>
+<div class="doc doc-object doc-function">
+<h3 class="doc doc-heading" id="valor.schemas.Raster.decode_value">
+<code class="highlight language-python"><span class="n">valor</span><span class="o">.</span><span class="n">schemas</span><span class="o">.</span><span class="n">Raster</span><span class="o">.</span><span class="n">decode_value</span><span class="p">(</span><span class="n">value</span><span class="p">)</span></code>
+<span class="doc doc-labels">
+<small class="doc doc-label doc-label-classmethod"><code>classmethod</code></small>
+</span>
+</h3>
+<div class="doc doc-contents">
+<p>Decode object from JSON compatible dictionary.</p>
+<details class="quote">
+<summary>Source code in <code>valor/schemas/symbolic/types.py</code></summary>
+<div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-1877">1877</a></span>
+<span class="normal"><a href="#__codelineno-0-1878">1878</a></span>
+<span class="normal"><a href="#__codelineno-0-1879">1879</a></span>
+<span class="normal"><a href="#__codelineno-0-1880">1880</a></span>
+<span class="normal"><a href="#__codelineno-0-1881">1881</a></span>
+<span class="normal"><a href="#__codelineno-0-1882">1882</a></span>
+<span class="normal"><a href="#__codelineno-0-1883">1883</a></span>
+<span class="normal"><a href="#__codelineno-0-1884">1884</a></span>
+<span class="normal"><a href="#__codelineno-0-1885">1885</a></span>
+<span class="normal"><a href="#__codelineno-0-1886">1886</a></span>
+<span class="normal"><a href="#__codelineno-0-1887">1887</a></span>
+<span class="normal"><a href="#__codelineno-0-1888">1888</a></span>
+<span class="normal"><a href="#__codelineno-0-1889">1889</a></span>
+<span class="normal"><a href="#__codelineno-0-1890">1890</a></span>
+<span class="normal"><a href="#__codelineno-0-1891">1891</a></span>
+<span class="normal"><a href="#__codelineno-0-1892">1892</a></span>
+<span class="normal"><a href="#__codelineno-0-1893">1893</a></span>
+<span class="normal"><a href="#__codelineno-0-1894">1894</a></span>
+<span class="normal"><a href="#__codelineno-0-1895">1895</a></span>
+<span class="normal"><a href="#__codelineno-0-1896">1896</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-1877"><a id="__codelineno-0-1877" name="__codelineno-0-1877"></a><span class="nd">@classmethod</span>
+</span><span id="__span-0-1878"><a id="__codelineno-0-1878" name="__codelineno-0-1878"></a><span class="k">def</span> <span class="nf">decode_value</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Any</span><span class="p">):</span>
+</span><span id="__span-0-1879"><a id="__codelineno-0-1879" name="__codelineno-0-1879"></a><span class="w">    </span><span class="sd">"""Decode object from JSON compatible dictionary."""</span>
+</span><span id="__span-0-1880"><a id="__codelineno-0-1880" name="__codelineno-0-1880"></a>    <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="__span-0-1881"><a id="__codelineno-0-1881" name="__codelineno-0-1881"></a>        <span class="k">return</span> <span class="kc">None</span>
+</span><span id="__span-0-1882"><a id="__codelineno-0-1882" name="__codelineno-0-1882"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span>
+</span><span id="__span-0-1883"><a id="__codelineno-0-1883" name="__codelineno-0-1883"></a>        <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span>
+</span><span id="__span-0-1884"><a id="__codelineno-0-1884" name="__codelineno-0-1884"></a>        <span class="ow">and</span> <span class="nb">set</span><span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span> <span class="o">==</span> <span class="p">{</span><span class="s2">"mask"</span><span class="p">,</span> <span class="s2">"geometry"</span><span class="p">}</span>
+</span><span id="__span-0-1885"><a id="__codelineno-0-1885" name="__codelineno-0-1885"></a>    <span class="p">):</span>
+</span><span id="__span-0-1886"><a id="__codelineno-0-1886" name="__codelineno-0-1886"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="__span-0-1887"><a id="__codelineno-0-1887" name="__codelineno-0-1887"></a>            <span class="sa">f</span><span class="s2">"Improperly formatted raster encoding. Received '</span><span class="si">{</span><span class="n">value</span><span class="si">}</span><span class="s2">'"</span>
+</span><span id="__span-0-1888"><a id="__codelineno-0-1888" name="__codelineno-0-1888"></a>        <span class="p">)</span>
+</span><span id="__span-0-1889"><a id="__codelineno-0-1889" name="__codelineno-0-1889"></a>    <span class="n">mask_bytes</span> <span class="o">=</span> <span class="n">b64decode</span><span class="p">(</span><span class="n">value</span><span class="p">[</span><span class="s2">"mask"</span><span class="p">])</span>
+</span><span id="__span-0-1890"><a id="__codelineno-0-1890" name="__codelineno-0-1890"></a>    <span class="k">with</span> <span class="n">io</span><span class="o">.</span><span class="n">BytesIO</span><span class="p">(</span><span class="n">mask_bytes</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+</span><span id="__span-0-1891"><a id="__codelineno-0-1891" name="__codelineno-0-1891"></a>        <span class="n">img</span> <span class="o">=</span> <span class="n">PIL</span><span class="o">.</span><span class="n">Image</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+</span><span id="__span-0-1892"><a id="__codelineno-0-1892" name="__codelineno-0-1892"></a>        <span class="n">value</span> <span class="o">=</span> <span class="p">{</span>
+</span><span id="__span-0-1893"><a id="__codelineno-0-1893" name="__codelineno-0-1893"></a>            <span class="s2">"mask"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">img</span><span class="p">),</span>
+</span><span id="__span-0-1894"><a id="__codelineno-0-1894" name="__codelineno-0-1894"></a>            <span class="s2">"geometry"</span><span class="p">:</span> <span class="n">value</span><span class="p">[</span><span class="s2">"geometry"</span><span class="p">],</span>
+</span><span id="__span-0-1895"><a id="__codelineno-0-1895" name="__codelineno-0-1895"></a>        <span class="p">}</span>
+</span><span id="__span-0-1896"><a id="__codelineno-0-1896" name="__codelineno-0-1896"></a>    <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="n">value</span><span class="p">)</span>
+</span></code></pre></div></td></tr></table></div>
+</details>
+</div>
+</div>
+<div class="doc doc-object doc-function">
+<h3 class="doc doc-heading" id="valor.schemas.Raster.encode_value">
+<code class="highlight language-python"><span class="n">valor</span><span class="o">.</span><span class="n">schemas</span><span class="o">.</span><span class="n">Raster</span><span class="o">.</span><span class="n">encode_value</span><span class="p">()</span></code>
+</h3>
+<div class="doc doc-contents">
+<p>Encode object to JSON compatible dictionary.</p>
+<details class="quote">
+<summary>Source code in <code>valor/schemas/symbolic/types.py</code></summary>
+<div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-1862">1862</a></span>
+<span class="normal"><a href="#__codelineno-0-1863">1863</a></span>
+<span class="normal"><a href="#__codelineno-0-1864">1864</a></span>
+<span class="normal"><a href="#__codelineno-0-1865">1865</a></span>
+<span class="normal"><a href="#__codelineno-0-1866">1866</a></span>
+<span class="normal"><a href="#__codelineno-0-1867">1867</a></span>
+<span class="normal"><a href="#__codelineno-0-1868">1868</a></span>
+<span class="normal"><a href="#__codelineno-0-1869">1869</a></span>
+<span class="normal"><a href="#__codelineno-0-1870">1870</a></span>
+<span class="normal"><a href="#__codelineno-0-1871">1871</a></span>
+<span class="normal"><a href="#__codelineno-0-1872">1872</a></span>
+<span class="normal"><a href="#__codelineno-0-1873">1873</a></span>
+<span class="normal"><a href="#__codelineno-0-1874">1874</a></span>
+<span class="normal"><a href="#__codelineno-0-1875">1875</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-1862"><a id="__codelineno-0-1862" name="__codelineno-0-1862"></a><span class="k">def</span> <span class="nf">encode_value</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">typing</span><span class="o">.</span><span class="n">Any</span><span class="p">:</span>
+</span><span id="__span-0-1863"><a id="__codelineno-0-1863" name="__codelineno-0-1863"></a><span class="w">    </span><span class="sd">"""Encode object to JSON compatible dictionary."""</span>
+</span><span id="__span-0-1864"><a id="__codelineno-0-1864" name="__codelineno-0-1864"></a>    <span class="n">value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_value</span><span class="p">()</span>
+</span><span id="__span-0-1865"><a id="__codelineno-0-1865" name="__codelineno-0-1865"></a>    <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="__span-0-1866"><a id="__codelineno-0-1866" name="__codelineno-0-1866"></a>        <span class="k">return</span> <span class="kc">None</span>
+</span><span id="__span-0-1867"><a id="__codelineno-0-1867" name="__codelineno-0-1867"></a>    <span class="n">f</span> <span class="o">=</span> <span class="n">io</span><span class="o">.</span><span class="n">BytesIO</span><span class="p">()</span>
+</span><span id="__span-0-1868"><a id="__codelineno-0-1868" name="__codelineno-0-1868"></a>    <span class="n">PIL</span><span class="o">.</span><span class="n">Image</span><span class="o">.</span><span class="n">fromarray</span><span class="p">(</span><span class="n">value</span><span class="p">[</span><span class="s2">"mask"</span><span class="p">])</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s2">"PNG"</span><span class="p">)</span>
+</span><span id="__span-0-1869"><a id="__codelineno-0-1869" name="__codelineno-0-1869"></a>    <span class="n">f</span><span class="o">.</span><span class="n">seek</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+</span><span id="__span-0-1870"><a id="__codelineno-0-1870" name="__codelineno-0-1870"></a>    <span class="n">mask_bytes</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+</span><span id="__span-0-1871"><a id="__codelineno-0-1871" name="__codelineno-0-1871"></a>    <span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</span><span id="__span-0-1872"><a id="__codelineno-0-1872" name="__codelineno-0-1872"></a>    <span class="k">return</span> <span class="p">{</span>
+</span><span id="__span-0-1873"><a id="__codelineno-0-1873" name="__codelineno-0-1873"></a>        <span class="s2">"mask"</span><span class="p">:</span> <span class="n">b64encode</span><span class="p">(</span><span class="n">mask_bytes</span><span class="p">)</span><span class="o">.</span><span class="n">decode</span><span class="p">(),</span>
+</span><span id="__span-0-1874"><a id="__codelineno-0-1874" name="__codelineno-0-1874"></a>        <span class="s2">"geometry"</span><span class="p">:</span> <span class="n">value</span><span class="p">[</span><span class="s2">"geometry"</span><span class="p">],</span>
+</span><span id="__span-0-1875"><a id="__codelineno-0-1875" name="__codelineno-0-1875"></a>    <span class="p">}</span>
+</span></code></pre></div></td></tr></table></div>
+</details>
+</div>
+</div>
+<div class="doc doc-object doc-function">
+<h3 class="doc doc-heading" id="valor.schemas.Raster.from_geometry">
+<code class="highlight language-python"><span class="n">valor</span><span class="o">.</span><span class="n">schemas</span><span class="o">.</span><span class="n">Raster</span><span class="o">.</span><span class="n">from_geometry</span><span class="p">(</span><span class="n">geometry</span><span class="p">,</span> <span class="n">height</span><span class="p">,</span> <span class="n">width</span><span class="p">)</span></code>
+<span class="doc doc-labels">
+<small class="doc doc-label doc-label-classmethod"><code>classmethod</code></small>
+</span>
+</h3>
+<div class="doc doc-contents">
+<p>Create a Raster object from a geometric mask.</p>
+<p><span class="doc-section-title">Parameters:</span></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr class="doc-section-item">
+<td><code>geometry</code></td>
+<td>
+<code>Union[<span title="valor.schemas.symbolic.types.Box">Box</span>, <span title="valor.schemas.symbolic.types.Polygon">Polygon</span>, <span title="valor.schemas.symbolic.types.MultiPolygon">MultiPolygon</span>]</code>
+</td>
+<td>
+<div class="doc-md-description">
+<p>Defines the bitmask as a geometry. Overrides any existing mask.</p>
+</div>
+</td>
+<td>
+<em>required</em>
+</td>
+</tr>
+<tr class="doc-section-item">
+<td><code>height</code></td>
+<td>
+<code>int</code>
+</td>
+<td>
+<div class="doc-md-description">
+<p>The intended height of the binary mask.</p>
+</div>
+</td>
+<td>
+<em>required</em>
+</td>
+</tr>
+<tr class="doc-section-item">
+<td><code>width</code></td>
+<td>
+<code>int</code>
+</td>
+<td>
+<div class="doc-md-description">
+<p>The intended width of the binary mask.</p>
+</div>
+</td>
+<td>
+<em>required</em>
+</td>
+</tr>
+</tbody>
+</table>
+<p><span class="doc-section-title">Returns:</span></p>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="doc-section-item">
+<td>
+<code><span title="valor.schemas.symbolic.types.Raster">Raster</span></code>
+</td>
+<td>
+<div class="doc-md-description">
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+<details class="quote">
+<summary>Source code in <code>valor/schemas/symbolic/types.py</code></summary>
+<div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-1919">1919</a></span>
+<span class="normal"><a href="#__codelineno-0-1920">1920</a></span>
+<span class="normal"><a href="#__codelineno-0-1921">1921</a></span>
+<span class="normal"><a href="#__codelineno-0-1922">1922</a></span>
+<span class="normal"><a href="#__codelineno-0-1923">1923</a></span>
+<span class="normal"><a href="#__codelineno-0-1924">1924</a></span>
+<span class="normal"><a href="#__codelineno-0-1925">1925</a></span>
+<span class="normal"><a href="#__codelineno-0-1926">1926</a></span>
+<span class="normal"><a href="#__codelineno-0-1927">1927</a></span>
+<span class="normal"><a href="#__codelineno-0-1928">1928</a></span>
+<span class="normal"><a href="#__codelineno-0-1929">1929</a></span>
+<span class="normal"><a href="#__codelineno-0-1930">1930</a></span>
+<span class="normal"><a href="#__codelineno-0-1931">1931</a></span>
+<span class="normal"><a href="#__codelineno-0-1932">1932</a></span>
+<span class="normal"><a href="#__codelineno-0-1933">1933</a></span>
+<span class="normal"><a href="#__codelineno-0-1934">1934</a></span>
+<span class="normal"><a href="#__codelineno-0-1935">1935</a></span>
+<span class="normal"><a href="#__codelineno-0-1936">1936</a></span>
+<span class="normal"><a href="#__codelineno-0-1937">1937</a></span>
+<span class="normal"><a href="#__codelineno-0-1938">1938</a></span>
+<span class="normal"><a href="#__codelineno-0-1939">1939</a></span>
+<span class="normal"><a href="#__codelineno-0-1940">1940</a></span>
+<span class="normal"><a href="#__codelineno-0-1941">1941</a></span>
+<span class="normal"><a href="#__codelineno-0-1942">1942</a></span>
+<span class="normal"><a href="#__codelineno-0-1943">1943</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-1919"><a id="__codelineno-0-1919" name="__codelineno-0-1919"></a><span class="nd">@classmethod</span>
+</span><span id="__span-0-1920"><a id="__codelineno-0-1920" name="__codelineno-0-1920"></a><span class="k">def</span> <span class="nf">from_geometry</span><span class="p">(</span>
+</span><span id="__span-0-1921"><a id="__codelineno-0-1921" name="__codelineno-0-1921"></a>    <span class="bp">cls</span><span class="p">,</span>
+</span><span id="__span-0-1922"><a id="__codelineno-0-1922" name="__codelineno-0-1922"></a>    <span class="n">geometry</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="n">Box</span><span class="p">,</span> <span class="n">Polygon</span><span class="p">,</span> <span class="n">MultiPolygon</span><span class="p">],</span>
+</span><span id="__span-0-1923"><a id="__codelineno-0-1923" name="__codelineno-0-1923"></a>    <span class="n">height</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+</span><span id="__span-0-1924"><a id="__codelineno-0-1924" name="__codelineno-0-1924"></a>    <span class="n">width</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+</span><span id="__span-0-1925"><a id="__codelineno-0-1925" name="__codelineno-0-1925"></a><span class="p">):</span>
+</span><span id="__span-0-1926"><a id="__codelineno-0-1926" name="__codelineno-0-1926"></a><span class="w">    </span><span class="sd">"""</span>
+</span><span id="__span-0-1927"><a id="__codelineno-0-1927" name="__codelineno-0-1927"></a><span class="sd">    Create a Raster object from a geometric mask.</span>
+</span><span id="__span-0-1928"><a id="__codelineno-0-1928" name="__codelineno-0-1928"></a>
+</span><span id="__span-0-1929"><a id="__codelineno-0-1929" name="__codelineno-0-1929"></a><span class="sd">    Parameters</span>
+</span><span id="__span-0-1930"><a id="__codelineno-0-1930" name="__codelineno-0-1930"></a><span class="sd">    ----------</span>
+</span><span id="__span-0-1931"><a id="__codelineno-0-1931" name="__codelineno-0-1931"></a><span class="sd">    geometry : Union[Box, Polygon, MultiPolygon]</span>
+</span><span id="__span-0-1932"><a id="__codelineno-0-1932" name="__codelineno-0-1932"></a><span class="sd">        Defines the bitmask as a geometry. Overrides any existing mask.</span>
+</span><span id="__span-0-1933"><a id="__codelineno-0-1933" name="__codelineno-0-1933"></a><span class="sd">    height : int</span>
+</span><span id="__span-0-1934"><a id="__codelineno-0-1934" name="__codelineno-0-1934"></a><span class="sd">        The intended height of the binary mask.</span>
+</span><span id="__span-0-1935"><a id="__codelineno-0-1935" name="__codelineno-0-1935"></a><span class="sd">    width : int</span>
+</span><span id="__span-0-1936"><a id="__codelineno-0-1936" name="__codelineno-0-1936"></a><span class="sd">        The intended width of the binary mask.</span>
+</span><span id="__span-0-1937"><a id="__codelineno-0-1937" name="__codelineno-0-1937"></a>
+</span><span id="__span-0-1938"><a id="__codelineno-0-1938" name="__codelineno-0-1938"></a><span class="sd">    Returns</span>
+</span><span id="__span-0-1939"><a id="__codelineno-0-1939" name="__codelineno-0-1939"></a><span class="sd">    -------</span>
+</span><span id="__span-0-1940"><a id="__codelineno-0-1940" name="__codelineno-0-1940"></a><span class="sd">    Raster</span>
+</span><span id="__span-0-1941"><a id="__codelineno-0-1941" name="__codelineno-0-1941"></a><span class="sd">    """</span>
+</span><span id="__span-0-1942"><a id="__codelineno-0-1942" name="__codelineno-0-1942"></a>    <span class="n">bitmask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="nb">int</span><span class="p">(</span><span class="n">height</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">width</span><span class="p">)),</span> <span class="kc">False</span><span class="p">)</span>
+</span><span id="__span-0-1943"><a id="__codelineno-0-1943" name="__codelineno-0-1943"></a>    <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="p">{</span><span class="s2">"mask"</span><span class="p">:</span> <span class="n">bitmask</span><span class="p">,</span> <span class="s2">"geometry"</span><span class="p">:</span> <span class="n">geometry</span><span class="o">.</span><span class="n">get_value</span><span class="p">()})</span>
+</span></code></pre></div></td></tr></table></div>
+</details>
+</div>
+</div>
+<div class="doc doc-object doc-function">
+<h3 class="doc doc-heading" id="valor.schemas.Raster.from_numpy">
+<code class="highlight language-python"><span class="n">valor</span><span class="o">.</span><span class="n">schemas</span><span class="o">.</span><span class="n">Raster</span><span class="o">.</span><span class="n">from_numpy</span><span class="p">(</span><span class="n">mask</span><span class="p">)</span></code>
+<span class="doc doc-labels">
+<small class="doc doc-label doc-label-classmethod"><code>classmethod</code></small>
+</span>
+</h3>
+<div class="doc doc-contents">
+<p>Create a Raster object from a NumPy array.</p>
+<p><span class="doc-section-title">Parameters:</span></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr class="doc-section-item">
+<td><code>mask</code></td>
+<td>
+<code><span title="numpy.ndarray">ndarray</span></code>
+</td>
+<td>
+<div class="doc-md-description">
+<p>The 2D binary array representing the mask.</p>
+</div>
+</td>
+<td>
+<em>required</em>
+</td>
+</tr>
+</tbody>
+</table>
+<p><span class="doc-section-title">Returns:</span></p>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="doc-section-item">
+<td>
+<code><span title="valor.schemas.symbolic.types.Raster">Raster</span></code>
+</td>
+<td>
+<div class="doc-md-description">
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+<p><span class="doc-section-title">Raises:</span></p>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="doc-section-item">
+<td>
+<code>ValueError</code>
+</td>
+<td>
+<div class="doc-md-description">
+<p>If the input array is not 2D or not of dtype bool.</p>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+<details class="quote">
+<summary>Source code in <code>valor/schemas/symbolic/types.py</code></summary>
+<div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-1898">1898</a></span>
+<span class="normal"><a href="#__codelineno-0-1899">1899</a></span>
+<span class="normal"><a href="#__codelineno-0-1900">1900</a></span>
+<span class="normal"><a href="#__codelineno-0-1901">1901</a></span>
+<span class="normal"><a href="#__codelineno-0-1902">1902</a></span>
+<span class="normal"><a href="#__codelineno-0-1903">1903</a></span>
+<span class="normal"><a href="#__codelineno-0-1904">1904</a></span>
+<span class="normal"><a href="#__codelineno-0-1905">1905</a></span>
+<span class="normal"><a href="#__codelineno-0-1906">1906</a></span>
+<span class="normal"><a href="#__codelineno-0-1907">1907</a></span>
+<span class="normal"><a href="#__codelineno-0-1908">1908</a></span>
+<span class="normal"><a href="#__codelineno-0-1909">1909</a></span>
+<span class="normal"><a href="#__codelineno-0-1910">1910</a></span>
+<span class="normal"><a href="#__codelineno-0-1911">1911</a></span>
+<span class="normal"><a href="#__codelineno-0-1912">1912</a></span>
+<span class="normal"><a href="#__codelineno-0-1913">1913</a></span>
+<span class="normal"><a href="#__codelineno-0-1914">1914</a></span>
+<span class="normal"><a href="#__codelineno-0-1915">1915</a></span>
+<span class="normal"><a href="#__codelineno-0-1916">1916</a></span>
+<span class="normal"><a href="#__codelineno-0-1917">1917</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-1898"><a id="__codelineno-0-1898" name="__codelineno-0-1898"></a><span class="nd">@classmethod</span>
+</span><span id="__span-0-1899"><a id="__codelineno-0-1899" name="__codelineno-0-1899"></a><span class="k">def</span> <span class="nf">from_numpy</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">mask</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+</span><span id="__span-0-1900"><a id="__codelineno-0-1900" name="__codelineno-0-1900"></a><span class="w">    </span><span class="sd">"""</span>
+</span><span id="__span-0-1901"><a id="__codelineno-0-1901" name="__codelineno-0-1901"></a><span class="sd">    Create a Raster object from a NumPy array.</span>
+</span><span id="__span-0-1902"><a id="__codelineno-0-1902" name="__codelineno-0-1902"></a>
+</span><span id="__span-0-1903"><a id="__codelineno-0-1903" name="__codelineno-0-1903"></a><span class="sd">    Parameters</span>
+</span><span id="__span-0-1904"><a id="__codelineno-0-1904" name="__codelineno-0-1904"></a><span class="sd">    ----------</span>
+</span><span id="__span-0-1905"><a id="__codelineno-0-1905" name="__codelineno-0-1905"></a><span class="sd">    mask : np.ndarray</span>
+</span><span id="__span-0-1906"><a id="__codelineno-0-1906" name="__codelineno-0-1906"></a><span class="sd">        The 2D binary array representing the mask.</span>
+</span><span id="__span-0-1907"><a id="__codelineno-0-1907" name="__codelineno-0-1907"></a>
+</span><span id="__span-0-1908"><a id="__codelineno-0-1908" name="__codelineno-0-1908"></a><span class="sd">    Returns</span>
+</span><span id="__span-0-1909"><a id="__codelineno-0-1909" name="__codelineno-0-1909"></a><span class="sd">    -------</span>
+</span><span id="__span-0-1910"><a id="__codelineno-0-1910" name="__codelineno-0-1910"></a><span class="sd">    Raster</span>
+</span><span id="__span-0-1911"><a id="__codelineno-0-1911" name="__codelineno-0-1911"></a>
+</span><span id="__span-0-1912"><a id="__codelineno-0-1912" name="__codelineno-0-1912"></a><span class="sd">    Raises</span>
+</span><span id="__span-0-1913"><a id="__codelineno-0-1913" name="__codelineno-0-1913"></a><span class="sd">    ------</span>
+</span><span id="__span-0-1914"><a id="__codelineno-0-1914" name="__codelineno-0-1914"></a><span class="sd">    ValueError</span>
+</span><span id="__span-0-1915"><a id="__codelineno-0-1915" name="__codelineno-0-1915"></a><span class="sd">        If the input array is not 2D or not of dtype bool.</span>
+</span><span id="__span-0-1916"><a id="__codelineno-0-1916" name="__codelineno-0-1916"></a><span class="sd">    """</span>
+</span><span id="__span-0-1917"><a id="__codelineno-0-1917" name="__codelineno-0-1917"></a>    <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="p">{</span><span class="s2">"mask"</span><span class="p">:</span> <span class="n">mask</span><span class="p">,</span> <span class="s2">"geometry"</span><span class="p">:</span> <span class="kc">None</span><span class="p">})</span>
+</span></code></pre></div></td></tr></table></div>
+</details>
+</div>
+</div>
+</div>
+</div>
+</div>
+</article>
+</div>
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+</div>
+</main>
+<footer class="md-footer">
+<div class="md-footer-meta md-typeset">
+<div class="md-footer-meta__inner md-grid">
+<div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" rel="noopener" target="_blank">
+      Material for MkDocs
+    </a>
+</div>
+</div>
+</div>
+</footer>
+</div>
+<div class="md-dialog" data-md-component="dialog">
+<div class="md-dialog__inner md-typeset"></div>
+</div>
+<script id="__config" type="application/json">{"base": "../../../..", "features": ["navigation.expand"], "search": "../../../../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+<script src="../../../../assets/javascripts/bundle.3220b9d7.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<script>document$.subscribe(() => {
+            window.update_swagger_ui_iframe_height = function (id) {
+                var iFrameID = document.getElementById(id);
+                if (iFrameID) {
+                    full_height = (iFrameID.contentWindow.document.body.scrollHeight + 80) + "px";
+                    iFrameID.height = full_height;
+                    iFrameID.style.height = full_height;
+                }
+            }
+        
+            let iframe_id_list = []
+            var iframes = document.getElementsByClassName("swagger-ui-iframe");
+            for (var i = 0; i < iframes.length; i++) { 
+                iframe_id_list.push(iframes[i].getAttribute("id"))
+            }
+        
+            let ticking = true;
+            
+            document.addEventListener('scroll', function(e) {
+                if (!ticking) {
+                    window.requestAnimationFrame(()=> {
+                        let half_vh = window.innerHeight/2;
+                        for(var i = 0; i < iframe_id_list.length; i++) {
+                            let element = document.getElementById(iframe_id_list[i])
+                            if(element==null){
+                                return
+                            }
+                            let diff = element.getBoundingClientRect().top
+                            if(element.contentWindow.update_top_val){
+                                element.contentWindow.update_top_val(half_vh - diff)
+                            }
+                        }
+                        ticking = false;
+                    });
+                    ticking = true;
+                }
+            });
+        
+            const dark_scheme_name = "slate"
+            
+            window.scheme = document.body.getAttribute("data-md-color-scheme")
+            const options = {
+                attributeFilter: ['data-md-color-scheme'],
+            };
+            function color_scheme_callback(mutations) {
+                for (let mutation of mutations) {
+                    if (mutation.attributeName === "data-md-color-scheme") {
+                        scheme = document.body.getAttribute("data-md-color-scheme")
+                        var iframe_list = document.getElementsByClassName("swagger-ui-iframe")
+                        for(var i = 0; i < iframe_list.length; i++) {
+                            var ele = iframe_list.item(i);
+                            if (ele) {
+                                if (scheme === dark_scheme_name) {
+                                    ele.contentWindow.enable_dark_mode();
+                                } else {
+                                    ele.contentWindow.disable_dark_mode();
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            observer = new MutationObserver(color_scheme_callback);
+            observer.observe(document.body, options);
+            })</script></body>
+</html>
