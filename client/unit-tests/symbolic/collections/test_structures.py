@@ -397,24 +397,45 @@ def test_dictionary():
 
     # test encoding
     assert {
-        "k0": {"type": "bool", "value": True},
-        "k1": {"type": "string", "value": "v1"},
-        "k2": {"type": "integer", "value": 123},
-        "k3": {"type": "float", "value": 1.24},
+        "k0": True,
+        "k1": "v1",
+        "k2": 123,
+        "k3": 1.24,
         "k4": {"type": "datetime", "value": "2024-01-01T00:00:00"},
         "k5": {"type": "date", "value": "2024-01-01"},
         "k6": {"type": "time", "value": "01:00:00"},
         "k7": {"type": "duration", "value": 100.0},
-        "k8": {"type": "point", "value": (1, -1)},
-        "k9": {"type": "multipoint", "value": [(0, 0), (1, 1)]},
-        "k10": {"type": "linestring", "value": [(0, 0), (1, 1)]},
-        "k11": {"type": "multilinestring", "value": [[(0, 0), (1, 1)]]},
+        "k8": {
+            "type": "geojson",
+            "value": {"type": "Point", "coordinates": (1, -1)},
+        },
+        "k9": {
+            "type": "geojson",
+            "value": {"type": "MultiPoint", "coordinates": [(0, 0), (1, 1)]},
+        },
+        "k10": {
+            "type": "geojson",
+            "value": {"type": "LineString", "coordinates": [(0, 0), (1, 1)]},
+        },
+        "k11": {
+            "type": "geojson",
+            "value": {
+                "type": "MultiLineString",
+                "coordinates": [[(0, 0), (1, 1)]],
+            },
+        },
         "k12": {
-            "type": "polygon",
-            "value": [[(0, 0), (1, 1), (0, 1), (0, 0)]],
+            "type": "geojson",
+            "value": {
+                "type": "Polygon",
+                "coordinates": [[(0, 0), (1, 1), (0, 1), (0, 0)]],
+            },
         },
         "k13": {
-            "type": "multipolygon",
-            "value": [[[(0, 0), (1, 1), (0, 1), (0, 0)]]],
+            "type": "geojson",
+            "value": {
+                "type": "MultiPolygon",
+                "coordinates": [[[(0, 0), (1, 1), (0, 1), (0, 0)]]],
+            },
         },
     } == Dictionary(x).encode_value()

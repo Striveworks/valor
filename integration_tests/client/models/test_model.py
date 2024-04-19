@@ -137,8 +137,8 @@ def test_create_model_with_href_and_description(
         select(models.Model.meta).where(models.Model.name == model_name)
     )
     assert model_metadata == {
-        "href": "http://a.com/b",
-        "description": "a description",
+        "href": href,
+        "description": description,
     }
 
 

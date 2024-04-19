@@ -274,8 +274,14 @@ def test_get_unique_datum_metadata_in_dataset(
     )
     unique_metadata.sort(key=_get_width)
     assert unique_metadata == [
-        {"width": 32.0, "height": 80.0},
-        {"width": 200.0, "height": 100.0},
+        {
+            "width": 32,
+            "height": 80,
+        },
+        {
+            "width": 200,
+            "height": 100,
+        },
     ]
 
 
@@ -290,4 +296,7 @@ def test_get_unique_groundtruth_annotation_metadata_in_dataset(
 
     assert len(unique_metadata) == 2
     assert {"int_key": 1} in unique_metadata
-    assert {"string_key": "string_val", "int_key": 1} in unique_metadata
+    assert {
+        "string_key": "string_val",
+        "int_key": 1,
+    } in unique_metadata

@@ -21,28 +21,32 @@ def created_model(db: Session, model_name: str) -> str:
 
 
 @pytest.fixture
-def datums(created_dataset) -> list[schemas.Datum]:
+def datums() -> list[schemas.Datum]:
+    return [schemas.Datum(uid=f"uid_{i}") for i in range(3)]
+
+
+@pytest.fixture
+def empty_groundtruths(
+    created_dataset: str, datums: list[schemas.Datum]
+) -> list[schemas.GroundTruth]:
     return [
-        schemas.Datum(
-            uid=f"uid_{i}",
-            dataset_name=created_dataset,
+        schemas.GroundTruth(
+            dataset_name=created_dataset, datum=datum, annotations=[]
         )
-        for i in range(3)
+        for datum in datums
     ]
 
 
 @pytest.fixture
-def empty_groundtruths(datums) -> list[schemas.GroundTruth]:
-    return [
-        schemas.GroundTruth(datum=datum, annotations=[]) for datum in datums
-    ]
-
-
-@pytest.fixture
-def empty_predictions(created_model, datums) -> list[schemas.Prediction]:
+def empty_predictions(
+    created_dataset: str, created_model: str, datums: list[schemas.Datum]
+) -> list[schemas.Prediction]:
     return [
         schemas.Prediction(
-            model_name=created_model, datum=datum, annotations=[]
+            dataset_name=created_dataset,
+            model_name=created_model,
+            datum=datum,
+            annotations=[],
         )
         for datum in datums
     ]
@@ -52,7 +56,7 @@ def test_create_empty_annotations(
     db: Session,
     empty_groundtruths: list[schemas.GroundTruth],
     empty_predictions: list[schemas.Prediction],
-    created_dataset,
+    created_dataset: str,
 ):
     for gt in empty_groundtruths:
         core.create_groundtruth(db, gt)
@@ -100,7 +104,8 @@ def test_create_annotation_with_embedding(
     created_model: str,
 ):
     gt = schemas.GroundTruth(
-        datum=schemas.Datum(uid="uid123", dataset_name=created_dataset),
+        dataset_name=created_dataset,
+        datum=schemas.Datum(uid="uid123"),
         annotations=[
             schemas.Annotation(
                 task_type=enums.TaskType.CLASSIFICATION,
@@ -110,8 +115,9 @@ def test_create_annotation_with_embedding(
     )
 
     pd = schemas.Prediction(
+        dataset_name=created_dataset,
         model_name=created_model,
-        datum=schemas.Datum(uid="uid123", dataset_name=created_dataset),
+        datum=schemas.Datum(uid="uid123"),
         annotations=[
             schemas.Annotation(
                 task_type=enums.TaskType.EMBEDDING,

@@ -1,14 +1,81 @@
 import axios, { AxiosInstance } from 'axios';
 
-export type Dataset = {
-  name: string;
-  metadata: Partial<Record<string, any>>;
-};
+/**
+ * Checks if value conforms to the GeoJSON specification.
+ *
+ * @param value The value to type check.
+ * @returns A boolean result.
+ */
+function isGeoJSONObject(value: any): value is { type: string, coordinates: any } {
+  const geoJSONTypes: string[] = ["point", "linestring", "polygon", "multipoint", "multilinestring", "multipolygon"];
+  return typeof value === 'object' && value !== null && 'type' in value && geoJSONTypes.includes((value.type as string).toLowerCase());
+}
 
-export type Model = {
-  name: string;
-  metadata: Partial<Record<string, any>>;
-};
+/**
+ * Encodes metadata into the Valor API format.
+ *
+ * @param input An object containing metadata.
+ * @returns The encoded object.
+ */
+function encodeMetadata(input: { [key: string]: any }): { [key: string]: {type: string; value: any;} | boolean | number | string } {
+  const output: { [key: string]: {type: string; value: any;} | boolean | number | string } = {};
+
+  for (const key in input) {
+    const value = input[key];
+    let valueType: string;
+
+    if (value instanceof Date) {
+      valueType = 'datetime';
+      output[key] = { type: valueType, value: value.toISOString() };
+    } else if (isGeoJSONObject(value)) {
+      valueType = 'geojson';
+      output[key] = { type: valueType, value };
+    } else if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+      output[key] = value;
+    } else {
+      console.warn(`Unknown type for key "${key}".`);
+      output[key] = { type: typeof value, value: value };
+    }
+  }
+
+  return output;
+}
+
+/**
+ * Decodes metadata from the Valor API format.
+ *
+ * @param input An encoded Valor metadata object.
+ * @returns The decoded object.
+ */
+function decodeMetadata(input: { [key: string]: {type: string; value: any;} | boolean | number | string}): { [key: string]: any } {
+  const output: { [key: string]: any } = {};
+
+  for (const key in input) {
+    const item = input[key];
+
+    if (typeof item == "object"){
+      const { type, value } = item;
+      switch (type.toLowerCase()) {
+        case 'datetime':
+        case 'date':
+        case 'time':
+          output[key] = new Date(value);
+          break;
+        case 'geojson':
+          output[key] = value;
+          break;
+        default:
+          console.warn(`Unknown type for key "${key}".`);
+          output[key] = value;
+          break;
+      }
+    } else {
+      output[key] = item
+    }
+  }
+
+  return output;
+}
 
 export type TaskType =
   | 'skip'
@@ -23,6 +90,31 @@ export type Label = {
   value: string;
   score?: number;
 };
+
+export type Dataset = {
+  name: string;
+  metadata: Partial<Record<string, any>>;
+};
+
+export type Model = {
+  name: string;
+  metadata: Partial<Record<string, any>>;
+};
+
+export type Datum = {
+  uid: string;
+  metadata: Partial<Record<string, any>>;
+}
+
+export type Annotation = {
+  task_type: TaskType;
+  metadata: Partial<Record<string, any>>;
+  labels: Label[];
+  bounding_box?: number[][][];
+  polygon?: number[][][];
+  raster?: object;
+  embedding?: number[];
+}
 
 export type Metric = {
   type: string;
@@ -80,7 +172,11 @@ export class ValorClient {
    */
   private async getDatasets(queryParams: object): Promise<Dataset[]> {
     const response = await this.client.get('/datasets', { params: queryParams });
-    return response.data;
+    var datasets: Dataset[] = response.data;
+    for (let index = 0, length = datasets.length; index < length; ++index) {
+      datasets[index].metadata = decodeMetadata(datasets[index].metadata);
+    }
+    return datasets;
   }
 
   /**
@@ -119,6 +215,7 @@ export class ValorClient {
    */
   public async getDatasetByName(name: string): Promise<Dataset> {
     const response = await this.client.get(`/datasets/${name}`);
+    response.data.metadata = decodeMetadata(response.data.metadata);
     return response.data;
   }
 
@@ -131,6 +228,7 @@ export class ValorClient {
    * @returns {Promise<void>}
    */
   public async createDataset(name: string, metadata: object): Promise<void> {
+    metadata = encodeMetadata(metadata)
     await this.client.post('/datasets', { name, metadata });
   }
 
@@ -166,7 +264,11 @@ export class ValorClient {
    */
   private async getModels(queryParams: object): Promise<Model[]> {
     const response = await this.client.get('/models', { params: queryParams });
-    return response.data;
+    var models: Model[] = response.data;
+    for (let index = 0, length = models.length; index < length; ++index) {
+      models[index].metadata = decodeMetadata(models[index].metadata);
+    }
+    return models;
   }
 
   /**
@@ -204,6 +306,7 @@ export class ValorClient {
    */
   public async getModelByName(name: string): Promise<Model> {
     const response = await this.client.get(`/models/${name}`);
+    response.data.metadata = decodeMetadata(response.data.metadata)
     return response.data;
   }
 
@@ -216,6 +319,7 @@ export class ValorClient {
    * @returns {Promise<void>}
    */
   public async createModel(name: string, metadata: object): Promise<void> {
+    metadata = encodeMetadata(metadata)
     await this.client.post('/models', { name, metadata });
   }
 
@@ -403,41 +507,54 @@ export class ValorClient {
    * Adds ground truth annotations to a dataset
    *
    * @param datasetName name of the dataset
-   * @param datumUid uid of the datum
-   * @param annotations annotations to add
+   * @param datum valor datum
+   * @param annotations valor annotations
    *
    * @returns {Promise<void>}
    */
   public async addGroundTruth(
     datasetName: string,
-    datumUid: string,
-    annotations: object[]
+    datum: Datum,
+    annotations: Annotation[]
   ): Promise<void> {
+    datum.metadata = encodeMetadata(datum.metadata)
+    for (let index = 0, length = annotations.length; index < length; ++index) {
+      annotations[index].metadata = encodeMetadata(annotations[index].metadata);
+    }
     return this.client.post('/groundtruths', [
-      { datum: { uid: datumUid, dataset_name: datasetName }, annotations: annotations }
+      {
+        dataset_name: datasetName,
+        datum: datum,
+        annotations: annotations
+      }
     ]);
   }
 
   /**
    * Adds predictions from a model
    *
-   * @param modelName name of the model
    * @param datasetName name of the dataset
-   * @param datumUid uid of the datum
-   * @param annotations annotations to add
+   * @param modelName name of the model
+   * @param datum valor datum
+   * @param annotations valor annotations
    *
    * @returns {Promise<void>}
    */
   public async addPredictions(
-    modelName: string,
     datasetName: string,
-    datumUid: string,
-    annotations: object[]
+    modelName: string,
+    datum: Datum,
+    annotations: Annotation[]
   ): Promise<void> {
+    datum.metadata = encodeMetadata(datum.metadata)
+    for (let index = 0, length = annotations.length; index < length; ++index) {
+      annotations[index].metadata = encodeMetadata(annotations[index].metadata);
+    }
     return this.client.post('/predictions', [
       {
+        dataset_name: datasetName,
         model_name: modelName,
-        datum: { uid: datumUid, dataset_name: datasetName },
+        datum: datum,
         annotations: annotations
       }
     ]);

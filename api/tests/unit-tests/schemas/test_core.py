@@ -3,27 +3,23 @@ import pytest
 from pydantic import ValidationError
 
 from valor_api import enums, schemas
-from valor_api.schemas.core import _validate_name_format, _validate_uid_format
+from valor_api.schemas.validators import validate_type_string
 
 
-def test__validate_name_format():
-    assert _validate_name_format("dataset1") == "dataset1"
-    assert _validate_name_format("dataset-1") == "dataset-1"
-    assert _validate_name_format("dataset_1") == "dataset_1"
-    with pytest.raises(ValueError) as e:
-        _validate_name_format("data!@#$%^&*()'set_1")
-    assert "illegal characters" in str(e)
+def test_validate_type_string():
+    validate_type_string("dataset1")
+    validate_type_string("dataset-1")
+    validate_type_string("dataset_1")
+    validate_type_string("data!@#$%^&*()'set_1")
 
 
 def test__format_uid():
-    assert _validate_uid_format("uid1") == "uid1"
-    assert _validate_uid_format("uid-1") == "uid-1"
-    assert _validate_uid_format("uid_1") == "uid_1"
-    assert _validate_uid_format("uid1.png") == "uid1.png"
-    assert _validate_uid_format("folder/uid1.png") == "folder/uid1.png"
-    with pytest.raises(ValueError) as e:
-        _validate_uid_format("uid!@#$%^&*()'_1")
-    assert "illegal characters" in str(e)
+    validate_type_string("uid1")
+    validate_type_string("uid-1")
+    validate_type_string("uid_1")
+    validate_type_string("uid1.png")
+    validate_type_string("folder/uid1.png")
+    validate_type_string("uid!@#$%^&*()'_1")
 
 
 def test_dataset(metadata):
@@ -47,8 +43,6 @@ def test_dataset(metadata):
         schemas.Dataset(
             name=(12,),  # type: ignore - purposefully throwing error
         )
-    with pytest.raises(ValidationError):
-        schemas.Dataset(name="dataset@")
     with pytest.raises(ValidationError):
         schemas.Dataset(name=None)  # type: ignore - purposefully throwing error
 
@@ -95,8 +89,6 @@ def test_model(metadata):
             name=(12,),  # type: ignore - purposefully throwing error
         )
     with pytest.raises(ValidationError):
-        schemas.Dataset(name="model@")
-    with pytest.raises(ValidationError):
         schemas.Dataset(name=None)  # type: ignore - purposefully throwing error
 
     # test property `metadata`
@@ -124,60 +116,36 @@ def test_datum(metadata):
     # valid
     valid_datum = schemas.Datum(
         uid="123",
-        dataset_name="name",
     )
 
     # test property `uid`
     with pytest.raises(ValidationError):
         schemas.Datum(
             uid=("uid",),  # type: ignore - purposefully throwing error
-            dataset_name="name",
-        )
-    with pytest.raises(ValidationError):
-        schemas.Datum(
-            uid="uid@",
-            dataset_name="name",
         )
     with pytest.raises(ValidationError):
         schemas.Datum(
             uid=123,  # type: ignore - purposefully throwing error
-            dataset_name="name",
         )
     with pytest.raises(ValidationError):
         schemas.Datum(
             uid=None,  # type: ignore - purposefully throwing error
-            dataset_name="name",
-        )
-
-    # test property `dataset`
-    with pytest.raises(ValidationError):
-        schemas.Datum(  # type: ignore - purposefully throwing error
-            uid="123",
-            dataset="name@",  # type: ignore - purposefully throwing error
-        )
-        schemas.Datum(  # type: ignore - purposefully throwing error
-            uid="123",
-            dataset=None,  # type: ignore - purposefully throwing error
         )
 
     # test property `metadata`
     with pytest.raises(ValidationError):
         schemas.Datum(
             uid="123",
-            dataset_name="name",
             metadata={123: 123},  # type: ignore - purposefully throwing error
         )
 
     # test `__eq__`
     other_datum = schemas.Datum(
         uid="123",
-        dataset_name="name",
     )
     assert valid_datum == other_datum
 
-    other_datum = schemas.Datum(
-        uid="123", dataset_name="name", metadata={"fake": "metadata"}
-    )
+    other_datum = schemas.Datum(uid="123", metadata={"fake": "metadata"})
     assert not valid_datum == other_datum
 
 
@@ -365,9 +333,9 @@ def test_annotation_with_scores(
 def test_groundtruth(metadata, groundtruth_annotations, raster):
     # valid
     schemas.GroundTruth(
+        dataset_name="name",
         datum=schemas.Datum(
             uid="uid",
-            dataset_name="name",
         ),
         annotations=[
             schemas.Annotation(
@@ -378,9 +346,9 @@ def test_groundtruth(metadata, groundtruth_annotations, raster):
         ],
     )
     gt = schemas.GroundTruth(
+        dataset_name="name",
         datum=schemas.Datum(
             uid="uid",
-            dataset_name="name",
         ),
         annotations=groundtruth_annotations,
     )
@@ -388,7 +356,6 @@ def test_groundtruth(metadata, groundtruth_annotations, raster):
     # test property `datum`
     assert gt.datum == schemas.Datum(
         uid="uid",
-        dataset_name="name",
     )
     with pytest.raises(ValidationError):
         schemas.GroundTruth(
@@ -401,25 +368,25 @@ def test_groundtruth(metadata, groundtruth_annotations, raster):
     # test property `annotations`
     assert gt.annotations == groundtruth_annotations
     schemas.GroundTruth(
+        dataset_name="name",
         datum=schemas.Datum(
             uid="uid",
-            dataset_name="name",
         ),
         annotations=[],
     )
     with pytest.raises(ValidationError):
         schemas.GroundTruth(
+            dataset_name="name",
             datum=schemas.Datum(
                 uid="uid",
-                dataset_name="name",
             ),
             annotations="annotation",  # type: ignore - purposefully throwing error
         )
     with pytest.raises(ValidationError):
         schemas.GroundTruth(
+            dataset_name="name",
             datum=schemas.Datum(
                 uid="uid",
-                dataset_name="name",
             ),
             annotations=[groundtruth_annotations[0], 1234],  # type: ignore - purposefully throwing error
         )
@@ -428,8 +395,9 @@ def test_groundtruth(metadata, groundtruth_annotations, raster):
 def test_prediction(metadata, predicted_annotations, labels, scored_labels):
     # valid
     md = schemas.Prediction(
+        dataset_name="name",
         model_name="name1",
-        datum=schemas.Datum(uid="uid", dataset_name="name"),
+        datum=schemas.Datum(uid="uid"),
         annotations=predicted_annotations,
     )
 
@@ -451,10 +419,10 @@ def test_prediction(metadata, predicted_annotations, labels, scored_labels):
     # test property `datum`
     assert md.datum == schemas.Datum(
         uid="uid",
-        dataset_name="name",
     )
     with pytest.raises(ValidationError):
         schemas.Prediction(
+            dataset_name="name",
             model_name="name",
             datum="datum_uid",  # type: ignore - purposefully throwing error
             annotations=predicted_annotations,
@@ -463,28 +431,28 @@ def test_prediction(metadata, predicted_annotations, labels, scored_labels):
     # test property `annotations`
     assert md.annotations == predicted_annotations
     schemas.Prediction(
+        dataset_name="name",
         model_name="name",
         datum=schemas.Datum(
             uid="uid",
-            dataset_name="name",
         ),
         annotations=[],
     )
     with pytest.raises(ValidationError):
         schemas.Prediction(
+            dataset_name="name",
             model_name="name",
             datum=schemas.Datum(
                 uid="uid",
-                dataset_name="name",
             ),
             annotations="annotation",  # type: ignore - purposefully throwing error
         )
     with pytest.raises(ValidationError):
         schemas.Prediction(
+            dataset_name="name",
             model_name="name",
             datum=schemas.Datum(
                 uid="uid",
-                dataset_name="name",
             ),
             annotations=[predicted_annotations[0], 1234],  # type: ignore - purposefully throwing error
         )
@@ -492,10 +460,10 @@ def test_prediction(metadata, predicted_annotations, labels, scored_labels):
     # check sum to 1
     with pytest.raises(ValidationError) as e:
         schemas.Prediction(
+            dataset_name="name",
             model_name="name",
             datum=schemas.Datum(
                 uid="uid",
-                dataset_name="name",
             ),
             annotations=[
                 schemas.Annotation(
@@ -510,10 +478,10 @@ def test_prediction(metadata, predicted_annotations, labels, scored_labels):
 
     with pytest.raises(ValueError) as e:
         schemas.Prediction(
+            dataset_name="name",
             model_name="name",
             datum=schemas.Datum(
                 uid="uid",
-                dataset_name="name",
             ),
             annotations=[
                 schemas.Annotation(
@@ -526,16 +494,16 @@ def test_prediction(metadata, predicted_annotations, labels, scored_labels):
 
     with pytest.raises(ValueError) as e:
         schemas.Prediction(
+            dataset_name="name",
             model_name="name",
             datum=schemas.Datum(
                 uid="uid",
-                dataset_name="name",
             ),
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.OBJECT_DETECTION,
                     labels=labels,
-                    bounding_box=schemas.BoundingBox.from_extrema(0, 0, 1, 1),
+                    bounding_box=schemas.Box.from_extrema(0, 1, 0, 1),
                 )
             ],
         )
@@ -543,11 +511,14 @@ def test_prediction(metadata, predicted_annotations, labels, scored_labels):
 
     with pytest.raises(ValueError) as e:
         schemas.Prediction(
+            dataset_name="name",
             model_name="name",
             datum=schemas.Datum(
                 uid="uid",
-                dataset_name="name",
-                metadata={"height": 10, "width": 10},
+                metadata={
+                    "height": 10,
+                    "width": 10,
+                },
             ),
             annotations=[
                 schemas.Annotation(
@@ -563,9 +534,9 @@ def test_prediction(metadata, predicted_annotations, labels, scored_labels):
 def test_semantic_segmentation_validation():
     # this is valid
     gt = schemas.GroundTruth(
+        dataset_name="name",
         datum=schemas.Datum(
             uid="uid",
-            dataset_name="name",
         ),
         annotations=[
             schemas.Annotation(
@@ -588,9 +559,9 @@ def test_semantic_segmentation_validation():
 
     with pytest.raises(ValidationError) as e:
         schemas.GroundTruth(
+            dataset_name="name",
             datum=schemas.Datum(
                 uid="uid",
-                dataset_name="name",
             ),
             annotations=[
                 schemas.Annotation(
@@ -612,9 +583,9 @@ def test_semantic_segmentation_validation():
 
     with pytest.raises(ValidationError) as e:
         schemas.GroundTruth(
+            dataset_name="name",
             datum=schemas.Datum(
                 uid="uid",
-                dataset_name="name",
             ),
             annotations=[
                 schemas.Annotation(
@@ -637,10 +608,10 @@ def test_semantic_segmentation_validation():
 
     # this is valid
     schemas.Prediction(
+        dataset_name="name",
         model_name="model",
         datum=schemas.Datum(
             uid="uid",
-            dataset_name="name",
         ),
         annotations=[
             schemas.Annotation(
@@ -660,11 +631,11 @@ def test_semantic_segmentation_validation():
     )
 
     with pytest.raises(ValueError) as e:
-        schemas.Prediction(  # type: ignore - purposefully throwing error
-            model_name_name="model",  # type: ignore - purposefully throwing error
+        schemas.Prediction(
+            dataset_name="name",
+            model_name="model",
             datum=schemas.Datum(
                 uid="uid",
-                dataset_name="name",
             ),
             annotations=[
                 schemas.Annotation(

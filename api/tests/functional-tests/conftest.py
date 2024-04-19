@@ -61,7 +61,6 @@ def random_mask_bytes(size: tuple[int, int]) -> bytes:
 @pytest.fixture
 def img1() -> schemas.Datum:
     return schemas.Datum(
-        dataset_name="test_dataset",
         uid="uid1",
         metadata={
             "height": img1_size[0],
@@ -73,7 +72,6 @@ def img1() -> schemas.Datum:
 @pytest.fixture
 def img2() -> schemas.Datum:
     return schemas.Datum(
-        dataset_name="test_dataset",
         uid="uid2",
         metadata={
             "height": img2_size[0],
@@ -131,7 +129,6 @@ def img2_gt_mask_bytes1():
 def images() -> list[schemas.Datum]:
     return [
         schemas.Datum(
-            dataset_name="test_dataset",
             uid=f"{i}",
             metadata={
                 "height": 1000,
@@ -209,12 +206,13 @@ def groundtruths(
     ]
     db_gts_per_img = [
         schemas.GroundTruth(
+            dataset_name=dataset_name,
             datum=image,
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.OBJECT_DETECTION,
                     labels=[schemas.Label(key="class", value=class_label)],
-                    bounding_box=schemas.BoundingBox.from_extrema(
+                    bounding_box=schemas.Box.from_extrema(
                         xmin=box[0],
                         ymin=box[1],
                         xmax=box[2],
@@ -315,6 +313,7 @@ def predictions(
 
     db_preds_per_img = [
         schemas.Prediction(
+            dataset_name=dataset_name,
             model_name=model_name,
             datum=image,
             annotations=[
@@ -325,7 +324,7 @@ def predictions(
                             key="class", value=class_label, score=score
                         )
                     ],
-                    bounding_box=schemas.BoundingBox.from_extrema(
+                    bounding_box=schemas.Box.from_extrema(
                         xmin=box[0],
                         ymin=box[1],
                         xmax=box[2],
@@ -353,6 +352,7 @@ def predictions(
 @pytest.fixture
 def groundtruths_with_rasters(
     db: Session,
+    dataset_name: str,
     img1: schemas.Datum,
 ) -> list[list[models.GroundTruth]]:
     """Used to test object detection functionality on rasters"""
@@ -375,6 +375,7 @@ def groundtruths_with_rasters(
     }
     db_gts_per_img = [
         schemas.GroundTruth(
+            dataset_name=dataset_name,
             datum=img1,
             annotations=[
                 schemas.Annotation(
@@ -432,6 +433,7 @@ def predictions_with_rasters(
 
     db_preds_per_img = [
         schemas.Prediction(
+            dataset_name=dataset_name,
             model_name=model_name,
             datum=img1,
             annotations=[
@@ -463,7 +465,8 @@ def predictions_with_rasters(
 
 @pytest.fixture
 def pred_semantic_segs_img1_create(
-    model_name,
+    dataset_name: str,
+    model_name: str,
     img1_pred_mask_bytes1: bytes,
     img1_pred_mask_bytes2: bytes,
     img1_pred_mask_bytes3: bytes,
@@ -473,6 +476,7 @@ def pred_semantic_segs_img1_create(
     b64_mask2 = b64encode(img1_pred_mask_bytes2).decode()
     b64_mask3 = b64encode(img1_pred_mask_bytes3).decode()
     return schemas.Prediction(
+        dataset_name=dataset_name,
         model_name=model_name,
         datum=img1,
         annotations=[
@@ -497,6 +501,7 @@ def pred_semantic_segs_img1_create(
 
 @pytest.fixture
 def pred_semantic_segs_img2_create(
+    dataset_name: str,
     model_name: str,
     img2_pred_mask_bytes1: bytes,
     img2_pred_mask_bytes2: bytes,
@@ -505,6 +510,7 @@ def pred_semantic_segs_img2_create(
     b64_mask1 = b64encode(img2_pred_mask_bytes1).decode()
     b64_mask2 = b64encode(img2_pred_mask_bytes2).decode()
     return schemas.Prediction(
+        dataset_name=dataset_name,
         model_name=model_name,
         datum=img2,
         annotations=[
@@ -524,6 +530,7 @@ def pred_semantic_segs_img2_create(
 
 @pytest.fixture
 def gt_semantic_segs_create(
+    dataset_name: str,
     img1_gt_mask_bytes1: bytes,
     img1_gt_mask_bytes2: bytes,
     img1_gt_mask_bytes3: bytes,
@@ -538,6 +545,7 @@ def gt_semantic_segs_create(
 
     return [
         schemas.GroundTruth(
+            dataset_name=dataset_name,
             datum=img1,
             annotations=[
                 schemas.Annotation(
@@ -558,6 +566,7 @@ def gt_semantic_segs_create(
             ],
         ),
         schemas.GroundTruth(
+            dataset_name=dataset_name,
             datum=img2,
             annotations=[
                 schemas.Annotation(
@@ -575,10 +584,13 @@ def gt_semantic_segs_create(
 
 @pytest.fixture
 def groundtruth_detections(
-    img1: schemas.Datum, img2: schemas.Datum
+    dataset_name: str,
+    img1: schemas.Datum,
+    img2: schemas.Datum,
 ) -> list[schemas.GroundTruth]:
     return [
         schemas.GroundTruth(
+            dataset_name=dataset_name,
             datum=img1,
             annotations=[
                 schemas.Annotation(
@@ -588,17 +600,16 @@ def groundtruth_detections(
                         schemas.Label(key="k2", value="v2"),
                     ],
                     metadata={"int_key": 1},
-                    bounding_box=schemas.BoundingBox(
-                        polygon=schemas.BasicPolygon(
-                            points=[
-                                schemas.Point(x=10, y=20),
-                                schemas.Point(x=10, y=30),
-                                schemas.Point(x=20, y=30),
-                                schemas.Point(
-                                    x=20, y=20
-                                ),  # removed repeated first point
+                    bounding_box=schemas.Box(
+                        value=[
+                            [
+                                (10, 20),
+                                (10, 30),
+                                (20, 30),
+                                (20, 20),
+                                (10, 20),
                             ]
-                        )
+                        ]
                     ),
                 ),
                 schemas.Annotation(
@@ -606,30 +617,31 @@ def groundtruth_detections(
                     labels=[schemas.Label(key="k2", value="v2")],
                     metadata={},
                     polygon=schemas.Polygon(
-                        boundary=schemas.BasicPolygon(
-                            points=[
-                                schemas.Point(x=10, y=20),
-                                schemas.Point(x=10, y=30),
-                                schemas.Point(x=20, y=30),
+                        value=[
+                            [
+                                (10, 20),
+                                (10, 30),
+                                (20, 30),
+                                (10, 20),
                             ]
-                        )
+                        ]
                     ),
-                    bounding_box=schemas.BoundingBox(
-                        polygon=schemas.BasicPolygon(
-                            points=[
-                                schemas.Point(x=10, y=20),
-                                schemas.Point(x=10, y=30),
-                                schemas.Point(x=20, y=30),
-                                schemas.Point(
-                                    x=20, y=20
-                                ),  # removed repeated first point
+                    bounding_box=schemas.Box(
+                        value=[
+                            [
+                                (10, 20),
+                                (10, 30),
+                                (20, 30),
+                                (20, 20),
+                                (10, 20),
                             ]
-                        )
+                        ]
                     ),
                 ),
             ],
         ),
         schemas.GroundTruth(
+            dataset_name=dataset_name,
             datum=img2,
             annotations=[
                 schemas.Annotation(
@@ -639,17 +651,16 @@ def groundtruth_detections(
                         schemas.Label(key="k2", value="v2"),
                     ],
                     metadata={},
-                    bounding_box=schemas.BoundingBox(
-                        polygon=schemas.BasicPolygon(
-                            points=[
-                                schemas.Point(x=10, y=20),
-                                schemas.Point(x=10, y=30),
-                                schemas.Point(x=20, y=30),
-                                schemas.Point(
-                                    x=20, y=20
-                                ),  # removed repeated first point
+                    bounding_box=schemas.Box(
+                        value=[
+                            [
+                                (10, 20),
+                                (10, 30),
+                                (20, 30),
+                                (20, 20),
+                                (10, 20),
                             ]
-                        )
+                        ]
                     ),
                     raster=schemas.Raster.from_numpy(
                         np.zeros((80, 32), dtype=bool)
@@ -658,7 +669,10 @@ def groundtruth_detections(
                 schemas.Annotation(
                     task_type=enums.TaskType.CLASSIFICATION,
                     labels=[schemas.Label(key="k2", value="v2")],
-                    metadata={"string_key": "string_val", "int_key": 1},
+                    metadata={
+                        "string_key": "string_val",
+                        "int_key": 1,
+                    },
                 ),
             ],
         ),
@@ -667,10 +681,11 @@ def groundtruth_detections(
 
 @pytest.fixture
 def prediction_detections(
-    model_name: str, img1: schemas.Datum
+    dataset_name: str, model_name: str, img1: schemas.Datum
 ) -> list[schemas.Prediction]:
     return [
         schemas.Prediction(
+            dataset_name=dataset_name,
             model_name=model_name,
             datum=img1,
             annotations=[
@@ -682,15 +697,16 @@ def prediction_detections(
                         schemas.Label(key="k2", value="v1", score=0.8),
                         schemas.Label(key="k2", value="v2", score=0.2),
                     ],
-                    bounding_box=schemas.BoundingBox(
-                        polygon=schemas.BasicPolygon(
-                            points=[
-                                schemas.Point(x=107, y=207),
-                                schemas.Point(x=107, y=307),
-                                schemas.Point(x=207, y=307),
-                                schemas.Point(x=207, y=207),
+                    bounding_box=schemas.Box(
+                        value=[
+                            [
+                                (107, 207),
+                                (107, 307),
+                                (207, 307),
+                                (207, 207),
+                                (107, 207),
                             ]
-                        )
+                        ]
                     ),
                 ),
                 schemas.Annotation(
@@ -699,15 +715,16 @@ def prediction_detections(
                         schemas.Label(key="k2", value="v1", score=0.1),
                         schemas.Label(key="k2", value="v2", score=0.9),
                     ],
-                    bounding_box=schemas.BoundingBox(
-                        polygon=schemas.BasicPolygon(
-                            points=[
-                                schemas.Point(x=107, y=207),
-                                schemas.Point(x=107, y=307),
-                                schemas.Point(x=207, y=307),
-                                schemas.Point(x=207, y=207),
+                    bounding_box=schemas.Box(
+                        value=[
+                            [
+                                (107, 207),
+                                (107, 307),
+                                (207, 307),
+                                (207, 207),
+                                (107, 207),
                             ]
-                        )
+                        ]
                     ),
                 ),
             ],
@@ -729,7 +746,7 @@ def dataset_model_create(
         dataset=schemas.Dataset(name=dataset_name),
     )
     for gt in groundtruth_detections:
-        gt.datum.dataset_name = dataset_name
+        gt.dataset_name = dataset_name
         crud.create_groundtruth(db=db, groundtruth=gt)
     crud.finalize(db=db, dataset_name=dataset_name)
 
@@ -738,8 +755,8 @@ def dataset_model_create(
 
     # Link model1 to dataset1
     for pd in prediction_detections:
+        pd.dataset_name = dataset_name
         pd.model_name = model_name
-        pd.datum.dataset_name = dataset_name
         crud.create_prediction(db=db, prediction=pd)
 
     # Finalize model1 over dataset1
@@ -763,7 +780,8 @@ def created_dataset(db: Session, dataset_name: str) -> str:
     core.create_groundtruth(
         db=db,
         groundtruth=schemas.GroundTruth(
-            datum=schemas.Datum(uid="uid1", dataset_name=dataset_name),
+            dataset_name=dataset_name,
+            datum=schemas.Datum(uid="uid1"),
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.CLASSIFICATION,
@@ -775,12 +793,15 @@ def created_dataset(db: Session, dataset_name: str) -> str:
     core.create_groundtruth(
         db=db,
         groundtruth=schemas.GroundTruth(
-            datum=schemas.Datum(uid="uid2", dataset_name=dataset_name),
+            dataset_name=dataset_name,
+            datum=schemas.Datum(uid="uid2"),
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.OBJECT_DETECTION,
                     labels=[schemas.Label(key="k1", value="v1")],
-                    bounding_box=schemas.BoundingBox.from_extrema(0, 0, 1, 1),
+                    bounding_box=schemas.Box.from_extrema(
+                        xmin=0, xmax=1, ymin=0, ymax=1
+                    ),
                 )
             ],
         ),
@@ -788,10 +809,13 @@ def created_dataset(db: Session, dataset_name: str) -> str:
     core.create_groundtruth(
         db=db,
         groundtruth=schemas.GroundTruth(
+            dataset_name=dataset_name,
             datum=schemas.Datum(
                 uid="uid3",
-                dataset_name=dataset_name,
-                metadata={"height": 10, "width": 10},
+                metadata={
+                    "height": 10,
+                    "width": 10,
+                },
             ),
             annotations=[
                 schemas.Annotation(
@@ -812,8 +836,9 @@ def created_model(db: Session, model_name: str, created_dataset: str) -> str:
     core.create_prediction(
         db=db,
         prediction=schemas.Prediction(
+            dataset_name=created_dataset,
             model_name=model_name,
-            datum=schemas.Datum(uid="uid1", dataset_name=created_dataset),
+            datum=schemas.Datum(uid="uid1"),
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.CLASSIFICATION,
@@ -825,13 +850,16 @@ def created_model(db: Session, model_name: str, created_dataset: str) -> str:
     core.create_prediction(
         db=db,
         prediction=schemas.Prediction(
+            dataset_name=created_dataset,
             model_name=model_name,
-            datum=schemas.Datum(uid="uid2", dataset_name=created_dataset),
+            datum=schemas.Datum(uid="uid2"),
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.OBJECT_DETECTION,
                     labels=[schemas.Label(key="k1", value="v1", score=1.0)],
-                    bounding_box=schemas.BoundingBox.from_extrema(0, 0, 1, 1),
+                    bounding_box=schemas.Box.from_extrema(
+                        xmin=0, xmax=1, ymin=0, ymax=1
+                    ),
                 )
             ],
         ),
@@ -839,11 +867,14 @@ def created_model(db: Session, model_name: str, created_dataset: str) -> str:
     core.create_prediction(
         db=db,
         prediction=schemas.Prediction(
+            dataset_name=created_dataset,
             model_name=model_name,
             datum=schemas.Datum(
                 uid="uid3",
-                dataset_name=created_dataset,
-                metadata={"height": 10, "width": 10},
+                metadata={
+                    "height": 10,
+                    "width": 10,
+                },
             ),
             annotations=[
                 schemas.Annotation(
@@ -858,46 +889,44 @@ def created_model(db: Session, model_name: str, created_dataset: str) -> str:
 
 
 @pytest.fixture
-def rotated_box_points() -> list[schemas.Point]:
+def rotated_box_points() -> list[tuple[float, float]]:
     return [
-        schemas.Point(x=4, y=0),
-        schemas.Point(x=1, y=3),
-        schemas.Point(x=4, y=6),
-        schemas.Point(x=7, y=3),
+        (4, 0),
+        (1, 3),
+        (4, 6),
+        (7, 3),
+        (4, 0),
     ]
 
 
 @pytest.fixture
-def bbox(rotated_box_points) -> schemas.BoundingBox:
+def bbox(rotated_box_points) -> schemas.Box:
     """Defined as the envelope of `rotated_box_points`."""
-    minX = min([pt.x for pt in rotated_box_points])
-    maxX = max([pt.x for pt in rotated_box_points])
-    minY = min([pt.y for pt in rotated_box_points])
-    maxY = max([pt.y for pt in rotated_box_points])
-    return schemas.BoundingBox(
-        polygon=schemas.BasicPolygon(
-            points=[
-                schemas.Point(x=minX, y=minY),
-                schemas.Point(x=minX, y=maxY),
-                schemas.Point(x=maxX, y=maxY),
-                schemas.Point(x=maxX, y=minY),
+    minX = min([pt[0] for pt in rotated_box_points])
+    maxX = max([pt[0] for pt in rotated_box_points])
+    minY = min([pt[1] for pt in rotated_box_points])
+    maxY = max([pt[1] for pt in rotated_box_points])
+    return schemas.Box(
+        value=[
+            [
+                (minX, minY),
+                (minX, maxY),
+                (maxX, maxY),
+                (maxX, minY),
+                (minX, minY),
             ]
-        )
+        ]
     )
 
 
 @pytest.fixture
-def polygon(rotated_box_points) -> schemas.Polygon:
-    return schemas.Polygon(
-        boundary=schemas.BasicPolygon(
-            points=rotated_box_points,
-        )
-    )
+def polygon(rotated_box_points: list[tuple[float, float]]) -> schemas.Polygon:
+    return schemas.Polygon(value=[rotated_box_points])
 
 
 @pytest.fixture
-def multipolygon(polygon) -> schemas.MultiPolygon:
-    return schemas.MultiPolygon(polygons=[polygon])
+def multipolygon(polygon: schemas.Polygon) -> schemas.MultiPolygon:
+    return schemas.MultiPolygon(value=[polygon.value])
 
 
 @pytest.fixture

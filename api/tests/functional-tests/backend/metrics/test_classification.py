@@ -6,7 +6,6 @@ from valor_api.backend import models
 from valor_api.backend.core import (
     create_or_get_evaluations,
     fetch_union_of_labels,
-    get_paginated_datums,
 )
 from valor_api.backend.metrics.classification import (
     _compute_accuracy_from_cm,
@@ -52,7 +51,6 @@ def classification_test_data(db: Session, dataset_name: str, model_name: str):
 
     imgs = [
         schemas.Datum(
-            dataset_name=dataset_name,
             uid=f"uid{i}",
             metadata={
                 "height": 128,
@@ -66,6 +64,7 @@ def classification_test_data(db: Session, dataset_name: str, model_name: str):
 
     gts = [
         schemas.GroundTruth(
+            dataset_name=dataset_name,
             datum=imgs[i],
             annotations=[
                 schemas.Annotation(
@@ -82,6 +81,7 @@ def classification_test_data(db: Session, dataset_name: str, model_name: str):
 
     preds = [
         schemas.Prediction(
+            dataset_name=dataset_name,
             model_name=model_name,
             datum=imgs[i],
             annotations=[
@@ -923,19 +923,17 @@ def test__compute_curves(
 
     # calculate the number of unique datums
     # used to determine the number of true negatives
-    pd_datums, _ = get_paginated_datums(db=db, filters=prediction_filter)
-
-    gt_datums, _ = get_paginated_datums(db=db, filters=groundtruth_filter)
-
-    unique_datums = set(
-        [
-            (
-                datum.dataset_name,
-                datum.uid,
-            )
-            for datum in pd_datums + gt_datums
-        ]
-    )
+    pd_datums = db.query(
+        Query(models.Dataset.name, models.Datum.uid)  # type: ignore - sqlalchemy issues
+        .filter(prediction_filter)
+        .predictions()
+    ).all()
+    gt_datums = db.query(
+        Query(models.Dataset.name, models.Datum.uid)  # type: ignore - sqlalchemy issues
+        .filter(groundtruth_filter)
+        .groundtruths()
+    ).all()
+    unique_datums = set(pd_datums + gt_datums)
 
     curves = _compute_curves(
         db=db,

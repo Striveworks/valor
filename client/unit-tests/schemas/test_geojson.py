@@ -66,7 +66,7 @@ def test_polygon():
     assert poly.ymax == 5
 
 
-def test_boundingbox():
+def test_box():
     p1 = (-1, -2)
     p2 = (10, -2)
     p3 = (10, 11)

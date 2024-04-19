@@ -194,10 +194,19 @@ def test_get_dataset_summary(
         ]
     )
     assert summary.datum_metadata == [
-        {"width": 32.0, "height": 80.0},
-        {"width": 200.0, "height": 100.0},
+        {
+            "width": 32,
+            "height": 80,
+        },
+        {
+            "width": 200,
+            "height": 100,
+        },
     ]
     assert summary.annotation_metadata == [
         {"int_key": 1},
-        {"string_key": "string_val", "int_key": 1},
+        {
+            "string_key": "string_val",
+            "int_key": 1,
+        },
     ]

@@ -20,7 +20,6 @@ from valor.schemas import (
 )
 from valor.schemas import List as SymbolicList
 from valor.schemas import StaticCollection, String
-from valor.schemas.compatibility import decode_api_format, encode_api_format
 
 FilterType = Union[list, dict, Filter]  # TODO - Remove this
 
@@ -702,8 +701,6 @@ class Model(StaticCollection):
             A dictionary of metadata that describes the model.
         connection : ClientConnection, optional
             An initialized client connection.
-        symbol : Symbol, optional
-            Symbol to represent a model.
         """
         self.conn = connection
         super().__init__(name=name, metadata=metadata if metadata else dict())
@@ -729,7 +726,6 @@ class Model(StaticCollection):
             An initialized client connection.
         """
         model = cls(name=name, metadata=metadata, connection=connection)
-        model.add_connection(connection)
         Client(connection).create_model(model)
         return model
 
@@ -755,17 +751,6 @@ class Model(StaticCollection):
             The model or 'None' if it doesn't exist.
         """
         return Client(connection).get_model(name)
-
-    def add_connection(self, connection: Optional[ClientConnection]):
-        """
-        Stores a pre-existing connection.
-
-        Parameters
-        ----------
-        connection : ClientConnnetion, optional
-            An optional Valor client object for interacting with the API.
-        """
-        self.conn = connection
 
     def add_prediction(
         self,
@@ -1225,7 +1210,7 @@ class Client:
             The dataset to create.
         """
         if isinstance(dataset, Dataset):
-            dataset = encode_api_format(dataset)
+            dataset = dataset.encode_value()
         self.conn.create_dataset(dataset)
 
     def create_groundtruths(
@@ -1252,8 +1237,8 @@ class Client:
                 )
             if not isinstance(groundtruth.annotations._value, list):
                 raise TypeError
-            groundtruth_dict = encode_api_format(groundtruth)
-            groundtruth_dict["datum"]["dataset_name"] = dataset.get_name()
+            groundtruth_dict = groundtruth.encode_value()
+            groundtruth_dict["dataset_name"] = dataset.get_name()
             groundtruths_json.append(groundtruth_dict)
         self.conn.create_groundtruths(groundtruths_json)
 
@@ -1285,8 +1270,8 @@ class Client:
             resp = self.conn.get_groundtruth(
                 dataset_name=dataset_name, datum_uid=datum_uid
             )
-            resp = decode_api_format(resp)
-            return GroundTruth(**resp)
+            resp.pop("dataset_name")
+            return GroundTruth.decode_value(resp)
         except ClientException as e:
             if e.status_code == 404:
                 return None
@@ -1324,10 +1309,11 @@ class Client:
             A Dataset with a matching name, or 'None' if one doesn't exist.
         """
         try:
-            resp = decode_api_format(self.conn.get_dataset(name))
-            dataset = Dataset(
-                **resp,
-                connection=self.conn,
+            dataset = Dataset.decode_value(
+                {
+                    **self.conn.get_dataset(name),
+                    "connection": self.conn,
+                }
             )
             return dataset
         except ClientException as e:
@@ -1357,8 +1343,7 @@ class Client:
             filter_ = asdict(filter_)
         dataset_list = []
         for kwargs in self.conn.get_datasets(filter_):
-            kwargs = decode_api_format(kwargs)
-            dataset = Dataset(**kwargs, connection=self.conn)
+            dataset = Dataset.decode_value({**kwargs, "connection": self.conn})
             dataset_list.append(dataset)
         return dataset_list
 
@@ -1383,7 +1368,7 @@ class Client:
         if isinstance(filter_, Filter):
             filter_ = asdict(filter_)
         return [
-            Datum(**decode_api_format(datum))
+            Datum.decode_value(datum)
             for datum in self.conn.get_datums(filter_)
         ]
 
@@ -1411,8 +1396,7 @@ class Client:
         )
         try:
             resp = self.conn.get_datum(dataset_name=dataset_name, uid=uid)
-            resp = decode_api_format(resp)
-            return Datum(**resp)
+            return Datum.decode_value(resp)
         except ClientException as e:
             if e.status_code == 404:
                 return None
@@ -1494,7 +1478,7 @@ class Client:
             The model to create.
         """
         if isinstance(model, Model):
-            model = encode_api_format(model)
+            model = model.encode_value()
         self.conn.create_model(model)
 
     def create_predictions(
@@ -1523,8 +1507,8 @@ class Client:
                 )
             if not isinstance(prediction.annotations._value, list):
                 raise TypeError
-            prediction_dict = encode_api_format(prediction)
-            prediction_dict["datum"]["dataset_name"] = dataset.get_name()
+            prediction_dict = prediction.encode_value()
+            prediction_dict["dataset_name"] = dataset.get_name()
             prediction_dict["model_name"] = model.get_name()
             predictions_json.append(prediction_dict)
         self.conn.create_predictions(predictions_json)
@@ -1563,8 +1547,9 @@ class Client:
                 model_name=model_name,
                 datum_uid=datum_uid,
             )
-            resp = decode_api_format(resp)
-            return Prediction(**resp)
+            resp.pop("dataset_name")
+            resp.pop("model_name")
+            return Prediction.decode_value(resp)
         except ClientException as e:
             if e.status_code == 404:
                 return None
@@ -1603,10 +1588,12 @@ class Client:
             A Model with matching name or 'None' if one doesn't exist.
         """
         try:
-            resp = decode_api_format(self.conn.get_model(name))
-            model = Model(**resp)
-            model.add_connection(self.conn)
-            return model
+            return Model.decode_value(
+                {
+                    **self.conn.get_model(name),
+                    "connection": self.conn,
+                }
+            )
         except ClientException as e:
             if e.status_code == 404:
                 return None
@@ -1634,9 +1621,7 @@ class Client:
             filter_ = asdict(filter_)
         model_list = []
         for kwargs in self.conn.get_models(filter_):
-            kwargs = decode_api_format(kwargs)
-            model = Model(**kwargs)
-            model.add_connection(self.conn)
+            model = Model.decode_value({**kwargs, "connection": self.conn})
             model_list.append(model)
         return model_list
 

@@ -8,7 +8,6 @@ from PIL import Image
 from sqlalchemy import (
     BinaryExpression,
     Float,
-    Subquery,
     Update,
     distinct,
     func,
@@ -104,10 +103,8 @@ def _convert_polygon_to_box(
 
     Parameters
     ----------
-    dataset_id : int
-        A dataset id.
-    model_id : int, optional
-        A model id.
+    where_conditions: list[BinaryExpression]
+        A list of conditions that specify the desired source via model, dataset and task type.
 
     Returns
     ----------
@@ -132,8 +129,61 @@ def _convert_polygon_to_box(
     )
 
 
-def _convert_from_raster(where_conditions: list[BinaryExpression]) -> Subquery:
-    """Returns a subquery to convert a raster to a polygon."""
+def _convert_raster_to_box(where_conditions: list[BinaryExpression]) -> Update:
+    """
+    Converts annotation column 'raster' into column 'box'.
+
+    Parameters
+    ----------
+    where_conditions: list[BinaryExpression]
+        A list of conditions that specify the desired source via model, dataset and task type.
+
+    Returns
+    ----------
+    sqlalchemy.Update
+        A SQL update to complete the conversion.
+    """
+    subquery = (
+        select(
+            models.Annotation.id.label("id"),
+            func.ST_Envelope(
+                func.ST_MinConvexHull(models.Annotation.raster)
+            ).label("box"),
+        )
+        .select_from(models.Annotation)
+        .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
+        .where(
+            models.Annotation.box.is_(None),
+            models.Annotation.raster.isnot(None),
+            *where_conditions,
+        )
+        .group_by(models.Annotation.id)
+        .subquery()
+    )
+    return (
+        update(models.Annotation)
+        .where(models.Annotation.id == subquery.c.id)
+        .values(box=subquery.c.box)
+    )
+
+
+def _convert_raster_to_polygon(
+    where_conditions: list[BinaryExpression],
+) -> Update:
+    """
+    Converts annotation column 'raster' into column 'polygon'.
+
+    Parameters
+    ----------
+    where_conditions: list[BinaryExpression]
+        A list of conditions that specify the desired source via model, dataset and task type.
+
+    Returns
+    ----------
+    sqlalchemy.Update
+        A SQL update to complete the conversion.
+    """
+
     pixels_subquery = select(
         models.Annotation.id.label("id"),
         type_coerce(
@@ -141,7 +191,7 @@ def _convert_from_raster(where_conditions: list[BinaryExpression]) -> Subquery:
             type_=GeometricValueType,
         ).geom.label("geom"),
     ).lateral("pixels")
-    return (
+    subquery = (
         select(
             models.Annotation.id.label("id"),
             func.ST_ConvexHull(func.ST_Collect(pixels_subquery.c.geom)).label(
@@ -159,53 +209,6 @@ def _convert_from_raster(where_conditions: list[BinaryExpression]) -> Subquery:
         .group_by(models.Annotation.id)
         .subquery()
     )
-
-
-def _convert_raster_to_box(where_conditions: list[BinaryExpression]) -> Update:
-    """
-    Converts annotation column 'raster' into column 'box'.
-
-    Parameters
-    ----------
-    dataset_id : int
-        A dataset id.
-    model_id : int, optional
-        A model id.
-
-    Returns
-    ----------
-    sqlalchemy.Update
-        A SQL update to complete the conversion.
-    """
-
-    subquery = _convert_from_raster(where_conditions)
-    return (
-        update(models.Annotation)
-        .where(models.Annotation.id == subquery.c.id)
-        .values(box=func.ST_Envelope(subquery.c.raster_polygon))
-    )
-
-
-def _convert_raster_to_polygon(
-    where_conditions: list[BinaryExpression],
-) -> Update:
-    """
-    Converts annotation column 'raster' into column 'polygon'.
-
-    Parameters
-    ----------
-    dataset_id : int
-        A dataset id.
-    model_id : int, optional
-        A model id.
-
-    Returns
-    ----------
-    sqlalchemy.Update
-        A SQL update to complete the conversion.
-    """
-
-    subquery = _convert_from_raster(where_conditions)
     return (
         update(models.Annotation)
         .where(models.Annotation.id == subquery.c.id)
