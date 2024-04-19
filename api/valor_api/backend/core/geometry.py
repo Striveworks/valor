@@ -146,7 +146,9 @@ def _convert_raster_to_box(where_conditions: list[BinaryExpression]) -> Update:
     subquery = (
         select(
             models.Annotation.id.label("id"),
-            func.ST_Envelope(models.Annotation.raster).label("box"),
+            func.ST_Envelope(
+                func.ST_MinConvexHull(models.Annotation.raster)
+            ).label("box"),
         )
         .select_from(models.Annotation)
         .join(models.Datum, models.Datum.id == models.Annotation.datum_id)

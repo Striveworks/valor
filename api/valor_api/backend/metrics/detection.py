@@ -390,7 +390,7 @@ def _compute_detection_metrics(
             case AnnotationType.POLYGON:
                 box = gfunc.ST_Envelope(table.polygon)
             case AnnotationType.RASTER:
-                box = gfunc.ST_Envelope(table.raster)
+                box = gfunc.ST_Envelope(gfunc.ST_MinConvexHull(table.raster))
             case _:
                 raise RuntimeError
         return gfunc.ST_AsGeoJSON(box)
