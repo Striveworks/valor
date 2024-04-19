@@ -46,14 +46,15 @@ def _check_db_empty(db: Session):
 def poly_without_hole() -> schemas.Polygon:
     # should have area 45.5
     return schemas.Polygon(
-        boundary=schemas.BasicPolygon(
-            points=[
-                schemas.Point(x=14, y=10),
-                schemas.Point(x=19, y=7),
-                schemas.Point(x=21, y=2),
-                schemas.Point(x=12, y=2),
+        value=[
+            [
+                (14, 10),
+                (19, 7),
+                (21, 2),
+                (12, 2),
+                (14, 10),
             ]
-        )
+        ]
     )
 
 
@@ -61,30 +62,31 @@ def poly_without_hole() -> schemas.Polygon:
 def poly_with_hole() -> schemas.Polygon:
     # should have area 100 - 8 = 92
     return schemas.Polygon(
-        boundary=schemas.BasicPolygon(
-            points=[
-                schemas.Point(x=0, y=10),
-                schemas.Point(x=10, y=10),
-                schemas.Point(x=10, y=0),
-                schemas.Point(x=0, y=0),
-            ]
-        ),
-        holes=[
-            schemas.BasicPolygon(
-                points=[
-                    schemas.Point(x=2, y=4),
-                    schemas.Point(x=2, y=8),
-                    schemas.Point(x=6, y=4),
-                ]
-            ),
-        ],
+        value=[
+            [
+                (0, 10),
+                (10, 10),
+                (10, 0),
+                (0, 0),
+                (0, 10),
+            ],
+            [
+                (2, 4),
+                (2, 8),
+                (6, 4),
+                (2, 4),
+            ],
+        ]
     )
 
 
 @pytest.fixture
-def groundtruth_detections(img1: schemas.Datum) -> list[schemas.GroundTruth]:
+def groundtruth_detections(
+    dataset_name, img1: schemas.Datum
+) -> list[schemas.GroundTruth]:
     return [
         schemas.GroundTruth(
+            dataset_name=dataset_name,
             datum=img1,
             annotations=[
                 schemas.Annotation(
@@ -94,34 +96,32 @@ def groundtruth_detections(img1: schemas.Datum) -> list[schemas.GroundTruth]:
                         schemas.Label(key="k2", value="v2"),
                     ],
                     metadata={},
-                    bounding_box=schemas.BoundingBox(
-                        polygon=schemas.BasicPolygon(
-                            points=[
-                                schemas.Point(x=10, y=20),
-                                schemas.Point(x=10, y=30),
-                                schemas.Point(x=20, y=30),
-                                schemas.Point(
-                                    x=20, y=20
-                                ),  # removed repeated first point
+                    bounding_box=schemas.Box(
+                        value=[
+                            [
+                                (10, 20),
+                                (10, 30),
+                                (20, 30),
+                                (20, 20),
+                                (10, 20),
                             ]
-                        )
+                        ]
                     ),
                 ),
                 schemas.Annotation(
                     task_type=enums.TaskType.OBJECT_DETECTION,
                     labels=[schemas.Label(key="k2", value="v2")],
                     metadata={},
-                    bounding_box=schemas.BoundingBox(
-                        polygon=schemas.BasicPolygon(
-                            points=[
-                                schemas.Point(x=10, y=20),
-                                schemas.Point(x=10, y=30),
-                                schemas.Point(x=20, y=30),
-                                schemas.Point(
-                                    x=20, y=20
-                                ),  # removed repeated first point
+                    bounding_box=schemas.Box(
+                        value=[
+                            [
+                                (10, 20),
+                                (10, 30),
+                                (20, 30),
+                                (20, 20),
+                                (10, 20),
                             ]
-                        )
+                        ]
                     ),
                 ),
             ],
@@ -131,10 +131,11 @@ def groundtruth_detections(img1: schemas.Datum) -> list[schemas.GroundTruth]:
 
 @pytest.fixture
 def prediction_detections(
-    model_name: str, img1: schemas.Datum
+    dataset_name: str, model_name: str, img1: schemas.Datum
 ) -> list[schemas.Prediction]:
     return [
         schemas.Prediction(
+            dataset_name=dataset_name,
             model_name=model_name,
             datum=img1,
             annotations=[
@@ -146,15 +147,16 @@ def prediction_detections(
                         schemas.Label(key="k2", value="v1", score=0.8),
                         schemas.Label(key="k2", value="v2", score=0.2),
                     ],
-                    bounding_box=schemas.BoundingBox(
-                        polygon=schemas.BasicPolygon(
-                            points=[
-                                schemas.Point(x=107, y=207),
-                                schemas.Point(x=107, y=307),
-                                schemas.Point(x=207, y=307),
-                                schemas.Point(x=207, y=207),
+                    bounding_box=schemas.Box(
+                        value=[
+                            [
+                                (107, 207),
+                                (107, 307),
+                                (207, 307),
+                                (207, 207),
+                                (107, 207),
                             ]
-                        )
+                        ]
                     ),
                 ),
                 schemas.Annotation(
@@ -163,15 +165,16 @@ def prediction_detections(
                         schemas.Label(key="k2", value="v1", score=0.1),
                         schemas.Label(key="k2", value="v2", score=0.9),
                     ],
-                    bounding_box=schemas.BoundingBox(
-                        polygon=schemas.BasicPolygon(
-                            points=[
-                                schemas.Point(x=107, y=207),
-                                schemas.Point(x=107, y=307),
-                                schemas.Point(x=207, y=307),
-                                schemas.Point(x=207, y=207),
+                    bounding_box=schemas.Box(
+                        value=[
+                            [
+                                (107, 207),
+                                (107, 307),
+                                (207, 307),
+                                (207, 207),
+                                (107, 207),
                             ]
-                        )
+                        ]
                     ),
                 ),
             ],
@@ -181,6 +184,7 @@ def prediction_detections(
 
 @pytest.fixture
 def groundtruth_instance_segmentations(
+    dataset_name: str,
     poly_with_hole: schemas.Polygon,
     poly_without_hole: schemas.Polygon,
     img1: schemas.Datum,
@@ -191,6 +195,7 @@ def groundtruth_instance_segmentations(
     )
     return [
         schemas.GroundTruth(
+            dataset_name=dataset_name,
             datum=img1,
             annotations=[
                 schemas.Annotation(
@@ -201,6 +206,7 @@ def groundtruth_instance_segmentations(
             ],
         ),
         schemas.GroundTruth(
+            dataset_name=dataset_name,
             datum=img2,
             annotations=[
                 schemas.Annotation(
@@ -218,7 +224,10 @@ def groundtruth_instance_segmentations(
                     labels=[schemas.Label(key="k1", value="v1")],
                     raster=schemas.Raster.from_geometry(
                         schemas.MultiPolygon(
-                            polygons=[poly_with_hole, poly_without_hole],
+                            value=[
+                                poly_with_hole.value,
+                                poly_without_hole.value,
+                            ],
                         ),
                         height=img2.metadata["height"],
                         width=img2.metadata["width"],
@@ -231,6 +240,7 @@ def groundtruth_instance_segmentations(
 
 @pytest.fixture
 def prediction_instance_segmentations(
+    dataset_name: str,
     model_name: str,
     img1_pred_mask_bytes1: bytes,
     img1: schemas.Datum,
@@ -239,6 +249,7 @@ def prediction_instance_segmentations(
 
     return [
         schemas.Prediction(
+            dataset_name=dataset_name,
             model_name=model_name,
             datum=img1,
             annotations=[
@@ -289,11 +300,13 @@ def prediction_instance_segmentations(
 
 @pytest.fixture
 def gt_clfs_create(
+    dataset_name: str,
     img1: schemas.Datum,
     img2: schemas.Datum,
 ) -> list[schemas.GroundTruth]:
     return [
         schemas.GroundTruth(
+            dataset_name=dataset_name,
             datum=img1,
             annotations=[
                 schemas.Annotation(
@@ -306,6 +319,7 @@ def gt_clfs_create(
             ],
         ),
         schemas.GroundTruth(
+            dataset_name=dataset_name,
             datum=img2,
             annotations=[
                 schemas.Annotation(
@@ -319,12 +333,14 @@ def gt_clfs_create(
 
 @pytest.fixture
 def pred_clfs_create(
+    dataset_name: str,
     model_name: str,
     img1: schemas.Datum,
     img2: schemas.Datum,
 ) -> list[schemas.Prediction]:
     return [
         schemas.Prediction(
+            dataset_name=dataset_name,
             model_name=model_name,
             datum=img1,
             annotations=[
@@ -339,6 +355,7 @@ def pred_clfs_create(
             ],
         ),
         schemas.Prediction(
+            dataset_name=dataset_name,
             model_name=model_name,
             datum=img2,
             annotations=[
@@ -429,10 +446,10 @@ def test_create_detection_ground_truth_and_delete_dataset(
     # verify we get the same dets back
     for gt in groundtruth_detections:
         new_gt = crud.get_groundtruth(
-            db=db, dataset_name=gt.datum.dataset_name, datum_uid=gt.datum.uid
+            db=db, dataset_name=gt.dataset_name, datum_uid=gt.datum.uid
         )
         assert gt.datum.uid == new_gt.datum.uid
-        assert gt.datum.dataset_name == new_gt.datum.dataset_name
+        assert gt.dataset_name == new_gt.dataset_name
         for metadatum in gt.datum.metadata:
             assert metadatum in new_gt.datum.metadata
 
@@ -524,21 +541,22 @@ def test_create_detections_as_bbox_or_poly(
         task_type=enums.TaskType.OBJECT_DETECTION,
         labels=[schemas.Label(key="k", value="v")],
         polygon=schemas.Polygon(
-            boundary=schemas.BasicPolygon(
-                points=[
-                    schemas.Point(x=xmin, y=ymin),
-                    schemas.Point(x=xmax, y=ymin),
-                    schemas.Point(x=xmax, y=ymax),
-                    schemas.Point(x=xmin, y=ymax),
+            value=[
+                [
+                    (xmin, ymin),
+                    (xmax, ymin),
+                    (xmax, ymax),
+                    (xmin, ymax),
+                    (xmin, ymin),
                 ]
-            )
+            ]
         ),
     )
 
     det2 = schemas.Annotation(
         task_type=enums.TaskType.OBJECT_DETECTION,
         labels=[schemas.Label(key="k", value="v")],
-        bounding_box=schemas.BoundingBox.from_extrema(
+        bounding_box=schemas.Box.from_extrema(
             xmin=xmin,
             ymin=ymin,
             xmax=xmax,
@@ -551,6 +569,7 @@ def test_create_detections_as_bbox_or_poly(
     crud.create_groundtruth(
         db=db,
         groundtruth=schemas.GroundTruth(
+            dataset_name=dataset_name,
             datum=img1,
             annotations=[det1, det2],
         ),
@@ -577,7 +596,7 @@ def test_create_classification_groundtruth_and_delete_dataset(
     crud.create_dataset(db=db, dataset=schemas.Dataset(name=dataset_name))
 
     for gt in gt_clfs_create:
-        gt.datum.dataset_name = dataset_name
+        gt.dataset_name = dataset_name
         crud.create_groundtruth(db=db, groundtruth=gt)
 
     # should have three GroundTruthClassification rows since one image has two
@@ -618,7 +637,6 @@ def test_create_predicted_classifications_and_delete_model(
     crud.create_dataset(db=db, dataset=schemas.Dataset(name=dataset_name))
 
     for gt in gt_clfs_create:
-        gt.datum.dataset_name = dataset_name
         crud.create_groundtruth(db=db, groundtruth=gt)
 
     # check this gives an error since the model does not exist
@@ -675,7 +693,6 @@ def _test_create_groundtruth_segmentations_and_delete_dataset(
     crud.create_dataset(db=db, dataset=schemas.Dataset(name=dataset_name))
 
     for gt in gts:
-        gt.datum.dataset_name = dataset_name
         crud.create_groundtruth(db=db, groundtruth=gt)
 
     assert db.scalar(func.count(models.Annotation.id)) == expected_anns
@@ -750,12 +767,10 @@ def test_create_predicted_segmentations_check_area_and_delete_model(
     # check this gives an error since the images haven't been added yet
     with pytest.raises(exceptions.ModelDoesNotExistError):
         for pd in prediction_instance_segmentations:
-            pd.model_name = model_name
             crud.create_prediction(db=db, prediction=pd)
 
     # create groundtruths
     for gt in groundtruth_instance_segmentations:
-        gt.datum.dataset_name = dataset_name
         crud.create_groundtruth(db=db, groundtruth=gt)
 
     # check this gives an error since the model has not been crated yet
@@ -850,6 +865,7 @@ def test_segmentation_area_no_hole(
     crud.create_groundtruth(
         db=db,
         groundtruth=schemas.GroundTruth(
+            dataset_name=dataset_name,
             datum=img1,
             annotations=[
                 schemas.Annotation(
@@ -857,7 +873,7 @@ def test_segmentation_area_no_hole(
                     labels=[schemas.Label(key="k1", value="v1")],
                     raster=schemas.Raster.from_geometry(
                         schemas.MultiPolygon(
-                            polygons=[poly_without_hole],
+                            value=[poly_without_hole.value],
                         ),
                         height=img1.metadata["height"],
                         width=img1.metadata["width"],
@@ -889,6 +905,7 @@ def test_segmentation_area_with_hole(
     crud.create_groundtruth(
         db=db,
         groundtruth=schemas.GroundTruth(
+            dataset_name=dataset_name,
             datum=img1,
             annotations=[
                 schemas.Annotation(
@@ -896,7 +913,7 @@ def test_segmentation_area_with_hole(
                     labels=[schemas.Label(key="k1", value="v1")],
                     raster=schemas.Raster.from_geometry(
                         schemas.MultiPolygon(
-                            polygons=[poly_with_hole],
+                            value=[poly_with_hole.value],
                         ),
                         height=img1.metadata["height"],
                         width=img1.metadata["width"],
@@ -930,6 +947,7 @@ def test_segmentation_area_multi_polygon(
     crud.create_groundtruth(
         db=db,
         groundtruth=schemas.GroundTruth(
+            dataset_name=dataset_name,
             datum=img1,
             annotations=[
                 schemas.Annotation(
@@ -937,7 +955,10 @@ def test_segmentation_area_multi_polygon(
                     labels=[schemas.Label(key="k1", value="v1")],
                     raster=schemas.Raster.from_geometry(
                         schemas.MultiPolygon(
-                            polygons=[poly_with_hole, poly_without_hole],
+                            value=[
+                                poly_with_hole.value,
+                                poly_without_hole.value,
+                            ],
                         ),
                         height=img1.metadata["height"],
                         width=img1.metadata["width"],
@@ -970,7 +991,6 @@ def test_gt_seg_as_mask_or_polys(
     mask_b64 = b64encode(_np_to_bytes(mask)).decode()
 
     img = schemas.Datum(
-        dataset_name=dataset_name,
         uid="uid",
         metadata={
             "height": h,
@@ -978,12 +998,15 @@ def test_gt_seg_as_mask_or_polys(
         },
     )
 
-    poly = schemas.BasicPolygon(
-        points=[
-            schemas.Point(x=xmin, y=ymin),
-            schemas.Point(x=xmin, y=ymax),
-            schemas.Point(x=xmax, y=ymax),
-            schemas.Point(x=xmax, y=ymin),
+    poly = schemas.Polygon(
+        value=[
+            [
+                (xmin, ymin),
+                (xmin, ymax),
+                (xmax, ymax),
+                (xmax, ymin),
+                (xmin, ymin),
+            ]
         ]
     )
 
@@ -999,14 +1022,11 @@ def test_gt_seg_as_mask_or_polys(
         labels=[schemas.Label(key="k1", value="v1")],
         raster=schemas.Raster(
             mask=mask_b64,
-            geometry=schemas.MultiPolygon(
-                polygons=[
-                    schemas.Polygon(boundary=poly),
-                ]
-            ),
+            geometry=schemas.MultiPolygon(value=[poly.value]),
         ),
     )
     gt = schemas.GroundTruth(
+        dataset_name=dataset_name,
         datum=img,
         annotations=[gt1, gt2],
     )
@@ -1060,7 +1080,7 @@ def test_gt_seg_as_mask_or_polys(
 
     # check other metadata
     assert segs.datum.uid == gt.datum.uid
-    assert segs.datum.dataset_name == gt.datum.dataset_name
+    assert segs.dataset_name == gt.dataset_name
     for metadatum in segs.datum.metadata:
         assert metadatum in gt.datum.metadata
     assert segs.annotations[0].labels == gt.annotations[0].labels
@@ -1316,12 +1336,13 @@ def test_create_clf_metrics(
         dataset=schemas.Dataset(name=dataset_name),
     )
     for gt in gt_clfs_create:
-        gt.datum.dataset_name = dataset_name
+        gt.dataset_name = dataset_name
         crud.create_groundtruth(db=db, groundtruth=gt)
     crud.finalize(db=db, dataset_name=dataset_name)
 
     crud.create_model(db=db, model=schemas.Model(name=model_name))
     for pd in pred_clfs_create:
+        pd.dataset_name = dataset_name
         pd.model_name = model_name
         crud.create_prediction(db=db, prediction=pd)
     crud.finalize(db=db, model_name=model_name, dataset_name=dataset_name)

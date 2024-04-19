@@ -65,6 +65,27 @@ def test_symbol():
         },
     }
 
+    # test '__eq__'
+    assert s == Symbol(
+        owner="some_owner",
+        name="some_name",
+        attribute="some_attribute",
+        key="some_key",
+    )
+    assert not (s == "symbol")
+
+    # test '__ne__'
+    assert not (
+        s
+        != Symbol(
+            owner="some_owner",
+            name="some_name",
+            attribute="some_attribute",
+            key="some_key",
+        )
+    )
+    assert s != "symbol"
+
 
 def _test_symbolic_outputs(v, s=Symbol(name="test")):
     assert s.to_dict() == v.to_dict()
@@ -85,9 +106,40 @@ def test_variable():
     _test_symbolic_outputs(var_method1)
     _test_symbolic_outputs(var_method2)
 
-    # nullable variables are not supported in the base class
-    with pytest.raises(NotImplementedError):
-        Variable.nullable("hello")
+    # test is_none
+    assert Variable.symbolic().is_none().to_dict() == {
+        "op": "isnull",
+        "arg": {
+            "type": "symbol",
+            "value": {
+                "name": "variable",
+                "owner": None,
+                "key": None,
+                "attribute": None,
+            },
+        },
+    }
+    assert Variable.symbolic().get_symbol() == Symbol(name="variable")
+    assert Variable(None).is_none().get_value() is True  # type: ignore - known output
+    assert Variable(1234).is_none().get_value() is False  # type: ignore - known output
+    with pytest.raises(TypeError):
+        Variable(1234).get_symbol()
+
+    # test is_not_none
+    assert Variable.symbolic().is_not_none().to_dict() == {
+        "op": "isnotnull",
+        "arg": {
+            "type": "symbol",
+            "value": {
+                "name": "variable",
+                "owner": None,
+                "key": None,
+                "attribute": None,
+            },
+        },
+    }
+    assert Variable(None).is_not_none().get_value() is False  # type: ignore - known output
+    assert Variable(1234).is_not_none().get_value() is True  # type: ignore - known output
 
 
 def _test_equatable(varA, varB, varC):
@@ -453,6 +505,8 @@ def _test_encoding(objcls, value, encoded_value):
         objcls(value).to_dict() == objcls.decode_value(encoded_value).to_dict()
     )
     assert encoded_value == objcls(value).encode_value()
+    assert objcls.decode_value(None) is None
+    assert objcls.nullable(None).encode_value() is None
 
 
 def _test_to_dict(objcls, value, type_name: typing.Optional[str] = None):
@@ -597,6 +651,40 @@ def test_bool():
     _test_encoding(objcls, True, True)
     _test_encoding(objcls, False, False)
 
+    # test and operation
+    assert (Bool(True) & Bool(True)).get_value() is True  # type: ignore - known output
+    assert (Bool(True) & Bool(False)).get_value() is False  # type: ignore - known output
+    assert (Bool(False) & Bool(True)).get_value() is False  # type: ignore - known output
+    assert (Bool(False) & Bool(False)).get_value() is False  # type: ignore - known output
+
+    # test or operation
+    assert (Bool(True) | Bool(True)).get_value() is True  # type: ignore - known output
+    assert (Bool(True) | Bool(False)).get_value() is True  # type: ignore - known output
+    assert (Bool(False) | Bool(True)).get_value() is True  # type: ignore - known output
+    assert (Bool(False) | Bool(False)).get_value() is False  # type: ignore - known output
+
+    # test xor operation
+    assert (Bool(True) ^ Bool(True)).get_value() is False  # type: ignore - known output
+    assert (Bool(True) ^ Bool(False)).get_value() is True  # type: ignore - known output
+    assert (Bool(False) ^ Bool(True)).get_value() is True  # type: ignore - known output
+    assert (Bool(False) ^ Bool(False)).get_value() is False  # type: ignore - known output
+
+    # test negation operation
+    assert (~Bool(True)).get_value() is False  # type: ignore - known output
+    assert (~Bool(False)).get_value() is True  # type: ignore - known output
+    assert (~Bool.symbolic()).to_dict() == {
+        "op": "negate",
+        "arg": {
+            "type": "symbol",
+            "value": {
+                "owner": None,
+                "name": "bool",
+                "key": None,
+                "attribute": None,
+            },
+        },
+    }
+
 
 def test_integer():
     # interoperable with builtin 'int'
@@ -622,6 +710,12 @@ def test_integer():
         "outside",
     ]:
         _test_unsupported(objcls, permutations, op)
+
+    # test equatable
+    assert (Integer.nullable(None) == Integer(1)).get_value() is False  # type: ignore - always a bool
+    assert (Integer(1) == Integer.nullable(None)).get_value() is False  # type: ignore - always a bool
+    assert (Integer.nullable(None) != Integer(1)).get_value() is True  # type: ignore - always a bool
+    assert (Integer(1) != Integer.nullable(None)).get_value() is True  # type: ignore - always a bool
 
     # test nullable
     v1 = objcls.nullable(None)

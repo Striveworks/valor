@@ -143,7 +143,7 @@ class Variable:
 
         Parameters
         ----------
-        value : Any
+        value : typing.Any
             The intended value of the variable.
         """
         if value is None:
@@ -223,19 +223,14 @@ class Variable:
         """
         Validates typing.
 
+        Intended to be overridden in subclasses.
+
         Parameters
         ----------
         value : typing.Any
             The value to validate.
-
-        Raises
-        ------
-        NotImplementedError
-            This function is not implemented in the base class.
         """
-        raise NotImplementedError(
-            f"Variable of type `{cls.__name__}` cannot be assigned a value."
-        )
+        pass
 
     @classmethod
     def supports(cls, value: typing.Any) -> bool:
@@ -263,15 +258,6 @@ class Variable:
     def encode_value(self) -> typing.Any:
         """Encode object to JSON compatible dictionary."""
         return self.get_value()
-
-    @classmethod
-    def from_dict(cls, value: dict):
-        """Decode a JSON-compatible dictionary into an instance of the variable."""
-        if set(value.keys()) != {"type", "value"}:
-            raise KeyError
-        elif value["type"] != cls.__name__.lower():
-            raise TypeError
-        return cls.decode_value(value["value"])
 
     def to_dict(self) -> dict:
         """Encode variable to a JSON-compatible dictionary."""
@@ -1660,19 +1646,66 @@ class Dictionary(Equatable, MutableMapping):
     @classmethod
     def decode_value(cls, value: dict) -> typing.Any:
         """Decode object from JSON compatible dictionary."""
-        return cls(
-            {
-                k: get_type_by_name(v["type"]).decode_value(v["value"])
-                for k, v in value.items()
-            }
-        )
+        decoded_value = dict()
+        for k, v in value.items():
+            if isinstance(
+                v,
+                (
+                    bool,
+                    int,
+                    float,
+                    str,
+                ),
+            ):
+                decoded_value[k] = v
+            elif v["type"].lower() == "geojson":
+                decoded_value[k] = get_type_by_name(
+                    v["value"]["type"].lower()
+                ).decode_value(v["value"]["coordinates"])
+            else:
+                decoded_value[k] = get_type_by_name(
+                    v["type"].lower()
+                ).decode_value(v["value"])
+        return cls(decoded_value)
 
     def encode_value(self) -> dict:
         """Encode object to JSON compatible dictionary."""
+        encoding = dict()
         value = self.get_value()
         if value is None:
-            return dict()
-        return {k: v.to_dict() for k, v in self.items()}
+            return encoding
+        for k, v in self.items():
+            if isinstance(
+                v,
+                (
+                    Point,
+                    MultiPoint,
+                    LineString,
+                    MultiLineString,
+                    Polygon,
+                    MultiPolygon,
+                ),
+            ):
+                encoding[k] = {
+                    "type": "geojson",
+                    "value": {
+                        "type": type(v).__name__,
+                        "coordinates": v.encode_value(),
+                    },
+                }
+            elif isinstance(
+                v,
+                (
+                    Bool,
+                    Integer,
+                    Float,
+                    String,
+                ),
+            ):
+                encoding[k] = v.encode_value()
+            else:
+                encoding[k] = v.to_dict()
+        return encoding
 
     def __getitem__(self, __key: str):
         if self.is_symbolic:

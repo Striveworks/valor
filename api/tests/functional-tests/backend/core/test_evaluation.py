@@ -63,7 +63,8 @@ def test__verify_ready_to_evaluate(
     core.create_groundtruth(
         db=db,
         groundtruth=schemas.GroundTruth(
-            datum=schemas.Datum(uid="uid1", dataset_name=dataset_name),
+            dataset_name=dataset_name,
+            datum=schemas.Datum(uid="uid1"),
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.CLASSIFICATION,
@@ -85,8 +86,9 @@ def test__verify_ready_to_evaluate(
     core.create_prediction(
         db=db,
         prediction=schemas.Prediction(
+            dataset_name=dataset_name,
             model_name=model_name,
-            datum=schemas.Datum(uid="uid1", dataset_name=dataset_name),
+            datum=schemas.Datum(uid="uid1"),
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.CLASSIFICATION,
@@ -107,8 +109,9 @@ def test__verify_ready_to_evaluate(
     core.create_prediction(
         db=db,
         prediction=schemas.Prediction(
+            dataset_name=dataset_name,
             model_name="second_model",
-            datum=schemas.Datum(uid="uid1", dataset_name=dataset_name),
+            datum=schemas.Datum(uid="uid1"),
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.CLASSIFICATION,

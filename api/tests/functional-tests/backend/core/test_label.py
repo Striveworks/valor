@@ -136,7 +136,8 @@ def create_dataset_model(db: Session, dataset_name: str, model_name: str):
     create_groundtruth(
         db=db,
         groundtruth=schemas.GroundTruth(
-            datum=schemas.Datum(uid="123", dataset_name=dataset_name),
+            dataset_name=dataset_name,
+            datum=schemas.Datum(uid="123"),
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.CLASSIFICATION,
@@ -152,8 +153,9 @@ def create_dataset_model(db: Session, dataset_name: str, model_name: str):
     create_prediction(
         db=db,
         prediction=schemas.Prediction(
+            dataset_name=dataset_name,
             model_name=model_name,
-            datum=schemas.Datum(uid="123", dataset_name=dataset_name),
+            datum=schemas.Datum(uid="123"),
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.CLASSIFICATION,
@@ -530,6 +532,7 @@ def test_label_functions(
 
     gts = [
         schemas.GroundTruth(
+            dataset_name=dataset_name,
             datum=datum1,
             annotations=[
                 semantic_seg_gt_anns1,
@@ -537,6 +540,7 @@ def test_label_functions(
             ],
         ),
         schemas.GroundTruth(
+            dataset_name=dataset_name,
             datum=datum2,
             annotations=[
                 semantic_seg_gt_anns2,
@@ -546,6 +550,7 @@ def test_label_functions(
     ]
     pds = [
         schemas.Prediction(
+            dataset_name=dataset_name,
             model_name=model_name,
             datum=datum1,
             annotations=[
@@ -553,6 +558,7 @@ def test_label_functions(
             ],
         ),
         schemas.Prediction(
+            dataset_name=dataset_name,
             model_name=model_name,
             datum=datum2,
             annotations=[

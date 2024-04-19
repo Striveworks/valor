@@ -2,7 +2,7 @@ import operator
 from typing import Callable
 
 from sqlalchemy import TIMESTAMP, Boolean, Float, and_, cast, func, not_, or_
-from sqlalchemy.dialects.postgresql import INTERVAL
+from sqlalchemy.dialects.postgresql import INTERVAL, TEXT
 from sqlalchemy.sql.elements import BinaryExpression, ColumnElement
 
 from valor_api import enums
@@ -113,20 +113,21 @@ def _filter_by_metadatum(
         lhs = table.meta[key].astext.cast(Boolean)
         rhs = value_filter.value
     elif isinstance(value_filter, DateTimeFilter):
-        lhs_operand = table.meta[key][value_filter.value.key].astext
-        rhs_operand = (value_filter.value.value,)
-        if isinstance(value_filter.value, Time) or isinstance(
-            value_filter.value, Duration
-        ):
+        lhs_operand = table.meta[key]["value"].astext
+        rhs_operand = value_filter.value.value
+        if isinstance(value_filter.value, Time):
             lhs = cast(lhs_operand, INTERVAL)
             rhs = cast(rhs_operand, INTERVAL)
+        elif isinstance(value_filter.value, Duration):
+            lhs = cast(lhs_operand, INTERVAL)
+            rhs = cast(cast(rhs_operand, TEXT), INTERVAL)
         else:
             lhs = cast(lhs_operand, TIMESTAMP(timezone=True))
             rhs = cast(rhs_operand, TIMESTAMP(timezone=True))
         op = _get_numeric_op(value_filter.operator)
     elif isinstance(value_filter, GeospatialFilter):
         op = _get_spatial_op(value_filter.operator)
-        lhs = func.ST_GeomFromGeoJSON(table.meta[key]["geojson"])
+        lhs = func.ST_GeomFromGeoJSON(table.meta[key]["value"])
         rhs = func.ST_GeomFromGeoJSON(value_filter.value.model_dump_json())
     else:
         raise NotImplementedError(

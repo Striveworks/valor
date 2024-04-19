@@ -27,10 +27,8 @@ from valor import (
     Label,
 )
 from valor.schemas import (
-    BoundingBox,
-    Polygon,
-    BasicPolygon,
     Point,
+    Box,
 )
 from valor.enums import TaskType
 ```
@@ -54,12 +52,12 @@ First, we define our `Dataset` object using `Dataset.create()`.
 dataset = Dataset(
     client=client,
     name="myDataset",
-    metadata={        # optional, metadata can take `str`, `int`, `float` value types.
+    metadata={        # optional
         "some_string": "hello_world",
         "some_number": 1234,
         "a_different_number": 1.234,
+        "a_geospatial_reference": Point((1.23, 3.21)),
     },
-    geospatial=None,  # optional, define a GeoJSON
 )
 ```
 
@@ -93,7 +91,7 @@ for image in groundtruth_annotations:
         Annotation(
             task_type=TaskType.OBJECT_DETECTION,
             labels=[Label(key="class_label", value=annotation["class_label"])],
-            bounding_box=BoundingBox.from_extrema(
+            bounding_box=Box.from_extrema(
                 xmin=annotation["bbox"]["xmin"],
                 xmax=annotation["bbox"]["xmax"],
                 ymin=annotation["bbox"]["ymin"],
@@ -152,7 +150,7 @@ def create_prediction_from_object_detection_dict(element: dict, datums_by_uid:di
                 Label(key="class_label", value=label["class_label"], score=label["score"])
                 for label in annotation["labels"]
             ],
-            bounding_box=BoundingBox.from_extrema(
+            bounding_box=Box.from_extrema(
                 xmin=annotation["bbox"]["xmin"],
                 xmax=annotation["bbox"]["xmax"],
                 ymin=annotation["bbox"]["ymin"],

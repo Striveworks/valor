@@ -88,7 +88,7 @@ def _convert_expression_to_constraint(expr: Function):
             ),
         ):
             value = {
-                "type": type(variable).__name__.capitalize(),
+                "type": type(variable).__name__,
                 "coordinates": variable.get_value(),
             }
         elif isinstance(variable, (DateTime, Date, Time, Duration)):

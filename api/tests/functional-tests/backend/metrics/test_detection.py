@@ -930,12 +930,13 @@ def test_detection_exceptions(db: Session):
     crud.create_groundtruth(
         db=db,
         groundtruth=schemas.GroundTruth(
-            datum=schemas.Datum(dataset_name=dataset_name, uid="uid"),
+            dataset_name=dataset_name,
+            datum=schemas.Datum(uid="uid"),
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.OBJECT_DETECTION,
                     labels=[schemas.Label(key="k1", value="v1")],
-                    bounding_box=schemas.BoundingBox.from_extrema(
+                    bounding_box=schemas.Box.from_extrema(
                         xmin=0, xmax=1, ymin=0, ymax=1
                     ),
                 )
@@ -952,13 +953,14 @@ def test_detection_exceptions(db: Session):
     crud.create_prediction(
         db=db,
         prediction=schemas.Prediction(
+            dataset_name=dataset_name,
             model_name=model_name,
-            datum=schemas.Datum(dataset_name=dataset_name, uid="uid"),
+            datum=schemas.Datum(uid="uid"),
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.OBJECT_DETECTION,
                     labels=[schemas.Label(key="k1", value="v1", score=1.0)],
-                    bounding_box=schemas.BoundingBox.from_extrema(
+                    bounding_box=schemas.Box.from_extrema(
                         xmin=0, xmax=1, ymin=0, ymax=1
                     ),
                 )

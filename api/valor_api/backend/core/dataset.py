@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from valor_api import api_utils, enums, exceptions, schemas
 from valor_api.backend import core, models
 from valor_api.backend.query import Query
-from valor_api.schemas.core import MetadataType
+from valor_api.schemas.types import MetadataType
 
 
 def _load_dataset_schema(

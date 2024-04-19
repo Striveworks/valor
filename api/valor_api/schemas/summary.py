@@ -1,9 +1,7 @@
 from pydantic import BaseModel
 
 from valor_api.enums import TaskType
-
-from .core import MetadataType
-from .label import Label
+from valor_api.schemas.types import Label, MetadataType
 
 
 class DatasetSummary(BaseModel):

@@ -1,17 +1,16 @@
 import json
 
-from pydantic import BaseModel, ConfigDict, create_model, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    create_model,
+    field_validator,
+    model_validator,
+)
 
 from valor_api.enums import TaskType
-from valor_api.schemas.metadata import (
-    Date,
-    DateTime,
-    Duration,
-    GeoJSONMultiPolygon,
-    GeoJSONPoint,
-    GeoJSONPolygon,
-    Time,
-)
+from valor_api.schemas.geometry import GeoJSON
+from valor_api.schemas.timestamp import Date, DateTime, Duration, Time
 
 
 class StringFilter(BaseModel):
@@ -101,6 +100,7 @@ class BooleanFilter(BaseModel):
 
     value: bool
     operator: str = "=="
+    model_config = ConfigDict(extra="forbid")
 
     @field_validator("operator")
     @classmethod
@@ -112,8 +112,6 @@ class BooleanFilter(BaseModel):
                 f"Invalid comparison operator '{op}'. Allowed operators are {', '.join(allowed_operators)}."
             )
         return op
-
-    model_config = ConfigDict(extra="forbid")
 
 
 class GeospatialFilter(BaseModel):
@@ -129,8 +127,9 @@ class GeospatialFilter(BaseModel):
 
     """
 
-    value: GeoJSONPoint | GeoJSONPolygon | GeoJSONMultiPolygon
+    value: GeoJSON
     operator: str = "intersect"
+    model_config = ConfigDict(extra="forbid")
 
     @field_validator("operator")
     @classmethod
@@ -142,8 +141,6 @@ class GeospatialFilter(BaseModel):
                 f"Invalid comparison operator '{op}'. Allowed operators are {', '.join(allowed_operators)}."
             )
         return op
-
-    model_config = ConfigDict(extra="forbid")
 
 
 class DateTimeFilter(BaseModel):
@@ -165,6 +162,27 @@ class DateTimeFilter(BaseModel):
 
     value: DateTime | Date | Time | Duration
     operator: str = "=="
+
+    @model_validator(mode="before")
+    @classmethod
+    def _unpack_timestamp_value(cls, values):
+        # TODO - This will be addressed in Issue #526
+        if isinstance(values, dict) and (value := values.get("value")):
+            if isinstance(value, dict) and (
+                "datetime" in value
+                or "date" in value
+                or "time" in value
+                or "duration" in value
+            ):
+                k, v = list(value.items())[0]
+                types = {
+                    "datetime": DateTime,
+                    "date": Date,
+                    "time": Time,
+                    "duration": Duration,
+                }
+                values["value"] = types[k](value=v)
+        return values
 
     @field_validator("operator")
     @classmethod
