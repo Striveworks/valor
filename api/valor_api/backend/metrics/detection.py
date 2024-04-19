@@ -375,13 +375,25 @@ def _compute_detection_metrics(
                 return table.box
             case AnnotationType.POLYGON:
                 return table.polygon
-            case AnnotationType.MULTIPOLYGON:
-                return table.multipolygon
             case AnnotationType.RASTER:
-                # we use ST_Envelope to handle complex geometry cases where we can't directly convert to GeoJSON (i.e., when dealing with rasters)
-                return gfunc.ST_Envelope(table.raster)
+                return table.raster
             case _:
                 raise RuntimeError
+
+    def _annotation_type_to_geojson(
+        annotation_type: AnnotationType,
+        table,
+    ):
+        match annotation_type:
+            case AnnotationType.BOX:
+                box = table.box
+            case AnnotationType.POLYGON:
+                box = gfunc.ST_Envelope(table.polygon)
+            case AnnotationType.RASTER:
+                box = gfunc.ST_Envelope(gfunc.ST_MinConvexHull(table.raster))
+            case _:
+                raise RuntimeError
+        return gfunc.ST_AsGeoJSON(box)
 
     if (
         parameters.iou_thresholds_to_return is None
@@ -426,10 +438,8 @@ def _compute_detection_metrics(
                 grouper_mappings["label_id_to_grouper_id_mapping"],
                 value=models.GroundTruth.label_id,
             ).label("label_id_grouper"),
-            (
-                gfunc.ST_AsGeoJSON(
-                    _annotation_type_to_column(target_type, models.Annotation)
-                ).label("geojson")
+            _annotation_type_to_geojson(target_type, models.Annotation).label(
+                "geojson"
             ),
         )
         .filter(groundtruth_filter)
@@ -450,10 +460,8 @@ def _compute_detection_metrics(
                 grouper_mappings["label_id_to_grouper_id_mapping"],
                 value=models.Prediction.label_id,
             ).label("label_id_grouper"),
-            (
-                gfunc.ST_AsGeoJSON(
-                    _annotation_type_to_column(target_type, models.Annotation)
-                ).label("geojson")
+            _annotation_type_to_geojson(target_type, models.Annotation).label(
+                "geojson"
             ),
         )
         .filter(prediction_filter)
@@ -637,10 +645,8 @@ def _compute_detection_metrics(
             ).label("label_id_grouper"),
             models.Datum.uid.label("datum_uid"),
             models.Dataset.name.label("dataset_name"),
-            (
-                gfunc.ST_AsGeoJSON(
-                    _annotation_type_to_column(target_type, models.Annotation)
-                ).label("gt_geojson")
+            _annotation_type_to_geojson(target_type, models.Annotation).label(
+                "gt_geojson"
             ),
         )
         .filter(groundtruth_filter)

@@ -238,7 +238,17 @@ def test_convert_from_raster(
     converted_polygon = _load_polygon(db, annotation.polygon)
 
     # check that points match
-    assert converted_box == bbox
+    assert converted_box == Box(
+        value=[
+            [
+                (1.0, 0.0),
+                (1.0, 7.0),
+                (8.0, 7.0),
+                (8.0, 0.0),
+                (1.0, 0.0),
+            ]
+        ]
+    )
     assert converted_polygon == polygon
 
 
