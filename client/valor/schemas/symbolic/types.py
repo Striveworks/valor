@@ -362,8 +362,6 @@ class Bool(Variable):
     ----------
     value : bool, optional
         A boolean value.
-    symbol : Symbol, optional
-        A symbolic representation.
 
     Examples
     --------
@@ -526,8 +524,6 @@ class Integer(Quantifiable):
     ----------
     value : int, optional
         A integer value.
-    symbol : Symbol, optional
-        A symbolic representation.
 
     Examples
     --------
@@ -553,8 +549,6 @@ class Float(Quantifiable):
     ----------
     value : float, optional
         A float value.
-    symbol : Symbol, optional
-        A symbolic representation.
 
     Examples
     --------
@@ -580,8 +574,6 @@ class String(Equatable):
     ----------
     value : str, optional
         A string value.
-    symbol : Symbol, optional
-        A symbolic representation.
 
     Examples
     --------
@@ -607,8 +599,6 @@ class DateTime(Quantifiable):
     ----------
     value : datetime.datetime, optional
         A datetime value.
-    symbol : Symbol, optional
-        A symbolic representation.
 
     Examples
     --------
@@ -649,8 +639,6 @@ class Date(Quantifiable):
     ----------
     value : datetime.date, optional
         A date value.
-    symbol : Symbol, optional
-        A symbolic representation.
 
     Examples
     --------
@@ -691,8 +679,6 @@ class Time(Quantifiable):
     ----------
     value : datetime.time, optional
         A time value.
-    symbol : Symbol, optional
-        A symbolic representation.
 
     Examples
     --------
@@ -733,8 +719,6 @@ class Duration(Quantifiable):
     ----------
     value : datetime.timedelta, optional
         A time duration.
-    symbol : Symbol, optional
-        A symbolic representation.
 
     Examples
     --------
@@ -777,8 +761,6 @@ class Point(Spatial, Equatable):
     ----------
     value : Tuple[float, float], optional
         A point.
-    symbol : Symbol, optional
-        A symbolic representation.
 
     Examples
     --------
@@ -853,8 +835,6 @@ class MultiPoint(Spatial):
     ----------
     value : List[Tuple[float, float]], optional
         A multipoint.
-    symbol : Symbol, optional
-        A symbolic representation.
 
     Examples
     --------
@@ -896,8 +876,6 @@ class LineString(Spatial):
     ----------
     value : List[Tuple[float, float]], optional
         A linestring.
-    symbol : Symbol, optional
-        A symbolic representation.
 
     Methods
     -------
@@ -943,8 +921,6 @@ class MultiLineString(Spatial):
     ----------
     value : List[List[Tuple[float, float]]], optional
         A multilinestring.
-    symbol : Symbol, optional
-        A symbolic representation.
 
     Examples
     --------
@@ -999,8 +975,6 @@ class Polygon(Spatial):
     ----------
     value : List[List[Tuple[float, float]]], optional
         A polygon.
-    symbol : Symbol, optional
-        A symbolic representation.
 
     Attributes
     ----------
@@ -1155,8 +1129,6 @@ class Box(Polygon):
     ----------
     value : List[List[Tuple[float, float]]], optional
         An polygon value representing a box.
-    symbol : Symbol, optional
-        A symbolic representation.
 
     Attributes
     ----------
@@ -1276,8 +1248,6 @@ class MultiPolygon(Spatial):
     ----------
     value : List[List[List[Tuple[float, float]]]], optional
         A list of polygons.
-    symbol : Symbol, optional
-        A symbolic representation.
 
     Attributes
     ----------
@@ -1394,8 +1364,6 @@ class List(typing.Generic[T], Equatable):
             ----------
             value : typing.List[T], optional
                 A list of items with type T.
-            symbol : Symbol, optional
-                A symbolic representation.
             """
 
             def __init__(
@@ -1598,8 +1566,6 @@ class Dictionary(Equatable, MutableMapping):
     ----------
     value : Dict[str, typing.Any], optional
         A dictionary of items.
-    symbol : Symbol, optional
-        A symbolic representation.
 
     Examples
     --------
@@ -1749,8 +1715,6 @@ class TaskTypeEnum(String):
     ----------
     value : typing.Union[str, valor.enums.TaskType], optional
         A task type enum value.
-    symbol : Symbol, optional
-        A symbolic representation.
 
     Examples
     --------
@@ -1808,10 +1772,8 @@ class Raster(Spatial):
     ----------
     value : Dict[str, typing.Union[np.ndarray, str, None]], optional
         An raster value.
-    symbol : Symbol, optional
-        A symbolic representation.
 
-    Parameters
+    Attributes
     ----------
     area
     array
@@ -2043,8 +2005,6 @@ class Embedding(Spatial):
     ----------
     value : List[float], optional
         An embedding value.
-    symbol : Symbol, optional
-        A symbolic representation.
     """
 
     def __init__(

@@ -1,4 +1,4 @@
-::: valor.schemas.geometry
+::: valor.schemas.LineString
     handler: python
     options:
         show_root_heading: false
