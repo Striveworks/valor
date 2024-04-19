@@ -120,7 +120,7 @@ def test_create_annotation_with_embedding(
         datum=schemas.Datum(uid="uid123"),
         annotations=[
             schemas.Annotation(
-                task_type=enums.TaskType.EMBEDDING,
+                task_type=enums.TaskType.EMBEDDING_DISTANCE,
                 embedding=[0.5, 0.5, 0.5],
             ),
         ],

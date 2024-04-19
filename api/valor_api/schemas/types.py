@@ -109,16 +109,16 @@ def _validate_annotation_by_task_type(
                 raise ValueError(
                     "Annotations with task type `semantic-segmentation` only supports rasters."
                 )
-        case TaskType.EMBEDDING:
+        case TaskType.EMBEDDING_DISTANCE:
             if not (
-                annotation.embedding is not None
-                and not annotation.labels
+                annotation.labels
+                and annotation.embedding is not None
                 and annotation.bounding_box is None
                 and annotation.polygon is None
                 and annotation.raster is None
             ):
                 raise ValueError(
-                    "Annotation with task type `embedding` do not support labels or geometries."
+                    "Annotation with task type `embedding` does not support geometries."
                 )
         case TaskType.EMPTY | TaskType.SKIP:
             if not _check_if_empty_annotation(annotation):

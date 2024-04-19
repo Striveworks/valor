@@ -243,7 +243,7 @@ def test_tasktypeenum():
         TaskType.SEMANTIC_SEGMENTATION,
         TaskType.SEMANTIC_SEGMENTATION.value,
     )
-    _test_encoding(objcls, TaskType.EMBEDDING, TaskType.EMBEDDING.value)
+    _test_encoding(objcls, TaskType.EMBEDDING_DISTANCE, TaskType.EMBEDDING_DISTANCE.value)
 
 
 def test_box():

@@ -79,7 +79,7 @@ def _create_annotation(
         case TaskType.SEMANTIC_SEGMENTATION:
             if annotation.raster:
                 raster = annotation.raster.to_psql()
-        case TaskType.EMBEDDING:
+        case TaskType.EMBEDDING_DISTANCE:
             if annotation.embedding:
                 embedding_id = _create_embedding(
                     db=db, value=annotation.embedding
