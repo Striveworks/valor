@@ -65,6 +65,8 @@ def _compute_curves(
         A nested dictionary where the first key is the class label, the second key is the confidence threshold (e.g., 0.05), the third key is the metric name (e.g., "precision"), and the final key is either the value itself (for precision, recall, etc.) or a list of tuples containing the (dataset_name, datum_id) for each observation.
     """
 
+    print("\n\nINSIDE _compute_curves\n\n")
+
     output = defaultdict(lambda: defaultdict(dict))
 
     for threshold in [x / 100 for x in range(5, 100, 5)]:
@@ -226,6 +228,7 @@ def _compute_curves(
                 "f1_score": f1_score,
             }
 
+    print("\n\FINISHED _compute_curves\n\n")
     return dict(output)
 
 
@@ -254,6 +257,13 @@ def _compute_binary_roc_auc(
     float
         The binary ROC AUC score.
     """
+
+    print("\n\nINSIDE _compute_binary_roc_auc\n\n")
+
+    import time
+
+    start = time.time()
+
     # query to get the datum_ids and label values of groundtruths that have the given label key
     gts_filter = groundtruth_filter.model_copy()
     gts_filter.label_keys = [label.key]
@@ -280,13 +290,17 @@ def _compute_binary_roc_auc(
     )
 
     # number of ground truth labels that match the given label value
+    print("RUNNING n_pos")
     n_pos = db.scalar(
         select(func.count(gts_query.c.label_value)).where(
             gts_query.c.label_value == label.value
         )
     )
+    print("FINISHED n_pos")
     # total number of groundtruths
+    print("RUNNING n")
     n = db.scalar(select(func.count(gts_query.c.label_value)))
+    print("FINISHED n")
 
     if n is None or n_pos is None:
         raise RuntimeError(
@@ -341,7 +355,16 @@ def _compute_binary_roc_auc(
         ).label("trap_area")
     ).subquery()
 
+    print("RUNNING func.sum")
     ret = db.scalar(func.sum(trap_areas.c.trap_area))
+    print("FINISHED func.sum")
+
+    print(
+        f"\n\nFINISHED _compute_binary_roc_auc in {time.time() - start} \n\n"
+    )
+
+    print(f"label: {label}, ret: {ret}")
+
     if ret is None:
         return np.nan
     return ret
@@ -386,7 +409,7 @@ def _compute_roc_auc(
     sum_roc_aucs = 0
     label_count = 0
 
-    for grouper_value, labels in value_to_labels_mapping.items():
+    for _, labels in value_to_labels_mapping.items():
         label_filter = groundtruth_filter.model_copy()
         label_filter.label_ids = [label.id for label in labels]
 
@@ -446,6 +469,8 @@ def _compute_confusion_matrix_at_grouper_key(
         that have both a ground truth and prediction with label key `label_key`. Otherwise
         returns the confusion matrix.
     """
+
+    print("\n\nINSIDE _compute_confusion_matrix_at_grouper_key\n\n")
 
     # 1. Get the max prediction scores by datum
     max_scores_by_datum_id = (
@@ -533,6 +558,7 @@ def _compute_confusion_matrix_at_grouper_key(
     )
 
     res = db.execute(total_query).all()
+    print("\n\nFINISHED _compute_confusion_matrix_at_grouper_key\n\n")
     if len(res) == 0:
         # this means there's no predictions and groundtruths with the label key
         # for the same image
@@ -650,7 +676,9 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
         key for the same datum. Otherwise returns a tuple, with the first element the confusion
         matrix and the second a list of all metrics (accuracy, ROC AUC, precisions, recalls, and f1s).
     """
-
+    print(
+        "\n\nINSIDE _compute_confusion_matrix_and_metrics_at_grouper_key\n\n"
+    )
     label_key_filter = list(
         grouper_mappings["grouper_key_to_label_keys_mapping"][grouper_key]
     )
@@ -772,7 +800,9 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
                 value=f1,
             )
         )
-
+    print(
+        "\n\nFINISHED _compute_confusion_matrix_and_metrics_at_grouper_key\n\n"
+    )
     return confusion_matrix, metrics
 
 
@@ -814,6 +844,7 @@ def _compute_clf_metrics(
     Tuple[List[schemas.ConfusionMatrix], List[schemas.ConfusionMatrix | schemas.AccuracyMetric | schemas.ROCAUCMetric| schemas.PrecisionMetric | schemas.RecallMetric | schemas.F1Metric]]
         A tuple of confusion matrices and metrics.
     """
+    print("\n\nINSIDE _compute_clf_metrics\n\n")
 
     labels = core.fetch_union_of_labels(
         db=db,
@@ -844,6 +875,7 @@ def _compute_clf_metrics(
             confusion_matrices.append(cm_and_metrics[0])
             metrics.extend(cm_and_metrics[1])
 
+    print("\n\nFINISHED _compute_clf_metrics\n\n")
     return confusion_matrices, metrics
 
 
@@ -869,6 +901,7 @@ def compute_clf_metrics(
         The evaluation job id.
     """
 
+    print("\n\nINSIDE compute_clf_metrics\n\n")
     # fetch evaluation
     evaluation = core.fetch_evaluation_from_id(db, evaluation_id)
 
