@@ -675,16 +675,15 @@ def test_compute_roc_auc_with_label_map(
         evaluation_type=enums.TaskType.CLASSIFICATION,
     )
 
-    assert (
-        _compute_roc_auc(
-            db=db,
-            prediction_filter=prediction_filter,
-            groundtruth_filter=groundtruth_filter,
-            grouper_key="animal",
-            grouper_mappings=grouper_mappings,
-        )
-        == 0.7777777777777779
+    roc_auc = _compute_roc_auc(
+        db=db,
+        prediction_filter=prediction_filter,
+        groundtruth_filter=groundtruth_filter,
+        grouper_key="animal",
+        grouper_mappings=grouper_mappings,
     )
+    assert roc_auc is not None
+    assert abs(roc_auc - 0.7777777777777779) < 1e-6
 
 
 def test_compute_classification(

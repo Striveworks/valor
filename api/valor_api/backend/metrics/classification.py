@@ -360,7 +360,8 @@ def _compute_binary_roc_auc(
 
     if ret is None:
         return np.nan
-    return ret
+
+    return float(ret)
 
 
 def _compute_roc_auc(
