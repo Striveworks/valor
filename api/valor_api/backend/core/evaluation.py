@@ -461,13 +461,13 @@ def create_or_get_evaluations(
                 .distinct()
                 .all()
             ):
-                evaluation.status = enums.EvaluationStatus.FAILED
+                evaluation.status = enums.EvaluationStatus.DONE
             if (
                 db.query(Query(models.Model).filter(prediction_filter).any())  # type: ignore - SQLAlchemy type issue
                 .distinct()
                 .one_or_none()
             ) is None:
-                evaluation.status = enums.EvaluationStatus.FAILED
+                evaluation.status = enums.EvaluationStatus.DONE
 
             if (
                 subrequest.parameters.task_type

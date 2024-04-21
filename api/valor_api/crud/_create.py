@@ -109,7 +109,10 @@ def create_or_get_evaluations(
     """
     evaluations = backend.create_or_get_evaluations(db, job_request)
     for evaluation in evaluations:
-        if evaluation.status == enums.EvaluationStatus.PENDING:
+        if evaluation.status in {
+            enums.EvaluationStatus.PENDING,
+            enums.EvaluationStatus.FAILED,
+        }:
             match evaluation.parameters.task_type:
                 case enums.TaskType.CLASSIFICATION:
                     compute_func = backend.compute_clf_metrics
