@@ -11,35 +11,6 @@ from valor_api.backend import core, models
 from valor_api.backend.query import Query
 
 
-def _validate_classification_task(
-    db: Session,
-    evaluation: models.Evaluation,
-):
-    """
-    Validate that a classification evaluation is possible.
-
-    Parameters
-    ----------
-    db : Session
-        The database session.
-    evaluation : models.Evaluation
-        The uncommitted evaluation row.
-    """
-    # unpack filters and params
-    groundtruth_filter = schemas.Filter(**evaluation.datum_filter)
-    prediction_filter = groundtruth_filter.model_copy()
-    prediction_filter.model_names = [evaluation.model_name]
-    parameters = schemas.EvaluationParameters(**evaluation.parameters)
-
-    # check that prediction label keys match ground truth label keys
-    core.validate_matching_label_keys(
-        db=db,
-        label_map=parameters.label_map,
-        groundtruth_filter=groundtruth_filter,
-        prediction_filter=prediction_filter,
-    )
-
-
 def _create_dataset_expr_from_list(
     dataset_names: list[str],
 ) -> BinaryExpression | None:
@@ -434,14 +405,11 @@ def _fetch_evaluation_from_subrequest(
 def create_or_get_evaluations(
     db: Session,
     job_request: schemas.EvaluationRequest,
-) -> tuple[
-    list[schemas.EvaluationResponse],
-    list[schemas.EvaluationResponse],
-]:
+) -> list[schemas.EvaluationResponse]:
     """
     Creates evaluations from evaluation request.
 
-    If an evaluation already exists, it will be returned as running.
+    If an evaluation already exists, it will be returned with a non-pending status.
 
     Parameters
     ----------
@@ -452,8 +420,8 @@ def create_or_get_evaluations(
 
     Returns
     -------
-    tuple[list[schemas.EvaluationResponse], list[schemas.EvaluationResponse]]
-        A tuple of evaluation response lists following the pattern (list[created_evaluations], list[existing_evaluations])
+    list[schemas.EvaluationResponse]
+        A list of evaluation responses.
     """
 
     created_rows = []
@@ -481,11 +449,37 @@ def create_or_get_evaluations(
                 meta={},  # meta stores data about the run after it completes; should be an empty dictionary at creation time
             )
 
+            # unpack filters and params
+            groundtruth_filter = job_request.datum_filter
+            prediction_filter = groundtruth_filter.model_copy()
+            prediction_filter.model_names = [evaluation.model_name]
+            parameters = job_request.parameters
+
+            # verify model and datasets have data for this evaluation
+            if not (
+                db.query(Query(models.Dataset).filter(groundtruth_filter).any())  # type: ignore - SQLAlchemy type issue
+                .distinct()
+                .all()
+            ):
+                evaluation.status = enums.EvaluationStatus.FAILED
+            if (
+                db.query(Query(models.Model).filter(prediction_filter).any())  # type: ignore - SQLAlchemy type issue
+                .distinct()
+                .one_or_none()
+            ) is None:
+                evaluation.status = enums.EvaluationStatus.FAILED
+
             if (
                 subrequest.parameters.task_type
                 == enums.TaskType.CLASSIFICATION
             ):
-                _validate_classification_task(db=db, evaluation=evaluation)
+                # check that prediction label keys match ground truth label keys
+                core.validate_matching_label_keys(
+                    db=db,
+                    label_map=parameters.label_map,
+                    groundtruth_filter=groundtruth_filter,
+                    prediction_filter=prediction_filter,
+                )
 
             created_rows.append(evaluation)
 
@@ -496,10 +490,7 @@ def create_or_get_evaluations(
         db.rollback()
         raise exceptions.EvaluationAlreadyExistsError()
 
-    return (
-        _create_responses(db, created_rows),
-        _create_responses(db, existing_rows),
-    )
+    return _create_responses(db, created_rows + existing_rows)
 
 
 def _fetch_evaluations_and_mark_for_deletion(

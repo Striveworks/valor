@@ -782,27 +782,26 @@ def test_classification(
     )
 
     # creates evaluation job
-    created_evaluations, existing_evaluations = create_or_get_evaluations(
-        db=db, job_request=job_request
-    )
-    assert len(created_evaluations) == 1
-    assert len(existing_evaluations) == 0
+    evaluations = create_or_get_evaluations(db=db, job_request=job_request)
+    assert len(evaluations) == 1
+    assert evaluations[0].status == enums.EvaluationStatus.PENDING
 
     # computation, normally run as background task
     _ = compute_clf_metrics(
         db=db,
-        evaluation_id=created_evaluations[0].id,
+        evaluation_id=evaluations[0].id,
     )
 
     # get evaluations
-    created_evaluations, existing_evaluations = create_or_get_evaluations(
-        db=db, job_request=job_request
-    )
-    assert len(created_evaluations) == 0
-    assert len(existing_evaluations) == 1
+    evaluations = create_or_get_evaluations(db=db, job_request=job_request)
+    assert len(evaluations) == 1
+    assert evaluations[0].status in {
+        enums.EvaluationStatus.RUNNING,
+        enums.EvaluationStatus.DONE,
+    }
 
-    metrics = existing_evaluations[0].metrics
-    confusion = existing_evaluations[0].confusion_matrices
+    metrics = evaluations[0].metrics
+    confusion = evaluations[0].confusion_matrices
 
     # Make matrices accessible by label_key
     assert confusion

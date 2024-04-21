@@ -107,27 +107,28 @@ def create_or_get_evaluations(
     tuple[list[schemas.EvaluatationResponse], list[schemas.EvaluatationResponse]]
         Tuple of evaluation id lists following the form ([created], [existing])
     """
-    created, existing = backend.create_or_get_evaluations(db, job_request)
+    evaluations = backend.create_or_get_evaluations(db, job_request)
+    for evaluation in evaluations:
+        if evaluation.status == enums.EvaluationStatus.PENDING:
+            match evaluation.parameters.task_type:
+                case enums.TaskType.CLASSIFICATION:
+                    compute_func = backend.compute_clf_metrics
+                case enums.TaskType.OBJECT_DETECTION:
+                    compute_func = backend.compute_detection_metrics
+                case enums.TaskType.SEMANTIC_SEGMENTATION:
+                    compute_func = (
+                        backend.compute_semantic_segmentation_metrics
+                    )
+                case _:
+                    raise RuntimeError
 
-    # start computations
-    for evaluation in created:
-        match evaluation.parameters.task_type:
-            case enums.TaskType.CLASSIFICATION:
-                compute_func = backend.compute_clf_metrics
-            case enums.TaskType.OBJECT_DETECTION:
-                compute_func = backend.compute_detection_metrics
-            case enums.TaskType.SEMANTIC_SEGMENTATION:
-                compute_func = backend.compute_semantic_segmentation_metrics
-            case _:
-                raise RuntimeError
+            if task_handler:
+                task_handler.add_task(
+                    compute_func,
+                    db=db,
+                    evaluation_id=evaluation.id,
+                )
+            else:
+                compute_func(db=db, evaluation_id=evaluation.id)
 
-        if task_handler:
-            task_handler.add_task(
-                compute_func,
-                db=db,
-                evaluation_id=evaluation.id,
-            )
-        else:
-            compute_func(db=db, evaluation_id=evaluation.id)
-
-    return created + existing
+    return evaluations
