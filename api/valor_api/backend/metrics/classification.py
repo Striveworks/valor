@@ -2,7 +2,7 @@ from collections import defaultdict
 from typing import Sequence
 
 import numpy as np
-from sqlalchemy import Float, Integer, Subquery
+from sqlalchemy import Integer, Subquery
 from sqlalchemy.orm import Bundle, Session
 from sqlalchemy.sql import and_, case, func, select
 from sqlalchemy.sql.selectable import NamedFromClause
@@ -301,52 +301,65 @@ def _compute_binary_roc_auc(
     if n - n_pos == 0:
         return 1.0
 
-    # true positive rates
-    tprs = (
-        func.sum(
-            (gts_query.c.label_value == label.value).cast(Integer).cast(Float)
-        ).over(order_by=-preds_query.c.score)
-        / n_pos
+    basic_counts_query = (
+        select(
+            preds_query.c.datum_id,
+            preds_query.c.score,
+            (gts_query.c.label_value == label.value)
+            .cast(Integer)
+            .label("is_true_positive"),
+            (gts_query.c.label_value != label.value)
+            .cast(Integer)
+            .label("is_false_positive"),
+        )
+        .select_from(
+            preds_query.join(  # type: ignore
+                gts_query, preds_query.c.datum_id == gts_query.c.datum_id  # type: ignore
+            )
+        )
+        .alias("basic_counts")
     )
 
-    # false positive rates
-    fprs = func.sum(
-        (gts_query.c.label_value != label.value).cast(Integer).cast(Float)
-    ).over(order_by=-preds_query.c.score) / (n - n_pos)
+    tpr_fpr_cumulative = select(
+        basic_counts_query.c.score,
+        func.sum(basic_counts_query.c.is_true_positive)
+        .over(order_by=basic_counts_query.c.score.desc())
+        .label("cumulative_tp"),
+        func.sum(basic_counts_query.c.is_false_positive)
+        .over(order_by=basic_counts_query.c.score.desc())
+        .label("cumulative_fp"),
+    ).alias("tpr_fpr_cumulative")
 
-    tprs_fprs_query = (
-        select(
-            tprs.label("tprs"),
-            fprs.label("fprs"),
-            preds_query.c.score,
-        ).join(
-            preds_query,  # type: ignore - SQLAlchemy Subquery is incompatible with join type
-            gts_query.c.datum_id == preds_query.c.datum_id,
-        )
-    ).subquery()
+    tpr_fpr_rates = select(
+        tpr_fpr_cumulative.c.score,
+        (tpr_fpr_cumulative.c.cumulative_tp / n_pos).label("tpr"),
+        (tpr_fpr_cumulative.c.cumulative_fp / (n - n_pos)).label("fpr"),
+    ).alias("tpr_fpr_rates")
 
     trap_areas = select(
         (
             0.5
             * (
-                tprs_fprs_query.c.tprs
-                + func.lag(tprs_fprs_query.c.tprs).over(
-                    order_by=-tprs_fprs_query.c.score
+                tpr_fpr_rates.c.tpr
+                + func.lag(tpr_fpr_rates.c.tpr).over(
+                    order_by=tpr_fpr_rates.c.score.desc()
                 )
             )
             * (
-                tprs_fprs_query.c.fprs
-                - func.lag(tprs_fprs_query.c.fprs).over(
-                    order_by=-tprs_fprs_query.c.score
+                tpr_fpr_rates.c.fpr
+                - func.lag(tpr_fpr_rates.c.fpr).over(
+                    order_by=tpr_fpr_rates.c.score.desc()
                 )
             )
         ).label("trap_area")
     ).subquery()
 
     ret = db.scalar(func.sum(trap_areas.c.trap_area))
+
     if ret is None:
         return np.nan
-    return ret
+
+    return float(ret)
 
 
 def _compute_roc_auc(
