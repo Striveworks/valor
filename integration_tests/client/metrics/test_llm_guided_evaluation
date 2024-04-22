@@ -19,10 +19,12 @@ from valor import (
 from valor.enums import EvaluationStatus, TaskType
 from valor.exceptions import ClientException
 
+
 def test_evaluate_image_clf(
     client: Client,
-    gt_questions: list[GroundTruth],
+    gt_questions: list[GroundTruth], # TODO Questions and answers should be fed through here. 
     pred_answers: list[Prediction],
+    pred_context: list[list[str]], # TODO Is this how we want context passed in? 
     dataset_name: str,
     model_name: str,
 ):
@@ -31,7 +33,7 @@ def test_evaluate_image_clf(
 
     datum = Datum(uid="uid", metadata={})
 
-    questions = [
+    questions = [ # TODO these should be fed in through the parameters above
         "When was Gennady's first fight?",
         "Tell me something noteworthy about Golovkin's early career?",
     ...	
@@ -64,10 +66,6 @@ def test_evaluate_image_clf(
                                 value=questions[index]
                                 ),
                             ],
-                        # should take reference_context and expected_answer as optional params	
-                        metadata={
-                            'context': '. '.join(context[index]) # ground truth context stored as a string			
-                        }
                     )
                 ],
             )
@@ -86,6 +84,10 @@ def test_evaluate_image_clf(
                                 value=llm_outputs[index]
                             ),
                         ],
+                        metadata={
+                            'context': context[index] # TODO Is a list a valid format for metadata? 
+                                                      # TODO Different models might combine / use context in different ways. However it is probably better to record raw context here? Formatting should be a property of the model? 
+                        }
                     )
                 ],
             )
@@ -103,7 +105,7 @@ def test_evaluate_image_clf(
 
     # the evaluate_llm_output call requires an optional, separate service that takes the LLM's inputs and outputs, runs them through a separate LLM with a predetermined prompt, and returns the metric to Valor for storage.llm_service = LLMService(model="ChatGPT4", api_key=os.getenv("CHATGPT_API_KEY"))
 
-    llm_metrics = ["Coherence", "QAG", "Grammaticality", "Hallucination Rate", "Faithfulness", "Answer Relevance", "Answer Correctness", "Context Precision", "Context Relevance", "Context Recall"]
+    llm_metrics = ["Coherence", "QAG", "Grammaticality", "Hallucination Rate", "Toxicity", "Bias", "Faithfulness", "Answer Relevance", "Answer Correctness", "Context Precision", "Context Relevance", "Context Recall"]
 
     eval_job = model.evaluate_llm_output(
         dataset,
@@ -112,8 +114,14 @@ def test_evaluate_image_clf(
             metrics=llm_metrics,
     )
 
+    assert eval_job.id
+
+    assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
     
-    expected_results = [
+    metrics = eval_job.metrics
+    metadata = eval_job.meta
+
+    expected_metrics = [
         # Coherence output >>>
         {
             "type": "Coherence",
@@ -127,6 +135,58 @@ def test_evaluate_image_clf(
                 "context": ...,
             },
         },
+        {
+            "type": "QAG",
+        },
+        {
+            "type": "Grammaticality",
+        }
+        {
+            "type": "Hallucination Rate",
+        },
+        {
+            "type": "Toxicity",
+        },
+        {
+            "type": "Bias",
+        },
+        {
+            "type": "Faithfulness",
+        },
+        {
+            "type": "Answer Relevance",
+        },
+        {
+            "type": "Answer Correctness",
+        },
+        {
+            "type": "Context Precision",
+        },
+        {
+            "type": "Context Relevance",
+        },
+        {
+            "type": "Context Recall",
+        }
     ]	
 
-    assert eval_job.results == expected_results
+    for m in metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in metrics
+
+    assert metrics == expected_metrics
+
+    # Test evaluation metadata. TODO put correct info here.
+    expected_metadata = {
+        "datums": 3,
+        "labels": 8,
+        "annotations": 6,
+    }
+
+    for key, value in expected_metadata.items():
+        assert metadata[key] == value
+
+    assert (
+        metadata["duration"] <= 5
+    )  # TODO Is this redundant with the timeout parameter in wait_for_completion above? Copied from test_classification.py
