@@ -1,4 +1,5 @@
 from sqlalchemy import Subquery, and_, desc, func, or_, select
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.selectable import Select
@@ -168,39 +169,6 @@ def fetch_label(
     ).one_or_none()
 
 
-def fetch_matching_labels(
-    db: Session,
-    labels: list[schemas.Label],
-) -> list[models.Label]:
-    """
-    Fetch matching labels from the database.
-
-    If a label in the search set is not found, no output is generated.
-
-    Parameters
-    ----------
-    db : Session
-        SQLAlchemy ORM session.
-    labels : List[schemas.Label]
-        List of label schemas to search for in the database.
-    """
-    return db.query(
-        select(models.Label)
-        .where(
-            or_(
-                *[
-                    and_(
-                        models.Label.key == label.key,
-                        models.Label.value == label.value,
-                    )
-                    for label in labels
-                ]
-            )
-        )
-        .subquery()
-    ).all()
-
-
 def create_labels(
     db: Session,
     labels: list[schemas.Label],
@@ -229,38 +197,40 @@ def create_labels(
         return []
 
     # remove duplicates
-    labels_no_duplicates = list(set(labels))
-
-    # get existing labels
-    existing_labels = {
-        (label.key, label.value)
-        for label in fetch_matching_labels(db, labels_no_duplicates)
-    }
-
-    # create new labels
-    new_labels_set = {
-        (label.key, label.value)
-        for label in labels_no_duplicates
-        if (label.key, label.value) not in existing_labels
-    }
-    new_labels = [
-        models.Label(key=label[0], value=label[1])
-        for label in list(new_labels_set)
+    values = [
+        {"key": label.key, "value": label.value} for label in set(labels)
     ]
+    insert_stmt = (
+        insert(models.Label)
+        .values(values)
+        .on_conflict_do_nothing(index_elements=["key", "value"])
+    )
 
     # upload the labels that were missing
     try:
-        db.add_all(new_labels)
+        db.execute(insert_stmt)
         db.commit()
     except IntegrityError as e:
         db.rollback()
         raise e  # this should never be called
 
-    # get existing labels and match output order to users request
-    existing_labels = {
-        (label.key, label.value): label
-        for label in fetch_matching_labels(db, labels_no_duplicates)
-    }
+    # get label rows and match output order to users request
+    label_rows = db.query(
+        select(models.Label)
+        .where(
+            or_(
+                *[
+                    and_(
+                        models.Label.key == label.key,
+                        models.Label.value == label.value,
+                    )
+                    for label in set(labels)
+                ]
+            )
+        )
+        .subquery()
+    ).all()
+    existing_labels = {(row.key, row.value): row for row in label_rows}
     return [existing_labels[(label.key, label.value)] for label in labels]
 
 
