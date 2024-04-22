@@ -140,7 +140,7 @@ def test_evaluate_image_clf(
         },
         {
             "type": "Grammaticality",
-        }
+        },
         {
             "type": "Hallucination Rate",
         },
