@@ -1035,7 +1035,9 @@ def delete_model(
 )
 def create_or_get_evaluations(
     job_request: schemas.EvaluationRequest,
+    response: Response,
     background_tasks: BackgroundTasks,
+    allow_retries: bool = False,
     db: Session = Depends(get_db),
 ) -> list[schemas.EvaluationResponse]:
     """
@@ -1049,6 +1051,8 @@ def create_or_get_evaluations(
         The job request for the evaluation.
     background_tasks: BackgroundTasks
         A FastAPI `BackgroundTasks` object to process the creation asyncronously. This parameter is a FastAPI dependency and shouldn't be submitted by the user.
+    allow_retries: bool, default = False
+        Determines whether failed evaluations are restarted.
     db : Session
         The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
 
@@ -1073,6 +1077,7 @@ def create_or_get_evaluations(
             db=db,
             job_request=job_request,
             task_handler=background_tasks,
+            allow_retries=allow_retries,
         )
     except Exception as e:
         raise exceptions.create_http_error(e)

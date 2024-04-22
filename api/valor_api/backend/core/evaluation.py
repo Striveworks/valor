@@ -402,9 +402,63 @@ def _fetch_evaluation_from_subrequest(
     return evaluation
 
 
-def create_or_get_evaluations(
+def _validate_create_or_get_evaluations(
     db: Session,
     job_request: schemas.EvaluationRequest,
+    evaluation: models.Evaluation,
+) -> models.Evaluation:
+    """
+    Validates whether a new or failed should proceed to a computation.
+
+    Parameters
+    ----------
+    db : Session
+        The database session.
+    job_request : schemas.EvaluationRequest
+        The evaluations to create.
+    evaluation : models.Evaluation
+        The evaluation row to validate.
+
+    Returns
+    -------
+    model.Evaluation
+        The row that was passed as input.
+
+    """
+
+    # unpack filters and params
+    groundtruth_filter = job_request.datum_filter
+    prediction_filter = groundtruth_filter.model_copy()
+    prediction_filter.model_names = [evaluation.model_name]
+    parameters = job_request.parameters
+
+    # verify model and datasets have data for this evaluation
+    if not (
+        db.query(Query(models.Dataset).filter(groundtruth_filter).any())  # type: ignore - SQLAlchemy type issue
+        .distinct()
+        .all()
+    ):
+        evaluation.status = enums.EvaluationStatus.DONE
+    if (
+        db.query(Query(models.Model).filter(prediction_filter).any())  # type: ignore - SQLAlchemy type issue
+        .distinct()
+        .one_or_none()
+    ) is None:
+        evaluation.status = enums.EvaluationStatus.DONE
+
+    if job_request.parameters.task_type == enums.TaskType.CLASSIFICATION:
+        # check that prediction label keys match ground truth label keys
+        core.validate_matching_label_keys(
+            db=db,
+            label_map=parameters.label_map,
+            groundtruth_filter=groundtruth_filter,
+            prediction_filter=prediction_filter,
+        )
+    return evaluation
+
+
+def create_or_get_evaluations(
+    db: Session, job_request: schemas.EvaluationRequest, allow_retries: bool
 ) -> list[schemas.EvaluationResponse]:
     """
     Creates evaluations from evaluation request.
@@ -437,6 +491,15 @@ def create_or_get_evaluations(
             db=db,
             subrequest=subrequest,
         ):
+            if (
+                allow_retries
+                and evaluation.status == enums.EvaluationStatus.FAILED
+            ):
+                evaluation = _validate_create_or_get_evaluations(
+                    db=db,
+                    job_request=subrequest,
+                    evaluation=evaluation,
+                )
             existing_rows.append(evaluation)
 
         # create evaluation row
@@ -448,39 +511,11 @@ def create_or_get_evaluations(
                 status=enums.EvaluationStatus.PENDING,
                 meta={},  # meta stores data about the run after it completes; should be an empty dictionary at creation time
             )
-
-            # unpack filters and params
-            groundtruth_filter = job_request.datum_filter
-            prediction_filter = groundtruth_filter.model_copy()
-            prediction_filter.model_names = [evaluation.model_name]
-            parameters = job_request.parameters
-
-            # verify model and datasets have data for this evaluation
-            if not (
-                db.query(Query(models.Dataset).filter(groundtruth_filter).any())  # type: ignore - SQLAlchemy type issue
-                .distinct()
-                .all()
-            ):
-                evaluation.status = enums.EvaluationStatus.DONE
-            if (
-                db.query(Query(models.Model).filter(prediction_filter).any())  # type: ignore - SQLAlchemy type issue
-                .distinct()
-                .one_or_none()
-            ) is None:
-                evaluation.status = enums.EvaluationStatus.DONE
-
-            if (
-                subrequest.parameters.task_type
-                == enums.TaskType.CLASSIFICATION
-            ):
-                # check that prediction label keys match ground truth label keys
-                core.validate_matching_label_keys(
-                    db=db,
-                    label_map=parameters.label_map,
-                    groundtruth_filter=groundtruth_filter,
-                    prediction_filter=prediction_filter,
-                )
-
+            evaluation = _validate_create_or_get_evaluations(
+                db=db,
+                job_request=subrequest,
+                evaluation=evaluation,
+            )
             created_rows.append(evaluation)
 
     try:

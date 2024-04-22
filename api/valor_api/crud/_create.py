@@ -91,6 +91,7 @@ def create_or_get_evaluations(
     db: Session,
     job_request: schemas.EvaluationRequest,
     task_handler: BackgroundTasks | None = None,
+    allow_retries: bool = False,
 ) -> list[schemas.EvaluationResponse]:
     """
     Create or get evaluations.
@@ -101,18 +102,29 @@ def create_or_get_evaluations(
         The database Session to query against.
     job_request: schemas.EvaluationRequest
         The evaluation request.
+    task_handler: BackgroundTasks, optional
+        An optional FastAPI background task handler.
+    allow_retries: bool, default = False
+        Allow restarting of failed evaluations.
 
     Returns
     ----------
-    tuple[list[schemas.EvaluatationResponse], list[schemas.EvaluatationResponse]]
-        Tuple of evaluation id lists following the form ([created], [existing])
+    list[schemas.EvaluatationResponse]
+        A list of evaluations in response format.
     """
-    evaluations = backend.create_or_get_evaluations(db, job_request)
-    for evaluation in evaluations:
-        if evaluation.status in {
+    evaluations = backend.create_or_get_evaluations(
+        db=db, job_request=job_request, allow_retries=allow_retries
+    )
+    run_conditions = (
+        {
             enums.EvaluationStatus.PENDING,
             enums.EvaluationStatus.FAILED,
-        }:
+        }
+        if allow_retries
+        else {enums.EvaluationStatus.PENDING}
+    )
+    for evaluation in evaluations:
+        if evaluation.status in run_conditions:
             match evaluation.parameters.task_type:
                 case enums.TaskType.CLASSIFICATION:
                     compute_func = backend.compute_clf_metrics
