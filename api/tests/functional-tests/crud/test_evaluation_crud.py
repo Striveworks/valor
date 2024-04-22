@@ -7,14 +7,14 @@ from valor_api.backend import core
 
 def test_restart_failed_evaluation(db: Session):
     crud.create_dataset(db=db, dataset=schemas.Dataset(name="dataset"))
-    crud.create_model(db=db, model=schemas.Model(name="models"))
+    crud.create_model(db=db, model=schemas.Model(name="model"))
     crud.finalize(db=db, dataset_name="dataset")
 
     # create evaluation and overwrite status to failed
     evaluations1 = core.create_or_get_evaluations(
         db=db,
         job_request=schemas.EvaluationRequest(
-            model_names=["models"],
+            model_names=["model"],
             datum_filter=schemas.Filter(dataset_names=["dataset"]),
             parameters=schemas.EvaluationParameters(
                 task_type=enums.TaskType.CLASSIFICATION
@@ -38,7 +38,7 @@ def test_restart_failed_evaluation(db: Session):
     evaluations2 = crud.create_or_get_evaluations(
         db=db,
         job_request=schemas.EvaluationRequest(
-            model_names=["models"],
+            model_names=["model"],
             datum_filter=schemas.Filter(dataset_names=["dataset"]),
             parameters=schemas.EvaluationParameters(
                 task_type=enums.TaskType.CLASSIFICATION
@@ -55,7 +55,7 @@ def test_restart_failed_evaluation(db: Session):
     evaluations3 = crud.create_or_get_evaluations(
         db=db,
         job_request=schemas.EvaluationRequest(
-            model_names=["models"],
+            model_names=["model"],
             datum_filter=schemas.Filter(dataset_names=["dataset"]),
             parameters=schemas.EvaluationParameters(
                 task_type=enums.TaskType.CLASSIFICATION
