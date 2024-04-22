@@ -458,7 +458,9 @@ def _validate_create_or_get_evaluations(
 
 
 def create_or_get_evaluations(
-    db: Session, job_request: schemas.EvaluationRequest, allow_retries: bool
+    db: Session,
+    job_request: schemas.EvaluationRequest,
+    allow_retries: bool = False,
 ) -> list[schemas.EvaluationResponse]:
     """
     Creates evaluations from evaluation request.
