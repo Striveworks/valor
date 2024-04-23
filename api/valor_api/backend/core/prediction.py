@@ -1,4 +1,4 @@
-from sqlalchemy import delete, select
+from sqlalchemy import and_, delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -11,16 +11,19 @@ def _precompute(
     datum: models.Datum,
     prediction_annotations: list[models.Annotation],
 ):
-    groundtruth_annotations = [
-        db.query(models.Annotation)
-        
-    ]
+    groundtruth_annotations = [db.query(models.Annotation)]
 
     for annotation in prediction_annotations:
         if annotation.task_type in {
             enums.TaskType.OBJECT_DETECTION.value,
             enums.TaskType.SEMANTIC_SEGMENTATION.value,
         }:
+            db.query(
+                select(models.Annotation).where(
+                    and_(models.Annotation.datum_id == datum.id)
+                )
+            )
+
             # determine common type
             groundtruth_type = core.get_annotation_type(
                 db=db,
@@ -33,13 +36,6 @@ def _precompute(
                 model=model,
                 task_type=enums.TaskType.OBJECT_DETECTION,
             )
-            groundtruth_type = (
-                dataset_type
-                if dataset_type < groundtruth_type
-                else groundtruth_type
-            )
-            prediction_type = (
-                model_
 
 
 def create_prediction(
