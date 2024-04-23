@@ -185,7 +185,7 @@ def test__fetch_evaluation_from_subrequest(
         ),
         meta={},
     )
-    created_1, _ = core.create_or_get_evaluations(db, job_request_1)
+    created_1 = core.create_or_get_evaluations(db, job_request_1)
     assert len(created_1) == 1
 
     # create evaluation 2
@@ -197,7 +197,7 @@ def test__fetch_evaluation_from_subrequest(
         ),
         meta={},
     )
-    created_2, _ = core.create_or_get_evaluations(db, job_request_2)
+    created_2 = core.create_or_get_evaluations(db, job_request_2)
     assert len(created_2) == 1
 
     # test fetching a subrequest
@@ -245,9 +245,9 @@ def test_create_evaluation(
         ),
         meta={},
     )
-    created, existing = core.create_or_get_evaluations(db, job_request_1)
-    assert len(existing) == 0
+    created = core.create_or_get_evaluations(db, job_request_1)
     assert len(created) == 1
+    assert created[0].status == enums.EvaluationStatus.PENDING
     evaluation_id = created[0].id
 
     assert (
@@ -256,9 +256,9 @@ def test_create_evaluation(
     )
 
     # test duplication check
-    created, existing = core.create_or_get_evaluations(db, job_request_1)
-    assert len(created) == 0
+    existing = core.create_or_get_evaluations(db, job_request_1)
     assert len(existing) == 1
+    assert existing[0].status == enums.EvaluationStatus.PENDING
     assert existing[0].id == evaluation_id
 
     assert (
@@ -322,8 +322,9 @@ def test_fetch_evaluation_from_id(
         ),
         meta={},
     )
-    created_1, _ = core.create_or_get_evaluations(db, job_request_1)
+    created_1 = core.create_or_get_evaluations(db, job_request_1)
     assert len(created_1) == 1
+    assert created_1[0].status == enums.EvaluationStatus.PENDING
     evaluation_id_1 = created_1[0].id
 
     # create evaluation 2
@@ -335,8 +336,9 @@ def test_fetch_evaluation_from_id(
         ),
         meta={},
     )
-    created_2, _ = core.create_or_get_evaluations(db, job_request_2)
+    created_2 = core.create_or_get_evaluations(db, job_request_2)
     assert len(created_2) == 1
+    assert created_2[0].status == enums.EvaluationStatus.PENDING
     evaluation_id_2 = created_2[0].id
 
     fetched_evaluation = core.fetch_evaluation_from_id(db, evaluation_id_1)
@@ -369,8 +371,9 @@ def test_get_evaluations(
         ),
         meta={},
     )
-    created_1, _ = core.create_or_get_evaluations(db, job_request_1)
+    created_1 = core.create_or_get_evaluations(db, job_request_1)
     assert len(created_1) == 1
+    assert created_1[0].status == enums.EvaluationStatus.PENDING
 
     # create evaluation 2
     job_request_2 = schemas.EvaluationRequest(
@@ -381,8 +384,9 @@ def test_get_evaluations(
         ),
         meta={},
     )
-    created_2, _ = core.create_or_get_evaluations(db, job_request_2)
+    created_2 = core.create_or_get_evaluations(db, job_request_2)
     assert len(created_2) == 1
+    assert created_2[0].status == enums.EvaluationStatus.PENDING
 
     # test get by dataset
     evaluations_by_dataset = core.get_paginated_evaluations(
@@ -542,10 +546,10 @@ def test_evaluation_status(
         ),
         meta={},
     )
-    created_1, existing = core.create_or_get_evaluations(db, job_request_1)
-    assert len(existing) == 0
-    assert len(created_1) == 1
-    evaluation_id = created_1[0].id
+    evaluations = core.create_or_get_evaluations(db, job_request_1)
+    assert len(evaluations) == 1
+    assert evaluations[0].status == enums.EvaluationStatus.PENDING
+    evaluation_id = evaluations[0].id
 
     # check that evaluation is created with PENDING status.
     assert (
@@ -656,7 +660,7 @@ def test_count_active_evaluations(
         ),
         meta={},
     )
-    created, _ = core.create_or_get_evaluations(db, job_request_1)
+    created = core.create_or_get_evaluations(db, job_request_1)
     assert len(created) == 1
     evaluation_1 = created[0].id
 
@@ -669,7 +673,7 @@ def test_count_active_evaluations(
         ),
         meta={},
     )
-    created, _ = core.create_or_get_evaluations(db, job_request_2)
+    created = core.create_or_get_evaluations(db, job_request_2)
     assert len(created) == 1
     evaluation_2 = created[0].id
 
@@ -716,7 +720,8 @@ def test_count_active_evaluations(
         ),
         meta={},
     )
-    evaluation_3, _ = core.create_or_get_evaluations(db, job_request_3)
+    evaluation_3 = core.create_or_get_evaluations(db, job_request_3)
+    assert len(evaluation_3) == 1
     evaluation_3 = evaluation_3[0].id
 
     assert (

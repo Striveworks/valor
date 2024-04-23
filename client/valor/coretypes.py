@@ -900,6 +900,7 @@ class Model(StaticCollection):
         filter_by: Optional[FilterType] = None,
         label_map: Optional[Dict[Label, Label]] = None,
         compute_pr_curves: bool = False,
+        allow_retries: bool = False,
     ) -> Evaluation:
         """
         Start a classification evaluation job.
@@ -914,6 +915,8 @@ class Model(StaticCollection):
             Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
         compute_pr_curves: bool
             A boolean which determines whether we calculate precision-recall curves or not.
+        allow_retries : bool, default = False
+            Option to retry previously failed evaluations.
 
         Returns
         -------
@@ -939,7 +942,9 @@ class Model(StaticCollection):
         )
 
         # create evaluation
-        evaluation = Client(self.conn).evaluate(request)
+        evaluation = Client(self.conn).evaluate(
+            request, allow_retries=allow_retries
+        )
         if len(evaluation) != 1:
             raise RuntimeError
         return evaluation[0]
@@ -955,6 +960,7 @@ class Model(StaticCollection):
         recall_score_threshold: float = 0,
         compute_pr_curves: bool = False,
         pr_curve_iou_threshold: float = 0.5,
+        allow_retries: bool = False,
     ) -> Evaluation:
         """
         Start an object-detection evaluation job.
@@ -979,6 +985,8 @@ class Model(StaticCollection):
             A boolean which determines whether we calculate precision-recall curves or not.
         pr_curve_iou_threshold: float, optional
             The IOU threshold to use when calculating precision-recall curves. Defaults to 0.5. Does nothing when compute_pr_curves is set to False or None.
+        allow_retries : bool, default = False
+            Option to retry previously failed evaluations.
 
 
         Returns
@@ -1013,7 +1021,9 @@ class Model(StaticCollection):
         )
 
         # create evaluation
-        evaluation = Client(self.conn).evaluate(request)
+        evaluation = Client(self.conn).evaluate(
+            request, allow_retries=allow_retries
+        )
         if len(evaluation) != 1:
             raise RuntimeError
         return evaluation[0]
@@ -1023,6 +1033,7 @@ class Model(StaticCollection):
         datasets: Optional[Union[Dataset, List[Dataset]]] = None,
         filter_by: Optional[FilterType] = None,
         label_map: Optional[Dict[Label, Label]] = None,
+        allow_retries: bool = False,
     ) -> Evaluation:
         """
         Start a semantic-segmentation evaluation job.
@@ -1035,6 +1046,8 @@ class Model(StaticCollection):
             Optional set of constraints to filter evaluation by.
         label_map : Dict[Label, Label], optional
             Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
+        allow_retries : bool, default = False
+            Option to retry previously failed evaluations.
 
         Returns
         -------
@@ -1054,7 +1067,9 @@ class Model(StaticCollection):
         )
 
         # create evaluation
-        evaluation = Client(self.conn).evaluate(request)
+        evaluation = Client(self.conn).evaluate(
+            request, allow_retries=allow_retries
+        )
         if len(evaluation) != 1:
             raise RuntimeError
         return evaluation[0]
@@ -1744,7 +1759,9 @@ class Client:
             )
         ]
 
-    def evaluate(self, request: EvaluationRequest) -> List[Evaluation]:
+    def evaluate(
+        self, request: EvaluationRequest, allow_retries: bool = False
+    ) -> List[Evaluation]:
         """
         Creates as many evaluations as necessary to fulfill the request.
 
@@ -1752,6 +1769,8 @@ class Client:
         ----------
         request : schemas.EvaluationRequest
             The requested evaluation parameters.
+        allow_retries : bool, default = False
+            Option to retry previously failed evaluations.
 
         Returns
         -------
@@ -1760,5 +1779,7 @@ class Client:
         """
         return [
             Evaluation(**evaluation)
-            for evaluation in self.conn.evaluate(request)
+            for evaluation in self.conn.evaluate(
+                request, allow_retries=allow_retries
+            )
         ]

@@ -798,7 +798,9 @@ class ClientConnection:
         """
         self._requests_delete_rel_host(f"models/{name}")
 
-    def evaluate(self, request: EvaluationRequest) -> List[dict]:
+    def evaluate(
+        self, request: EvaluationRequest, allow_retries: bool = False
+    ) -> List[dict]:
         """
         Creates as many evaluations as necessary to fulfill the request.
 
@@ -808,14 +810,18 @@ class ClientConnection:
         ----------
         request : schemas.EvaluationRequest
             The requested evaluation parameters.
+        allow_retries : bool, default = False
+            Option to retry previously failed evaluations.
 
         Returns
         -------
         List[dict]
             A list of evaluations that meet the parameters.
         """
+        query_str = urlencode({"allow_retries": allow_retries})
+        endpoint = f"evaluations?{query_str}"
         return self._requests_post_rel_host(
-            "evaluations", json=asdict(request)
+            endpoint, json=asdict(request)
         ).json()
 
     def get_evaluations(
