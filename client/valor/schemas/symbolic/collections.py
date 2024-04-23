@@ -338,6 +338,7 @@ class Annotation(StaticCollection):
         polygon: Optional[Polygon] = None,
         raster: Optional[Raster] = None,
         embedding: Optional[Embedding] = None,
+        ranking: Union[List[str], List[float], None] = None,
     ):
         """
         Constructs an annotation.
@@ -358,7 +359,10 @@ class Annotation(StaticCollection):
             A raster annotation.
         embedding: List[float], optional
             An embedding, described by a list of values with type float and a maximum length of 16,000.
+        ranking: Union[List[str], List[float], None]
+            A list of strings or a list of floats representing an ordered ranking.
         """
+        self.ranking = ranking
         super().__init__(
             task_type=task_type,
             metadata=metadata if metadata else dict(),
@@ -378,6 +382,11 @@ class Annotation(StaticCollection):
             "raster": Raster.nullable,
             "embedding": Embedding.nullable,
         }
+
+    def to_dict(self) -> dict:
+        ret = super().to_dict()
+        ret["ranking"] = self.ranking
+        return ret
 
 
 class Datum(StaticCollection):

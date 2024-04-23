@@ -7,6 +7,7 @@ class AnnotationType(str, Enum):
     POLYGON = "polygon"
     MULTIPOLYGON = "multipolygon"
     RASTER = "raster"
+    RANKING = "ranking"
 
 
 class TaskType(str, Enum):

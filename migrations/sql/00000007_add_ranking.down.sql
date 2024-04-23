@@ -1,0 +1,1 @@
+ALTER TABLE IF EXISTS annotation DROP COLUMN IF EXISTS ranking;
