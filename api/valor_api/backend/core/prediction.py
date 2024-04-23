@@ -9,14 +9,37 @@ from valor_api.backend import core, models
 def _precompute(
     db: Session,
     datum: models.Datum,
-    annotations: list[models.Annotation],
+    prediction_annotations: list[models.Annotation],
 ):
-    for annotation in annotations:
+    groundtruth_annotations = [
+        db.query(models.Annotation)
+        
+    ]
+
+    for annotation in prediction_annotations:
         if annotation.task_type in {
             enums.TaskType.OBJECT_DETECTION.value,
             enums.TaskType.SEMANTIC_SEGMENTATION.value,
         }:
-            pass
+            # determine common type
+            groundtruth_type = core.get_annotation_type(
+                db=db,
+                dataset=dataset,
+                task_type=enums.TaskType.OBJECT_DETECTION,
+            )
+            prediction_type = core.get_annotation_type(
+                db=db,
+                dataset=dataset,
+                model=model,
+                task_type=enums.TaskType.OBJECT_DETECTION,
+            )
+            groundtruth_type = (
+                dataset_type
+                if dataset_type < groundtruth_type
+                else groundtruth_type
+            )
+            prediction_type = (
+                model_
 
 
 def create_prediction(
