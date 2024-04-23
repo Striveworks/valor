@@ -82,6 +82,7 @@ class GroundTruth(Base):
         back_populates="groundtruths"
     )
     label: Mapped["Label"] = relationship(back_populates="groundtruths")
+    iou: Mapped[list["IOU"]] = relationship("IOU", cascade="all, delete")
 
 
 class Prediction(Base):
@@ -109,6 +110,7 @@ class Prediction(Base):
         back_populates="predictions"
     )
     label: Mapped["Label"] = relationship(back_populates="predictions")
+    iou: Mapped[list["IOU"]] = relationship("IOU", cascade="all, delete")
 
 
 class Annotation(Base):
@@ -258,3 +260,23 @@ class ConfusionMatrix(Base):
     settings: Mapped[Evaluation] = relationship(
         back_populates="confusion_matrices"
     )
+
+
+class IOU(Base):
+    __tablename__ = "iou"
+
+    # columns
+    groundtruth_id: Mapped[int] = mapped_column(
+        ForeignKey("groundtruth.id"), nullable=False
+    )
+    prediction_id: Mapped[int] = mapped_column(
+        ForeignKey("prediction.id"), nullable=False
+    )
+    value: Mapped[float] = mapped_column(nullable=False)
+    created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
+
+    # relationships
+    groundtruth: Mapped[GroundTruth] = relationship(
+        back_populates="groundtruth"
+    )
+    prediction: Mapped[Prediction] = relationship(back_populates="prediction")

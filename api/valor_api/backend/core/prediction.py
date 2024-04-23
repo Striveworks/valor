@@ -6,6 +6,19 @@ from valor_api import enums, exceptions, schemas
 from valor_api.backend import core, models
 
 
+def _precompute(
+    db: Session,
+    datum: models.Datum,
+    annotations: list[models.Annotation],
+):
+    for annotation in annotations:
+        if annotation.task_type in {
+            enums.TaskType.OBJECT_DETECTION.value,
+            enums.TaskType.SEMANTIC_SEGMENTATION.value,
+        }:
+            pass
+
+
 def create_prediction(
     db: Session,
     prediction: schemas.Prediction,
@@ -76,6 +89,8 @@ def create_prediction(
     except IntegrityError:
         db.rollback()
         raise exceptions.PredictionAlreadyExistsError
+
+    _precompute(db=db, datum=datum, annotations=annotation_list)
 
 
 def get_prediction(
