@@ -1034,8 +1034,8 @@ def delete_model(
     tags=["Evaluations"],
 )
 def create_or_get_evaluations(
-    job_request: schemas.EvaluationRequest,
     response: Response,
+    job_request: schemas.EvaluationRequest,
     background_tasks: BackgroundTasks,
     allow_retries: bool = False,
     db: Session = Depends(get_db),
@@ -1047,6 +1047,8 @@ def create_or_get_evaluations(
 
     Parameters
     ----------
+    response: Response
+        The FastAPI response object. Used to return a content-range header to the user.
     job_request: schemas.EvaluationJob
         The job request for the evaluation.
     background_tasks: BackgroundTasks
