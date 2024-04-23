@@ -432,21 +432,13 @@ def _validate_create_or_get_evaluations(
     prediction_filter.model_names = [evaluation.model_name]
     parameters = job_request.parameters
 
-    # verify model and datasets have data for this evaluation
-    if not (
-        db.query(Query(models.Dataset).filter(groundtruth_filter).any())  # type: ignore - SQLAlchemy type issue
-        .distinct()
-        .all()
-    ):
-        evaluation.status = enums.EvaluationStatus.DONE
-    if (
-        db.query(Query(models.Model).filter(prediction_filter).any())  # type: ignore - SQLAlchemy type issue
-        .distinct()
-        .one_or_none()
-    ) is None:
-        evaluation.status = enums.EvaluationStatus.DONE
+    datasets = db.query(Query(models.Dataset).filter(groundtruth_filter).any()).distinct().all()  # type: ignore - SQLAlchemy type issue
+    model = db.query(Query(models.Model).filter(prediction_filter).any()).one_or_none()  # type: ignore - SQLAlchemy type issue
 
-    if job_request.parameters.task_type == enums.TaskType.CLASSIFICATION:
+    # verify model and datasets have data for this evaluation
+    if not datasets or model is None:
+        evaluation.status = enums.EvaluationStatus.DONE
+    elif job_request.parameters.task_type == enums.TaskType.CLASSIFICATION:
         # check that prediction label keys match ground truth label keys
         core.validate_matching_label_keys(
             db=db,
