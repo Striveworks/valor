@@ -465,7 +465,7 @@ def create_or_get_evaluations(
     """
     Creates evaluations from evaluation request.
 
-    If an evaluation already exists, it will be returned with a non-pending status.
+    If an evaluation already exists, it will be returned with its existing status.
 
     Parameters
     ----------
