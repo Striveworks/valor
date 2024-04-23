@@ -433,10 +433,10 @@ def _validate_create_or_get_evaluations(
     parameters = job_request.parameters
 
     datasets = db.query(Query(models.Dataset).filter(groundtruth_filter).any()).distinct().all()  # type: ignore - SQLAlchemy type issue
-    model = db.query(Query(models.Model).filter(prediction_filter).any()).one_or_none()  # type: ignore - SQLAlchemy type issue
+    model = db.query(Query(models.Model).filter(prediction_filter).any()).distinct().one_or_none()  # type: ignore - SQLAlchemy type issue
 
     # verify model and datasets have data for this evaluation
-    if not datasets or model is None:
+    if len(datasets) == 0 or model is None:
         evaluation.status = enums.EvaluationStatus.DONE
     elif job_request.parameters.task_type == enums.TaskType.CLASSIFICATION:
         # check that prediction label keys match ground truth label keys
