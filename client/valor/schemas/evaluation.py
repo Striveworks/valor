@@ -37,6 +37,8 @@ class EvaluationParameters:
     recall_score_threshold: float = 0
     compute_pr_curves: bool = False
     pr_curve_iou_threshold: float = 0.5
+    llm_url: Optional[str] = ""
+    llm_api_key: Optional[str] = ""
 
 
 @dataclass

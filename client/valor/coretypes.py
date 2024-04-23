@@ -165,7 +165,7 @@ class Prediction(StaticCollection):
                     label_score = label.score._value
                     if label_score is None:
                         raise ValueError(
-                            f"For task type `{task_type}` prediction labels must have scores, but got `None`"
+                            f"For task type '{task_type}' prediction labels must have scores, but got 'None'"
                         )
             if task_type == TaskType.CLASSIFICATION:
 
@@ -1048,6 +1048,58 @@ class Model(StaticCollection):
             datum_filter=datum_filter,
             parameters=EvaluationParameters(
                 task_type=TaskType.SEMANTIC_SEGMENTATION,
+                label_map=self._create_label_map(label_map=label_map),
+            ),
+            meta={},
+        )
+
+        # create evaluation
+        evaluation = Client(self.conn).evaluate(request)
+        if len(evaluation) != 1:
+            raise RuntimeError
+        return evaluation[0]
+
+    def evaluate_llm_output(
+        self,
+        llm_url: str,
+        llm_api_key: str,
+        datasets: Optional[Union[Dataset, List[Dataset]]] = None,
+        filter_by: Optional[FilterType] = None,
+        label_map: Optional[Dict[Label, Label]] = None,
+    ) -> Evaluation:
+        """
+        Start a classification evaluation job.
+
+        Parameters
+        ----------
+        datasets : Union[Dataset, List[Dataset]], optional
+            The dataset or list of datasets to evaluate against.
+        llm_service : TODO
+            TODO
+        filter_by : FilterType, optional
+            Optional set of constraints to filter evaluation by.
+        label_map : Dict[Label, Label], optional
+            Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
+
+        Returns
+        -------
+        Evaluation
+            A job object that can be used to track the status of the job and get the metrics of it upon completion.
+        """
+        if not datasets and not filter_by:
+            raise ValueError(
+                "Evaluation requires the definition of either datasets, dataset filters or both."
+            )
+
+        # format request
+        datum_filter = self._format_constraints(datasets, filter_by)
+        request = EvaluationRequest(
+            model_names=[self.get_name()],
+            datum_filter=datum_filter,
+            parameters=EvaluationParameters(
+                task_type=TaskType.LLM_EVALUATION,
+                llm_url=llm_url,
+                llm_api_key=llm_api_key,
                 label_map=self._create_label_map(label_map=label_map),
             ),
             meta={},
