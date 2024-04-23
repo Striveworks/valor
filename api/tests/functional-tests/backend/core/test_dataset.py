@@ -153,7 +153,7 @@ def test_dataset_status_with_evaluations(
 ):
     # create an evaluation
     core.set_dataset_status(db, created_dataset, enums.TableStatus.FINALIZED)
-    evaluations, _ = core.create_or_get_evaluations(
+    evaluations = core.create_or_get_evaluations(
         db,
         schemas.EvaluationRequest(
             model_names=[created_model],
@@ -165,6 +165,7 @@ def test_dataset_status_with_evaluations(
         ),
     )
     assert len(evaluations) == 1
+    assert evaluations[0].status == enums.EvaluationStatus.PENDING
     evaluation_id = evaluations[0].id
 
     # set the evaluation to the running state

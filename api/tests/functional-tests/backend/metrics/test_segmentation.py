@@ -447,23 +447,22 @@ def test_compute_semantic_segmentation_metrics(
         meta={},
     )
 
-    created_evaluations, existing_evaluations = create_or_get_evaluations(
-        db=db, job_request=job_request
-    )
-    assert len(created_evaluations) == 1
-    assert len(existing_evaluations) == 0
+    evaluations = create_or_get_evaluations(db=db, job_request=job_request)
+    assert len(evaluations) == 1
+    assert evaluations[0].status == enums.EvaluationStatus.PENDING
 
     _ = compute_semantic_segmentation_metrics(
-        db=db, evaluation_id=created_evaluations[0].id
+        db=db, evaluation_id=evaluations[0].id
     )
 
-    created_evaluations, existing_evaluations = create_or_get_evaluations(
-        db=db, job_request=job_request
-    )
-    assert len(created_evaluations) == 0
-    assert len(existing_evaluations) == 1
+    evaluations = create_or_get_evaluations(db=db, job_request=job_request)
+    assert len(evaluations) == 1
+    assert evaluations[0].status in {
+        enums.EvaluationStatus.RUNNING,
+        enums.EvaluationStatus.DONE,
+    }
 
-    metrics = existing_evaluations[0].metrics
+    metrics = evaluations[0].metrics
 
     expected_metrics = {
         # none of these three labels have a predicted label
