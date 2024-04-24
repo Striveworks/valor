@@ -24,7 +24,8 @@ class EvaluationParameters:
         A boolean which determines whether we calculate precision-recall curves or not.
     pr_curve_iou_threshold: float, optional
             The IOU threshold to use when calculating precision-recall curves for object detection tasks. Defaults to 0.5. Does nothing when compute_pr_curves is set to False or None.
-
+    llm_url: TODO
+    llm_api_key: TODO
     """
 
     task_type: TaskType
@@ -37,8 +38,8 @@ class EvaluationParameters:
     recall_score_threshold: float = 0
     compute_pr_curves: bool = False
     pr_curve_iou_threshold: float = 0.5
-    llm_url: Optional[str] = ""
-    llm_api_key: Optional[str] = ""
+    llm_url: Optional[str] = None
+    llm_api_key: Optional[str] = None
 
 
 @dataclass

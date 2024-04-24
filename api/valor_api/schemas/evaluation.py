@@ -30,6 +30,8 @@ class EvaluationParameters(BaseModel):
         A boolean which determines whether we calculate precision-recall curves or not.
     pr_curve_iou_threshold: float, optional
             The IOU threshold to use when calculating precision-recall curves for object detection tasks. Defaults to 0.5. Does nothing when compute_pr_curves is set to False or None.
+    llm_url: TODO
+    llm_api_key: TODO
     """
 
     task_type: TaskType
@@ -41,6 +43,8 @@ class EvaluationParameters(BaseModel):
     recall_score_threshold: float | None = 0
     compute_pr_curves: bool | None = None
     pr_curve_iou_threshold: float | None = 0.5
+    llm_url: str | None = None
+    llm_api_key: str | None = None
 
     # pydantic setting
     model_config = ConfigDict(extra="forbid")
@@ -79,6 +83,11 @@ class EvaluationParameters(BaseModel):
                             raise ValueError(
                                 "`iou_thresholds_to_return` must be a subset of `iou_thresholds_to_compute`"
                             )
+            case TaskType.LLM_EVALUATION:
+                if values.llm_url is None or values.llm_api_key is None:
+                    raise ValueError(
+                        "`llm_url` and `llm_api_key` must be provided for LLM guided evaluations."
+                    )
             case _:
                 raise NotImplementedError(
                     f"Task type `{values.task_type}` is unsupported."

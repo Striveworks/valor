@@ -1089,8 +1089,8 @@ class Model(StaticCollection):
         ----------
         datasets : Union[Dataset, List[Dataset]], optional
             The dataset or list of datasets to evaluate against.
-        llm_service : TODO
-            TODO
+        llm_url : TODO
+        llm_api_key : TODO
         filter_by : FilterType, optional
             Optional set of constraints to filter evaluation by.
         label_map : Dict[Label, Label], optional
