@@ -15,12 +15,12 @@ jobs:
       - run: git fetch origin main
       - name: Check for changed SQL migration files
         run: |
-          # Compare current branch against main branch for modified files
-          CHANGED_FILES=$(git diff --name-status origin/main...HEAD migrations/sql | grep '^M' | cut -f2)
+          # Compare current branch against main branch for file changes
+          CHANGED_FILES=$(git diff --name-status origin/main...HEAD migrations/sql | grep '^[MDR]' | cut -f2)
           if [[ ! -z "$CHANGED_FILES" ]]; then
-            echo "Modified files in migrations/sql:"
-            echo "$CHANGED_FILES"
-            exit 1
+          echo "Detected changes in migrations/sql (modified, deleted, or renamed):"
+          echo "$CHANGED_FILES"
+          exit 1
           else
-            echo "No modifications in migrations/sql."
+          echo "No prohibited changes in migrations/sql."
           fi
