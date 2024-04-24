@@ -56,6 +56,7 @@ class TaskType(str, Enum):
     OBJECT_DETECTION = "object-detection"
     SEMANTIC_SEGMENTATION = "semantic-segmentation"
     EMBEDDING = "embedding"
+    RANKING = "ranking"
 
 
 class TableStatus(str, Enum):

@@ -13,6 +13,7 @@ from valor.schemas.symbolic.types import (
 from valor.schemas.symbolic.types import List as SymbolicList
 from valor.schemas.symbolic.types import (
     Polygon,
+    RankingArray,
     Raster,
     String,
     TaskTypeEnum,
@@ -249,18 +250,20 @@ class Annotation(StaticCollection):
     ----------
     task_type: TaskTypeEnum
         The task type associated with the `Annotation`.
-    metadata: Dictionary
+    metadata: Dictionary, optional
         A dictionary of metadata that describes the `Annotation`.
     labels: List[Label], optional
         A list of labels to use for the `Annotation`.
-    bounding_box: Box
+    bounding_box: Box, optional
         A bounding box to assign to the `Annotation`.
-    polygon: BoundingPolygon
+    polygon: BoundingPolygon, optional
         A polygon to assign to the `Annotation`.
-    raster: Raster
+    raster: Raster, optional
         A raster to assign to the `Annotation`.
-    embedding: List[float]
+    embedding: List[float], optional
         An embedding, described by a list of values with type float and a maximum length of 16,000.
+    ranking: Union[List[str], List[float], None], optional
+            A list of strings or a list of floats representing an ordered ranking.
 
     Examples
     --------
@@ -327,6 +330,9 @@ class Annotation(StaticCollection):
     embedding: Embedding = Embedding.symbolic(
         owner="annotation", name="embedding"
     )
+    ranking: RankingArray = RankingArray.symbolic(
+        owner="annotation", name="ranking"
+    )
 
     def __init__(
         self,
@@ -359,10 +365,9 @@ class Annotation(StaticCollection):
             A raster annotation.
         embedding: List[float], optional
             An embedding, described by a list of values with type float and a maximum length of 16,000.
-        ranking: Union[List[str], List[float], None]
+        ranking: Union[List[str], List[float], None], optional
             A list of strings or a list of floats representing an ordered ranking.
         """
-        self.ranking = ranking
         super().__init__(
             task_type=task_type,
             metadata=metadata if metadata else dict(),
@@ -371,6 +376,7 @@ class Annotation(StaticCollection):
             polygon=polygon,
             raster=raster,
             embedding=embedding,
+            ranking=ranking,
         )
 
     @staticmethod
@@ -381,11 +387,11 @@ class Annotation(StaticCollection):
             "polygon": Polygon.nullable,
             "raster": Raster.nullable,
             "embedding": Embedding.nullable,
+            "ranking": RankingArray.nullable,
         }
 
     def to_dict(self) -> dict:
         ret = super().to_dict()
-        ret["ranking"] = self.ranking
         return ret
 
 

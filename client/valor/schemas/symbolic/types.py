@@ -1997,6 +1997,71 @@ class Raster(Spatial):
         return self.array.shape[1]
 
 
+class RankingArray(Variable):
+    """
+    Represents an ordered list of rankings if a list of strings is passed, otherwise represents an ordered list of reference scores.
+
+    Parameters
+    ----------
+    value : Union[List[float], List[str]], optional
+        A list of rankings or reference scores.
+    """
+
+    def __init__(self, value: typing.List):
+        """
+        Initializes a ranking list.
+
+        Parameters
+        ----------
+        value : Union[List[float], List[str]], optional
+            A list of rankings or reference scores.
+        """
+        super().__init__(value)
+
+        self.__validate__(value)
+
+        if None in value:
+            raise ValueError("RankingArray does not accept 'None' as a value.")
+
+    @classmethod
+    def __validate__(cls, value: typing.Any):
+        """
+        Validates typing.
+
+        Parameters
+        ----------
+        value : Any
+            The value to validate.
+
+        Raises
+        ------
+        TypeError
+            If the value type is not supported.
+        """
+        contains_all_strings = all(isinstance(item, str) for item in value)
+        contains_all_floats = all(isinstance(item, float) for item in value)
+
+        if (
+            not isinstance(value, list)
+            or sum([contains_all_floats, contains_all_strings]) != 1
+        ):
+            raise TypeError(
+                f"Expected type 'Optional[Union[List[float], List[str]]]' received type '{type(value)}'"
+            )
+        elif len(value) < 1:
+            raise ValueError("RankingArray should have at least one dimension")
+
+    @classmethod
+    def decode_value(
+        cls,
+        value: typing.Optional[typing.List],
+    ):
+        """Decode object from JSON compatible dictionary."""
+        if value is None:
+            return None
+        return super().decode_value(value)
+
+
 class Embedding(Spatial):
     """
     Represents a model embedding.

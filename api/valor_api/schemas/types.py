@@ -307,6 +307,9 @@ class Annotation(BaseModel):
         A raster to assign to the 'Annotation'.
     embedding: list[float], optional
         A jsonb to assign to the 'Annotation'.
+    ranking: Union[List[str], List[float], None], optional
+        A list of strings or a list of floats representing an ordered ranking.
+
     """
 
     task_type: TaskType
@@ -316,6 +319,7 @@ class Annotation(BaseModel):
     polygon: Polygon | None = None
     raster: Raster | None = None
     embedding: list[float] | None = None
+    ranking: list[float] | list[str] | None = None
     model_config = ConfigDict(extra="forbid")
 
     @model_validator(mode="after")

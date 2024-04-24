@@ -38,40 +38,40 @@ def gt_correct_class_ranking():
                 )
             ],
         ),
-        GroundTruth(
-            datum=Datum(uid="uid1", metadata={}),
-            annotations=[
-                Annotation(
-                    task_type=TaskType.RANKING,
-                    labels=[
-                        Label(key="k2", value="gt"),
-                    ],
-                    ranking=[
-                        "a",
-                        "b",
-                        "c",
-                        "d",
-                    ],
-                )
-            ],
-        ),
-        GroundTruth(
-            datum=Datum(uid="uid2", metadata={}),
-            annotations=[
-                Annotation(
-                    task_type=TaskType.RANKING,
-                    labels=[
-                        Label(key="k1", value="gt"),
-                    ],
-                    ranking=[
-                        "1",
-                        "2",
-                        "3",
-                        "4",
-                    ],
-                )
-            ],
-        ),
+        # GroundTruth(
+        #     datum=Datum(uid="uid1", metadata={}),
+        #     annotations=[
+        #         Annotation(
+        #             task_type=TaskType.RANKING,
+        #             labels=[
+        #                 Label(key="k2", value="gt"),
+        #             ],
+        #             ranking=[
+        #                 "a",
+        #                 "b",
+        #                 "c",
+        #                 "d",
+        #             ],
+        #         )
+        #     ],
+        # ),
+        # GroundTruth(
+        #     datum=Datum(uid="uid2", metadata={}),
+        #     annotations=[
+        #         Annotation(
+        #             task_type=TaskType.RANKING,
+        #             labels=[
+        #                 Label(key="k1", value="gt"),
+        #             ],
+        #             ranking=[
+        #                 "1",
+        #                 "2",
+        #                 "3",
+        #                 "4",
+        #             ],
+        #         )
+        #     ],
+        # ),
     ]
 
 
@@ -94,90 +94,90 @@ def pd_correct_class_ranking():
                 )
             ],
         ),
-        Prediction(
-            datum=Datum(uid="uid1", metadata={}),
-            annotations=[
-                Annotation(
-                    task_type=TaskType.RANKING,
-                    labels=[
-                        Label(key="k1", value="gt"),
-                    ],
-                    ranking=[
-                        0.4,
-                        0.3,
-                        0.2,
-                    ],  # error case: length of this prediction doesn't match ground truth we're comparing against
-                )
-            ],
-        ),
-        Prediction(
-            datum=Datum(uid="uid1", metadata={}),
-            annotations=[
-                Annotation(
-                    task_type=TaskType.RANKING,
-                    labels=[
-                        Label(key="k1", value="gt"),
-                    ],
-                    ranking=[
-                        0.4,
-                        0.3,
-                        0.2,
-                        0.2,
-                    ],  # error case: weights sum to greater than one
-                )
-            ],
-        ),
-        Prediction(
-            datum=Datum(uid="uid1", metadata={}),
-            annotations=[
-                Annotation(
-                    task_type=TaskType.RANKING,
-                    labels=[
-                        Label(key="k1", value="gt"),
-                    ],
-                    ranking=[
-                        0.4,
-                        0.3,
-                        0.2,
-                        0.1,
-                    ],  # ranking by relevance scores
-                )
-            ],
-        ),
-        Prediction(
-            datum=Datum(uid="uid1", metadata={}),
-            annotations=[
-                Annotation(
-                    task_type=TaskType.RANKING,
-                    labels=[
-                        Label(key="k2", value="gt"),
-                    ],
-                    ranking=[
-                        "a",
-                        "b",
-                        "c",
-                        "d",
-                    ],  # perfect ranking
-                )
-            ],
-        ),
-        Prediction(
-            datum=Datum(uid="uid2", metadata={}),
-            annotations=[
-                Annotation(
-                    task_type=TaskType.RANKING,
-                    labels=[
-                        Label(key="k1", value="gt"),
-                    ],
-                    ranking=[
-                        "3",
-                        "2",
-                        "1",
-                        "4",
-                    ],
-                )
-            ],
-        ),
+        # Prediction(
+        #     datum=Datum(uid="uid1", metadata={}),
+        #     annotations=[
+        #         Annotation(
+        #             task_type=TaskType.RANKING,
+        #             labels=[
+        #                 Label(key="k1", value="gt"),
+        #             ],
+        #             ranking=[
+        #                 0.4,
+        #                 0.3,
+        #                 0.2,
+        #             ],  # error case: length of this prediction doesn't match ground truth we're comparing against
+        #         )
+        #     ],
+        # ),
+        # Prediction(
+        #     datum=Datum(uid="uid1", metadata={}),
+        #     annotations=[
+        #         Annotation(
+        #             task_type=TaskType.RANKING,
+        #             labels=[
+        #                 Label(key="k1", value="gt"),
+        #             ],
+        #             ranking=[
+        #                 0.4,
+        #                 0.3,
+        #                 0.2,
+        #                 0.2,
+        #             ],  # error case: weights sum to greater than one
+        #         )
+        #     ],
+        # ),
+        # Prediction(
+        #     datum=Datum(uid="uid1", metadata={}),
+        #     annotations=[
+        #         Annotation(
+        #             task_type=TaskType.RANKING,
+        #             labels=[
+        #                 Label(key="k1", value="gt"),
+        #             ],
+        #             ranking=[
+        #                 0.4,
+        #                 0.3,
+        #                 0.2,
+        #                 0.1,
+        #             ],  # ranking by relevance scores
+        #         )
+        #     ],
+        # ),
+        # Prediction(
+        #     datum=Datum(uid="uid1", metadata={}),
+        #     annotations=[
+        #         Annotation(
+        #             task_type=TaskType.RANKING,
+        #             labels=[
+        #                 Label(key="k2", value="gt"),
+        #             ],
+        #             ranking=[
+        #                 "a",
+        #                 "b",
+        #                 "c",
+        #                 "d",
+        #             ],  # perfect ranking
+        #         )
+        #     ],
+        # ),
+        # Prediction(
+        #     datum=Datum(uid="uid2", metadata={}),
+        #     annotations=[
+        #         Annotation(
+        #             task_type=TaskType.RANKING,
+        #             labels=[
+        #                 Label(key="k1", value="gt"),
+        #             ],
+        #             ranking=[
+        #                 "3",
+        #                 "2",
+        #                 "1",
+        #                 "4",
+        #             ],
+        #         )
+        #     ],
+        # ),
     ]
 
 

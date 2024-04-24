@@ -125,6 +125,7 @@ class Annotation(Base):
     task_type: Mapped[str] = mapped_column(nullable=False)
     meta = mapped_column(JSONB)
     created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
+    ranking = mapped_column(JSONB)
 
     # columns - linked objects
     box = mapped_column(Geometry("POLYGON"), nullable=True)
