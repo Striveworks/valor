@@ -1,0 +1,27 @@
+name: Checks migration files have not been altered.
+
+on:
+  push:
+    branches: "**"
+
+jobs:
+  check_sql_migrations:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Fetch main branch
+        run: git fetch origin main
+
+      - name: Check for changed SQL migration files
+        run: |
+          # Compare current branch against main branch for modified files
+          CHANGED_FILES=$(git diff --name-status origin/main...HEAD migrations/sql | grep '^M' | cut -f2)
+          if [[ ! -z "$CHANGED_FILES" ]]; then
+            echo "Modified files in migrations/sql:"
+            echo "$CHANGED_FILES"
+            exit 1
+          else
+            echo "No modifications in migrations/sql."
+          fi
