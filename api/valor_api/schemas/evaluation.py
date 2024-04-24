@@ -48,7 +48,7 @@ class EvaluationParameters(BaseModel):
     @model_validator(mode="after")
     @classmethod
     def _validate_by_task_type(cls, values):
-        """Validate the IOU thresholds."""
+        """Run validations for specific task types."""
 
         match values.task_type:
             case TaskType.CLASSIFICATION | TaskType.SEMANTIC_SEGMENTATION:
@@ -79,6 +79,9 @@ class EvaluationParameters(BaseModel):
                             raise ValueError(
                                 "`iou_thresholds_to_return` must be a subset of `iou_thresholds_to_compute`"
                             )
+            case TaskType.RANKING:
+                # TODO check that we don't need validations
+                pass
             case _:
                 raise NotImplementedError(
                     f"Task type `{values.task_type}` is unsupported."

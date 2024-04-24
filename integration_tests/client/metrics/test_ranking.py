@@ -194,16 +194,22 @@ def test_evaluate_correct_class_ranking(
     for gt in gt_correct_class_ranking:
         dataset.add_groundtruth(gt)
 
-    import pdb
-
-    pdb.set_trace()
-
     dataset.finalize()
 
     for pred in pd_correct_class_ranking:
         model.add_prediction(dataset, pred)
 
     model.finalize_inferences(dataset)
+
+    eval_job = model.evaluate_ranking(dataset)
+
+    assert eval_job.id
+
+    # assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
+
+    # metrics = eval_job.metrics
+
+    # assert metrics
 
     # TODO check that the datum actually matters
 

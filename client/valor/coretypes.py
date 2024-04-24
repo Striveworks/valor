@@ -1074,6 +1074,57 @@ class Model(StaticCollection):
             raise RuntimeError
         return evaluation[0]
 
+    def evaluate_ranking(
+        self,
+        datasets: Optional[Union[Dataset, List[Dataset]]] = None,
+        filter_by: Optional[FilterType] = None,
+        label_map: Optional[Dict[Label, Label]] = None,
+        allow_retries: bool = False,
+    ) -> Evaluation:
+        """
+        Start a ranking evaluation job.
+
+        Parameters
+        ----------
+        datasets : Union[Dataset, List[Dataset]], optional
+            The dataset or list of datasets to evaluate against.
+        filter_by : FilterType, optional
+            Optional set of constraints to filter evaluation by.
+        label_map : Dict[Label, Label], optional
+            Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
+        allow_retries : bool, default = False
+            Option to retry previously failed evaluations.
+
+        Returns
+        -------
+        Evaluation
+            A job object that can be used to track the status of the job and get the metrics of it upon completion.
+        """
+        if not datasets and not filter_by:
+            raise ValueError(
+                "Evaluation requires the definition of either datasets, dataset filters or both."
+            )
+
+        # format request
+        datum_filter = self._format_constraints(datasets, filter_by)
+        request = EvaluationRequest(
+            model_names=[self.get_name()],
+            datum_filter=datum_filter,
+            parameters=EvaluationParameters(
+                task_type=TaskType.RANKING,
+                label_map=self._create_label_map(label_map=label_map),
+            ),
+            meta={},
+        )
+
+        # create evaluation
+        evaluation = Client(self.conn).evaluate(
+            request, allow_retries=allow_retries
+        )
+        if len(evaluation) != 1:
+            raise RuntimeError
+        return evaluation[0]
+
     def delete(self, timeout: int = 0):
         """
         Delete the `Model` object from the back end.

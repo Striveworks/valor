@@ -32,6 +32,10 @@ def test_EvaluationParameters():
         ],
     )
 
+    schemas.EvaluationParameters(
+        task_type=enums.TaskType.RANKING,
+    )
+
     with pytest.raises(ValidationError):
         schemas.EvaluationParameters(
             task_type=enums.TaskType.CLASSIFICATION,

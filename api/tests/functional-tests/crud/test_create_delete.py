@@ -1477,58 +1477,6 @@ def test_create_clf_metrics(
     assert len(confusion_matrices) == 2
 
 
-@pytest.fixture
-def groundtruth_ranking(
-    dataset_name, img1: schemas.Datum
-) -> list[schemas.GroundTruth]:
-    return [
-        schemas.GroundTruth(
-            dataset_name=dataset_name,
-            datum=img1,
-            annotations=[
-                schemas.Annotation(
-                    task_type=enums.TaskType.RANKING,
-                    labels=[
-                        schemas.Label(key="k1", value="gt"),
-                    ],
-                    ranking=[
-                        "best choice",
-                        "2nd",
-                        "3rd",
-                        "4th",
-                    ],
-                )
-            ],
-        )
-    ]
-
-
-@pytest.fixture
-def prediction_ranking(
-    dataset_name: str, model_name: str, img1: schemas.Datum
-) -> list[schemas.Prediction]:
-    return [
-        schemas.Prediction(
-            dataset_name=dataset_name,
-            model_name=model_name,
-            datum=img1,
-            annotations=[
-                schemas.Annotation(
-                    task_type=enums.TaskType.RANKING,
-                    labels=[
-                        schemas.Label(key="k1", value="gt2"),
-                    ],
-                    ranking=[
-                        "bbq",
-                        "iguana",
-                        "best choice",
-                    ],  # only "best choice" was actually relevant
-                )
-            ],
-        )
-    ]
-
-
 def test_create_ranking_ground_truth_and_delete_dataset(
     db: Session,
     dataset_name: str,

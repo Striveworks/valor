@@ -325,7 +325,7 @@ def _create_responses(
         parameters = schemas.EvaluationParameters(**evaluation.parameters)
 
         match parameters.task_type:
-            case enums.TaskType.CLASSIFICATION:
+            case enums.TaskType.CLASSIFICATION | enums.TaskType.RANKING:
                 kwargs = {}
             case (
                 enums.TaskType.OBJECT_DETECTION
