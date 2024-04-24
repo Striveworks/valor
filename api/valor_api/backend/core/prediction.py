@@ -1,4 +1,4 @@
-from sqlalchemy import and_, delete, select
+from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -6,36 +6,98 @@ from valor_api import enums, exceptions, schemas
 from valor_api.backend import core, models
 
 
-def _precompute(
+def _precompute_iou(
     db: Session,
     datum: models.Datum,
     prediction_annotations: list[models.Annotation],
 ):
-    groundtruth_annotations = [db.query(models.Annotation)]
+    def _polygon_iou(gt_geom, pd_geom):
+        gintersection = func.ST_Intersection(gt_geom, pd_geom)
+        gunion = func.ST_Union(gt_geom, pd_geom)
+        return func.ST_Area(gintersection) / func.ST_Area(gunion)
 
-    for annotation in prediction_annotations:
-        if annotation.task_type in {
-            enums.TaskType.OBJECT_DETECTION.value,
-            enums.TaskType.SEMANTIC_SEGMENTATION.value,
-        }:
-            db.query(
-                select(models.Annotation).where(
-                    and_(models.Annotation.datum_id == datum.id)
-                )
+    def _raster_iou(gt_raster, pd_raster):
+        return func.ST_Count(
+            func.ST_MapAlgebra(
+                gt_raster,
+                pd_raster,
+                "[rast1]*[rast2]",  # https://postgis.net/docs/RT_ST_MapAlgebra_expr.html
             )
+        )
 
-            # determine common type
-            groundtruth_type = core.get_annotation_type(
-                db=db,
-                dataset=dataset,
-                task_type=enums.TaskType.OBJECT_DETECTION,
+    ious = []
+
+    # object detection
+    obj_det_groundtruths = (
+        db.query(models.Annotation)
+        .where(
+            and_(
+                models.Annotation.datum_id == datum.id,
+                models.Annotation.task_type
+                == enums.TaskType.OBJECT_DETECTION.value,
             )
-            prediction_type = core.get_annotation_type(
-                db=db,
-                dataset=dataset,
-                model=model,
-                task_type=enums.TaskType.OBJECT_DETECTION,
+        )
+        .all()
+    )
+    obj_det_pairings = [
+        (gt, pd)
+        for gt in obj_det_groundtruths
+        for pd in prediction_annotations
+        if pd.task_type == enums.TaskType.OBJECT_DETECTION.value
+    ]
+    for pairing in obj_det_pairings:
+        gt, pd = pairing
+        if gt.raster and pd.raster:
+            iou_value = _raster_iou(gt.raster, pd.raster)
+        elif gt.polygon and pd.polygon:
+            iou_value = _polygon_iou(gt.polygon, pd.polygon)
+        elif gt.box and pd.box:
+            iou_value = _polygon_iou(gt.box, pd.box)
+        else:
+            continue
+        ious.append(
+            models.IOU(
+                groundtruth_annotation_id=gt.id,
+                prediction_annotation_id=pd.id,
+                value=iou_value,
             )
+        )
+
+    # semantic segmentation
+    sem_seg_groundtruths = (
+        db.query(models.Annotation)
+        .where(
+            and_(
+                models.Annotation.datum_id == datum.id,
+                models.Annotation.task_type
+                == enums.TaskType.SEMANTIC_SEGMENTATION.value,
+            )
+        )
+        .all()
+    )
+    sem_seg_pairings = [
+        (gt, pd)
+        for gt in sem_seg_groundtruths
+        for pd in prediction_annotations
+        if pd.task_type == enums.TaskType.SEMANTIC_SEGMENTATION.value
+    ]
+    for pairing in sem_seg_pairings:
+        gt, pd = pairing
+        ious.append(
+            models.IOU(
+                groundtruth_annotation_id=gt.id,
+                prediction_annotation_id=pd.id,
+                value=_raster_iou(gt.raster, pd.raster),
+            )
+        )
+
+    if ious:
+        try:
+            db.add_all(ious)
+            db.commit()
+        except IntegrityError as e:
+            db.rollback()
+            raise e
 
 
 def create_prediction(
@@ -109,7 +171,7 @@ def create_prediction(
         db.rollback()
         raise exceptions.PredictionAlreadyExistsError
 
-    _precompute(db=db, datum=datum, annotations=annotation_list)
+    _precompute_iou(db=db, datum=datum, prediction_annotations=annotation_list)
 
 
 def get_prediction(

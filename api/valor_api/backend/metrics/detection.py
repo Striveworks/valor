@@ -502,26 +502,6 @@ def _compute_detection_metrics(
         .subquery()
     )
 
-    # Alias the annotation table (required for joining twice)
-    gt_annotation = aliased(models.Annotation)
-    pd_annotation = aliased(models.Annotation)
-
-    # IOU Computation Block
-    if target_type == AnnotationType.RASTER:
-        gintersection = gfunc.ST_Count(
-            gfunc.ST_Intersection(gt_annotation.raster, pd_annotation.raster)
-        )
-        gunion_gt = gfunc.ST_Count(gt_annotation.raster)
-        gunion_pd = gfunc.ST_Count(pd_annotation.raster)
-        gunion = gunion_gt + gunion_pd - gintersection
-        iou_computation = gintersection / gunion
-    else:
-        gt_geom = _annotation_type_to_column(target_type, gt_annotation)
-        pd_geom = _annotation_type_to_column(target_type, pd_annotation)
-        gintersection = gfunc.ST_Intersection(gt_geom, pd_geom)
-        gunion = gfunc.ST_Union(gt_geom, pd_geom)
-        iou_computation = gfunc.ST_Area(gintersection) / gfunc.ST_Area(gunion)
-
     # Compute IOUs
     ious = (
         select(
@@ -537,13 +517,18 @@ def _compute_detection_metrics(
             joint.c.gt_label_id_grouper.label("gt_label_id_grouper"),
             joint.c.pd_label_id_grouper.label("pd_label_id_grouper"),
             joint.c.score.label("score"),
-            func.coalesce(iou_computation, 0).label("iou"),
+            models.IOU.value.label("iou"),
             joint.c.gt_geojson,
             joint.c.pd_geojson,
         )
         .select_from(joint)
-        .join(gt_annotation, gt_annotation.id == joint.c.gt_ann_id)
-        .join(pd_annotation, pd_annotation.id == joint.c.pd_ann_id)
+        .join(
+            models.IOU,
+            and_(
+                joint.c.gt_ann_id == models.IOU.groundtruth_annotation_id,
+                joint.c.pd_ann_id == models.IOU.prediction_annotation_id,
+            ),
+        )
         .where(
             and_(
                 joint.c.gt_id.isnot(None),

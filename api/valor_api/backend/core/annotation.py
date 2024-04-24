@@ -1,5 +1,5 @@
-from geoalchemy2.functions import ST_AsGeoJSON
-from sqlalchemy import and_, delete, select
+from geoalchemy2.functions import ST_AsGeoJSON, ST_Envelope, ST_GeomFromText
+from sqlalchemy import and_, delete, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -62,42 +62,44 @@ def _create_annotation(
     models.Annotation
         A populated models.Annotation object.
     """
-    box = None
-    polygon = None
-    raster = None
-    embedding_id = None
-
-    # task-based conversion
-    match annotation.task_type:
-        case TaskType.OBJECT_DETECTION:
-            if annotation.bounding_box:
-                box = annotation.bounding_box.to_wkt()
-            if annotation.polygon:
-                polygon = annotation.polygon.to_wkt()
-            if annotation.raster:
-                raster = annotation.raster.to_psql()
-        case TaskType.SEMANTIC_SEGMENTATION:
-            if annotation.raster:
-                raster = annotation.raster.to_psql()
-        case TaskType.EMBEDDING:
-            if annotation.embedding:
-                embedding_id = _create_embedding(
-                    db=db, value=annotation.embedding
-                )
-        case _:
-            pass
 
     mapping = {
         "datum_id": datum.id,
         "model_id": model.id if model else None,
         "task_type": annotation.task_type,
         "meta": annotation.metadata,
-        "box": box,
-        "polygon": polygon,
-        "raster": raster,
-        "embedding_id": embedding_id,
+        "box": None,
+        "polygon": None,
+        "raster": None,
+        "embedding_id": None,
     }
-    return models.Annotation(**mapping)
+    row = models.Annotation(**mapping)
+
+    # task-based conversion
+    match annotation.task_type:
+        case TaskType.OBJECT_DETECTION:
+            if annotation.raster:
+                row.raster = annotation.raster.to_psql()
+                box = annotation.raster.to_box()
+                row.box = box.to_wkt() if box else None
+            if annotation.polygon:
+                row.polygon = ST_GeomFromText(annotation.polygon.to_wkt())
+                row.box = ST_Envelope(
+                    ST_GeomFromText(annotation.polygon.to_wkt())
+                )
+            if annotation.bounding_box:
+                row.box = ST_GeomFromText(annotation.bounding_box.to_wkt())
+        case TaskType.SEMANTIC_SEGMENTATION:
+            if annotation.raster:
+                row.raster = annotation.raster.to_psql()
+        case TaskType.EMBEDDING:
+            if annotation.embedding:
+                row.embedding_id = _create_embedding(
+                    db=db, value=annotation.embedding
+                )
+        case _:
+            pass
+    return row
 
 
 def create_annotations(
@@ -161,6 +163,7 @@ def create_annotations(
     except IntegrityError as e:
         db.rollback()
         raise e
+
     return annotation_list
 
 
@@ -360,6 +363,26 @@ def delete_dataset_annotations(
             f"Attempted to delete annotations from dataset `{dataset.name}` which has status `{dataset.status}`"
         )
 
+    iou_subquery = (
+        select(models.IOU.id.label("id"))
+        .join(
+            models.Annotation,
+            models.Annotation.id == models.IOU.groundtruth_annotation_id,
+        )
+        .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
+        .where(models.Datum.dataset_id == dataset.id)
+        .subquery()
+    )
+    delete_ious_stmt = delete(models.IOU).where(
+        models.IOU.id == iou_subquery.c.id
+    )
+    try:
+        db.execute(delete_ious_stmt)
+        db.commit()
+    except IntegrityError as e:
+        db.rollback()
+        raise e
+
     subquery = (
         select(models.Annotation.id.label("id"))
         .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
@@ -369,7 +392,6 @@ def delete_dataset_annotations(
     delete_stmt = delete(models.Annotation).where(
         models.Annotation.id == subquery.c.id
     )
-
     try:
         db.execute(delete_stmt)
         db.commit()
@@ -403,6 +425,25 @@ def delete_model_annotations(
             f"Attempted to delete annotations from dataset `{model.name}` which is not being deleted."
         )
 
+    iou_subquery = (
+        select(models.IOU.id.label("id"))
+        .join(
+            models.Annotation,
+            models.Annotation.id == models.IOU.prediction_annotation_id,
+        )
+        .where(models.Annotation.model_id == model.id)
+        .subquery()
+    )
+    delete_ious_stmt = delete(models.IOU).where(
+        models.IOU.id == iou_subquery.c.id
+    )
+    try:
+        db.execute(delete_ious_stmt)
+        db.commit()
+    except IntegrityError as e:
+        db.rollback()
+        raise e
+
     subquery = (
         select(models.Annotation.id.label("id"))
         .where(models.Annotation.model_id == model.id)
@@ -411,7 +452,6 @@ def delete_model_annotations(
     delete_stmt = delete(models.Annotation).where(
         models.Annotation.id == subquery.c.id
     )
-
     try:
         db.execute(delete_stmt)
         db.commit()

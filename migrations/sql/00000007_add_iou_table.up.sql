@@ -1,8 +1,9 @@
 create table iou
 (
-    groundtruth_id integer not null references groundtruth,
-    prediction_id integer not null references prediction,
+    id serial primary key,
+    groundtruth_annotation_id integer not null references annotation,
+    prediction_annotation_id integer not null references annotation,
     value float not null,
     created_at    timestamp not null,
-    unique (groundtruth_id, prediction_id)
+    unique (groundtruth_annotation_id, prediction_annotation_id)
 );

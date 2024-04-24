@@ -537,6 +537,18 @@ class Polygon(BaseModel):
         )
         return f"POLYGON (({coords}))"
 
+    def to_box(self) -> "Box":
+        """
+        @TODO
+        """
+        boundary = self.value[0]
+        return Box.from_extrema(
+            xmin=min([p[0] for p in boundary]),
+            xmax=max([p[0] for p in boundary]),
+            ymin=min([p[1] for p in boundary]),
+            ymax=max([p[1] for p in boundary]),
+        )
+
 
 class Box(BaseModel):
     """
@@ -801,6 +813,20 @@ class MultiPolygon(BaseModel):
         coords = "),(".join(polygons)
         return f"MULTIPOLYGON (({coords}))"
 
+    def to_box(self) -> Box:
+        """
+        @TODO
+        """
+        boundaries = [poly[0] for poly in self.value]
+        x = [p[0] for poly in boundaries for p in poly]
+        y = [p[1] for poly in boundaries for p in poly]
+        return Box.from_extrema(
+            xmin=min(x),
+            xmax=max(x),
+            ymin=min(y),
+            ymax=max(y),
+        )
+
 
 class GeoJSON(BaseModel):
     type: str
@@ -1015,6 +1041,27 @@ class Raster(BaseModel):
             The width of the binary mask.
         """
         return self.array.shape[1]
+
+    def to_box(self) -> Box | None:
+        """
+        @TODO
+        """
+        if self.geometry:
+            if isinstance(self.geometry, Box):
+                return self.geometry
+            else:
+                return self.geometry.to_box()
+        else:
+            rows = np.any(self.array, axis=1)
+            cols = np.any(self.array, axis=0)
+            try:
+                xmin, xmax = np.where(rows)[0][[0, -1]]
+                ymin, ymax = np.where(cols)[0][[0, -1]]
+            except IndexError:
+                return None
+            return Box.from_extrema(
+                xmin=xmin, xmax=xmax + 1, ymin=ymin, ymax=ymax + 1
+            )
 
     def to_psql(self) -> ScalarSelect | bytes:
         """
