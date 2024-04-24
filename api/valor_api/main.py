@@ -144,10 +144,11 @@ def get_groundtruth(
 )
 def create_predictions(
     predictions: list[schemas.Prediction],
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ):
     """
-    Create a prediction in the database.
+    Adds new predictions to the database.
 
     POST Endpoint: `/predictions`
 
@@ -166,8 +167,9 @@ def create_predictions(
         If the model has been finalized, or if the dataset has not been finalized.
     """
     try:
-        for prediction in predictions:
-            crud.create_prediction(db=db, prediction=prediction)
+        crud.create_predictions(
+            db=db, predictions=predictions, task_handler=None
+        )
     except Exception as e:
         raise exceptions.create_http_error(e)
 

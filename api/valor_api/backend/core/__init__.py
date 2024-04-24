@@ -65,6 +65,7 @@ from .model import (
     set_model_status,
 )
 from .prediction import (
+    compute_prediction_ious,
     create_prediction,
     delete_dataset_predictions,
     delete_model_predictions,
@@ -120,6 +121,7 @@ __all__ = [
     "get_model_status",
     "set_model_status",
     "create_prediction",
+    "compute_prediction_ious",
     "delete_evaluations",
     "get_prediction",
     "create_or_get_evaluations",

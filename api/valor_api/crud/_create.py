@@ -1,3 +1,5 @@
+from collections import defaultdict
+
 from fastapi import BackgroundTasks
 from sqlalchemy.orm import Session
 
@@ -68,13 +70,14 @@ def create_groundtruth(
     backend.create_groundtruth(db, groundtruth=groundtruth)
 
 
-def create_prediction(
+def create_predictions(
     *,
     db: Session,
-    prediction: schemas.Prediction,
+    predictions: list[schemas.Prediction],
+    task_handler: BackgroundTasks | None = None,
 ):
     """
-    Creates a prediction.
+    Creates  prediction.
 
     Parameters
     ----------
@@ -83,7 +86,31 @@ def create_prediction(
     prediction: schemas.Prediction
         The prediction to create.
     """
-    backend.create_prediction(db, prediction=prediction)
+
+    dataset_model_to_datums = defaultdict(set)
+    for prediction in predictions:
+        backend.create_prediction(db=db, prediction=prediction)
+        dataset_model_to_datums[
+            (prediction.dataset_name, prediction.model_name)
+        ].add(prediction.datum.uid)
+
+    for k, v in dataset_model_to_datums.items():
+        dataset_name, model_name = k
+        if task_handler:
+            task_handler.add_task(
+                backend.compute_prediction_ious,
+                db=db,
+                dataset_name=dataset_name,
+                model_name=model_name,
+                datum_uids=list(v),
+            )
+        else:
+            backend.compute_prediction_ious(
+                db=db,
+                dataset_name=dataset_name,
+                model_name=model_name,
+                datum_uids=list(v),
+            )
 
 
 def create_or_get_evaluations(

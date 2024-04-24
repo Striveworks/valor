@@ -45,8 +45,13 @@ def _create_data(
 
     crud.create_model(db=db, model=schemas.Model(name=model_name))
 
-    crud.create_prediction(db=db, prediction=pred_semantic_segs_img1_create)
-    crud.create_prediction(db=db, prediction=pred_semantic_segs_img2_create)
+    crud.create_predictions(
+        db=db,
+        predictions=[
+            pred_semantic_segs_img1_create,
+            pred_semantic_segs_img2_create,
+        ],
+    )
 
 
 def test_query_generators(

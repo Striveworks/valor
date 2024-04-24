@@ -1,4 +1,5 @@
 from .core import (
+    compute_prediction_ious,
     create_dataset,
     create_groundtruth,
     create_model,
@@ -43,6 +44,7 @@ __all__ = [
     "create_model",
     "create_groundtruth",
     "create_prediction",
+    "compute_prediction_ious",
     "delete_dataset",
     "delete_model",
     "get_dataset",

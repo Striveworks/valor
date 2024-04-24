@@ -5,9 +5,8 @@ from collections import defaultdict
 from dataclasses import dataclass
 from typing import Sequence, Tuple
 
-from geoalchemy2 import functions as gfunc
 from sqlalchemy import and_, case, func, or_, select
-from sqlalchemy.orm import Session, aliased
+from sqlalchemy.orm import Session
 
 from valor_api import enums, schemas
 from valor_api.backend import core, models
@@ -367,36 +366,6 @@ def _compute_detection_metrics(
         A list of average precision metrics.
 
     """
-
-    def _annotation_type_to_column(
-        annotation_type: AnnotationType,
-        table,
-    ):
-        match annotation_type:
-            case AnnotationType.BOX:
-                return table.box
-            case AnnotationType.POLYGON:
-                return table.polygon
-            case AnnotationType.RASTER:
-                return table.raster
-            case _:
-                raise RuntimeError
-
-    def _annotation_type_to_geojson(
-        annotation_type: AnnotationType,
-        table,
-    ):
-        match annotation_type:
-            case AnnotationType.BOX:
-                box = table.box
-            case AnnotationType.POLYGON:
-                box = gfunc.ST_Envelope(table.polygon)
-            case AnnotationType.RASTER:
-                box = gfunc.ST_Envelope(gfunc.ST_MinConvexHull(table.raster))
-            case _:
-                raise RuntimeError
-        return gfunc.ST_AsGeoJSON(box)
-
     if (
         parameters.iou_thresholds_to_return is None
         or parameters.iou_thresholds_to_compute is None
@@ -440,9 +409,7 @@ def _compute_detection_metrics(
                 grouper_mappings["label_id_to_grouper_id_mapping"],
                 value=models.GroundTruth.label_id,
             ).label("label_id_grouper"),
-            _annotation_type_to_geojson(target_type, models.Annotation).label(
-                "geojson"
-            ),
+            func.ST_AsGeoJSON(models.Annotation.box).label("geojson"),
         )
         .filter(groundtruth_filter)
         .groundtruths("groundtruths")
@@ -462,9 +429,7 @@ def _compute_detection_metrics(
                 grouper_mappings["label_id_to_grouper_id_mapping"],
                 value=models.Prediction.label_id,
             ).label("label_id_grouper"),
-            _annotation_type_to_geojson(target_type, models.Annotation).label(
-                "geojson"
-            ),
+            func.ST_AsGeoJSON(models.Annotation.box).label("geojson"),
         )
         .filter(prediction_filter)
         .predictions("predictions")
@@ -632,9 +597,7 @@ def _compute_detection_metrics(
             ).label("label_id_grouper"),
             models.Datum.uid.label("datum_uid"),
             models.Dataset.name.label("dataset_name"),
-            _annotation_type_to_geojson(target_type, models.Annotation).label(
-                "gt_geojson"
-            ),
+            func.ST_AsGeoJSON(models.Annotation.box).label("gt_geojson"),
         )
         .filter(groundtruth_filter)
         .groundtruths()  # type: ignore - SQLAlchemy type issue

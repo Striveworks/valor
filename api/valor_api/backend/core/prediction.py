@@ -1,103 +1,279 @@
-from sqlalchemy import and_, delete, func, or_, select
+from sqlalchemy import delete, func, select
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
 
 from valor_api import enums, exceptions, schemas
 from valor_api.backend import core, models
 
 
-def _precompute_iou(
+def _polygon_iou(gt_geom, pd_geom):
+    gintersection = func.ST_Intersection(gt_geom, pd_geom)
+    gunion = func.ST_Union(gt_geom, pd_geom)
+    return func.ST_Area(gintersection) / func.ST_Area(gunion)
+
+
+def _raster_iou(gt_raster, pd_raster):
+    return func.ST_Count(
+        func.ST_MapAlgebra(
+            gt_raster,
+            pd_raster,
+            "[rast1]*[rast2]",  # https://postgis.net/docs/RT_ST_MapAlgebra_expr.html
+        )
+    )
+
+
+def _coalesce_iou(gt: models.Annotation, pd: models.Annotation):
+    return func.coalesce(
+        _raster_iou(gt.raster, pd.raster),
+        _polygon_iou(gt.polygon, pd.polygon),
+        _polygon_iou(gt.box, pd.box),
+        0,
+    )
+
+
+def compute_prediction_ious(
     db: Session,
-    datum: models.Datum,
-    prediction_annotations: list[models.Annotation],
+    dataset_name: str,
+    model_name: str,
+    datum_uids: list[str],
 ):
-    def _polygon_iou(gt_geom, pd_geom):
-        gintersection = func.ST_Intersection(gt_geom, pd_geom)
-        gunion = func.ST_Union(gt_geom, pd_geom)
-        return func.ST_Area(gintersection) / func.ST_Area(gunion)
 
-    def _raster_iou(gt_raster, pd_raster):
-        return func.ST_Count(
-            func.ST_MapAlgebra(
-                gt_raster,
-                pd_raster,
-                "[rast1]*[rast2]",  # https://postgis.net/docs/RT_ST_MapAlgebra_expr.html
-            )
+    groundtruth_annotations = aliased(models.Annotation)
+    prediction_annotations = aliased(models.Annotation)
+
+    sq = (
+        select(
+            groundtruth_annotations.id.label("gt_id"),
+            prediction_annotations.id.label("pd_id"),
         )
-
-    ious = []
-
-    # object detection
-    obj_det_groundtruths = (
-        db.query(models.Annotation)
+        .select_from(groundtruth_annotations)
+        .join(
+            prediction_annotations,
+            prediction_annotations.datum_id
+            == groundtruth_annotations.datum_id,
+        )
+        .join(
+            models.Datum,
+            models.Datum.id == groundtruth_annotations.datum_id,
+        )
+        .join(
+            models.Dataset,
+            models.Dataset.id == models.Datum.dataset_id,
+        )
+        .join(
+            models.Model,
+            models.Model.id == prediction_annotations.model_id,
+        )
+        .join(
+            models.GroundTruth,
+            models.GroundTruth.annotation_id == groundtruth_annotations.id,
+        )
+        .join(
+            models.Prediction,
+            models.Prediction.annotation_id == prediction_annotations.id,
+        )
         .where(
-            and_(
-                models.Annotation.datum_id == datum.id,
-                models.Annotation.task_type
-                == enums.TaskType.OBJECT_DETECTION.value,
-            )
+            groundtruth_annotations.task_type
+            == enums.TaskType.OBJECT_DETECTION,
+            groundtruth_annotations.model_id.is_(None),
+            prediction_annotations.task_type
+            == enums.TaskType.OBJECT_DETECTION,
+            models.Dataset.name == dataset_name,
+            models.Model.name == model_name,
+            models.Datum.uid.in_(datum_uids),
+            models.GroundTruth.label_id == models.Prediction.label_id,
         )
-        .all()
+        .distinct()
+        .subquery()
     )
-    obj_det_pairings = [
-        (gt, pd)
-        for gt in obj_det_groundtruths
-        for pd in prediction_annotations
-        if pd.task_type == enums.TaskType.OBJECT_DETECTION.value
-    ]
-    for pairing in obj_det_pairings:
-        gt, pd = pairing
-        if gt.raster and pd.raster:
-            iou_value = _raster_iou(gt.raster, pd.raster)
-        elif gt.polygon and pd.polygon:
-            iou_value = _polygon_iou(gt.polygon, pd.polygon)
-        elif gt.box and pd.box:
-            iou_value = _polygon_iou(gt.box, pd.box)
-        else:
-            continue
-        ious.append(
-            models.IOU(
-                groundtruth_annotation_id=gt.id,
-                prediction_annotation_id=pd.id,
-                value=iou_value,
+
+    obj_det_ious = (
+        select(
+            sq.c.gt_id.label("gt_id"),
+            sq.c.pd_id.label("pd_id"),
+            _coalesce_iou(
+                groundtruth_annotations, prediction_annotations
+            ).label("value"),
+        )
+        .select_from(sq)
+        .join(
+            groundtruth_annotations,
+            groundtruth_annotations.id == sq.c.gt_id,
+        )
+        .join(
+            prediction_annotations,
+            prediction_annotations.id == sq.c.pd_id,
+        )
+    )
+
+    print(obj_det_ious)
+
+    try:
+        db.execute(
+            insert(models.IOU)
+            .from_select(
+                [
+                    "groundtruth_annotation_id",
+                    "prediction_annotation_id",
+                    "value",
+                ],
+                obj_det_ious,
+            )
+            .on_conflict_do_nothing(
+                index_elements=[
+                    "groundtruth_annotation_id",
+                    "prediction_annotation_id",
+                ]
             )
         )
+        db.commit()
+    except IntegrityError as e:
+        db.rollback()
+        raise e
 
-    # semantic segmentation
-    sem_seg_groundtruths = (
-        db.query(models.Annotation)
+    semseg_ious = (
+        select(
+            groundtruth_annotations.id.label("gt_id"),
+            prediction_annotations.id.label("pd_id"),
+            _raster_iou(
+                groundtruth_annotations.raster, prediction_annotations.raster
+            ).label("value"),
+        )
+        .select_from(groundtruth_annotations)
+        .join(
+            prediction_annotations,
+            prediction_annotations.datum_id
+            == groundtruth_annotations.datum_id,
+        )
+        .join(
+            models.Datum,
+            models.Datum.id == groundtruth_annotations.datum_id,
+        )
+        .join(
+            models.Dataset,
+            models.Dataset.id == models.Datum.dataset_id,
+        )
+        .join(
+            models.Model,
+            models.Model.id == prediction_annotations.model_id,
+        )
         .where(
-            and_(
-                models.Annotation.datum_id == datum.id,
-                models.Annotation.task_type
-                == enums.TaskType.SEMANTIC_SEGMENTATION.value,
-            )
+            groundtruth_annotations.task_type
+            == enums.TaskType.SEMANTIC_SEGMENTATION,
+            groundtruth_annotations.model_id.is_(None),
+            prediction_annotations.task_type
+            == enums.TaskType.SEMANTIC_SEGMENTATION,
+            models.Dataset.name == dataset_name,
+            models.Model.name == model_name,
+            models.Datum.uid.in_(datum_uids),
         )
-        .all()
     )
-    sem_seg_pairings = [
-        (gt, pd)
-        for gt in sem_seg_groundtruths
-        for pd in prediction_annotations
-        if pd.task_type == enums.TaskType.SEMANTIC_SEGMENTATION.value
-    ]
-    for pairing in sem_seg_pairings:
-        gt, pd = pairing
-        ious.append(
-            models.IOU(
-                groundtruth_annotation_id=gt.id,
-                prediction_annotation_id=pd.id,
-                value=_raster_iou(gt.raster, pd.raster),
+
+    try:
+        db.execute(
+            insert(models.IOU)
+            .from_select(
+                [
+                    "groundtruth_annotation_id",
+                    "prediction_annotation_id",
+                    "value",
+                ],
+                semseg_ious,
+            )
+            .on_conflict_do_nothing(
+                index_elements=[
+                    "groundtruth_annotation_id",
+                    "prediction_annotation_id",
+                ]
             )
         )
+        db.commit()
+    except IntegrityError as e:
+        db.rollback()
+        raise e
 
-    if ious:
-        try:
-            db.add_all(ious)
-            db.commit()
-        except IntegrityError as e:
-            db.rollback()
-            raise e
+
+# def _precompute_iou(
+#     db: Session,
+#     datum: models.Datum,
+#     prediction_annotations: list[models.Annotation],
+# ):
+
+
+#     ious = []
+
+#     # object detection
+#     obj_det_groundtruths = (
+#         db.query(models.Annotation)
+#         .where(
+#             and_(
+#                 models.Annotation.datum_id == datum.id,
+#                 models.Annotation.task_type
+#                 == enums.TaskType.OBJECT_DETECTION.value,
+#             )
+#         )
+#         .all()
+#     )
+#     obj_det_pairings = [
+#         (gt, pd)
+#         for gt in obj_det_groundtruths
+#         for pd in prediction_annotations
+#         if pd.task_type == enums.TaskType.OBJECT_DETECTION.value
+#     ]
+#     for pairing in obj_det_pairings:
+#         gt, pd = pairing
+#         if gt.raster and pd.raster:
+#             iou_value = _raster_iou(gt.raster, pd.raster)
+#         elif gt.polygon and pd.polygon:
+#             iou_value = _polygon_iou(gt.polygon, pd.polygon)
+#         elif gt.box and pd.box:
+#             iou_value = _polygon_iou(gt.box, pd.box)
+#         else:
+#             continue
+#         ious.append(
+#             models.IOU(
+#                 groundtruth_annotation_id=gt.id,
+#                 prediction_annotation_id=pd.id,
+#                 value=iou_value,
+#             )
+#         )
+
+#     # semantic segmentation
+#     sem_seg_groundtruths = (
+#         db.query(models.Annotation)
+#         .where(
+#             and_(
+#                 models.Annotation.datum_id == datum.id,
+#                 models.Annotation.task_type
+#                 == enums.TaskType.SEMANTIC_SEGMENTATION.value,
+#             )
+#         )
+#         .all()
+#     )
+#     sem_seg_pairings = [
+#         (gt, pd)
+#         for gt in sem_seg_groundtruths
+#         for pd in prediction_annotations
+#         if pd.task_type == enums.TaskType.SEMANTIC_SEGMENTATION.value
+#     ]
+#     for pairing in sem_seg_pairings:
+#         gt, pd = pairing
+#         ious.append(
+#             models.IOU(
+#                 groundtruth_annotation_id=gt.id,
+#                 prediction_annotation_id=pd.id,
+#                 value=_raster_iou(gt.raster, pd.raster),
+#             )
+#         )
+
+#     if ious:
+#         try:
+#             db.add_all(ious)
+#             db.commit()
+#         except IntegrityError as e:
+#             db.rollback()
+#             raise e
 
 
 def create_prediction(
@@ -170,8 +346,6 @@ def create_prediction(
     except IntegrityError:
         db.rollback()
         raise exceptions.PredictionAlreadyExistsError
-
-    _precompute_iou(db=db, datum=datum, prediction_annotations=annotation_list)
 
 
 def get_prediction(
