@@ -66,6 +66,7 @@ def _create_annotation(
     polygon = None
     raster = None
     embedding_id = None
+    ranking = None
 
     # task-based conversion
     match annotation.task_type:
@@ -84,6 +85,9 @@ def _create_annotation(
                 embedding_id = _create_embedding(
                     db=db, value=annotation.embedding
                 )
+        case TaskType.RANKING:
+            if annotation.ranking:
+                ranking = annotation.ranking
         case _:
             pass
 
@@ -95,6 +99,7 @@ def _create_annotation(
         "box": box,
         "polygon": polygon,
         "raster": raster,
+        "ranking": ranking,
         "embedding_id": embedding_id,
     }
     return models.Annotation(**mapping)
@@ -249,6 +254,7 @@ def get_annotation(
     polygon = None
     raster = None
     embedding = None
+    ranking = None
 
     # bounding box
     if annotation.box is not None:
@@ -282,6 +288,10 @@ def get_annotation(
             )
         )
 
+    # ranking
+    if annotation.ranking:
+        ranking = annotation.ranking
+
     return schemas.Annotation(
         task_type=annotation.task_type,  # type: ignore - models.Annotation.task_type should be a string in psql
         labels=labels,
@@ -290,6 +300,7 @@ def get_annotation(
         polygon=polygon,  # type: ignore - guaranteed to be a polygon in this case
         raster=raster,
         embedding=embedding,
+        ranking=ranking,
     )
 
 

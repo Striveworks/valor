@@ -194,6 +194,10 @@ def test_evaluate_correct_class_ranking(
     for gt in gt_correct_class_ranking:
         dataset.add_groundtruth(gt)
 
+    import pdb
+
+    pdb.set_trace()
+
     dataset.finalize()
 
     for pred in pd_correct_class_ranking:

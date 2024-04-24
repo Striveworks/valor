@@ -16,6 +16,7 @@ def test_annotation_type_members():
         AnnotationType.POLYGON,
         AnnotationType.MULTIPOLYGON,
         AnnotationType.RASTER,
+        AnnotationType.RANKING,
     }
 
     # test `numeric`
@@ -24,6 +25,7 @@ def test_annotation_type_members():
     assert AnnotationType.POLYGON.numeric == 2
     assert AnnotationType.MULTIPOLYGON.numeric == 3
     assert AnnotationType.RASTER.numeric == 4
+    assert AnnotationType.RANKING.numeric == 5
 
     # test `__gt__`
     _ = AnnotationType.RASTER > AnnotationType.MULTIPOLYGON

@@ -118,7 +118,22 @@ def _validate_annotation_by_task_type(
                 and annotation.raster is None
             ):
                 raise ValueError(
-                    "Annotation with task type `embedding` do not support labels or geometries."
+                    "Annotations with task type `embedding` do not support labels or geometries."
+                )
+        case TaskType.RANKING:
+            if not (
+                annotation.labels
+                and annotation.ranking is not None
+                and (
+                    annotation.bounding_box is None
+                    and annotation.polygon is None
+                    and annotation.embedding is None
+                    and annotation.raster is None
+                    and annotation.embedding is None
+                )
+            ):
+                raise ValueError(
+                    "Annotations with task type `ranking` should only contain labels and rankings."
                 )
         case TaskType.EMPTY | TaskType.SKIP:
             if not _check_if_empty_annotation(annotation):
@@ -319,7 +334,7 @@ class Annotation(BaseModel):
     polygon: Polygon | None = None
     raster: Raster | None = None
     embedding: list[float] | None = None
-    ranking: list[float] | list[str] | None = None
+    ranking: list | None = None
     model_config = ConfigDict(extra="forbid")
 
     @model_validator(mode="after")

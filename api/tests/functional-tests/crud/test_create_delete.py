@@ -1475,3 +1475,162 @@ def test_create_clf_metrics(
         )
     ).all()
     assert len(confusion_matrices) == 2
+
+
+@pytest.fixture
+def groundtruth_ranking(
+    dataset_name, img1: schemas.Datum
+) -> list[schemas.GroundTruth]:
+    return [
+        schemas.GroundTruth(
+            dataset_name=dataset_name,
+            datum=img1,
+            annotations=[
+                schemas.Annotation(
+                    task_type=enums.TaskType.RANKING,
+                    labels=[
+                        schemas.Label(key="k1", value="gt"),
+                    ],
+                    ranking=[
+                        "best choice",
+                        "2nd",
+                        "3rd",
+                        "4th",
+                    ],
+                )
+            ],
+        )
+    ]
+
+
+@pytest.fixture
+def prediction_ranking(
+    dataset_name: str, model_name: str, img1: schemas.Datum
+) -> list[schemas.Prediction]:
+    return [
+        schemas.Prediction(
+            dataset_name=dataset_name,
+            model_name=model_name,
+            datum=img1,
+            annotations=[
+                schemas.Annotation(
+                    task_type=enums.TaskType.RANKING,
+                    labels=[
+                        schemas.Label(key="k1", value="gt2"),
+                    ],
+                    ranking=[
+                        "bbq",
+                        "iguana",
+                        "best choice",
+                    ],  # only "best choice" was actually relevant
+                )
+            ],
+        )
+    ]
+
+
+def test_create_ranking_ground_truth_and_delete_dataset(
+    db: Session,
+    dataset_name: str,
+    groundtruth_ranking: list[schemas.GroundTruth],
+):
+    # sanity check nothing in db
+    _check_db_empty(db=db)
+
+    crud.create_dataset(db=db, dataset=schemas.Dataset(name=dataset_name))
+
+    for gt in groundtruth_ranking:
+        crud.create_groundtruth(db=db, groundtruth=gt)
+
+    assert db.scalar(func.count(models.Annotation.id)) == 1
+    assert db.scalar(func.count(models.Datum.id)) == 1
+    assert db.scalar(func.count(models.GroundTruth.id)) == 1
+    assert db.scalar(func.count(models.Label.id)) == 1
+
+    # verify we get the same dets back
+    for gt in groundtruth_ranking:
+        new_gt = crud.get_groundtruth(
+            db=db, dataset_name=gt.dataset_name, datum_uid=gt.datum.uid
+        )
+        assert gt.datum.uid == new_gt.datum.uid
+        assert gt.dataset_name == new_gt.dataset_name
+        for metadatum in gt.datum.metadata:
+            assert metadatum in new_gt.datum.metadata
+
+        for gta, new_gta in zip(gt.annotations, new_gt.annotations):
+            assert set(gta.labels) == set(new_gta.labels)
+            assert gta.bounding_box == new_gta.bounding_box
+
+    # finalize to free job state
+    crud.finalize(db=db, dataset_name=dataset_name)
+
+    # delete dataset and check the cascade worked
+    crud.delete(db=db, dataset_name=dataset_name)
+    for model_cls in [
+        models.Dataset,
+        models.Datum,
+        models.GroundTruth,
+        models.Annotation,
+    ]:
+        assert db.scalar(func.count(model_cls.id)) == 0
+
+    # make sure labels are still there`
+    assert db.scalar(func.count(models.Label.id)) == 1
+
+
+def test_create_ranking_prediction_and_delete_model(
+    db: Session,
+    dataset_name: str,
+    model_name: str,
+    prediction_ranking: list[schemas.Prediction],
+    groundtruth_ranking: list[schemas.GroundTruth],
+):
+    # check this gives an error since the model hasn't been added yet
+    with pytest.raises(exceptions.DatasetDoesNotExistError) as exc_info:
+        for pd in prediction_ranking:
+            crud.create_prediction(db=db, prediction=pd)
+    assert "does not exist" in str(exc_info)
+
+    # create dataset, add images, and add predictions
+    crud.create_dataset(db=db, dataset=schemas.Dataset(name=dataset_name))
+
+    for gt in groundtruth_ranking:
+        crud.create_groundtruth(db=db, groundtruth=gt)
+
+    # check this gives an error since the model hasn't been created yet
+    with pytest.raises(exceptions.ModelDoesNotExistError) as exc_info:
+        for pd in prediction_ranking:
+            crud.create_prediction(db=db, prediction=pd)
+    assert "does not exist" in str(exc_info)
+
+    # finalize dataset
+    crud.finalize(db=db, dataset_name=dataset_name)
+
+    # check this gives an error since the model hasn't been added yet
+    with pytest.raises(exceptions.ModelDoesNotExistError) as exc_info:
+        for pd in prediction_ranking:
+            crud.create_prediction(db=db, prediction=pd)
+    assert "does not exist" in str(exc_info)
+
+    # create model
+    crud.create_model(db=db, model=schemas.Model(name=model_name))
+    for pd in prediction_ranking:
+        crud.create_prediction(db=db, prediction=pd)
+
+    # check db has the added predictions
+    assert db.scalar(func.count(models.Annotation.id)) == 2
+    assert db.scalar(func.count(models.Datum.id)) == 1
+    assert db.scalar(func.count(models.GroundTruth.id)) == 1
+    assert db.scalar(func.count(models.Prediction.id)) == 1
+    assert db.scalar(func.count(models.Label.id)) == 2
+
+    # finalize
+    crud.finalize(db=db, dataset_name=dataset_name, model_name=model_name)
+
+    # delete model and check all rankings from it are gone
+    crud.delete(db=db, model_name=model_name)
+    assert db.scalar(func.count(models.Annotation.id)) == 1
+    assert db.scalar(func.count(models.Datum.id)) == 1
+    assert db.scalar(func.count(models.GroundTruth.id)) == 1
+    assert db.scalar(func.count(models.Prediction.id)) == 0
+    assert db.scalar(func.count(models.Label.id)) == 2

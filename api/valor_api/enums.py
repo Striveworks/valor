@@ -17,6 +17,7 @@ class AnnotationType(str, Enum):
             self.POLYGON: 2,
             self.MULTIPOLYGON: 3,
             self.RASTER: 4,
+            self.RANKING: 5,
         }
         return mapping[self]
 
