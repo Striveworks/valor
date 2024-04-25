@@ -65,9 +65,9 @@ def _compute_ranking_metrics(
         Query(
             models.GroundTruth,
             case(
-                grouper_mappings["label_key_to_grouper_key"],
-                value=models.Label.key,
-            ).label("grouper_key"),
+                grouper_mappings["label_to_grouper_key"],
+                value=func.concat(models.Label.key, models.Label.value),
+            ).label("grouper_id"),
             models.Annotation.ranking.label("gt_ranking"),
             models.Annotation.datum_id,
             models.Annotation.id.label("gt_annotation_id"),
@@ -79,11 +79,11 @@ def _compute_ranking_metrics(
 
     predictions = (
         Query(
-            models.Prediction,
+            models.Prediction,  # TODO is this deletable?
             case(
-                grouper_mappings["label_key_to_grouper_key"],
-                value=models.Label.key,
-            ).label("grouper_key"),
+                grouper_mappings["label_to_grouper_key"],
+                value=func.concat(models.Label.key, models.Label.value),
+            ).label("grouper_id"),
             models.Annotation.ranking.label("pd_ranking"),
             models.Annotation.datum_id,
             models.Annotation.id.label("pd_annotation_id"),
@@ -95,7 +95,7 @@ def _compute_ranking_metrics(
 
     joint = (
         select(
-            groundtruths.c.grouper_key,
+            groundtruths.c.grouper_id,
             groundtruths.c.gt_ranking,
             groundtruths.c.gt_annotation_id,
             predictions.c.pd_ranking,
@@ -105,7 +105,7 @@ def _compute_ranking_metrics(
         .join(
             predictions,
             and_(
-                groundtruths.c.grouper_key == predictions.c.grouper_key,
+                groundtruths.c.grouper_id == predictions.c.grouper_id,
                 groundtruths.c.datum_id == predictions.c.datum_id,
             ),
             isouter=True,  # left join to include ground truths without predictions
@@ -113,25 +113,25 @@ def _compute_ranking_metrics(
     )
 
     flattened_predictions = select(
-        joint.c.grouper_key,
+        joint.c.grouper_id,
         joint.c.pd_annotation_id,
         func.jsonb_array_elements_text(joint.c.pd_ranking).label("pd_item"),
     )
 
     flattened_groundtruths = select(
-        joint.c.grouper_key,
+        joint.c.grouper_id,
         func.jsonb_array_elements_text(joint.c.gt_ranking).label("gt_item"),
     ).alias()
 
     pd_rankings = select(
-        flattened_predictions.c.grouper_key,
+        flattened_predictions.c.grouper_id,
         flattened_predictions.c.pd_annotation_id,
         flattened_predictions.c.pd_item,
         func.row_number()
         .over(
             partition_by=and_(
                 flattened_predictions.c.pd_annotation_id,
-                flattened_predictions.c.grouper_key,
+                flattened_predictions.c.grouper_id,
             )
         )
         .label("rank"),
@@ -140,7 +140,7 @@ def _compute_ranking_metrics(
     # filter pd_rankings to only include relevant docs, then find the reciprical rank
     reciprocal_rankings = (
         select(
-            pd_rankings.c.grouper_key,
+            pd_rankings.c.grouper_id,
             pd_rankings.c.pd_annotation_id.label("annotation_id"),
             1 / func.min(pd_rankings.c.rank).label("recip_rank"),
         )
@@ -149,13 +149,13 @@ def _compute_ranking_metrics(
         .join(
             flattened_groundtruths,
             and_(
-                flattened_groundtruths.c.grouper_key
-                == pd_rankings.c.grouper_key,
+                flattened_groundtruths.c.grouper_id
+                == pd_rankings.c.grouper_id,
                 flattened_groundtruths.c.gt_item == pd_rankings.c.pd_item,
             ),
         )
         .group_by(
-            pd_rankings.c.grouper_key,
+            pd_rankings.c.grouper_id,
             pd_rankings.c.pd_annotation_id,
         )
     )
@@ -165,14 +165,14 @@ def _compute_ranking_metrics(
 
     # add back any predictions that didn't contain any relevant elements
     gts_with_no_predictions = select(
-        joint.c.grouper_key,
+        joint.c.grouper_id,
         joint.c.gt_annotation_id.label("annotation_id"),
         literal(0).label("recip_rank"),
     ).where(joint.c.pd_annotation_id.is_(None))
 
     rrs_with_missing_entries = (
         select(
-            pd_rankings.c.grouper_key,
+            pd_rankings.c.grouper_id,
             pd_rankings.c.pd_annotation_id.label("annotation_id"),
             literal(0).label("recip_rank"),
         )
@@ -181,7 +181,7 @@ def _compute_ranking_metrics(
         .join(
             aliased_rr,
             and_(
-                pd_rankings.c.grouper_key == aliased_rr.c.grouper_key,
+                pd_rankings.c.grouper_id == aliased_rr.c.grouper_id,
                 pd_rankings.c.pd_annotation_id == aliased_rr.c.annotation_id,
             ),
             isouter=True,
@@ -192,13 +192,13 @@ def _compute_ranking_metrics(
     # take the mean across grouper keys to arrive at the MRR per key
     mrrs_by_key = db.execute(
         select(
-            rrs_with_missing_entries.c.grouper_key,
+            rrs_with_missing_entries.c.grouper_id,
             func.avg(rrs_with_missing_entries.c.recip_rank).label("mrr"),
-        ).group_by(rrs_with_missing_entries.c.grouper_key)
+        ).group_by(rrs_with_missing_entries.c.grouper_id)
     ).all()
 
-    for grouper_key, mrr in mrrs_by_key:
-        metrics.append(schemas.MRRMetric(label_key=grouper_key, value=mrr))
+    for grouper_id, mrr in mrrs_by_key:
+        metrics.append(schemas.MRRMetric(label_key=grouper_id, value=mrr))
 
     return metrics
 

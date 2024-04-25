@@ -1566,11 +1566,11 @@ def test_create_ranking_prediction_and_delete_model(
         crud.create_prediction(db=db, prediction=pd)
 
     # check db has the added predictions
-    assert db.scalar(func.count(models.Annotation.id)) == 9
+    assert db.scalar(func.count(models.Annotation.id)) == 8
     assert db.scalar(func.count(models.Datum.id)) == 2
     assert db.scalar(func.count(models.GroundTruth.id)) == 2
-    assert db.scalar(func.count(models.Prediction.id)) == 7
-    assert db.scalar(func.count(models.Label.id)) == 8
+    assert db.scalar(func.count(models.Prediction.id)) == 6
+    assert db.scalar(func.count(models.Label.id)) == 4
 
     # finalize
     crud.finalize(db=db, dataset_name=dataset_name, model_name=model_name)
@@ -1581,4 +1581,4 @@ def test_create_ranking_prediction_and_delete_model(
     assert db.scalar(func.count(models.Datum.id)) == 2
     assert db.scalar(func.count(models.GroundTruth.id)) == 2
     assert db.scalar(func.count(models.Prediction.id)) == 0
-    assert db.scalar(func.count(models.Label.id)) == 8
+    assert db.scalar(func.count(models.Label.id)) == 4

@@ -962,7 +962,7 @@ def groundtruth_ranking(
                     task_type=enums.TaskType.RANKING,
                     labels=[
                         schemas.Label(
-                            key="k1", value="gt"
+                            key="k1", value="v1"
                         ),  # TODO the value literally isn't used at all here
                     ],
                     ranking=[
@@ -981,7 +981,7 @@ def groundtruth_ranking(
                 schemas.Annotation(
                     task_type=enums.TaskType.RANKING,
                     labels=[
-                        schemas.Label(key="k2", value="gt"),
+                        schemas.Label(key="k2", value="gt2"),
                     ],
                     ranking=[
                         "1",
@@ -1011,7 +1011,7 @@ def prediction_ranking(
                 schemas.Annotation(
                     task_type=enums.TaskType.RANKING,
                     labels=[
-                        schemas.Label(key="k1", value="doesn't matter"),
+                        schemas.Label(key="k1", value="v1"),
                     ],
                     ranking=[
                         "relevant_doc2",
@@ -1022,7 +1022,7 @@ def prediction_ranking(
                 schemas.Annotation(
                     task_type=enums.TaskType.RANKING,
                     labels=[
-                        schemas.Label(key="k1", value="doesn't matter"),
+                        schemas.Label(key="k1", value="v1"),
                     ],
                     ranking=[
                         "foo",
@@ -1051,7 +1051,7 @@ def prediction_ranking(
                 schemas.Annotation(
                     task_type=enums.TaskType.RANKING,
                     labels=[
-                        schemas.Label(key="k1", value=""),
+                        schemas.Label(key="k1", value="v1"),
                     ],
                     ranking=[
                         "foo",
@@ -1063,17 +1063,7 @@ def prediction_ranking(
                 schemas.Annotation(
                     task_type=enums.TaskType.RANKING,
                     labels=[
-                        schemas.Label(key="k1", value="gt2"),
-                    ],
-                    ranking=[
-                        "foo",
-                        "bar",
-                    ],
-                ),
-                schemas.Annotation(
-                    task_type=enums.TaskType.RANKING,
-                    labels=[
-                        schemas.Label(key="k2", value="gt2"),
+                        schemas.Label(key="k2", value="v2"),
                     ],
                     ranking=[
                         "foo",
@@ -1084,11 +1074,11 @@ def prediction_ranking(
                 schemas.Annotation(
                     task_type=enums.TaskType.RANKING,
                     labels=[
-                        schemas.Label(key="k3", value="gt2"),
+                        schemas.Label(key="k3", value="v3"),
                     ],
                     ranking=[
                         "foo",
-                        "bar",
+                        "1",
                     ],
                 ),
             ],
