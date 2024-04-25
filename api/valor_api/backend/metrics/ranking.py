@@ -1,18 +1,17 @@
-# from typing import Sequence
-
 from sqlalchemy.orm import Session
+from sqlalchemy.sql import case, func, select
 
-from valor_api import schemas
-
-# from valor_api import enums, schemas
+from valor_api import enums, schemas
 from valor_api.backend import core, models
-from valor_api.backend.metrics.metric_utils import (  # create_grouper_mappings,
+from valor_api.backend.metrics.metric_utils import (
+    create_grouper_mappings,
     create_metric_mappings,
     get_or_create_row,
     log_evaluation_duration,
     log_evaluation_item_counts,
     validate_computation,
 )
+from valor_api.backend.query import Query
 
 # TODO consolidate this?
 LabelMapType = list[list[list[str]]]
@@ -44,39 +43,127 @@ def _compute_ranking_metrics(
     ----------
     Tuple[List[schemas.ConfusionMatrix], List[schemas.ConfusionMatrix | schemas.AccuracyMetric | schemas.ROCAUCMetric| schemas.PrecisionMetric | schemas.RecallMetric | schemas.F1Metric]]
         A tuple of confusion matrices and metrics.
-    #"""
+    """
 
-    # labels = core.fetch_union_of_labels(
-    #     db=db,
-    #     rhs=prediction_filter,
-    #     lhs=groundtruth_filter,
-    # )
+    metrics = []
 
-    # grouper_mappings = create_grouper_mappings(
-    #     labels=labels,
-    #     label_map=label_map,
-    #     evaluation_type=enums.TaskType.CLASSIFICATION,
-    # )
+    labels = core.fetch_union_of_labels(
+        db=db,
+        rhs=prediction_filter,
+        lhs=groundtruth_filter,
+    )
 
-    return []
-    # # compute metrics and confusion matrix for each grouper id
-    # confusion_matrices, metrics = [], []
-    # for grouper_key in grouper_mappings[
-    #     "grouper_key_to_labels_mapping"
-    # ].keys():
-    #     cm_and_metrics = _compute_confusion_matrix_and_metrics_at_grouper_key(
-    #         db=db,
-    #         prediction_filter=prediction_filter,
-    #         groundtruth_filter=groundtruth_filter,
-    #         grouper_key=grouper_key,
-    #         grouper_mappings=grouper_mappings,
-    #         compute_pr_curves=compute_pr_curves,
-    #     )
-    #     if cm_and_metrics is not None:
-    #         confusion_matrices.append(cm_and_metrics[0])
-    #         metrics.extend(cm_and_metrics[1])
+    grouper_mappings = create_grouper_mappings(
+        labels=labels,
+        label_map=label_map,
+        evaluation_type=enums.TaskType.RANKING,
+    )
 
-    # return confusion_matrices, metrics
+    metrics = []
+
+    groundtruths = (
+        Query(
+            models.GroundTruth,
+            case(
+                grouper_mappings["label_key_to_grouper_key"],
+                value=models.Label.key,
+            ).label("grouper_key"),
+            models.Label.value.label("gt_value"),
+            models.Annotation.ranking.label("gt_ranking"),
+        )
+        .filter(groundtruth_filter)
+        .groundtruths(as_subquery=False)
+        .alias()
+    )
+
+    predictions = (
+        Query(
+            models.Prediction,
+            case(
+                grouper_mappings["label_key_to_grouper_key"],
+                value=models.Label.key,
+            ).label("grouper_key"),
+            models.Label.value.label("pd_value"),
+            models.Annotation.ranking.label("pd_ranking"),
+        )
+        .filter(prediction_filter)
+        .predictions(as_subquery=False)
+        .alias()
+    )
+
+    # blah_rr = db.execute(predictions).all()
+    # import pdb
+
+    # pdb.set_trace()
+
+    joint = (
+        select(
+            groundtruths.c.grouper_key,
+            groundtruths.c.gt_ranking,
+            predictions.c.pd_ranking,
+        )
+        .select_from(groundtruths)
+        .join(
+            predictions,
+            groundtruths.c.grouper_key == predictions.c.grouper_key,
+        )
+    ).alias()
+
+    flattened_predictions = select(
+        joint.c.grouper_key,
+        func.jsonb_array_elements_text(joint.c.pd_ranking).label("pd_rank"),
+    ).select_from(joint)
+
+    pd_rankings = select(
+        flattened_predictions.c.grouper_key,
+        flattened_predictions.c.pd_rank,
+        func.row_number()
+        .over(partition_by=flattened_predictions.c.grouper_key)
+        .label("row_number"),
+    ).alias()
+
+    flattened_groundtruths = (
+        select(
+            joint.c.grouper_key,
+            func.jsonb_array_elements_text(joint.c.gt_ranking).label(
+                "gt_rank"
+            ),
+        )
+        .select_from(joint)
+        .alias()
+    )
+
+    reciprocal_rankings = (
+        select(
+            flattened_groundtruths.c.grouper_key,
+            func.coalesce(func.min(pd_rankings.c.row_number), 0).label("rr"),
+        )
+        .select_from(flattened_groundtruths)
+        .join(
+            pd_rankings,
+            pd_rankings.c.grouper_key == flattened_groundtruths.c.grouper_key,
+        )
+        .group_by(flattened_groundtruths.c.grouper_key)
+        .alias()
+    )
+
+    mean_reciprocal_ranks = (
+        select(
+            reciprocal_rankings.c.grouper_key,
+            func.avg(reciprocal_rankings.c.rr),
+        )
+        .select_from(reciprocal_rankings)
+        .group_by(reciprocal_rankings.c.grouper_key)
+    )
+
+    mrrs_by_key = db.execute(mean_reciprocal_ranks).all()
+
+    for grouper_key, mrr in mrrs_by_key:
+        metrics.append(schemas.MRRMetric(label_key=grouper_key, value=mrr))
+
+    # TODO unit tests for MRRMetrics schema
+
+    return metrics
 
 
 @validate_computation

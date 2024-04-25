@@ -521,6 +521,42 @@ class F1Metric(_PrecisionRecallF1Base):
     __type__ = "F1"
 
 
+class MRRMetric(BaseModel):
+    """
+    Describes a mean reciprical rank metric.
+
+    Attributes
+    ----------
+    label_key : str
+        A label key for the metric.
+    value : float
+        The metric value.
+    """
+
+    label_key: str
+    value: float | int | None
+
+    def db_mapping(self, evaluation_id: int) -> dict:
+        """
+        Creates a mapping for use when uploading the metric to the database.
+
+        Parameters
+        ----------
+        evaluation_id : int
+            The evaluation id.
+
+        Returns
+        ----------
+        A mapping dictionary.
+        """
+        return {
+            "value": self.value,
+            "type": "MRRMetric",
+            "parameters": {"label_key": self.label_key},
+            "evaluation_id": evaluation_id,
+        }
+
+
 class ROCAUCMetric(BaseModel):
     """
     Describes an ROC AUC metric.

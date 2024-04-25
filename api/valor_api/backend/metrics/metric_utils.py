@@ -70,6 +70,35 @@ def _create_segmentation_grouper_mappings(
     }
 
 
+def _create_ranking_grouper_mappings(
+    mapping_dict: dict[tuple[str, ...], tuple[str, ...]],
+    labels: list[models.Label],
+) -> dict[str, dict]:
+    """Create grouper mappings for use when evaluating rankings."""
+
+    # define mappers to connect groupers with labels
+    label_value_to_grouper_value = {}
+    label_key_to_grouper_key = {}
+    grouper_key_to_label_keys_mapping = defaultdict(set)
+
+    for label in labels:
+        # the grouper should equal the (label.key, label.value) if it wasn't mapped by the user
+        grouper_key, grouper_value = mapping_dict.get(
+            (label.key, label.value), (label.key, label.value)
+        )
+
+        # TODO check if all of these are actually used
+        label_key_to_grouper_key[label.key] = grouper_key
+        label_value_to_grouper_value[label.value] = grouper_value
+        grouper_key_to_label_keys_mapping[grouper_key].add(label.key)
+
+    return {
+        "label_value_to_grouper_value": label_value_to_grouper_value,
+        "label_key_to_grouper_key": label_key_to_grouper_key,
+        "grouper_key_to_label_keys_mapping": grouper_key_to_label_keys_mapping,
+    }
+
+
 def _create_classification_grouper_mappings(
     mapping_dict: dict[tuple[str, ...], tuple[str, ...]],
     labels: list[models.Label],
@@ -126,6 +155,7 @@ def create_grouper_mappings(
         enums.TaskType.CLASSIFICATION: _create_classification_grouper_mappings,
         enums.TaskType.OBJECT_DETECTION: _create_detection_grouper_mappings,
         enums.TaskType.SEMANTIC_SEGMENTATION: _create_segmentation_grouper_mappings,
+        enums.TaskType.RANKING: _create_ranking_grouper_mappings,
     }
     if evaluation_type not in mapping_functions.keys():
         raise KeyError(

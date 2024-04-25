@@ -951,7 +951,7 @@ def raster() -> schemas.Raster:
 
 @pytest.fixture
 def groundtruth_ranking(
-    dataset_name, img1: schemas.Datum
+    dataset_name, img1: schemas.Datum, img2: schemas.Datum
 ) -> list[schemas.GroundTruth]:
     return [
         schemas.GroundTruth(
@@ -961,23 +961,46 @@ def groundtruth_ranking(
                 schemas.Annotation(
                     task_type=enums.TaskType.RANKING,
                     labels=[
-                        schemas.Label(key="k1", value="gt"),
+                        schemas.Label(
+                            key="k1", value="gt"
+                        ),  # TODO the value literally isn't used at all here
                     ],
                     ranking=[
-                        "best choice",
-                        "2nd",
-                        "3rd",
-                        "4th",
+                        "relevant_doc1",
+                        "relevant_doc2",
+                        "relevant_doc3",
+                        "relevant_doc4",
                     ],
                 )
             ],
-        )
+        ),
+        schemas.GroundTruth(
+            dataset_name=dataset_name,
+            datum=img2,
+            annotations=[
+                schemas.Annotation(
+                    task_type=enums.TaskType.RANKING,
+                    labels=[
+                        schemas.Label(key="k2", value="gt"),
+                    ],
+                    ranking=[
+                        "1",
+                        "2",
+                        "3",
+                        "4",
+                    ],
+                )
+            ],
+        ),
     ]
 
 
 @pytest.fixture
 def prediction_ranking(
-    dataset_name: str, model_name: str, img1: schemas.Datum
+    dataset_name: str,
+    model_name: str,
+    img1: schemas.Datum,
+    img2: schemas.Datum,
 ) -> list[schemas.Prediction]:
     return [
         schemas.Prediction(
@@ -993,9 +1016,38 @@ def prediction_ranking(
                     ranking=[
                         "bbq",
                         "iguana",
-                        "best choice",
-                    ],  # only "best choice" was actually relevant
+                        "relevant_doc3",
+                    ],
                 )
             ],
-        )
+        ),
+        # the datum doesn't matter
+        schemas.Prediction(
+            dataset_name=dataset_name,
+            model_name=model_name,
+            datum=img2,
+            annotations=[
+                schemas.Annotation(
+                    task_type=enums.TaskType.RANKING,
+                    labels=[
+                        schemas.Label(key="k1", value="gt2"),
+                    ],
+                    ranking=[
+                        "bbq",
+                        "relevant_doc4",
+                        "relevant_doc3",
+                    ],
+                ),
+                schemas.Annotation(
+                    task_type=enums.TaskType.RANKING,
+                    labels=[
+                        schemas.Label(key="k1", value="gt2"),
+                    ],
+                    ranking=[
+                        "foo",
+                        "bar",
+                    ],
+                ),
+            ],
+        ),
     ]

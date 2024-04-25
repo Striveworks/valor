@@ -45,11 +45,11 @@ def ranking_test_data(
         crud.create_prediction(db=db, prediction=pd)
     crud.finalize(db=db, dataset_name=dataset_name, model_name=model_name)
 
-    assert len(db.query(models.Datum).all()) == 1
-    assert len(db.query(models.Annotation).all()) == 2
-    assert len(db.query(models.Label).all()) == 2
-    assert len(db.query(models.GroundTruth).all()) == 1
-    assert len(db.query(models.Prediction).all()) == 1
+    assert len(db.query(models.Datum).all()) == 2
+    assert len(db.query(models.Annotation).all()) == 5
+    assert len(db.query(models.Label).all()) == 3
+    assert len(db.query(models.GroundTruth).all()) == 2
+    assert len(db.query(models.Prediction).all()) == 3
 
 
 def test_ranking(

@@ -30,48 +30,31 @@ def gt_correct_class_ranking():
                         Label(key="k1", value="gt"),
                     ],
                     ranking=[
-                        "best choice",
-                        "2nd",
-                        "3rd",
-                        "4th",
+                        "relevant_doc1",
+                        "relevant_doc2",
+                        "relevant_doc3",
+                        "relevant_doc4",
                     ],
                 )
             ],
         ),
-        # GroundTruth(
-        #     datum=Datum(uid="uid1", metadata={}),
-        #     annotations=[
-        #         Annotation(
-        #             task_type=TaskType.RANKING,
-        #             labels=[
-        #                 Label(key="k2", value="gt"),
-        #             ],
-        #             ranking=[
-        #                 "a",
-        #                 "b",
-        #                 "c",
-        #                 "d",
-        #             ],
-        #         )
-        #     ],
-        # ),
-        # GroundTruth(
-        #     datum=Datum(uid="uid2", metadata={}),
-        #     annotations=[
-        #         Annotation(
-        #             task_type=TaskType.RANKING,
-        #             labels=[
-        #                 Label(key="k1", value="gt"),
-        #             ],
-        #             ranking=[
-        #                 "1",
-        #                 "2",
-        #                 "3",
-        #                 "4",
-        #             ],
-        #         )
-        #     ],
-        # ),
+        GroundTruth(
+            datum=Datum(uid="uid2", metadata={}),
+            annotations=[
+                Annotation(
+                    task_type=TaskType.RANKING,
+                    labels=[
+                        Label(key="k2", value="gt"),
+                    ],
+                    ranking=[
+                        "1",
+                        "2",
+                        "3",
+                        "4",
+                    ],
+                )
+            ],
+        ),
     ]
 
 
@@ -87,10 +70,41 @@ def pd_correct_class_ranking():
                         Label(key="k1", value="gt"),
                     ],
                     ranking=[
+                        "foo",
+                        "bar",
+                        "relevant_doc2",
+                    ],
+                )
+            ],
+        ),
+        Prediction(
+            datum=Datum(uid="uid1", metadata={}),
+            annotations=[
+                Annotation(
+                    task_type=TaskType.RANKING,
+                    labels=[
+                        Label(key="k1", value="gt"),
+                    ],
+                    ranking=[
                         "bbq",
                         "iguana",
-                        "best choice",
-                    ],  # only "best choice" was actually relevant
+                    ],
+                )
+            ],
+        ),
+        Prediction(
+            datum=Datum(uid="uid1", metadata={}),
+            annotations=[
+                Annotation(
+                    task_type=TaskType.RANKING,
+                    labels=[
+                        Label(key="k1", value="gt"),
+                    ],
+                    ranking=[
+                        "foo",
+                        "relevant_doc4",
+                        "relevant_doc1",
+                    ],
                 )
             ],
         ),
@@ -215,6 +229,8 @@ def test_evaluate_correct_class_ranking(
 
     # TODO check that label key actually matters
 
+    # TODO what if a label value is shared across multiple keys? need to handle that somehow
+
 
 def test_evaluate_relevancy_score_ranking():
     pass
@@ -226,3 +242,6 @@ def test_evaluate_embedding_ranking():
 
 def test_evaluate_mixed_rankings():
     pass
+
+
+# TODO test that each key only has one groundtruth
