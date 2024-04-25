@@ -1490,10 +1490,10 @@ def test_create_ranking_ground_truth_and_delete_dataset(
     for gt in groundtruth_ranking:
         crud.create_groundtruth(db=db, groundtruth=gt)
 
-    assert db.scalar(func.count(models.Annotation.id)) == 1
-    assert db.scalar(func.count(models.Datum.id)) == 1
-    assert db.scalar(func.count(models.GroundTruth.id)) == 1
-    assert db.scalar(func.count(models.Label.id)) == 1
+    assert db.scalar(func.count(models.Annotation.id)) == 2
+    assert db.scalar(func.count(models.Datum.id)) == 2
+    assert db.scalar(func.count(models.GroundTruth.id)) == 2
+    assert db.scalar(func.count(models.Label.id)) == 2
 
     # verify we get the same dets back
     for gt in groundtruth_ranking:
@@ -1523,7 +1523,7 @@ def test_create_ranking_ground_truth_and_delete_dataset(
         assert db.scalar(func.count(model_cls.id)) == 0
 
     # make sure labels are still there`
-    assert db.scalar(func.count(models.Label.id)) == 1
+    assert db.scalar(func.count(models.Label.id)) == 2
 
 
 def test_create_ranking_prediction_and_delete_model(
@@ -1566,19 +1566,19 @@ def test_create_ranking_prediction_and_delete_model(
         crud.create_prediction(db=db, prediction=pd)
 
     # check db has the added predictions
-    assert db.scalar(func.count(models.Annotation.id)) == 2
-    assert db.scalar(func.count(models.Datum.id)) == 1
-    assert db.scalar(func.count(models.GroundTruth.id)) == 1
-    assert db.scalar(func.count(models.Prediction.id)) == 1
-    assert db.scalar(func.count(models.Label.id)) == 2
+    assert db.scalar(func.count(models.Annotation.id)) == 9
+    assert db.scalar(func.count(models.Datum.id)) == 2
+    assert db.scalar(func.count(models.GroundTruth.id)) == 2
+    assert db.scalar(func.count(models.Prediction.id)) == 7
+    assert db.scalar(func.count(models.Label.id)) == 8
 
     # finalize
     crud.finalize(db=db, dataset_name=dataset_name, model_name=model_name)
 
     # delete model and check all rankings from it are gone
     crud.delete(db=db, model_name=model_name)
-    assert db.scalar(func.count(models.Annotation.id)) == 1
-    assert db.scalar(func.count(models.Datum.id)) == 1
-    assert db.scalar(func.count(models.GroundTruth.id)) == 1
+    assert db.scalar(func.count(models.Annotation.id)) == 2
+    assert db.scalar(func.count(models.Datum.id)) == 2
+    assert db.scalar(func.count(models.GroundTruth.id)) == 2
     assert db.scalar(func.count(models.Prediction.id)) == 0
-    assert db.scalar(func.count(models.Label.id)) == 2
+    assert db.scalar(func.count(models.Label.id)) == 8

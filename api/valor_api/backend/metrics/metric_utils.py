@@ -77,25 +77,18 @@ def _create_ranking_grouper_mappings(
     """Create grouper mappings for use when evaluating rankings."""
 
     # define mappers to connect groupers with labels
-    label_value_to_grouper_value = {}
     label_key_to_grouper_key = {}
-    grouper_key_to_label_keys_mapping = defaultdict(set)
 
     for label in labels:
         # the grouper should equal the (label.key, label.value) if it wasn't mapped by the user
-        grouper_key, grouper_value = mapping_dict.get(
+        grouper_key, _ = mapping_dict.get(
             (label.key, label.value), (label.key, label.value)
         )
 
-        # TODO check if all of these are actually used
         label_key_to_grouper_key[label.key] = grouper_key
-        label_value_to_grouper_value[label.value] = grouper_value
-        grouper_key_to_label_keys_mapping[grouper_key].add(label.key)
 
     return {
-        "label_value_to_grouper_value": label_value_to_grouper_value,
         "label_key_to_grouper_key": label_key_to_grouper_key,
-        "grouper_key_to_label_keys_mapping": grouper_key_to_label_keys_mapping,
     }
 
 

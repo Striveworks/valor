@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from sqlalchemy.sql import case, func, select
+from sqlalchemy.sql import and_, case, func, literal, select
 
 from valor_api import enums, schemas
 from valor_api.backend import core, models
@@ -68,8 +68,9 @@ def _compute_ranking_metrics(
                 grouper_mappings["label_key_to_grouper_key"],
                 value=models.Label.key,
             ).label("grouper_key"),
-            models.Label.value.label("gt_value"),
             models.Annotation.ranking.label("gt_ranking"),
+            models.Annotation.datum_id,
+            models.Annotation.id.label("gt_annotation_id"),
         )
         .filter(groundtruth_filter)
         .groundtruths(as_subquery=False)
@@ -83,85 +84,121 @@ def _compute_ranking_metrics(
                 grouper_mappings["label_key_to_grouper_key"],
                 value=models.Label.key,
             ).label("grouper_key"),
-            models.Label.value.label("pd_value"),
             models.Annotation.ranking.label("pd_ranking"),
+            models.Annotation.datum_id,
+            models.Annotation.id.label("pd_annotation_id"),
         )
         .filter(prediction_filter)
         .predictions(as_subquery=False)
         .alias()
     )
 
-    # blah_rr = db.execute(predictions).all()
-    # import pdb
-
-    # pdb.set_trace()
-
     joint = (
         select(
             groundtruths.c.grouper_key,
             groundtruths.c.gt_ranking,
+            groundtruths.c.gt_annotation_id,
             predictions.c.pd_ranking,
+            predictions.c.pd_annotation_id,
         )
         .select_from(groundtruths)
         .join(
             predictions,
-            groundtruths.c.grouper_key == predictions.c.grouper_key,
+            and_(
+                groundtruths.c.grouper_key == predictions.c.grouper_key,
+                groundtruths.c.datum_id == predictions.c.datum_id,
+            ),
+            isouter=True,  # left join to include ground truths without predictions
         )
-    ).alias()
+    )
 
     flattened_predictions = select(
         joint.c.grouper_key,
-        func.jsonb_array_elements_text(joint.c.pd_ranking).label("pd_rank"),
-    ).select_from(joint)
+        joint.c.pd_annotation_id,
+        func.jsonb_array_elements_text(joint.c.pd_ranking).label("pd_item"),
+    )
+
+    flattened_groundtruths = select(
+        joint.c.grouper_key,
+        func.jsonb_array_elements_text(joint.c.gt_ranking).label("gt_item"),
+    ).alias()
 
     pd_rankings = select(
         flattened_predictions.c.grouper_key,
-        flattened_predictions.c.pd_rank,
+        flattened_predictions.c.pd_annotation_id,
+        flattened_predictions.c.pd_item,
         func.row_number()
-        .over(partition_by=flattened_predictions.c.grouper_key)
-        .label("row_number"),
+        .over(
+            partition_by=and_(
+                flattened_predictions.c.pd_annotation_id,
+                flattened_predictions.c.grouper_key,
+            )
+        )
+        .label("rank"),
     ).alias()
 
-    flattened_groundtruths = (
-        select(
-            joint.c.grouper_key,
-            func.jsonb_array_elements_text(joint.c.gt_ranking).label(
-                "gt_rank"
-            ),
-        )
-        .select_from(joint)
-        .alias()
-    )
-
+    # filter pd_rankings to only include relevant docs, then find the reciprical rank
     reciprocal_rankings = (
         select(
-            flattened_groundtruths.c.grouper_key,
-            func.coalesce(func.min(pd_rankings.c.row_number), 0).label("rr"),
+            pd_rankings.c.grouper_key,
+            pd_rankings.c.pd_annotation_id.label("annotation_id"),
+            1 / func.min(pd_rankings.c.rank).label("recip_rank"),
         )
-        .select_from(flattened_groundtruths)
+        .distinct()
+        .select_from(pd_rankings)
         .join(
-            pd_rankings,
-            pd_rankings.c.grouper_key == flattened_groundtruths.c.grouper_key,
+            flattened_groundtruths,
+            and_(
+                flattened_groundtruths.c.grouper_key
+                == pd_rankings.c.grouper_key,
+                flattened_groundtruths.c.gt_item == pd_rankings.c.pd_item,
+            ),
         )
-        .group_by(flattened_groundtruths.c.grouper_key)
-        .alias()
+        .group_by(
+            pd_rankings.c.grouper_key,
+            pd_rankings.c.pd_annotation_id,
+        )
     )
 
-    mean_reciprocal_ranks = (
+    # needed to avoid a type error when joining
+    aliased_rr = reciprocal_rankings.alias()
+
+    # add back any predictions that didn't contain any relevant elements
+    gts_with_no_predictions = select(
+        joint.c.grouper_key,
+        joint.c.gt_annotation_id.label("annotation_id"),
+        literal(0).label("recip_rank"),
+    ).where(joint.c.pd_annotation_id.is_(None))
+
+    rrs_with_missing_entries = (
         select(
-            reciprocal_rankings.c.grouper_key,
-            func.avg(reciprocal_rankings.c.rr),
+            pd_rankings.c.grouper_key,
+            pd_rankings.c.pd_annotation_id.label("annotation_id"),
+            literal(0).label("recip_rank"),
         )
-        .select_from(reciprocal_rankings)
-        .group_by(reciprocal_rankings.c.grouper_key)
-    )
+        .distinct()
+        .select_from(pd_rankings)
+        .join(
+            aliased_rr,
+            and_(
+                pd_rankings.c.grouper_key == aliased_rr.c.grouper_key,
+                pd_rankings.c.pd_annotation_id == aliased_rr.c.annotation_id,
+            ),
+            isouter=True,
+        )
+        .where(aliased_rr.c.annotation_id.is_(None))
+    ).union_all(reciprocal_rankings, gts_with_no_predictions)
 
-    mrrs_by_key = db.execute(mean_reciprocal_ranks).all()
+    # take the mean across grouper keys to arrive at the MRR per key
+    mrrs_by_key = db.execute(
+        select(
+            rrs_with_missing_entries.c.grouper_key,
+            func.avg(rrs_with_missing_entries.c.recip_rank).label("mrr"),
+        ).group_by(rrs_with_missing_entries.c.grouper_key)
+    ).all()
 
     for grouper_key, mrr in mrrs_by_key:
         metrics.append(schemas.MRRMetric(label_key=grouper_key, value=mrr))
-
-    # TODO unit tests for MRRMetrics schema
 
     return metrics
 

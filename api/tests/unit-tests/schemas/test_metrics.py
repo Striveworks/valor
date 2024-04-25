@@ -328,6 +328,26 @@ def test_ROCAUCMetric():
     )
 
 
+def test_MRRMetric():
+    mrr_metric = schemas.MRRMetric(label_key="key", value=0.2)
+
+    with pytest.raises(ValidationError):
+        schemas.MRRMetric(label_key=None, value=0.2)  # type: ignore - purposefully throwing error
+
+    with pytest.raises(ValidationError):
+        schemas.MRRMetric(label_key=123, value=0.2)  # type: ignore - purposefully throwing error
+
+    with pytest.raises(ValidationError):
+        schemas.MRRMetric(label_key="key", value="not a number")  # type: ignore - purposefully throwing error
+
+    assert all(
+        [
+            key in ["value", "type", "evaluation_id", "parameters"]
+            for key in mrr_metric.db_mapping(evaluation_id=1)
+        ]
+    )
+
+
 def test_IOUMetric():
     iou_metric = schemas.IOUMetric(
         label=schemas.Label(key="key", value="value"), value=0.2

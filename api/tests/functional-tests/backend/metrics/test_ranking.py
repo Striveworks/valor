@@ -46,10 +46,10 @@ def ranking_test_data(
     crud.finalize(db=db, dataset_name=dataset_name, model_name=model_name)
 
     assert len(db.query(models.Datum).all()) == 2
-    assert len(db.query(models.Annotation).all()) == 5
-    assert len(db.query(models.Label).all()) == 3
+    assert len(db.query(models.Annotation).all()) == 10
+    assert len(db.query(models.Label).all()) == 8
     assert len(db.query(models.GroundTruth).all()) == 2
-    assert len(db.query(models.Prediction).all()) == 3
+    assert len(db.query(models.Prediction).all()) == 7
 
 
 def test_ranking(
@@ -87,12 +87,20 @@ def test_ranking(
         enums.EvaluationStatus.DONE,
     }
 
-    metrics = evaluations[0].metrics
+    assert evaluations[0].metrics is not None
 
-    assert metrics
-    for metric in metrics:
-        if isinstance(metric, schemas.ROCAUCMetric):
-            if metric.label_key == "animal":
-                assert metric.value == 0.8009259259259259
-            elif metric.label_key == "color":
-                assert metric.value == 0.43125
+    metrics = {}
+    for metric in evaluations[0].metrics:
+        assert metric.parameters  # handles type error
+        metrics[metric.parameters["label_key"]] = metric.value
+
+    expected_metrics = {
+        "k1": 0.4,  # (1 + .33 + .166 + .5 + 0) / 5
+        "k2": 0,  # no predictions for this key
+    }
+
+    for key, value in metrics.items():
+        assert expected_metrics[key] == value
+
+    for key, value in expected_metrics.items():
+        assert metrics[key] == value
