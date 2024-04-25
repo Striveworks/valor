@@ -31,7 +31,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: build
         run: |
-          docker build . -t ${IMAGE_NAME} --build-args="PG_MAJOR=15" --build-args="PG_VECTOR=0.6.2"
+          docker build . -t ${IMAGE_NAME}
       - name: push
         run: |
           docker push ${IMAGE_NAME}
