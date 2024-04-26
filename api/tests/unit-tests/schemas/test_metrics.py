@@ -329,7 +329,7 @@ def test_ROCAUCMetric():
 
 
 def test_MRRMetric():
-    mrr_metric = schemas.MRRMetric(label_key="key", value=0.2)
+    metric = schemas.MRRMetric(label_key="key", value=0.2)
 
     with pytest.raises(ValidationError):
         schemas.MRRMetric(label_key=None, value=0.2)  # type: ignore - purposefully throwing error
@@ -343,7 +343,119 @@ def test_MRRMetric():
     assert all(
         [
             key in ["value", "type", "evaluation_id", "parameters"]
-            for key in mrr_metric.db_mapping(evaluation_id=1)
+            for key in metric.db_mapping(evaluation_id=1)
+        ]
+    )
+
+
+def test_PrecisionAtKMetric():
+    metric = schemas.PrecisionAtKMetric(
+        label=schemas.Label(key="k1", value="v1"),
+        value=0.2,
+        k=1,
+        annotation_id=123,
+    )
+
+    with pytest.raises(ValidationError):
+        schemas.PrecisionAtKMetric(label_key=None, value=0.2)  # type: ignore - purposefully throwing error
+
+    with pytest.raises(ValidationError):
+        schemas.PrecisionAtKMetric(label_key=123, value=0.2)  # type: ignore - purposefully throwing error
+
+    with pytest.raises(ValidationError):
+        schemas.PrecisionAtKMetric(
+            label=schemas.Label(key="k1", value="v1"),
+            value=0.2,
+            k=None,  # type: ignore - purposefully throwing error
+            annotation_id=123,
+        )
+
+    with pytest.raises(ValidationError):
+        schemas.PrecisionAtKMetric(
+            label=schemas.Label(key="k1", value="v1"),
+            value=0.2,
+            k=125,
+            annotation_id="not an id",  # type: ignore - purposefully throwing error
+        )
+
+    assert all(
+        [
+            key in ["value", "label_id", "type", "evaluation_id", "parameters"]
+            for key in metric.db_mapping(label_id=1, evaluation_id=1)
+        ]
+    )
+
+
+def test_APAtKMetric():
+    metric = schemas.APAtKMetric(
+        label=schemas.Label(key="k1", value="v1"),
+        value=0.2,
+        k_cutoffs=[1, 3, 5],
+        annotation_id=123,
+    )
+
+    with pytest.raises(ValidationError):
+        schemas.APAtKMetric(label_key=None, value=0.2)  # type: ignore - purposefully throwing error
+
+    with pytest.raises(ValidationError):
+        schemas.APAtKMetric(label_key=123, value=0.2)  # type: ignore - purposefully throwing error
+
+    with pytest.raises(ValidationError):
+        schemas.APAtKMetric(
+            label=schemas.Label(key="k1", value="v1"),
+            value=0.2,
+            k_cutoffs=None,  # type: ignore - purposefully throwing error
+            annotation_id=123,
+        )
+
+    with pytest.raises(ValidationError):
+        schemas.APAtKMetric(
+            label=schemas.Label(key="k1", value="v1"),
+            value=0.2,
+            k_cutoffs=[1, 3, 5],
+            annotation_id="not an id",  # type: ignore - purposefully throwing error
+        )
+
+    assert all(
+        [
+            key in ["value", "label_id", "type", "evaluation_id", "parameters"]
+            for key in metric.db_mapping(label_id=1, evaluation_id=1)
+        ]
+    )
+
+
+def test_mAPAtKMetric():
+    metric = schemas.mAPAtKMetric(
+        label_key="k1",
+        value=0.2,
+        k_cutoffs=[1, 3, 5],
+    )
+
+    with pytest.raises(ValidationError):
+        schemas.mAPAtKMetric(label_key=None, value=0.2)  # type: ignore - purposefully throwing error
+
+    with pytest.raises(ValidationError):
+        schemas.mAPAtKMetric(label_key=123, value=0.2)  # type: ignore - purposefully throwing error
+
+    with pytest.raises(ValidationError):
+        schemas.mAPAtKMetric(
+            label_key="k1",
+            value=0.2,
+            k_cutoffs=None,  # type: ignore - purposefully throwing error
+        )
+
+    with pytest.raises(ValidationError):
+        schemas.mAPAtKMetric(
+            label_key="k1",
+            value=0.2,
+            k_cutoffs=1,  # type: ignore - purposefully throwing error,
+        )
+
+    assert all(
+        [
+            key
+            in ["value", "label_key", "type", "evaluation_id", "parameters"]
+            for key in metric.db_mapping(evaluation_id=1)
         ]
     )
 

@@ -78,17 +78,20 @@ def _create_ranking_grouper_mappings(
 
     # define mappers to connect groupers with labels
     label_to_grouper_key = {}
+    label_to_grouper_value = {}
 
     for label in labels:
         # the grouper should equal the (label.key, label.value) if it wasn't mapped by the user
-        grouper_key, _ = mapping_dict.get(
+        grouper_key, grouper_value = mapping_dict.get(
             (label.key, label.value), (label.key, label.value)
         )
 
         label_to_grouper_key[label.key + label.value] = grouper_key
+        label_to_grouper_value[label.key + label.value] = grouper_value
 
     return {
         "label_to_grouper_key": label_to_grouper_key,
+        "label_to_grouper_value": label_to_grouper_value,
     }
 
 

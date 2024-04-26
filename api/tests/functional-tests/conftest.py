@@ -961,9 +961,7 @@ def groundtruth_ranking(
                 schemas.Annotation(
                     task_type=enums.TaskType.RANKING,
                     labels=[
-                        schemas.Label(
-                            key="k1", value="v1"
-                        ),  # TODO the value literally isn't used at all here
+                        schemas.Label(key="k1", value="v1"),
                     ],
                     ranking=[
                         "relevant_doc1",
@@ -1060,6 +1058,7 @@ def prediction_ranking(
                         "relevant_doc2",
                     ],
                 ),
+                # this key/value isn't associated with any groundtruths unless a label map is used
                 schemas.Annotation(
                     task_type=enums.TaskType.RANKING,
                     labels=[
@@ -1070,7 +1069,7 @@ def prediction_ranking(
                         "bar",
                     ],
                 ),
-                # this key isn't associated with any groundtruths, so it should be discarded
+                # this key/value isn't associated with any groundtruths, so it should be discarded
                 schemas.Annotation(
                     task_type=enums.TaskType.RANKING,
                     labels=[

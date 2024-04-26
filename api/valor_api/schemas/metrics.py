@@ -557,6 +557,137 @@ class MRRMetric(BaseModel):
         }
 
 
+class PrecisionAtKMetric(BaseModel):
+    """
+    Describes a precision@k metric, which measures how many items with the top k positions are relevant.
+
+    Attributes
+    ----------
+    label : Label
+        A label for the metric.
+    value : float
+        The metric value.
+    k: int
+        The cut-off used to calculate precision@k.
+    annotation_id: int
+        The id of the annotation associated with the prediction
+    """
+
+    label: Label
+    value: float | int | None
+    k: int
+    annotation_id: int
+
+    def db_mapping(self, label_id: int, evaluation_id: int) -> dict:
+        """
+        Creates a mapping for use when uploading the metric to the database.
+
+        Parameters
+        ----------
+        evaluation_id : int
+            The evaluation id.
+
+        Returns
+        ----------
+        A mapping dictionary.
+        """
+        return {
+            "value": self.value,
+            "label_id": label_id,
+            "type": "PrecisionAtKMetric",
+            "parameters": {"k": self.k, "annotation_id": self.annotation_id},
+            "evaluation_id": evaluation_id,
+        }
+
+
+class APAtKMetric(BaseModel):
+    """
+    Describes a average precision@k metric, which is the mean of precision@i for i=1,...,k.
+
+    Attributes
+    ----------
+    label : Label
+        A label for the metric.
+    value : float
+        The metric value.
+    k_cutoffs: list[int]
+        The cut-offs used to calculate AP@k.
+    annotation_id: int
+        The id of the annotation associated with the prediction
+    """
+
+    label: Label
+    value: float | int | None
+    annotation_id: int
+    k_cutoffs: list[int]
+
+    def db_mapping(self, label_id: int, evaluation_id: int) -> dict:
+        """
+        Creates a mapping for use when uploading the metric to the database.
+
+        Parameters
+        ----------
+        evaluation_id : int
+            The evaluation id.
+
+        Returns
+        ----------
+        A mapping dictionary.
+        """
+        return {
+            "value": self.value,
+            "label_id": label_id,
+            "type": "APAtKMetric",
+            "parameters": {
+                "k_cutoffs": self.k_cutoffs,
+                "annotation_id": self.annotation_id,
+            },
+            "evaluation_id": evaluation_id,
+        }
+
+
+class mAPAtKMetric(BaseModel):
+    """
+    Describes a mean average precision@k metric, which is the mean of average precision@k rolled-up to the label key.
+
+    Attributes
+    ----------
+    label_key : str
+        A label key for the metric.
+    value : float
+        The metric value.
+    k_cutoffs: list[int]
+        The cut-offs used to calculate AP@k.
+    """
+
+    label_key: str
+    value: float | int | None
+    k_cutoffs: list[int]
+
+    def db_mapping(self, evaluation_id: int) -> dict:
+        """
+        Creates a mapping for use when uploading the metric to the database.
+
+        Parameters
+        ----------
+        evaluation_id : int
+            The evaluation id.
+
+        Returns
+        ----------
+        A mapping dictionary.
+        """
+        return {
+            "value": self.value,
+            "type": "mAPAtKMetric",
+            "parameters": {
+                "label_key": self.label_key,
+                "k_cutoffs": self.k_cutoffs,
+            },
+            "evaluation_id": evaluation_id,
+        }
+
+
 class ROCAUCMetric(BaseModel):
     """
     Describes an ROC AUC metric.
