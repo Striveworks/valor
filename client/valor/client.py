@@ -657,7 +657,7 @@ class ClientConnection:
             A dictionary describing a datum.
         """
         return self._requests_get_rel_host(
-            f"/data/dataset/{dataset_name}/uid/{uid}"
+            f"data/dataset/{dataset_name}/uid/{uid}"
         ).json()
 
     def create_model(self, model: dict) -> None:

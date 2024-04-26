@@ -89,10 +89,6 @@ class DatumAlreadyExistsError(ClientException):
     pass
 
 
-class DatumDoesNotBelongToDatasetError(ClientException):
-    pass
-
-
 class AnnotationAlreadyExistsError(ClientException):
     pass
 
@@ -135,10 +131,10 @@ def raise_client_exception(resp: Response):
         try:
             error_dict = json.loads(resp_json["detail"])
             cls_name = error_dict["name"]
-            if cls_name in locals() and issubclass(
-                locals()[cls_name], ClientException
+            if cls_name in globals() and issubclass(
+                globals()[cls_name], ClientException
             ):
-                raise locals()[cls_name](resp)
+                raise globals()[cls_name](resp)
             else:
                 raise ClientException(resp)
         except (TypeError, json.JSONDecodeError):

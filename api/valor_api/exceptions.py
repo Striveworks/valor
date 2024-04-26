@@ -280,24 +280,6 @@ class DatumAlreadyExistsError(Exception):
         super().__init__(f"Datum with uid: `{uid}` already exists.")
 
 
-class DatumDoesNotBelongToDatasetError(Exception):
-    """
-    Raises an exception if the user tries to manipulate a datum that doesn't exist on a particular dataset.
-
-    Parameters
-    -------
-    dataset_name : str
-        The name of the dataset.
-    datum_uid : str
-        The UID of the datum.
-    """
-
-    def __init__(self, dataset_name: str, datum_uid: str):
-        super().__init__(
-            f"Datum with uid: `{datum_uid}` does not belong to dataset `{dataset_name}`."
-        )
-
-
 """ Annotation """
 
 
@@ -451,7 +433,6 @@ error_to_status_code = {
     ModelNotFinalizedError: 409,
     ModelStateError: 409,
     DatumAlreadyExistsError: 409,
-    DatumDoesNotBelongToDatasetError: 409,
     AnnotationAlreadyExistsError: 409,
     GroundTruthAlreadyExistsError: 409,
     PredictionAlreadyExistsError: 409,
@@ -486,7 +467,6 @@ def create_http_error(
         | ModelNotFinalizedError
         | ModelStateError
         | DatumAlreadyExistsError
-        | DatumDoesNotBelongToDatasetError
         | AnnotationAlreadyExistsError
         | GroundTruthAlreadyExistsError
         | PredictionAlreadyExistsError

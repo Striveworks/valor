@@ -1409,13 +1409,8 @@ class Client:
         dataset_name = (
             dataset.get_name() if isinstance(dataset, Dataset) else dataset
         )
-        try:
-            resp = self.conn.get_datum(dataset_name=dataset_name, uid=uid)
-            return Datum.decode_value(resp)
-        except ClientException as e:
-            if e.status_code == 404:
-                return None
-            raise e
+        resp = self.conn.get_datum(dataset_name=dataset_name, uid=uid)
+        return Datum.decode_value(resp)
 
     def get_dataset_status(
         self,
