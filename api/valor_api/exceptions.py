@@ -137,20 +137,6 @@ class ModelDoesNotExistError(Exception):
         super().__init__(f"Model with name `{name}` does not exist.")
 
 
-class ModelIsEmptyError(Exception):
-    """
-    Raises an exception if the user tries to manipulate an empty model.
-
-    Parameters
-    -------
-    name : str
-        The name of the model.
-    """
-
-    def __init__(self, name: str):
-        super().__init__(f"Model with name `{name}` contains no inferences.")
-
-
 class ModelFinalizedError(Exception):
     """
     Raises an exception if the user tries to add predictions to a model that has been finalized.
@@ -396,7 +382,6 @@ class EvaluationStateError(Exception):
 error_to_status_code = {
     # 400
     Exception: 400,
-    ModelIsEmptyError: 400,
     ValueError: 400,
     AttributeError: 400,
     # 404
@@ -432,7 +417,6 @@ error_to_status_code = {
 def create_http_error(
     error: (
         Exception
-        | ModelIsEmptyError
         | ValueError
         | AttributeError
         | DatasetDoesNotExistError

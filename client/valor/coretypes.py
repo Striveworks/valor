@@ -8,7 +8,11 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 from valor.client import ClientConnection, connect, get_connection
 from valor.enums import AnnotationType, EvaluationStatus, TableStatus, TaskType
-from valor.exceptions import ClientException, DatasetDoesNotExistError
+from valor.exceptions import (
+    ClientException,
+    DatasetDoesNotExistError,
+    ModelDoesNotExistError,
+)
 from valor.schemas import (
     Annotation,
     Datum,
@@ -1465,8 +1469,7 @@ class Client:
                     self.get_dataset(name)
                 except DatasetDoesNotExistError:
                     break
-                else:
-                    time.sleep(1)
+                time.sleep(1)
             else:
                 raise TimeoutError(
                     "Dataset wasn't deleted within timeout interval"
@@ -1594,17 +1597,12 @@ class Client:
         Union[valor.Model, None]
             A Model with matching name or 'None' if one doesn't exist.
         """
-        try:
-            return Model.decode_value(
-                {
-                    **self.conn.get_model(name),
-                    "connection": self.conn,
-                }
-            )
-        except ClientException as e:
-            if e.status_code == 404:
-                return None
-            raise e
+        return Model.decode_value(
+            {
+                **self.conn.get_model(name),
+                "connection": self.conn,
+            }
+        )
 
     def get_models(
         self,
@@ -1699,10 +1697,11 @@ class Client:
         self.conn.delete_model(name)
         if timeout:
             for _ in range(timeout):
-                if self.get_model(name) is None:
+                try:
+                    self.get_model(name)
+                except ModelDoesNotExistError:
                     break
-                else:
-                    time.sleep(1)
+                time.sleep(1)
             else:
                 raise TimeoutError(
                     "Model wasn't deleted within timeout interval"

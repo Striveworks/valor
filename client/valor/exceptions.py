@@ -53,10 +53,6 @@ class ModelDoesNotExistError(ClientException):
     pass
 
 
-class ModelIsEmptyError(ClientException):
-    pass
-
-
 class ModelFinalizedError(ClientException):
     pass
 
@@ -66,10 +62,6 @@ class ModelNotFinalizedError(ClientException):
 
 
 class ModelInferencesDoNotExist(ClientException):
-    pass
-
-
-class ModelStateError(ClientException):
     pass
 
 

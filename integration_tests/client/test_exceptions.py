@@ -50,3 +50,29 @@ def test_datum_exceptions(client: Client, dataset_name: str):
 
     with pytest.raises(exceptions.DatumDoesNotExistError):
         client.get_datum(dataset_name, "nonexistent")
+
+
+def test_model_exceptions(client: Client, model_name: str, dataset_name: str):
+    # test `ModelDoesNotExistError`
+    with pytest.raises(exceptions.ModelDoesNotExistError):
+        client.get_model("nonexistent")
+
+    # test `ModelAlreadyExistsError`
+    model = Model.create(model_name)
+    with pytest.raises(exceptions.ModelAlreadyExistsError):
+        Model.create(model_name)
+
+    # test `ModelNotFinalizedError`
+    dset = Dataset.create(dataset_name)
+    dset.add_groundtruth(GroundTruth(datum=Datum(uid="uid"), annotations=[]))
+    dset.finalize()
+    with pytest.raises(exceptions.ModelNotFinalizedError):
+        model.evaluate_classification(dset)
+
+    # test `ModelFinalizedError`
+    model.finalize_inferences(dset)
+    with pytest.raises(exceptions.ModelFinalizedError):
+        model.add_prediction(
+            dset,
+            Prediction(datum=Datum(uid="uid"), annotations=[]),
+        )
