@@ -457,6 +457,14 @@ def validate_metadata(dictionary: dict):
         # atomic values don't require explicit typing.
         elif isinstance(value, (bool, int, float, str)):
             continue
+        # TODO Should we use validate_type_string? Should we allow other atomic types?
+        elif isinstance(value, list):
+            for v in value:
+                if not isinstance(v, str):
+                    raise ValueError(
+                        "Metadata lists must only contain strings."
+                    )
+            continue
         # if a value is not atomic, explicit typing it required.
         elif not isinstance(value, dict) or set(value.keys()) != {
             "type",

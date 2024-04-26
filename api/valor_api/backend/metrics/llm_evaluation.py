@@ -28,18 +28,20 @@ def _compute_llm_evaluation_metrics(
     db: Session,
     prediction_filter: schemas.Filter,
     groundtruth_filter: schemas.Filter,
-    compute_pr_curves: bool,
     label_map: LabelMapType | None = None,
-) -> tuple[
-    list[schemas.ConfusionMatrix],
-    Sequence[
-        schemas.ConfusionMatrix
-        | schemas.AccuracyMetric
-        | schemas.ROCAUCMetric
-        | schemas.PrecisionMetric
-        | schemas.RecallMetric
-        | schemas.F1Metric
-    ],
+) -> Sequence[
+    schemas.AnswerCorrectnessMetric
+    | schemas.AnswerRelevanceMetric
+    | schemas.BiasMetric
+    | schemas.CoherenceMetric
+    | schemas.ContextPrecisionMetric
+    | schemas.ContextRecallMetric
+    | schemas.ContextRelevanceMetric
+    | schemas.FaithfulnessMetric
+    | schemas.GrammaticalityMetric
+    | schemas.HallucinationMetric
+    | schemas.QAGMetric
+    | schemas.ToxicityMetric
 ]:
     """
     Compute classification metrics.
@@ -52,15 +54,13 @@ def _compute_llm_evaluation_metrics(
         The filter to be used to query predictions.
     groundtruth_filter : schemas.Filter
         The filter to be used to query groundtruths.
-    compute_pr_curves: bool
-        A boolean which determines whether we calculate precision-recall curves or not.
     label_map: LabelMapType, optional
         Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
 
     Returns
     ----------
-    Tuple[List[schemas.ConfusionMatrix], List[schemas.ConfusionMatrix | schemas.AccuracyMetric | schemas.ROCAUCMetric| schemas.PrecisionMetric | schemas.RecallMetric | schemas.F1Metric]]
-        A tuple of confusion matrices and metrics.
+    Sequence[schemas.AnswerCorrectnessMetric | schemas.AnswerRelevanceMetric | schemas.BiasMetric | schemas.CoherenceMetric | schemas.ContextPrecisionMetric | schemas.ContextRecallMetric | schemas.ContextRelevanceMetric | schemas.FaithfulnessMetric | schemas.GrammaticalityMetric | schemas.HallucinationMetric | schemas.QAGMetric | schemas.ToxicityMetric]
+        A list of metrics.
     """
     raise NotImplementedError
 
@@ -88,7 +88,6 @@ def _compute_llm_evaluation_metrics(
         #     groundtruth_filter=groundtruth_filter,
         #     grouper_key=grouper_key,
         #     grouper_mappings=grouper_mappings,
-        #     compute_pr_curves=compute_pr_curves,
         # )
         if cm_and_metrics is not None:
             confusion_matrices.append(cm_and_metrics[0])
@@ -104,7 +103,7 @@ def compute_llm_evaluation_metrics(
     evaluation_id: int,
 ) -> int:
     """
-    Create classification metrics. This function is intended to be run using FastAPI's `BackgroundTasks`.
+    Create llm guided evaluation metrics. This function is intended to be run using FastAPI's `BackgroundTasks`.
 
     Parameters
     ----------
@@ -118,8 +117,6 @@ def compute_llm_evaluation_metrics(
     int
         The evaluation job id.
     """
-
-    raise NotImplementedError
 
     # fetch evaluation
     evaluation = core.fetch_evaluation_from_id(db, evaluation_id)
@@ -141,30 +138,12 @@ def compute_llm_evaluation_metrics(
         groundtruth_filter=groundtruth_filter,
     )
 
-    confusion_matrices, metrics = _compute_llm_evaluation_metrics(
+    metrics = _compute_llm_evaluation_metrics(
         db=db,
         prediction_filter=prediction_filter,
         groundtruth_filter=groundtruth_filter,
         label_map=parameters.label_map,
-        compute_pr_curves=(
-            parameters.compute_pr_curves
-            if parameters.compute_pr_curves is not None
-            else False
-        ),
     )
-
-    confusion_matrices_mappings = create_metric_mappings(
-        db=db,
-        metrics=confusion_matrices,
-        evaluation_id=evaluation.id,
-    )
-
-    for mapping in confusion_matrices_mappings:
-        get_or_create_row(
-            db,
-            models.ConfusionMatrix,
-            mapping,
-        )
 
     metric_mappings = create_metric_mappings(
         db=db,

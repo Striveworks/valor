@@ -84,6 +84,8 @@ def _create_annotation(
                 embedding_id = _create_embedding(
                     db=db, value=annotation.embedding
                 )
+        case TaskType.LLM_EVALUATION:  # TODO
+            raise NotImplementedError
         case _:
             pass
 

@@ -625,6 +625,96 @@ class mIOUMetric(BaseModel):
         }
 
 
+class AnswerCorrectnessMetric(BaseModel):
+    """
+    Describes a TODO.
+
+    Attributes
+    ----------
+    label_key : str
+        A label for the metric.
+    """
+
+    label_key: Label
+
+    def db_mapping(self, label_id: int, evaluation_id: int) -> dict:
+        """
+        Creates a mapping for use when uploading the metric to the database.
+
+        Parameters
+        ----------
+        label_id : int
+            The label id.
+        evaluation_id : int
+            The evaluation id.
+
+        Returns
+        ----------
+        A mapping dictionary.
+        """
+        raise NotImplementedError
+
+
+class AnswerRelevanceMetric(BaseModel):
+    """
+    Describes a TODO.
+
+    Attributes
+    ----------
+    label_key : str
+        A label for the metric.
+    """
+
+    label_key: Label
+
+    def db_mapping(self, label_id: int, evaluation_id: int) -> dict:
+        """
+        Creates a mapping for use when uploading the metric to the database.
+
+        Parameters
+        ----------
+        label_id : int
+            The label id.
+        evaluation_id : int
+            The evaluation id.
+
+        Returns
+        ----------
+        A mapping dictionary.
+        """
+        raise NotImplementedError
+
+
+class BiasMetric(BaseModel):
+    """
+    Describes a TODO.
+
+    Attributes
+    ----------
+    label_key : str
+        A label for the metric.
+    """
+
+    label_key: Label
+
+    def db_mapping(self, label_id: int, evaluation_id: int) -> dict:
+        """
+        Creates a mapping for use when uploading the metric to the database.
+
+        Parameters
+        ----------
+        label_id : int
+            The label id.
+        evaluation_id : int
+            The evaluation id.
+
+        Returns
+        ----------
+        A mapping dictionary.
+        """
+        raise NotImplementedError
+
+
 class CoherenceMetric(BaseModel):
     """
     Describes a coherence metric.
@@ -638,4 +728,261 @@ class CoherenceMetric(BaseModel):
     """
 
     label_key: Label
-    value: float
+    value: float  # TODO or an int between 1 and 5?
+
+    def db_mapping(self, label_id: int, evaluation_id: int) -> dict:
+        """
+        Creates a mapping for use when uploading the metric to the database.
+
+        Parameters
+        ----------
+        label_id : int
+            The label id.
+        evaluation_id : int
+            The evaluation id.
+
+        Returns
+        ----------
+        A mapping dictionary.
+        """
+        raise NotImplementedError
+
+
+class ContextPrecisionMetric(BaseModel):
+    """
+    Describes a TODO.
+
+    Attributes
+    ----------
+    label_key : str
+        A label for the metric.
+    """
+
+    label_key: Label
+
+    def db_mapping(self, label_id: int, evaluation_id: int) -> dict:
+        """
+        Creates a mapping for use when uploading the metric to the database.
+
+        Parameters
+        ----------
+        label_id : int
+            The label id.
+        evaluation_id : int
+            The evaluation id.
+
+        Returns
+        ----------
+        A mapping dictionary.
+        """
+        raise NotImplementedError
+
+
+class ContextRecallMetric(BaseModel):
+    """
+    Describes a TODO.
+
+    Attributes
+    ----------
+    label_key : str
+        A label for the metric.
+    """
+
+    label_key: Label
+
+    def db_mapping(self, label_id: int, evaluation_id: int) -> dict:
+        """
+        Creates a mapping for use when uploading the metric to the database.
+
+        Parameters
+        ----------
+        label_id : int
+            The label id.
+        evaluation_id : int
+            The evaluation id.
+
+        Returns
+        ----------
+        A mapping dictionary.
+        """
+        raise NotImplementedError
+
+
+class ContextRelevanceMetric(BaseModel):
+    """
+    Describes a TODO.
+
+    Attributes
+    ----------
+    label_key : str
+        A label for the metric.
+    """
+
+    label_key: Label
+
+    def db_mapping(self, label_id: int, evaluation_id: int) -> dict:
+        """
+        Creates a mapping for use when uploading the metric to the database.
+
+        Parameters
+        ----------
+        label_id : int
+            The label id.
+        evaluation_id : int
+            The evaluation id.
+
+        Returns
+        ----------
+        A mapping dictionary.
+        """
+        raise NotImplementedError
+
+
+class FaithfulnessMetric(BaseModel):
+    """
+    Describes a TODO.
+
+    Attributes
+    ----------
+    label_key : str
+        A label for the metric.
+    """
+
+    label_key: Label
+
+    def db_mapping(self, label_id: int, evaluation_id: int) -> dict:
+        """
+        Creates a mapping for use when uploading the metric to the database.
+
+        Parameters
+        ----------
+        label_id : int
+            The label id.
+        evaluation_id : int
+            The evaluation id.
+
+        Returns
+        ----------
+        A mapping dictionary.
+        """
+        raise NotImplementedError
+
+
+class GrammaticalityMetric(BaseModel):
+    """
+    Describes a TODO.
+
+    Attributes
+    ----------
+    label_key : str
+        A label for the metric.
+    """
+
+    label_key: Label
+
+    def db_mapping(self, label_id: int, evaluation_id: int) -> dict:
+        """
+        Creates a mapping for use when uploading the metric to the database.
+
+        Parameters
+        ----------
+        label_id : int
+            The label id.
+        evaluation_id : int
+            The evaluation id.
+
+        Returns
+        ----------
+        A mapping dictionary.
+        """
+        raise NotImplementedError
+
+
+class HallucinationMetric(BaseModel):
+    """
+    Describes a TODO.
+
+    Attributes
+    ----------
+    label_key : str
+        A label for the metric.
+    """
+
+    label_key: Label
+
+    def db_mapping(self, label_id: int, evaluation_id: int) -> dict:
+        """
+        Creates a mapping for use when uploading the metric to the database.
+
+        Parameters
+        ----------
+        label_id : int
+            The label id.
+        evaluation_id : int
+            The evaluation id.
+
+        Returns
+        ----------
+        A mapping dictionary.
+        """
+        raise NotImplementedError
+
+
+class QAGMetric(BaseModel):
+    """
+    Describes a TODO.
+
+    Attributes
+    ----------
+    label_key : str
+        A label for the metric.
+    """
+
+    label_key: Label
+
+    def db_mapping(self, label_id: int, evaluation_id: int) -> dict:
+        """
+        Creates a mapping for use when uploading the metric to the database.
+
+        Parameters
+        ----------
+        label_id : int
+            The label id.
+        evaluation_id : int
+            The evaluation id.
+
+        Returns
+        ----------
+        A mapping dictionary.
+        """
+        raise NotImplementedError
+
+
+class ToxicityMetric(BaseModel):
+    """
+    Describes a TODO.
+
+    Attributes
+    ----------
+    label_key : str
+        A label for the metric.
+    """
+
+    label_key: Label
+
+    def db_mapping(self, label_id: int, evaluation_id: int) -> dict:
+        """
+        Creates a mapping for use when uploading the metric to the database.
+
+        Parameters
+        ----------
+        label_id : int
+            The label id.
+        evaluation_id : int
+            The evaluation id.
+
+        Returns
+        ----------
+        A mapping dictionary.
+        """
+        raise NotImplementedError
