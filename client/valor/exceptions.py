@@ -131,13 +131,17 @@ class EvaluationStateError(ClientException):
 
 def raise_client_exception(resp: Response):
     try:
-        error_dict = json.loads(resp.json()["detail"])
-        cls_name = error_dict["name"]
-        if cls_name in locals() and issubclass(
-            locals()[cls_name], ClientException
-        ):
-            raise locals()[cls_name](resp)
-        else:
+        resp_json = resp.json()
+        try:
+            error_dict = json.loads(resp_json["detail"])
+            cls_name = error_dict["name"]
+            if cls_name in locals() and issubclass(
+                locals()[cls_name], ClientException
+            ):
+                raise locals()[cls_name](resp)
+            else:
+                raise ClientException(resp)
+        except (TypeError, json.JSONDecodeError):
             raise ClientException(resp)
     except (exceptions.JSONDecodeError, KeyError):
         resp.raise_for_status()
