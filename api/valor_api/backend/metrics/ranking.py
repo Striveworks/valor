@@ -22,6 +22,7 @@ def _compute_ranking_metrics(
     prediction_filter: schemas.Filter,
     groundtruth_filter: schemas.Filter,
     label_map: LabelMapType | None = None,
+    k_cutoffs: list[int] = [1, 3, 5],
 ) -> list:
     """
     Compute classification metrics.
@@ -34,10 +35,10 @@ def _compute_ranking_metrics(
         The filter to be used to query predictions.
     groundtruth_filter : schemas.Filter
         The filter to be used to query groundtruths.
-    compute_pr_curves: bool
-        A boolean which determines whether we calculate precision-recall curves or not.
     label_map: LabelMapType, optional
         Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
+    k_cutoffs: list[int]
+        The cut-offs (or "k" values) to use when calculating precision@k, recall@k, etc.
 
     Returns
     ----------
@@ -138,11 +139,11 @@ def _compute_ranking_metrics(
     ).alias()
 
     # filter pd_rankings to only include relevant docs, then find the reciprical rank
-    reciprocal_rankings = (
+    filtered_rankings = (
         select(
             pd_rankings.c.grouper_id,
-            pd_rankings.c.pd_annotation_id.label("annotation_id"),
-            1 / func.min(pd_rankings.c.rank).label("recip_rank"),
+            pd_rankings.c.pd_annotation_id,
+            pd_rankings.c.rank,
         )
         .distinct()
         .select_from(pd_rankings)
@@ -154,9 +155,19 @@ def _compute_ranking_metrics(
                 flattened_groundtruths.c.gt_item == pd_rankings.c.pd_item,
             ),
         )
+    ).alias()
+
+    # calculate reciprocal rankings for MRR
+    reciprocal_rankings = (
+        select(
+            filtered_rankings.c.grouper_id,
+            filtered_rankings.c.pd_annotation_id.label("annotation_id"),
+            1 / func.min(filtered_rankings.c.rank).label("recip_rank"),
+        )
+        .select_from(filtered_rankings)
         .group_by(
-            pd_rankings.c.grouper_id,
-            pd_rankings.c.pd_annotation_id,
+            filtered_rankings.c.grouper_id,
+            filtered_rankings.c.pd_annotation_id,
         )
     )
 
@@ -170,7 +181,7 @@ def _compute_ranking_metrics(
         literal(0).label("recip_rank"),
     ).where(joint.c.pd_annotation_id.is_(None))
 
-    rrs_with_missing_entries = (
+    predictions_with_no_gts = (
         select(
             pd_rankings.c.grouper_id,
             pd_rankings.c.pd_annotation_id.label("annotation_id"),
@@ -187,15 +198,57 @@ def _compute_ranking_metrics(
             isouter=True,
         )
         .where(aliased_rr.c.annotation_id.is_(None))
-    ).union_all(reciprocal_rankings, gts_with_no_predictions)
+    )
+
+    aliased_predictions_with_no_gts = predictions_with_no_gts.alias()
+
+    mrr_union = predictions_with_no_gts.union_all(
+        reciprocal_rankings, gts_with_no_predictions
+    )
 
     # take the mean across grouper keys to arrive at the MRR per key
     mrrs_by_key = db.execute(
         select(
-            rrs_with_missing_entries.c.grouper_id,
-            func.avg(rrs_with_missing_entries.c.recip_rank).label("mrr"),
-        ).group_by(rrs_with_missing_entries.c.grouper_id)
+            mrr_union.c.grouper_id,
+            func.avg(mrr_union.c.recip_rank).label("mrr"),
+        ).group_by(mrr_union.c.grouper_id)
     ).all()
+
+    # calculate precision @k to measure how many items with the top k positions are relevant.
+    sum_functions = [
+        func.sum(
+            case(
+                (filtered_rankings.c.rank <= k, 1),
+                else_=0,
+            )
+        ).label(f"precision@{k}")
+        for k in k_cutoffs
+    ]
+
+    # TODO make this metric be at the metric level
+    # TODO create schema for this metric
+    # TODO roll up to average@k and mean@k
+    precision_at_k = db.execute(
+        select(
+            filtered_rankings.c.grouper_id,
+            filtered_rankings.c.pd_annotation_id,
+            *sum_functions,
+        )
+        .select_from(filtered_rankings)
+        .group_by(
+            filtered_rankings.c.grouper_id,
+            filtered_rankings.c.pd_annotation_id,
+        )
+        .union_all(  # add back predictions that don't have any groundtruths
+            select(
+                predictions_with_no_gts.c.grouper_id,
+                predictions_with_no_gts.c.annotation_id,
+                *(literal(0).label(f"precision@{k}") for k in k_cutoffs),
+            ).select_from(aliased_predictions_with_no_gts)
+        )
+    ).all()  # type: ignore - sqlalchemy type error
+
+    print(precision_at_k)
 
     for grouper_id, mrr in mrrs_by_key:
         metrics.append(schemas.MRRMetric(label_key=grouper_id, value=mrr))
