@@ -30,6 +30,7 @@ from .metrics import (
     APMetric,
     APMetricAveragedOverIOUs,
     ARMetric,
+    CoherenceMetric,
     ConfusionMatrix,
     ConfusionMatrixEntry,
     ConfusionMatrixResponse,
@@ -112,4 +113,5 @@ __all__ = [
     "Health",
     "Readiness",
     "DatasetSummary",
+    "CoherenceMetric",
 ]

@@ -623,3 +623,19 @@ class mIOUMetric(BaseModel):
             "type": "mIOU",
             "evaluation_id": evaluation_id,
         }
+
+
+class CoherenceMetric(BaseModel):
+    """
+    Describes a coherence metric.
+
+    Attributes
+    ----------
+    label_key : str
+        A label for the metric.
+    value : float
+        The metric value.
+    """
+
+    label_key: Label
+    value: float

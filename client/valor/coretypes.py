@@ -1115,7 +1115,9 @@ class Model(StaticCollection):
                 task_type=TaskType.LLM_EVALUATION,
                 llm_url=llm_url,
                 llm_api_key=llm_api_key,
-                label_map=self._create_label_map(label_map=label_map),
+                label_map=self._create_label_map(
+                    label_map=label_map
+                ),  # TODO is this needed? The other evaluate client side functions all have label_map, but it isn't used in the api for EvaluationRequest in the functional tests.
             ),
             meta={},
         )

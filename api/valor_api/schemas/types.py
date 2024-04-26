@@ -118,7 +118,18 @@ def _validate_annotation_by_task_type(
                 and annotation.raster is None
             ):
                 raise ValueError(
-                    "Annotation with task type `embedding` do not support labels or geometries."
+                    "Annotations with task type `embedding` do not support labels or geometries."
+                )
+        case TaskType.LLM_EVALUATION:
+            if not (  # TODO check this
+                annotation.labels
+                and annotation.bounding_box is None
+                and annotation.polygon is None
+                and annotation.raster is None
+                and annotation.embedding is None
+            ):
+                raise ValueError(
+                    "Annotations with task type `llm-evaluation` do not support geometries or embeddings."
                 )
         case TaskType.EMPTY | TaskType.SKIP:
             if not _check_if_empty_annotation(annotation):
