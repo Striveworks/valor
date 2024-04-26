@@ -1323,18 +1323,13 @@ class Client:
         Union[Dataset, None]
             A Dataset with a matching name, or 'None' if one doesn't exist.
         """
-        try:
-            dataset = Dataset.decode_value(
-                {
-                    **self.conn.get_dataset(name),
-                    "connection": self.conn,
-                }
-            )
-            return dataset
-        except ClientException as e:
-            if e.status_code == 404:
-                return None
-            raise e
+        dataset = Dataset.decode_value(
+            {
+                **self.conn.get_dataset(name),
+                "connection": self.conn,
+            }
+        )
+        return dataset
 
     def get_datasets(
         self,

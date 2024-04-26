@@ -794,13 +794,6 @@ def test_finalize_datasets(crud, client: TestClient):
         resp = client.put("datasets/dsetname/finalize")
         assert resp.status_code == 404
 
-    with patch(
-        "valor_api.main.crud.finalize",
-        side_effect=exceptions.DatasetIsEmptyError(""),
-    ):
-        resp = client.put("datasets/dsetname/finalize")
-        assert resp.status_code == 409
-
     resp = client.get("/datasets/dsetname/finalize")
     assert resp.status_code == 405
 
@@ -891,13 +884,6 @@ def test_finalize_inferences(crud, client: TestClient):
     ):
         resp = client.put("/models/modelname/datasets/dsetname/finalize")
         assert resp.status_code == 404
-
-    with patch(
-        "valor_api.main.crud.finalize",
-        side_effect=exceptions.DatasetIsEmptyError(""),
-    ):
-        resp = client.put("/models/modelname/datasets/dsetname/finalize")
-        assert resp.status_code == 409
 
     resp = client.get("/models/modelname/datasets/dsetname/finalize")
     assert resp.status_code == 405

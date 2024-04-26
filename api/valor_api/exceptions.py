@@ -46,22 +46,6 @@ class DatasetDoesNotExistError(Exception):
         super().__init__(f"Dataset with name `{name}` does not exist.")
 
 
-class DatasetIsEmptyError(Exception):
-    """
-    Raises an exception if the user tries to manipulate an empty dataset.
-
-    Parameters
-    -------
-    name : str
-        The name of the dataset.
-    """
-
-    def __init__(self, name: str):
-        super().__init__(
-            f"Dataset with name `{name}` contains no groundtruths."
-        )
-
-
 class DatasetFinalizedError(Exception):
     """
     Raises an exception if the user tries to add groundtruths to a dataset that has already been finalized.
@@ -424,7 +408,6 @@ error_to_status_code = {
     PredictionDoesNotExistError: 404,
     # 409
     DatasetAlreadyExistsError: 409,
-    DatasetIsEmptyError: 409,
     DatasetFinalizedError: 409,
     DatasetNotFinalizedError: 409,
     DatasetStateError: 409,
@@ -458,7 +441,6 @@ def create_http_error(
         | ModelInferencesDoNotExist
         | EvaluationDoesNotExistError
         | DatasetAlreadyExistsError
-        | DatasetIsEmptyError
         | DatasetFinalizedError
         | DatasetNotFinalizedError
         | DatasetStateError

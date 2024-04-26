@@ -37,19 +37,11 @@ class DatasetDoesNotExistError(ClientException):
     pass
 
 
-class DatasetIsEmptyError(ClientException):
-    pass
-
-
 class DatasetFinalizedError(ClientException):
     pass
 
 
 class DatasetNotFinalizedError(ClientException):
-    pass
-
-
-class DatasetStateError(ClientException):
     pass
 
 
