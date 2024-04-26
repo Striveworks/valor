@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from valor import Annotation, Client, Dataset, Datum, GroundTruth, Label
 from valor.enums import TableStatus, TaskType
-from valor.exceptions import ClientException
+from valor.exceptions import ClientException, DatasetDoesNotExistError
 from valor.metatypes import ImageMetadata
 from valor_api.backend import models
 
@@ -217,7 +217,8 @@ def test_client_delete_dataset(
     assert db.scalar(select(func.count(models.Dataset.name))) == 1
     client.delete_dataset(dataset_name, timeout=30)
     assert db.scalar(select(func.count(models.Dataset.name))) == 0
-    assert Dataset.get(dataset_name) is None
+    with pytest.raises(DatasetDoesNotExistError):
+        Dataset.get(dataset_name)
 
 
 def test_create_tabular_dataset_and_add_groundtruth(

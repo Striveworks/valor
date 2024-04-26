@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 from valor.client import ClientConnection, connect, get_connection
 from valor.enums import AnnotationType, EvaluationStatus, TableStatus, TaskType
-from valor.exceptions import ClientException
+from valor.exceptions import ClientException, DatasetDoesNotExistError
 from valor.schemas import (
     Annotation,
     Datum,
@@ -1461,7 +1461,9 @@ class Client:
         self.conn.delete_dataset(name)
         if timeout:
             for _ in range(timeout):
-                if self.get_dataset(name) is None:
+                try:
+                    self.get_dataset(name)
+                except DatasetDoesNotExistError:
                     break
                 else:
                     time.sleep(1)
