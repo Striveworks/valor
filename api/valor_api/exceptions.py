@@ -173,24 +173,6 @@ class ModelNotFinalizedError(Exception):
         )
 
 
-class ModelInferencesDoNotExist(Exception):
-    """
-    Raises an exception if the user tries to manipulate an inference that doesn't exist.
-
-    Parameters
-    -------
-    dataset_name : str
-        The name of the dataset.
-    model_name : str
-        The name of the model.
-    """
-
-    def __init__(self, *, dataset_name: str, model_name: str):
-        super().__init__(
-            f"inferences for model `{model_name}` over dataset `{dataset_name}` do not exist."
-        )
-
-
 class ModelStateError(Exception):
     """
     Raise an exception if a requested state transition is illegal.
@@ -377,7 +359,6 @@ error_to_status_code = {
     DatasetDoesNotExistError: 404,
     DatumDoesNotExistError: 404,
     ModelDoesNotExistError: 404,
-    ModelInferencesDoNotExist: 404,
     EvaluationDoesNotExistError: 404,
     PredictionDoesNotExistError: 404,
     # 409
@@ -410,7 +391,6 @@ def create_http_error(
         | DatasetDoesNotExistError
         | DatumDoesNotExistError
         | ModelDoesNotExistError
-        | ModelInferencesDoNotExist
         | EvaluationDoesNotExistError
         | DatasetAlreadyExistsError
         | DatasetFinalizedError

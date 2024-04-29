@@ -26,58 +26,107 @@ class ClientConnectionFailed(Exception):
 
 
 class ServiceUnavailable(ClientException):
+    """
+    Raises an exception if the Valor service is unavailble.
+    """
+
     pass
 
 
 class DatasetAlreadyExistsError(ClientException):
+    """
+    Raises an exception if the user tries to create a dataset with a name that already exists.
+    """
+
     pass
 
 
 class DatasetDoesNotExistError(ClientException):
+    """
+    Raises an exception if the user tries to manipulate a dataset that doesn't exist.
+    """
+
     pass
 
 
 class DatasetFinalizedError(ClientException):
+    """
+    Raises an exception if the user tries to add groundtruths to a dataset that has already been finalized.
+    """
+
     pass
 
 
 class DatasetNotFinalizedError(ClientException):
+    """
+    Raises an exception if the user tries to process a dataset that hasn't been finalized.
+    """
+
     pass
 
 
 class ModelAlreadyExistsError(ClientException):
+    """
+    Raises an exception if the user tries to create a model using a name that already exists in the database.
+    """
+
     pass
 
 
 class ModelDoesNotExistError(ClientException):
+    """
+    Raises an exception if the user tries to manipulate a model that doesn't exist.
+    """
+
     pass
 
 
 class ModelFinalizedError(ClientException):
+    """
+    Raises an exception if the user tries to add predictions to a model that has been finalized.
+    """
+
     pass
 
 
 class ModelNotFinalizedError(ClientException):
-    pass
+    """
+    Raises an exception if the user tries to manipulate a model that hasn't been finalized.
+    """
 
-
-class ModelInferencesDoNotExist(ClientException):
     pass
 
 
 class DatumDoesNotExistError(ClientException):
+    """
+    Raises an exception if the user tries to manipulate a datum that doesn't exist.
+    """
+
     pass
 
 
 class DatumAlreadyExistsError(ClientException):
+    """
+    Raises an exception if the user tries to create a datum that already exists.
+
+    """
+
     pass
 
 
 class AnnotationAlreadyExistsError(ClientException):
+    """
+    Raises an exception if the user tries to create a annotation for a datum that already has annotation(s).
+    """
+
     pass
 
 
 class PredictionDoesNotExistError(ClientException):
+    """
+    Raises an exception if a prediction does not exist for a given model, dataset, and datum
+    """
+
     pass
 
 
