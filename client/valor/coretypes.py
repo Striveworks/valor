@@ -8,7 +8,11 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 from valor.client import ClientConnection, connect, get_connection
 from valor.enums import AnnotationType, EvaluationStatus, TableStatus, TaskType
-from valor.exceptions import ClientException
+from valor.exceptions import (
+    ClientException,
+    DatasetDoesNotExistError,
+    ModelDoesNotExistError,
+)
 from valor.schemas import (
     Annotation,
     Datum,
@@ -1374,18 +1378,13 @@ class Client:
         Union[Dataset, None]
             A Dataset with a matching name, or 'None' if one doesn't exist.
         """
-        try:
-            dataset = Dataset.decode_value(
-                {
-                    **self.conn.get_dataset(name),
-                    "connection": self.conn,
-                }
-            )
-            return dataset
-        except ClientException as e:
-            if e.status_code == 404:
-                return None
-            raise e
+        dataset = Dataset.decode_value(
+            {
+                **self.conn.get_dataset(name),
+                "connection": self.conn,
+            }
+        )
+        return dataset
 
     def get_datasets(
         self,
@@ -1460,13 +1459,8 @@ class Client:
         dataset_name = (
             dataset.get_name() if isinstance(dataset, Dataset) else dataset
         )
-        try:
-            resp = self.conn.get_datum(dataset_name=dataset_name, uid=uid)
-            return Datum.decode_value(resp)
-        except ClientException as e:
-            if e.status_code == 404:
-                return None
-            raise e
+        resp = self.conn.get_datum(dataset_name=dataset_name, uid=uid)
+        return Datum.decode_value(resp)
 
     def get_dataset_status(
         self,
@@ -1522,10 +1516,11 @@ class Client:
         self.conn.delete_dataset(name)
         if timeout:
             for _ in range(timeout):
-                if self.get_dataset(name) is None:
+                try:
+                    self.get_dataset(name)
+                except DatasetDoesNotExistError:
                     break
-                else:
-                    time.sleep(1)
+                time.sleep(1)
             else:
                 raise TimeoutError(
                     "Dataset wasn't deleted within timeout interval"
@@ -1607,19 +1602,15 @@ class Client:
         )
         model_name = model.get_name() if isinstance(model, Model) else model
         datum_uid = datum.get_uid() if isinstance(datum, Datum) else datum
-        try:
-            resp = self.conn.get_prediction(
-                dataset_name=dataset_name,
-                model_name=model_name,
-                datum_uid=datum_uid,
-            )
-            resp.pop("dataset_name")
-            resp.pop("model_name")
-            return Prediction.decode_value(resp)
-        except ClientException as e:
-            if e.status_code == 404:
-                return None
-            raise e
+
+        resp = self.conn.get_prediction(
+            dataset_name=dataset_name,
+            model_name=model_name,
+            datum_uid=datum_uid,
+        )
+        resp.pop("dataset_name")
+        resp.pop("model_name")
+        return Prediction.decode_value(resp)
 
     def finalize_inferences(
         self, dataset: Union[Dataset, str], model: Union[Model, str]
@@ -1653,17 +1644,12 @@ class Client:
         Union[valor.Model, None]
             A Model with matching name or 'None' if one doesn't exist.
         """
-        try:
-            return Model.decode_value(
-                {
-                    **self.conn.get_model(name),
-                    "connection": self.conn,
-                }
-            )
-        except ClientException as e:
-            if e.status_code == 404:
-                return None
-            raise e
+        return Model.decode_value(
+            {
+                **self.conn.get_model(name),
+                "connection": self.conn,
+            }
+        )
 
     def get_models(
         self,
@@ -1758,10 +1744,11 @@ class Client:
         self.conn.delete_model(name)
         if timeout:
             for _ in range(timeout):
-                if self.get_model(name) is None:
+                try:
+                    self.get_model(name)
+                except ModelDoesNotExistError:
                     break
-                else:
-                    time.sleep(1)
+                time.sleep(1)
             else:
                 raise TimeoutError(
                     "Model wasn't deleted within timeout interval"

@@ -46,22 +46,6 @@ class DatasetDoesNotExistError(Exception):
         super().__init__(f"Dataset with name `{name}` does not exist.")
 
 
-class DatasetIsEmptyError(Exception):
-    """
-    Raises an exception if the user tries to manipulate an empty dataset.
-
-    Parameters
-    -------
-    name : str
-        The name of the dataset.
-    """
-
-    def __init__(self, name: str):
-        super().__init__(
-            f"Dataset with name `{name}` contains no groundtruths."
-        )
-
-
 class DatasetFinalizedError(Exception):
     """
     Raises an exception if the user tries to add groundtruths to a dataset that has already been finalized.
@@ -153,20 +137,6 @@ class ModelDoesNotExistError(Exception):
         super().__init__(f"Model with name `{name}` does not exist.")
 
 
-class ModelIsEmptyError(Exception):
-    """
-    Raises an exception if the user tries to manipulate an empty model.
-
-    Parameters
-    -------
-    name : str
-        The name of the model.
-    """
-
-    def __init__(self, name: str):
-        super().__init__(f"Model with name `{name}` contains no inferences.")
-
-
 class ModelFinalizedError(Exception):
     """
     Raises an exception if the user tries to add predictions to a model that has been finalized.
@@ -200,24 +170,6 @@ class ModelNotFinalizedError(Exception):
     def __init__(self, *, dataset_name: str, model_name: str):
         super().__init__(
             f"cannot evaluate inferences for model `{model_name}` on dataset `{dataset_name}` since it has not been finalized."
-        )
-
-
-class ModelInferencesDoNotExist(Exception):
-    """
-    Raises an exception if the user tries to manipulate an inference that doesn't exist.
-
-    Parameters
-    -------
-    dataset_name : str
-        The name of the dataset.
-    model_name : str
-        The name of the model.
-    """
-
-    def __init__(self, *, dataset_name: str, model_name: str):
-        super().__init__(
-            f"inferences for model `{model_name}` over dataset `{dataset_name}` do not exist."
         )
 
 
@@ -280,24 +232,6 @@ class DatumAlreadyExistsError(Exception):
         super().__init__(f"Datum with uid: `{uid}` already exists.")
 
 
-class DatumDoesNotBelongToDatasetError(Exception):
-    """
-    Raises an exception if the user tries to manipulate a datum that doesn't exist on a particular dataset.
-
-    Parameters
-    -------
-    dataset_name : str
-        The name of the dataset.
-    datum_uid : str
-        The UID of the datum.
-    """
-
-    def __init__(self, dataset_name: str, datum_uid: str):
-        super().__init__(
-            f"Datum with uid: `{datum_uid}` does not belong to dataset `{dataset_name}`."
-        )
-
-
 """ Annotation """
 
 
@@ -314,17 +248,6 @@ class AnnotationAlreadyExistsError(Exception):
     def __init__(self, datum_uid: str):
         super().__init__(
             f"Annotation(s) for datum with uid: `{datum_uid}` already exist."
-        )
-
-
-class GroundTruthAlreadyExistsError(Exception):
-    """
-    Raises an exception if a ground truth is duplicated.
-    """
-
-    def __init__(self, annotation_id: int, label_id: int):
-        super().__init__(
-            f"A ground truth already exists mapping label `{label_id}` to annotation `{annotation_id}`."
         )
 
 
@@ -430,19 +353,16 @@ class EvaluationStateError(Exception):
 error_to_status_code = {
     # 400
     Exception: 400,
-    ModelIsEmptyError: 400,
     ValueError: 400,
     AttributeError: 400,
     # 404
     DatasetDoesNotExistError: 404,
     DatumDoesNotExistError: 404,
     ModelDoesNotExistError: 404,
-    ModelInferencesDoNotExist: 404,
     EvaluationDoesNotExistError: 404,
     PredictionDoesNotExistError: 404,
     # 409
     DatasetAlreadyExistsError: 409,
-    DatasetIsEmptyError: 409,
     DatasetFinalizedError: 409,
     DatasetNotFinalizedError: 409,
     DatasetStateError: 409,
@@ -451,9 +371,7 @@ error_to_status_code = {
     ModelNotFinalizedError: 409,
     ModelStateError: 409,
     DatumAlreadyExistsError: 409,
-    DatumDoesNotBelongToDatasetError: 409,
     AnnotationAlreadyExistsError: 409,
-    GroundTruthAlreadyExistsError: 409,
     PredictionAlreadyExistsError: 409,
     EvaluationAlreadyExistsError: 409,
     EvaluationRunningError: 409,
@@ -468,16 +386,13 @@ error_to_status_code = {
 def create_http_error(
     error: (
         Exception
-        | ModelIsEmptyError
         | ValueError
         | AttributeError
         | DatasetDoesNotExistError
         | DatumDoesNotExistError
         | ModelDoesNotExistError
-        | ModelInferencesDoNotExist
         | EvaluationDoesNotExistError
         | DatasetAlreadyExistsError
-        | DatasetIsEmptyError
         | DatasetFinalizedError
         | DatasetNotFinalizedError
         | DatasetStateError
@@ -486,9 +401,7 @@ def create_http_error(
         | ModelNotFinalizedError
         | ModelStateError
         | DatumAlreadyExistsError
-        | DatumDoesNotBelongToDatasetError
         | AnnotationAlreadyExistsError
-        | GroundTruthAlreadyExistsError
         | PredictionAlreadyExistsError
         | EvaluationAlreadyExistsError
         | EvaluationRunningError

@@ -15,8 +15,8 @@ from valor.enums import TableStatus
 from valor.exceptions import (
     ClientAlreadyConnectedError,
     ClientConnectionFailed,
-    ClientException,
     ClientNotConnectedError,
+    raise_client_exception,
 )
 from valor.schemas import EvaluationRequest
 
@@ -303,10 +303,7 @@ class ClientConnection:
                 ):
                     self._get_access_token_from_username_and_password()
                 else:
-                    try:
-                        raise ClientException(resp)
-                    except (requests.exceptions.JSONDecodeError, KeyError):
-                        resp.raise_for_status()
+                    raise_client_exception(resp)
             else:
                 break
             tried = True
@@ -660,7 +657,7 @@ class ClientConnection:
             A dictionary describing a datum.
         """
         return self._requests_get_rel_host(
-            f"/data/dataset/{dataset_name}/uid/{uid}"
+            f"data/dataset/{dataset_name}/uid/{uid}"
         ).json()
 
     def create_model(self, model: dict) -> None:
