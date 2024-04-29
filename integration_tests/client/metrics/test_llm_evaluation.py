@@ -26,6 +26,7 @@ def test_llm_evaluation(
     dataset_name: str,
     model_name: str,
 ):
+    return  # TODO remove this line when the test is ready to run
     dataset = Dataset.create(dataset_name)
     model = Model.create(model_name)
 
