@@ -42,15 +42,6 @@ Additionally, the Valor REST API has an optional single username/password/bearer
 | `VALOR_PASSWORD`   | The password to use                                 |
 | `VALOR_SECRET_KEY` | A random, secret string used for signing JWT tokens |
 
-### Helm chart
-
-Alternatively, we provide pre-built charts for deploying Valor on Kubernetes via Helm using the following commands:
-
-```shell
-helm repo add valor https://striveworks.github.io/valor-charts/
-helm install valor valor/valor
-# Valor should now be available at valor.namespace.svc.local
-```
 
 ### Manual deployment
 
