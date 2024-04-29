@@ -269,17 +269,6 @@ class AnnotationAlreadyExistsError(Exception):
         )
 
 
-class GroundTruthAlreadyExistsError(Exception):
-    """
-    Raises an exception if a ground truth is duplicated.
-    """
-
-    def __init__(self, annotation_id: int, label_id: int):
-        super().__init__(
-            f"A ground truth already exists mapping label `{label_id}` to annotation `{annotation_id}`."
-        )
-
-
 class PredictionAlreadyExistsError(Exception):
     """
     Raises an exception if a prediction is duplicated.
@@ -402,7 +391,6 @@ error_to_status_code = {
     ModelStateError: 409,
     DatumAlreadyExistsError: 409,
     AnnotationAlreadyExistsError: 409,
-    GroundTruthAlreadyExistsError: 409,
     PredictionAlreadyExistsError: 409,
     EvaluationAlreadyExistsError: 409,
     EvaluationRunningError: 409,
@@ -434,7 +422,6 @@ def create_http_error(
         | ModelStateError
         | DatumAlreadyExistsError
         | AnnotationAlreadyExistsError
-        | GroundTruthAlreadyExistsError
         | PredictionAlreadyExistsError
         | EvaluationAlreadyExistsError
         | EvaluationRunningError

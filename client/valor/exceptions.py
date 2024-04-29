@@ -77,35 +77,7 @@ class AnnotationAlreadyExistsError(ClientException):
     pass
 
 
-class GroundTruthAlreadyExistsError(ClientException):
-    pass
-
-
-class PredictionAlreadyExistsError(ClientException):
-    pass
-
-
 class PredictionDoesNotExistError(ClientException):
-    pass
-
-
-class EvaluationDoesNotExistError(ClientException):
-    pass
-
-
-class EvaluationAlreadyExistsError(ClientException):
-    pass
-
-
-class EvaluationRunningError(ClientException):
-    pass
-
-
-class EvaluationRequestError(ClientException):
-    pass
-
-
-class EvaluationStateError(ClientException):
     pass
 
 

@@ -1,14 +1,17 @@
 import pytest
 
 from valor import (
+    Annotation,
     Client,
     Dataset,
     Datum,
     GroundTruth,
+    Label,
     Model,
     Prediction,
     exceptions,
 )
+from valor.enums import TaskType
 
 
 def test_dataset_exceptions(
@@ -76,3 +79,40 @@ def test_model_exceptions(client: Client, model_name: str, dataset_name: str):
             dset,
             Prediction(datum=Datum(uid="uid"), annotations=[]),
         )
+
+
+def test_annotation_exceptions(
+    client: Client, model_name: str, dataset_name: str
+):
+    model = Model.create(model_name)
+    dset = Dataset.create(dataset_name)
+
+    dset.add_groundtruth(GroundTruth(datum=Datum(uid="uid"), annotations=[]))
+    model.add_prediction(
+        dset,
+        Prediction(
+            datum=Datum(uid="uid"),
+            annotations=[
+                Annotation(
+                    task_type=TaskType.CLASSIFICATION,
+                    labels=[Label(key="key", value="value", score=1.0)],
+                )
+            ],
+        ),
+    )
+
+    with pytest.raises(exceptions.AnnotationAlreadyExistsError):
+        model.add_prediction(
+            dset,
+            Prediction(datum=Datum(uid="uid"), annotations=[]),
+        )
+
+
+def test_prediction_exceptions(
+    client: Client, model_name: str, dataset_name: str
+):
+    model = Model.create(model_name)
+    dset = Dataset.create(dataset_name)
+    dset.add_groundtruth(GroundTruth(datum=Datum(uid="uid"), annotations=[]))
+    with pytest.raises(exceptions.PredictionDoesNotExistError):
+        model.get_prediction(dset, "uid")

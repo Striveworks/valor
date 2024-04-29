@@ -1551,19 +1551,15 @@ class Client:
         )
         model_name = model.get_name() if isinstance(model, Model) else model
         datum_uid = datum.get_uid() if isinstance(datum, Datum) else datum
-        try:
-            resp = self.conn.get_prediction(
-                dataset_name=dataset_name,
-                model_name=model_name,
-                datum_uid=datum_uid,
-            )
-            resp.pop("dataset_name")
-            resp.pop("model_name")
-            return Prediction.decode_value(resp)
-        except ClientException as e:
-            if e.status_code == 404:
-                return None
-            raise e
+
+        resp = self.conn.get_prediction(
+            dataset_name=dataset_name,
+            model_name=model_name,
+            datum_uid=datum_uid,
+        )
+        resp.pop("dataset_name")
+        resp.pop("model_name")
+        return Prediction.decode_value(resp)
 
     def finalize_inferences(
         self, dataset: Union[Dataset, str], model: Union[Model, str]
