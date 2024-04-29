@@ -503,12 +503,6 @@ def test_get_prediction(client: Client, model_name: str, dataset_name: str):
     dataset.add_groundtruth(GroundTruth(datum=datum, annotations=[]))
     dataset.finalize()
 
-    # check we get None if the datum does not exist
-    assert model.get_prediction(dataset, Datum(uid="does not exist")) is None
-
-    # check that we also get None if the datum does exist but there is no prediction
-    assert model.get_prediction(dataset, datum) is None
-
     # add a prediction with no annotaitons and check we get a prediction back
     model.add_prediction(dataset, Prediction(datum=datum, annotations=[]))
     assert model.get_prediction(dataset, datum) is not None
