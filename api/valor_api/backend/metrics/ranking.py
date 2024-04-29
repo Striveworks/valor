@@ -240,12 +240,15 @@ def _compute_ranking_metrics(
         metrics.append(schemas.MRRMetric(label_key=grouper_key, value=mrr))
 
     # calculate precision @k to measure how many items with the top k positions are relevant.
-    sum_functions = [
-        func.sum(
-            case(
-                (filtered_rankings.c.rank <= k, 1),
-                else_=0,
+    precision_at_k_functions = [
+        (
+            func.sum(
+                case(
+                    (filtered_rankings.c.rank <= k, 1),
+                    else_=0,
+                )
             )
+            / k
         ).label(f"precision@{k}")
         for k in k_cutoffs
     ]
@@ -256,7 +259,7 @@ def _compute_ranking_metrics(
             filtered_rankings.c.grouper_key,
             filtered_rankings.c.grouper_value,
             filtered_rankings.c.pd_annotation_id,
-            *sum_functions,
+            *precision_at_k_functions,
         )
         .select_from(filtered_rankings)
         .group_by(

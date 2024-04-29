@@ -136,9 +136,11 @@ def test_ranking(
         "precision@k_max": {
             # label : k_cutoff : max_value
             schemas.Label(key="k1", value="v1", score=None): {
-                1: 1,  # only one annotation has a relevant doc in  k<=1
-                3: 2,  # first and last docs have a two relevant docs in k<=3
-                5: 3,  # the last annotation with this key has three relevant docs in k<=5
+                1: 1 / 1,  # only one annotation has a relevant doc in  k<=1
+                3: 2
+                / 3,  # first and last docs have a two relevant docs in k<=3
+                5: 3
+                / 5,  # the last annotation with this key has three relevant docs in k<=5
             }
         },
         "precision@k_min": {
@@ -151,13 +153,11 @@ def test_ranking(
         "ap@k_max": {
             schemas.Label(
                 key="k1", value="v1", score=None
-            ): 1.6666666666666667  # the last annotation is (0 + 2 + 3) / 3
+            ): 0.6888888888888889  # (1 + 2 / 3 + 2 / 5)/ 3 from first annotation
         },
         "ap@k_min": {schemas.Label(key="k1", value="v1", score=None): 0},
         # TODO should this include k2 if MRR does?
-        "map@k": {
-            "k1": 1.0833333333333333,  # (1 + 2 + 2) / 3 + (0 + 1 + 2) / 3 + 0 + 1.666667) / 4
-        },
+        "map@k": {"k1": 0.33888888888888888889},
     }
 
     for metric_type, outputs in metrics.items():
@@ -230,9 +230,11 @@ def test_ranking_with_label_map(
         "precision@k_max": {
             # label : k_cutoff : max_value
             schemas.Label(key="k1", value="v1", score=None): {
-                1: 1,  # only one annotation has a relevant doc in  k<=1
-                3: 2,  # first and last docs have a two relevant docs in k<=3
-                5: 3,  # the last annotation with this key has three relevant docs in k<=5
+                1: 1 / 1,  # only one annotation has a relevant doc in  k<=1
+                3: 2
+                / 3,  # first and last docs have a two relevant docs in k<=3
+                5: 3
+                / 5,  # the last annotation with this key has three relevant docs in k<=5
             }
         },
         "precision@k_min": {
@@ -243,12 +245,15 @@ def test_ranking_with_label_map(
             }
         },
         "ap@k_max": {
-            schemas.Label(key="k1", value="v1", score=None): 1.6666666666666667
+            schemas.Label(
+                key="k1", value="v1", score=None
+            ): 0.6888888888888889  # (1 + 2 / 3 + 2 / 5)/ 3 from first annotation
         },
         "ap@k_min": {schemas.Label(key="k1", value="v1", score=None): 0},
         # TODO should this include k2 if MRR does?
+        # TODO implement feature where users can choose which metrics get calculated
         "map@k": {
-            "k1": 0.8666666666666667,  # (1 + 2 + 2) / 3 + (0 + 1 + 2) / 3 + 0 + 1.666667 + 0) / 5
+            "k1": 0.27111111111111114,  # ((1/1 + 2/3 + 2/5) / 3 + (0/1 + 1/3 + 2/5) / 3 + 0 + (0/1 + 2/3 + 3/5)/3 + 0) / 5
         },
     }
 
