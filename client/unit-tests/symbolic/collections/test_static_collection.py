@@ -107,10 +107,17 @@ def test_static_collection_value():
     }
 
     # test value members
-    assert v1.w.to_dict() == {"type": "integer", "value": 101}
-    assert v1.x.to_dict() == {"type": "float", "value": 0.123}
-    assert v1.y.to_dict() == {"type": "string", "value": "foobar"}
-    assert v1.z.to_dict() == {"type": "bool", "value": True}
+    assert isinstance(v1.w, int)
+    assert v1.w == 101
+
+    assert isinstance(v1.x, float)
+    assert v1.x == 0.123
+
+    assert isinstance(v1.y, str)
+    assert v1.y == "foobar"
+
+    assert isinstance(v1.z, bool)
+    assert v1.z is True
 
 
 def test__get_static_types():

@@ -34,10 +34,6 @@ class ImageMetadata:
         elif datum.is_symbolic:
             raise ValueError
 
-        height = int(datum.metadata.get_value()["height"].get_value())
-        width = int(datum.metadata.get_value()["width"].get_value())
-        datum.metadata["height"] = Integer(height)
-        datum.metadata["width"] = Integer(width)
         self.datum = datum
 
     @classmethod

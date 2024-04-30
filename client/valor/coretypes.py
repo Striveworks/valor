@@ -98,7 +98,7 @@ class GroundTruth(StaticCollection):
 
         for annotation in self.annotations:
             for label in annotation.labels:
-                if label.score.get_value() is not None:
+                if label.score is not None:
                     raise ValueError(
                         "GroundTruth labels should not have scores."
                     )
@@ -156,13 +156,13 @@ class Prediction(StaticCollection):
 
         # validation
         for annotation in self.annotations:
-            task_type = annotation.task_type.get_value()
+            task_type = annotation.task_type
             if task_type in [
                 TaskType.CLASSIFICATION,
                 TaskType.OBJECT_DETECTION,
             ]:
                 for label in annotation.labels:
-                    label_score = label.score._value
+                    label_score = label.score
                     if label_score is None:
                         raise ValueError(
                             f"For task type `{task_type}` prediction labels must have scores, but got `None`"
@@ -171,8 +171,8 @@ class Prediction(StaticCollection):
 
                 label_keys_to_sum = {}
                 for scored_label in annotation.labels:
-                    label_key = scored_label.key.get_value()
-                    label_score = scored_label.score.get_value()
+                    label_key = scored_label.key
+                    label_score = scored_label.score
                     if label_key not in label_keys_to_sum:
                         label_keys_to_sum[label_key] = 0.0
                     label_keys_to_sum[label_key] += label_score

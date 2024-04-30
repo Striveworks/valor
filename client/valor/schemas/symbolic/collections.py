@@ -30,6 +30,24 @@ def _get_schema_type_by_name(name: str):
     return get_type_by_name(name=name, additional_types=types_)
 
 
+def _convert_simple_variables_to_standard_types(var: Any):
+    """Converts a variable to a standard type. This operates recursively.
+    in the case that the variable represents a dictionary
+    """
+    if isinstance(var, StaticCollection):
+        return var
+    if isinstance(var, Variable):
+        val = var.get_value()
+        if isinstance(val, (str, int, float, bool, type(None))):
+            var = val
+    if isinstance(var, (dict, Dictionary)):
+        return {
+            k: _convert_simple_variables_to_standard_types(v)
+            for k, v in var.items()
+        }
+    return var
+
+
 class StaticCollection(Equatable):
     """
     A static collection is a Variable that defines its contents by static attributes.
@@ -42,6 +60,9 @@ class StaticCollection(Equatable):
             raise ValueError(
                 f"Expected the following keyword arguments '{static_keys}'. Received '{kwarg_keys}'."
             )
+        # import pdb
+
+        # pdb.set_trace()
         for k, v in kwargs.items():
             setattr(self, k, v)
         super().__init__(value=None)
@@ -112,6 +133,17 @@ class StaticCollection(Equatable):
     def __setattr__(self, __name: str, __value: Any) -> None:
         super().__setattr__(__name, self.format(__name, __value))
 
+    def __getattribute__(self, __name: str) -> Any:
+        ret = super().__getattribute__(__name)
+        if isinstance(ret, Variable) and ret.is_value:
+            return _convert_simple_variables_to_standard_types(ret)
+            # ret = ret.get_value()
+            # if isinstance(ret, dict):
+            #     import pdb
+
+            #     pdb.set_trace()
+        return ret
+
     @classmethod
     def __validate__(cls, value: Any):
         """Validate typing."""
@@ -136,7 +168,8 @@ class StaticCollection(Equatable):
     def encode_value(self):
         """Encode object to JSON compatible dictionary."""
         return {
-            k: v.encode_value() for k, v in self._get_dynamic_values().items()
+            k: v  # .encode_value() if v is not None else None
+            for k, v in self._get_dynamic_values().items()
         }
 
     @classmethod
@@ -234,11 +267,7 @@ class Label(StaticCollection):
         tuple
             A tuple of the `Label's` arguments.
         """
-        return (
-            self.key.get_value(),
-            self.value.get_value(),
-            self.score.get_value(),
-        )
+        return (self.key, self.value, self.score)
 
 
 class Annotation(StaticCollection):
@@ -418,7 +447,3 @@ class Datum(StaticCollection):
             A dictionary of metadata that describes the datum.
         """
         super().__init__(uid=uid, metadata=metadata if metadata else dict())
-
-    def get_uid(self) -> str:
-        """Extracts the uid from a datum instance."""
-        return self.uid.get_value()

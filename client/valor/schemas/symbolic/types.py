@@ -442,7 +442,7 @@ class Equatable(Variable):
             elif rhs is None:
                 return Bool(lhs is None)
             else:
-                return Bool(lhs == rhs)
+                return Bool(bool(lhs == rhs))
         return Eq(self, other)
 
     def __ne__(self, value: typing.Any) -> typing.Union["Bool", Ne]:
