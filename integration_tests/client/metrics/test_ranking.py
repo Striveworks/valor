@@ -15,6 +15,7 @@ from valor import (
     Prediction,
 )
 from valor.enums import EvaluationStatus, TaskType
+from valor.exceptions import ClientException
 
 
 @pytest.fixture
@@ -134,7 +135,7 @@ def ranking_pds():
     ]
 
 
-def test_evaluate_correct_class_ranking(
+def test_evaluate_ranking(
     client: Client,
     dataset_name: str,
     model_name: str,
@@ -459,17 +460,62 @@ def test_evaluate_correct_class_ranking(
         assert metric in metrics
 
 
-def test_evaluate_relevancy_score_ranking():
-    pass
+def test_evaluate_ranking_error_cases(
+    client: Client,
+    dataset_name: str,
+    model_name: str,
+    ranking_gts: list,
+    ranking_pds: list,
+):
+    dataset = Dataset.create(dataset_name)
+    model = Model.create(model_name)
 
+    for gt in ranking_gts:
+        dataset.add_groundtruth(gt)
 
-def test_evaluate_embedding_ranking():
-    pass
+    dataset.finalize()
 
+    for pred in ranking_pds:
+        model.add_prediction(dataset, pred)
 
-def test_evaluate_mixed_rankings():
-    pass
+    model.finalize_inferences(dataset)
 
+    # test bad k_cutoffs
+    with pytest.raises(ClientException):
+        model.evaluate_ranking(dataset, k_cutoffs="a")
 
-# TODO test that each key only has one groundtruth
-# TODO test bad k_cutoffs, bad metric lists
+    with pytest.raises(ClientException):
+        model.evaluate_ranking(dataset, k_cutoffs=["a"])
+
+    with pytest.raises(ClientException):
+        model.evaluate_ranking(dataset, k_cutoffs=[0.1, 0.2])
+
+    with pytest.raises(ClientException):
+        model.evaluate_ranking(dataset, k_cutoffs=1)
+
+    # test bad metric names
+    with pytest.raises(ClientException):
+        model.evaluate_ranking(dataset, metrics_to_return=["fake_name"])
+
+    with pytest.raises(ClientException):
+        model.evaluate_ranking(dataset, metrics_to_return=[1])
+
+    with pytest.raises(ClientException):
+        model.evaluate_ranking(dataset, metrics_to_return="fake_name")
+
+    with pytest.raises(ClientException):
+        model.evaluate_ranking(
+            dataset, metrics_to_return=["MRRMetric", "fake_name"]
+        )
+
+    # test bad label maps
+    with pytest.raises(TypeError):
+        model.evaluate_ranking(dataset, label_map=["foo", "bar"])
+
+    with pytest.raises(TypeError):
+        model.evaluate_ranking(dataset, label_map={"foo": "bar"})
+
+    with pytest.raises(TypeError):
+        model.evaluate_ranking(
+            dataset, label_map={Label(key="foo", value="bar"): "bar"}
+        )
