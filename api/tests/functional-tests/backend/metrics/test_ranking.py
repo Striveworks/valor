@@ -167,7 +167,6 @@ def test_ranking(
             ): 0.6888888888888889  # (1 + 2 / 3 + 2 / 5)/ 3 from first annotation
         },
         "ap@k_min": {schemas.Label(key="k1", value="v1", score=None): 0},
-        # TODO should this include k2 if MRR does?
         "map@k": {"k1": 0.33888888888888888889},
         "recall@k_max": {
             schemas.Label(key="k1", value="v1", score=None): {
@@ -280,8 +279,6 @@ def test_ranking_with_label_map(
             ): 0.6888888888888889  # (1 + 2 / 3 + 2 / 5)/ 3 from first annotation
         },
         "ap@k_min": {schemas.Label(key="k1", value="v1", score=None): 0},
-        # TODO should this include k2 if MRR does?
-        # TODO implement feature where users can choose which metrics get calculated
         "map@k": {
             "k1": 0.27111111111111114,  # ((1/1 + 2/3 + 2/5) / 3 + (0/1 + 1/3 + 2/5) / 3 + 0 + (0/1 + 2/3 + 3/5)/3 + 0) / 5
         },

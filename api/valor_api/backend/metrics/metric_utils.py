@@ -234,6 +234,13 @@ def create_metric_mappings(
         | schemas.IOUMetric
         | schemas.mIOUMetric
         | schemas.PrecisionRecallCurve
+        | schemas.PrecisionAtKMetric
+        | schemas.APAtKMetric
+        | schemas.mAPAtKMetric
+        | schemas.RecallAtKMetric
+        | schemas.ARAtKMetric
+        | schemas.mARAtKMetric
+        | schemas.MRRMetric
     ],
     evaluation_id: int,
 ) -> list[dict]:

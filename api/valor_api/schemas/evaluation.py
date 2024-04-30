@@ -80,7 +80,6 @@ class EvaluationParameters(BaseModel):
                                 "`iou_thresholds_to_return` must be a subset of `iou_thresholds_to_compute`"
                             )
             case TaskType.RANKING:
-                # TODO check that we don't need validations
                 pass
             case _:
                 raise NotImplementedError(

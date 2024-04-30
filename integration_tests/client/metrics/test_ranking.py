@@ -225,12 +225,6 @@
 
 #     # assert metrics
 
-#     # TODO check that the datum actually matters
-
-#     # TODO check that label key actually matters
-
-#     # TODO what if a label value is shared across multiple keys? need to handle that somehow
-
 
 # def test_evaluate_relevancy_score_ranking():
 #     pass
