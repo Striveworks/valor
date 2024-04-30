@@ -142,6 +142,14 @@ class Annotation(Base):
     predictions: Mapped[list["Prediction"]] = relationship(
         cascade="all, delete-orphan"
     )
+    groundtruth_ious: Mapped[list["IOU"]] = relationship(
+        foreign_keys="IOU.groundtruth_annotation_id",
+        cascade="all, delete-orphan",
+    )
+    prediction_ious: Mapped[list["IOU"]] = relationship(
+        foreign_keys="IOU.prediction_annotation_id",
+        cascade="all, delete-orphan",
+    )
 
 
 class Datum(Base):
@@ -257,4 +265,37 @@ class ConfusionMatrix(Base):
     # relationships
     settings: Mapped[Evaluation] = relationship(
         back_populates="confusion_matrices"
+    )
+
+
+class IOU(Base):
+    __tablename__ = "iou"
+    __table_args__ = (
+        UniqueConstraint(
+            "groundtruth_annotation_id",
+            "prediction_annotation_id",
+        ),
+    )
+
+    # columns
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    groundtruth_annotation_id: Mapped[int] = mapped_column(
+        ForeignKey("annotation.id", ondelete="CASCADE"), nullable=False
+    )
+    prediction_annotation_id: Mapped[int] = mapped_column(
+        ForeignKey("annotation.id", ondelete="CASCADE"), nullable=False
+    )
+    value: Mapped[float] = mapped_column(nullable=False)
+    created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
+
+    # relationships
+    groundtruth_annotation = relationship(
+        "Annotation",
+        foreign_keys="IOU.groundtruth_annotation_id",
+        back_populates="groundtruth_ious",
+    )
+    prediction_annotation = relationship(
+        "Annotation",
+        foreign_keys="IOU.prediction_annotation_id",
+        back_populates="prediction_ious",
     )

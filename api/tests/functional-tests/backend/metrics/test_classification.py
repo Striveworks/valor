@@ -120,7 +120,7 @@ def classification_test_data(db: Session, dataset_name: str, model_name: str):
         ),
     )
     for pd in preds:
-        crud.create_prediction(db=db, prediction=pd)
+        crud.create_predictions(db=db, predictions=[pd])
     crud.finalize(db=db, dataset_name=dataset_name, model_name=model_name)
 
     assert len(db.query(models.Datum).all()) == 6

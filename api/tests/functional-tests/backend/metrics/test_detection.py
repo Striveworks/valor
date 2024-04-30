@@ -951,22 +951,26 @@ def test_detection_exceptions(db: Session):
         compute_detection_metrics(db=db, evaluation_id=evaluation_id)
     assert f"Model '{model_name}' does not meet filter requirements." in str(e)
 
-    crud.create_prediction(
+    crud.create_predictions(
         db=db,
-        prediction=schemas.Prediction(
-            dataset_name=dataset_name,
-            model_name=model_name,
-            datum=schemas.Datum(uid="uid"),
-            annotations=[
-                schemas.Annotation(
-                    task_type=enums.TaskType.OBJECT_DETECTION,
-                    labels=[schemas.Label(key="k1", value="v1", score=1.0)],
-                    bounding_box=schemas.Box.from_extrema(
-                        xmin=0, xmax=1, ymin=0, ymax=1
-                    ),
-                )
-            ],
-        ),
+        predictions=[
+            schemas.Prediction(
+                dataset_name=dataset_name,
+                model_name=model_name,
+                datum=schemas.Datum(uid="uid"),
+                annotations=[
+                    schemas.Annotation(
+                        task_type=enums.TaskType.OBJECT_DETECTION,
+                        labels=[
+                            schemas.Label(key="k1", value="v1", score=1.0)
+                        ],
+                        bounding_box=schemas.Box.from_extrema(
+                            xmin=0, xmax=1, ymin=0, ymax=1
+                        ),
+                    )
+                ],
+            ),
+        ],
     )
 
     # show that no errors raised

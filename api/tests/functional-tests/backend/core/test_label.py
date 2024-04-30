@@ -20,7 +20,7 @@ from valor_api.crud import (
     create_dataset,
     create_groundtruth,
     create_model,
-    create_prediction,
+    create_predictions,
 )
 
 
@@ -149,23 +149,25 @@ def create_dataset_model(db: Session, dataset_name: str, model_name: str):
             ],
         ),
     )
-    create_prediction(
+    create_predictions(
         db=db,
-        prediction=schemas.Prediction(
-            dataset_name=dataset_name,
-            model_name=model_name,
-            datum=schemas.Datum(uid="123"),
-            annotations=[
-                schemas.Annotation(
-                    task_type=enums.TaskType.CLASSIFICATION,
-                    labels=[
-                        schemas.Label(key="k1", value="v2", score=0.1),
-                        schemas.Label(key="k1", value="v3", score=0.9),
-                        schemas.Label(key="k3", value="v3", score=1.0),
-                    ],
-                )
-            ],
-        ),
+        predictions=[
+            schemas.Prediction(
+                dataset_name=dataset_name,
+                model_name=model_name,
+                datum=schemas.Datum(uid="123"),
+                annotations=[
+                    schemas.Annotation(
+                        task_type=enums.TaskType.CLASSIFICATION,
+                        labels=[
+                            schemas.Label(key="k1", value="v2", score=0.1),
+                            schemas.Label(key="k1", value="v3", score=0.9),
+                            schemas.Label(key="k3", value="v3", score=1.0),
+                        ],
+                    )
+                ],
+            ),
+        ],
     )
 
 
@@ -511,7 +513,7 @@ def test_label_functions(
         crud.create_groundtruth(db=db, groundtruth=gt)
 
     for pred in pds:
-        crud.create_prediction(db=db, prediction=pred)
+        crud.create_predictions(db=db, predictions=[pred])
 
     assert get_label_keys(
         db,

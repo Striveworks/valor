@@ -340,9 +340,9 @@ def predictions(
     ]
 
     for pd in db_preds_per_img:
-        crud.create_prediction(
+        crud.create_predictions(
             db=db,
-            prediction=pd,
+            predictions=[pd],
         )
     crud.finalize(db=db, dataset_name=dataset_name, model_name=model_name)
 
@@ -454,9 +454,9 @@ def predictions_with_rasters(
     ]
 
     for pd in db_preds_per_img:
-        crud.create_prediction(
+        crud.create_predictions(
             db=db,
-            prediction=pd,
+            predictions=[pd],
         )
     crud.finalize(db=db, dataset_name=dataset_name, model_name=model_name)
 
@@ -757,7 +757,7 @@ def dataset_model_create(
     for pd in prediction_detections:
         pd.dataset_name = dataset_name
         pd.model_name = model_name
-        crud.create_prediction(db=db, prediction=pd)
+        crud.create_predictions(db=db, predictions=[pd])
 
     # Finalize model1 over dataset1
     crud.finalize(
