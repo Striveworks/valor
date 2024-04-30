@@ -41,7 +41,7 @@ class EvaluationParameters:
     compute_pr_curves: bool = False
     pr_curve_iou_threshold: float = 0.5
     metrics_to_return: Optional[List[str]] = None
-    k_cutoffs: Optional[list[int]] = None
+    k_cutoffs: Optional[List[int]] = None
 
 
 @dataclass
