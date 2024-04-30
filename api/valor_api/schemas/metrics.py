@@ -559,7 +559,7 @@ class MRRMetric(BaseModel):
 
 class PrecisionAtKMetric(BaseModel):
     """
-    Describes a precision@k metric, which measures how many items with the top k positions are relevant.
+    Describes a precision@k metric, which measures how many items with the top k positions are relevant divided by k.
 
     Attributes
     ----------
@@ -570,7 +570,7 @@ class PrecisionAtKMetric(BaseModel):
     k: int
         The cut-off used to calculate precision@k.
     annotation_id: int
-        The id of the annotation associated with the prediction
+        The id of the annotation associated with the prediction.
     """
 
     label: Label
@@ -613,7 +613,7 @@ class APAtKMetric(BaseModel):
     k_cutoffs: list[int]
         The cut-offs used to calculate AP@k.
     annotation_id: int
-        The id of the annotation associated with the prediction
+        The id of the annotation associated with the prediction.
     """
 
     label: Label
@@ -680,6 +680,137 @@ class mAPAtKMetric(BaseModel):
         return {
             "value": self.value,
             "type": "mAPAtKMetric",
+            "parameters": {
+                "label_key": self.label_key,
+                "k_cutoffs": self.k_cutoffs,
+            },
+            "evaluation_id": evaluation_id,
+        }
+
+
+class RecallAtKMetric(BaseModel):
+    """
+    Describes a recall@k metric, which measures how many items with the top k positions are relevant divided by the number of relevant items.
+
+    Attributes
+    ----------
+    label : Label
+        A label for the metric.
+    value : float
+        The metric value.
+    k: int
+        The cut-off used to calculate recall@k.
+    annotation_id: int
+        The id of the annotation associated with the prediction.
+    """
+
+    label: Label
+    value: float | int | None
+    k: int
+    annotation_id: int
+
+    def db_mapping(self, label_id: int, evaluation_id: int) -> dict:
+        """
+        Creates a mapping for use when uploading the metric to the database.
+
+        Parameters
+        ----------
+        evaluation_id : int
+            The evaluation id.
+
+        Returns
+        ----------
+        A mapping dictionary.
+        """
+        return {
+            "value": self.value,
+            "label_id": label_id,
+            "type": "RecallAtKMetric",
+            "parameters": {"k": self.k, "annotation_id": self.annotation_id},
+            "evaluation_id": evaluation_id,
+        }
+
+
+class ARAtKMetric(BaseModel):
+    """
+    Describes a average recall@k metric, which is the mean of recall@i for i=1,...,k.
+
+    Attributes
+    ----------
+    label : Label
+        A label for the metric.
+    value : float
+        The metric value.
+    k_cutoffs: list[int]
+        The cut-offs used to calculate AR@k.
+    annotation_id: int
+        The id of the annotation associated with the prediction.
+    """
+
+    label: Label
+    value: float | int | None
+    annotation_id: int
+    k_cutoffs: list[int]
+
+    def db_mapping(self, label_id: int, evaluation_id: int) -> dict:
+        """
+        Creates a mapping for use when uploading the metric to the database.
+
+        Parameters
+        ----------
+        evaluation_id : int
+            The evaluation id.
+
+        Returns
+        ----------
+        A mapping dictionary.
+        """
+        return {
+            "value": self.value,
+            "label_id": label_id,
+            "type": "ARAtKMetric",
+            "parameters": {
+                "k_cutoffs": self.k_cutoffs,
+                "annotation_id": self.annotation_id,
+            },
+            "evaluation_id": evaluation_id,
+        }
+
+
+class mARAtKMetric(BaseModel):
+    """
+    Describes a mean average recall@k metric, which is the mean of average recall@k rolled-up to the label key.
+
+    Attributes
+    ----------
+    label_key : str
+        A label key for the metric.
+    value : float
+        The metric value.
+    k_cutoffs: list[int]
+        The cut-offs used to calculate AR@k.
+    """
+
+    label_key: str
+    value: float | int | None
+    k_cutoffs: list[int]
+
+    def db_mapping(self, evaluation_id: int) -> dict:
+        """
+        Creates a mapping for use when uploading the metric to the database.
+
+        Parameters
+        ----------
+        evaluation_id : int
+            The evaluation id.
+
+        Returns
+        ----------
+        A mapping dictionary.
+        """
+        return {
+            "value": self.value,
+            "type": "mARAtKMetric",
             "parameters": {
                 "label_key": self.label_key,
                 "k_cutoffs": self.k_cutoffs,

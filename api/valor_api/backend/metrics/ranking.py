@@ -74,6 +74,9 @@ def _compute_ranking_metrics(
                 value=func.concat(models.Label.key, models.Label.value),
             ).label("grouper_value"),
             models.Annotation.ranking.label("gt_ranking"),
+            func.jsonb_array_length(models.Annotation.ranking).label(
+                "number_of_relevant_items"
+            ),
             models.Annotation.datum_id,
             models.Annotation.id.label("gt_annotation_id"),
         )
@@ -108,6 +111,7 @@ def _compute_ranking_metrics(
             groundtruths.c.grouper_value,
             groundtruths.c.gt_ranking,
             groundtruths.c.gt_annotation_id,
+            groundtruths.c.number_of_relevant_items,
             predictions.c.pd_ranking,
             predictions.c.pd_annotation_id,
         )
@@ -133,6 +137,7 @@ def _compute_ranking_metrics(
     flattened_groundtruths = select(
         joint.c.grouper_key,
         joint.c.grouper_value,
+        joint.c.number_of_relevant_items,
         func.jsonb_array_elements_text(joint.c.gt_ranking).label("gt_item"),
     ).alias()
 
@@ -159,6 +164,7 @@ def _compute_ranking_metrics(
             pd_rankings.c.grouper_value,
             pd_rankings.c.pd_annotation_id,
             pd_rankings.c.rank,
+            flattened_groundtruths.c.number_of_relevant_items,
         )
         .distinct()
         .select_from(pd_rankings)
@@ -239,8 +245,7 @@ def _compute_ranking_metrics(
     for grouper_key, mrr in mrrs_by_key:
         metrics.append(schemas.MRRMetric(label_key=grouper_key, value=mrr))
 
-    # calculate precision @k to measure how many items with the top k positions are relevant.
-    precision_at_k_functions = [
+    precision_and_recall_functions = [
         (
             func.sum(
                 case(
@@ -253,19 +258,34 @@ def _compute_ranking_metrics(
         for k in k_cutoffs
     ]
 
+    recall_at_k_functions = [
+        (
+            func.sum(
+                case(
+                    (filtered_rankings.c.rank <= k, 1),
+                    else_=0,
+                )
+            )
+            / filtered_rankings.c.number_of_relevant_items
+        ).label(f"recall@{k}")
+        for k in k_cutoffs
+    ]
+
     # calculate precision@k
-    calc_precision_at_k = (
+    calc_recall_and_precision = (
         select(
             filtered_rankings.c.grouper_key,
             filtered_rankings.c.grouper_value,
             filtered_rankings.c.pd_annotation_id,
-            *precision_at_k_functions,
+            *precision_and_recall_functions,
+            *recall_at_k_functions,
         )
         .select_from(filtered_rankings)
         .group_by(
             filtered_rankings.c.grouper_key,
             filtered_rankings.c.grouper_value,
             filtered_rankings.c.pd_annotation_id,
+            filtered_rankings.c.number_of_relevant_items,
         )
         .union_all(  # add back predictions that don't have any groundtruths
             select(
@@ -273,43 +293,54 @@ def _compute_ranking_metrics(
                 predictions_with_no_gts.c.grouper_value,
                 predictions_with_no_gts.c.annotation_id,
                 *(literal(0).label(f"precision@{k}") for k in k_cutoffs),
+                *(literal(0).label(f"recall@{k}") for k in k_cutoffs),
             ).select_from(aliased_predictions_with_no_gts)
         )
     ).alias()
 
-    # roll up precision@k into ap@k
-    columns = [calc_precision_at_k.c[f"precision@{k}"] for k in k_cutoffs]
+    # roll up by k
+    precision_columns = [
+        calc_recall_and_precision.c[f"precision@{k}"] for k in k_cutoffs
+    ]
+    recall_columns = [
+        calc_recall_and_precision.c[f"recall@{k}"] for k in k_cutoffs
+    ]
 
-    calc_ap_at_k = select(
-        calc_precision_at_k.c.grouper_key,
-        calc_precision_at_k.c.grouper_value,
-        calc_precision_at_k.c.pd_annotation_id,
-        func.sum(sum(columns) / len(columns)).label("ap@k"),
+    calc_ap_and_ar = select(
+        calc_recall_and_precision.c.grouper_key,
+        calc_recall_and_precision.c.grouper_value,
+        calc_recall_and_precision.c.pd_annotation_id,
+        func.sum(sum(precision_columns) / len(precision_columns)).label(
+            "ap@k"
+        ),
+        func.sum(sum(recall_columns) / len(recall_columns)).label("ar@k"),
     ).group_by(
-        calc_precision_at_k.c.grouper_key,
-        calc_precision_at_k.c.grouper_value,
-        calc_precision_at_k.c.pd_annotation_id,
+        calc_recall_and_precision.c.grouper_key,
+        calc_recall_and_precision.c.grouper_value,
+        calc_recall_and_precision.c.pd_annotation_id,
     )
 
-    # roll up ap@k into map@k
-    calc_map_at_k = select(
-        calc_ap_at_k.c.grouper_key,
-        func.avg(calc_ap_at_k.c["ap@k"]).label("map@k"),
+    # roll up by label key
+    calc_map_and_mar = select(
+        calc_ap_and_ar.c.grouper_key,
+        func.avg(calc_ap_and_ar.c["ap@k"]).label("map@k"),
+        func.avg(calc_ap_and_ar.c["ar@k"]).label("mar@k"),
     ).group_by(
-        calc_ap_at_k.c.grouper_key,
+        calc_ap_and_ar.c.grouper_key,
     )
 
     # execute queries
-    precision_at_k = db.query(calc_precision_at_k).all()
-    ap_at_k = db.execute(calc_ap_at_k).all()
-    map_at_k = db.execute(calc_map_at_k).all()
+    precision_and_recall = db.query(calc_recall_and_precision).all()
+    ap_and_ar = db.execute(calc_ap_and_ar).all()
+    map_and_mar = db.execute(calc_map_and_mar).all()
 
-    for metric in precision_at_k:
-        key, value, annotation_id, precisions = (
+    for metric in precision_and_recall:
+        key, value, annotation_id, precisions, recalls = (
             metric[0],
             metric[1],
             metric[2],
-            metric[3:],
+            metric[3 : 3 + len(k_cutoffs)],
+            metric[3 + len(k_cutoffs) :],
         )
 
         for i, k in enumerate(k_cutoffs):
@@ -322,33 +353,57 @@ def _compute_ranking_metrics(
                 )
             )
 
-    for metric in ap_at_k:
-        key, value, annotation_id, metric_value = (
+            metrics.append(
+                schemas.RecallAtKMetric(
+                    label=schemas.Label(key=key, value=value),
+                    value=recalls[i],
+                    k=k,
+                    annotation_id=annotation_id,
+                )
+            )
+
+    for metric in ap_and_ar:
+        key, value, annotation_id, ap_value, ar_value = (
             metric[0],
             metric[1],
             metric[2],
             metric[3],
+            metric[4],
         )
 
         metrics.append(
             schemas.APAtKMetric(
                 label=schemas.Label(key=key, value=value),
-                value=metric_value,
+                value=ap_value,
                 k_cutoffs=k_cutoffs,
                 annotation_id=annotation_id,
             )
         )
 
-    for metric in map_at_k:
-        key, metric_value = (
-            metric[0],
-            metric[1],
+        metrics.append(
+            schemas.ARAtKMetric(
+                label=schemas.Label(key=key, value=value),
+                value=ar_value,
+                k_cutoffs=k_cutoffs,
+                annotation_id=annotation_id,
+            )
         )
+
+    for metric in map_and_mar:
+        key, map_value, mar_value = (metric[0], metric[1], metric[2])
 
         metrics.append(
             schemas.mAPAtKMetric(
                 label_key=key,
-                value=metric_value,
+                value=map_value,
+                k_cutoffs=k_cutoffs,
+            )
+        )
+
+        metrics.append(
+            schemas.mARAtKMetric(
+                label_key=key,
+                value=mar_value,
                 k_cutoffs=k_cutoffs,
             )
         )

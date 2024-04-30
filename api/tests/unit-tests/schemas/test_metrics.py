@@ -460,6 +460,118 @@ def test_mAPAtKMetric():
     )
 
 
+def test_RecallAtKMetric():
+    metric = schemas.RecallAtKMetric(
+        label=schemas.Label(key="k1", value="v1"),
+        value=0.2,
+        k=1,
+        annotation_id=123,
+    )
+
+    with pytest.raises(ValidationError):
+        schemas.RecallAtKMetric(label_key=None, value=0.2)  # type: ignore - purposefully throwing error
+
+    with pytest.raises(ValidationError):
+        schemas.RecallAtKMetric(label_key=123, value=0.2)  # type: ignore - purposefully throwing error
+
+    with pytest.raises(ValidationError):
+        schemas.RecallAtKMetric(
+            label=schemas.Label(key="k1", value="v1"),
+            value=0.2,
+            k=None,  # type: ignore - purposefully throwing error
+            annotation_id=123,
+        )
+
+    with pytest.raises(ValidationError):
+        schemas.RecallAtKMetric(
+            label=schemas.Label(key="k1", value="v1"),
+            value=0.2,
+            k=125,
+            annotation_id="not an id",  # type: ignore - purposefully throwing error
+        )
+
+    assert all(
+        [
+            key in ["value", "label_id", "type", "evaluation_id", "parameters"]
+            for key in metric.db_mapping(label_id=1, evaluation_id=1)
+        ]
+    )
+
+
+def test_ARAtKMetric():
+    metric = schemas.ARAtKMetric(
+        label=schemas.Label(key="k1", value="v1"),
+        value=0.2,
+        k_cutoffs=[1, 3, 5],
+        annotation_id=123,
+    )
+
+    with pytest.raises(ValidationError):
+        schemas.ARAtKMetric(label_key=None, value=0.2)  # type: ignore - purposefully throwing error
+
+    with pytest.raises(ValidationError):
+        schemas.ARAtKMetric(label_key=123, value=0.2)  # type: ignore - purposefully throwing error
+
+    with pytest.raises(ValidationError):
+        schemas.ARAtKMetric(
+            label=schemas.Label(key="k1", value="v1"),
+            value=0.2,
+            k_cutoffs=None,  # type: ignore - purposefully throwing error
+            annotation_id=123,
+        )
+
+    with pytest.raises(ValidationError):
+        schemas.ARAtKMetric(
+            label=schemas.Label(key="k1", value="v1"),
+            value=0.2,
+            k_cutoffs=[1, 3, 5],
+            annotation_id="not an id",  # type: ignore - purposefully throwing error
+        )
+
+    assert all(
+        [
+            key in ["value", "label_id", "type", "evaluation_id", "parameters"]
+            for key in metric.db_mapping(label_id=1, evaluation_id=1)
+        ]
+    )
+
+
+def test_mARAtKMetric():
+    metric = schemas.mARAtKMetric(
+        label_key="k1",
+        value=0.2,
+        k_cutoffs=[1, 3, 5],
+    )
+
+    with pytest.raises(ValidationError):
+        schemas.mARAtKMetric(label_key=None, value=0.2)  # type: ignore - purposefully throwing error
+
+    with pytest.raises(ValidationError):
+        schemas.mARAtKMetric(label_key=123, value=0.2)  # type: ignore - purposefully throwing error
+
+    with pytest.raises(ValidationError):
+        schemas.mARAtKMetric(
+            label_key="k1",
+            value=0.2,
+            k_cutoffs=None,  # type: ignore - purposefully throwing error
+        )
+
+    with pytest.raises(ValidationError):
+        schemas.mARAtKMetric(
+            label_key="k1",
+            value=0.2,
+            k_cutoffs=1,  # type: ignore - purposefully throwing error,
+        )
+
+    assert all(
+        [
+            key
+            in ["value", "label_key", "type", "evaluation_id", "parameters"]
+            for key in metric.db_mapping(evaluation_id=1)
+        ]
+    )
+
+
 def test_IOUMetric():
     iou_metric = schemas.IOUMetric(
         label=schemas.Label(key="key", value="value"), value=0.2

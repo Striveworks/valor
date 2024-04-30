@@ -12,6 +12,14 @@ from valor_api.backend.metrics.ranking import compute_ranking_metrics
 
 def _parse_ranking_metrics(eval_metrics: list):
     """Parse the metrics attribute of an evaluation for easy comparison against a dictionary of expected values."""
+    name_dict = {
+        "PrecisionAtKMetric": "precision",
+        "RecallAtKMetric": "recall",
+        "APAtKMetric": "ap",
+        "ARAtKMetric": "ar",
+        "mAPAtKMetric": "map",
+        "mARAtKMetric": "mar",
+    }
     output = defaultdict(lambda: defaultdict(lambda: defaultdict(float)))
 
     for metric in eval_metrics:
@@ -21,30 +29,33 @@ def _parse_ranking_metrics(eval_metrics: list):
         if metric.type == "MRRMetric":
             output["mrr"][metric.parameters["label_key"]] = metric.value  # type: ignore - defaultdict type error
 
-        elif metric.type == "PrecisionAtKMetric":
+        elif metric.type in ("PrecisionAtKMetric", "RecallAtKMetric"):
+            name = name_dict[metric.type]
             for aggregation in ("min", "max"):
                 func = getattr(builtins, aggregation)
-                existing_value = output[f"precision@k_{aggregation}"][
+                existing_value = output[f"{name}@k_{aggregation}"][
                     metric.label
                 ][metric.parameters["k"]]
 
-                output[f"precision@k_{aggregation}"][metric.label][
+                output[f"{name}@k_{aggregation}"][metric.label][
                     metric.parameters["k"]
                 ] = func(metric.value, existing_value)
 
-        elif metric.type == "APAtKMetric":
+        elif metric.type in ("APAtKMetric", "ARAtKMetric"):
+            name = name_dict[metric.type]
             for aggregation in ("min", "max"):
                 func = getattr(builtins, aggregation)
-                existing_value = output[f"ap@k_{aggregation}"].get(
+                existing_value = output[f"{name}@k_{aggregation}"].get(
                     metric.label, 0
                 )
 
-                output[f"ap@k_{aggregation}"][metric.label] = func(
+                output[f"{name}@k_{aggregation}"][metric.label] = func(
                     metric.value, existing_value
                 )
 
-        elif metric.type == "mAPAtKMetric":
-            output["map@k"][metric.parameters["label_key"]] = metric.value  # type: ignore - defaultdict type error
+        elif metric.type in ("mAPAtKMetric", "mARAtKMetric"):
+            name = name_dict[metric.type]
+            output[f"{name}@k"][metric.parameters["label_key"]] = metric.value  # type: ignore - defaultdict type error
 
         else:
             raise ValueError("Encountered unknown metric type.")
@@ -158,6 +169,25 @@ def test_ranking(
         "ap@k_min": {schemas.Label(key="k1", value="v1", score=None): 0},
         # TODO should this include k2 if MRR does?
         "map@k": {"k1": 0.33888888888888888889},
+        "recall@k_max": {
+            schemas.Label(key="k1", value="v1", score=None): {
+                1: 1 / 4,
+                3: 2 / 4,
+                5: 3 / 4,
+            }
+        },
+        "recall@k_min": {
+            schemas.Label(key="k1", value="v1", score=None): {
+                1: 0,
+                3: 0,
+                5: 0,
+            }
+        },
+        "ar@k_max": {
+            schemas.Label(key="k1", value="v1", score=None): 0.4166666666666667
+        },
+        "ar@k_min": {schemas.Label(key="k1", value="v1", score=None): 0},
+        "mar@k": {"k1": 0.2708333333333333},
     }
 
     for metric_type, outputs in metrics.items():
@@ -255,6 +285,25 @@ def test_ranking_with_label_map(
         "map@k": {
             "k1": 0.27111111111111114,  # ((1/1 + 2/3 + 2/5) / 3 + (0/1 + 1/3 + 2/5) / 3 + 0 + (0/1 + 2/3 + 3/5)/3 + 0) / 5
         },
+        "recall@k_max": {
+            schemas.Label(key="k1", value="v1", score=None): {
+                1: 1 / 4,
+                3: 2 / 4,
+                5: 3 / 4,
+            }
+        },
+        "recall@k_min": {
+            schemas.Label(key="k1", value="v1", score=None): {
+                1: 0,
+                3: 0,
+                5: 0,
+            }
+        },
+        "ar@k_max": {
+            schemas.Label(key="k1", value="v1", score=None): 0.4166666666666667
+        },
+        "ar@k_min": {schemas.Label(key="k1", value="v1", score=None): 0},
+        "mar@k": {"k1": 0.21666666666666667},
     }
 
     for metric_type, outputs in metrics.items():
