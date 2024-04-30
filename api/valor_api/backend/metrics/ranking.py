@@ -158,7 +158,7 @@ def _compute_ranking_metrics(
     groundtruth_filter: schemas.Filter,
     label_map: LabelMapType | None = None,
     k_cutoffs: list[int] = [1, 3, 5],
-    metrics_to_compute: list[str] = [
+    metrics_to_return: list[str] = [
         "MRRMetric",
         "PrecisionAtKMetric",
         "APAtKMetric",
@@ -184,7 +184,7 @@ def _compute_ranking_metrics(
         Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
     k_cutoffs: list[int]
         The cut-offs (or "k" values) to use when calculating precision@k, recall@k, etc.
-    metrics_to_compute: list[str]
+    metrics_to_return: list[str]
         The list of metrics to return to the user.
 
     Returns
@@ -350,7 +350,7 @@ def _compute_ranking_metrics(
 
     aliased_predictions_with_no_gts = predictions_with_no_gts.alias()
 
-    if "MRRMetric" in metrics_to_compute:
+    if "MRRMetric" in metrics_to_return:
         mrrs_by_key = _calc_mrr(
             db=db,
             joint=joint,
@@ -361,7 +361,7 @@ def _compute_ranking_metrics(
         for grouper_key, mrr in mrrs_by_key:
             metrics.append(schemas.MRRMetric(label_key=grouper_key, value=mrr))
 
-    if not set(metrics_to_compute).isdisjoint(
+    if not set(metrics_to_return).isdisjoint(
         set(
             [
                 "PrecisionAtKMetric",
@@ -396,7 +396,7 @@ def _compute_ranking_metrics(
             )
 
             for i, k in enumerate(k_cutoffs):
-                if "PrecisionAtKMetric" in metrics_to_compute:
+                if "PrecisionAtKMetric" in metrics_to_return:
                     metrics.append(
                         schemas.PrecisionAtKMetric(
                             label=schemas.Label(key=key, value=value),
@@ -406,7 +406,7 @@ def _compute_ranking_metrics(
                         )
                     )
 
-                if "RecallAtKMetric" in metrics_to_compute:
+                if "RecallAtKMetric" in metrics_to_return:
                     metrics.append(
                         schemas.RecallAtKMetric(
                             label=schemas.Label(key=key, value=value),
@@ -425,7 +425,7 @@ def _compute_ranking_metrics(
                 metric[4],
             )
 
-            if "APAtKMetric" in metrics_to_compute:
+            if "APAtKMetric" in metrics_to_return:
                 metrics.append(
                     schemas.APAtKMetric(
                         label=schemas.Label(key=key, value=value),
@@ -435,7 +435,7 @@ def _compute_ranking_metrics(
                     )
                 )
 
-            if "ARAtKMetric" in metrics_to_compute:
+            if "ARAtKMetric" in metrics_to_return:
                 metrics.append(
                     schemas.ARAtKMetric(
                         label=schemas.Label(key=key, value=value),
@@ -448,7 +448,7 @@ def _compute_ranking_metrics(
         for metric in map_and_mar:
             key, map_value, mar_value = (metric[0], metric[1], metric[2])
 
-            if "mAPAtKMetric" in metrics_to_compute:
+            if "mAPAtKMetric" in metrics_to_return:
                 metrics.append(
                     schemas.mAPAtKMetric(
                         label_key=key,
@@ -457,7 +457,7 @@ def _compute_ranking_metrics(
                     )
                 )
 
-            if "mARAtKMetric" in metrics_to_compute:
+            if "mARAtKMetric" in metrics_to_return:
                 metrics.append(
                     schemas.mARAtKMetric(
                         label_key=key,
@@ -504,6 +504,23 @@ def compute_ranking_metrics(
     groundtruth_filter.task_types = [parameters.task_type]
     prediction_filter.task_types = [parameters.task_type]
 
+    # if the user doesn't specify any metrics, then return all of them
+    if parameters.metrics_to_return is None:
+        parameters.metrics_to_return = [
+            "MRRMetric",
+            "PrecisionAtKMetric",
+            "APAtKMetric",
+            "mAPAtKMetric",
+            "RecallAtKMetric",
+            "ARAtKMetric",
+            "mARAtKMetric",
+            "MRRMetric",
+        ]
+
+    # if the user doesn't specify any k-cutoffs, then use [1, 3, 5] as the default
+    if parameters.k_cutoffs is None:
+        parameters.k_cutoffs = [1, 3, 5]
+
     log_evaluation_item_counts(
         db=db,
         evaluation=evaluation,
@@ -516,6 +533,8 @@ def compute_ranking_metrics(
         prediction_filter=prediction_filter,
         groundtruth_filter=groundtruth_filter,
         label_map=parameters.label_map,
+        metrics_to_return=parameters.metrics_to_return,
+        k_cutoffs=parameters.k_cutoffs,
     )
 
     metric_mappings = create_metric_mappings(

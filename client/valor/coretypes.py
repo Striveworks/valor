@@ -1084,6 +1084,8 @@ class Model(StaticCollection):
         filter_by: Optional[FilterType] = None,
         label_map: Optional[Dict[Label, Label]] = None,
         allow_retries: bool = False,
+        metrics_to_return: Optional[list[str]] = None,
+        k_cutoffs: Optional[list[int]] = None,
     ) -> Evaluation:
         """
         Start a ranking evaluation job.
@@ -1098,6 +1100,10 @@ class Model(StaticCollection):
             Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
         allow_retries : bool, default = False
             Option to retry previously failed evaluations.
+        metrics_to_return : list[str], optional
+            The list of metrics to include in the returned evaluation.
+        k_cutoffs : list[int], optional
+            The list of cut-offs to use when calculating precision@k, recall@k, etc.
 
         Returns
         -------
@@ -1117,6 +1123,8 @@ class Model(StaticCollection):
             parameters=EvaluationParameters(
                 task_type=TaskType.RANKING,
                 label_map=self._create_label_map(label_map=label_map),
+                metrics_to_return=metrics_to_return,
+                k_cutoffs=k_cutoffs,
             ),
             meta={},
         )

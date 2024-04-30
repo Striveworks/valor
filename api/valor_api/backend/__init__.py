@@ -34,6 +34,7 @@ from .core import (
 from .metrics import (
     compute_clf_metrics,
     compute_detection_metrics,
+    compute_ranking_metrics,
     compute_semantic_segmentation_metrics,
 )
 from .query import Query
@@ -64,6 +65,7 @@ __all__ = [
     "compute_clf_metrics",
     "compute_detection_metrics",
     "compute_semantic_segmentation_metrics",
+    "compute_ranking_metrics",
     "get_paginated_evaluations",
     "get_evaluation_status",
     "Query",

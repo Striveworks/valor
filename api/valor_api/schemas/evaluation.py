@@ -30,6 +30,10 @@ class EvaluationParameters(BaseModel):
         A boolean which determines whether we calculate precision-recall curves or not.
     pr_curve_iou_threshold: float, optional
             The IOU threshold to use when calculating precision-recall curves for object detection tasks. Defaults to 0.5. Does nothing when compute_pr_curves is set to False or None.
+    metrics_to_return: list[str], optional
+        The list of metric names to return to the user.
+    k_cutoffs: list[int], optional
+        The list of cut-offs to use when calculating precision@k, recall@k, etc.
     """
 
     task_type: TaskType
@@ -41,6 +45,8 @@ class EvaluationParameters(BaseModel):
     recall_score_threshold: float | None = 0
     compute_pr_curves: bool | None = None
     pr_curve_iou_threshold: float | None = 0.5
+    metrics_to_return: list[str] | None = None
+    k_cutoffs: list[int] | None = None
 
     # pydantic setting
     model_config = ConfigDict(extra="forbid")
@@ -64,6 +70,10 @@ class EvaluationParameters(BaseModel):
                     raise ValueError(
                         "`iou_thresholds_to_return` should only be used for object detection evaluations."
                     )
+                if values.metrics_to_return:
+                    raise NotImplementedError(
+                        f"`metrics_to_return` isn't implemented for task type {values.task_type}."
+                    )
             case TaskType.OBJECT_DETECTION:
                 if not 0 <= values.pr_curve_iou_threshold <= 1:
                     raise ValueError(
@@ -79,8 +89,33 @@ class EvaluationParameters(BaseModel):
                             raise ValueError(
                                 "`iou_thresholds_to_return` must be a subset of `iou_thresholds_to_compute`"
                             )
+                if values.metrics_to_return:
+                    raise NotImplementedError(
+                        f"`metrics_to_return` isn't implemented for task type {values.task_type}."
+                    )
             case TaskType.RANKING:
-                pass
+
+                allowed_metrics = [
+                    "MRRMetric",
+                    "PrecisionAtKMetric",
+                    "APAtKMetric",
+                    "mAPAtKMetric",
+                    "RecallAtKMetric",
+                    "ARAtKMetric",
+                    "mARAtKMetric",
+                    "MRRMetric",
+                ]
+
+                if values.metrics_to_return is not None and not all(
+                    [
+                        metric_name in allowed_metrics
+                        for metric_name in values.metrics_to_return
+                    ]
+                ):
+                    raise ValueError(
+                        f"`metrics_to_return` should only include the following strings: {allowed_metrics}"
+                    )
+
             case _:
                 raise NotImplementedError(
                     f"Task type `{values.task_type}` is unsupported."

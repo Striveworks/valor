@@ -134,6 +134,8 @@ def create_or_get_evaluations(
                     compute_func = (
                         backend.compute_semantic_segmentation_metrics
                     )
+                case enums.TaskType.RANKING:
+                    compute_func = backend.compute_ranking_metrics
                 case _:
                     raise RuntimeError
 
