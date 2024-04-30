@@ -9,3 +9,4 @@ RUN apk --update add postgresql-client
 
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["up"]
+USER 65532:65532
