@@ -262,7 +262,7 @@ class Annotation(StaticCollection):
         A raster to assign to the `Annotation`.
     embedding: List[float], optional
         An embedding, described by a list of values with type float and a maximum length of 16,000.
-    ranking: Union[List[str], List[float], None], optional
+    ranking: List[str], optional
             A list of strings or a list of floats representing an ordered ranking.
 
     Examples
@@ -344,7 +344,7 @@ class Annotation(StaticCollection):
         polygon: Optional[Polygon] = None,
         raster: Optional[Raster] = None,
         embedding: Optional[Embedding] = None,
-        ranking: Union[List[str], List[float], None] = None,
+        ranking: Optional[List[str]] = None,
     ):
         """
         Constructs an annotation.
@@ -365,7 +365,7 @@ class Annotation(StaticCollection):
             A raster annotation.
         embedding: List[float], optional
             An embedding, described by a list of values with type float and a maximum length of 16,000.
-        ranking: Union[List[str], List[float], None], optional
+        ranking: List[str], optional
             A list of strings or a list of floats representing an ordered ranking.
         """
         super().__init__(

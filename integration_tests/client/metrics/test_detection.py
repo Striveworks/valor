@@ -148,6 +148,8 @@ def test_evaluate_detection(
             "recall_score_threshold": 0.0,
             "compute_pr_curves": False,
             "pr_curve_iou_threshold": 0.5,
+            "k_cutoffs": None,
+            "metrics_to_return": None,
         },
         "status": EvaluationStatus.DONE.value,
         "metrics": expected_metrics,
@@ -258,6 +260,8 @@ def test_evaluate_detection(
             "recall_score_threshold": 0.0,
             "compute_pr_curves": False,
             "pr_curve_iou_threshold": 0.5,
+            "k_cutoffs": None,
+            "metrics_to_return": None,
         },
         "status": EvaluationStatus.DONE.value,
         "metrics": expected_metrics,
@@ -308,6 +312,8 @@ def test_evaluate_detection(
             "recall_score_threshold": 0.0,
             "compute_pr_curves": False,
             "pr_curve_iou_threshold": 0.5,
+            "k_cutoffs": None,
+            "metrics_to_return": None,
         },
         # check metrics below
         "status": EvaluationStatus.DONE.value,
@@ -356,6 +362,8 @@ def test_evaluate_detection(
             "recall_score_threshold": 0.0,
             "compute_pr_curves": False,
             "pr_curve_iou_threshold": 0.5,
+            "k_cutoffs": None,
+            "metrics_to_return": None,
         },
         # check metrics below
         "status": EvaluationStatus.DONE.value,
@@ -574,6 +582,8 @@ def test_evaluate_detection_with_json_filters(
             "recall_score_threshold": 0.0,
             "compute_pr_curves": False,
             "pr_curve_iou_threshold": 0.5,
+            "k_cutoffs": None,
+            "metrics_to_return": None,
         },
         # check metrics below
         "status": EvaluationStatus.DONE.value,
@@ -1544,6 +1554,8 @@ def test_evaluate_detection_with_label_maps(
         "recall_score_threshold": 0.8,
         "compute_pr_curves": True,
         "pr_curve_iou_threshold": 0.5,
+        "k_cutoffs": None,
+        "metrics_to_return": None,
     }
 
     metrics = eval_job.metrics

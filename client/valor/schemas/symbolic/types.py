@@ -2007,7 +2007,7 @@ class RankingArray(Variable):
         A list of rankings or reference scores.
     """
 
-    def __init__(self, value: typing.List):
+    def __init__(self, value: typing.List[str]):
         """
         Initializes a ranking list.
 
@@ -2039,14 +2039,10 @@ class RankingArray(Variable):
             If the value type is not supported.
         """
         contains_all_strings = all(isinstance(item, str) for item in value)
-        contains_all_floats = all(isinstance(item, float) for item in value)
 
-        if (
-            not isinstance(value, list)
-            or sum([contains_all_floats, contains_all_strings]) != 1
-        ):
+        if not isinstance(value, list) or not contains_all_strings:
             raise TypeError(
-                f"Expected type 'Optional[Union[List[float], List[str]]]' received type '{type(value)}'"
+                f"Expected ranking array to be of type 'Optional[List[str]]' received type '{type(value)}'"
             )
         elif len(value) < 1:
             raise ValueError("RankingArray should have at least one dimension")

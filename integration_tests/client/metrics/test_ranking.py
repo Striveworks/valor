@@ -519,3 +519,36 @@ def test_evaluate_ranking_error_cases(
         model.evaluate_ranking(
             dataset, label_map={Label(key="foo", value="bar"): "bar"}
         )
+
+    # test bad ranking arrays
+    with pytest.raises(TypeError):
+        _ = [
+            GroundTruth(
+                datum=Datum(uid="uid1", metadata={}),
+                annotations=[
+                    Annotation(
+                        task_type=TaskType.RANKING,
+                        labels=[
+                            Label(key="k1", value="v1"),
+                        ],
+                        ranking=[1, 2, 3, 4],
+                    )
+                ],
+            ),
+        ]
+
+    with pytest.raises(TypeError):
+        _ = [
+            GroundTruth(
+                datum=Datum(uid="uid1", metadata={}),
+                annotations=[
+                    Annotation(
+                        task_type=TaskType.RANKING,
+                        labels=[
+                            Label(key="k1", value="v1"),
+                        ],
+                        ranking=[0.2, 0.3, 0.4],
+                    )
+                ],
+            ),
+        ]
