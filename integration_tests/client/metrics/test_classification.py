@@ -144,6 +144,7 @@ def test_evaluate_image_clf(
             "label": {"key": "k3", "value": "v3"},
         },
         {"type": "F1", "value": 0.0, "label": {"key": "k3", "value": "v3"}},
+        {"type": "mAccuracy", "value": 0.16666666666666666},
     ]
 
     expected_confusion_matrices = [
@@ -308,6 +309,7 @@ def test_evaluate_tabular_clf(
             "value": 0.6666666666666666,
             "label": {"key": "class", "value": "0"},
         },
+        {"type": "mAccuracy", "value": 0.5},
     ]
     for m in metrics:
         assert m in expected_metrics
@@ -540,6 +542,7 @@ def test_stratify_clf_metrics(
             "value": 0.6666666666666666,
             "label": {"key": "class", "value": "0"},
         },
+        {"type": "mAccuracy", "value": 0.3333333333333333},
     ]
 
     for metrics in [val2_metrics, val_bool_metrics]:
@@ -673,6 +676,7 @@ def test_stratify_clf_metrics_by_time(
             "value": 0.6666666666666666,
             "label": {"key": "class", "value": "0"},
         },
+        {"type": "mAccuracy", "value": 0.3333333333333333},
     ]
 
     assert len(val2_metrics) == len(expected_metrics)
@@ -953,6 +957,7 @@ def test_evaluate_classification_with_label_maps(
             "label": {"key": "k4", "value": "v8"},
         },
         {"type": "F1", "value": 0.0, "label": {"key": "k4", "value": "v8"}},
+        {"type": "mAccuracy", "value": 0.375},
     ]
 
     cat_expected_cm = [

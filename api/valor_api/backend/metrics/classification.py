@@ -859,6 +859,19 @@ def _compute_clf_metrics(
             confusion_matrices.append(cm_and_metrics[0])
             metrics.extend(cm_and_metrics[1])
 
+    # calculate aggregated metrics
+    accuracy_metrics = [
+        metric.value
+        for metric in metrics
+        if isinstance(metric, schemas.AccuracyMetric)
+    ]
+
+    metrics.append(
+        schemas.mAccuracyMetric(
+            value=sum(accuracy_metrics) / len(accuracy_metrics)
+        )
+    )
+
     return confusion_matrices, metrics
 
 

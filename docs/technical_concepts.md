@@ -22,6 +22,7 @@ As of January 2024, Valor supports the following types of supervised learning ta
   - F1
   - ROC AUC
   - Accuracy
+  - mAccuracy
   - Precision
   - Recall
 - Object detection
