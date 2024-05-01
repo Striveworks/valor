@@ -35,6 +35,19 @@ If we're missing an important metric for your particular use case, please [write
 | Intersection Over Union (IOU) | A ratio between the groundtruth and predicted regions of an image, measured as a percentage, grouped by class. |$\dfrac{area( prediction \cap groundtruth )}{area( prediction \cup groundtruth )}$ |
 | Mean IOU 	| The average of IOUs, calculated over several different classes. | $\dfrac{1}{\text{number of classes}} \sum\limits_{c \in classes} IOU_{c}$ |
 
+
+## Ranking Metrics
+
+| Name | Description | Equation |
+| :- | :- | :- |
+| Mean Reciprical Rank (MRR) | The reciprocal rank of a query response is the multiplicative inverse of the rank of the first correct answer: 1 for first place, 1⁄2 for second place, 1⁄3 for third place and so on. The MRR is the mean of reciprical ranks across all label keys. | $\dfrac{1}{\text{number of label values}} \sum\limits_{i} \dfrac{1}{rank}_{i}$ |
+| Precision@k (P@k) | The percent of the top K recommendations which were actually relevant (as defined by being present in the `ranking` attribute of the ground truth). | $\dfrac{\text{count of relevant items in top k recommendations}}{\text{k}}$ |
+| Average Precision@k (AP@k) | The mean of Precision@i for i=1, ..., K. To calculate AP@3, for example, we sum P@1, P@2 and P@3 and divide that value by 3. | $\dfrac{1}{\text{number of k cut-offs}} \sum\limits_{i \in \text{k}} \text{P@i}$ |
+| Mean Average Precision@k (mAP@k) | The mean of AP@K across all values for a given key. | $\dfrac{1}{\text{number of label values}} \sum\limits_{i} \text{AP@k}_{i}$ |
+| Recall@k (R@k) | The percent of relevant recommendations (as defined by being present in the `ranking` attribute of the ground truth) in the top k recommendations. | $\dfrac{\text{count of relevant items in top k recommendations}}{\text{total number of relevant items}}$ |
+| Average Recall@k (AR@k) | The mean of Recall@i for i=1, ..., K. To calculate AR@3, for example, we sum R@1, R@2 and R@3 and divide that value by 3. | $\dfrac{1}{\text{number of k cut-offs}} \sum\limits_{i \in \text{k}} \text{R@i}$ |
+| Mean Average Recall@k (mAR@k) | The mean of AR@K across all values for a given key. | $\dfrac{1}{\text{number of label values}} \sum\limits_{i} \text{AR@k}_{i}$ |
+
 # Appendix: Metric Calculations
 
 ## Binary ROC AUC
