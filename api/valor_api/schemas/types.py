@@ -323,7 +323,7 @@ class Annotation(BaseModel):
     embedding: list[float], optional
         A jsonb to assign to the 'Annotation'.
     ranking: list[str], optional
-        A list of strings or a list of floats representing an ordered ranking.
+        A list of strings representing an ordered ranking.
 
     """
 

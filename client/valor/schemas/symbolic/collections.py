@@ -263,7 +263,7 @@ class Annotation(StaticCollection):
     embedding: List[float], optional
         An embedding, described by a list of values with type float and a maximum length of 16,000.
     ranking: List[str], optional
-            A list of strings or a list of floats representing an ordered ranking.
+            A list of strings representing an ordered ranking.
 
     Examples
     --------
@@ -366,7 +366,7 @@ class Annotation(StaticCollection):
         embedding: List[float], optional
             An embedding, described by a list of values with type float and a maximum length of 16,000.
         ranking: List[str], optional
-            A list of strings or a list of floats representing an ordered ranking.
+            A list of strings representing an ordered ranking.
         """
         super().__init__(
             task_type=task_type,
