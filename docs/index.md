@@ -75,7 +75,7 @@ To get started with Valor, we'd recommend reviewing our [sample notebooks](https
 
 **Q. What evaluation methods are supported?**
 
-**A.** Valor currently supports generic classification as well as object-detection and semantic-segmentation for images. The long-term goal for Valor is to support the most popular supervised learning methods.
+**A.** Valor currently supports generic classification and ranking, as well as object detection and semantic segmentation for images. The long-term goal for Valor is to support the most popular supervised learning methods.
 
 **Q. Does Valor store data?**
 
