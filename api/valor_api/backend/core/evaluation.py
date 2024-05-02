@@ -1,7 +1,8 @@
 from datetime import timezone
 from typing import Sequence
 
-from sqlalchemy import and_, desc, func, or_, select, update
+from sqlalchemy import and_, case, desc, func, or_, select, update
+from sqlalchemy.dialects.postgresql import aggregate_order_by
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.elements import BinaryExpression
@@ -616,6 +617,7 @@ def get_paginated_evaluations(
     model_names: list[str] | None = None,
     offset: int = 0,
     limit: int = -1,
+    metrics_to_sort_by: list[str] | None = None,
 ) -> tuple[list[schemas.EvaluationResponse], dict[str, str]]:
     """
     Returns all evaluations that conform to user-supplied constraints.
@@ -634,6 +636,8 @@ def get_paginated_evaluations(
         The start index of the items to return.
     limit : int, optional
         The number of items to return. Returns all items when set to -1.
+    metrics_to_sort_by: list[str], optional
+        An optional list of metric types to sort the evaluations by.
 
     Returns
     ----------
@@ -671,19 +675,72 @@ def get_paginated_evaluations(
     if limit == -1:
         limit = count
 
-    evaluations = (
-        db.query(models.Evaluation)
-        .where(
-            and_(
-                *expr,
-                models.Evaluation.status != enums.EvaluationStatus.DELETING,
-            )
+    if metrics_to_sort_by is not None:
+        order_case = case(
+            *[
+                (models.Metric.type == item, i)
+                for i, item in enumerate(metrics_to_sort_by)
+            ],
+            else_=999,
         )
-        .order_by(desc(models.Evaluation.created_at))
-        .offset(offset)
-        .limit(limit)
-        .all()
-    )
+
+        aggregated_sorting_field = (
+            select(
+                models.Metric.evaluation_id,
+                func.array_agg(
+                    aggregate_order_by(models.Metric.value, order_case)
+                ).label("sort_array"),
+            )
+            .select_from(models.Metric)
+            .group_by(models.Metric.evaluation_id)
+            .where(models.Metric.type.in_(metrics_to_sort_by))
+            .alias()
+        )
+
+        evaluations = db.query(
+            select(
+                models.Evaluation,
+            )
+            .select_from(models.Evaluation)
+            .join(
+                aggregated_sorting_field,
+                aggregated_sorting_field.c.evaluation_id
+                == models.Evaluation.id,
+                isouter=True,
+            )
+            .where(
+                and_(
+                    *expr,
+                    models.Evaluation.status
+                    != enums.EvaluationStatus.DELETING,
+                )
+            )
+            .order_by(
+                desc(aggregated_sorting_field.c.sort_array),
+                desc(models.Evaluation.created_at),
+            )
+            .offset(offset)
+            .limit(limit)
+            .alias()
+        ).all()
+
+    else:
+        evaluations = (
+            db.query(
+                models.Evaluation,
+            )
+            .where(
+                and_(
+                    *expr,
+                    models.Evaluation.status
+                    != enums.EvaluationStatus.DELETING,
+                )
+            )
+            .order_by(desc(models.Evaluation.created_at))
+            .offset(offset)
+            .limit(limit)
+            .all()
+        )
 
     content = _create_responses(db, evaluations)
 

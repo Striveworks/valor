@@ -827,6 +827,7 @@ class ClientConnection:
         evaluation_ids: Optional[List[int]] = None,
         models: Optional[List[str]] = None,
         datasets: Optional[List[str]] = None,
+        metrics_to_sort_by: list[str] | None = None,
     ) -> List[dict]:
         """
         Returns all evaluations associated with user-supplied dataset and/or model names.
@@ -841,6 +842,8 @@ class ClientConnection:
             A list of model names that we want to return metrics for.
         datasets : List[str], optional
             A list of dataset names that we want to return metrics for.
+        metrics_to_sort_by: list[str], optional
+            An optional list of metric types to sort the evaluations by.
 
         Returns
         -------
@@ -865,6 +868,9 @@ class ClientConnection:
             **_build_query_param("evaluation_ids", evaluation_ids, int),
             **_build_query_param("models", models, str),
             **_build_query_param("datasets", datasets, str),
+            **_build_query_param(
+                "metrics_to_sort_by", metrics_to_sort_by, str
+            ),
         }
 
         query_str = urlencode(params)

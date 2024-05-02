@@ -41,3 +41,28 @@ def _get_pagination_header(
     return {
         "content-range": f"items {range_indicator}/{total_number_of_items}"
     }
+
+
+def _validate_metrics_to_sort_by(metrics_to_sort_by: list[str] | None):
+    """
+    Checks that the user is only passing dataset-level metrics to metrics_to_sort_by.
+
+    Parameters
+    ----------
+    metrics_to_sort_by: str, optional
+        An optional list of metric types to sort evaluations by.
+
+    Raises
+    -------
+    ValueError
+        If metrics_to_sort_by contains one or more metrics that aren't at the dataset-level.
+    """
+    allowed_metrics = ["mAPAveragedOverIOUs", "mIOU", "mAccuracy"]
+
+    if metrics_to_sort_by is not None:
+        if not all(
+            [metric in allowed_metrics for metric in metrics_to_sort_by]
+        ):
+            raise ValueError(
+                f"metrics_to_sort_by contains metrics that are too granular to sort by. Please only pass the following metrics in metrics_to_sort_by: {allowed_metrics}"
+            )

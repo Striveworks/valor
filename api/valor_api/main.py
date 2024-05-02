@@ -1098,6 +1098,7 @@ def get_evaluations(
     evaluation_ids: str | None = None,
     offset: int = 0,
     limit: int = -1,
+    metrics_to_sort_by: str | None = None,
     db: Session = Depends(get_db),
 ) -> list[schemas.EvaluationResponse]:
     """
@@ -1127,6 +1128,8 @@ def get_evaluations(
         The start index of the items to return.
     limit : int, optional
         The number of items to return. Returns all items when set to -1.
+    metrics_to_sort_by: str, optional
+        An optional list of metric types to sort the evaluations by.
 
     Returns
     -------
@@ -1143,6 +1146,9 @@ def get_evaluations(
     model_names = api_utils._split_query_params(models)
     dataset_names = api_utils._split_query_params(datasets)
     evaluation_ids_str = api_utils._split_query_params(evaluation_ids)
+    metrics_to_sort_by_ = api_utils._split_query_params(metrics_to_sort_by)
+
+    api_utils._validate_metrics_to_sort_by(metrics_to_sort_by_)
 
     if evaluation_ids_str:
         try:
@@ -1160,6 +1166,7 @@ def get_evaluations(
             model_names=model_names,
             offset=offset,
             limit=limit,
+            metrics_to_sort_by=metrics_to_sort_by_,
         )
         response.headers.update(headers)
         return content

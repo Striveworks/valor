@@ -596,16 +596,24 @@ class Dataset(StaticCollection):
 
     def get_evaluations(
         self,
+        metrics_to_sort_by: list[str] | None = None,
     ) -> List[Evaluation]:
         """
         Get all evaluations associated with a given dataset.
+
+        Parameters
+        ----------
+        metrics_to_sort_by: list[str], optional
+            An optional list of metric types to sort the evaluations by.
 
         Returns
         ----------
         List[Evaluation]
             A list of `Evaluations` associated with the dataset.
         """
-        return Client(self.conn).get_evaluations(datasets=[self])
+        return Client(self.conn).get_evaluations(
+            datasets=[self], metrics_to_sort_by=metrics_to_sort_by
+        )
 
     def get_summary(self) -> DatasetSummary:
         """
@@ -1104,16 +1112,25 @@ class Model(StaticCollection):
 
     def get_evaluations(
         self,
+        metrics_to_sort_by: list[str] | None = None,
     ) -> List[Evaluation]:
         """
         Get all evaluations associated with a given model.
+
+        Parameters
+        ----------
+        metrics_to_sort_by: list[str], optional
+            An optional list of metric types to sort the evaluations by.
+
 
         Returns
         ----------
         List[Evaluation]
             A list of `Evaluations` associated with the model.
         """
-        return Client(self.conn).get_evaluations(models=[self])
+        return Client(self.conn).get_evaluations(
+            models=[self], metrics_to_sort_by=metrics_to_sort_by
+        )
 
 
 class Client:
@@ -1709,6 +1726,7 @@ class Client:
         evaluation_ids: Optional[List[int]] = None,
         models: Union[List[Model], List[str], None] = None,
         datasets: Union[List[Dataset], List[str], None] = None,
+        metrics_to_sort_by: list[str] | None = None,
     ) -> List[Evaluation]:
         """
         Returns all evaluations associated with user-supplied dataset and/or model names.
@@ -1721,6 +1739,8 @@ class Client:
             A list of model names that we want to return metrics for.
         datasets : Union[List[valor.Dataset], List[str]], optional
             A list of dataset names that we want to return metrics for.
+        metrics_to_sort_by: list[str], optional
+            An optional list of metric types to sort the evaluations by.
 
         Returns
         -------
@@ -1743,6 +1763,7 @@ class Client:
                 evaluation_ids=evaluation_ids,
                 models=models,
                 datasets=datasets,
+                metrics_to_sort_by=metrics_to_sort_by,
             )
         ]
 

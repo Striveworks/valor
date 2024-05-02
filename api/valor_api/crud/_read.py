@@ -338,6 +338,7 @@ def get_evaluations(
     model_names: list[str] | None = None,
     offset: int = 0,
     limit: int = -1,
+    metrics_to_sort_by: list[str] | None = None,
 ) -> tuple[list[schemas.EvaluationResponse], dict[str, str]]:
     """
     Returns all evaluations that conform to user-supplied constraints.
@@ -356,6 +357,8 @@ def get_evaluations(
         The start index of the items to return.
     limit : int, optional
         The number of items to return. Returns all items when set to -1.
+    metrics_to_sort_by: list[str], optional
+        An optional list of metric types to sort the evaluations by.
 
     Returns
     ----------
@@ -370,6 +373,7 @@ def get_evaluations(
         model_names=model_names,
         offset=offset,
         limit=limit,
+        metrics_to_sort_by=metrics_to_sort_by,
     )
 
 

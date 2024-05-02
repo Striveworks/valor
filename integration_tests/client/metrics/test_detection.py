@@ -780,6 +780,28 @@ def test_get_evaluations(
     )
     assert resp.headers["content-range"] == "items 1-1/2"
 
+    # test metrics_to_sort_by
+    both_evaluations_from_evaluation_ids_sorted = client.get_evaluations(
+        evaluation_ids=[eval_job.id, eval_job2.id],
+        metrics_to_sort_by=["mAPAveragedOverIOUs"],
+    )
+
+    # without sorting, the first evaluation (with mAPAveragedOverIOUs == 0) is returned first
+    assert both_evaluations_from_evaluation_ids[0].metrics[-1]["value"] == 0
+
+    # with sorting, the evaluation with the higher mAPAveragedOverIOUs is returned first
+    assert (
+        both_evaluations_from_evaluation_ids_sorted[0].metrics[-1]["value"]
+        == 0.504950495049505
+    )
+
+    # test bad metrics_to_sort_by list
+    with pytest.raises(ClientException):
+        both_evaluations_from_evaluation_ids_sorted = client.get_evaluations(
+            evaluation_ids=[eval_job.id, eval_job2.id],
+            metrics_to_sort_by=["AP"],
+        )
+
 
 @pytest.fixture
 def gts_det_with_label_maps(
