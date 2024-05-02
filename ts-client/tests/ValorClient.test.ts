@@ -1,6 +1,5 @@
 // integration tests against a live valor instance running on http://localhost:8000
 
-import { debug } from 'console';
 import { ValorClient } from '../src/ValorClient';
 
 const baseURL = 'http://localhost:8000';
