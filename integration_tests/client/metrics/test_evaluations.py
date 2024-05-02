@@ -192,7 +192,12 @@ def test_get_sorted_evaluations(
         "semantic-segmentation",
     ]
 
-    assert [eval.metrics[-1] for eval in unsorted_evaluations[:3]] == [
+    assert [
+        metric
+        for eval in unsorted_evaluations[:3]
+        for metric in eval.metrics
+        if metric["type"] == "mAccuracy"
+    ] == [
         {"type": "mAccuracy", "value": 0.3333333333333333},
         {"type": "mAccuracy", "value": 0.5},
         {"type": "mAccuracy", "value": 0.3333333333333333},
@@ -214,14 +219,24 @@ def test_get_sorted_evaluations(
     ]
 
     # check that clf metrics are now sorted
-    assert [eval.metrics[-1] for eval in evaluations[:3]] == [
+    assert [
+        metric
+        for eval in evaluations[:3]
+        for metric in eval.metrics
+        if metric["type"] == "mAccuracy"
+    ] == [
         {"type": "mAccuracy", "value": 0.5},
         {"type": "mAccuracy", "value": 0.3333333333333333},
         {"type": "mAccuracy", "value": 0.3333333333333333},
     ]
 
     # check that det metrics are unsorted
-    assert [eval.metrics[-1] for eval in evaluations[3:5]] == [
+    assert [
+        metric
+        for eval in evaluations[3:5]
+        for metric in eval.metrics
+        if metric["type"] == "mAPAveragedOverIOUs"
+    ] == [
         {
             "type": "mAPAveragedOverIOUs",
             "parameters": {"ious": [0.1, 0.6]},
@@ -252,14 +267,22 @@ def test_get_sorted_evaluations(
         "object-detection",
         "semantic-segmentation",
     ]
-
-    assert [eval.metrics[-1] for eval in evaluations[:3]] == [
+    assert [
+        metric
+        for eval in evaluations[:3]
+        for metric in eval.metrics
+        if metric["type"] == "mAccuracy"
+    ] == [
         {"type": "mAccuracy", "value": 0.5},
         {"type": "mAccuracy", "value": 0.3333333333333333},
         {"type": "mAccuracy", "value": 0.3333333333333333},
     ]
-
-    assert [eval.metrics[-1] for eval in evaluations[3:5]] == [
+    assert [
+        metric
+        for eval in evaluations[3:5]
+        for metric in eval.metrics
+        if metric["type"] == "mAPAveragedOverIOUs"
+    ] == [
         {
             "type": "mAPAveragedOverIOUs",
             "parameters": {"ious": [0.1, 0.6]},
@@ -290,14 +313,22 @@ def test_get_sorted_evaluations(
         "object-detection",
         "semantic-segmentation",
     ]
-
-    assert [eval.metrics[-1] for eval in evaluations[:3]] == [
+    assert [
+        metric
+        for eval in evaluations[:3]
+        for metric in eval.metrics
+        if metric["type"] == "mAccuracy"
+    ] == [
         {"type": "mAccuracy", "value": 0.5},
         {"type": "mAccuracy", "value": 0.3333333333333333},
         {"type": "mAccuracy", "value": 0.3333333333333333},
     ]
-
-    assert [eval.metrics[-1] for eval in evaluations[3:5]] == [
+    assert [
+        metric
+        for eval in evaluations[3:5]
+        for metric in eval.metrics
+        if metric["type"] == "mAPAveragedOverIOUs"
+    ] == [
         {
             "type": "mAPAveragedOverIOUs",
             "parameters": {"ious": [0.1, 0.6]},
