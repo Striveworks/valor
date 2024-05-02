@@ -193,14 +193,14 @@ def test_get_labels(
     )
     assert len(high_score_labels) == 5
     for label in high_score_labels:
-        assert int(label.value.get_value()) % 2 == 1
+        assert int(label.value) % 2 == 1
 
     low_score_labels = client.get_labels(
         Filter(label_scores=[Constraint(value=0.5, operator="<")])
     )
     assert len(low_score_labels) == 5
     for label in low_score_labels:
-        assert int(label.value.get_value()) % 2 == 0
+        assert int(label.value) % 2 == 0
 
     # check that the content-range header exists on the raw response
     requests_method = getattr(requests, "get")

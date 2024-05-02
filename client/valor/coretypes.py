@@ -547,9 +547,6 @@ class Dataset(StaticCollection):
         """
         return Client(self.conn).get_groundtruth(dataset=self, datum=datum)
 
-    def get_name(self) -> str:
-        return self.name.get_value()
-
     def get_labels(
         self,
     ) -> List[Label]:
@@ -1253,7 +1250,7 @@ class Client:
             if not isinstance(groundtruth.annotations._value, list):
                 raise TypeError
             groundtruth_dict = groundtruth.encode_value()
-            groundtruth_dict["dataset_name"] = dataset.get_name()
+            groundtruth_dict["dataset_name"] = dataset.name
             groundtruths_json.append(groundtruth_dict)
         self.conn.create_groundtruths(groundtruths_json)
 
