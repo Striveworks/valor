@@ -1,7 +1,7 @@
 from datetime import timezone
 from typing import Sequence
 
-from sqlalchemy import and_, case, desc, func, or_, select, update
+from sqlalchemy import and_, asc, case, desc, func, or_, select, update
 from sqlalchemy.dialects.postgresql import aggregate_order_by
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -676,12 +676,13 @@ def get_paginated_evaluations(
         limit = count
 
     if metrics_to_sort_by is not None:
+        metrics_to_sort_by_ = set(metrics_to_sort_by)
         order_case = case(
             *[
-                (models.Metric.type == item, i)
-                for i, item in enumerate(metrics_to_sort_by)
+                (models.Metric.type == item, i + 1)
+                for i, item in enumerate(metrics_to_sort_by_)
             ],
-            else_=999,
+            else_=0,
         )
 
         aggregated_sorting_field = (
@@ -693,12 +694,14 @@ def get_paginated_evaluations(
             )
             .select_from(models.Metric)
             .group_by(models.Metric.evaluation_id)
-            .where(models.Metric.type.in_(metrics_to_sort_by))
+            .where(models.Metric.type.in_(metrics_to_sort_by_))
             .alias()
         )
 
         evaluations = db.query(
             select(
+                models.Evaluation.parameters["task_type"],
+                aggregated_sorting_field.c.sort_array,
                 models.Evaluation,
             )
             .select_from(models.Evaluation)
@@ -716,6 +719,7 @@ def get_paginated_evaluations(
                 )
             )
             .order_by(
+                asc(models.Evaluation.parameters["task_type"]),
                 desc(aggregated_sorting_field.c.sort_array),
                 desc(models.Evaluation.created_at),
             )
@@ -736,7 +740,10 @@ def get_paginated_evaluations(
                     != enums.EvaluationStatus.DELETING,
                 )
             )
-            .order_by(desc(models.Evaluation.created_at))
+            .order_by(
+                asc(models.Evaluation.parameters["task_type"]),
+                desc(models.Evaluation.created_at),
+            )
             .offset(offset)
             .limit(limit)
             .all()

@@ -786,7 +786,6 @@ def test_get_evaluations(
         metrics_to_sort_by=["mAPAveragedOverIOUs"],
     )
 
-    # without sorting, the first evaluation (with mAPAveragedOverIOUs == 0) is returned first
     assert both_evaluations_from_evaluation_ids[0].metrics[-1]["value"] == 0
 
     # with sorting, the evaluation with the higher mAPAveragedOverIOUs is returned first
