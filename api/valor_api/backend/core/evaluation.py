@@ -676,11 +676,10 @@ def get_paginated_evaluations(
         limit = count
 
     if metrics_to_sort_by is not None:
-        metrics_to_sort_by_ = set(metrics_to_sort_by)
         order_case = case(
             *[
                 (models.Metric.type == item, i + 1)
-                for i, item in enumerate(metrics_to_sort_by_)
+                for i, item in enumerate(metrics_to_sort_by)
             ],
             else_=0,
         )
@@ -694,7 +693,7 @@ def get_paginated_evaluations(
             )
             .select_from(models.Metric)
             .group_by(models.Metric.evaluation_id)
-            .where(models.Metric.type.in_(metrics_to_sort_by_))
+            .where(models.Metric.type.in_(metrics_to_sort_by))
             .alias()
         )
 

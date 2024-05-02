@@ -1,5 +1,6 @@
 // integration tests against a live valor instance running on http://localhost:8000
 
+import { debug } from 'console';
 import { ValorClient } from '../src/ValorClient';
 
 const baseURL = 'http://localhost:8000';
@@ -40,7 +41,11 @@ afterEach(async () => {
 });
 
 test('dataset methods', async () => {
-  await client.createDataset('test-dataset1', { k1: 'v1', k2: 'v2', k3: {type: 'Point', coordinates: [1.2, 3.4]} });
+  await client.createDataset('test-dataset1', {
+    k1: 'v1',
+    k2: 'v2',
+    k3: { type: 'Point', coordinates: [1.2, 3.4] }
+  });
   await client.createDataset('test-dataset2', { k1: 'v2', k3: 'v3' });
 
   // check we can get all datasets
@@ -109,7 +114,8 @@ const createDatasetsAndModels = async () => {
           raster: null,
           embedding: null
         }
-    ]);
+      ]
+    );
     await client.addGroundTruth(
       datasetName,
       {
@@ -126,7 +132,8 @@ const createDatasetsAndModels = async () => {
           raster: null,
           embedding: null
         }
-    ]);
+      ]
+    );
     await client.finalizeDataset(datasetName);
   }
 
@@ -143,31 +150,38 @@ const createDatasetsAndModels = async () => {
             {
               uid: 'uid1',
               metadata: {}
-            }, [
+            },
+            [
+              {
+                task_type: 'classification',
+                metadata: {},
+                labels: [{ key: 'label-key', value: 'label-value', score: 1.0 }],
+                bounding_box: null,
+                polygon: null,
+                raster: null,
+                embedding: null
+              }
+            ]
+          );
+          await client.addPredictions(
+            datasetName,
+            modelName,
             {
-              task_type: 'classification',
-              metadata: {},
-              labels: [{ key: 'label-key', value: 'label-value', score: 1.0 }],
-              bounding_box: null,
-              polygon: null,
-              raster: null,
-              embedding: null
-            }
-          ]);
-          await client.addPredictions(datasetName, modelName, {
               uid: 'uid2',
               metadata: {}
-            }, [
-            {
-              task_type: 'classification',
-              metadata: {},
-              labels: [{ key: 'label-key', value: 'label-value', score: 1.0 }],
-              bounding_box: null,
-              polygon: null,
-              raster: null,
-              embedding: null
-            }
-          ]);
+            },
+            [
+              {
+                task_type: 'classification',
+                metadata: {},
+                labels: [{ key: 'label-key', value: 'label-value', score: 1.0 }],
+                bounding_box: null,
+                polygon: null,
+                raster: null,
+                embedding: null
+              }
+            ]
+          );
         })
       );
     })
@@ -206,8 +220,13 @@ test('evaluation methods', async () => {
     expect(rocaucMetric.value).toBeNull();
 
     // get the PrecisionRecallCurve metric, and check that its a string
-    const prCurveMetric = evaluation.metrics.find((metric) => metric.type === 'PrecisionRecallCurve');
-    expect(Object.keys(prCurveMetric.value)).toStrictEqual(['label-value', 'label-value-with-no-prediction'])
+    const prCurveMetric = evaluation.metrics.find(
+      (metric) => metric.type === 'PrecisionRecallCurve'
+    );
+    expect(Object.keys(prCurveMetric.value)).toStrictEqual([
+      'label-value',
+      'label-value-with-no-prediction'
+    ]);
     expect(typeof prCurveMetric.value).toBe('object');
 
     // check the date is within one minute of the current time
@@ -227,14 +246,14 @@ test('evaluation methods', async () => {
   );
   // check we can get evaluations by model names
   expect((await client.getEvaluationsByModelNames([modelNames[0]])).length).toBe(2);
-  expect((await client.getEvaluationsByModelNames(modelNames)).length).toBe(4);
+  expect(
+    (await client.getEvaluationsByModelNames(modelNames, ['mAccuracy'])).length
+  ).toBe(4);
   expect((await client.getEvaluationsByModelNames(['no-such-model'])).length).toBe(0);
   // check we can get evaluations by dataset name
   expect((await client.getEvaluationsByDatasetNames([datasetNames[0]])).length).toBe(2);
   expect((await client.getEvaluationsByDatasetNames(datasetNames)).length).toBe(4);
   expect((await client.getEvaluationsByDatasetNames(['no-such-dataset'])).length).toBe(0);
-
-  // test bulk create or get evaluations
 });
 
 test('bulk create or get evaluations', async () => {
@@ -247,7 +266,7 @@ test('bulk create or get evaluations', async () => {
     let evaluations = await client.bulkCreateOrGetEvaluations(
       modelNames,
       datasetName,
-      'classification',
+      'classification'
     );
     expect(evaluations.length).toBe(2);
     // check all evaluations are pending
