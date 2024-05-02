@@ -596,7 +596,7 @@ class Dataset(StaticCollection):
 
     def get_evaluations(
         self,
-        metrics_to_sort_by: list[str] | None = None,
+        metrics_to_sort_by: Optional[List[str]] = None,
     ) -> List[Evaluation]:
         """
         Get all evaluations associated with a given dataset.
@@ -1112,7 +1112,7 @@ class Model(StaticCollection):
 
     def get_evaluations(
         self,
-        metrics_to_sort_by: list[str] | None = None,
+        metrics_to_sort_by: Optional[List[str]] = None,
     ) -> List[Evaluation]:
         """
         Get all evaluations associated with a given model.
@@ -1726,7 +1726,7 @@ class Client:
         evaluation_ids: Optional[List[int]] = None,
         models: Union[List[Model], List[str], None] = None,
         datasets: Union[List[Dataset], List[str], None] = None,
-        metrics_to_sort_by: list[str] | None = None,
+        metrics_to_sort_by: Optional[List[str]] = None,
     ) -> List[Evaluation]:
         """
         Returns all evaluations associated with user-supplied dataset and/or model names.

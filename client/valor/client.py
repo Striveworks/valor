@@ -827,7 +827,7 @@ class ClientConnection:
         evaluation_ids: Optional[List[int]] = None,
         models: Optional[List[str]] = None,
         datasets: Optional[List[str]] = None,
-        metrics_to_sort_by: list[str] | None = None,
+        metrics_to_sort_by: Optional[List[str]] = None,
     ) -> List[dict]:
         """
         Returns all evaluations associated with user-supplied dataset and/or model names.
