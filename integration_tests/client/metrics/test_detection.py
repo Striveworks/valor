@@ -150,6 +150,7 @@ def test_evaluate_detection(
             "pr_curve_iou_threshold": 0.5,
             "llm_url": None,
             "llm_api_key": None,
+            "llm_evaluation_metrics": None,
         },
         "status": EvaluationStatus.DONE.value,
         "metrics": expected_metrics,
@@ -262,6 +263,7 @@ def test_evaluate_detection(
             "pr_curve_iou_threshold": 0.5,
             "llm_url": None,
             "llm_api_key": None,
+            "llm_evaluation_metrics": None,
         },
         "status": EvaluationStatus.DONE.value,
         "metrics": expected_metrics,
@@ -314,6 +316,7 @@ def test_evaluate_detection(
             "pr_curve_iou_threshold": 0.5,
             "llm_url": None,
             "llm_api_key": None,
+            "llm_evaluation_metrics": None,
         },
         # check metrics below
         "status": EvaluationStatus.DONE.value,
@@ -364,6 +367,7 @@ def test_evaluate_detection(
             "pr_curve_iou_threshold": 0.5,
             "llm_url": None,
             "llm_api_key": None,
+            "llm_evaluation_metrics": None,
         },
         # check metrics below
         "status": EvaluationStatus.DONE.value,
@@ -422,6 +426,7 @@ def test_evaluate_detection(
             "pr_curve_iou_threshold": 0.5,
             "llm_url": None,
             "llm_api_key": None,
+            "llm_evaluation_metrics": None,
         },
         # check metrics below
         "status": EvaluationStatus.DONE.value,
@@ -586,6 +591,7 @@ def test_evaluate_detection_with_json_filters(
             "pr_curve_iou_threshold": 0.5,
             "llm_url": None,
             "llm_api_key": None,
+            "llm_evaluation_metrics": None,
         },
         # check metrics below
         "status": EvaluationStatus.DONE.value,
@@ -1558,6 +1564,7 @@ def test_evaluate_detection_with_label_maps(
         "pr_curve_iou_threshold": 0.5,
         "llm_url": None,
         "llm_api_key": None,
+        "llm_evaluation_metrics": None,
     }
 
     metrics = eval_job.metrics

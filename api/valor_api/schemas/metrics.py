@@ -635,7 +635,7 @@ class AnswerCorrectnessMetric(BaseModel):
         A label for the metric.
     """
 
-    label_key: Label
+    label_key: str
 
     def db_mapping(self, label_id: int, evaluation_id: int) -> dict:
         """
@@ -665,7 +665,7 @@ class AnswerRelevanceMetric(BaseModel):
         A label for the metric.
     """
 
-    label_key: Label
+    label_key: str
 
     def db_mapping(self, label_id: int, evaluation_id: int) -> dict:
         """
@@ -695,7 +695,7 @@ class BiasMetric(BaseModel):
         A label for the metric.
     """
 
-    label_key: Label
+    label_key: str
 
     def db_mapping(self, label_id: int, evaluation_id: int) -> dict:
         """
@@ -723,16 +723,18 @@ class CoherenceMetric(BaseModel):
     ----------
     label_key : str
         A label for the metric.
-    value : float
-        The metric value.
+    value : int
+        The coherence score for an individual datapoint, which is an integer between 1 and 5.
     """
 
-    label_key: Label
-    value: float  # TODO or an int between 1 and 5?
+    label_key: str
+    value: int  # TODO or an int between 1 and 5?
 
-    def db_mapping(self, label_id: int, evaluation_id: int) -> dict:
+    def db_mapping(self, evaluation_id: int) -> dict:
         """
         Creates a mapping for use when uploading the metric to the database.
+
+        # TODO should we have a label and label key for these metrics? What is the best way to do the label here?
 
         Parameters
         ----------
@@ -745,7 +747,12 @@ class CoherenceMetric(BaseModel):
         ----------
         A mapping dictionary.
         """
-        raise NotImplementedError
+        return {
+            "value": self.value,
+            "type": "Coherence",
+            "evaluation_id": evaluation_id,
+            "parameters": {"label_key": self.label_key},
+        }
 
 
 class ContextPrecisionMetric(BaseModel):
@@ -758,7 +765,7 @@ class ContextPrecisionMetric(BaseModel):
         A label for the metric.
     """
 
-    label_key: Label
+    label_key: str
 
     def db_mapping(self, label_id: int, evaluation_id: int) -> dict:
         """
@@ -788,7 +795,7 @@ class ContextRecallMetric(BaseModel):
         A label for the metric.
     """
 
-    label_key: Label
+    label_key: str
 
     def db_mapping(self, label_id: int, evaluation_id: int) -> dict:
         """
@@ -818,7 +825,7 @@ class ContextRelevanceMetric(BaseModel):
         A label for the metric.
     """
 
-    label_key: Label
+    label_key: str
 
     def db_mapping(self, label_id: int, evaluation_id: int) -> dict:
         """
@@ -848,7 +855,7 @@ class FaithfulnessMetric(BaseModel):
         A label for the metric.
     """
 
-    label_key: Label
+    label_key: str
 
     def db_mapping(self, label_id: int, evaluation_id: int) -> dict:
         """
@@ -878,7 +885,7 @@ class GrammaticalityMetric(BaseModel):
         A label for the metric.
     """
 
-    label_key: Label
+    label_key: str
 
     def db_mapping(self, label_id: int, evaluation_id: int) -> dict:
         """
@@ -908,7 +915,7 @@ class HallucinationMetric(BaseModel):
         A label for the metric.
     """
 
-    label_key: Label
+    label_key: str
 
     def db_mapping(self, label_id: int, evaluation_id: int) -> dict:
         """
@@ -938,7 +945,7 @@ class QAGMetric(BaseModel):
         A label for the metric.
     """
 
-    label_key: Label
+    label_key: str
 
     def db_mapping(self, label_id: int, evaluation_id: int) -> dict:
         """
@@ -968,7 +975,7 @@ class ToxicityMetric(BaseModel):
         A label for the metric.
     """
 
-    label_key: Label
+    label_key: str
 
     def db_mapping(self, label_id: int, evaluation_id: int) -> dict:
         """

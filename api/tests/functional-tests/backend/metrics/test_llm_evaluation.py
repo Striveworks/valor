@@ -91,7 +91,10 @@ def llm_evaluation_test_data(db: Session, dataset_name: str, model_name: str):
                 schemas.Annotation(
                     task_type=enums.TaskType.LLM_EVALUATION,
                     labels=[
-                        schemas.Label(key="question", value=question_gts[i]),
+                        schemas.Label(
+                            key=f"q{i}",  # TODO potentially change these keys, as they are redundant with the datum. Or use the abstract prompt as the key.
+                            value=question_gts[i],
+                        ),
                     ],
                 )
             ],
@@ -112,7 +115,7 @@ def llm_evaluation_test_data(db: Session, dataset_name: str, model_name: str):
                     task_type=enums.TaskType.LLM_EVALUATION,
                     labels=[
                         schemas.Label(
-                            key="question",
+                            key=f"q{i}",  # TODO potentially change these keys, as they are redundant with the datum. Or use the abstract prompt as the key.
                             value=question_preds[i],
                         )
                     ],
@@ -182,14 +185,27 @@ def test_compute_llm_evaluation(
         task_types=[enums.TaskType.LLM_EVALUATION],
     )
 
-    return  # TODO
+    # TODO eventually get all working
+    metric_list = [
+        # "answer-correctness",
+        # "answer-relevance",
+        # "bias",
+        "coherence",
+        # "context-precision",
+        # "context-recall",
+        # "context-relevance",
+        # "faithfulness",
+        # "grammaticality",
+        # "hallucination",
+        # "qag",
+        # "toxicity",
+    ]
 
-    # TODO how to request a subset of the metrics?
     metrics = _compute_llm_evaluation_metrics(
-        db, model_filter, datum_filter, label_map=None
+        db, model_filter, datum_filter, label_map=None, metric_list=metric_list
     )
 
-    # Test metrics (only Coherence so far, will add others)
+    # Test metrics TODO add all metrics
     assert metrics
     for metric in metrics:
         if isinstance(metric, schemas.AnswerCorrectnessMetric):
@@ -199,12 +215,14 @@ def test_compute_llm_evaluation(
         elif isinstance(metric, schemas.BiasMetric):
             pass
         elif isinstance(metric, schemas.CoherenceMetric):
-            if metric.label_key == "q0":
-                assert metric.value == 0.7325
+            if (
+                metric.label_key == "q0"
+            ):  # TODO potentially change these keys, as they are redundant with the datum. Or use the abstract prompt as the key.
+                assert metric.value == 4
             elif metric.label_key == "q1":
-                assert metric.value == 0.6802
+                assert metric.value == 4
             elif metric.label_key == "q2":
-                assert metric.value == 0.3107
+                assert metric.value == 4
         elif isinstance(metric, schemas.ContextPrecisionMetric):
             pass
         elif isinstance(metric, schemas.ContextRecallMetric):
@@ -229,6 +247,21 @@ def test_llm_evaluation(
     model_name: str,
     llm_evaluation_test_data,
 ):
+    metric_list = [
+        # "answer-correctness",
+        # "answer-relevance",
+        # "bias",
+        "coherence",
+        # "context-precision",
+        # "context-recall",
+        # "context-relevance",
+        # "faithfulness",
+        # "grammaticality",
+        # "hallucination",
+        # "qag",
+        # "toxicity",
+    ]
+
     # default request
     job_request = schemas.EvaluationRequest(
         model_names=[model_name],
@@ -237,6 +270,7 @@ def test_llm_evaluation(
             task_type=enums.TaskType.LLM_EVALUATION,
             llm_url="url",  # TODO
             llm_api_key="api_key",  # TODO
+            llm_evaluation_metrics=metric_list,
         ),
         meta={},
     )
@@ -245,8 +279,6 @@ def test_llm_evaluation(
     evaluations = create_or_get_evaluations(db=db, job_request=job_request)
     assert len(evaluations) == 1
     assert evaluations[0].status == enums.EvaluationStatus.PENDING
-
-    return  # TODO
 
     # computation, normally run as background task
     _ = compute_llm_evaluation_metrics(
@@ -274,12 +306,14 @@ def test_llm_evaluation(
         elif isinstance(metric, schemas.BiasMetric):
             pass
         elif isinstance(metric, schemas.CoherenceMetric):
-            if metric.label_key == "q0":
-                assert metric.value == 0.7325
+            if (
+                metric.label_key == "q0"
+            ):  # TODO potentially change these keys, as they are redundant with the datum. Or use the abstract prompt as the key.
+                assert metric.value == 4
             elif metric.label_key == "q1":
-                assert metric.value == 0.6802
+                assert metric.value == 4
             elif metric.label_key == "q2":
-                assert metric.value == 0.3107
+                assert metric.value == 4
         elif isinstance(metric, schemas.ContextPrecisionMetric):
             pass
         elif isinstance(metric, schemas.ContextRecallMetric):
