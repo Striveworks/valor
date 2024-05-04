@@ -1,4 +1,3 @@
-import time
 from typing import Any
 
 from geoalchemy2.functions import ST_AsGeoJSON
@@ -138,7 +137,6 @@ def create_annotations(
     assert len(models_) == len(datums) == len(annotations)
 
     # create annotations
-    start = time.time()
     annotation_mappings = [
         _create_annotation(
             db=db, annotation=annotation, datum=datum, model=model
@@ -148,9 +146,7 @@ def create_annotations(
         )
         for annotation in annotations_per_datum
     ]
-    print(f"create_annotation: {time.time() - start:.4f}")
 
-    start = time.time()
     try:
         insert_stmt = (
             insert(models.Annotation)
@@ -161,7 +157,6 @@ def create_annotations(
     except IntegrityError as e:
         db.rollback()
         raise e
-    print(f"add_all: {time.time() - start:.4f}")
 
     annotation_ids = []
     idx = 0

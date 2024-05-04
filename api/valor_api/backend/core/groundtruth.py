@@ -40,7 +40,7 @@ def create_groundtruths(db: Session, groundtruths: list[schemas.GroundTruth]):
         db=db,
         annotations=[groundtruth.annotations for groundtruth in groundtruths],
         datums=datums,
-        models=None,
+        models_=None,
     )
 
     groundtruth_mappings = []
