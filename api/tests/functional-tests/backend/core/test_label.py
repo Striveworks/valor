@@ -191,10 +191,8 @@ def test_create_labels_with_duplicates(db: Session):
     ]
     created_labels = create_labels(db, labels)
     assert len(db.query(models.Label).all()) == 1
-    assert len(created_labels) == 2
-
-    # check just one id was created
-    assert len(set(created_labels.values())) == 1
+    assert len(created_labels) == 1
+    assert ("stoplight_color", "red") in created_labels
 
 
 def test_get_labels(

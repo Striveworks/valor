@@ -54,7 +54,7 @@ def create_predictions(
     datums = [
         core.fetch_datum(
             db,
-            dataset_id=dataset_name_to_dataset[prediction.dataset_name],
+            dataset_id=dataset_name_to_dataset[prediction.dataset_name].id,
             uid=prediction.datum.uid,
         )
         for prediction in predictions
