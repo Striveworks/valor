@@ -144,7 +144,7 @@ def test_post_groundtruth(client: TestClient):
 
     # check we get a conflict (409) if the dataset is finalized
     with patch(
-        "valor_api.main.crud.create_groundtruth",
+        "valor_api.main.crud.create_groundtruths",
         side_effect=exceptions.DatasetFinalizedError("dsetname"),
     ):
         resp = client.post("/groundtruths", json=[example_json])
@@ -425,7 +425,7 @@ def test_post_prediction(client: TestClient):
 
     # check we get a code (404) if the model does not exist
     with patch(
-        "valor_api.main.crud.create_prediction",
+        "valor_api.main.crud.create_predictions",
         side_effect=exceptions.ModelDoesNotExistError("model1"),
     ):
         resp = client.post("/predictions", json=[example_json])
@@ -433,7 +433,7 @@ def test_post_prediction(client: TestClient):
 
     # check we get a code (409) if the datum does not exist
     with patch(
-        "valor_api.main.crud.create_prediction",
+        "valor_api.main.crud.create_predictions",
         side_effect=exceptions.DatumDoesNotExistError("uid1"),
     ):
         resp = client.post("/predictions", json=[example_json])
@@ -441,7 +441,7 @@ def test_post_prediction(client: TestClient):
 
     # check we get a code (409) if the dataset hasn't been finalized
     with patch(
-        "valor_api.main.crud.create_prediction",
+        "valor_api.main.crud.create_predictions",
         side_effect=exceptions.DatasetNotFinalizedError("dataset1"),
     ):
         resp = client.post("/predictions", json=[example_json])
