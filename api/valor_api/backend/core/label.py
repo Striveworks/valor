@@ -1,5 +1,3 @@
-import time
-
 from sqlalchemy import Subquery, and_, desc, func, or_, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
@@ -194,7 +192,6 @@ def create_labels(
     dict[tuple[str, str], int]
         a dictionary mapping label key, value tuples to label id
     """
-    print("inside create_labels")
     # check if empty
     if not labels:
         return {}
@@ -210,17 +207,14 @@ def create_labels(
     )
 
     # upload the labels that were missing
-    start = time.perf_counter()
     try:
         db.execute(insert_stmt)
         db.commit()
     except IntegrityError as e:
         db.rollback()
         raise e  # this should never be called
-    print(f"insertion: {time.perf_counter() - start:.4f}")
 
     # get label rows and match output order to users request
-    start = time.perf_counter()
     label_rows = db.query(
         select(models.Label)
         .where(
