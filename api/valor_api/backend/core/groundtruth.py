@@ -80,10 +80,7 @@ def create_groundtruths(db: Session, groundtruths: list[schemas.GroundTruth]):
         db.commit()
     except IntegrityError as e:
         db.rollback()
-        import pdb
-
-        pdb.set_trace()
-        raise Exception()
+        raise e
     print(f"bulk_insert_mappings: {time.perf_counter() - start:.4f}")
     print("EXITING create_groundtruth")
 
@@ -102,69 +99,7 @@ def create_groundtruth(
     groundtruth: schemas.GroundTruth
         The ground truth to create.
     """
-    print("INSIDE create_groundtruth")
-    # fetch dataset row
-    start = time.perf_counter()
-    dataset = core.fetch_dataset(db=db, name=groundtruth.dataset_name)
-    print(f"fetch_dataset: {time.perf_counter() - start:.4f}")
-
-    # check dataset status
-    start = time.perf_counter()
-    if (
-        core.get_dataset_status(db=db, name=groundtruth.dataset_name)
-        != enums.TableStatus.CREATING
-    ):
-        raise exceptions.DatasetFinalizedError(groundtruth.dataset_name)
-    print(f"get_dataset_status: {time.perf_counter() - start:.4f}")
-
-    # create datum
-    start = time.perf_counter()
-    datum = core.create_datum(db=db, datum=groundtruth.datum, dataset=dataset)
-    print(f"create_datum: {time.perf_counter() - start:.4f}")
-
-    # create labels
-    start = time.perf_counter()
-    all_labels = [
-        label
-        for annotation in groundtruth.annotations
-        for label in annotation.labels
-    ]
-    label_list = core.create_labels(db=db, labels=all_labels)
-    print(f"create_labels: {time.perf_counter() - start:.4f}")
-
-    start = time.perf_counter()
-    # create annotations
-    annotation_list = core.create_annotations(
-        db=db,
-        annotations=groundtruth.annotations,
-        datum=datum,
-        model=None,
-    )
-    print(f"create_annotations: {time.perf_counter() - start:.4f}")
-
-    # create groundtruths
-    label_idx = 0
-    groundtruth_list = []
-    for i, annotation in enumerate(groundtruth.annotations):
-        for label in label_list[
-            label_idx : label_idx + len(annotation.labels)
-        ]:
-            groundtruth_list.append(
-                models.GroundTruth(
-                    annotation_id=annotation_list[i].id,
-                    label_id=label.id,
-                )
-            )
-        label_idx += len(annotation.labels)
-
-    start = time.perf_counter()
-    try:
-        db.add_all(groundtruth_list)
-        db.commit()
-    except IntegrityError:
-        db.rollback()
-        raise Exception
-    print(f"add_all: {time.perf_counter() - start:.4f}")
+    return create_groundtruths(db, [groundtruth])
 
 
 def get_groundtruth(

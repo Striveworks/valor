@@ -174,7 +174,7 @@ def fetch_label(
 def create_labels(
     db: Session,
     labels: list[schemas.Label],
-) -> list[models.Label]:
+) -> dict[tuple[str, str], int]:
     """
     Add a list of labels to create in the database.
 
@@ -191,13 +191,13 @@ def create_labels(
 
     Returns
     -------
-    List[models.Label]
-        A list of corresponding label rows from the database.
+    dict[tuple[str, str], int]
+        a dictionary mapping label key, value tuples to label id
     """
     print("inside create_labels")
     # check if empty
     if not labels:
-        return []
+        return {}
 
     # remove duplicates
     values = [
