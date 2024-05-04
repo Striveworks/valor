@@ -196,7 +196,7 @@ def create_skipped_annotations(
         for datum in datums
     ]
     try:
-        db.add_all(annotation_list)
+        db.bulk_insert_mappings(models.Annotation, annotation_list)
         db.commit()
     except IntegrityError as e:
         db.rollback()
