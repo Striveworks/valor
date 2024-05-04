@@ -1,11 +1,12 @@
 import time
+from typing import Any
 
 from geoalchemy2.functions import ST_AsGeoJSON
-from sqlalchemy import and_, delete, exists, select
+from sqlalchemy import and_, delete, insert, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from valor_api import exceptions, schemas
+from valor_api import schemas
 from valor_api.backend import models
 from valor_api.backend.core.geometry import _raster_to_png_b64
 from valor_api.backend.query import Query
@@ -46,7 +47,7 @@ def _create_annotation(
     annotation: schemas.Annotation,
     datum: models.Datum,
     model: models.Model | None = None,
-) -> models.Annotation:
+) -> dict[str, Any]:
     """
     Convert an individual annotation's attributes into a dictionary for upload to psql.
 
@@ -61,7 +62,7 @@ def _create_annotation(
 
     Returns
     ----------
-    models.Annotation
+    dict[str, Any]
         A populated models.Annotation object.
     """
     box = None
@@ -99,7 +100,7 @@ def _create_annotation(
         "raster": raster,
         "embedding_id": embedding_id,
     }
-    return models.Annotation(**mapping)
+    return mapping
 
 
 def create_annotations(
@@ -136,7 +137,7 @@ def create_annotations(
 
     # create annotations
     start = time.time()
-    annotation_list = [
+    annotation_mappings = [
         _create_annotation(
             db=db, annotation=annotation, datum=datum, model=model
         )
@@ -147,29 +148,16 @@ def create_annotations(
 
     start = time.time()
     try:
-        db.add_all(annotation_list)
-        db.commit()
+        insert_stmt = (
+            insert(models.Annotation)
+            .values(annotation_mappings)
+            .returning(models.Annotation.id)
+        )
+        annotation_id_list = db.execute(insert_stmt).scalars().all()
     except IntegrityError as e:
         db.rollback()
         raise e
     print(f"add_all: {time.time() - start:.4f}")
-
-    start = time.time()
-    db.flush()
-    print(f"flush: {time.time() - start:.4f}")
-
-    print(f"len(annotation_list): {len(annotation_list)}")
-
-    from tqdm import tqdm
-
-    print("creating annotation_id_list")
-    start = time.perf_counter()
-    annotation_id_list = []
-    for ann in tqdm(annotation_list):
-        annotation_id_list.append(ann.id)
-        db.expunge(ann)
-
-    print(f"created annotation_id_list: {time.perf_counter() - start:.4f}")
 
     annotation_ids = []
     idx = 0
