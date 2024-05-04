@@ -1,9 +1,29 @@
-from sqlalchemy import delete, select
+from sqlalchemy import and_, delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from valor_api import enums, exceptions, schemas
 from valor_api.backend import core, models
+
+
+def _check_if_datum_has_prediction(
+    db: Session, datum: schemas.Datum, model_name: str
+) -> None:
+    if db.query(
+        select(models.Annotation.id)
+        .join(models.Model)
+        .join(models.Datum)
+        .where(
+            and_(
+                models.Datum.uid == datum.uid,
+                models.Model.name == model_name,
+                models.Annotation.datum_id == models.Datum.id,
+                models.Annotation.model_id == models.Model.id,
+            )
+        )
+        .subquery()
+    ).all():
+        raise exceptions.AnnotationAlreadyExistsError(datum.uid)
 
 
 def create_predictions(
@@ -38,6 +58,12 @@ def create_predictions(
                 dataset_name=dataset_name,
                 model_name=model_name,
             )
+
+    # check no predictions have already been added
+    for prediction in predictions:
+        _check_if_datum_has_prediction(
+            db, prediction.datum, prediction.model_name
+        )
 
     dataset_names = set([dm[0] for dm in dataset_and_model_names])
     model_names = set([dm[1] for dm in dataset_and_model_names])
