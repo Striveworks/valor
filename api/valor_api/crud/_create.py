@@ -50,24 +50,6 @@ def create_model(
     backend.create_model(db, model)
 
 
-def create_groundtruth(
-    *,
-    db: Session,
-    groundtruth: schemas.GroundTruth,
-):
-    """
-    Creates a ground truth.
-
-    Parameters
-    ----------
-    db : Session
-        The database Session to query against.
-    groundtruth: schemas.GroundTruth
-        The ground truth to create.
-    """
-    backend.create_groundtruth(db, groundtruth=groundtruth)
-
-
 def create_groundtruths(
     *,
     db: Session,
@@ -86,7 +68,7 @@ def create_groundtruths(
     backend.create_groundtruths(db, groundtruths=groundtruths)
 
 
-def create_prediction(
+def create_predictions(
     *,
     db: Session,
     prediction: schemas.Prediction,
@@ -101,7 +83,7 @@ def create_prediction(
     prediction: schemas.Prediction
         The prediction to create.
     """
-    backend.create_prediction(db, prediction=prediction)
+    backend.create_predictions(db, prediction=prediction)
 
 
 def create_or_get_evaluations(

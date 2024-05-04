@@ -1,6 +1,5 @@
 from .core import (
     create_dataset,
-    create_groundtruth,
     create_groundtruths,
     create_model,
     create_or_get_evaluations,
@@ -42,7 +41,6 @@ from .query import Query
 __all__ = [
     "create_dataset",
     "create_model",
-    "create_groundtruth",
     "create_groundtruths",
     "create_prediction",
     "delete_dataset",

@@ -109,7 +109,7 @@ def classification_test_data(db: Session, dataset_name: str, model_name: str):
         ),
     )
     for gt in gts:
-        crud.create_groundtruth(db=db, groundtruth=gt)
+        crud.create_groundtruths(db=db, groundtruths=[gt])
     crud.finalize(db=db, dataset_name=dataset_name)
 
     crud.create_model(

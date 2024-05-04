@@ -42,7 +42,6 @@ from .evaluation import (
 )
 from .geometry import convert_geometry, get_annotation_type
 from .groundtruth import (
-    create_groundtruth,
     create_groundtruths,
     delete_groundtruths,
     get_groundtruth,
@@ -105,7 +104,6 @@ __all__ = [
     "fetch_datum",
     "get_paginated_datums",
     "convert_geometry",
-    "create_groundtruth",
     "create_groundtruths",
     "get_groundtruth",
     "create_labels",

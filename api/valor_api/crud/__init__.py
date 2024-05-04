@@ -1,6 +1,5 @@
 from ._create import (
     create_dataset,
-    create_groundtruth,
     create_groundtruths,
     create_model,
     create_or_get_evaluations,
@@ -27,7 +26,6 @@ from ._update import finalize
 __all__ = [
     "create_dataset",
     "create_model",
-    "create_groundtruth",
     "create_groundtruths",
     "create_prediction",
     "create_or_get_evaluations",

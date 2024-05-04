@@ -508,7 +508,7 @@ def test_label_functions(
     ]
 
     for gt in gts:
-        crud.create_groundtruth(db=db, groundtruth=gt)
+        crud.create_groundtruths(db=db, groundtruths=[gt])
 
     for pred in pds:
         crud.create_prediction(db=db, prediction=pred)

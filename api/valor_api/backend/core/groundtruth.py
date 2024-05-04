@@ -64,23 +64,6 @@ def create_groundtruths(db: Session, groundtruths: list[schemas.GroundTruth]):
         raise e
 
 
-def create_groundtruth(
-    db: Session,
-    groundtruth: schemas.GroundTruth,
-):
-    """
-    Creates a ground truth.
-
-    Parameters
-    ----------
-    db : Session
-        The database Session to query against.
-    groundtruth: schemas.GroundTruth
-        The ground truth to create.
-    """
-    return create_groundtruths(db, [groundtruth])
-
-
 def get_groundtruth(
     db: Session,
     dataset_name: str,

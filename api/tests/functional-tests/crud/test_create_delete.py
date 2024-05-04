@@ -436,7 +436,7 @@ def test_create_detection_ground_truth_and_delete_dataset(
     crud.create_dataset(db=db, dataset=schemas.Dataset(name=dataset_name))
 
     for gt in groundtruth_detections:
-        crud.create_groundtruth(db=db, groundtruth=gt)
+        crud.create_groundtruths(db=db, groundtruths=[gt])
 
     assert db.scalar(func.count(models.Annotation.id)) == 2
     assert db.scalar(func.count(models.Datum.id)) == 1
@@ -491,7 +491,7 @@ def test_create_detection_prediction_and_delete_model(
     crud.create_dataset(db=db, dataset=schemas.Dataset(name=dataset_name))
 
     for gt in groundtruth_detections:
-        crud.create_groundtruth(db=db, groundtruth=gt)
+        crud.create_groundtruths(db=db, groundtruths=[gt])
 
     # check this gives an error since the model hasn't been created yet
     with pytest.raises(exceptions.ModelDoesNotExistError) as exc_info:
@@ -566,13 +566,15 @@ def test_create_detections_as_bbox_or_poly(
 
     crud.create_dataset(db=db, dataset=schemas.Dataset(name=dataset_name))
 
-    crud.create_groundtruth(
+    crud.create_groundtruths(
         db=db,
-        groundtruth=schemas.GroundTruth(
-            dataset_name=dataset_name,
-            datum=img1,
-            annotations=[det1, det2],
-        ),
+        groundtruths=[
+            schemas.GroundTruth(
+                dataset_name=dataset_name,
+                datum=img1,
+                annotations=[det1, det2],
+            )
+        ],
     )
 
     dets = db.scalars(select(models.GroundTruth)).all()
@@ -597,7 +599,7 @@ def test_create_classification_groundtruth_and_delete_dataset(
 
     for gt in gt_clfs_create:
         gt.dataset_name = dataset_name
-        crud.create_groundtruth(db=db, groundtruth=gt)
+        crud.create_groundtruths(db=db, groundtruths=[gt])
 
     # should have three GroundTruthClassification rows since one image has two
     # labels and the other has one
@@ -637,7 +639,7 @@ def test_create_predicted_classifications_and_delete_model(
     crud.create_dataset(db=db, dataset=schemas.Dataset(name=dataset_name))
 
     for gt in gt_clfs_create:
-        crud.create_groundtruth(db=db, groundtruth=gt)
+        crud.create_groundtruths(db=db, groundtruths=[gt])
 
     # check this gives an error since the model does not exist
     with pytest.raises(exceptions.ModelDoesNotExistError) as exc_info:
@@ -693,7 +695,7 @@ def _test_create_groundtruth_segmentations_and_delete_dataset(
     crud.create_dataset(db=db, dataset=schemas.Dataset(name=dataset_name))
 
     for gt in gts:
-        crud.create_groundtruth(db=db, groundtruth=gt)
+        crud.create_groundtruths(db=db, groundtruths=[gt])
 
     assert db.scalar(func.count(models.Annotation.id)) == expected_anns
     assert db.scalar(func.count(models.Datum.id)) == expected_datums
@@ -771,7 +773,7 @@ def test_create_predicted_segmentations_check_area_and_delete_model(
 
     # create groundtruths
     for gt in groundtruth_instance_segmentations:
-        crud.create_groundtruth(db=db, groundtruth=gt)
+        crud.create_groundtruths(db=db, groundtruths=[gt])
 
     # check this gives an error since the model has not been crated yet
     with pytest.raises(exceptions.ModelDoesNotExistError) as exc_info:
@@ -862,25 +864,27 @@ def test_segmentation_area_no_hole(
         img1.metadata["width"], (int, float)
     )
 
-    crud.create_groundtruth(
+    crud.create_groundtruths(
         db=db,
-        groundtruth=schemas.GroundTruth(
-            dataset_name=dataset_name,
-            datum=img1,
-            annotations=[
-                schemas.Annotation(
-                    task_type=enums.TaskType.OBJECT_DETECTION,
-                    labels=[schemas.Label(key="k1", value="v1")],
-                    raster=schemas.Raster.from_geometry(
-                        schemas.MultiPolygon(
-                            value=[poly_without_hole.value],
+        groundtruths=[
+            schemas.GroundTruth(
+                dataset_name=dataset_name,
+                datum=img1,
+                annotations=[
+                    schemas.Annotation(
+                        task_type=enums.TaskType.OBJECT_DETECTION,
+                        labels=[schemas.Label(key="k1", value="v1")],
+                        raster=schemas.Raster.from_geometry(
+                            schemas.MultiPolygon(
+                                value=[poly_without_hole.value],
+                            ),
+                            height=img1.metadata["height"],
+                            width=img1.metadata["width"],
                         ),
-                        height=img1.metadata["height"],
-                        width=img1.metadata["width"],
-                    ),
-                )
-            ],
-        ),
+                    )
+                ],
+            )
+        ],
     )
 
     segmentation_count = db.scalar(select(ST_Count(models.Annotation.raster)))
@@ -902,25 +906,27 @@ def test_segmentation_area_with_hole(
         img1.metadata["width"], (int, float)
     )
 
-    crud.create_groundtruth(
+    crud.create_groundtruths(
         db=db,
-        groundtruth=schemas.GroundTruth(
-            dataset_name=dataset_name,
-            datum=img1,
-            annotations=[
-                schemas.Annotation(
-                    task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
-                    labels=[schemas.Label(key="k1", value="v1")],
-                    raster=schemas.Raster.from_geometry(
-                        schemas.MultiPolygon(
-                            value=[poly_with_hole.value],
+        groundtruths=[
+            schemas.GroundTruth(
+                dataset_name=dataset_name,
+                datum=img1,
+                annotations=[
+                    schemas.Annotation(
+                        task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+                        labels=[schemas.Label(key="k1", value="v1")],
+                        raster=schemas.Raster.from_geometry(
+                            schemas.MultiPolygon(
+                                value=[poly_with_hole.value],
+                            ),
+                            height=img1.metadata["height"],
+                            width=img1.metadata["width"],
                         ),
-                        height=img1.metadata["height"],
-                        width=img1.metadata["width"],
-                    ),
-                )
-            ],
-        ),
+                    )
+                ],
+            )
+        ],
     )
 
     segmentation = db.scalar(select(models.Annotation))
@@ -944,28 +950,30 @@ def test_segmentation_area_multi_polygon(
     )
     crud.create_dataset(db=db, dataset=schemas.Dataset(name=dataset_name))
 
-    crud.create_groundtruth(
+    crud.create_groundtruths(
         db=db,
-        groundtruth=schemas.GroundTruth(
-            dataset_name=dataset_name,
-            datum=img1,
-            annotations=[
-                schemas.Annotation(
-                    task_type=enums.TaskType.OBJECT_DETECTION,
-                    labels=[schemas.Label(key="k1", value="v1")],
-                    raster=schemas.Raster.from_geometry(
-                        schemas.MultiPolygon(
-                            value=[
-                                poly_with_hole.value,
-                                poly_without_hole.value,
-                            ],
+        groundtruths=[
+            schemas.GroundTruth(
+                dataset_name=dataset_name,
+                datum=img1,
+                annotations=[
+                    schemas.Annotation(
+                        task_type=enums.TaskType.OBJECT_DETECTION,
+                        labels=[schemas.Label(key="k1", value="v1")],
+                        raster=schemas.Raster.from_geometry(
+                            schemas.MultiPolygon(
+                                value=[
+                                    poly_with_hole.value,
+                                    poly_without_hole.value,
+                                ],
+                            ),
+                            height=img1.metadata["height"],
+                            width=img1.metadata["width"],
                         ),
-                        height=img1.metadata["height"],
-                        width=img1.metadata["width"],
-                    ),
-                )
-            ],
-        ),
+                    )
+                ],
+            )
+        ],
     )
 
     segmentation = db.scalar(select(models.Annotation))
@@ -1035,7 +1043,7 @@ def test_gt_seg_as_mask_or_polys(
 
     crud.create_dataset(db=db, dataset=schemas.Dataset(name=dataset_name))
 
-    crud.create_groundtruth(db=db, groundtruth=gt)
+    crud.create_groundtruths(db=db, groundtruths=[gt])
 
     shapes = db.scalars(
         select(
@@ -1349,7 +1357,7 @@ def test_create_clf_metrics(
     )
     for gt in gt_clfs_create:
         gt.dataset_name = dataset_name
-        crud.create_groundtruth(db=db, groundtruth=gt)
+        crud.create_groundtruths(db=db, groundtruths=[gt])
     crud.finalize(db=db, dataset_name=dataset_name)
 
     crud.create_model(db=db, model=schemas.Model(name=model_name))

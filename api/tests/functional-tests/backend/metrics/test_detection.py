@@ -928,21 +928,23 @@ def test_detection_exceptions(db: Session):
         e
     )
 
-    crud.create_groundtruth(
+    crud.create_groundtruths(
         db=db,
-        groundtruth=schemas.GroundTruth(
-            dataset_name=dataset_name,
-            datum=schemas.Datum(uid="uid"),
-            annotations=[
-                schemas.Annotation(
-                    task_type=enums.TaskType.OBJECT_DETECTION,
-                    labels=[schemas.Label(key="k1", value="v1")],
-                    bounding_box=schemas.Box.from_extrema(
-                        xmin=0, xmax=1, ymin=0, ymax=1
-                    ),
-                )
-            ],
-        ),
+        groundtruths=[
+            schemas.GroundTruth(
+                dataset_name=dataset_name,
+                datum=schemas.Datum(uid="uid"),
+                annotations=[
+                    schemas.Annotation(
+                        task_type=enums.TaskType.OBJECT_DETECTION,
+                        labels=[schemas.Label(key="k1", value="v1")],
+                        bounding_box=schemas.Box.from_extrema(
+                            xmin=0, xmax=1, ymin=0, ymax=1
+                        ),
+                    )
+                ],
+            )
+        ],
     )
 
     # test that the model does not meet the filter requirements
