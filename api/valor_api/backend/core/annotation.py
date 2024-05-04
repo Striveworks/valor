@@ -107,7 +107,7 @@ def create_annotations(
     db: Session,
     annotations: list[list[schemas.Annotation]],
     datums: list[models.Datum],
-    models: list[models.Model] | None = None,
+    models_: list[models.Model] | None | list[None] = None,
 ) -> list[list[models.Annotation]]:
     """
     Create a list of annotations and associated labels in psql.
@@ -133,9 +133,9 @@ def create_annotations(
     exceptions.AnnotationAlreadyExistsError
         If the provided datum already has existing annotations for that dataset or model.
     """
-    models = models or [None] * len(datums)
+    models_ = models_ or [None] * len(datums)
 
-    assert len(models) == len(datums) == len(annotations)
+    assert len(models_) == len(datums) == len(annotations)
 
     # create annotations
     start = time.time()
@@ -144,7 +144,7 @@ def create_annotations(
             db=db, annotation=annotation, datum=datum, model=model
         )
         for annotations_per_datum, datum, model in zip(
-            annotations, datums, models
+            annotations, datums, models_
         )
         for annotation in annotations_per_datum
     ]

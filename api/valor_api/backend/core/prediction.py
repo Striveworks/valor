@@ -74,7 +74,7 @@ def create_predictions(
         db=db,
         annotations=[prediction.annotations for prediction in predictions],
         datums=datums,
-        models=[
+        models_=[
             model_name_to_model[prediction.model_name]
             for prediction in predictions
         ],
