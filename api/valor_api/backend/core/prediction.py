@@ -7,14 +7,17 @@ from valor_api.backend import core, models
 
 
 def _check_if_datum_has_prediction(
-    db: Session, datum: schemas.Datum, model_name: str
+    db: Session, datum: schemas.Datum, model_name: str, dataset_name: str
 ) -> None:
     if db.query(
         select(models.Annotation.id)
         .join(models.Model)
         .join(models.Datum)
+        .join(models.Dataset)
         .where(
             and_(
+                models.Dataset.name == dataset_name,
+                models.Datum.dataset_id == models.Dataset.id,
                 models.Datum.uid == datum.uid,
                 models.Model.name == model_name,
                 models.Annotation.datum_id == models.Datum.id,
@@ -62,7 +65,10 @@ def create_predictions(
     # check no predictions have already been added
     for prediction in predictions:
         _check_if_datum_has_prediction(
-            db, prediction.datum, prediction.model_name
+            db,
+            prediction.datum,
+            prediction.model_name,
+            prediction.dataset_name,
         )
 
     dataset_names = set([dm[0] for dm in dataset_and_model_names])
