@@ -1,3 +1,5 @@
+import time
+
 from sqlalchemy import Subquery, and_, desc, func, or_, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
@@ -192,6 +194,7 @@ def create_labels(
     List[models.Label]
         A list of corresponding label rows from the database.
     """
+    print("inside create_labels")
     # check if empty
     if not labels:
         return []
@@ -207,14 +210,17 @@ def create_labels(
     )
 
     # upload the labels that were missing
+    start = time.perf_counter()
     try:
         db.execute(insert_stmt)
         db.commit()
     except IntegrityError as e:
         db.rollback()
         raise e  # this should never be called
+    print(f"insertion: {time.perf_counter() - start:.4f}")
 
     # get label rows and match output order to users request
+    start = time.perf_counter()
     label_rows = db.query(
         select(models.Label)
         .where(
@@ -230,8 +236,12 @@ def create_labels(
         )
         .subquery()
     ).all()
-    existing_labels = {(row.key, row.value): row for row in label_rows}
-    return [existing_labels[(label.key, label.value)] for label in labels]
+
+    return {(row.key, row.value): row.id for row in label_rows}
+    # print(f"query: {time.perf_counter() - start:.4f}")
+    # existing_labels = {(row.key, row.value): row for row in label_rows}
+    # print("leaving create_labels")
+    # return [existing_labels[(label.key, label.value)] for label in labels]
 
 
 def _getter_statement(

@@ -68,6 +68,24 @@ def create_groundtruth(
     backend.create_groundtruth(db, groundtruth=groundtruth)
 
 
+def create_groundtruths(
+    *,
+    db: Session,
+    groundtruths: list[schemas.GroundTruth],
+):
+    """
+    Creates a ground truth.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    groundtruth: schemas.GroundTruth
+        The ground truth to create.
+    """
+    backend.create_groundtruths(db, groundtruths=groundtruths)
+
+
 def create_prediction(
     *,
     db: Session,

@@ -1,5 +1,7 @@
+import time
+
 from geoalchemy2.functions import ST_AsGeoJSON
-from sqlalchemy import and_, delete, select
+from sqlalchemy import and_, delete, exists, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -102,27 +104,27 @@ def _create_annotation(
 
 def create_annotations(
     db: Session,
-    annotations: list[schemas.Annotation],
-    datum: models.Datum,
+    annotations: list[list[schemas.Annotation]],
+    datums: list[models.Datum],
     model: models.Model | None = None,
-) -> list[models.Annotation]:
+) -> list[list[models.Annotation]]:
     """
     Create a list of annotations and associated labels in psql.
 
     Parameters
     ----------
-    db : Session
+    db
         The database Session you want to query against.
-    annotations : List[schemas.Annotation]
+    annotations
         The list of annotations to create.
-    datum : models.Datum
+    datum
         The datum associated with the annotation.
-    model : models.Model
+    model
         The model associated with the annotation.
 
     Returns
     ----------
-    List[models.annotation]
+    list[list[models.annotation]]
         The model associated with the annotation.
 
     Raises
@@ -130,38 +132,54 @@ def create_annotations(
     exceptions.AnnotationAlreadyExistsError
         If the provided datum already has existing annotations for that dataset or model.
     """
-    # validate that there are no existing annotations for this datum.
-    if db.query(
-        select(models.Annotation.id)
-        .where(
-            and_(
-                models.Annotation.datum_id == datum.id,
-                (
-                    models.Annotation.model_id == model.id
-                    if model
-                    else models.Annotation.model_id.is_(None)
-                ),
-            )
-        )
-        .subquery()
-    ).all():
-        raise exceptions.AnnotationAlreadyExistsError(datum.uid)
+    print("inside create_annotations")
 
     # create annotations
+    start = time.time()
     annotation_list = [
         _create_annotation(
             db=db, annotation=annotation, datum=datum, model=model
         )
-        for annotation in annotations
+        for annotations_per_datum, datum in zip(annotations, datums)
+        for annotation in annotations_per_datum
     ]
+    print(f"create_annotation: {time.time() - start:.4f}")
 
+    start = time.time()
     try:
         db.add_all(annotation_list)
         db.commit()
     except IntegrityError as e:
         db.rollback()
         raise e
-    return annotation_list
+    print(f"add_all: {time.time() - start:.4f}")
+
+    start = time.time()
+    db.flush()
+    print(f"flush: {time.time() - start:.4f}")
+
+    print(f"len(annotation_list): {len(annotation_list)}")
+
+    from tqdm import tqdm
+
+    print("creating annotation_id_list")
+    start = time.perf_counter()
+    annotation_id_list = []
+    for ann in tqdm(annotation_list):
+        annotation_id_list.append(ann.id)
+        db.expunge(ann)
+
+    print(f"created annotation_id_list: {time.perf_counter() - start:.4f}")
+
+    annotation_ids = []
+    idx = 0
+    for annotations_per_datum in annotations:
+        annotation_ids.append(
+            annotation_id_list[idx : idx + len(annotations_per_datum)]
+        )
+        idx += len(annotations_per_datum)
+
+    return annotation_ids
 
 
 def create_skipped_annotations(

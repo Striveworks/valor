@@ -24,7 +24,12 @@ from .dataset import (
     get_unique_task_types_in_dataset,
     set_dataset_status,
 )
-from .datum import create_datum, fetch_datum, get_paginated_datums
+from .datum import (
+    create_datum,
+    create_datums,
+    fetch_datum,
+    get_paginated_datums,
+)
 from .evaluation import (
     count_active_evaluations,
     create_or_get_evaluations,
@@ -38,6 +43,7 @@ from .evaluation import (
 from .geometry import convert_geometry, get_annotation_type
 from .groundtruth import (
     create_groundtruth,
+    create_groundtruths,
     delete_groundtruths,
     get_groundtruth,
 )
@@ -95,10 +101,12 @@ __all__ = [
     "get_dataset_summary",
     "delete_dataset",
     "create_datum",
+    "create_datums",
     "fetch_datum",
     "get_paginated_datums",
     "convert_geometry",
     "create_groundtruth",
+    "create_groundtruths",
     "get_groundtruth",
     "create_labels",
     "fetch_label",
