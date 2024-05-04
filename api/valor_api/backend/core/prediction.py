@@ -6,76 +6,100 @@ from valor_api import enums, exceptions, schemas
 from valor_api.backend import core, models
 
 
-def create_prediction(
+def create_predictions(
     db: Session,
-    prediction: schemas.Prediction,
+    predictions: list[schemas.Prediction],
 ):
     """
     Creates a prediction.
 
     Parameters
     ----------
-    db : Session
+    db
         The database Session to query against.
-    prediction : schemas.Prediction
-        The prediction to create.
+    predictions
+        The predictions to create.
     """
     # check model status
-    model_status = core.get_model_status(
-        db=db,
-        dataset_name=prediction.dataset_name,
-        model_name=prediction.model_name,
+    dataset_and_model_names = set(
+        [
+            (prediction.dataset_name, prediction.model_name)
+            for prediction in predictions
+        ]
     )
-    if model_status != enums.TableStatus.CREATING:
-        raise exceptions.ModelFinalizedError(
-            dataset_name=prediction.dataset_name,
-            model_name=prediction.model_name,
+    for dataset_name, model_name in dataset_and_model_names:
+        model_status = core.get_model_status(
+            db=db,
+            dataset_name=dataset_name,
+            model_name=model_name,
         )
+        if model_status != enums.TableStatus.CREATING:
+            raise exceptions.ModelFinalizedError(
+                dataset_name=dataset_name,
+                model_name=model_name,
+            )
 
-    # retrieve existing table entries
-    model = core.fetch_model(db, name=prediction.model_name)
-    dataset = core.fetch_dataset(db, name=prediction.dataset_name)
-    datum = core.fetch_datum(
-        db, dataset_id=dataset.id, uid=prediction.datum.uid
-    )
+    dataset_names = set([dm[0] for dm in dataset_and_model_names])
+    model_names = set([dm[1] for dm in dataset_and_model_names])
+    dataset_name_to_dataset = {
+        dataset_name: core.fetch_dataset(db=db, name=dataset_name)
+        for dataset_name in dataset_names
+    }
+    model_name_to_model = {
+        model_name: core.fetch_model(db=db, name=model_name)
+        for model_name in model_names
+    }
+
+    # possible to speed this up by doing a single query?
+    datums = [
+        core.fetch_datum(
+            db,
+            dataset_id=dataset_name_to_dataset[prediction.dataset_name],
+            uid=prediction.datum.uid,
+        )
+        for prediction in predictions
+    ]
 
     # create labels
     all_labels = [
         label
+        for prediction in predictions
         for annotation in prediction.annotations
         for label in annotation.labels
     ]
-    label_list = core.create_labels(db=db, labels=all_labels)
+    label_dict = core.create_labels(db=db, labels=all_labels)
 
     # create annotations
-    annotation_list = core.create_annotations(
+    annotation_ids = core.create_annotations(
         db=db,
-        annotations=prediction.annotations,
-        datum=datum,
-        model=model,
+        annotations=[prediction.annotations for prediction in predictions],
+        datums=datums,
+        models=[
+            model_name_to_model[prediction.model_name]
+            for prediction in predictions
+        ],
     )
 
-    # create predictions
-    label_idx = 0
-    prediction_list = []
-    for i, annotation in enumerate(prediction.annotations):
-        indices = slice(label_idx, label_idx + len(annotation.labels))
-        for j, label in enumerate(label_list[indices]):
-            prediction_list.append(
-                models.Prediction(
-                    annotation_id=annotation_list[i].id,
-                    label_id=label.id,
-                    score=annotation.labels[j].score,
+    prediction_mappings = []
+    for prediction, annotation_ids_per_prediction in zip(
+        predictions, annotation_ids
+    ):
+        for i, annotation in enumerate(prediction.annotations):
+            for label in annotation.labels:
+                prediction_mappings.append(
+                    {
+                        "annotation_id": annotation_ids_per_prediction[i],
+                        "label_id": label_dict[(label.key, label.value)],
+                        "score": label.score,
+                    }
                 )
-            )
-        label_idx += len(annotation.labels)
 
     try:
-        db.add_all(prediction_list)
+        db.bulk_insert_mappings(models.Prediction, prediction_mappings)
         db.commit()
-    except IntegrityError:
+    except IntegrityError as e:
         db.rollback()
-        raise exceptions.PredictionAlreadyExistsError
+        raise e
 
 
 def get_prediction(

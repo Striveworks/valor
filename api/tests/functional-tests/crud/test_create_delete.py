@@ -484,7 +484,7 @@ def test_create_detection_prediction_and_delete_model(
     # check this gives an error since the model hasn't been added yet
     with pytest.raises(exceptions.DatasetDoesNotExistError) as exc_info:
         for pd in prediction_detections:
-            crud.create_prediction(db=db, prediction=pd)
+            crud.create_predictions(db=db, predictions=[pd])
     assert "does not exist" in str(exc_info)
 
     # create dataset, add images, and add predictions
@@ -496,7 +496,7 @@ def test_create_detection_prediction_and_delete_model(
     # check this gives an error since the model hasn't been created yet
     with pytest.raises(exceptions.ModelDoesNotExistError) as exc_info:
         for pd in prediction_detections:
-            crud.create_prediction(db=db, prediction=pd)
+            crud.create_predictions(db=db, predictions=[pd])
     assert "does not exist" in str(exc_info)
 
     # finalize dataset
@@ -505,13 +505,13 @@ def test_create_detection_prediction_and_delete_model(
     # check this gives an error since the model hasn't been added yet
     with pytest.raises(exceptions.ModelDoesNotExistError) as exc_info:
         for pd in prediction_detections:
-            crud.create_prediction(db=db, prediction=pd)
+            crud.create_predictions(db=db, predictions=[pd])
     assert "does not exist" in str(exc_info)
 
     # create model
     crud.create_model(db=db, model=schemas.Model(name=model_name))
     for pd in prediction_detections:
-        crud.create_prediction(db=db, prediction=pd)
+        crud.create_predictions(db=db, predictions=[pd])
 
     # check db has the added predictions
     assert db.scalar(func.count(models.Annotation.id)) == 4
@@ -632,7 +632,7 @@ def test_create_predicted_classifications_and_delete_model(
 ):
     # check this gives an error since the dataset hasn't been added yet
     with pytest.raises(exceptions.DatasetDoesNotExistError) as exc_info:
-        crud.create_prediction(db=db, prediction=pred_clfs_create[0])
+        crud.create_predictions(db=db, predictions=pred_clfs_create[0:1])
     assert "does not exist" in str(exc_info)
 
     # create dataset, add images, and add predictions
@@ -643,7 +643,7 @@ def test_create_predicted_classifications_and_delete_model(
 
     # check this gives an error since the model does not exist
     with pytest.raises(exceptions.ModelDoesNotExistError) as exc_info:
-        crud.create_prediction(db=db, prediction=pred_clfs_create[0])
+        crud.create_predictions(db=db, predictions=pred_clfs_create[0:1])
     assert "does not exist" in str(exc_info)
 
     # finalize dataset
@@ -651,14 +651,14 @@ def test_create_predicted_classifications_and_delete_model(
 
     # check this gives an error since the images haven't been added yet
     with pytest.raises(exceptions.ModelDoesNotExistError) as exc_info:
-        crud.create_prediction(db=db, prediction=pred_clfs_create[0])
+        crud.create_predictions(db=db, predictions=pred_clfs_create[0:1])
     assert "does not exist" in str(exc_info)
 
     # create model
     crud.create_model(db=db, model=schemas.Model(name=model_name))
     for pd in pred_clfs_create:
         pd.model_name = model_name
-        crud.create_prediction(db=db, prediction=pd)
+    crud.create_predictions(db=db, predictions=pred_clfs_create)
 
     # check db has the added predictions
     assert db.scalar(func.count(models.Prediction.id)) == 6
@@ -769,7 +769,7 @@ def test_create_predicted_segmentations_check_area_and_delete_model(
     # check this gives an error since the images haven't been added yet
     with pytest.raises(exceptions.ModelDoesNotExistError):
         for pd in prediction_instance_segmentations:
-            crud.create_prediction(db=db, prediction=pd)
+            crud.create_predictions(db=db, predictions=[pd])
 
     # create groundtruths
     for gt in groundtruth_instance_segmentations:
@@ -778,7 +778,7 @@ def test_create_predicted_segmentations_check_area_and_delete_model(
     # check this gives an error since the model has not been crated yet
     with pytest.raises(exceptions.ModelDoesNotExistError) as exc_info:
         for pd in prediction_instance_segmentations:
-            crud.create_prediction(db=db, prediction=pd)
+            crud.create_predictions(db=db, predictions=[pd])
     assert "does not exist" in str(exc_info)
 
     # finalize dataset
@@ -787,7 +787,7 @@ def test_create_predicted_segmentations_check_area_and_delete_model(
     # check this gives an error since the model hasn't been added yet
     with pytest.raises(exceptions.ModelDoesNotExistError) as exc_info:
         for pd in prediction_instance_segmentations:
-            crud.create_prediction(db=db, prediction=pd)
+            crud.create_predictions(db=db, predictions=[pd])
     assert "does not exist" in str(exc_info)
 
     # create model
@@ -799,13 +799,13 @@ def test_create_predicted_segmentations_check_area_and_delete_model(
             temp_pd = pd.__deepcopy__()
             temp_pd.model_name = model_name
             temp_pd.datum.uid = f"random{i}"
-            crud.create_prediction(db=db, prediction=temp_pd)
+            crud.create_predictions(db=db, predictions=[temp_pd])
     assert "does not exist" in str(exc_info)
 
     # create predictions
     for pd in prediction_instance_segmentations:
         pd.model_name = model_name
-        crud.create_prediction(db=db, prediction=pd)
+        crud.create_predictions(db=db, predictions=[pd])
 
     # check db has the added predictions
     assert db.scalar(func.count(models.Annotation.id)) == 8
@@ -1364,7 +1364,7 @@ def test_create_clf_metrics(
     for pd in pred_clfs_create:
         pd.dataset_name = dataset_name
         pd.model_name = model_name
-        crud.create_prediction(db=db, prediction=pd)
+        crud.create_predictions(db=db, predictions=[pd])
     crud.finalize(db=db, model_name=model_name, dataset_name=dataset_name)
 
     job_request = schemas.EvaluationRequest(

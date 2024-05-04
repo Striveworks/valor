@@ -340,9 +340,9 @@ def predictions(
     ]
 
     for pd in db_preds_per_img:
-        crud.create_prediction(
+        crud.create_predictions(
             db=db,
-            prediction=pd,
+            predictions=[pd],
         )
     crud.finalize(db=db, dataset_name=dataset_name, model_name=model_name)
 
@@ -388,11 +388,10 @@ def groundtruths_with_rasters(
         )
     ]
 
-    for gt in db_gts_per_img:
-        crud.create_groundtruths(
-            db=db,
-            groundtruth=[gt],
-        )
+    crud.create_groundtruths(
+        db=db,
+        groundtruths=db_gts_per_img,
+    )
     crud.finalize(db=db, dataset_name=dataset_name)
 
     return db.query(models.GroundTruth).all()  # type: ignore - SQLAlchemy type issue
@@ -454,9 +453,9 @@ def predictions_with_rasters(
     ]
 
     for pd in db_preds_per_img:
-        crud.create_prediction(
+        crud.create_predictions(
             db=db,
-            prediction=pd,
+            predictions=[pd],
         )
     crud.finalize(db=db, dataset_name=dataset_name, model_name=model_name)
 
@@ -757,7 +756,7 @@ def dataset_model_create(
     for pd in prediction_detections:
         pd.dataset_name = dataset_name
         pd.model_name = model_name
-        crud.create_prediction(db=db, prediction=pd)
+        crud.create_predictions(db=db, predictions=[pd])
 
     # Finalize model1 over dataset1
     crud.finalize(
@@ -777,55 +776,54 @@ def dataset_model_create(
 def created_dataset(db: Session, dataset_name: str) -> str:
     dataset = schemas.Dataset(name=dataset_name)
     core.create_dataset(db, dataset=dataset)
-    core.create_groundtruth(
+    core.create_groundtruths(
         db=db,
-        groundtruth=schemas.GroundTruth(
-            dataset_name=dataset_name,
-            datum=schemas.Datum(uid="uid1"),
-            annotations=[
-                schemas.Annotation(
-                    task_type=enums.TaskType.CLASSIFICATION,
-                    labels=[schemas.Label(key="k1", value="v1")],
-                )
-            ],
-        ),
-    )
-    core.create_groundtruth(
-        db=db,
-        groundtruth=schemas.GroundTruth(
-            dataset_name=dataset_name,
-            datum=schemas.Datum(uid="uid2"),
-            annotations=[
-                schemas.Annotation(
-                    task_type=enums.TaskType.OBJECT_DETECTION,
-                    labels=[schemas.Label(key="k1", value="v1")],
-                    bounding_box=schemas.Box.from_extrema(
-                        xmin=0, xmax=1, ymin=0, ymax=1
-                    ),
-                )
-            ],
-        ),
-    )
-    core.create_groundtruth(
-        db=db,
-        groundtruth=schemas.GroundTruth(
-            dataset_name=dataset_name,
-            datum=schemas.Datum(
-                uid="uid3",
-                metadata={
-                    "height": 10,
-                    "width": 10,
-                },
+        groundtruths=[
+            schemas.GroundTruth(
+                dataset_name=dataset_name,
+                datum=schemas.Datum(uid="uid1"),
+                annotations=[
+                    schemas.Annotation(
+                        task_type=enums.TaskType.CLASSIFICATION,
+                        labels=[schemas.Label(key="k1", value="v1")],
+                    )
+                ],
             ),
-            annotations=[
-                schemas.Annotation(
-                    task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
-                    labels=[schemas.Label(key="k1", value="v1")],
-                    raster=schemas.Raster.from_numpy(np.zeros((10, 10)) == 0),
-                )
-            ],
-        ),
+            schemas.GroundTruth(
+                dataset_name=dataset_name,
+                datum=schemas.Datum(uid="uid2"),
+                annotations=[
+                    schemas.Annotation(
+                        task_type=enums.TaskType.OBJECT_DETECTION,
+                        labels=[schemas.Label(key="k1", value="v1")],
+                        bounding_box=schemas.Box.from_extrema(
+                            xmin=0, xmax=1, ymin=0, ymax=1
+                        ),
+                    )
+                ],
+            ),
+            schemas.GroundTruth(
+                dataset_name=dataset_name,
+                datum=schemas.Datum(
+                    uid="uid3",
+                    metadata={
+                        "height": 10,
+                        "width": 10,
+                    },
+                ),
+                annotations=[
+                    schemas.Annotation(
+                        task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+                        labels=[schemas.Label(key="k1", value="v1")],
+                        raster=schemas.Raster.from_numpy(
+                            np.zeros((10, 10)) == 0
+                        ),
+                    )
+                ],
+            ),
+        ],
     )
+
     return dataset_name
 
 
@@ -833,58 +831,61 @@ def created_dataset(db: Session, dataset_name: str) -> str:
 def created_model(db: Session, model_name: str, created_dataset: str) -> str:
     model = schemas.Model(name=model_name)
     core.create_model(db, model=model)
-    core.create_prediction(
+    core.create_predictions(
         db=db,
-        prediction=schemas.Prediction(
-            dataset_name=created_dataset,
-            model_name=model_name,
-            datum=schemas.Datum(uid="uid1"),
-            annotations=[
-                schemas.Annotation(
-                    task_type=enums.TaskType.CLASSIFICATION,
-                    labels=[schemas.Label(key="k1", value="v1", score=1.0)],
-                )
-            ],
-        ),
-    )
-    core.create_prediction(
-        db=db,
-        prediction=schemas.Prediction(
-            dataset_name=created_dataset,
-            model_name=model_name,
-            datum=schemas.Datum(uid="uid2"),
-            annotations=[
-                schemas.Annotation(
-                    task_type=enums.TaskType.OBJECT_DETECTION,
-                    labels=[schemas.Label(key="k1", value="v1", score=1.0)],
-                    bounding_box=schemas.Box.from_extrema(
-                        xmin=0, xmax=1, ymin=0, ymax=1
-                    ),
-                )
-            ],
-        ),
-    )
-    core.create_prediction(
-        db=db,
-        prediction=schemas.Prediction(
-            dataset_name=created_dataset,
-            model_name=model_name,
-            datum=schemas.Datum(
-                uid="uid3",
-                metadata={
-                    "height": 10,
-                    "width": 10,
-                },
+        predictions=[
+            schemas.Prediction(
+                dataset_name=created_dataset,
+                model_name=model_name,
+                datum=schemas.Datum(uid="uid1"),
+                annotations=[
+                    schemas.Annotation(
+                        task_type=enums.TaskType.CLASSIFICATION,
+                        labels=[
+                            schemas.Label(key="k1", value="v1", score=1.0)
+                        ],
+                    )
+                ],
             ),
-            annotations=[
-                schemas.Annotation(
-                    task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
-                    labels=[schemas.Label(key="k1", value="v1")],
-                    raster=schemas.Raster.from_numpy(np.zeros((10, 10)) == 0),
-                )
-            ],
-        ),
+            schemas.Prediction(
+                dataset_name=created_dataset,
+                model_name=model_name,
+                datum=schemas.Datum(uid="uid2"),
+                annotations=[
+                    schemas.Annotation(
+                        task_type=enums.TaskType.OBJECT_DETECTION,
+                        labels=[
+                            schemas.Label(key="k1", value="v1", score=1.0)
+                        ],
+                        bounding_box=schemas.Box.from_extrema(
+                            xmin=0, xmax=1, ymin=0, ymax=1
+                        ),
+                    )
+                ],
+            ),
+            schemas.Prediction(
+                dataset_name=created_dataset,
+                model_name=model_name,
+                datum=schemas.Datum(
+                    uid="uid3",
+                    metadata={
+                        "height": 10,
+                        "width": 10,
+                    },
+                ),
+                annotations=[
+                    schemas.Annotation(
+                        task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+                        labels=[schemas.Label(key="k1", value="v1")],
+                        raster=schemas.Raster.from_numpy(
+                            np.zeros((10, 10)) == 0
+                        ),
+                    )
+                ],
+            ),
+        ],
     )
+
     return model_name
 
 

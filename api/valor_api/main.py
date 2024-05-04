@@ -165,8 +165,7 @@ def create_predictions(
         If the model has been finalized, or if the dataset has not been finalized.
     """
     try:
-        for prediction in predictions:
-            crud.create_prediction(db=db, prediction=prediction)
+        crud.create_predictions(db=db, predictions=predictions)
     except Exception as e:
         raise exceptions.create_http_error(e)
 

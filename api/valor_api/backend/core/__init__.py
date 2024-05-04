@@ -70,7 +70,7 @@ from .model import (
     set_model_status,
 )
 from .prediction import (
-    create_prediction,
+    create_predictions,
     delete_dataset_predictions,
     delete_model_predictions,
     get_prediction,
@@ -125,7 +125,7 @@ __all__ = [
     "get_paginated_models",
     "get_model_status",
     "set_model_status",
-    "create_prediction",
+    "create_predictions",
     "delete_evaluations",
     "get_prediction",
     "create_or_get_evaluations",

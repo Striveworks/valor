@@ -487,7 +487,7 @@ def test_post_prediction_classification(client: TestClient):
     _test_post_endpoints(
         client=client,
         endpoint="/predictions",
-        crud_method_name="create_prediction",
+        crud_method_name="create_predictions",
         example_json=[example_json],
     )
 
@@ -530,7 +530,7 @@ def test_post_prediction_bbox_detection(client: TestClient):
     _test_post_endpoints(
         client=client,
         endpoint="/predictions",
-        crud_method_name="create_prediction",
+        crud_method_name="create_predictions",
         example_json=[example_json],
     )
 
@@ -590,7 +590,7 @@ def test_post_prediction_polygon_detection(client: TestClient):
     _test_post_endpoints(
         client=client,
         endpoint="/predictions",
-        crud_method_name="create_prediction",
+        crud_method_name="create_predictions",
         example_json=[example_json],
     )
 
@@ -642,7 +642,7 @@ def test_post_prediction_raster_segmentation(client: TestClient):
     _test_post_endpoints(
         client=client,
         endpoint="/predictions",
-        crud_method_name="create_prediction",
+        crud_method_name="create_predictions",
         example_json=example_json,
     )
 

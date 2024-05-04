@@ -18,9 +18,9 @@ from valor_api.backend.core.label import (
 )
 from valor_api.crud import (
     create_dataset,
-    create_groundtruth,
+    create_groundtruths,
     create_model,
-    create_prediction,
+    create_predictions,
 )
 
 
@@ -132,40 +132,44 @@ def labels_with_common_values(db: Session) -> list[schemas.Label]:
 def create_dataset_model(db: Session, dataset_name: str, model_name: str):
     create_dataset(db=db, dataset=schemas.Dataset(name=dataset_name))
     create_model(db=db, model=schemas.Model(name=model_name))
-    create_groundtruth(
+    create_groundtruths(
         db=db,
-        groundtruth=schemas.GroundTruth(
-            dataset_name=dataset_name,
-            datum=schemas.Datum(uid="123"),
-            annotations=[
-                schemas.Annotation(
-                    task_type=enums.TaskType.CLASSIFICATION,
-                    labels=[
-                        schemas.Label(key="k1", value="v1"),
-                        schemas.Label(key="k1", value="v2"),
-                        schemas.Label(key="k2", value="v3"),
-                    ],
-                )
-            ],
-        ),
+        groundtruths=[
+            schemas.GroundTruth(
+                dataset_name=dataset_name,
+                datum=schemas.Datum(uid="123"),
+                annotations=[
+                    schemas.Annotation(
+                        task_type=enums.TaskType.CLASSIFICATION,
+                        labels=[
+                            schemas.Label(key="k1", value="v1"),
+                            schemas.Label(key="k1", value="v2"),
+                            schemas.Label(key="k2", value="v3"),
+                        ],
+                    )
+                ],
+            )
+        ],
     )
-    create_prediction(
+    create_predictions(
         db=db,
-        prediction=schemas.Prediction(
-            dataset_name=dataset_name,
-            model_name=model_name,
-            datum=schemas.Datum(uid="123"),
-            annotations=[
-                schemas.Annotation(
-                    task_type=enums.TaskType.CLASSIFICATION,
-                    labels=[
-                        schemas.Label(key="k1", value="v2", score=0.1),
-                        schemas.Label(key="k1", value="v3", score=0.9),
-                        schemas.Label(key="k3", value="v3", score=1.0),
-                    ],
-                )
-            ],
-        ),
+        predictions=[
+            schemas.Prediction(
+                dataset_name=dataset_name,
+                model_name=model_name,
+                datum=schemas.Datum(uid="123"),
+                annotations=[
+                    schemas.Annotation(
+                        task_type=enums.TaskType.CLASSIFICATION,
+                        labels=[
+                            schemas.Label(key="k1", value="v2", score=0.1),
+                            schemas.Label(key="k1", value="v3", score=0.9),
+                            schemas.Label(key="k3", value="v3", score=1.0),
+                        ],
+                    )
+                ],
+            )
+        ],
     )
 
 
@@ -188,7 +192,9 @@ def test_create_labels_with_duplicates(db: Session):
     created_labels = create_labels(db, labels)
     assert len(db.query(models.Label).all()) == 1
     assert len(created_labels) == 2
-    assert created_labels[0].id == created_labels[1].id
+
+    # check just one id was created
+    assert len(set(created_labels.values())) == 1
 
 
 def test_get_labels(
@@ -511,7 +517,7 @@ def test_label_functions(
         crud.create_groundtruths(db=db, groundtruths=[gt])
 
     for pred in pds:
-        crud.create_prediction(db=db, prediction=pred)
+        crud.create_predictions(db=db, predictions=[pred])
 
     assert get_label_keys(
         db,

@@ -71,7 +71,7 @@ def create_groundtruths(
 def create_predictions(
     *,
     db: Session,
-    prediction: schemas.Prediction,
+    predictions: list[schemas.Prediction],
 ):
     """
     Creates a prediction.
@@ -83,7 +83,7 @@ def create_predictions(
     prediction: schemas.Prediction
         The prediction to create.
     """
-    backend.create_predictions(db, prediction=prediction)
+    backend.create_predictions(db, predictions=predictions)
 
 
 def create_or_get_evaluations(

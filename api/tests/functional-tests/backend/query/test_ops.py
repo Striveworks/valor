@@ -623,10 +623,15 @@ def model_sim(
             metadata=metadata_1,
         ),
     )
-    crud.create_prediction(db=db, prediction=prediction_cat_datum1_model1)
-    crud.create_prediction(db=db, prediction=prediction_cat_datum2_model1)
-    crud.create_prediction(db=db, prediction=prediction_dog_datum3_model1)
-    crud.create_prediction(db=db, prediction=prediction_dog_datum4_model1)
+    crud.create_predictions(
+        db=db,
+        predictions=[
+            prediction_cat_datum1_model1,
+            prediction_cat_datum2_model1,
+            prediction_dog_datum3_model1,
+            prediction_dog_datum4_model1,
+        ],
+    )
     crud.finalize(db=db, dataset_name=dset_name, model_name=model_name1)
 
     crud.create_model(
@@ -636,10 +641,15 @@ def model_sim(
             metadata=metadata_4,
         ),
     )
-    crud.create_prediction(db=db, prediction=prediction_dog_datum1_model2)
-    crud.create_prediction(db=db, prediction=prediction_dog_datum2_model2)
-    crud.create_prediction(db=db, prediction=prediction_cat_datum3_model2)
-    crud.create_prediction(db=db, prediction=prediction_cat_datum4_model2)
+    crud.create_predictions(
+        db=db,
+        predictions=[
+            prediction_dog_datum1_model2,
+            prediction_dog_datum2_model2,
+            prediction_cat_datum3_model2,
+            prediction_cat_datum4_model2,
+        ],
+    )
     crud.finalize(db=db, dataset_name=dset_name, model_name=model_name2)
 
 
