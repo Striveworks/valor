@@ -238,10 +238,6 @@ def create_labels(
     ).all()
 
     return {(row.key, row.value): row.id for row in label_rows}
-    # print(f"query: {time.perf_counter() - start:.4f}")
-    # existing_labels = {(row.key, row.value): row for row in label_rows}
-    # print("leaving create_labels")
-    # return [existing_labels[(label.key, label.value)] for label in labels]
 
 
 def _getter_statement(

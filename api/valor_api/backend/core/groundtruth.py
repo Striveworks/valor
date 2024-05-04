@@ -1,5 +1,3 @@
-import time
-
 from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -9,13 +7,10 @@ from valor_api.backend import core, models
 
 
 def create_groundtruths(db: Session, groundtruths: list[schemas.GroundTruth]):
-    print("INSIDE create_groundtruths")
-    # check dataset status
-    start = time.perf_counter()
+    # check dataset statuses
     dataset_names = set(
         [groundtruth.dataset_name for groundtruth in groundtruths]
     )
-
     dataset_name_to_dataset = {
         dataset_name: core.fetch_dataset(db=db, name=dataset_name)
         for dataset_name in dataset_names
@@ -24,9 +19,6 @@ def create_groundtruths(db: Session, groundtruths: list[schemas.GroundTruth]):
         if dataset.status != enums.TableStatus.CREATING:
             raise exceptions.DatasetFinalizedError(dataset.name)
 
-    print(f"get_dataset_status: {time.perf_counter() - start:.4f}")
-
-    start = time.perf_counter()
     datums = core.create_datums(
         db,
         [groundtruth.datum for groundtruth in groundtruths],
@@ -35,9 +27,6 @@ def create_groundtruths(db: Session, groundtruths: list[schemas.GroundTruth]):
             for groundtruth in groundtruths
         ],
     )
-    print(f"create_datums: {time.perf_counter() - start:.4f}")
-
-    start = time.perf_counter()
     all_labels = [
         label
         for groundtruth in groundtruths
@@ -45,9 +34,7 @@ def create_groundtruths(db: Session, groundtruths: list[schemas.GroundTruth]):
         for label in annotation.labels
     ]
     label_dict = core.create_labels(db=db, labels=all_labels)
-    print(f"create_labels: {time.perf_counter() - start:.4f}")
 
-    start = time.perf_counter()
     # create annotations
     annotation_ids = core.create_annotations(
         db=db,
@@ -55,10 +42,7 @@ def create_groundtruths(db: Session, groundtruths: list[schemas.GroundTruth]):
         datums=datums,
         model=None,
     )
-    print(f"create_annotations: {time.perf_counter() - start:.4f}")
 
-    print("starting creating groundtruth_mappings")
-    start = time.perf_counter()
     groundtruth_mappings = []
     for groundtruth, annotation_ids_per_groundtruth in zip(
         groundtruths, annotation_ids
@@ -71,18 +55,13 @@ def create_groundtruths(db: Session, groundtruths: list[schemas.GroundTruth]):
                         "label_id": label_dict[(label.key, label.value)],
                     }
                 )
-    print(f"create_groundtruth_mappings: {time.perf_counter() - start:.4f}")
 
-    start = time.perf_counter()
-    print("starting bulk insert")
     try:
         db.bulk_insert_mappings(models.GroundTruth, groundtruth_mappings)
         db.commit()
     except IntegrityError as e:
         db.rollback()
         raise e
-    print(f"bulk_insert_mappings: {time.perf_counter() - start:.4f}")
-    print("EXITING create_groundtruth")
 
 
 def create_groundtruth(

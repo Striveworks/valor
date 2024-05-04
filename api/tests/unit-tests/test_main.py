@@ -152,7 +152,7 @@ def test_post_groundtruth(client: TestClient):
 
     # check that we get an error if the dataset doesn't exist
     with patch(
-        "valor_api.main.crud.create_groundtruth",
+        "valor_api.main.crud.create_groundtruths",
         side_effect=exceptions.DatasetDoesNotExistError("fake_dsetname"),
     ):
         resp = client.post("/groundtruths", json=[example_json])
@@ -198,7 +198,7 @@ def test_post_groundtruth_classification(client: TestClient):
     _test_post_endpoints(
         client=client,
         endpoint="/groundtruths",
-        crud_method_name="create_groundtruth",
+        crud_method_name="create_groundtruths",
         example_json=[example_json],
     )
 
@@ -239,7 +239,7 @@ def test_post_groundtruth_bbox_detection(client: TestClient):
     _test_post_endpoints(
         client=client,
         endpoint="/groundtruths",
-        crud_method_name="create_groundtruth",
+        crud_method_name="create_groundtruths",
         example_json=[example_json],
     )
 
@@ -295,7 +295,7 @@ def test_post_groundtruth_polygon_detection(client: TestClient):
     _test_post_endpoints(
         client=client,
         endpoint="/groundtruths",
-        crud_method_name="create_groundtruth",
+        crud_method_name="create_groundtruths",
         example_json=[example_json],
     )
 
@@ -344,7 +344,7 @@ def test_post_groundtruth_raster_segmentation(client: TestClient):
     _test_post_endpoints(
         client=client,
         endpoint="/groundtruths",
-        crud_method_name="create_groundtruth",
+        crud_method_name="create_groundtruths",
         example_json=[example_json],
     )
 
