@@ -1,0 +1,2 @@
+DROP INDEX idx_annotation_datum_id
+DROP INDEX idx_annotation_model_id

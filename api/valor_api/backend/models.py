@@ -3,7 +3,7 @@ import datetime
 from geoalchemy2 import Geometry, Raster
 from geoalchemy2.functions import ST_SetBandNoDataValue, ST_SetGeoReference
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import ForeignKey, Index, UniqueConstraint
+from sqlalchemy import ForeignKey, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
@@ -17,8 +17,8 @@ class Label(Base):
 
     # columns
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    key: Mapped[str] = mapped_column(index=True)
-    value: Mapped[str] = mapped_column(index=True)
+    key: Mapped[str]
+    value: Mapped[str]
     created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
 
     # relationships
@@ -28,8 +28,6 @@ class Label(Base):
     predictions: Mapped[list["Prediction"]] = relationship(
         back_populates="label"
     )
-
-    __table_args__ = (Index("idx_label_key_value", "key", "value"),)
 
 
 class Embedding(Base):
@@ -153,11 +151,9 @@ class Datum(Base):
     # columns
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     dataset_id: Mapped[int] = mapped_column(
-        ForeignKey("dataset.id"),
-        nullable=False,
-        index=True,
+        ForeignKey("dataset.id"), nullable=False
     )
-    uid: Mapped[str] = mapped_column(nullable=False, index=True)
+    uid: Mapped[str] = mapped_column(nullable=False)
     meta = mapped_column(JSONB)
     created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
 
