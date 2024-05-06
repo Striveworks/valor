@@ -10,6 +10,22 @@ from valor_api.backend.query import Query
 def create_datums(
     db: Session, datums: list[schemas.Datum], datasets: list[models.Dataset]
 ) -> list[models.Datum]:
+    """Creates datums in bulk
+
+    Parameters
+    ----------
+    db
+        The database Session you want to query against.
+    datums
+        The datums to add to the database.
+    datasets
+        The datasets to link to the datums. This list should be the same length as the datums list.
+
+    Returns
+    -------
+    list[models.Datum]
+        The datums that were created.
+    """
     rows = [
         models.Datum(
             uid=datum.uid,

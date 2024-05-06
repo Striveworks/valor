@@ -7,6 +7,19 @@ from valor_api.backend import core, models
 
 
 def create_groundtruths(db: Session, groundtruths: list[schemas.GroundTruth]):
+    """Create ground truths in bulk.
+
+    Parameters
+    ----------
+    db
+        The database Session to query against.
+    groundtruths
+        The ground truths to create.
+
+    Returns
+    -------
+    None
+    """
     # check dataset statuses
     dataset_names = set(
         [groundtruth.dataset_name for groundtruth in groundtruths]
