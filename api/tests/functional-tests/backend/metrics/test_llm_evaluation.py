@@ -1,5 +1,7 @@
 # import pdb
 
+from unittest.mock import patch
+
 import pytest
 from sqlalchemy.orm import Session
 
@@ -8,6 +10,8 @@ from valor_api.backend import models
 from valor_api.backend.core import (  # fetch_union_of_labels,
     create_or_get_evaluations,
 )
+
+# from valor_api.backend.metrics.llm_call import OpenAIClient
 from valor_api.backend.metrics.llm_evaluation import (
     _compute_llm_evaluation_metrics,
     compute_llm_evaluation_metrics,
@@ -15,6 +19,38 @@ from valor_api.backend.metrics.llm_evaluation import (
 
 # from valor_api.backend.metrics.metric_utils import create_grouper_mappings
 # from valor_api.backend.query import Query
+
+
+class mocked_OpenAIClient:
+    """
+    TODO keep this class up to date with OpenAIClient
+    """
+
+    # url: str
+    api_key: str | None = None
+    model_name: str = "gpt-3.5-turbo"  # gpt-3.5-turbo gpt-4-turbo
+
+    # TODO if we change to __attrs_post_init__ we should change this here too
+    def __init__(
+        self,
+        api_key: str | None = None,
+    ):
+        self.api_key = api_key
+        self.client = None
+
+    def coherence(self, text: str, label_key: str):
+        return schemas.CoherenceMetric(
+            label_key=label_key,
+            value=4,
+        )
+
+
+def mocked_coherence(self, text: str, label_key: str):
+    # TODO possibly do different values depending on the text and label_key
+    return schemas.CoherenceMetric(
+        label_key=label_key,
+        value=4,
+    )
 
 
 @pytest.fixture
@@ -102,7 +138,6 @@ def llm_evaluation_test_data(db: Session, dataset_name: str, model_name: str):
         for i in range(len(question_gts))
     ]
 
-    # pdb.set_trace()
     # print(f"here: {type(question_contexts[0])}, {type(question_contexts[0]["context_list"])}")
 
     preds = [
@@ -164,6 +199,11 @@ def llm_evaluation_test_data(db: Session, dataset_name: str, model_name: str):
     assert len(db.query(models.Prediction).all()) == 3
 
 
+@patch(
+    "valor_api.backend.metrics.llm_call.OpenAIClient.coherence",
+    mocked_coherence,
+)
+# @patch.object(llm_call.OpenAIClient, mocked_OpenAIClient)
 def test_compute_llm_evaluation(
     db: Session,
     dataset_name: str,
@@ -239,6 +279,10 @@ def test_compute_llm_evaluation(
             pass
 
 
+@patch(
+    "valor_api.backend.metrics.llm_call.OpenAIClient.coherence",
+    mocked_coherence,
+)
 def test_llm_evaluation(
     db: Session,
     dataset_name: str,
@@ -291,6 +335,8 @@ def test_llm_evaluation(
         enums.EvaluationStatus.RUNNING,
         enums.EvaluationStatus.DONE,
     }
+
+    # pdb.set_trace()
 
     metrics = evaluations[0].metrics
 
