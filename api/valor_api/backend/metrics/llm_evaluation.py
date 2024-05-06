@@ -2,8 +2,6 @@
 # import pdb  # TODO remove
 from typing import Sequence
 
-from openai import OpenAI
-
 # import numpy as np
 # from sqlalchemy import Subquery  # Integer
 from sqlalchemy.orm import Session  # Bundle
@@ -11,6 +9,7 @@ from sqlalchemy.sql import and_, select  # case, func, join,
 
 from valor_api import enums, schemas
 from valor_api.backend import core, models
+from valor_api.backend.metrics.llm_call import OpenAIClient
 from valor_api.backend.metrics.metric_utils import (
     create_grouper_mappings,
     create_metric_mappings,
@@ -25,61 +24,6 @@ from valor_api.backend.query import Query
 
 
 LabelMapType = list[list[list[str]]]
-
-
-COHERENCE_INSTRUCTION = """You are a helpful assistant. You will grade the user's text. Your task is to rate the text based on its coherence. Please make sure you read and understand these instructions carefully. Please keep this document open while reviewing, and refer to it as needed.
-Evaluation Criteria:
-Coherence (1-5) - the collective quality of all sentences. We align this dimension with the DUC quality question of structure and coherence whereby ”the summary should be well-structured and well-organized. The summary should not just be a heap of related information, but should build from sentence to sentence to a coherent body of information about a topic.”
-Evaluation Steps:
-1. Read the text carefully and identify the main topic and key points.
-2. Assign a score for coherence on a scale of 1 to 5, where 1 is the lowest and 5 is the highest based on the Evaluation Criteria. Respond with just the number 1 to 5."""
-
-
-def _compute_coherence(res) -> Sequence[schemas.CoherenceMetric | None]:
-    """
-    Computes coherence.
-
-    Parameters
-    ----------
-    res : TODO
-
-    Returns
-    -------
-    schemas.CoherenceMetric | None
-    """
-
-    client = OpenAI()
-
-    coherence_scores = []
-
-    for x in res:
-        generated_text = x[4]
-
-        messages = [
-            {"role": "system", "content": COHERENCE_INSTRUCTION},
-            {"role": "user", "content": generated_text},
-        ]
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo", messages=messages
-        )
-        response = response.choices[0].message.content
-
-        try:
-            response = int(response)
-        except ValueError:
-            coherence_scores.append(None)
-
-        if response not in [1, 2, 3, 4, 5]:
-            coherence_scores.append(None)
-
-        coherence_scores.append(
-            schemas.CoherenceMetric(
-                label_key=x[1],
-                value=response,
-            )
-        )
-
-    return coherence_scores
 
 
 def _compute_llm_evaluation_metrics_at_grouper_key(
@@ -192,12 +136,14 @@ def _compute_llm_evaluation_metrics_at_grouper_key(
         )
     )
 
+    # TODO rename this output
     res = db.execute(total_query).all()
 
     if len(res) == 0:
         # this means there's no predictions and groundtruths with the same datum id and label key
         return None
 
+    client = OpenAIClient()
     metrics = []
 
     for metric_name in metric_list:
@@ -208,7 +154,13 @@ def _compute_llm_evaluation_metrics_at_grouper_key(
         elif metric_name == "BiasMetric":
             raise NotImplementedError
         elif metric_name == "CoherenceMetric":
-            metrics.extend(_compute_coherence(res))
+            # TODO how does this work with grouping?
+            for row in res:
+                label_key = row[1]
+                generated_text = row[4]
+                metrics.append(
+                    client.coherence(text=generated_text, label_key=label_key)
+                )
         elif metric_name == "ContextPrecisionMetric":
             raise NotImplementedError
         elif metric_name == "ContextRecallMetric":
