@@ -84,8 +84,7 @@ def create_groundtruths(
         If the dataset has been finalized, or if the datum already exists.
     """
     try:
-        for groundtruth in groundtruths:
-            crud.create_groundtruth(db=db, groundtruth=groundtruth)
+        crud.create_groundtruths(db=db, groundtruths=groundtruths)
     except Exception as e:
         raise exceptions.create_http_error(e)
 
@@ -166,8 +165,7 @@ def create_predictions(
         If the model has been finalized, or if the dataset has not been finalized.
     """
     try:
-        for prediction in predictions:
-            crud.create_prediction(db=db, prediction=prediction)
+        crud.create_predictions(db=db, predictions=predictions)
     except Exception as e:
         raise exceptions.create_http_error(e)
 

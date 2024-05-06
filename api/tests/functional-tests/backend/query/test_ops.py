@@ -589,10 +589,15 @@ def dataset_sim(
             metadata=metadata_1,
         ),
     )
-    crud.create_groundtruth(db=db, groundtruth=groundtruth_cat_datum_1)
-    crud.create_groundtruth(db=db, groundtruth=groundtruth_cat_datum_2)
-    crud.create_groundtruth(db=db, groundtruth=groundtruth_dog_datum_3)
-    crud.create_groundtruth(db=db, groundtruth=groundtruth_dog_datum_4)
+    crud.create_groundtruths(
+        db=db,
+        groundtruths=[
+            groundtruth_cat_datum_1,
+            groundtruth_cat_datum_2,
+            groundtruth_dog_datum_3,
+            groundtruth_dog_datum_4,
+        ],
+    )
     crud.finalize(db=db, dataset_name=dset_name)
 
 
@@ -618,10 +623,15 @@ def model_sim(
             metadata=metadata_1,
         ),
     )
-    crud.create_prediction(db=db, prediction=prediction_cat_datum1_model1)
-    crud.create_prediction(db=db, prediction=prediction_cat_datum2_model1)
-    crud.create_prediction(db=db, prediction=prediction_dog_datum3_model1)
-    crud.create_prediction(db=db, prediction=prediction_dog_datum4_model1)
+    crud.create_predictions(
+        db=db,
+        predictions=[
+            prediction_cat_datum1_model1,
+            prediction_cat_datum2_model1,
+            prediction_dog_datum3_model1,
+            prediction_dog_datum4_model1,
+        ],
+    )
     crud.finalize(db=db, dataset_name=dset_name, model_name=model_name1)
 
     crud.create_model(
@@ -631,10 +641,15 @@ def model_sim(
             metadata=metadata_4,
         ),
     )
-    crud.create_prediction(db=db, prediction=prediction_dog_datum1_model2)
-    crud.create_prediction(db=db, prediction=prediction_dog_datum2_model2)
-    crud.create_prediction(db=db, prediction=prediction_cat_datum3_model2)
-    crud.create_prediction(db=db, prediction=prediction_cat_datum4_model2)
+    crud.create_predictions(
+        db=db,
+        predictions=[
+            prediction_dog_datum1_model2,
+            prediction_dog_datum2_model2,
+            prediction_cat_datum3_model2,
+            prediction_cat_datum4_model2,
+        ],
+    )
     crud.finalize(db=db, dataset_name=dset_name, model_name=model_name2)
 
 
@@ -2194,29 +2209,22 @@ def test_datum_datetime_queries(
         ),
     )
 
-    crud.create_groundtruth(
+    crud.create_groundtruths(
         db=db,
-        groundtruth=schemas.GroundTruth(
-            dataset_name=dset_name, datum=datum_1, annotations=[annotation]
-        ),
-    )
-    crud.create_groundtruth(
-        db=db,
-        groundtruth=schemas.GroundTruth(
-            dataset_name=dset_name, datum=datum_2, annotations=[annotation]
-        ),
-    )
-    crud.create_groundtruth(
-        db=db,
-        groundtruth=schemas.GroundTruth(
-            dataset_name=dset_name, datum=datum_3, annotations=[annotation]
-        ),
-    )
-    crud.create_groundtruth(
-        db=db,
-        groundtruth=schemas.GroundTruth(
-            dataset_name=dset_name, datum=datum_4, annotations=[annotation]
-        ),
+        groundtruths=[
+            schemas.GroundTruth(
+                dataset_name=dset_name, datum=datum_1, annotations=[annotation]
+            ),
+            schemas.GroundTruth(
+                dataset_name=dset_name, datum=datum_2, annotations=[annotation]
+            ),
+            schemas.GroundTruth(
+                dataset_name=dset_name, datum=datum_3, annotations=[annotation]
+            ),
+            schemas.GroundTruth(
+                dataset_name=dset_name, datum=datum_4, annotations=[annotation]
+            ),
+        ],
     )
 
     crud.create_model(
@@ -2477,18 +2485,20 @@ def test_annotation_datetime_queries(
         ),
     )
 
-    crud.create_groundtruth(
+    crud.create_groundtruths(
         db=db,
-        groundtruth=schemas.GroundTruth(
-            dataset_name=dset_name,
-            datum=datum_1,
-            annotations=[
-                annotation_1,
-                annotation_2,
-                annotation_3,
-                annotation_4,
-            ],
-        ),
+        groundtruths=[
+            schemas.GroundTruth(
+                dataset_name=dset_name,
+                datum=datum_1,
+                annotations=[
+                    annotation_1,
+                    annotation_2,
+                    annotation_3,
+                    annotation_4,
+                ],
+            )
+        ],
     )
 
     _test_annotation_datetime_query(db, datetime_key, datetime_metadata)
