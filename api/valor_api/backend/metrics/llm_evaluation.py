@@ -201,29 +201,29 @@ def _compute_llm_evaluation_metrics_at_grouper_key(
     metrics = []
 
     for metric_name in metric_list:
-        if metric_name == "answer-correctness":
+        if metric_name == "AnswerCorrectnessMetric":
             raise NotImplementedError
-        elif metric_name == "answer-relevance":
+        elif metric_name == "AnswerRelevanceMetric":
             raise NotImplementedError
-        elif metric_name == "bias":
+        elif metric_name == "BiasMetric":
             raise NotImplementedError
-        elif metric_name == "coherence":
+        elif metric_name == "CoherenceMetric":
             metrics.extend(_compute_coherence(res))
-        elif metric_name == "context-precision":
+        elif metric_name == "ContextPrecisionMetric":
             raise NotImplementedError
-        elif metric_name == "context-recall":
+        elif metric_name == "ContextRecallMetric":
             raise NotImplementedError
-        elif metric_name == "context-relevance":
+        elif metric_name == "ContextRelevanceMetric":
             raise NotImplementedError
-        elif metric_name == "faithfulness":
+        elif metric_name == "FaithfulnessMetric":
             raise NotImplementedError
-        elif metric_name == "grammaticality":
+        elif metric_name == "GrammaticalityMetric":
             raise NotImplementedError
-        elif metric_name == "hallucination":
+        elif metric_name == "HallucinationMetric":
             raise NotImplementedError
-        elif metric_name == "qag":
+        elif metric_name == "QAGMetric":
             raise NotImplementedError
-        elif metric_name == "toxicity":
+        elif metric_name == "ToxicityMetric":
             raise NotImplementedError
 
     # metrics that are per label
@@ -346,7 +346,7 @@ def compute_llm_evaluation_metrics(
     prediction_filter.task_types = [parameters.task_type]
 
     # get the metrics to compute
-    metric_list = parameters.llm_evaluation_metrics
+    metric_list = parameters.metrics_to_return
 
     assert metric_list, "No metrics to compute."
 

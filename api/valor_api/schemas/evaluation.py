@@ -30,9 +30,10 @@ class EvaluationParameters(BaseModel):
         A boolean which determines whether we calculate precision-recall curves or not.
     pr_curve_iou_threshold: float, optional
             The IOU threshold to use when calculating precision-recall curves for object detection tasks. Defaults to 0.5. Does nothing when compute_pr_curves is set to False or None.
+    metrics_to_return: list[str], optional
+        The list of metric names to return to the user.
     llm_url: TODO
     llm_api_key: TODO
-    llm_evaluation_metrics: TODO
     """
 
     task_type: TaskType
@@ -44,9 +45,9 @@ class EvaluationParameters(BaseModel):
     recall_score_threshold: float | None = 0
     compute_pr_curves: bool | None = None
     pr_curve_iou_threshold: float | None = 0.5
+    metrics_to_return: list[str] | None = None
     llm_url: str | None = None
     llm_api_key: str | None = None
-    llm_evaluation_metrics: list[str] | None = None
 
     # pydantic setting
     model_config = ConfigDict(extra="forbid")
@@ -86,13 +87,32 @@ class EvaluationParameters(BaseModel):
                                 "`iou_thresholds_to_return` must be a subset of `iou_thresholds_to_compute`"
                             )
             case TaskType.LLM_EVALUATION:
-                if (
-                    values.llm_url is None
-                    or values.llm_api_key is None
-                    or values.llm_evaluation_metrics is None
+                if values.llm_url is None or values.llm_api_key is None:
+                    raise ValueError(
+                        "`llm_url` and `llm_api_key` must be provided for LLM guided evaluations."
+                    )
+
+                allowed_metrics = [
+                    "AnswerCorrectnessMetric",
+                    "AnswerRelevanceMetric",
+                    "BiasMetric",
+                    "CoherenceMetric",
+                    "ContextPrecisionMetric",
+                    "ContextRecallMetric",
+                    "ContextRelevanceMetric",
+                    "FaithfulnessMetric",
+                    "GrammaticalityMetric",
+                    "HallucinationMetric",
+                    "QAGMetric",
+                    "ToxicityMetric",
+                ]
+
+                if values.metrics_to_return is None or not all(
+                    metric in allowed_metrics
+                    for metric in values.metrics_to_return
                 ):
                     raise ValueError(
-                        "`llm_url`, `llm_api_key` and `llm_evaluation_metrics` must be provided for LLM guided evaluations."
+                        f"`metrics_to_return` must be a list of metrics from {allowed_metrics}."
                     )
             case _:
                 raise NotImplementedError(

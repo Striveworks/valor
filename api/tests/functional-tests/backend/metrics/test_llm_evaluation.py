@@ -133,8 +133,7 @@ def llm_evaluation_test_data(db: Session, dataset_name: str, model_name: str):
             metadata={"type": "text"},
         ),
     )
-    for gt in gts:
-        crud.create_groundtruth(db=db, groundtruth=gt)
+    crud.create_groundtruths(db=db, groundtruths=gts)
     crud.finalize(db=db, dataset_name=dataset_name)
 
     crud.create_model(
@@ -155,8 +154,7 @@ def llm_evaluation_test_data(db: Session, dataset_name: str, model_name: str):
             },
         ),
     )
-    for pd in preds:
-        crud.create_prediction(db=db, prediction=pd)
+    crud.create_predictions(db=db, predictions=preds)
     crud.finalize(db=db, dataset_name=dataset_name, model_name=model_name)
 
     assert len(db.query(models.Datum).all()) == 3
@@ -187,18 +185,18 @@ def test_compute_llm_evaluation(
 
     # TODO eventually get all working
     metric_list = [
-        # "answer-correctness",
-        # "answer-relevance",
-        # "bias",
-        "coherence",
-        # "context-precision",
-        # "context-recall",
-        # "context-relevance",
-        # "faithfulness",
-        # "grammaticality",
-        # "hallucination",
-        # "qag",
-        # "toxicity",
+        # "AnswerCorrectnessMetric",
+        # "AnswerRelevanceMetric",
+        # "BiasMetric",
+        "CoherenceMetric",
+        # "ContextPrecisionMetric",
+        # "ContextRecallMetric",
+        # "ContextRelevanceMetric",
+        # "FaithfulnessMetric",
+        # "GrammaticalityMetric",
+        # "HallucinationMetric",
+        # "QAGMetric",
+        # "ToxicityMetric",
     ]
 
     metrics = _compute_llm_evaluation_metrics(
@@ -248,18 +246,18 @@ def test_llm_evaluation(
     llm_evaluation_test_data,
 ):
     metric_list = [
-        # "answer-correctness",
-        # "answer-relevance",
-        # "bias",
-        "coherence",
-        # "context-precision",
-        # "context-recall",
-        # "context-relevance",
-        # "faithfulness",
-        # "grammaticality",
-        # "hallucination",
-        # "qag",
-        # "toxicity",
+        # "AnswerCorrectnessMetric",
+        # "AnswerRelevanceMetric",
+        # "BiasMetric",
+        "CoherenceMetric",
+        # "ContextPrecisionMetric",
+        # "ContextRecallMetric",
+        # "ContextRelevanceMetric",
+        # "FaithfulnessMetric",
+        # "GrammaticalityMetric",
+        # "HallucinationMetric",
+        # "QAGMetric",
+        # "ToxicityMetric",
     ]
 
     # default request
@@ -268,9 +266,9 @@ def test_llm_evaluation(
         datum_filter=schemas.Filter(dataset_names=[dataset_name]),
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.LLM_EVALUATION,
+            metrics_to_return=metric_list,
             llm_url="url",  # TODO
             llm_api_key="api_key",  # TODO
-            llm_evaluation_metrics=metric_list,
         ),
         meta={},
     )
