@@ -60,18 +60,20 @@ def test__verify_ready_to_evaluate(
             db=db, dataset_list=[dataset], model_list=[model]
         )
 
-    core.create_groundtruth(
+    core.create_groundtruths(
         db=db,
-        groundtruth=schemas.GroundTruth(
-            dataset_name=dataset_name,
-            datum=schemas.Datum(uid="uid1"),
-            annotations=[
-                schemas.Annotation(
-                    task_type=enums.TaskType.CLASSIFICATION,
-                    labels=[schemas.Label(key="k1", value="v1")],
-                )
-            ],
-        ),
+        groundtruths=[
+            schemas.GroundTruth(
+                dataset_name=dataset_name,
+                datum=schemas.Datum(uid="uid1"),
+                annotations=[
+                    schemas.Annotation(
+                        task_type=enums.TaskType.CLASSIFICATION,
+                        labels=[schemas.Label(key="k1", value="v1")],
+                    )
+                ],
+            )
+        ],
     )
     core.set_dataset_status(db, dataset_name, enums.TableStatus.FINALIZED)
 
@@ -83,19 +85,23 @@ def test__verify_ready_to_evaluate(
 
     # create a prediction
     # automatically finalizes over dataset
-    core.create_prediction(
+    core.create_predictions(
         db=db,
-        prediction=schemas.Prediction(
-            dataset_name=dataset_name,
-            model_name=model_name,
-            datum=schemas.Datum(uid="uid1"),
-            annotations=[
-                schemas.Annotation(
-                    task_type=enums.TaskType.CLASSIFICATION,
-                    labels=[schemas.Label(key="k1", value="v1", score=1.0)],
-                )
-            ],
-        ),
+        predictions=[
+            schemas.Prediction(
+                dataset_name=dataset_name,
+                model_name=model_name,
+                datum=schemas.Datum(uid="uid1"),
+                annotations=[
+                    schemas.Annotation(
+                        task_type=enums.TaskType.CLASSIFICATION,
+                        labels=[
+                            schemas.Label(key="k1", value="v1", score=1.0)
+                        ],
+                    )
+                ],
+            )
+        ],
     )
 
     # both dataset and model should be in valid finalized states
@@ -106,19 +112,23 @@ def test__verify_ready_to_evaluate(
     second_model = core.create_model(
         db=db, model=schemas.Model(name="second_model")
     )
-    core.create_prediction(
+    core.create_predictions(
         db=db,
-        prediction=schemas.Prediction(
-            dataset_name=dataset_name,
-            model_name="second_model",
-            datum=schemas.Datum(uid="uid1"),
-            annotations=[
-                schemas.Annotation(
-                    task_type=enums.TaskType.CLASSIFICATION,
-                    labels=[schemas.Label(key="k1", value="v1", score=1.0)],
-                )
-            ],
-        ),
+        predictions=[
+            schemas.Prediction(
+                dataset_name=dataset_name,
+                model_name="second_model",
+                datum=schemas.Datum(uid="uid1"),
+                annotations=[
+                    schemas.Annotation(
+                        task_type=enums.TaskType.CLASSIFICATION,
+                        labels=[
+                            schemas.Label(key="k1", value="v1", score=1.0)
+                        ],
+                    )
+                ],
+            )
+        ],
     )
 
     _verify_ready_to_evaluate(

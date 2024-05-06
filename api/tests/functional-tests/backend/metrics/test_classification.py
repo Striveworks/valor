@@ -108,8 +108,8 @@ def classification_test_data(db: Session, dataset_name: str, model_name: str):
             metadata={"type": "image"},
         ),
     )
-    for gt in gts:
-        crud.create_groundtruth(db=db, groundtruth=gt)
+
+    crud.create_groundtruths(db=db, groundtruths=gts)
     crud.finalize(db=db, dataset_name=dataset_name)
 
     crud.create_model(
@@ -119,8 +119,7 @@ def classification_test_data(db: Session, dataset_name: str, model_name: str):
             metadata={"type": "image"},
         ),
     )
-    for pd in preds:
-        crud.create_prediction(db=db, prediction=pd)
+    crud.create_predictions(db=db, predictions=preds)
     crud.finalize(db=db, dataset_name=dataset_name, model_name=model_name)
 
     assert len(db.query(models.Datum).all()) == 6

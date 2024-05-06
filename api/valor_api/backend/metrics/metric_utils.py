@@ -281,8 +281,8 @@ def create_metric_mappings(
             # create the label in the database if it doesn't exist
             # this is useful if the user maps existing labels to a non-existant grouping label
             if not label:
-                label = core.create_labels(db=db, labels=[metric.label])  # type: ignore - https://github.com/microsoft/pylance-release/issues/2237
-                label_id = label[0].id
+                label_map = core.create_labels(db=db, labels=[metric.label])  # type: ignore - https://github.com/microsoft/pylance-release/issues/2237
+                label_id = list(label_map.values())[0]
             else:
                 label_id = label.id
 

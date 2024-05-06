@@ -58,8 +58,7 @@ def test_create_empty_annotations(
     empty_predictions: list[schemas.Prediction],
     created_dataset: str,
 ):
-    for gt in empty_groundtruths:
-        core.create_groundtruth(db, gt)
+    core.create_groundtruths(db, empty_groundtruths)
 
     assert (
         db.scalar(
@@ -70,8 +69,7 @@ def test_create_empty_annotations(
         == 3
     )
 
-    for pd in empty_predictions:
-        core.create_prediction(db, pd)
+    core.create_predictions(db, empty_predictions)
 
     assert (
         db.scalar(
@@ -88,14 +86,13 @@ def test_create_annotation_already_exists_error(
     empty_groundtruths: list[schemas.GroundTruth],
     empty_predictions: list[schemas.Prediction],
 ):
-    for gt in empty_groundtruths:
-        core.create_groundtruth(db, gt)
-    for pd in empty_predictions:
-        core.create_prediction(db, pd)
+
+    core.create_groundtruths(db, empty_groundtruths)
+    core.create_predictions(db, empty_predictions)
     with pytest.raises(exceptions.DatumAlreadyExistsError):
-        core.create_groundtruth(db, empty_groundtruths[0])
+        core.create_groundtruths(db, empty_groundtruths[0:1])
     with pytest.raises(exceptions.AnnotationAlreadyExistsError):
-        core.create_prediction(db, empty_predictions[0])
+        core.create_predictions(db, empty_predictions[0:1])
 
 
 def test_create_annotation_with_embedding(
@@ -126,8 +123,8 @@ def test_create_annotation_with_embedding(
         ],
     )
 
-    core.create_groundtruth(db, gt)
-    core.create_prediction(db, pd)
+    core.create_groundtruths(db, [gt])
+    core.create_predictions(db, [pd])
 
     assert (
         db.query(

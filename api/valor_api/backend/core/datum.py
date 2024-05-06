@@ -7,6 +7,45 @@ from valor_api.backend import models
 from valor_api.backend.query import Query
 
 
+def create_datums(
+    db: Session, datums: list[schemas.Datum], datasets: list[models.Dataset]
+) -> list[models.Datum]:
+    """Creates datums in bulk
+
+    Parameters
+    ----------
+    db
+        The database Session you want to query against.
+    datums
+        The datums to add to the database.
+    datasets
+        The datasets to link to the datums. This list should be the same length as the datums list.
+
+    Returns
+    -------
+    list[models.Datum]
+        The datums that were created.
+    """
+    rows = [
+        models.Datum(
+            uid=datum.uid,
+            dataset_id=dataset.id,
+            meta=datum.metadata,
+        )
+        for datum, dataset in zip(datums, datasets)
+    ]
+
+    try:
+        db.add_all(rows)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        # TODO: fix this exception
+        raise exceptions.DatumAlreadyExistsError("")
+
+    return rows
+
+
 def create_datum(
     db: Session,
     datum: schemas.Datum,
@@ -28,6 +67,11 @@ def create_datum(
     ----------
     models.Datum
         The datum.
+
+    Raises
+    ----------
+    exceptions.DatumAlreadyExistsError
+        If the datum already exists in the database.
     """
     try:
         row = models.Datum(
