@@ -436,7 +436,7 @@ def test_create_detection_ground_truth_and_delete_dataset(
     crud.create_dataset(db=db, dataset=schemas.Dataset(name=dataset_name))
 
     for gt in groundtruth_detections:
-        crud.create_groundtruth(db=db, groundtruth=gt)
+        crud.create_groundtruths(db=db, groundtruths=[gt])
 
     assert db.scalar(func.count(models.Annotation.id)) == 2
     assert db.scalar(func.count(models.Datum.id)) == 1
@@ -484,19 +484,19 @@ def test_create_detection_prediction_and_delete_model(
     # check this gives an error since the model hasn't been added yet
     with pytest.raises(exceptions.DatasetDoesNotExistError) as exc_info:
         for pd in prediction_detections:
-            crud.create_prediction(db=db, prediction=pd)
+            crud.create_predictions(db=db, predictions=[pd])
     assert "does not exist" in str(exc_info)
 
     # create dataset, add images, and add predictions
     crud.create_dataset(db=db, dataset=schemas.Dataset(name=dataset_name))
 
     for gt in groundtruth_detections:
-        crud.create_groundtruth(db=db, groundtruth=gt)
+        crud.create_groundtruths(db=db, groundtruths=[gt])
 
     # check this gives an error since the model hasn't been created yet
     with pytest.raises(exceptions.ModelDoesNotExistError) as exc_info:
         for pd in prediction_detections:
-            crud.create_prediction(db=db, prediction=pd)
+            crud.create_predictions(db=db, predictions=[pd])
     assert "does not exist" in str(exc_info)
 
     # finalize dataset
@@ -505,13 +505,13 @@ def test_create_detection_prediction_and_delete_model(
     # check this gives an error since the model hasn't been added yet
     with pytest.raises(exceptions.ModelDoesNotExistError) as exc_info:
         for pd in prediction_detections:
-            crud.create_prediction(db=db, prediction=pd)
+            crud.create_predictions(db=db, predictions=[pd])
     assert "does not exist" in str(exc_info)
 
     # create model
     crud.create_model(db=db, model=schemas.Model(name=model_name))
     for pd in prediction_detections:
-        crud.create_prediction(db=db, prediction=pd)
+        crud.create_predictions(db=db, predictions=[pd])
 
     # check db has the added predictions
     assert db.scalar(func.count(models.Annotation.id)) == 4
@@ -566,13 +566,15 @@ def test_create_detections_as_bbox_or_poly(
 
     crud.create_dataset(db=db, dataset=schemas.Dataset(name=dataset_name))
 
-    crud.create_groundtruth(
+    crud.create_groundtruths(
         db=db,
-        groundtruth=schemas.GroundTruth(
-            dataset_name=dataset_name,
-            datum=img1,
-            annotations=[det1, det2],
-        ),
+        groundtruths=[
+            schemas.GroundTruth(
+                dataset_name=dataset_name,
+                datum=img1,
+                annotations=[det1, det2],
+            )
+        ],
     )
 
     dets = db.scalars(select(models.GroundTruth)).all()
@@ -597,7 +599,7 @@ def test_create_classification_groundtruth_and_delete_dataset(
 
     for gt in gt_clfs_create:
         gt.dataset_name = dataset_name
-        crud.create_groundtruth(db=db, groundtruth=gt)
+        crud.create_groundtruths(db=db, groundtruths=[gt])
 
     # should have three GroundTruthClassification rows since one image has two
     # labels and the other has one
@@ -630,18 +632,18 @@ def test_create_predicted_classifications_and_delete_model(
 ):
     # check this gives an error since the dataset hasn't been added yet
     with pytest.raises(exceptions.DatasetDoesNotExistError) as exc_info:
-        crud.create_prediction(db=db, prediction=pred_clfs_create[0])
+        crud.create_predictions(db=db, predictions=pred_clfs_create[0:1])
     assert "does not exist" in str(exc_info)
 
     # create dataset, add images, and add predictions
     crud.create_dataset(db=db, dataset=schemas.Dataset(name=dataset_name))
 
     for gt in gt_clfs_create:
-        crud.create_groundtruth(db=db, groundtruth=gt)
+        crud.create_groundtruths(db=db, groundtruths=[gt])
 
     # check this gives an error since the model does not exist
     with pytest.raises(exceptions.ModelDoesNotExistError) as exc_info:
-        crud.create_prediction(db=db, prediction=pred_clfs_create[0])
+        crud.create_predictions(db=db, predictions=pred_clfs_create[0:1])
     assert "does not exist" in str(exc_info)
 
     # finalize dataset
@@ -649,14 +651,14 @@ def test_create_predicted_classifications_and_delete_model(
 
     # check this gives an error since the images haven't been added yet
     with pytest.raises(exceptions.ModelDoesNotExistError) as exc_info:
-        crud.create_prediction(db=db, prediction=pred_clfs_create[0])
+        crud.create_predictions(db=db, predictions=pred_clfs_create[0:1])
     assert "does not exist" in str(exc_info)
 
     # create model
     crud.create_model(db=db, model=schemas.Model(name=model_name))
     for pd in pred_clfs_create:
         pd.model_name = model_name
-        crud.create_prediction(db=db, prediction=pd)
+    crud.create_predictions(db=db, predictions=pred_clfs_create)
 
     # check db has the added predictions
     assert db.scalar(func.count(models.Prediction.id)) == 6
@@ -693,7 +695,7 @@ def _test_create_groundtruth_segmentations_and_delete_dataset(
     crud.create_dataset(db=db, dataset=schemas.Dataset(name=dataset_name))
 
     for gt in gts:
-        crud.create_groundtruth(db=db, groundtruth=gt)
+        crud.create_groundtruths(db=db, groundtruths=[gt])
 
     assert db.scalar(func.count(models.Annotation.id)) == expected_anns
     assert db.scalar(func.count(models.Datum.id)) == expected_datums
@@ -767,16 +769,16 @@ def test_create_predicted_segmentations_check_area_and_delete_model(
     # check this gives an error since the images haven't been added yet
     with pytest.raises(exceptions.ModelDoesNotExistError):
         for pd in prediction_instance_segmentations:
-            crud.create_prediction(db=db, prediction=pd)
+            crud.create_predictions(db=db, predictions=[pd])
 
     # create groundtruths
     for gt in groundtruth_instance_segmentations:
-        crud.create_groundtruth(db=db, groundtruth=gt)
+        crud.create_groundtruths(db=db, groundtruths=[gt])
 
     # check this gives an error since the model has not been crated yet
     with pytest.raises(exceptions.ModelDoesNotExistError) as exc_info:
         for pd in prediction_instance_segmentations:
-            crud.create_prediction(db=db, prediction=pd)
+            crud.create_predictions(db=db, predictions=[pd])
     assert "does not exist" in str(exc_info)
 
     # finalize dataset
@@ -785,7 +787,7 @@ def test_create_predicted_segmentations_check_area_and_delete_model(
     # check this gives an error since the model hasn't been added yet
     with pytest.raises(exceptions.ModelDoesNotExistError) as exc_info:
         for pd in prediction_instance_segmentations:
-            crud.create_prediction(db=db, prediction=pd)
+            crud.create_predictions(db=db, predictions=[pd])
     assert "does not exist" in str(exc_info)
 
     # create model
@@ -797,13 +799,13 @@ def test_create_predicted_segmentations_check_area_and_delete_model(
             temp_pd = pd.__deepcopy__()
             temp_pd.model_name = model_name
             temp_pd.datum.uid = f"random{i}"
-            crud.create_prediction(db=db, prediction=temp_pd)
+            crud.create_predictions(db=db, predictions=[temp_pd])
     assert "does not exist" in str(exc_info)
 
     # create predictions
     for pd in prediction_instance_segmentations:
         pd.model_name = model_name
-        crud.create_prediction(db=db, prediction=pd)
+        crud.create_predictions(db=db, predictions=[pd])
 
     # check db has the added predictions
     assert db.scalar(func.count(models.Annotation.id)) == 8
@@ -862,25 +864,27 @@ def test_segmentation_area_no_hole(
         img1.metadata["width"], (int, float)
     )
 
-    crud.create_groundtruth(
+    crud.create_groundtruths(
         db=db,
-        groundtruth=schemas.GroundTruth(
-            dataset_name=dataset_name,
-            datum=img1,
-            annotations=[
-                schemas.Annotation(
-                    task_type=enums.TaskType.OBJECT_DETECTION,
-                    labels=[schemas.Label(key="k1", value="v1")],
-                    raster=schemas.Raster.from_geometry(
-                        schemas.MultiPolygon(
-                            value=[poly_without_hole.value],
+        groundtruths=[
+            schemas.GroundTruth(
+                dataset_name=dataset_name,
+                datum=img1,
+                annotations=[
+                    schemas.Annotation(
+                        task_type=enums.TaskType.OBJECT_DETECTION,
+                        labels=[schemas.Label(key="k1", value="v1")],
+                        raster=schemas.Raster.from_geometry(
+                            schemas.MultiPolygon(
+                                value=[poly_without_hole.value],
+                            ),
+                            height=img1.metadata["height"],
+                            width=img1.metadata["width"],
                         ),
-                        height=img1.metadata["height"],
-                        width=img1.metadata["width"],
-                    ),
-                )
-            ],
-        ),
+                    )
+                ],
+            )
+        ],
     )
 
     segmentation_count = db.scalar(select(ST_Count(models.Annotation.raster)))
@@ -902,25 +906,27 @@ def test_segmentation_area_with_hole(
         img1.metadata["width"], (int, float)
     )
 
-    crud.create_groundtruth(
+    crud.create_groundtruths(
         db=db,
-        groundtruth=schemas.GroundTruth(
-            dataset_name=dataset_name,
-            datum=img1,
-            annotations=[
-                schemas.Annotation(
-                    task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
-                    labels=[schemas.Label(key="k1", value="v1")],
-                    raster=schemas.Raster.from_geometry(
-                        schemas.MultiPolygon(
-                            value=[poly_with_hole.value],
+        groundtruths=[
+            schemas.GroundTruth(
+                dataset_name=dataset_name,
+                datum=img1,
+                annotations=[
+                    schemas.Annotation(
+                        task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+                        labels=[schemas.Label(key="k1", value="v1")],
+                        raster=schemas.Raster.from_geometry(
+                            schemas.MultiPolygon(
+                                value=[poly_with_hole.value],
+                            ),
+                            height=img1.metadata["height"],
+                            width=img1.metadata["width"],
                         ),
-                        height=img1.metadata["height"],
-                        width=img1.metadata["width"],
-                    ),
-                )
-            ],
-        ),
+                    )
+                ],
+            )
+        ],
     )
 
     segmentation = db.scalar(select(models.Annotation))
@@ -944,28 +950,30 @@ def test_segmentation_area_multi_polygon(
     )
     crud.create_dataset(db=db, dataset=schemas.Dataset(name=dataset_name))
 
-    crud.create_groundtruth(
+    crud.create_groundtruths(
         db=db,
-        groundtruth=schemas.GroundTruth(
-            dataset_name=dataset_name,
-            datum=img1,
-            annotations=[
-                schemas.Annotation(
-                    task_type=enums.TaskType.OBJECT_DETECTION,
-                    labels=[schemas.Label(key="k1", value="v1")],
-                    raster=schemas.Raster.from_geometry(
-                        schemas.MultiPolygon(
-                            value=[
-                                poly_with_hole.value,
-                                poly_without_hole.value,
-                            ],
+        groundtruths=[
+            schemas.GroundTruth(
+                dataset_name=dataset_name,
+                datum=img1,
+                annotations=[
+                    schemas.Annotation(
+                        task_type=enums.TaskType.OBJECT_DETECTION,
+                        labels=[schemas.Label(key="k1", value="v1")],
+                        raster=schemas.Raster.from_geometry(
+                            schemas.MultiPolygon(
+                                value=[
+                                    poly_with_hole.value,
+                                    poly_without_hole.value,
+                                ],
+                            ),
+                            height=img1.metadata["height"],
+                            width=img1.metadata["width"],
                         ),
-                        height=img1.metadata["height"],
-                        width=img1.metadata["width"],
-                    ),
-                )
-            ],
-        ),
+                    )
+                ],
+            )
+        ],
     )
 
     segmentation = db.scalar(select(models.Annotation))
@@ -1035,7 +1043,7 @@ def test_gt_seg_as_mask_or_polys(
 
     crud.create_dataset(db=db, dataset=schemas.Dataset(name=dataset_name))
 
-    crud.create_groundtruth(db=db, groundtruth=gt)
+    crud.create_groundtruths(db=db, groundtruths=[gt])
 
     shapes = db.scalars(
         select(
@@ -1349,14 +1357,14 @@ def test_create_clf_metrics(
     )
     for gt in gt_clfs_create:
         gt.dataset_name = dataset_name
-        crud.create_groundtruth(db=db, groundtruth=gt)
+        crud.create_groundtruths(db=db, groundtruths=[gt])
     crud.finalize(db=db, dataset_name=dataset_name)
 
     crud.create_model(db=db, model=schemas.Model(name=model_name))
     for pd in pred_clfs_create:
         pd.dataset_name = dataset_name
         pd.model_name = model_name
-        crud.create_prediction(db=db, prediction=pd)
+        crud.create_predictions(db=db, predictions=[pd])
     crud.finalize(db=db, model_name=model_name, dataset_name=dataset_name)
 
     job_request = schemas.EvaluationRequest(

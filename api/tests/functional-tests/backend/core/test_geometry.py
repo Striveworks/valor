@@ -15,7 +15,7 @@ from valor_api.backend.core.geometry import (
     convert_geometry,
     get_annotation_type,
 )
-from valor_api.crud import create_dataset, create_groundtruth
+from valor_api.crud import create_dataset, create_groundtruths
 from valor_api.schemas import (
     Annotation,
     Box,
@@ -30,18 +30,20 @@ from valor_api.schemas import (
 @pytest.fixture
 def create_classification_dataset(db: Session, dataset_name: str):
     create_dataset(db=db, dataset=schemas.Dataset(name=dataset_name))
-    create_groundtruth(
+    create_groundtruths(
         db=db,
-        groundtruth=schemas.GroundTruth(
-            dataset_name=dataset_name,
-            datum=schemas.Datum(uid="uid1"),
-            annotations=[
-                schemas.Annotation(
-                    task_type=enums.TaskType.CLASSIFICATION,
-                    labels=[schemas.Label(key="k1", value="v1")],
-                )
-            ],
-        ),
+        groundtruths=[
+            schemas.GroundTruth(
+                dataset_name=dataset_name,
+                datum=schemas.Datum(uid="uid1"),
+                annotations=[
+                    schemas.Annotation(
+                        task_type=enums.TaskType.CLASSIFICATION,
+                        labels=[schemas.Label(key="k1", value="v1")],
+                    )
+                ],
+            )
+        ],
     )
 
 
@@ -79,7 +81,7 @@ def create_object_detection_dataset(
     )
     dataset = schemas.Dataset(name=dataset_name)
     create_dataset(db=db, dataset=dataset)
-    create_groundtruth(db=db, groundtruth=groundtruth)
+    create_groundtruths(db=db, groundtruths=[groundtruth])
     return dataset_name
 
 
@@ -123,7 +125,7 @@ def create_segmentation_dataset_from_geometries(
     )
     dataset = schemas.Dataset(name=dataset_name)
     create_dataset(db=db, dataset=dataset)
-    create_groundtruth(db=db, groundtruth=groundtruth)
+    create_groundtruths(db=db, groundtruths=[groundtruth])
     return dataset_name
 
 
@@ -431,7 +433,7 @@ def test_create_raster_from_polygons_with_decimal_coordinates(
     )
     dataset = schemas.Dataset(name=dataset_name)
     create_dataset(db=db, dataset=dataset)
-    create_groundtruth(db=db, groundtruth=groundtruth)
+    create_groundtruths(db=db, groundtruths=[groundtruth])
 
     # retrieve the raster from the database to see if it has been converted.
     groundtruth = get_groundtruth(

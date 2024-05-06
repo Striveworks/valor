@@ -6,70 +6,75 @@ from valor_api import enums, exceptions, schemas
 from valor_api.backend import core, models
 
 
-def create_groundtruth(
-    db: Session,
-    groundtruth: schemas.GroundTruth,
-):
-    """
-    Creates a ground truth.
+def create_groundtruths(db: Session, groundtruths: list[schemas.GroundTruth]):
+    """Create ground truths in bulk.
 
     Parameters
     ----------
-    db : Session
+    db
         The database Session to query against.
-    groundtruth: schemas.GroundTruth
-        The ground truth to create.
+    groundtruths
+        The ground truths to create.
+
+    Returns
+    -------
+    None
     """
-    # fetch dataset row
-    dataset = core.fetch_dataset(db=db, name=groundtruth.dataset_name)
+    # check dataset statuses
+    dataset_names = set(
+        [groundtruth.dataset_name for groundtruth in groundtruths]
+    )
+    dataset_name_to_dataset = {
+        dataset_name: core.fetch_dataset(db=db, name=dataset_name)
+        for dataset_name in dataset_names
+    }
+    for dataset in dataset_name_to_dataset.values():
+        if dataset.status != enums.TableStatus.CREATING:
+            raise exceptions.DatasetFinalizedError(dataset.name)
 
-    # check dataset status
-    if (
-        core.get_dataset_status(db=db, name=groundtruth.dataset_name)
-        != enums.TableStatus.CREATING
-    ):
-        raise exceptions.DatasetFinalizedError(groundtruth.dataset_name)
-
-    # create datum
-    datum = core.create_datum(db=db, datum=groundtruth.datum, dataset=dataset)
-
-    # create labels
+    datums = core.create_datums(
+        db,
+        [groundtruth.datum for groundtruth in groundtruths],
+        [
+            dataset_name_to_dataset[groundtruth.dataset_name]
+            for groundtruth in groundtruths
+        ],
+    )
     all_labels = [
         label
+        for groundtruth in groundtruths
         for annotation in groundtruth.annotations
         for label in annotation.labels
     ]
-    label_list = core.create_labels(db=db, labels=all_labels)
+    label_dict = core.create_labels(db=db, labels=all_labels)
 
     # create annotations
-    annotation_list = core.create_annotations(
+    annotation_ids = core.create_annotations(
         db=db,
-        annotations=groundtruth.annotations,
-        datum=datum,
-        model=None,
+        annotations=[groundtruth.annotations for groundtruth in groundtruths],
+        datums=datums,
+        models_=None,
     )
 
-    # create groundtruths
-    label_idx = 0
-    groundtruth_list = []
-    for i, annotation in enumerate(groundtruth.annotations):
-        for label in label_list[
-            label_idx : label_idx + len(annotation.labels)
-        ]:
-            groundtruth_list.append(
-                models.GroundTruth(
-                    annotation_id=annotation_list[i].id,
-                    label_id=label.id,
+    groundtruth_mappings = []
+    for groundtruth, annotation_ids_per_groundtruth in zip(
+        groundtruths, annotation_ids
+    ):
+        for i, annotation in enumerate(groundtruth.annotations):
+            for label in annotation.labels:
+                groundtruth_mappings.append(
+                    {
+                        "annotation_id": annotation_ids_per_groundtruth[i],
+                        "label_id": label_dict[(label.key, label.value)],
+                    }
                 )
-            )
-        label_idx += len(annotation.labels)
 
     try:
-        db.add_all(groundtruth_list)
+        db.bulk_insert_mappings(models.GroundTruth, groundtruth_mappings)
         db.commit()
-    except IntegrityError:
+    except IntegrityError as e:
         db.rollback()
-        raise Exception
+        raise e
 
 
 def get_groundtruth(

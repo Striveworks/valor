@@ -1,5 +1,6 @@
 import importlib.metadata
 import os
+import warnings
 
 import structlog
 
@@ -7,6 +8,11 @@ try:
     logging_level = int(os.getenv("LOGGING_LEVEL", 20))
 except (TypeError, ValueError):
     logging_level = 20
+
+warnings.filterwarnings(
+    "ignore",
+    message=r'.*Field "model_.*" has conflict with protected namespace "model_".*',
+)
 
 
 def status_endpoint_filter(
