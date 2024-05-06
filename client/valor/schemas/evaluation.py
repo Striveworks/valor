@@ -40,7 +40,7 @@ class EvaluationParameters:
     recall_score_threshold: float = 0
     compute_pr_curves: bool = False
     pr_curve_iou_threshold: float = 0.5
-    metrics_to_return: Optional[list[str]] = None
+    metrics_to_return: Optional[List[str]] = None
     llm_url: Optional[str] = None
     llm_api_key: Optional[str] = None
 
