@@ -601,9 +601,12 @@ class mIOUMetric(BaseModel):
     ----------
     value : float
         The metric value.
+    label_key : str
+        The label key associated with the metric.
     """
 
     value: float
+    label_key: str
 
     def db_mapping(self, evaluation_id: int) -> dict:
         """
@@ -622,4 +625,5 @@ class mIOUMetric(BaseModel):
             "value": self.value,
             "type": "mIOU",
             "evaluation_id": evaluation_id,
+            "parameters": {"label_key": self.label_key},
         }

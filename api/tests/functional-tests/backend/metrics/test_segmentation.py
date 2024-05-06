@@ -416,13 +416,13 @@ def test__compute_segmentation_metrics(
         prediction_filter=prediction_filter,
         groundtruth_filter=groundtruth_filter,
     )
-    # should have five metrics (one IOU for each of the four labels, and one mIOU)
-    assert len(metrics) == 5
-    for metric in metrics[:-1]:
+    # should have five metrics (one IOU for each of the four labels, and three mIOUs)
+    assert len(metrics) == 7
+    for metric in metrics[:-3]:
         assert isinstance(metric, schemas.IOUMetric)
         assert metric.value < 1.0
-    assert isinstance(metrics[-1], schemas.mIOUMetric)
-    assert metrics[-1].value < 1.0
+    assert all([isinstance(m, schemas.mIOUMetric) for m in metrics[-3:]])
+    assert all([m.value < 1.0 for m in metrics[-3:]])
 
 
 def test_compute_semantic_segmentation_metrics(
@@ -477,11 +477,18 @@ def test_compute_semantic_segmentation_metrics(
         schemas.Label(key="k1", value="v1", score=None): 0.33,
     }
 
+    expected_mIOU_metrics = {"k1": (0.33 + 0) / 2, "k2": 0, "k3": 0}
+
     assert metrics
     for metric in metrics:
         assert isinstance(metric.value, float)
         if metric.type == "mIOU":
-            assert (metric.value - 0.084) <= 0.01
+            assert metric.parameters
+            assert metric.parameters["label_key"]
+            assert (
+                metric.value
+                - expected_mIOU_metrics[metric.parameters["label_key"]]
+            ) <= 0.01
         else:
             # the IOU value for (k1, v1) is bound between .327 and .336
             assert metric.label

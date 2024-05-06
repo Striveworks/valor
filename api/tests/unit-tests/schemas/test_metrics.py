@@ -357,17 +357,20 @@ def test_IOUMetric():
 
 
 def test_mIOUMetric():
-    iou_metric = schemas.mIOUMetric(value=0.2)
+    iou_metric = schemas.mIOUMetric(value=0.2, label_key="key")
 
     with pytest.raises(ValidationError):
-        schemas.mIOUMetric(value=None)  # type: ignore - purposefully throwing error
+        schemas.mIOUMetric(value=None, label_key="key")  # type: ignore - purposefully throwing error
+
+    with pytest.raises(ValidationError):
+        schemas.mIOUMetric(value="not a value", label_key="key")  # type: ignore - purposefully throwing error
 
     with pytest.raises(ValidationError):
         schemas.mIOUMetric(value="not a value")  # type: ignore - purposefully throwing error
 
     assert all(
         [
-            key in ["value", "type", "evaluation_id"]
+            key in ["value", "type", "evaluation_id", "parameters"]
             for key in iou_metric.db_mapping(evaluation_id=1)
         ]
     )
