@@ -415,7 +415,7 @@ def test_generate_prediction_data(client: Client):
             "pr_curve_iou_threshold": 0.5,
             "llm_url": None,
             "llm_api_key": None,
-            "llm_evaluation_metrics": None,
+            "metrics_to_return": None,
         },
         "meta": {},
     }
