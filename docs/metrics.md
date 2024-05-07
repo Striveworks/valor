@@ -20,10 +20,10 @@ If we're missing an important metric for your particular use case, please [write
 | :- | :- | :- |
 | Average Precision (AP) | The weighted mean of precisions achieved at several different recall thresholds for a single Intersection over Union (IOU), grouped by class. | See [AP methods](#average-precision-ap). |
 | AP Averaged Over IOUs | The average of several AP metrics across IOU thresholds, grouped by class labels. | $\dfrac{1}{\text{number of thresholds}} \sum\limits_{iou \in thresholds} AP_{iou}$ |
-| Mean Average Precision (mAP) 	| The average of several AP metrics across class labels, grouped by IOU thresholds. | $\dfrac{1}{\text{number of classes}} \sum\limits_{c \in classes} AP_{c}$ |
-| mAP Averaged Over IOUs | The average of several  mAP metrics across class labels. | $\dfrac{1}{\text{number of thresholds}} \sum\limits_{iou \in thresholds} mAP_{iou}$ |
+| Mean Average Precision (mAP) 	| The average of several AP metrics, grouped by label keys and IOU thresholds. | $\dfrac{1}{\text{number of labels}} \sum\limits_{label \in labels} AP_{c}$ |
+| mAP Averaged Over IOUs | The average of several mAP metrics grouped by label keys. | $\dfrac{1}{\text{number of thresholds}} \sum\limits_{iou \in thresholds} mAP_{iou}$ |
 | Average Recall (AR) | The average of several recall metrics across IOU thresholds, grouped by class labels. | See [AR methods](#average-recall-ar). |
-| Mean Average Recall (mAR) | The average of several AR metrics across class labels. | $\dfrac{1}{\text{number of classes}} \sum\limits_{class \in classes} AR_{class}$ |
+| Mean Average Recall (mAR) | The average of several AR metrics, grouped by label keys. | $\dfrac{1}{\text{number of labels}} \sum\limits_{label \in labels} AR_{class}$ |
 | Precision-Recall Curves | Outputs a nested dictionary containing the true positives, false positives, true negatives, false negatives, precision, recall, and F1 score for each (label key, label value, confidence threshold) combination. Computing this output requires setting the `compute_pr_curves` argument to `True` at evaluation time. These curves are calculated using a default IOU threshold of 0.5; you can set your own threshold by passing a float between 0 and 1 to the `pr_curve_iou_threshold` parameter at evaluation time. | See [precision-recall curve methods](#precision-recall-curves)|
 
 
@@ -34,7 +34,7 @@ If we're missing an important metric for your particular use case, please [write
 | Name | Description | Equation |
 | :- | :- | :- |
 | Intersection Over Union (IOU) | A ratio between the groundtruth and predicted regions of an image, measured as a percentage, grouped by class. |$\dfrac{area( prediction \cap groundtruth )}{area( prediction \cup groundtruth )}$ |
-| Mean IOU 	| The average of IOUs, calculated over several different classes. | $\dfrac{1}{\text{number of classes}} \sum\limits_{c \in classes} IOU_{c}$ |
+| Mean IOU 	| The average of IOU across labels, grouped by label key. | $\dfrac{1}{\text{number of labels}} \sum\limits_{label \in labels} IOU_{c}$ |
 
 # Appendix: Metric Calculations
 

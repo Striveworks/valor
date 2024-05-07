@@ -84,16 +84,19 @@ def test_APMetricAveragedOverIOUs():
 
 
 def test_mAPMetric():
-    map_metric = schemas.mAPMetric(iou=0.2, value=0.5)
+    map_metric = schemas.mAPMetric(iou=0.2, value=0.5, label_key="key")
 
     with pytest.raises(ValidationError):
-        schemas.mAPMetric(iou=None, value=0.5)  # type: ignore - purposefully throwing error
+        schemas.mAPMetric(iou=None, value=0.5, label_key="key")  # type: ignore - purposefully throwing error
 
     with pytest.raises(ValidationError):
-        schemas.mAPMetric(iou=0.1, value=None)  # type: ignore - purposefully throwing error
+        schemas.mAPMetric(iou=0.1, value=None, label_key="key")  # type: ignore - purposefully throwing error
 
     with pytest.raises(ValidationError):
-        schemas.mAPMetric(iou=0.1, value="value")  # type: ignore - purposefully throwing error
+        schemas.mAPMetric(iou=0.1, value="value", label_key="key")  # type: ignore - purposefully throwing error
+
+    with pytest.raises(ValidationError):
+        schemas.mAPMetric(iou=0.1, value=0.5, label_key=None)  # type: ignore - purposefully throwing error
 
     assert all(
         [
@@ -105,17 +108,22 @@ def test_mAPMetric():
 
 def test_mAPMetricAveragedOverIOUs():
     map_averaged_metric = schemas.mAPMetricAveragedOverIOUs(
-        ious=set([0.1, 0.2]), value=0.5
+        ious=set([0.1, 0.2]), value=0.5, label_key="key"
     )
 
     with pytest.raises(ValidationError):
-        schemas.mAPMetricAveragedOverIOUs(ious=None, value=0.5)  # type: ignore - purposefully throwing error
+        schemas.mAPMetricAveragedOverIOUs(ious=None, value=0.5, label_key="key")  # type: ignore - purposefully throwing error
 
     with pytest.raises(ValidationError):
-        schemas.mAPMetricAveragedOverIOUs(ious=set([0.1, 0.2]), value=None)  # type: ignore - purposefully throwing error
+        schemas.mAPMetricAveragedOverIOUs(ious=set([0.1, 0.2]), value=None, label_key="key")  # type: ignore - purposefully throwing error
 
     with pytest.raises(ValidationError):
-        schemas.mAPMetricAveragedOverIOUs(ious=set([0.1, 0.2]), value="value")  # type: ignore - purposefully throwing error
+        schemas.mAPMetricAveragedOverIOUs(ious=set([0.1, 0.2]), value="value", label_key="key")  # type: ignore - purposefully throwing error
+
+    with pytest.raises(ValidationError):
+        map_averaged_metric = schemas.mAPMetricAveragedOverIOUs(
+            ious=set([0.1, 0.2]), value=0.5, label_key=None  # type: ignore - purposefully throwing error
+        )
 
     assert all(
         [
@@ -374,17 +382,20 @@ def test_IOUMetric():
 
 
 def test_mIOUMetric():
-    iou_metric = schemas.mIOUMetric(value=0.2)
+    iou_metric = schemas.mIOUMetric(value=0.2, label_key="key")
 
     with pytest.raises(ValidationError):
-        schemas.mIOUMetric(value=None)  # type: ignore - purposefully throwing error
+        schemas.mIOUMetric(value=None, label_key="key")  # type: ignore - purposefully throwing error
+
+    with pytest.raises(ValidationError):
+        schemas.mIOUMetric(value="not a value", label_key="key")  # type: ignore - purposefully throwing error
 
     with pytest.raises(ValidationError):
         schemas.mIOUMetric(value="not a value")  # type: ignore - purposefully throwing error
 
     assert all(
         [
-            key in ["value", "type", "evaluation_id"]
+            key in ["value", "type", "evaluation_id", "parameters"]
             for key in iou_metric.db_mapping(evaluation_id=1)
         ]
     )
