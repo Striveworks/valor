@@ -418,38 +418,6 @@ class AccuracyMetric(BaseModel):
         }
 
 
-class mAccuracyMetric(BaseModel):
-    """
-    Describes a mean accuracy metric, which is the mean of accuracy over all label keys.
-
-    Attributes
-    ----------
-    value : float
-        The metric value.
-    """
-
-    value: float
-
-    def db_mapping(self, evaluation_id: int) -> dict:
-        """
-        Creates a mapping for use when uploading the metric to the database.
-
-        Parameters
-        ----------
-        evaluation_id : int
-            The evaluation id.
-
-        Returns
-        ----------
-        A mapping dictionary.
-        """
-        return {
-            "value": self.value,
-            "type": "mAccuracy",
-            "evaluation_id": evaluation_id,
-        }
-
-
 class PrecisionRecallCurve(BaseModel):
     """
     Describes a precision-recall curve.

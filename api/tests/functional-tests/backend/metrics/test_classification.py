@@ -761,8 +761,6 @@ def test_compute_classification(
                 assert metric.value == 0.8009259259259259
             elif metric.label_key == "color":
                 assert metric.value == 0.43125
-        if isinstance(metric, schemas.mAccuracyMetric):
-            assert metric.value == 0.41666666666666663
 
 
 def test_classification(

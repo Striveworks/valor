@@ -1398,7 +1398,6 @@ def test_create_clf_metrics(
 
     assert set([metric.type for metric in metrics]) == {
         "Accuracy",
-        "mAccuracy",
         "Precision",
         "Recall",
         "F1",
@@ -1411,10 +1410,6 @@ def test_create_clf_metrics(
         ms = [m for m in metrics if m.type == t]
         assert len(ms) == 2
         assert set([m.parameters["label_key"] for m in ms]) == {"k1", "k2"}
-
-    for t in ["mAccuracy"]:
-        ms = [m for m in metrics if m.type == t]
-        assert len(ms) == 1
 
     for t in ["Precision", "Recall", "F1"]:
         ms = [m for m in metrics if m.type == t]
@@ -1481,7 +1476,7 @@ def test_create_clf_metrics(
     )
     assert query
     metrics = query.metrics
-    assert len(metrics) == 2 + 2 + 6 + 6 + 6 + 1
+    assert len(metrics) == 2 + 2 + 6 + 6 + 6
     confusion_matrices = db.scalars(
         select(models.ConfusionMatrix).where(
             models.ConfusionMatrix.evaluation_id == evaluation_id

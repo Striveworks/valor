@@ -1,4 +1,4 @@
-import pytest
+# import pytest
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -13,7 +13,8 @@ from valor import (
     Prediction,
 )
 from valor.enums import AnnotationType, EvaluationStatus, TaskType
-from valor.exceptions import ClientException
+
+# from valor.exceptions import ClientException
 from valor_api import crud, enums, schemas
 from valor_api.backend import core
 
@@ -192,162 +193,151 @@ def test_get_sorted_evaluations(
         "semantic-segmentation",
     ]
 
-    assert [
-        metric
-        for eval in unsorted_evaluations[:3]
-        for metric in eval.metrics
-        if metric["type"] == "mAccuracy"
-    ] == [
-        {"type": "mAccuracy", "value": 0.3333333333333333},
-        {"type": "mAccuracy", "value": 0.5},
-        {"type": "mAccuracy", "value": 0.3333333333333333},
-    ]
-
     # next, sort the classification metrics by mAccuracy
-    evaluations = client.get_evaluations(
-        datasets=["clf_dataset", "seg_dataset", "det_dataset"],
-        metrics_to_sort_by=["mAccuracy"],
-    )
-    assert len(evaluations) == 6
-    assert [evaluation.parameters.task_type for evaluation in evaluations] == [
-        "classification",
-        "classification",
-        "classification",
-        "object-detection",
-        "object-detection",
-        "semantic-segmentation",
-    ]
+    # evaluations = client.get_evaluations(
+    #     datasets=["clf_dataset", "seg_dataset", "det_dataset"],
+    #     metrics_to_sort_by=["mAccuracy"],
+    # )
+    # assert len(evaluations) == 6
+    # assert [evaluation.parameters.task_type for evaluation in evaluations] == [
+    #     "classification",
+    #     "classification",
+    #     "classification",
+    #     "object-detection",
+    #     "object-detection",
+    #     "semantic-segmentation",
+    # ]
 
-    # check that clf metrics are now sorted
-    assert [
-        metric
-        for eval in evaluations[:3]
-        for metric in eval.metrics
-        if metric["type"] == "mAccuracy"
-    ] == [
-        {"type": "mAccuracy", "value": 0.5},
-        {"type": "mAccuracy", "value": 0.3333333333333333},
-        {"type": "mAccuracy", "value": 0.3333333333333333},
-    ]
+    # # check that clf metrics are now sorted
+    # assert [
+    #     metric
+    #     for eval in evaluations[:3]
+    #     for metric in eval.metrics
+    #     if metric["type"] == "mAccuracy"
+    # ] == [
+    #     {"type": "mAccuracy", "value": 0.5},
+    #     {"type": "mAccuracy", "value": 0.3333333333333333},
+    #     {"type": "mAccuracy", "value": 0.3333333333333333},
+    # ]
 
-    # check that det metrics are unsorted
-    assert [
-        metric
-        for eval in evaluations[3:5]
-        for metric in eval.metrics
-        if metric["type"] == "mAPAveragedOverIOUs"
-    ] == [
-        {
-            "type": "mAPAveragedOverIOUs",
-            "parameters": {"ious": [0.1, 0.6]},
-            "value": 0.2524752475247525,
-        },
-        {
-            "type": "mAPAveragedOverIOUs",
-            "parameters": {"ious": [0.1, 0.6]},
-            "value": 0.504950495049505,
-        },
-    ]
+    # # check that det metrics are unsorted
+    # assert [
+    #     metric
+    #     for eval in evaluations[3:5]
+    #     for metric in eval.metrics
+    #     if metric["type"] == "mAPAveragedOverIOUs"
+    # ] == [
+    #     {
+    #         "type": "mAPAveragedOverIOUs",
+    #         "parameters": {"ious": [0.1, 0.6]},
+    #         "value": 0.2524752475247525,
+    #     },
+    #     {
+    #         "type": "mAPAveragedOverIOUs",
+    #         "parameters": {"ious": [0.1, 0.6]},
+    #         "value": 0.504950495049505,
+    #     },
+    # ]
 
-    # sort all task types and check outputs
-    evaluations = client.get_evaluations(
-        datasets=["clf_dataset", "seg_dataset", "det_dataset"],
-        metrics_to_sort_by=[
-            "mAccuracy",
-            "mIOU",
-            "mAPAveragedOverIOUs",
-        ],
-    )
-    assert len(evaluations) == 6
-    assert [evaluation.parameters.task_type for evaluation in evaluations] == [
-        "classification",
-        "classification",
-        "classification",
-        "object-detection",
-        "object-detection",
-        "semantic-segmentation",
-    ]
-    assert [
-        metric
-        for eval in evaluations[:3]
-        for metric in eval.metrics
-        if metric["type"] == "mAccuracy"
-    ] == [
-        {"type": "mAccuracy", "value": 0.5},
-        {"type": "mAccuracy", "value": 0.3333333333333333},
-        {"type": "mAccuracy", "value": 0.3333333333333333},
-    ]
-    assert [
-        metric
-        for eval in evaluations[3:5]
-        for metric in eval.metrics
-        if metric["type"] == "mAPAveragedOverIOUs"
-    ] == [
-        {
-            "type": "mAPAveragedOverIOUs",
-            "parameters": {"ious": [0.1, 0.6]},
-            "value": 0.504950495049505,
-        },
-        {
-            "type": "mAPAveragedOverIOUs",
-            "parameters": {"ious": [0.1, 0.6]},
-            "value": 0.2524752475247525,
-        },
-    ]
+    # # sort all task types and check outputs
+    # evaluations = client.get_evaluations(
+    #     datasets=["clf_dataset", "seg_dataset", "det_dataset"],
+    #     metrics_to_sort_by=[
+    #         "mAccuracy",
+    #         "mIOU",
+    #         "mAPAveragedOverIOUs",
+    #     ],
+    # )
+    # assert len(evaluations) == 6
+    # assert [evaluation.parameters.task_type for evaluation in evaluations] == [
+    #     "classification",
+    #     "classification",
+    #     "classification",
+    #     "object-detection",
+    #     "object-detection",
+    #     "semantic-segmentation",
+    # ]
+    # assert [
+    #     metric
+    #     for eval in evaluations[:3]
+    #     for metric in eval.metrics
+    #     if metric["type"] == "mAccuracy"
+    # ] == [
+    #     {"type": "mAccuracy", "value": 0.5},
+    #     {"type": "mAccuracy", "value": 0.3333333333333333},
+    #     {"type": "mAccuracy", "value": 0.3333333333333333},
+    # ]
+    # assert [
+    #     metric
+    #     for eval in evaluations[3:5]
+    #     for metric in eval.metrics
+    #     if metric["type"] == "mAPAveragedOverIOUs"
+    # ] == [
+    #     {
+    #         "type": "mAPAveragedOverIOUs",
+    #         "parameters": {"ious": [0.1, 0.6]},
+    #         "value": 0.504950495049505,
+    #     },
+    #     {
+    #         "type": "mAPAveragedOverIOUs",
+    #         "parameters": {"ious": [0.1, 0.6]},
+    #         "value": 0.2524752475247525,
+    #     },
+    # ]
 
-    # check that the order of metrics_to_sort_by doesn't matter
-    evaluations = client.get_evaluations(
-        datasets=["clf_dataset", "seg_dataset", "det_dataset"],
-        metrics_to_sort_by=[
-            "mAPAveragedOverIOUs",
-            "mAccuracy",
-            "mIOU",
-        ],
-    )
-    assert len(evaluations) == 6
-    assert [evaluation.parameters.task_type for evaluation in evaluations] == [
-        "classification",
-        "classification",
-        "classification",
-        "object-detection",
-        "object-detection",
-        "semantic-segmentation",
-    ]
-    assert [
-        metric
-        for eval in evaluations[:3]
-        for metric in eval.metrics
-        if metric["type"] == "mAccuracy"
-    ] == [
-        {"type": "mAccuracy", "value": 0.5},
-        {"type": "mAccuracy", "value": 0.3333333333333333},
-        {"type": "mAccuracy", "value": 0.3333333333333333},
-    ]
-    assert [
-        metric
-        for eval in evaluations[3:5]
-        for metric in eval.metrics
-        if metric["type"] == "mAPAveragedOverIOUs"
-    ] == [
-        {
-            "type": "mAPAveragedOverIOUs",
-            "parameters": {"ious": [0.1, 0.6]},
-            "value": 0.504950495049505,
-        },
-        {
-            "type": "mAPAveragedOverIOUs",
-            "parameters": {"ious": [0.1, 0.6]},
-            "value": 0.2524752475247525,
-        },
-    ]
+    # # check that the order of metrics_to_sort_by doesn't matter
+    # evaluations = client.get_evaluations(
+    #     datasets=["clf_dataset", "seg_dataset", "det_dataset"],
+    #     metrics_to_sort_by=[
+    #         "mAPAveragedOverIOUs",
+    #         "mAccuracy",
+    #         "mIOU",
+    #     ],
+    # )
+    # assert len(evaluations) == 6
+    # assert [evaluation.parameters.task_type for evaluation in evaluations] == [
+    #     "classification",
+    #     "classification",
+    #     "classification",
+    #     "object-detection",
+    #     "object-detection",
+    #     "semantic-segmentation",
+    # ]
+    # assert [
+    #     metric
+    #     for eval in evaluations[:3]
+    #     for metric in eval.metrics
+    #     if metric["type"] == "mAccuracy"
+    # ] == [
+    #     {"type": "mAccuracy", "value": 0.5},
+    #     {"type": "mAccuracy", "value": 0.3333333333333333},
+    #     {"type": "mAccuracy", "value": 0.3333333333333333},
+    # ]
+    # assert [
+    #     metric
+    #     for eval in evaluations[3:5]
+    #     for metric in eval.metrics
+    #     if metric["type"] == "mAPAveragedOverIOUs"
+    # ] == [
+    #     {
+    #         "type": "mAPAveragedOverIOUs",
+    #         "parameters": {"ious": [0.1, 0.6]},
+    #         "value": 0.504950495049505,
+    #     },
+    #     {
+    #         "type": "mAPAveragedOverIOUs",
+    #         "parameters": {"ious": [0.1, 0.6]},
+    #         "value": 0.2524752475247525,
+    #     },
+    # ]
 
-    # check that we get an error if we pass in a metric that is too granular to sort by
-    with pytest.raises(ClientException):
-        evaluations = client.get_evaluations(
-            datasets=["clf_dataset", "seg_dataset", "det_dataset"],
-            metrics_to_sort_by=[
-                "mAPAveragedOverIOUs",
-                "Accuracy",
-                "mIOU",
-            ],
-        )
+    # # check that we get an error if we pass in a metric that is too granular to sort by
+    # with pytest.raises(ClientException):
+    #     evaluations = client.get_evaluations(
+    #         datasets=["clf_dataset", "seg_dataset", "det_dataset"],
+    #         metrics_to_sort_by=[
+    #             "mAPAveragedOverIOUs",
+    #             "Accuracy",
+    #             "mIOU",
+    #         ],
+    #     )

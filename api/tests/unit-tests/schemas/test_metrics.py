@@ -248,23 +248,6 @@ def test_AccuracyMetric():
     )
 
 
-def test_mAccuracyMetric():
-    acc_metric = schemas.mAccuracyMetric(value=0.5)
-
-    with pytest.raises(ValidationError):
-        schemas.mAccuracyMetric(value=None)  # type: ignore - purposefully throwing error
-
-    with pytest.raises(ValidationError):
-        schemas.mAccuracyMetric(value="value")  # type: ignore - purposefully throwing error
-
-    assert all(
-        [
-            key in ["value", "type", "evaluation_id"]
-            for key in acc_metric.db_mapping(evaluation_id=1)
-        ]
-    )
-
-
 def test__PrecisionRecallF1Base():
     schemas.metrics._PrecisionRecallF1Base(
         label=schemas.Label(key="key", value="value"), value=0.5

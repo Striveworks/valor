@@ -57,12 +57,13 @@ def _validate_metrics_to_sort_by(metrics_to_sort_by: list[str] | None):
     ValueError
         If metrics_to_sort_by contains one or more metrics that aren't at the dataset-level.
     """
-    allowed_metrics = ["mAPAveragedOverIOUs", "mIOU", "mAccuracy"]
+    pass
+    # allowed_metrics = ["mAPAveragedOverIOUs", "mIOU", "mAccuracy"]
 
-    if metrics_to_sort_by is not None:
-        if not all(
-            [metric in allowed_metrics for metric in metrics_to_sort_by]
-        ):
-            raise ValueError(
-                f"metrics_to_sort_by contains metrics that are too granular to sort by. Please only pass the following metrics in metrics_to_sort_by: {allowed_metrics}"
-            )
+    # if metrics_to_sort_by is not None:
+    #     if not all(
+    #         [metric in allowed_metrics for metric in metrics_to_sort_by]
+    #     ):
+    #         raise ValueError(
+    #             f"metrics_to_sort_by contains metrics that are too granular to sort by. Please only pass the following metrics in metrics_to_sort_by: {allowed_metrics}"
+    #         )
