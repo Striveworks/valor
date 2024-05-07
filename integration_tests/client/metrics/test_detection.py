@@ -85,15 +85,19 @@ def test_evaluate_detection(
         },
         {
             "type": "mAP",
-            "parameters": {"iou": 0.1},
+            "parameters": {"iou": 0.1, "label_key": "k1"},
             "value": 0.504950495049505,
         },
         {
             "type": "mAP",
-            "parameters": {"iou": 0.6},
+            "parameters": {"iou": 0.6, "label_key": "k1"},
             "value": 0.504950495049505,
         },
-        {"type": "mAR", "parameters": {"ious": [0.1, 0.6]}, "value": 0.5},
+        {
+            "type": "mAR",
+            "parameters": {"ious": [0.1, 0.6], "label_key": "k1"},
+            "value": 0.5,
+        },
         {
             "type": "APAveragedOverIOUs",
             "parameters": {"ious": [0.1, 0.6]},
@@ -102,7 +106,7 @@ def test_evaluate_detection(
         },
         {
             "type": "mAPAveragedOverIOUs",
-            "parameters": {"ious": [0.1, 0.6]},
+            "parameters": {"ious": [0.1, 0.6], "label_key": "k1"},
             "value": 0.504950495049505,
         },
     ]
@@ -130,6 +134,7 @@ def test_evaluate_detection(
     assert result_dict["meta"]["annotations"] == 3
     assert result_dict["meta"]["duration"] <= 5
     result_dict.pop("meta")
+    actual_metrics = result_dict.pop("metrics")
 
     assert result_dict == {
         "id": eval_job.id,
@@ -150,11 +155,14 @@ def test_evaluate_detection(
             "pr_curve_iou_threshold": 0.5,
         },
         "status": EvaluationStatus.DONE.value,
-        "metrics": expected_metrics,
         "confusion_matrices": [],
         "missing_pred_labels": [],
         "ignored_pred_labels": [],
     }
+    for m in actual_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
 
     # test evaluating a job using a `Label.labels` filter
     eval_job_value_filter_using_in_ = model.evaluate_detection(
@@ -170,7 +178,11 @@ def test_evaluate_detection(
         eval_job_value_filter_using_in_.wait_for_completion(timeout=30)
         == EvaluationStatus.DONE
     )
-    assert eval_job_value_filter_using_in_.metrics == result.metrics
+
+    for m in eval_job_value_filter_using_in_.metrics:
+        assert m in result.metrics
+    for m in result.metrics:
+        assert m in eval_job_value_filter_using_in_.metrics
 
     # same as the above, but not using the in_ operator
     eval_job_value_filter = model.evaluate_detection(
@@ -186,7 +198,11 @@ def test_evaluate_detection(
         eval_job_value_filter.wait_for_completion(timeout=30)
         == EvaluationStatus.DONE
     )
-    assert eval_job_value_filter.metrics == result.metrics
+
+    for m in eval_job_value_filter.metrics:
+        assert m in result.metrics
+    for m in result.metrics:
+        assert m in eval_job_value_filter.metrics
 
     # assert that this evaluation returns no metrics as there aren't any
     # Labels with key=k1 and value=v2
@@ -231,6 +247,7 @@ def test_evaluate_detection(
         eval_job_bounded_area_10_2000.to_dict()
     )
     eval_job_bounded_area_10_2000_dict.pop("meta")
+    actual_metrics = eval_job_bounded_area_10_2000_dict.pop("metrics")
     assert eval_job_bounded_area_10_2000_dict == {
         "id": eval_job_bounded_area_10_2000.id,
         "model_name": model_name,
@@ -260,11 +277,15 @@ def test_evaluate_detection(
             "pr_curve_iou_threshold": 0.5,
         },
         "status": EvaluationStatus.DONE.value,
-        "metrics": expected_metrics,
         "confusion_matrices": [],
         "missing_pred_labels": [],
         "ignored_pred_labels": [],
     }
+
+    for m in actual_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
 
     # now check we get different things by setting the thresholds accordingly
     # min area threshold should divide the set of annotations
@@ -420,7 +441,10 @@ def test_evaluate_detection(
         "ignored_pred_labels": [],
     }
     assert bounded_area_metrics != expected_metrics
-    assert bounded_area_metrics == min_area_1200_metrics
+    for m in bounded_area_metrics:
+        assert m in min_area_1200_metrics
+    for m in min_area_1200_metrics:
+        assert m in bounded_area_metrics
 
     # test accessing these evaluations via the dataset
     all_evals = dataset.get_evaluations()
@@ -582,7 +606,10 @@ def test_evaluate_detection_with_json_filters(
         "ignored_pred_labels": [],
     }
     assert bounded_area_metrics != expected_metrics
-    assert bounded_area_metrics == min_area_1200_metrics
+    for m in bounded_area_metrics:
+        assert m in min_area_1200_metrics
+    for m in min_area_1200_metrics:
+        assert m in bounded_area_metrics
 
 
 def test_get_evaluations(
@@ -625,12 +652,6 @@ def test_get_evaluations(
             "label": {"key": "k1", "value": "v1"},
         },
         {
-            "type": "AP",
-            "parameters": {"iou": 0.6},
-            "value": 0.504950495049505,
-            "label": {"key": "k1", "value": "v1"},
-        },
-        {
             "type": "AR",
             "parameters": {"ious": [0.1, 0.6]},
             "value": 0.5,
@@ -638,15 +659,9 @@ def test_get_evaluations(
         },
         {
             "type": "mAP",
-            "parameters": {"iou": 0.1},
+            "parameters": {"iou": 0.6, "label_key": "k1"},
             "value": 0.504950495049505,
         },
-        {
-            "type": "mAP",
-            "parameters": {"iou": 0.6},
-            "value": 0.504950495049505,
-        },
-        {"type": "mAR", "parameters": {"ious": [0.1, 0.6]}, "value": 0.5},
         {
             "type": "APAveragedOverIOUs",
             "parameters": {"ious": [0.1, 0.6]},
@@ -654,8 +669,24 @@ def test_get_evaluations(
             "label": {"key": "k1", "value": "v1"},
         },
         {
+            "type": "AP",
+            "parameters": {"iou": 0.6},
+            "value": 0.504950495049505,
+            "label": {"key": "k1", "value": "v1"},
+        },
+        {
+            "type": "mAP",
+            "parameters": {"iou": 0.1, "label_key": "k1"},
+            "value": 0.504950495049505,
+        },
+        {
+            "type": "mAR",
+            "parameters": {"ious": [0.1, 0.6], "label_key": "k1"},
+            "value": 0.5,
+        },
+        {
             "type": "mAPAveragedOverIOUs",
-            "parameters": {"ious": [0.1, 0.6]},
+            "parameters": {"ious": [0.1, 0.6], "label_key": "k1"},
             "value": 0.504950495049505,
         },
     ]
@@ -663,13 +694,28 @@ def test_get_evaluations(
     second_model_expected_metrics = [
         {
             "type": "AP",
-            "parameters": {"iou": 0.1},
+            "parameters": {"iou": 0.6},
             "value": 0.0,
             "label": {"key": "k1", "value": "v1"},
         },
         {
+            "type": "mAP",
+            "parameters": {"iou": 0.1, "label_key": "k1"},
+            "value": 0.0,
+        },
+        {
+            "type": "mAR",
+            "parameters": {"ious": [0.1, 0.6], "label_key": "k1"},
+            "value": 0.0,
+        },
+        {
+            "type": "mAPAveragedOverIOUs",
+            "parameters": {"ious": [0.1, 0.6], "label_key": "k1"},
+            "value": 0.0,
+        },
+        {
             "type": "AP",
-            "parameters": {"iou": 0.6},
+            "parameters": {"iou": 0.1},
             "value": 0.0,
             "label": {"key": "k1", "value": "v1"},
         },
@@ -679,19 +725,16 @@ def test_get_evaluations(
             "value": 0.0,
             "label": {"key": "k1", "value": "v1"},
         },
-        {"type": "mAP", "parameters": {"iou": 0.1}, "value": 0.0},
-        {"type": "mAP", "parameters": {"iou": 0.6}, "value": 0.0},
-        {"type": "mAR", "parameters": {"ious": [0.1, 0.6]}, "value": 0.0},
+        {
+            "type": "mAP",
+            "parameters": {"iou": 0.6, "label_key": "k1"},
+            "value": 0.0,
+        },
         {
             "type": "APAveragedOverIOUs",
             "parameters": {"ious": [0.1, 0.6]},
             "value": 0.0,
             "label": {"key": "k1", "value": "v1"},
-        },
-        {
-            "type": "mAPAveragedOverIOUs",
-            "parameters": {"ious": [0.1, 0.6]},
-            "value": 0.0,
         },
     ]
 
@@ -705,7 +748,10 @@ def test_get_evaluations(
 
     assert len(evaluations) == 1
     assert len(evaluations[0].metrics)
-    assert evaluations[0].metrics == expected_metrics
+    for m in evaluations[0].metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in evaluations[0].metrics
 
     evaluations_by_evaluation_id = client.get_evaluations(
         evaluation_ids=eval_job.id  # type: ignore - purposefully throwing an error
@@ -739,7 +785,10 @@ def test_get_evaluations(
     second_model_evaluations = client.get_evaluations(models=["second_model"])
 
     assert len(second_model_evaluations) == 1
-    assert second_model_evaluations[0].metrics == second_model_expected_metrics
+    for m in second_model_evaluations[0].metrics:
+        assert m in second_model_expected_metrics
+    for m in second_model_expected_metrics:
+        assert m in second_model_evaluations[0].metrics
 
     both_evaluations = client.get_evaluations(datasets=["test_dataset"])
 
@@ -751,9 +800,15 @@ def test_get_evaluations(
             model_name,
         ]
         if evaluation.model_name == model_name:
-            assert evaluation.metrics == expected_metrics
+            for m in evaluation.metrics:
+                assert m in expected_metrics
+            for m in expected_metrics:
+                assert m in evaluation.metrics
         elif evaluation.model_name == "second_model":
-            assert evaluation.metrics == second_model_expected_metrics
+            for m in evaluation.metrics:
+                assert m in second_model_expected_metrics
+            for m in second_model_expected_metrics:
+                assert m in evaluation.metrics
 
     # should be equivalent since there are only two models attributed to this dataset
     both_evaluations_from_model_names = client.get_evaluations(
@@ -1003,16 +1058,65 @@ def test_evaluate_detection_with_label_maps(
             "label": {"key": "class", "value": "siamese cat"},
         },
         {
-            "type": "mAP",
-            "parameters": {"iou": 0.1},
-            "value": 0.100990099009901,
+            "type": "mAR",
+            "parameters": {"ious": [0.1, 0.6], "label_key": "k1"},
+            "value": 0.5,
+        },
+        {
+            "type": "mAR",
+            "parameters": {"ious": [0.1, 0.6], "label_key": "k2"},
+            "value": 0.0,
+        },
+        {
+            "type": "mAR",
+            "parameters": {"ious": [0.1, 0.6], "label_key": "class_name"},
+            "value": 0.0,
+        },
+        {
+            "type": "mAR",
+            "parameters": {"ious": [0.1, 0.6], "label_key": "class"},
+            "value": 0.0,
         },
         {
             "type": "mAP",
-            "parameters": {"iou": 0.6},
-            "value": 0.100990099009901,
+            "parameters": {"iou": 0.1, "label_key": "class"},
+            "value": 0.0,
         },
-        {"type": "mAR", "parameters": {"ious": [0.1, 0.6]}, "value": 0.1},
+        {
+            "type": "mAP",
+            "parameters": {"iou": 0.6, "label_key": "class"},
+            "value": 0.0,
+        },
+        {
+            "type": "mAP",
+            "parameters": {"iou": 0.1, "label_key": "class_name"},
+            "value": 0.0,
+        },
+        {
+            "type": "mAP",
+            "parameters": {"iou": 0.6, "label_key": "class_name"},
+            "value": 0.0,
+        },
+        {
+            "type": "mAP",
+            "parameters": {"iou": 0.1, "label_key": "k1"},
+            "value": 0.504950495049505,
+        },
+        {
+            "type": "mAP",
+            "parameters": {"iou": 0.6, "label_key": "k1"},
+            "value": 0.504950495049505,
+        },
+        {
+            "type": "mAP",
+            "parameters": {"iou": 0.1, "label_key": "k2"},
+            "value": 0.0,
+        },
+        {
+            "type": "mAP",
+            "parameters": {"iou": 0.6, "label_key": "k2"},
+            "value": 0.0,
+        },
         {
             "type": "APAveragedOverIOUs",
             "parameters": {"ious": [0.1, 0.6]},
@@ -1045,8 +1149,23 @@ def test_evaluate_detection_with_label_maps(
         },
         {
             "type": "mAPAveragedOverIOUs",
-            "parameters": {"ious": [0.1, 0.6]},
-            "value": 0.100990099009901,
+            "parameters": {"ious": [0.1, 0.6], "label_key": "class"},
+            "value": 0.0,
+        },
+        {
+            "type": "mAPAveragedOverIOUs",
+            "parameters": {"ious": [0.1, 0.6], "label_key": "class_name"},
+            "value": 0.0,
+        },
+        {
+            "type": "mAPAveragedOverIOUs",
+            "parameters": {"ious": [0.1, 0.6], "label_key": "k1"},
+            "value": 0.504950495049505,
+        },
+        {
+            "type": "mAPAveragedOverIOUs",
+            "parameters": {"ious": [0.1, 0.6], "label_key": "k2"},
+            "value": 0.0,
         },
     ]
 
@@ -1198,18 +1317,83 @@ def test_evaluate_detection_with_label_maps(
         },
         {
             "type": "mAP",
-            "parameters": {"iou": 0.1},
-            "value": 0.28052805280528054,
+            "parameters": {"iou": 0.1, "label_key": "class"},
+            "value": 0.33663366336633666,
         },
         {
             "type": "mAP",
-            "parameters": {"iou": 0.6},
-            "value": 0.28052805280528054,
+            "parameters": {"iou": 0.1, "label_key": "k1"},
+            "value": 0.504950495049505,
+        },
+        {
+            "type": "mAP",
+            "parameters": {"iou": 0.1, "label_key": "k2"},
+            "value": 0.0,
+        },
+        {
+            "type": "mAP",
+            "parameters": {"iou": 0.6, "label_key": "class"},
+            "value": 0.33663366336633666,
+        },
+        {
+            "type": "mAP",
+            "parameters": {"iou": 0.6, "label_key": "k1"},
+            "value": 0.504950495049505,
+        },
+        {
+            "type": "mAP",
+            "parameters": {"iou": 0.6, "label_key": "k2"},
+            "value": 0.0,
+        },
+        {
+            "type": "mAP",
+            "parameters": {"iou": 0.1, "label_key": "class"},
+            "value": 0.33663366336633666,
+        },
+        {
+            "type": "mAP",
+            "parameters": {"iou": 0.1, "label_key": "k1"},
+            "value": 0.504950495049505,
+        },
+        {
+            "type": "mAP",
+            "parameters": {"iou": 0.1, "label_key": "k2"},
+            "value": 0.0,
+        },
+        {
+            "type": "mAP",
+            "parameters": {"iou": 0.6, "label_key": "class"},
+            "value": 0.33663366336633666,
+        },
+        {
+            "type": "mAP",
+            "parameters": {"iou": 0.6, "label_key": "k1"},
+            "value": 0.504950495049505,
+        },
+        {
+            "type": "mAP",
+            "parameters": {"iou": 0.6, "label_key": "k2"},
+            "value": 0.0,
         },
         {
             "type": "mAR",
-            "parameters": {"ious": [0.1, 0.6]},
-            "value": 0.27777777777777773,
+            "parameters": {"ious": [0.1, 0.6], "label_key": "class"},
+            "value": 0.3333333333333333,
+        },
+        {
+            "type": "mAR",
+            "parameters": {"ious": [0.1, 0.6], "label_key": "k1"},
+            "value": 0.5,
+        },
+        {
+            "type": "mAR",
+            "parameters": {"ious": [0.1, 0.6], "label_key": "class_name"},
+            "value": -1.0,
+        },
+        {
+            "type": "mAR",
+            "parameters": {"ious": [0.1, 0.6], "label_key": "k2"},
+            "value": 0.0,
         },
         {
             "type": "APAveragedOverIOUs",
@@ -1231,8 +1415,18 @@ def test_evaluate_detection_with_label_maps(
         },
         {
             "type": "mAPAveragedOverIOUs",
-            "parameters": {"ious": [0.1, 0.6]},
-            "value": 0.28052805280528054,
+            "parameters": {"ious": [0.1, 0.6], "label_key": "k1"},
+            "value": 0.504950495049505,
+        },
+        {
+            "type": "mAPAveragedOverIOUs",
+            "parameters": {"ious": [0.1, 0.6], "label_key": "class"},
+            "value": 0.33663366336633666,
+        },
+        {
+            "type": "mAPAveragedOverIOUs",
+            "parameters": {"ious": [0.1, 0.6], "label_key": "k2"},
+            "value": 0.0,
         },
     ]
 
@@ -1298,34 +1492,10 @@ def test_evaluate_detection_with_label_maps(
             "label": {"key": "k1", "value": "v1"},
         },
         {
-            "type": "AP",
-            "parameters": {"iou": 0.6},
-            "value": 0.6633663366336634,
-            "label": {"key": "foo", "value": "bar"},
-        },
-        {
-            "type": "AP",
-            "parameters": {"iou": 0.6},
-            "value": 0.0,
-            "label": {"key": "k2", "value": "v2"},
-        },
-        {
-            "type": "AP",
-            "parameters": {"iou": 0.6},
-            "value": 0.504950495049505,
-            "label": {"key": "k1", "value": "v1"},
-        },
-        {
             "type": "AR",
             "parameters": {"ious": [0.1, 0.6]},
             "value": 0.6666666666666666,
             "label": {"key": "foo", "value": "bar"},
-        },
-        {
-            "type": "AR",
-            "parameters": {"ious": [0.1, 0.6]},
-            "value": 0.0,
-            "label": {"key": "k2", "value": "v2"},
         },
         {
             "type": "AR",
@@ -1335,18 +1505,23 @@ def test_evaluate_detection_with_label_maps(
         },
         {
             "type": "mAP",
-            "parameters": {"iou": 0.1},
-            "value": 0.3894389438943895,
+            "parameters": {"iou": 0.6, "label_key": "foo"},
+            "value": 0.6633663366336634,
         },
         {
             "type": "mAP",
-            "parameters": {"iou": 0.6},
-            "value": 0.3894389438943895,
+            "parameters": {"iou": 0.6, "label_key": "k2"},
+            "value": 0.0,
+        },
+        {
+            "type": "mAP",
+            "parameters": {"iou": 0.6, "label_key": "k1"},
+            "value": 0.504950495049505,
         },
         {
             "type": "mAR",
-            "parameters": {"ious": [0.1, 0.6]},
-            "value": 0.38888888888888884,
+            "parameters": {"ious": [0.1, 0.6], "label_key": "k2"},
+            "value": 0.0,
         },
         {
             "type": "APAveragedOverIOUs",
@@ -1357,19 +1532,78 @@ def test_evaluate_detection_with_label_maps(
         {
             "type": "APAveragedOverIOUs",
             "parameters": {"ious": [0.1, 0.6]},
-            "value": 0.0,
-            "label": {"key": "k2", "value": "v2"},
-        },
-        {
-            "type": "APAveragedOverIOUs",
-            "parameters": {"ious": [0.1, 0.6]},
             "value": 0.504950495049505,
             "label": {"key": "k1", "value": "v1"},
         },
         {
             "type": "mAPAveragedOverIOUs",
+            "parameters": {"ious": [0.1, 0.6], "label_key": "k2"},
+            "value": 0.0,
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.6},
+            "value": 0.6633663366336634,
+            "label": {"key": "foo", "value": "bar"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.6},
+            "value": 0.0,
+            "label": {"key": "k2", "value": "v2"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.6},
+            "value": 0.504950495049505,
+            "label": {"key": "k1", "value": "v1"},
+        },
+        {
+            "type": "AR",
             "parameters": {"ious": [0.1, 0.6]},
-            "value": 0.3894389438943895,
+            "value": 0.0,
+            "label": {"key": "k2", "value": "v2"},
+        },
+        {
+            "type": "mAP",
+            "parameters": {"iou": 0.1, "label_key": "foo"},
+            "value": 0.6633663366336634,
+        },
+        {
+            "type": "mAP",
+            "parameters": {"iou": 0.1, "label_key": "k2"},
+            "value": 0.0,
+        },
+        {
+            "type": "mAP",
+            "parameters": {"iou": 0.1, "label_key": "k1"},
+            "value": 0.504950495049505,
+        },
+        {
+            "type": "mAR",
+            "parameters": {"ious": [0.1, 0.6], "label_key": "foo"},
+            "value": 0.6666666666666666,
+        },
+        {
+            "type": "mAR",
+            "parameters": {"ious": [0.1, 0.6], "label_key": "k1"},
+            "value": 0.5,
+        },
+        {
+            "type": "APAveragedOverIOUs",
+            "parameters": {"ious": [0.1, 0.6]},
+            "value": 0.0,
+            "label": {"key": "k2", "value": "v2"},
+        },
+        {
+            "type": "mAPAveragedOverIOUs",
+            "parameters": {"ious": [0.1, 0.6], "label_key": "foo"},
+            "value": 0.6633663366336634,
+        },
+        {
+            "type": "mAPAveragedOverIOUs",
+            "parameters": {"ious": [0.1, 0.6], "label_key": "k1"},
+            "value": 0.504950495049505,
         },
     ]
 
@@ -1428,42 +1662,12 @@ def test_evaluate_detection_with_label_maps(
         {
             "type": "AP",
             "parameters": {"iou": 0.1},
-            "value": 0.0,
-            "label": {"key": "k2", "value": "v2"},
-        },
-        {
-            "type": "AP",
-            "parameters": {"iou": 0.6},
-            "value": 0.6633663366336634,
-            "label": {"key": "foo", "value": "bar"},
-        },
-        {
-            "type": "AP",
-            "parameters": {"iou": 0.6},
-            "value": 0.0,
-            "label": {"key": "k2", "value": "v2"},
+            "value": 0.504950495049505,
+            "label": {"key": "k1", "value": "v1"},
         },
         {
             "type": "AP",
             "parameters": {"iou": 0.1},
-            "value": 0.504950495049505,
-            "label": {"key": "k1", "value": "v1"},
-        },
-        {
-            "type": "AP",
-            "parameters": {"iou": 0.6},
-            "value": 0.504950495049505,
-            "label": {"key": "k1", "value": "v1"},
-        },
-        {
-            "type": "AR",
-            "parameters": {"ious": [0.1, 0.6]},
-            "value": 0.0,
-            "label": {"key": "k1", "value": "v1"},
-        },
-        {
-            "type": "AR",
-            "parameters": {"ious": [0.1, 0.6]},
             "value": 0.0,
             "label": {"key": "k2", "value": "v2"},
         },
@@ -1474,19 +1678,74 @@ def test_evaluate_detection_with_label_maps(
             "label": {"key": "foo", "value": "bar"},
         },
         {
-            "type": "mAR",
+            "type": "AR",
             "parameters": {"ious": [0.1, 0.6]},
-            "value": 0.1111111111111111,
+            "value": 0.0,
+            "label": {"key": "k2", "value": "v2"},
         },
         {
             "type": "mAP",
-            "parameters": {"iou": 0.1},
-            "value": 0.3894389438943895,
+            "parameters": {"iou": 0.6, "label_key": "foo"},
+            "value": 0.6633663366336634,
         },
         {
             "type": "mAP",
+            "parameters": {"iou": 0.6, "label_key": "k1"},
+            "value": 0.504950495049505,
+        },
+        {
+            "type": "AP",
             "parameters": {"iou": 0.6},
-            "value": 0.3894389438943895,
+            "value": 0.6633663366336634,
+            "label": {"key": "foo", "value": "bar"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.6},
+            "value": 0.504950495049505,
+            "label": {"key": "k1", "value": "v1"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.6},
+            "value": 0.0,
+            "label": {"key": "k2", "value": "v2"},
+        },
+        {
+            "type": "AR",
+            "parameters": {"ious": [0.1, 0.6]},
+            "value": 0.0,
+            "label": {"key": "k1", "value": "v1"},
+        },
+        {
+            "type": "mAP",
+            "parameters": {"iou": 0.1, "label_key": "foo"},
+            "value": 0.6633663366336634,
+        },
+        {
+            "type": "mAP",
+            "parameters": {"iou": 0.1, "label_key": "k1"},
+            "value": 0.504950495049505,
+        },
+        {
+            "type": "mAP",
+            "parameters": {"iou": 0.1, "label_key": "k2"},
+            "value": 0.0,
+        },
+        {
+            "type": "mAP",
+            "parameters": {"iou": 0.6, "label_key": "k2"},
+            "value": 0.0,
+        },
+        {
+            "type": "mAR",
+            "parameters": {"ious": [0.1, 0.6], "label_key": "foo"},
+            "value": 0.3333333333333333,
+        },
+        {
+            "type": "mAR",
+            "parameters": {"ious": [0.1, 0.6], "label_key": "k1"},
+            "value": 0.0,
         },
         {
             "type": "APAveragedOverIOUs",
@@ -1501,6 +1760,16 @@ def test_evaluate_detection_with_label_maps(
             "label": {"key": "k2", "value": "v2"},
         },
         {
+            "type": "mAPAveragedOverIOUs",
+            "parameters": {"ious": [0.1, 0.6], "label_key": "k1"},
+            "value": 0.504950495049505,
+        },
+        {
+            "type": "mAR",
+            "parameters": {"ious": [0.1, 0.6], "label_key": "k2"},
+            "value": 0.0,
+        },
+        {
             "type": "APAveragedOverIOUs",
             "parameters": {"ious": [0.1, 0.6]},
             "value": 0.504950495049505,
@@ -1508,8 +1777,13 @@ def test_evaluate_detection_with_label_maps(
         },
         {
             "type": "mAPAveragedOverIOUs",
-            "parameters": {"ious": [0.1, 0.6]},
-            "value": 0.3894389438943895,
+            "parameters": {"ious": [0.1, 0.6], "label_key": "foo"},
+            "value": 0.6633663366336634,
+        },
+        {
+            "type": "mAPAveragedOverIOUs",
+            "parameters": {"ious": [0.1, 0.6], "label_key": "k2"},
+            "value": 0.0,
         },
     ]
 

@@ -1,3 +1,5 @@
+from collections import defaultdict
+
 from geoalchemy2.functions import ST_Count, ST_MapAlgebra
 from sqlalchemy.orm import Session, aliased
 from sqlalchemy.sql import Select, func, select
@@ -178,6 +180,7 @@ def _compute_segmentation_metrics(
     )
 
     ret = []
+    ious_per_grouper_key = defaultdict(list)
     for grouper_id, label_ids in grouper_mappings[
         "grouper_id_to_label_ids_mapping"
     ].items():
@@ -185,14 +188,14 @@ def _compute_segmentation_metrics(
         groundtruth_filter.label_ids = [label_id for label_id in label_ids]
         prediction_filter.label_ids = [label_id for label_id in label_ids]
 
-        _compute_iou_score = _compute_iou(
+        computed_iou_score = _compute_iou(
             db,
             groundtruth_filter,
             prediction_filter,
         )
 
         # only add an IOUMetric if the label ids associated with the grouper id have at least one gt raster
-        if _compute_iou_score is None:
+        if computed_iou_score is None:
             continue
 
         grouper_label = grouper_mappings[
@@ -202,19 +205,24 @@ def _compute_segmentation_metrics(
         ret.append(
             IOUMetric(
                 label=grouper_label,
-                value=_compute_iou_score,
+                value=computed_iou_score,
             )
         )
 
-    ret.append(
+        ious_per_grouper_key[grouper_label.key].append(computed_iou_score)
+
+    # aggregate IOUs by key
+    ret += [
         mIOUMetric(
             value=(
-                sum([metric.value for metric in ret]) / len(ret)
-                if len(ret) != 0
+                sum(iou_values) / len(iou_values)
+                if len(iou_values) != 0
                 else -1
-            )
+            ),
+            label_key=grouper_key,
         )
-    )
+        for grouper_key, iou_values in ious_per_grouper_key.items()
+    ]
 
     return ret
 

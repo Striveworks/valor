@@ -162,10 +162,13 @@ class mARMetric(BaseModel):
         A set of intersect-over-union (IOU) values.
     value : float
         The value of the metric.
+    label_key : str
+        The label key associated with the metric.
     """
 
     ious: set[float]
     value: float
+    label_key: str
 
     def db_mapping(self, evaluation_id: int) -> dict:
         """
@@ -186,6 +189,7 @@ class mARMetric(BaseModel):
             "evaluation_id": evaluation_id,
             "parameters": {
                 "ious": list(self.ious),
+                "label_key": self.label_key,
             },
         }
 
@@ -200,10 +204,13 @@ class mAPMetric(BaseModel):
         The intersect-over-union (IOU) value.
     value : float
         The value of the metric.
+    label_key : str
+        The label key associated with the metric.
     """
 
     iou: float
     value: float
+    label_key: str
 
     def db_mapping(self, evaluation_id: int) -> dict:
         """
@@ -222,7 +229,10 @@ class mAPMetric(BaseModel):
             "value": self.value,
             "type": "mAP",
             "evaluation_id": evaluation_id,
-            "parameters": {"iou": self.iou},
+            "parameters": {
+                "iou": self.iou,
+                "label_key": self.label_key,
+            },
         }
 
 
@@ -236,10 +246,13 @@ class mAPMetricAveragedOverIOUs(BaseModel):
         A set of intersect-over-union (IOU) values.
     value : float
         The value of the metric.
+    label_key : str
+        The label key associated with the metric.
     """
 
     ious: set[float]
     value: float
+    label_key: str
 
     def db_mapping(self, evaluation_id: int) -> dict:
         """
@@ -258,7 +271,10 @@ class mAPMetricAveragedOverIOUs(BaseModel):
             "value": self.value,
             "type": "mAPAveragedOverIOUs",
             "evaluation_id": evaluation_id,
-            "parameters": {"ious": list(self.ious)},
+            "parameters": {
+                "ious": list(self.ious),
+                "label_key": self.label_key,
+            },
         }
 
 
@@ -373,7 +389,7 @@ class AccuracyMetric(BaseModel):
     Attributes
     ----------
     label_key : str
-        A label for the metric.
+        The label key associated with the metric.
     value : float
         The metric value.
     """
@@ -409,7 +425,7 @@ class PrecisionRecallCurve(BaseModel):
     Attributes
     ----------
     label_key: str
-        A label for the metric.
+        The label key associated with the metric.
     value: dict
         A nested dictionary where the first key is the class label, the second key is the confidence threshold (e.g., 0.05), the third key is the metric name (e.g., "precision"), and the final key is either the value itself (for precision, recall, etc.) or a list of tuples containing data for each observation.
     pr_curve_iou_threshold: float, optional
@@ -528,7 +544,7 @@ class ROCAUCMetric(BaseModel):
     Attributes
     ----------
     label_key : str
-        A label for the metric.
+        The label key associated with the metric.
     value : float
         The metric value.
     """
@@ -601,9 +617,12 @@ class mIOUMetric(BaseModel):
     ----------
     value : float
         The metric value.
+    label_key : str
+        The label key associated with the metric.
     """
 
     value: float
+    label_key: str
 
     def db_mapping(self, evaluation_id: int) -> dict:
         """
@@ -622,4 +641,5 @@ class mIOUMetric(BaseModel):
             "value": self.value,
             "type": "mIOU",
             "evaluation_id": evaluation_id,
+            "parameters": {"label_key": self.label_key},
         }
