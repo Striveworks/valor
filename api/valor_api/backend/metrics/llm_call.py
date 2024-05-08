@@ -1,6 +1,6 @@
 from typing import Any
 
-from openai import OpenAI
+import openai
 
 from valor_api import schemas
 
@@ -19,17 +19,23 @@ class OpenAIClient:
 
     # url: str
     api_key: str | None = None
+    seed: int | None = None
     model_name: str = "gpt-3.5-turbo"  # gpt-3.5-turbo gpt-4-turbo
 
     def __init__(
         self,
         api_key: str | None = None,
+        seed: int | None = None,
     ):
         """
         TODO should we use an __attrs_post_init__ instead?
         """
         self.api_key = api_key
-        self.client = OpenAI(api_key=self.api_key)
+        self.seed = seed
+        if self.api_key is None:
+            self.client = openai.OpenAI()
+        else:
+            self.client = openai.OpenAI(api_key=self.api_key)
 
     def __call__(
         self,
@@ -38,10 +44,27 @@ class OpenAIClient:
         """
         TODO possibly change this to a call with the API. This would remove the openai python dependence.
         """
-        response = self.client.chat.completions.create(
-            model=self.model_name, messages=messages
-        )
-        response = response.choices[0].message.content
+        try:
+            openai_response = self.client.chat.completions.create(
+                model=self.model_name, messages=messages, seed=self.seed
+            )
+        # TODO should we both catching this if we aren't going to do anything?
+        except openai.BadRequestError as e:
+            raise ValueError(f"OpenAI request failed with error: {e}")
+
+        # token_usage = openai_response.usage  # TODO Could report token usage to user. Could use token length to determine if input is too larger, although this would require us to know the model's context window size.
+        finish_reason = openai_response.choices[0].finish_reason
+        response = openai_response.choices[0].message.content
+
+        if finish_reason == "length":
+            raise ValueError(
+                "OpenAI response reached max token limit. Resulting evaluation is likely invalid or of low quality."
+            )
+        elif finish_reason == "content_filter":
+            raise ValueError(
+                "OpenAI response was flagged by content filter. Resulting evaluation is likely invalid or of low quality."
+            )
+
         return response
 
     def coherence(

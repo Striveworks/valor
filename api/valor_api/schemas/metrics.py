@@ -728,18 +728,17 @@ class CoherenceMetric(BaseModel):
     """
 
     label_key: str
-    value: int  # TODO or an int between 1 and 5?
+    value: int  # TODO enforce value in [1,2,3,4,5] ?
 
     def db_mapping(self, evaluation_id: int) -> dict:
         """
         Creates a mapping for use when uploading the metric to the database.
 
-        # TODO should we have a label and label key for these metrics? What is the best way to do the label here?
+        TODO should we have a label and label key for these metrics? I see that IOUMetric uses label
+        and label_id. It gets the label from the mapping with the grouper key
 
         Parameters
         ----------
-        label_id : int
-            The label id.
         evaluation_id : int
             The evaluation id.
 

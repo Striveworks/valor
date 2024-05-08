@@ -1,5 +1,4 @@
-# import pdb
-
+import pdb
 from unittest.mock import patch
 
 import pytest
@@ -10,8 +9,7 @@ from valor_api.backend import models
 from valor_api.backend.core import (  # fetch_union_of_labels,
     create_or_get_evaluations,
 )
-
-# from valor_api.backend.metrics.llm_call import OpenAIClient
+from valor_api.backend.metrics.llm_call import OpenAIClient
 from valor_api.backend.metrics.llm_evaluation import (
     _compute_llm_evaluation_metrics,
     compute_llm_evaluation_metrics,
@@ -199,6 +197,25 @@ def llm_evaluation_test_data(db: Session, dataset_name: str, model_name: str):
     assert len(db.query(models.Prediction).all()) == 3
 
 
+def test_openai_api_request():
+    """
+    Tests the OpenAIClient class.
+
+    Just tests that a CoherenceMetric is correctly built from an OpenAIClient.coherence call.
+    """
+    client = OpenAIClient(
+        seed=2024,  # TODO Should we have a seed here?
+    )
+
+    result = client.coherence(
+        text="This is a test sentence.",
+        label_key="key",
+    )
+
+    assert result
+    assert result.value in {1, 2, 3, 4, 5}
+
+
 @patch(
     "valor_api.backend.metrics.llm_call.OpenAIClient.coherence",
     mocked_coherence,
@@ -304,6 +321,9 @@ def test_llm_evaluation(
         # "ToxicityMetric",
     ]
 
+    url = "url"  # TODO
+    api_key = "api_key"
+
     # default request
     job_request = schemas.EvaluationRequest(
         model_names=[model_name],
@@ -311,8 +331,8 @@ def test_llm_evaluation(
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.LLM_EVALUATION,
             metrics_to_return=metric_list,
-            llm_url="url",  # TODO
-            llm_api_key="api_key",  # TODO
+            llm_url=url,
+            llm_api_key=api_key,
         ),
         meta={},
     )
@@ -336,41 +356,53 @@ def test_llm_evaluation(
         enums.EvaluationStatus.DONE,
     }
 
-    # pdb.set_trace()
-
     metrics = evaluations[0].metrics
 
     # Test metrics (only Coherence so far, will add others) TODO add other metrics
     assert metrics
     for metric in metrics:
-        if isinstance(metric, schemas.AnswerCorrectnessMetric):
+        if metric.type == "AnswerCorrectness":
+            pdb.set_trace()
             pass
-        elif isinstance(metric, schemas.AnswerRelevanceMetric):
+        elif metric.type == "AnswerRelevance":
+            pdb.set_trace()
             pass
-        elif isinstance(metric, schemas.BiasMetric):
+        elif metric.type == "Bias":
+            pdb.set_trace()
             pass
-        elif isinstance(metric, schemas.CoherenceMetric):
-            if (
-                metric.label_key == "q0"
-            ):  # TODO potentially change these keys, as they are redundant with the datum. Or use the abstract prompt as the key.
+        elif metric.type == "Coherence":
+            # TODO potentially change these keys, as they are redundant with the datum. Or use the abstract prompt as the key.
+            assert metric.parameters is not None and metric.parameters.get(
+                "label_key"
+            )
+
+            if metric.parameters.get("label_key") == "q0":
                 assert metric.value == 4
-            elif metric.label_key == "q1":
+            elif metric.parameters.get("label_key") == "q1":
                 assert metric.value == 4
-            elif metric.label_key == "q2":
+            elif metric.parameters.get("label_key") == "q2":
                 assert metric.value == 4
-        elif isinstance(metric, schemas.ContextPrecisionMetric):
+        elif metric.type == "ContextPrecision":
+            pdb.set_trace()
             pass
-        elif isinstance(metric, schemas.ContextRecallMetric):
+        elif metric.type == "ContextRecall":
+            pdb.set_trace()
             pass
-        elif isinstance(metric, schemas.ContextRelevanceMetric):
+        elif metric.type == "ContextRelevance":
+            pdb.set_trace()
             pass
-        elif isinstance(metric, schemas.FaithfulnessMetric):
+        elif metric.type == "Faithfulness":
+            pdb.set_trace()
             pass
-        elif isinstance(metric, schemas.GrammaticalityMetric):
+        elif metric.type == "Grammaticality":
+            pdb.set_trace()
             pass
-        elif isinstance(metric, schemas.HallucinationMetric):
+        elif metric.type == "Hallucination":
+            pdb.set_trace()
             pass
-        elif isinstance(metric, schemas.QAGMetric):
+        elif metric.type == "QAG":
+            pdb.set_trace()
             pass
-        elif isinstance(metric, schemas.ToxicityMetric):
+        elif metric.type == "Toxicity":
+            pdb.set_trace()
             pass
