@@ -490,17 +490,19 @@ export class ValorClient {
    * Bulk fetches evaluation by array of ids
    *
    * @param id id of the evaluation
-   * @param metricsToSortBy An array of metrics to sort the evaluations by. Should only include dataset-level metrics (e.g., mAccuracy).
+   * @param metricsToSortBy A map of metrics to sort the evaluations by.
    *
    * @returns {Promise<Evaluation[]>}
    */
   public async getEvaluationsByIds(
     ids: number[],
-    metricsToSortBy?: string[]
+    metricsToSortBy?: {
+      [key: string]: string | { [inner_key: string]: string };
+    }
   ): Promise<Evaluation[]> {
     const evaluations = await this.getEvaluations({
       evaluation_ids: ids.map((id) => id.toString()).join(','),
-      metrics_to_sort_by: metricsToSortBy != null ? metricsToSortBy.join(',') : null
+      metrics_to_sort_by: metricsToSortBy != null ? JSON.stringify(metricsToSortBy) : null
     });
     return evaluations;
   }
@@ -509,18 +511,20 @@ export class ValorClient {
    * Fetches all evaluations associated to given models
    *
    * @param modelNames names of the models
-   * @param metricsToSortBy An array of metrics to sort the evaluations by. Should only include dataset-level metrics (e.g., mAccuracy).
+   * @param metricsToSortBy A map of metrics to sort the evaluations by.
    *
    * @returns {Promise<Evaluation[]>}
    */
   public async getEvaluationsByModelNames(
     modelNames: string[],
-    metricsToSortBy?: string[]
+    metricsToSortBy?: {
+      [key: string]: string | { [inner_key: string]: string };
+    }
   ): Promise<Evaluation[]> {
     // turn modelNames into a comma-separated string
     return this.getEvaluations({
       models: modelNames.join(','),
-      metrics_to_sort_by: metricsToSortBy != null ? metricsToSortBy.join(',') : null
+      metrics_to_sort_by: metricsToSortBy != null ? JSON.stringify(metricsToSortBy) : null
     });
   }
 
@@ -528,17 +532,19 @@ export class ValorClient {
    * Fetches all evaluations associated to given datasets
    *
    * @param datasetNames names of the datasets
-   * @param metricsToSortBy An array of metrics to sort the evaluations by. Should only include dataset-level metrics (e.g., mAccuracy).
+   * @param metricsToSortBy A map of metrics to sort the evaluations by.
    *
    * @returns {Promise<Evaluation[]>}
    */
   public async getEvaluationsByDatasetNames(
     datasetNames: string[],
-    metricsToSortBy?: string[]
+    metricsToSortBy?: {
+      [key: string]: string | { [inner_key: string]: string };
+    }
   ): Promise<Evaluation[]> {
     return this.getEvaluations({
       datasets: datasetNames.join(','),
-      metrics_to_sort_by: metricsToSortBy != null ? metricsToSortBy.join(',') : null
+      metrics_to_sort_by: metricsToSortBy != null ? JSON.stringify(metricsToSortBy) : null
     });
   }
 

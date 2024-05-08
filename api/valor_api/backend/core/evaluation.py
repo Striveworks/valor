@@ -1,7 +1,17 @@
 from datetime import timezone
 from typing import Sequence
 
-from sqlalchemy import and_, asc, case, desc, func, or_, select, update
+from sqlalchemy import (
+    and_,
+    asc,
+    case,
+    desc,
+    func,
+    nulls_last,
+    or_,
+    select,
+    update,
+)
 from sqlalchemy.dialects.postgresql import aggregate_order_by
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -617,7 +627,7 @@ def get_paginated_evaluations(
     model_names: list[str] | None = None,
     offset: int = 0,
     limit: int = -1,
-    metrics_to_sort_by: list[str] | None = None,
+    metrics_to_sort_by: dict[str, dict[str, str] | str] | None = None,
 ) -> tuple[list[schemas.EvaluationResponse], dict[str, str]]:
     """
     Returns all evaluations that conform to user-supplied constraints.
@@ -636,8 +646,8 @@ def get_paginated_evaluations(
         The start index of the items to return.
     limit : int, optional
         The number of items to return. Returns all items when set to -1.
-    metrics_to_sort_by: list[str], optional
-        An optional list of metric types to sort the evaluations by.
+    metrics_to_sort_by: dict[str, dict[str, str] | str], optional
+        An optional dict of metric types to sort the evaluations by.
 
     Returns
     ----------
@@ -676,24 +686,60 @@ def get_paginated_evaluations(
         limit = count
 
     if metrics_to_sort_by is not None:
-        order_case = case(
-            *[
-                (models.Metric.type == item, i + 1)
-                for i, item in enumerate(metrics_to_sort_by)
-            ],
-            else_=0,
-        )
+        conditions = []
+        order_case = []
+
+        for i, (metric_type, label) in enumerate(metrics_to_sort_by.items()):
+            # if the value represents a label_key
+            if isinstance(label, str):
+                order_case.append(
+                    (
+                        and_(
+                            models.Metric.type == metric_type,
+                            models.Metric.parameters["label_key"].astext
+                            == label,
+                        ),
+                        i + 1,
+                    ),
+                )
+                conditions.append(
+                    and_(
+                        models.Metric.type == metric_type,
+                        models.Metric.parameters["label_key"].astext == label,
+                    )
+                )
+            # if the value represents a label
+            else:
+                order_case.append(
+                    (
+                        and_(
+                            models.Metric.type == metric_type,
+                            models.Label.key == label["key"],
+                            models.Label.value == label["value"],
+                        ),
+                        i + 1,
+                    ),
+                )
+                conditions.append(
+                    and_(
+                        models.Metric.type == metric_type,
+                        models.Label.key == label["key"],
+                        models.Label.value == label["value"],
+                    )
+                )
 
         aggregated_sorting_field = (
             select(
                 models.Metric.evaluation_id,
                 func.array_agg(
-                    aggregate_order_by(models.Metric.value, order_case)
+                    aggregate_order_by(
+                        models.Metric.value, case(*order_case, else_=0)
+                    )
                 ).label("sort_array"),
             )
             .select_from(models.Metric)
             .group_by(models.Metric.evaluation_id)
-            .where(models.Metric.type.in_(metrics_to_sort_by))
+            .filter(or_(*conditions))
             .alias()
         )
 
@@ -719,7 +765,7 @@ def get_paginated_evaluations(
             )
             .order_by(
                 asc(models.Evaluation.parameters["task_type"]),
-                desc(aggregated_sorting_field.c.sort_array),
+                nulls_last(aggregated_sorting_field.c.sort_array.desc()),
                 desc(models.Evaluation.created_at),
             )
             .offset(offset)

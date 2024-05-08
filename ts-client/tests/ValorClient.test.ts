@@ -245,9 +245,9 @@ test('evaluation methods', async () => {
   );
   // check we can get evaluations by model names
   expect((await client.getEvaluationsByModelNames([modelNames[0]])).length).toBe(2);
-  // expect(
-  //   (await client.getEvaluationsByModelNames(modelNames, ['mAccuracy'])).length
-  // ).toBe(4);
+  expect(
+    (await client.getEvaluationsByModelNames(modelNames, { Accuracy: 'class' })).length
+  ).toBe(4);
   expect((await client.getEvaluationsByModelNames(['no-such-model'])).length).toBe(0);
   // check we can get evaluations by dataset name
   expect((await client.getEvaluationsByDatasetNames([datasetNames[0]])).length).toBe(2);
