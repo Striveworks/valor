@@ -41,3 +41,30 @@ def _get_pagination_header(
     return {
         "content-range": f"items {range_indicator}/{total_number_of_items}"
     }
+
+
+def validate_metrics_to_sort_by(
+    metrics_to_sort_by: dict[str, str | dict[str, str]] | None
+):
+    """
+    Check that the user is passing a valid dictionary to metrics_to_sort_by.
+
+    Parameters
+    ----------
+    metrics_to_sort_by: dict[str, str | dict[str, str]], optional
+        An optional dict of metric types to sort evaluations by.
+
+    Raises
+    -------
+    ValueError
+        If metrics_to_sort_by is incorrectly formatted.
+    """
+    if not metrics_to_sort_by:
+        return
+
+    for k, v in metrics_to_sort_by.items():
+        if isinstance(v, dict):
+            if set(v.keys()) != set(["key", "value"]):
+                raise ValueError(
+                    "When passing a label dictionary as a value in metrics_to_sort_by, the value dictionary should only contain the keys 'key' and 'label'."
+                )

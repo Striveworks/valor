@@ -835,98 +835,26 @@ def test_get_evaluations(
     )
     assert resp.headers["content-range"] == "items 1-1/2"
 
+    # test metrics_to_sort_by
+    both_evaluations_from_evaluation_ids_sorted = client.get_evaluations(
+        evaluation_ids=[eval_job.id, eval_job2.id],
+        metrics_to_sort_by={"mAPAveragedOverIOUs": "k1"},
+    )
 
-@pytest.fixture
-def gts_det_with_label_maps(
-    rect1: list[tuple[float, float]],
-    rect2: list[tuple[float, float]],
-    rect3: list[tuple[float, float]],
-    img1: Datum,
-    img2: Datum,
-) -> list[GroundTruth]:
-    return [
-        GroundTruth(
-            datum=img1,
-            annotations=[
-                Annotation(
-                    task_type=TaskType.OBJECT_DETECTION,
-                    labels=[Label(key="class_name", value="maine coon cat")],
-                    bounding_box=Box([rect1]),
-                ),
-                Annotation(
-                    task_type=TaskType.OBJECT_DETECTION,
-                    labels=[Label(key="class", value="british shorthair")],
-                    bounding_box=Box([rect3]),
-                ),
-                Annotation(
-                    task_type=TaskType.OBJECT_DETECTION,
-                    labels=[Label(key="k1", value="v1")],
-                    bounding_box=Box([rect1]),
-                ),
-                Annotation(
-                    task_type=TaskType.OBJECT_DETECTION,
-                    labels=[Label(key="k2", value="v2")],
-                    bounding_box=Box([rect3]),
-                ),
-            ],
-        ),
-        GroundTruth(
-            datum=img2,
-            annotations=[
-                Annotation(
-                    task_type=TaskType.OBJECT_DETECTION,
-                    labels=[Label(key="class", value="siamese cat")],
-                    bounding_box=Box([rect2]),
-                ),
-                Annotation(
-                    task_type=TaskType.OBJECT_DETECTION,
-                    labels=[Label(key="k1", value="v1")],
-                    bounding_box=Box([rect2]),
-                ),
-            ],
-        ),
-    ]
+    assert both_evaluations_from_evaluation_ids[0].metrics[-1]["value"] == 0
 
+    # with sorting, the evaluation with the higher mAPAveragedOverIOUs is returned first
+    assert (
+        both_evaluations_from_evaluation_ids_sorted[0].metrics[-1]["value"]
+        == 0.504950495049505
+    )
 
-@pytest.fixture
-def preds_det_with_label_maps(
-    rect1: list[tuple[float, float]],
-    rect2: list[tuple[float, float]],
-    img1: Datum,
-    img2: Datum,
-) -> list[Prediction]:
-    return [
-        Prediction(
-            datum=img1,
-            annotations=[
-                Annotation(
-                    task_type=TaskType.OBJECT_DETECTION,
-                    labels=[Label(key="class", value="cat", score=0.3)],
-                    bounding_box=Box([rect1]),
-                ),
-                Annotation(
-                    task_type=TaskType.OBJECT_DETECTION,
-                    labels=[Label(key="k1", value="v1", score=0.3)],
-                    bounding_box=Box([rect1]),
-                ),
-            ],
-        ),
-        Prediction(
-            datum=img2,
-            annotations=[
-                Annotation(
-                    task_type=TaskType.OBJECT_DETECTION,
-                    labels=[Label(key="class_name", value="cat", score=0.98)],
-                    bounding_box=Box([rect2]),
-                ),
-                Annotation(
-                    task_type=TaskType.OBJECT_DETECTION,
-                    labels=[Label(key="k2", value="v2", score=0.98)],
-                    bounding_box=Box([rect2]),
-                ),
-            ],
-        ),
-    ]
+    # test bad metrics_to_sort_by list
+    with pytest.raises(ClientException):
+        both_evaluations_from_evaluation_ids_sorted = client.get_evaluations(
+            evaluation_ids=[eval_job.id, eval_job2.id],
+            metrics_to_sort_by=["AP"],
+        )
 
 
 def test_evaluate_detection_with_label_maps(
