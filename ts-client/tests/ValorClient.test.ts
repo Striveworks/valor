@@ -247,7 +247,7 @@ test('evaluation methods', async () => {
   expect((await client.getEvaluationsByModelNames([modelNames[0]])).length).toBe(2);
   expect(
     (
-      await client.getEvaluationsByModelNames(modelNames, null, null, {
+      await client.getEvaluationsByModelNames(modelNames, 0, -1, {
         Accuracy: 'class'
       })
     ).length
