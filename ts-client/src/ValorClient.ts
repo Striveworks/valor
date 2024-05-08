@@ -6,9 +6,21 @@ import axios, { AxiosInstance } from 'axios';
  * @param value The value to type check.
  * @returns A boolean result.
  */
-function isGeoJSONObject(value: any): value is { type: string, coordinates: any } {
-  const geoJSONTypes: string[] = ["point", "linestring", "polygon", "multipoint", "multilinestring", "multipolygon"];
-  return typeof value === 'object' && value !== null && 'type' in value && geoJSONTypes.includes((value.type as string).toLowerCase());
+function isGeoJSONObject(value: any): value is { type: string; coordinates: any } {
+  const geoJSONTypes: string[] = [
+    'point',
+    'linestring',
+    'polygon',
+    'multipoint',
+    'multilinestring',
+    'multipolygon'
+  ];
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'type' in value &&
+    geoJSONTypes.includes((value.type as string).toLowerCase())
+  );
 }
 
 /**
@@ -17,8 +29,12 @@ function isGeoJSONObject(value: any): value is { type: string, coordinates: any 
  * @param input An object containing metadata.
  * @returns The encoded object.
  */
-function encodeMetadata(input: { [key: string]: any }): { [key: string]: {type: string; value: any;} | boolean | number | string } {
-  const output: { [key: string]: {type: string; value: any;} | boolean | number | string } = {};
+function encodeMetadata(input: { [key: string]: any }): {
+  [key: string]: { type: string; value: any } | boolean | number | string;
+} {
+  const output: {
+    [key: string]: { type: string; value: any } | boolean | number | string;
+  } = {};
 
   for (const key in input) {
     const value = input[key];
@@ -30,7 +46,11 @@ function encodeMetadata(input: { [key: string]: any }): { [key: string]: {type: 
     } else if (isGeoJSONObject(value)) {
       valueType = 'geojson';
       output[key] = { type: valueType, value };
-    } else if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+    } else if (
+      typeof value === 'string' ||
+      typeof value === 'number' ||
+      typeof value === 'boolean'
+    ) {
       output[key] = value;
     } else {
       console.warn(`Unknown type for key "${key}".`);
@@ -47,13 +67,15 @@ function encodeMetadata(input: { [key: string]: any }): { [key: string]: {type: 
  * @param input An encoded Valor metadata object.
  * @returns The decoded object.
  */
-function decodeMetadata(input: { [key: string]: {type: string; value: any;} | boolean | number | string}): { [key: string]: any } {
+function decodeMetadata(input: {
+  [key: string]: { type: string; value: any } | boolean | number | string;
+}): { [key: string]: any } {
   const output: { [key: string]: any } = {};
 
   for (const key in input) {
     const item = input[key];
 
-    if (typeof item == "object"){
+    if (typeof item == 'object') {
       const { type, value } = item;
       switch (type.toLowerCase()) {
         case 'datetime':
@@ -70,7 +92,7 @@ function decodeMetadata(input: { [key: string]: {type: string; value: any;} | bo
           break;
       }
     } else {
-      output[key] = item
+      output[key] = item;
     }
   }
 
@@ -104,7 +126,7 @@ export type Model = {
 export type Datum = {
   uid: string;
   metadata: Partial<Record<string, any>>;
-}
+};
 
 export type Annotation = {
   task_type: TaskType;
@@ -114,7 +136,7 @@ export type Annotation = {
   polygon?: number[][][];
   raster?: object;
   embedding?: number[];
-}
+};
 
 export type Metric = {
   type: string;
@@ -228,7 +250,7 @@ export class ValorClient {
    * @returns {Promise<void>}
    */
   public async createDataset(name: string, metadata: object): Promise<void> {
-    metadata = encodeMetadata(metadata)
+    metadata = encodeMetadata(metadata);
     await this.client.post('/datasets', { name, metadata });
   }
 
@@ -306,7 +328,7 @@ export class ValorClient {
    */
   public async getModelByName(name: string): Promise<Model> {
     const response = await this.client.get(`/models/${name}`);
-    response.data.metadata = decodeMetadata(response.data.metadata)
+    response.data.metadata = decodeMetadata(response.data.metadata);
     return response.data;
   }
 
@@ -319,7 +341,7 @@ export class ValorClient {
    * @returns {Promise<void>}
    */
   public async createModel(name: string, metadata: object): Promise<void> {
-    metadata = encodeMetadata(metadata)
+    metadata = encodeMetadata(metadata);
     await this.client.post('/models', { name, metadata });
   }
 
@@ -383,14 +405,14 @@ export class ValorClient {
       datum_filter: { dataset_names: [dataset] },
       parameters: {
         task_type: taskType,
-        iou_thresholds_to_compute:iouThresholdsToCompute,
+        iou_thresholds_to_compute: iouThresholdsToCompute,
         iou_thresholds_to_return: iouThresholdsToReturn,
         label_map: labelMap,
         recall_score_threshold: recallScoreThreshold,
         compute_pr_curves: computePrCurves,
-        pr_curve_iou_threshold: prCurveIouThreshold,
-       },
-       meta: {}
+        pr_curve_iou_threshold: prCurveIouThreshold
+      },
+      meta: {}
     });
     return this.unmarshalEvaluation(response.data[0]);
   }
@@ -427,14 +449,14 @@ export class ValorClient {
       datum_filter: { dataset_names: [dataset] },
       parameters: {
         task_type: taskType,
-        iou_thresholds_to_compute:iouThresholdsToCompute,
+        iou_thresholds_to_compute: iouThresholdsToCompute,
         iou_thresholds_to_return: iouThresholdsToReturn,
         label_map: labelMap,
         recall_score_threshold: recallScoreThreshold,
         compute_pr_curves: computePrCurves,
-        pr_curve_iou_threshold: prCurveIouThreshold,
-       },
-       meta: {}
+        pr_curve_iou_threshold: prCurveIouThreshold
+      },
+      meta: {}
     });
     return response.data.map(this.unmarshalEvaluation);
   }
@@ -456,11 +478,21 @@ export class ValorClient {
    * Fetches an evaluation by id
    *
    * @param id id of the evaluation
+   * @param offset The start index of the evaluations to return. Used for pagination.
+   * @param limit The number of evaluations to return. Used for pagination.
    *
    * @returns {Promise<Evaluation>}
    */
-  public async getEvaluationById(id: number): Promise<Evaluation> {
-    const evaluations = await this.getEvaluations({ evaluation_ids: id });
+  public async getEvaluationById(
+    id: number,
+    offset?: number,
+    limit?: number
+  ): Promise<Evaluation> {
+    const evaluations = await this.getEvaluations({
+      evaluation_ids: id,
+      offset: offset,
+      limit: limit
+    });
     return evaluations[0];
   }
 
@@ -468,12 +500,20 @@ export class ValorClient {
    * Bulk fetches evaluation by array of ids
    *
    * @param id id of the evaluation
+   * @param offset The start index of the evaluations to return. Used for pagination.
+   * @param limit The number of evaluations to return. Used for pagination.
    *
    * @returns {Promise<Evaluation[]>}
    */
-  public async getEvaluationsByIds(ids: number[]): Promise<Evaluation[]> {
+  public async getEvaluationsByIds(
+    ids: number[],
+    offset?: number,
+    limit?: number
+  ): Promise<Evaluation[]> {
     const evaluations = await this.getEvaluations({
-      evaluation_ids: ids.map((id) => id.toString()).join(',')
+      evaluation_ids: ids.map((id) => id.toString()).join(','),
+      offset: offset,
+      limit: limit
     });
     return evaluations;
   }
@@ -482,25 +522,43 @@ export class ValorClient {
    * Fetches all evaluations associated to given models
    *
    * @param modelNames names of the models
+   * @param offset The start index of the evaluations to return. Used for pagination.
+   * @param limit The number of evaluations to return. Used for pagination.
    *
    * @returns {Promise<Evaluation[]>}
    */
-  public async getEvaluationsByModelNames(modelNames: string[]): Promise<Evaluation[]> {
+  public async getEvaluationsByModelNames(
+    modelNames: string[],
+    offset?: number,
+    limit?: number
+  ): Promise<Evaluation[]> {
     // turn modelNames into a comma-separated string
-    return this.getEvaluations({ models: modelNames.join(',') });
+    return this.getEvaluations({
+      models: modelNames.join(','),
+      offset: offset,
+      limit: limit
+    });
   }
 
   /**
    * Fetches all evaluations associated to given datasets
    *
    * @param datasetNames names of the datasets
+   * @param offset The start index of the evaluations to return. Used for pagination.
+   * @param limit The number of evaluations to return. Used for pagination.
    *
    * @returns {Promise<Evaluation[]>}
    */
   public async getEvaluationsByDatasetNames(
-    datasetNames: string[]
+    datasetNames: string[],
+    offset?: number,
+    limit?: number
   ): Promise<Evaluation[]> {
-    return this.getEvaluations({ datasets: datasetNames.join(',') });
+    return this.getEvaluations({
+      datasets: datasetNames.join(','),
+      offset: offset,
+      limit: limit
+    });
   }
 
   /**
@@ -517,7 +575,7 @@ export class ValorClient {
     datum: Datum,
     annotations: Annotation[]
   ): Promise<void> {
-    datum.metadata = encodeMetadata(datum.metadata)
+    datum.metadata = encodeMetadata(datum.metadata);
     for (let index = 0, length = annotations.length; index < length; ++index) {
       annotations[index].metadata = encodeMetadata(annotations[index].metadata);
     }
@@ -546,7 +604,7 @@ export class ValorClient {
     datum: Datum,
     annotations: Annotation[]
   ): Promise<void> {
-    datum.metadata = encodeMetadata(datum.metadata)
+    datum.metadata = encodeMetadata(datum.metadata);
     for (let index = 0, length = annotations.length; index < length; ++index) {
       annotations[index].metadata = encodeMetadata(annotations[index].metadata);
     }
