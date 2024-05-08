@@ -502,18 +502,23 @@ export class ValorClient {
    * @param id id of the evaluation
    * @param offset The start index of the evaluations to return. Used for pagination.
    * @param limit The number of evaluations to return. Used for pagination.
+   * @param metricsToSortBy A map of metrics to sort the evaluations by.
    *
    * @returns {Promise<Evaluation[]>}
    */
   public async getEvaluationsByIds(
     ids: number[],
     offset?: number,
-    limit?: number
+    limit?: number,
+    metricsToSortBy?: {
+      [key: string]: string | { [inner_key: string]: string };
+    }
   ): Promise<Evaluation[]> {
     const evaluations = await this.getEvaluations({
       evaluation_ids: ids.map((id) => id.toString()).join(','),
       offset: offset,
-      limit: limit
+      limit: limit,
+      metrics_to_sort_by: metricsToSortBy != null ? JSON.stringify(metricsToSortBy) : null
     });
     return evaluations;
   }
@@ -524,19 +529,24 @@ export class ValorClient {
    * @param modelNames names of the models
    * @param offset The start index of the evaluations to return. Used for pagination.
    * @param limit The number of evaluations to return. Used for pagination.
+   * @param metricsToSortBy A map of metrics to sort the evaluations by.
    *
    * @returns {Promise<Evaluation[]>}
    */
   public async getEvaluationsByModelNames(
     modelNames: string[],
     offset?: number,
-    limit?: number
+    limit?: number,
+    metricsToSortBy?: {
+      [key: string]: string | { [inner_key: string]: string };
+    }
   ): Promise<Evaluation[]> {
     // turn modelNames into a comma-separated string
     return this.getEvaluations({
       models: modelNames.join(','),
       offset: offset,
-      limit: limit
+      limit: limit,
+      metrics_to_sort_by: metricsToSortBy != null ? JSON.stringify(metricsToSortBy) : null
     });
   }
 
@@ -546,18 +556,23 @@ export class ValorClient {
    * @param datasetNames names of the datasets
    * @param offset The start index of the evaluations to return. Used for pagination.
    * @param limit The number of evaluations to return. Used for pagination.
+   * @param metricsToSortBy A map of metrics to sort the evaluations by.
    *
    * @returns {Promise<Evaluation[]>}
    */
   public async getEvaluationsByDatasetNames(
     datasetNames: string[],
     offset?: number,
-    limit?: number
+    limit?: number,
+    metricsToSortBy?: {
+      [key: string]: string | { [inner_key: string]: string };
+    }
   ): Promise<Evaluation[]> {
     return this.getEvaluations({
       datasets: datasetNames.join(','),
       offset: offset,
-      limit: limit
+      limit: limit,
+      metrics_to_sort_by: metricsToSortBy != null ? JSON.stringify(metricsToSortBy) : null
     });
   }
 
