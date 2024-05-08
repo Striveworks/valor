@@ -3,9 +3,10 @@
 from typing import Sequence
 
 # import numpy as np
-# from sqlalchemy import Subquery  # Integer
+from sqlalchemy import Subquery  # Integer
 from sqlalchemy.orm import Session  # Bundle
-from sqlalchemy.sql import and_, select  # case, func, join,
+from sqlalchemy.sql import and_, select  # case, func, join, Select,
+from sqlalchemy.sql.selectable import NamedFromClause
 
 from valor_api import enums, schemas
 from valor_api.backend import core, models
@@ -20,19 +21,60 @@ from valor_api.backend.metrics.metric_utils import (
 )
 from valor_api.backend.query import Query
 
-# from sqlalchemy.sql.selectable import NamedFromClause
-
-
 LabelMapType = list[list[list[str]]]
 
 
-def _compute_llm_evaluation_metrics_at_grouper_key(
+def _generate_groundtruth_query(
+    groundtruth_filter: schemas.Filter,
+) -> NamedFromClause | Subquery:
+    """Generate a sqlalchemy query to fetch a ground truth."""
+    return (
+        Query(
+            models.GroundTruth,
+            models.Annotation.datum_id.label("datum_id"),
+            models.Label.key.label("label_key"),
+            models.Label.value.label("groundtruth"),
+            models.Dataset.name.label("dataset_name"),
+        )
+        .filter(groundtruth_filter)
+        .groundtruths(
+            as_subquery=False
+        )  # TODO should I change this? as_subquery=False
+        .alias()
+    )
+
+
+def _generate_prediction_query(
+    prediction_filter: schemas.Filter,
+) -> NamedFromClause | Subquery:
+    """Generate a sqlalchemy query to fetch a prediction."""
+
+    return (
+        Query(
+            models.Prediction,
+            models.Annotation.datum_id.label("datum_id"),
+            models.Annotation.meta.label("prediction_annotation_metadata"),
+            models.Annotation.task_type.label("task_type"),
+            models.Label.key.label("label_key"),
+            models.Label.value.label("prediction"),
+            models.Dataset.name.label("dataset_name"),
+        )
+        .filter(prediction_filter)
+        .predictions(
+            as_subquery=False
+        )  # TODO should I change this? as_subquery=False
+        .alias()
+    )
+
+
+def _compute_llm_evaluation_metrics_at_grouper_id(
     db: Session,
     prediction_filter: schemas.Filter,
     groundtruth_filter: schemas.Filter,
-    grouper_key: str,
+    grouper_label: models.Label,
+    grouper_id,  # TODO what type?
     grouper_mappings: dict[str, dict[str, dict]],
-    metric_list: list[str] = [],
+    metrics_to_return: list[str] = [],
 ) -> (
     Sequence[
         schemas.AnswerCorrectnessMetric
@@ -61,9 +103,13 @@ def _compute_llm_evaluation_metrics_at_grouper_key(
         The filter to be used to query predictions.
     groundtruth_filter : schemas.Filter
         The filter to be used to query groundtruths.
+    grouper_label: models.Label
+        TODO
+    grouper_id: TODO
+        TODO
     grouper_mappings: dict[str, dict[str, dict]]
         A dictionary of mappings that connect groupers to their related labels.
-    metric_list: list[str]
+    metrics_to_return: list[str]
         TODO
 
     Returns
@@ -75,69 +121,56 @@ def _compute_llm_evaluation_metrics_at_grouper_key(
         Returns None if there are no predictions and groundtruths with the given label
         key for the same datum. Otherwise returns the desired metrics.
     """
+    groundtruth_subquery = _generate_groundtruth_query(groundtruth_filter)
+    prediction_subquery = _generate_prediction_query(prediction_filter)
 
-    label_key_filter = list(
-        grouper_mappings["grouper_key_to_label_keys_mapping"][grouper_key]
-    )
+    # groundtruth_query = select(
+    #     groundtruth_subquery.c.datum_id.label("datum_id"),
+    #     groundtruth_subquery.c.label_key.label("label_key"),
+    #     groundtruth_subquery.c.groundtruth.label("groundtruth"),
+    #     groundtruth_subquery.c.dataset_name.label("dataset_name"),
+    # ).select_from(groundtruth_subquery)
 
-    # get groundtruths and predictions that conform to filters
-    gFilter = groundtruth_filter.model_copy()
-    gFilter.label_keys = label_key_filter
+    # prediction_query = select(
+    #     prediction_subquery.c.datum_id.label("datum_id"),
+    #     prediction_subquery.c.label_key.label("label_key"),
+    #     prediction_subquery.c.task_type.label("task_type"),
+    #     prediction_subquery.c.prediction.label("prediction"),
+    #     prediction_subquery.c.prediction_annotation_metadata.label(
+    #         "prediction_annotation_metadata"
+    #     ),
+    #     prediction_subquery.c.dataset_name.label("dataset_name"),
+    # ).select_from(prediction_subquery)
 
-    pFilter = prediction_filter.model_copy()
-    pFilter.label_keys = label_key_filter
-
-    groundtruths = (
-        Query(
-            models.GroundTruth,
-            models.Annotation.datum_id.label("datum_id"),
-            models.Label.key.label("label_key"),
-            models.Label.value.label("groundtruth"),
-            models.Dataset.name.label("dataset_name"),
-        )
-        .filter(gFilter)
-        .groundtruths(as_subquery=False)
-        .alias()
-    )
-
-    predictions = (
-        Query(
-            models.Prediction,
-            models.Annotation.datum_id.label("datum_id"),
-            models.Annotation.meta.label("prediction_annotation_metadata"),
-            models.Annotation.task_type.label("task_type"),
-            models.Label.key.label("label_key"),
-            models.Label.value.label("prediction"),
-            models.Dataset.name.label("dataset_name"),
-        )
-        .filter(pFilter)
-        .predictions(as_subquery=False)
-        .alias()
-    )
+    # res_gt = db.execute(groundtruth_query).all()
+    # res_pred = db.execute(prediction_query).all()
 
     total_query = (
         select(
-            groundtruths.c.datum_id.label("datum_id"),
-            groundtruths.c.label_key.label("label_key"),
-            predictions.c.task_type.label("task_type"),
-            groundtruths.c.groundtruth.label("groundtruth"),
-            predictions.c.prediction.label("prediction"),
-            predictions.c.prediction_annotation_metadata.label(
+            groundtruth_subquery.c.datum_id.label("datum_id"),
+            groundtruth_subquery.c.label_key.label("label_key"),
+            prediction_subquery.c.task_type.label("task_type"),
+            groundtruth_subquery.c.groundtruth.label("groundtruth"),
+            prediction_subquery.c.prediction.label("prediction"),
+            prediction_subquery.c.prediction_annotation_metadata.label(
                 "prediction_annotation_metadata"
             ),
         )
-        .select_from(groundtruths)
+        .select_from(groundtruth_subquery)
         .join(
-            predictions,
+            prediction_subquery,
             and_(
-                groundtruths.c.datum_id == predictions.c.datum_id,
-                groundtruths.c.label_key == predictions.c.label_key,
+                # groundtruth_subquery.c.datum_id == prediction_subquery.c.datum_id,
+                groundtruth_subquery.c.label_key
+                == prediction_subquery.c.label_key,
             ),
         )
     )
 
     # TODO rename this output
     res = db.execute(total_query).all()
+
+    # pdb.set_trace()
 
     if len(res) == 0:
         # this means there's no predictions and groundtruths with the same datum id and label key
@@ -147,7 +180,8 @@ def _compute_llm_evaluation_metrics_at_grouper_key(
     client.connect()
     metrics = []
 
-    for metric_name in metric_list:
+    # TODO use grouper_id and grouper_label
+    for metric_name in metrics_to_return:
         if metric_name == "AnswerCorrectness":
             raise NotImplementedError
         elif metric_name == "AnswerRelevance":
@@ -179,11 +213,7 @@ def _compute_llm_evaluation_metrics_at_grouper_key(
         elif metric_name == "Toxicity":
             raise NotImplementedError
 
-    # metrics that are per label
-    for grouper_value in grouper_mappings["grouper_key_to_labels_mapping"][
-        grouper_key
-    ].keys():
-        pass  # TODO is there anything we want to use grouper mappings for?
+    # pdb.set_trace()
 
     return metrics
 
@@ -193,7 +223,7 @@ def _compute_llm_evaluation_metrics(
     prediction_filter: schemas.Filter,
     groundtruth_filter: schemas.Filter,
     label_map: LabelMapType | None = None,
-    metric_list: list[str] = [],
+    metrics_to_return: list[str] = [],
 ) -> Sequence[
     schemas.AnswerCorrectnessMetric
     | schemas.AnswerRelevanceMetric
@@ -221,7 +251,7 @@ def _compute_llm_evaluation_metrics(
         The filter to be used to query groundtruths.
     label_map: LabelMapType, optional
         Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
-    metric_list: list[str]
+    metrics_to_return: list[str]
         TODO
 
     Returns
@@ -242,25 +272,51 @@ def _compute_llm_evaluation_metrics(
     )
 
     # compute metrics for each grouper id
-    metrics = []
-    for grouper_key in grouper_mappings[
-        "grouper_key_to_labels_mapping"
-    ].keys():
-        print(grouper_key)
-        llm_evaluation_metrics = (
-            _compute_llm_evaluation_metrics_at_grouper_key(
-                db=db,
-                prediction_filter=prediction_filter,
-                groundtruth_filter=groundtruth_filter,
-                grouper_key=grouper_key,
-                grouper_mappings=grouper_mappings,
-                metric_list=metric_list,
-            )
-        )
-        if llm_evaluation_metrics is not None:
-            metrics.extend(llm_evaluation_metrics)
+    ret = []
+    for grouper_id, label_ids in grouper_mappings[
+        "grouper_id_to_label_ids_mapping"
+    ].items():
+        # set filter
+        groundtruth_filter.label_ids = [label_id for label_id in label_ids]
+        prediction_filter.label_ids = [label_id for label_id in label_ids]
 
-    return metrics
+        grouper_label = grouper_mappings[
+            "grouper_id_to_grouper_label_mapping"
+        ][grouper_id]
+
+        llm_evaluation_metrics = _compute_llm_evaluation_metrics_at_grouper_id(
+            db=db,
+            prediction_filter=prediction_filter,
+            groundtruth_filter=groundtruth_filter,
+            grouper_label=grouper_label,
+            grouper_id=grouper_id,
+            grouper_mappings=grouper_mappings,
+            metrics_to_return=metrics_to_return,
+        )
+
+        if llm_evaluation_metrics is not None:
+            ret.extend(llm_evaluation_metrics)
+
+    # TODO remove
+    # metrics = []
+    # for grouper_key in grouper_mappings[
+    #     "grouper_key_to_labels_mapping"
+    # ].keys():
+    #     print(grouper_key)
+    #     llm_evaluation_metrics = (
+    #         _compute_llm_evaluation_metrics_at_grouper_key(
+    #             db=db,
+    #             prediction_filter=prediction_filter,
+    #             groundtruth_filter=groundtruth_filter,
+    #             grouper_key=grouper_key,
+    #             grouper_mappings=grouper_mappings,
+    #             metrics_to_return=metrics_to_return,
+    #         )
+    #     )
+    #     if llm_evaluation_metrics is not None:
+    #         metrics.extend(llm_evaluation_metrics)
+
+    return ret
 
 
 @validate_computation
@@ -299,9 +355,9 @@ def compute_llm_evaluation_metrics(
     prediction_filter.task_types = [parameters.task_type]
 
     # get the metrics to compute
-    metric_list = parameters.metrics_to_return
+    metrics_to_return = parameters.metrics_to_return
 
-    assert metric_list, "No metrics to compute."
+    assert metrics_to_return, "No metrics to compute."
 
     log_evaluation_item_counts(
         db=db,
@@ -315,7 +371,7 @@ def compute_llm_evaluation_metrics(
         prediction_filter=prediction_filter,
         groundtruth_filter=groundtruth_filter,
         label_map=parameters.label_map,
-        metric_list=metric_list,
+        metrics_to_return=metrics_to_return,
     )
 
     metric_mappings = create_metric_mappings(

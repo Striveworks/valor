@@ -105,25 +105,43 @@ def _create_llm_evaluation_grouper_mappings(
     """Create grouper mappings for use when evaluating llm guided metrics."""
     # TODO Write a test that tests this grouper functionality. The default functional test does not test this function, as no label map is specified.
 
-    # define mappers to connect groupers with labels
-    label_value_to_grouper_value = {}
-    grouper_key_to_labels_mapping = defaultdict(lambda: defaultdict(set))
-    grouper_key_to_label_keys_mapping = defaultdict(set)
+    # label_value_to_grouper_value = {}  # TODO remove
+    # grouper_key_to_labels_mapping = defaultdict(
+    #     lambda: defaultdict(set)
+    # )  # TODO remove
+    # grouper_key_to_label_keys_mapping = defaultdict(set)  # TODO remove
+    grouper_id_to_grouper_label_mapping = {}
+    grouper_id_to_label_ids_mapping = defaultdict(list)
 
     for label in labels:
-        # the grouper should equal the (label.key, label.value) if it wasn't mapped by the user
-        grouper_key, grouper_value = mapping_dict.get(
+        # # TODO remove
+        # grouper_key, grouper_value = mapping_dict.get(
+        #     (label.key, label.value), (label.key, label.value)
+        # )
+        # label_value_to_grouper_value[label.value] = grouper_value
+        # grouper_key_to_label_keys_mapping[grouper_key].add(label.key)
+        # grouper_key_to_labels_mapping[grouper_key][grouper_value].add(label)
+
+        # TODO keep
+        mapped_key, mapped_value = mapping_dict.get(
             (label.key, label.value), (label.key, label.value)
         )
+        # create an integer to track each group by
+        grouper_id = (
+            mapped_key  # TODO should be: hash((mapped_key, mapped_value))
+        )
 
-        label_value_to_grouper_value[label.value] = grouper_value
-        grouper_key_to_label_keys_mapping[grouper_key].add(label.key)
-        grouper_key_to_labels_mapping[grouper_key][grouper_value].add(label)
+        grouper_id_to_grouper_label_mapping[grouper_id] = schemas.Label(
+            key=mapped_key, value=mapped_value
+        )
+        grouper_id_to_label_ids_mapping[grouper_id].append(label.id)
 
     return {
-        "label_value_to_grouper_value": label_value_to_grouper_value,
-        "grouper_key_to_labels_mapping": grouper_key_to_labels_mapping,
-        "grouper_key_to_label_keys_mapping": grouper_key_to_label_keys_mapping,
+        # "label_value_to_grouper_value": label_value_to_grouper_value,  # TODO remove
+        # "grouper_key_to_labels_mapping": grouper_key_to_labels_mapping,  # TODO remove
+        # "grouper_key_to_label_keys_mapping": grouper_key_to_label_keys_mapping,  # TODO remove
+        "grouper_id_to_label_ids_mapping": grouper_id_to_label_ids_mapping,
+        "grouper_id_to_grouper_label_mapping": grouper_id_to_grouper_label_mapping,
     }
 
 

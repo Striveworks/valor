@@ -225,7 +225,7 @@ def test_compute_llm_evaluation(
     )
 
     # TODO eventually get all working
-    metric_list = [
+    metrics_to_return = [
         # "AnswerCorrectness",
         # "AnswerRelevance",
         # "Bias",
@@ -241,7 +241,11 @@ def test_compute_llm_evaluation(
     ]
 
     metrics = _compute_llm_evaluation_metrics(
-        db, model_filter, datum_filter, label_map=None, metric_list=metric_list
+        db,
+        model_filter,
+        datum_filter,
+        label_map=None,
+        metrics_to_return=metrics_to_return,
     )
 
     # Test metrics TODO add all metrics
@@ -294,7 +298,7 @@ def test_llm_evaluation(
     model_name: str,
     llm_evaluation_test_data,
 ):
-    metric_list = [
+    metrics_to_return = [
         # "AnswerCorrectness",
         # "AnswerRelevance",
         # "Bias",
@@ -318,7 +322,7 @@ def test_llm_evaluation(
         datum_filter=schemas.Filter(dataset_names=[dataset_name]),
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.LLM_EVALUATION,
-            metrics_to_return=metric_list,
+            metrics_to_return=metrics_to_return,
             llm_url=url,
             llm_api_key=api_key,
         ),
