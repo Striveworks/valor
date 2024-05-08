@@ -93,18 +93,18 @@ class EvaluationParameters(BaseModel):
                     )
 
                 allowed_metrics = [
-                    "AnswerCorrectnessMetric",
-                    "AnswerRelevanceMetric",
-                    "BiasMetric",
-                    "CoherenceMetric",
-                    "ContextPrecisionMetric",
-                    "ContextRecallMetric",
-                    "ContextRelevanceMetric",
-                    "FaithfulnessMetric",
-                    "GrammaticalityMetric",
-                    "HallucinationMetric",
-                    "QAGMetric",
-                    "ToxicityMetric",
+                    "AnswerCorrectness",
+                    "AnswerRelevance",
+                    "Bias",
+                    "Coherence",
+                    "ContextPrecision",
+                    "ContextRecall",
+                    "ContextRelevance",
+                    "Faithfulness",
+                    "Grammaticality",
+                    "Hallucination",
+                    "QAG",
+                    "Toxicity",
                 ]
 
                 if values.metrics_to_return is None or not all(

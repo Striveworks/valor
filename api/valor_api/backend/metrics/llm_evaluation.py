@@ -147,13 +147,13 @@ def _compute_llm_evaluation_metrics_at_grouper_key(
     metrics = []
 
     for metric_name in metric_list:
-        if metric_name == "AnswerCorrectnessMetric":
+        if metric_name == "AnswerCorrectness":
             raise NotImplementedError
-        elif metric_name == "AnswerRelevanceMetric":
+        elif metric_name == "AnswerRelevance":
             raise NotImplementedError
-        elif metric_name == "BiasMetric":
+        elif metric_name == "Bias":
             raise NotImplementedError
-        elif metric_name == "CoherenceMetric":
+        elif metric_name == "Coherence":
             # TODO how does this work with grouping?
             for row in res:
                 label_key = row[1]
@@ -161,21 +161,21 @@ def _compute_llm_evaluation_metrics_at_grouper_key(
                 metrics.append(
                     client.coherence(text=generated_text, label_key=label_key)
                 )
-        elif metric_name == "ContextPrecisionMetric":
+        elif metric_name == "ContextPrecision":
             raise NotImplementedError
-        elif metric_name == "ContextRecallMetric":
+        elif metric_name == "ContextRecall":
             raise NotImplementedError
-        elif metric_name == "ContextRelevanceMetric":
+        elif metric_name == "ContextRelevance":
             raise NotImplementedError
-        elif metric_name == "FaithfulnessMetric":
+        elif metric_name == "Faithfulness":
             raise NotImplementedError
-        elif metric_name == "GrammaticalityMetric":
+        elif metric_name == "Grammaticality":
             raise NotImplementedError
-        elif metric_name == "HallucinationMetric":
+        elif metric_name == "Hallucination":
             raise NotImplementedError
-        elif metric_name == "QAGMetric":
+        elif metric_name == "QAG":
             raise NotImplementedError
-        elif metric_name == "ToxicityMetric":
+        elif metric_name == "Toxicity":
             raise NotImplementedError
 
     # metrics that are per label

@@ -15,10 +15,19 @@ Evaluation Steps:
 class OpenAIClient:
     """
     Wrapper for calls to OpenAI
+
+    Parameters
+    ----------
+    api_key : str, optional
+        The OpenAI API key to use. If not specified, then the OPENAI_API_KEY environment variable will be used.
+    seed : int, optional
+        An optional seed can be provided to GPT to get deterministic results.
+    model_name : str
+        The model to use. Defaults to "gpt-3.5-turbo".
     """
 
     # url: str
-    api_key: str | None = None
+    api_key: str | None = None  # If api_key is not specified, then OPENAI_API_KEY environment variable will be used.
     seed: int | None = None
     model_name: str = "gpt-3.5-turbo"  # gpt-3.5-turbo gpt-4-turbo
 
@@ -90,14 +99,15 @@ class OpenAIClient:
         ]
 
         response = self(messages)
+        # TODO Should we take just the first word of the response, in case GPT outputs a number followed by an explanation?
 
         try:
             response = int(response)
-        except ValueError:
-            return None
-
-        if response not in [1, 2, 3, 4, 5]:
-            return None
+            assert response in [1, 2, 3, 4, 5]
+        except Exception:
+            raise ValueError(
+                f"OpenAI response was not a valid coherence score: {response}"
+            )
 
         return schemas.CoherenceMetric(
             label_key=label_key,
