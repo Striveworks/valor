@@ -41,6 +41,13 @@ class OpenAIClient:
         """
         self.api_key = api_key
         self.seed = seed
+
+    def connect(
+        self,
+    ):
+        """
+        TODO This is separated for now because I want to mock connecting to the OpenAI API.
+        """
         if self.api_key is None:
             self.client = openai.OpenAI()
         else:

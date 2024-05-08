@@ -144,6 +144,7 @@ def _compute_llm_evaluation_metrics_at_grouper_key(
         return None
 
     client = OpenAIClient()
+    client.connect()
     metrics = []
 
     for metric_name in metric_list:
