@@ -1,7 +1,18 @@
 from datetime import timezone
 from typing import Sequence
 
-from sqlalchemy import and_, desc, func, or_, select, update
+from sqlalchemy import (
+    and_,
+    asc,
+    case,
+    desc,
+    func,
+    nulls_last,
+    or_,
+    select,
+    update,
+)
+from sqlalchemy.dialects.postgresql import aggregate_order_by
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.elements import BinaryExpression
@@ -618,6 +629,7 @@ def get_paginated_evaluations(
     model_names: list[str] | None = None,
     offset: int = 0,
     limit: int = -1,
+    metrics_to_sort_by: dict[str, dict[str, str] | str] | None = None,
 ) -> tuple[list[schemas.EvaluationResponse], dict[str, str]]:
     """
     Returns all evaluations that conform to user-supplied constraints.
@@ -636,6 +648,8 @@ def get_paginated_evaluations(
         The start index of the items to return.
     limit : int, optional
         The number of items to return. Returns all items when set to -1.
+    metrics_to_sort_by: dict[str, dict[str, str] | str], optional
+        An optional dict of metric types to sort the evaluations by.
 
     Returns
     ----------
@@ -673,19 +687,114 @@ def get_paginated_evaluations(
     if limit == -1:
         limit = count
 
-    evaluations = (
-        db.query(models.Evaluation)
-        .where(
-            and_(
-                *expr,
-                models.Evaluation.status != enums.EvaluationStatus.DELETING,
+    if metrics_to_sort_by is not None:
+        conditions = []
+        order_case = []
+
+        for i, (metric_type, label) in enumerate(metrics_to_sort_by.items()):
+            # if the value represents a label_key
+            if isinstance(label, str):
+                order_case.append(
+                    (
+                        and_(
+                            models.Metric.type == metric_type,
+                            models.Metric.parameters["label_key"].astext
+                            == label,
+                        ),
+                        i + 1,
+                    ),
+                )
+                conditions.append(
+                    and_(
+                        models.Metric.type == metric_type,
+                        models.Metric.parameters["label_key"].astext == label,
+                    )
+                )
+            # if the value represents a label
+            else:
+                order_case.append(
+                    (
+                        and_(
+                            models.Metric.type == metric_type,
+                            models.Label.key == label["key"],
+                            models.Label.value == label["value"],
+                        ),
+                        i + 1,
+                    ),
+                )
+                conditions.append(
+                    and_(
+                        models.Metric.type == metric_type,
+                        models.Label.key == label["key"],
+                        models.Label.value == label["value"],
+                    )
+                )
+
+        aggregated_sorting_field = (
+            select(
+                models.Metric.evaluation_id,
+                func.array_agg(
+                    aggregate_order_by(
+                        models.Metric.value, case(*order_case, else_=0)
+                    )
+                ).label("sort_array"),
             )
+            .select_from(models.Metric)
+            .group_by(models.Metric.evaluation_id)
+            .filter(or_(*conditions))
+            .alias()
         )
-        .order_by(desc(models.Evaluation.created_at))
-        .offset(offset)
-        .limit(limit)
-        .all()
-    )
+
+        evaluations = db.query(
+            select(
+                models.Evaluation.parameters["task_type"],
+                aggregated_sorting_field.c.sort_array,
+                models.Evaluation,
+            )
+            .select_from(models.Evaluation)
+            .join(
+                aggregated_sorting_field,
+                aggregated_sorting_field.c.evaluation_id
+                == models.Evaluation.id,
+                isouter=True,
+            )
+            .where(
+                and_(
+                    *expr,
+                    models.Evaluation.status
+                    != enums.EvaluationStatus.DELETING,
+                )
+            )
+            .order_by(
+                asc(models.Evaluation.parameters["task_type"]),
+                nulls_last(aggregated_sorting_field.c.sort_array.desc()),
+                desc(models.Evaluation.created_at),
+            )
+            .offset(offset)
+            .limit(limit)
+            .alias()
+        ).all()
+
+    else:
+        evaluations = (
+            db.query(
+                models.Evaluation,
+            )
+            .where(
+                and_(
+                    *expr,
+                    models.Evaluation.status
+                    != enums.EvaluationStatus.DELETING,
+                )
+            )
+            .order_by(
+                asc(models.Evaluation.parameters["task_type"]),
+                desc(models.Evaluation.created_at),
+            )
+            .offset(offset)
+            .limit(limit)
+            .all()
+        )
 
     content = _create_responses(db, evaluations)
 
