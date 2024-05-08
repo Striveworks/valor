@@ -253,7 +253,10 @@ test('evaluation methods', async () => {
   expect((await client.getEvaluationsByDatasetNames(['no-such-dataset'])).length).toBe(0);
   // check pagination
   expect((await client.getEvaluationsByModelNames(modelNames, 2)).length).toBe(2);
+  expect((await client.getEvaluationsByModelNames(modelNames, 3)).length).toBe(1);
   expect((await client.getEvaluationsByDatasetNames(datasetNames, 0, 2)).length).toBe(2);
+  expect((await client.getEvaluationsByDatasetNames(datasetNames, 2, 2)).length).toBe(2);
+  expect((await client.getEvaluationsByDatasetNames(datasetNames, 3, 2)).length).toBe(1);
 });
 
 test('bulk create or get evaluations', async () => {
