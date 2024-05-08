@@ -571,8 +571,8 @@ def test__compute_detection_metrics(
         {"iou": 0.75, "value": 1.0, "label": {"key": "class", "value": "4"}},
     ]
     expected_map_metrics = [
-        {"iou": 0.5, "value": 0.859},
-        {"iou": 0.75, "value": 0.761},
+        {"iou": 0.5, "value": 0.859, "label_key": "class"},
+        {"iou": 0.75, "value": 0.761, "label_key": "class"},
     ]
     expected_ap_metrics_ave_over_ious = [
         {
@@ -602,7 +602,7 @@ def test__compute_detection_metrics(
         },
     ]
     expected_map_metrics_ave_over_ious = [
-        {"ious": iou_thresholds, "value": 0.637}
+        {"ious": iou_thresholds, "value": 0.637, "label_key": "class"}
     ]
     expected_ar_metrics = [
         {
@@ -637,10 +637,7 @@ def test__compute_detection_metrics(
         },
     ]
     expected_mar_metrics = [
-        {
-            "ious": iou_thresholds,
-            "value": 0.652,
-        },
+        {"ious": iou_thresholds, "value": 0.652, "label_key": "class"},
     ]
 
     for metric_type, actual_metrics, expected_metrics in [
@@ -809,13 +806,10 @@ def test__compute_detection_metrics_with_rasters(
             "label": {"key": "class", "value": "label3"},
         },
         # mAP METRICS
-        {"iou": 0.5, "value": 0.667},
-        {"iou": 0.75, "value": 0.667},
+        {"iou": 0.5, "value": 0.667, "label_key": "class"},
+        {"iou": 0.75, "value": 0.667, "label_key": "class"},
         # mAP METRICS AVERAGED OVER IOUS
-        {
-            "ious": iou_thresholds,
-            "value": 0.667,
-        },
+        {"ious": iou_thresholds, "value": 0.667, "label_key": "class"},
         # AR METRICS
         {
             "ious": iou_thresholds,
@@ -833,10 +827,7 @@ def test__compute_detection_metrics_with_rasters(
             "label": {"key": "class", "value": "label3"},
         },
         # mAR METRICS
-        {
-            "ious": iou_thresholds,
-            "value": 0.667,
-        },
+        {"ious": iou_thresholds, "value": 0.667, "label_key": "class"},
     ]
 
     non_pr_metrics = metrics[:-1]

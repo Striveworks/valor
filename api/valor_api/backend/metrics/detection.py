@@ -785,18 +785,22 @@ def _compute_mean_ar_metrics(
     if len(ar_metrics) == 0:
         return []
 
-    ious_to_values = defaultdict(list)
+    value_dict = defaultdict(lambda: defaultdict(list))
     for metric in ar_metrics:
-        ious_to_values[frozenset(metric.ious)].append(metric.value)
+        value_dict[metric.label.key][frozenset(metric.ious)].append(
+            metric.value
+        )
 
     mean_metrics = []
-    for ious in ious_to_values.keys():
-        mean_metrics.append(
-            schemas.mARMetric(
-                ious=ious,
-                value=_average_ignore_minus_one(ious_to_values[ious]),
+    for label_key, nested_dict in value_dict.items():
+        for ious, values in nested_dict.items():
+            mean_metrics.append(
+                schemas.mARMetric(
+                    ious=ious,
+                    value=_average_ignore_minus_one(values),
+                    label_key=label_key,
+                )
             )
-        )
 
     return mean_metrics
 
@@ -810,29 +814,37 @@ def _compute_mean_detection_metrics_from_aps(
         return []
 
     # dictionary for mapping an iou threshold to set of APs
-    vals = {}
+    vals = defaultdict(lambda: defaultdict(list))
     for ap in ap_scores:
         if hasattr(ap, "iou"):
             iou = ap.iou  # type: ignore - pyright doesn't consider hasattr checks
         else:
             iou = frozenset(ap.ious)  # type: ignore - pyright doesn't consider hasattr checks
-        if iou not in vals:
-            vals[iou] = []
-        vals[iou].append(ap.value)
+        vals[ap.label.key][iou].append(ap.value)
 
     # get mAP metrics at the individual IOUs
-    mean_detection_metrics = [
-        (
-            schemas.mAPMetric(
-                iou=iou, value=_average_ignore_minus_one(vals[iou])
-            )
-            if isinstance(iou, float)
-            else schemas.mAPMetricAveragedOverIOUs(
-                ious=iou, value=_average_ignore_minus_one(vals[iou])
-            )
-        )
-        for iou in vals.keys()
-    ]
+    mean_detection_metrics = []
+
+    for label_key, nested_dict in vals.items():
+        for iou, values in nested_dict.items():
+            if isinstance(iou, float):
+                mean_detection_metrics.append(
+                    schemas.mAPMetric(
+                        iou=iou,
+                        value=_average_ignore_minus_one(values),
+                        label_key=label_key,
+                    )
+                )
+            else:
+                mean_detection_metrics.append(
+                    schemas.mAPMetricAveragedOverIOUs(
+                        ious=iou,
+                        value=_average_ignore_minus_one(
+                            values,
+                        ),
+                        label_key=label_key,
+                    )
+                )
 
     return mean_detection_metrics
 

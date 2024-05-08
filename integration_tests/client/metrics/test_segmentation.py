@@ -36,7 +36,7 @@ def test_evaluate_segmentation(
 
     metrics = eval_job.metrics
 
-    assert len(metrics) == 3
+    assert len(metrics) == 4
     assert set(
         [
             (m["label"]["key"], m["label"]["value"])
@@ -140,7 +140,7 @@ def test_evaluate_segmentation_with_label_maps(
 
     metrics = eval_job.metrics
 
-    assert len(metrics) == 3
+    assert len(metrics) == 4
     assert set(
         [
             (m["label"]["key"], m["label"]["value"])
