@@ -480,18 +480,23 @@ export class ValorClient {
    * @param id id of the evaluation
    * @param offset The start index of the evaluations to return. Used for pagination.
    * @param limit The number of evaluations to return. Used for pagination.
+   * @param metricsToSortBy A map of metrics to sort the evaluations by.
    *
    * @returns {Promise<Evaluation>}
    */
   public async getEvaluationById(
     id: number,
     offset?: number,
-    limit?: number
+    limit?: number,
+    metricsToSortBy?: {
+      [key: string]: string | { [inner_key: string]: string };
+    }
   ): Promise<Evaluation> {
     const evaluations = await this.getEvaluations({
       evaluation_ids: id,
       offset: offset,
-      limit: limit
+      limit: limit,
+      metrics_to_sort_by: metricsToSortBy != null ? JSON.stringify(metricsToSortBy) : null
     });
     return evaluations[0];
   }
