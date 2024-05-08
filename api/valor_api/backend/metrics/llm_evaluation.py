@@ -72,8 +72,8 @@ def _compute_llm_evaluation_metrics_at_grouper_id(
     prediction_filter: schemas.Filter,
     groundtruth_filter: schemas.Filter,
     grouper_label: models.Label,
-    grouper_id,  # TODO what type?
-    grouper_mappings: dict[str, dict[str, dict]],
+    # grouper_id,  # TODO what type?
+    # grouper_mappings: dict[str, dict[str, dict]],
     metrics_to_return: list[str] = [],
 ) -> (
     Sequence[
@@ -191,10 +191,10 @@ def _compute_llm_evaluation_metrics_at_grouper_id(
         elif metric_name == "Coherence":
             # TODO how does this work with grouping?
             for row in res:
-                label_key = row[1]
+                # label_key = row[1]
                 generated_text = row[4]
                 metrics.append(
-                    client.coherence(text=generated_text, label_key=label_key)
+                    client.coherence(text=generated_text, label=grouper_label)
                 )
         elif metric_name == "ContextPrecision":
             raise NotImplementedError
@@ -289,8 +289,8 @@ def _compute_llm_evaluation_metrics(
             prediction_filter=prediction_filter,
             groundtruth_filter=groundtruth_filter,
             grouper_label=grouper_label,
-            grouper_id=grouper_id,
-            grouper_mappings=grouper_mappings,
+            # grouper_id=grouper_id,
+            # grouper_mappings=grouper_mappings,
             metrics_to_return=metrics_to_return,
         )
 

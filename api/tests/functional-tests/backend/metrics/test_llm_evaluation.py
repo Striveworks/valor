@@ -13,6 +13,7 @@ from valor_api.backend.metrics.llm_evaluation import (
     _compute_llm_evaluation_metrics,
     compute_llm_evaluation_metrics,
 )
+from valor_api.schemas import types
 
 # from valor_api.backend.metrics.metric_utils import create_grouper_mappings
 # from valor_api.backend.query import Query
@@ -22,10 +23,10 @@ def mocked_connection(self):
     pass
 
 
-def mocked_coherence(self, text: str, label_key: str):
-    # TODO possibly do different values depending on the text and label_key
+def mocked_coherence(self, text: str, label: models.Label):
+    # TODO possibly do different values depending on the text and label
     return schemas.CoherenceMetric(
-        label_key=label_key,
+        label=label,
         value=4,
     )
 
@@ -259,12 +260,12 @@ def test_compute_llm_evaluation(
             pass
         elif isinstance(metric, schemas.CoherenceMetric):
             if (
-                metric.label_key == "q0"
-            ):  # TODO potentially change these keys, as they are redundant with the datum. Or use the abstract prompt as the key.
+                metric.label.key == "q0"
+            ):  # TODO potentially change this equality to reflect matching key and label if that is what is used for grouper_id
                 assert metric.value == 4
-            elif metric.label_key == "q1":
+            elif metric.label.key == "q1":
                 assert metric.value == 4
-            elif metric.label_key == "q2":
+            elif metric.label.key == "q2":
                 assert metric.value == 4
         elif isinstance(metric, schemas.ContextPrecisionMetric):
             pass
@@ -351,6 +352,7 @@ def test_llm_evaluation(
     metrics = evaluations[0].metrics
 
     # Test metrics (only Coherence so far, will add others) TODO add other metrics
+    # TODO should I make this a dictionary of expected metrics, so that it looks cleaner?
     assert metrics
     for metric in metrics:
         if metric.type == "AnswerCorrectness":
@@ -363,14 +365,13 @@ def test_llm_evaluation(
             pdb.set_trace()
             pass
         elif metric.type == "Coherence":
-            assert metric.parameters is not None and metric.parameters.get(
-                "label_key"
-            )
-            if metric.parameters.get("label_key") == "q0":
+            assert isinstance(metric.label, types.Label)
+            # TODO Should this function check based on label_id instead of label.key?
+            if metric.label.key == "q0":
                 assert metric.value == 4
-            elif metric.parameters.get("label_key") == "q1":
+            elif metric.label.key == "q1":
                 assert metric.value == 4
-            elif metric.parameters.get("label_key") == "q2":
+            elif metric.label.key == "q2":
                 assert metric.value == 4
         elif metric.type == "ContextPrecision":
             pdb.set_trace()

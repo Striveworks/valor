@@ -3,6 +3,7 @@ from typing import Any
 import openai
 
 from valor_api import schemas
+from valor_api.backend.models import Label
 
 COHERENCE_INSTRUCTION = """You are a helpful assistant. You will grade the user's text. Your task is to rate the text based on its coherence. Please make sure you read and understand these instructions carefully. Please keep this document open while reviewing, and refer to it as needed.
 Evaluation Criteria:
@@ -86,7 +87,7 @@ class OpenAIClient:
     def coherence(
         self,
         text: str,
-        label_key: str,
+        label: Label,
     ) -> schemas.CoherenceMetric | None:
         """
         Computes coherence for a single piece of text.
@@ -117,6 +118,6 @@ class OpenAIClient:
             )
 
         return schemas.CoherenceMetric(
-            label_key=label_key,
+            label=label,
             value=response,
         )

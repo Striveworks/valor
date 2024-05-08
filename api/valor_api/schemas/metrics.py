@@ -741,16 +741,18 @@ class CoherenceMetric(BaseModel):
 
     Attributes
     ----------
-    label_key : str
+    label : Label
         A label for the metric.
     value : int
         The coherence score for an individual datapoint, which is an integer between 1 and 5.
     """
 
-    label_key: str
-    value: int  # TODO enforce value in [1,2,3,4,5] ?
+    label: Label
+    value: float
 
-    def db_mapping(self, evaluation_id: int) -> dict:
+    def db_mapping(
+        self, label_id, evaluation_id: int
+    ) -> dict:  # TODO what type for label_id?
         """
         Creates a mapping for use when uploading the metric to the database.
 
@@ -759,6 +761,8 @@ class CoherenceMetric(BaseModel):
 
         Parameters
         ----------
+        label_id : TODO
+            TODO
         evaluation_id : int
             The evaluation id.
 
@@ -768,9 +772,9 @@ class CoherenceMetric(BaseModel):
         """
         return {
             "value": self.value,
+            "label_id": label_id,
             "type": "Coherence",
             "evaluation_id": evaluation_id,
-            "parameters": {"label_key": self.label_key},
         }
 
 
