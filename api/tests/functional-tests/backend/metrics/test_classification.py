@@ -754,7 +754,7 @@ def test_compute_classification(
     for e in expected_entries:
         assert e in confusion["color"].entries
 
-    # test a few metrics
+    # Test metrics (only ROCAUC)
     for metric in metrics:
         if isinstance(metric, schemas.ROCAUCMetric):
             if metric.label_key == "animal":

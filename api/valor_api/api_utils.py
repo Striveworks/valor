@@ -47,7 +47,7 @@ def validate_metrics_to_sort_by(
     metrics_to_sort_by: dict[str, str | dict[str, str]] | None
 ):
     """
-    Checks that the user is only passing dataset-level metrics to metrics_to_sort_by.
+    Check that the user is passing a valid dictionary to metrics_to_sort_by.
 
     Parameters
     ----------
