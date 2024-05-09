@@ -39,7 +39,7 @@ def test_get_labels(
     crud.create_dataset(db=db, dataset=schemas.Dataset(name=dataset_name))
 
     for gt in groundtruth_detections:
-        crud.create_groundtruth(db=db, groundtruth=gt)
+        crud.create_groundtruths(db=db, groundtruths=[gt])
 
     labels, headers = crud.get_labels(db=db)
 

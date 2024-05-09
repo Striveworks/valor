@@ -24,8 +24,7 @@ def _create_gt_data(
         db=db,
         dataset=schemas.Dataset(name=dataset_name),
     )
-    for gt in gt_semantic_segs_create:
-        crud.create_groundtruth(db=db, groundtruth=gt)
+    crud.create_groundtruths(db=db, groundtruths=gt_semantic_segs_create)
     crud.finalize(db=db, dataset_name=dataset_name)
 
 
@@ -45,8 +44,13 @@ def _create_data(
 
     crud.create_model(db=db, model=schemas.Model(name=model_name))
 
-    crud.create_prediction(db=db, prediction=pred_semantic_segs_img1_create)
-    crud.create_prediction(db=db, prediction=pred_semantic_segs_img2_create)
+    crud.create_predictions(
+        db=db,
+        predictions=[
+            pred_semantic_segs_img1_create,
+            pred_semantic_segs_img2_create,
+        ],
+    )
 
 
 def test_query_generators(
@@ -412,13 +416,13 @@ def test__compute_segmentation_metrics(
         prediction_filter=prediction_filter,
         groundtruth_filter=groundtruth_filter,
     )
-    # should have five metrics (one IOU for each of the four labels, and one mIOU)
-    assert len(metrics) == 5
-    for metric in metrics[:-1]:
+    # should have five metrics (one IOU for each of the four labels, and three mIOUs)
+    assert len(metrics) == 7
+    for metric in metrics[:-3]:
         assert isinstance(metric, schemas.IOUMetric)
         assert metric.value < 1.0
-    assert isinstance(metrics[-1], schemas.mIOUMetric)
-    assert metrics[-1].value < 1.0
+    assert all([isinstance(m, schemas.mIOUMetric) for m in metrics[-3:]])
+    assert all([m.value < 1.0 for m in metrics[-3:]])
 
 
 def test_compute_semantic_segmentation_metrics(
@@ -473,11 +477,18 @@ def test_compute_semantic_segmentation_metrics(
         schemas.Label(key="k1", value="v1", score=None): 0.33,
     }
 
+    expected_mIOU_metrics = {"k1": (0.33 + 0) / 2, "k2": 0, "k3": 0}
+
     assert metrics
     for metric in metrics:
         assert isinstance(metric.value, float)
         if metric.type == "mIOU":
-            assert (metric.value - 0.084) <= 0.01
+            assert metric.parameters
+            assert metric.parameters["label_key"]
+            assert (
+                metric.value
+                - expected_mIOU_metrics[metric.parameters["label_key"]]
+            ) <= 0.01
         else:
             # the IOU value for (k1, v1) is bound between .327 and .336
             assert metric.label

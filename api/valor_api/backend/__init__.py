@@ -1,9 +1,9 @@
 from .core import (
     create_dataset,
-    create_groundtruth,
+    create_groundtruths,
     create_model,
     create_or_get_evaluations,
-    create_prediction,
+    create_predictions,
     delete_dataset,
     delete_model,
     get_dataset,
@@ -42,8 +42,8 @@ from .query import Query
 __all__ = [
     "create_dataset",
     "create_model",
-    "create_groundtruth",
-    "create_prediction",
+    "create_groundtruths",
+    "create_predictions",
     "delete_dataset",
     "delete_model",
     "get_dataset",

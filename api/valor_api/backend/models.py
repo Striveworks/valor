@@ -117,10 +117,10 @@ class Annotation(Base):
     # columns
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     datum_id: Mapped[int] = mapped_column(
-        ForeignKey("datum.id"), nullable=False
+        ForeignKey("datum.id"), nullable=False, index=True
     )
     model_id: Mapped[int] = mapped_column(
-        ForeignKey("model.id"), nullable=True
+        ForeignKey("model.id"), nullable=True, index=True
     )
     task_type: Mapped[str] = mapped_column(nullable=False)
     meta = mapped_column(JSONB)
@@ -152,8 +152,7 @@ class Datum(Base):
     # columns
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     dataset_id: Mapped[int] = mapped_column(
-        ForeignKey("dataset.id"),
-        nullable=False,
+        ForeignKey("dataset.id"), nullable=False
     )
     uid: Mapped[str] = mapped_column(nullable=False)
     meta = mapped_column(JSONB)
