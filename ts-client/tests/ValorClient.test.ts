@@ -257,6 +257,99 @@ test('evaluation methods', async () => {
   expect((await client.getEvaluationsByDatasetNames([datasetNames[0]])).length).toBe(2);
   expect((await client.getEvaluationsByDatasetNames(datasetNames)).length).toBe(4);
   expect((await client.getEvaluationsByDatasetNames(['no-such-dataset'])).length).toBe(0);
+  // check we can get evaluations by model names and dataset names
+  expect(
+    (await client.getEvaluationsByModelNamesAndDatasetNames(modelNames, datasetNames))
+      .length
+  ).toBe(4);
+  expect(
+    (
+      await client.getEvaluationsByModelNamesAndDatasetNames(
+        [modelNames[0]],
+        datasetNames
+      )
+    ).length
+  ).toBe(2);
+  expect(
+    (
+      await client.getEvaluationsByModelNamesAndDatasetNames(
+        [modelNames[0]],
+        [datasetNames[0]]
+      )
+    ).length
+  ).toBe(1);
+  expect(
+    (
+      await client.getEvaluationsByModelNamesAndDatasetNames(
+        [modelNames[0]],
+        [datasetNames[1]]
+      )
+    ).length
+  ).toBe(1);
+  expect(
+    (
+      await client.getEvaluationsByModelNamesAndDatasetNames(
+        [modelNames[1]],
+        datasetNames
+      )
+    ).length
+  ).toBe(2);
+  expect(
+    (
+      await client.getEvaluationsByModelNamesAndDatasetNames(
+        [modelNames[1]],
+        [datasetNames[0]]
+      )
+    ).length
+  ).toBe(1);
+  expect(
+    (
+      await client.getEvaluationsByModelNamesAndDatasetNames(
+        [modelNames[1]],
+        [datasetNames[1]]
+      )
+    ).length
+  ).toBe(1);
+  expect(
+    (
+      await client.getEvaluationsByModelNamesAndDatasetNames(
+        [...modelNames, 'fake', 'not-real'],
+        datasetNames
+      )
+    ).length
+  ).toBe(4);
+  expect(
+    (
+      await client.getEvaluationsByModelNamesAndDatasetNames(
+        [...modelNames, 'fake', 'not-real'],
+        [datasetNames[0]]
+      )
+    ).length
+  ).toBe(2);
+  expect(
+    (
+      await client.getEvaluationsByModelNamesAndDatasetNames(modelNames, [
+        ...datasetNames,
+        'fake',
+        'not-real'
+      ])
+    ).length
+  ).toBe(4);
+  expect(
+    (
+      await client.getEvaluationsByModelNamesAndDatasetNames(
+        [modelNames[0]],
+        [...datasetNames, 'fake', 'not-real']
+      )
+    ).length
+  ).toBe(2);
+  expect(
+    (await client.getEvaluationsByModelNamesAndDatasetNames(['fake'], datasetNames))
+      .length
+  ).toBe(0);
+  expect(
+    (await client.getEvaluationsByModelNamesAndDatasetNames(modelNames, ['fake'])).length
+  ).toBe(0);
   // check pagination
   expect((await client.getEvaluationsByModelNames(modelNames, 2)).length).toBe(2);
   expect((await client.getEvaluationsByModelNames(modelNames, 3)).length).toBe(1);
