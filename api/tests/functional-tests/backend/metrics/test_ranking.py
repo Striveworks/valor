@@ -79,7 +79,7 @@ def ranking_test_data(
         ),
     )
     for gt in groundtruth_ranking:
-        crud.create_groundtruth(db=db, groundtruth=gt)
+        crud.create_groundtruths(db=db, groundtruths=[gt])
     crud.finalize(db=db, dataset_name=dataset_name)
 
     crud.create_model(
@@ -90,7 +90,7 @@ def ranking_test_data(
         ),
     )
     for pd in prediction_ranking:
-        crud.create_prediction(db=db, prediction=pd)
+        crud.create_predictions(db=db, predictions=[pd])
     crud.finalize(db=db, dataset_name=dataset_name, model_name=model_name)
 
     assert len(db.query(models.Datum).all()) == 2

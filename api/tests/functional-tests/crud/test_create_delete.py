@@ -1496,7 +1496,7 @@ def test_create_ranking_ground_truth_and_delete_dataset(
     crud.create_dataset(db=db, dataset=schemas.Dataset(name=dataset_name))
 
     for gt in groundtruth_ranking:
-        crud.create_groundtruth(db=db, groundtruth=gt)
+        crud.create_groundtruths(db=db, groundtruths=[gt])
 
     assert db.scalar(func.count(models.Annotation.id)) == 2
     assert db.scalar(func.count(models.Datum.id)) == 2
@@ -1544,19 +1544,19 @@ def test_create_ranking_prediction_and_delete_model(
     # check this gives an error since the model hasn't been added yet
     with pytest.raises(exceptions.DatasetDoesNotExistError) as exc_info:
         for pd in prediction_ranking:
-            crud.create_prediction(db=db, prediction=pd)
+            crud.create_predictions(db=db, predictions=[pd])
     assert "does not exist" in str(exc_info)
 
     # create dataset, add images, and add predictions
     crud.create_dataset(db=db, dataset=schemas.Dataset(name=dataset_name))
 
     for gt in groundtruth_ranking:
-        crud.create_groundtruth(db=db, groundtruth=gt)
+        crud.create_groundtruths(db=db, groundtruths=[gt])
 
     # check this gives an error since the model hasn't been created yet
     with pytest.raises(exceptions.ModelDoesNotExistError) as exc_info:
         for pd in prediction_ranking:
-            crud.create_prediction(db=db, prediction=pd)
+            crud.create_predictions(db=db, predictions=[pd])
     assert "does not exist" in str(exc_info)
 
     # finalize dataset
@@ -1565,13 +1565,13 @@ def test_create_ranking_prediction_and_delete_model(
     # check this gives an error since the model hasn't been added yet
     with pytest.raises(exceptions.ModelDoesNotExistError) as exc_info:
         for pd in prediction_ranking:
-            crud.create_prediction(db=db, prediction=pd)
+            crud.create_predictions(db=db, predictions=[pd])
     assert "does not exist" in str(exc_info)
 
     # create model
     crud.create_model(db=db, model=schemas.Model(name=model_name))
     for pd in prediction_ranking:
-        crud.create_prediction(db=db, prediction=pd)
+        crud.create_predictions(db=db, predictions=[pd])
 
     # check db has the added predictions
     assert db.scalar(func.count(models.Annotation.id)) == 8
