@@ -1,9 +1,11 @@
+from typing import Any
+
 from geoalchemy2.functions import ST_AsGeoJSON
-from sqlalchemy import and_, delete, select
+from sqlalchemy import and_, delete, insert, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from valor_api import exceptions, schemas
+from valor_api import schemas
 from valor_api.backend import models
 from valor_api.backend.core.geometry import _raster_to_png_b64
 from valor_api.backend.query import Query
@@ -44,7 +46,7 @@ def _create_annotation(
     annotation: schemas.Annotation,
     datum: models.Datum,
     model: models.Model | None = None,
-) -> models.Annotation:
+) -> dict[str, Any]:
     """
     Convert an individual annotation's attributes into a dictionary for upload to psql.
 
@@ -59,7 +61,7 @@ def _create_annotation(
 
     Returns
     ----------
-    models.Annotation
+    dict[str, Any]
         A populated models.Annotation object.
     """
     box = None
@@ -97,32 +99,32 @@ def _create_annotation(
         "raster": raster,
         "embedding_id": embedding_id,
     }
-    return models.Annotation(**mapping)
+    return mapping
 
 
 def create_annotations(
     db: Session,
-    annotations: list[schemas.Annotation],
-    datum: models.Datum,
-    model: models.Model | None = None,
-) -> list[models.Annotation]:
+    annotations: list[list[schemas.Annotation]],
+    datums: list[models.Datum],
+    models_: list[models.Model] | None | list[None] = None,
+) -> list[list[models.Annotation]]:
     """
     Create a list of annotations and associated labels in psql.
 
     Parameters
     ----------
-    db : Session
+    db
         The database Session you want to query against.
-    annotations : List[schemas.Annotation]
+    annotations
         The list of annotations to create.
-    datum : models.Datum
+    datum
         The datum associated with the annotation.
-    model : models.Model
+    model
         The model associated with the annotation.
 
     Returns
     ----------
-    List[models.annotation]
+    list[list[models.annotation]]
         The model associated with the annotation.
 
     Raises
@@ -130,38 +132,41 @@ def create_annotations(
     exceptions.AnnotationAlreadyExistsError
         If the provided datum already has existing annotations for that dataset or model.
     """
-    # validate that there are no existing annotations for this datum.
-    if db.query(
-        select(models.Annotation.id)
-        .where(
-            and_(
-                models.Annotation.datum_id == datum.id,
-                (
-                    models.Annotation.model_id == model.id
-                    if model
-                    else models.Annotation.model_id.is_(None)
-                ),
-            )
-        )
-        .subquery()
-    ).all():
-        raise exceptions.AnnotationAlreadyExistsError(datum.uid)
+    models_ = models_ or [None] * len(datums)
+
+    assert len(models_) == len(datums) == len(annotations)
 
     # create annotations
-    annotation_list = [
+    annotation_mappings = [
         _create_annotation(
             db=db, annotation=annotation, datum=datum, model=model
         )
-        for annotation in annotations
+        for annotations_per_datum, datum, model in zip(
+            annotations, datums, models_
+        )
+        for annotation in annotations_per_datum
     ]
 
     try:
-        db.add_all(annotation_list)
-        db.commit()
+        insert_stmt = (
+            insert(models.Annotation)
+            .values(annotation_mappings)
+            .returning(models.Annotation.id)
+        )
+        annotation_id_list = db.execute(insert_stmt).scalars().all()
     except IntegrityError as e:
         db.rollback()
         raise e
-    return annotation_list
+
+    annotation_ids = []
+    idx = 0
+    for annotations_per_datum in annotations:
+        annotation_ids.append(
+            annotation_id_list[idx : idx + len(annotations_per_datum)]
+        )
+        idx += len(annotations_per_datum)
+
+    return annotation_ids
 
 
 def create_skipped_annotations(
@@ -191,7 +196,7 @@ def create_skipped_annotations(
         for datum in datums
     ]
     try:
-        db.add_all(annotation_list)
+        db.bulk_insert_mappings(models.Annotation, annotation_list)
         db.commit()
     except IntegrityError as e:
         db.rollback()

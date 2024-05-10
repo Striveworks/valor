@@ -1,3 +1,4 @@
+import json
 import os
 from typing import Annotated
 
@@ -84,8 +85,7 @@ def create_groundtruths(
         If the dataset has been finalized, or if the datum already exists.
     """
     try:
-        for groundtruth in groundtruths:
-            crud.create_groundtruth(db=db, groundtruth=groundtruth)
+        crud.create_groundtruths(db=db, groundtruths=groundtruths)
     except Exception as e:
         raise exceptions.create_http_error(e)
 
@@ -166,8 +166,7 @@ def create_predictions(
         If the model has been finalized, or if the dataset has not been finalized.
     """
     try:
-        for prediction in predictions:
-            crud.create_prediction(db=db, prediction=prediction)
+        crud.create_predictions(db=db, predictions=predictions)
     except Exception as e:
         raise exceptions.create_http_error(e)
 
@@ -1098,6 +1097,7 @@ def get_evaluations(
     evaluation_ids: str | None = None,
     offset: int = 0,
     limit: int = -1,
+    metrics_to_sort_by: str | None = None,
     db: Session = Depends(get_db),
 ) -> list[schemas.EvaluationResponse]:
     """
@@ -1127,6 +1127,8 @@ def get_evaluations(
         The start index of the items to return.
     limit : int, optional
         The number of items to return. Returns all items when set to -1.
+    metrics_to_sort_by: str, optional
+        An optional dict of metric types to sort the evaluations by.
 
     Returns
     -------
@@ -1143,6 +1145,11 @@ def get_evaluations(
     model_names = api_utils._split_query_params(models)
     dataset_names = api_utils._split_query_params(datasets)
     evaluation_ids_str = api_utils._split_query_params(evaluation_ids)
+    metrics_to_sort_by_ = (
+        json.loads(metrics_to_sort_by) if metrics_to_sort_by else None
+    )
+
+    api_utils.validate_metrics_to_sort_by(metrics_to_sort_by_)
 
     if evaluation_ids_str:
         try:
@@ -1160,6 +1167,7 @@ def get_evaluations(
             model_names=model_names,
             offset=offset,
             limit=limit,
+            metrics_to_sort_by=metrics_to_sort_by_,
         )
         response.headers.update(headers)
         return content

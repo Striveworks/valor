@@ -144,7 +144,7 @@ def test_post_groundtruth(client: TestClient):
 
     # check we get a conflict (409) if the dataset is finalized
     with patch(
-        "valor_api.main.crud.create_groundtruth",
+        "valor_api.main.crud.create_groundtruths",
         side_effect=exceptions.DatasetFinalizedError("dsetname"),
     ):
         resp = client.post("/groundtruths", json=[example_json])
@@ -152,7 +152,7 @@ def test_post_groundtruth(client: TestClient):
 
     # check that we get an error if the dataset doesn't exist
     with patch(
-        "valor_api.main.crud.create_groundtruth",
+        "valor_api.main.crud.create_groundtruths",
         side_effect=exceptions.DatasetDoesNotExistError("fake_dsetname"),
     ):
         resp = client.post("/groundtruths", json=[example_json])
@@ -198,7 +198,7 @@ def test_post_groundtruth_classification(client: TestClient):
     _test_post_endpoints(
         client=client,
         endpoint="/groundtruths",
-        crud_method_name="create_groundtruth",
+        crud_method_name="create_groundtruths",
         example_json=[example_json],
     )
 
@@ -239,7 +239,7 @@ def test_post_groundtruth_bbox_detection(client: TestClient):
     _test_post_endpoints(
         client=client,
         endpoint="/groundtruths",
-        crud_method_name="create_groundtruth",
+        crud_method_name="create_groundtruths",
         example_json=[example_json],
     )
 
@@ -295,7 +295,7 @@ def test_post_groundtruth_polygon_detection(client: TestClient):
     _test_post_endpoints(
         client=client,
         endpoint="/groundtruths",
-        crud_method_name="create_groundtruth",
+        crud_method_name="create_groundtruths",
         example_json=[example_json],
     )
 
@@ -344,7 +344,7 @@ def test_post_groundtruth_raster_segmentation(client: TestClient):
     _test_post_endpoints(
         client=client,
         endpoint="/groundtruths",
-        crud_method_name="create_groundtruth",
+        crud_method_name="create_groundtruths",
         example_json=[example_json],
     )
 
@@ -425,7 +425,7 @@ def test_post_prediction(client: TestClient):
 
     # check we get a code (404) if the model does not exist
     with patch(
-        "valor_api.main.crud.create_prediction",
+        "valor_api.main.crud.create_predictions",
         side_effect=exceptions.ModelDoesNotExistError("model1"),
     ):
         resp = client.post("/predictions", json=[example_json])
@@ -433,7 +433,7 @@ def test_post_prediction(client: TestClient):
 
     # check we get a code (409) if the datum does not exist
     with patch(
-        "valor_api.main.crud.create_prediction",
+        "valor_api.main.crud.create_predictions",
         side_effect=exceptions.DatumDoesNotExistError("uid1"),
     ):
         resp = client.post("/predictions", json=[example_json])
@@ -441,7 +441,7 @@ def test_post_prediction(client: TestClient):
 
     # check we get a code (409) if the dataset hasn't been finalized
     with patch(
-        "valor_api.main.crud.create_prediction",
+        "valor_api.main.crud.create_predictions",
         side_effect=exceptions.DatasetNotFinalizedError("dataset1"),
     ):
         resp = client.post("/predictions", json=[example_json])
@@ -487,7 +487,7 @@ def test_post_prediction_classification(client: TestClient):
     _test_post_endpoints(
         client=client,
         endpoint="/predictions",
-        crud_method_name="create_prediction",
+        crud_method_name="create_predictions",
         example_json=[example_json],
     )
 
@@ -530,7 +530,7 @@ def test_post_prediction_bbox_detection(client: TestClient):
     _test_post_endpoints(
         client=client,
         endpoint="/predictions",
-        crud_method_name="create_prediction",
+        crud_method_name="create_predictions",
         example_json=[example_json],
     )
 
@@ -590,7 +590,7 @@ def test_post_prediction_polygon_detection(client: TestClient):
     _test_post_endpoints(
         client=client,
         endpoint="/predictions",
-        crud_method_name="create_prediction",
+        crud_method_name="create_predictions",
         example_json=[example_json],
     )
 
@@ -642,7 +642,7 @@ def test_post_prediction_raster_segmentation(client: TestClient):
     _test_post_endpoints(
         client=client,
         endpoint="/predictions",
-        crud_method_name="create_prediction",
+        crud_method_name="create_predictions",
         example_json=example_json,
     )
 
@@ -794,13 +794,6 @@ def test_finalize_datasets(crud, client: TestClient):
         resp = client.put("datasets/dsetname/finalize")
         assert resp.status_code == 404
 
-    with patch(
-        "valor_api.main.crud.finalize",
-        side_effect=exceptions.DatasetIsEmptyError(""),
-    ):
-        resp = client.put("datasets/dsetname/finalize")
-        assert resp.status_code == 409
-
     resp = client.get("/datasets/dsetname/finalize")
     assert resp.status_code == 405
 
@@ -891,13 +884,6 @@ def test_finalize_inferences(crud, client: TestClient):
     ):
         resp = client.put("/models/modelname/datasets/dsetname/finalize")
         assert resp.status_code == 404
-
-    with patch(
-        "valor_api.main.crud.finalize",
-        side_effect=exceptions.DatasetIsEmptyError(""),
-    ):
-        resp = client.put("/models/modelname/datasets/dsetname/finalize")
-        assert resp.status_code == 409
 
     resp = client.get("/models/modelname/datasets/dsetname/finalize")
     assert resp.status_code == 405

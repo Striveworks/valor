@@ -10,12 +10,18 @@ import pytest
 from sqlalchemy import create_engine, select, text
 from sqlalchemy.orm import Session
 
-from valor import Annotation, Client, GroundTruth, Label, Prediction
+from valor import (
+    Annotation,
+    Client,
+    GroundTruth,
+    Label,
+    Prediction,
+    exceptions,
+)
 from valor.client import ClientConnection, connect, reset_connection
 from valor.enums import TaskType
 from valor.metatypes import Datum
 from valor.schemas import Box, MultiPolygon, Point, Polygon, Raster
-from valor_api import exceptions
 from valor_api.backend import models
 
 
@@ -375,6 +381,58 @@ def gt_dets2(
 
 
 @pytest.fixture
+def gts_det_with_label_maps(
+    rect1: list[tuple[float, float]],
+    rect2: list[tuple[float, float]],
+    rect3: list[tuple[float, float]],
+    img1: Datum,
+    img2: Datum,
+) -> list[GroundTruth]:
+    return [
+        GroundTruth(
+            datum=img1,
+            annotations=[
+                Annotation(
+                    task_type=TaskType.OBJECT_DETECTION,
+                    labels=[Label(key="class_name", value="maine coon cat")],
+                    bounding_box=Box([rect1]),
+                ),
+                Annotation(
+                    task_type=TaskType.OBJECT_DETECTION,
+                    labels=[Label(key="class", value="british shorthair")],
+                    bounding_box=Box([rect3]),
+                ),
+                Annotation(
+                    task_type=TaskType.OBJECT_DETECTION,
+                    labels=[Label(key="k1", value="v1")],
+                    bounding_box=Box([rect1]),
+                ),
+                Annotation(
+                    task_type=TaskType.OBJECT_DETECTION,
+                    labels=[Label(key="k2", value="v2")],
+                    bounding_box=Box([rect3]),
+                ),
+            ],
+        ),
+        GroundTruth(
+            datum=img2,
+            annotations=[
+                Annotation(
+                    task_type=TaskType.OBJECT_DETECTION,
+                    labels=[Label(key="class", value="siamese cat")],
+                    bounding_box=Box([rect2]),
+                ),
+                Annotation(
+                    task_type=TaskType.OBJECT_DETECTION,
+                    labels=[Label(key="k1", value="v1")],
+                    bounding_box=Box([rect2]),
+                ),
+            ],
+        ),
+    ]
+
+
+@pytest.fixture
 def gt_poly_dets1(
     img1: Datum,
     img2: Datum,
@@ -685,6 +743,47 @@ def pred_dets2(
                     labels=[Label(key="k2", value="v2", score=0.98)],
                     bounding_box=Box([rect4]),
                 )
+            ],
+        ),
+    ]
+
+
+@pytest.fixture
+def preds_det_with_label_maps(
+    rect1: list[tuple[float, float]],
+    rect2: list[tuple[float, float]],
+    img1: Datum,
+    img2: Datum,
+) -> list[Prediction]:
+    return [
+        Prediction(
+            datum=img1,
+            annotations=[
+                Annotation(
+                    task_type=TaskType.OBJECT_DETECTION,
+                    labels=[Label(key="class", value="cat", score=0.3)],
+                    bounding_box=Box([rect1]),
+                ),
+                Annotation(
+                    task_type=TaskType.OBJECT_DETECTION,
+                    labels=[Label(key="k1", value="v1", score=0.3)],
+                    bounding_box=Box([rect1]),
+                ),
+            ],
+        ),
+        Prediction(
+            datum=img2,
+            annotations=[
+                Annotation(
+                    task_type=TaskType.OBJECT_DETECTION,
+                    labels=[Label(key="class_name", value="cat", score=0.98)],
+                    bounding_box=Box([rect2]),
+                ),
+                Annotation(
+                    task_type=TaskType.OBJECT_DETECTION,
+                    labels=[Label(key="k2", value="v2", score=0.98)],
+                    bounding_box=Box([rect2]),
+                ),
             ],
         ),
     ]

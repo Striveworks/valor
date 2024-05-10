@@ -4,7 +4,7 @@ import math
 import os
 import time
 from dataclasses import asdict, dataclass
-from typing import Callable, List, Optional, TypeVar, Union
+from typing import Callable, Dict, List, Optional, TypeVar, Union
 from urllib.parse import urlencode, urljoin
 
 import requests
@@ -15,8 +15,8 @@ from valor.enums import TableStatus
 from valor.exceptions import (
     ClientAlreadyConnectedError,
     ClientConnectionFailed,
-    ClientException,
     ClientNotConnectedError,
+    raise_client_exception,
 )
 from valor.schemas import EvaluationRequest
 
@@ -303,10 +303,7 @@ class ClientConnection:
                 ):
                     self._get_access_token_from_username_and_password()
                 else:
-                    try:
-                        raise ClientException(resp)
-                    except (requests.exceptions.JSONDecodeError, KeyError):
-                        resp.raise_for_status()
+                    raise_client_exception(resp)
             else:
                 break
             tried = True
@@ -660,7 +657,7 @@ class ClientConnection:
             A dictionary describing a datum.
         """
         return self._requests_get_rel_host(
-            f"/data/dataset/{dataset_name}/uid/{uid}"
+            f"data/dataset/{dataset_name}/uid/{uid}"
         ).json()
 
     def create_model(self, model: dict) -> None:
@@ -830,6 +827,9 @@ class ClientConnection:
         evaluation_ids: Optional[List[int]] = None,
         models: Optional[List[str]] = None,
         datasets: Optional[List[str]] = None,
+        metrics_to_sort_by: Optional[
+            Dict[str, Union[Dict[str, str], str]]
+        ] = None,
     ) -> List[dict]:
         """
         Returns all evaluations associated with user-supplied dataset and/or model names.
@@ -844,6 +844,8 @@ class ClientConnection:
             A list of model names that we want to return metrics for.
         datasets : List[str], optional
             A list of dataset names that we want to return metrics for.
+        metrics_to_sort_by: dict[str, str | dict[str, str]], optional
+            An optional dict of metric types to sort the evaluations by.
 
         Returns
         -------
@@ -868,6 +870,9 @@ class ClientConnection:
             **_build_query_param("evaluation_ids", evaluation_ids, int),
             **_build_query_param("models", models, str),
             **_build_query_param("datasets", datasets, str),
+            **_build_query_param(
+                "metrics_to_sort_by", json.dumps(metrics_to_sort_by), str
+            ),
         }
 
         query_str = urlencode(params)
