@@ -1266,7 +1266,6 @@ class Client:
                 )
             if not isinstance(groundtruth.annotations._value, list):
                 raise TypeError
-            ##
             groundtruth_dict = groundtruth.encode_value()
             groundtruth_dict["dataset_name"] = dataset.name
             groundtruths_json.append(groundtruth_dict)

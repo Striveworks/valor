@@ -43,9 +43,6 @@ class StaticCollection(Equatable):
             raise ValueError(
                 f"Expected the following keyword arguments '{static_keys}'. Received '{kwarg_keys}'."
             )
-        # import pdb
-
-        # pdb.set_trace()
         for k, v in kwargs.items():
             setattr(self, k, v)
         super().__init__(value=None)
@@ -145,7 +142,6 @@ class StaticCollection(Equatable):
 
     def encode_value(self):
         """Encode object to JSON compatible dictionary."""
-        # TODO: make this less hacky
         return {
             k: (
                 v.encode_value()
