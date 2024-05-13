@@ -76,7 +76,7 @@ class Symbol:
         if self._attribute:
             ret += f", attribute='{self._attribute}'"
         ret += ")"
-        return "blah2" + ret
+        return ret
 
     def __str__(self):
         ret = ""
@@ -87,7 +87,7 @@ class Symbol:
             ret += f"['{self._key}']"
         if self._attribute:
             ret += f".{self._attribute}"
-        return "blah3" + ret
+        return ret
 
     def __eq__(self, other):
         if not isinstance(other, Symbol):
@@ -228,6 +228,7 @@ class Variable:
                 owner=value._owner,
             )
         elif cls.supports(value):
+            #
             return cls(value=value)
         raise TypeError(
             f"{cls.__name__} does not support operations with value '{value}' of type '{type(value).__name__}'."
@@ -581,7 +582,7 @@ class Float(Quantifiable):
             )
 
 
-class String(Equatable, str):
+class String(Equatable):
     """
     Implementation of the built-in type 'str' as a Variable.
 

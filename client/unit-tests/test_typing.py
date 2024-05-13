@@ -57,7 +57,7 @@ def test_annotation_typing():
     )
     assert type(annotation.task_type) is enums.TaskType
     assert type(annotation.labels) is List[Label]
-    assert type(annotation.metadata) is dict
+    assert type(annotation.metadata) is Dictionary
     assert annotation.bounding_box is None
     assert annotation.polygon is None
     assert annotation.raster is None
@@ -75,7 +75,7 @@ def test_annotation_typing():
     )
     assert type(annotation.task_type) is enums.TaskType
     assert type(annotation.labels) is List[Label]
-    assert type(annotation.metadata) is dict
+    assert type(annotation.metadata) is Dictionary
     assert type(annotation.bounding_box) is Box
     assert type(annotation.polygon) is Polygon
     assert type(annotation.raster) is Raster
@@ -87,11 +87,11 @@ def test_datum_typing():
 
     datum = Datum(uid="test")
     assert type(datum.uid) is str
-    assert type(datum.metadata) is dict
+    assert type(datum.metadata) is Dictionary
 
     datum = Datum(uid="test", metadata={})
     assert type(datum.uid) is str
-    assert type(datum.metadata) is dict
+    assert type(datum.metadata) is Dictionary
 
 
 def test_groundtruth_typing():
@@ -114,11 +114,11 @@ def test_dataset_typing():
 
     dataset = Dataset(name="test")
     assert type(dataset.name) is str
-    assert type(dataset.metadata) is dict
+    assert type(dataset.metadata) is Dictionary
 
     dataset = Dataset(name="test", metadata={})
     assert type(dataset.name) is str
-    assert type(dataset.metadata) is dict
+    assert type(dataset.metadata) is Dictionary
 
 
 def test_model_typing():
@@ -127,8 +127,8 @@ def test_model_typing():
 
     model = Model(name="test")
     assert type(model.name) is str
-    assert type(model.metadata) is dict
+    assert type(model.metadata) is Dictionary
 
     model = Model(name="test", metadata={})
     assert type(model.name) is str
-    assert type(model.metadata) is dict
+    assert type(model.metadata) is Dictionary

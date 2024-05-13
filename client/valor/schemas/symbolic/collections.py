@@ -186,12 +186,12 @@ class StaticCollection(Equatable):
     def __repr__(self):
         if self.is_symbolic:
             return super().__repr__()
-        return "blah" + self.encode_value().__repr__()
+        return f"{self.__class__.__name__}({self.encode_value().__repr__()})"
 
     def __str__(self):
         if self.is_symbolic:
             return super().__str__()
-        return "okkk" + str(self.encode_value())
+        return str(self.encode_value())
 
 
 class Label(StaticCollection):
