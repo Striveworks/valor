@@ -27,8 +27,14 @@ def test_function(variables):
     x, y, z = variables
 
     # test stringify
-    assert Function(x, y, z).__repr__() == "Function(1, '2', 0.3)"
-    assert Function(x, y, z).__str__() == "Function(1, '2', 0.3)"
+    assert (
+        Function(x, y, z).__repr__()
+        == "Function(Integer(1), String('2'), Float(0.3))"
+    )
+    assert (
+        Function(x, y, z).__str__()
+        == "Function(Integer(1), String('2'), Float(0.3))"
+    )
 
     # test dictionary generation
     assert Function(x, y, z).to_dict() == {
@@ -43,8 +49,10 @@ def test_function(variables):
     # test stringify w/ operator
     assert issubclass(And, Function)
     assert And._operator is not None
-    assert And(x, y, z).__repr__() == "And(1, '2', 0.3)"
-    assert And(x, y, z).__str__() == "(1 & '2' & 0.3)"
+    assert (
+        And(x, y, z).__repr__() == "And(Integer(1), String('2'), Float(0.3))"
+    )
+    assert And(x, y, z).__str__() == "(Integer(1) & String('2') & Float(0.3))"
 
     # test logical operators
     assert type(Function(x) & Function(y)) is And

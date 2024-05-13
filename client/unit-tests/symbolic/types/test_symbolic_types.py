@@ -90,7 +90,7 @@ def test_symbol():
 def _test_symbolic_outputs(v, s=Symbol(name="test")):
     assert s.to_dict() == v.to_dict()
     assert s.to_dict() == v.get_symbol().to_dict()
-    assert s.__repr__() == v.__repr__()
+    assert f"Variable({s.__repr__()})" == v.__repr__()
     assert s.__str__() == v.__str__()
     assert v.is_symbolic and not v.is_value
 

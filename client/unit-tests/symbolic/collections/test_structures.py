@@ -199,7 +199,7 @@ def test_list():
 
     # test creating valued lists
     variable = List[Float]([0.1, 0.2, 0.3])
-    assert variable.__str__() == "[0.1, 0.2, 0.3]"
+    assert variable.__str__() == "[Float(0.1), Float(0.2), Float(0.3)]"
     assert variable.to_dict() == {
         "type": "list[float]",
         "value": [0.1, 0.2, 0.3],
