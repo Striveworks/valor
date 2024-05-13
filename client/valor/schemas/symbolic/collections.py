@@ -41,10 +41,13 @@ def _convert_simple_variables_to_standard_types(var: Any):
         if isinstance(val, (str, int, float, bool, type(None))):
             var = val
     if isinstance(var, (dict, Dictionary)):
-        return {
+        d = {
             k: _convert_simple_variables_to_standard_types(v)
             for k, v in var.items()
         }
+        if isinstance(var, dict):
+            return d
+        return Dictionary(d)
     return var
 
 
