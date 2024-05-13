@@ -120,11 +120,6 @@ class StaticCollection(Equatable):
         ret = super().__getattribute__(__name)
         if isinstance(ret, Variable) and ret.is_value:
             return _convert_simple_variables_to_standard_types(ret)
-            # ret = ret.get_value()
-            # if isinstance(ret, dict):
-            #     import pdb
-
-            #     pdb.set_trace()
         return ret
 
     @classmethod

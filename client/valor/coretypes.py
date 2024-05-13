@@ -588,7 +588,7 @@ class Dataset(StaticCollection):
             raise ValueError(
                 "Cannot filter by dataset_names when calling `Dataset.get_datums`."
             )
-        filter_["dataset_names"] = [self.name]
+        filter_["dataset_names"] = [self.name]  # type: ignore
         return Client(self.conn).get_datums(filter_by=filter_)
 
     def get_evaluations(
@@ -646,7 +646,7 @@ class Dataset(StaticCollection):
             groundtruth_annotation_metadata: list of the unique metadata dictionaries in the dataset that are
             associated to annotations
         """
-        return Client(self.conn).get_dataset_summary(self.name)
+        return Client(self.conn).get_dataset_summary(self.name)  # type: ignore
 
     def finalize(
         self,
@@ -668,7 +668,7 @@ class Dataset(StaticCollection):
         timeout : int, default=0
             Sets a timeout in seconds.
         """
-        Client(self.conn).delete_dataset(self.name, timeout)
+        Client(self.conn).delete_dataset(self.name, timeout)  # type: ignore
 
 
 class Model(StaticCollection):
@@ -805,9 +805,6 @@ class Model(StaticCollection):
             predictions=predictions,
         )
 
-    def get_name(self) -> str:
-        return self.name.get_value()
-
     def get_prediction(
         self, dataset: Union[Dataset, str], datum: Union[Datum, str]
     ) -> Union[Prediction, None]:
@@ -862,7 +859,7 @@ class Model(StaticCollection):
         # set dataset names
         if not filter_.dataset_names:
             filter_.dataset_names = []
-        filter_.dataset_names.extend(dataset_names_from_obj)
+        filter_.dataset_names.extend(dataset_names_from_obj)  # type: ignore
         return filter_
 
     def _create_label_map(
@@ -937,7 +934,7 @@ class Model(StaticCollection):
         # format request
         datum_filter = self._format_constraints(datasets, filter_by)
         request = EvaluationRequest(
-            model_names=[self.name],
+            model_names=[self.name],  # type: ignore
             datum_filter=datum_filter,
             parameters=EvaluationParameters(
                 task_type=TaskType.CLASSIFICATION,
@@ -1020,7 +1017,7 @@ class Model(StaticCollection):
         )
         datum_filter = self._format_constraints(datasets, filter_by)
         request = EvaluationRequest(
-            model_names=[self.name],
+            model_names=[self.name],  # type: ignore
             datum_filter=datum_filter,
             parameters=parameters,
             meta={},
@@ -1063,7 +1060,7 @@ class Model(StaticCollection):
         # format request
         datum_filter = self._format_constraints(datasets, filter_by)
         request = EvaluationRequest(
-            model_names=[self.name],
+            model_names=[self.name],  # type: ignore
             datum_filter=datum_filter,
             parameters=EvaluationParameters(
                 task_type=TaskType.SEMANTIC_SEGMENTATION,
@@ -1089,7 +1086,7 @@ class Model(StaticCollection):
         timeout : int, default=0
             Sets a timeout in seconds.
         """
-        Client(self.conn).delete_model(self.name, timeout)
+        Client(self.conn).delete_model(self.name, timeout)  # type: ignore
 
     def get_labels(
         self,
@@ -1206,7 +1203,7 @@ class Client:
         )
         return [
             Label(**label)
-            for label in self.conn.get_labels_from_dataset(dataset_name)
+            for label in self.conn.get_labels_from_dataset(dataset_name)  # type: ignore
         ]
 
     def get_labels_from_model(self, model: Union[Model, str]) -> List[Label]:
@@ -1226,7 +1223,7 @@ class Client:
         model_name = model.name if isinstance(model, Model) else model
         return [
             Label(**label)
-            for label in self.conn.get_labels_from_model(model_name)
+            for label in self.conn.get_labels_from_model(model_name)  # type: ignore
         ]
 
     def create_dataset(
@@ -1301,7 +1298,7 @@ class Client:
         datum_uid = datum.uid if isinstance(datum, Datum) else datum
         try:
             resp = self.conn.get_groundtruth(
-                dataset_name=dataset_name, datum_uid=datum_uid
+                dataset_name=dataset_name, datum_uid=datum_uid  # type: ignore
             )
             resp.pop("dataset_name")
             return GroundTruth.decode_value(resp)
@@ -1322,7 +1319,7 @@ class Client:
         dataset_name = (
             dataset.name if isinstance(dataset, Dataset) else dataset
         )
-        return self.conn.finalize_dataset(name=dataset_name)
+        return self.conn.finalize_dataset(name=dataset_name)  # type: ignore
 
     def get_dataset(
         self,
@@ -1422,7 +1419,7 @@ class Client:
         dataset_name = (
             dataset.name if isinstance(dataset, Dataset) else dataset
         )
-        resp = self.conn.get_datum(dataset_name=dataset_name, uid=uid)
+        resp = self.conn.get_datum(dataset_name=dataset_name, uid=uid)  # type: ignore
         return Datum.decode_value(resp)
 
     def get_dataset_status(
@@ -1567,9 +1564,9 @@ class Client:
         datum_uid = datum.uid if isinstance(datum, Datum) else datum
 
         resp = self.conn.get_prediction(
-            dataset_name=dataset_name,
-            model_name=model_name,
-            datum_uid=datum_uid,
+            dataset_name=dataset_name,  # type: ignore
+            model_name=model_name,  # type: ignore
+            datum_uid=datum_uid,  # type: ignore
         )
         resp.pop("dataset_name")
         resp.pop("model_name")
@@ -1586,8 +1583,8 @@ class Client:
         )
         model_name = model.name if isinstance(model, Model) else model
         return self.conn.finalize_inferences(
-            dataset_name=dataset_name,
-            model_name=model_name,
+            dataset_name=dataset_name,  # type: ignore
+            model_name=model_name,  # type: ignore
         )
 
     def get_model(
@@ -1690,7 +1687,7 @@ class Client:
         model_name = model.name if isinstance(model, Model) else model
         return [
             Evaluation(**evaluation, connection=self.conn)
-            for evaluation in self.conn.get_model_eval_requests(model_name)
+            for evaluation in self.conn.get_model_eval_requests(model_name)  # type: ignore
         ]
 
     def delete_model(self, name: str, timeout: int = 0) -> None:
@@ -1747,12 +1744,12 @@ class Client:
             A list of evaluations.
         """
         if isinstance(datasets, list):
-            datasets = [
+            datasets = [  # type: ignore
                 element.name if isinstance(element, Dataset) else element
                 for element in datasets
             ]
         if isinstance(models, list):
-            models = [
+            models = [  # type: ignore
                 element.name if isinstance(element, Model) else element
                 for element in models
             ]
@@ -1760,8 +1757,8 @@ class Client:
             Evaluation(connection=self.conn, **evaluation)
             for evaluation in self.conn.get_evaluations(
                 evaluation_ids=evaluation_ids,
-                models=models,
-                datasets=datasets,
+                models=models,  # type: ignore
+                datasets=datasets,  # type: ignore
                 metrics_to_sort_by=metrics_to_sort_by,
             )
         ]
