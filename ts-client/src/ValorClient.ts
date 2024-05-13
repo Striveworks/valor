@@ -582,6 +582,35 @@ export class ValorClient {
   }
 
   /**
+   * Fetches all evaluations associated to given models and dataset names
+   *
+   * @param modelNames names of the models
+   * @param datasetNames names of the datasets
+   * @param offset The start index of the evaluations to return. Used for pagination.
+   * @param limit The number of evaluations to return. Used for pagination.
+   * @param metricsToSortBy A map of metrics to sort the evaluations by.
+   *
+   * @returns {Promise<Evaluation[]>}
+   */
+  public async getEvaluationsByModelNamesAndDatasetNames(
+    modelNames: string[],
+    datasetNames: string[],
+    offset?: number,
+    limit?: number,
+    metricsToSortBy?: {
+      [key: string]: string | { [inner_key: string]: string };
+    }
+  ): Promise<Evaluation[]> {
+    return this.getEvaluations({
+      models: modelNames.join(','),
+      datasets: datasetNames.join(','),
+      offset: offset,
+      limit: limit,
+      metrics_to_sort_by: metricsToSortBy != null ? JSON.stringify(metricsToSortBy) : null
+    });
+  }
+
+  /**
    * Adds ground truth annotations to a dataset
    *
    * @param datasetName name of the dataset
