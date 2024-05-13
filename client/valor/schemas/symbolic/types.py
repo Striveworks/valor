@@ -30,6 +30,21 @@ from valor.schemas.symbolic.operators import (
 )
 
 
+def _convert_simple_variables_to_standard_types(var: typing.Any):
+    """Converts a variable to a standard type. This operates recursively.
+    in the case that the variable represents a dictionary
+    """
+    from valor.schemas.symbolic.collections import StaticCollection
+
+    if isinstance(var, StaticCollection):
+        return var
+    if isinstance(var, Variable):
+        val = var.get_value()
+        if isinstance(val, (str, int, float, bool, type(None))):
+            var = val
+    return var
+
+
 class Symbol:
     """
     A symbol contains no value and is defined by the tuple (owner, name, key, attribute).
@@ -61,7 +76,7 @@ class Symbol:
         if self._attribute:
             ret += f", attribute='{self._attribute}'"
         ret += ")"
-        return ret
+        return "blah2" + ret
 
     def __str__(self):
         ret = ""
@@ -72,7 +87,7 @@ class Symbol:
             ret += f"['{self._key}']"
         if self._attribute:
             ret += f".{self._attribute}"
-        return ret
+        return "blah3" + ret
 
     def __eq__(self, other):
         if not isinstance(other, Symbol):
@@ -128,7 +143,7 @@ class Variable:
         self._value = value
 
     def __repr__(self) -> str:
-        return self._value.__repr__()
+        return f"{self.__class__.__name__}({self._value.__repr__()})"
 
     def __str__(self) -> str:
         return str(self._value)
@@ -566,7 +581,7 @@ class Float(Quantifiable):
             )
 
 
-class String(Equatable):
+class String(Equatable, str):
     """
     Implementation of the built-in type 'str' as a Variable.
 
@@ -1669,6 +1684,8 @@ class Dictionary(Equatable, MutableMapping):
                 ),
             ):
                 encoding[k] = v.encode_value()
+            elif isinstance(v, (bool, int, float, str)):
+                encoding[k] = v
             else:
                 encoding[k] = v.to_dict()
         return encoding
@@ -1686,7 +1703,7 @@ class Dictionary(Equatable, MutableMapping):
             value = self.get_value()
             if not value:
                 raise KeyError(__key)
-            return value[__key]
+            return _convert_simple_variables_to_standard_types(value[__key])
 
     def __setitem__(self, __key: str, __value: typing.Any):
         if not isinstance(__value, Variable):

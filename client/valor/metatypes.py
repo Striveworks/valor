@@ -88,7 +88,7 @@ class ImageMetadata:
     @property
     def height(self) -> int:
         """Returns image height in pixels."""
-        value = self.datum.metadata["height"].get_value()
+        value = self.datum.metadata["height"]
         if not isinstance(value, int):
             raise TypeError
         return int(value)
@@ -96,7 +96,7 @@ class ImageMetadata:
     @property
     def width(self) -> int:
         """Returns image width in pixels."""
-        value = self.datum.metadata["width"].get_value()
+        value = self.datum.metadata["width"]
         if not isinstance(value, int):
             raise TypeError
         return int(value)

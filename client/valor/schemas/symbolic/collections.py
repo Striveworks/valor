@@ -17,6 +17,7 @@ from valor.schemas.symbolic.types import (
     String,
     TaskTypeEnum,
     Variable,
+    _convert_simple_variables_to_standard_types,
     get_type_by_name,
 )
 
@@ -28,27 +29,6 @@ def _get_schema_type_by_name(name: str):
         "datum": Datum,
     }
     return get_type_by_name(name=name, additional_types=types_)
-
-
-def _convert_simple_variables_to_standard_types(var: Any):
-    """Converts a variable to a standard type. This operates recursively.
-    in the case that the variable represents a dictionary
-    """
-    if isinstance(var, StaticCollection):
-        return var
-    if isinstance(var, Variable):
-        val = var.get_value()
-        if isinstance(val, (str, int, float, bool, type(None))):
-            var = val
-    if isinstance(var, (dict, Dictionary)):
-        d = {
-            k: _convert_simple_variables_to_standard_types(v)
-            for k, v in var.items()
-        }
-        if isinstance(var, dict):
-            return d
-        return Dictionary(d)
-    return var
 
 
 class StaticCollection(Equatable):
@@ -206,12 +186,12 @@ class StaticCollection(Equatable):
     def __repr__(self):
         if self.is_symbolic:
             return super().__repr__()
-        return self.encode_value().__repr__()
+        return "blah" + self.encode_value().__repr__()
 
     def __str__(self):
         if self.is_symbolic:
             return super().__str__()
-        return str(self.encode_value())
+        return "okkk" + str(self.encode_value())
 
 
 class Label(StaticCollection):

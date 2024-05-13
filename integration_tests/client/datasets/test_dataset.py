@@ -162,9 +162,9 @@ def test_create_image_dataset_with_segmentations(
     semantic_segs = []
     for seg in segs:
         assert isinstance(seg, Annotation)
-        if seg.task_type.get_value() == TaskType.OBJECT_DETECTION:
+        if seg.task_type == TaskType.OBJECT_DETECTION:
             instance_segs.append(seg)
-        elif seg.task_type.get_value() == TaskType.SEMANTIC_SEGMENTATION:
+        elif seg.task_type == TaskType.SEMANTIC_SEGMENTATION:
             semantic_segs.append(seg)
 
     # should have one instance segmentation that's a rectangle
@@ -381,7 +381,7 @@ def test_get_summary(
         TaskType.SEMANTIC_SEGMENTATION,
     ]
 
-    summary.labels.sort(key=lambda x: x.key.get_value())
+    summary.labels.sort(key=lambda x: x.key)
     assert summary.labels == [
         Label(key="k1", value="v1"),
         Label(key="k2", value="v2"),

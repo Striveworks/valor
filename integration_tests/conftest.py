@@ -21,7 +21,7 @@ from valor import (
 from valor.client import ClientConnection, connect, reset_connection
 from valor.enums import TaskType
 from valor.metatypes import Datum
-from valor.schemas import Box, MultiPolygon, Point, Polygon, Raster
+from valor.schemas import Box, MultiPolygon, Polygon, Raster
 from valor_api.backend import models
 
 
@@ -178,7 +178,7 @@ def img2(
     return Datum(
         uid="uid2",
         metadata={
-            "geospatial": Point(coordinates),
+            "geospatial": coordinates,
             "height": image_height,
             "width": image_width,
         },

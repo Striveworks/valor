@@ -887,18 +887,15 @@ class Model(StaticCollection):
         for key, value in label_map.items():
             if not all(
                 [
-                    (
-                        isinstance(v.key._value, str)
-                        and isinstance(v.value._value, str)
-                    )
+                    (isinstance(v.key, str) and isinstance(v.value, str))
                     for v in [key, value]
                 ]
             ):
                 raise TypeError
             return_value.append(
                 [
-                    [key.key._value, key.value._value],
-                    [value.key._value, value.value._value],
+                    [key.key, key.value],
+                    [value.key, value.value],
                 ]
             )
         return return_value
@@ -1272,6 +1269,7 @@ class Client:
                 )
             if not isinstance(groundtruth.annotations._value, list):
                 raise TypeError
+            ##
             groundtruth_dict = groundtruth.encode_value()
             groundtruth_dict["dataset_name"] = dataset.name
             groundtruths_json.append(groundtruth_dict)
@@ -1300,7 +1298,7 @@ class Client:
         dataset_name = (
             dataset.name if isinstance(dataset, Dataset) else dataset
         )
-        datum_uid = datum.get_uid() if isinstance(datum, Datum) else datum
+        datum_uid = datum.uid if isinstance(datum, Datum) else datum
         try:
             resp = self.conn.get_groundtruth(
                 dataset_name=dataset_name, datum_uid=datum_uid
@@ -1566,7 +1564,7 @@ class Client:
             dataset.name if isinstance(dataset, Dataset) else dataset
         )
         model_name = model.name if isinstance(model, Model) else model
-        datum_uid = datum.get_uid() if isinstance(datum, Datum) else datum
+        datum_uid = datum.uid if isinstance(datum, Datum) else datum
 
         resp = self.conn.get_prediction(
             dataset_name=dataset_name,
