@@ -2,7 +2,7 @@ import datetime
 
 import pytest
 
-from valor.schemas import Dictionary, Float, Integer
+from valor.schemas import Dictionary
 
 
 def test_validate_metadata():
@@ -14,8 +14,8 @@ def test_validate_metadata():
         Dictionary({123: 123})  # type: ignore
 
     # Check int to float conversion
-    assert type(Dictionary({"test": 1})["test"]) is Integer
-    assert type(Dictionary({"test": 1.0})["test"]) is Float
+    assert type(Dictionary({"test": 1})["test"]) is int
+    assert type(Dictionary({"test": 1.0})["test"]) is float
 
 
 def test_init_dictionary_from_builtin_dict():

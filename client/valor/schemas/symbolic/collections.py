@@ -17,6 +17,7 @@ from valor.schemas.symbolic.types import (
     String,
     TaskTypeEnum,
     Variable,
+    _convert_simple_variables_to_standard_types,
     get_type_by_name,
 )
 
@@ -112,6 +113,12 @@ class StaticCollection(Equatable):
     def __setattr__(self, __name: str, __value: Any) -> None:
         super().__setattr__(__name, self.format(__name, __value))
 
+    def __getattribute__(self, __name: str) -> Any:
+        ret = super().__getattribute__(__name)
+        if isinstance(ret, Variable) and ret.is_value:
+            return _convert_simple_variables_to_standard_types(ret)
+        return ret
+
     @classmethod
     def __validate__(cls, value: Any):
         """Validate typing."""
@@ -136,7 +143,8 @@ class StaticCollection(Equatable):
     def encode_value(self):
         """Encode object to JSON compatible dictionary."""
         return {
-            k: v.encode_value() for k, v in self._get_dynamic_values().items()
+            k: (v.encode_value() if hasattr(v, "encode_value") else v)
+            for k, v in self._get_dynamic_values().items()
         }
 
     @classmethod
@@ -165,7 +173,7 @@ class StaticCollection(Equatable):
     def __repr__(self):
         if self.is_symbolic:
             return super().__repr__()
-        return self.encode_value().__repr__()
+        return f"{self.__class__.__name__}({self.encode_value().__repr__()})"
 
     def __str__(self):
         if self.is_symbolic:
@@ -234,11 +242,7 @@ class Label(StaticCollection):
         tuple
             A tuple of the `Label's` arguments.
         """
-        return (
-            self.key.get_value(),
-            self.value.get_value(),
-            self.score.get_value(),
-        )
+        return (self.key, self.value, self.score)
 
 
 class Annotation(StaticCollection):
@@ -418,7 +422,3 @@ class Datum(StaticCollection):
             A dictionary of metadata that describes the datum.
         """
         super().__init__(uid=uid, metadata=metadata if metadata else dict())
-
-    def get_uid(self) -> str:
-        """Extracts the uid from a datum instance."""
-        return self.uid.get_value()

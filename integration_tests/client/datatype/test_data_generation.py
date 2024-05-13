@@ -276,8 +276,8 @@ def generate_prediction_data(
     datums = dataset.get_datums()
 
     for datum in datums:
-        height = cast(int, datum.metadata["height"].get_value())
-        width = cast(int, datum.metadata["width"].get_value())
+        height = cast(int, datum.metadata["height"])
+        width = cast(int, datum.metadata["width"])
         prediction = _generate_prediction(
             datum=datum,
             height=int(height),
@@ -319,7 +319,7 @@ def test_generate_segmentation_data(
     ), "Number of images doesn't match the test input"
 
     for image in dataset.get_datums():
-        uid = image.get_uid()
+        uid = image.uid
         sample_gt = dataset.get_groundtruth(uid)
 
         assert sample_gt

@@ -130,15 +130,15 @@ def create_combined_segmentation_mask(
     # unpack raster annotations
     annotations: List[Annotation] = []
     for annotation in annotated_datum.annotations:
-        if annotation.task_type.get_value() in task_types:
+        if annotation.task_type in task_types:
             annotations.append(annotation)
 
     # unpack label values
     label_values = []
     for annotation in annotations:
         for label in annotation.labels:
-            if label.key.get_value() == label_key:
-                label_values.append(label.value.get_value())
+            if label.key == label_key:
+                label_values.append(label.value)
     if not label_values:
         raise RuntimeError(
             f"Annotation doesn't have a label with key `{label_key}`"
@@ -255,7 +255,7 @@ def _draw_detection_on_image(
     )
     box = detection.bounding_box
     polygon = detection.polygon
-    if polygon.get_value() is not None:
+    if polygon is not None:
         img = _draw_bounding_polygon_on_image(
             polygon,
             img,

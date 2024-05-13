@@ -55,7 +55,7 @@ def db(connection: ClientConnection) -> Iterator[Session]:
     if len(client.get_datasets()) > 0:
         raise RuntimeError(
             "Tests should be run on an empty valor back end but found existing datasets.",
-            [ds.get_name() for ds in client.get_datasets()],
+            [ds.name for ds in client.get_datasets()],
         )
 
     if len(client.get_models()) > 0:
@@ -84,13 +84,13 @@ def db(connection: ClientConnection) -> Iterator[Session]:
 
     for model in client.get_models():
         try:
-            client.delete_model(model.get_name(), timeout=360)
+            client.delete_model(model.name, timeout=360)
         except exceptions.ModelDoesNotExistError:
             continue
 
     for dataset in client.get_datasets():
         try:
-            client.delete_dataset(dataset.get_name(), timeout=360)
+            client.delete_dataset(dataset.name, timeout=360)
         except exceptions.DatasetDoesNotExistError:
             continue
 
