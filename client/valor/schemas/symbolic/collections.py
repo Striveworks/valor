@@ -143,11 +143,7 @@ class StaticCollection(Equatable):
     def encode_value(self):
         """Encode object to JSON compatible dictionary."""
         return {
-            k: (
-                v.encode_value()
-                if v is not None and hasattr(v, "encode_value")
-                else v
-            )
+            k: (v.encode_value() if hasattr(v, "encode_value") else v)
             for k, v in self._get_dynamic_values().items()
         }
 
