@@ -63,7 +63,9 @@ def get_db():
     tags=["GroundTruths"],
 )
 def create_groundtruths(
-    groundtruths: list[schemas.GroundTruth], db: Session = Depends(get_db)
+    groundtruths: list[schemas.GroundTruth],
+    ignore_existing_datums: bool = False,
+    db: Session = Depends(get_db),
 ):
     """
     Create a ground truth in the database.
@@ -85,7 +87,11 @@ def create_groundtruths(
         If the dataset has been finalized, or if the datum already exists.
     """
     try:
-        crud.create_groundtruths(db=db, groundtruths=groundtruths)
+        crud.create_groundtruths(
+            db=db,
+            groundtruths=groundtruths,
+            ignore_existing_datums=ignore_existing_datums,
+        )
     except Exception as e:
         raise exceptions.create_http_error(e)
 

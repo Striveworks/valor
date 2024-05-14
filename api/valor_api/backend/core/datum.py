@@ -8,7 +8,10 @@ from valor_api.backend.query import Query
 
 
 def create_datums(
-    db: Session, datums: list[schemas.Datum], datasets: list[models.Dataset]
+    db: Session,
+    datums: list[schemas.Datum],
+    datasets: list[models.Dataset],
+    ignore_existing_datums: bool,
 ) -> list[models.Datum]:
     """Creates datums in bulk
 
@@ -38,10 +41,39 @@ def create_datums(
     try:
         db.add_all(rows)
         db.commit()
-    except IntegrityError:
+    except IntegrityError as e:
         db.rollback()
-        # TODO: fix this exception
-        raise exceptions.DatumAlreadyExistsError("")
+        if "duplicate key value violates unique constraint" not in str(e):
+            raise e
+
+        # get existing datums
+        existing_datums: list[models.Datum] = []
+        for datum, dataset in zip(datums, datasets):
+            try:
+                existing_datums.append(fetch_datum(db, dataset.id, datum.uid))
+            except exceptions.DatumDoesNotExistError:
+                pass
+
+        if not ignore_existing_datums:
+            raise exceptions.DatumsAlreadyExistsError(
+                [datum.uid for datum in existing_datums]
+            )
+
+        new_datums, new_datasets = [], []
+        for datum, dataset in zip(datums, datasets):
+            if datum.uid not in [datum.uid for datum in existing_datums]:
+                new_datums.append(datum)
+                new_datasets.append(dataset)
+
+        if len(new_datums) > 0:
+            existing_datums += create_datums(
+                db,
+                new_datums,
+                new_datasets,
+                ignore_existing_datums=True,
+            )
+
+        return existing_datums
 
     return rows
 

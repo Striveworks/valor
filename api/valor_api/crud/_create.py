@@ -54,6 +54,7 @@ def create_groundtruths(
     *,
     db: Session,
     groundtruths: list[schemas.GroundTruth],
+    ignore_existing_datums: bool,
 ):
     """
     Creates a ground truth.
@@ -65,7 +66,11 @@ def create_groundtruths(
     groundtruth: schemas.GroundTruth
         The ground truth to create.
     """
-    backend.create_groundtruths(db, groundtruths=groundtruths)
+    backend.create_groundtruths(
+        db,
+        groundtruths=groundtruths,
+        ignore_existing_datums=ignore_existing_datums,
+    )
 
 
 def create_predictions(

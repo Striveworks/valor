@@ -232,6 +232,20 @@ class DatumAlreadyExistsError(Exception):
         super().__init__(f"Datum with uid: `{uid}` already exists.")
 
 
+class DatumsAlreadyExistsError(Exception):
+    """
+    Raises an exception if the user tries to create a datum that already exists.
+
+    Parameters
+    -------
+    uids
+        The UIDs of the datums.
+    """
+
+    def __init__(self, uids: list[str]):
+        super().__init__(f"Datums with uids: `{uids}` already exist.")
+
+
 """ Annotation """
 
 
