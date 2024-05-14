@@ -114,6 +114,15 @@ class DatumAlreadyExistsError(ClientException):
     pass
 
 
+class DatumsAlreadyExistsError(ClientException):
+    """
+    Raises an exception if the user tries to create a datum that already exists.
+
+    """
+
+    pass
+
+
 class AnnotationAlreadyExistsError(ClientException):
     """
     Raises an exception if the user tries to create a annotation for a datum that already has annotation(s).

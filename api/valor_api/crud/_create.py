@@ -54,7 +54,7 @@ def create_groundtruths(
     *,
     db: Session,
     groundtruths: list[schemas.GroundTruth],
-    ignore_existing_datums: bool,
+    ignore_existing_datums: bool = False,
 ):
     """
     Creates a ground truth.
