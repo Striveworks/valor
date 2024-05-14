@@ -10,7 +10,11 @@ from sqlalchemy.orm import Session
 
 from valor import Annotation, Client, Dataset, Datum, GroundTruth, Label
 from valor.enums import TableStatus, TaskType
-from valor.exceptions import ClientException, DatasetDoesNotExistError
+from valor.exceptions import (
+    ClientException,
+    DatasetDoesNotExistError,
+    DatumsAlreadyExistsError,
+)
 from valor.metatypes import ImageMetadata
 from valor_api.backend import models
 
@@ -426,3 +430,35 @@ def test_get_summary(
 def test_validate_dataset(client: Client, dataset_name: str):
     with pytest.raises(TypeError):
         Dataset.create(name=123)  # type: ignore
+
+
+def test_add_groundtruths(client: Client, dataset_name: str):
+    dataset = Dataset.create(dataset_name)
+
+    dataset.add_groundtruths(
+        [
+            GroundTruth(datum=Datum(uid="uid1"), annotations=[]),
+            GroundTruth(datum=Datum(uid="uid2"), annotations=[]),
+        ]
+    )
+    assert len(dataset.get_datums()) == 2
+
+    with pytest.raises(DatumsAlreadyExistsError):
+        dataset.add_groundtruths(
+            [
+                GroundTruth(datum=Datum(uid="uid3"), annotations=[]),
+                GroundTruth(datum=Datum(uid="uid1"), annotations=[]),
+            ]
+        )
+
+    assert len(dataset.get_datums()) == 2
+
+    dataset.add_groundtruths(
+        [
+            GroundTruth(datum=Datum(uid="uid3"), annotations=[]),
+            GroundTruth(datum=Datum(uid="uid1"), annotations=[]),
+        ],
+        ignore_existing_datums=True,
+    )
+
+    assert len(dataset.get_datums()) == 3

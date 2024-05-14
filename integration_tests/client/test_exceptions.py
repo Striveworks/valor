@@ -48,7 +48,7 @@ def test_datum_exceptions(client: Client, dataset_name: str):
     datum = Datum(uid="uid")
     dset.add_groundtruth(GroundTruth(datum=datum, annotations=[]))
 
-    with pytest.raises(exceptions.DatumAlreadyExistsError):
+    with pytest.raises(exceptions.DatumsAlreadyExistsError):
         dset.add_groundtruth(GroundTruth(datum=datum, annotations=[]))
 
     with pytest.raises(exceptions.DatumDoesNotExistError):
