@@ -1,1 +1,0 @@
-An animated map, exhibiting the growth and refactoring of Canada's provinces and territories since Confederation.

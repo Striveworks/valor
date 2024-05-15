@@ -1,1 +1,0 @@
-Avogadro's Law implies that the relationship occurring between the weights of same volumes of different gases (at the same temperature and pressure) corresponds to the relationship between respective molecular weights. Hence, relative molecular masses can be calculated from the masses of gas samples.

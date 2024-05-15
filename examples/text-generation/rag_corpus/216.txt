@@ -1,1 +1,0 @@
-* 5. Draw a six sided figure inside the ellipse. The figure does not have to be regular, and may intersect itself.
