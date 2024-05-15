@@ -1,0 +1,1 @@
+*  Newton's First ODE - A study by  Phaser Scientific Software on how Newton approximated the solutions of a first-order ODE using infinite series.

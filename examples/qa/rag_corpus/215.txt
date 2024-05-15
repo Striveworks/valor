@@ -1,0 +1,1 @@
+* 4. If the plane is at an angle, the section cut out will be an ellipse. This is the more general case, because ellipses can be squat or long, thin or nearly round: Because Pascal wanted to prove a general theorem, he took the case of an ellipse.

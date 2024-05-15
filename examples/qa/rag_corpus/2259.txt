@@ -1,0 +1,1 @@
+We now have 2 terminals, and the current will flow if we connect them. The reactions in this cell are as follows:
