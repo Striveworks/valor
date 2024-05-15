@@ -30,6 +30,21 @@ from valor.schemas.symbolic.operators import (
 )
 
 
+def _convert_simple_variables_to_standard_types(var: typing.Any):
+    """Converts a variable to a standard type. This operates recursively.
+    in the case that the variable represents a dictionary
+    """
+    from valor.schemas.symbolic.collections import StaticCollection
+
+    if isinstance(var, StaticCollection):
+        return var
+    if isinstance(var, Variable):
+        val = var.get_value()
+        if isinstance(val, (str, int, float, bool, type(None))):
+            var = val
+    return var
+
+
 class Symbol:
     """
     A symbol contains no value and is defined by the tuple (owner, name, key, attribute).
@@ -128,7 +143,7 @@ class Variable:
         self._value = value
 
     def __repr__(self) -> str:
-        return self._value.__repr__()
+        return f"{self.__class__.__name__}({self._value.__repr__()})"
 
     def __str__(self) -> str:
         return str(self._value)
@@ -213,6 +228,7 @@ class Variable:
                 owner=value._owner,
             )
         elif cls.supports(value):
+            #
             return cls(value=value)
         raise TypeError(
             f"{cls.__name__} does not support operations with value '{value}' of type '{type(value).__name__}'."
@@ -442,7 +458,7 @@ class Equatable(Variable):
             elif rhs is None:
                 return Bool(lhs is None)
             else:
-                return Bool(lhs == rhs)
+                return Bool(bool(lhs == rhs))
         return Eq(self, other)
 
     def __ne__(self, value: typing.Any) -> typing.Union["Bool", Ne]:
@@ -1669,6 +1685,8 @@ class Dictionary(Equatable, MutableMapping):
                 ),
             ):
                 encoding[k] = v.encode_value()
+            elif isinstance(v, (bool, int, float, str)):
+                encoding[k] = v
             else:
                 encoding[k] = v.to_dict()
         return encoding
@@ -1686,7 +1704,7 @@ class Dictionary(Equatable, MutableMapping):
             value = self.get_value()
             if not value:
                 raise KeyError(__key)
-            return value[__key]
+            return _convert_simple_variables_to_standard_types(value[__key])
 
     def __setitem__(self, __key: str, __value: typing.Any):
         if not isinstance(__value, Variable):

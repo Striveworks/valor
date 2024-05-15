@@ -34,10 +34,6 @@ class ImageMetadata:
         elif datum.is_symbolic:
             raise ValueError
 
-        height = int(datum.metadata.get_value()["height"].get_value())
-        width = int(datum.metadata.get_value()["width"].get_value())
-        datum.metadata["height"] = Integer(height)
-        datum.metadata["width"] = Integer(width)
         self.datum = datum
 
     @classmethod
@@ -92,7 +88,7 @@ class ImageMetadata:
     @property
     def height(self) -> int:
         """Returns image height in pixels."""
-        value = self.datum.metadata["height"].get_value()
+        value = self.datum.metadata["height"]
         if not isinstance(value, int):
             raise TypeError
         return int(value)
@@ -100,7 +96,7 @@ class ImageMetadata:
     @property
     def width(self) -> int:
         """Returns image width in pixels."""
-        value = self.datum.metadata["width"].get_value()
+        value = self.datum.metadata["width"]
         if not isinstance(value, int):
             raise TypeError
         return int(value)

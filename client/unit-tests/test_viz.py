@@ -176,7 +176,7 @@ def test_draw_detections_on_image(bounding_poly: Polygon):
                 Annotation(
                     task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k", value="v")],
-                    polygon=Polygon(bounding_poly.get_value()),
+                    polygon=bounding_poly,
                 )
             ],
         ),
