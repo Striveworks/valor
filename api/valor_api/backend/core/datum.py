@@ -57,23 +57,17 @@ def create_datums(
                 insert(models.Datum)
                 .values(values)
                 .on_conflict_do_nothing(index_elements=["dataset_id", "uid"])
+                .returning(models.Datum.id, models.Datum.uid)
             )
 
-            db.execute(insert_stmt)
-
-            # get all the ids and update the row objects
+            ids_uids = db.execute(insert_stmt)
+            uid_to_id = {uid: id_ for id_, uid in ids_uids}
+            new_rows = []
             for row in rows:
-                row.id = (
-                    db.query(models.Datum.id)
-                    .where(
-                        and_(
-                            models.Datum.dataset_id == row.dataset_id,
-                            models.Datum.uid == row.uid,
-                        )
-                    )
-                    .one()
-                    .id
-                )
+                if row.uid in uid_to_id:
+                    row.id = uid_to_id[row.uid]
+                    new_rows.append(row)
+            return new_rows
         else:
             db.add_all(rows)
         db.commit()

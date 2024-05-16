@@ -49,6 +49,16 @@ def create_groundtruths(
         ],
         ignore_existing_datums=ignore_existing_datums,
     )
+
+    if ignore_existing_datums:
+        # datums only contains the newly created ones, so we need to filter out
+        # the ones that already existed
+        groundtruths = [
+            gt
+            for gt in groundtruths
+            if gt.datum.uid in [datum.uid for datum in datums]
+        ]
+
     all_labels = [
         label
         for groundtruth in groundtruths
