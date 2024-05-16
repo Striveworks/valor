@@ -1,4 +1,5 @@
 from sqlalchemy import and_, desc, func
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -23,6 +24,10 @@ def create_datums(
         The datums to add to the database.
     datasets
         The datasets to link to the datums. This list should be the same length as the datums list.
+    ignore_existing_datums
+        If True, will ignore datums that already exist in the database.
+        If False, will raise an error if any datums already exist.
+        Default is False.
 
     Returns
     -------
@@ -39,11 +44,45 @@ def create_datums(
     ]
 
     try:
-        db.add_all(rows)
+        if ignore_existing_datums:
+            values = [
+                {
+                    "uid": row.uid,
+                    "dataset_id": row.dataset_id,
+                    "meta": row.meta,
+                }
+                for row in rows
+            ]
+            insert_stmt = (
+                insert(models.Datum)
+                .values(values)
+                .on_conflict_do_nothing(index_elements=["dataset_id", "uid"])
+            )
+
+            db.execute(insert_stmt)
+
+            # get all the ids and update the row objects
+            for row in rows:
+                row.id = (
+                    db.query(models.Datum.id)
+                    .where(
+                        and_(
+                            models.Datum.dataset_id == row.dataset_id,
+                            models.Datum.uid == row.uid,
+                        )
+                    )
+                    .one()
+                    .id
+                )
+        else:
+            db.add_all(rows)
         db.commit()
     except IntegrityError as e:
         db.rollback()
-        if "duplicate key value violates unique constraint" not in str(e):
+        if (
+            "duplicate key value violates unique constraint" not in str(e)
+            or ignore_existing_datums
+        ):
             raise e
 
         # get existing datums
@@ -54,26 +93,9 @@ def create_datums(
             except exceptions.DatumDoesNotExistError:
                 pass
 
-        if not ignore_existing_datums:
-            raise exceptions.DatumsAlreadyExistsError(
-                [datum.uid for datum in existing_datums]
-            )
-
-        new_datums, new_datasets = [], []
-        for datum, dataset in zip(datums, datasets):
-            if datum.uid not in [datum.uid for datum in existing_datums]:
-                new_datums.append(datum)
-                new_datasets.append(dataset)
-
-        if len(new_datums) > 0:
-            existing_datums += create_datums(
-                db,
-                new_datums,
-                new_datasets,
-                ignore_existing_datums=True,
-            )
-
-        return existing_datums
+        raise exceptions.DatumsAlreadyExistsError(
+            [datum.uid for datum in existing_datums]
+        )
 
     return rows
 
