@@ -78,6 +78,8 @@ def create_groundtruths(
         The ground truths to add to the database.
     db : Session
         The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
+    ignore_existing_datums : bool, optional
+        If True, will ignore datums that already exist in the database.
 
     Raises
     ------
