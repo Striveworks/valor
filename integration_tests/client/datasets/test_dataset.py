@@ -13,7 +13,7 @@ from valor.enums import TableStatus, TaskType
 from valor.exceptions import (
     ClientException,
     DatasetDoesNotExistError,
-    DatumsAlreadyExistsError,
+    DatumsAlreadyExistError,
 )
 from valor.metatypes import ImageMetadata
 from valor_api.backend import models
@@ -443,7 +443,7 @@ def test_add_groundtruths(client: Client, dataset_name: str):
     )
     assert len(dataset.get_datums()) == 2
 
-    with pytest.raises(DatumsAlreadyExistsError):
+    with pytest.raises(DatumsAlreadyExistError):
         dataset.add_groundtruths(
             [
                 GroundTruth(datum=Datum(uid="uid3"), annotations=[]),

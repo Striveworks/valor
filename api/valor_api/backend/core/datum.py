@@ -93,7 +93,7 @@ def create_datums(
             except exceptions.DatumDoesNotExistError:
                 pass
 
-        raise exceptions.DatumsAlreadyExistsError(
+        raise exceptions.DatumsAlreadyExistError(
             [datum.uid for datum in existing_datums]
         )
 

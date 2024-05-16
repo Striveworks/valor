@@ -92,7 +92,7 @@ def test_create_datums(
 
     assert db.scalar(select(func.count()).select_from(models.Datum)) == 4
 
-    with pytest.raises(exceptions.DatumsAlreadyExistsError) as exc_info:
+    with pytest.raises(exceptions.DatumsAlreadyExistError) as exc_info:
         core.create_datums(
             db=db,
             datums=[

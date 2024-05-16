@@ -232,7 +232,7 @@ class DatumAlreadyExistsError(Exception):
         super().__init__(f"Datum with uid: `{uid}` already exists.")
 
 
-class DatumsAlreadyExistsError(Exception):
+class DatumsAlreadyExistError(Exception):
     """
     Raises an exception if the user tries to create a datum that already exists.
 

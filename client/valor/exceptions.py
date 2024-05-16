@@ -114,7 +114,7 @@ class DatumAlreadyExistsError(ClientException):
     pass
 
 
-class DatumsAlreadyExistsError(ClientException):
+class DatumsAlreadyExistError(ClientException):
     """
     Raises an exception if the user tries to create a datum that already exists.
 
