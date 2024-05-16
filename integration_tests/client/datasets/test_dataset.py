@@ -10,7 +10,11 @@ from sqlalchemy.orm import Session
 
 from valor import Annotation, Client, Dataset, Datum, GroundTruth, Label
 from valor.enums import TableStatus, TaskType
-from valor.exceptions import ClientException, DatasetDoesNotExistError
+from valor.exceptions import (
+    ClientException,
+    DatasetDoesNotExistError,
+    DatumsAlreadyExistError,
+)
 from valor.metatypes import ImageMetadata
 from valor_api.backend import models
 
@@ -426,3 +430,62 @@ def test_get_summary(
 def test_validate_dataset(client: Client, dataset_name: str):
     with pytest.raises(TypeError):
         Dataset.create(name=123)  # type: ignore
+
+
+def test_add_groundtruths(client: Client, dataset_name: str):
+    dataset = Dataset.create(dataset_name)
+
+    dataset.add_groundtruths(
+        [
+            GroundTruth(
+                datum=Datum(uid="uid1"),
+                annotations=[
+                    Annotation(
+                        task_type=TaskType.CLASSIFICATION,
+                        labels=[Label(key="k1", value="v1")],
+                    )
+                ],
+            ),
+            GroundTruth(datum=Datum(uid="uid2"), annotations=[]),
+        ]
+    )
+    assert len(dataset.get_datums()) == 2
+
+    with pytest.raises(DatumsAlreadyExistError):
+        dataset.add_groundtruths(
+            [
+                GroundTruth(datum=Datum(uid="uid3"), annotations=[]),
+                GroundTruth(
+                    datum=Datum(uid="uid1"),
+                    annotations=[],
+                ),
+            ]
+        )
+
+    assert len(dataset.get_datums()) == 2
+
+    dataset.add_groundtruths(
+        [
+            GroundTruth(datum=Datum(uid="uid3"), annotations=[]),
+            GroundTruth(
+                datum=Datum(uid="uid1"),
+                annotations=[
+                    Annotation(
+                        task_type=TaskType.CLASSIFICATION,
+                        labels=[Label(key="k2", value="v2")],
+                    )
+                ],
+            ),
+        ],
+        ignore_existing_datums=True,
+    )
+
+    assert len(dataset.get_datums()) == 3
+
+    # check that no new annotations were added to uid1, and it still
+    # has the original label
+    gt = dataset.get_groundtruth("uid1")
+    assert len(gt.annotations) == 1
+    assert len(gt.annotations[0].labels) == 1
+    assert gt.annotations[0].labels[0].key == "k1"
+    assert gt.annotations[0].labels[0].value == "v1"

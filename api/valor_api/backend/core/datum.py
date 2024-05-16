@@ -1,4 +1,5 @@
 from sqlalchemy import and_, desc, func
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -8,7 +9,10 @@ from valor_api.backend.query import Query
 
 
 def create_datums(
-    db: Session, datums: list[schemas.Datum], datasets: list[models.Dataset]
+    db: Session,
+    datums: list[schemas.Datum],
+    datasets: list[models.Dataset],
+    ignore_existing_datums: bool,
 ) -> list[models.Datum]:
     """Creates datums in bulk
 
@@ -20,6 +24,10 @@ def create_datums(
         The datums to add to the database.
     datasets
         The datasets to link to the datums. This list should be the same length as the datums list.
+    ignore_existing_datums
+        If True, will ignore datums that already exist in the database.
+        If False, will raise an error if any datums already exist.
+        Default is False.
 
     Returns
     -------
@@ -36,14 +44,55 @@ def create_datums(
     ]
 
     try:
-        db.add_all(rows)
-        db.commit()
-    except IntegrityError:
-        db.rollback()
-        # TODO: fix this exception
-        raise exceptions.DatumAlreadyExistsError("")
+        if not ignore_existing_datums:
+            db.add_all(rows)
+            db.commit()
+            return rows
 
-    return rows
+        values = [
+            {
+                "uid": row.uid,
+                "dataset_id": row.dataset_id,
+                "meta": row.meta,
+            }
+            for row in rows
+        ]
+        insert_stmt = (
+            insert(models.Datum)
+            .values(values)
+            .on_conflict_do_nothing(index_elements=["dataset_id", "uid"])
+            .returning(models.Datum.id, models.Datum.uid)
+        )
+
+        ids_uids = db.execute(insert_stmt)
+        db.commit()
+        uid_to_id = {uid: id_ for id_, uid in ids_uids}
+        new_rows = []
+        for row in rows:
+            if row.uid in uid_to_id:
+                row.id = uid_to_id[row.uid]
+                new_rows.append(row)
+        return new_rows
+
+    except IntegrityError as e:
+        db.rollback()
+        if (
+            "duplicate key value violates unique constraint" not in str(e)
+            or ignore_existing_datums
+        ):
+            raise e
+
+        # get existing datums
+        existing_datums: list[models.Datum] = []
+        for datum, dataset in zip(datums, datasets):
+            try:
+                existing_datums.append(fetch_datum(db, dataset.id, datum.uid))
+            except exceptions.DatumDoesNotExistError:
+                pass
+
+        raise exceptions.DatumsAlreadyExistError(
+            [datum.uid for datum in existing_datums]
+        )
 
 
 def create_datum(
