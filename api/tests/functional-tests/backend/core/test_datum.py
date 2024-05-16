@@ -87,7 +87,7 @@ def test_create_datums(
                 ignore_existing_datums=True,
             )
         )
-        == 3
+        == 1  # only one new datum was created (uid4)
     )
 
     assert db.scalar(select(func.count()).select_from(models.Datum)) == 4

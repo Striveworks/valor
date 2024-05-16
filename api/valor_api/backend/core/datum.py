@@ -44,33 +44,36 @@ def create_datums(
     ]
 
     try:
-        if ignore_existing_datums:
-            values = [
-                {
-                    "uid": row.uid,
-                    "dataset_id": row.dataset_id,
-                    "meta": row.meta,
-                }
-                for row in rows
-            ]
-            insert_stmt = (
-                insert(models.Datum)
-                .values(values)
-                .on_conflict_do_nothing(index_elements=["dataset_id", "uid"])
-                .returning(models.Datum.id, models.Datum.uid)
-            )
-
-            ids_uids = db.execute(insert_stmt)
-            uid_to_id = {uid: id_ for id_, uid in ids_uids}
-            new_rows = []
-            for row in rows:
-                if row.uid in uid_to_id:
-                    row.id = uid_to_id[row.uid]
-                    new_rows.append(row)
-            return new_rows
-        else:
+        if not ignore_existing_datums:
             db.add_all(rows)
+            db.commit()
+            return rows
+
+        values = [
+            {
+                "uid": row.uid,
+                "dataset_id": row.dataset_id,
+                "meta": row.meta,
+            }
+            for row in rows
+        ]
+        insert_stmt = (
+            insert(models.Datum)
+            .values(values)
+            .on_conflict_do_nothing(index_elements=["dataset_id", "uid"])
+            .returning(models.Datum.id, models.Datum.uid)
+        )
+
+        ids_uids = db.execute(insert_stmt)
         db.commit()
+        uid_to_id = {uid: id_ for id_, uid in ids_uids}
+        new_rows = []
+        for row in rows:
+            if row.uid in uid_to_id:
+                row.id = uid_to_id[row.uid]
+                new_rows.append(row)
+        return new_rows
+
     except IntegrityError as e:
         db.rollback()
         if (
@@ -90,8 +93,6 @@ def create_datums(
         raise exceptions.DatumsAlreadyExistError(
             [datum.uid for datum in existing_datums]
         )
-
-    return rows
 
 
 def create_datum(
