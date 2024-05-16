@@ -527,6 +527,10 @@ class Dataset(StaticCollection):
         ----------
         groundtruths : List[GroundTruth]
             The ground truths to create.
+        ignore_existing_datums : bool, default=False
+            If True, will ignore datums that already exist in the backend.
+            If False, will raise an error if any datums already exist.
+            Default is False.
         """
         Client(self.conn).create_groundtruths(
             dataset=self,
@@ -1260,6 +1264,10 @@ class Client:
             The dataset to create the ground truth for.
         groundtruths : List[valor.GroundTruth]
             The ground truths to create.
+        ignore_existing_datums : bool, default=False
+            If True, will ignore datums that already exist in the backend.
+            If False, will raise an error if any datums already exist.
+            Default is False.
         """
         groundtruths_json = []
         for groundtruth in groundtruths:

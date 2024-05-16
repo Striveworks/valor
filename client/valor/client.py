@@ -293,6 +293,10 @@ class ClientConnection:
         ----------
         groundtruths : List[dict]
             The ground truths to be created.
+        ignore_existing_datums : bool, default=False
+            If True, will ignore datums that already exist in the backend.
+            If False, will raise an error if any datums already exist.
+            Default is False.
         """
         self._requests_post_rel_host(
             "groundtruths",

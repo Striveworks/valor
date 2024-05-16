@@ -19,6 +19,10 @@ def create_groundtruths(
         The database Session to query against.
     groundtruths
         The ground truths to create.
+    ignore_existing_datums
+        If True, will ignore datums that already exist in the database.
+        If False, will raise an error if any datums already exist.
+        Default is False.
 
     Returns
     -------
