@@ -58,45 +58,31 @@ class Symbol:
         self,
         name: str,
         key: typing.Optional[str] = None,
-        attribute: typing.Optional[str] = None,
-        owner: typing.Optional[str] = None,
+        dtype: typing.Optional[str] = None,
     ):
-        self._owner = owner.lower() if owner else None
         self._name = name.lower()
         self._key = key.lower() if key else None
-        self._attribute = attribute.lower() if attribute else None
+        self._dtype = dtype.lower() if dtype else None
 
     def __repr__(self):
-        ret = f"{type(self).__name__}("
-        if self._owner:
-            ret += f"owner='{self._owner}', "
-        ret += f"name='{self._name}'"
+        ret = f"Symbol(name='{self._name}'"
         if self._key:
             ret += f", key='{self._key}'"
-        if self._attribute:
-            ret += f", attribute='{self._attribute}'"
+        if self._dtype:
+            ret += f", dtype='{self._dtype}'"
         ret += ")"
         return ret
 
     def __str__(self):
-        ret = ""
-        if self._owner:
-            ret += f"{self._owner}."
-        ret += self._name
-        if self._key is not None:
-            ret += f"['{self._key}']"
-        if self._attribute:
-            ret += f".{self._attribute}"
-        return ret
+        return self.__repr__()
 
     def __eq__(self, other):
         if not isinstance(other, Symbol):
             return False
         return (
-            self._owner == other._owner
-            and self._name == other._name
+            self._name == other._name
             and self._key == other._key
-            and self._attribute == other._attribute
+            and self._dtype == other._dtype
         )
 
     def __ne__(self, other):
@@ -109,10 +95,9 @@ class Symbol:
         return {
             "type": "symbol",
             "value": {
-                "owner": self._owner,
                 "name": self._name,
                 "key": self._key,
-                "attribute": self._attribute,
+                "dtype": self._dtype,
             },
         }
 
@@ -190,12 +175,14 @@ class Variable:
         owner: str, optional
             An optional name describing the class that owns this symbol.
         """
-        name = cls.__name__.lower() if not name else name
+        name = name if name else cls.dtype()
+        fullname = ".".join(
+            [v.lower() for v in [owner, name, attribute] if v is not None]
+        )
         symbol = Symbol(
-            name=name,
+            name=fullname,
             key=key,
-            attribute=attribute,
-            owner=owner,
+            dtype=cls.dtype(),
         )
         obj = cls.__new__(cls)
         obj._value = symbol
@@ -224,11 +211,8 @@ class Variable:
             return cls.symbolic(
                 name=value._name,
                 key=value._key,
-                attribute=value._attribute,
-                owner=value._owner,
             )
         elif cls.supports(value):
-            #
             return cls(value=value)
         raise TypeError(
             f"{cls.__name__} does not support operations with value '{value}' of type '{type(value).__name__}'."
@@ -284,6 +268,11 @@ class Variable:
                 "type": type(self).__name__.lower(),
                 "value": self.encode_value(),
             }
+
+    @classmethod
+    def dtype(cls) -> str:
+        """Returns the data type of the variable."""
+        return cls.__name__.lower()
 
     @property
     def is_symbolic(self) -> bool:
@@ -1054,7 +1043,6 @@ class Polygon(Spatial):
         if not isinstance(self._value, Symbol):
             raise ValueError
         return Float.symbolic(
-            owner=self._value._owner,
             name=self._value._name,
             key=self._value._key,
             attribute="area",
@@ -1333,7 +1321,6 @@ class MultiPolygon(Spatial):
                 "attribute 'area' is reserved for symbolic variables."
             )
         return Float.symbolic(
-            owner=self._value._owner,
             name=self._value._name,
             key=self._value._key,
             attribute="area",
@@ -1474,6 +1461,11 @@ class List(typing.Generic[T], Equatable):
             def __len__(self):
                 return len(self.get_value())
 
+            @classmethod
+            def dtype(cls) -> str:
+                """Returns the data type of the variable."""
+                return f"list[{item_class.__name__.lower()}]"
+
             @staticmethod
             def get_element_type():
                 return item_class
@@ -1502,44 +1494,42 @@ class DictionaryValue(Variable):
             raise ValueError(
                 "DictionaryValue should only be initialized as a symbol."
             )
-        if symbol._attribute:
-            raise ValueError(
-                "DictionaryValue symbol should not contain attribute."
-            )
         if not symbol._key:
             raise ValueError("DictionaryValue symbol should contain key.")
-        super().symbolic(name=symbol._name, owner=symbol._owner)
+        super().symbolic(name=symbol._name, key=symbol._key)
 
     @classmethod
     def nullable(cls, value: typing.Any):
         raise NotImplementedError("Dictionary values cannot be none.")
 
-    def __eq__(self, other: typing.Any):
-        return self._generate(fn="__eq__", other=other)
+    def eq(self, other: typing.Any, dtype: typing.Optional[type] = None):
+        return self._generate(fn="__eq__", other=other, dtype=dtype)
 
-    def __ne__(self, other: typing.Any):
-        return self._generate(fn="__ne__", other=other)
+    def ne(self, other: typing.Any, dtype: typing.Optional[type] = None):
+        return self._generate(fn="__ne__", other=other, dtype=dtype)
 
-    def __gt__(self, other: typing.Any):
-        return self._generate(fn="__gt__", other=other)
+    def gt(self, other: typing.Any, dtype: typing.Optional[type] = None):
+        return self._generate(fn="__gt__", other=other, dtype=dtype)
 
-    def __ge__(self, other: typing.Any):
-        return self._generate(fn="__ge__", other=other)
+    def ge(self, other: typing.Any, dtype: typing.Optional[type] = None):
+        return self._generate(fn="__ge__", other=other, dtype=dtype)
 
-    def __lt__(self, other: typing.Any):
-        return self._generate(fn="__lt__", other=other)
+    def lt(self, other: typing.Any, dtype: typing.Optional[type] = None):
+        return self._generate(fn="__lt__", other=other, dtype=dtype)
 
-    def __le__(self, other: typing.Any):
-        return self._generate(fn="__le__", other=other)
+    def le(self, other: typing.Any, dtype: typing.Optional[type] = None):
+        return self._generate(fn="__le__", other=other, dtype=dtype)
 
-    def intersects(self, other: typing.Any):
-        return self._generate(fn="intersects", other=other)
+    def intersects(
+        self, other: typing.Any, dtype: typing.Optional[type] = None
+    ):
+        return self._generate(fn="intersects", other=other, dtype=dtype)
 
-    def inside(self, other: typing.Any):
-        return self._generate(fn="inside", other=other)
+    def inside(self, other: typing.Any, dtype: typing.Optional[type] = None):
+        return self._generate(fn="inside", other=other, dtype=dtype)
 
-    def outside(self, other: typing.Any):
-        return self._generate(fn="outside", other=other)
+    def outside(self, other: typing.Any, dtype: typing.Optional[type] = None):
+        return self._generate(fn="outside", other=other, dtype=dtype)
 
     def is_none(self):
         return IsNull(self)
@@ -1552,26 +1542,37 @@ class DictionaryValue(Variable):
         """Returns area attribute."""
         symbol = self.get_symbol()
         return Float.symbolic(
-            owner=symbol._owner,
             name=symbol._name,
             key=symbol._key,
             attribute="area",
         )
 
-    def _generate(self, other: typing.Any, fn: str):
+    def _generate(
+        self, other: typing.Any, fn: str, dtype: typing.Optional[type]
+    ):
         """Generate expression."""
-        if isinstance(other, Variable):
-            obj = type(other)
-        else:
-            obj = _get_type_by_value(other)
+        if not isinstance(other, Variable):
+            other = _get_type_by_value(other)(other)
+
+        if isinstance(other, DictionaryValue):
+            if dtype is None or not issubclass(dtype, Variable):
+                raise ValueError(
+                    "Explicit variable type is required when comparing two metadata keys."
+                )
+            sym = other.get_symbol()
+            other = dtype.symbolic(
+                name=sym._name,
+                key=sym._key,
+            )
+
+        dtype = dtype if dtype else type(other)
+        if dtype is None or not issubclass(dtype, Variable):
+            raise ValueError
+
         symbol = self.get_symbol()
-        sym = obj.symbolic(
-            owner=symbol._owner,
-            name=symbol._name,
-            attribute=symbol._attribute,
-            key=symbol._key,
-        )
-        return sym.__getattribute__(fn)(other)
+        return dtype.symbolic(
+            name=symbol._name, key=symbol._key
+        ).__getattribute__(fn)(other)
 
 
 class Dictionary(Equatable, MutableMapping):
@@ -1695,7 +1696,6 @@ class Dictionary(Equatable, MutableMapping):
         if self.is_symbolic:
             symbol = self.get_symbol()
             return DictionaryValue.symbolic(
-                owner=symbol._owner,
                 name=symbol._name,
                 attribute=None,
                 key=__key,
@@ -1968,7 +1968,6 @@ class Raster(Spatial):
         if not isinstance(self._value, Symbol):
             raise ValueError
         return Float.symbolic(
-            owner=self._value._owner,
             name=self._value._name,
             key=self._value._key,
             attribute="area",
