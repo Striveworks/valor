@@ -6,7 +6,11 @@ from valor_api import enums, exceptions, schemas
 from valor_api.backend import core, models
 
 
-def create_groundtruths(db: Session, groundtruths: list[schemas.GroundTruth]):
+def create_groundtruths(
+    db: Session,
+    groundtruths: list[schemas.GroundTruth],
+    ignore_existing_datums: bool = False,
+):
     """Create ground truths in bulk.
 
     Parameters
@@ -15,6 +19,10 @@ def create_groundtruths(db: Session, groundtruths: list[schemas.GroundTruth]):
         The database Session to query against.
     groundtruths
         The ground truths to create.
+    ignore_existing_datums
+        If True, will ignore datums that already exist in the database.
+        If False, will raise an error if any datums already exist.
+        Default is False.
 
     Returns
     -------
@@ -39,7 +47,18 @@ def create_groundtruths(db: Session, groundtruths: list[schemas.GroundTruth]):
             dataset_name_to_dataset[groundtruth.dataset_name]
             for groundtruth in groundtruths
         ],
+        ignore_existing_datums=ignore_existing_datums,
     )
+
+    if ignore_existing_datums:
+        # datums only contains the newly created ones, so we need to filter out
+        # the ones that already existed
+        groundtruths = [
+            gt
+            for gt in groundtruths
+            if gt.datum.uid in [datum.uid for datum in datums]
+        ]
+
     all_labels = [
         label
         for groundtruth in groundtruths

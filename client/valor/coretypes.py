@@ -518,6 +518,7 @@ class Dataset(StaticCollection):
     def add_groundtruths(
         self,
         groundtruths: List[GroundTruth],
+        ignore_existing_datums: bool = False,
     ) -> None:
         """
         Add multiple ground truths to the dataset.
@@ -526,10 +527,15 @@ class Dataset(StaticCollection):
         ----------
         groundtruths : List[GroundTruth]
             The ground truths to create.
+        ignore_existing_datums : bool, default=False
+            If True, will ignore datums that already exist in the backend.
+            If False, will raise an error if any datums already exist.
+            Default is False.
         """
         Client(self.conn).create_groundtruths(
             dataset=self,
             groundtruths=groundtruths,
+            ignore_existing_datums=ignore_existing_datums,
         )
 
     def get_groundtruth(
@@ -1300,6 +1306,7 @@ class Client:
         self,
         dataset: Dataset,
         groundtruths: List[GroundTruth],
+        ignore_existing_datums: bool = False,
     ):
         """
         Creates ground truths.
@@ -1311,6 +1318,10 @@ class Client:
             The dataset to create the ground truth for.
         groundtruths : List[valor.GroundTruth]
             The ground truths to create.
+        ignore_existing_datums : bool, default=False
+            If True, will ignore datums that already exist in the backend.
+            If False, will raise an error if any datums already exist.
+            Default is False.
         """
         groundtruths_json = []
         for groundtruth in groundtruths:
@@ -1323,7 +1334,9 @@ class Client:
             groundtruth_dict = groundtruth.encode_value()
             groundtruth_dict["dataset_name"] = dataset.name
             groundtruths_json.append(groundtruth_dict)
-        self.conn.create_groundtruths(groundtruths_json)
+        self.conn.create_groundtruths(
+            groundtruths_json, ignore_existing_datums=ignore_existing_datums
+        )
 
     def get_groundtruth(
         self,

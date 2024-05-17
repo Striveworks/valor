@@ -63,7 +63,9 @@ def get_db():
     tags=["GroundTruths"],
 )
 def create_groundtruths(
-    groundtruths: list[schemas.GroundTruth], db: Session = Depends(get_db)
+    groundtruths: list[schemas.GroundTruth],
+    ignore_existing_datums: bool = False,
+    db: Session = Depends(get_db),
 ):
     """
     Create a ground truth in the database.
@@ -76,6 +78,8 @@ def create_groundtruths(
         The ground truths to add to the database.
     db : Session
         The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
+    ignore_existing_datums : bool, optional
+        If True, will ignore datums that already exist in the database.
 
     Raises
     ------
@@ -85,7 +89,11 @@ def create_groundtruths(
         If the dataset has been finalized, or if the datum already exists.
     """
     try:
-        crud.create_groundtruths(db=db, groundtruths=groundtruths)
+        crud.create_groundtruths(
+            db=db,
+            groundtruths=groundtruths,
+            ignore_existing_datums=ignore_existing_datums,
+        )
     except Exception as e:
         raise exceptions.create_http_error(e)
 

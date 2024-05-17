@@ -49,6 +49,66 @@ def test_create_datum(
     assert db.scalar(select(func.count()).select_from(models.Datum)) == 2
 
 
+def test_create_datums(
+    db: Session,
+    created_dataset: str,
+):
+    assert db.scalar(select(func.count()).select_from(models.Datum)) == 0
+    dataset = core.fetch_dataset(db=db, name=created_dataset)
+
+    assert (
+        len(
+            core.create_datums(
+                db=db,
+                datums=[
+                    schemas.Datum(uid="uid1"),
+                    schemas.Datum(uid="uid2"),
+                    schemas.Datum(uid="uid3"),
+                ],
+                datasets=[dataset] * 3,
+                ignore_existing_datums=True,
+            )
+        )
+        == 3
+    )
+
+    assert db.scalar(select(func.count()).select_from(models.Datum)) == 3
+
+    assert (
+        len(
+            core.create_datums(
+                db=db,
+                datums=[
+                    schemas.Datum(uid="uid1"),
+                    schemas.Datum(uid="uid4"),
+                    schemas.Datum(uid="uid3"),
+                ],
+                datasets=[dataset] * 3,
+                ignore_existing_datums=True,
+            )
+        )
+        == 1  # only one new datum was created (uid4)
+    )
+
+    assert db.scalar(select(func.count()).select_from(models.Datum)) == 4
+
+    with pytest.raises(exceptions.DatumsAlreadyExistError) as exc_info:
+        core.create_datums(
+            db=db,
+            datums=[
+                schemas.Datum(uid="uid2"),
+                schemas.Datum(uid="uid3"),
+                schemas.Datum(uid="uid7"),
+            ],
+            datasets=[dataset] * 3,
+            ignore_existing_datums=False,
+        )
+    assert "Datums with uids" in str(exc_info.value)
+    assert "uid2" in str(exc_info.value)
+    assert "uid3" in str(exc_info.value)
+    assert "uid7" not in str(exc_info.value)
+
+
 def test_get_paginated_datums(
     db: Session,
     created_dataset: str,
