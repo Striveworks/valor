@@ -9,9 +9,9 @@ from valor_api.backend import models
 from valor_api.backend.core import (  # fetch_union_of_labels,
     create_or_get_evaluations,
 )
-from valor_api.backend.metrics.llm_evaluation import (
-    _compute_llm_evaluation_metrics,
-    compute_llm_evaluation_metrics,
+from valor_api.backend.metrics.text_generation import (
+    _compute_text_generation_metrics,
+    compute_text_generation_metrics,
 )
 from valor_api.schemas import types
 
@@ -32,7 +32,7 @@ def mocked_coherence(self, text: str, label: models.Label):
 
 
 @pytest.fixture
-def llm_evaluation_test_data(db: Session, dataset_name: str, model_name: str):
+def text_generation_test_data(db: Session, dataset_name: str, model_name: str):
     question_gts = [
         """Did John Adams get along with Alexander Hamilton?""",  # ground truth answer is "No."
         """Did Lincoln win the election of 1860?""",  # ground truth answer is "Yes"
@@ -103,7 +103,7 @@ def llm_evaluation_test_data(db: Session, dataset_name: str, model_name: str):
             datum=queries[i],
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.LLM_EVALUATION,
+                    task_type=enums.TaskType.TEXT_GENERATION,
                     labels=[
                         schemas.Label(
                             key=f"q{i}",  # TODO potentially change these keys, as they are redundant with the datum. Or use the abstract prompt as the key.
@@ -125,7 +125,7 @@ def llm_evaluation_test_data(db: Session, dataset_name: str, model_name: str):
             datum=queries[i],
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.LLM_EVALUATION,
+                    task_type=enums.TaskType.TEXT_GENERATION,
                     labels=[
                         schemas.Label(
                             key=f"q{i}",  # TODO potentially change these keys, as they are redundant with the datum. Or use the abstract prompt as the key.
@@ -206,14 +206,14 @@ def llm_evaluation_test_data(db: Session, dataset_name: str, model_name: str):
     mocked_coherence,
 )
 # @patch.object(llm_call.OpenAIClient, mocked_OpenAIClient)
-def test_compute_llm_evaluation(
+def test_compute_text_generation(
     db: Session,
     dataset_name: str,
     model_name: str,
-    llm_evaluation_test_data,
+    text_generation_test_data,
 ):
     """
-    Tests the _compute_llm_evaluation function.
+    Tests the _compute_text_generation function.
     """
 
     model_filter = schemas.Filter(
@@ -222,7 +222,7 @@ def test_compute_llm_evaluation(
     datum_filter = schemas.Filter(
         dataset_names=[dataset_name],
         model_names=[model_name],
-        task_types=[enums.TaskType.LLM_EVALUATION],
+        task_types=[enums.TaskType.TEXT_GENERATION],
     )
 
     # TODO eventually get all working
@@ -241,7 +241,7 @@ def test_compute_llm_evaluation(
         # "Toxicity",
     ]
 
-    metrics = _compute_llm_evaluation_metrics(
+    metrics = _compute_text_generation_metrics(
         db,
         model_filter,
         datum_filter,
@@ -293,11 +293,11 @@ def test_compute_llm_evaluation(
     "valor_api.backend.metrics.llm_call.OpenAIClient.coherence",
     mocked_coherence,
 )
-def test_llm_evaluation(
+def test_text_generation(
     db: Session,
     dataset_name: str,
     model_name: str,
-    llm_evaluation_test_data,
+    text_generation_test_data,
 ):
     metrics_to_return = [
         # "AnswerCorrectness",
@@ -322,7 +322,7 @@ def test_llm_evaluation(
         model_names=[model_name],
         datum_filter=schemas.Filter(dataset_names=[dataset_name]),
         parameters=schemas.EvaluationParameters(
-            task_type=enums.TaskType.LLM_EVALUATION,
+            task_type=enums.TaskType.TEXT_GENERATION,
             metrics_to_return=metrics_to_return,
             llm_url=url,
             llm_api_key=api_key,
@@ -336,7 +336,7 @@ def test_llm_evaluation(
     assert evaluations[0].status == enums.EvaluationStatus.PENDING
 
     # computation, normally run as background task
-    _ = compute_llm_evaluation_metrics(
+    _ = compute_text_generation_metrics(
         db=db,
         evaluation_id=evaluations[0].id,
     )

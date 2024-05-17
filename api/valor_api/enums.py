@@ -55,7 +55,7 @@ class TaskType(str, Enum):
     OBJECT_DETECTION = "object-detection"
     SEMANTIC_SEGMENTATION = "semantic-segmentation"
     EMBEDDING = "embedding"
-    LLM_EVALUATION = "llm-evaluation"
+    TEXT_GENERATION = "text-generation"
 
 
 class TableStatus(str, Enum):

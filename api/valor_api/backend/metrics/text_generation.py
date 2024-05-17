@@ -67,7 +67,7 @@ def _generate_prediction_query(
     )
 
 
-def _compute_llm_evaluation_metrics_at_grouper_id(
+def _compute_text_generation_metrics_at_grouper_id(
     db: Session,
     prediction_filter: schemas.Filter,
     groundtruth_filter: schemas.Filter,
@@ -218,7 +218,7 @@ def _compute_llm_evaluation_metrics_at_grouper_id(
     return metrics
 
 
-def _compute_llm_evaluation_metrics(
+def _compute_text_generation_metrics(
     db: Session,
     prediction_filter: schemas.Filter,
     groundtruth_filter: schemas.Filter,
@@ -268,7 +268,7 @@ def _compute_llm_evaluation_metrics(
     grouper_mappings = create_grouper_mappings(
         labels=labels,
         label_map=label_map,
-        evaluation_type=enums.TaskType.LLM_EVALUATION,
+        evaluation_type=enums.TaskType.TEXT_GENERATION,
     )
 
     # compute metrics for each grouper id
@@ -284,7 +284,7 @@ def _compute_llm_evaluation_metrics(
             "grouper_id_to_grouper_label_mapping"
         ][grouper_id]
 
-        llm_evaluation_metrics = _compute_llm_evaluation_metrics_at_grouper_id(
+        text_generation_metrics = _compute_text_generation_metrics_at_grouper_id(
             db=db,
             prediction_filter=prediction_filter,
             groundtruth_filter=groundtruth_filter,
@@ -294,8 +294,8 @@ def _compute_llm_evaluation_metrics(
             metrics_to_return=metrics_to_return,
         )
 
-        if llm_evaluation_metrics is not None:
-            ret.extend(llm_evaluation_metrics)
+        if text_generation_metrics is not None:
+            ret.extend(text_generation_metrics)
 
     # TODO remove
     # metrics = []
@@ -303,8 +303,8 @@ def _compute_llm_evaluation_metrics(
     #     "grouper_key_to_labels_mapping"
     # ].keys():
     #     print(grouper_key)
-    #     llm_evaluation_metrics = (
-    #         _compute_llm_evaluation_metrics_at_grouper_key(
+    #     text_generation_metrics = (
+    #         _compute_text_generation_metrics_at_grouper_key(
     #             db=db,
     #             prediction_filter=prediction_filter,
     #             groundtruth_filter=groundtruth_filter,
@@ -313,14 +313,14 @@ def _compute_llm_evaluation_metrics(
     #             metrics_to_return=metrics_to_return,
     #         )
     #     )
-    #     if llm_evaluation_metrics is not None:
-    #         metrics.extend(llm_evaluation_metrics)
+    #     if text_generation_metrics is not None:
+    #         metrics.extend(text_generation_metrics)
 
     return ret
 
 
 @validate_computation
-def compute_llm_evaluation_metrics(
+def compute_text_generation_metrics(
     *,
     db: Session,
     evaluation_id: int,
@@ -366,7 +366,7 @@ def compute_llm_evaluation_metrics(
         groundtruth_filter=groundtruth_filter,
     )
 
-    metrics = _compute_llm_evaluation_metrics(
+    metrics = _compute_text_generation_metrics(
         db=db,
         prediction_filter=prediction_filter,
         groundtruth_filter=groundtruth_filter,

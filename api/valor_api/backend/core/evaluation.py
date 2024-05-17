@@ -355,7 +355,7 @@ def _create_responses(
                     "missing_pred_labels": missing_pred_labels,
                     "ignored_pred_labels": ignored_pred_labels,
                 }
-            case enums.TaskType.LLM_EVALUATION:
+            case enums.TaskType.TEXT_GENERATION:
                 kwargs = {}
             case _:
                 raise NotImplementedError

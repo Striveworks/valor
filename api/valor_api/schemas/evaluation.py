@@ -86,7 +86,7 @@ class EvaluationParameters(BaseModel):
                             raise ValueError(
                                 "`iou_thresholds_to_return` must be a subset of `iou_thresholds_to_compute`"
                             )
-            case TaskType.LLM_EVALUATION:
+            case TaskType.TEXT_GENERATION:
                 if values.llm_url is None or values.llm_api_key is None:
                     raise ValueError(
                         "`llm_url` and `llm_api_key` must be provided for LLM guided evaluations."

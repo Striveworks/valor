@@ -98,7 +98,7 @@ def _create_classification_grouper_mappings(
     }
 
 
-def _create_llm_evaluation_grouper_mappings(
+def _create_text_generation_grouper_mappings(
     mapping_dict: dict[tuple[str, ...], tuple[str, ...]],
     labels: list[models.Label],
 ) -> dict[str, dict]:
@@ -173,7 +173,7 @@ def create_grouper_mappings(
         enums.TaskType.CLASSIFICATION: _create_classification_grouper_mappings,
         enums.TaskType.OBJECT_DETECTION: _create_detection_grouper_mappings,
         enums.TaskType.SEMANTIC_SEGMENTATION: _create_segmentation_grouper_mappings,
-        enums.TaskType.LLM_EVALUATION: _create_llm_evaluation_grouper_mappings,
+        enums.TaskType.TEXT_GENERATION: _create_text_generation_grouper_mappings,
     }
     if evaluation_type not in mapping_functions.keys():
         raise KeyError(

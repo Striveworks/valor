@@ -86,7 +86,7 @@ def _create_annotation(
                 embedding_id = _create_embedding(
                     db=db, value=annotation.embedding
                 )
-        case TaskType.LLM_EVALUATION:  # TODO maybe something for context_list when we make context_list an annotation parameter?
+        case TaskType.TEXT_GENERATION:  # TODO maybe something for context_list when we make context_list an annotation parameter?
             pass
         case _:
             pass

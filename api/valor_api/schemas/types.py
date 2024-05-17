@@ -126,7 +126,7 @@ def _validate_annotation_by_task_type(
                 raise ValueError(
                     "Annotations with task type `embedding` do not support labels or geometries."
                 )
-        case TaskType.LLM_EVALUATION:
+        case TaskType.TEXT_GENERATION:
             if not (  # TODO check this
                 annotation.labels
                 and annotation.bounding_box is None
