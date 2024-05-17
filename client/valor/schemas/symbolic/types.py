@@ -1567,7 +1567,7 @@ class DictionaryValue(Variable):
 
         dtype = dtype if dtype else type(other)
         if dtype is None or not issubclass(dtype, Variable):
-            raise ValueError
+            raise ValueError(f"Data '{dtype}' type is not compatible.")
 
         symbol = self.get_symbol()
         return dtype.symbolic(
