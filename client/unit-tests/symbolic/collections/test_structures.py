@@ -123,10 +123,10 @@ def _test_to_dict(objcls, value):
     assert objcls.symbolic().to_dict() == {
         "type": "symbol",
         "value": {
-            "owner": None,
             "name": objcls.__name__.lower(),
             "key": None,
             "attribute": None,
+            "dtype": objcls.__name__.lower(),
         },
     }
 
@@ -186,14 +186,16 @@ def test_list():
 
     # test creating symbolic lists
     symbol = List[Float].symbolic()
-    assert symbol.__str__() == "list[float]"
+    assert (
+        symbol.__str__() == "Symbol(name='list[float]', dtype='list[float]')"
+    )
     assert symbol.to_dict() == {
         "type": "symbol",
         "value": {
-            "owner": None,
             "name": "list[float]",
             "key": None,
             "attribute": None,
+            "dtype": "list[float]",
         },
     }
 
@@ -220,10 +222,10 @@ def test_list():
         "lhs": {
             "type": "symbol",
             "value": {
-                "owner": None,
                 "name": "list[float]",
                 "key": None,
                 "attribute": None,
+                "dtype": "list[float]",
             },
         },
         "rhs": {"type": "list[float]", "value": [0.1, 0.2, 0.3]},
@@ -235,10 +237,10 @@ def test_list():
         "lhs": {
             "type": "symbol",
             "value": {
-                "owner": None,
                 "name": "list[float]",
                 "key": None,
                 "attribute": None,
+                "dtype": "list[float]",
             },
         },
         "rhs": {"type": "list[float]", "value": [0.1, 0.2, 0.3]},
@@ -275,39 +277,38 @@ def test_dictionary_value():
     with pytest.raises(ValueError):
         DictionaryValue(1)  # type: ignore - intentionally incorrect
 
-    # test symbol cannot already attribute
-    with pytest.raises(ValueError) as e:
-        DictionaryValue(
-            symbol=Symbol(name="a", attribute="c", owner="d", key="b"),
-        )
-    assert "attribute" in str(e)
-
     # test symbol must have key
     with pytest.raises(ValueError) as e:
         DictionaryValue(
-            symbol=Symbol(name="a", owner="d"),
+            symbol=Symbol(name="a"),
         )
     assert "key" in str(e)
 
     # test router
-    assert (DictionaryValue.symbolic(name="a", key="b") == 0).to_dict()[
-        "op"
-    ] == "eq"
-    assert (DictionaryValue.symbolic(name="a", key="b") != 0).to_dict()[
-        "op"
-    ] == "ne"
-    assert (DictionaryValue.symbolic(name="a", key="b") >= 0).to_dict()[
-        "op"
-    ] == "ge"
-    assert (DictionaryValue.symbolic(name="a", key="b") <= 0).to_dict()[
-        "op"
-    ] == "le"
-    assert (DictionaryValue.symbolic(name="a", key="b") > 0).to_dict()[
-        "op"
-    ] == "gt"
-    assert (DictionaryValue.symbolic(name="a", key="b") < 0).to_dict()[
-        "op"
-    ] == "lt"
+    assert (
+        DictionaryValue.symbolic(name="a", key="b").eq(0).to_dict()["op"]
+        == "eq"
+    )
+    assert (
+        DictionaryValue.symbolic(name="a", key="b").ne(0).to_dict()["op"]
+        == "ne"
+    )
+    assert (
+        DictionaryValue.symbolic(name="a", key="b").ge(0).to_dict()["op"]
+        == "ge"
+    )
+    assert (
+        DictionaryValue.symbolic(name="a", key="b").le(0).to_dict()["op"]
+        == "le"
+    )
+    assert (
+        DictionaryValue.symbolic(name="a", key="b").gt(0).to_dict()["op"]
+        == "gt"
+    )
+    assert (
+        DictionaryValue.symbolic(name="a", key="b").lt(0).to_dict()["op"]
+        == "lt"
+    )
     assert (
         DictionaryValue.symbolic(name="a", key="b").intersects((0, 0))
     ).to_dict()["op"] == "intersects"
@@ -328,9 +329,12 @@ def test_dictionary_value():
     ] == "eq"
 
     # test router with Variable type
-    assert (DictionaryValue.symbolic(name="a", key="b") == Float(0)).to_dict()[
-        "op"
-    ] == "eq"
+    assert (
+        DictionaryValue.symbolic(name="a", key="b")
+        .eq(Float(0))
+        .to_dict()["op"]
+        == "eq"
+    )
 
 
 def test_dictionary():

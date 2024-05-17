@@ -33,43 +33,36 @@ from valor.schemas.symbolic.types import (
 def test_symbol():
     s = Symbol(name="some_symbol")
     assert s.__repr__() == "Symbol(name='some_symbol')"
-    assert s.__str__() == "some_symbol"
+    assert s.__str__() == "Symbol(name='some_symbol')"
     assert s.to_dict() == {
         "type": "symbol",
         "value": {
-            "owner": None,
             "name": "some_symbol",
             "key": None,
             "attribute": None,
+            "dtype": None,
         },
     }
 
     s = Symbol(
-        owner="some_owner",
         name="some_name",
-        attribute="some_attribute",
         key="some_key",
     )
-    assert (
-        s.__repr__()
-        == "Symbol(owner='some_owner', name='some_name', key='some_key', attribute='some_attribute')"
-    )
-    assert s.__str__() == "some_owner.some_name['some_key'].some_attribute"
+    assert s.__repr__() == "Symbol(name='some_name', key='some_key')"
+    assert s.__str__() == "Symbol(name='some_name', key='some_key')"
     assert s.to_dict() == {
         "type": "symbol",
         "value": {
-            "owner": "some_owner",
             "name": "some_name",
             "key": "some_key",
-            "attribute": "some_attribute",
+            "attribute": None,
+            "dtype": None,
         },
     }
 
     # test '__eq__'
     assert s == Symbol(
-        owner="some_owner",
         name="some_name",
-        attribute="some_attribute",
         key="some_key",
     )
     assert not (s == "symbol")
@@ -78,16 +71,16 @@ def test_symbol():
     assert not (
         s
         != Symbol(
-            owner="some_owner",
             name="some_name",
-            attribute="some_attribute",
             key="some_key",
         )
     )
     assert s != "symbol"
 
 
-def _test_symbolic_outputs(v, s=Symbol(name="test")):
+def _test_symbolic_outputs(v, s=None):
+    if s is None:
+        s = Symbol(name="test", dtype=type(v).__name__)
     assert s.to_dict() == v.to_dict()
     assert s.to_dict() == v.get_symbol().to_dict()
     assert f"Variable({s.__repr__()})" == v.__repr__()
@@ -113,13 +106,15 @@ def test_variable():
             "type": "symbol",
             "value": {
                 "name": "variable",
-                "owner": None,
                 "key": None,
                 "attribute": None,
+                "dtype": "variable",
             },
         },
     }
-    assert Variable.symbolic().get_symbol() == Symbol(name="variable")
+    assert Variable.symbolic().get_symbol() == Symbol(
+        name="variable", dtype="variable"
+    )
     assert Variable(None).is_none().get_value() is True  # type: ignore - known output
     assert Variable(1234).is_none().get_value() is False  # type: ignore - known output
     with pytest.raises(TypeError):
@@ -132,9 +127,9 @@ def test_variable():
             "type": "symbol",
             "value": {
                 "name": "variable",
-                "owner": None,
                 "key": None,
                 "attribute": None,
+                "dtype": "variable",
             },
         },
     }
@@ -150,19 +145,19 @@ def _test_equatable(varA, varB, varC):
         "lhs": {
             "type": "symbol",
             "value": {
-                "owner": None,
                 "name": "a",
                 "key": None,
                 "attribute": None,
+                "dtype": type(varA).__name__.lower(),
             },
         },
         "rhs": {
             "type": "symbol",
             "value": {
-                "owner": None,
                 "name": "b",
                 "key": None,
                 "attribute": None,
+                "dtype": type(varB).__name__.lower(),
             },
         },
     }
@@ -174,19 +169,19 @@ def _test_equatable(varA, varB, varC):
         "lhs": {
             "type": "symbol",
             "value": {
-                "owner": None,
                 "name": "a",
                 "key": None,
                 "attribute": None,
+                "dtype": type(varA).__name__.lower(),
             },
         },
         "rhs": {
             "type": "symbol",
             "value": {
-                "owner": None,
                 "name": "b",
                 "key": None,
                 "attribute": None,
+                "dtype": type(varB).__name__.lower(),
             },
         },
     }
@@ -201,19 +196,19 @@ def _test_equatable(varA, varB, varC):
                 "lhs": {
                     "type": "symbol",
                     "value": {
-                        "owner": None,
                         "name": "a",
                         "key": None,
                         "attribute": None,
+                        "dtype": type(varA).__name__.lower(),
                     },
                 },
                 "rhs": {
                     "type": "symbol",
                     "value": {
-                        "owner": None,
                         "name": "b",
                         "key": None,
                         "attribute": None,
+                        "dtype": type(varB).__name__.lower(),
                     },
                 },
             },
@@ -222,19 +217,19 @@ def _test_equatable(varA, varB, varC):
                 "lhs": {
                     "type": "symbol",
                     "value": {
-                        "owner": None,
                         "name": "a",
                         "key": None,
                         "attribute": None,
+                        "dtype": type(varA).__name__.lower(),
                     },
                 },
                 "rhs": {
                     "type": "symbol",
                     "value": {
-                        "owner": None,
                         "name": "c",
                         "key": None,
                         "attribute": None,
+                        "dtype": type(varC).__name__.lower(),
                     },
                 },
             },
@@ -256,20 +251,20 @@ def _test_quantifiable(varA, varB, varC):
         "lhs": {
             "type": "symbol",
             "value": {
-                "attribute": None,
-                "key": None,
                 "name": "a",
-                "owner": None,
+                "key": None,
+                "attribute": None,
+                "dtype": type(varA).__name__.lower(),
             },
         },
         "op": "gt",
         "rhs": {
             "type": "symbol",
             "value": {
-                "attribute": None,
-                "key": None,
                 "name": "b",
-                "owner": None,
+                "key": None,
+                "attribute": None,
+                "dtype": type(varB).__name__.lower(),
             },
         },
     }
@@ -279,20 +274,20 @@ def _test_quantifiable(varA, varB, varC):
         "lhs": {
             "type": "symbol",
             "value": {
-                "attribute": None,
-                "key": None,
                 "name": "a",
-                "owner": None,
+                "key": None,
+                "attribute": None,
+                "dtype": type(varA).__name__.lower(),
             },
         },
         "op": "ge",
         "rhs": {
             "type": "symbol",
             "value": {
-                "attribute": None,
-                "key": None,
                 "name": "b",
-                "owner": None,
+                "key": None,
+                "attribute": None,
+                "dtype": type(varB).__name__.lower(),
             },
         },
     }
@@ -302,20 +297,20 @@ def _test_quantifiable(varA, varB, varC):
         "lhs": {
             "type": "symbol",
             "value": {
-                "attribute": None,
-                "key": None,
                 "name": "a",
-                "owner": None,
+                "key": None,
+                "attribute": None,
+                "dtype": type(varA).__name__.lower(),
             },
         },
         "op": "lt",
         "rhs": {
             "type": "symbol",
             "value": {
-                "attribute": None,
-                "key": None,
                 "name": "b",
-                "owner": None,
+                "key": None,
+                "attribute": None,
+                "dtype": type(varB).__name__.lower(),
             },
         },
     }
@@ -325,20 +320,20 @@ def _test_quantifiable(varA, varB, varC):
         "lhs": {
             "type": "symbol",
             "value": {
-                "attribute": None,
-                "key": None,
                 "name": "a",
-                "owner": None,
+                "key": None,
+                "attribute": None,
+                "dtype": type(varA).__name__.lower(),
             },
         },
         "op": "le",
         "rhs": {
             "type": "symbol",
             "value": {
-                "attribute": None,
-                "key": None,
                 "name": "b",
-                "owner": None,
+                "key": None,
+                "attribute": None,
+                "dtype": type(varB).__name__.lower(),
             },
         },
     }
@@ -350,10 +345,10 @@ def _test_nullable(varA, varB, varC):
         "arg": {
             "type": "symbol",
             "value": {
-                "attribute": None,
-                "key": None,
                 "name": "a",
-                "owner": None,
+                "key": None,
+                "attribute": None,
+                "dtype": type(varA).__name__.lower(),
             },
         },
         "op": "isnull",
@@ -364,10 +359,10 @@ def _test_nullable(varA, varB, varC):
         "arg": {
             "type": "symbol",
             "value": {
-                "attribute": None,
-                "key": None,
                 "name": "a",
-                "owner": None,
+                "key": None,
+                "attribute": None,
+                "dtype": type(varA).__name__.lower(),
             },
         },
         "op": "isnotnull",
@@ -380,20 +375,20 @@ def _test_spatial(varA, varB, varC):
         "lhs": {
             "type": "symbol",
             "value": {
-                "attribute": None,
-                "key": None,
                 "name": "a",
-                "owner": None,
+                "key": None,
+                "attribute": None,
+                "dtype": type(varA).__name__.lower(),
             },
         },
         "op": "intersects",
         "rhs": {
             "type": "symbol",
             "value": {
-                "attribute": None,
-                "key": None,
                 "name": "b",
-                "owner": None,
+                "key": None,
+                "attribute": None,
+                "dtype": type(varB).__name__.lower(),
             },
         },
     }
@@ -403,20 +398,20 @@ def _test_spatial(varA, varB, varC):
         "lhs": {
             "type": "symbol",
             "value": {
-                "attribute": None,
                 "key": None,
                 "name": "a",
-                "owner": None,
+                "attribute": None,
+                "dtype": type(varA).__name__.lower(),
             },
         },
         "op": "inside",
         "rhs": {
             "type": "symbol",
             "value": {
-                "attribute": None,
                 "key": None,
                 "name": "b",
-                "owner": None,
+                "attribute": None,
+                "dtype": type(varB).__name__.lower(),
             },
         },
     }
@@ -426,20 +421,20 @@ def _test_spatial(varA, varB, varC):
         "lhs": {
             "type": "symbol",
             "value": {
-                "attribute": None,
                 "key": None,
                 "name": "a",
-                "owner": None,
+                "attribute": None,
+                "dtype": type(varA).__name__.lower(),
             },
         },
         "op": "outside",
         "rhs": {
             "type": "symbol",
             "value": {
-                "attribute": None,
                 "key": None,
                 "name": "b",
-                "owner": None,
+                "attribute": None,
+                "dtype": type(varB).__name__.lower(),
             },
         },
     }
@@ -525,10 +520,10 @@ def _test_to_dict(objcls, value, type_name: typing.Optional[str] = None):
     assert objcls.symbolic().to_dict() == {
         "type": "symbol",
         "value": {
-            "owner": None,
             "name": type_name,
             "key": None,
             "attribute": None,
+            "dtype": type_name,
         },
     }
 
@@ -673,14 +668,14 @@ def test_bool():
     assert (~Bool(True)).get_value() is False  # type: ignore - known output
     assert (~Bool(False)).get_value() is True  # type: ignore - known output
     assert (~Bool.symbolic()).to_dict() == {
-        "op": "negate",
+        "op": "not",
         "arg": {
             "type": "symbol",
             "value": {
-                "owner": None,
                 "name": "bool",
                 "key": None,
                 "attribute": None,
+                "dtype": "bool",
             },
         },
     }
@@ -1215,10 +1210,10 @@ def test_polygon():
     assert objcls.symbolic().area.to_dict() == {
         "type": "symbol",
         "value": {
-            "owner": None,
             "name": objcls.__name__.lower(),
             "key": None,
             "attribute": "area",
+            "dtype": "float",
         },
     }
     # test that property 'area' is not accessible when object is a value
@@ -1291,10 +1286,10 @@ def test_multipolygon():
     assert objcls.symbolic().area.to_dict() == {
         "type": "symbol",
         "value": {
-            "owner": None,
             "name": objcls.__name__.lower(),
             "key": None,
             "attribute": "area",
+            "dtype": "float",
         },
     }
     # test that property 'area' is not accessible when object is a value

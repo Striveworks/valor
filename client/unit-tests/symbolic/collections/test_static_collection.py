@@ -32,10 +32,10 @@ def test_static_collection_symbol():
     assert symA.to_dict() == {
         "type": "symbol",
         "value": {
-            "owner": None,
             "name": "a",
             "key": None,
             "attribute": None,
+            "dtype": "a",
         },
     }
 
@@ -43,37 +43,37 @@ def test_static_collection_symbol():
     assert symA.w.to_dict() == {
         "type": "symbol",
         "value": {
-            "owner": "a",
-            "name": "w",
+            "name": "a.w",
             "key": None,
             "attribute": None,
+            "dtype": "integer",
         },
     }
     assert symA.x.to_dict() == {
         "type": "symbol",
         "value": {
-            "owner": "a",
-            "name": "x",
+            "name": "a.x",
             "key": None,
             "attribute": None,
+            "dtype": "float",
         },
     }
     assert symA.y.to_dict() == {
         "type": "symbol",
         "value": {
-            "owner": "a",
-            "name": "y",
+            "name": "a.y",
             "key": None,
             "attribute": None,
+            "dtype": "string",
         },
     }
     assert symA.z.to_dict() == {
         "type": "symbol",
         "value": {
-            "owner": "a",
-            "name": "z",
+            "name": "a.z",
             "key": None,
             "attribute": None,
+            "dtype": "bool",
         },
     }
 

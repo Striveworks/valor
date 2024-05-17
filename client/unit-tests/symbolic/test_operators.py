@@ -6,7 +6,7 @@ from valor.schemas.symbolic.operators import (
     And,
     AppendableFunction,
     Function,
-    Negate,
+    Not,
     OneArgumentFunction,
     Or,
     TwoArgumentFunction,
@@ -58,7 +58,7 @@ def test_function(variables):
     assert type(Function(x) & Function(y)) is And
     assert type(Function(x) | Function(y)) is Or
     assert type(Function(x) ^ Function(y)) is Xor
-    assert type(~Function(x)) is Negate
+    assert type(~Function(x)) is Not
 
     # test requirement that args must have a 'to_dict' method.
     with pytest.raises(ValueError):
@@ -131,10 +131,10 @@ def test_appendable_function(variables):
                 "lhs": {
                     "type": "symbol",
                     "value": {
-                        "owner": None,
                         "name": "integer",
                         "key": None,
                         "attribute": None,
+                        "dtype": "integer",
                     },
                 },
                 "rhs": {"type": "integer", "value": 1},
@@ -144,10 +144,10 @@ def test_appendable_function(variables):
                 "lhs": {
                     "type": "symbol",
                     "value": {
-                        "owner": None,
                         "name": "string",
                         "key": None,
                         "attribute": None,
+                        "dtype": "string",
                     },
                 },
                 "rhs": {"type": "string", "value": "2"},
@@ -157,10 +157,10 @@ def test_appendable_function(variables):
                 "lhs": {
                     "type": "symbol",
                     "value": {
-                        "owner": None,
                         "name": "float",
                         "key": None,
                         "attribute": None,
+                        "dtype": "float",
                     },
                 },
                 "rhs": {"type": "float", "value": 0.3},

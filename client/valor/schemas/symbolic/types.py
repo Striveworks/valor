@@ -23,7 +23,7 @@ from valor.schemas.symbolic.operators import (
     Le,
     Lt,
     Ne,
-    Negate,
+    Not,
     Or,
     Outside,
     Xor,
@@ -58,16 +58,20 @@ class Symbol:
         self,
         name: str,
         key: typing.Optional[str] = None,
+        attribute: typing.Optional[str] = None,
         dtype: typing.Optional[str] = None,
     ):
         self._name = name.lower()
         self._key = key.lower() if key else None
+        self._attribute = attribute.lower() if attribute else None
         self._dtype = dtype.lower() if dtype else None
 
     def __repr__(self):
         ret = f"Symbol(name='{self._name}'"
         if self._key:
             ret += f", key='{self._key}'"
+        if self._attribute:
+            ret += f", attribute='{self._attribute}'"
         if self._dtype:
             ret += f", dtype='{self._dtype}'"
         ret += ")"
@@ -82,6 +86,7 @@ class Symbol:
         return (
             self._name == other._name
             and self._key == other._key
+            and self._attribute == other._attribute
             and self._dtype == other._dtype
         )
 
@@ -97,6 +102,7 @@ class Symbol:
             "value": {
                 "name": self._name,
                 "key": self._key,
+                "attribute": self._attribute,
                 "dtype": self._dtype,
             },
         }
@@ -177,11 +183,12 @@ class Variable:
         """
         name = name if name else cls.dtype()
         fullname = ".".join(
-            [v.lower() for v in [owner, name, attribute] if v is not None]
+            [v.lower() for v in [owner, name] if v is not None]
         )
         symbol = Symbol(
             name=fullname,
             key=key,
+            attribute=attribute,
             dtype=cls.dtype(),
         )
         obj = cls.__new__(cls)
@@ -426,10 +433,10 @@ class Bool(Variable):
             return self != value
         return Xor(self, other)
 
-    def __invert__(self) -> typing.Union["Bool", Negate]:
+    def __invert__(self) -> typing.Union["Bool", Not]:
         if self.is_value:
             return type(self)(not self.get_value())
-        return Negate(self)
+        return Not(self)
 
 
 class Equatable(Variable):

@@ -73,9 +73,9 @@ def test__format_filter(geojson, polygon):
             Annotation.polygon.area > 1000,
             Annotation.polygon.area < 5000,
             (Annotation.raster.area > 100) & (Annotation.raster.area < 500),
-            Dataset.metadata["some_str"] == "foobar",
-            Dataset.metadata["some_float"] >= 0.123,
-            Dataset.metadata["some_datetime"] > datetime.timedelta(days=1),
+            Dataset.metadata["some_str"].eq("foobar"),
+            Dataset.metadata["some_float"].ge(0.123),
+            Dataset.metadata["some_datetime"].gt(datetime.timedelta(days=1)),
             Dataset.metadata["some_geospatial"].intersects(polygon),  # type: ignore
         ]
     )

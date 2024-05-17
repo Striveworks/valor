@@ -10,7 +10,7 @@ from valor.schemas.symbolic.operators import (
     Intersects,
     IsNotNull,
     IsNull,
-    Negate,
+    Not,
     OneArgumentFunction,
     Or,
     Outside,
@@ -153,7 +153,7 @@ def _scan_appendable_function(fn: AppendableFunction):
             )
 
         # scan for nested logic
-        if isinstance(arg, (Or, And, Xor, Negate)):
+        if isinstance(arg, (Or, And, Xor, Not)):
             raise NotImplementedError
 
         # scan for symbol/value positioning
@@ -172,19 +172,20 @@ def _scan_appendable_function(fn: AppendableFunction):
     symbol = list(symbols)[0]
 
     # check that symbol is compatible with the logical operation
+    name = symbol._name.split(".")[-1]
     if isinstance(fn, And) and not (
-        symbol._name in Filter._supports_and()
+        name in Filter._supports_and()
         or symbol._attribute in Filter._supports_and()
     ):
         raise ValueError(
             f"Symbol '{str(symbol)}' currently does not support the 'AND' operation."
         )
     elif isinstance(fn, Or) and not (
-        symbol._name in Filter._supports_or()
+        name in Filter._supports_or()
         or symbol._attribute in Filter._supports_or()
     ):
         raise ValueError(
-            f"Symbol '{str(symbol)}' currently does not support the 'AND' operation."
+            f"Symbol '{str(symbol)}' currently does not support the 'OR' operation."
         )
 
 
@@ -212,10 +213,7 @@ def _parse_listed_expressions(flist):
         else:
             raise NotImplementedError
 
-        symbol_name = f"{symbol._owner}.{symbol._name}"
-        if symbol._attribute:
-            symbol_name += f".{symbol._attribute}"
-        attribute_name = _convert_symbol_to_attribute_name(symbol_name)
+        attribute_name = _convert_symbol_to_attribute_name(symbol._name)
         if symbol._key:
             if attribute_name not in expressions:
                 expressions[attribute_name] = dict()

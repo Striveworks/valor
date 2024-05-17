@@ -37,7 +37,7 @@ class Function:
         return Xor(self, other)
 
     def __invert__(self):
-        return Negate(self)
+        return Not(self)
 
     def to_dict(self):
         """Encode to a JSON-compatible dictionary."""
@@ -147,7 +147,7 @@ class Xor(AppendableFunction):
         return self
 
 
-class Negate(OneArgumentFunction):
+class Not(OneArgumentFunction):
     """Implementation of logical negation (~)."""
 
     _operator = "~"

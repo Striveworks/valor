@@ -53,10 +53,10 @@ def _test_to_dict(objcls, value, type_name: typing.Optional[str] = None):
     assert objcls.symbolic().to_dict() == {
         "type": "symbol",
         "value": {
-            "owner": None,
             "name": type_name,
             "key": None,
             "attribute": None,
+            "dtype": type_name,
         },
     }
 
@@ -380,10 +380,10 @@ def test_raster():
     assert objcls.symbolic().area.to_dict() == {
         "type": "symbol",
         "value": {
-            "owner": None,
             "name": objcls.__name__.lower(),
             "key": None,
             "attribute": "area",
+            "dtype": "float",
         },
     }
 
