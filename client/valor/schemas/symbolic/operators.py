@@ -229,11 +229,6 @@ class Contains(AppendableFunction):
     pass
 
 
-class Filter(AppendableFunction):
-
-    pass
-
-
 FunctionType = Union[
     And,
     Or,

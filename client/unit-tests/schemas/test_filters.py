@@ -48,16 +48,12 @@ def test_declarative_filtering():
         Annotation.bounding_box.area >= 1000,
         Annotation.bounding_box.area <= 5000,
         # metadata filters
-        Dataset.metadata["arbitrary_numeric_key"].ge(10),
-        Dataset.metadata["arbitrary_numeric_key"].lt(20),
-        Model.metadata["arbitrary_str_key"].eq("arbitrary value"),
-        Datum.metadata["arbitrary_datetime_key"].ge(
-            datetime.timedelta(days=1)
-        ),
-        Datum.metadata["arbitrary_datetime_key"].le(
-            datetime.timedelta(days=2)
-        ),
-        Annotation.metadata["myKey"].eq("helloworld"),
+        Dataset.metadata["arbitrary_numeric_key"] >= 10,
+        Dataset.metadata["arbitrary_numeric_key"] < 20,
+        Model.metadata["arbitrary_str_key"] == "arbitrary value",
+        Datum.metadata["arbitrary_datetime_key"] >= datetime.timedelta(days=1),
+        Datum.metadata["arbitrary_datetime_key"] <= datetime.timedelta(days=2),
+        Annotation.metadata["myKey"] == "helloworld",
     ]
 
     f = asdict(Filter.create(filters))

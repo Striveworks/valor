@@ -1,6 +1,6 @@
 import pytest
 
-from valor.schemas import List as SymbolicList
+from valor.schemas import TypedList
 from valor.schemas.symbolic.collections import StaticCollection
 from valor.schemas.symbolic.types import Bool, Float, Integer, String
 
@@ -137,10 +137,10 @@ def test__get_static_types():
 
     # test lists of variables (note: these are not directly comparable)
     class B(StaticCollection):
-        w: SymbolicList[Integer]
-        x: SymbolicList[Float]
-        y: SymbolicList[String]
-        z: SymbolicList[Bool]
+        w: TypedList[Integer]
+        x: TypedList[Float]
+        y: TypedList[String]
+        z: TypedList[Bool]
 
     types_ = B._get_static_types()
     assert types_["w"].get_element_type() == Integer

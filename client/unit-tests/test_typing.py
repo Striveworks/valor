@@ -14,11 +14,11 @@ from valor.schemas import (
     Box,
     Dictionary,
     Float,
-    List,
     Polygon,
     Raster,
     String,
     TaskTypeEnum,
+    TypedList,
 )
 
 
@@ -45,7 +45,7 @@ def test_label_typing():
 
 def test_annotation_typing():
     assert type(Annotation.task_type) is TaskTypeEnum
-    assert type(Annotation.labels) is List[Label]
+    assert type(Annotation.labels) is TypedList[Label]
     assert type(Annotation.metadata) is Dictionary
     assert type(Annotation.bounding_box) is Box
     assert type(Annotation.polygon) is Polygon
@@ -56,7 +56,7 @@ def test_annotation_typing():
         labels=[],
     )
     assert type(annotation.task_type) is enums.TaskType
-    assert type(annotation.labels) is List[Label]
+    assert type(annotation.labels) is TypedList[Label]
     assert type(annotation.metadata) is Dictionary
     assert annotation.bounding_box is None
     assert annotation.polygon is None
@@ -74,7 +74,7 @@ def test_annotation_typing():
         raster=raster,
     )
     assert type(annotation.task_type) is enums.TaskType
-    assert type(annotation.labels) is List[Label]
+    assert type(annotation.labels) is TypedList[Label]
     assert type(annotation.metadata) is Dictionary
     assert type(annotation.bounding_box) is Box
     assert type(annotation.polygon) is Polygon
@@ -98,14 +98,14 @@ def test_groundtruth_typing():
     # GroundTruth doesn't use special properties.
     groundtruth = GroundTruth(datum=Datum(uid="uid"), annotations=[])
     assert type(groundtruth.datum) is Datum
-    assert type(groundtruth.annotations) is List[Annotation]
+    assert type(groundtruth.annotations) is TypedList[Annotation]
 
 
 def test_prediction_typing():
     # Prediction doesn't use special properties.
     prediction = Prediction(datum=Datum(uid="uid"), annotations=[])
     assert type(prediction.datum) is Datum
-    assert type(prediction.annotations) is List[Annotation]
+    assert type(prediction.annotations) is TypedList[Annotation]
 
 
 def test_dataset_typing():

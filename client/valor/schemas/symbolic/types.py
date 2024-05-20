@@ -1520,34 +1520,32 @@ class DictionaryValue(Variable):
     def nullable(cls, value: typing.Any):
         raise NotImplementedError("Dictionary values cannot be none.")
 
-    def eq(self, other: typing.Any, dtype: typing.Optional[type] = None):
-        return self._generate(fn="__eq__", other=other, dtype=dtype)
+    def __eq__(self, other: typing.Any):
+        return self._generate(fn="__eq__", other=other)
 
-    def ne(self, other: typing.Any, dtype: typing.Optional[type] = None):
-        return self._generate(fn="__ne__", other=other, dtype=dtype)
+    def __ne__(self, other: typing.Any):
+        return self._generate(fn="__ne__", other=other)
 
-    def gt(self, other: typing.Any, dtype: typing.Optional[type] = None):
-        return self._generate(fn="__gt__", other=other, dtype=dtype)
+    def __gt__(self, other: typing.Any):
+        return self._generate(fn="__gt__", other=other)
 
-    def ge(self, other: typing.Any, dtype: typing.Optional[type] = None):
-        return self._generate(fn="__ge__", other=other, dtype=dtype)
+    def __ge__(self, other: typing.Any):
+        return self._generate(fn="__ge__", other=other)
 
-    def lt(self, other: typing.Any, dtype: typing.Optional[type] = None):
-        return self._generate(fn="__lt__", other=other, dtype=dtype)
+    def __lt__(self, other: typing.Any):
+        return self._generate(fn="__lt__", other=other)
 
-    def le(self, other: typing.Any, dtype: typing.Optional[type] = None):
-        return self._generate(fn="__le__", other=other, dtype=dtype)
+    def __le__(self, other: typing.Any):
+        return self._generate(fn="__le__", other=other)
 
-    def intersects(
-        self, other: typing.Any, dtype: typing.Optional[type] = None
-    ):
-        return self._generate(fn="intersects", other=other, dtype=dtype)
+    def intersects(self, other: typing.Any):
+        return self._generate(fn="intersects", other=other)
 
-    def inside(self, other: typing.Any, dtype: typing.Optional[type] = None):
-        return self._generate(fn="inside", other=other, dtype=dtype)
+    def inside(self, other: typing.Any):
+        return self._generate(fn="inside", other=other)
 
-    def outside(self, other: typing.Any, dtype: typing.Optional[type] = None):
-        return self._generate(fn="outside", other=other, dtype=dtype)
+    def outside(self, other: typing.Any):
+        return self._generate(fn="outside", other=other)
 
     def is_none(self):
         return IsNull(self)
@@ -1565,27 +1563,19 @@ class DictionaryValue(Variable):
             attribute="area",
         )
 
-    def _generate(
-        self, other: typing.Any, fn: str, dtype: typing.Optional[type]
-    ):
+    def _generate(self, other: typing.Any, fn: str):
         """Generate expression."""
         if not isinstance(other, Variable):
             other = _get_type_by_value(other)(other)
 
         if isinstance(other, DictionaryValue):
-            if dtype is None or not issubclass(dtype, Variable):
-                raise ValueError(
-                    "Explicit variable type is required when comparing two metadata keys."
-                )
-            sym = other.get_symbol()
-            other = dtype.symbolic(
-                name=sym._name,
-                key=sym._key,
+            raise ValueError(
+                f"Dictionary symbols can only be compared to explicit values. Recieved '{other}'."
             )
 
-        dtype = dtype if dtype else type(other)
+        dtype = type(other)
         if dtype is None or not issubclass(dtype, Variable):
-            raise ValueError(f"Data '{dtype}' type is not compatible.")
+            raise TypeError(f"Type '{dtype}' is not allowed.")
 
         symbol = self.get_symbol()
         return dtype.symbolic(

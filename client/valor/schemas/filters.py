@@ -213,7 +213,11 @@ def _parse_listed_expressions(flist):
         else:
             raise NotImplementedError
 
-        attribute_name = _convert_symbol_to_attribute_name(symbol._name)
+        attribute_name = _convert_symbol_to_attribute_name(
+            f"{symbol._name}.{symbol._attribute}"
+            if symbol._attribute
+            else symbol._name
+        )
         if symbol._key:
             if attribute_name not in expressions:
                 expressions[attribute_name] = dict()
