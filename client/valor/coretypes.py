@@ -21,9 +21,10 @@ from valor.schemas import (
     EvaluationRequest,
     Filter,
     Label,
+    StaticCollection,
+    String,
+    TypedList,
 )
-from valor.schemas import List as SymbolicList
-from valor.schemas import StaticCollection, String
 
 FilterType = Union[list, dict, Filter]  # TODO - Remove this
 
@@ -78,7 +79,7 @@ class GroundTruth(StaticCollection):
     """
 
     datum: Datum = Datum.symbolic(owner="groundtruth", name="datum")
-    annotations: SymbolicList[Annotation] = SymbolicList[Annotation].symbolic(
+    annotations: TypedList[Annotation] = TypedList[Annotation].symbolic(
         owner="groundtruth", name="annotations"
     )
 
@@ -136,7 +137,7 @@ class Prediction(StaticCollection):
     """
 
     datum: Datum = Datum.symbolic(owner="prediction", name="datum")
-    annotations: SymbolicList[Annotation] = SymbolicList[Annotation].symbolic(
+    annotations: TypedList[Annotation] = TypedList[Annotation].symbolic(
         owner="prediction", name="annotations"
     )
 

@@ -13,6 +13,7 @@ import PIL.Image
 from valor.enums import TaskType
 from valor.schemas.symbolic.operators import (
     And,
+    Contains,
     Eq,
     Ge,
     Gt,
@@ -1347,9 +1348,9 @@ class MultiPolygon(Spatial):
 T = typing.TypeVar("T", bound=Variable)
 
 
-class List(typing.Generic[T], Equatable):
+class TypedList(typing.Generic[T], Equatable):
     """
-    List is both a method of typing and a class-factory.
+    TypedList is both a method of typing and a class-factory.
 
     The '__class_getitem__' classmethod produces strongly-typed VariableLists.
 
@@ -1477,6 +1478,13 @@ class List(typing.Generic[T], Equatable):
             def get_element_type():
                 return item_class
 
+            def contains(self, *other) -> Contains:
+                """Conditional whether lhs contains rhs elements."""
+                other = [self.preprocess(item) for item in other]
+                if not all(isinstance(item, item_class) for item in other):
+                    raise TypeError
+                return Contains(self, *other)
+
         cls._registered_classes[item_class] = VariableList
         return VariableList
 
@@ -1490,6 +1498,9 @@ class List(typing.Generic[T], Equatable):
         raise NotImplementedError
 
     def __len__(self) -> int:
+        raise NotImplementedError
+
+    def contains(self, *other) -> Contains:
         raise NotImplementedError
 
 
@@ -2161,6 +2172,6 @@ def get_type_by_name(
         name=match.group(1), additional_types=additional_types
     )
     if "list" in name.lower():
-        return List[type_]
+        return TypedList[type_]
     else:
         raise NotImplementedError(name)

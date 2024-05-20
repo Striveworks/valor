@@ -9,13 +9,11 @@ from valor.schemas.symbolic.types import (
     Embedding,
     Equatable,
     Float,
-)
-from valor.schemas.symbolic.types import List as SymbolicList
-from valor.schemas.symbolic.types import (
     Polygon,
     Raster,
     String,
     TaskTypeEnum,
+    TypedList,
     Variable,
     _convert_simple_variables_to_standard_types,
     get_type_by_name,
@@ -322,7 +320,7 @@ class Annotation(StaticCollection):
     metadata: Dictionary = Dictionary.symbolic(
         owner="annotation", name="metadata"
     )
-    labels: SymbolicList[Label] = SymbolicList[Label].symbolic(
+    labels: TypedList[Label] = TypedList[Label].symbolic(
         owner="annotation", name="labels"
     )
     bounding_box: Box = Box.symbolic(owner="annotation", name="bounding_box")

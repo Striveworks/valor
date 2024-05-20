@@ -3,7 +3,9 @@ from .filters import Constraint, Filter
 from .symbolic.collections import Annotation, Datum, Label, StaticCollection
 from .symbolic.operators import (
     And,
+    Contains,
     Eq,
+    FunctionType,
     Ge,
     Gt,
     Inside,
@@ -30,7 +32,6 @@ from .symbolic.types import (
     Float,
     Integer,
     LineString,
-    List,
     MultiLineString,
     MultiPoint,
     MultiPolygon,
@@ -43,6 +44,7 @@ from .symbolic.types import (
     Symbol,
     TaskTypeEnum,
     Time,
+    TypedList,
     Variable,
 )
 
@@ -90,9 +92,11 @@ __all__ = [
     "Raster",
     "TaskTypeEnum",
     "Embedding",
-    "List",
+    "TypedList",
     "Dictionary",
     "Label",
     "Annotation",
     "Datum",
+    "Contains",
+    "FunctionType",
 ]

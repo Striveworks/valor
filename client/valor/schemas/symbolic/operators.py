@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Union
 
 
 class Function:
@@ -221,3 +221,34 @@ class Outside(TwoArgumentFunction):
     """Implementation of the spatial 'outside' operator."""
 
     pass
+
+
+class Contains(AppendableFunction):
+    """Implementation of the list 'contains' operator."""
+
+    pass
+
+
+class Filter(AppendableFunction):
+
+    pass
+
+
+FunctionType = Union[
+    And,
+    Or,
+    Xor,
+    Not,
+    IsNull,
+    IsNotNull,
+    Eq,
+    Ne,
+    Gt,
+    Ge,
+    Lt,
+    Le,
+    Intersects,
+    Inside,
+    Outside,
+    Contains,
+]
