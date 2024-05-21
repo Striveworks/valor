@@ -1,6 +1,36 @@
 import axios, { AxiosInstance } from 'axios';
 
 /**
+ * Determines the default list of metrics which are passed to the API if the `metrics` arg is left null.
+ *
+ * @param taskType The type of the task.
+ * @returns A list of strings representing the metrics to return.
+ */
+function getDefaultMetrics(taskType: string): string[] {
+  const default_metrics = {
+    classification: [
+      'Precision',
+      'Recall',
+      'F1',
+      'Accuracy',
+      'ROCAUC',
+      'PrecisionRecallCurve'
+    ],
+    'object-detection': [
+      'AP',
+      'AR',
+      'mAP',
+      'APAveragedOverIOUs',
+      'mAR',
+      'mAPAveragedOverIOUs'
+    ],
+    'semantic-segmentation': ['IOU', 'mIOU']
+  };
+
+  return default_metrics[taskType];
+}
+
+/**
  * Checks if value conforms to the GeoJSON specification.
  *
  * @param value The value to type check.
@@ -401,17 +431,16 @@ export class ValorClient {
     prCurveIouThreshold?: number,
     prCurveMaxExamples?: number
   ): Promise<Evaluation> {
-    // TODO
     const response = await this.client.post('/evaluations', {
       model_names: [model],
       datum_filter: { dataset_names: [dataset] },
       parameters: {
         task_type: taskType,
+        metrics: metrics != null ? metrics : getDefaultMetrics(taskType),
         iou_thresholds_to_compute: iouThresholdsToCompute,
         iou_thresholds_to_return: iouThresholdsToReturn,
         label_map: labelMap,
         recall_score_threshold: recallScoreThreshold,
-        metrics: metrics,
         pr_curve_iou_threshold: prCurveIouThreshold,
         pr_curve_max_examples: prCurveMaxExamples
       },
@@ -427,10 +456,10 @@ export class ValorClient {
    * @param models names of the models
    * @param dataset name of the dataset
    * @param taskType type of task
+   * @param [metrics] the metrics to compute, store, and return to the user.
    * @param [iouThresholdsToCompute] list of floats describing which Intersection over Unions (IoUs) to use when calculating metrics (i.e., mAP)
    * @param [iouThresholdsToReturn] list of floats describing which Intersection over Union (IoUs) thresholds to calculate a metric for. Must be a subset of `iou_thresholds_to_compute`
    * @param [labelMap] mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models
-   * @param [metrics] the metrics to compute, store, and return to the user.
    * @param [recallScoreThreshold] confidence score threshold for use when determining whether to count a prediction as a true positive or not while calculating Average Recall
    * @param [computePrCurves] boolean which determines whether we calculate precision-recall curves or not
    * @param [prCurveIouThreshold] the IOU threshold to use when calculating precision-recall curves for object detection tasks. Defaults to 0.5.
@@ -441,10 +470,10 @@ export class ValorClient {
     models: string[],
     dataset: string,
     taskType: TaskType,
+    metrics?: string[],
     iouThresholdsToCompute?: number[],
     iouThresholdsToReturn?: number[],
     labelMap?: any[][][],
-    metrics?: string[],
     recallScoreThreshold?: number,
     prCurveIouThreshold?: number
   ): Promise<Evaluation[]> {
@@ -453,10 +482,10 @@ export class ValorClient {
       datum_filter: { dataset_names: [dataset] },
       parameters: {
         task_type: taskType,
+        metrics: metrics != null ? metrics : getDefaultMetrics(taskType),
         iou_thresholds_to_compute: iouThresholdsToCompute,
         iou_thresholds_to_return: iouThresholdsToReturn,
         label_map: labelMap,
-        metrics: metrics,
         recall_score_threshold: recallScoreThreshold,
         pr_curve_iou_threshold: prCurveIouThreshold
       },

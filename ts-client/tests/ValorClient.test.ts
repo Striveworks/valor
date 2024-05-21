@@ -197,13 +197,7 @@ test('evaluation methods', async () => {
     let evaluation = await client.createOrGetEvaluation(
       modelName,
       datasetName,
-      'classification',
-      null,
-      null,
-      null,
-      null,
-      true,
-      null
+      'classification'
     );
     expect(['running', 'pending', 'done']).toContain(evaluation.status);
 
@@ -360,6 +354,7 @@ test('evaluation methods', async () => {
 
 test('bulk create or get evaluations', async () => {
   const { datasetNames, modelNames } = await createDatasetsAndModels();
+  const allowed_metrics = ['Accuracy', 'Precision', 'Recall'];
 
   // bulk create evaluations for each dataset
   for (const datasetName of datasetNames) {
@@ -368,7 +363,8 @@ test('bulk create or get evaluations', async () => {
     let evaluations = await client.bulkCreateOrGetEvaluations(
       modelNames,
       datasetName,
-      'classification'
+      'classification',
+      allowed_metrics
     );
     expect(evaluations.length).toBe(2);
     // check all evaluations are pending
@@ -379,6 +375,12 @@ test('bulk create or get evaluations', async () => {
         evaluations.map((evaluation) => evaluation.id)
       );
       expect(evaluations.length).toBe(2);
+
+      expect(
+        evaluations[0].metrics
+          .map((x) => x.type)
+          .every((metric) => allowed_metrics.includes(metric))
+      );
     }
   }
 });
