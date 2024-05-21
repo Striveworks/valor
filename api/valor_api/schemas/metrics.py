@@ -418,7 +418,23 @@ class AccuracyMetric(BaseModel):
         }
 
 
-class PrecisionRecallCurve(BaseModel):
+class _BasePrecisionRecallCurve(BaseModel):
+    """
+    Describes the parent class of our precision-recall curve metrics.
+
+    Attributes
+    ----------
+    label_key: str
+        The label key associated with the metric.
+    pr_curve_iou_threshold: float, optional
+        The IOU threshold to use when calculating precision-recall curves. Defaults to 0.5.
+    """
+
+    label_key: str
+    pr_curve_iou_threshold: float | None = None
+
+
+class PrecisionRecallCurve(_BasePrecisionRecallCurve):
     """
     Describes a precision-recall curve.
 
@@ -432,22 +448,75 @@ class PrecisionRecallCurve(BaseModel):
         The IOU threshold to use when calculating precision-recall curves. Defaults to 0.5.
     """
 
+    value: dict[
+        str,
+        dict[
+            float,
+            dict[str, int | float],
+        ],
+    ]
+
+    def db_mapping(self, evaluation_id: int) -> dict:
+        """
+        Creates a mapping for use when uploading the curves to the database.
+
+        Parameters
+        ----------
+        evaluation_id : int
+            The evaluation id.
+
+        Returns
+        ----------
+        A mapping dictionary.
+        """
+
+        return {
+            "value": self.value,
+            "type": "PrecisionRecallCurve",
+            "evaluation_id": evaluation_id,
+            "parameters": {
+                "label_key": self.label_key,
+                "pr_curve_iou_threshold": self.pr_curve_iou_threshold,
+            },
+        }
+
+
+class DetailedPrecisionRecallCurve(_BasePrecisionRecallCurve):
+    """
+    Describes a detailed precision-recall curve, which includes datum examples for each classification (e.g., true positive, false negative, etc.).
+
+    Attributes
+    ----------
     label_key: str
+        The label key associated with the metric.
+    value: dict
+        A nested dictionary where the first key is the class label, the second key is the confidence threshold (e.g., 0.05), the third key is the metric name (e.g., "precision"), and the final key is either the value itself (for precision, recall, etc.) or a list of tuples containing data for each observation.
+    pr_curve_iou_threshold: float, optional
+        The IOU threshold to use when calculating precision-recall curves. Defaults to 0.5.
+    """
+
     value: dict[
         str,
         dict[
             float,
             dict[
                 str,
-                int
-                | float
-                | list[tuple[str, str]]  # for classification tasks
-                | list[tuple[str, str, str]]  # for object detection tasks
-                | None,
+                dict[
+                    str,
+                    int
+                    | dict[
+                        str,
+                        dict[
+                            str,
+                            int
+                            | list[tuple[str, str]]
+                            | list[tuple[str, str, str]],
+                        ],
+                    ],
+                ],
             ],
         ],
     ]
-    pr_curve_iou_threshold: float | None = None
 
     def db_mapping(self, evaluation_id: int) -> dict:
         """

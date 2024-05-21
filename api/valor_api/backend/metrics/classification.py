@@ -25,13 +25,14 @@ LabelMapType = list[list[list[str]]]
 
 def _compute_curves(
     db: Session,
+    metrics: list[str],
     predictions: Subquery | NamedFromClause,
     groundtruths: Subquery | NamedFromClause,
     grouper_key: str,
     grouper_mappings: dict[str, dict[str, dict]],
     unique_datums: set[tuple[str, str]],
     pr_curve_max_examples: int,
-) -> schemas.PrecisionRecallCurve:
+) -> list[schemas.PrecisionRecallCurve | schemas.DetailedPrecisionRecallCurve]:
     """
     Calculates precision-recall curves for each class.
 
@@ -58,8 +59,8 @@ def _compute_curves(
         A nested dictionary where the first key is the class label, the second key is the confidence threshold (e.g., 0.05), the third key is the metric name (e.g., "precision"), and the final key is either the value itself (for precision, recall, etc.) or a list of tuples containing the (dataset_name, datum_id) for each observation.
     """
 
-    output = defaultdict(lambda: defaultdict(dict))
-    detailed_output = defaultdict(lambda: defaultdict(dict))
+    pr_output = defaultdict(lambda: defaultdict(dict))
+    detailed_pr_output = defaultdict(lambda: defaultdict(dict))
 
     for threshold in [x / 100 for x in range(5, 100, 5)]:
         # get predictions that are above the confidence threshold
@@ -142,10 +143,25 @@ def _compute_curves(
             key=lambda x: ((x[1] is None, x[0][0] != x[0][1], x[1], x[2]))
         )
 
+        # create sets of all datums for which there is a prediction / groundtruth
+        # used when separating hallucinations/misclassifications/missed_detections
+        gt_datums = set()
+        pd_datums = set()
+
+        for row in res:
+            (pd_datum_uid, pd_dataset_name, gt_datum_uid, gt_dataset_name,) = (
+                row[2],
+                row[3],
+                row[5],
+                row[6],
+            )
+            gt_datums.add((gt_dataset_name, gt_datum_uid))
+            pd_datums.add((pd_dataset_name, pd_datum_uid))
+
         for grouper_value in grouper_mappings["grouper_key_to_labels_mapping"][
             grouper_key
         ].keys():
-            tp, tn, fp, fn = [], [], [], []
+            tp, tn, fp, fn = [], [], defaultdict(list), defaultdict(list)
             seen_datums = set()
 
             for row in res:
@@ -169,26 +185,47 @@ def _compute_curves(
                     tp += [(pd_dataset_name, pd_datum_uid)]
                     seen_datums.add(gt_datum_uid)
                 elif predicted_label == grouper_value:
-                    fp += [(pd_dataset_name, pd_datum_uid)]
+                    # if there was a groundtruth for a given datum, then it was a misclassification
+                    if (pd_dataset_name, pd_datum_uid) in gt_datums:
+                        fp["misclassifications"].append(
+                            (pd_dataset_name, pd_datum_uid)
+                        )
+                    else:
+                        fp["hallucinations"].append(
+                            (pd_dataset_name, pd_datum_uid)
+                        )
                     seen_datums.add(gt_datum_uid)
                 elif (
                     actual_label == grouper_value
                     and gt_datum_uid not in seen_datums
                 ):
-                    fn += [(gt_dataset_name, gt_datum_uid)]
+                    # if there was a prediction for a given datum, then it was a misclassification
+                    if (gt_dataset_name, gt_datum_uid) in pd_datums:
+                        fn["misclassifications"].append(
+                            (gt_dataset_name, gt_datum_uid)
+                        )
+                    else:
+                        fn["missed_detections"].append(
+                            (gt_dataset_name, gt_datum_uid)
+                        )
                     seen_datums.add(gt_datum_uid)
 
             # calculate metrics
             tn = [
                 datum_uid_pair
                 for datum_uid_pair in unique_datums
-                if datum_uid_pair not in tp + fp + fn
+                if datum_uid_pair
+                not in tp
+                + fp["hallucinations"]
+                + fp["misclassifications"]
+                + fn["misclassifications"]
+                + fn["missed_detections"]
                 and None not in datum_uid_pair
             ]
             tp_cnt, fp_cnt, fn_cnt, tn_cnt = (
                 len(tp),
-                len(fp),
-                len(fn),
+                len(fp["hallucinations"]) + len(fp["misclassifications"]),
+                len(fn["missed_detections"]) + len(fn["misclassifications"]),
                 len(tn),
             )
 
@@ -209,35 +246,7 @@ def _compute_curves(
                 else -1
             )
 
-            if pr_curve_max_examples > 0:
-                detailed_output[grouper_value][threshold] = {
-                    "tp": (
-                        random.sample(tp, pr_curve_max_examples)
-                        if len(tp) >= pr_curve_max_examples
-                        else tp
-                    ),
-                    "fp": (
-                        random.sample(fp, pr_curve_max_examples)
-                        if len(fp) >= pr_curve_max_examples
-                        else fp
-                    ),
-                    "fn": (
-                        random.sample(fn, pr_curve_max_examples)
-                        if len(fn) >= pr_curve_max_examples
-                        else fn
-                    ),
-                    "tn": (
-                        random.sample(tn, pr_curve_max_examples)
-                        if len(tn) >= pr_curve_max_examples
-                        else tn
-                    ),
-                    "accuracy": accuracy,
-                    "precision": precision,
-                    "recall": recall,
-                    "f1_score": f1_score,
-                }
-
-            output[grouper_value][threshold] = {
+            pr_output[grouper_value][threshold] = {
                 "tp": tp_cnt,
                 "fp": fp_cnt,
                 "fn": fn_cnt,
@@ -248,9 +257,110 @@ def _compute_curves(
                 "f1_score": f1_score,
             }
 
-    return schemas.PrecisionRecallCurve(
-        label_key=grouper_key, value=dict(output)
-    )
+            if "DetailedPrecisionRecallCurve" in metrics:
+                detailed_pr_output[grouper_value][threshold] = {
+                    "tp": {
+                        "total": tp_cnt,
+                        "observations": {
+                            "all": {
+                                "count": tp_cnt,
+                                "examples": (
+                                    random.sample(tp, pr_curve_max_examples)
+                                    if len(tp) >= pr_curve_max_examples
+                                    else tp
+                                ),
+                            }
+                        },
+                    },
+                    "tn": {
+                        "total": tn_cnt,
+                        "observations": {
+                            "all": {
+                                "count": tn_cnt,
+                                "examples": (
+                                    random.sample(tn, pr_curve_max_examples)
+                                    if len(tn) >= pr_curve_max_examples
+                                    else tn
+                                ),
+                            }
+                        },
+                    },
+                    "fn": {
+                        "total": fn_cnt,
+                        "observations": {
+                            "misclassifications": {
+                                "count": len(fn["misclassifications"]),
+                                "examples": (
+                                    random.sample(
+                                        fn["misclassifications"],
+                                        pr_curve_max_examples,
+                                    )
+                                    if len(fn["misclassifications"])
+                                    >= pr_curve_max_examples
+                                    else fn["misclassifications"]
+                                ),
+                            },
+                            "missed_detections": {
+                                "count": len(fn["missed_detections"]),
+                                "examples": (
+                                    random.sample(
+                                        fn["missed_detections"],
+                                        pr_curve_max_examples,
+                                    )
+                                    if len(fn["missed_detections"])
+                                    >= pr_curve_max_examples
+                                    else fn["missed_detections"]
+                                ),
+                            },
+                        },
+                    },
+                    "fp": {
+                        "total": fp_cnt,
+                        "observations": {
+                            "misclassifications": {
+                                "count": len(fp["misclassifications"]),
+                                "examples": (
+                                    random.sample(
+                                        fp["misclassifications"],
+                                        pr_curve_max_examples,
+                                    )
+                                    if len(fp["misclassifications"])
+                                    >= pr_curve_max_examples
+                                    else fp["misclassifications"]
+                                ),
+                            },
+                            "hallucinations": {
+                                "count": len(fp["hallucinations"]),
+                                "examples": (
+                                    random.sample(
+                                        fp["hallucinations"],
+                                        pr_curve_max_examples,
+                                    )
+                                    if len(fp["hallucinations"])
+                                    >= pr_curve_max_examples
+                                    else fp["hallucinations"]
+                                ),
+                            },
+                        },
+                    },
+                }
+
+    output = []
+    if "PrecisionRecallCurve" in metrics:
+        output.append(
+            schemas.PrecisionRecallCurve(
+                label_key=grouper_key, value=dict(pr_output)
+            )
+        )
+
+    if "DetailedPrecisionRecallCurve" in metrics:
+        output.append(
+            schemas.DetailedPrecisionRecallCurve(
+                label_key=grouper_key, value=dict(detailed_pr_output)
+            )
+        )
+
+    return output
 
 
 def _compute_binary_roc_auc(
@@ -778,6 +888,7 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
 
         pr_curves = _compute_curves(
             db=db,
+            metrics=metrics,
             groundtruths=groundtruths,
             predictions=predictions,
             grouper_key=grouper_key,
@@ -786,7 +897,7 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
             pr_curve_max_examples=pr_curve_max_examples,
         )
 
-        output.append(pr_curves)
+        output += pr_curves
 
     # metrics that are per label
     if metrics and any([m in metrics for m in ["Precision", "Recall", "F1"]]):

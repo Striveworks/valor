@@ -952,6 +952,199 @@ def test__compute_curves(
 
     curves = _compute_curves(
         db=db,
+        metrics=["PrecisionRecallCurve", "DetailedPrecisionRecallCurve"],
+        predictions=predictions,
+        groundtruths=groundtruths,
+        grouper_key="animal",
+        grouper_mappings=grouper_mappings,
+        unique_datums=unique_datums,
+        pr_curve_max_examples=1,
+    )
+
+    # check PrecisionRecallCurve
+    pr_expected_answers = {
+        # bird
+        ("bird", 0.05, "tp"): 3,
+        ("bird", 0.05, "fp"): 1,
+        ("bird", 0.05, "tn"): 2,
+        ("bird", 0.05, "fn"): 0,
+        ("bird", 0.3, "tp"): 1,
+        ("bird", 0.3, "fn"): 2,
+        ("bird", 0.3, "fp"): 0,
+        ("bird", 0.3, "tn"): 3,
+        ("bird", 0.65, "fn"): 3,
+        ("bird", 0.65, "tn"): 3,
+        ("bird", 0.65, "tp"): 0,
+        ("bird", 0.65, "fp"): 0,
+        # dog
+        ("dog", 0.05, "tp"): 2,
+        ("dog", 0.05, "fp"): 3,
+        ("dog", 0.05, "tn"): 1,
+        ("dog", 0.05, "fn"): 0,
+        ("dog", 0.45, "fn"): 2,
+        ("dog", 0.45, "fp"): 1,
+        ("dog", 0.45, "tn"): 3,
+        ("dog", 0.45, "tp"): 0,
+        ("dog", 0.8, "fn"): 2,
+        ("dog", 0.8, "fp"): 0,
+        ("dog", 0.8, "tn"): 4,
+        ("dog", 0.8, "tp"): 0,
+        # cat
+        ("cat", 0.05, "tp"): 1,
+        ("cat", 0.05, "tn"): 0,
+        ("cat", 0.05, "fp"): 5,
+        ("cat", 0.05, "fn"): 0,
+        ("cat", 0.95, "tp"): 1,
+        ("cat", 0.95, "fp"): 0,
+        ("cat", 0.95, "tn"): 5,
+        ("cat", 0.95, "fn"): 0,
+    }
+
+    for (
+        value,
+        threshold,
+        metric,
+    ), expected_length in pr_expected_answers.items():
+        classification = curves[0].value[value][threshold][metric]
+        assert classification == expected_length
+
+    # check DetailedPrecisionRecallCurve
+    detailed_pr_expected_answers = {
+        # bird
+        ("bird", 0.05, "tp"): {"all": 3, "total": 3},
+        ("bird", 0.05, "fp"): {
+            "hallucinations": 0,
+            "misclassifications": 1,
+            "total": 1,
+        },
+        ("bird", 0.05, "tn"): {"all": 2, "total": 2},
+        ("bird", 0.05, "fn"): {
+            "missed_detections": 0,
+            "misclassifications": 0,
+            "total": 0,
+        },
+        # dog
+        ("dog", 0.05, "tp"): {"all": 2, "total": 2},
+        ("dog", 0.05, "fp"): {
+            "hallucinations": 0,
+            "misclassifications": 3,
+            "total": 3,
+        },
+        ("dog", 0.05, "tn"): {"all": 1, "total": 1},
+        ("dog", 0.8, "fn"): {
+            "missed_detections": 1,
+            "misclassifications": 1,
+            "total": 2,
+        },
+        # cat
+        ("cat", 0.05, "tp"): {"all": 1, "total": 1},
+        ("cat", 0.05, "fp"): {
+            "hallucinations": 0,
+            "misclassifications": 5,
+            "total": 5,
+        },
+        ("cat", 0.05, "tn"): {"all": 0, "total": 0},
+        ("cat", 0.8, "fn"): {
+            "missed_detections": 0,
+            "misclassifications": 0,
+            "total": 0,
+        },
+    }
+
+    for (
+        value,
+        threshold,
+        metric,
+    ), expected_output in detailed_pr_expected_answers.items():
+        model_output = curves[1].value[value][threshold][metric]
+        assert isinstance(model_output, dict)
+        assert model_output["total"] == expected_output["total"]
+        assert all(
+            [
+                model_output["observations"][key]["count"]  # type: ignore - we know this element is a dict
+                == expected_output[key]
+                for key in [
+                    key
+                    for key in expected_output.keys()
+                    if key not in ["total"]
+                ]
+            ]
+        )
+
+    # spot check number of examples
+    assert (
+        len(
+            curves[1].value["bird"][0.05]["tp"]["observations"]["all"][  # type: ignore - we know this element is a dict
+                "examples"
+            ]
+        )
+        == 1
+    )
+    assert (
+        len(
+            curves[1].value["bird"][0.05]["tn"]["observations"]["all"][  # type: ignore - we know this element is a dict
+                "examples"
+            ]
+        )
+        == 1
+    )
+
+    # repeat the above, but with a higher pr_max_curves_example
+    curves = _compute_curves(
+        db=db,
+        metrics=["PrecisionRecallCurve", "DetailedPrecisionRecallCurve"],
+        predictions=predictions,
+        groundtruths=groundtruths,
+        grouper_key="animal",
+        grouper_mappings=grouper_mappings,
+        unique_datums=unique_datums,
+        pr_curve_max_examples=3,
+    )
+
+    # these outputs shouldn't have changed
+    for (
+        value,
+        threshold,
+        metric,
+    ), expected_output in detailed_pr_expected_answers.items():
+        model_output = curves[1].value[value][threshold][metric]
+        assert isinstance(model_output, dict)
+        assert model_output["total"] == expected_output["total"]
+        assert all(
+            [
+                model_output["observations"][key]["count"]  # type: ignore - we know this element is a dict
+                == expected_output[key]
+                for key in [
+                    key
+                    for key in expected_output.keys()
+                    if key not in ["total"]
+                ]
+            ]
+        )
+
+    assert (
+        len(
+            curves[1].value["bird"][0.05]["tp"]["observations"]["all"][  # type: ignore - we know this element is a dict
+                "examples"
+            ]
+        )
+        == 3
+    )
+    assert (
+        len(
+            (
+                curves[1].value["bird"][0.05]["tn"]["observations"]["all"][  # type: ignore - we know this element is a dict
+                    "examples"
+                ]
+            )
+        )
+        == 2  # only two examples exist
+    )
+
+    # test behavior if pr_curve_max_examples == 0
+    curves = _compute_curves(
+        db=db,
+        metrics=["PrecisionRecallCurve", "DetailedPrecisionRecallCurve"],
         predictions=predictions,
         groundtruths=groundtruths,
         grouper_key="animal",
@@ -960,51 +1153,42 @@ def test__compute_curves(
         pr_curve_max_examples=0,
     )
 
-    print(curves)
-    # TODO
-    # pr_expected_answers = {
-    #     # bird
-    #     ("bird", 0.05, "tp"): 3,
-    #     ("bird", 0.05, "fp"): 1,
-    #     ("bird", 0.05, "tn"): 2,
-    #     ("bird", 0.05, "fn"): 0,
-    #     ("bird", 0.3, "tp"): 1,
-    #     ("bird", 0.3, "fn"): 2,
-    #     ("bird", 0.3, "fp"): 0,
-    #     ("bird", 0.3, "tn"): 3,
-    #     ("bird", 0.65, "fn"): 3,
-    #     ("bird", 0.65, "tn"): 3,
-    #     ("bird", 0.65, "tp"): 0,
-    #     ("bird", 0.65, "fp"): 0,
-    #     # dog
-    #     ("dog", 0.05, "tp"): 2,
-    #     ("dog", 0.05, "fp"): 3,
-    #     ("dog", 0.05, "tn"): 1,
-    #     ("dog", 0.05, "fn"): 0,
-    #     ("dog", 0.45, "fn"): 2,
-    #     ("dog", 0.45, "fp"): 1,
-    #     ("dog", 0.45, "tn"): 3,
-    #     ("dog", 0.45, "tp"): 0,
-    #     ("dog", 0.8, "fn"): 2,
-    #     ("dog", 0.8, "fp"): 0,
-    #     ("dog", 0.8, "tn"): 4,
-    #     ("dog", 0.8, "tp"): 0,
-    #     # cat
-    #     ("cat", 0.05, "tp"): 1,
-    #     ("cat", 0.05, "tn"): 0,
-    #     ("cat", 0.05, "fp"): 5,
-    #     ("cat", 0.05, "fn"): 0,
-    #     ("cat", 0.95, "tp"): 1,
-    #     ("cat", 0.95, "fp"): 0,
-    #     ("cat", 0.95, "tn"): 5,
-    #     ("cat", 0.95, "fn"): 0,
-    # }
+    # these outputs shouldn't have changed
+    for (
+        value,
+        threshold,
+        metric,
+    ), expected_output in detailed_pr_expected_answers.items():
+        model_output = curves[1].value[value][threshold][metric]
+        assert isinstance(model_output, dict)
+        assert model_output["total"] == expected_output["total"]
+        assert all(
+            [
+                model_output["observations"][key]["count"]  # type: ignore - we know this element is a dict
+                == expected_output[key]
+                for key in [
+                    key
+                    for key in expected_output.keys()
+                    if key not in ["total"]
+                ]
+            ]
+        )
 
-    # for (
-    #     value,
-    #     threshold,
-    #     metric,
-    # ), expected_length in pr_expected_answers.items():
-    #     list_of_datums = curves.value[value][threshold][metric]
-    #     assert isinstance(list_of_datums, list)
-    #     assert len(list_of_datums) == expected_length
+    assert (
+        len(
+            curves[1].value["bird"][0.05]["tp"]["observations"]["all"][  # type: ignore - we know this element is a dict
+                "examples"
+            ]
+        )
+        == 0
+    )
+    assert (
+        len(
+            (
+                curves[1].value["bird"][0.05]["tn"]["observations"]["all"][  # type: ignore - we know this element is a dict
+                    "examples"
+                ]
+            )
+        )
+        == 0
+    )
