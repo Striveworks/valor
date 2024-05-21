@@ -1139,6 +1139,14 @@ def test_create_detection_metrics(
                 convert_annotations_to_type=enums.AnnotationType.BOX,
                 iou_thresholds_to_compute=[0.2, 0.6],
                 iou_thresholds_to_return=[0.2],
+                metrics=[
+                    "AP",
+                    "AR",
+                    "mAP",
+                    "APAveragedOverIOUs",
+                    "mAR",
+                    "mAPAveragedOverIOUs",
+                ],
             ),
             meta={},
         )
@@ -1299,6 +1307,14 @@ def test_create_detection_metrics(
             convert_annotations_to_type=enums.AnnotationType.BOX,
             iou_thresholds_to_compute=[0.2, 0.6],
             iou_thresholds_to_return=[0.2],
+            metrics=[
+                "AP",
+                "AR",
+                "mAP",
+                "APAveragedOverIOUs",
+                "mAR",
+                "mAPAveragedOverIOUs",
+            ],
         ),
         id=model_evals[1].id,
         status=enums.EvaluationStatus.DONE,
@@ -1332,6 +1348,14 @@ def test_create_detection_metrics(
             convert_annotations_to_type=enums.AnnotationType.BOX,
             iou_thresholds_to_compute=[0.2, 0.6],
             iou_thresholds_to_return=[0.2],
+            metrics=[
+                "AP",
+                "AR",
+                "mAP",
+                "APAveragedOverIOUs",
+                "mAR",
+                "mAPAveragedOverIOUs",
+            ],
         ),
         id=model_evals[0].id,
         status=enums.EvaluationStatus.DONE,
@@ -1371,7 +1395,14 @@ def test_create_clf_metrics(
         model_names=[model_name],
         datum_filter=schemas.Filter(dataset_names=[dataset_name]),
         parameters=schemas.EvaluationParameters(
-            task_type=enums.TaskType.CLASSIFICATION
+            task_type=enums.TaskType.CLASSIFICATION,
+            metrics=[
+                "Accuracy",
+                "Precision",
+                "Recall",
+                "F1",
+                "ROCAUC",
+            ],
         ),
         meta={},
     )

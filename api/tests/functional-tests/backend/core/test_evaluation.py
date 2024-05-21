@@ -192,6 +192,13 @@ def test__fetch_evaluation_from_subrequest(
         datum_filter=schemas.Filter(dataset_names=[finalized_dataset]),
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.CLASSIFICATION,
+            metrics=[
+                "Precision",
+                "Recall",
+                "F1",
+                "Accuracy",
+                "ROCAUC",
+            ],
         ),
         meta={},
     )
@@ -204,6 +211,7 @@ def test__fetch_evaluation_from_subrequest(
         datum_filter=schemas.Filter(dataset_names=[finalized_dataset]),
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+            metrics=["IOU", "mIOU"],
         ),
         meta={},
     )
@@ -218,6 +226,13 @@ def test__fetch_evaluation_from_subrequest(
         ),
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.CLASSIFICATION,
+            metrics=[
+                "Precision",
+                "Recall",
+                "F1",
+                "Accuracy",
+                "ROCAUC",
+            ],
         ),
         meta={},
     )
@@ -252,6 +267,13 @@ def test_create_evaluation(
         datum_filter=schemas.Filter(dataset_names=[finalized_dataset]),
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.CLASSIFICATION,
+            metrics=[
+                "Precision",
+                "Recall",
+                "F1",
+                "Accuracy",
+                "ROCAUC",
+            ],
         ),
         meta={},
     )
@@ -289,7 +311,14 @@ def test_create_evaluation(
     assert (
         rows[0].parameters
         == schemas.EvaluationParameters(
-            task_type=enums.TaskType.CLASSIFICATION
+            task_type=enums.TaskType.CLASSIFICATION,
+            metrics=[
+                "Precision",
+                "Recall",
+                "F1",
+                "Accuracy",
+                "ROCAUC",
+            ],
         ).model_dump()
     )
 
@@ -300,6 +329,13 @@ def test_create_evaluation(
             datum_filter=schemas.Filter(dataset_names=["some_other_dataset"]),
             parameters=schemas.EvaluationParameters(
                 task_type=enums.TaskType.CLASSIFICATION,
+                metrics=[
+                    "Precision",
+                    "Recall",
+                    "F1",
+                    "Accuracy",
+                    "ROCAUC",
+                ],
             ),
             meta={},
         )
@@ -311,6 +347,13 @@ def test_create_evaluation(
             datum_filter=schemas.Filter(dataset_names=[finalized_dataset]),
             parameters=schemas.EvaluationParameters(
                 task_type=enums.TaskType.CLASSIFICATION,
+                metrics=[
+                    "Precision",
+                    "Recall",
+                    "F1",
+                    "Accuracy",
+                    "ROCAUC",
+                ],
             ),
             meta={},
         )
@@ -329,6 +372,13 @@ def test_fetch_evaluation_from_id(
         datum_filter=schemas.Filter(dataset_names=[finalized_dataset]),
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.CLASSIFICATION,
+            metrics=[
+                "Precision",
+                "Recall",
+                "F1",
+                "Accuracy",
+                "ROCAUC",
+            ],
         ),
         meta={},
     )
@@ -343,6 +393,13 @@ def test_fetch_evaluation_from_id(
         datum_filter=schemas.Filter(dataset_names=[finalized_dataset]),
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+            metrics=[
+                "Precision",
+                "Recall",
+                "F1",
+                "Accuracy",
+                "ROCAUC",
+            ],
         ),
         meta={},
     )
@@ -378,6 +435,13 @@ def test_get_evaluations(
         datum_filter=schemas.Filter(dataset_names=[finalized_dataset]),
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.CLASSIFICATION,
+            metrics=[
+                "Precision",
+                "Recall",
+                "F1",
+                "Accuracy",
+                "ROCAUC",
+            ],
         ),
         meta={},
     )
@@ -391,6 +455,7 @@ def test_get_evaluations(
         datum_filter=schemas.Filter(dataset_names=[finalized_dataset]),
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+            metrics=["IOU", "mIOU"],
         ),
         meta={},
     )
@@ -511,6 +576,13 @@ def test_get_evaluation_requests_from_model(
         datum_filter=schemas.Filter(dataset_names=[finalized_dataset]),
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.CLASSIFICATION,
+            metrics=[
+                "Precision",
+                "Recall",
+                "F1",
+                "Accuracy",
+                "ROCAUC",
+            ],
         ),
         meta={},
     )
@@ -522,6 +594,7 @@ def test_get_evaluation_requests_from_model(
         datum_filter=schemas.Filter(dataset_names=[finalized_dataset]),
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+            metrics=["IOU", "mIOU"],
         ),
         meta={},
     )
@@ -553,6 +626,13 @@ def test_evaluation_status(
         datum_filter=schemas.Filter(dataset_names=[finalized_dataset]),
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.CLASSIFICATION,
+            metrics=[
+                "Precision",
+                "Recall",
+                "F1",
+                "Accuracy",
+                "ROCAUC",
+            ],
         ),
         meta={},
     )
@@ -667,6 +747,13 @@ def test_count_active_evaluations(
         datum_filter=schemas.Filter(dataset_names=[finalized_dataset]),
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.CLASSIFICATION,
+            metrics=[
+                "Precision",
+                "Recall",
+                "F1",
+                "Accuracy",
+                "ROCAUC",
+            ],
         ),
         meta={},
     )
@@ -680,6 +767,7 @@ def test_count_active_evaluations(
         datum_filter=schemas.Filter(dataset_names=[finalized_dataset]),
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+            metrics=["IOU", "mIOU"],
         ),
         meta={},
     )
@@ -727,6 +815,14 @@ def test_count_active_evaluations(
         datum_filter=schemas.Filter(dataset_names=[finalized_dataset]),
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.OBJECT_DETECTION,
+            metrics=[
+                "AP",
+                "AR",
+                "mAP",
+                "APAveragedOverIOUs",
+                "mAR",
+                "mAPAveragedOverIOUs",
+            ],
         ),
         meta={},
     )
@@ -829,7 +925,17 @@ def test__fetch_evaluations_and_mark_for_deletion(
     db: Session, finalized_dataset: str, finalized_model: str
 ):
     # create two evaluations
-    for pr_curves in [True, False]:
+    for metrics in [
+        ["Precision", "Recall", "F1", "Accuracy", "ROCAUC"],
+        [
+            "Precision",
+            "Recall",
+            "F1",
+            "Accuracy",
+            "ROCAUC",
+            "PrecisionRecallCurve",
+        ],
+    ]:
         core.create_or_get_evaluations(
             db,
             schemas.EvaluationRequest(
@@ -837,7 +943,7 @@ def test__fetch_evaluations_and_mark_for_deletion(
                 datum_filter=schemas.Filter(dataset_names=[finalized_dataset]),
                 parameters=schemas.EvaluationParameters(
                     task_type=enums.TaskType.CLASSIFICATION,
-                    compute_pr_curves=pr_curves,
+                    metrics=metrics,
                 ),
                 meta={},
             ),

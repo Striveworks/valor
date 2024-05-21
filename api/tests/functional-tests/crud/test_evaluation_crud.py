@@ -17,7 +17,14 @@ def test_restart_failed_evaluation(db: Session):
             model_names=["model"],
             datum_filter=schemas.Filter(dataset_names=["dataset"]),
             parameters=schemas.EvaluationParameters(
-                task_type=enums.TaskType.CLASSIFICATION
+                task_type=enums.TaskType.CLASSIFICATION,
+                metrics=[
+                    "Precision",
+                    "Recall",
+                    "F1",
+                    "Accuracy",
+                    "ROCAUC",
+                ],
             ),
             meta=None,
         ),
@@ -41,7 +48,14 @@ def test_restart_failed_evaluation(db: Session):
             model_names=["model"],
             datum_filter=schemas.Filter(dataset_names=["dataset"]),
             parameters=schemas.EvaluationParameters(
-                task_type=enums.TaskType.CLASSIFICATION
+                task_type=enums.TaskType.CLASSIFICATION,
+                metrics=[
+                    "Precision",
+                    "Recall",
+                    "F1",
+                    "Accuracy",
+                    "ROCAUC",
+                ],
             ),
             meta=None,
         ),
@@ -58,7 +72,14 @@ def test_restart_failed_evaluation(db: Session):
             model_names=["model"],
             datum_filter=schemas.Filter(dataset_names=["dataset"]),
             parameters=schemas.EvaluationParameters(
-                task_type=enums.TaskType.CLASSIFICATION
+                task_type=enums.TaskType.CLASSIFICATION,
+                metrics=[
+                    "Precision",
+                    "Recall",
+                    "F1",
+                    "Accuracy",
+                    "ROCAUC",
+                ],
             ),
             meta=None,
         ),

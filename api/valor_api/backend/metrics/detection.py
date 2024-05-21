@@ -663,7 +663,10 @@ def _compute_detection_metrics(
         number_of_groundtruths_per_grouper[grouper_id] += 1
 
     # Optionally compute precision-recall curves
-    if parameters.compute_pr_curves:
+    if parameters.metrics and (
+        "PrecisionRecallCurve" in parameters.metrics
+        or "DetailedPrecisionRecallCurve" in parameters.metrics
+    ):
         false_positive_entries = db.query(
             select(
                 joint.c.dataset_name,
@@ -694,47 +697,74 @@ def _compute_detection_metrics(
     else:
         pr_curves = []
 
-    # Compute AP
-    ap_metrics, ar_metrics = _calculate_ap_and_ar(
-        sorted_ranked_pairs=ranking,
-        number_of_groundtruths_per_grouper=number_of_groundtruths_per_grouper,
-        iou_thresholds=parameters.iou_thresholds_to_compute,
-        grouper_mappings=grouper_mappings,
-        recall_score_threshold=parameters.recall_score_threshold,
-    )
+    if any(
+        [
+            m in parameters.metrics
+            for m in [
+                "AP",
+                "AR",
+                "mAP",
+                "APAveragedOverIOUs",
+                "mAR",
+                "mAPAveragedOverIOUs",
+            ]
+        ]
+    ):
+        ap_ar_output = []
 
-    # calculate averaged metrics
-    mean_ap_metrics = _compute_mean_detection_metrics_from_aps(ap_metrics)
-    mean_ar_metrics = _compute_mean_ar_metrics(ar_metrics)
+        ap_metrics, ar_metrics = _calculate_ap_and_ar(
+            sorted_ranked_pairs=ranking,
+            number_of_groundtruths_per_grouper=number_of_groundtruths_per_grouper,
+            iou_thresholds=parameters.iou_thresholds_to_compute,
+            grouper_mappings=grouper_mappings,
+            recall_score_threshold=parameters.recall_score_threshold,
+        )
 
-    ap_metrics_ave_over_ious = list(
-        _compute_detection_metrics_averaged_over_ious_from_aps(ap_metrics)
-    )
+        if "AR" in parameters.metrics:
+            ap_ar_output += ar_metrics
 
-    mean_ap_metrics_ave_over_ious = list(
-        _compute_mean_detection_metrics_from_aps(ap_metrics_ave_over_ious)
-    )
+        # calculate averaged metrics
+        mean_ap_metrics = _compute_mean_detection_metrics_from_aps(ap_metrics)
+        mean_ar_metrics = _compute_mean_ar_metrics(ar_metrics)
 
-    # filter out only specified ious
-    ap_metrics = [
-        m for m in ap_metrics if m.iou in parameters.iou_thresholds_to_return
-    ]
-    mean_ap_metrics = [
-        m
-        for m in mean_ap_metrics
-        if isinstance(m, schemas.mAPMetric)
-        and m.iou in parameters.iou_thresholds_to_return
-    ]
+        ap_metrics_ave_over_ious = list(
+            _compute_detection_metrics_averaged_over_ious_from_aps(ap_metrics)
+        )
 
-    return (
-        ap_metrics
-        + ar_metrics
-        + mean_ap_metrics
-        + mean_ar_metrics
-        + ap_metrics_ave_over_ious
-        + mean_ap_metrics_ave_over_ious
-        + pr_curves
-    )
+        if "mAR" in parameters.metrics:
+            ap_ar_output += mean_ar_metrics
+
+        if "APAveragedOverIOUs" in parameters.metrics:
+            ap_ar_output += ap_metrics_ave_over_ious
+
+        if "mAPAveragedOverIOUs" in parameters.metrics:
+            mean_ap_metrics_ave_over_ious = list(
+                _compute_mean_detection_metrics_from_aps(
+                    ap_metrics_ave_over_ious
+                )
+            )
+            ap_ar_output += mean_ap_metrics_ave_over_ious
+
+        if "AP" in parameters.metrics:
+            ap_metrics = [
+                m
+                for m in ap_metrics
+                if m.iou in parameters.iou_thresholds_to_return
+            ]
+            ap_ar_output += ap_metrics
+
+        if "mAP" in parameters.metrics:
+            mean_ap_metrics = [
+                m
+                for m in mean_ap_metrics
+                if isinstance(m, schemas.mAPMetric)
+                and m.iou in parameters.iou_thresholds_to_return
+            ]
+            ap_ar_output += mean_ap_metrics
+    else:
+        ap_ar_output = []
+
+    return ap_ar_output + pr_curves
 
 
 def _compute_detection_metrics_averaged_over_ious_from_aps(

@@ -202,27 +202,29 @@ def _compute_segmentation_metrics(
             "grouper_id_to_grouper_label_mapping"
         ][grouper_id]
 
-        ret.append(
-            IOUMetric(
-                label=grouper_label,
-                value=computed_iou_score,
+        if "IOU" in parameters.metrics:
+            ret.append(
+                IOUMetric(
+                    label=grouper_label,
+                    value=computed_iou_score,
+                )
             )
-        )
 
         ious_per_grouper_key[grouper_label.key].append(computed_iou_score)
 
     # aggregate IOUs by key
-    ret += [
-        mIOUMetric(
-            value=(
-                sum(iou_values) / len(iou_values)
-                if len(iou_values) != 0
-                else -1
-            ),
-            label_key=grouper_key,
-        )
-        for grouper_key, iou_values in ious_per_grouper_key.items()
-    ]
+    if "mIOU" in parameters.metrics:
+        ret += [
+            mIOUMetric(
+                value=(
+                    sum(iou_values) / len(iou_values)
+                    if len(iou_values) != 0
+                    else -1
+                ),
+                label_key=grouper_key,
+            )
+            for grouper_key, iou_values in ious_per_grouper_key.items()
+        ]
 
     return ret
 

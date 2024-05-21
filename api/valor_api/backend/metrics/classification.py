@@ -1,3 +1,4 @@
+import random
 from collections import defaultdict
 from typing import Sequence
 
@@ -29,20 +30,8 @@ def _compute_curves(
     grouper_key: str,
     grouper_mappings: dict[str, dict[str, dict]],
     unique_datums: set[tuple[str, str]],
-) -> dict[
-    str,
-    dict[
-        float,
-        dict[
-            str,
-            int
-            | float
-            | list[tuple[str, str]]
-            | list[tuple[str, str, str]]
-            | None,
-        ],
-    ],
-]:
+    pr_curve_max_examples: int,
+) -> schemas.PrecisionRecallCurve:
     """
     Calculates precision-recall curves for each class.
 
@@ -60,6 +49,8 @@ def _compute_curves(
         A dictionary of mappings that connect groupers to their related labels.
     unique_datums: list[tuple[str, str]]
         All of the unique datums associated with the ground truth and prediction filters.
+    pr_curve_max_examples: int
+        The maximum number of datum examples to store per true positive, false negative, etc.
 
     Returns
     -------
@@ -68,6 +59,7 @@ def _compute_curves(
     """
 
     output = defaultdict(lambda: defaultdict(dict))
+    detailed_output = defaultdict(lambda: defaultdict(dict))
 
     for threshold in [x / 100 for x in range(5, 100, 5)]:
         # get predictions that are above the confidence threshold
@@ -217,18 +209,48 @@ def _compute_curves(
                 else -1
             )
 
+            if pr_curve_max_examples > 0:
+                detailed_output[grouper_value][threshold] = {
+                    "tp": (
+                        random.sample(tp, pr_curve_max_examples)
+                        if len(tp) >= pr_curve_max_examples
+                        else tp
+                    ),
+                    "fp": (
+                        random.sample(fp, pr_curve_max_examples)
+                        if len(fp) >= pr_curve_max_examples
+                        else fp
+                    ),
+                    "fn": (
+                        random.sample(fn, pr_curve_max_examples)
+                        if len(fn) >= pr_curve_max_examples
+                        else fn
+                    ),
+                    "tn": (
+                        random.sample(tn, pr_curve_max_examples)
+                        if len(tn) >= pr_curve_max_examples
+                        else tn
+                    ),
+                    "accuracy": accuracy,
+                    "precision": precision,
+                    "recall": recall,
+                    "f1_score": f1_score,
+                }
+
             output[grouper_value][threshold] = {
-                "tp": tp,
-                "fp": fp,
-                "fn": fn,
-                "tn": tn,
+                "tp": tp_cnt,
+                "fp": fp_cnt,
+                "fn": fn_cnt,
+                "tn": tn_cnt,
                 "accuracy": accuracy,
                 "precision": precision,
                 "recall": recall,
                 "f1_score": f1_score,
             }
 
-    return dict(output)
+    return schemas.PrecisionRecallCurve(
+        label_key=grouper_key, value=dict(output)
+    )
 
 
 def _compute_binary_roc_auc(
@@ -623,11 +645,12 @@ def _compute_precision_and_recall_f1_from_confusion_matrix(
 
 def _compute_confusion_matrix_and_metrics_at_grouper_key(
     db: Session,
+    metrics: list[str],
     prediction_filter: schemas.Filter,
     groundtruth_filter: schemas.Filter,
     grouper_key: str,
     grouper_mappings: dict[str, dict[str, dict]],
-    compute_pr_curves: bool,
+    pr_curve_max_examples: int,
 ) -> (
     tuple[
         schemas.ConfusionMatrix,
@@ -648,14 +671,16 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
     ----------
     db : Session
         The database Session to query against.
+    metrics: List[str]
+        The list of metrics to compute, store, and return to the user.
     prediction_filter : schemas.Filter
         The filter to be used to query predictions.
     groundtruth_filter : schemas.Filter
         The filter to be used to query groundtruths.
     grouper_mappings: dict[str, dict[str, dict]]
         A dictionary of mappings that connect groupers to their related labels.
-    compute_pr_curves: bool
-        A boolean which determines whether we calculate precision-recall curves or not.
+    pr_curve_max_examples: int
+        The maximum number of datum examples to store per true positive, false negative, etc.
 
     Returns
     -------
@@ -711,24 +736,32 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
         return None
 
     # aggregate metrics (over all label values)
-    metrics = [
-        schemas.AccuracyMetric(
-            label_key=grouper_key,
-            value=_compute_accuracy_from_cm(confusion_matrix),
-        ),
-        schemas.ROCAUCMetric(
-            label_key=grouper_key,
-            value=_compute_roc_auc(
-                db=db,
-                prediction_filter=prediction_filter,
-                groundtruth_filter=groundtruth_filter,
-                grouper_key=grouper_key,
-                grouper_mappings=grouper_mappings,
-            ),
-        ),
-    ]
+    output = []
+    if metrics and "Accuracy" in metrics:
+        output.append(
+            schemas.AccuracyMetric(
+                label_key=grouper_key,
+                value=_compute_accuracy_from_cm(confusion_matrix),
+            )
+        )
+    if metrics and "ROCAUC" in metrics:
+        output.append(
+            schemas.ROCAUCMetric(
+                label_key=grouper_key,
+                value=_compute_roc_auc(
+                    db=db,
+                    prediction_filter=prediction_filter,
+                    groundtruth_filter=groundtruth_filter,
+                    grouper_key=grouper_key,
+                    grouper_mappings=grouper_mappings,
+                ),
+            )
+        )
 
-    if compute_pr_curves:
+    if metrics and (
+        "PrecisionRecallCurve" in metrics
+        or "DetailedPrecisionRecallCurve" in metrics
+    ):
         # calculate the number of unique datums
         # used to determine the number of true negatives
         pd_datums = db.query(
@@ -750,52 +783,61 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
             grouper_key=grouper_key,
             grouper_mappings=grouper_mappings,
             unique_datums=unique_datums,
+            pr_curve_max_examples=pr_curve_max_examples,
         )
-        output = schemas.PrecisionRecallCurve(
-            label_key=grouper_key, value=pr_curves
-        )
-        metrics.append(output)
+
+        output.append(pr_curves)
 
     # metrics that are per label
-    for grouper_value in grouper_mappings["grouper_key_to_labels_mapping"][
-        grouper_key
-    ].keys():
-        (
-            precision,
-            recall,
-            f1,
-        ) = _compute_precision_and_recall_f1_from_confusion_matrix(
-            confusion_matrix, grouper_value
-        )
+    if metrics and any([m in metrics for m in ["Precision", "Recall", "F1"]]):
+        for grouper_value in grouper_mappings["grouper_key_to_labels_mapping"][
+            grouper_key
+        ].keys():
+            (
+                precision,
+                recall,
+                f1,
+            ) = _compute_precision_and_recall_f1_from_confusion_matrix(
+                confusion_matrix, grouper_value
+            )
 
-        pydantic_label = schemas.Label(key=grouper_key, value=grouper_value)
-        metrics.append(
-            schemas.PrecisionMetric(
-                label=pydantic_label,
-                value=precision,
+            pydantic_label = schemas.Label(
+                key=grouper_key, value=grouper_value
             )
-        )
-        metrics.append(
-            schemas.RecallMetric(
-                label=pydantic_label,
-                value=recall,
-            )
-        )
-        metrics.append(
-            schemas.F1Metric(
-                label=pydantic_label,
-                value=f1,
-            )
-        )
 
-    return confusion_matrix, metrics
+            if metrics and "Precision" in metrics:
+                output.append(
+                    schemas.PrecisionMetric(
+                        label=pydantic_label,
+                        value=precision,
+                    )
+                )
+
+            if metrics and "Recall" in metrics:
+                output.append(
+                    schemas.RecallMetric(
+                        label=pydantic_label,
+                        value=recall,
+                    )
+                )
+
+            if metrics and "F1" in metrics:
+                output.append(
+                    schemas.F1Metric(
+                        label=pydantic_label,
+                        value=f1,
+                    )
+                )
+
+    return confusion_matrix, output
 
 
 def _compute_clf_metrics(
     db: Session,
+    metrics: list[str],
     prediction_filter: schemas.Filter,
     groundtruth_filter: schemas.Filter,
-    compute_pr_curves: bool,
+    pr_curve_max_examples: int,
     label_map: LabelMapType | None = None,
 ) -> tuple[
     list[schemas.ConfusionMatrix],
@@ -815,14 +857,17 @@ def _compute_clf_metrics(
     ----------
     db : Session
         The database Session to query against.
+    metrics: List[str]
+        The list of metrics to compute, store, and return to the user.
     prediction_filter : schemas.Filter
         The filter to be used to query predictions.
     groundtruth_filter : schemas.Filter
         The filter to be used to query groundtruths.
-    compute_pr_curves: bool
-        A boolean which determines whether we calculate precision-recall curves or not.
     label_map: LabelMapType, optional
         Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
+    pr_curve_max_examples: int
+        The maximum number of datum examples to store per true positive, false negative, etc.
+
 
     Returns
     ----------
@@ -843,23 +888,24 @@ def _compute_clf_metrics(
     )
 
     # compute metrics and confusion matrix for each grouper id
-    confusion_matrices, metrics = [], []
+    confusion_matrices, metrics_to_output = [], []
     for grouper_key in grouper_mappings[
         "grouper_key_to_labels_mapping"
     ].keys():
         cm_and_metrics = _compute_confusion_matrix_and_metrics_at_grouper_key(
             db=db,
+            metrics=metrics,
             prediction_filter=prediction_filter,
             groundtruth_filter=groundtruth_filter,
             grouper_key=grouper_key,
             grouper_mappings=grouper_mappings,
-            compute_pr_curves=compute_pr_curves,
+            pr_curve_max_examples=pr_curve_max_examples,
         )
         if cm_and_metrics is not None:
             confusion_matrices.append(cm_and_metrics[0])
-            metrics.extend(cm_and_metrics[1])
+            metrics_to_output.extend(cm_and_metrics[1])
 
-    return confusion_matrices, metrics
+    return confusion_matrices, metrics_to_output
 
 
 @validate_computation
@@ -909,10 +955,11 @@ def compute_clf_metrics(
         prediction_filter=prediction_filter,
         groundtruth_filter=groundtruth_filter,
         label_map=parameters.label_map,
-        compute_pr_curves=(
-            parameters.compute_pr_curves
-            if parameters.compute_pr_curves is not None
-            else False
+        metrics=parameters.metrics,
+        pr_curve_max_examples=(
+            parameters.pr_curve_max_examples
+            if parameters.pr_curve_max_examples
+            else 0
         ),
     )
 

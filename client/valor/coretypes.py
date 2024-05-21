@@ -908,7 +908,8 @@ class Model(StaticCollection):
         datasets: Optional[Union[Dataset, List[Dataset]]] = None,
         filter_by: Optional[FilterType] = None,
         label_map: Optional[Dict[Label, Label]] = None,
-        compute_pr_curves: bool = False,
+        metrics: Optional[list[str]] = None,
+        pr_curve_max_examples: int = 1,
         allow_retries: bool = False,
     ) -> Evaluation:
         """
@@ -922,8 +923,8 @@ class Model(StaticCollection):
             Optional set of constraints to filter evaluation by.
         label_map : Dict[Label, Label], optional
             Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
-        compute_pr_curves: bool
-            A boolean which determines whether we calculate precision-recall curves or not.
+        metrics: List[str], optional
+            The list of metrics to compute, store, and return to the user.
         allow_retries : bool, default = False
             Option to retry previously failed evaluations.
 
@@ -945,7 +946,12 @@ class Model(StaticCollection):
             parameters=EvaluationParameters(
                 task_type=TaskType.CLASSIFICATION,
                 label_map=self._create_label_map(label_map=label_map),
-                compute_pr_curves=compute_pr_curves,
+                pr_curve_max_examples=pr_curve_max_examples,
+                metrics=(
+                    metrics
+                    if metrics
+                    else ["Precision", "Recall", "ROCAUC", "F1", "Accuracy"]
+                ),
             ),
             meta={},
         )
@@ -962,13 +968,14 @@ class Model(StaticCollection):
         self,
         datasets: Optional[Union[Dataset, List[Dataset]]] = None,
         filter_by: Optional[FilterType] = None,
+        metrics: Optional[List[str]] = None,
         convert_annotations_to_type: Optional[AnnotationType] = None,
         iou_thresholds_to_compute: Optional[List[float]] = None,
         iou_thresholds_to_return: Optional[List[float]] = None,
         label_map: Optional[Dict[Label, Label]] = None,
         recall_score_threshold: float = 0,
-        compute_pr_curves: bool = False,
         pr_curve_iou_threshold: float = 0.5,
+        pr_curve_max_examples: int = 1,
         allow_retries: bool = False,
     ) -> Evaluation:
         """
@@ -980,6 +987,8 @@ class Model(StaticCollection):
             The dataset or list of datasets to evaluate against.
         filter_by : FilterType, optional
             Optional set of constraints to filter evaluation by.
+        metrics: List[str], optional
+            The list of metrics to compute, store, and return to the user.
         convert_annotations_to_type : enums.AnnotationType, optional
             Forces the object detection evaluation to compute over this type.
         iou_thresholds_to_compute : List[float], optional
@@ -990,10 +999,10 @@ class Model(StaticCollection):
             Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
         recall_score_threshold: float, default=0
             The confidence score threshold for use when determining whether to count a prediction as a true positive or not while calculating Average Recall.
-        compute_pr_curves: bool, optional
-            A boolean which determines whether we calculate precision-recall curves or not.
         pr_curve_iou_threshold: float, optional
-            The IOU threshold to use when calculating precision-recall curves. Defaults to 0.5. Does nothing when compute_pr_curves is set to False or None.
+            The IOU threshold to use when calculating precision-recall curves. Defaults to 0.5.
+        pr_curve_max_examples: int, optional
+            The maximum number of datum examples to store when calculating PR curves.
         allow_retries : bool, default = False
             Option to retry previously failed evaluations.
 
@@ -1013,13 +1022,25 @@ class Model(StaticCollection):
         # format request
         parameters = EvaluationParameters(
             task_type=TaskType.OBJECT_DETECTION,
+            metrics=(
+                metrics
+                if metrics
+                else [
+                    "AP",
+                    "AR",
+                    "mAP",
+                    "APAveragedOverIOUs",
+                    "mAR",
+                    "mAPAveragedOverIOUs",
+                ]
+            ),
             convert_annotations_to_type=convert_annotations_to_type,
             iou_thresholds_to_compute=iou_thresholds_to_compute,
             iou_thresholds_to_return=iou_thresholds_to_return,
             label_map=self._create_label_map(label_map=label_map),
             recall_score_threshold=recall_score_threshold,
-            compute_pr_curves=compute_pr_curves,
             pr_curve_iou_threshold=pr_curve_iou_threshold,
+            pr_curve_max_examples=pr_curve_max_examples,
         )
         datum_filter = self._format_constraints(datasets, filter_by)
         request = EvaluationRequest(
@@ -1042,6 +1063,7 @@ class Model(StaticCollection):
         datasets: Optional[Union[Dataset, List[Dataset]]] = None,
         filter_by: Optional[FilterType] = None,
         label_map: Optional[Dict[Label, Label]] = None,
+        metrics: Optional[List[str]] = None,
         allow_retries: bool = False,
     ) -> Evaluation:
         """
@@ -1055,6 +1077,8 @@ class Model(StaticCollection):
             Optional set of constraints to filter evaluation by.
         label_map : Dict[Label, Label], optional
             Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
+        metrics: List[str], optional
+            The list of metrics to compute, store, and return to the user.
         allow_retries : bool, default = False
             Option to retry previously failed evaluations.
 
@@ -1071,6 +1095,7 @@ class Model(StaticCollection):
             parameters=EvaluationParameters(
                 task_type=TaskType.SEMANTIC_SEGMENTATION,
                 label_map=self._create_label_map(label_map=label_map),
+                metrics=metrics if metrics else ["IOU", "mIOU"],
             ),
             meta={},
         )

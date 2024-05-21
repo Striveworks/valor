@@ -182,3 +182,28 @@ def test_evaluate_segmentation_with_label_maps(
     assert eval_job.meta["labels"] == 3
     assert eval_job.meta["annotations"] == 4
     assert eval_job.meta["duration"] <= 5  # usually .35
+
+    # test only passing in one metric or the other
+    eval_job = model.evaluate_segmentation(
+        dataset,
+        metrics=["IOU"],
+        label_map={
+            Label(key=f"k{i}", value=f"v{i}"): Label(key="foo", value="bar")
+            for i in range(1, 4)
+        },
+    )
+
+    assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
+    assert set([m["type"] for m in eval_job.metrics]) == set(["IOU"])
+
+    eval_job = model.evaluate_segmentation(
+        dataset,
+        metrics=["mIOU"],
+        label_map={
+            Label(key=f"k{i}", value=f"v{i}"): Label(key="foo", value="bar")
+            for i in range(1, 4)
+        },
+    )
+
+    assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
+    assert set([m["type"] for m in eval_job.metrics]) == set(["mIOU"])

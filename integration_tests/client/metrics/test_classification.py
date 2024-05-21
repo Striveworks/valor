@@ -970,48 +970,59 @@ def test_evaluate_classification_with_label_maps(
     ]
 
     eval_job = model.evaluate_classification(
-        dataset, label_map=label_mapping, compute_pr_curves=True
+        dataset,
+        label_map=label_mapping,
+        metrics=[
+            "Precision",
+            "Recall",
+            "ROCAUC",
+            "F1",
+            "Accuracy",
+            "PrecisionRecallCurve",
+        ],
+        pr_curve_max_examples=3,
     )
     assert eval_job.id
     assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
 
-    pr_expected_lengths = {
-        # k3
-        (0, "k3", "v1", "0.1", "fp"): 1,
-        (0, "k3", "v1", "0.1", "tn"): 2,
-        (0, "k3", "v3", "0.1", "fn"): 1,
-        (0, "k3", "v3", "0.1", "tn"): 2,
-        # k4
-        (1, "k4", "v1", "0.1", "fp"): 1,
-        (1, "k4", "v1", "0.1", "tn"): 2,
-        (1, "k4", "v4", "0.1", "fn"): 1,
-        (1, "k4", "v4", "0.1", "tn"): 1,
-        (1, "k4", "v4", "0.1", "tp"): 1,
-        (1, "k4", "v4", "0.9", "tp"): 0,
-        (1, "k4", "v4", "0.9", "tn"): 1,
-        (1, "k4", "v4", "0.9", "fn"): 2,
-        (1, "k4", "v5", "0.1", "fp"): 1,
-        (1, "k4", "v5", "0.1", "tn"): 2,
-        (1, "k4", "v5", "0.3", "fp"): 0,
-        (1, "k4", "v5", "0.3", "tn"): 3,
-        (1, "k4", "v8", "0.1", "tn"): 2,
-        (1, "k4", "v8", "0.6", "fp"): 0,
-        (1, "k4", "v8", "0.6", "tn"): 3,
-        # k5
-        (2, "k5", "v1", "0.1", "fp"): 1,
-        (2, "k5", "v1", "0.1", "tn"): 2,
-        (2, "k5", "v5", "0.1", "fn"): 1,
-        (
-            2,
-            "k5",
-            "v5",
-            "0.1",
-            "tn",
-        ): 2,
-        (3, "special_class", "cat_type1", "0.1", "tp"): 3,
-        (3, "special_class", "cat_type1", "0.1", "tn"): 0,
-        (3, "special_class", "cat_type1", "0.95", "tp"): 3,
-    }
+    # TODO
+    # pr_expected_lengths = {
+    #     # k3
+    #     (0, "k3", "v1", "0.1", "fp"): 1,
+    #     (0, "k3", "v1", "0.1", "tn"): 2,
+    #     (0, "k3", "v3", "0.1", "fn"): 1,
+    #     (0, "k3", "v3", "0.1", "tn"): 2,
+    #     # k4
+    #     (1, "k4", "v1", "0.1", "fp"): 1,
+    #     (1, "k4", "v1", "0.1", "tn"): 2,
+    #     (1, "k4", "v4", "0.1", "fn"): 1,
+    #     (1, "k4", "v4", "0.1", "tn"): 1,
+    #     (1, "k4", "v4", "0.1", "tp"): 1,
+    #     (1, "k4", "v4", "0.9", "tp"): 0,
+    #     (1, "k4", "v4", "0.9", "tn"): 1,
+    #     (1, "k4", "v4", "0.9", "fn"): 2,
+    #     (1, "k4", "v5", "0.1", "fp"): 1,
+    #     (1, "k4", "v5", "0.1", "tn"): 2,
+    #     (1, "k4", "v5", "0.3", "fp"): 0,
+    #     (1, "k4", "v5", "0.3", "tn"): 3,
+    #     (1, "k4", "v8", "0.1", "tn"): 2,
+    #     (1, "k4", "v8", "0.6", "fp"): 0,
+    #     (1, "k4", "v8", "0.6", "tn"): 3,
+    #     # k5
+    #     (2, "k5", "v1", "0.1", "fp"): 1,
+    #     (2, "k5", "v1", "0.1", "tn"): 2,
+    #     (2, "k5", "v5", "0.1", "fn"): 1,
+    #     (
+    #         2,
+    #         "k5",
+    #         "v5",
+    #         "0.1",
+    #         "tn",
+    #     ): 2,
+    #     (3, "special_class", "cat_type1", "0.1", "tp"): 3,
+    #     (3, "special_class", "cat_type1", "0.1", "tn"): 0,
+    #     (3, "special_class", "cat_type1", "0.95", "tp"): 3,
+    # }
 
     pr_expected_metrics = {
         # k3, v3
@@ -1045,17 +1056,18 @@ def test_evaluate_classification_with_label_maps(
 
     pr_metrics.sort(key=lambda x: x["parameters"]["label_key"])
 
-    for (
-        index,
-        key,
-        value,
-        threshold,
-        metric,
-    ), expected_length in pr_expected_lengths.items():
-        assert (
-            len(pr_metrics[index]["value"][value][threshold][metric])
-            == expected_length
-        )
+    # TODO this only applies to the detailed version
+    # for (
+    #     index,
+    #     key,
+    #     value,
+    #     threshold,
+    #     metric,
+    # ), expected_length in pr_expected_lengths.items():
+    #     assert (
+    #         len(pr_metrics[index]["value"][value][threshold][metric])
+    #         == expected_length
+    #     )
 
     for (
         index,
@@ -1063,10 +1075,10 @@ def test_evaluate_classification_with_label_maps(
         value,
         threshold,
         metric,
-    ), expected_length in pr_expected_metrics.items():
+    ), expected_value in pr_expected_metrics.items():
         assert (
             pr_metrics[index]["value"][value][threshold][metric]
-        ) == expected_length
+        ) == expected_value
 
     confusion_matrix = eval_job.confusion_matrices
 
