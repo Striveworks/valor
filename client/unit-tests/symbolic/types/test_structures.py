@@ -23,6 +23,7 @@ from valor.schemas import (
 )
 from valor.schemas.symbolic.operators import (
     AppendableFunction,
+    Contains,
     TwoArgumentFunction,
 )
 from valor.schemas.symbolic.types import (
@@ -270,6 +271,29 @@ def test_list():
     # test that untyped wrapper is not implemented
     with pytest.raises(TypeError):
         TypedList()  # type: ignore - intentionally missing args
+
+    # test 'contains' operator
+    op = TypedList[Float].symbolic().contains(Float(1.234), 3.14)
+    assert isinstance(op, Contains)
+    assert op.to_dict() == {
+        "op": "contains",
+        "lhs": {
+            "type": "symbol",
+            "value": {
+                "name": "list[float]",
+                "key": None,
+                "attribute": None,
+                "dtype": "list[float]",
+            },
+        },
+        "rhs": {
+            "type": "list[float]",
+            "value": [
+                1.234,
+                3.14,
+            ],
+        },
+    }
 
 
 def test_dictionary_value():

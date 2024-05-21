@@ -21,12 +21,9 @@ from valor.schemas.symbolic.types import (
 
 
 def _get_schema_type_by_name(name: str):
-    types_ = {
-        "label": Label,
-        "annotation": Annotation,
-        "datum": Datum,
-    }
-    return get_type_by_name(name=name, additional_types=types_)
+    return get_type_by_name(
+        name=name, additional_types=[Label, Annotation, Datum]
+    )
 
 
 class StaticCollection(Equatable):

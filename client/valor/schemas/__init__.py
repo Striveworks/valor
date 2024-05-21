@@ -19,6 +19,7 @@ from .symbolic.operators import (
     Or,
     Outside,
     Xor,
+    unpack_function,
 )
 from .symbolic.types import (
     Bool,
@@ -46,6 +47,7 @@ from .symbolic.types import (
     Time,
     TypedList,
     Variable,
+    unpack_variable,
 )
 
 __all__ = [
@@ -99,4 +101,6 @@ __all__ = [
     "Datum",
     "Contains",
     "FunctionType",
+    "unpack_variable",
+    "unpack_function",
 ]

@@ -1479,11 +1479,23 @@ class TypedList(typing.Generic[T], Equatable):
                 return item_class
 
             def contains(self, *other) -> Contains:
-                """Conditional whether lhs contains rhs elements."""
-                other = [self.preprocess(item) for item in other]
-                if not all(isinstance(item, item_class) for item in other):
-                    raise TypeError
-                return Contains(self, *other)
+                """
+                Conditional whether list contains certain elements.
+
+                Parameters
+                ----------
+                other: list[any]
+                    List of items to enforce the existence of.
+
+                Returns
+                -------
+                Contains
+                    A instantiated 'Contains' functional operator.
+                """
+                other = type(self)(
+                    [item_class.preprocess(item) for item in other]
+                )
+                return Contains(lhs=self, rhs=other)
 
         cls._registered_classes[item_class] = VariableList
         return VariableList
@@ -1569,7 +1581,7 @@ class DictionaryValue(Variable):
             other = _get_type_by_value(other)(other)
 
         if isinstance(other, DictionaryValue):
-            raise ValueError(
+            raise NotImplementedError(
                 f"Dictionary symbols can only be compared to explicit values. Recieved '{other}'."
             )
 
@@ -2123,11 +2135,71 @@ def _get_type_by_value(other: typing.Any):
         raise NotImplementedError(str(type(other).__name__))
 
 
+def _parse_type_name(type_name: str):
+    """
+    Parses the type string of a variable into component types.
+
+    Parameters
+    ----------
+    type_name : str
+        The type name string to parse, which may contain nested types denoted by brackets.
+
+    Returns
+    -------
+    tuple
+        A tuple containing the base type and its nested types as separate elements. The nested types are returned
+        as a single string if further nesting exists.
+
+    Notes
+    -----
+    The function only decomposes the string to the first level of nested types explicitly. For types with more
+    complex nested structures, the innermost structures are returned as part of the last component in the tuple,
+    without separating them further.
+
+    Examples
+    --------
+    >>> parse_type_name("a")
+    ('a',)
+
+    >>> parse_type_name("a[b]")
+    ('a', 'b',)
+
+    >>> parse_type_name("a[b[c]]")
+    ('a', 'b[c]',)
+
+    >>> parse_type_name("a[b[c[d]]]")
+    ('a', 'b[c[d]]',)
+    """
+    pattern = r"(\w+)(?:\[(\w+\[?\w*\]?)\])?"
+    matches = re.findall(pattern, type_name)
+    return tuple([str(item) for tup in matches for item in tup if item])
+
+
 def get_type_by_name(
-    name: str, additional_types: typing.Optional[typing.Dict[str, type]] = None
+    name: str, additional_types: typing.Optional[typing.List[type]] = None
 ):
-    """Retrieves variable type by name."""
-    types_ = {
+    """
+    Retrieves a class by its name.
+
+    Parameters
+    ----------
+    name: str
+        The name of the class.
+    additional_types: List[type], optional
+        Any additional variable types that are not defined in this file.
+
+    Returns
+    -------
+    type
+        A subclass of the Variable type that corresponds to the provided name.
+
+    Raises
+    ------
+    NotImplementedError
+        If the type name is not supported.
+    """
+
+    types = {
         "bool": Bool,
         "string": String,
         "integer": Integer,
@@ -2147,21 +2219,66 @@ def get_type_by_name(
         "dictionary": Dictionary,
     }
     if additional_types:
-        types_.update(additional_types)
+        types.update(
+            {type_.__name__.lower(): type_ for type_ in additional_types}
+        )
 
-    parsed_name = name.lower().split(".")[-1]
-    type_ = types_.get(parsed_name, None)
-    if type_ is not None:
-        return type_
-
-    match = re.search(r"\[(.*?)\]", name.lower())
-    if not match:
-        raise NotImplementedError(name)
-
-    type_ = get_type_by_name(
-        name=match.group(1), additional_types=additional_types
-    )
-    if "list" in name.lower():
-        return TypedList[type_]
+    parsed_name = _parse_type_name(name.lower())
+    if len(parsed_name) == 1 and parsed_name[0] in types:
+        return types[parsed_name[0]]
+    elif len(parsed_name) == 2:
+        container = parsed_name[0]
+        type_ = get_type_by_name(
+            parsed_name[1], additional_types=additional_types
+        )
+        if container == "list" or container == "typedlist":
+            return TypedList[type_]
+        else:
+            raise NotImplementedError(
+                f"Unknown container of type '{parsed_name[0]}'."
+            )
     else:
-        raise NotImplementedError(name)
+        raise NotImplementedError(f"Unknown type '{name}'.")
+
+
+def unpack_variable(
+    value: dict, additional_types: typing.Optional[typing.List[type]] = None
+):
+    """
+    Parses a dictionary into a variable type.
+
+    Parameters
+    ----------
+    value: dict
+        A dictionary representation of a variable or symbol.
+    additional_types: List[type], optional
+        Any additional variable types that are not defined in this file.
+
+    Returns
+    -------
+    Variable
+        A instance of a class that inherits from Variable. It can be valued or symbolic.
+
+    Raises
+    ------
+    TypeError
+        If the provided value is not a dictionary.
+    ValueError
+        If the provided value does not conform to the dictionary representation of a variable.
+    """
+    if not isinstance(value, dict):
+        raise TypeError
+    elif "type" not in value or "value" not in value:
+        raise ValueError(
+            f"Value with keys '{value.keys()}' does not conform to a valor type."
+        )
+
+    if value["type"] == "symbol":
+        copy_value = value["value"].copy()
+        dtype = copy_value.pop("dtype")
+        objcls = get_type_by_name(dtype, additional_types=additional_types)
+        return objcls.symbolic(**copy_value)
+    else:
+        dtype = value["type"]
+        objcls = get_type_by_name(dtype, additional_types=additional_types)
+        return objcls.decode_value(value["value"])

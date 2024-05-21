@@ -77,3 +77,61 @@ def test_dictionary_encoding():
 
     assert Dictionary(metadata).encode_value() == metadata_json
     assert Dictionary.decode_value(metadata_json).get_value() == metadata
+
+
+def test_dictionary_expressions():
+
+    # dictionary symbol to value
+    sym1 = Dictionary.symbolic()
+    expr1 = sym1["k1"] == 1.23
+    assert expr1.to_dict() == {
+        "op": "eq",
+        "lhs": {
+            "type": "symbol",
+            "value": {
+                "name": "dictionary",
+                "key": "k1",
+                "attribute": None,
+                "dtype": "float",
+            },
+        },
+        "rhs": {"type": "float", "value": 1.23},
+    }
+
+    # dictionary symbol to dictionary value
+    dict2 = Dictionary({"k2": 1.23})
+    expr2 = sym1["k1"] == dict2["k2"]
+    assert expr2.to_dict() == {
+        "op": "eq",
+        "lhs": {
+            "type": "symbol",
+            "value": {
+                "name": "dictionary",
+                "key": "k1",
+                "attribute": None,
+                "dtype": "float",
+            },
+        },
+        "rhs": {"type": "float", "value": 1.23},
+    }
+
+    # dictionary value to dictionary symbol
+    dict2 = Dictionary({"k2": 1.23})
+    expr3 = dict2["k2"] == sym1["k1"]
+    assert expr3.to_dict() == {
+        "op": "eq",
+        "lhs": {
+            "type": "symbol",
+            "value": {
+                "name": "dictionary",
+                "key": "k1",
+                "attribute": None,
+                "dtype": "float",
+            },
+        },
+        "rhs": {"type": "float", "value": 1.23},
+    }
+
+    # dictionary symbol to dictionary symbol (not currently supported)
+    with pytest.raises(NotImplementedError):
+        assert Dictionary.symbolic()["k1"] == Dictionary.symbolic()["k2"]

@@ -11,6 +11,7 @@ from valor.schemas.symbolic.operators import (
     Or,
     TwoArgumentFunction,
     Xor,
+    get_operator_by_name,
 )
 from valor.schemas.symbolic.types import Float, Integer, String
 
@@ -205,3 +206,9 @@ def test_two_arg_function(variables):
     # test case where too many args are provided
     with pytest.raises(TypeError):
         TwoArgumentFunction(x, y, z)  # type: ignore - edge case test
+
+
+def test_get_operator_by_name():
+    assert get_operator_by_name("and") == And
+    with pytest.raises(ValueError):
+        get_operator_by_name("some nonexistent function")

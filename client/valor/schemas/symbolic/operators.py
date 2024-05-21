@@ -1,4 +1,4 @@
-from typing import Any, Union
+from typing import Any, List, Optional, Union
 
 
 class Function:
@@ -223,13 +223,14 @@ class Outside(TwoArgumentFunction):
     pass
 
 
-class Contains(AppendableFunction):
+class Contains(TwoArgumentFunction):
     """Implementation of the list 'contains' operator."""
 
     pass
 
 
 FunctionType = Union[
+    Function,
     And,
     Or,
     Xor,
@@ -247,3 +248,132 @@ FunctionType = Union[
     Outside,
     Contains,
 ]
+
+
+def get_operator_by_name(name: str) -> type:
+    """Retrieves operator type by name."""
+    operators = {
+        "and": And,
+        "or": Or,
+        "xor": Xor,
+        "not": Not,
+        "isnull": IsNull,
+        "isnotnull": IsNotNull,
+        "eq": Eq,
+        "ne": Ne,
+        "gt": Gt,
+        "ge": Ge,
+        "lt": Lt,
+        "le": Le,
+        "intersects": Intersects,
+        "inside": Inside,
+        "outside": Outside,
+        "contains": Contains,
+    }
+    if name not in operators:
+        raise ValueError(
+            f"A symbolic operator with name '{name}' does not exist."
+        )
+    return operators[name]
+
+
+def _unpack_function_or_variable(
+    expr: dict, additional_types: Optional[List[type]] = None
+):
+    """
+    Parses a dictionary into a function or variable type.
+
+    Parameters
+    ----------
+    value: dict
+        A dictionary representation of a variable, symbol or a function.
+    additional_types: List[type], optional
+        Any additional variable types that are not defined in this file.
+
+    Returns
+    -------
+    Union[FunctionType, Variable]
+        A instance of a class that inherits from either Function or Variable.
+
+    Raises
+    ------
+    TypeError
+        If the provided value is not a dictionary.
+    ValueError
+        If the provided value does not conform to the dictionary representation of a variable or function.
+    """
+
+    if "op" in expr:
+        op = get_operator_by_name(expr["op"])
+        keys = set(expr.keys())
+        if keys == {"op", "args"}:
+            args = [
+                _unpack_function_or_variable(
+                    value, additional_types=additional_types
+                )
+                for value in expr["args"]
+            ]
+            return op(*args)
+        elif keys == {"op", "arg"}:
+            arg = _unpack_function_or_variable(
+                expr["arg"], additional_types=additional_types
+            )
+            return op(arg)
+        elif keys == {"op", "lhs", "rhs"}:
+            lhs = _unpack_function_or_variable(
+                expr["lhs"], additional_types=additional_types
+            )
+            rhs = _unpack_function_or_variable(
+                expr["rhs"], additional_types=additional_types
+            )
+            return op(lhs, rhs)
+        else:
+            raise NotImplementedError(
+                f"Unsupported operator arguments '{expr.keys}'."
+            )
+    elif "type" in expr:
+        from valor.schemas.symbolic.types import unpack_variable
+
+        return unpack_variable(expr, additional_types=additional_types)
+    else:
+        raise ValueError(
+            f"Dictionary with keys '{expr.keys()}' does not conform a symbolic function."
+        )
+
+
+def unpack_function(
+    expr: dict, additional_types: Optional[List[type]] = None
+) -> FunctionType:
+    """
+    Parses a dictionary into a function type.
+
+    Parameters
+    ----------
+    value: dict
+        A dictionary representation of a function.
+    additional_types: List[type], optional
+        Any additional variable types that are not defined in this file.
+
+    Returns
+    -------
+    FunctionType
+        A instance of a class that subclasses Function.
+
+    Raises
+    ------
+    TypeError
+        If the provided value is not a dictionary.
+    ValueError
+        If the provided value does not conform to the dictionary representation of a function.
+    """
+    if isinstance(expr, Function):
+        return expr
+    elif not isinstance(expr, dict):
+        raise TypeError("Expected input to be of type 'dict'.")
+
+    retval = _unpack_function_or_variable(
+        expr, additional_types=additional_types
+    )
+    if not isinstance(retval, Function):
+        raise TypeError
+    return retval
