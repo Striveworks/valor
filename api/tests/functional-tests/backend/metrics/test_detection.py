@@ -1054,48 +1054,32 @@ def test__compute_detection_metrics_with_rasters(
     ]
 
     non_pr_metrics = metrics[:-1]
-    # pr_metrics = metrics[-1]
+    pr_metrics = metrics[-1]
     for m in non_pr_metrics:
         assert m in expected
 
     for m in expected:
         assert m in non_pr_metrics
 
-    # TODO
-    # pr_expected_answers = {
-    #     ("class", "label1", 0.05, "tp"): 1,
-    #     ("class", "label1", 0.35, "tp"): 0,
-    #     ("class", "label2", 0.05, "tp"): 1,
-    #     ("class", "label2", 0.05, "fp"): 0,
-    #     ("class", "label2", 0.95, "fp"): 0,
-    #     ("class", "label3", 0.05, "tp"): 0,
-    #     ("class", "label3", 0.05, "fn"): 1,
-    #     ("class", "label4", 0.05, "tp"): 0,
-    #     ("class", "label4", 0.05, "fp"): 1,
-    # }
+    pr_expected_answers = {
+        ("class", "label1", 0.05, "tp"): 1,
+        ("class", "label1", 0.35, "tp"): 0,
+        ("class", "label2", 0.05, "tp"): 1,
+        ("class", "label2", 0.05, "fp"): 0,
+        ("class", "label2", 0.95, "fp"): 0,
+        ("class", "label3", 0.05, "tp"): 0,
+        ("class", "label3", 0.05, "fn"): 1,
+        ("class", "label4", 0.05, "tp"): 0,
+        ("class", "label4", 0.05, "fp"): 1,
+    }
 
-    # for (
-    #     _,
-    #     value,
-    #     threshold,
-    #     metric,
-    # ), expected_length in pr_expected_answers.items():
-    #     assert (
-    #         len(pr_metrics["value"][value][threshold][metric])
-    #         == expected_length
-    #     )
-
-    # # spot check a few geojson results
-    # assert (
-    #     pr_metrics["value"]["label1"][0.05]["tp"][0][2]
-    #     == '{"type":"Polygon","coordinates":[[[0,0],[0,80],[32,80],[32,0],[0,0]]]}'
-    # )
-    # assert (
-    #     pr_metrics["value"]["label2"][0.85]["tp"][0][2]
-    #     == '{"type":"Polygon","coordinates":[[[0,0],[0,80],[32,80],[32,0],[0,0]]]}'
-    # )
-
-    # assert pr_metrics["value"]["label3"][0.85]["tp"] == []
+    for (
+        _,
+        value,
+        threshold,
+        metric,
+    ), expected_value in pr_expected_answers.items():
+        assert pr_metrics["value"][value][threshold][metric] == expected_value
 
 
 def test_detection_exceptions(db: Session):

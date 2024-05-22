@@ -30,6 +30,7 @@ def test__calculate_ap_and_ar():
             RankedPair(
                 dataset_name="test_dataset",
                 gt_datum_uid="1",
+                pd_datum_uid="1",
                 gt_id=1,
                 pd_id=1,
                 score=0.8,
@@ -39,6 +40,7 @@ def test__calculate_ap_and_ar():
             RankedPair(
                 dataset_name="test_dataset",
                 gt_datum_uid="1",
+                pd_datum_uid="1",
                 gt_id=2,
                 pd_id=2,
                 score=0.6,
@@ -48,6 +50,7 @@ def test__calculate_ap_and_ar():
             RankedPair(
                 dataset_name="test_dataset",
                 gt_datum_uid="1",
+                pd_datum_uid="1",
                 gt_id=3,
                 pd_id=3,
                 score=0.4,
@@ -59,6 +62,7 @@ def test__calculate_ap_and_ar():
             RankedPair(
                 dataset_name="test_dataset",
                 gt_datum_uid="1",
+                pd_datum_uid="1",
                 gt_id=0,
                 pd_id=0,
                 score=0.0,
@@ -68,6 +72,7 @@ def test__calculate_ap_and_ar():
             RankedPair(
                 dataset_name="test_dataset",
                 gt_datum_uid="1",
+                pd_datum_uid="1",
                 gt_id=2,
                 pd_id=2,
                 score=0.0,
@@ -79,6 +84,7 @@ def test__calculate_ap_and_ar():
             RankedPair(
                 dataset_name="test_dataset",
                 gt_datum_uid="1",
+                pd_datum_uid="1",
                 gt_id=0,
                 pd_id=0,
                 score=1.0,
