@@ -218,7 +218,7 @@ def create_metric_mappings(
         | schemas.FaithfulnessMetric
         | schemas.GrammaticalityMetric
         | schemas.HallucinationMetric
-        | schemas.QAGMetric
+        | schemas.SummarizationMetric
         | schemas.ToxicityMetric
     ],
     evaluation_id: int,

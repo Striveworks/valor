@@ -107,7 +107,7 @@ def _compute_text_generation_metrics(
     | schemas.FaithfulnessMetric
     | schemas.GrammaticalityMetric
     | schemas.HallucinationMetric
-    | schemas.QAGMetric
+    | schemas.SummarizationMetric
     | schemas.ToxicityMetric
 ]:
     """
@@ -126,7 +126,7 @@ def _compute_text_generation_metrics(
 
     Returns
     ----------
-    Sequence[schemas.AnswerCorrectnessMetric | schemas.AnswerRelevanceMetric | schemas.BiasMetric | schemas.CoherenceMetric | schemas.ContextPrecisionMetric | schemas.ContextRecallMetric | schemas.ContextRelevanceMetric | schemas.FaithfulnessMetric | schemas.GrammaticalityMetric | schemas.HallucinationMetric | schemas.QAGMetric | schemas.ToxicityMetric]
+    Sequence[schemas.AnswerCorrectnessMetric | schemas.AnswerRelevanceMetric | schemas.BiasMetric | schemas.CoherenceMetric | schemas.ContextPrecisionMetric | schemas.ContextRecallMetric | schemas.ContextRelevanceMetric | schemas.FaithfulnessMetric | schemas.GrammaticalityMetric | schemas.HallucinationMetric | schemas.SummarizationMetric | schemas.ToxicityMetric]
         A list of metrics.
     """
     datum_subquery = _generate_datum_query(datum_filter)
@@ -199,7 +199,7 @@ def _compute_text_generation_metrics(
                 raise NotImplementedError
             elif metric_name == "Hallucination":
                 raise NotImplementedError
-            elif metric_name == "QAG":
+            elif metric_name == "Summarization":
                 raise NotImplementedError
             elif metric_name == "Toxicity":
                 raise NotImplementedError

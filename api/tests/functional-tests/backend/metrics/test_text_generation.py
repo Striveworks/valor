@@ -221,7 +221,7 @@ def test_compute_text_generation(
         # "Faithfulness",
         # "Grammaticality",
         # "Hallucination",
-        # "QAG",
+        # "Summarization",
         # "Toxicity",
     ]
 
@@ -262,7 +262,7 @@ def test_compute_text_generation(
             pass
         elif isinstance(metric, schemas.HallucinationMetric):
             pass
-        elif isinstance(metric, schemas.QAGMetric):
+        elif isinstance(metric, schemas.SummarizationMetric):
             pass
         elif isinstance(metric, schemas.ToxicityMetric):
             pass
@@ -293,7 +293,7 @@ def test_text_generation(
         # "Faithfulness",
         # "Grammaticality",
         # "Hallucination",
-        # "QAG",
+        # "Summarization",
         # "Toxicity",
     ]
 
@@ -378,7 +378,7 @@ def test_text_generation(
         elif metric.type == "Hallucination":
             pdb.set_trace()
             pass
-        elif metric.type == "QAG":
+        elif metric.type == "Summarization":
             pdb.set_trace()
             pass
         elif metric.type == "Toxicity":

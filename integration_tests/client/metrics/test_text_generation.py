@@ -44,7 +44,7 @@ from valor.enums import TaskType  # EvaluationStatus,
 
 #     llm_metrics = [
 #         "Coherence",
-#         # "QAG",
+#         # "Summarization",
 #         # "Grammaticality",
 #         # "Hallucination Rate",
 #         # "Toxicity",
@@ -89,7 +89,7 @@ from valor.enums import TaskType  # EvaluationStatus,
 #             },
 #         },
 #         # { # TODO
-#         #     "type": "QAG",
+#         #     "type": "Summarization",
 #         # },
 #         # {
 #         #     "type": "Grammaticality",

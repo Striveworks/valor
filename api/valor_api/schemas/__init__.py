@@ -48,9 +48,9 @@ from .metrics import (
     Metric,
     PrecisionMetric,
     PrecisionRecallCurve,
-    QAGMetric,
     RecallMetric,
     ROCAUCMetric,
+    SummarizationMetric,
     ToxicityMetric,
     mAPMetric,
     mAPMetricAveragedOverIOUs,
@@ -134,6 +134,6 @@ __all__ = [
     "FaithfulnessMetric",
     "GrammaticalityMetric",
     "HallucinationMetric",
-    "QAGMetric",
+    "SummarizationMetric",
     "ToxicityMetric",
 ]

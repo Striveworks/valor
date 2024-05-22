@@ -953,7 +953,7 @@ class HallucinationMetric(BaseModel):
         raise NotImplementedError
 
 
-class QAGMetric(BaseModel):
+class SummarizationMetric(BaseModel):
     """
     Describes a TODO.
 
