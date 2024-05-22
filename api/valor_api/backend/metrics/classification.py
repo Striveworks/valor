@@ -40,6 +40,8 @@ def _compute_curves(
     ----------
     db: Session
         The database Session to query against.
+    metrics: List[str]
+        The list of metrics to compute, store, and return to the user.
     prediction_filter: schemas.Filter
         The filter to be used to query predictions.
     groundtruth_filter: schemas.Filter

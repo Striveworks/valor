@@ -452,7 +452,7 @@ class PrecisionRecallCurve(_BasePrecisionRecallCurve):
         str,
         dict[
             float,
-            dict[str, int | float],
+            dict[str, int | float | None],
         ],
     ]
 
@@ -508,9 +508,7 @@ class DetailedPrecisionRecallCurve(_BasePrecisionRecallCurve):
                         str,
                         dict[
                             str,
-                            int
-                            | list[tuple[str, str]]
-                            | list[tuple[str, str, str]],
+                            int | list,
                         ],
                     ],
                 ],

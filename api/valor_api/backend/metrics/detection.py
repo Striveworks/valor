@@ -1,6 +1,7 @@
 import bisect
 import heapq
 import math
+import random
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import Sequence, Tuple
@@ -26,6 +27,7 @@ from valor_api.enums import AnnotationType
 @dataclass
 class RankedPair:
     dataset_name: str
+    pd_datum_uid: str | None
     gt_datum_uid: str | None
     gt_geojson: str | None
     gt_id: int | None
@@ -62,17 +64,21 @@ def _calculate_101_pt_interp(precisions, recalls) -> float:
 
 
 def _compute_curves(
+    metrics: list[str],
     sorted_ranked_pairs: dict[int, list[RankedPair]],
     grouper_mappings: dict[str, dict[str, schemas.Label]],
     groundtruths_per_grouper: dict[int, list],
     false_positive_entries: list[tuple],
     iou_threshold: float,
-) -> list[schemas.PrecisionRecallCurve]:
+    pr_curve_max_examples: int,
+) -> list[schemas.PrecisionRecallCurve | schemas.DetailedPrecisionRecallCurve]:
     """
     Calculates precision-recall curves for each class.
 
     Parameters
     ----------
+    metrics: List[str]
+        The list of metrics to compute, store, and return to the user.
     sorted_ranked_pairs: dict[int, list[RankedPair]]
         The ground truth-prediction matches from psql, grouped by grouper_id.
     grouper_mappings: dict[str, dict[str, schemas.Label]]
@@ -83,6 +89,9 @@ def _compute_curves(
         A list of predictions that don't have an associated ground truth. Used to calculate false positives.
     iou_threshold: float
         The IOU threshold to use as a cut-off for our predictions.
+    pr_curve_max_examples: int
+        The maximum number of datum examples to store per true positive, false negative, etc.
+
 
     Returns
     -------
@@ -90,13 +99,46 @@ def _compute_curves(
         A nested dictionary where the first key is the class label, the second key is the confidence threshold (e.g., 0.05), the third key is the metric name (e.g., "precision"), and the final key is either the value itself (for precision, recall, etc.) or a list of tuples containing the (dataset_name, datum_id, bounding boxes) for each observation.
     """
 
-    output = defaultdict(dict)
+    pr_output = defaultdict(dict)
+    detailed_pr_output = defaultdict(dict)
+
+    # create sets of all datums for which there is a prediction / groundtruth
+    # used when separating hallucinations/misclassifications/missed_detections
+
+    gt_datums = set()
+
+    for grouper_id, groundtruths in groundtruths_per_grouper.items():
+        for dset_name, datum_uid, gt_id, gt_geojson in groundtruths:
+            gt_datums.add(
+                (
+                    dset_name,
+                    datum_uid,
+                    grouper_mappings["grouper_id_to_grouper_label_mapping"][
+                        grouper_id
+                    ].value,  # type: ignore - typechecker is over the dict keys being ints
+                )
+            )
+
+    pd_datums = set(
+        [
+            (
+                ranked_pair.dataset_name,
+                ranked_pair.pd_datum_uid,
+                grouper_mappings["grouper_id_to_grouper_label_mapping"][
+                    grouper_id
+                ].value,  # type: ignore
+            )
+            for grouper_id, ranked_pairs in sorted_ranked_pairs.items()
+            for ranked_pair in ranked_pairs
+        ]
+    )
 
     for grouper_id, grouper_label in grouper_mappings[
         "grouper_id_to_grouper_label_mapping"
     ].items():
 
-        curves = defaultdict(lambda: defaultdict(dict))
+        pr_curves = defaultdict(lambda: defaultdict(dict))
+        detailed_pr_curves = defaultdict(lambda: defaultdict(dict))
 
         label_key = grouper_label.key
         label_value = grouper_label.value
@@ -104,19 +146,25 @@ def _compute_curves(
         for confidence_threshold in [x / 100 for x in range(5, 100, 5)]:
             if grouper_id not in sorted_ranked_pairs:
                 tp = []
-                fn = (
-                    [
-                        (dataset_name, datum_uid, gt_geojson)
-                        for dataset_name, datum_uid, _, gt_geojson in groundtruths_per_grouper[
-                            grouper_id
-                        ]
-                    ]
-                    if grouper_id in groundtruths_per_grouper
-                    else []
-                )
+                fp = defaultdict(list)
+                fn = {
+                    "missed_detections": [
+                        (
+                            [
+                                (dataset_name, datum_uid, gt_geojson)
+                                for dataset_name, datum_uid, _, gt_geojson in groundtruths_per_grouper[
+                                    grouper_id
+                                ]
+                            ]
+                            if grouper_id in groundtruths_per_grouper
+                            else []
+                        )
+                    ],
+                    "misclassifications": [],
+                }
 
             else:
-                tp, fp, fn = [], [], []
+                tp, fp, fn = [], defaultdict(list), defaultdict(list)
                 seen_gts = set()
 
                 for row in sorted_ranked_pairs[grouper_id]:
@@ -134,24 +182,64 @@ def _compute_curves(
                         ]
                         seen_gts.add(row.gt_id)
 
-                fn = [
-                    (dataset_name, datum_uid, gt_geojson)
-                    for dataset_name, datum_uid, gt_id, gt_geojson in groundtruths_per_grouper[
-                        grouper_id
-                    ]
-                    if gt_id not in seen_gts
-                ]
+                for (
+                    dataset_name,
+                    datum_uid,
+                    gt_id,
+                    gt_geojson,
+                ) in groundtruths_per_grouper[grouper_id]:
+                    if gt_id not in seen_gts:
+                        # if there was a prediction for a given datum, then it was a misclassification
+                        if (
+                            dataset_name,
+                            datum_uid,
+                            grouper_mappings[
+                                "grouper_id_to_grouper_label_mapping"
+                            ][grouper_id].value,
+                        ) in pd_datums:
+                            fn["misclassifications"].append(
+                                (dataset_name, datum_uid, gt_geojson)
+                            )
+                        else:
+                            fn["missed_detections"].append(
+                                (dataset_name, datum_uid, gt_geojson)
+                            )
 
-            fp = [
-                (dset_name, pd_datum_uid, pd_geojson)
-                for dset_name, _, pd_datum_uid, gt_label_id, pd_label_id, pd_score, pd_geojson in false_positive_entries
-                if pd_score >= confidence_threshold
-                and pd_label_id == grouper_id
-                and gt_label_id is None
-            ]
+            for (
+                dset_name,
+                _,
+                pd_datum_uid,
+                gt_label_id,
+                pd_label_id,
+                pd_score,
+                pd_geojson,
+            ) in false_positive_entries:
+                if (
+                    pd_score >= confidence_threshold
+                    and pd_label_id == grouper_id
+                    and gt_label_id is None
+                ):  # if there was a groundtruth for a given datum, then it was a misclassification
+                    if (
+                        dset_name,
+                        pd_datum_uid,
+                        grouper_mappings[
+                            "grouper_id_to_grouper_label_mapping"
+                        ][pd_label_id].value,
+                    ) in gt_datums:
+                        fp["misclassifications"].append(
+                            (dset_name, pd_datum_uid, pd_geojson)
+                        )
+                    else:
+                        fp["hallucinations"].append(
+                            (dset_name, pd_datum_uid, pd_geojson)
+                        )
 
             # calculate metrics
-            tp_cnt, fp_cnt, fn_cnt = len(tp), len(fp), len(fn)
+            tp_cnt, fp_cnt, fn_cnt = (
+                len(tp),
+                len(fp["hallucinations"]) + len(fp["misclassifications"]),
+                len(fn["missed_detections"]) + len(fn["misclassifications"]),
+            )
             precision = (
                 tp_cnt / (tp_cnt + fp_cnt) if (tp_cnt + fp_cnt) > 0 else -1
             )
@@ -164,27 +252,119 @@ def _compute_curves(
                 else -1
             )
 
-            curves[label_value][confidence_threshold] = {
-                "tp": tp,
-                "fp": fp,
-                "fn": fn,
-                "tn": None,  # tn and accuracy aren't applicable to detection tasks because there's an infinite number of true negatives
-                "precision": precision,
-                "recall": recall,
-                "accuracy": None,
-                "f1_score": f1_score,
-            }
+            if "PrecisionRecallCurve" in metrics:
+                pr_curves[label_value][confidence_threshold] = {
+                    "tp": tp_cnt,
+                    "fp": fp_cnt,
+                    "fn": fn_cnt,
+                    "tn": None,  # tn and accuracy aren't applicable to detection tasks because there's an infinite number of true negatives
+                    "precision": precision,
+                    "recall": recall,
+                    "accuracy": None,
+                    "f1_score": f1_score,
+                }
 
-        output[label_key].update(dict(curves))
+            if "DetailedPrecisionRecallCurve" in metrics:
+                detailed_pr_curves[label_value][confidence_threshold] = {
+                    "tp": {
+                        "total": tp_cnt,
+                        "observations": {
+                            "all": {
+                                "count": tp_cnt,
+                                "examples": (
+                                    random.sample(tp, pr_curve_max_examples)
+                                    if len(tp) >= pr_curve_max_examples
+                                    else tp
+                                ),
+                            }
+                        },
+                    },
+                    "fn": {
+                        "total": fn_cnt,
+                        "observations": {
+                            "misclassifications": {
+                                "count": len(fn["misclassifications"]),
+                                "examples": (
+                                    random.sample(
+                                        fn["misclassifications"],
+                                        pr_curve_max_examples,
+                                    )
+                                    if len(fn["misclassifications"])
+                                    >= pr_curve_max_examples
+                                    else fn["misclassifications"]
+                                ),
+                            },
+                            "missed_detections": {
+                                "count": len(fn["missed_detections"]),
+                                "examples": (
+                                    random.sample(
+                                        fn["missed_detections"],
+                                        pr_curve_max_examples,
+                                    )
+                                    if len(fn["missed_detections"])
+                                    >= pr_curve_max_examples
+                                    else fn["missed_detections"]
+                                ),
+                            },
+                        },
+                    },
+                    "fp": {
+                        "total": fp_cnt,
+                        "observations": {
+                            "misclassifications": {
+                                "count": len(fp["misclassifications"]),
+                                "examples": (
+                                    random.sample(
+                                        fp["misclassifications"],
+                                        pr_curve_max_examples,
+                                    )
+                                    if len(fp["misclassifications"])
+                                    >= pr_curve_max_examples
+                                    else fp["misclassifications"]
+                                ),
+                            },
+                            "hallucinations": {
+                                "count": len(fp["hallucinations"]),
+                                "examples": (
+                                    random.sample(
+                                        fp["hallucinations"],
+                                        pr_curve_max_examples,
+                                    )
+                                    if len(fp["hallucinations"])
+                                    >= pr_curve_max_examples
+                                    else fp["hallucinations"]
+                                ),
+                            },
+                        },
+                    },
+                }
 
-    return [
-        schemas.PrecisionRecallCurve(
-            label_key=key,
-            value=value,
-            pr_curve_iou_threshold=iou_threshold,
-        )
-        for key, value in output.items()
-    ]
+        pr_output[label_key].update(dict(pr_curves))
+        detailed_pr_output[label_key].update(dict(detailed_pr_curves))
+
+    output = []
+
+    if "PrecisionRecallCurve" in metrics:
+        output += [
+            schemas.PrecisionRecallCurve(
+                label_key=key,
+                value=dict(value),
+                pr_curve_iou_threshold=iou_threshold,
+            )
+            for key, value in pr_output.items()
+        ]
+
+    if "DetailedPrecisionRecallCurve" in metrics:
+        output += [
+            schemas.DetailedPrecisionRecallCurve(
+                label_key=key,
+                value=dict(value),
+                pr_curve_iou_threshold=iou_threshold,
+            )
+            for key, value in detailed_pr_output.items()
+        ]
+
+    return output
 
 
 def _calculate_ap_and_ar(
@@ -566,7 +746,7 @@ def _compute_detection_metrics(
             dataset_name,
             _,
             _,
-            _,
+            pd_datum_uid,
             gt_datum_uid,
             gt_id,
             pd_id,
@@ -591,6 +771,7 @@ def _compute_detection_metrics(
             ranking[gt_label_id_grouper].append(
                 RankedPair(
                     dataset_name=dataset_name,
+                    pd_datum_uid=pd_datum_uid,
                     gt_datum_uid=gt_datum_uid,
                     gt_geojson=gt_geojson,
                     gt_id=gt_id,
@@ -606,6 +787,7 @@ def _compute_detection_metrics(
             models.Prediction.id,
             models.Prediction.score,
             models.Dataset.name,
+            models.Datum.uid.label("pd_datum_uid"),
             case(
                 grouper_mappings["label_id_to_grouper_id_mapping"],
                 value=models.Prediction.label_id,
@@ -617,13 +799,14 @@ def _compute_detection_metrics(
         .subquery()
     ).all()
 
-    for pd_id, score, dataset_name, grouper_id in predictions:
+    for pd_id, score, dataset_name, pd_datum_uid, grouper_id in predictions:
         if grouper_id in ranking and pd_id not in pd_set:
             # add to ranking in sorted order
             bisect.insort(  # type: ignore - bisect type issue
                 ranking[grouper_id],
                 RankedPair(
                     dataset_name=dataset_name,
+                    pd_datum_uid=pd_datum_uid,
                     gt_datum_uid=None,
                     gt_geojson=None,
                     gt_id=None,
@@ -688,11 +871,17 @@ def _compute_detection_metrics(
         ).all()
 
         pr_curves = _compute_curves(
+            metrics=parameters.metrics,
             sorted_ranked_pairs=ranking,
             grouper_mappings=grouper_mappings,
             groundtruths_per_grouper=groundtruths_per_grouper,
             false_positive_entries=false_positive_entries,
             iou_threshold=parameters.pr_curve_iou_threshold,
+            pr_curve_max_examples=(
+                parameters.pr_curve_max_examples
+                if parameters.pr_curve_max_examples
+                else 1
+            ),
         )
     else:
         pr_curves = []

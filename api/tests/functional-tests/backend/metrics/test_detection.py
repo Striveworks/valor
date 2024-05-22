@@ -36,6 +36,7 @@ def test__compute_curves(db: Session):
             RankedPair(
                 dataset_name="test_dataset",
                 gt_datum_uid="uid526",
+                pd_datum_uid="uid526",
                 gt_geojson='{"type":"Polygon","coordinates":[[[277.11,103.84],[292.44,103.84],[292.44,150.72],[277.11,150.72],[277.11,103.84]]]}',
                 gt_id=1340,
                 pd_id=2389,
@@ -45,6 +46,7 @@ def test__compute_curves(db: Session):
             RankedPair(
                 dataset_name="test_dataset",
                 gt_datum_uid="uid526",
+                pd_datum_uid="uid526",
                 gt_geojson='{"type":"Polygon","coordinates":[[[462.08,105.09],[493.74,105.09],[493.74,146.99],[462.08,146.99],[462.08,105.09]]]}',
                 gt_id=1339,
                 pd_id=2388,
@@ -54,6 +56,7 @@ def test__compute_curves(db: Session):
             RankedPair(
                 dataset_name="test_dataset",
                 gt_datum_uid="uid526",
+                pd_datum_uid="uid526",
                 gt_geojson='{"type":"Polygon","coordinates":[[[326.94,97.05],[340.49,97.05],[340.49,122.98],[326.94,122.98],[326.94,97.05]]]}',
                 gt_id=1337,
                 pd_id=2386,
@@ -63,6 +66,7 @@ def test__compute_curves(db: Session):
             RankedPair(
                 dataset_name="test_dataset",
                 gt_datum_uid="uid526",
+                pd_datum_uid="uid526",
                 gt_geojson='{"type":"Polygon","coordinates":[[[295.55,93.96],[313.97,93.96],[313.97,152.79],[295.55,152.79],[295.55,93.96]]]}',
                 gt_id=1336,
                 pd_id=2385,
@@ -72,6 +76,7 @@ def test__compute_curves(db: Session):
             RankedPair(
                 dataset_name="test_dataset",
                 gt_datum_uid="uid526",
+                pd_datum_uid="uid526",
                 gt_geojson='{"type":"Polygon","coordinates":[[[356.62,95.47],[372.33,95.47],[372.33,147.55],[356.62,147.55],[356.62,95.47]]]}',
                 gt_id=1338,
                 pd_id=2387,
@@ -83,6 +88,7 @@ def test__compute_curves(db: Session):
             RankedPair(
                 dataset_name="test_dataset",
                 gt_datum_uid="uid527",
+                pd_datum_uid="uid526",
                 gt_geojson='{"type":"Polygon","coordinates":[[[75.29,23.01],[91.85,23.01],[91.85,50.85],[75.29,50.85],[75.29,23.01]]]}',
                 gt_id=1345,
                 pd_id=2394,
@@ -92,6 +98,7 @@ def test__compute_curves(db: Session):
             RankedPair(
                 dataset_name="test_dataset",
                 gt_datum_uid="uid527",
+                pd_datum_uid="uid526",
                 gt_geojson='{"type":"Polygon","coordinates":[[[81.28,47.04],[98.66,47.04],[98.66,78.5],[81.28,78.5],[81.28,47.04]]]}',
                 gt_id=1343,
                 pd_id=2392,
@@ -101,6 +108,7 @@ def test__compute_curves(db: Session):
             RankedPair(
                 dataset_name="test_dataset",
                 gt_datum_uid="uid527",
+                pd_datum_uid="uid526",
                 gt_geojson='{"type":"Polygon","coordinates":[[[62.34,55.23],[78.14,55.23],[78.14,79.57],[62.34,79.57],[62.34,55.23]]]}',
                 gt_id=1348,
                 pd_id=2396,
@@ -110,6 +118,7 @@ def test__compute_curves(db: Session):
             RankedPair(
                 dataset_name="test_dataset",
                 gt_datum_uid="uid527",
+                pd_datum_uid="uid526",
                 gt_geojson='{"type":"Polygon","coordinates":[[[72.92,45.96],[91.23,45.96],[91.23,80.57],[72.92,80.57],[72.92,45.96]]]}',
                 gt_id=1341,
                 pd_id=2390,
@@ -119,6 +128,7 @@ def test__compute_curves(db: Session):
             RankedPair(
                 dataset_name="test_dataset",
                 gt_datum_uid="uid527",
+                pd_datum_uid="uid526",
                 gt_geojson='{"type":"Polygon","coordinates":[[[58.18,44.8],[66.42,44.8],[66.42,56.25],[58.18,56.25],[58.18,44.8]]]}',
                 gt_id=1350,
                 pd_id=2398,
@@ -128,6 +138,7 @@ def test__compute_curves(db: Session):
             RankedPair(
                 dataset_name="test_dataset",
                 gt_datum_uid="uid527",
+                pd_datum_uid="uid526",
                 gt_geojson='{"type":"Polygon","coordinates":[[[73.14,1.1],[98.96,1.1],[98.96,28.33],[73.14,28.33],[73.14,1.1]]]}',
                 gt_id=1347,
                 pd_id=2395,
@@ -137,6 +148,7 @@ def test__compute_curves(db: Session):
             RankedPair(
                 dataset_name="test_dataset",
                 gt_datum_uid="uid527",
+                pd_datum_uid="uid526",
                 gt_geojson='{"type":"Polygon","coordinates":[[[44.17,45.78],[63.99,45.78],[63.99,78.48],[44.17,78.48],[44.17,45.78]]]}',
                 gt_id=1349,
                 pd_id=2391,
@@ -146,6 +158,7 @@ def test__compute_curves(db: Session):
             RankedPair(
                 dataset_name="test_dataset",
                 gt_datum_uid="uid527",
+                pd_datum_uid="uid526",
                 gt_geojson='{"type":"Polygon","coordinates":[[[50.17,45.34],[71.28,45.34],[71.28,79.83],[50.17,79.83],[50.17,45.34]]]}',
                 gt_id=1342,
                 pd_id=2397,
@@ -155,6 +168,7 @@ def test__compute_curves(db: Session):
             RankedPair(
                 dataset_name="test_dataset",
                 gt_datum_uid="uid527",
+                pd_datum_uid="uid526",
                 gt_geojson='{"type":"Polygon","coordinates":[[[63.96,46.17],[84.35,46.17],[84.35,80.48],[63.96,80.48],[63.96,46.17]]]}',
                 gt_id=1344,
                 pd_id=2393,
@@ -166,6 +180,7 @@ def test__compute_curves(db: Session):
             RankedPair(
                 dataset_name="test_dataset",
                 gt_datum_uid="uid525",
+                pd_datum_uid="uid526",
                 gt_geojson='{"type":"Polygon","coordinates":[[[1.66,3.32],[270.26,3.32],[270.26,275.23],[1.66,275.23],[1.66,3.32]]]}',
                 gt_id=1333,
                 pd_id=2382,
@@ -177,6 +192,7 @@ def test__compute_curves(db: Session):
             RankedPair(
                 dataset_name="test_dataset",
                 gt_datum_uid="uid526",
+                pd_datum_uid="uid526",
                 gt_geojson='{"type":"Polygon","coordinates":[[[61.87,276.25],[358.29,276.25],[358.29,379.43],[61.87,379.43],[61.87,276.25]]]}',
                 gt_id=1334,
                 pd_id=2383,
@@ -186,6 +202,7 @@ def test__compute_curves(db: Session):
             RankedPair(
                 dataset_name="test_dataset",
                 gt_datum_uid="uid524",
+                pd_datum_uid="uid524",
                 gt_geojson='{"type":"Polygon","coordinates":[[[214.15,41.29],[562.41,41.29],[562.41,285.07],[214.15,285.07],[214.15,41.29]]]}',
                 gt_id=1331,
                 pd_id=2380,
@@ -197,6 +214,7 @@ def test__compute_curves(db: Session):
             RankedPair(
                 dataset_name="test_dataset",
                 gt_datum_uid="uid526",
+                pd_datum_uid="uid526",
                 gt_geojson='{"type":"Polygon","coordinates":[[[2.75,3.66],[162.15,3.66],[162.15,316.06],[2.75,316.06],[2.75,3.66]]]}',
                 gt_id=1335,
                 pd_id=2384,
@@ -388,13 +406,23 @@ def test__compute_curves(db: Session):
             '{"type":"Polygon","coordinates":[[[61,22.75],[565,22.75],[565,632.42],[61,632.42],[61,22.75]]]}',
         )
     ]
-
     output = _compute_curves(
+        metrics=[
+            "AP",
+            "AR",
+            "mAP",
+            "APAveragedOverIOUs",
+            "mAR",
+            "mAPAveragedOverIOUs",
+            "PrecisionRecallCurve",
+            "DetailedPrecisionRecallCurve",
+        ],
         sorted_ranked_pairs=sorted_ranked_pairs,
         grouper_mappings=grouper_mappings,
         groundtruths_per_grouper=groundtruths_per_grouper,
         false_positive_entries=false_positive_entries,
         iou_threshold=0.5,
+        pr_curve_max_examples=1,
     )
 
     pr_expected_answers = {
@@ -433,32 +461,28 @@ def test__compute_curves(db: Session):
         value,
         threshold,
         metric,
-    ), expected_length in pr_expected_answers.items():
-        datum_geojson_tuples = output[0].value[value][threshold][metric]
-        assert isinstance(datum_geojson_tuples, list)
-        assert len(datum_geojson_tuples) == expected_length
-
-    # spot check a few geojson results
-    assert (
-        output[0].value["4"][0.05]["tp"][0][2]  # type: ignore
-        == '{"type":"Polygon","coordinates":[[[61.87,276.25],[358.29,276.25],[358.29,379.43],[61.87,379.43],[61.87,276.25]]]}'
-    )
-    assert (
-        output[0].value["49"][0.85]["tp"][0][2]  # type: ignore
-        == '{"type":"Polygon","coordinates":[[[75.29,23.01],[91.85,23.01],[91.85,50.85],[75.29,50.85],[75.29,23.01]]]}'
-    )
-    assert (
-        output[0].value["3"][0.05]["fp"][0][2]  # type: ignore
-        == '{"type":"Polygon","coordinates":[[[61,22.75],[565,22.75],[565,632.42],[61,632.42],[61,22.75]]]}'
-    )
+    ), expected_count in pr_expected_answers.items():
+        actual_count = output[0].value[value][threshold][metric]
+        assert actual_count == expected_count
 
     # do a second test with a much higher iou_threshold
     second_output = _compute_curves(
+        metrics=[
+            "AP",
+            "AR",
+            "mAP",
+            "APAveragedOverIOUs",
+            "mAR",
+            "mAPAveragedOverIOUs",
+            "PrecisionRecallCurve",
+            "DetailedPrecisionRecallCurve",
+        ],
         sorted_ranked_pairs=sorted_ranked_pairs,
         grouper_mappings=grouper_mappings,
         groundtruths_per_grouper=groundtruths_per_grouper,
         false_positive_entries=false_positive_entries,
         iou_threshold=0.9,
+        pr_curve_max_examples=1,
     )
 
     pr_expected_answers = {
@@ -492,10 +516,210 @@ def test__compute_curves(db: Session):
         value,
         threshold,
         metric,
-    ), expected_length in pr_expected_answers.items():
-        datum_geojson_tuples = second_output[0].value[value][threshold][metric]
-        assert isinstance(datum_geojson_tuples, list)
-        assert len(datum_geojson_tuples) == expected_length
+    ), expected_count in pr_expected_answers.items():
+        actual_count = second_output[0].value[value][threshold][metric]
+        assert actual_count == expected_count
+
+    # check DetailedPrecisionRecallCurve
+    detailed_pr_expected_answers = {
+        # (class, 4)
+        ("4", 0.05, "tp"): {"all": 0, "total": 0},
+        ("4", 0.05, "fn"): {
+            "missed_detections": 0,
+            "misclassifications": 2,
+            "total": 2,
+        },
+        # (class, 2)
+        ("2", 0.05, "tp"): {"all": 1, "total": 1},
+        ("2", 0.05, "fn"): {
+            "missed_detections": 1,
+            "misclassifications": 0,
+            "total": 1,
+        },
+        ("2", 0.75, "tp"): {"all": 0, "total": 0},
+        ("2", 0.75, "fn"): {
+            "missed_detections": 2,
+            "misclassifications": 0,
+            "total": 2,
+        },
+        # (class, 49)
+        ("49", 0.05, "tp"): {"all": 2, "total": 2},
+        # (class, 3)
+        ("3", 0.05, "tp"): {"all": 0, "total": 0},
+        ("3", 0.05, "fp"): {
+            "hallucinations": 1,
+            "misclassifications": 0,
+            "total": 1,
+        },
+        # (class, 1)
+        ("1", 0.05, "tp"): {"all": 0, "total": 0},
+        ("1", 0.8, "fn"): {
+            "missed_detections": 0,
+            "misclassifications": 1,
+            "total": 1,
+        },
+        # (class, 0)
+        ("0", 0.05, "tp"): {"all": 1, "total": 1},
+        ("0", 0.95, "fn"): {
+            "missed_detections": 0,
+            "misclassifications": 5,
+            "total": 5,
+        },
+    }
+
+    for (
+        value,
+        threshold,
+        metric,
+    ), expected_output in detailed_pr_expected_answers.items():
+        model_output = second_output[1].value[value][threshold][metric]
+        assert isinstance(model_output, dict)
+        assert model_output["total"] == expected_output["total"]
+        assert all(
+            [
+                model_output["observations"][key]["count"]  # type: ignore - we know this element is a dict
+                == expected_output[key]
+                for key in [
+                    key
+                    for key in expected_output.keys()
+                    if key not in ["total"]
+                ]
+            ]
+        )
+
+    # spot check number of examples
+    assert (
+        len(
+            second_output[1].value["0"][0.95]["fn"]["observations"]["misclassifications"][  # type: ignore - we know this element is a dict
+                "examples"
+            ]
+        )
+        == 1
+    )
+    assert (
+        len(
+            second_output[1].value["49"][0.05]["tp"]["observations"]["all"][  # type: ignore - we know this element is a dict
+                "examples"
+            ]
+        )
+        == 1
+    )
+
+    # # repeat the above, but with a higher pr_max_curves_example
+    second_output = _compute_curves(
+        metrics=[
+            "AP",
+            "AR",
+            "mAP",
+            "APAveragedOverIOUs",
+            "mAR",
+            "mAPAveragedOverIOUs",
+            "PrecisionRecallCurve",
+            "DetailedPrecisionRecallCurve",
+        ],
+        sorted_ranked_pairs=sorted_ranked_pairs,
+        grouper_mappings=grouper_mappings,
+        groundtruths_per_grouper=groundtruths_per_grouper,
+        false_positive_entries=false_positive_entries,
+        iou_threshold=0.9,
+        pr_curve_max_examples=3,
+    )
+
+    for (
+        value,
+        threshold,
+        metric,
+    ), expected_output in detailed_pr_expected_answers.items():
+        model_output = second_output[1].value[value][threshold][metric]
+        assert isinstance(model_output, dict)
+        assert model_output["total"] == expected_output["total"]
+        assert all(
+            [
+                model_output["observations"][key]["count"]  # type: ignore - we know this element is a dict
+                == expected_output[key]
+                for key in [
+                    key
+                    for key in expected_output.keys()
+                    if key not in ["total"]
+                ]
+            ]
+        )
+
+    # spot check number of examples
+    assert (
+        len(
+            second_output[1].value["0"][0.95]["fn"]["observations"]["misclassifications"][  # type: ignore - we know this element is a dict
+                "examples"
+            ]
+        )
+        == 3
+    )
+    assert (
+        len(
+            second_output[1].value["49"][0.05]["tp"]["observations"]["all"][  # type: ignore - we know this element is a dict
+                "examples"
+            ]
+        )
+        == 2
+    )
+
+    # test behavior if pr_curve_max_examples == 0
+    second_output = _compute_curves(
+        metrics=[
+            "AP",
+            "AR",
+            "mAP",
+            "APAveragedOverIOUs",
+            "mAR",
+            "mAPAveragedOverIOUs",
+            "PrecisionRecallCurve",
+            "DetailedPrecisionRecallCurve",
+        ],
+        sorted_ranked_pairs=sorted_ranked_pairs,
+        grouper_mappings=grouper_mappings,
+        groundtruths_per_grouper=groundtruths_per_grouper,
+        false_positive_entries=false_positive_entries,
+        iou_threshold=0.9,
+        pr_curve_max_examples=0,
+    )
+
+    for (
+        value,
+        threshold,
+        metric,
+    ), expected_output in detailed_pr_expected_answers.items():
+        model_output = second_output[1].value[value][threshold][metric]
+        assert isinstance(model_output, dict)
+        assert model_output["total"] == expected_output["total"]
+        assert all(
+            [
+                model_output["observations"][key]["count"]  # type: ignore - we know this element is a dict
+                == expected_output[key]
+                for key in [
+                    key
+                    for key in expected_output.keys()
+                    if key not in ["total"]
+                ]
+            ]
+        )
+
+    # spot check number of examples
+    assert (
+        len(
+            second_output[1].value["0"][0.95]["fn"]["observations"]["misclassifications"][  # type: ignore - we know this element is a dict
+                "examples"
+            ]
+        )
+        == 0
+    )
+    assert (
+        len(
+            second_output[1].value["49"][0.05]["tp"]["observations"]["all"][  # type: ignore - we know this element is a dict
+                "examples"
+            ]
+        )
+        == 0
+    )
 
 
 def test__compute_detection_metrics(
@@ -518,6 +742,7 @@ def test__compute_detection_metrics(
                 "APAveragedOverIOUs",
                 "mAR",
                 "mAPAveragedOverIOUs",
+                "PrecisionRecallCurve",
             ],
         ),
         prediction_filter=schemas.Filter(
@@ -669,64 +894,46 @@ def test__compute_detection_metrics(
         for m in expected_metrics:
             assert m in actual_metrics, f"{metric_type} {m} not in actual"
 
-    # pr_metrics = metrics[-1].model_dump(exclude_none=True)
+    pr_metrics = metrics[-1].model_dump(exclude_none=True)
 
-    # TODO
-    # pr_expected_answers = {
-    #     # (class, 4)
-    #     ("class", "4", 0.05, "tp"): 2,
-    #     ("class", "4", 0.05, "fn"): 0,
-    #     ("class", "4", 0.25, "tp"): 1,
-    #     ("class", "4", 0.25, "fn"): 1,
-    #     ("class", "4", 0.55, "tp"): 0,
-    #     ("class", "4", 0.55, "fn"): 2,
-    #     # (class, 2)
-    #     ("class", "2", 0.05, "tp"): 1,
-    #     ("class", "2", 0.05, "fn"): 1,
-    #     ("class", "2", 0.75, "tp"): 0,
-    #     ("class", "2", 0.75, "fn"): 2,
-    #     # (class, 49)
-    #     ("class", "49", 0.05, "tp"): 8,
-    #     ("class", "49", 0.3, "tp"): 5,
-    #     ("class", "49", 0.5, "tp"): 4,
-    #     ("class", "49", 0.85, "tp"): 1,
-    #     # (class, 3)
-    #     ("class", "3", 0.05, "tp"): 0,
-    #     ("class", "3", 0.05, "fp"): 1,
-    #     # (class, 1)
-    #     ("class", "1", 0.05, "tp"): 1,
-    #     ("class", "1", 0.35, "tp"): 0,
-    #     # (class, 0)
-    #     ("class", "0", 0.05, "tp"): 5,
-    #     ("class", "0", 0.5, "tp"): 3,
-    #     ("class", "0", 0.95, "tp"): 1,
-    #     ("class", "0", 0.95, "fn"): 4,
-    # }
+    pr_expected_answers = {
+        # (class, 4)
+        ("class", "4", 0.05, "tp"): 2,
+        ("class", "4", 0.05, "fn"): 0,
+        ("class", "4", 0.25, "tp"): 1,
+        ("class", "4", 0.25, "fn"): 1,
+        ("class", "4", 0.55, "tp"): 0,
+        ("class", "4", 0.55, "fn"): 2,
+        # (class, 2)
+        ("class", "2", 0.05, "tp"): 1,
+        ("class", "2", 0.05, "fn"): 1,
+        ("class", "2", 0.75, "tp"): 0,
+        ("class", "2", 0.75, "fn"): 2,
+        # (class, 49)
+        ("class", "49", 0.05, "tp"): 8,
+        ("class", "49", 0.3, "tp"): 5,
+        ("class", "49", 0.5, "tp"): 4,
+        ("class", "49", 0.85, "tp"): 1,
+        # (class, 3)
+        ("class", "3", 0.05, "tp"): 0,
+        ("class", "3", 0.05, "fp"): 1,
+        # (class, 1)
+        ("class", "1", 0.05, "tp"): 1,
+        ("class", "1", 0.35, "tp"): 0,
+        # (class, 0)
+        ("class", "0", 0.05, "tp"): 5,
+        ("class", "0", 0.5, "tp"): 3,
+        ("class", "0", 0.95, "tp"): 1,
+        ("class", "0", 0.95, "fn"): 4,
+    }
 
-    # for (
-    #     _,
-    #     value,
-    #     threshold,
-    #     metric,
-    # ), expected_length in pr_expected_answers.items():
-    #     assert (
-    #         len(pr_metrics["value"][value][threshold][metric])
-    #         == expected_length
-    #     )
-
-    # # spot check a few geojson results
-    # assert (
-    #     pr_metrics["value"]["4"][0.05]["tp"][0][2]
-    #     == '{"type":"Polygon","coordinates":[[[61.87,276.25],[358.29,276.25],[358.29,379.43],[61.87,379.43],[61.87,276.25]]]}'
-    # )
-    # assert (
-    #     pr_metrics["value"]["49"][0.85]["tp"][0][2]
-    #     == '{"type":"Polygon","coordinates":[[[75.29,23.01],[91.85,23.01],[91.85,50.85],[75.29,50.85],[75.29,23.01]]]}'
-    # )
-    # assert (
-    #     pr_metrics["value"]["3"][0.05]["fp"][0][2]
-    #     == '{"type":"Polygon","coordinates":[[[61,22.75],[565,22.75],[565,632.42],[61,632.42],[61,22.75]]]}'
-    # )
+    for (
+        _,
+        value,
+        threshold,
+        metric,
+    ), expected_value in pr_expected_answers.items():
+        assert pr_metrics["value"][value][threshold][metric] == expected_value
 
 
 def test__compute_detection_metrics_with_rasters(
