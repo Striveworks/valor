@@ -588,7 +588,7 @@ class String(Equatable):
 
     Parameters
     ----------
-    value : str, optional
+    value : str, optional TODO this is currently not optional
         A string value.
 
     Examples
@@ -1378,7 +1378,7 @@ class List(typing.Generic[T], Equatable):
 
             Parameters
             ----------
-            value : typing.List[T], optional
+            value : typing.List[T], optional # TODO I don't think this is actually treated as optional in the validation below.
                 A list of items with type T.
             """
 
@@ -2160,7 +2160,7 @@ def get_type_by_name(
         raise NotImplementedError(name)
 
 
-class Text(Equatable):
+class Text(String):
     """
     Implementation of Text as a Variable.
     The only difference from String is that Text can be None.
@@ -2183,7 +2183,7 @@ class Text(Equatable):
     def __validate__(cls, value: typing.Any):
         if (value is not None) and not isinstance(value, str):
             raise TypeError(
-                f"Expected type '{str}' or '{type(None)}' received type '{type(value)}'"
+                f"Expected type '{str}' or '{type(None)}', received type '{type(value)}'"
             )
 
 

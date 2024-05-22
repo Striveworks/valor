@@ -318,6 +318,8 @@ class Annotation(StaticCollection):
     ...     polygon=BoundingPolygon(...),
     ...     raster=Raster(...),
     ... )
+
+    # TODO text generation
     """
 
     task_type: TaskTypeEnum = TaskTypeEnum.symbolic(
@@ -349,7 +351,7 @@ class Annotation(StaticCollection):
         raster: Optional[Raster] = None,
         embedding: Optional[Embedding] = None,
         text: Optional[str] = None,
-        context: Optional[str] = None,
+        context: Optional[list[str]] = None,
     ):
         """
         Constructs an annotation.
@@ -372,13 +374,15 @@ class Annotation(StaticCollection):
             An embedding, described by a list of values with type float and a maximum length of 16,000.
         text: str, optional
             TODO
-        context: str, optional
+        context: list[str], optional
             TODO
         """
         super().__init__(
             task_type=task_type,
             metadata=metadata if metadata else dict(),
-            labels=labels if labels else list(),
+            labels=labels
+            if labels
+            else list(),  # TODO Will setting labels to an empty list cause issues for text generation?
             bounding_box=bounding_box,
             polygon=polygon,
             raster=raster,
