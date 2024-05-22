@@ -115,7 +115,7 @@ def _compute_curves(
                     datum_uid,
                     grouper_mappings["grouper_id_to_grouper_label_mapping"][
                         grouper_id
-                    ].value,  # type: ignore - typechecker is over the dict keys being ints
+                    ].key,  # type: ignore - typechecker is over the dict keys being ints
                 )
             )
 
@@ -126,7 +126,7 @@ def _compute_curves(
                 ranked_pair.pd_datum_uid,
                 grouper_mappings["grouper_id_to_grouper_label_mapping"][
                     grouper_id
-                ].value,  # type: ignore
+                ].key,  # type: ignore
             )
             for grouper_id, ranked_pairs in sorted_ranked_pairs.items()
             for ranked_pair in ranked_pairs
