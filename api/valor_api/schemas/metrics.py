@@ -496,19 +496,19 @@ class DetailedPrecisionRecallCurve(_BasePrecisionRecallCurve):
     """
 
     value: dict[
-        str,
+        str,  # '4'
         dict[
-            float,
+            float,  # 0.95
             dict[
-                str,
+                str,  # tp
                 dict[
-                    str,
+                    str,  # observations, total
                     int
                     | dict[
-                        str,
+                        str,  # all
                         dict[
-                            str,
-                            int | list,
+                            str,  # count, examples
+                            int | list[tuple[str, str] | tuple[str, str, str]],
                         ],
                     ],
                 ],
@@ -532,7 +532,7 @@ class DetailedPrecisionRecallCurve(_BasePrecisionRecallCurve):
 
         return {
             "value": self.value,
-            "type": "PrecisionRecallCurve",
+            "type": "DetailedPrecisionRecallCurve",
             "evaluation_id": evaluation_id,
             "parameters": {
                 "label_key": self.label_key,

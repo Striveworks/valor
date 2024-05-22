@@ -973,101 +973,83 @@ def test_evaluate_classification_with_label_maps(
         dataset,
         label_map=label_mapping,
         metrics=[
-            "Precision",
-            "Recall",
-            "ROCAUC",
-            "F1",
             "Accuracy",
+            "ROCAUC",
+            "Precision",
+            "F1",
+            "Recall",
             "PrecisionRecallCurve",
+            "DetailedPrecisionRecallCurve",
         ],
         pr_curve_max_examples=3,
     )
     assert eval_job.id
     assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
 
-    # TODO
-    # pr_expected_lengths = {
-    #     # k3
-    #     (0, "k3", "v1", "0.1", "fp"): 1,
-    #     (0, "k3", "v1", "0.1", "tn"): 2,
-    #     (0, "k3", "v3", "0.1", "fn"): 1,
-    #     (0, "k3", "v3", "0.1", "tn"): 2,
-    #     # k4
-    #     (1, "k4", "v1", "0.1", "fp"): 1,
-    #     (1, "k4", "v1", "0.1", "tn"): 2,
-    #     (1, "k4", "v4", "0.1", "fn"): 1,
-    #     (1, "k4", "v4", "0.1", "tn"): 1,
-    #     (1, "k4", "v4", "0.1", "tp"): 1,
-    #     (1, "k4", "v4", "0.9", "tp"): 0,
-    #     (1, "k4", "v4", "0.9", "tn"): 1,
-    #     (1, "k4", "v4", "0.9", "fn"): 2,
-    #     (1, "k4", "v5", "0.1", "fp"): 1,
-    #     (1, "k4", "v5", "0.1", "tn"): 2,
-    #     (1, "k4", "v5", "0.3", "fp"): 0,
-    #     (1, "k4", "v5", "0.3", "tn"): 3,
-    #     (1, "k4", "v8", "0.1", "tn"): 2,
-    #     (1, "k4", "v8", "0.6", "fp"): 0,
-    #     (1, "k4", "v8", "0.6", "tn"): 3,
-    #     # k5
-    #     (2, "k5", "v1", "0.1", "fp"): 1,
-    #     (2, "k5", "v1", "0.1", "tn"): 2,
-    #     (2, "k5", "v5", "0.1", "fn"): 1,
-    #     (
-    #         2,
-    #         "k5",
-    #         "v5",
-    #         "0.1",
-    #         "tn",
-    #     ): 2,
-    #     (3, "special_class", "cat_type1", "0.1", "tp"): 3,
-    #     (3, "special_class", "cat_type1", "0.1", "tn"): 0,
-    #     (3, "special_class", "cat_type1", "0.95", "tp"): 3,
-    # }
-
-    pr_expected_metrics = {
-        # k3, v3
+    pr_expected_values = {
+        # k3
+        (0, "k3", "v1", "0.1", "fp"): 1,
+        (0, "k3", "v1", "0.1", "tn"): 2,
+        (0, "k3", "v3", "0.1", "fn"): 1,
+        (0, "k3", "v3", "0.1", "tn"): 2,
         (0, "k3", "v3", "0.1", "accuracy"): 2 / 3,
         (0, "k3", "v3", "0.1", "precision"): -1,
         (0, "k3", "v3", "0.1", "recall"): 0,
         (0, "k3", "v3", "0.1", "f1_score"): -1,
-        # k5, v1
+        # k4
+        (1, "k4", "v1", "0.1", "fp"): 1,
+        (1, "k4", "v1", "0.1", "tn"): 2,
+        (1, "k4", "v4", "0.1", "fn"): 1,
+        (1, "k4", "v4", "0.1", "tn"): 1,
+        (1, "k4", "v4", "0.1", "tp"): 1,
+        (1, "k4", "v4", "0.9", "tp"): 0,
+        (1, "k4", "v4", "0.9", "tn"): 1,
+        (1, "k4", "v4", "0.9", "fn"): 2,
+        (1, "k4", "v5", "0.1", "fp"): 1,
+        (1, "k4", "v5", "0.1", "tn"): 2,
+        (1, "k4", "v5", "0.3", "fp"): 0,
+        (1, "k4", "v5", "0.3", "tn"): 3,
+        (1, "k4", "v8", "0.1", "tn"): 2,
+        (1, "k4", "v8", "0.6", "fp"): 0,
+        (1, "k4", "v8", "0.6", "tn"): 3,
+        # k5
+        (2, "k5", "v1", "0.1", "fp"): 1,
+        (2, "k5", "v1", "0.1", "tn"): 2,
+        (2, "k5", "v5", "0.1", "fn"): 1,
+        (
+            2,
+            "k5",
+            "v5",
+            "0.1",
+            "tn",
+        ): 2,
         (2, "k5", "v1", "0.1", "accuracy"): 2 / 3,
         (2, "k5", "v1", "0.1", "precision"): 0,
         (2, "k5", "v1", "0.1", "recall"): -1,
         (2, "k5", "v1", "0.1", "f1_score"): -1,
-        # special_class, cat_type1
-        (3, "special_class", "cat_type1", "0.1", "accuracy"): 1,
-        (3, "special_class", "cat_type1", "0.1", "precision"): 1,
-        (3, "special_class", "cat_type1", "0.1", "recall"): 1,
-        (3, "special_class", "cat_type1", "0.1", "f1_score"): 1,
+        # special_class
+        (3, "special_class", "cat_type1", "0.1", "tp"): 3,
+        (3, "special_class", "cat_type1", "0.1", "tn"): 0,
+        (3, "special_class", "cat_type1", "0.95", "tp"): 3,
     }
 
     metrics = eval_job.metrics
 
     pr_metrics = []
+    detailed_pr_metrics = []
     for m in metrics:
-        if m["type"] != "PrecisionRecallCurve":
-            assert m in cat_expected_metrics
-        else:
+        if m["type"] == "PrecisionRecallCurve":
             pr_metrics.append(m)
+        elif m["type"] == "DetailedPrecisionRecallCurve":
+            detailed_pr_metrics.append(m)
+        else:
+            assert m in cat_expected_metrics
 
     for m in cat_expected_metrics:
         assert m in metrics
 
     pr_metrics.sort(key=lambda x: x["parameters"]["label_key"])
-
-    # TODO this only applies to the detailed version
-    # for (
-    #     index,
-    #     key,
-    #     value,
-    #     threshold,
-    #     metric,
-    # ), expected_length in pr_expected_lengths.items():
-    #     assert (
-    #         len(pr_metrics[index]["value"][value][threshold][metric])
-    #         == expected_length
-    #     )
+    detailed_pr_metrics.sort(key=lambda x: x["parameters"]["label_key"])
 
     for (
         index,
@@ -1075,18 +1057,79 @@ def test_evaluate_classification_with_label_maps(
         value,
         threshold,
         metric,
-    ), expected_value in pr_expected_metrics.items():
+    ), expected_value in pr_expected_values.items():
         assert (
             pr_metrics[index]["value"][value][threshold][metric]
-        ) == expected_value
+            == expected_value
+        )
 
-    confusion_matrix = eval_job.confusion_matrices
+    # check DetailedPrecisionRecallCurve
+    detailed_pr_expected_answers = {
+        # k3
+        (0, "v1", "0.1", "tp"): {"all": 0, "total": 0},
+        (0, "v1", "0.1", "fp"): {
+            "hallucinations": 0,
+            "misclassifications": 1,
+            "total": 1,
+        },
+        (0, "v1", "0.1", "tn"): {"all": 2, "total": 2},
+        (0, "v1", "0.1", "fn"): {
+            "missed_detections": 0,
+            "misclassifications": 0,
+            "total": 0,
+        },
+        # k4
+        (1, "v1", "0.1", "tp"): {"all": 0, "total": 0},
+        (1, "v1", "0.1", "fp"): {
+            "hallucinations": 0,
+            "misclassifications": 1,
+            "total": 1,
+        },
+        (1, "v1", "0.1", "tn"): {"all": 2, "total": 2},
+        (1, "v1", "0.1", "fn"): {
+            "missed_detections": 0,
+            "misclassifications": 0,
+            "total": 0,
+        },
+        (1, "v4", "0.1", "fn"): {
+            "missed_detections": 0,
+            "misclassifications": 1,
+            "total": 1,
+        },
+        (1, "v8", "0.1", "tn"): {"all": 2, "total": 2},
+    }
+
+    for (
+        index,
+        value,
+        threshold,
+        metric,
+    ), expected_output in detailed_pr_expected_answers.items():
+        model_output = detailed_pr_metrics[index]["value"][value][threshold][
+            metric
+        ]
+        assert isinstance(model_output, dict)
+        assert model_output["total"] == expected_output["total"]
+        assert all(
+            [
+                model_output["observations"][key]["count"]  # type: ignore - we know this element is a dict
+                == expected_output[key]
+                for key in [
+                    key
+                    for key in expected_output.keys()
+                    if key not in ["total"]
+                ]
+            ]
+        )
 
     # check metadata
     assert eval_job.meta["datums"] == 3
     assert eval_job.meta["labels"] == 13
     assert eval_job.meta["annotations"] == 6
     assert eval_job.meta["duration"] <= 10  # usually 2
+
+    # check confusion matrix
+    confusion_matrix = eval_job.confusion_matrices
 
     for row in confusion_matrix:
         if row["label_key"] == "special_class":

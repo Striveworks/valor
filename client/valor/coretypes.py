@@ -950,7 +950,13 @@ class Model(StaticCollection):
                 metrics=(
                     metrics
                     if metrics
-                    else ["Precision", "Recall", "ROCAUC", "F1", "Accuracy"]
+                    else [
+                        "Precision",
+                        "Recall",
+                        "ROCAUC",
+                        "F1",
+                        "Accuracy",
+                    ]
                 ),
             ),
             meta={},

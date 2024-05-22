@@ -148,7 +148,7 @@ def _compute_curves(
                 tp = []
                 fp = defaultdict(list)
                 fn = {
-                    "missed_detections": [
+                    "missed_detections": (
                         (
                             [
                                 (dataset_name, datum_uid, gt_geojson)
@@ -159,7 +159,7 @@ def _compute_curves(
                             if grouper_id in groundtruths_per_grouper
                             else []
                         )
-                    ],
+                    ),
                     "misclassifications": [],
                 }
 

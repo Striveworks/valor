@@ -8,14 +8,7 @@ import axios, { AxiosInstance } from 'axios';
  */
 function getDefaultMetrics(taskType: string): string[] {
   const default_metrics = {
-    classification: [
-      'Precision',
-      'Recall',
-      'F1',
-      'Accuracy',
-      'ROCAUC',
-      'PrecisionRecallCurve'
-    ],
+    classification: ['Precision', 'Recall', 'F1', 'Accuracy', 'ROCAUC'],
     'object-detection': [
       'AP',
       'AR',

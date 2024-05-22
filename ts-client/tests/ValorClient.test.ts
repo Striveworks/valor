@@ -197,7 +197,8 @@ test('evaluation methods', async () => {
     let evaluation = await client.createOrGetEvaluation(
       modelName,
       datasetName,
-      'classification'
+      'classification',
+      ['Accuracy', 'Precision', 'Recall', 'F1', 'ROCAUC', 'PrecisionRecallCurve']
     );
     expect(['running', 'pending', 'done']).toContain(evaluation.status);
 
