@@ -2,6 +2,7 @@
 that is no auth
 """
 
+import random
 from datetime import date, datetime, timedelta, timezone
 
 import pytest
@@ -188,6 +189,30 @@ def test_evaluate_image_clf(
     assert (
         eval_job.meta["duration"] <= 5
     )  # eval should definitely take less than 5 seconds, usually around .4
+
+    # check that metrics arg works correctly
+    selected_metrics = random.sample(
+        [
+            "Accuracy",
+            "ROCAUC",
+            "Precision",
+            "F1",
+            "Recall",
+            "PrecisionRecallCurve",
+            "DetailedPrecisionRecallCurve",
+        ],
+        2,
+    )
+    eval_job_random_metrics = model.evaluate_classification(
+        dataset, metrics=selected_metrics
+    )
+    assert (
+        eval_job_random_metrics.wait_for_completion(timeout=30)
+        == EvaluationStatus.DONE
+    )
+    assert set(
+        [metric["type"] for metric in eval_job_random_metrics.metrics]
+    ) == set(selected_metrics)
 
 
 def test_evaluate_tabular_clf(

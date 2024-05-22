@@ -195,7 +195,7 @@ def _compute_curves(
                             datum_uid,
                             grouper_mappings[
                                 "grouper_id_to_grouper_label_mapping"
-                            ][grouper_id].value,
+                            ][grouper_id].key,
                         ) in pd_datums:
                             fn["misclassifications"].append(
                                 (dataset_name, datum_uid, gt_geojson)
@@ -224,7 +224,7 @@ def _compute_curves(
                         pd_datum_uid,
                         grouper_mappings[
                             "grouper_id_to_grouper_label_mapping"
-                        ][pd_label_id].value,
+                        ][pd_label_id].key,
                     ) in gt_datums:
                         fp["misclassifications"].append(
                             (dset_name, pd_datum_uid, pd_geojson)

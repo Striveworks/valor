@@ -2,6 +2,8 @@
 that is no auth
 """
 
+import random
+
 from valor import Client, Dataset, Datum, GroundTruth, Label, Model, Prediction
 from valor.enums import EvaluationStatus
 
@@ -50,6 +52,22 @@ def test_evaluate_segmentation(
     assert eval_job.meta["datums"] == 2
     assert eval_job.meta["labels"] == 3
     assert eval_job.meta["duration"] <= 5  # usually ~.25
+
+    # check that metrics arg works correctly
+    selected_metrics = random.sample(
+        ["IOU", "mIOU"],
+        1,
+    )
+    eval_job_random_metrics = model.evaluate_segmentation(
+        dataset, metrics=selected_metrics
+    )
+    assert (
+        eval_job_random_metrics.wait_for_completion(timeout=30)
+        == EvaluationStatus.DONE
+    )
+    assert set(
+        [metric["type"] for metric in eval_job_random_metrics.metrics]
+    ) == set(selected_metrics)
 
 
 def test_evaluate_segmentation_with_filter(

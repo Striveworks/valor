@@ -491,6 +491,39 @@ def test_evaluate_detection(
     all_evals = dataset.get_evaluations()
     assert len(all_evals) == 7
 
+    # check that metrics arg works correctly
+    selected_metrics = random.sample(
+        [
+            "AP",
+            "AR",
+            "mAP",
+            "APAveragedOverIOUs",
+            "mAR",
+            "mAPAveragedOverIOUs",
+            "PrecisionRecallCurve",
+        ],
+        2,
+    )
+    eval_job_random_metrics = model.evaluate_detection(
+        dataset,
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_return=[0.1, 0.6],
+        filter_by=[
+            Label.key == "k1",
+            Annotation.bounding_box.area >= 1200,
+            Annotation.bounding_box.area <= 1800,
+        ],
+        convert_annotations_to_type=AnnotationType.BOX,
+        metrics=selected_metrics,
+    )
+    assert (
+        eval_job_random_metrics.wait_for_completion(timeout=30)
+        == EvaluationStatus.DONE
+    )
+    assert set(
+        [metric["type"] for metric in eval_job_random_metrics.metrics]
+    ) == set(selected_metrics)
+
 
 def test_evaluate_detection_with_json_filters(
     client: Client,
@@ -1150,6 +1183,17 @@ def test_evaluate_detection_with_label_maps(
         dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
+        metrics=[
+            "AP",
+            "AR",
+            "mAP",
+            "APAveragedOverIOUs",
+            "mAR",
+            "mAPAveragedOverIOUs",
+            "PrecisionRecallCurve",
+            "DetailedPrecisionRecallCurve",
+        ],
+        pr_curve_max_examples=1,
     )
 
     assert (
@@ -1168,67 +1212,149 @@ def test_evaluate_detection_with_label_maps(
     metrics = eval_job.metrics
 
     pr_metrics = []
+    pr_metrics = []
+    detailed_pr_metrics = []
     for m in metrics:
-        if m["type"] != "PrecisionRecallCurve":
-            assert m in baseline_expected_metrics
-        else:
+        if m["type"] == "PrecisionRecallCurve":
             pr_metrics.append(m)
+        elif m["type"] == "DetailedPrecisionRecallCurve":
+            detailed_pr_metrics.append(m)
+        else:
+            assert m in baseline_expected_metrics
 
-    for m in baseline_expected_metrics:
-        assert m in metrics
+    pr_metrics.sort(key=lambda x: x["parameters"]["label_key"])
+    detailed_pr_metrics.sort(key=lambda x: x["parameters"]["label_key"])
 
-    # TODO
-    # pr_metrics.sort(key=lambda x: x["parameters"]["label_key"])
+    pr_expected_answers = {
+        # class
+        (
+            0,
+            "class",
+            "cat",
+            "0.1",
+            "fp",
+        ): 1,
+        (0, "class", "cat", "0.4", "fp"): 0,
+        (0, "class", "siamese cat", "0.1", "fn"): 1,
+        (0, "class", "british shorthair", "0.1", "fn"): 1,
+        # class_name
+        (1, "class_name", "cat", "0.1", "fp"): 1,
+        (1, "class_name", "maine coon cat", "0.1", "fn"): 1,
+        # k1
+        (2, "k1", "v1", "0.1", "fn"): 1,
+        (2, "k1", "v1", "0.1", "tp"): 1,
+        (2, "k1", "v1", "0.4", "fn"): 2,
+        # k2
+        (3, "k2", "v2", "0.1", "fn"): 1,
+        (3, "k2", "v2", "0.1", "fp"): 1,
+    }
 
-    # pr_expected_answers = {
-    #     # class
-    #     (
-    #         0,
-    #         "class",
-    #         "cat",
-    #         "0.1",
-    #         "fp",
-    #     ): 1,
-    #     (0, "class", "cat", "0.4", "fp"): 0,
-    #     (0, "class", "siamese cat", "0.1", "fn"): 1,
-    #     (0, "class", "british shorthair", "0.1", "fn"): 1,
-    #     # class_name
-    #     (1, "class_name", "cat", "0.1", "fp"): 1,
-    #     (1, "class_name", "maine coon cat", "0.1", "fn"): 1,
-    #     # k1
-    #     (2, "k1", "v1", "0.1", "fn"): 1,
-    #     (2, "k1", "v1", "0.1", "tp"): 1,
-    #     (2, "k1", "v1", "0.4", "fn"): 2,
-    #     # k2
-    #     (3, "k2", "v2", "0.1", "fn"): 1,
-    #     (3, "k2", "v2", "0.1", "fp"): 1,
-    # }
+    for (
+        index,
+        key,
+        value,
+        threshold,
+        metric,
+    ), expected_value in pr_expected_answers.items():
+        assert (
+            pr_metrics[index]["value"][value][threshold][metric]
+            == expected_value
+        )
 
-    # for (
-    #     index,
-    #     key,
-    #     value,
-    #     threshold,
-    #     metric,
-    # ), expected_length in pr_expected_answers.items():
-    #     assert (
-    #         len(pr_metrics[index]["value"][value][threshold][metric])
-    #         == expected_length
-    #     )
+    # check DetailedPrecisionRecallCurve
+    detailed_pr_expected_answers = {
+        # class
+        (0, "cat", "0.1", "fp"): {
+            "hallucinations": 0,
+            "misclassifications": 1,
+            "total": 1,
+        },
+        (0, "cat", "0.4", "fp"): {
+            "hallucinations": 0,
+            "misclassifications": 0,
+            "total": 0,
+        },
+        (0, "british shorthair", "0.1", "fn"): {
+            "missed_detections": 1,
+            "misclassifications": 0,
+            "total": 1,
+        },
+        # class_name
+        (1, "cat", "0.4", "fp"): {
+            "hallucinations": 1,
+            "misclassifications": 0,
+            "total": 1,
+        },
+        (1, "maine coon cat", "0.1", "fn"): {
+            "missed_detections": 1,
+            "misclassifications": 0,
+            "total": 1,
+        },
+        # k1
+        (2, "v1", "0.1", "fn"): {
+            "missed_detections": 1,
+            "misclassifications": 0,
+            "total": 1,
+        },
+        (2, "v1", "0.4", "fn"): {
+            "missed_detections": 1,
+            "misclassifications": 1,
+            "total": 2,
+        },
+        (2, "v1", "0.1", "tp"): {"all": 1, "total": 1},
+        # k2
+        (3, "v2", "0.1", "fn"): {
+            "missed_detections": 1,
+            "misclassifications": 0,
+            "total": 1,
+        },
+        (3, "v2", "0.1", "fp"): {
+            "hallucinations": 1,
+            "misclassifications": 0,
+            "total": 1,
+        },
+    }
 
-    # # spot check a few geojson results
-    # assert (
-    #     pr_metrics[0]["value"]["cat"]["0.1"]["fp"][0][2]
-    #     == '{"type":"Polygon","coordinates":[[[10,10],[60,10],[60,40],[10,40],[10,10]]]}'
-    # )
-    # assert (
-    #     pr_metrics[1]["value"]["maine coon cat"]["0.1"]["fn"][0][2]
-    #     == '{"type":"Polygon","coordinates":[[[10,10],[60,10],[60,40],[10,40],[10,10]]]}'
-    # )
-    # assert (
-    #     pr_metrics[3]["value"]["v2"]["0.1"]["fp"][0][2]
-    #     == '{"type":"Polygon","coordinates":[[[15,0],[70,0],[70,20],[15,20],[15,0]]]}'
-    # )
+    for (
+        index,
+        value,
+        threshold,
+        metric,
+    ), expected_output in detailed_pr_expected_answers.items():
+        model_output = detailed_pr_metrics[index]["value"][value][threshold][
+            metric
+        ]
+        assert isinstance(model_output, dict)
+        assert model_output["total"] == expected_output["total"]
+        assert all(
+            [
+                model_output["observations"][key]["count"]  # type: ignore - we know this element is a dict
+                == expected_output[key]
+                for key in [
+                    key
+                    for key in expected_output.keys()
+                    if key not in ["total"]
+                ]
+            ]
+        )
+
+    # check that we get at most 1 example
+    assert (
+        len(
+            detailed_pr_metrics[0]["value"]["cat"]["0.4"]["fp"]["observations"]["hallucinations"][  # type: ignore - we know this element is a dict
+                "examples"
+            ]
+        )
+        == 0
+    )
+    assert (
+        len(
+            detailed_pr_metrics[2]["value"]["v1"]["0.4"]["fn"]["observations"]["missed_detections"][  # type: ignore - we know this element is a dict
+                "examples"
+            ]
+        )
+        == 1
+    )
 
     # now, we correct most of the mismatched labels with a label map
     cat_expected_metrics = [
@@ -1770,7 +1896,17 @@ def test_evaluate_detection_with_label_maps(
         iou_thresholds_to_return=[0.1, 0.6],
         label_map=label_mapping,
         recall_score_threshold=0.8,
+        metrics=[
+            "AP",
+            "AR",
+            "mAP",
+            "APAveragedOverIOUs",
+            "mAR",
+            "mAPAveragedOverIOUs",
+            "PrecisionRecallCurve",
+        ],
     )
+
     assert (
         eval_job.ignored_pred_labels is not None
         and eval_job.missing_pred_labels is not None
@@ -1798,6 +1934,7 @@ def test_evaluate_detection_with_label_maps(
             "APAveragedOverIOUs",
             "mAR",
             "mAPAveragedOverIOUs",
+            "PrecisionRecallCurve",
         ],
         "recall_score_threshold": 0.8,
         "pr_curve_iou_threshold": 0.5,
@@ -1816,56 +1953,34 @@ def test_evaluate_detection_with_label_maps(
     for m in foo_expected_metrics_with_higher_score_threshold:
         assert m in metrics
 
-    # pr_metrics.sort(key=lambda x: x["parameters"]["label_key"])
+    pr_metrics.sort(key=lambda x: x["parameters"]["label_key"])
 
-    # TODO
-    # pr_expected_answers = {
-    #     # foo
-    #     (0, "foo", "bar", "0.1", "fn"): 1,  # missed rect3
-    #     (0, "foo", "bar", "0.1", "tp"): 2,
-    #     (0, "foo", "bar", "0.4", "fn"): 2,
-    #     (0, "foo", "bar", "0.4", "tp"): 1,
-    #     # k1
-    #     (1, "k1", "v1", "0.1", "fn"): 1,
-    #     (1, "k1", "v1", "0.1", "tp"): 1,
-    #     (1, "k1", "v1", "0.4", "fn"): 2,
-    #     # k2
-    #     (2, "k2", "v2", "0.1", "fn"): 1,
-    #     (2, "k2", "v2", "0.1", "fp"): 1,
-    # }
+    pr_expected_answers = {
+        # foo
+        (0, "foo", "bar", "0.1", "fn"): 1,  # missed rect3
+        (0, "foo", "bar", "0.1", "tp"): 2,
+        (0, "foo", "bar", "0.4", "fn"): 2,
+        (0, "foo", "bar", "0.4", "tp"): 1,
+        # k1
+        (1, "k1", "v1", "0.1", "fn"): 1,
+        (1, "k1", "v1", "0.1", "tp"): 1,
+        (1, "k1", "v1", "0.4", "fn"): 2,
+        # k2
+        (2, "k2", "v2", "0.1", "fn"): 1,
+        (2, "k2", "v2", "0.1", "fp"): 1,
+    }
 
-    # for (
-    #     index,
-    #     _,
-    #     value,
-    #     threshold,
-    #     metric,
-    # ), expected_length in pr_expected_answers.items():
-    #     assert (
-    #         len(pr_metrics[index]["value"][value][threshold][metric])
-    #         == expected_length
-    #     )
-
-    # spot check a few geojson results
-    # pr_metric = [
-    #     m for m in pr_metrics if m["parameters"]["label_key"] == "foo"
-    # ][0]
-    # assert (
-    #     pr_metric["value"]["bar"]["0.4"]["fn"][0][2]
-    #     == '{"type":"Polygon","coordinates":[[[10,10],[60,10],[60,40],[10,40],[10,10]]]}'
-    # )
-    # assert (
-    #     pr_metric["value"]["bar"]["0.4"]["tp"][0][2]
-    #     == '{"type":"Polygon","coordinates":[[[15,0],[70,0],[70,20],[15,20],[15,0]]]}'
-    # )
-
-    # pr_metric = [
-    #     m for m in pr_metrics if m["parameters"]["label_key"] == "k2"
-    # ][0]
-    # assert (
-    #     pr_metric["value"]["v2"]["0.1"]["fp"][0][2]
-    #     == '{"type":"Polygon","coordinates":[[[15,0],[70,0],[70,20],[15,20],[15,0]]]}'
-    # )
+    for (
+        index,
+        _,
+        value,
+        threshold,
+        metric,
+    ), expected_value in pr_expected_answers.items():
+        assert (
+            pr_metrics[index]["value"][value][threshold][metric]
+            == expected_value
+        )
 
     assert eval_job.parameters.label_map == [
         [["class_name", "maine coon cat"], ["foo", "bar"]],

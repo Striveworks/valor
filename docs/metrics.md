@@ -166,7 +166,7 @@ Note that this metric differs from COCO's calculation in two ways:
 - COCO calculates three different AR metrics (AR@1, AR@5, AR@100) by considering only the top 1/5/100 most confident predictions during the matching process. Valor, on the other hand, allows users to input a `recall_score_threshold` value that will prevent low-confidence predictions from being counted as true positives when calculating AR.
 
 ## Precision-Recall Curves
-Precision-recall curves offer insight into which confidence threshold you should pick for your production pipeline. To compute these curves for your classification or object detection workflow, pass the metric name ("PrecisionRecallCurve") in the `metrics` parameter of your evaluation call. Valor will then tabulate the true positives, false positives, true negatives, false negatives, precision, recall, and F1 score for each (label key, label value, confidence threshold) combination, and store them in a nested dictionary for your use. When using the Valor Python client, the output will be formatted as follows:
+Precision-recall curves offer insight into which confidence threshold you should pick for your production pipeline. To compute these curves for your classification or object detection workflow, pass the metric name `PrecisionRecallCurve` in the `metrics` parameter of your evaluation call. Valor will then tabulate the true positives, false positives, true negatives, false negatives, precision, recall, and F1 score for each (label key, label value, confidence threshold) combination, and store them in a nested dictionary for your use. When using the Valor Python client, the output will be formatted as follows:
 
 ```python
 
@@ -174,9 +174,7 @@ pr_evaluation = evaluate_detection(
     data=dataset,
     metrics=[..., 'PrecisionRecallCurve']
 )
-
 print(pr_evaluation)
-
 
 [...,
 {
@@ -199,13 +197,38 @@ print(pr_evaluation)
         },
     }
 }]
+```
 
+It's important to note that these curves are computed slightly differently from our other aggregate metrics above:
+
+### Classification Tasks
+
+Valor calculates its aggregate precision, recall, and F1 metrics by matching the highest confidence prediction with each groundtruth. One issue with this approach is that we may throw away useful information in cases where prediction labels all have similarly strong confidence scores. For example: if our top two predictions for a given ground truth are `{“label”: cat, “score”:.91}` and `{“label”: dog, “score”:.90}`, then our aggregated precision and recall metrics would penalize the `dog` label even though its confidence score was nearly equal to the `cat` label.
+
+We think the approach above makes sense when calculating aggregate precision and recall metrics, but, when calculating the `PrecisionRecallCurve` value for each label, we consider all ground truth-prediction matches in order to treat each label as its own, separate binary classification problem.
+
+### Detection Tasks
+
+The `PrecisionRecallCurve` values differ from the precision-recall curves used to calculate [Average Precsion](#average-precision-ap) in two subtle ways:
+
+- The `PrecisionRecallCurve` values visualize how precision and recall change as confidence thresholds vary from 0.05 to 0.95 in increments of 0.05. In contrast, the precision-recall curves used to calculate Average Precision are non-uniform; they vary over the actual confidence scores for each ground truth-prediction match.
+- If your pipeline predicts a label on an image, but that label doesn't exist on any ground truths in that particular image, then the `PrecisionRecallCurve` values will consider that prediction to be a false positive, whereas the other detection metrics will ignore that particular prediction.
+
+### DetailedPrecisionRecallCurve
+
+Valor also includes a more detailed version of `PrecisionRecallCurve` which can be useful for debugging your model's false positives and false negatives. By passing `DetailedPrecisionCurve` into your list of `metrics`, Valor will:
+- Classify your false positives as being either `hallucinations` (i.e., our model predicted that a datum contained a certain label key when there wasn't actually any groundtruths with that label key associated with that datum) or `misclassifications` (our model correctly associated a certain label key with a datum, but its prediction gave it the wrong label value or bounding box).
+- Classify your false negative as being either `missed_detections` (our model didn't output a prediction when it should have for a given datum) or `misclassifications` (our model outputted a prediction for a given datum, but the prediction's label or bounding box was incorrect).
+- Include `n` examples of each observation type (where `n` is less than or equal to the `pr_curve_max_examples` that you can pass at evaluation time)
+
+
+```python
 # To retrieve more detailed examples for each `fn`, `fp`, and `tp`, the user can request the `DetailedPrecisionRecallCurve` metric
 detailed_evaluation = evaluate_detection(
     data=dataset,
     metrics=[..., 'DetailedPrecisionRecallCurve']
+    pr_curve_max_examples=1 # The maximum number of examples to return for each obseration type (e.g., hallucinations, misclassifications, etc.)
 )
-
 print(detailed_evaluation)
 
 [...,
@@ -254,18 +277,3 @@ print(detailed_evaluation)
     }
 }]
 ```
-
-It's important to note that these curves are computed slightly differently from our other aggregate metrics above:
-
-### Classification Tasks
-
-Valor calculates its aggregate precision, recall, and F1 metrics by matching the highest confidence prediction with each groundtruth. One issue with this approach is that we may throw away useful information in cases where prediction labels all have similarly strong confidence scores. For example: if our top two predictions for a given ground truth are `{“label”: cat, “score”:.91}` and `{“label”: dog, “score”:.90}`, then our aggregated precision and recall metrics would penalize the `dog` label even though its confidence score was nearly equal to the `cat` label.
-
-We think the approach above makes sense when calculating aggregate precision and recall metrics, but, when calculating the `PrecisionRecallCurve` value for each label, we consider all ground truth-prediction matches in order to treat each label as its own, separate binary classification problem.
-
-### Detection Tasks
-
-The `PrecisionRecallCurve` values differ from the precision-recall curves used to calculate [Average Precsion](#average-precision-ap) in two subtle ways:
-
-- The `PrecisionRecallCurve` values visualize how precision and recall change as confidence thresholds vary from 0.05 to 0.95 in increments of 0.05. In contrast, the precision-recall curves used to calculate Average Precision are non-uniform; they vary over the actual confidence scores for each ground truth-prediction match.
-- If your pipeline predicts a label on an image, but that label doesn't exist on any ground truths in that particular image, then the `PrecisionRecallCurve` values will consider that prediction to be a false positive, whereas the other detection metrics will ignore that particular prediction.

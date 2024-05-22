@@ -525,8 +525,8 @@ def test__compute_curves(db: Session):
         # (class, 4)
         ("4", 0.05, "tp"): {"all": 0, "total": 0},
         ("4", 0.05, "fn"): {
-            "missed_detections": 2,
-            "misclassifications": 0,
+            "missed_detections": 0,
+            "misclassifications": 2,
             "total": 2,
         },
         # (class, 2)
@@ -547,22 +547,22 @@ def test__compute_curves(db: Session):
         # (class, 3)
         ("3", 0.05, "tp"): {"all": 0, "total": 0},
         ("3", 0.05, "fp"): {
-            "hallucinations": 1,
-            "misclassifications": 0,
+            "hallucinations": 0,
+            "misclassifications": 1,
             "total": 1,
         },
         # (class, 1)
         ("1", 0.05, "tp"): {"all": 0, "total": 0},
         ("1", 0.8, "fn"): {
-            "missed_detections": 1,
-            "misclassifications": 0,
+            "missed_detections": 0,
+            "misclassifications": 1,
             "total": 1,
         },
         # (class, 0)
         ("0", 0.05, "tp"): {"all": 1, "total": 1},
         ("0", 0.95, "fn"): {
-            "missed_detections": 5,
-            "misclassifications": 0,
+            "missed_detections": 0,
+            "misclassifications": 5,
             "total": 5,
         },
     }
@@ -590,7 +590,7 @@ def test__compute_curves(db: Session):
     # spot check number of examples
     assert (
         len(
-            second_output[1].value["0"][0.95]["fn"]["observations"]["missed_detections"][  # type: ignore - we know this element is a dict
+            second_output[1].value["0"][0.95]["fn"]["observations"]["misclassifications"][  # type: ignore - we know this element is a dict
                 "examples"
             ]
         )
@@ -648,7 +648,7 @@ def test__compute_curves(db: Session):
     # spot check number of examples
     assert (
         len(
-            second_output[1].value["0"][0.95]["fn"]["observations"]["missed_detections"][  # type: ignore - we know this element is a dict
+            second_output[1].value["0"][0.95]["fn"]["observations"]["misclassifications"][  # type: ignore - we know this element is a dict
                 "examples"
             ]
         )
