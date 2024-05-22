@@ -351,7 +351,7 @@ class Annotation(StaticCollection):
         raster: Optional[Raster] = None,
         embedding: Optional[Embedding] = None,
         text: Optional[str] = None,
-        context: Optional[list[str]] = None,
+        context: Optional[List[str]] = None,
     ):
         """
         Constructs an annotation.

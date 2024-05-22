@@ -2202,7 +2202,7 @@ class Context(Equatable):
     >>> Text(None)
     """
 
-    def __init__(self, value: list):
+    def __init__(self, value: typing.List[str]):
         super().__init__(value=value)
 
     @classmethod
