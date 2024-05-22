@@ -216,7 +216,7 @@ def test_prediction():
     string = str(pred)
     assert (
         string
-        == "{'datum': {'uid': 'somefile', 'metadata': {}}, 'annotations': [{'task_type': <TaskType.CLASSIFICATION: 'classification'>, 'metadata': {}, 'labels': [{'key': 'test', 'value': 'value', 'score': 1.0}], 'bounding_box': None, 'polygon': None, 'raster': None, 'embedding': None}, {'task_type': <TaskType.CLASSIFICATION: 'classification'>, 'metadata': {}, 'labels': [{'key': 'test', 'value': 'value', 'score': 1.0}], 'bounding_box': None, 'polygon': None, 'raster': None, 'embedding': None}]}"
+        == "{'datum': {'uid': 'somefile', 'text': None, 'metadata': {}}, 'annotations': [{'task_type': <TaskType.CLASSIFICATION: 'classification'>, 'metadata': {}, 'labels': [{'key': 'test', 'value': 'value', 'score': 1.0}], 'bounding_box': None, 'polygon': None, 'raster': None, 'embedding': None, 'text': None, 'context': None}, {'task_type': <TaskType.CLASSIFICATION: 'classification'>, 'metadata': {}, 'labels': [{'key': 'test', 'value': 'value', 'score': 1.0}], 'bounding_box': None, 'polygon': None, 'raster': None, 'embedding': None, 'text': None, 'context': None}]}"
     )
     assert "dataset_name" not in string
 

@@ -68,6 +68,8 @@ def _create_annotation(
     polygon = None
     raster = None
     embedding_id = None
+    text = None
+    context = None
 
     # task-based conversion
     match annotation.task_type:
@@ -86,8 +88,16 @@ def _create_annotation(
                 embedding_id = _create_embedding(
                     db=db, value=annotation.embedding
                 )
-        case TaskType.TEXT_GENERATION:  # TODO maybe something for context_list when we make context_list an annotation parameter?
-            pass
+        case TaskType.TEXT_GENERATION:
+            if annotation.text:
+                text = annotation.text
+            if annotation.context:
+                # check if context is a string
+                if isinstance(annotation.context, str):
+                    context = [annotation.context]
+                else:
+                    assert isinstance(annotation.context, list)
+                    context = annotation.context
         case _:
             pass
 
@@ -100,6 +110,8 @@ def _create_annotation(
         "polygon": polygon,
         "raster": raster,
         "embedding_id": embedding_id,
+        "text": text,
+        "context": context,
     }
     return mapping
 
@@ -256,6 +268,8 @@ def get_annotation(
     polygon = None
     raster = None
     embedding = None
+    text = None
+    context = None
 
     # bounding box
     if annotation.box is not None:
@@ -289,6 +303,14 @@ def get_annotation(
             )
         )
 
+    # text
+    if annotation.text is not None:
+        text = annotation.text
+
+    # context
+    if annotation.context is not None:
+        context = annotation.context
+
     return schemas.Annotation(
         task_type=annotation.task_type,  # type: ignore - models.Annotation.task_type should be a string in psql
         labels=labels,
@@ -297,6 +319,8 @@ def get_annotation(
         polygon=polygon,  # type: ignore - guaranteed to be a polygon in this case
         raster=raster,
         embedding=embedding,
+        text=text,
+        context=context,
     )
 
 

@@ -55,6 +55,8 @@ def _check_if_empty_annotation(annotation: "Annotation") -> bool:
         and annotation.polygon is None
         and annotation.raster is None
         and annotation.embedding is None
+        and annotation.text is None
+        and annotation.context is None
     )
 
 
@@ -87,6 +89,8 @@ def _validate_annotation_by_task_type(
                 and annotation.polygon is None
                 and annotation.raster is None
                 and annotation.embedding is None
+                and annotation.text is None
+                and annotation.context is None
             ):
                 raise ValueError(
                     "Annotations with task type `classification` do not support geometries or embeddings."
@@ -100,6 +104,8 @@ def _validate_annotation_by_task_type(
                     or annotation.raster is not None
                 )
                 and annotation.embedding is None
+                and annotation.text is None
+                and annotation.context is None
             ):
                 raise ValueError(
                     "Annotations with task type `object-detection` do not support embeddings."
@@ -111,6 +117,8 @@ def _validate_annotation_by_task_type(
                 and annotation.bounding_box is None
                 and annotation.polygon is None
                 and annotation.embedding is None
+                and annotation.text is None
+                and annotation.context is None
             ):
                 raise ValueError(
                     "Annotations with task type `semantic-segmentation` only supports rasters."
@@ -122,20 +130,23 @@ def _validate_annotation_by_task_type(
                 and annotation.bounding_box is None
                 and annotation.polygon is None
                 and annotation.raster is None
+                and annotation.text is None
+                and annotation.context is None
             ):
                 raise ValueError(
                     "Annotations with task type `embedding` do not support labels or geometries."
                 )
         case TaskType.TEXT_GENERATION:
-            if not (  # TODO check this
-                annotation.labels
+            if not (  # TODO Check that this is fine. Note that for this task type, context could or could not be present.
+                annotation.text is not None
+                and not annotation.labels
                 and annotation.bounding_box is None
                 and annotation.polygon is None
                 and annotation.raster is None
                 and annotation.embedding is None
             ):
-                raise ValueError(
-                    "Annotations with task type `llm-evaluation` do not support geometries or embeddings."
+                raise ValueError(  # TODO More descriptive error message.
+                    "Annotations with task type `text-generation` do not support geometries or embeddings."
                 )
         case TaskType.EMPTY | TaskType.SKIP:
             if not _check_if_empty_annotation(annotation):
@@ -236,6 +247,10 @@ def _validate_prediction_annotations(annotations: list["Annotation"]) -> None:
                 labels.append(label)
                 indices[label] = index
 
+        # TODO Is there anything to check here? It doesn't seem like there is anything different to validate with a prediction annotation than groundtruth annotation for TEXT_GENERATION.
+        elif annotation.task_type == TaskType.TEXT_GENERATION:
+            pass
+
 
 class Label(BaseModel):
     """
@@ -324,6 +339,10 @@ class Annotation(BaseModel):
         A raster to assign to the 'Annotation'.
     embedding: list[float], optional
         A jsonb to assign to the 'Annotation'.
+    text: str, optional
+        TODO
+    context: list[str], optional
+        TODO
     """
 
     task_type: TaskType
@@ -333,6 +352,8 @@ class Annotation(BaseModel):
     polygon: Polygon | None = None
     raster: Raster | None = None
     embedding: list[float] | None = None
+    text: str | None = None  # TODO Do we need to validate optional attributes?
+    context: list[str] | None = None
     model_config = ConfigDict(extra="forbid")
 
     @model_validator(mode="after")
@@ -378,11 +399,14 @@ class Datum(BaseModel):
     ----------
     uid : str
         The UID of the datum.
+    text : str
+        TODO
     metadata : dict, optional
         A dictionary of metadata that describes the datum.
     """
 
     uid: str
+    text: str | None = None  # TODO Do we need to validate optional attributes?
     metadata: MetadataType = dict()
     model_config = ConfigDict(extra="forbid")
 

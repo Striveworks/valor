@@ -1,0 +1,5 @@
+ALTER TABLE datum DROP COLUMN text;
+ALTER TABLE annotation DROP COLUMN text;
+ALTER TABLE annotation DROP COLUMN context;
+ALTER TABLE groundtruth ALTER COLUMN label_id SET NOT NULL;
+ALTER TABLE prediction ALTER COLUMN label_id SET NOT NULL;

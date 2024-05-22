@@ -105,6 +105,17 @@ class Query:
             query = query.where(Datum.id.in_(subquery))
         return query.subquery(name) if as_subquery else query
 
+    def datums(
+        self,
+        name: str = "generated_subquery",
+        *,
+        as_subquery: bool = True,
+    ):
+        """
+        Generates a sqlalchemy subquery using a datums-focused graph.
+        """
+        return self.any(name, pivot=Datum, as_subquery=as_subquery)
+
     def groundtruths(
         self, name: str = "generated_subquery", *, as_subquery: bool = True
     ):

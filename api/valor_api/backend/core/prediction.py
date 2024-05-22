@@ -117,12 +117,21 @@ def create_predictions(
         predictions, annotation_ids
     ):
         for i, annotation in enumerate(prediction.annotations):
-            for label in annotation.labels:
+            if annotation.labels:
+                for label in annotation.labels:
+                    prediction_mappings.append(
+                        {
+                            "annotation_id": annotation_ids_per_prediction[i],
+                            "label_id": label_dict[(label.key, label.value)],
+                            "score": label.score,
+                        }
+                    )
+            else:
                 prediction_mappings.append(
                     {
                         "annotation_id": annotation_ids_per_prediction[i],
-                        "label_id": label_dict[(label.key, label.value)],
-                        "score": label.score,
+                        "label_id": None,
+                        "score": None,
                     }
                 )
 

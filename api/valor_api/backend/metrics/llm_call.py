@@ -2,9 +2,6 @@ from typing import Any
 
 import openai
 
-from valor_api import schemas
-from valor_api.backend.models import Label
-
 COHERENCE_INSTRUCTION = """You are a helpful assistant. You will grade the user's text. Your task is to rate the text based on its coherence. Please make sure you read and understand these instructions carefully. Please keep this document open while reviewing, and refer to it as needed.
 Evaluation Criteria:
 Coherence (1-5) - the collective quality of all sentences. We align this dimension with the DUC quality question of structure and coherence whereby ”the summary should be well-structured and well-organized. The summary should not just be a heap of related information, but should build from sentence to sentence to a coherent body of information about a topic.”
@@ -87,19 +84,17 @@ class OpenAIClient:
     def coherence(
         self,
         text: str,
-        label: Label,
-    ) -> schemas.CoherenceMetric | None:
+    ) -> int:
         """
         Computes coherence for a single piece of text.
 
         Parameters
         ----------
         text : TODO
-        label_key : TODO
 
         Returns
         -------
-        schemas.CoherenceMetric | None
+        int
         """
         messages = [
             {"role": "system", "content": COHERENCE_INSTRUCTION},
@@ -117,7 +112,4 @@ class OpenAIClient:
                 f"OpenAI response was not a valid coherence score: {response}"
             )
 
-        return schemas.CoherenceMetric(
-            label=label,
-            value=response,
-        )
+        return response

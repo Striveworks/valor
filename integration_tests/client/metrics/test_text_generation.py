@@ -4,148 +4,145 @@ that is no auth
 
 import pytest
 
-from valor import (
+from valor import (  # Client,; Dataset,; Model,
     Annotation,
-    Client,
-    Dataset,
     Datum,
     GroundTruth,
     Label,
-    Model,
     Prediction,
 )
-from valor.enums import EvaluationStatus, TaskType
+from valor.enums import TaskType  # EvaluationStatus,
 
 # from valor.exceptions import ClientException
 
 
-def test_llm_evaluation(
-    client: Client,
-    gt_questions: list[GroundTruth],
-    pred_answers: list[Prediction],
-    dataset_name: str,
-    model_name: str,
-):
-    return  # TODO remove this line when the test is ready to run
-    dataset = Dataset.create(dataset_name)
-    model = Model.create(model_name)
+# def test_llm_evaluation(
+#     client: Client,
+#     gt_questions: list[GroundTruth],
+#     pred_answers: list[Prediction],
+#     dataset_name: str,
+#     model_name: str,
+# ):
+#     return  # TODO remove this line when the test is ready to run
+#     dataset = Dataset.create(dataset_name)
+#     model = Model.create(model_name)
 
-    for gt in gt_questions:
-        dataset.add_groundtruth(gt)
+#     for gt in gt_questions:
+#         dataset.add_groundtruth(gt)
 
-    dataset.finalize()
+#     dataset.finalize()
 
-    for pred in pred_answers:
-        model.add_prediction(dataset, pred)
+#     for pred in pred_answers:
+#         model.add_prediction(dataset, pred)
 
-    model.finalize_inferences(dataset)
+#     model.finalize_inferences(dataset)
 
-    # the evaluate_llm_output call requires an optional, separate service that takes the LLM's inputs and outputs, runs them through a separate LLM with a predetermined prompt, and returns the metric to Valor for storage.llm_service = LLMService(model="ChatGPT4", api_key=os.getenv("CHATGPT_API_KEY"))
+#     # the evaluate_llm_output call requires an optional, separate service that takes the LLM's inputs and outputs, runs them through a separate LLM with a predetermined prompt, and returns the metric to Valor for storage.llm_service = LLMService(model="ChatGPT4", api_key=os.getenv("CHATGPT_API_KEY"))
 
-    llm_url = ""  # TODO put a correct url here
-    llm_api_key = ""  # TODO put a correct api key here (or somewhere secure)
+#     llm_url = ""  # TODO put a correct url here
+#     llm_api_key = ""  # TODO put a correct api key here (or somewhere secure)
 
-    llm_metrics = [
-        "Coherence",
-        # "QAG",
-        # "Grammaticality",
-        # "Hallucination Rate",
-        # "Toxicity",
-        # "Bias",
-        # "Faithfulness",
-        # "Answer Relevance",
-        # "Answer Correctness",
-        # "Context Precision",
-        # "Context Relevance",
-        # "Context Recall",
-    ]
+#     llm_metrics = [
+#         "Coherence",
+#         # "QAG",
+#         # "Grammaticality",
+#         # "Hallucination Rate",
+#         # "Toxicity",
+#         # "Bias",
+#         # "Faithfulness",
+#         # "Answer Relevance",
+#         # "Answer Correctness",
+#         # "Context Precision",
+#         # "Context Relevance",
+#         # "Context Recall",
+#     ]
 
-    eval_job = model.evaluate_llm_output(
-        llm_url=llm_url,
-        llm_api_key=llm_api_key,
-        datasets=dataset,
-        filter_by=[],
-        metrics=llm_metrics,
-    )
+#     eval_job = model.evaluate_llm_output(
+#         llm_url=llm_url,
+#         llm_api_key=llm_api_key,
+#         datasets=dataset,
+#         filter_by=[],
+#         metrics=llm_metrics,
+#     )
 
-    assert eval_job.id
+#     assert eval_job.id
 
-    assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
+#     assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
 
-    metrics = eval_job.metrics
-    metadata = eval_job.meta
+#     metrics = eval_job.metrics
+#     metadata = eval_job.meta
 
-    expected_metrics = [
-        {
-            "type": "Coherence",  # TODO change these to be specific to the actual questions we are using.
-            "value": 0.78,
-            "label": {
-                "key": "question 1",
-                "value": "I can't answer that question with the context provided",
-            },
-            "parameters": {
-                "groundtruths": [
-                    {"key": "question 1", "value": "After ending..."}
-                ],
-                "query": "Given the following context and question, give a score from 1-5 indicating how coherent you believe the following answer is...",
-                "context": ...,
-            },
-        },
-        # { # TODO
-        #     "type": "QAG",
-        # },
-        # {
-        #     "type": "Grammaticality",
-        # },
-        # {
-        #     "type": "Hallucination Rate",
-        # },
-        # {
-        #     "type": "Toxicity",
-        # },
-        # {
-        #     "type": "Bias",
-        # },
-        # {
-        #     "type": "Faithfulness",
-        # },
-        # {
-        #     "type": "Answer Relevance",
-        # },
-        # {
-        #     "type": "Answer Correctness",
-        # },
-        # {
-        #     "type": "Context Precision",
-        # },
-        # {
-        #     "type": "Context Relevance",
-        # },
-        # {
-        #     "type": "Context Recall",
-        # },
-    ]
+#     expected_metrics = [
+#         {
+#             "type": "Coherence",  # TODO change these to be specific to the actual questions we are using.
+#             "value": 0.78,
+#             "label": {
+#                 "key": "question 1",
+#                 "value": "I can't answer that question with the context provided",
+#             },
+#             "parameters": {
+#                 "groundtruths": [
+#                     {"key": "question 1", "value": "After ending..."}
+#                 ],
+#                 "query": "Given the following context and question, give a score from 1-5 indicating how coherent you believe the following answer is...",
+#                 "context": ...,
+#             },
+#         },
+#         # { # TODO
+#         #     "type": "QAG",
+#         # },
+#         # {
+#         #     "type": "Grammaticality",
+#         # },
+#         # {
+#         #     "type": "Hallucination Rate",
+#         # },
+#         # {
+#         #     "type": "Toxicity",
+#         # },
+#         # {
+#         #     "type": "Bias",
+#         # },
+#         # {
+#         #     "type": "Faithfulness",
+#         # },
+#         # {
+#         #     "type": "Answer Relevance",
+#         # },
+#         # {
+#         #     "type": "Answer Correctness",
+#         # },
+#         # {
+#         #     "type": "Context Precision",
+#         # },
+#         # {
+#         #     "type": "Context Relevance",
+#         # },
+#         # {
+#         #     "type": "Context Recall",
+#         # },
+#     ]
 
-    for m in metrics:
-        assert m in expected_metrics
-    for m in expected_metrics:
-        assert m in metrics
+#     for m in metrics:
+#         assert m in expected_metrics
+#     for m in expected_metrics:
+#         assert m in metrics
 
-    assert metrics == expected_metrics
+#     assert metrics == expected_metrics
 
-    # Test evaluation metadata. TODO put correct info here.
-    expected_metadata = {
-        "datums": 3,
-        "labels": 3,
-        "annotations": 3,  # ?
-    }
+#     # Test evaluation metadata. TODO put correct info here.
+#     expected_metadata = {
+#         "datums": 3,
+#         "labels": 3,
+#         "annotations": 3,  # ?
+#     }
 
-    for key, value in expected_metadata.items():
-        assert metadata[key] == value
+#     for key, value in expected_metadata.items():
+#         assert metadata[key] == value
 
-    assert (
-        metadata["duration"] <= 5
-    )  # TODO Is this redundant with the timeout parameter in wait_for_completion above? Copied from test_classification.py
+#     assert (
+#         metadata["duration"] <= 5
+#     )  # TODO Is this redundant with the timeout parameter in wait_for_completion above? Copied from test_classification.py
 
 
 @pytest.fixture
@@ -183,7 +180,7 @@ def gt_questions(
             datum=q0,
             annotations=[
                 Annotation(
-                    task_type=TaskType.LLM_EVALUATION,
+                    task_type=TaskType.TEXT_GENERATION,
                     labels=[
                         Label(
                             key="q0",
@@ -197,7 +194,7 @@ def gt_questions(
             datum=q1,
             annotations=[
                 Annotation(
-                    task_type=TaskType.LLM_EVALUATION,
+                    task_type=TaskType.TEXT_GENERATION,
                     labels=[
                         Label(
                             key="q1",
@@ -211,7 +208,7 @@ def gt_questions(
             datum=q2,
             annotations=[
                 Annotation(
-                    task_type=TaskType.LLM_EVALUATION,
+                    task_type=TaskType.TEXT_GENERATION,
                     labels=[
                         Label(
                             key="q2",
@@ -235,7 +232,7 @@ def pred_answers(
             datum=q0,
             annotations=[
                 Annotation(
-                    task_type=TaskType.LLM_EVALUATION,
+                    task_type=TaskType.TEXT_GENERATION,
                     labels=[
                         Label(
                             key="q0",
@@ -259,7 +256,7 @@ def pred_answers(
             datum=q1,
             annotations=[
                 Annotation(
-                    task_type=TaskType.LLM_EVALUATION,
+                    task_type=TaskType.TEXT_GENERATION,
                     labels=[
                         Label(
                             key="q1",
@@ -283,7 +280,7 @@ def pred_answers(
             datum=q2,
             annotations=[
                 Annotation(
-                    task_type=TaskType.LLM_EVALUATION,
+                    task_type=TaskType.TEXT_GENERATION,
                     labels=[
                         Label(
                             key="q2",

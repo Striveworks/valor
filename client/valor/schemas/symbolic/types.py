@@ -2158,3 +2158,62 @@ def get_type_by_name(
         return List[type_]
     else:
         raise NotImplementedError(name)
+
+
+class Text(Equatable):
+    """
+    Implementation of Text as a Variable.
+    The only difference from String is that Text can be None.
+
+    Parameters
+    ----------
+    value : str, optional
+        A string value.
+
+    Examples
+    --------
+    >>> Text("hello world")
+    >>> Text(None)
+    """
+
+    def __init__(self, value: str):
+        super().__init__(value=value)
+
+    @classmethod
+    def __validate__(cls, value: typing.Any):
+        if (value is not None) and not isinstance(value, str):
+            raise TypeError(
+                f"Expected type '{str}' or '{type(None)}' received type '{type(value)}'"
+            )
+
+
+class Context(Equatable):
+    """
+    TODO
+
+    Parameters
+    ----------
+    value : list[str], optional
+        A list of context strings.
+
+    Examples
+    --------
+    >>> Text("hello world") TODO
+    >>> Text(None)
+    """
+
+    def __init__(self, value: list[str]):
+        super().__init__(value=value)
+
+    @classmethod
+    def __validate__(cls, value: typing.Any):
+        if (value is not None) and not isinstance(value, list):
+            raise TypeError(
+                f"Expected type 'list[str]' received type '{type(value)}'"
+            )
+        if isinstance(value, list):
+            for v in value:
+                if not isinstance(v, str):
+                    raise TypeError(
+                        f"Expected type 'list[str]' received type '{type(value)}', not all elements are strings."
+                    )

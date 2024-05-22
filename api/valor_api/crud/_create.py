@@ -50,6 +50,34 @@ def create_model(
     backend.create_model(db, model)
 
 
+# def create_datums_with_dataset_names(
+#     *,
+#     db: Session,
+#     datums: list[schemas.Datum],
+#     dataset_names: list[str],
+#     ignore_existing_datums: bool = False,
+# ):
+#     """
+#     TODO Remove if not actually used.
+#     Creates a ground truth.
+
+#     Parameters
+#     ----------
+#     db : Session
+#         The database Session to query against.
+#     datums: list[schemas.Datum]
+#         The datums to create.
+#     dataset_names: list[str]
+#         The datasets to link to the datums. This list should be the same length as the datums list.
+#     """
+#     backend.create_datums_with_dataset_names(
+#         db=db,
+#         datums=datums,
+#         dataset_names=dataset_names,
+#         ignore_existing_datums=ignore_existing_datums,
+#     )
+
+
 def create_groundtruths(
     *,
     db: Session,

@@ -30,10 +30,10 @@ class EvaluationParameters(BaseModel):
         A boolean which determines whether we calculate precision-recall curves or not.
     pr_curve_iou_threshold: float, optional
             The IOU threshold to use when calculating precision-recall curves for object detection tasks. Defaults to 0.5. Does nothing when compute_pr_curves is set to False or None.
-    metrics_to_return: list[str], optional
+    metrics: list[str], optional
         The list of metric names to return to the user.
-    llm_url: TODO
-    llm_api_key: TODO
+    llm_api_params: dict, optional
+        TODO
     """
 
     task_type: TaskType
@@ -45,9 +45,8 @@ class EvaluationParameters(BaseModel):
     recall_score_threshold: float | None = 0
     compute_pr_curves: bool | None = None
     pr_curve_iou_threshold: float | None = 0.5
-    metrics_to_return: list[str] | None = None
-    llm_url: str | None = None
-    llm_api_key: str | None = None
+    metrics: list[str] | None = None
+    llm_api_params: dict | None = None  # TODO More explicit typing here?
 
     # pydantic setting
     model_config = ConfigDict(extra="forbid")
@@ -87,33 +86,45 @@ class EvaluationParameters(BaseModel):
                                 "`iou_thresholds_to_return` must be a subset of `iou_thresholds_to_compute`"
                             )
             case TaskType.TEXT_GENERATION:
-                if values.llm_url is None or values.llm_api_key is None:
-                    raise ValueError(
-                        "`llm_url` and `llm_api_key` must be provided for LLM guided evaluations."
-                    )
+                # TODO Add other text comparison metrics
+                text_comparison_metrics = set(
+                    [
+                        "AnswerCorrectness",
+                    ]
+                )
+                llm_guided_metrics = set(
+                    [
+                        "AnswerRelevance",
+                        "AnswerCorrectness",
+                        "Bias",
+                        "Coherence",
+                        "ContextPrecision",
+                        "ContextRecall",
+                        "ContextRelevance",
+                        "Faithfulness",
+                        "Grammaticality",
+                        "Hallucination",
+                        "Summarization",
+                        "Toxicity",
+                    ]
+                )
+                allowed_metrics = text_comparison_metrics.union(
+                    llm_guided_metrics
+                )
 
-                allowed_metrics = [
-                    "AnswerCorrectness",
-                    "AnswerRelevance",
-                    "Bias",
-                    "Coherence",
-                    "ContextPrecision",
-                    "ContextRecall",
-                    "ContextRelevance",
-                    "Faithfulness",
-                    "Grammaticality",
-                    "Hallucination",
-                    "QAG",
-                    "Toxicity",
-                ]
-
-                if values.metrics_to_return is None or not all(
-                    metric in allowed_metrics
-                    for metric in values.metrics_to_return
+                if values.metrics is None or not all(
+                    metric in allowed_metrics for metric in values.metrics
                 ):
                     raise ValueError(
-                        f"`metrics_to_return` must be a list of metrics from {allowed_metrics}."
+                        f"`metrics` must be a list of metrics from {allowed_metrics}."
                     )
+                if any(
+                    metric in llm_guided_metrics for metric in values.metrics
+                ):
+                    if values.llm_api_params is None:
+                        raise ValueError(
+                            "`llm_api_params` must be provided for LLM guided evaluations."
+                        )
             case _:
                 raise NotImplementedError(
                     f"Task type `{values.task_type}` is unsupported."

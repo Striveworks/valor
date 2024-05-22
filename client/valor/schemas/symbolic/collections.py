@@ -5,6 +5,7 @@ import numpy as np
 from valor.enums import TaskType
 from valor.schemas.symbolic.types import (
     Box,
+    Context,
     Dictionary,
     Embedding,
     Equatable,
@@ -16,6 +17,7 @@ from valor.schemas.symbolic.types import (
     Raster,
     String,
     TaskTypeEnum,
+    Text,
     Variable,
     _convert_simple_variables_to_standard_types,
     get_type_by_name,
@@ -265,6 +267,8 @@ class Annotation(StaticCollection):
         A raster to assign to the `Annotation`.
     embedding: List[float]
         An embedding, described by a list of values with type float and a maximum length of 16,000.
+    text: TODO
+    context: TODO
 
     Examples
     --------
@@ -331,6 +335,8 @@ class Annotation(StaticCollection):
     embedding: Embedding = Embedding.symbolic(
         owner="annotation", name="embedding"
     )
+    text: Text = Text.symbolic(owner="annotation", name="text")
+    context: Context = Context.symbolic(owner="annotation", name="context")
 
     def __init__(
         self,
@@ -342,6 +348,8 @@ class Annotation(StaticCollection):
         polygon: Optional[Polygon] = None,
         raster: Optional[Raster] = None,
         embedding: Optional[Embedding] = None,
+        text: Optional[str] = None,
+        context: Optional[str] = None,
     ):
         """
         Constructs an annotation.
@@ -362,6 +370,10 @@ class Annotation(StaticCollection):
             A raster annotation.
         embedding: List[float], optional
             An embedding, described by a list of values with type float and a maximum length of 16,000.
+        text: str, optional
+            TODO
+        context: str, optional
+            TODO
         """
         super().__init__(
             task_type=task_type,
@@ -371,6 +383,8 @@ class Annotation(StaticCollection):
             polygon=polygon,
             raster=raster,
             embedding=embedding,
+            text=text,
+            context=context,
         )
 
     @staticmethod
@@ -392,6 +406,8 @@ class Datum(StaticCollection):
     ----------
     uid : String
         The UID of the datum.
+    text : Text
+        TODO
     metadata : Dictionary
         A dictionary of metadata that describes the datum.
 
@@ -403,12 +419,14 @@ class Datum(StaticCollection):
     """
 
     uid: String = String.symbolic(owner="datum", name="uid")
+    text: Text = Text.symbolic(owner="datum", name="text")
     metadata: Dictionary = Dictionary.symbolic(owner="datum", name="metadata")
 
     def __init__(
         self,
         *,
         uid: str,
+        text: Optional[str] = None,
         metadata: Optional[dict] = None,
     ):
         """
@@ -418,7 +436,11 @@ class Datum(StaticCollection):
         ----------
         uid : str
             The UID of the datum.
+        text : str, optional
+            TODO
         metadata : dict, optional
             A dictionary of metadata that describes the datum.
         """
-        super().__init__(uid=uid, metadata=metadata if metadata else dict())
+        super().__init__(
+            uid=uid, text=text, metadata=metadata if metadata else dict()
+        )

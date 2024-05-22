@@ -413,9 +413,8 @@ def test_generate_prediction_data(client: Client):
             "recall_score_threshold": 0.0,
             "compute_pr_curves": False,
             "pr_curve_iou_threshold": 0.5,
-            "llm_url": None,
-            "llm_api_key": None,
-            "metrics_to_return": None,
+            "metrics": None,
+            "llm_api_params": None,
         },
         "meta": {},
     }

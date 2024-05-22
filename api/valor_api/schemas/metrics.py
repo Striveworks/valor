@@ -747,22 +747,17 @@ class CoherenceMetric(BaseModel):
         The coherence score for an individual datapoint, which is an integer between 1 and 5.
     """
 
-    label: Label
     value: float
+    parameters: dict
 
     def db_mapping(
-        self, label_id, evaluation_id: int
+        self, evaluation_id: int
     ) -> dict:  # TODO what type for label_id?
         """
         Creates a mapping for use when uploading the metric to the database.
 
-        TODO should we have a label and label key for these metrics? I see that IOUMetric uses label
-        and label_id. It gets the label from the mapping with the grouper key
-
         Parameters
         ----------
-        label_id : TODO
-            TODO
         evaluation_id : int
             The evaluation id.
 
@@ -772,7 +767,7 @@ class CoherenceMetric(BaseModel):
         """
         return {
             "value": self.value,
-            "label_id": label_id,
+            "parameters": self.parameters,
             "type": "Coherence",
             "evaluation_id": evaluation_id,
         }

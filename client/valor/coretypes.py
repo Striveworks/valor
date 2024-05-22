@@ -1083,13 +1083,14 @@ class Model(StaticCollection):
             raise RuntimeError
         return evaluation[0]
 
-    def evaluate_llm_output(
+    def evaluate_text_generation(
         self,
-        llm_url: str,
-        llm_api_key: str,
+        metrics: List[str],
+        llm_api_params: Optional[Dict[str, Any]] = None,
+        metric_params: Optional[Dict[str, Any]] = None,  # TODO
+        meta: Optional[Dict[str, Any]] = None,  # TODO
         datasets: Optional[Union[Dataset, List[Dataset]]] = None,
         filter_by: Optional[FilterType] = None,
-        label_map: Optional[Dict[Label, Label]] = None,
     ) -> Evaluation:
         """
         Start a classification evaluation job.
@@ -1098,12 +1099,16 @@ class Model(StaticCollection):
         ----------
         datasets : Union[Dataset, List[Dataset]], optional
             The dataset or list of datasets to evaluate against.
-        llm_url : TODO
-        llm_api_key : TODO
+        metrics : List[str]
+            TODO
+        llm_api_params : dict, optional
+            TODO
+        metric_params : dict, optional
+            TODO
+        meta : dict, optional
+            TODO
         filter_by : FilterType, optional
             Optional set of constraints to filter evaluation by.
-        label_map : Dict[Label, Label], optional
-            Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
 
         Returns
         -------
@@ -1121,12 +1126,9 @@ class Model(StaticCollection):
             model_names=[self.get_name()],
             datum_filter=datum_filter,
             parameters=EvaluationParameters(
-                task_type=TaskType.LLM_EVALUATION,
-                llm_url=llm_url,
-                llm_api_key=llm_api_key,
-                label_map=self._create_label_map(
-                    label_map=label_map
-                ),  # TODO is this needed? The other evaluate client side functions all have label_map, but it isn't used in the api for EvaluationRequest in the functional tests.
+                task_type=TaskType.TEXT_GENERATION,
+                metrics=metrics,
+                llm_api_params=llm_api_params,
             ),
             meta={},
         )
