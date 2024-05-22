@@ -97,55 +97,6 @@ def create_datums(
         )
 
 
-# def create_datums_with_dataset_names(
-#     db: Session,
-#     datums: list[schemas.Datum],
-#     dataset_names: list[str],
-#     ignore_existing_datums: bool,
-# ) -> list[models.Datum]:
-#     """
-#     TODO Remove if not used.
-#     Creates datums in bulk
-
-#     Parameters
-#     ----------
-#     db
-#         The database Session you want to query against.
-#     datums
-#         The datums to add to the database.
-#     dataset_names
-#         The datasets to link to the datums. This list should be the same length as the datums list.
-#     ignore_existing_datums
-#         If True, will ignore datums that already exist in the database.
-#         If False, will raise an error if any datums already exist.
-#         Default is False.
-
-#     Returns
-#     -------
-#     list[models.Datum]
-#         The datums that were created.
-#     """
-#     dataset_name_to_dataset = {
-#         dataset_name: core.fetch_dataset(db=db, name=dataset_name)
-#         for dataset_name in dataset_names
-#     }
-#     for dataset in dataset_name_to_dataset.values():
-#         if dataset.status != enums.TableStatus.CREATING:
-#             raise exceptions.DatasetFinalizedError(dataset.name)
-
-#     datums = core.create_datums(
-#         db,
-#         datums,
-#         [
-#             dataset_name_to_dataset[dataset_name]
-#             for dataset_name in dataset_names
-#         ],
-#         ignore_existing_datums=ignore_existing_datums,
-#     )
-
-#     return datums
-
-
 def create_datum(
     db: Session,
     datum: schemas.Datum,

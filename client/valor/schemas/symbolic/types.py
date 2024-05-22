@@ -2193,7 +2193,7 @@ class Context(Equatable):
 
     Parameters
     ----------
-    value : list[str], optional
+    value : List[str], optional
         A list of context strings.
 
     Examples
@@ -2209,11 +2209,11 @@ class Context(Equatable):
     def __validate__(cls, value: typing.Any):
         if (value is not None) and not isinstance(value, list):
             raise TypeError(
-                f"Expected type 'list[str]' received type '{type(value)}'"
+                f"Expected type 'List[str]' received type '{type(value)}'"
             )
         if isinstance(value, list):
             for v in value:
                 if not isinstance(v, str):
                     raise TypeError(
-                        f"Expected type 'list[str]' received type '{type(value)}', not all elements are strings."
+                        f"Expected type 'List[str]' received type '{type(value)}', not all elements are strings."
                     )

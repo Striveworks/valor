@@ -374,7 +374,7 @@ class Annotation(StaticCollection):
             An embedding, described by a list of values with type float and a maximum length of 16,000.
         text: str, optional
             TODO
-        context: list[str], optional
+        context: List[str], optional
             TODO
         """
         super().__init__(
