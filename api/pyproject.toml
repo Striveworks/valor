@@ -18,6 +18,7 @@ dependencies = [
     "structlog",
     "pgvector",
     "openai",
+    "mistralai",
 ]
 
 [build-system]
