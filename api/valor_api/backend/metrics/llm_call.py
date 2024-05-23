@@ -1,6 +1,8 @@
 from typing import Any
 
 import openai
+from mistralai.client import MistralClient
+from mistralai.models.chat_completion import ChatMessage
 
 COHERENCE_INSTRUCTION = """You are a helpful assistant. You will grade the user's text. Your task is to rate the text based on its coherence. Please make sure you read and understand these instructions carefully. Please keep this document open while reviewing, and refer to it as needed.
 Evaluation Criteria:
@@ -96,7 +98,7 @@ class LLMClient:
         return ret
 
 
-class OpenAIClient(LLMClient):
+class OpenAIValorClient(LLMClient):
     """
     Wrapper for calls to OpenAI's API.
 
@@ -172,6 +174,7 @@ class OpenAIClient(LLMClient):
         finish_reason = openai_response.choices[0].finish_reason
         response = openai_response.choices[0].message.content
 
+        # TODO Only keep these if we can test them.
         if finish_reason == "length":
             raise ValueError(
                 "OpenAI response reached max token limit. Resulting evaluation is likely invalid or of low quality."
@@ -180,5 +183,86 @@ class OpenAIClient(LLMClient):
             raise ValueError(
                 "OpenAI response was flagged by content filter. Resulting evaluation is likely invalid or of low quality."
             )
+
+        return response
+
+
+class MistralValorClient(LLMClient):
+    """
+    Wrapper for calls to Mistral's API.
+
+    Parameters
+    ----------
+    api_key : str, optional
+        The Mistral API key to use. If not specified, then the MISTRAL_API_KEY environment variable will be used.
+    model_name : str
+        The model to use. Defaults to "mistral-small-latest".
+    """
+
+    # url: str
+    api_key: str | None = None
+    model_name: str = (
+        "mistral-small-latest"  # mistral-small-latest mistral-large-latest
+    )
+
+    def __init__(
+        self,
+        api_key: str | None = None,
+    ):
+        """
+        TODO should we use an __attrs_post_init__ instead?
+        """
+        self.api_key = api_key
+
+    def connect(
+        self,
+    ):
+        """
+        TODO This is separated for now because I want to mock connecting to the Mistral API.
+        """
+        if self.api_key is None:
+            self.client = MistralClient()
+        else:
+            self.client = MistralClient(api_key=self.api_key)
+
+    def process_messages(
+        self,
+        messages: list[dict[str, str]],
+    ) -> Any:
+        """
+        All messages should be formatted according to the standard set by OpenAI, and should be modified
+        as needed for other models. This function takes in messages in the OpenAI standard format and converts
+        them to the format required by the model.
+        """
+        ret = []
+        for i in range(len(messages)):
+            ret.append(
+                ChatMessage(
+                    role=messages[i]["role"], content=messages[i]["content"]
+                )
+            )
+        return ret
+
+    def __call__(
+        self,
+        messages: list[dict[str, str]],
+    ) -> Any:
+        """
+        Call to the API.
+
+        TODO possibly change this to a call with the API. This would remove the openai python dependence.
+        """
+        processed_messages = self.process_messages(messages)
+        mistral_response = self.client.chat(
+            model=self.model_name,
+            messages=processed_messages,
+        )
+        # TODO Are there any errors we should catch in a try except block?
+
+        # token_usage = mistral_response.usage  # TODO Could report token usage to user. Could use token length to determine if input is too larger, although this would require us to know the model's context window size.
+        # finish_reason = mistral_response.choices[0].finish_reason
+        response = mistral_response.choices[0].message.content
+
+        # TODO Possibly add errors depending on the finish reason?
 
         return response

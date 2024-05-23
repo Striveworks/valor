@@ -7,7 +7,7 @@ from sqlalchemy.sql.selectable import NamedFromClause
 
 from valor_api import schemas
 from valor_api.backend import core, models
-from valor_api.backend.metrics.llm_call import OpenAIClient
+from valor_api.backend.metrics.llm_call import OpenAIValorClient
 from valor_api.backend.metrics.metric_utils import (  # log_evaluation_item_counts,
     create_metric_mappings,
     get_or_create_row,
@@ -161,7 +161,7 @@ def _compute_text_generation_metrics(
 
     res = db.execute(total_query).all()
 
-    client = OpenAIClient()
+    client = OpenAIValorClient()
     client.connect()
     ret = []
 

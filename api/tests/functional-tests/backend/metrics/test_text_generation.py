@@ -164,11 +164,11 @@ def text_generation_test_data(db: Session, dataset_name: str, model_name: str):
 # TODO Make this text work on the github checks. It currently works locally.
 # def test_openai_api_request():
 #     """
-#     Tests the OpenAIClient class.
+#     Tests the OpenAIValorClient class.
 
-#     Just tests that a CoherenceMetric is correctly built from an OpenAIClient.coherence call.
+#     Just tests that a CoherenceMetric is correctly built from an OpenAIValorClient.coherence call.
 #     """
-#     client = OpenAIClient(
+#     client = OpenAIValorClient(
 #         seed=2024,  # TODO Should we have a seed here?
 #     )
 
@@ -182,14 +182,14 @@ def text_generation_test_data(db: Session, dataset_name: str, model_name: str):
 
 
 @patch(
-    "valor_api.backend.metrics.llm_call.OpenAIClient.connect",
+    "valor_api.backend.metrics.llm_call.OpenAIValorClient.connect",
     mocked_connection,
 )
 @patch(
-    "valor_api.backend.metrics.llm_call.OpenAIClient.coherence",
+    "valor_api.backend.metrics.llm_call.OpenAIValorClient.coherence",
     mocked_coherence,
 )
-# @patch.object(llm_call.OpenAIClient, mocked_OpenAIClient)
+# @patch.object(llm_call.OpenAIValorClient, mocked_OpenAIValorClient)
 def test_compute_text_generation(
     db: Session,
     dataset_name: str,
@@ -269,11 +269,11 @@ def test_compute_text_generation(
 
 
 @patch(
-    "valor_api.backend.metrics.llm_call.OpenAIClient.connect",
+    "valor_api.backend.metrics.llm_call.OpenAIValorClient.connect",
     mocked_connection,
 )
 @patch(
-    "valor_api.backend.metrics.llm_call.OpenAIClient.coherence",
+    "valor_api.backend.metrics.llm_call.OpenAIValorClient.coherence",
     mocked_coherence,
 )
 def test_text_generation(
