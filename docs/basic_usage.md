@@ -16,7 +16,7 @@ Import basic objects directly from the client module using:
 
 ```py
 from valor import (
-    connect
+    connect,
     Client,
     Dataset,
     Model,
