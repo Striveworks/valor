@@ -42,7 +42,7 @@ class EvaluationParameters:
     pr_curve_iou_threshold: float = 0.5
     metrics: Optional[List[str]] = None
     llm_api_params: Optional[
-        Dict[str, str | dict]
+        Dict[str, Union[str, dict]]
     ] = None  # TODO More explicit typing here?
 
 
