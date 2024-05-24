@@ -1086,8 +1086,10 @@ class Model(StaticCollection):
     def evaluate_text_generation(
         self,
         metrics: List[str],
-        llm_api_params: Optional[Dict[str, Any]] = None,
-        metric_params: Optional[Dict[str, Any]] = None,  # TODO
+        llm_api_params: Optional[
+            Dict[str, Union[str, dict]]
+        ] = None,  # TODO Is this typing good?
+        metric_params: Optional[Dict[str, dict]] = None,  # TODO
         meta: Optional[Dict[str, Any]] = None,  # TODO
         datasets: Optional[Union[Dataset, List[Dataset]]] = None,
         filter_by: Optional[FilterType] = None,
@@ -1101,11 +1103,11 @@ class Model(StaticCollection):
             The dataset or list of datasets to evaluate against.
         metrics : List[str]
             TODO
-        llm_api_params : dict, optional
+        llm_api_params : Dict[str, Union[str,dict]], optional
             TODO
-        metric_params : dict, optional
+        metric_params : Dict[str, dict], optional
             TODO
-        meta : dict, optional
+        meta : Dict[str, Any], optional
             TODO
         filter_by : FilterType, optional
             Optional set of constraints to filter evaluation by.

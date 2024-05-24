@@ -32,7 +32,7 @@ class EvaluationParameters(BaseModel):
             The IOU threshold to use when calculating precision-recall curves for object detection tasks. Defaults to 0.5. Does nothing when compute_pr_curves is set to False or None.
     metrics: list[str], optional
         The list of metric names to return to the user.
-    llm_api_params: dict, optional
+    llm_api_params: dict[str, str | dict], optional
         TODO
     """
 
@@ -46,7 +46,9 @@ class EvaluationParameters(BaseModel):
     compute_pr_curves: bool | None = None
     pr_curve_iou_threshold: float | None = 0.5
     metrics: list[str] | None = None
-    llm_api_params: dict | None = None  # TODO More explicit typing here?
+    llm_api_params: dict[
+        str, str | dict
+    ] | None = None  # TODO More explicit typing here?
 
     # pydantic setting
     model_config = ConfigDict(extra="forbid")

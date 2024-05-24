@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List, Optional, Union
+from typing import Dict, List, Optional, Union
 
 from valor.enums import AnnotationType, TaskType
 from valor.schemas.filters import Filter
@@ -26,7 +26,7 @@ class EvaluationParameters:
             The IOU threshold to use when calculating precision-recall curves for object detection tasks. Defaults to 0.5. Does nothing when compute_pr_curves is set to False or None.
     metrics: List[str], optional
         The list of metric names to return to the user.
-    llm_api_params: dict, optional
+    llm_api_params: Dict[str, str | dict], optional
         TODO
     """
 
@@ -41,7 +41,9 @@ class EvaluationParameters:
     compute_pr_curves: bool = False
     pr_curve_iou_threshold: float = 0.5
     metrics: Optional[List[str]] = None
-    llm_api_params: Optional[dict] = None  # TODO More explicit typing here?
+    llm_api_params: Optional[
+        Dict[str, str | dict]
+    ] = None  # TODO More explicit typing here?
 
 
 @dataclass

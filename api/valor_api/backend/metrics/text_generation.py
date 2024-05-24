@@ -7,7 +7,11 @@ from sqlalchemy.sql.selectable import NamedFromClause
 
 from valor_api import schemas
 from valor_api.backend import core, models
-from valor_api.backend.metrics.llm_call import OpenAIValorClient
+from valor_api.backend.metrics.llm_call import (
+    LLMClient,
+    MistralValorClient,
+    OpenAIValorClient,
+)
 from valor_api.backend.metrics.metric_utils import (  # log_evaluation_item_counts,
     create_metric_mappings,
     get_or_create_row,
@@ -17,6 +21,21 @@ from valor_api.backend.metrics.metric_utils import (  # log_evaluation_item_coun
 from valor_api.backend.query import Query
 
 LabelMapType = list[list[list[str]]]
+
+LLM_GUIDED_METRICS = {
+    "AnswerRelevance",
+    "AnswerCorrectness",
+    "Bias",
+    "Coherence",
+    "ContextPrecision",
+    "ContextRecall",
+    "ContextRelevance",
+    "Faithfulness",
+    "Grammaticality",
+    "Hallucination",
+    "Summarization",
+    "Toxicity",
+}
 
 
 # TODO update this for text comparison metrics
@@ -91,11 +110,62 @@ def _generate_prediction_query(
     )
 
 
+def setup_llm_client(
+    llm_api_params: dict[str, str | dict],
+) -> LLMClient:
+    """
+    Setup an LLM client for LLM guided evaluation.
+
+    Parameters
+    ----------
+    llm_api_params : dict[str, str | dict], optional
+        The parameters to setup the client with.
+
+    Returns
+    ----------
+    LLMClient
+        TODO
+    """
+    assert (
+        "client" in llm_api_params or "api_url" in llm_api_params
+    ), "Need to specify the client or api_url."
+    assert not (
+        "client" in llm_api_params and "api_url" in llm_api_params
+    ), "Cannot specify both client and api_url."
+
+    if llm_api_params.get("client") is not None:
+        if llm_api_params["client"] == "openai":
+            client_cls = OpenAIValorClient
+        elif llm_api_params["client"] == "mistral":
+            client_cls = MistralValorClient
+        else:
+            raise ValueError(
+                f"Client {llm_api_params['client']} is not supported."
+            )
+    else:
+        raise NotImplementedError(
+            "Support has not been implemented for api_url."
+        )
+
+    client_kwargs = {}
+    if "data" in llm_api_params:
+        assert isinstance(llm_api_params["data"], dict)
+        if "model" in llm_api_params["data"]:
+            client_kwargs["model_name"] = llm_api_params["data"]["model"]
+        if "seed" in llm_api_params["data"]:
+            client_kwargs["seed"] = llm_api_params["data"]["seed"]
+
+    client = client_cls(**client_kwargs)
+    client.connect()
+    return client
+
+
 def _compute_text_generation_metrics(
     db: Session,
     prediction_filter: schemas.Filter,
     datum_filter: schemas.Filter,
     metrics: list[str] = [],
+    llm_api_params: dict[str, str | dict] | None = None,
 ) -> Sequence[
     schemas.AnswerCorrectnessMetric
     | schemas.AnswerRelevanceMetric
@@ -122,6 +192,8 @@ def _compute_text_generation_metrics(
     datum_filter : schemas.Filter
         The filter to be used to query groundtruths.
     metrics: list[str]
+        TODO
+    llm_api_params: dict[str, str | dict], optional
         TODO
 
     Returns
@@ -161,8 +233,12 @@ def _compute_text_generation_metrics(
 
     res = db.execute(total_query).all()
 
-    client = OpenAIValorClient()
-    client.connect()
+    client = None
+    if any(metric_name in LLM_GUIDED_METRICS for metric_name in metrics):
+        assert (
+            llm_api_params is not None
+        ), f"llm_api_params must be provided for the following metrics: {[metric for metric in metrics if metric in LLM_GUIDED_METRICS]}."
+        client = setup_llm_client(llm_api_params)
     ret = []
 
     # TODO Implement the rest of the metrics.
@@ -175,6 +251,7 @@ def _compute_text_generation_metrics(
             elif metric_name == "Bias":
                 raise NotImplementedError
             elif metric_name == "Coherence":
+                assert client
                 generated_text = row[3]
                 response = client.coherence(text=generated_text)
                 ret.append(
@@ -247,8 +324,10 @@ def compute_text_generation_metrics(
 
     # get the metrics to compute
     metrics = parameters.metrics
-
     assert metrics, "No metrics to compute."
+
+    # get llm api params
+    llm_api_params = parameters.llm_api_params
 
     # TODO What should I do here?
     # log_evaluation_item_counts(
@@ -263,6 +342,7 @@ def compute_text_generation_metrics(
         prediction_filter=prediction_filter,
         datum_filter=datum_filter,
         metrics=metrics,
+        llm_api_params=llm_api_params,
     )
 
     # TODO Add this for the text comparison metrics, which compare predictions to groundtruths.

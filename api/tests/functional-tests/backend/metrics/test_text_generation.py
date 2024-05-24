@@ -7,19 +7,36 @@ from sqlalchemy.orm import Session
 from valor_api import crud, enums, schemas
 from valor_api.backend import models
 from valor_api.backend.core import create_or_get_evaluations
+
+# from valor_api.backend.metrics.llm_call import (
+#     MistralValorClient,
+#     OpenAIValorClient,
+# )
 from valor_api.backend.metrics.text_generation import (
     _compute_text_generation_metrics,
     compute_text_generation_metrics,
 )
+
+# Moved PREDICTIONS here so that they are accessible by mock functions.
+PREDICTIONS = [
+    """Based on the provided context, John Adams and Alexander Hamilton did not get along. John Adams, during his presidency, had grown independent of his cabinet, often making decisions despite opposition from it. Hamilton, who was accustomed to being regularly consulted by Washington, sent Adams a detailed letter with policy suggestions after his inauguration, which Adams dismissively ignored.\n""",
+    """Yes, Lincoln won the election of 1860. He received the highest number of votes and a majority in the Electoral College, making him the 16th President of the United States. However, it's important to note that he won entirely due to his support in the North and West, as he did not receive any votes in 10 of the 15 Southern slave states.""",
+    """If a turtle egg was kept warm, it would likely hatch into a baby turtle. The sex of the baby turtle would be determined by the incubation temperature, assuming the species is one of those that determine sex thermally. This is because many turtle species have the ability to move around inside their eggs to select the best temperature for development, which can influence their sexual destiny.""",
+]
 
 
 def mocked_connection(self):
     pass
 
 
-def mocked_coherence(self, text: str):
-    # TODO Possibly do different values depending on the text?
-    return 4
+def mocked_openai_coherence(self, text: str):
+    if text in [PREDICTIONS[0], PREDICTIONS[2]]:
+        ret = 4
+    elif text in [PREDICTIONS[1]]:
+        ret = 5
+    else:
+        raise ValueError(f"Test prediction has been modified: {text}")
+    return ret
 
 
 @pytest.fixture
@@ -30,11 +47,7 @@ def text_generation_test_data(db: Session, dataset_name: str, model_name: str):
         """Did Lincoln win the election of 1860?""",  # ground truth answer is "Yes"
         """If a turtle egg was kept warm, what would likely hatch?""",  # ground truth answer is "A female turtle."
     ]
-    predictions = [
-        """Based on the provided context, John Adams and Alexander Hamilton did not get along. John Adams, during his presidency, had grown independent of his cabinet, often making decisions despite opposition from it. Hamilton, who was accustomed to being regularly consulted by Washington, sent Adams a detailed letter with policy suggestions after his inauguration, which Adams dismissively ignored.\n""",
-        """Yes, Lincoln won the election of 1860. He received the highest number of votes and a majority in the Electoral College, making him the 16th President of the United States. However, it's important to note that he won entirely due to his support in the North and West, as he did not receive any votes in 10 of the 15 Southern slave states.""",
-        """If a turtle egg was kept warm, it would likely hatch into a baby turtle. The sex of the baby turtle would be determined by the incubation temperature, assuming the species is one of those that determine sex thermally. This is because many turtle species have the ability to move around inside their eggs to select the best temperature for development, which can influence their sexual destiny.""",
-    ]
+    predictions = PREDICTIONS
     context_per_prediction = [
         [
             """Although aware of Hamilton\'s influence, Adams was convinced that their retention ensured a smoother succession. Adams maintained the economic programs of Hamilton, who regularly consulted with key cabinet members, especially the powerful Treasury Secretary, Oliver Wolcott Jr. Adams was in other respects quite independent of his cabinet, often making decisions despite opposition from it. Hamilton had grown accustomed to being regularly consulted by Washington. Shortly after Adams was inaugurated, Hamilton sent him a detailed letter with policy suggestions. Adams dismissively ignored it.\n\nFailed peace commission and XYZ affair\nHistorian Joseph Ellis writes that "[t]he Adams presidency was destined to be dominated by a single question of American policy to an extent seldom if ever encountered by any succeeding occupant of the office." That question was whether to make war with France or find peace. Britain and France were at war as a result of the French Revolution. Hamilton and the Federalists strongly favored the British monarchy against what they denounced as the political radicalism and anti-religious frenzy of the French Revolution. Jefferson and the Republicans, with their firm opposition to monarchy, strongly supported the French overthrowing their king. The French had supported Jefferson for president in 1796 and became belligerent at his loss.""",
@@ -161,24 +174,44 @@ def text_generation_test_data(db: Session, dataset_name: str, model_name: str):
     assert len(db.query(models.Prediction).all()) == 3
 
 
-# TODO Make this text work on the github checks. It currently works locally.
+# # TODO Make this text work on the github checks. It currently works locally.
 # def test_openai_api_request():
 #     """
 #     Tests the OpenAIValorClient class.
 
-#     Just tests that a CoherenceMetric is correctly built from an OpenAIValorClient.coherence call.
+#     Tests that an integer is correctly returned from an OpenAIValorClient.coherence call.
 #     """
 #     client = OpenAIValorClient(
-#         seed=2024,  # TODO Should we have a seed here?
+#         seed=2024,
 #     )
+#     client.connect()
 
 #     result = client.coherence(
 #         text="This is a test sentence.",
-#         label_key="key",
 #     )
 
 #     assert result
-#     assert result.value in {1, 2, 3, 4, 5}
+#     assert type(result) == int
+#     assert result in [1, 2, 3, 4, 5]
+
+
+# # TODO Make this text work on the github checks. It currently works locally.
+# def test_mistral_api_request():
+#     """
+#     Tests the MistralValorClient class.
+
+#     Tests that an integer is correctly returned from a MistralValorClient.coherence call.
+#     """
+#     client = MistralValorClient()
+#     client.connect()
+
+#     result = client.coherence(
+#         text="This is a test sentence.",
+#     )
+
+#     assert result
+#     assert type(result) == int
+#     assert result in [1, 2, 3, 4, 5]
 
 
 @patch(
@@ -187,9 +220,8 @@ def text_generation_test_data(db: Session, dataset_name: str, model_name: str):
 )
 @patch(
     "valor_api.backend.metrics.llm_call.OpenAIValorClient.coherence",
-    mocked_coherence,
+    mocked_openai_coherence,
 )
-# @patch.object(llm_call.OpenAIValorClient, mocked_OpenAIValorClient)
 def test_compute_text_generation(
     db: Session,
     dataset_name: str,
@@ -231,6 +263,15 @@ def test_compute_text_generation(
         model_filter,
         datum_filter,
         metrics=metrics,
+        llm_api_params={
+            "client": "openai",
+            # "api_url": "https://api.openai.com/v1/chat/completions",
+            # api_key:None, # If no key is specified, uses OPENAI_API_KEY environment variable for OpenAI API calls.
+            "data": {
+                "seed": 2024,
+                "model": "gpt-4o",
+            },
+        },
     )
 
     # TODO Add all metrics
@@ -247,7 +288,7 @@ def test_compute_text_generation(
             if metric.parameters.get("datum_uid") == "uid0":
                 assert metric.value == 4
             elif metric.parameters.get("datum_uid") == "uid1":
-                assert metric.value == 4
+                assert metric.value == 5
             elif metric.parameters.get("datum_uid") == "uid2":
                 assert metric.value == 4
         elif isinstance(metric, schemas.ContextPrecisionMetric):
@@ -274,7 +315,7 @@ def test_compute_text_generation(
 )
 @patch(
     "valor_api.backend.metrics.llm_call.OpenAIValorClient.coherence",
-    mocked_coherence,
+    mocked_openai_coherence,
 )
 def test_text_generation(
     db: Session,
@@ -297,9 +338,6 @@ def test_text_generation(
         # "Toxicity",
     ]
 
-    api_url = ("https://api.openai.com/v1/chat/completions",)
-    llm_api_model = ("gpt-4o",)
-
     # default request
     job_request = schemas.EvaluationRequest(
         model_names=[model_name],
@@ -308,10 +346,12 @@ def test_text_generation(
             task_type=enums.TaskType.TEXT_GENERATION,
             metrics=metrics,
             llm_api_params={
-                "api_url": api_url,
+                "client": "openai",
+                # "api_url": "https://api.openai.com/v1/chat/completions",
                 # api_key:None, # If no key is specified, uses OPENAI_API_KEY environment variable for OpenAI API calls.
                 "data": {
-                    "model": llm_api_model,
+                    "seed": 2024,
+                    "model": "gpt-4o",
                 },
             },
         ),
@@ -357,7 +397,7 @@ def test_text_generation(
             if metric.parameters.get("datum_uid") == "uid0":
                 assert metric.value == 4
             elif metric.parameters.get("datum_uid") == "uid1":
-                assert metric.value == 4
+                assert metric.value == 5
             elif metric.parameters.get("datum_uid") == "uid2":
                 assert metric.value == 4
         elif metric.type == "ContextPrecision":

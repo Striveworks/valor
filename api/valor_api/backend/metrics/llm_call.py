@@ -30,11 +30,14 @@ class LLMClient:
     def __init__(
         self,
         api_key: str | None = None,
+        model_name: str | None = None,
     ):
         """
         TODO should we use an __attrs_post_init__ instead?
         """
         self.api_key = api_key
+        if model_name is not None:
+            self.model_name = model_name
 
     def connect(
         self,
@@ -115,18 +118,22 @@ class OpenAIValorClient(LLMClient):
     # url: str
     api_key: str | None = None
     seed: int | None = None
-    model_name: str = "gpt-3.5-turbo"  # gpt-3.5-turbo gpt-4-turbo
+    model_name: str = "gpt-3.5-turbo"  # gpt-3.5-turbo gpt-4-turbo gpt-4o
 
     def __init__(
         self,
         api_key: str | None = None,
         seed: int | None = None,
+        model_name: str | None = None,
     ):
         """
         TODO should we use an __attrs_post_init__ instead?
         """
         self.api_key = api_key
-        self.seed = seed
+        if seed is not None:
+            self.seed = seed
+        if model_name is not None:
+            self.model_name = model_name
 
     def connect(
         self,
@@ -208,11 +215,14 @@ class MistralValorClient(LLMClient):
     def __init__(
         self,
         api_key: str | None = None,
+        model_name: str | None = None,
     ):
         """
         TODO should we use an __attrs_post_init__ instead?
         """
         self.api_key = api_key
+        if model_name is not None:
+            self.model_name = model_name
 
     def connect(
         self,
