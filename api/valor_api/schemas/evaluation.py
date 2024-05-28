@@ -1,6 +1,6 @@
 import datetime
 
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 from valor_api.enums import AnnotationType, EvaluationStatus, TaskType
 from valor_api.schemas.filters import Filter
@@ -19,7 +19,7 @@ class EvaluationParameters(BaseModel):
     convert_annotations_to_type: AnnotationType | None = None
         The type to convert all annotations to.
     metrics: List[str], optional
-        The list of metrics to compute, store, and return to the user.
+        The list of metrics to compute, store, and return to the user. Will return a default set of metrics is None is passed to the API.
     iou_thresholds_to_compute: List[float], optional
         A list of floats describing which Intersection over Unions (IoUs) to use when calculating metrics (i.e., mAP).
     iou_thresholds_to_return: List[float], optional
@@ -35,8 +35,9 @@ class EvaluationParameters(BaseModel):
     """
 
     task_type: TaskType
-
-    metrics: list[str] | None = None
+    metrics: list[
+        str
+    ]  # this parameter can technically be None, but it's converted to a default list by pydantic using get_metric_defaults
     convert_annotations_to_type: AnnotationType | None = None
     iou_thresholds_to_compute: list[float] | None = None
     iou_thresholds_to_return: list[float] | None = None
@@ -48,13 +49,11 @@ class EvaluationParameters(BaseModel):
     # pydantic setting
     model_config = ConfigDict(extra="forbid")
 
-    @model_validator(mode="after")
+    @field_validator("metrics", mode="before")
     @classmethod
-    def _set_default_metrics(cls, values):
-        """Set the list of metrics to be returned to the user in the event that they pass `None` to the `metrics` argument."""
-
-        if values.metrics is None:
-
+    def get_metric_defaults(cls, metrics, values) -> list[str]:
+        """If the user passes None to `metrics`, then use a default list of metrics for the given task type instead."""
+        if metrics is None:
             default_metrics = {
                 TaskType.CLASSIFICATION: [
                     "Precision",
@@ -74,42 +73,9 @@ class EvaluationParameters(BaseModel):
                 TaskType.SEMANTIC_SEGMENTATION: ["IOU", "mIOU"],
             }
 
-            values.metrics = default_metrics[values.task_type]
-
-        match values.task_type:
-            case TaskType.CLASSIFICATION | TaskType.SEMANTIC_SEGMENTATION:
-                if values.convert_annotations_to_type is not None:
-                    raise ValueError(
-                        "`convert_annotations_to_type` should only be used for object detection evaluations."
-                    )
-                if values.iou_thresholds_to_compute is not None:
-                    raise ValueError(
-                        "`iou_thresholds_to_compute` should only be used for object detection evaluations."
-                    )
-                if values.iou_thresholds_to_return is not None:
-                    raise ValueError(
-                        "`iou_thresholds_to_return` should only be used for object detection evaluations."
-                    )
-            case TaskType.OBJECT_DETECTION:
-                if not 0 <= values.pr_curve_iou_threshold <= 1:
-                    raise ValueError(
-                        "`pr_curve_iou_threshold` should be a float between 0 and 1 (inclusive)."
-                    )
-                if values.iou_thresholds_to_return:
-                    if not values.iou_thresholds_to_compute:
-                        raise ValueError(
-                            "`iou_thresholds_to_compute` must exist as a superset of `iou_thresholds_to_return`."
-                        )
-                    for iou in values.iou_thresholds_to_return:
-                        if iou not in values.iou_thresholds_to_compute:
-                            raise ValueError(
-                                "`iou_thresholds_to_return` must be a subset of `iou_thresholds_to_compute`"
-                            )
-            case _:
-                raise NotImplementedError(
-                    f"Task type `{values.task_type}` is unsupported."
-                )
-        return values
+            return default_metrics[values.data["task_type"]]
+        else:
+            return metrics
 
     @model_validator(mode="after")
     @classmethod
