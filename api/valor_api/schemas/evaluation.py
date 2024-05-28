@@ -18,7 +18,7 @@ class EvaluationParameters(BaseModel):
     ----------
     convert_annotations_to_type: AnnotationType | None = None
         The type to convert all annotations to.
-    metrics: List[str]
+    metrics: List[str], optional
         The list of metrics to compute, store, and return to the user.
     iou_thresholds_to_compute: List[float], optional
         A list of floats describing which Intersection over Unions (IoUs) to use when calculating metrics (i.e., mAP).
@@ -36,8 +36,8 @@ class EvaluationParameters(BaseModel):
 
     task_type: TaskType
 
+    metrics: list[str] | None = None
     convert_annotations_to_type: AnnotationType | None = None
-    metrics: list[str]
     iou_thresholds_to_compute: list[float] | None = None
     iou_thresholds_to_return: list[float] | None = None
     label_map: LabelMapType | None = None
@@ -50,8 +50,71 @@ class EvaluationParameters(BaseModel):
 
     @model_validator(mode="after")
     @classmethod
-    def _validate_by_task_type(cls, values):
-        """Validate the IOU thresholds."""
+    def _set_default_metrics(cls, values):
+        """Set the list of metrics to be returned to the user in the event that they pass `None` to the `metrics` argument."""
+
+        if values.metrics is None:
+
+            default_metrics = {
+                TaskType.CLASSIFICATION: [
+                    "Precision",
+                    "Recall",
+                    "F1",
+                    "Accuracy",
+                    "ROCAUC",
+                ],
+                TaskType.OBJECT_DETECTION: [
+                    "AP",
+                    "AR",
+                    "mAP",
+                    "APAveragedOverIOUs",
+                    "mAR",
+                    "mAPAveragedOverIOUs",
+                ],
+                TaskType.SEMANTIC_SEGMENTATION: ["IOU", "mIOU"],
+            }
+
+            values.metrics = default_metrics[values.task_type]
+
+        match values.task_type:
+            case TaskType.CLASSIFICATION | TaskType.SEMANTIC_SEGMENTATION:
+                if values.convert_annotations_to_type is not None:
+                    raise ValueError(
+                        "`convert_annotations_to_type` should only be used for object detection evaluations."
+                    )
+                if values.iou_thresholds_to_compute is not None:
+                    raise ValueError(
+                        "`iou_thresholds_to_compute` should only be used for object detection evaluations."
+                    )
+                if values.iou_thresholds_to_return is not None:
+                    raise ValueError(
+                        "`iou_thresholds_to_return` should only be used for object detection evaluations."
+                    )
+            case TaskType.OBJECT_DETECTION:
+                if not 0 <= values.pr_curve_iou_threshold <= 1:
+                    raise ValueError(
+                        "`pr_curve_iou_threshold` should be a float between 0 and 1 (inclusive)."
+                    )
+                if values.iou_thresholds_to_return:
+                    if not values.iou_thresholds_to_compute:
+                        raise ValueError(
+                            "`iou_thresholds_to_compute` must exist as a superset of `iou_thresholds_to_return`."
+                        )
+                    for iou in values.iou_thresholds_to_return:
+                        if iou not in values.iou_thresholds_to_compute:
+                            raise ValueError(
+                                "`iou_thresholds_to_return` must be a subset of `iou_thresholds_to_compute`"
+                            )
+            case _:
+                raise NotImplementedError(
+                    f"Task type `{values.task_type}` is unsupported."
+                )
+        return values
+
+    @model_validator(mode="after")
+    @classmethod
+    def _validate_parameters(cls, values):
+        """Validate EvaluationParameters via type-specific checks."""
 
         match values.task_type:
             case TaskType.CLASSIFICATION | TaskType.SEMANTIC_SEGMENTATION:

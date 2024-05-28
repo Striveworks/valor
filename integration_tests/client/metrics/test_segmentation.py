@@ -69,6 +69,15 @@ def test_evaluate_segmentation(
         [metric["type"] for metric in eval_job_random_metrics.metrics]
     ) == set(selected_metrics)
 
+    # check that passing None to metrics returns the assumed list of default metrics
+    default_metrics = ["IOU", "mIOU"]
+
+    eval_job = model.evaluate_segmentation(dataset, metrics=None)
+    assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
+    assert set([metric["type"] for metric in eval_job.metrics]) == set(
+        default_metrics
+    )
+
 
 def test_evaluate_segmentation_with_filter(
     client: Client,

@@ -1999,6 +1999,8 @@ def test_evaluate_detection_with_label_maps(
             "APAveragedOverIOUs",
             "mAR",
             "mAPAveragedOverIOUs",
+            "PrecisionRecallCurve",
+            "DetailedPrecisionRecallCurve",
         ],
         2,
     )
@@ -2013,6 +2015,22 @@ def test_evaluate_detection_with_label_maps(
 
     metric_types = [m["type"] for m in eval_job.metrics]
     assert set(metric_types) == set(choices)
+
+    # check that passing None to metrics returns the assumed list of default metrics
+    default_metrics = [
+        "AP",
+        "AR",
+        "mAP",
+        "APAveragedOverIOUs",
+        "mAR",
+        "mAPAveragedOverIOUs",
+    ]
+
+    eval_job = model.evaluate_detection(dataset, metrics=None)
+    assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
+    assert set([metric["type"] for metric in eval_job.metrics]) == set(
+        default_metrics
+    )
 
 
 def test_evaluate_detection_false_negatives_single_image_baseline(

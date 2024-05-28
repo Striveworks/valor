@@ -214,6 +214,25 @@ def test_evaluate_image_clf(
         [metric["type"] for metric in eval_job_random_metrics.metrics]
     ) == set(selected_metrics)
 
+    # check that passing None to metrics returns the assumed list of default metrics
+    default_metrics = [
+        "Accuracy",
+        "ROCAUC",
+        "Precision",
+        "F1",
+        "Recall",
+    ]
+    eval_job_random_metrics = model.evaluate_classification(
+        dataset, metrics=None
+    )
+    assert (
+        eval_job_random_metrics.wait_for_completion(timeout=30)
+        == EvaluationStatus.DONE
+    )
+    assert set(
+        [metric["type"] for metric in eval_job_random_metrics.metrics]
+    ) == set(default_metrics)
+
 
 def test_evaluate_tabular_clf(
     client: Client,
