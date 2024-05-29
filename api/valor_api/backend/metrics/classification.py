@@ -343,19 +343,14 @@ def _compute_curves(
                 },
             }
 
-    output = []
-    output.append(
+    return [
         schemas.PrecisionRecallCurve(
             label_key=grouper_key, value=dict(pr_output)
-        )
-    )
-    output.append(
+        ),
         schemas.DetailedPrecisionRecallCurve(
             label_key=grouper_key, value=dict(detailed_pr_output)
-        )
-    )
-
-    return output
+        ),
+    ]
 
 
 def _compute_binary_roc_auc(
@@ -838,14 +833,11 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
         return None
 
     # aggregate metrics (over all label values)
-    output = []
-    output.append(
+    output = [
         schemas.AccuracyMetric(
             label_key=grouper_key,
             value=_compute_accuracy_from_cm(confusion_matrix),
-        )
-    )
-    output.append(
+        ),
         schemas.ROCAUCMetric(
             label_key=grouper_key,
             value=_compute_roc_auc(
@@ -855,8 +847,8 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
                 grouper_key=grouper_key,
                 grouper_mappings=grouper_mappings,
             ),
-        )
-    )
+        ),
+    ]
 
     # calculate the number of unique datums
     # used to determine the number of true negatives
@@ -898,26 +890,20 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
 
         pydantic_label = schemas.Label(key=grouper_key, value=grouper_value)
 
-        output.append(
+        output += [
             schemas.PrecisionMetric(
                 label=pydantic_label,
                 value=precision,
-            )
-        )
-
-        output.append(
+            ),
             schemas.RecallMetric(
                 label=pydantic_label,
                 value=recall,
-            )
-        )
-
-        output.append(
+            ),
             schemas.F1Metric(
                 label=pydantic_label,
                 value=f1,
-            )
-        )
+            ),
+        ]
 
     return confusion_matrix, output
 

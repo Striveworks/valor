@@ -217,7 +217,7 @@ The `PrecisionRecallCurve` values differ from the precision-recall curves used t
 
 Valor also includes a more detailed version of `PrecisionRecallCurve` which can be useful for debugging your model's false positives and false negatives. When calculating `DetailedPrecisionCurve`, Valor will:
 - Classify your false positives as being either `hallucinations` (i.e., our model predicted that a datum contained a certain label key when there wasn't actually any groundtruths with that label key associated with that datum) or `misclassifications` (our model correctly associated a certain label key with a datum, but its prediction gave it the wrong label value or bounding box).
-- Classify your false negative as being either `missed_detections` (our model didn't output a prediction when it should have for a given datum) or `misclassifications` (our model outputted a prediction for a given datum, but the prediction's label or bounding box was incorrect).
+- Classify your false negative as being either `missed_detections` (our model didn't produce any predictions with the `Groundtruth`'s label key for a given datum) or `misclassifications` (our model correctly associated a certain label key with a datum, but its prediction gave it the wrong label value or bounding box).
 - Include `n` examples of each observation type (where `n` is less than or equal to the `pr_curve_max_examples` that you can pass at evaluation time)
 
 

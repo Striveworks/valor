@@ -5,7 +5,7 @@ import { ValorClient } from '../src/ValorClient';
 const baseURL = 'http://localhost:8000';
 const client = new ValorClient(baseURL);
 
-jest.setTimeout(100000);
+jest.setTimeout(30000); // longest evaluation takes ~25 seconds
 
 beforeEach(async () => {
   // make sure there are no datasets or models in the backend
