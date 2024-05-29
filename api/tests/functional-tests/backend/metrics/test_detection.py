@@ -407,16 +407,6 @@ def test__compute_curves(db: Session):
         )
     ]
     output = _compute_curves(
-        metrics=[
-            "AP",
-            "AR",
-            "mAP",
-            "APAveragedOverIOUs",
-            "mAR",
-            "mAPAveragedOverIOUs",
-            "PrecisionRecallCurve",
-            "DetailedPrecisionRecallCurve",
-        ],
         sorted_ranked_pairs=sorted_ranked_pairs,
         grouper_mappings=grouper_mappings,
         groundtruths_per_grouper=groundtruths_per_grouper,
@@ -467,16 +457,6 @@ def test__compute_curves(db: Session):
 
     # do a second test with a much higher iou_threshold
     second_output = _compute_curves(
-        metrics=[
-            "AP",
-            "AR",
-            "mAP",
-            "APAveragedOverIOUs",
-            "mAR",
-            "mAPAveragedOverIOUs",
-            "PrecisionRecallCurve",
-            "DetailedPrecisionRecallCurve",
-        ],
         sorted_ranked_pairs=sorted_ranked_pairs,
         grouper_mappings=grouper_mappings,
         groundtruths_per_grouper=groundtruths_per_grouper,
@@ -607,16 +587,6 @@ def test__compute_curves(db: Session):
 
     # # repeat the above, but with a higher pr_max_curves_example
     second_output = _compute_curves(
-        metrics=[
-            "AP",
-            "AR",
-            "mAP",
-            "APAveragedOverIOUs",
-            "mAR",
-            "mAPAveragedOverIOUs",
-            "PrecisionRecallCurve",
-            "DetailedPrecisionRecallCurve",
-        ],
         sorted_ranked_pairs=sorted_ranked_pairs,
         grouper_mappings=grouper_mappings,
         groundtruths_per_grouper=groundtruths_per_grouper,
@@ -665,16 +635,6 @@ def test__compute_curves(db: Session):
 
     # test behavior if pr_curve_max_examples == 0
     second_output = _compute_curves(
-        metrics=[
-            "AP",
-            "AR",
-            "mAP",
-            "APAveragedOverIOUs",
-            "mAR",
-            "mAPAveragedOverIOUs",
-            "PrecisionRecallCurve",
-            "DetailedPrecisionRecallCurve",
-        ],
         sorted_ranked_pairs=sorted_ranked_pairs,
         grouper_mappings=grouper_mappings,
         groundtruths_per_grouper=groundtruths_per_grouper,
@@ -735,15 +695,6 @@ def test__compute_detection_metrics(
             convert_annotations_to_type=enums.AnnotationType.BOX,
             iou_thresholds_to_compute=list(iou_thresholds),
             iou_thresholds_to_return=[0.5, 0.75],
-            metrics=[
-                "AP",
-                "AR",
-                "mAP",
-                "APAveragedOverIOUs",
-                "mAR",
-                "mAPAveragedOverIOUs",
-                "PrecisionRecallCurve",
-            ],
         ),
         prediction_filter=schemas.Filter(
             model_names=["test_model"],
@@ -894,7 +845,7 @@ def test__compute_detection_metrics(
         for m in expected_metrics:
             assert m in actual_metrics, f"{metric_type} {m} not in actual"
 
-    pr_metrics = metrics[-1].model_dump(exclude_none=True)
+    pr_metrics = metrics[-2].model_dump(exclude_none=True)
 
     pr_expected_answers = {
         # (class, 4)
@@ -949,15 +900,6 @@ def test__compute_detection_metrics_with_rasters(
             convert_annotations_to_type=enums.AnnotationType.RASTER,
             iou_thresholds_to_compute=list(iou_thresholds),
             iou_thresholds_to_return=[0.5, 0.75],
-            metrics=[
-                "AP",
-                "AR",
-                "mAP",
-                "APAveragedOverIOUs",
-                "mAR",
-                "mAPAveragedOverIOUs",
-                "PrecisionRecallCurve",
-            ],
         ),
         prediction_filter=schemas.Filter(
             model_names=["test_model"],
@@ -1053,8 +995,8 @@ def test__compute_detection_metrics_with_rasters(
         {"ious": iou_thresholds, "value": 0.667, "label_key": "class"},
     ]
 
-    non_pr_metrics = metrics[:-1]
-    pr_metrics = metrics[-1]
+    non_pr_metrics = metrics[:-2]
+    pr_metrics = metrics[-2]
     for m in non_pr_metrics:
         assert m in expected
 
@@ -1103,14 +1045,6 @@ def test_detection_exceptions(db: Session):
             task_type=enums.TaskType.OBJECT_DETECTION,
             iou_thresholds_to_compute=[0.5],
             iou_thresholds_to_return=[0.5],
-            metrics=[
-                "AP",
-                "AR",
-                "mAP",
-                "APAveragedOverIOUs",
-                "mAR",
-                "mAPAveragedOverIOUs",
-            ],
         ).model_dump(),
         status=enums.EvaluationStatus.PENDING,
         meta={},

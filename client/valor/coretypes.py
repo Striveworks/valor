@@ -908,7 +908,6 @@ class Model(StaticCollection):
         datasets: Optional[Union[Dataset, List[Dataset]]] = None,
         filter_by: Optional[FilterType] = None,
         label_map: Optional[Dict[Label, Label]] = None,
-        metrics: Optional[list[str]] = None,
         pr_curve_max_examples: int = 1,
         allow_retries: bool = False,
     ) -> Evaluation:
@@ -923,8 +922,6 @@ class Model(StaticCollection):
             Optional set of constraints to filter evaluation by.
         label_map : Dict[Label, Label], optional
             Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
-        metrics: List[str], optional
-            The list of metrics to compute, store, and return to the user. Returns ["Precision", "Recall", "ROCAUC", "F1", "Accuracy"] to the user if None is passed to the Valor API.
         allow_retries : bool, default = False
             Option to retry previously failed evaluations.
 
@@ -947,7 +944,6 @@ class Model(StaticCollection):
                 task_type=TaskType.CLASSIFICATION,
                 label_map=self._create_label_map(label_map=label_map),
                 pr_curve_max_examples=pr_curve_max_examples,
-                metrics=metrics,
             ),
             meta={},
         )
@@ -964,7 +960,6 @@ class Model(StaticCollection):
         self,
         datasets: Optional[Union[Dataset, List[Dataset]]] = None,
         filter_by: Optional[FilterType] = None,
-        metrics: Optional[List[str]] = None,
         convert_annotations_to_type: Optional[AnnotationType] = None,
         iou_thresholds_to_compute: Optional[List[float]] = None,
         iou_thresholds_to_return: Optional[List[float]] = None,
@@ -983,8 +978,6 @@ class Model(StaticCollection):
             The dataset or list of datasets to evaluate against.
         filter_by : FilterType, optional
             Optional set of constraints to filter evaluation by.
-        metrics: List[str], optional
-            The list of metrics to compute, store, and return to the user. Returns ["AP", "AR", "mAP", "APAveragedOverIOUs", "mAR", "mAPAveragedOverIOUs"] to the user if None is passed to the Valor API.
         convert_annotations_to_type : enums.AnnotationType, optional
             Forces the object detection evaluation to compute over this type.
         iou_thresholds_to_compute : List[float], optional
@@ -1018,7 +1011,6 @@ class Model(StaticCollection):
         # format request
         parameters = EvaluationParameters(
             task_type=TaskType.OBJECT_DETECTION,
-            metrics=metrics,
             convert_annotations_to_type=convert_annotations_to_type,
             iou_thresholds_to_compute=iou_thresholds_to_compute,
             iou_thresholds_to_return=iou_thresholds_to_return,
@@ -1048,7 +1040,6 @@ class Model(StaticCollection):
         datasets: Optional[Union[Dataset, List[Dataset]]] = None,
         filter_by: Optional[FilterType] = None,
         label_map: Optional[Dict[Label, Label]] = None,
-        metrics: Optional[List[str]] = None,
         allow_retries: bool = False,
     ) -> Evaluation:
         """
@@ -1062,8 +1053,6 @@ class Model(StaticCollection):
             Optional set of constraints to filter evaluation by.
         label_map : Dict[Label, Label], optional
             Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
-        metrics: List[str], optional
-            The list of metrics to compute, store, and return to the user. Returns ["IOU", "mIOU"] to the user if None is passed to the Valor API.
         allow_retries : bool, default = False
             Option to retry previously failed evaluations.
 
@@ -1080,7 +1069,6 @@ class Model(StaticCollection):
             parameters=EvaluationParameters(
                 task_type=TaskType.SEMANTIC_SEGMENTATION,
                 label_map=self._create_label_map(label_map=label_map),
-                metrics=metrics,
             ),
             meta={},
         )

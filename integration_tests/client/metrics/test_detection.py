@@ -2,7 +2,6 @@
 that is no auth
 """
 
-import random
 from dataclasses import asdict
 
 import pytest
@@ -151,14 +150,6 @@ def test_evaluate_detection(
             "iou_thresholds_to_compute": [0.1, 0.6],
             "iou_thresholds_to_return": [0.1, 0.6],
             "label_map": None,
-            "metrics": [
-                "AP",
-                "AR",
-                "mAP",
-                "APAveragedOverIOUs",
-                "mAR",
-                "mAPAveragedOverIOUs",
-            ],
             "recall_score_threshold": 0.0,
             "pr_curve_iou_threshold": 0.5,
             "pr_curve_max_examples": 1,
@@ -169,7 +160,11 @@ def test_evaluate_detection(
         "ignored_pred_labels": [],
     }
     for m in actual_metrics:
-        assert m in expected_metrics
+        if m["type"] not in [
+            "PrecisionRecallCurve",
+            "DetailedPrecisionRecallCurve",
+        ]:
+            assert m in expected_metrics
     for m in expected_metrics:
         assert m in actual_metrics
 
@@ -281,14 +276,6 @@ def test_evaluate_detection(
             "iou_thresholds_to_compute": [0.1, 0.6],
             "iou_thresholds_to_return": [0.1, 0.6],
             "label_map": None,
-            "metrics": [
-                "AP",
-                "AR",
-                "mAP",
-                "APAveragedOverIOUs",
-                "mAR",
-                "mAPAveragedOverIOUs",
-            ],
             "recall_score_threshold": 0.0,
             "pr_curve_iou_threshold": 0.5,
             "pr_curve_max_examples": 1,
@@ -300,7 +287,11 @@ def test_evaluate_detection(
     }
 
     for m in actual_metrics:
-        assert m in expected_metrics
+        if m["type"] not in [
+            "PrecisionRecallCurve",
+            "DetailedPrecisionRecallCurve",
+        ]:
+            assert m in expected_metrics
     for m in expected_metrics:
         assert m in actual_metrics
 
@@ -343,14 +334,6 @@ def test_evaluate_detection(
             "iou_thresholds_to_compute": [0.1, 0.6],
             "iou_thresholds_to_return": [0.1, 0.6],
             "label_map": None,
-            "metrics": [
-                "AP",
-                "AR",
-                "mAP",
-                "APAveragedOverIOUs",
-                "mAR",
-                "mAPAveragedOverIOUs",
-            ],
             "recall_score_threshold": 0.0,
             "pr_curve_iou_threshold": 0.5,
             "pr_curve_max_examples": 1,
@@ -399,14 +382,6 @@ def test_evaluate_detection(
             "iou_thresholds_to_compute": [0.1, 0.6],
             "iou_thresholds_to_return": [0.1, 0.6],
             "label_map": None,
-            "metrics": [
-                "AP",
-                "AR",
-                "mAP",
-                "APAveragedOverIOUs",
-                "mAR",
-                "mAPAveragedOverIOUs",
-            ],
             "recall_score_threshold": 0.0,
             "pr_curve_iou_threshold": 0.5,
             "pr_curve_max_examples": 1,
@@ -463,14 +438,6 @@ def test_evaluate_detection(
             "iou_thresholds_to_compute": [0.1, 0.6],
             "iou_thresholds_to_return": [0.1, 0.6],
             "label_map": None,
-            "metrics": [
-                "AP",
-                "AR",
-                "mAP",
-                "APAveragedOverIOUs",
-                "mAR",
-                "mAPAveragedOverIOUs",
-            ],
             "recall_score_threshold": 0.0,
             "pr_curve_iou_threshold": 0.5,
             "pr_curve_max_examples": 1,
@@ -490,39 +457,6 @@ def test_evaluate_detection(
     # test accessing these evaluations via the dataset
     all_evals = dataset.get_evaluations()
     assert len(all_evals) == 7
-
-    # check that metrics arg works correctly
-    selected_metrics = random.sample(
-        [
-            "AP",
-            "AR",
-            "mAP",
-            "APAveragedOverIOUs",
-            "mAR",
-            "mAPAveragedOverIOUs",
-            "PrecisionRecallCurve",
-        ],
-        2,
-    )
-    eval_job_random_metrics = model.evaluate_detection(
-        dataset,
-        iou_thresholds_to_compute=[0.1, 0.6],
-        iou_thresholds_to_return=[0.1, 0.6],
-        filter_by=[
-            Label.key == "k1",
-            Annotation.bounding_box.area >= 1200,
-            Annotation.bounding_box.area <= 1800,
-        ],
-        convert_annotations_to_type=AnnotationType.BOX,
-        metrics=selected_metrics,
-    )
-    assert (
-        eval_job_random_metrics.wait_for_completion(timeout=30)
-        == EvaluationStatus.DONE
-    )
-    assert set(
-        [metric["type"] for metric in eval_job_random_metrics.metrics]
-    ) == set(selected_metrics)
 
 
 def test_evaluate_detection_with_json_filters(
@@ -669,14 +603,6 @@ def test_evaluate_detection_with_json_filters(
             "iou_thresholds_to_compute": [0.1, 0.6],
             "iou_thresholds_to_return": [0.1, 0.6],
             "label_map": None,
-            "metrics": [
-                "AP",
-                "AR",
-                "mAP",
-                "APAveragedOverIOUs",
-                "mAR",
-                "mAPAveragedOverIOUs",
-            ],
             "recall_score_threshold": 0.0,
             "pr_curve_iou_threshold": 0.5,
             "pr_curve_max_examples": 1,
@@ -831,7 +757,11 @@ def test_get_evaluations(
     assert len(evaluations) == 1
     assert len(evaluations[0].metrics)
     for m in evaluations[0].metrics:
-        assert m in expected_metrics
+        if m["type"] not in [
+            "PrecisionRecallCurve",
+            "DetailedPrecisionRecallCurve",
+        ]:
+            assert m in expected_metrics
     for m in expected_metrics:
         assert m in evaluations[0].metrics
 
@@ -868,7 +798,11 @@ def test_get_evaluations(
 
     assert len(second_model_evaluations) == 1
     for m in second_model_evaluations[0].metrics:
-        assert m in second_model_expected_metrics
+        if m["type"] not in [
+            "PrecisionRecallCurve",
+            "DetailedPrecisionRecallCurve",
+        ]:
+            assert m in second_model_expected_metrics
     for m in second_model_expected_metrics:
         assert m in second_model_evaluations[0].metrics
 
@@ -883,12 +817,20 @@ def test_get_evaluations(
         ]
         if evaluation.model_name == model_name:
             for m in evaluation.metrics:
-                assert m in expected_metrics
+                if m["type"] not in [
+                    "PrecisionRecallCurve",
+                    "DetailedPrecisionRecallCurve",
+                ]:
+                    assert m in expected_metrics
             for m in expected_metrics:
                 assert m in evaluation.metrics
         elif evaluation.model_name == "second_model":
             for m in evaluation.metrics:
-                assert m in second_model_expected_metrics
+                if m["type"] not in [
+                    "PrecisionRecallCurve",
+                    "DetailedPrecisionRecallCurve",
+                ]:
+                    assert m in second_model_expected_metrics
             for m in second_model_expected_metrics:
                 assert m in evaluation.metrics
 
@@ -923,11 +865,11 @@ def test_get_evaluations(
         metrics_to_sort_by={"mAPAveragedOverIOUs": "k1"},
     )
 
-    assert both_evaluations_from_evaluation_ids[0].metrics[-1]["value"] == 0
+    assert both_evaluations_from_evaluation_ids[0].metrics[-2]["value"] == 0
 
     # with sorting, the evaluation with the higher mAPAveragedOverIOUs is returned first
     assert (
-        both_evaluations_from_evaluation_ids_sorted[0].metrics[-1]["value"]
+        both_evaluations_from_evaluation_ids_sorted[0].metrics[-2]["value"]
         == 0.504950495049505
     )
 
@@ -1183,16 +1125,6 @@ def test_evaluate_detection_with_label_maps(
         dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
-        metrics=[
-            "AP",
-            "AR",
-            "mAP",
-            "APAveragedOverIOUs",
-            "mAR",
-            "mAPAveragedOverIOUs",
-            "PrecisionRecallCurve",
-            "DetailedPrecisionRecallCurve",
-        ],
         pr_curve_max_examples=1,
     )
 
@@ -1563,7 +1495,11 @@ def test_evaluate_detection_with_label_maps(
 
     metrics = eval_job.metrics
     for m in metrics:
-        assert m in cat_expected_metrics
+        if m["type"] not in [
+            "PrecisionRecallCurve",
+            "DetailedPrecisionRecallCurve",
+        ]:
+            assert m in cat_expected_metrics
     for m in cat_expected_metrics:
         assert m in metrics
 
@@ -1740,7 +1676,11 @@ def test_evaluate_detection_with_label_maps(
 
     metrics = eval_job.metrics
     for m in metrics:
-        assert m in foo_expected_metrics
+        if m["type"] not in [
+            "PrecisionRecallCurve",
+            "DetailedPrecisionRecallCurve",
+        ]:
+            assert m in foo_expected_metrics
     for m in foo_expected_metrics:
         assert m in metrics
 
@@ -1896,15 +1836,6 @@ def test_evaluate_detection_with_label_maps(
         iou_thresholds_to_return=[0.1, 0.6],
         label_map=label_mapping,
         recall_score_threshold=0.8,
-        metrics=[
-            "AP",
-            "AR",
-            "mAP",
-            "APAveragedOverIOUs",
-            "mAR",
-            "mAPAveragedOverIOUs",
-            "PrecisionRecallCurve",
-        ],
     )
 
     assert (
@@ -1927,15 +1858,6 @@ def test_evaluate_detection_with_label_maps(
             [["class", "cat"], ["foo", "bar"]],
             [["class_name", "cat"], ["foo", "bar"]],
         ],
-        "metrics": [
-            "AP",
-            "AR",
-            "mAP",
-            "APAveragedOverIOUs",
-            "mAR",
-            "mAPAveragedOverIOUs",
-            "PrecisionRecallCurve",
-        ],
         "recall_score_threshold": 0.8,
         "pr_curve_iou_threshold": 0.5,
         "pr_curve_max_examples": 1,
@@ -1945,10 +1867,12 @@ def test_evaluate_detection_with_label_maps(
 
     pr_metrics = []
     for m in metrics:
-        if m["type"] != "PrecisionRecallCurve":
-            assert m in foo_expected_metrics_with_higher_score_threshold
-        else:
+        if m["type"] == "PrecisionRecallCurve":
             pr_metrics.append(m)
+        elif m["type"] == "DetailedPrecisionRecallCurve":
+            continue
+        else:
+            assert m in foo_expected_metrics_with_higher_score_threshold
 
     for m in foo_expected_metrics_with_higher_score_threshold:
         assert m in metrics
@@ -1989,48 +1913,6 @@ def test_evaluate_detection_with_label_maps(
         [["class", "cat"], ["foo", "bar"]],
         [["class_name", "cat"], ["foo", "bar"]],
     ]
-
-    # test getting a subset of metrics
-    choices = random.sample(
-        [
-            "AP",
-            "AR",
-            "mAP",
-            "APAveragedOverIOUs",
-            "mAR",
-            "mAPAveragedOverIOUs",
-            "PrecisionRecallCurve",
-            "DetailedPrecisionRecallCurve",
-        ],
-        2,
-    )
-
-    eval_job = model.evaluate_detection(
-        dataset,
-        iou_thresholds_to_compute=[0.1, 0.6],
-        iou_thresholds_to_return=[0.1, 0.6],
-        metrics=choices,
-    )
-    assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
-
-    metric_types = [m["type"] for m in eval_job.metrics]
-    assert set(metric_types) == set(choices)
-
-    # check that passing None to metrics returns the assumed list of default metrics
-    default_metrics = [
-        "AP",
-        "AR",
-        "mAP",
-        "APAveragedOverIOUs",
-        "mAR",
-        "mAPAveragedOverIOUs",
-    ]
-
-    eval_job = model.evaluate_detection(dataset, metrics=None)
-    assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
-    assert set([metric["type"] for metric in eval_job.metrics]) == set(
-        default_metrics
-    )
 
 
 def test_evaluate_detection_false_negatives_single_image_baseline(

@@ -30,13 +30,6 @@ def test_validate_computation(
             datum_filter=schemas.Filter(dataset_names=[created_dataset]),
             parameters=schemas.EvaluationParameters(
                 task_type=enums.TaskType.CLASSIFICATION,
-                metrics=[
-                    "Precision",
-                    "Recall",
-                    "F1",
-                    "Accuracy",
-                    "ROCAUC",
-                ],
             ),
             meta={},
         ),

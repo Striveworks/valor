@@ -1139,14 +1139,6 @@ def test_create_detection_metrics(
                 convert_annotations_to_type=enums.AnnotationType.BOX,
                 iou_thresholds_to_compute=[0.2, 0.6],
                 iou_thresholds_to_return=[0.2],
-                metrics=[
-                    "AP",
-                    "AR",
-                    "mAP",
-                    "APAveragedOverIOUs",
-                    "mAR",
-                    "mAPAveragedOverIOUs",
-                ],
             ),
             meta={},
         )
@@ -1196,6 +1188,8 @@ def test_create_detection_metrics(
         "mAR",
         "mAP",
         "mAPAveragedOverIOUs",
+        "PrecisionRecallCurve",
+        "DetailedPrecisionRecallCurve",
     }
 
     assert set(
@@ -1255,6 +1249,8 @@ def test_create_detection_metrics(
             "mAR",
             "mAP",
             "mAPAveragedOverIOUs",
+            "PrecisionRecallCurve",
+            "DetailedPrecisionRecallCurve",
         }
 
     # test when min area and max area are specified
@@ -1280,6 +1276,8 @@ def test_create_detection_metrics(
             "mAR",
             "mAP",
             "mAPAveragedOverIOUs",
+            "PrecisionRecallCurve",
+            "DetailedPrecisionRecallCurve",
         }
 
     # check we have the right evaluations
@@ -1307,14 +1305,6 @@ def test_create_detection_metrics(
             convert_annotations_to_type=enums.AnnotationType.BOX,
             iou_thresholds_to_compute=[0.2, 0.6],
             iou_thresholds_to_return=[0.2],
-            metrics=[
-                "AP",
-                "AR",
-                "mAP",
-                "APAveragedOverIOUs",
-                "mAR",
-                "mAPAveragedOverIOUs",
-            ],
         ),
         id=model_evals[1].id,
         status=enums.EvaluationStatus.DONE,
@@ -1348,14 +1338,6 @@ def test_create_detection_metrics(
             convert_annotations_to_type=enums.AnnotationType.BOX,
             iou_thresholds_to_compute=[0.2, 0.6],
             iou_thresholds_to_return=[0.2],
-            metrics=[
-                "AP",
-                "AR",
-                "mAP",
-                "APAveragedOverIOUs",
-                "mAR",
-                "mAPAveragedOverIOUs",
-            ],
         ),
         id=model_evals[0].id,
         status=enums.EvaluationStatus.DONE,
@@ -1396,13 +1378,6 @@ def test_create_clf_metrics(
         datum_filter=schemas.Filter(dataset_names=[dataset_name]),
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.CLASSIFICATION,
-            metrics=[
-                "Accuracy",
-                "Precision",
-                "Recall",
-                "F1",
-                "ROCAUC",
-            ],
         ),
         meta={},
     )
@@ -1433,6 +1408,8 @@ def test_create_clf_metrics(
         "Recall",
         "F1",
         "ROCAUC",
+        "PrecisionRecallCurve",
+        "DetailedPrecisionRecallCurve",
     }
     # should have two accuracy metrics and ROC AUC scores (for label keys "k1" and "k2")
     # and four recall, precision, and f1, for the labels ("k1", "v1"), ("k2", "v2"),
@@ -1507,7 +1484,7 @@ def test_create_clf_metrics(
     )
     assert query
     metrics = query.metrics
-    assert len(metrics) == 2 + 2 + 6 + 6 + 6
+    assert len(metrics) == 26
     confusion_matrices = db.scalars(
         select(models.ConfusionMatrix).where(
             models.ConfusionMatrix.evaluation_id == evaluation_id

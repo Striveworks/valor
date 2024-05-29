@@ -909,7 +909,7 @@ def test_post_detection_metrics(client: TestClient):
         model_name="modelname",
         datum_filter=schemas.Filter(dataset_names=["dsetname"]),
         parameters=schemas.EvaluationParameters(
-            task_type=TaskType.OBJECT_DETECTION, metrics=["AP"]
+            task_type=TaskType.OBJECT_DETECTION,
         ),
         status=EvaluationStatus.PENDING,
         metrics=[],
@@ -926,7 +926,7 @@ def test_post_detection_metrics(client: TestClient):
             dataset_names=["dsetname"],
         ),
         parameters=schemas.EvaluationParameters(
-            task_type=TaskType.OBJECT_DETECTION, metrics=["AP"]
+            task_type=TaskType.OBJECT_DETECTION,
         ),
         meta={},
     ).model_dump()
@@ -946,7 +946,7 @@ def test_post_clf_metrics(client: TestClient):
         model_name="modelname",
         datum_filter=schemas.Filter(dataset_names=["dsetname"]),
         parameters=schemas.EvaluationParameters(
-            task_type=TaskType.CLASSIFICATION, metrics=["IOU", "mIOU"]
+            task_type=TaskType.CLASSIFICATION
         ),
         status=EvaluationStatus.PENDING,
         metrics=[],
@@ -959,7 +959,7 @@ def test_post_clf_metrics(client: TestClient):
         model_names=["modelname"],
         datum_filter=schemas.Filter(dataset_names=["dsetname"]),
         parameters=schemas.EvaluationParameters(
-            task_type=TaskType.CLASSIFICATION, metrics=["IOU", "mIOU"]
+            task_type=TaskType.CLASSIFICATION,
         ),
         meta={},
     ).model_dump()
@@ -979,7 +979,7 @@ def test_post_semenatic_segmentation_metrics(client: TestClient):
         model_name="modelname",
         datum_filter=schemas.Filter(dataset_names=["dsetname"]),
         parameters=schemas.EvaluationParameters(
-            task_type=TaskType.SEMANTIC_SEGMENTATION, metrics=["IOU", "mIOU"]
+            task_type=TaskType.SEMANTIC_SEGMENTATION,
         ),
         status=EvaluationStatus.PENDING,
         metrics=[],
@@ -994,7 +994,7 @@ def test_post_semenatic_segmentation_metrics(client: TestClient):
         model_names=["modelname"],
         datum_filter=schemas.Filter(dataset_names=["dsetname"]),
         parameters=schemas.EvaluationParameters(
-            task_type=TaskType.SEMANTIC_SEGMENTATION, metrics=["IOU", "mIOU"]
+            task_type=TaskType.SEMANTIC_SEGMENTATION,
         ),
         meta={},
     ).model_dump()

@@ -413,7 +413,6 @@ def test__compute_segmentation_metrics(
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.CLASSIFICATION,
             label_map=None,
-            metrics=["IOU", "mIOU"],
         ),
         prediction_filter=prediction_filter,
         groundtruth_filter=groundtruth_filter,
@@ -449,7 +448,6 @@ def test_compute_semantic_segmentation_metrics(
         datum_filter=schemas.Filter(dataset_names=[dataset_name]),
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
-            metrics=["IOU", "mIOU"],
         ),
         meta={},
     )

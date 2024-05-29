@@ -2,7 +2,6 @@
 that is no auth
 """
 
-import random
 from datetime import date, datetime, timedelta, timezone
 
 import pytest
@@ -166,7 +165,11 @@ def test_evaluate_image_clf(
     ]
 
     for m in metrics:
-        assert m in expected_metrics
+        if m["type"] not in [
+            "PrecisionRecallCurve",
+            "DetailedPrecisionRecallCurve",
+        ]:
+            assert m in expected_metrics
     for m in expected_metrics:
         assert m in metrics
 
@@ -189,49 +192,6 @@ def test_evaluate_image_clf(
     assert (
         eval_job.meta["duration"] <= 5
     )  # eval should definitely take less than 5 seconds, usually around .4
-
-    # check that metrics arg works correctly
-    selected_metrics = random.sample(
-        [
-            "Accuracy",
-            "ROCAUC",
-            "Precision",
-            "F1",
-            "Recall",
-            "PrecisionRecallCurve",
-            "DetailedPrecisionRecallCurve",
-        ],
-        2,
-    )
-    eval_job_random_metrics = model.evaluate_classification(
-        dataset, metrics=selected_metrics
-    )
-    assert (
-        eval_job_random_metrics.wait_for_completion(timeout=30)
-        == EvaluationStatus.DONE
-    )
-    assert set(
-        [metric["type"] for metric in eval_job_random_metrics.metrics]
-    ) == set(selected_metrics)
-
-    # check that passing None to metrics returns the assumed list of default metrics
-    default_metrics = [
-        "Accuracy",
-        "ROCAUC",
-        "Precision",
-        "F1",
-        "Recall",
-    ]
-    eval_job_random_metrics = model.evaluate_classification(
-        dataset, metrics=None
-    )
-    assert (
-        eval_job_random_metrics.wait_for_completion(timeout=30)
-        == EvaluationStatus.DONE
-    )
-    assert set(
-        [metric["type"] for metric in eval_job_random_metrics.metrics]
-    ) == set(default_metrics)
 
 
 def test_evaluate_tabular_clf(
@@ -354,7 +314,11 @@ def test_evaluate_tabular_clf(
         },
     ]
     for m in metrics:
-        assert m in expected_metrics
+        if m["type"] not in [
+            "PrecisionRecallCurve",
+            "DetailedPrecisionRecallCurve",
+        ]:
+            assert m in expected_metrics
     for m in expected_metrics:
         assert m in metrics
 
@@ -376,7 +340,11 @@ def test_evaluate_tabular_clf(
 
     assert len(bulk_evals) == 1
     for metric in bulk_evals[0].metrics:
-        assert metric in expected_metrics
+        if metric["type"] not in [
+            "PrecisionRecallCurve",
+            "DetailedPrecisionRecallCurve",
+        ]:
+            assert metric in expected_metrics
     assert len(bulk_evals[0].confusion_matrices[0]) == len(
         expected_confusion_matrix
     )
@@ -417,9 +385,15 @@ def test_evaluate_tabular_clf(
     )
 
     metrics_from_eval_settings_id = results[0].metrics
-    assert len(metrics_from_eval_settings_id) == len(expected_metrics)
+    assert (
+        len(metrics_from_eval_settings_id) == len(expected_metrics) + 2
+    )  # PrecisionRecallCurve + DetailedPrecisionRecallCurvel
     for m in metrics_from_eval_settings_id:
-        assert m in expected_metrics
+        if m["type"] not in [
+            "PrecisionRecallCurve",
+            "DetailedPrecisionRecallCurve",
+        ]:
+            assert m in expected_metrics
     for m in expected_metrics:
         assert m in metrics_from_eval_settings_id
 
@@ -587,9 +561,15 @@ def test_stratify_clf_metrics(
     ]
 
     for metrics in [val2_metrics, val_bool_metrics]:
-        assert len(metrics) == len(expected_metrics)
+        assert (
+            len(metrics) == len(expected_metrics) + 2
+        )  # PrecisionRecallCurve and DetailedPrecisionRecallCurve
         for m in metrics:
-            assert m in expected_metrics
+            if m["type"] not in [
+                "PrecisionRecallCurve",
+                "DetailedPrecisionRecallCurve",
+            ]:
+                assert m in expected_metrics
         for m in expected_metrics:
             assert m in metrics
 
@@ -719,9 +699,15 @@ def test_stratify_clf_metrics_by_time(
         },
     ]
 
-    assert len(val2_metrics) == len(expected_metrics)
+    assert (
+        len(val2_metrics) == len(expected_metrics) + 2
+    )  # PrecisionRecallCurve and DetailedPrecisionRecallCurve
     for m in val2_metrics:
-        assert m in expected_metrics
+        if m["type"] not in [
+            "PrecisionRecallCurve",
+            "DetailedPrecisionRecallCurve",
+        ]:
+            assert m in expected_metrics
     for m in expected_metrics:
         assert m in val2_metrics
 
@@ -1016,15 +1002,6 @@ def test_evaluate_classification_with_label_maps(
     eval_job = model.evaluate_classification(
         dataset,
         label_map=label_mapping,
-        metrics=[
-            "Accuracy",
-            "ROCAUC",
-            "Precision",
-            "F1",
-            "Recall",
-            "PrecisionRecallCurve",
-            "DetailedPrecisionRecallCurve",
-        ],
         pr_curve_max_examples=3,
     )
     assert eval_job.id

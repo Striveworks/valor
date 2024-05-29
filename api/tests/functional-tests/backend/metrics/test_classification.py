@@ -705,13 +705,6 @@ def test_compute_classification(
 
     confusion, metrics = _compute_clf_metrics(
         db,
-        metrics=[
-            "Precision",
-            "Recall",
-            "F1",
-            "Accuracy",
-            "ROCAUC",
-        ],
         prediction_filter=model_filter,
         groundtruth_filter=datum_filter,
         label_map=None,
@@ -786,13 +779,6 @@ def test_classification(
         datum_filter=schemas.Filter(dataset_names=[dataset_name]),
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.CLASSIFICATION,
-            metrics=[
-                "Precision",
-                "Recall",
-                "F1",
-                "Accuracy",
-                "ROCAUC",
-            ],
         ),
         meta={},
     )
@@ -952,7 +938,6 @@ def test__compute_curves(
 
     curves = _compute_curves(
         db=db,
-        metrics=["PrecisionRecallCurve", "DetailedPrecisionRecallCurve"],
         predictions=predictions,
         groundtruths=groundtruths,
         grouper_key="animal",
@@ -1092,7 +1077,6 @@ def test__compute_curves(
     # repeat the above, but with a higher pr_max_curves_example
     curves = _compute_curves(
         db=db,
-        metrics=["PrecisionRecallCurve", "DetailedPrecisionRecallCurve"],
         predictions=predictions,
         groundtruths=groundtruths,
         grouper_key="animal",
@@ -1144,7 +1128,6 @@ def test__compute_curves(
     # test behavior if pr_curve_max_examples == 0
     curves = _compute_curves(
         db=db,
-        metrics=["PrecisionRecallCurve", "DetailedPrecisionRecallCurve"],
         predictions=predictions,
         groundtruths=groundtruths,
         grouper_key="animal",

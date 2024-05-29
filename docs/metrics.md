@@ -166,13 +166,12 @@ Note that this metric differs from COCO's calculation in two ways:
 - COCO calculates three different AR metrics (AR@1, AR@5, AR@100) by considering only the top 1/5/100 most confident predictions during the matching process. Valor, on the other hand, allows users to input a `recall_score_threshold` value that will prevent low-confidence predictions from being counted as true positives when calculating AR.
 
 ## Precision-Recall Curves
-Precision-recall curves offer insight into which confidence threshold you should pick for your production pipeline. To compute these curves for your classification or object detection workflow, pass the metric name `PrecisionRecallCurve` in the `metrics` parameter of your evaluation call. Valor will then tabulate the true positives, false positives, true negatives, false negatives, precision, recall, and F1 score for each (label key, label value, confidence threshold) combination, and store them in a nested dictionary for your use. When using the Valor Python client, the output will be formatted as follows:
+Precision-recall curves offer insight into which confidence threshold you should pick for your production pipeline. The `PrecisionRecallCurve` metric includes the true positives, false positives, true negatives, false negatives, precision, recall, and F1 score for each (label key, label value, confidence threshold) combination. When using the Valor Python client, the output will be formatted as follows:
 
 ```python
 
 pr_evaluation = evaluate_detection(
     data=dataset,
-    metrics=[..., 'PrecisionRecallCurve']
 )
 print(pr_evaluation)
 
@@ -216,17 +215,16 @@ The `PrecisionRecallCurve` values differ from the precision-recall curves used t
 
 ### DetailedPrecisionRecallCurve
 
-Valor also includes a more detailed version of `PrecisionRecallCurve` which can be useful for debugging your model's false positives and false negatives. By passing `DetailedPrecisionCurve` into your list of `metrics`, Valor will:
+Valor also includes a more detailed version of `PrecisionRecallCurve` which can be useful for debugging your model's false positives and false negatives. When calculating `DetailedPrecisionCurve`, Valor will:
 - Classify your false positives as being either `hallucinations` (i.e., our model predicted that a datum contained a certain label key when there wasn't actually any groundtruths with that label key associated with that datum) or `misclassifications` (our model correctly associated a certain label key with a datum, but its prediction gave it the wrong label value or bounding box).
 - Classify your false negative as being either `missed_detections` (our model didn't output a prediction when it should have for a given datum) or `misclassifications` (our model outputted a prediction for a given datum, but the prediction's label or bounding box was incorrect).
 - Include `n` examples of each observation type (where `n` is less than or equal to the `pr_curve_max_examples` that you can pass at evaluation time)
 
 
 ```python
-# To retrieve more detailed examples for each `fn`, `fp`, and `tp`, the user can request the `DetailedPrecisionRecallCurve` metric
+# To retrieve more detailed examples for each `fn`, `fp`, and `tp`, look at the `DetailedPrecisionRecallCurve` metric
 detailed_evaluation = evaluate_detection(
     data=dataset,
-    metrics=[..., 'DetailedPrecisionRecallCurve']
     pr_curve_max_examples=1 # The maximum number of examples to return for each obseration type (e.g., hallucinations, misclassifications, etc.)
 )
 print(detailed_evaluation)

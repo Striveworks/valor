@@ -64,7 +64,6 @@ def _calculate_101_pt_interp(precisions, recalls) -> float:
 
 
 def _compute_curves(
-    metrics: list[str],
     sorted_ranked_pairs: dict[int, list[RankedPair]],
     grouper_mappings: dict[str, dict[str, schemas.Label]],
     groundtruths_per_grouper: dict[int, list],
@@ -77,8 +76,6 @@ def _compute_curves(
 
     Parameters
     ----------
-    metrics: List[str]
-        The list of metrics to compute, store, and return to the user.
     sorted_ranked_pairs: dict[int, list[RankedPair]]
         The ground truth-prediction matches from psql, grouped by grouper_id.
     grouper_mappings: dict[str, dict[str, schemas.Label]]
@@ -252,117 +249,113 @@ def _compute_curves(
                 else -1
             )
 
-            if "PrecisionRecallCurve" in metrics:
-                pr_curves[label_value][confidence_threshold] = {
-                    "tp": tp_cnt,
-                    "fp": fp_cnt,
-                    "fn": fn_cnt,
-                    "tn": None,  # tn and accuracy aren't applicable to detection tasks because there's an infinite number of true negatives
-                    "precision": precision,
-                    "recall": recall,
-                    "accuracy": None,
-                    "f1_score": f1_score,
-                }
+            pr_curves[label_value][confidence_threshold] = {
+                "tp": tp_cnt,
+                "fp": fp_cnt,
+                "fn": fn_cnt,
+                "tn": None,  # tn and accuracy aren't applicable to detection tasks because there's an infinite number of true negatives
+                "precision": precision,
+                "recall": recall,
+                "accuracy": None,
+                "f1_score": f1_score,
+            }
 
-            if "DetailedPrecisionRecallCurve" in metrics:
-                detailed_pr_curves[label_value][confidence_threshold] = {
-                    "tp": {
-                        "total": tp_cnt,
-                        "observations": {
-                            "all": {
-                                "count": tp_cnt,
-                                "examples": (
-                                    random.sample(tp, pr_curve_max_examples)
-                                    if len(tp) >= pr_curve_max_examples
-                                    else tp
-                                ),
-                            }
+            detailed_pr_curves[label_value][confidence_threshold] = {
+                "tp": {
+                    "total": tp_cnt,
+                    "observations": {
+                        "all": {
+                            "count": tp_cnt,
+                            "examples": (
+                                random.sample(tp, pr_curve_max_examples)
+                                if len(tp) >= pr_curve_max_examples
+                                else tp
+                            ),
+                        }
+                    },
+                },
+                "fn": {
+                    "total": fn_cnt,
+                    "observations": {
+                        "misclassifications": {
+                            "count": len(fn["misclassifications"]),
+                            "examples": (
+                                random.sample(
+                                    fn["misclassifications"],
+                                    pr_curve_max_examples,
+                                )
+                                if len(fn["misclassifications"])
+                                >= pr_curve_max_examples
+                                else fn["misclassifications"]
+                            ),
+                        },
+                        "missed_detections": {
+                            "count": len(fn["missed_detections"]),
+                            "examples": (
+                                random.sample(
+                                    fn["missed_detections"],
+                                    pr_curve_max_examples,
+                                )
+                                if len(fn["missed_detections"])
+                                >= pr_curve_max_examples
+                                else fn["missed_detections"]
+                            ),
                         },
                     },
-                    "fn": {
-                        "total": fn_cnt,
-                        "observations": {
-                            "misclassifications": {
-                                "count": len(fn["misclassifications"]),
-                                "examples": (
-                                    random.sample(
-                                        fn["misclassifications"],
-                                        pr_curve_max_examples,
-                                    )
-                                    if len(fn["misclassifications"])
-                                    >= pr_curve_max_examples
-                                    else fn["misclassifications"]
-                                ),
-                            },
-                            "missed_detections": {
-                                "count": len(fn["missed_detections"]),
-                                "examples": (
-                                    random.sample(
-                                        fn["missed_detections"],
-                                        pr_curve_max_examples,
-                                    )
-                                    if len(fn["missed_detections"])
-                                    >= pr_curve_max_examples
-                                    else fn["missed_detections"]
-                                ),
-                            },
+                },
+                "fp": {
+                    "total": fp_cnt,
+                    "observations": {
+                        "misclassifications": {
+                            "count": len(fp["misclassifications"]),
+                            "examples": (
+                                random.sample(
+                                    fp["misclassifications"],
+                                    pr_curve_max_examples,
+                                )
+                                if len(fp["misclassifications"])
+                                >= pr_curve_max_examples
+                                else fp["misclassifications"]
+                            ),
+                        },
+                        "hallucinations": {
+                            "count": len(fp["hallucinations"]),
+                            "examples": (
+                                random.sample(
+                                    fp["hallucinations"],
+                                    pr_curve_max_examples,
+                                )
+                                if len(fp["hallucinations"])
+                                >= pr_curve_max_examples
+                                else fp["hallucinations"]
+                            ),
                         },
                     },
-                    "fp": {
-                        "total": fp_cnt,
-                        "observations": {
-                            "misclassifications": {
-                                "count": len(fp["misclassifications"]),
-                                "examples": (
-                                    random.sample(
-                                        fp["misclassifications"],
-                                        pr_curve_max_examples,
-                                    )
-                                    if len(fp["misclassifications"])
-                                    >= pr_curve_max_examples
-                                    else fp["misclassifications"]
-                                ),
-                            },
-                            "hallucinations": {
-                                "count": len(fp["hallucinations"]),
-                                "examples": (
-                                    random.sample(
-                                        fp["hallucinations"],
-                                        pr_curve_max_examples,
-                                    )
-                                    if len(fp["hallucinations"])
-                                    >= pr_curve_max_examples
-                                    else fp["hallucinations"]
-                                ),
-                            },
-                        },
-                    },
-                }
+                },
+            }
 
         pr_output[label_key].update(dict(pr_curves))
         detailed_pr_output[label_key].update(dict(detailed_pr_curves))
 
     output = []
 
-    if "PrecisionRecallCurve" in metrics:
-        output += [
-            schemas.PrecisionRecallCurve(
-                label_key=key,
-                value=dict(value),
-                pr_curve_iou_threshold=iou_threshold,
-            )
-            for key, value in pr_output.items()
-        ]
+    output += [
+        schemas.PrecisionRecallCurve(
+            label_key=key,
+            value=dict(value),
+            pr_curve_iou_threshold=iou_threshold,
+        )
+        for key, value in pr_output.items()
+    ]
 
-    if "DetailedPrecisionRecallCurve" in metrics:
-        output += [
-            schemas.DetailedPrecisionRecallCurve(
-                label_key=key,
-                value=dict(value),
-                pr_curve_iou_threshold=iou_threshold,
-            )
-            for key, value in detailed_pr_output.items()
-        ]
+    output += [
+        schemas.DetailedPrecisionRecallCurve(
+            label_key=key,
+            value=dict(value),
+            pr_curve_iou_threshold=iou_threshold,
+        )
+        for key, value in detailed_pr_output.items()
+    ]
 
     return output
 
@@ -846,112 +839,80 @@ def _compute_detection_metrics(
         number_of_groundtruths_per_grouper[grouper_id] += 1
 
     # Optionally compute precision-recall curves
-    if parameters.metrics and (
-        "PrecisionRecallCurve" in parameters.metrics
-        or "DetailedPrecisionRecallCurve" in parameters.metrics
-    ):
-        false_positive_entries = db.query(
-            select(
-                joint.c.dataset_name,
-                joint.c.gt_datum_uid,
-                joint.c.pd_datum_uid,
-                joint.c.gt_label_id_grouper.label("gt_label_id_grouper"),
-                joint.c.pd_label_id_grouper.label("pd_label_id_grouper"),
-                joint.c.score.label("score"),
-                joint.c.pd_geojson,
-            )
-            .select_from(joint)
-            .where(
-                or_(
-                    joint.c.gt_id.is_(None),
-                    joint.c.pd_id.is_(None),
-                )
-            )
-            .subquery()
-        ).all()
-
-        pr_curves = _compute_curves(
-            metrics=parameters.metrics,
-            sorted_ranked_pairs=ranking,
-            grouper_mappings=grouper_mappings,
-            groundtruths_per_grouper=groundtruths_per_grouper,
-            false_positive_entries=false_positive_entries,
-            iou_threshold=parameters.pr_curve_iou_threshold,
-            pr_curve_max_examples=(
-                parameters.pr_curve_max_examples
-                if parameters.pr_curve_max_examples
-                else 1
-            ),
+    false_positive_entries = db.query(
+        select(
+            joint.c.dataset_name,
+            joint.c.gt_datum_uid,
+            joint.c.pd_datum_uid,
+            joint.c.gt_label_id_grouper.label("gt_label_id_grouper"),
+            joint.c.pd_label_id_grouper.label("pd_label_id_grouper"),
+            joint.c.score.label("score"),
+            joint.c.pd_geojson,
         )
-    else:
-        pr_curves = []
-
-    if any(
-        [
-            m in parameters.metrics
-            for m in [
-                "AP",
-                "AR",
-                "mAP",
-                "APAveragedOverIOUs",
-                "mAR",
-                "mAPAveragedOverIOUs",
-            ]
-        ]
-    ):
-        ap_ar_output = []
-
-        ap_metrics, ar_metrics = _calculate_ap_and_ar(
-            sorted_ranked_pairs=ranking,
-            number_of_groundtruths_per_grouper=number_of_groundtruths_per_grouper,
-            iou_thresholds=parameters.iou_thresholds_to_compute,
-            grouper_mappings=grouper_mappings,
-            recall_score_threshold=parameters.recall_score_threshold,
-        )
-
-        if "AR" in parameters.metrics:
-            ap_ar_output += ar_metrics
-
-        # calculate averaged metrics
-        mean_ap_metrics = _compute_mean_detection_metrics_from_aps(ap_metrics)
-        mean_ar_metrics = _compute_mean_ar_metrics(ar_metrics)
-
-        ap_metrics_ave_over_ious = list(
-            _compute_detection_metrics_averaged_over_ious_from_aps(ap_metrics)
-        )
-
-        if "mAR" in parameters.metrics:
-            ap_ar_output += mean_ar_metrics
-
-        if "APAveragedOverIOUs" in parameters.metrics:
-            ap_ar_output += ap_metrics_ave_over_ious
-
-        if "mAPAveragedOverIOUs" in parameters.metrics:
-            mean_ap_metrics_ave_over_ious = list(
-                _compute_mean_detection_metrics_from_aps(
-                    ap_metrics_ave_over_ious
-                )
+        .select_from(joint)
+        .where(
+            or_(
+                joint.c.gt_id.is_(None),
+                joint.c.pd_id.is_(None),
             )
-            ap_ar_output += mean_ap_metrics_ave_over_ious
+        )
+        .subquery()
+    ).all()
 
-        if "AP" in parameters.metrics:
-            ap_metrics = [
-                m
-                for m in ap_metrics
-                if m.iou in parameters.iou_thresholds_to_return
-            ]
-            ap_ar_output += ap_metrics
+    pr_curves = _compute_curves(
+        sorted_ranked_pairs=ranking,
+        grouper_mappings=grouper_mappings,
+        groundtruths_per_grouper=groundtruths_per_grouper,
+        false_positive_entries=false_positive_entries,
+        iou_threshold=parameters.pr_curve_iou_threshold,
+        pr_curve_max_examples=(
+            parameters.pr_curve_max_examples
+            if parameters.pr_curve_max_examples
+            else 1
+        ),
+    )
 
-        if "mAP" in parameters.metrics:
-            mean_ap_metrics = [
-                m
-                for m in mean_ap_metrics
-                if isinstance(m, schemas.mAPMetric)
-                and m.iou in parameters.iou_thresholds_to_return
-            ]
-            ap_ar_output += mean_ap_metrics
-    else:
-        ap_ar_output = []
+    ap_ar_output = []
+
+    ap_metrics, ar_metrics = _calculate_ap_and_ar(
+        sorted_ranked_pairs=ranking,
+        number_of_groundtruths_per_grouper=number_of_groundtruths_per_grouper,
+        iou_thresholds=parameters.iou_thresholds_to_compute,
+        grouper_mappings=grouper_mappings,
+        recall_score_threshold=parameters.recall_score_threshold,
+    )
+
+    ap_ar_output += ar_metrics
+
+    # calculate averaged metrics
+    mean_ap_metrics = _compute_mean_detection_metrics_from_aps(ap_metrics)
+    mean_ar_metrics = _compute_mean_ar_metrics(ar_metrics)
+
+    ap_metrics_ave_over_ious = list(
+        _compute_detection_metrics_averaged_over_ious_from_aps(ap_metrics)
+    )
+
+    ap_ar_output += mean_ar_metrics
+
+    ap_ar_output += ap_metrics_ave_over_ious
+
+    mean_ap_metrics_ave_over_ious = list(
+        _compute_mean_detection_metrics_from_aps(ap_metrics_ave_over_ious)
+    )
+    ap_ar_output += mean_ap_metrics_ave_over_ious
+
+    ap_metrics = [
+        m for m in ap_metrics if m.iou in parameters.iou_thresholds_to_return
+    ]
+    ap_ar_output += ap_metrics
+
+    mean_ap_metrics = [
+        m
+        for m in mean_ap_metrics
+        if isinstance(m, schemas.mAPMetric)
+        and m.iou in parameters.iou_thresholds_to_return
+    ]
+    ap_ar_output += mean_ap_metrics
 
     return ap_ar_output + pr_curves
 

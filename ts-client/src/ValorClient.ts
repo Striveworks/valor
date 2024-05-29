@@ -6,22 +6,6 @@ import axios, { AxiosInstance } from 'axios';
  * @param taskType The type of the task.
  * @returns A list of strings representing the metrics to return.
  */
-function getDefaultMetrics(taskType: string): string[] {
-  const default_metrics = {
-    classification: ['Precision', 'Recall', 'F1', 'Accuracy', 'ROCAUC'],
-    'object-detection': [
-      'AP',
-      'AR',
-      'mAP',
-      'APAveragedOverIOUs',
-      'mAR',
-      'mAPAveragedOverIOUs'
-    ],
-    'semantic-segmentation': ['IOU', 'mIOU']
-  };
-
-  return default_metrics[taskType];
-}
 
 /**
  * Checks if value conforms to the GeoJSON specification.
@@ -403,7 +387,6 @@ export class ValorClient {
    * @param model name of the model
    * @param dataset name of the dataset
    * @param taskType type of task
-   * @param [metrics] the metrics to compute, store, and return to the user.
    * @param [iouThresholdsToCompute] list of floats describing which Intersection over Unions (IoUs) to use when calculating metrics (i.e., mAP)
    * @param [iouThresholdsToReturn] list of floats describing which Intersection over Union (IoUs) thresholds to calculate a metric for. Must be a subset of `iou_thresholds_to_compute`
    * @param [labelMap] mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models
@@ -416,7 +399,6 @@ export class ValorClient {
     model: string,
     dataset: string,
     taskType: TaskType,
-    metrics?: string[],
     iouThresholdsToCompute?: number[],
     iouThresholdsToReturn?: number[],
     labelMap?: number[][][],
@@ -429,7 +411,6 @@ export class ValorClient {
       datum_filter: { dataset_names: [dataset] },
       parameters: {
         task_type: taskType,
-        metrics: metrics != null ? metrics : getDefaultMetrics(taskType),
         iou_thresholds_to_compute: iouThresholdsToCompute,
         iou_thresholds_to_return: iouThresholdsToReturn,
         label_map: labelMap,
@@ -449,7 +430,6 @@ export class ValorClient {
    * @param models names of the models
    * @param dataset name of the dataset
    * @param taskType type of task
-   * @param [metrics] the metrics to compute, store, and return to the user.
    * @param [iouThresholdsToCompute] list of floats describing which Intersection over Unions (IoUs) to use when calculating metrics (i.e., mAP)
    * @param [iouThresholdsToReturn] list of floats describing which Intersection over Union (IoUs) thresholds to calculate a metric for. Must be a subset of `iou_thresholds_to_compute`
    * @param [labelMap] mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models
@@ -463,7 +443,6 @@ export class ValorClient {
     models: string[],
     dataset: string,
     taskType: TaskType,
-    metrics?: string[],
     iouThresholdsToCompute?: number[],
     iouThresholdsToReturn?: number[],
     labelMap?: any[][][],
@@ -475,7 +454,6 @@ export class ValorClient {
       datum_filter: { dataset_names: [dataset] },
       parameters: {
         task_type: taskType,
-        metrics: metrics != null ? metrics : getDefaultMetrics(taskType),
         iou_thresholds_to_compute: iouThresholdsToCompute,
         iou_thresholds_to_return: iouThresholdsToReturn,
         label_map: labelMap,

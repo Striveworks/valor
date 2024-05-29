@@ -9,42 +9,18 @@ from valor_api import enums, schemas
 def test_EvaluationParameters():
     schemas.EvaluationParameters(
         task_type=enums.TaskType.CLASSIFICATION,
-        metrics=[
-            "Accuracy",
-            "Precision",
-            "Recall",
-            "F1",
-            "ROCAUC",
-            "PrecisionRecallCurve",
-        ],
     )
 
     schemas.EvaluationParameters(
         task_type=enums.TaskType.OBJECT_DETECTION,
         iou_thresholds_to_compute=[0.2, 0.6],
         iou_thresholds_to_return=[],
-        metrics=[
-            "AP",
-            "AR",
-            "mAP",
-            "APAveragedOverIOUs",
-            "mAR",
-            "mAPAveragedOverIOUs",
-        ],
     )
 
     schemas.EvaluationParameters(
         task_type=enums.TaskType.OBJECT_DETECTION,
         iou_thresholds_to_compute=[],
         iou_thresholds_to_return=[],
-        metrics=[
-            "AP",
-            "AR",
-            "mAP",
-            "APAveragedOverIOUs",
-            "mAR",
-            "mAPAveragedOverIOUs",
-        ],
     )
 
     schemas.EvaluationParameters(
@@ -56,14 +32,6 @@ def test_EvaluationParameters():
             [["class", "siamese cat"], ["class", "cat"]],
             [["class", "british shorthair"], ["class", "cat"]],
         ],
-        metrics=[
-            "AP",
-            "AR",
-            "mAP",
-            "APAveragedOverIOUs",
-            "mAR",
-            "mAPAveragedOverIOUs",
-        ],
     )
 
     with pytest.raises(ValidationError):
@@ -71,14 +39,6 @@ def test_EvaluationParameters():
             task_type=enums.TaskType.CLASSIFICATION,
             iou_thresholds_to_compute=[0.2, 0.6],
             iou_thresholds_to_return=[],
-            metrics=[
-                "Accuracy",
-                "Precision",
-                "Recall",
-                "F1",
-                "ROCAUC",
-                "PrecisionRecallCurve",
-            ],
         )
 
     with pytest.raises(ValidationError):
@@ -86,7 +46,6 @@ def test_EvaluationParameters():
             task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
             iou_thresholds_to_compute=[0.2, 0.6],
             iou_thresholds_to_return=[],
-            metrics=["IOU"],
         )
 
     with pytest.raises(ValidationError):
@@ -94,14 +53,6 @@ def test_EvaluationParameters():
             task_type=enums.TaskType.OBJECT_DETECTION,
             iou_thresholds_to_compute=None,
             iou_thresholds_to_return=[0.2],
-            metrics=[
-                "AP",
-                "AR",
-                "mAP",
-                "APAveragedOverIOUs",
-                "mAR",
-                "mAPAveragedOverIOUs",
-            ],
         )
 
     with pytest.raises(ValidationError):
@@ -109,14 +60,6 @@ def test_EvaluationParameters():
             task_type=enums.TaskType.OBJECT_DETECTION,
             iou_thresholds_to_compute=None,
             iou_thresholds_to_return=0.2,  # type: ignore - purposefully throwing error,
-            metrics=[
-                "AP",
-                "AR",
-                "mAP",
-                "APAveragedOverIOUs",
-                "mAR",
-                "mAPAveragedOverIOUs",
-            ],
         )
 
     with pytest.raises(ValidationError):
@@ -124,14 +67,6 @@ def test_EvaluationParameters():
             task_type=enums.TaskType.OBJECT_DETECTION,
             iou_thresholds_to_compute=[0.2, "test"],  # type: ignore - purposefully throwing error
             iou_thresholds_to_return=[],
-            metrics=[
-                "AP",
-                "AR",
-                "mAP",
-                "APAveragedOverIOUs",
-                "mAR",
-                "mAPAveragedOverIOUs",
-            ],
         )
 
     with pytest.raises(ValidationError):
@@ -140,14 +75,6 @@ def test_EvaluationParameters():
             iou_thresholds_to_compute=[0.2, "test"],  # type: ignore - purposefully throwing error
             iou_thresholds_to_return=[],
             label_map={"not a": "valid grouper"},  # type: ignore - purposefully throwing error
-            metrics=[
-                "AP",
-                "AR",
-                "mAP",
-                "APAveragedOverIOUs",
-                "mAR",
-                "mAPAveragedOverIOUs",
-            ],
         )
 
 
@@ -157,14 +84,6 @@ def test_EvaluationRequest():
         datum_filter=schemas.Filter(),
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.CLASSIFICATION,
-            metrics=[
-                "Accuracy",
-                "Precision",
-                "Recall",
-                "F1",
-                "ROCAUC",
-                "PrecisionRecallCurve",
-            ],
         ),
         meta={},
     )
@@ -173,14 +92,6 @@ def test_EvaluationRequest():
         datum_filter=schemas.Filter(),
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.CLASSIFICATION,
-            metrics=[
-                "Accuracy",
-                "Precision",
-                "Recall",
-                "F1",
-                "ROCAUC",
-                "PrecisionRecallCurve",
-            ],
         ),
         meta={},
     )
@@ -189,14 +100,6 @@ def test_EvaluationRequest():
         datum_filter=schemas.Filter(),
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.CLASSIFICATION,
-            metrics=[
-                "Accuracy",
-                "Precision",
-                "Recall",
-                "F1",
-                "ROCAUC",
-                "PrecisionRecallCurve",
-            ],
         ),
         meta={},
     )
@@ -208,14 +111,6 @@ def test_EvaluationRequest():
             datum_filter=schemas.Filter(),
             parameters=schemas.EvaluationParameters(
                 task_type=enums.TaskType.CLASSIFICATION,
-                metrics=[
-                    "Accuracy",
-                    "Precision",
-                    "Recall",
-                    "F1",
-                    "ROCAUC",
-                    "PrecisionRecallCurve",
-                ],
             ),
         )
     with pytest.raises(ValidationError):
@@ -224,14 +119,6 @@ def test_EvaluationRequest():
             datum_filter=None,  # type: ignore - purposefully throwing error
             parameters=schemas.EvaluationParameters(
                 task_type=enums.TaskType.CLASSIFICATION,
-                metrics=[
-                    "Accuracy",
-                    "Precision",
-                    "Recall",
-                    "F1",
-                    "ROCAUC",
-                    "PrecisionRecallCurve",
-                ],
             ),
         )
     with pytest.raises(ValidationError):
@@ -248,14 +135,6 @@ def test_EvaluationRequest():
             datum_filter=schemas.Filter(),
             parameters=schemas.EvaluationParameters(
                 task_type=enums.TaskType.CLASSIFICATION,
-                metrics=[
-                    "Accuracy",
-                    "Precision",
-                    "Recall",
-                    "F1",
-                    "ROCAUC",
-                    "PrecisionRecallCurve",
-                ],
             ),
             meta={},
         )
@@ -269,14 +148,6 @@ def test_EvaluationRequest():
             ),
             parameters=schemas.EvaluationParameters(
                 task_type=enums.TaskType.CLASSIFICATION,
-                metrics=[
-                    "Accuracy",
-                    "Precision",
-                    "Recall",
-                    "F1",
-                    "ROCAUC",
-                    "PrecisionRecallCurve",
-                ],
             ),
         )
 
@@ -288,14 +159,6 @@ def test_EvaluationResponse():
         datum_filter=schemas.Filter(),
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.CLASSIFICATION,
-            metrics=[
-                "Accuracy",
-                "Precision",
-                "Recall",
-                "F1",
-                "ROCAUC",
-                "PrecisionRecallCurve",
-            ],
         ),
         status=enums.EvaluationStatus.DONE,
         metrics=[],
@@ -312,14 +175,6 @@ def test_EvaluationResponse():
             datum_filter=schemas.Filter(),
             parameters=schemas.EvaluationParameters(
                 task_type=enums.TaskType.CLASSIFICATION,
-                metrics=[
-                    "Accuracy",
-                    "Precision",
-                    "Recall",
-                    "F1",
-                    "ROCAUC",
-                    "PrecisionRecallCurve",
-                ],
             ),
             status=enums.EvaluationStatus.DONE,
             metrics=[],
@@ -336,14 +191,6 @@ def test_EvaluationResponse():
             datum_filter=schemas.Filter(),
             parameters=schemas.EvaluationParameters(
                 task_type=enums.TaskType.CLASSIFICATION,
-                metrics=[
-                    "Accuracy",
-                    "Precision",
-                    "Recall",
-                    "F1",
-                    "ROCAUC",
-                    "PrecisionRecallCurve",
-                ],
             ),
             status=enums.EvaluationStatus.DONE,
             metrics=[],
@@ -374,14 +221,6 @@ def test_EvaluationResponse():
             datum_filter=schemas.Filter(),
             parameters=schemas.EvaluationParameters(
                 task_type=enums.TaskType.CLASSIFICATION,
-                metrics=[
-                    "Accuracy",
-                    "Precision",
-                    "Recall",
-                    "F1",
-                    "ROCAUC",
-                    "PrecisionRecallCurve",
-                ],
             ),
             status=None,  # type: ignore - purposefully throwing error
             metrics=[],

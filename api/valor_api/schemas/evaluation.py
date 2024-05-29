@@ -1,6 +1,6 @@
 import datetime
 
-from pydantic import BaseModel, ConfigDict, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, model_validator
 
 from valor_api.enums import AnnotationType, EvaluationStatus, TaskType
 from valor_api.schemas.filters import Filter
@@ -18,8 +18,6 @@ class EvaluationParameters(BaseModel):
     ----------
     convert_annotations_to_type: AnnotationType | None = None
         The type to convert all annotations to.
-    metrics: List[str], optional
-        The list of metrics to compute, store, and return to the user. Will return a default set of metrics is None is passed to the API.
     iou_thresholds_to_compute: List[float], optional
         A list of floats describing which Intersection over Unions (IoUs) to use when calculating metrics (i.e., mAP).
     iou_thresholds_to_return: List[float], optional
@@ -35,9 +33,6 @@ class EvaluationParameters(BaseModel):
     """
 
     task_type: TaskType
-    metrics: list[
-        str
-    ]  # this parameter can technically be None, but it's converted to a default list by pydantic using get_metric_defaults
     convert_annotations_to_type: AnnotationType | None = None
     iou_thresholds_to_compute: list[float] | None = None
     iou_thresholds_to_return: list[float] | None = None
@@ -48,34 +43,6 @@ class EvaluationParameters(BaseModel):
 
     # pydantic setting
     model_config = ConfigDict(extra="forbid")
-
-    @field_validator("metrics", mode="before")
-    @classmethod
-    def get_metric_defaults(cls, metrics, values) -> list[str]:
-        """If the user passes None to `metrics`, then use a default list of metrics for the given task type instead."""
-        if metrics is None:
-            default_metrics = {
-                TaskType.CLASSIFICATION: [
-                    "Precision",
-                    "Recall",
-                    "F1",
-                    "Accuracy",
-                    "ROCAUC",
-                ],
-                TaskType.OBJECT_DETECTION: [
-                    "AP",
-                    "AR",
-                    "mAP",
-                    "APAveragedOverIOUs",
-                    "mAR",
-                    "mAPAveragedOverIOUs",
-                ],
-                TaskType.SEMANTIC_SEGMENTATION: ["IOU", "mIOU"],
-            }
-
-            return default_metrics[values.data["task_type"]]
-        else:
-            return metrics
 
     @model_validator(mode="after")
     @classmethod
