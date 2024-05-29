@@ -1125,12 +1125,12 @@ class Model(StaticCollection):
         # format request
         datum_filter = self._format_constraints(datasets, filter_by)
         request = EvaluationRequest(
-            model_names=[self.get_name()],
+            model_names=[self.name],  # type: ignore
             datum_filter=datum_filter,
             parameters=EvaluationParameters(
                 task_type=TaskType.TEXT_GENERATION,
                 metrics=metrics,
-                llm_api_params=llm_api_params,
+                # llm_api_params=llm_api_params, # TODO We should not send this in a GET request like this. It needs to be protected in the json payload of a POST request.
             ),
             meta={},
         )
