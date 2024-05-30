@@ -8,8 +8,8 @@ These docs are organized as follows:
 
 - **[Overview](index.md)** (this page): Provides an overview of what Valor is, why it's important, and how it works.
 - **[Installation](installation.md)**: Explains how to install Valor.
-- **[Basic Usage](basic_usage.md)**: Details everything you need to get up and running with using Valor.
-- **[Sample Notebooks](https://github.com/Striveworks/valor/blob/main/examples/)**: Collection of descriptive Jupyter notebooks giving examples of how to evaluate model performance using Valor.
+- **[Getting Started Notebook](https://github.com/Striveworks/valor/blob/main/examples/getting_started.ipynb/)**: Details everything you need to get up and running with using Valor.
+- **[All Sample Notebooks](https://github.com/Striveworks/valor/blob/main/examples/)**: Collection of descriptive Jupyter notebooks giving examples of how to evaluate model performance using Valor.
 - **[Metadata and Filtering](metadata_and_filtering.md)**: Describes Valor's robust support for adding metadata to data, along with how to filter evaluations and Valor objects based on metadata and other attributes.
 - **[Metrics](metrics.md)**: Describes all of the metrics that you can calculate using Valor.
 - **[Endpoints](endpoints.md)**: Documents Valor's various API endpoints.
@@ -65,7 +65,7 @@ Finally, once all of our previous pipeline runs and evaluations are stored in Va
 
 # Next Steps
 
-To get started with Valor, we'd recommend reviewing our [sample notebooks](https://github.com/Striveworks/valor/blob/main/examples/getting_started.ipynb) or reading our [Getting Started docs](basic_usage.md). For more detailed explanations of Valor's technical underpinnings, see our [technical concepts guide](technical_concepts.md).
+We'd recommend reviewing our ["Getting Started" sample notebook](https://github.com/Striveworks/valor/blob/main/examples/getting_started.ipynb) to help you get more acquainted with Valor. For more detailed explanations of Valor's technical underpinnings, see our [technical concepts guide](technical_concepts.md).
 
 # FAQ
 
