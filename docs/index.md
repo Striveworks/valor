@@ -65,7 +65,7 @@ Finally, once all of our previous pipeline runs and evaluations are stored in Va
 
 # Next Steps
 
-We'd recommend reviewing our ["Getting Started" sample notebook](https://github.com/Striveworks/valor/blob/main/examples/getting_started.ipynb) to help you get more acquainted with Valor. For more detailed explanations of Valor's technical underpinnings, see our [technical concepts guide](technical_concepts.md).
+We'd recommend reviewing our ["Getting Started" sample notebook](https://github.com/Striveworks/valor/blob/main/examples/getting_started.ipynb) to become further acquainted with Valor. For more detailed explanations of Valor's technical underpinnings, see our [technical concepts guide](technical_concepts.md).
 
 # FAQ
 
