@@ -16,7 +16,7 @@ from valor import (
     Model,
     Prediction,
 )
-from valor.enums import EvaluationStatus, TaskType
+from valor.enums import EvaluationStatus
 from valor.exceptions import ClientException
 
 
@@ -205,7 +205,6 @@ def test_evaluate_tabular_clf(
             datum=Datum(uid=f"uid{i}"),
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
                     labels=[Label(key="class", value=str(t))],
                 )
             ],
@@ -228,7 +227,6 @@ def test_evaluate_tabular_clf(
             datum=Datum(uid=f"uid{i}"),
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
                     labels=[
                         Label(key="class", value=str(i), score=pred[i])
                         for i in range(len(pred))
@@ -424,7 +422,6 @@ def test_stratify_clf_metrics(
             ),
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
                     labels=[Label(key="class", value=str(label_value))],
                 )
             ],
@@ -445,7 +442,6 @@ def test_stratify_clf_metrics(
             ),
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
                     labels=[
                         Label(key="class", value=str(pidx), score=pred[pidx])
                         for pidx in range(len(pred))
@@ -572,7 +568,6 @@ def test_stratify_clf_metrics_by_time(
             ),
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
                     labels=[Label(key="class", value=str(label_value))],
                 )
             ],
@@ -592,7 +587,6 @@ def test_stratify_clf_metrics_by_time(
             ),
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
                     labels=[
                         Label(key="class", value=str(pidx), score=pred[pidx])
                         for pidx in range(len(pred))
@@ -693,7 +687,6 @@ def gt_clfs_with_label_maps(
             datum=img5,
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
                     labels=[
                         Label(key="k4", value="v4"),
                         Label(key="k5", value="v5"),
@@ -706,7 +699,6 @@ def gt_clfs_with_label_maps(
             datum=img6,
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
                     labels=[
                         Label(key="k4", value="v4"),
                         Label(key="class", value="british shorthair"),
@@ -718,7 +710,6 @@ def gt_clfs_with_label_maps(
             datum=img8,
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
                     labels=[
                         Label(key="k3", value="v3"),
                         Label(key="class", value="tabby cat"),
@@ -741,7 +732,6 @@ def pred_clfs_with_label_maps(
             datum=img5,
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
                     labels=[
                         Label(key="k4", value="v1", score=0.47),
                         Label(key="k4", value="v8", score=0.53),
@@ -755,7 +745,6 @@ def pred_clfs_with_label_maps(
             datum=img6,
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
                     labels=[
                         Label(key="k4", value="v4", score=0.71),
                         Label(key="k4", value="v5", score=0.29),
@@ -768,7 +757,6 @@ def pred_clfs_with_label_maps(
             datum=img8,
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
                     labels=[
                         Label(key="k3", value="v1", score=1.0),
                         Label(key="class", value="cat", score=1.0),
@@ -1109,7 +1097,6 @@ def gt_clfs_label_key_mismatch(
             datum=img5,
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
                     labels=[
                         Label(key="k4", value="v4"),
                         Label(key="k5", value="v5"),
@@ -1121,7 +1108,6 @@ def gt_clfs_label_key_mismatch(
             datum=img6,
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
                     labels=[Label(key="k4", value="v4")],
                 )
             ],
@@ -1130,7 +1116,6 @@ def gt_clfs_label_key_mismatch(
             datum=img8,
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
                     labels=[Label(key="k3", value="v3")],
                 )
             ],
@@ -1147,7 +1132,6 @@ def pred_clfs_label_key_mismatch(
             datum=img5,
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
                     labels=[
                         Label(key="k12", value="v12", score=0.47),
                         Label(key="k12", value="v16", score=0.53),
@@ -1160,7 +1144,6 @@ def pred_clfs_label_key_mismatch(
             datum=img6,
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
                     labels=[
                         Label(key="k4", value="v4", score=0.71),
                         Label(key="k4", value="v5", score=0.29),

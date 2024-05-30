@@ -1,0 +1,1 @@
+ALTER TABLE annotation DROP COLUMN task_type;

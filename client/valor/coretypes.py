@@ -70,7 +70,6 @@ class GroundTruth(StaticCollection):
     ...     datum=Datum(uid="uid1"),
     ...     annotations=[
     ...         Annotation(
-    ...             task_type=TaskType.CLASSIFICATION,
     ...             labels=[Label(key="k1", value="v1")],
     ...         )
     ...     ]
@@ -125,7 +124,6 @@ class Prediction(StaticCollection):
     ...     datum=Datum(uid="uid1"),
     ...     annotations=[
     ...         Annotation(
-    ...             task_type=TaskType.CLASSIFICATION,
     ...             labels=[
     ...                 Label(key="k1", value="v1", score=0.9),
     ...                 Label(key="k1", value="v1", score=0.1)
@@ -159,34 +157,35 @@ class Prediction(StaticCollection):
         super().__init__(datum=datum, annotations=annotations)
 
         # validation
-        for annotation in self.annotations:
-            task_type = annotation.task_type
-            if task_type in [
-                TaskType.CLASSIFICATION,
-                TaskType.OBJECT_DETECTION,
-            ]:
-                for label in annotation.labels:
-                    label_score = label.score
-                    if label_score is None:
-                        raise ValueError(
-                            f"For task type `{task_type}` prediction labels must have scores, but got `None`"
-                        )
-            if task_type == TaskType.CLASSIFICATION:
+        # for annotation in self.annotations:
+        # # TODO need to edit this logic
+        # task_type = annotation.task_type
+        # if task_type in [
+        #     TaskType.CLASSIFICATION,
+        #     TaskType.OBJECT_DETECTION,
+        # ]:
+        #     for label in annotation.labels:
+        #         label_score = label.score
+        #         if label_score is None:
+        #             raise ValueError(
+        #                 f"For task type `{task_type}` prediction labels must have scores, but got `None`"
+        #             )
+        # if task_type == TaskType.CLASSIFICATION:
 
-                label_keys_to_sum = {}
-                for scored_label in annotation.labels:
-                    label_key = scored_label.key
-                    label_score = scored_label.score
-                    if label_key not in label_keys_to_sum:
-                        label_keys_to_sum[label_key] = 0.0
-                    label_keys_to_sum[label_key] += label_score
+        #     label_keys_to_sum = {}
+        #     for scored_label in annotation.labels:
+        #         label_key = scored_label.key
+        #         label_score = scored_label.score
+        #         if label_key not in label_keys_to_sum:
+        #             label_keys_to_sum[label_key] = 0.0
+        #         label_keys_to_sum[label_key] += label_score
 
-                for k, total_score in label_keys_to_sum.items():
-                    if abs(total_score - 1) > 1e-5:
-                        raise ValueError(
-                            "For each label key, prediction scores must sum to 1, but"
-                            f" for label key {k} got scores summing to {total_score}."
-                        )
+        #     for k, total_score in label_keys_to_sum.items():
+        #         if abs(total_score - 1) > 1e-5:
+        #             raise ValueError(
+        #                 "For each label key, prediction scores must sum to 1, but"
+        #                 f" for label key {k} got scores summing to {total_score}."
+        #             )
 
 
 class Evaluation:
@@ -393,15 +392,11 @@ class DatasetSummary:
     num_bounding_boxes: int
     num_polygons: int
     num_rasters: int
-    task_types: List[TaskType]
     labels: List[Label]
     datum_metadata: List[dict]
     annotation_metadata: List[dict]
 
     def __post_init__(self):
-        for i, tt in enumerate(self.task_types):
-            if isinstance(tt, str):
-                self.task_types[i] = TaskType(tt)
         for i, label in enumerate(self.labels):
             if isinstance(label, dict):
                 self.labels[i] = Label(**label)
@@ -641,8 +636,6 @@ class Dataset(StaticCollection):
             num_polygons: total number of polygons in the dataset
 
             num_rasters: total number of rasters in the dataset
-
-            task_types: list of the unique task types in the dataset
 
             labels: list of the unique labels in the dataset
 

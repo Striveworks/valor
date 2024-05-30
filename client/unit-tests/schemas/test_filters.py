@@ -2,7 +2,6 @@ import datetime
 from dataclasses import asdict
 
 from valor import Annotation, Dataset, Datum, Filter, Label, Model
-from valor.enums import TaskType
 
 
 def test_empty_filter():
@@ -14,7 +13,6 @@ def test_empty_filter():
         "model_metadata": None,
         "datum_uids": None,
         "datum_metadata": None,
-        "task_types": None,
         "annotation_metadata": None,
         "require_bounding_box": None,
         "bounding_box_area": None,
@@ -38,9 +36,6 @@ def test_declarative_filtering():
         Label.score > 0.5,
         Label.score < 0.75,
         Annotation.labels == [Label(key="k2", value="v2")],
-        Annotation.task_type.in_(
-            [TaskType.CLASSIFICATION, TaskType.OBJECT_DETECTION]
-        ),
         # geometry filters
         Annotation.raster.is_none(),
         Annotation.polygon.is_none(),
@@ -78,10 +73,6 @@ def test_declarative_filtering():
                 {"value": {"duration": 172800.0}, "operator": "<="},
             ]
         },
-        "task_types": [
-            TaskType.CLASSIFICATION.value,
-            TaskType.OBJECT_DETECTION.value,
-        ],
         "require_bounding_box": True,
         "bounding_box_area": [
             {"value": 1000, "operator": ">="},

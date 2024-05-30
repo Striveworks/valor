@@ -90,7 +90,6 @@ def groundtruth_detections(
             datum=img1,
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.OBJECT_DETECTION,
                     labels=[
                         schemas.Label(key="k1", value="v1"),
                         schemas.Label(key="k2", value="v2"),
@@ -109,7 +108,6 @@ def groundtruth_detections(
                     ),
                 ),
                 schemas.Annotation(
-                    task_type=enums.TaskType.OBJECT_DETECTION,
                     labels=[schemas.Label(key="k2", value="v2")],
                     metadata={},
                     bounding_box=schemas.Box(
@@ -140,7 +138,6 @@ def prediction_detections(
             datum=img1,
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.OBJECT_DETECTION,
                     labels=[
                         schemas.Label(key="k1", value="v1", score=0.6),
                         schemas.Label(key="k1", value="v2", score=0.4),
@@ -160,7 +157,6 @@ def prediction_detections(
                     ),
                 ),
                 schemas.Annotation(
-                    task_type=enums.TaskType.OBJECT_DETECTION,
                     labels=[
                         schemas.Label(key="k2", value="v1", score=0.1),
                         schemas.Label(key="k2", value="v2", score=0.9),
@@ -199,7 +195,6 @@ def groundtruth_instance_segmentations(
             datum=img1,
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.OBJECT_DETECTION,
                     labels=[schemas.Label(key="k1", value="v1")],
                     polygon=poly_with_hole,
                 ),
@@ -210,17 +205,14 @@ def groundtruth_instance_segmentations(
             datum=img2,
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.OBJECT_DETECTION,
                     labels=[schemas.Label(key="k1", value="v1")],
                     polygon=poly_without_hole,
                 ),
                 schemas.Annotation(
-                    task_type=enums.TaskType.OBJECT_DETECTION,
                     labels=[schemas.Label(key="k3", value="v3")],
                     polygon=poly_without_hole,
                 ),
                 schemas.Annotation(
-                    task_type=enums.TaskType.OBJECT_DETECTION,
                     labels=[schemas.Label(key="k1", value="v1")],
                     raster=schemas.Raster.from_geometry(
                         schemas.MultiPolygon(
@@ -254,7 +246,6 @@ def prediction_instance_segmentations(
             datum=img1,
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.OBJECT_DETECTION,
                     labels=[
                         schemas.Label(key="k1", value="v1", score=0.43),
                         schemas.Label(key="k1", value="v2", score=0.57),
@@ -264,7 +255,6 @@ def prediction_instance_segmentations(
                     ),
                 ),
                 schemas.Annotation(
-                    task_type=enums.TaskType.OBJECT_DETECTION,
                     labels=[
                         schemas.Label(key="k2", value="v1", score=0.03),
                         schemas.Label(key="k2", value="v2", score=0.97),
@@ -274,7 +264,6 @@ def prediction_instance_segmentations(
                     ),
                 ),
                 schemas.Annotation(
-                    task_type=enums.TaskType.OBJECT_DETECTION,
                     labels=[
                         schemas.Label(key="k2", value="v1", score=0.26),
                         schemas.Label(key="k2", value="v2", score=0.74),
@@ -284,7 +273,6 @@ def prediction_instance_segmentations(
                     ),
                 ),
                 schemas.Annotation(
-                    task_type=enums.TaskType.OBJECT_DETECTION,
                     labels=[
                         schemas.Label(key="k2", value="v1", score=0.86),
                         schemas.Label(key="k2", value="v2", score=0.14),
@@ -310,7 +298,6 @@ def gt_clfs_create(
             datum=img1,
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.CLASSIFICATION,
                     labels=[
                         schemas.Label(key="k1", value="v1"),
                         schemas.Label(key="k2", value="v2"),
@@ -323,7 +310,6 @@ def gt_clfs_create(
             datum=img2,
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.CLASSIFICATION,
                     labels=[schemas.Label(key="k2", value="v3")],
                 ),
             ],
@@ -345,7 +331,6 @@ def pred_clfs_create(
             datum=img1,
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.CLASSIFICATION,
                     labels=[
                         schemas.Label(key="k1", value="v1", score=0.2),
                         schemas.Label(key="k1", value="v2", score=0.8),
@@ -360,7 +345,6 @@ def pred_clfs_create(
             datum=img2,
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.CLASSIFICATION,
                     labels=[
                         schemas.Label(key="k2", value="v2", score=0.8),
                         schemas.Label(key="k2", value="v3", score=0.1),
@@ -538,7 +522,6 @@ def test_create_detections_as_bbox_or_poly(
     xmin, ymin, xmax, ymax = 50, 70, 120, 300
 
     det1 = schemas.Annotation(
-        task_type=enums.TaskType.OBJECT_DETECTION,
         labels=[schemas.Label(key="k", value="v")],
         polygon=schemas.Polygon(
             value=[
@@ -554,7 +537,6 @@ def test_create_detections_as_bbox_or_poly(
     )
 
     det2 = schemas.Annotation(
-        task_type=enums.TaskType.OBJECT_DETECTION,
         labels=[schemas.Label(key="k", value="v")],
         bounding_box=schemas.Box.from_extrema(
             xmin=xmin,
@@ -701,9 +683,6 @@ def _test_create_groundtruth_segmentations_and_delete_dataset(
     assert db.scalar(func.count(models.Datum.id)) == expected_datums
     assert db.scalar(func.count(models.GroundTruth.id)) == expected_gts
     assert db.scalar(func.count(models.Label.id)) == expected_labels
-
-    for a in db.scalars(select(models.Annotation)):
-        assert a.task_type == task
 
     # finalize to free dataset
     crud.finalize(db=db, dataset_name=dataset_name)
@@ -872,7 +851,6 @@ def test_segmentation_area_no_hole(
                 datum=img1,
                 annotations=[
                     schemas.Annotation(
-                        task_type=enums.TaskType.OBJECT_DETECTION,
                         labels=[schemas.Label(key="k1", value="v1")],
                         raster=schemas.Raster.from_geometry(
                             schemas.MultiPolygon(
@@ -914,7 +892,6 @@ def test_segmentation_area_with_hole(
                 datum=img1,
                 annotations=[
                     schemas.Annotation(
-                        task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
                         labels=[schemas.Label(key="k1", value="v1")],
                         raster=schemas.Raster.from_geometry(
                             schemas.MultiPolygon(
@@ -958,7 +935,6 @@ def test_segmentation_area_multi_polygon(
                 datum=img1,
                 annotations=[
                     schemas.Annotation(
-                        task_type=enums.TaskType.OBJECT_DETECTION,
                         labels=[schemas.Label(key="k1", value="v1")],
                         raster=schemas.Raster.from_geometry(
                             schemas.MultiPolygon(
@@ -1019,14 +995,12 @@ def test_gt_seg_as_mask_or_polys(
     )
 
     gt1 = schemas.Annotation(
-        task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
         labels=[schemas.Label(key="k1", value="v1")],
         raster=schemas.Raster(
             mask=mask_b64,
         ),
     )
     gt2 = schemas.Annotation(
-        task_type=enums.TaskType.OBJECT_DETECTION,
         labels=[schemas.Label(key="k1", value="v1")],
         raster=schemas.Raster(
             mask=mask_b64,

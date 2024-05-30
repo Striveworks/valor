@@ -6,9 +6,8 @@ from sqlalchemy import distinct, func
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 
-from valor_api import crud, enums, schemas
+from valor_api import crud, schemas
 from valor_api.backend import Query, models
-from valor_api.enums import TaskType
 
 dset_name = "dataset1"
 model_name1 = "model1"
@@ -227,11 +226,9 @@ def groundtruth_annotations_cat(
 ) -> list[schemas.Annotation]:
     return [
         schemas.Annotation(
-            task_type=TaskType.CLASSIFICATION,
             labels=[label_cat],
         ),
         schemas.Annotation(
-            task_type=TaskType.OBJECT_DETECTION,
             labels=[label_cat],
             bounding_box=schemas.Box.from_extrema(
                 xmin=0, ymin=0, xmax=10, ymax=10
@@ -239,7 +236,6 @@ def groundtruth_annotations_cat(
             metadata=metadata_1,
         ),
         schemas.Annotation(
-            task_type=TaskType.OBJECT_DETECTION,
             labels=[label_cat],
             bounding_box=schemas.Box.from_extrema(
                 xmin=0, ymin=0, xmax=1, ymax=50
@@ -247,13 +243,11 @@ def groundtruth_annotations_cat(
             metadata=metadata_2,
         ),
         schemas.Annotation(
-            task_type=TaskType.OBJECT_DETECTION,
             labels=[label_cat],
             raster=raster_1,
             metadata=metadata_1,
         ),
         schemas.Annotation(
-            task_type=TaskType.OBJECT_DETECTION,
             labels=[label_cat],
             raster=raster_2,
             metadata=metadata_2,
@@ -271,11 +265,9 @@ def groundtruth_annotations_dog(
 ) -> list[schemas.Annotation]:
     return [
         schemas.Annotation(
-            task_type=TaskType.CLASSIFICATION,
             labels=[label_dog],
         ),
         schemas.Annotation(
-            task_type=TaskType.OBJECT_DETECTION,
             labels=[label_dog],
             bounding_box=schemas.Box.from_extrema(
                 xmin=0, ymin=0, xmax=10, ymax=10
@@ -283,7 +275,6 @@ def groundtruth_annotations_dog(
             metadata=metadata_3,
         ),
         schemas.Annotation(
-            task_type=TaskType.OBJECT_DETECTION,
             labels=[label_dog],
             bounding_box=schemas.Box.from_extrema(
                 xmin=0, ymin=0, xmax=1, ymax=50
@@ -291,13 +282,11 @@ def groundtruth_annotations_dog(
             metadata=metadata_4,
         ),
         schemas.Annotation(
-            task_type=TaskType.OBJECT_DETECTION,
             labels=[label_dog],
             raster=raster_1,
             metadata=metadata_3,
         ),
         schemas.Annotation(
-            task_type=TaskType.OBJECT_DETECTION,
             labels=[label_dog],
             raster=raster_2,
             metadata=metadata_4,
@@ -314,14 +303,12 @@ def prediction_annotations_cat(
 ) -> list[schemas.Annotation]:
     return [
         schemas.Annotation(
-            task_type=TaskType.CLASSIFICATION,
             labels=[
                 schemas.Label(key="class", value="cat", score=0.9),
                 schemas.Label(key="class", value="dog", score=0.1),
             ],
         ),
         schemas.Annotation(
-            task_type=TaskType.OBJECT_DETECTION,
             labels=[
                 schemas.Label(key="class", value="cat", score=0.8),
                 schemas.Label(key="class", value="dog", score=0.2),
@@ -332,7 +319,6 @@ def prediction_annotations_cat(
             metadata=metadata_1,
         ),
         schemas.Annotation(
-            task_type=TaskType.OBJECT_DETECTION,
             labels=[
                 schemas.Label(key="class", value="cat", score=0.7),
                 schemas.Label(key="class", value="dog", score=0.3),
@@ -343,7 +329,6 @@ def prediction_annotations_cat(
             metadata=metadata_2,
         ),
         schemas.Annotation(
-            task_type=TaskType.OBJECT_DETECTION,
             labels=[
                 schemas.Label(key="class", value="cat", score=0.75),
                 schemas.Label(key="class", value="dog", score=0.25),
@@ -352,7 +337,6 @@ def prediction_annotations_cat(
             metadata=metadata_1,
         ),
         schemas.Annotation(
-            task_type=TaskType.OBJECT_DETECTION,
             labels=[
                 schemas.Label(key="class", value="cat", score=0.95),
                 schemas.Label(key="class", value="dog", score=0.05),
@@ -372,14 +356,12 @@ def prediction_annotations_dog(
 ) -> list[schemas.Annotation]:
     return [
         schemas.Annotation(
-            task_type=TaskType.CLASSIFICATION,
             labels=[
                 schemas.Label(key="class", value="cat", score=0.1),
                 schemas.Label(key="class", value="dog", score=0.9),
             ],
         ),
         schemas.Annotation(
-            task_type=TaskType.OBJECT_DETECTION,
             labels=[
                 schemas.Label(key="class", value="cat", score=0.2),
                 schemas.Label(key="class", value="dog", score=0.8),
@@ -390,7 +372,6 @@ def prediction_annotations_dog(
             metadata=metadata_3,
         ),
         schemas.Annotation(
-            task_type=TaskType.OBJECT_DETECTION,
             labels=[
                 schemas.Label(key="class", value="cat", score=0.3),
                 schemas.Label(key="class", value="dog", score=0.7),
@@ -401,7 +382,6 @@ def prediction_annotations_dog(
             metadata=metadata_4,
         ),
         schemas.Annotation(
-            task_type=TaskType.OBJECT_DETECTION,
             labels=[
                 schemas.Label(key="class", value="cat", score=0.25),
                 schemas.Label(key="class", value="dog", score=0.75),
@@ -410,7 +390,6 @@ def prediction_annotations_dog(
             metadata=metadata_3,
         ),
         schemas.Annotation(
-            task_type=TaskType.OBJECT_DETECTION,
             labels=[
                 schemas.Label(key="class", value="cat", score=0.05),
                 schemas.Label(key="class", value="dog", score=0.95),
@@ -2198,7 +2177,6 @@ def test_datum_datetime_queries(
     datum_4.metadata[duration_key] = add_metadata_typing(duration_metadata[3])
 
     annotation = schemas.Annotation(
-        task_type=enums.TaskType.CLASSIFICATION,
         labels=[schemas.Label(key="k1", value="v1")],
     )
 
@@ -2414,7 +2392,6 @@ def test_annotation_datetime_queries(
     duration_key = "some_duration"
 
     annotation_1 = schemas.Annotation(
-        task_type=enums.TaskType.CLASSIFICATION,
         labels=[schemas.Label(key="k1", value="v1")],
         metadata={
             datetime_key: {
@@ -2430,7 +2407,6 @@ def test_annotation_datetime_queries(
         },
     )
     annotation_2 = schemas.Annotation(
-        task_type=enums.TaskType.CLASSIFICATION,
         labels=[schemas.Label(key="k2", value="v2")],
         metadata={
             datetime_key: {
@@ -2446,7 +2422,6 @@ def test_annotation_datetime_queries(
         },
     )
     annotation_3 = schemas.Annotation(
-        task_type=enums.TaskType.CLASSIFICATION,
         labels=[schemas.Label(key="k3", value="v3")],
         metadata={
             datetime_key: {
@@ -2462,7 +2437,6 @@ def test_annotation_datetime_queries(
         },
     )
     annotation_4 = schemas.Annotation(
-        task_type=enums.TaskType.CLASSIFICATION,
         labels=[schemas.Label(key="k4", value="v4")],
         metadata={
             datetime_key: {

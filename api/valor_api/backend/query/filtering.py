@@ -5,7 +5,6 @@ from sqlalchemy import TIMESTAMP, Boolean, Float, and_, cast, func, not_, or_
 from sqlalchemy.dialects.postgresql import INTERVAL, TEXT
 from sqlalchemy.sql.elements import BinaryExpression, ColumnElement
 
-from valor_api import enums
 from valor_api.backend.models import (
     Annotation,
     Dataset,
@@ -88,11 +87,13 @@ def _flatten_expressions(
 
 def _filter_by_metadatum(
     key: str,
-    value_filter: NumericFilter
-    | StringFilter
-    | BooleanFilter
-    | DateTimeFilter
-    | GeospatialFilter,
+    value_filter: (
+        NumericFilter
+        | StringFilter
+        | BooleanFilter
+        | DateTimeFilter
+        | GeospatialFilter
+    ),
     table: TableTypeAlias,
 ) -> BinaryExpression:
     """
@@ -278,14 +279,6 @@ def filter_by_annotation(
         A list of expressions that can be used in a WHERE clause.
     """
     expressions = []
-    if filter_.task_types:
-        expressions.append(
-            [
-                Annotation.task_type == task_type.value
-                for task_type in filter_.task_types
-                if isinstance(task_type, enums.TaskType)
-            ],
-        )
     if filter_.annotation_metadata:
         expressions.append(
             _filter_by_metadata(filter_.annotation_metadata, Annotation),

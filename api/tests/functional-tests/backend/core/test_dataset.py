@@ -251,19 +251,6 @@ def test_get_n_groundtruth_rasters_in_dataset(
     )
 
 
-def test_get_unique_task_types_in_dataset(
-    db: Session, dataset_name: str, dataset_model_create
-):
-    assert set(
-        core.get_unique_task_types_in_dataset(db=db, name=dataset_name)
-    ) == set(
-        [
-            enums.TaskType.OBJECT_DETECTION.value,
-            enums.TaskType.CLASSIFICATION.value,
-        ]
-    )
-
-
 def test_get_unique_datum_metadata_in_dataset(
     db: Session, dataset_name: str, dataset_model_create
 ):

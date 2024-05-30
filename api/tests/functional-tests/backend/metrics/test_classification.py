@@ -68,7 +68,6 @@ def classification_test_data(db: Session, dataset_name: str, model_name: str):
             datum=imgs[i],
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.CLASSIFICATION,
                     labels=[
                         schemas.Label(key="animal", value=animal_gts[i]),
                         schemas.Label(key="color", value=color_gts[i]),
@@ -86,7 +85,6 @@ def classification_test_data(db: Session, dataset_name: str, model_name: str):
             datum=imgs[i],
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.CLASSIFICATION,
                     labels=[
                         schemas.Label(key="animal", value=value, score=score)
                         for value, score in animal_preds[i].items()
@@ -137,11 +135,9 @@ def test_compute_confusion_matrix_at_grouper_key(
 ):
     prediction_filter = schemas.Filter(
         model_names=[model_name],
-        task_types=[enums.TaskType.CLASSIFICATION],
     )
     groundtruth_filter = schemas.Filter(
         dataset_names=[dataset_name],
-        task_types=[enums.TaskType.CLASSIFICATION],
     )
 
     labels = fetch_union_of_labels(
@@ -297,7 +293,6 @@ def test_compute_confusion_matrix_at_grouper_key_and_filter(
     groundtruth_filter = schemas.Filter(
         dataset_names=[dataset_name],
         model_names=[model_name],
-        task_types=[enums.TaskType.CLASSIFICATION],
         datum_metadata={"md1": [schemas.StringFilter(value="md1-val0")]},
     )
 
@@ -391,7 +386,6 @@ def test_compute_confusion_matrix_at_grouper_key_using_label_map(
     groundtruth_filter = schemas.Filter(
         dataset_names=[dataset_name],
         model_names=[model_name],
-        task_types=[enums.TaskType.CLASSIFICATION],
         datum_metadata={"md1": [schemas.StringFilter(value="md1-val0")]},
     )
 
@@ -508,11 +502,9 @@ def test_compute_roc_auc(
     """
     prediction_filter = schemas.Filter(
         model_names=[model_name],
-        task_types=[enums.TaskType.CLASSIFICATION],
     )
     groundtruth_filter = schemas.Filter(
         dataset_names=[dataset_name],
-        task_types=[enums.TaskType.CLASSIFICATION],
     )
 
     labels = fetch_union_of_labels(
@@ -595,7 +587,6 @@ def test_compute_roc_auc_groupby_metadata(
     )
     groundtruth_filter = schemas.Filter(
         dataset_names=[dataset_name],
-        task_types=[enums.TaskType.CLASSIFICATION],
         datum_metadata={"md1": [schemas.StringFilter(value="md1-val0")]},
     )
 
@@ -655,11 +646,9 @@ def test_compute_roc_auc_with_label_map(
 
     prediction_filter = schemas.Filter(
         model_names=[model_name],
-        task_types=[enums.TaskType.CLASSIFICATION],
     )
     groundtruth_filter = schemas.Filter(
         dataset_names=[dataset_name],
-        task_types=[enums.TaskType.CLASSIFICATION],
     )
 
     labels = fetch_union_of_labels(
@@ -700,7 +689,6 @@ def test_compute_classification(
     datum_filter = schemas.Filter(
         dataset_names=[dataset_name],
         model_names=[model_name],
-        task_types=[enums.TaskType.CLASSIFICATION],
     )
 
     confusion, metrics = _compute_clf_metrics(
@@ -869,11 +857,9 @@ def test__compute_curves(
 
     prediction_filter = schemas.Filter(
         model_names=[model_name],
-        task_types=[enums.TaskType.CLASSIFICATION],
     )
     groundtruth_filter = schemas.Filter(
         dataset_names=[dataset_name],
-        task_types=[enums.TaskType.CLASSIFICATION],
     )
 
     labels = fetch_union_of_labels(

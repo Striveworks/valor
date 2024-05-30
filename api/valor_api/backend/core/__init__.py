@@ -21,7 +21,6 @@ from .dataset import (
     get_paginated_datasets,
     get_unique_datum_metadata_in_dataset,
     get_unique_groundtruth_annotation_metadata_in_dataset,
-    get_unique_task_types_in_dataset,
     set_dataset_status,
 )
 from .datum import (
@@ -94,7 +93,6 @@ __all__ = [
     "get_n_groundtruth_bounding_boxes_in_dataset",
     "get_n_groundtruth_polygons_in_dataset",
     "get_n_groundtruth_rasters_in_dataset",
-    "get_unique_task_types_in_dataset",
     "get_unique_datum_metadata_in_dataset",
     "get_unique_groundtruth_annotation_metadata_in_dataset",
     "get_dataset_summary",

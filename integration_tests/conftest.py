@@ -19,7 +19,6 @@ from valor import (
     exceptions,
 )
 from valor.client import ClientConnection, connect, reset_connection
-from valor.enums import TaskType
 from valor.metatypes import Datum
 from valor.schemas import Box, MultiPolygon, Point, Polygon, Raster
 from valor_api.backend import models
@@ -308,12 +307,10 @@ def gt_dets1(
             datum=img1,
             annotations=[
                 Annotation(
-                    task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k1", value="v1")],
                     bounding_box=Box([rect1]),
                 ),
                 Annotation(
-                    task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k2", value="v2")],
                     bounding_box=Box([rect3]),
                 ),
@@ -323,7 +320,6 @@ def gt_dets1(
             datum=img2,
             annotations=[
                 Annotation(
-                    task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k1", value="v1")],
                     bounding_box=Box([rect2]),
                 )
@@ -346,12 +342,10 @@ def gt_dets2(
             datum=img5,
             annotations=[
                 Annotation(
-                    task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k1", value="v1")],
                     polygon=Polygon([rect1]),
                 ),
                 Annotation(
-                    task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k2", value="v2")],
                     bounding_box=Box([rect3]),
                 ),
@@ -361,7 +355,6 @@ def gt_dets2(
             datum=img6,
             annotations=[
                 Annotation(
-                    task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k1", value="v1")],
                     polygon=Polygon([rect2]),
                 )
@@ -371,7 +364,6 @@ def gt_dets2(
             datum=img8,
             annotations=[
                 Annotation(
-                    task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k3", value="v3")],
                     bounding_box=Box([rect3]),
                 )
@@ -393,22 +385,18 @@ def gts_det_with_label_maps(
             datum=img1,
             annotations=[
                 Annotation(
-                    task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="class_name", value="maine coon cat")],
                     bounding_box=Box([rect1]),
                 ),
                 Annotation(
-                    task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="class", value="british shorthair")],
                     bounding_box=Box([rect3]),
                 ),
                 Annotation(
-                    task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k1", value="v1")],
                     bounding_box=Box([rect1]),
                 ),
                 Annotation(
-                    task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k2", value="v2")],
                     bounding_box=Box([rect3]),
                 ),
@@ -418,12 +406,10 @@ def gts_det_with_label_maps(
             datum=img2,
             annotations=[
                 Annotation(
-                    task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="class", value="siamese cat")],
                     bounding_box=Box([rect2]),
                 ),
                 Annotation(
-                    task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k1", value="v1")],
                     bounding_box=Box([rect2]),
                 ),
@@ -445,7 +431,6 @@ def gt_poly_dets1(
             datum=img1,
             annotations=[
                 Annotation(
-                    task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k1", value="v1")],
                     polygon=Polygon([rect1]),
                 ),
@@ -455,7 +440,6 @@ def gt_poly_dets1(
             datum=img2,
             annotations=[
                 Annotation(
-                    task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k1", value="v1")],
                     polygon=Polygon([rect2]),
                 )
@@ -484,7 +468,6 @@ def gt_segs(
             datum=img1,
             annotations=[
                 Annotation(
-                    task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k1", value="v1")],
                     raster=Raster.from_geometry(
                         geometry=multipolygon1,
@@ -493,7 +476,6 @@ def gt_segs(
                     ),
                 ),
                 Annotation(
-                    task_type=TaskType.SEMANTIC_SEGMENTATION,
                     labels=[Label(key="k2", value="v2")],
                     raster=Raster.from_geometry(
                         geometry=multipolygon31,
@@ -507,7 +489,6 @@ def gt_segs(
             datum=img2,
             annotations=[
                 Annotation(
-                    task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k1", value="v1")],
                     raster=Raster.from_geometry(
                         geometry=multipolygon2_1,
@@ -533,7 +514,6 @@ def gt_semantic_segs1(
             datum=img1,
             annotations=[
                 Annotation(
-                    task_type=TaskType.SEMANTIC_SEGMENTATION,
                     labels=[Label(key="k2", value="v2")],
                     raster=Raster.from_geometry(
                         MultiPolygon(
@@ -564,7 +544,6 @@ def gt_semantic_segs1_mask(
         datum=img1,
         annotations=[
             Annotation(
-                task_type=TaskType.SEMANTIC_SEGMENTATION,
                 labels=[Label(key="k2", value="v2")],
                 raster=raster,
             )
@@ -584,7 +563,6 @@ def gt_semantic_segs2(
             datum=img2,
             annotations=[
                 Annotation(
-                    task_type=TaskType.SEMANTIC_SEGMENTATION,
                     labels=[Label(key="k3", value="v3")],
                     raster=Raster.from_geometry(
                         MultiPolygon(
@@ -612,7 +590,6 @@ def gt_semantic_segs2_mask(
         datum=img2,
         annotations=[
             Annotation(
-                task_type=TaskType.SEMANTIC_SEGMENTATION,
                 labels=[Label(key="k2", value="v2")],
                 raster=raster,
             )
@@ -628,7 +605,6 @@ def gt_semantic_segs_mismatch(img1: Datum) -> GroundTruth:
         datum=img1,
         annotations=[
             Annotation(
-                task_type=TaskType.SEMANTIC_SEGMENTATION,
                 labels=[Label(key="k3", value="v3")],
                 raster=raster,
             )
@@ -647,7 +623,6 @@ def gt_clfs(
             datum=img5,
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
                     labels=[
                         Label(key="k4", value="v4"),
                         Label(key="k5", value="v5"),
@@ -659,7 +634,6 @@ def gt_clfs(
             datum=img6,
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
                     labels=[Label(key="k4", value="v4")],
                 )
             ],
@@ -668,7 +642,6 @@ def gt_clfs(
             datum=img8,
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
                     labels=[Label(key="k3", value="v3")],
                 )
             ],
@@ -698,7 +671,6 @@ def pred_dets(
             datum=img1,
             annotations=[
                 Annotation(
-                    task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k1", value="v1", score=0.3)],
                     bounding_box=Box([rect1]),
                 )
@@ -708,7 +680,6 @@ def pred_dets(
             datum=img2,
             annotations=[
                 Annotation(
-                    task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k2", value="v2", score=0.98)],
                     bounding_box=Box([rect2]),
                 )
@@ -729,7 +700,6 @@ def pred_dets2(
             datum=img1,
             annotations=[
                 Annotation(
-                    task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k1", value="v1", score=0.7)],
                     bounding_box=Box([rect3]),
                 )
@@ -739,7 +709,6 @@ def pred_dets2(
             datum=img2,
             annotations=[
                 Annotation(
-                    task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k2", value="v2", score=0.98)],
                     bounding_box=Box([rect4]),
                 )
@@ -760,12 +729,10 @@ def preds_det_with_label_maps(
             datum=img1,
             annotations=[
                 Annotation(
-                    task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="class", value="cat", score=0.3)],
                     bounding_box=Box([rect1]),
                 ),
                 Annotation(
-                    task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k1", value="v1", score=0.3)],
                     bounding_box=Box([rect1]),
                 ),
@@ -775,12 +742,10 @@ def preds_det_with_label_maps(
             datum=img2,
             annotations=[
                 Annotation(
-                    task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="class_name", value="cat", score=0.98)],
                     bounding_box=Box([rect2]),
                 ),
                 Annotation(
-                    task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k2", value="v2", score=0.98)],
                     bounding_box=Box([rect2]),
                 ),
@@ -796,7 +761,6 @@ def pred_poly_dets(pred_dets: list[Prediction]) -> list[Prediction]:
             datum=det.datum,
             annotations=[
                 Annotation(
-                    task_type=TaskType.OBJECT_DETECTION,
                     labels=annotation.labels.get_value(),
                     polygon=(
                         Polygon([annotation.bounding_box.boundary])
@@ -835,7 +799,6 @@ def pred_instance_segs(
             datum=img1,
             annotations=[
                 Annotation(
-                    task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k1", value="v1", score=0.87)],
                     raster=Raster.from_numpy(mask_1),
                 )
@@ -845,7 +808,6 @@ def pred_instance_segs(
             datum=img2,
             annotations=[
                 Annotation(
-                    task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k2", value="v2", score=0.92)],
                     raster=Raster.from_numpy(mask_2),
                 )
@@ -869,7 +831,6 @@ def pred_semantic_segs(
             datum=img1,
             annotations=[
                 Annotation(
-                    task_type=TaskType.SEMANTIC_SEGMENTATION,
                     labels=[Label(key="k2", value="v2")],
                     raster=Raster.from_numpy(mask_1),
                 )
@@ -879,7 +840,6 @@ def pred_semantic_segs(
             datum=img2,
             annotations=[
                 Annotation(
-                    task_type=TaskType.SEMANTIC_SEGMENTATION,
                     labels=[Label(key="k1", value="v1")],
                     raster=Raster.from_numpy(mask_2),
                 )
@@ -897,7 +857,6 @@ def pred_clfs(
             datum=img5,
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
                     labels=[
                         Label(key="k4", value="v1", score=0.47),
                         Label(key="k4", value="v8", score=0.53),
@@ -910,7 +869,6 @@ def pred_clfs(
             datum=img6,
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
                     labels=[
                         Label(key="k4", value="v4", score=0.71),
                         Label(key="k4", value="v5", score=0.29),
@@ -922,7 +880,6 @@ def pred_clfs(
             datum=img8,
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
                     labels=[
                         Label(key="k3", value="v1", score=1.0),
                     ],

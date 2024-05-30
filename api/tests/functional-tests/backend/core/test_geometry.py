@@ -13,7 +13,6 @@ from valor_api.backend.core.geometry import (
     _convert_raster_to_polygon,
     _raster_to_png_b64,
     convert_geometry,
-    get_annotation_type,
 )
 from valor_api.crud import create_dataset, create_groundtruths
 from valor_api.schemas import (
@@ -38,7 +37,6 @@ def create_classification_dataset(db: Session, dataset_name: str):
                 datum=schemas.Datum(uid="uid1"),
                 annotations=[
                     schemas.Annotation(
-                        task_type=enums.TaskType.CLASSIFICATION,
                         labels=[schemas.Label(key="k1", value="v1")],
                     )
                 ],
@@ -56,24 +54,20 @@ def create_object_detection_dataset(
     raster: Raster,
 ):
     datum = Datum(uid="uid1")
-    task_type = enums.TaskType.OBJECT_DETECTION
     labels = [schemas.Label(key="k1", value="v1")]
     groundtruth = GroundTruth(
         dataset_name=dataset_name,
         datum=datum,
         annotations=[
             Annotation(
-                task_type=task_type,
                 labels=labels,
                 bounding_box=bbox,
             ),
             Annotation(
-                task_type=task_type,
                 labels=labels,
                 polygon=polygon,
             ),
             Annotation(
-                task_type=task_type,
                 labels=labels,
                 raster=raster,
             ),
@@ -94,14 +88,12 @@ def create_segmentation_dataset_from_geometries(
     raster: Raster,
 ):
     datum = Datum(uid="uid1")
-    task_type = enums.TaskType.OBJECT_DETECTION
     labels = [schemas.Label(key="k1", value="v1")]
     groundtruth = GroundTruth(
         dataset_name=dataset_name,
         datum=datum,
         annotations=[
             Annotation(
-                task_type=task_type,
                 labels=labels,
                 raster=Raster(
                     mask=raster.mask,
@@ -109,7 +101,6 @@ def create_segmentation_dataset_from_geometries(
                 ),
             ),
             Annotation(
-                task_type=task_type,
                 labels=labels,
                 raster=Raster(
                     mask=raster.mask,
@@ -117,7 +108,6 @@ def create_segmentation_dataset_from_geometries(
                 ),
             ),
             Annotation(
-                task_type=task_type,
                 labels=labels,
                 raster=raster,
             ),
@@ -129,15 +119,16 @@ def create_segmentation_dataset_from_geometries(
     return dataset_name
 
 
-def test_get_annotation_type(
-    db: Session, dataset_name: str, create_classification_dataset
-):
-    # tests uncovered case where `AnnotationType.NONE` is returned.
-    dataset = fetch_dataset(db, dataset_name)
-    assert (
-        get_annotation_type(db, enums.TaskType.CLASSIFICATION, dataset)
-        == enums.AnnotationType.NONE
-    )
+# TODO delete
+# def test_get_annotation_type(
+#     db: Session, dataset_name: str, create_classification_dataset
+# ):
+#     # tests uncovered case where `AnnotationType.NONE` is returned.
+#     dataset = fetch_dataset(db, dataset_name)
+#     assert (
+#         get_annotation_type(db, enums.TaskType.CLASSIFICATION, dataset)
+#         == enums.AnnotationType.NONE
+#     )
 
 
 def test_convert_geometry_input(
@@ -415,14 +406,12 @@ def test_create_raster_from_polygons_with_decimal_coordinates(
 
     # create raster annotation
     datum = Datum(uid="uid1")
-    task_type = enums.TaskType.OBJECT_DETECTION
     labels = [schemas.Label(key="k1", value="v1")]
     groundtruth = GroundTruth(
         dataset_name=dataset_name,
         datum=datum,
         annotations=[
             Annotation(
-                task_type=task_type,
                 labels=labels,
                 raster=Raster(
                     mask=raster.mask,

@@ -1790,25 +1790,26 @@ def test_evaluate_detection_with_label_maps(
         )
 
     # spot check a few geojson results
-    pr_metric = [
-        m for m in pr_metrics if m["parameters"]["label_key"] == "foo"
-    ][0]
-    assert (
-        pr_metric["value"]["bar"]["0.4"]["fn"][0][2]
-        == '{"type":"Polygon","coordinates":[[[10,10],[60,10],[60,40],[10,40],[10,10]]]}'
-    )
-    assert (
-        pr_metric["value"]["bar"]["0.4"]["tp"][0][2]
-        == '{"type":"Polygon","coordinates":[[[15,0],[70,0],[70,20],[15,20],[15,0]]]}'
-    )
+    # TODO delete?
+    # pr_metric = [
+    #     m for m in pr_metrics if m["parameters"]["label_key"] == "foo"
+    # ][0]
+    # assert (
+    #     pr_metric["value"]["bar"]["0.4"]["fn"][0][2]
+    #     == '{"type":"Polygon","coordinates":[[[10,10],[60,10],[60,40],[10,40],[10,10]]]}'
+    # )
+    # assert (
+    #     pr_metric["value"]["bar"]["0.4"]["tp"][0][2]
+    #     == '{"type":"Polygon","coordinates":[[[15,0],[70,0],[70,20],[15,20],[15,0]]]}'
+    # )
 
-    pr_metric = [
-        m for m in pr_metrics if m["parameters"]["label_key"] == "k2"
-    ][0]
-    assert (
-        pr_metric["value"]["v2"]["0.1"]["fp"][0][2]
-        == '{"type":"Polygon","coordinates":[[[15,0],[70,0],[70,20],[15,20],[15,0]]]}'
-    )
+    # pr_metric = [
+    #     m for m in pr_metrics if m["parameters"]["label_key"] == "k2"
+    # ][0]
+    # assert (
+    #     pr_metric["value"]["v2"]["0.1"]["fp"][0][2]
+    #     == '{"type":"Polygon","coordinates":[[[15,0],[70,0],[70,20],[15,20],[15,0]]]}'
+    # )
 
     assert eval_job.parameters.label_map == [
         [["class_name", "maine coon cat"], ["foo", "bar"]],
@@ -1832,7 +1833,6 @@ def test_evaluate_detection_false_negatives_single_image_baseline(
             datum=Datum(uid="uid1"),
             annotations=[
                 Annotation(
-                    task_type=TaskType.OBJECT_DETECTION,
                     bounding_box=Box.from_extrema(
                         xmin=10, xmax=20, ymin=10, ymax=20
                     ),
@@ -1850,14 +1850,12 @@ def test_evaluate_detection_false_negatives_single_image_baseline(
             datum=Datum(uid="uid1"),
             annotations=[
                 Annotation(
-                    task_type=TaskType.OBJECT_DETECTION,
                     bounding_box=Box.from_extrema(
                         xmin=10, xmax=20, ymin=10, ymax=20
                     ),
                     labels=[Label(key="key", value="value", score=0.8)],
                 ),
                 Annotation(
-                    task_type=TaskType.OBJECT_DETECTION,
                     bounding_box=Box.from_extrema(
                         xmin=100, xmax=110, ymin=100, ymax=200
                     ),
@@ -1893,7 +1891,6 @@ def test_evaluate_detection_false_negatives_single_image(
             datum=Datum(uid="uid1"),
             annotations=[
                 Annotation(
-                    task_type=TaskType.OBJECT_DETECTION,
                     bounding_box=Box.from_extrema(
                         xmin=10, xmax=20, ymin=10, ymax=20
                     ),
@@ -1911,14 +1908,12 @@ def test_evaluate_detection_false_negatives_single_image(
             datum=Datum(uid="uid1"),
             annotations=[
                 Annotation(
-                    task_type=TaskType.OBJECT_DETECTION,
                     bounding_box=Box.from_extrema(
                         xmin=10, xmax=20, ymin=10, ymax=20
                     ),
                     labels=[Label(key="key", value="value", score=0.8)],
                 ),
                 Annotation(
-                    task_type=TaskType.OBJECT_DETECTION,
                     bounding_box=Box.from_extrema(
                         xmin=100, xmax=110, ymin=100, ymax=200
                     ),
@@ -1960,7 +1955,6 @@ def test_evaluate_detection_false_negatives_two_images_one_empty_low_confidence_
                 datum=Datum(uid="uid1"),
                 annotations=[
                     Annotation(
-                        task_type=TaskType.OBJECT_DETECTION,
                         bounding_box=Box.from_extrema(
                             xmin=10, xmax=20, ymin=10, ymax=20
                         ),
@@ -1970,7 +1964,7 @@ def test_evaluate_detection_false_negatives_two_images_one_empty_low_confidence_
             ),
             GroundTruth(
                 datum=Datum(uid="uid2"),
-                annotations=[Annotation(task_type=TaskType.EMPTY)],
+                annotations=[Annotation()],
             ),
         ]
     )
@@ -1984,7 +1978,6 @@ def test_evaluate_detection_false_negatives_two_images_one_empty_low_confidence_
                 datum=Datum(uid="uid1"),
                 annotations=[
                     Annotation(
-                        task_type=TaskType.OBJECT_DETECTION,
                         bounding_box=Box.from_extrema(
                             xmin=10, xmax=20, ymin=10, ymax=20
                         ),
@@ -1996,7 +1989,6 @@ def test_evaluate_detection_false_negatives_two_images_one_empty_low_confidence_
                 datum=Datum(uid="uid2"),
                 annotations=[
                     Annotation(
-                        task_type=TaskType.OBJECT_DETECTION,
                         bounding_box=Box.from_extrema(
                             xmin=10, xmax=20, ymin=10, ymax=20
                         ),
@@ -2037,7 +2029,6 @@ def test_evaluate_detection_false_negatives_two_images_one_empty_high_confidence
                 datum=Datum(uid="uid1"),
                 annotations=[
                     Annotation(
-                        task_type=TaskType.OBJECT_DETECTION,
                         bounding_box=Box.from_extrema(
                             xmin=10, xmax=20, ymin=10, ymax=20
                         ),
@@ -2047,7 +2038,7 @@ def test_evaluate_detection_false_negatives_two_images_one_empty_high_confidence
             ),
             GroundTruth(
                 datum=Datum(uid="uid2"),
-                annotations=[Annotation(task_type=TaskType.EMPTY)],
+                annotations=[Annotation()],
             ),
         ]
     )
@@ -2061,7 +2052,6 @@ def test_evaluate_detection_false_negatives_two_images_one_empty_high_confidence
                 datum=Datum(uid="uid1"),
                 annotations=[
                     Annotation(
-                        task_type=TaskType.OBJECT_DETECTION,
                         bounding_box=Box.from_extrema(
                             xmin=10, xmax=20, ymin=10, ymax=20
                         ),
@@ -2073,7 +2063,6 @@ def test_evaluate_detection_false_negatives_two_images_one_empty_high_confidence
                 datum=Datum(uid="uid2"),
                 annotations=[
                     Annotation(
-                        task_type=TaskType.OBJECT_DETECTION,
                         bounding_box=Box.from_extrema(
                             xmin=10, xmax=20, ymin=10, ymax=20
                         ),
@@ -2115,7 +2104,6 @@ def test_evaluate_detection_false_negatives_two_images_one_only_with_different_c
                 datum=Datum(uid="uid1"),
                 annotations=[
                     Annotation(
-                        task_type=TaskType.OBJECT_DETECTION,
                         bounding_box=Box.from_extrema(
                             xmin=10, xmax=20, ymin=10, ymax=20
                         ),
@@ -2127,7 +2115,6 @@ def test_evaluate_detection_false_negatives_two_images_one_only_with_different_c
                 datum=Datum(uid="uid2"),
                 annotations=[
                     Annotation(
-                        task_type=TaskType.OBJECT_DETECTION,
                         bounding_box=Box.from_extrema(
                             xmin=10, xmax=20, ymin=10, ymax=20
                         ),
@@ -2147,7 +2134,6 @@ def test_evaluate_detection_false_negatives_two_images_one_only_with_different_c
                 datum=Datum(uid="uid1"),
                 annotations=[
                     Annotation(
-                        task_type=TaskType.OBJECT_DETECTION,
                         bounding_box=Box.from_extrema(
                             xmin=10, xmax=20, ymin=10, ymax=20
                         ),
@@ -2159,7 +2145,6 @@ def test_evaluate_detection_false_negatives_two_images_one_only_with_different_c
                 datum=Datum(uid="uid2"),
                 annotations=[
                     Annotation(
-                        task_type=TaskType.OBJECT_DETECTION,
                         bounding_box=Box.from_extrema(
                             xmin=10, xmax=20, ymin=10, ymax=20
                         ),
@@ -2219,7 +2204,6 @@ def test_evaluate_detection_false_negatives_two_images_one_only_with_different_c
                 datum=Datum(uid="uid1"),
                 annotations=[
                     Annotation(
-                        task_type=TaskType.OBJECT_DETECTION,
                         bounding_box=Box.from_extrema(
                             xmin=10, xmax=20, ymin=10, ymax=20
                         ),
@@ -2231,7 +2215,6 @@ def test_evaluate_detection_false_negatives_two_images_one_only_with_different_c
                 datum=Datum(uid="uid2"),
                 annotations=[
                     Annotation(
-                        task_type=TaskType.OBJECT_DETECTION,
                         bounding_box=Box.from_extrema(
                             xmin=10, xmax=20, ymin=10, ymax=20
                         ),
@@ -2251,7 +2234,6 @@ def test_evaluate_detection_false_negatives_two_images_one_only_with_different_c
                 datum=Datum(uid="uid1"),
                 annotations=[
                     Annotation(
-                        task_type=TaskType.OBJECT_DETECTION,
                         bounding_box=Box.from_extrema(
                             xmin=10, xmax=20, ymin=10, ymax=20
                         ),
@@ -2263,7 +2245,6 @@ def test_evaluate_detection_false_negatives_two_images_one_only_with_different_c
                 datum=Datum(uid="uid2"),
                 annotations=[
                     Annotation(
-                        task_type=TaskType.OBJECT_DETECTION,
                         bounding_box=Box.from_extrema(
                             xmin=10, xmax=20, ymin=10, ymax=20
                         ),

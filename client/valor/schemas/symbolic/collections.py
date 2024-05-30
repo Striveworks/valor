@@ -2,7 +2,6 @@ from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
 
-from valor.enums import TaskType
 from valor.schemas.symbolic.types import (
     Box,
     Dictionary,
@@ -15,7 +14,6 @@ from valor.schemas.symbolic.types import (
     Polygon,
     Raster,
     String,
-    TaskTypeEnum,
     Variable,
     _convert_simple_variables_to_standard_types,
     get_type_by_name,
@@ -251,8 +249,6 @@ class Annotation(StaticCollection):
 
     Attributes
     ----------
-    task_type: TaskTypeEnum
-        The task type associated with the `Annotation`.
     metadata: Dictionary
         A dictionary of metadata that describes the `Annotation`.
     labels: List[Label], optional
@@ -271,7 +267,6 @@ class Annotation(StaticCollection):
 
     Classification
     >>> Annotation.create(
-    ...     task_type=TaskType.CLASSIFICATION,
     ...     labels=[
     ...         Label(key="class", value="dog"),
     ...         Label(key="category", value="animal"),
@@ -280,35 +275,30 @@ class Annotation(StaticCollection):
 
     Object-Detection Box
     >>> annotation = Annotation.create(
-    ...     task_type=TaskType.OBJECT_DETECTION,
     ...     labels=[Label(key="k1", value="v1")],
     ...    bounding_box=box2,
     ... )
 
     Object-Detection Polygon
     >>> annotation = Annotation.create(
-    ...     task_type=TaskType.OBJECT_DETECTION,
     ...     labels=[Label(key="k1", value="v1")],
     ...     polygon=BoundingPolygon(...),
     ... )
 
     Object-Detection Raster
     >>> annotation = Annotation.create(
-    ...     task_type=TaskType.OBJECT_DETECTION,
     ...     labels=[Label(key="k1", value="v1")],
     ...     raster=Raster(...),
     ... )
 
     Semantic-Segmentation Raster
     >>> annotation = Annotation.create(
-    ...     task_type=TaskType.SEMANTIC_SEGMENTATION,
     ...     labels=[Label(key="k1", value="v1")],
     ...     raster=Raster(...),
     ... )
 
-    Defining all supported annotation types for a given `task_type` is allowed!
+    Defining all supported annotation types is allowed!
     >>> Annotation.create(
-    ...     task_type=TaskType.OBJECT_DETECTION,
     ...     labels=[Label(key="k1", value="v1")],
     ...     bounding_box=Box(...),
     ...     polygon=BoundingPolygon(...),
@@ -316,9 +306,6 @@ class Annotation(StaticCollection):
     ... )
     """
 
-    task_type: TaskTypeEnum = TaskTypeEnum.symbolic(
-        owner="annotation", name="task_type"
-    )
     metadata: Dictionary = Dictionary.symbolic(
         owner="annotation", name="metadata"
     )
@@ -335,7 +322,6 @@ class Annotation(StaticCollection):
     def __init__(
         self,
         *,
-        task_type: TaskType,
         metadata: Optional[dict] = None,
         labels: Optional[List[Label]] = None,
         bounding_box: Optional[Box] = None,
@@ -348,8 +334,6 @@ class Annotation(StaticCollection):
 
         Parameters
         ----------
-        task_type: TaskTypeEnum
-            The task type associated with the `Annotation`.
         metadata: Dict[str, Union[int, float, str, bool, datetime.datetime, datetime.date, datetime.time]]
             A dictionary of metadata that describes the `Annotation`.
         labels: List[Label]
@@ -364,7 +348,6 @@ class Annotation(StaticCollection):
             An embedding, described by a list of values with type float and a maximum length of 16,000.
         """
         super().__init__(
-            task_type=task_type,
             metadata=metadata if metadata else dict(),
             labels=labels if labels else list(),
             bounding_box=bounding_box,

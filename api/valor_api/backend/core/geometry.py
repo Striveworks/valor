@@ -19,7 +19,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from valor_api.backend import models
-from valor_api.enums import AnnotationType, TaskType
+from valor_api.enums import AnnotationType
 
 
 class GeometricValueType(CompositeType):
@@ -45,7 +45,6 @@ class RawGeometry(Geometry):
 
 def get_annotation_type(
     db: Session,
-    task_type: TaskType,
     dataset: models.Dataset,
     model: models.Model | None = None,
 ) -> AnnotationType:
@@ -84,7 +83,6 @@ def get_annotation_type(
             .join(models.Dataset, models.Dataset.id == models.Datum.dataset_id)
             .where(
                 models.Datum.dataset_id == dataset.id,
-                models.Annotation.task_type == task_type.value,
                 model_expr,
                 col.isnot(None),
             )
@@ -222,7 +220,6 @@ def convert_geometry(
     target_type: AnnotationType,
     dataset: models.Dataset,
     model: models.Model | None = None,
-    task_type: TaskType | None = None,
 ):
     """
     Converts geometry into some target type
@@ -283,16 +280,16 @@ def convert_geometry(
         else models.Annotation.model_id.is_(None)
     )
 
+    # TODO delete
     # define task type expression
-    task_type_expr = (
-        models.Annotation.task_type == task_type.value
-        if task_type
-        else models.Annotation.task_type.isnot(None)
-    )
+    # task_type_expr = (
+    #     models.Annotation.task_type == task_type.value
+    #     if task_type
+    #     else models.Annotation.task_type.isnot(None)
+    # )
 
     # define where expression
     where_conditions = [
-        task_type_expr,
         models.Datum.dataset_id == dataset.id,
         model_expr,
     ]

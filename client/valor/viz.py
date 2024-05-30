@@ -1,5 +1,5 @@
 import math
-from typing import Dict, List, Optional, Sequence, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
@@ -48,6 +48,7 @@ def _polygons_to_binary_mask(
     return np.array(mask)
 
 
+# TODO move outside of valor
 def create_combined_segmentation_mask(
     annotated_datum: Union[GroundTruth, Prediction],
     label_key: str,
@@ -184,37 +185,6 @@ def create_combined_segmentation_mask(
     }
 
     return Image.fromarray(combined_mask), legend
-
-
-def draw_detections_on_image(
-    detections: Sequence[Union[GroundTruth, Prediction]],
-    img: Image.Image,
-) -> Image.Image:
-    """
-    Draws detections (bounding boxes and labels) on an image.
-
-    Parameters
-    -------
-    detections : List[Union[GroundTruth, Prediction]]
-        A list of `GroundTruths` or `Predictions` to draw on the image.
-    img : Image.Image
-        The image to draw the detections on.
-
-
-    Returns
-    -------
-    img : Image.Image
-        An image with the detections drawn on.
-    """
-
-    annotations = []
-    for datum in detections:
-        annotations.extend(datum.annotations)
-
-    for i, detection in enumerate(annotations):
-        if detection.task_type in [enums.TaskType.OBJECT_DETECTION]:
-            img = _draw_detection_on_image(detection, img, inplace=i != 0)
-    return img
 
 
 def draw_bounding_box_on_image(

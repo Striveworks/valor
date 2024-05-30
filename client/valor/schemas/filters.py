@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Union
 
-from valor.enums import TaskType
 from valor.schemas.symbolic.operators import (
     And,
     AppendableFunction,
@@ -56,7 +55,6 @@ def _convert_symbol_to_attribute_name(symbol_name):
         "model.metadata": "model_metadata",
         "datum.uid": "datum_uids",
         "datum.metadata": "datum_metadata",
-        "annotation.task_type": "task_types",
         "annotation.metadata": "annotation_metadata",
         "annotation.bounding_box": "require_bounding_box",
         "annotation.bounding_box.area": "bounding_box_area",
@@ -249,8 +247,6 @@ class Filter:
         A list of `Datum` UIDs to filter on.
     datum_metadata : Dict[str, List[Constraint]], optional
         A dictionary of `Datum` metadata to filter on.
-    task_types : List[TaskType], optional
-        A list of task types to filter on.
     annotation_metadata : Dict[str, List[Constraint]], optional
         A dictionary of `Annotation` metadata to filter on.
     require_bounding_box : bool, optional
@@ -295,7 +291,6 @@ class Filter:
     datum_metadata: Optional[Dict[str, List[Constraint]]] = None
 
     # annotations
-    task_types: Optional[List[TaskType]] = None
     annotation_metadata: Optional[Dict[str, List[Constraint]]] = None
 
     # geometries
@@ -325,7 +320,6 @@ class Filter:
         return {
             "name",
             "uid",
-            "task_type",
             "labels",
             "keys",
         }
@@ -367,9 +361,6 @@ class Filter:
                 )
                 for v in vlist
             ]
-
-        # unpack tasktypes
-        self.task_types = _unpack_list(self.task_types, TaskType)
 
         # unpack area
         self.bounding_box_area = _unpack_list(
@@ -429,7 +420,6 @@ class Filter:
             "dataset_names",
             "model_names",
             "datum_uids",
-            "task_types",
             "label_keys",
         ]:
             if attr in constraints:

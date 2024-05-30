@@ -68,7 +68,6 @@ def test__verify_ready_to_evaluate(
                 datum=schemas.Datum(uid="uid1"),
                 annotations=[
                     schemas.Annotation(
-                        task_type=enums.TaskType.CLASSIFICATION,
                         labels=[schemas.Label(key="k1", value="v1")],
                     )
                 ],
@@ -94,7 +93,6 @@ def test__verify_ready_to_evaluate(
                 datum=schemas.Datum(uid="uid1"),
                 annotations=[
                     schemas.Annotation(
-                        task_type=enums.TaskType.CLASSIFICATION,
                         labels=[
                             schemas.Label(key="k1", value="v1", score=1.0)
                         ],
@@ -121,7 +119,6 @@ def test__verify_ready_to_evaluate(
                 datum=schemas.Datum(uid="uid1"),
                 annotations=[
                     schemas.Annotation(
-                        task_type=enums.TaskType.CLASSIFICATION,
                         labels=[
                             schemas.Label(key="k1", value="v1", score=1.0)
                         ],
