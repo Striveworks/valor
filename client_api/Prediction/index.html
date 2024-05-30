@@ -8,9 +8,9 @@
 <link href="../Model/" rel="prev"/>
 <link href="../Viz/" rel="next"/>
 <link href="../../assets/images/favicon.png" rel="icon"/>
-<meta content="mkdocs-1.6.0, mkdocs-material-9.5.21" name="generator"/>
+<meta content="mkdocs-1.6.0, mkdocs-material-9.5.25" name="generator"/>
 <title>Prediction - Valor</title>
-<link href="../../assets/stylesheets/main.66ac8b77.min.css" rel="stylesheet"/>
+<link href="../../assets/stylesheets/main.6543a935.min.css" rel="stylesheet"/>
 <link href="../../assets/stylesheets/palette.06af60db.min.css" rel="stylesheet"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&amp;display=fallback" rel="stylesheet"/>
@@ -134,16 +134,16 @@
 </a>
 </li>
 <li class="md-nav__item">
-<a class="md-nav__link" href="../../basic_usage/">
+<a class="md-nav__link" href="https://github.com/Striveworks/valor/blob/main/examples/getting_started.ipynb/">
 <span class="md-ellipsis">
-    Basic Usage
+    Getting Started Notebook
   </span>
 </a>
 </li>
 <li class="md-nav__item">
 <a class="md-nav__link" href="https://github.com/Striveworks/valor/blob/main/examples/">
 <span class="md-ellipsis">
-    Sample Notebooks
+    All Sample Notebooks
   </span>
 </a>
 </li>
@@ -459,7 +459,7 @@
 <div class="doc doc-object doc-class">
 <div class="doc doc-contents first">
 <p class="doc doc-class-bases">
-            Bases: <code><span title="valor.schemas.StaticCollection">StaticCollection</span></code></p>
+              Bases: <code><span title="valor.schemas.StaticCollection">StaticCollection</span></code></p>
 <p>An object describing a prediction (e.g., a machine-drawn bounding box on an image).</p>
 <p><span class="doc-section-title">Attributes:</span></p>
 <table>
@@ -641,13 +641,13 @@
 </span><span id="__span-0-160"><a id="__codelineno-0-160" name="__codelineno-0-160"></a>
 </span><span id="__span-0-161"><a id="__codelineno-0-161" name="__codelineno-0-161"></a>        <span class="c1"># validation</span>
 </span><span id="__span-0-162"><a id="__codelineno-0-162" name="__codelineno-0-162"></a>        <span class="k">for</span> <span class="n">annotation</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">annotations</span><span class="p">:</span>
-</span><span id="__span-0-163"><a id="__codelineno-0-163" name="__codelineno-0-163"></a>            <span class="n">task_type</span> <span class="o">=</span> <span class="n">annotation</span><span class="o">.</span><span class="n">task_type</span><span class="o">.</span><span class="n">get_value</span><span class="p">()</span>
+</span><span id="__span-0-163"><a id="__codelineno-0-163" name="__codelineno-0-163"></a>            <span class="n">task_type</span> <span class="o">=</span> <span class="n">annotation</span><span class="o">.</span><span class="n">task_type</span>
 </span><span id="__span-0-164"><a id="__codelineno-0-164" name="__codelineno-0-164"></a>            <span class="k">if</span> <span class="n">task_type</span> <span class="ow">in</span> <span class="p">[</span>
 </span><span id="__span-0-165"><a id="__codelineno-0-165" name="__codelineno-0-165"></a>                <span class="n">TaskType</span><span class="o">.</span><span class="n">CLASSIFICATION</span><span class="p">,</span>
 </span><span id="__span-0-166"><a id="__codelineno-0-166" name="__codelineno-0-166"></a>                <span class="n">TaskType</span><span class="o">.</span><span class="n">OBJECT_DETECTION</span><span class="p">,</span>
 </span><span id="__span-0-167"><a id="__codelineno-0-167" name="__codelineno-0-167"></a>            <span class="p">]:</span>
 </span><span id="__span-0-168"><a id="__codelineno-0-168" name="__codelineno-0-168"></a>                <span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">annotation</span><span class="o">.</span><span class="n">labels</span><span class="p">:</span>
-</span><span id="__span-0-169"><a id="__codelineno-0-169" name="__codelineno-0-169"></a>                    <span class="n">label_score</span> <span class="o">=</span> <span class="n">label</span><span class="o">.</span><span class="n">score</span><span class="o">.</span><span class="n">_value</span>
+</span><span id="__span-0-169"><a id="__codelineno-0-169" name="__codelineno-0-169"></a>                    <span class="n">label_score</span> <span class="o">=</span> <span class="n">label</span><span class="o">.</span><span class="n">score</span>
 </span><span id="__span-0-170"><a id="__codelineno-0-170" name="__codelineno-0-170"></a>                    <span class="k">if</span> <span class="n">label_score</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
 </span><span id="__span-0-171"><a id="__codelineno-0-171" name="__codelineno-0-171"></a>                        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
 </span><span id="__span-0-172"><a id="__codelineno-0-172" name="__codelineno-0-172"></a>                            <span class="sa">f</span><span class="s2">"For task type `</span><span class="si">{</span><span class="n">task_type</span><span class="si">}</span><span class="s2">` prediction labels must have scores, but got `None`"</span>
@@ -656,8 +656,8 @@
 </span><span id="__span-0-175"><a id="__codelineno-0-175" name="__codelineno-0-175"></a>
 </span><span id="__span-0-176"><a id="__codelineno-0-176" name="__codelineno-0-176"></a>                <span class="n">label_keys_to_sum</span> <span class="o">=</span> <span class="p">{}</span>
 </span><span id="__span-0-177"><a id="__codelineno-0-177" name="__codelineno-0-177"></a>                <span class="k">for</span> <span class="n">scored_label</span> <span class="ow">in</span> <span class="n">annotation</span><span class="o">.</span><span class="n">labels</span><span class="p">:</span>
-</span><span id="__span-0-178"><a id="__codelineno-0-178" name="__codelineno-0-178"></a>                    <span class="n">label_key</span> <span class="o">=</span> <span class="n">scored_label</span><span class="o">.</span><span class="n">key</span><span class="o">.</span><span class="n">get_value</span><span class="p">()</span>
-</span><span id="__span-0-179"><a id="__codelineno-0-179" name="__codelineno-0-179"></a>                    <span class="n">label_score</span> <span class="o">=</span> <span class="n">scored_label</span><span class="o">.</span><span class="n">score</span><span class="o">.</span><span class="n">get_value</span><span class="p">()</span>
+</span><span id="__span-0-178"><a id="__codelineno-0-178" name="__codelineno-0-178"></a>                    <span class="n">label_key</span> <span class="o">=</span> <span class="n">scored_label</span><span class="o">.</span><span class="n">key</span>
+</span><span id="__span-0-179"><a id="__codelineno-0-179" name="__codelineno-0-179"></a>                    <span class="n">label_score</span> <span class="o">=</span> <span class="n">scored_label</span><span class="o">.</span><span class="n">score</span>
 </span><span id="__span-0-180"><a id="__codelineno-0-180" name="__codelineno-0-180"></a>                    <span class="k">if</span> <span class="n">label_key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">label_keys_to_sum</span><span class="p">:</span>
 </span><span id="__span-0-181"><a id="__codelineno-0-181" name="__codelineno-0-181"></a>                        <span class="n">label_keys_to_sum</span><span class="p">[</span><span class="n">label_key</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>
 </span><span id="__span-0-182"><a id="__codelineno-0-182" name="__codelineno-0-182"></a>                    <span class="n">label_keys_to_sum</span><span class="p">[</span><span class="n">label_key</span><span class="p">]</span> <span class="o">+=</span> <span class="n">label_score</span>
@@ -787,13 +787,13 @@
 </span><span id="__span-0-160"><a id="__codelineno-0-160" name="__codelineno-0-160"></a>
 </span><span id="__span-0-161"><a id="__codelineno-0-161" name="__codelineno-0-161"></a>    <span class="c1"># validation</span>
 </span><span id="__span-0-162"><a id="__codelineno-0-162" name="__codelineno-0-162"></a>    <span class="k">for</span> <span class="n">annotation</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">annotations</span><span class="p">:</span>
-</span><span id="__span-0-163"><a id="__codelineno-0-163" name="__codelineno-0-163"></a>        <span class="n">task_type</span> <span class="o">=</span> <span class="n">annotation</span><span class="o">.</span><span class="n">task_type</span><span class="o">.</span><span class="n">get_value</span><span class="p">()</span>
+</span><span id="__span-0-163"><a id="__codelineno-0-163" name="__codelineno-0-163"></a>        <span class="n">task_type</span> <span class="o">=</span> <span class="n">annotation</span><span class="o">.</span><span class="n">task_type</span>
 </span><span id="__span-0-164"><a id="__codelineno-0-164" name="__codelineno-0-164"></a>        <span class="k">if</span> <span class="n">task_type</span> <span class="ow">in</span> <span class="p">[</span>
 </span><span id="__span-0-165"><a id="__codelineno-0-165" name="__codelineno-0-165"></a>            <span class="n">TaskType</span><span class="o">.</span><span class="n">CLASSIFICATION</span><span class="p">,</span>
 </span><span id="__span-0-166"><a id="__codelineno-0-166" name="__codelineno-0-166"></a>            <span class="n">TaskType</span><span class="o">.</span><span class="n">OBJECT_DETECTION</span><span class="p">,</span>
 </span><span id="__span-0-167"><a id="__codelineno-0-167" name="__codelineno-0-167"></a>        <span class="p">]:</span>
 </span><span id="__span-0-168"><a id="__codelineno-0-168" name="__codelineno-0-168"></a>            <span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">annotation</span><span class="o">.</span><span class="n">labels</span><span class="p">:</span>
-</span><span id="__span-0-169"><a id="__codelineno-0-169" name="__codelineno-0-169"></a>                <span class="n">label_score</span> <span class="o">=</span> <span class="n">label</span><span class="o">.</span><span class="n">score</span><span class="o">.</span><span class="n">_value</span>
+</span><span id="__span-0-169"><a id="__codelineno-0-169" name="__codelineno-0-169"></a>                <span class="n">label_score</span> <span class="o">=</span> <span class="n">label</span><span class="o">.</span><span class="n">score</span>
 </span><span id="__span-0-170"><a id="__codelineno-0-170" name="__codelineno-0-170"></a>                <span class="k">if</span> <span class="n">label_score</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
 </span><span id="__span-0-171"><a id="__codelineno-0-171" name="__codelineno-0-171"></a>                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
 </span><span id="__span-0-172"><a id="__codelineno-0-172" name="__codelineno-0-172"></a>                        <span class="sa">f</span><span class="s2">"For task type `</span><span class="si">{</span><span class="n">task_type</span><span class="si">}</span><span class="s2">` prediction labels must have scores, but got `None`"</span>
@@ -802,8 +802,8 @@
 </span><span id="__span-0-175"><a id="__codelineno-0-175" name="__codelineno-0-175"></a>
 </span><span id="__span-0-176"><a id="__codelineno-0-176" name="__codelineno-0-176"></a>            <span class="n">label_keys_to_sum</span> <span class="o">=</span> <span class="p">{}</span>
 </span><span id="__span-0-177"><a id="__codelineno-0-177" name="__codelineno-0-177"></a>            <span class="k">for</span> <span class="n">scored_label</span> <span class="ow">in</span> <span class="n">annotation</span><span class="o">.</span><span class="n">labels</span><span class="p">:</span>
-</span><span id="__span-0-178"><a id="__codelineno-0-178" name="__codelineno-0-178"></a>                <span class="n">label_key</span> <span class="o">=</span> <span class="n">scored_label</span><span class="o">.</span><span class="n">key</span><span class="o">.</span><span class="n">get_value</span><span class="p">()</span>
-</span><span id="__span-0-179"><a id="__codelineno-0-179" name="__codelineno-0-179"></a>                <span class="n">label_score</span> <span class="o">=</span> <span class="n">scored_label</span><span class="o">.</span><span class="n">score</span><span class="o">.</span><span class="n">get_value</span><span class="p">()</span>
+</span><span id="__span-0-178"><a id="__codelineno-0-178" name="__codelineno-0-178"></a>                <span class="n">label_key</span> <span class="o">=</span> <span class="n">scored_label</span><span class="o">.</span><span class="n">key</span>
+</span><span id="__span-0-179"><a id="__codelineno-0-179" name="__codelineno-0-179"></a>                <span class="n">label_score</span> <span class="o">=</span> <span class="n">scored_label</span><span class="o">.</span><span class="n">score</span>
 </span><span id="__span-0-180"><a id="__codelineno-0-180" name="__codelineno-0-180"></a>                <span class="k">if</span> <span class="n">label_key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">label_keys_to_sum</span><span class="p">:</span>
 </span><span id="__span-0-181"><a id="__codelineno-0-181" name="__codelineno-0-181"></a>                    <span class="n">label_keys_to_sum</span><span class="p">[</span><span class="n">label_key</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>
 </span><span id="__span-0-182"><a id="__codelineno-0-182" name="__codelineno-0-182"></a>                <span class="n">label_keys_to_sum</span><span class="p">[</span><span class="n">label_key</span><span class="p">]</span> <span class="o">+=</span> <span class="n">label_score</span>
@@ -845,7 +845,7 @@
 <div class="md-dialog__inner md-typeset"></div>
 </div>
 <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.expand"], "search": "../../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
-<script src="../../assets/javascripts/bundle.a7c05c9e.min.js"></script>
+<script src="../../assets/javascripts/bundle.081f42fc.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 <script>document$.subscribe(() => {
             window.update_swagger_ui_iframe_height = function (id) {
