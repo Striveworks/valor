@@ -18,7 +18,6 @@ from valor import (
     Prediction,
 )
 from valor.client import connect
-from valor.enums import TaskType
 from valor.exceptions import ClientException
 from valor.schemas import Constraint, Filter
 
@@ -48,7 +47,6 @@ def created_dataset(
             datum=Datum(uid="1"),
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
                     labels=dataset_labels,
                 )
             ],
@@ -72,7 +70,6 @@ def created_model(
             datum=Datum(uid="1"),
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
                     labels=model_labels,
                 )
             ],

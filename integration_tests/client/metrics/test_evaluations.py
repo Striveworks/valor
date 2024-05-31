@@ -12,7 +12,7 @@ from valor import (
     Model,
     Prediction,
 )
-from valor.enums import EvaluationStatus, TaskType
+from valor.enums import EvaluationStatus
 from valor.exceptions import ClientException
 from valor_api import crud, enums, schemas
 from valor_api.backend import core
@@ -78,7 +78,6 @@ def test_get_sorted_evaluations(
             ),
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
                     labels=[Label(key="class", value=str(label_value))],
                 )
             ],
@@ -99,7 +98,6 @@ def test_get_sorted_evaluations(
             ),
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
                     labels=[
                         Label(key="class", value=str(pidx), score=pred[pidx])
                         for pidx in range(len(pred))

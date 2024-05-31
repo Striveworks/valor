@@ -9,7 +9,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from valor import Annotation, Client, Dataset, Datum, GroundTruth, Label
-from valor.enums import TableStatus, TaskType
+from valor.enums import TableStatus
 from valor.exceptions import (
     ClientException,
     DatasetDoesNotExistError,
@@ -166,9 +166,9 @@ def test_create_image_dataset_with_segmentations(
     semantic_segs = []
     for seg in segs:
         assert isinstance(seg, Annotation)
-        if seg.task_type == TaskType.OBJECT_DETECTION:
+        if seg.labels[0].key == "k1":
             instance_segs.append(seg)
-        elif seg.task_type == TaskType.SEMANTIC_SEGMENTATION:
+        else:
             semantic_segs.append(seg)
 
     # should have one instance segmentation that's a rectangle
@@ -245,7 +245,6 @@ def test_create_tabular_dataset_and_add_groundtruth(
             datum=Datum(uid="uid1", metadata=md1),  # type: ignore - minor MetadataType typing discrepancy
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
                     labels=[
                         Label(key="k1", value="v1"),
                         Label(key="k2", value="v2"),
@@ -257,7 +256,6 @@ def test_create_tabular_dataset_and_add_groundtruth(
             datum=Datum(uid="uid2", metadata=md23),  # type: ignore - minor MetadataType typing discrepancy
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
                     labels=[Label(key="k1", value="v3")],
                 )
             ],
@@ -292,7 +290,6 @@ def test_create_tabular_dataset_and_add_groundtruth(
             datum=Datum(uid="uid3"),
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
                     labels=[Label(key="k1", value="v1")],
                 )
             ],
@@ -301,7 +298,6 @@ def test_create_tabular_dataset_and_add_groundtruth(
             datum=Datum(uid="uid4"),
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
                     labels=[Label(key="k1", value="v5")],
                 )
             ],
@@ -380,10 +376,6 @@ def test_get_summary(
     assert summary.num_bounding_boxes == 1
     assert summary.num_polygons == 0
     assert summary.num_rasters == 1
-    assert summary.task_types == [
-        TaskType.OBJECT_DETECTION,
-        TaskType.SEMANTIC_SEGMENTATION,
-    ]
 
     summary.labels.sort(key=lambda x: x.key)
     assert summary.labels == [
@@ -441,7 +433,6 @@ def test_add_groundtruths(client: Client, dataset_name: str):
                 datum=Datum(uid="uid1"),
                 annotations=[
                     Annotation(
-                        task_type=TaskType.CLASSIFICATION,
                         labels=[Label(key="k1", value="v1")],
                     )
                 ],
@@ -471,7 +462,6 @@ def test_add_groundtruths(client: Client, dataset_name: str):
                 datum=Datum(uid="uid1"),
                 annotations=[
                     Annotation(
-                        task_type=TaskType.CLASSIFICATION,
                         labels=[Label(key="k2", value="v2")],
                     )
                 ],

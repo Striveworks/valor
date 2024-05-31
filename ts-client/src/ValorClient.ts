@@ -129,7 +129,6 @@ export type Datum = {
 };
 
 export type Annotation = {
-  task_type: TaskType;
   metadata: Partial<Record<string, any>>;
   labels: Label[];
   bounding_box?: number[][][];

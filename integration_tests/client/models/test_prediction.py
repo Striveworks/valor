@@ -8,7 +8,6 @@ from sqlalchemy.orm import Session
 
 from valor import Annotation, Client, Dataset, Label, Model, Prediction
 from valor.coretypes import GroundTruth
-from valor.enums import TaskType
 from valor.metatypes import Datum
 from valor.schemas import Box, Polygon
 from valor_api.backend import models
@@ -37,14 +36,12 @@ def test_create_pred_detections_as_bbox_or_poly(
         datum=img1,
         annotations=[
             Annotation(
-                task_type=TaskType.OBJECT_DETECTION,
                 labels=[Label(key="k", value="v", score=0.6)],
                 bounding_box=Box.from_extrema(
                     xmin=xmin, ymin=ymin, xmax=xmax, ymax=ymax
                 ),
             ),
             Annotation(
-                task_type=TaskType.OBJECT_DETECTION,
                 labels=[Label(key="k", value="v", score=0.4)],
                 polygon=Polygon(
                     [

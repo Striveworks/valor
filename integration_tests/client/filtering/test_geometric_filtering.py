@@ -4,7 +4,6 @@ import numpy as np
 import pytest
 
 from valor import Annotation, Dataset, Datum, Filter, GroundTruth, Label
-from valor.enums import TaskType
 from valor.schemas import Box, MultiPolygon, Polygon, Raster
 
 
@@ -75,7 +74,6 @@ def groundtruths_with_areas(
                     datum=Datum(uid=f"box{idx}"),
                     annotations=[
                         Annotation(
-                            task_type=TaskType.OBJECT_DETECTION,
                             labels=[Label(key="box", value=str(idx))],
                             bounding_box=bbox,
                         )
@@ -85,7 +83,6 @@ def groundtruths_with_areas(
                     datum=Datum(uid=f"polygon{idx}"),
                     annotations=[
                         Annotation(
-                            task_type=TaskType.OBJECT_DETECTION,
                             labels=[Label(key="polygon", value=str(idx))],
                             polygon=polygon,
                         )
@@ -95,7 +92,6 @@ def groundtruths_with_areas(
                     datum=Datum(uid=f"multipolygon{idx}"),
                     annotations=[
                         Annotation(
-                            task_type=TaskType.OBJECT_DETECTION,
                             labels=[Label(key="multipolygon", value=str(idx))],
                             raster=Raster.from_geometry(
                                 multipolygon,
@@ -115,7 +111,6 @@ def groundtruths_with_areas(
                     ),
                     annotations=[
                         Annotation(
-                            task_type=TaskType.OBJECT_DETECTION,
                             labels=[Label(key="raster", value=str(idx))],
                             raster=raster,
                         )

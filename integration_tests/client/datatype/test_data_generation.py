@@ -52,16 +52,11 @@ def _generate_gt_annotation(
     n_labels: int,
 ) -> Annotation:
     """Generate an annotation for a given image with a given number of labels"""
-    task_types = [
-        TaskType.OBJECT_DETECTION,
-        TaskType.SEMANTIC_SEGMENTATION,
-    ]
     mask = _generate_mask(height=height, width=width)
     raster = Raster.from_numpy(mask)
     bounding_box = _generate_bounding_box(
         max_height=height, max_width=width, is_random=True
     )
-    task_type = random.choice(task_types)
 
     labels = []
     for i in range(n_labels):
@@ -70,12 +65,9 @@ def _generate_gt_annotation(
         labels.append(label)
 
     return Annotation(
-        task_type=task_type,
         labels=labels,
         raster=raster,
-        bounding_box=(
-            bounding_box if task_type == TaskType.OBJECT_DETECTION else None
-        ),
+        bounding_box=(bounding_box),
     )
 
 
@@ -175,7 +167,6 @@ def _generate_prediction_annotation(
         labels.append(label)
 
     return Annotation(
-        task_type=TaskType.OBJECT_DETECTION,
         labels=labels,
         bounding_box=box,
     )

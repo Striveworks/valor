@@ -8,7 +8,6 @@ from valor import (
     Model,
     Prediction,
 )
-from valor.enums import TaskType
 
 
 def test_create_read_embedding_annotation(
@@ -20,7 +19,6 @@ def test_create_read_embedding_annotation(
             datum=Datum(uid="uid123"),
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
                     labels=[Label(key="k1", value="v1")],
                 )
             ],
@@ -34,7 +32,6 @@ def test_create_read_embedding_annotation(
             datum=Datum(uid="uid123"),
             annotations=[
                 Annotation(
-                    task_type=TaskType.EMBEDDING,
                     embedding=[1, 2, 3, 4, 5],
                 )
             ],

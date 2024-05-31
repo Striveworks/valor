@@ -11,7 +11,6 @@ from valor import (
     Prediction,
     exceptions,
 )
-from valor.enums import TaskType
 
 
 def test_dataset_exceptions(
@@ -94,7 +93,6 @@ def test_annotation_exceptions(
             datum=Datum(uid="uid"),
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
                     labels=[Label(key="key", value="value", score=1.0)],
                 )
             ],
