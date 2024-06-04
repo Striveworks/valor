@@ -463,8 +463,20 @@ def _validate_create_or_get_evaluations(
     elif any(
         [dataset.status != enums.TableStatus.FINALIZED for dataset in datasets]
     ):
-        raise RuntimeError(
+        raise exceptions.EvaluationRequestError(
             "Attempting to run evaluation over a dataset that is not in the finalized state."
+        )
+    elif any(
+        [
+            core.get_model_status(
+                db=db, dataset_name=dataset.name, model_name=model.name
+            )
+            != enums.TableStatus.FINALIZED
+            for dataset in datasets
+        ]
+    ):
+        raise exceptions.EvaluationRequestError(
+            f"The model '{model.name}' has not been finalized."
         )
 
     # check that prediction label keys match ground truth label keys
