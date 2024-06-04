@@ -41,24 +41,8 @@ def test_evaluation_creation_exceptions(db: Session):
         )
     assert "datasets" in str(e)
 
-    # test no model exists
-    with pytest.raises(exceptions.EvaluationRequestError) as e:
-        core.create_or_get_evaluations(
-            db=db,
-            job_request=schemas.EvaluationRequest(
-                model_names=["does_not_exist"],
-                datum_filter=schemas.Filter(dataset_names=["mydataset"]),
-                parameters=schemas.EvaluationParameters(
-                    task_type=enums.TaskType.CLASSIFICATION
-                ),
-                meta=None,
-            ),
-            allow_retries=False,
-        )
-    assert "models" in str(e)
-
     # test dataset not finalized
-    with pytest.raises(exceptions.DatasetNotFinalizedError) as e:
+    with pytest.raises(exceptions.EvaluationRequestError) as e:
         core.create_or_get_evaluations(
             db=db,
             job_request=schemas.EvaluationRequest(
@@ -75,8 +59,24 @@ def test_evaluation_creation_exceptions(db: Session):
 
     crud.finalize(db=db, dataset_name="mydataset")
 
+    # test no model exists
+    with pytest.raises(exceptions.EvaluationRequestError) as e:
+        core.create_or_get_evaluations(
+            db=db,
+            job_request=schemas.EvaluationRequest(
+                model_names=["does_not_exist"],
+                datum_filter=schemas.Filter(dataset_names=["mydataset"]),
+                parameters=schemas.EvaluationParameters(
+                    task_type=enums.TaskType.CLASSIFICATION
+                ),
+                meta=None,
+            ),
+            allow_retries=False,
+        )
+    assert "models" in str(e)
+
     # test model not finalized
-    with pytest.raises(exceptions.ModelNotFinalizedError) as e:
+    with pytest.raises(exceptions.EvaluationRequestError) as e:
         core.create_or_get_evaluations(
             db=db,
             job_request=schemas.EvaluationRequest(
