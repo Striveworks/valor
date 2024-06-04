@@ -2,6 +2,7 @@
 that is no auth
 """
 
+import random
 from dataclasses import asdict
 
 import pytest
@@ -484,6 +485,39 @@ def test_evaluate_detection(
     # test accessing these evaluations via the dataset
     all_evals = dataset.get_evaluations()
     assert len(all_evals) == 7
+
+    # check that metrics arg works correctly
+    selected_metrics = random.sample(
+        [
+            "AP",
+            "AR",
+            "mAP",
+            "APAveragedOverIOUs",
+            "mAR",
+            "mAPAveragedOverIOUs",
+            "PrecisionRecallCurve",
+        ],
+        2,
+    )
+    eval_job_random_metrics = model.evaluate_detection(
+        dataset,
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_return=[0.1, 0.6],
+        filter_by=[
+            Label.key == "k1",
+            Annotation.bounding_box.area >= 1200,
+            Annotation.bounding_box.area <= 1800,
+        ],
+        convert_annotations_to_type=AnnotationType.BOX,
+        metrics_to_return=selected_metrics,
+    )
+    assert (
+        eval_job_random_metrics.wait_for_completion(timeout=30)
+        == EvaluationStatus.DONE
+    )
+    assert set(
+        [metric["type"] for metric in eval_job_random_metrics.metrics]
+    ) == set(selected_metrics)
 
 
 def test_evaluate_detection_with_json_filters(
