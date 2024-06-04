@@ -434,7 +434,6 @@ def _validate_create_or_get_evaluations(
     -------
     model.Evaluation
         The row that was passed as input.
-
     """
 
     # unpack filters and params
@@ -446,17 +445,37 @@ def _validate_create_or_get_evaluations(
     datasets = db.query(Query(models.Dataset).filter(groundtruth_filter).any()).distinct().all()  # type: ignore - SQLAlchemy type issue
     model = db.query(Query(models.Model).filter(prediction_filter).any()).distinct().one_or_none()  # type: ignore - SQLAlchemy type issue
 
+    datasets = [
+        dataset
+        for dataset in datasets
+        if dataset.status == enums.TableStatus.FINALIZED
+    ]
+
     # verify model and datasets have data for this evaluation
-    if len(datasets) == 0 or model is None:
-        evaluation.status = enums.EvaluationStatus.DONE
-    elif job_request.parameters.task_type == enums.TaskType.CLASSIFICATION:
-        # check that prediction label keys match ground truth label keys
+    if not datasets:
+        raise exceptions.EvaluationRequestError(
+            "No finalized datasets were found that met the filter criteria."
+        )
+    elif model is None:
+        raise exceptions.EvaluationRequestError(
+            f"The model '{evaluation.model_name}' did not meet the filter criteria."
+        )
+    elif any(
+        [dataset.status != enums.TableStatus.FINALIZED for dataset in datasets]
+    ):
+        raise RuntimeError(
+            "Attempting to run evaluation over a dataset that is not in the finalized state."
+        )
+
+    # check that prediction label keys match ground truth label keys
+    if job_request.parameters.task_type == enums.TaskType.CLASSIFICATION:
         core.validate_matching_label_keys(
             db=db,
             label_map=parameters.label_map,
             groundtruth_filter=groundtruth_filter,
             prediction_filter=prediction_filter,
         )
+
     return evaluation
 
 
@@ -505,6 +524,17 @@ def create_or_get_evaluations(
                     job_request=subrequest,
                     evaluation=evaluation,
                 )
+                try:
+                    evaluation.status = enums.EvaluationStatus.PENDING
+                    db.commit()
+                except IntegrityError:
+                    db.rollback()
+                    raise exceptions.EvaluationStateError(
+                        evaluation_id=evaluation.id,
+                        current_state=enums.EvaluationStatus.FAILED,
+                        requested_state=enums.EvaluationStatus.PENDING,
+                    )
+
             existing_rows.append(evaluation)
 
         # create evaluation row
