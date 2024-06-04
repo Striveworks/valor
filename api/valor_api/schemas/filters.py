@@ -1063,11 +1063,20 @@ class AdvancedFilter(BaseModel):
                 annotation_raster_area,
                 labels,
                 label_keys,
+                label_scores,
+            ]
+            if expr is not None
+        ]
+        label_filter = [
+            expr
+            for expr in [
+                labels,
+                label_keys,
             ]
             if expr is not None
         ]
 
-        f = cls()
+        f = cls(labels=and_if_list(label_filter))
         if ignore_groundtruths:
             f.predictions = and_if_list(values=groundtruth_filter)
         elif ignore_predictions:
