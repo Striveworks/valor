@@ -922,7 +922,7 @@ class Model(StaticCollection):
             Optional set of constraints to filter evaluation by.
         label_map : Dict[Label, Label], optional
             Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
-        metrics: List[str]
+        metrics: List[str], optional
             The list of metrics to compute, store, and return to the user.
         allow_retries : bool, default = False
             Option to retry previously failed evaluations.
@@ -990,7 +990,7 @@ class Model(StaticCollection):
             Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
         recall_score_threshold: float, default=0
             The confidence score threshold for use when determining whether to count a prediction as a true positive or not while calculating Average Recall.
-        metrics: List[str]
+        metrics: List[str], optional
             The list of metrics to compute, store, and return to the user.
         pr_curve_iou_threshold: float, optional
             The IOU threshold to use when calculating precision-recall curves. Defaults to 0.5.
@@ -1056,7 +1056,7 @@ class Model(StaticCollection):
             Optional set of constraints to filter evaluation by.
         label_map : Dict[Label, Label], optional
             Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
-        metrics: List[str]
+        metrics: List[str], optional
             The list of metrics to compute, store, and return to the user.
         allow_retries : bool, default = False
             Option to retry previously failed evaluations.

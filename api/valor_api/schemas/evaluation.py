@@ -16,7 +16,7 @@ class EvaluationParameters(BaseModel):
 
     Attributes
     ----------
-    metrics: list[str]
+    metrics: list[str], optional
         The list of metrics to compute, store, and return to the user.
     convert_annotations_to_type: AnnotationType | None = None
         The type to convert all annotations to.
