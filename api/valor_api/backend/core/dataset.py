@@ -254,6 +254,15 @@ def set_dataset_status(
             dataset_names=[name],
         ):
             raise exceptions.EvaluationRunningError(dataset_name=name)
+    elif status == enums.TableStatus.FINALIZED:
+        datum_count = (
+            db.query(func.count(models.Datum.id))
+            .join(models.Dataset, models.Dataset.id == models.Datum.dataset_id)
+            .where(models.Dataset.name == name)
+            .scalar()
+        )
+        if datum_count == 0:
+            raise exceptions.DatasetEmptyError(name)
 
     try:
         dataset.status = status

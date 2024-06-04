@@ -1,8 +1,129 @@
+import pytest
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from valor_api import crud, enums, schemas
+from valor_api import crud, enums, exceptions, schemas
 from valor_api.backend import core
+
+
+def test_evaluation_creation_exceptions(db: Session):
+    crud.create_dataset(db=db, dataset=schemas.Dataset(name="mydataset"))
+    crud.create_groundtruths(
+        db=db,
+        groundtruths=[
+            schemas.GroundTruth(
+                dataset_name="mydataset",
+                datum=schemas.Datum(uid="123"),
+                annotations=[
+                    schemas.Annotation(
+                        task_type=enums.TaskType.CLASSIFICATION,
+                        labels=[schemas.Label(key="class", value="dog")],
+                    )
+                ],
+            )
+        ],
+    )
+    crud.create_model(db=db, model=schemas.Model(name="mymodel"))
+
+    # test no dataset exists
+    with pytest.raises(exceptions.EvaluationRequestError) as e:
+        core.create_or_get_evaluations(
+            db=db,
+            job_request=schemas.EvaluationRequest(
+                model_names=["mymodel"],
+                datum_filter=schemas.Filter(dataset_names=["does_not_exist"]),
+                parameters=schemas.EvaluationParameters(
+                    task_type=enums.TaskType.CLASSIFICATION
+                ),
+                meta=None,
+            ),
+            allow_retries=False,
+        )
+    assert "datasets" in str(e)
+
+    # test no model exists
+    with pytest.raises(exceptions.EvaluationRequestError) as e:
+        core.create_or_get_evaluations(
+            db=db,
+            job_request=schemas.EvaluationRequest(
+                model_names=["does_not_exist"],
+                datum_filter=schemas.Filter(dataset_names=["mydataset"]),
+                parameters=schemas.EvaluationParameters(
+                    task_type=enums.TaskType.CLASSIFICATION
+                ),
+                meta=None,
+            ),
+            allow_retries=False,
+        )
+    assert "models" in str(e)
+
+    # test dataset not finalized
+    with pytest.raises(exceptions.DatasetNotFinalizedError) as e:
+        core.create_or_get_evaluations(
+            db=db,
+            job_request=schemas.EvaluationRequest(
+                model_names=["mymodel"],
+                datum_filter=schemas.Filter(dataset_names=["mydataset"]),
+                parameters=schemas.EvaluationParameters(
+                    task_type=enums.TaskType.CLASSIFICATION
+                ),
+                meta=None,
+            ),
+            allow_retries=False,
+        )
+    assert "mydataset" in str(e)
+
+    crud.finalize(db=db, dataset_name="mydataset")
+
+    # test model not finalized
+    with pytest.raises(exceptions.ModelNotFinalizedError) as e:
+        core.create_or_get_evaluations(
+            db=db,
+            job_request=schemas.EvaluationRequest(
+                model_names=["mymodel"],
+                datum_filter=schemas.Filter(dataset_names=["mydataset"]),
+                parameters=schemas.EvaluationParameters(
+                    task_type=enums.TaskType.CLASSIFICATION
+                ),
+                meta=None,
+            ),
+            allow_retries=False,
+        )
+    assert "mymodel" in str(e)
+
+    crud.create_predictions(
+        db=db,
+        predictions=[
+            schemas.Prediction(
+                dataset_name="mydataset",
+                model_name="mymodel",
+                datum=schemas.Datum(uid="123"),
+                annotations=[
+                    schemas.Annotation(
+                        task_type=enums.TaskType.CLASSIFICATION,
+                        labels=[
+                            schemas.Label(key="class", value="dog", score=1.0)
+                        ],
+                    )
+                ],
+            )
+        ],
+    )
+
+    evaluations = core.create_or_get_evaluations(
+        db=db,
+        job_request=schemas.EvaluationRequest(
+            model_names=["mymodel"],
+            datum_filter=schemas.Filter(dataset_names=["mydataset"]),
+            parameters=schemas.EvaluationParameters(
+                task_type=enums.TaskType.CLASSIFICATION
+            ),
+            meta=None,
+        ),
+        allow_retries=False,
+    )
+    assert len(evaluations) == 1
+    assert evaluations[0].status == enums.EvaluationStatus.PENDING
 
 
 def test_restart_failed_evaluation(db: Session):
@@ -99,5 +220,22 @@ def test_restart_failed_evaluation(db: Session):
         allow_retries=True,
     )
     assert len(evaluations3) == 1
-    assert evaluations3[0].status == enums.EvaluationStatus.DONE
+    assert evaluations3[0].status == enums.EvaluationStatus.PENDING
     assert evaluations3[0].id == evaluations1[0].id
+
+    # check that evaluation has completed
+    evaluations4 = crud.create_or_get_evaluations(
+        db=db,
+        job_request=schemas.EvaluationRequest(
+            model_names=["model"],
+            datum_filter=schemas.Filter(dataset_names=["dataset"]),
+            parameters=schemas.EvaluationParameters(
+                task_type=enums.TaskType.CLASSIFICATION
+            ),
+            meta=None,
+        ),
+        allow_retries=False,
+    )
+    assert len(evaluations4) == 1
+    assert evaluations4[0].status == enums.EvaluationStatus.DONE
+    assert evaluations4[0].id == evaluations1[0].id
