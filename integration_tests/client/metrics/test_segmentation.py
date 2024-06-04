@@ -2,6 +2,8 @@
 that is no auth
 """
 
+import random
+
 from valor import Client, Dataset, Datum, GroundTruth, Label, Model, Prediction
 from valor.enums import EvaluationStatus
 
@@ -50,6 +52,31 @@ def test_evaluate_segmentation(
     assert eval_job.meta["datums"] == 2
     assert eval_job.meta["labels"] == 3
     assert eval_job.meta["duration"] <= 5  # usually ~.25
+
+    # check that metrics arg works correctly
+    selected_metrics = random.sample(
+        ["IOU", "mIOU"],
+        1,
+    )
+    eval_job_random_metrics = model.evaluate_segmentation(
+        dataset, metrics_to_return=selected_metrics
+    )
+    assert (
+        eval_job_random_metrics.wait_for_completion(timeout=30)
+        == EvaluationStatus.DONE
+    )
+    assert set(
+        [metric["type"] for metric in eval_job_random_metrics.metrics]
+    ) == set(selected_metrics)
+
+    # check that passing None to metrics returns the assumed list of default metrics
+    default_metrics = ["IOU", "mIOU"]
+
+    eval_job = model.evaluate_segmentation(dataset, metrics_to_return=None)
+    assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
+    assert set([metric["type"] for metric in eval_job.metrics]) == set(
+        default_metrics
+    )
 
 
 def test_evaluate_segmentation_with_filter(
@@ -182,3 +209,28 @@ def test_evaluate_segmentation_with_label_maps(
     assert eval_job.meta["labels"] == 3
     assert eval_job.meta["annotations"] == 4
     assert eval_job.meta["duration"] <= 5  # usually .35
+
+    # test only passing in one metric or the other
+    eval_job = model.evaluate_segmentation(
+        dataset,
+        metrics_to_return=["IOU"],
+        label_map={
+            Label(key=f"k{i}", value=f"v{i}"): Label(key="foo", value="bar")
+            for i in range(1, 4)
+        },
+    )
+
+    assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
+    assert set([m["type"] for m in eval_job.metrics]) == set(["IOU"])
+
+    eval_job = model.evaluate_segmentation(
+        dataset,
+        metrics_to_return=["mIOU"],
+        label_map={
+            Label(key=f"k{i}", value=f"v{i}"): Label(key="foo", value="bar")
+            for i in range(1, 4)
+        },
+    )
+
+    assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
+    assert set([m["type"] for m in eval_job.metrics]) == set(["mIOU"])
