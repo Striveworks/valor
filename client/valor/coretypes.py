@@ -945,7 +945,9 @@ class Model(StaticCollection):
             parameters=EvaluationParameters(
                 task_type=TaskType.CLASSIFICATION,
                 label_map=self._create_label_map(label_map=label_map),
-                metrics_to_return=metrics_to_return,
+                metrics_to_return=(
+                    metrics_to_return if metrics_to_return else [""]
+                ),
             ),
             meta={},
         )
@@ -1018,7 +1020,7 @@ class Model(StaticCollection):
             iou_thresholds_to_return=iou_thresholds_to_return,
             label_map=self._create_label_map(label_map=label_map),
             recall_score_threshold=recall_score_threshold,
-            metrics_to_return=metrics_to_return,
+            metrics_to_return=metrics_to_return if metrics_to_return else [""],
             pr_curve_iou_threshold=pr_curve_iou_threshold,
         )
         datum_filter = self._format_constraints(datasets, filter_by)
@@ -1042,6 +1044,7 @@ class Model(StaticCollection):
         datasets: Optional[Union[Dataset, List[Dataset]]] = None,
         filter_by: Optional[FilterType] = None,
         label_map: Optional[Dict[Label, Label]] = None,
+        metrics_to_return: list[str] | None = None,
         allow_retries: bool = False,
     ) -> Evaluation:
         """
@@ -1055,6 +1058,8 @@ class Model(StaticCollection):
             Optional set of constraints to filter evaluation by.
         label_map : Dict[Label, Label], optional
             Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
+        metrics: List[str]
+            The list of metrics to compute, store, and return to the user.
         allow_retries : bool, default = False
             Option to retry previously failed evaluations.
 
@@ -1071,6 +1076,9 @@ class Model(StaticCollection):
             parameters=EvaluationParameters(
                 task_type=TaskType.SEMANTIC_SEGMENTATION,
                 label_map=self._create_label_map(label_map=label_map),
+                metrics_to_return=(
+                    metrics_to_return if metrics_to_return else [""]
+                ),
             ),
             meta={},
         )
