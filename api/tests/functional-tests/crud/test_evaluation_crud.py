@@ -7,7 +7,40 @@ from valor_api.backend import core
 
 def test_restart_failed_evaluation(db: Session):
     crud.create_dataset(db=db, dataset=schemas.Dataset(name="dataset"))
+    crud.create_groundtruths(
+        db=db,
+        groundtruths=[
+            schemas.GroundTruth(
+                dataset_name="dataset",
+                datum=schemas.Datum(uid="123"),
+                annotations=[
+                    schemas.Annotation(
+                        task_type=enums.TaskType.CLASSIFICATION,
+                        labels=[schemas.Label(key="class", value="dog")],
+                    )
+                ],
+            )
+        ],
+    )
     crud.create_model(db=db, model=schemas.Model(name="model"))
+    crud.create_predictions(
+        db=db,
+        predictions=[
+            schemas.Prediction(
+                dataset_name="dataset",
+                model_name="model",
+                datum=schemas.Datum(uid="123"),
+                annotations=[
+                    schemas.Annotation(
+                        task_type=enums.TaskType.CLASSIFICATION,
+                        labels=[
+                            schemas.Label(key="class", value="dog", score=1.0)
+                        ],
+                    )
+                ],
+            )
+        ],
+    )
     crud.finalize(db=db, dataset_name="dataset")
 
     # create evaluation and overwrite status to failed
@@ -24,6 +57,7 @@ def test_restart_failed_evaluation(db: Session):
         allow_retries=False,
     )
     assert len(evaluations1) == 1
+    assert evaluations1[0].status == enums.EvaluationStatus.PENDING
     try:
         evaluation = core.fetch_evaluation_from_id(
             db=db, evaluation_id=evaluations1[0].id

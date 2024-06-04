@@ -1,5 +1,3 @@
-from typing import Any
-
 from sqlalchemy import Function
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.orm.decl_api import DeclarativeMeta
@@ -69,9 +67,9 @@ def _recursive_select_to_table_names(
     """
     if isinstance(argument, Table):
         return [argument.name]
-    if isinstance(argument, TableTypeAlias):
+    elif isinstance(argument, TableTypeAlias):
         return [argument.__tablename__]
-    if isinstance(argument, DeclarativeMeta):
+    elif isinstance(argument, DeclarativeMeta):
         if "__tablename__" not in argument.__dict__:
             raise AttributeError(
                 f"DeclarativeMeta object '{argument}' missing __tablename__ attribute."
@@ -106,7 +104,7 @@ def _recursive_select_to_table_names(
         )
 
 
-def map_arguments_to_tables(args: tuple[Any]) -> set[TableTypeAlias]:
+def map_arguments_to_tables(*args) -> set[TableTypeAlias]:
     """
     Finds all dependencies of a sql selection.
 

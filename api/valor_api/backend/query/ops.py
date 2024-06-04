@@ -1,26 +1,52 @@
-from sqlalchemy.sql.elements import BinaryExpression, ColumnElement
+from typing import Any
 
-from valor_api.backend.models import (
-    Annotation,
-    Dataset,
-    Datum,
-    GroundTruth,
-    Label,
-    Model,
-    Prediction,
-)
-from valor_api.backend.query.filtering import (
-    filter_by_annotation,
-    filter_by_dataset,
-    filter_by_datum,
-    filter_by_label,
-    filter_by_model,
-    filter_by_prediction,
-)
-from valor_api.backend.query.mapping import map_arguments_to_tables
-from valor_api.backend.query.solvers import solve_graph
-from valor_api.backend.query.types import TableTypeAlias
-from valor_api.schemas import Filter
+from sqlalchemy import Select, select
+
+from valor_api.backend.models import Annotation, GroundTruth, Prediction
+from valor_api.backend.query.solvers import solver
+from valor_api.schemas.filters import AdvancedFilter, Filter
+
+
+def select_from_annotations(
+    *args, filter_: AdvancedFilter | None = None
+) -> Select[Any]:
+    """TODO"""
+    query = solver(
+        *args, stmt=select(*args), filter_=filter_, label_source=Annotation
+    )
+    if not isinstance(query, Select):
+        raise RuntimeError(
+            "The output type of 'generate_query' should match the type of the 'select_statement' arguement."
+        )
+    return query
+
+
+def select_from_groundtruths(
+    *args, filter_: AdvancedFilter | None = None
+) -> Select[Any]:
+    """TODO"""
+    query = solver(
+        *args, stmt=select(*args), filter_=filter_, label_source=GroundTruth
+    )
+    if not isinstance(query, Select):
+        raise RuntimeError(
+            "The output type of 'generate_query' should match the type of the 'select_statement' arguement."
+        )
+    return query
+
+
+def select_from_predictions(
+    *args, filter_: AdvancedFilter | None = None
+) -> Select[Any]:
+    """TODO"""
+    query = solver(
+        *args, stmt=select(*args), filter_=filter_, label_source=Prediction
+    )
+    if not isinstance(query, Select):
+        raise RuntimeError(
+            "The output type of 'generate_query' should match the type of the 'select_statement' arguement."
+        )
+    return query
 
 
 class Query:
@@ -45,25 +71,10 @@ class Query:
 
     def __init__(self, *args):
         self._args = args
-        self._selected: set[TableTypeAlias] = map_arguments_to_tables(args)
-        self._filtered = set()
-        self._expressions: dict[TableTypeAlias, list[ColumnElement[bool]]] = {}
+        self._filter = None
 
     def select_from(self, *args):
-        self._selected = map_arguments_to_tables(args)
         return self
-
-    def _add_expressions(
-        self,
-        table: TableTypeAlias,
-        expressions: list[ColumnElement[bool] | BinaryExpression],
-    ) -> None:
-        if len(expressions) == 0:
-            return
-        self._filtered.add(table)
-        if table not in self._expressions:
-            self._expressions[table] = []
-        self._expressions[table].extend(expressions)
 
     def filter(self, filter_: Filter | None):
         """Parses `schemas.Filter`"""
@@ -73,37 +84,28 @@ class Query:
             raise TypeError(
                 "filter_ should be of type `schemas.Filter` or `None`"
             )
-        self._add_expressions(Annotation, filter_by_annotation(filter_))
-        self._add_expressions(Model, filter_by_model(filter_))
-        self._add_expressions(Label, filter_by_label(filter_))
-        self._add_expressions(Dataset, filter_by_dataset(filter_))
-        self._add_expressions(Datum, filter_by_datum(filter_))
-        self._add_expressions(Prediction, filter_by_prediction(filter_))
+        self._filter = filter_
         return self
 
     def any(
         self,
         name: str = "generated_subquery",
         *,
-        pivot: TableTypeAlias | None = None,
         as_subquery: bool = True,
     ):
         """
         Generates a sqlalchemy subquery. Graph is chosen automatically as best fit.
         """
-        query, subquery = solve_graph(
-            select_args=self._args,
-            selected_tables=self._selected,
-            filter_by_tables=self._filtered,
-            expressions=self._expressions,
-            pivot_table=pivot,
+        filter_ = (
+            AdvancedFilter.from_simple_filter(self._filter)
+            if self._filter
+            else None
         )
-        if query is None:
-            raise RuntimeError("No solution found to query.")
-
-        if subquery is not None:
-            query = query.where(Datum.id.in_(subquery))
-        return query.subquery(name) if as_subquery else query
+        stmt = select_from_annotations(*self._args, filter_=filter_)
+        if as_subquery:
+            return stmt.subquery(name)
+        else:
+            return stmt
 
     def groundtruths(
         self, name: str = "generated_subquery", *, as_subquery: bool = True
@@ -111,7 +113,18 @@ class Query:
         """
         Generates a sqlalchemy subquery using a groundtruths-focused graph.
         """
-        return self.any(name, pivot=GroundTruth, as_subquery=as_subquery)
+        filter_ = (
+            AdvancedFilter.from_simple_filter(
+                self._filter, ignore_predictions=True
+            )
+            if self._filter
+            else None
+        )
+        stmt = select_from_groundtruths(*self._args, filter_=filter_)
+        if as_subquery:
+            return stmt.subquery(name)
+        else:
+            return stmt
 
     def predictions(
         self,
@@ -122,4 +135,15 @@ class Query:
         """
         Generates a sqlalchemy subquery using a predictions-focused graph.
         """
-        return self.any(name, pivot=Prediction, as_subquery=as_subquery)
+        filter_ = (
+            AdvancedFilter.from_simple_filter(
+                self._filter, ignore_groundtruths=True
+            )
+            if self._filter
+            else None
+        )
+        stmt = select_from_predictions(*self._args, filter_=filter_)
+        if as_subquery:
+            return stmt.subquery(name)
+        else:
+            return stmt

@@ -214,8 +214,9 @@ def _split_request(
     """
 
     # 1.a - get all datasets, note this uses the unmodified filter
+    subquery = Query(models.Dataset).filter(job_request.datum_filter).any()
     datasets_to_evaluate = (
-        db.query(Query(models.Dataset).filter(job_request.datum_filter).any())  # type: ignore - SQLAlchemy type issue
+        db.query(subquery)  # type: ignore - SQLAlchemy type issue
         .distinct()
         .all()
     )
@@ -482,7 +483,6 @@ def create_or_get_evaluations(
     list[schemas.EvaluationResponse]
         A list of evaluation responses.
     """
-
     created_rows = []
     existing_rows = []
     for subrequest in _split_request(db, job_request):

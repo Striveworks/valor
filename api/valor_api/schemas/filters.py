@@ -11,6 +11,326 @@ from pydantic import (
 from valor_api.enums import TaskType
 from valor_api.schemas.geometry import GeoJSON
 from valor_api.schemas.timestamp import Date, DateTime, Duration, Time
+from valor_api.schemas.validators import (
+    validate_type_bool,
+    validate_type_box,
+    validate_type_date,
+    validate_type_datetime,
+    validate_type_duration,
+    validate_type_float,
+    validate_type_integer,
+    validate_type_linestring,
+    validate_type_multilinestring,
+    validate_type_multipoint,
+    validate_type_multipolygon,
+    validate_type_point,
+    validate_type_polygon,
+    validate_type_string,
+    validate_type_time,
+)
+
+
+def validate_type_symbol(x):
+    if not isinstance(x, Symbol):
+        raise TypeError
+
+
+filterable_types_to_validator = {
+    "symbol": validate_type_symbol,
+    "bool": validate_type_bool,
+    "string": validate_type_string,
+    "integer": validate_type_integer,
+    "float": validate_type_float,
+    "datetime": validate_type_datetime,
+    "date": validate_type_date,
+    "time": validate_type_time,
+    "duration": validate_type_duration,
+    "point": validate_type_point,
+    "multipoint": validate_type_multipoint,
+    "linestring": validate_type_linestring,
+    "multilinestring": validate_type_multilinestring,
+    "polygon": validate_type_polygon,
+    "box": validate_type_box,
+    "multipolygon": validate_type_multipolygon,
+    "tasktypeenum": validate_type_string,
+    "label": None,
+    "embedding": None,
+    "raster": None,
+}
+
+
+class Symbol(BaseModel):
+    type: str
+    name: str
+    key: str | None = None
+    attribute: str | None = None
+
+
+class Value(BaseModel):
+    type: str
+    value: bool | int | float | str | list | dict
+    model_config = ConfigDict(extra="forbid")
+
+
+class Operands(BaseModel):
+    lhs: Symbol
+    rhs: Value
+    model_config = ConfigDict(extra="forbid")
+
+
+class And(BaseModel):
+    logical_and: list["FunctionType"]
+    model_config = ConfigDict(extra="forbid")
+
+    @property
+    def op(self) -> str:
+        return type(self).__name__.lower()
+
+    @property
+    def args(self):
+        return self.logical_and
+
+
+class Or(BaseModel):
+    logical_or: list["FunctionType"]
+    model_config = ConfigDict(extra="forbid")
+
+    @property
+    def op(self) -> str:
+        return type(self).__name__.lower()
+
+    @property
+    def args(self):
+        return self.logical_or
+
+
+class Not(BaseModel):
+    logical_not: "FunctionType"
+    model_config = ConfigDict(extra="forbid")
+
+    @property
+    def op(self) -> str:
+        return type(self).__name__.lower()
+
+    @property
+    def arg(self):
+        return self.logical_not
+
+
+class IsNull(BaseModel):
+    isnull: Symbol
+    model_config = ConfigDict(extra="forbid")
+
+    @property
+    def op(self) -> str:
+        return type(self).__name__.lower()
+
+    @property
+    def arg(self):
+        return self.isnull
+
+
+class IsNotNull(BaseModel):
+    isnotnull: Symbol
+    model_config = ConfigDict(extra="forbid")
+
+    @property
+    def op(self) -> str:
+        return type(self).__name__.lower()
+
+    @property
+    def arg(self):
+        return self.isnotnull
+
+
+class Equal(BaseModel):
+    eq: Operands
+    model_config = ConfigDict(extra="forbid")
+
+    @property
+    def op(self) -> str:
+        return type(self).__name__.lower()
+
+    @property
+    def lhs(self):
+        return self.eq.lhs
+
+    @property
+    def rhs(self):
+        return self.eq.rhs
+
+
+class NotEqual(BaseModel):
+    ne: Operands
+    model_config = ConfigDict(extra="forbid")
+
+    @property
+    def op(self) -> str:
+        return type(self).__name__.lower()
+
+    @property
+    def lhs(self):
+        return self.ne.lhs
+
+    @property
+    def rhs(self):
+        return self.ne.rhs
+
+
+class GreaterThan(BaseModel):
+    gt: Operands
+    model_config = ConfigDict(extra="forbid")
+
+    @property
+    def op(self) -> str:
+        return type(self).__name__.lower()
+
+    @property
+    def lhs(self):
+        return self.gt.lhs
+
+    @property
+    def rhs(self):
+        return self.gt.rhs
+
+
+class GreaterThanEqual(BaseModel):
+    ge: Operands
+    model_config = ConfigDict(extra="forbid")
+
+    @property
+    def op(self) -> str:
+        return type(self).__name__.lower()
+
+    @property
+    def lhs(self):
+        return self.ge.lhs
+
+    @property
+    def rhs(self):
+        return self.ge.rhs
+
+
+class LessThan(BaseModel):
+    lt: Operands
+    model_config = ConfigDict(extra="forbid")
+
+    @property
+    def op(self) -> str:
+        return type(self).__name__.lower()
+
+    @property
+    def lhs(self):
+        return self.lt.lhs
+
+    @property
+    def rhs(self):
+        return self.lt.rhs
+
+
+class LessThanEqual(BaseModel):
+    le: Operands
+    model_config = ConfigDict(extra="forbid")
+
+    @property
+    def op(self) -> str:
+        return type(self).__name__.lower()
+
+    @property
+    def lhs(self):
+        return self.le.lhs
+
+    @property
+    def rhs(self):
+        return self.le.rhs
+
+
+class Intersects(BaseModel):
+    intersects: Operands
+    model_config = ConfigDict(extra="forbid")
+
+    @property
+    def op(self) -> str:
+        return type(self).__name__.lower()
+
+    @property
+    def lhs(self):
+        return self.intersects.lhs
+
+    @property
+    def rhs(self):
+        return self.intersects.rhs
+
+
+class Inside(BaseModel):
+    inside: Operands
+    model_config = ConfigDict(extra="forbid")
+
+    @property
+    def op(self) -> str:
+        return type(self).__name__.lower()
+
+    @property
+    def lhs(self):
+        return self.inside.lhs
+
+    @property
+    def rhs(self):
+        return self.inside.rhs
+
+
+class Outside(BaseModel):
+    outside: Operands
+    model_config = ConfigDict(extra="forbid")
+
+    @property
+    def op(self) -> str:
+        return type(self).__name__.lower()
+
+    @property
+    def lhs(self):
+        return self.outside.lhs
+
+    @property
+    def rhs(self):
+        return self.outside.rhs
+
+
+class Contains(BaseModel):
+    contains: Operands
+    model_config = ConfigDict(extra="forbid")
+
+    @property
+    def op(self) -> str:
+        return type(self).__name__.lower()
+
+    @property
+    def lhs(self):
+        return self.contains.lhs
+
+    @property
+    def rhs(self):
+        return self.contains.rhs
+
+
+NArgFunction = And | Or
+OneArgFunction = Not | IsNull | IsNotNull
+TwoArgFunction = (
+    Equal
+    | NotEqual
+    | GreaterThan
+    | GreaterThanEqual
+    | LessThan
+    | LessThanEqual
+    | Intersects
+    | Inside
+    | Outside
+    | Contains
+)
+FunctionType = OneArgFunction | TwoArgFunction | NArgFunction
+
+
+#
 
 
 class StringFilter(BaseModel):
@@ -46,6 +366,21 @@ class StringFilter(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    def to_function(
+        self, name: str, key: str | None = None, attribute: str | None = None
+    ) -> FunctionType:
+        operands = Operands(
+            lhs=Symbol(type="string", name=name, key=key, attribute=attribute),
+            rhs=Value(type="string", value=self.value),
+        )
+        match self.operator:
+            case "==":
+                return Equal(eq=operands)
+            case "!=":
+                return NotEqual(ne=operands)
+            case _:
+                raise RuntimeError
+
 
 class NumericFilter(BaseModel):
     """
@@ -80,6 +415,33 @@ class NumericFilter(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    def to_function(
+        self,
+        name: str,
+        key: str | None = None,
+        attribute: str | None = None,
+        type_str: str = "float",
+    ) -> FunctionType:
+        operands = Operands(
+            lhs=Symbol(type=type_str, name=name, key=key, attribute=attribute),
+            rhs=Value(type="float", value=self.value),
+        )
+        match self.operator:
+            case "==":
+                return Equal(eq=operands)
+            case "!=":
+                return NotEqual(ne=operands)
+            case ">":
+                return GreaterThan(gt=operands)
+            case ">=":
+                return GreaterThanEqual(ge=operands)
+            case "<":
+                return LessThan(lt=operands)
+            case "<=":
+                return LessThanEqual(le=operands)
+            case _:
+                raise RuntimeError
+
 
 class BooleanFilter(BaseModel):
     """
@@ -113,6 +475,23 @@ class BooleanFilter(BaseModel):
             )
         return op
 
+    def to_function(
+        self, name: str, key: str | None = None, attribute: str | None = None
+    ) -> FunctionType:
+        operands = Operands(
+            lhs=Symbol(
+                type="boolean", name=name, key=key, attribute=attribute
+            ),
+            rhs=Value(type="boolean", value=self.value),
+        )
+        match self.operator:
+            case "==":
+                return Equal(eq=operands)
+            case "!=":
+                return NotEqual(ne=operands)
+            case _:
+                raise RuntimeError
+
 
 class GeospatialFilter(BaseModel):
     """
@@ -141,6 +520,25 @@ class GeospatialFilter(BaseModel):
                 f"Invalid comparison operator '{op}'. Allowed operators are {', '.join(allowed_operators)}."
             )
         return op
+
+    def to_function(
+        self, name: str, key: str | None = None, attribute: str | None = None
+    ) -> FunctionType:
+        operands = Operands(
+            lhs=Symbol(
+                type="geojson", name=name, key=key, attribute=attribute
+            ),
+            rhs=Value(type="geojson", value=self.value.model_dump()),
+        )
+        match self.operator:
+            case "inside":
+                return Inside(inside=operands)
+            case "outside":
+                return Outside(outside=operands)
+            case "intersect":
+                return Intersects(intersects=operands)
+            case _:
+                raise RuntimeError
 
 
 class DateTimeFilter(BaseModel):
@@ -196,6 +594,30 @@ class DateTimeFilter(BaseModel):
         return op
 
     model_config = ConfigDict(extra="forbid")
+
+    def to_function(
+        self, name: str, key: str | None = None, attribute: str | None = None
+    ) -> FunctionType:
+        type_str = type(self.value).__name__.lower()
+        operands = Operands(
+            lhs=Symbol(type=type_str, name=name, key=key, attribute=attribute),
+            rhs=Value(type=type_str, value=self.value.value),
+        )
+        match self.operator:
+            case "==":
+                return Equal(eq=operands)
+            case "!=":
+                return NotEqual(ne=operands)
+            case ">":
+                return GreaterThan(gt=operands)
+            case ">=":
+                return GreaterThanEqual(ge=operands)
+            case "<":
+                return LessThan(lt=operands)
+            case "<=":
+                return LessThanEqual(le=operands)
+            case _:
+                raise RuntimeError
 
 
 class Filter(BaseModel):
@@ -356,3 +778,300 @@ def convert_filter_query_params_to_filter_obj(filter_query_params) -> Filter:
             for k, v in filter_query_params.model_dump().items()
         }
     )
+
+
+#
+
+
+class AdvancedFilter(BaseModel):
+    """
+    New filter schema to replace the ab
+
+    The intent is for this object to replace 'Filter' in a future PR.
+    """
+
+    datasets: FunctionType | None = None
+    models: FunctionType | None = None
+    datums: FunctionType | None = None
+    annotations: FunctionType | None = None
+    groundtruths: FunctionType | None = None
+    predictions: FunctionType | None = None
+    labels: FunctionType | None = None
+    embeddings: FunctionType | None = None
+
+    @classmethod
+    def from_simple_filter(
+        cls,
+        filter_: Filter,
+        ignore_groundtruths: bool = False,
+        ignore_predictions: bool = False,
+    ):
+        def filter_strings(
+            name: str, values: list[str] | list[TaskType]
+        ) -> Equal | Or | None:
+            if len(values) > 1:
+                return Or(
+                    logical_or=[
+                        Equal(
+                            eq=Operands(
+                                lhs=Symbol(type="string", name=name),
+                                rhs=Value(
+                                    type="string",
+                                    value=value.value
+                                    if isinstance(value, TaskType)
+                                    else value,
+                                ),
+                            )
+                        )
+                        for value in values
+                    ]
+                )
+            elif len(values) == 1:
+                value = (
+                    values[0].value
+                    if isinstance(values[0], TaskType)
+                    else values[0]
+                )
+                return Equal(
+                    eq=Operands(
+                        lhs=Symbol(type="string", name=name),
+                        rhs=Value(type="string", value=value),
+                    )
+                )
+            else:
+                return None
+
+        def filter_metadata(
+            name: str, values: dict[str, list]
+        ) -> FunctionType | None:
+            filter_expressions = [
+                f.to_function(name=name, key=key)
+                for key, filters in values.items()
+                for f in filters
+            ]
+            if len(filter_expressions) > 1:
+                return And(logical_and=filter_expressions)
+            elif len(filter_expressions) == 1:
+                return filter_expressions[0]
+            else:
+                return None
+
+        def annotation_geometry_exist(
+            type_str: str, name: str, exists: bool
+        ) -> IsNull | IsNotNull:
+            if exists:
+                return IsNotNull(isnotnull=Symbol(type=type_str, name=name))
+            else:
+                return IsNull(isnull=Symbol(type=type_str, name=name))
+
+        def filter_numerics(
+            type_str: str,
+            name: str,
+            values: list[NumericFilter],
+            attribute: str | None = None,
+        ) -> FunctionType | None:
+            expressions = [
+                f.to_function(
+                    name=name, attribute=attribute, type_str=type_str
+                )
+                for f in values
+            ]
+            if len(expressions) > 1:
+                return And(logical_and=expressions)
+            elif len(expressions) == 1:
+                return expressions[0]
+            else:
+                return None
+
+        def filter_labels(
+            values: list[dict[str, str]],
+        ) -> FunctionType | None:
+            if len(values) > 1:
+                return Or(
+                    logical_or=[
+                        And(
+                            logical_and=[
+                                Equal(
+                                    eq=Operands(
+                                        lhs=Symbol(
+                                            type="string", name="label.key"
+                                        ),
+                                        rhs=Value(type="string", value=key),
+                                    )
+                                ),
+                                Equal(
+                                    eq=Operands(
+                                        lhs=Symbol(
+                                            type="string", name="label.value"
+                                        ),
+                                        rhs=Value(type="string", value=value),
+                                    )
+                                ),
+                            ]
+                        )
+                        for key, value in values
+                    ]
+                )
+
+        dataset_names = None
+        dataset_metadata = None
+        model_names = None
+        model_metadata = None
+        datum_uids = None
+        datum_metadata = None
+        annotation_task_types = None
+        annotation_metadata = None
+        annotation_box = None
+        annotation_box_area = None
+        annotation_polygon = None
+        annotation_polygon_area = None
+        annotation_raster = None
+        annotation_raster_area = None
+        labels = None
+        label_keys = None
+        label_scores = None
+
+        if filter_.dataset_names:
+            dataset_names = filter_strings(
+                name="dataset.name", values=filter_.dataset_names
+            )
+        if filter_.dataset_metadata:
+            dataset_metadata = filter_metadata(
+                name="dataset.metadata", values=filter_.dataset_metadata
+            )
+        if filter_.model_names:
+            model_names = filter_strings(
+                name="model.name", values=filter_.model_names
+            )
+        if filter_.model_metadata:
+            model_metadata = filter_metadata(
+                name="model.metadata", values=filter_.model_metadata
+            )
+        if filter_.datum_uids:
+            datum_uids = filter_strings(
+                name="datum.uid", values=filter_.datum_uids
+            )
+        if filter_.datum_metadata:
+            datum_metadata = filter_metadata(
+                name="datum.metadata", values=filter_.datum_metadata
+            )
+        if filter_.task_types:
+            annotation_task_types = filter_strings(
+                name="annotation.task_type", values=filter_.task_types
+            )
+        if filter_.annotation_metadata:
+            annotation_metadata = filter_metadata(
+                name="annotation.metadata", values=filter_.annotation_metadata
+            )
+        if filter_.require_bounding_box is not None:
+            annotation_box = annotation_geometry_exist(
+                type_str="box",
+                name="annotation.bounding_box",
+                exists=filter_.require_bounding_box,
+            )
+        if filter_.bounding_box_area:
+            annotation_box_area = filter_numerics(
+                type_str="box",
+                name="annotation.bounding_box",
+                attribute="area",
+                values=filter_.bounding_box_area,
+            )
+        if filter_.require_polygon is not None:
+            annotation_polygon = annotation_geometry_exist(
+                type_str="polygon",
+                name="annotation.polygon",
+                exists=filter_.require_polygon,
+            )
+        if filter_.polygon_area:
+            annotation_polygon_area = filter_numerics(
+                type_str="polygon",
+                name="annotation.polygon",
+                attribute="area",
+                values=filter_.polygon_area,
+            )
+        if filter_.require_raster is not None:
+            annotation_raster = annotation_geometry_exist(
+                type_str="raster",
+                name="annotation.raster",
+                exists=filter_.require_raster,
+            )
+        if filter_.raster_area:
+            annotation_raster_area = filter_numerics(
+                type_str="raster",
+                name="annotation.raster",
+                attribute="area",
+                values=filter_.raster_area,
+            )
+        if filter_.labels:
+            labels = filter_labels(filter_.labels)
+        if filter_.label_keys:
+            label_keys = filter_strings(
+                name="label.key", values=filter_.label_keys
+            )
+        if filter_.label_scores:
+            label_scores = filter_numerics(
+                type_str="float",
+                name="label.score",
+                values=filter_.label_scores,
+            )
+
+        def and_if_list(values: list[FunctionType]) -> FunctionType | None:
+            if len(values) > 1:
+                return And(logical_and=values)
+            elif len(values) == 1:
+                return values[0]
+            else:
+                return None
+
+        groundtruth_filter = [
+            expr
+            for expr in [
+                dataset_names,
+                dataset_metadata,
+                datum_uids,
+                datum_metadata,
+                annotation_task_types,
+                annotation_metadata,
+                annotation_box,
+                annotation_box_area,
+                annotation_polygon,
+                annotation_polygon_area,
+                annotation_raster,
+                annotation_raster_area,
+                labels,
+                label_keys,
+            ]
+            if expr is not None
+        ]
+        prediction_filter = [
+            expr
+            for expr in [
+                model_names,
+                model_metadata,
+                dataset_names,
+                dataset_metadata,
+                datum_uids,
+                datum_metadata,
+                label_scores,
+                annotation_task_types,
+                annotation_metadata,
+                annotation_box,
+                annotation_box_area,
+                annotation_polygon,
+                annotation_polygon_area,
+                annotation_raster,
+                annotation_raster_area,
+                labels,
+                label_keys,
+            ]
+            if expr is not None
+        ]
+
+        f = cls()
+        if ignore_groundtruths:
+            f.predictions = and_if_list(values=groundtruth_filter)
+        elif ignore_predictions:
+            f.groundtruths = and_if_list(values=prediction_filter)
+        else:
+            f.annotations = and_if_list(values=prediction_filter)
+        return f

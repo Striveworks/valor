@@ -1,442 +1,539 @@
-from typing import Callable
+from typing import Any
 
-from sqlalchemy import Select, and_, or_, select
-from sqlalchemy.orm.attributes import InstrumentedAttribute
-from sqlalchemy.orm.decl_api import DeclarativeMeta
-from sqlalchemy.sql.elements import (
-    BinaryExpression,
-    ColumnElement,
-    UnaryExpression,
-)
+from sqlalchemy import Select, Subquery, alias, case, or_, select
+from sqlalchemy.orm import InstrumentedAttribute, Query
+from sqlalchemy.sql.elements import UnaryExpression
 
 from valor_api.backend.models import (
     Annotation,
     Dataset,
     Datum,
+    Embedding,
     GroundTruth,
     Label,
     Model,
     Prediction,
 )
-
-TableTypeAlias = (
-    Dataset | Model | Datum | Annotation | GroundTruth | Prediction | Label
+from valor_api.backend.query.filtering import (
+    generate_dependencies,
+    generate_logical_expression,
+    map_filter_to_tables,
 )
+from valor_api.backend.query.mapping import map_arguments_to_tables
+from valor_api.backend.query.types import LabelSourceAlias, TableTypeAlias
+from valor_api.schemas.filters import AdvancedFilter as Filter
+from valor_api.schemas.filters import FunctionType
 
 
-def _create_where_expression(
-    table_set: set[TableTypeAlias],
-    expressions: dict[
-        TableTypeAlias, list[ColumnElement[bool] | BinaryExpression]
-    ],
-) -> ColumnElement[bool] | BinaryExpression | None:
-    """Constructs a where expression."""
-    expr_agg = []
-    for table in table_set:
-        if table in expressions:
-            expr_agg.extend(expressions[table])
-    if len(expr_agg) == 1:
-        return expr_agg[0]
-    elif len(expr_agg) > 1:
-        return and_(*expr_agg)
-    else:
-        return None
+def _join_label_to_annotation(selection: Select):
+    """TODO"""
+    groundtruth = alias(GroundTruth)
+    prediction = alias(Prediction)
+    return (
+        selection.join(
+            groundtruth,
+            groundtruth.c.annotation_id == Annotation.id,
+            isouter=True,
+        )
+        .join(
+            prediction,
+            prediction.c.annotation_id == Annotation.id,
+            isouter=True,
+        )
+        .join(
+            Label,
+            or_(
+                Label.id == groundtruth.c.label_id,
+                Label.id == prediction.c.label_id,
+            ),
+        )
+    )
 
 
-def _trim_extremities(
-    graph: list[TableTypeAlias],
-    joint_set: set[TableTypeAlias],
+def _join_annotation_to_label(selection: Select):
+    """TODO"""
+    groundtruth = alias(GroundTruth)
+    prediction = alias(Prediction)
+    return (
+        selection.join(
+            groundtruth,
+            groundtruth.c.label_id == Label.id,
+            isouter=True,
+        )
+        .join(prediction, prediction.c.label_id == Label.id, isouter=True)
+        .join(
+            Annotation,
+            or_(
+                Annotation.id == groundtruth.c.annotation_id,
+                Annotation.id == prediction.c.annotation_id,
+            ),
+        )
+    )
+
+
+def _join_prediction_to_datum(selection: Select):
+    """TODO"""
+    annotation = alias(Annotation)
+    return selection.join(
+        annotation, annotation.c.datum_id == Datum.id, isouter=True
+    ).join(Prediction, Prediction.annotation_id == annotation.c.id)
+
+
+def _join_datum_to_prediction(selection: Select):
+    """TODO"""
+    annotation = alias(Annotation)
+    return selection.join(
+        annotation, annotation.c.id == Prediction.annotation_id, isouter=True
+    ).join(Datum, Datum.id == annotation.c.datum_id)
+
+
+def _join_groundtruth_to_datum(selection: Select):
+    """TODO"""
+    annotation = alias(Annotation)
+    return selection.join(
+        annotation, annotation.c.datum_id == Datum.id, isouter=True
+    ).join(GroundTruth, GroundTruth.annotation_id == annotation.c.id)
+
+
+def _join_datum_to_groundtruth(selection: Select):
+    """TODO"""
+    annotation = alias(Annotation)
+    return selection.join(
+        annotation, annotation.c.id == GroundTruth.annotation_id, isouter=True
+    ).join(Datum, Datum.id == annotation.c.datum_id)
+
+
+map_label_source_to_neighbor_mapping = {
+    Annotation: {
+        Dataset: {Datum},
+        Model: {Annotation},
+        Datum: {Dataset, Annotation},
+        Annotation: {Datum, Model, Embedding, Label},
+        GroundTruth: {Label},
+        Prediction: {Label},
+        Embedding: {Annotation},
+        Label: {Annotation, GroundTruth, Prediction},
+    },
+    GroundTruth: {
+        Dataset: {Datum},
+        Model: {Annotation},
+        Datum: {Dataset, Annotation, Prediction},
+        Annotation: {Datum, Model, GroundTruth, Embedding},
+        Embedding: {Annotation},
+        GroundTruth: {Annotation, Label},
+        Prediction: {Datum},
+        Label: {GroundTruth},
+    },
+    Prediction: {
+        Dataset: {Datum},
+        Model: {Annotation},
+        Datum: {Dataset, Annotation, GroundTruth},
+        Annotation: {Datum, Model, Prediction, Embedding},
+        Embedding: {Annotation},
+        GroundTruth: {Datum},
+        Prediction: {Annotation, Label},
+        Label: {Prediction},
+    },
+}
+
+
+map_label_source_to_neighbor_joins = {
+    Annotation: {
+        Dataset: {
+            Datum: lambda x: x.join(Datum, Datum.dataset_id == Dataset.id)
+        },
+        Model: {
+            Annotation: lambda x: x.join(
+                Annotation, Annotation.model_id == Model.id
+            )
+        },
+        Datum: {
+            Dataset: lambda x: x.join(Dataset, Dataset.id == Datum.dataset_id),
+            Annotation: lambda x: x.join(
+                Annotation, Annotation.datum_id == Datum.id
+            ),
+        },
+        Annotation: {
+            Datum: lambda x: x.join(Datum, Datum.id == Annotation.datum_id),
+            Model: lambda x: x.join(Model, Model.id == Annotation.model_id),
+            Embedding: lambda x: x.join(
+                Embedding, Embedding.id == Annotation.embedding_id
+            ),
+            Label: _join_label_to_annotation,
+        },
+        GroundTruth: {
+            Label: lambda x: x.join(Label, Label.id == GroundTruth.label_id)
+        },
+        Prediction: {
+            Label: lambda x: x.join(Label, Label.id == Prediction.label_id)
+        },
+        Label: {
+            Annotation: _join_annotation_to_label,
+            GroundTruth: lambda x: x.join(
+                GroundTruth, GroundTruth.label_id == Label.id
+            ),
+            Prediction: lambda x: x.join(
+                Prediction, Prediction.label_id == Label.id
+            ),
+        },
+        Embedding: {
+            Annotation: lambda x: x.join(
+                Annotation, Annotation.embedding_id == Embedding.id
+            )
+        },
+    },
+    GroundTruth: {
+        Dataset: {
+            Datum: lambda x: x.join(Datum, Datum.dataset_id == Dataset.id)
+        },
+        Model: {
+            Annotation: lambda x: x.join(
+                Annotation, Annotation.model_id == Model.id
+            )
+        },
+        Datum: {
+            Dataset: lambda x: x.join(Dataset, Dataset.id == Datum.dataset_id),
+            Annotation: lambda x: x.join(
+                Annotation, Annotation.datum_id == Datum.id
+            ),
+            Prediction: _join_prediction_to_datum,
+        },
+        Annotation: {
+            Datum: lambda x: x.join(Datum, Datum.id == Annotation.datum_id),
+            Model: lambda x: x.join(Model, Model.id == Annotation.model_id),
+            GroundTruth: lambda x: x.join(
+                GroundTruth, GroundTruth.annotation_id == Annotation.id
+            ),
+            Embedding: lambda x: x.join(
+                Embedding, Embedding.id == Annotation.embedding_id
+            ),
+        },
+        GroundTruth: {
+            Annotation: lambda x: x.join(
+                Annotation, Annotation.id == GroundTruth.annotation_id
+            ),
+            Label: lambda x: x.join(Label, Label.id == GroundTruth.label_id),
+        },
+        Prediction: {
+            Datum: _join_datum_to_prediction,
+        },
+        Label: {
+            GroundTruth: lambda x: x.join(
+                GroundTruth, GroundTruth.label_id == Label.id
+            ),
+        },
+        Embedding: {
+            Annotation: lambda x: x.join(
+                Annotation, Annotation.embedding_id == Embedding.id
+            )
+        },
+    },
+    Prediction: {
+        Dataset: {
+            Datum: lambda x: x.join(Datum, Datum.dataset_id == Dataset.id)
+        },
+        Model: {
+            Annotation: lambda x: x.join(
+                Annotation, Annotation.model_id == Model.id
+            )
+        },
+        Datum: {
+            Dataset: lambda x: x.join(Dataset, Dataset.id == Datum.dataset_id),
+            Annotation: lambda x: x.join(
+                Annotation, Annotation.datum_id == Datum.id
+            ),
+            GroundTruth: _join_groundtruth_to_datum,
+        },
+        Annotation: {
+            Datum: lambda x: x.join(Datum, Datum.id == Annotation.datum_id),
+            Model: lambda x: x.join(Model, Model.id == Annotation.model_id),
+            Prediction: lambda x: x.join(
+                Prediction, Prediction.annotation_id == Annotation.id
+            ),
+            Embedding: lambda x: x.join(
+                Embedding, Embedding.id == Annotation.embedding_id
+            ),
+        },
+        GroundTruth: {
+            Datum: _join_datum_to_groundtruth,
+        },
+        Prediction: {
+            Annotation: lambda x: x.join(
+                Annotation, Annotation.id == Prediction.annotation_id
+            ),
+            Label: lambda x: x.join(Label, Label.id == Prediction.label_id),
+        },
+        Label: {
+            Prediction: lambda x: x.join(
+                Prediction, Prediction.label_id == Label.id
+            ),
+        },
+        Embedding: {
+            Annotation: lambda x: x.join(
+                Annotation, Annotation.embedding_id == Embedding.id
+            )
+        },
+    },
+}
+
+
+def _recursive_search(
+    table: TableTypeAlias,
+    target: TableTypeAlias,
+    mapping: dict[TableTypeAlias, set[TableTypeAlias]],
+    cache: list[TableTypeAlias] | None = None,
 ) -> list[TableTypeAlias]:
-    """Trim graph extremities of unused nodes"""
-    lhi = 0
-    rhi = len(graph)
-    for idx, table in enumerate(graph):
-        if table in joint_set:
-            lhi = idx
-            break
-    for idx, table in enumerate(reversed(graph)):
-        if table in joint_set:
-            rhi = rhi - idx
-            break
-    return graph[lhi:rhi]
+    """TODO"""
+    if cache is None:
+        cache = [table]
+
+    for neighbor in mapping[table]:
+        if neighbor in cache:
+            continue
+        elif neighbor is target:
+            cache.append(target)
+            return cache
+        elif retval := _recursive_search(
+            neighbor, target=target, mapping=mapping, cache=[*cache, neighbor]
+        ):
+            return retval
+
+    return []
 
 
-def _solve_groundtruth_graph(
+def _solve_graph(
+    select_from: TableTypeAlias,
+    label_source: LabelSourceAlias,
+    tables: set[TableTypeAlias],
+):
+    """TODO"""
+    if label_source is LabelSourceAlias:
+        raise ValueError
+
+    table_mapping = map_label_source_to_neighbor_mapping[label_source]
+    join_mapping = map_label_source_to_neighbor_joins[label_source]
+
+    ordered_tables = [select_from]
+    ordered_joins = []
+    for target in tables:
+
+        if select_from is target:
+            continue
+
+        solution = _recursive_search(
+            table=select_from,
+            target=target,
+            mapping=table_mapping,
+        )
+
+        for idx in range(1, len(solution)):
+            lhs = solution[idx - 1]
+            rhs = solution[idx]
+            if rhs not in ordered_tables:
+                ordered_tables.append(rhs)
+                ordered_joins.append(join_mapping[lhs][rhs])
+
+    return ordered_joins
+
+
+def generate_query(
+    select_statement: Select[Any] | Query[Any],
     args: tuple[TableTypeAlias | InstrumentedAttribute | UnaryExpression],
-    selected: set[TableTypeAlias],
-    filtered: set[TableTypeAlias],
-    expressions: dict[
-        TableTypeAlias, list[ColumnElement[bool] | BinaryExpression]
-    ],
-):
-    """
-    Solves the ground truths graph.
+    select_from: TableTypeAlias,
+    label_source: LabelSourceAlias,
+    filter_: Filter | None = None,
+) -> Select[Any] | Query[Any]:
+    """TODO"""
+    if label_source not in {Annotation, GroundTruth, Prediction}:
+        raise ValueError(f"Invalid label source '{label_source}'.")
 
-    groundtruth_graph = [Dataset, Datum, Annotation, GroundTruth, Label]
-    """
-    # Graph defintion
-    graph = [
-        Dataset,
-        Datum,
-        Annotation,
-        GroundTruth,
-        Label,
-    ]
-    connections = {
-        Datum: Datum.dataset_id == Dataset.id,
-        Annotation: Annotation.datum_id == Datum.id,
-        GroundTruth: GroundTruth.annotation_id == Annotation.id,
-        Label: Label.id == GroundTruth.label_id,
-    }
+    arg_tables = map_arguments_to_tables(*args)
+    filter_tables = map_filter_to_tables(filter_, label_source)
 
-    # set of tables required to construct query
-    joint_set = selected.union(filtered)
-
-    # generate query statement
-    query = None
-    for table in _trim_extremities(graph, joint_set):
-        if query is None:
-            query = select(*args).select_from(table)
-        else:
-            query = query.join(table, connections[table])
-
-    # generate where statement
-    expression = _create_where_expression(joint_set, expressions)
-    if query is None:
-        raise RuntimeError("Query is unexpectedly None.")
-
-    if expression is not None:
-        query = query.where(expression)
-
+    tables = arg_tables.union(filter_tables)
+    tables.discard(select_from)
+    ordered_joins = _solve_graph(
+        select_from=select_from, label_source=label_source, tables=tables
+    )
+    query = select_statement.select_from(select_from)
+    for join in ordered_joins:
+        query = join(query)
     return query
 
 
-def _solve_model_graph(
-    args: tuple[TableTypeAlias | InstrumentedAttribute | UnaryExpression],
-    selected: set[TableTypeAlias],
-    filtered: set[TableTypeAlias],
-    expressions: dict[
-        TableTypeAlias, list[ColumnElement[bool] | BinaryExpression]
-    ],
-):
-    """
-    Solves the model (models, predictions) graph.
+def generate_filter_query(
+    conditions: FunctionType,
+    select_from: TableTypeAlias,
+    label_source: LabelSourceAlias,
+    prefix: str,
+) -> Subquery[Any]:
+    """TODO"""
+    tree, ordered_ctes, ordered_tables = generate_dependencies(conditions)
 
-    model_graph = [[Model, Annotation, Prediction, Label], [Model, Annotation, Datum, Dataset]]
-    """
-    subgraph1 = [
-        Model,
-        Annotation,
-        Prediction,
-        Label,
+    if tree is None:
+        raise ValueError
+
+    tables = set(ordered_tables)
+    tables.discard(select_from)
+    ordered_joins = _solve_graph(
+        select_from=select_from,
+        label_source=label_source,
+        tables=tables,
+    )
+
+    expressions = [
+        (table.id == cte.c.id)
+        for table, cte in zip(ordered_tables, ordered_ctes)
     ]
-    subgraph2 = [
-        Model,
-        Annotation,
-        Datum,
-        Dataset,
-    ]
-    connections = {
-        Annotation: Annotation.model_id == Model.id,
-        Datum: Datum.id == Annotation.datum_id,
-        Dataset: Dataset.id == Datum.dataset_id,
-        Prediction: Prediction.annotation_id == Annotation.id,
-        Label: Label.id == Prediction.label_id,
-    }
 
-    joint_set = selected.union(filtered)
+    # construct query
+    query = select(
+        select_from.id.label("id"),  # type: ignore - sqlalchemy issue
+        *[
+            case((expr, 1), else_=0).label(f"{prefix}{idx}")  # type: ignore - sqlalchemy issue
+            for idx, expr in enumerate(expressions)
+        ],
+    )
+    query = query.select_from(select_from)
+    for join in ordered_joins:
+        query = join(query)
+    for table, cte in zip(ordered_tables, ordered_ctes):
+        query = query.join(cte, cte.c.id == table.id, isouter=True)
+    query = query.distinct().cte()
 
-    # generate query statement
-    graph = _trim_extremities(subgraph1, joint_set)
-    graph.extend(_trim_extremities(subgraph2, joint_set))
-    query = select(*args).select_from(Model)
-    repeated_set = {Model}
-    for table in graph:
-        if table not in repeated_set:
-            query = query.join(table, connections[table])
-            repeated_set.add(table)
-
-    # generate where statement
-    expression = _create_where_expression(joint_set, expressions)
-    if expression is not None:
-        query = query.where(expression)
-
-    return query
+    return (
+        select(query.c.id.label("id"))
+        .select_from(query)
+        .where(generate_logical_expression(query, tree, prefix=prefix))
+        .subquery()
+    )
 
 
-def _solve_prediction_graph(
-    args: tuple[DeclarativeMeta | InstrumentedAttribute | UnaryExpression],
-    selected: set[DeclarativeMeta],
-    filtered: set[DeclarativeMeta],
-    expressions: dict[
-        DeclarativeMeta, list[ColumnElement[bool] | BinaryExpression]
-    ],
-):
-    """
-    Solves the predictions graph.
+def generate_filter_queries(
+    filter_: Filter,
+    label_source: LabelSourceAlias,
+) -> list[tuple[Subquery[Any], TableTypeAlias]]:
+    """TODO"""
 
-    prediction_graph = [Dataset, Datum, Annotation, Prediction, Label]
-    """
-    # Graph defintion
-    graph = [
-        Dataset,
-        Datum,
-        Annotation,
-        Prediction,
-        Label,
-    ]
-    connections = {
-        Datum: Datum.dataset_id == Dataset.id,
-        Annotation: Annotation.datum_id == Datum.id,
-        Prediction: Prediction.annotation_id == Annotation.id,
-        Label: Label.id == Prediction.label_id,
-    }
+    def _generator(
+        conditions: FunctionType,
+        select_from: TableTypeAlias,
+        label_source: LabelSourceAlias,
+        prefix: str,
+    ):
+        return generate_filter_query(
+            conditions=conditions,
+            select_from=select_from,
+            label_source=label_source,
+            prefix=f"{prefix}_cte",
+        )
 
-    # set of tables required to construct query
-    joint_set = selected.union(filtered)
-
-    # generate query statement
-    query = None
-    for table in _trim_extremities(graph, joint_set):
-        if query is None:
-            query = select(*args).select_from(table)
-        else:
-            query = query.join(table, connections[table])
-
-    # generate where statement
-    expression = _create_where_expression(joint_set, expressions)
-
-    if query is None:
-        raise RuntimeError("Query is unexpectedly None.")
-
-    if expression is not None:
-        query = query.where(expression)
-
-    return query
-
-
-def _solve_joint_graph(
-    args: tuple[TableTypeAlias | InstrumentedAttribute | UnaryExpression],
-    selected: set[TableTypeAlias],
-    filtered: set[TableTypeAlias],
-    expressions: dict[
-        TableTypeAlias, list[ColumnElement[bool] | BinaryExpression]
-    ],
-):
-    """
-    Solves the joint (groundtruths, predictions) graph.
-
-    joint_graph = [[Dataset, Datum, Annotation, Label]]
-    """
-    graph = [
-        Dataset,
-        Datum,
-        Annotation,
-        Label,
-    ]  # excluding label as edge case due to forking at ground truth, prediction
-    connections = {
-        Datum: Datum.dataset_id == Dataset.id,
-        Annotation: Annotation.datum_id == Datum.id,
-        GroundTruth: GroundTruth.annotation_id == Annotation.id,
-        Prediction: Prediction.annotation_id == Annotation.id,
-        Label: or_(
-            Label.id == GroundTruth.label_id,
-            Label.id == Prediction.label_id,
-        ),
-    }
-
-    # set of tables required to construct query
-    joint_set = selected.union(filtered)
-
-    # generate query statement
-    query = None
-    for table in _trim_extremities(graph, joint_set):
-        if query is None:
-            query = select(*args).select_from(table)
-        else:
-            if table == Label:
-                query = query.join(GroundTruth, connections[GroundTruth])
-                query = query.join(
-                    Prediction,
-                    connections[Prediction],
-                    full=True,
-                )
-                query = query.join(Label, connections[Label])
-            else:
-                query = query.join(table, connections[table])
-
-    # generate where statement
-    expression = _create_where_expression(joint_set, expressions)
-
-    if query is None:
-        raise RuntimeError("Query is unexpectedly None.")
-
-    if expression is not None:
-        query = query.where(expression)
-
-    return query
+    queries = list()
+    if filter_.datasets:
+        conditions = filter_.datasets
+        select_from = Dataset
+        prefix = "ds"
+        queries.append(
+            (
+                _generator(conditions, select_from, label_source, prefix),
+                select_from,
+            )
+        )
+    if filter_.models:
+        conditions = filter_.models
+        select_from = Model
+        prefix = "md"
+        queries.append(
+            (
+                _generator(conditions, select_from, label_source, prefix),
+                select_from,
+            )
+        )
+    if filter_.datums:
+        conditions = filter_.datums
+        select_from = Datum
+        prefix = "dt"
+        queries.append(
+            (
+                _generator(conditions, select_from, label_source, prefix),
+                select_from,
+            )
+        )
+    if filter_.annotations:
+        conditions = filter_.annotations
+        select_from = Annotation
+        prefix = "an"
+        queries.append(
+            (
+                _generator(conditions, select_from, label_source, prefix),
+                select_from,
+            )
+        )
+    if filter_.groundtruths:
+        conditions = filter_.groundtruths
+        select_from = GroundTruth if label_source is not Prediction else Datum
+        prefix = "gt"
+        queries.append(
+            (
+                _generator(conditions, select_from, GroundTruth, prefix),
+                select_from,
+            )
+        )
+    if filter_.predictions:
+        conditions = filter_.predictions
+        select_from = Prediction if label_source is not GroundTruth else Datum
+        prefix = "pd"
+        queries.append(
+            (
+                _generator(conditions, select_from, Prediction, prefix),
+                select_from,
+            )
+        )
+    if filter_.labels:
+        conditions = filter_.labels
+        select_from = Label
+        prefix = "lb"
+        queries.append(
+            (
+                _generator(conditions, select_from, label_source, prefix),
+                select_from,
+            )
+        )
+    if filter_.embeddings:
+        conditions = filter_.embeddings
+        select_from = Embedding
+        prefix = "em"
+        queries.append(
+            (
+                _generator(conditions, select_from, label_source, prefix),
+                select_from,
+            )
+        )
+    return queries
 
 
-def _solve_nested_graphs(
-    query_solver: Callable,
-    subquery_solver: Callable,
-    unique_set: (
-        set[type[Model]] | set[type[Prediction]] | set[type[GroundTruth]]
-    ),
-    args: tuple[DeclarativeMeta | InstrumentedAttribute | UnaryExpression],
-    selected: set[DeclarativeMeta],
-    filtered: set[DeclarativeMeta],
-    expressions: dict[
-        DeclarativeMeta, list[ColumnElement[bool] | BinaryExpression]
-    ],
-    pivot_table: DeclarativeMeta | None = None,
-):
-    """
-    Handles the edge case where multiple graphs are required.
-    """
-    qset = (filtered - unique_set).union({Datum})
-    query = query_solver(
+def solver(
+    *args,
+    stmt: Select[Any] | Query[Any],
+    filter_: Filter | None,
+    label_source: LabelSourceAlias,
+) -> Select[Any] | Query[Any]:
+    """TODO"""
+
+    select_from = map_arguments_to_tables(args[0]).pop()
+    if select_from is Label:
+        select_from = label_source
+    query = generate_query(
+        select_statement=stmt,
         args=args,
-        selected=selected,
-        filtered=qset,
-        expressions=expressions,
+        select_from=select_from,
+        label_source=label_source,
+        filter_=filter_,
     )
-    sub_qset = filtered.intersection(unique_set).union({Datum})
-    subquery = (
-        subquery_solver(
-            args=[Datum.id],
-            selected={Datum},
-            filtered=sub_qset,
-            expressions=expressions,
+    if filter_ is not None:
+        filter_subqueries = generate_filter_queries(
+            filter_=filter_, label_source=label_source
         )
-        if pivot_table in filtered or sub_qset != {pivot_table}
-        else None
-    )
-    return query, subquery
-
-
-def solve_graph(
-    select_args: tuple[
-        TableTypeAlias | InstrumentedAttribute | UnaryExpression
-    ],
-    selected_tables: set[TableTypeAlias],
-    filter_by_tables: set[TableTypeAlias],
-    expressions: dict[
-        TableTypeAlias, list[ColumnElement[bool] | BinaryExpression]
-    ],
-    pivot_table: TableTypeAlias | None = None,
-) -> tuple[Select | None, None]:
-    """
-    Selects best fitting graph to run query generation and returns tuple(query, subquery | None).
-
-    Description
-    ----------
-    To construct complex queries it is necessary to describe the relationship between predictions and groundtruths.
-    By splitting the underlying table relationships into four foundatational graphs the complex relationships can be described by
-    sequental lists. From these sequential graphs it is possible to construct the minimum set of nodes required to generate a query.
-    For queries that can be described by a single foundational graph, the solution is to trim both ends of the sequence until you
-    reach nodes in the query set. The relationships of the remaining nodes can then be used to construct the query. Two foundational
-    graphs are required for queries that include both ground truth and prediction/model constraints. The solver inserts `Datum` as
-    the linking point between these two graphs allowing the generation of a query and subquery.
-
-    The four foundational graphs:
-    groundtruth_graph   = [Dataset, Datum, Annotation, GroundTruth, Label]
-    model_graph         = [[Model, Annotation, Prediction, Label], [Model, Annotation, Datum, Dataset]]
-    prediction_graph    = [Dataset, Datum, Annotation, Prediction, Label],
-    joint_graph         = [Dataset, Datum, Annotation, Label]
-
-    Removing common nodes, these are reduced to:
-    groundtruth_graph_unique    = {GroundTruth}
-    prediction_graph_unique     = {Prediction, Model}
-    model_graph_unique          = {Prediction}
-    joint_graph_unique          = {}
-
-    Descriptions:
-    groundtruth_graph : All prediction or model related information removed.
-    model_graph       : All ground truth related information removed.
-    prediction_graph  : Subgraph of model_graph. All ground truth and model information removed.
-    joint_graph       : Predictions and groundtruths combined under a full outer join.
-    """
-
-    # edge case - only one table specified in args and filters
-    if len(selected_tables) == 1 and (
-        len(filter_by_tables) == 0 or selected_tables == filter_by_tables
-    ):
-        if pivot_table:
-            filter_by_tables.add(pivot_table)
-        else:
-            query = select(*select_args)
-            expression = _create_where_expression(selected_tables, expressions)
-            if expression is not None:
-                query = query.where(expression)
-            return query, None
-
-    # edge case - catch intersection that resolves into an empty return.
-    if {GroundTruth, Prediction}.issubset(selected_tables):
-        raise RuntimeError(
-            f"Cannot evaluate graph as invalid connection between queried tables. `{selected_tables}`"
-        )
-
-    # create joint (selected + filtered) table set
-    joint_set = selected_tables.union(filter_by_tables)
-
-    # create set of tables to select graph with
-    graph_set = (
-        {pivot_table}.union(joint_set)
-        if isinstance(pivot_table, DeclarativeMeta)
-        else joint_set
-    )
-
-    subquery_solver = None
-    unique_set = None
-
-    # solve ground truth graph
-    if (
-        GroundTruth in graph_set
-        and Prediction not in selected_tables
-        and Model not in selected_tables
-    ):
-        query_solver = _solve_groundtruth_graph
-        if Model in joint_set:
-            subquery_solver = _solve_model_graph
-            unique_set = {Model}
-        elif Prediction in joint_set:
-            subquery_solver = _solve_prediction_graph
-            unique_set = {Prediction}
-    # solve model or prediction graph
-    elif GroundTruth not in selected_tables and (
-        Model in graph_set or Prediction in graph_set
-    ):
-        query_solver = (
-            _solve_model_graph
-            if Model in graph_set
-            else _solve_prediction_graph
-        )
-        if GroundTruth in joint_set:
-            subquery_solver = _solve_groundtruth_graph
-            unique_set = {GroundTruth}
-    # solve joint graph
-    else:
-        query_solver = _solve_joint_graph
-
-    # generate statement
-    if subquery_solver is not None and unique_set is not None:
-        return _solve_nested_graphs(
-            query_solver=query_solver,
-            subquery_solver=subquery_solver,
-            unique_set=unique_set,
-            args=select_args,
-            selected=selected_tables,
-            filtered=filter_by_tables,
-            expressions=expressions,
-            pivot_table=pivot_table,
-        )
-    else:
-        query = query_solver(
-            select_args,
-            selected_tables,
-            filter_by_tables,
-            expressions,
-        )
-        subquery = None
-        return query, subquery
+        for subquery, selected_from in filter_subqueries:
+            query = query.join(subquery, subquery.c.id == selected_from.id)
+    return query

@@ -1,430 +1,307 @@
 import operator
-from typing import Callable
 
-from sqlalchemy import TIMESTAMP, Boolean, Float, and_, cast, func, not_, or_
+from geoalchemy2.functions import ST_Area, ST_Count, ST_GeomFromGeoJSON
+from sqlalchemy import (
+    CTE,
+    TIMESTAMP,
+    Boolean,
+    Float,
+    Integer,
+    and_,
+    cast,
+    func,
+    not_,
+    or_,
+    select,
+)
 from sqlalchemy.dialects.postgresql import INTERVAL, TEXT
-from sqlalchemy.sql.elements import BinaryExpression, ColumnElement
 
-from valor_api import enums
 from valor_api.backend.models import (
     Annotation,
     Dataset,
     Datum,
+    Embedding,
+    GroundTruth,
     Label,
     Model,
     Prediction,
 )
-from valor_api.backend.query.types import TableTypeAlias
-from valor_api.schemas import (
-    BooleanFilter,
-    DateTimeFilter,
-    Duration,
-    Filter,
-    GeospatialFilter,
-    NumericFilter,
-    StringFilter,
-    Time,
+from valor_api.backend.query.types import LabelSourceAlias, TableTypeAlias
+from valor_api.schemas.filters import AdvancedFilter as Filter
+from valor_api.schemas.filters import (
+    NArgFunction,
+    OneArgFunction,
+    Symbol,
+    TwoArgFunction,
+    Value,
+)
+from valor_api.schemas.geometry import (
+    Box,
+    LineString,
+    MultiLineString,
+    MultiPoint,
+    MultiPolygon,
+    Point,
+    Polygon,
 )
 
+opstr_to_operator = {
+    "equal": operator.eq,
+    "notequal": operator.ne,
+    "greaterthan": operator.gt,
+    "greaterthanequal": operator.ge,
+    "lessthan": operator.lt,
+    "lessthanequal": operator.le,
+    "intersects": lambda lhs, rhs: func.ST_Intersects(lhs, rhs),
+    "inside": lambda lhs, rhs: func.ST_Covers(rhs, lhs),
+    "outside": lambda lhs, rhs: not_(func.ST_Covers(rhs, lhs)),
+    "contains": None,
+    "isnull": lambda lhs, _: lhs.is_(None),
+    "isnotnull": lambda lhs, _: lhs.isnot(None),
+}
 
-def _get_boolean_op(opstr) -> Callable:
-    """Returns function if operator is valid for boolean comparison."""
-    ops = {
-        "==": operator.eq,
-        "!=": operator.ne,
+
+symbol_name_to_table_value_tuple = {
+    "dataset.name": (Dataset, Dataset.name),
+    "dataset.metadata": (Dataset, Dataset.meta),
+    "model.name": (Model, Model.name),
+    "model.metadata": (Model, Model.meta),
+    "datum.uid": (Datum, Datum.uid),
+    "datum.metadata": (Datum, Datum.meta),
+    "annotation.bounding_box": (Annotation, Annotation.box),
+    "annotation.polygon": (Annotation, Annotation.polygon),
+    "annotation.raster": (Annotation, Annotation.raster),
+    "annotation.metadata": (Annotation, Annotation.meta),
+    "annotation.task_type": (Annotation, Annotation.task_type),
+    "annotation.embedding": (Embedding, Embedding.value),
+    "annotation.labels": (Label, Label),
+    "annotation.model_id": (Annotation, Annotation.model_id),  # remove
+    "label.key": (Label, Label.key),
+    "label.value": (Label, Label.value),
+    "label.score": (Prediction, Prediction.score),
+    "label.id": (Label, Label.id),  # remove
+    "model.id": (Model, Model.id),
+}
+
+
+symbol_supports_attribute = {
+    "area": {
+        "annotation.bounding_box": lambda x: ST_Area(x),
+        "annotation.polygon": lambda x: ST_Area(x),
+        "annotation.raster": lambda x: ST_Count(x),
+        "dataset.metadata": lambda x: ST_Area(x),
+        "model.metadata": lambda x: ST_Area(x),
+        "datum.metadata": lambda x: ST_Area(x),
+        "annotation.metadata": lambda x: ST_Area(x),
     }
-    if opstr not in ops:
-        raise ValueError(f"invalid boolean comparison operator `{opstr}`")
-    return ops[opstr]
+}
 
 
-def _get_string_op(opstr) -> Callable:
-    """Returns function if operator is valid for string comparison."""
-    ops = {
-        "==": operator.eq,
-        "!=": operator.ne,
-    }
-    if opstr not in ops:
-        raise ValueError(f"invalid string comparison operator `{opstr}`")
-    return ops[opstr]
+attribute_type = {"area": "float"}
 
 
-def _get_numeric_op(opstr) -> Callable:
-    """Returns function if operator is valid for numeric comparison."""
-    ops = {
-        ">": operator.gt,
-        "<": operator.lt,
-        ">=": operator.ge,
-        "<=": operator.le,
-        "==": operator.eq,
-        "!=": operator.ne,
-    }
-    if opstr not in ops:
-        raise ValueError(f"invalid numeric comparison operator `{opstr}`")
-    return ops[opstr]
+metadata_symbol_type_casting = {
+    "boolean": lambda x: x.astext.cast(Boolean),
+    "integer": lambda x: x.astext.cast(Integer),
+    "float": lambda x: x.astext.cast(Float),
+    "string": lambda x: x.astext,
+    "tasktypeenum": lambda x: x.astext,
+    "datetime": lambda x: cast(
+        x["value"].astext, type_=TIMESTAMP(timezone=True)
+    ),
+    "date": lambda x: cast(x["value"].astext, type_=TIMESTAMP(timezone=True)),
+    "time": lambda x: cast(x["value"].astext, type_=INTERVAL),
+    "duration": lambda x: cast(x["value"].astext, type_=INTERVAL),
+    "point": lambda x: ST_GeomFromGeoJSON(x["value"]),
+    "multipoint": lambda x: ST_GeomFromGeoJSON(x["value"]),
+    "linestring": lambda x: ST_GeomFromGeoJSON(x["value"]),
+    "multilinestring": lambda x: ST_GeomFromGeoJSON(x["value"]),
+    "polygon": lambda x: ST_GeomFromGeoJSON(x["value"]),
+    "box": lambda x: ST_GeomFromGeoJSON(x["value"]),
+    "multipolygon": lambda x: ST_GeomFromGeoJSON(x["value"]),
+}
 
 
-def _get_spatial_op(opstr) -> Callable:
-    """Returns function if operator is valid for spatial comparison."""
-    ops = {
-        "intersect": lambda lhs, rhs: func.ST_Intersects(lhs, rhs),
-        "inside": lambda lhs, rhs: func.ST_Covers(rhs, lhs),
-        "outside": lambda lhs, rhs: not_(func.ST_Covers(rhs, lhs)),
-    }
-    if opstr not in ops:
-        raise ValueError(f"invalid spatial operator `{opstr}`")
-    return ops[opstr]
+metadata_attribute_type_casting = {
+    "area": lambda x: ST_GeomFromGeoJSON(x["value"]),
+}
 
 
-def _flatten_expressions(
-    expressions: list[list[BinaryExpression]],
-) -> list[ColumnElement[bool] | BinaryExpression]:
-    """Flattens a nested list of expressions."""
-    return [
-        or_(*exprlist) if len(exprlist) > 1 else exprlist[0]
-        for exprlist in expressions
-    ]
+value_dtype_to_casting = {
+    "boolean": lambda x: x,
+    "integer": lambda x: x,
+    "float": lambda x: x,
+    "string": lambda x: x,
+    "tasktypeenum": lambda x: x,
+    "datetime": lambda x: cast(x, type_=TIMESTAMP(timezone=True)),
+    "date": lambda x: cast(x, type_=TIMESTAMP(timezone=True)),
+    "time": lambda x: cast(x, type_=INTERVAL),
+    "duration": lambda x: cast(cast(x, TEXT), type_=INTERVAL),
+    "point": lambda x: ST_GeomFromGeoJSON(Point(value=x).to_json()),
+    "multipoint": lambda x: ST_GeomFromGeoJSON(MultiPoint(value=x).to_json()),
+    "linestring": lambda x: ST_GeomFromGeoJSON(LineString(value=x).to_json()),
+    "multilinestring": lambda x: ST_GeomFromGeoJSON(
+        MultiLineString(value=x).to_dict()
+    ),
+    "polygon": lambda x: ST_GeomFromGeoJSON(Polygon(value=x).to_json()),
+    "box": lambda x: ST_GeomFromGeoJSON(Box(value=x).to_json()),
+    "multipolygon": lambda x: ST_GeomFromGeoJSON(
+        MultiPolygon(value=x).to_json()
+    ),
+}
 
 
-def _filter_by_metadatum(
-    key: str,
-    value_filter: NumericFilter
-    | StringFilter
-    | BooleanFilter
-    | DateTimeFilter
-    | GeospatialFilter,
-    table: TableTypeAlias,
-) -> BinaryExpression:
-    """
-    Filter by metadatum.
+# @TODO - Need to implement exceptions
+def create_cte(
+    opstr: str, symbol: Symbol, value: Value | None = None
+) -> tuple[TableTypeAlias, CTE]:
+    if not isinstance(symbol, Symbol):
+        raise ValueError
+    elif not isinstance(value, Value) and value is not None:
+        raise ValueError
+    elif value and symbol.type != value.type:
+        if (
+            not symbol.attribute
+            or attribute_type[symbol.attribute] != value.type
+        ):
+            raise ValueError
 
-    Supports all existing filter types.
-    """
-    if isinstance(value_filter, NumericFilter):
-        op = _get_numeric_op(value_filter.operator)
-        lhs = table.meta[key].astext.cast(Float)
-        rhs = value_filter.value
-    elif isinstance(value_filter, StringFilter):
-        op = _get_string_op(value_filter.operator)
-        lhs = table.meta[key].astext
-        rhs = value_filter.value
-    elif isinstance(value_filter, BooleanFilter):
-        op = _get_boolean_op(value_filter.operator)
-        lhs = table.meta[key].astext.cast(Boolean)
-        rhs = value_filter.value
-    elif isinstance(value_filter, DateTimeFilter):
-        lhs_operand = table.meta[key]["value"].astext
-        rhs_operand = value_filter.value.value
-        if isinstance(value_filter.value, Time):
-            lhs = cast(lhs_operand, INTERVAL)
-            rhs = cast(rhs_operand, INTERVAL)
-        elif isinstance(value_filter.value, Duration):
-            lhs = cast(lhs_operand, INTERVAL)
-            rhs = cast(cast(rhs_operand, TEXT), INTERVAL)
+    op = opstr_to_operator[opstr]
+    table, lhs = symbol_name_to_table_value_tuple[symbol.name]
+    rhs = value_dtype_to_casting[value.type](value.value) if value else None
+
+    # add keying
+    if symbol.key:
+        lhs = lhs[symbol.key]
+
+        # add type cast
+        if not symbol.attribute:
+            lhs = metadata_symbol_type_casting[symbol.type](lhs)
         else:
-            lhs = cast(lhs_operand, TIMESTAMP(timezone=True))
-            rhs = cast(rhs_operand, TIMESTAMP(timezone=True))
-        op = _get_numeric_op(value_filter.operator)
-    elif isinstance(value_filter, GeospatialFilter):
-        op = _get_spatial_op(value_filter.operator)
-        lhs = func.ST_GeomFromGeoJSON(table.meta[key]["value"])
-        rhs = func.ST_GeomFromGeoJSON(value_filter.value.model_dump_json())
-    else:
-        raise NotImplementedError(
-            f"Filter with type `{type(value_filter)}` is currently not supported"
-        )
-    return op(lhs, rhs)
+            lhs = metadata_attribute_type_casting[symbol.attribute](lhs)
+
+    # add attribute modifier
+    if symbol.attribute:
+        modifier = symbol_supports_attribute[symbol.attribute][symbol.name]
+        lhs = modifier(lhs)
+
+    return (table, select(table.id).where(op(lhs, rhs)).cte())
 
 
-def _filter_by_metadata(
-    metadata: dict[
-        str,
-        list[
-            NumericFilter
-            | StringFilter
-            | BooleanFilter
-            | DateTimeFilter
-            | GeospatialFilter
-        ],
-    ],
-    table: TableTypeAlias,
-) -> list[ColumnElement[bool]] | list[BinaryExpression]:
-    """
-    Iterates through a dictionary containing metadata.
-    """
-    expressions = [
-        _filter_by_metadatum(key, value, table)
-        for key, f_list in metadata.items()
-        for value in f_list
-    ]
-    if len(expressions) > 1:
-        expressions = [and_(*expressions)]
-    return expressions
+# @TODO - Need to implement exceptions
+def _recursive_search_logic_tree(
+    func: OneArgFunction | TwoArgFunction | NArgFunction,
+    cte_list: list | None = None,
+    tables: list[TableTypeAlias] | None = None,
+) -> tuple[int | dict, list[CTE], list[TableTypeAlias]]:
+    if not isinstance(func, OneArgFunction | TwoArgFunction | NArgFunction):
+        raise ValueError
+    cte_list = cte_list if cte_list else list()
+    tables = tables if tables else list()
+    logical_tree = dict()
+
+    if isinstance(func, OneArgFunction):
+        if isinstance(func.arg, Symbol):
+            table, cte = create_cte(opstr=func.op, symbol=func.arg)
+            tables.append(table)
+            cte_list.append(cte)
+            return (len(cte_list) - 1, cte_list, tables)
+        else:
+            branch, cte_list, tables = _recursive_search_logic_tree(
+                func.arg, cte_list, tables
+            )
+            logical_tree[func.op] = branch
+            return (logical_tree, cte_list, tables)
+
+    elif isinstance(func, TwoArgFunction):
+        table, cte = create_cte(opstr=func.op, symbol=func.lhs, value=func.rhs)
+        tables.append(table)
+        cte_list.append(cte)
+        return (len(cte_list) - 1, cte_list, tables)
+
+    elif isinstance(func, NArgFunction):
+        branches = list()
+        for arg in func.args:
+            branch, cte_list, tables = _recursive_search_logic_tree(
+                arg, cte_list, tables
+            )
+            branches.append(branch)
+        logical_tree[func.op] = branches
+        return (logical_tree, cte_list, tables)
 
 
-def filter_by_dataset(
-    filter_: Filter,
-) -> list[ColumnElement[bool] | BinaryExpression]:
-    """
-    Constructs sqlalchemy expressions using dataset filters.
+def map_filter_to_tables(
+    filter_: Filter | None, label_source: LabelSourceAlias
+) -> set[TableTypeAlias]:
+    tables = set()
+    if filter_ is not None:
+        if filter_.datasets:
+            tables.add(Dataset)
+        if filter_.models:
+            tables.add(Model)
+        if filter_.datums:
+            tables.add(Datum)
+        if filter_.annotations:
+            tables.add(Annotation)
+        if filter_.groundtruths:
+            table = GroundTruth if label_source is not Prediction else Datum
+            tables.add(table)
+        if filter_.predictions:
+            table = Prediction if label_source is not GroundTruth else Datum
+            tables.add(table)
+        if filter_.labels:
+            tables.add(Label)
+        if filter_.embeddings:
+            tables.add(Embedding)
+    return tables
 
-    Parameters
-    ----------
-    filter_ : schemas.Filter
-        The filter to apply.
 
-    Returns
-    -------
-    list[ColumnElement[bool] | BinaryExpression]
-        A list of expressions that can be used in a WHERE clause.
-    """
-    expressions = []
-    if filter_.dataset_names:
-        expressions.append(
-            [
-                Dataset.name == name
-                for name in filter_.dataset_names
-                if isinstance(name, str)
+def generate_dependencies(
+    func: OneArgFunction | TwoArgFunction | NArgFunction | None,
+) -> tuple[int | dict | None, list[CTE], list[TableTypeAlias]]:
+    if func is None:
+        return (None, list(), list())
+    return _recursive_search_logic_tree(func)
+
+
+def generate_logical_expression(
+    root, tree: int | dict[str, int | dict | list], prefix: str
+):
+    if isinstance(tree, int):
+        return getattr(root.c, f"{prefix}{tree}") == 1
+    if not isinstance(tree, dict) or len(tree.keys()) != 1:
+        raise ValueError
+
+    logical_operators = {
+        "and": and_,
+        "or": or_,
+        "not": not_,
+    }
+    op = list(tree.keys())[0]
+    if op == "and" or op == "or":
+        args = tree[op]
+        if not isinstance(args, list):
+            raise ValueError
+        return logical_operators[op](
+            *[
+                (getattr(root.c, f"{prefix}{arg}") == 1)
+                if isinstance(arg, int)
+                else generate_logical_expression(
+                    root=root, tree=arg, prefix=prefix
+                )
+                for arg in args
             ]
         )
-    if filter_.dataset_metadata:
-        expressions.append(
-            _filter_by_metadata(filter_.dataset_metadata, Dataset),
-        )
-    return _flatten_expressions(expressions)
-
-
-def filter_by_model(
-    filter_: Filter,
-) -> list[ColumnElement[bool] | BinaryExpression]:
-    """
-    Constructs sqlalchemy expressions using model filters.
-
-    Parameters
-    ----------
-    filter_ : schemas.Filter
-        The filter to apply.
-
-    Returns
-    -------
-    list[ColumnElement[bool] | BinaryExpression]
-        A list of expressions that can be used in a WHERE clause.
-    """
-    expressions = []
-    if filter_.model_names:
-        expressions.append(
-            [
-                Model.name == name
-                for name in filter_.model_names
-                if isinstance(name, str)
-            ],
-        )
-    if filter_.model_metadata:
-        expressions.append(
-            _filter_by_metadata(filter_.model_metadata, Model),
-        )
-    return _flatten_expressions(expressions)
-
-
-def filter_by_datum(
-    filter_: Filter,
-) -> list[ColumnElement[bool] | BinaryExpression]:
-    """
-    Constructs sqlalchemy expressions using datum filters.
-
-    Parameters
-    ----------
-    filter_ : schemas.Filter
-        The filter to apply.
-
-    Returns
-    -------
-    list[ColumnElement[bool] | BinaryExpression]
-        A list of expressions that can be used in a WHERE clause.
-    """
-    expressions = []
-    if filter_.datum_uids:
-        expressions.append(
-            [
-                Datum.uid == uid
-                for uid in filter_.datum_uids
-                if isinstance(uid, str)
-            ],
-        )
-    if filter_.datum_metadata:
-        expressions.append(
-            _filter_by_metadata(
-                metadata=filter_.datum_metadata,
-                table=Datum,
-            ),
-        )
-    return _flatten_expressions(expressions)
-
-
-def filter_by_annotation(
-    filter_: Filter,
-) -> list[ColumnElement[bool] | BinaryExpression]:
-    """
-    Constructs sqlalchemy expressions using annotation filters.
-
-    Parameters
-    ----------
-    filter_ : schemas.Filter
-        The filter to apply.
-
-    Returns
-    -------
-    list[ColumnElement[bool] | BinaryExpression]
-        A list of expressions that can be used in a WHERE clause.
-    """
-    expressions = []
-    if filter_.task_types:
-        expressions.append(
-            [
-                Annotation.task_type == task_type.value
-                for task_type in filter_.task_types
-                if isinstance(task_type, enums.TaskType)
-            ],
-        )
-    if filter_.annotation_metadata:
-        expressions.append(
-            _filter_by_metadata(filter_.annotation_metadata, Annotation),
-        )
-
-    # geometry requirement
-    if filter_.require_bounding_box is not None:
-        if filter_.require_bounding_box:
-            expressions.append([Annotation.box.isnot(None)])
-        else:
-            expressions.append([Annotation.box.is_(None)])
-    if filter_.require_polygon is not None:
-        if filter_.require_polygon:
-            expressions.append([Annotation.polygon.isnot(None)])
-        else:
-            expressions.append([Annotation.polygon.is_(None)])
-    if filter_.require_raster is not None:
-        if filter_.require_raster:
-            expressions.append([Annotation.raster.isnot(None)])
-        else:
-            expressions.append([Annotation.raster.is_(None)])
-
-    # geometric area - AND like-typed filter_, OR different-typed filter_
-    area_expr = []
-    if filter_.bounding_box_area:
-        bounding_box_area_expr = []
-        for area_filter in filter_.bounding_box_area:
-            op = _get_numeric_op(area_filter.operator)
-            bounding_box_area_expr.append(
-                op(func.ST_Area(Annotation.box), area_filter.value)
+    elif op == "not":
+        arg = tree["not"]
+        if isinstance(arg, list):
+            raise ValueError
+        return (
+            (getattr(root.c, f"{prefix}{arg}") == 0)
+            if isinstance(arg, int)
+            else not_(
+                generate_logical_expression(root=root, tree=arg, prefix=prefix)
             )
-        if len(bounding_box_area_expr) > 1:
-            area_expr.append(and_(*bounding_box_area_expr))
-        else:
-            area_expr.append(bounding_box_area_expr[0])
-    if filter_.polygon_area:
-        polygon_area_expr = []
-        for area_filter in filter_.polygon_area:
-            op = _get_numeric_op(area_filter.operator)
-            polygon_area_expr.append(
-                op(
-                    func.ST_Area(Annotation.polygon),
-                    area_filter.value,
-                )
-            )
-        if len(polygon_area_expr) > 1:
-            area_expr.append(and_(*polygon_area_expr))
-        else:
-            area_expr.append(polygon_area_expr[0])
-    if filter_.raster_area:
-        raster_area_expr = []
-        for area_filter in filter_.raster_area:
-            op = _get_numeric_op(area_filter.operator)
-            raster_area_expr.append(
-                op(
-                    func.ST_Count(Annotation.raster),
-                    area_filter.value,
-                )
-            )
-        if len(raster_area_expr) > 1:
-            area_expr.append(and_(*raster_area_expr))
-        else:
-            area_expr.append(raster_area_expr[0])
-    if area_expr:
-        expressions.append(area_expr)
-
-    return _flatten_expressions(expressions)
-
-
-def filter_by_label(
-    filter_: Filter,
-) -> list[ColumnElement[bool] | BinaryExpression]:
-    """
-    Constructs sqlalchemy expressions using label filters.
-
-    Parameters
-    ----------
-    filter_ : schemas.Filter
-        The filter to apply.
-
-    Returns
-    -------
-    list[ColumnElement[bool] | BinaryExpression]
-        A list of expressions that can be used in a WHERE clause.
-    """
-    expressions = []
-    if filter_.label_ids:
-        expressions.append(
-            [
-                Label.id == id
-                for id in filter_.label_ids
-                if isinstance(id, int)
-            ],
         )
-    if filter_.labels:
-        expressions.append(
-            [
-                and_(
-                    Label.key == key,
-                    Label.value == value,
-                )
-                for label in filter_.labels
-                if (isinstance(label, dict) and len(label) == 1)
-                for key, value in label.items()
-            ],
-        )
-    if filter_.label_keys:
-        expressions.append(
-            [
-                Label.key == key
-                for key in filter_.label_keys
-                if isinstance(key, str)
-            ],
-        )
-
-    return _flatten_expressions(expressions)
-
-
-def filter_by_prediction(
-    filter_: Filter,
-) -> list[ColumnElement[bool] | BinaryExpression]:
-    """
-    Constructs sqlalchemy expressions using prediction filters.
-
-    Parameters
-    ----------
-    filter_ : schemas.Filter
-        The filter to apply.
-
-    Returns
-    -------
-    list[ColumnElement[bool] | BinaryExpression]
-        A list of expressions that can be used in a WHERE clause.
-    """
-    expressions = []
-    if filter_.label_scores:
-        for score_filter in filter_.label_scores:
-            op = _get_numeric_op(score_filter.operator)
-            expressions.append(
-                [op(Prediction.score, score_filter.value)],
-            )
-    return _flatten_expressions(expressions)
+    else:
+        raise ValueError
