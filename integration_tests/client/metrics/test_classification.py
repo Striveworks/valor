@@ -970,7 +970,16 @@ def test_evaluate_classification_with_label_maps(
     ]
 
     eval_job = model.evaluate_classification(
-        dataset, label_map=label_mapping, compute_pr_curves=True
+        dataset,
+        label_map=label_mapping,
+        metrics_to_return=[
+            "Precision",
+            "Recall",
+            "F1",
+            "Accuracy",
+            "ROCAUC",
+            "PrecisionRecallCurve",
+        ],
     )
     assert eval_job.id
     assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE

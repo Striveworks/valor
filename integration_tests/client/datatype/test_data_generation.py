@@ -411,7 +411,7 @@ def test_generate_prediction_data(client: Client):
             "iou_thresholds_to_return": [0.1, 0.9],
             "label_map": None,
             "recall_score_threshold": 0.0,
-            "compute_pr_curves": False,
+            "metrics_to_return": None,
             "pr_curve_iou_threshold": 0.5,
         },
         "meta": {},
