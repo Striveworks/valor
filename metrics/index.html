@@ -501,7 +501,7 @@
 </tr>
 <tr>
 <td style="text-align: left;">Precision-Recall Curves</td>
-<td style="text-align: left;">Outputs a nested dictionary containing the true positives, false positives, true negatives, false negatives, precision, recall, and F1 score for each (label key, label value, confidence threshold) combination. Computing this output requires setting the <code>compute_pr_curves</code> argument to <code>True</code> at evaluation time.</td>
+<td style="text-align: left;">Outputs a nested dictionary containing the true positives, false positives, true negatives, false negatives, precision, recall, and F1 score for each (label key, label value, confidence threshold) combination. Computing this metric requires passing <code>PrecisionRecallCurve</code> into the list of <code>metrics_to_return</code> at evaluation time.</td>
 <td style="text-align: left;">See <a href="#precision-recall-curves">precision-recall curve methods</a></td>
 </tr>
 </tbody>
@@ -548,7 +548,7 @@
 </tr>
 <tr>
 <td style="text-align: left;">Precision-Recall Curves</td>
-<td style="text-align: left;">Outputs a nested dictionary containing the true positives, false positives, true negatives, false negatives, precision, recall, and F1 score for each (label key, label value, confidence threshold) combination. Computing this output requires setting the <code>compute_pr_curves</code> argument to <code>True</code> at evaluation time. These curves are calculated using a default IOU threshold of 0.5; you can set your own threshold by passing a float between 0 and 1 to the <code>pr_curve_iou_threshold</code> parameter at evaluation time.</td>
+<td style="text-align: left;">Outputs a nested dictionary containing the true positives, false positives, true negatives, false negatives, precision, recall, and F1 score for each (label key, label value, confidence threshold) combination. Computing this metric requires passing <code>PrecisionRecallCurve</code> into the list of <code>metrics_to_return</code> at evaluation time. These curves are calculated using a default IOU threshold of 0.5; you can set your own threshold by passing a float between 0 and 1 to the <code>pr_curve_iou_threshold</code> parameter at evaluation time.</td>
 <td style="text-align: left;">See <a href="#precision-recall-curves">precision-recall curve methods</a></td>
 </tr>
 </tbody>
@@ -720,7 +720,7 @@
 <li>COCO calculates three different AR metrics (AR@1, AR@5, AR@100)) by considering only the top 1/5/100 most confident predictions during the matching process. Valor, on the other hand, allows users to input a <code>recall_score_threshold</code> value that will prevent low-confidence predictions from being counted as true positives when calculating AR.</li>
 </ul>
 <h2 id="precision-recall-curves">Precision-Recall Curves</h2>
-<p>Precision-recall curves offer insight into which confidence threshold you should pick for your production pipeline. To compute these curves for your classification or object detection workflow, simply set the <code>compute_pr_curves</code> parameter to <code>True</code> when initiating your evaluation. Valor will then tabulate the true positives, false positives, true negatives, false negatives, precision, recall, and F1 score for each (label key, label value, confidence threshold) combination, and store them in a nested dictionary for your use. When using the Valor Python client, the output will be formatted as follows:</p>
+<p>Precision-recall curves offer insight into which confidence threshold you should pick for your production pipeline. To compute these curves for your classification or object detection workflow, simply pass <code>PrecisionRecallCurve</code> into the list of <code>metrics_to_return</code> when initiating your evaluation. Valor will then tabulate the true positives, false positives, true negatives, false negatives, precision, recall, and F1 score for each (label key, label value, confidence threshold) combination, and store them in a nested dictionary for your use. When using the Valor Python client, the output will be formatted as follows:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a href="#__codelineno-2-1" id="__codelineno-2-1" name="__codelineno-2-1"></a><span class="p">{</span>
 </span><span id="__span-2-2"><a href="#__codelineno-2-2" id="__codelineno-2-2" name="__codelineno-2-2"></a>    <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"PrecisionRecallCurve"</span><span class="p">,</span>
 </span><span id="__span-2-3"><a href="#__codelineno-2-3" id="__codelineno-2-3" name="__codelineno-2-3"></a>    <span class="s2">"parameters"</span><span class="p">:</span> <span class="p">{</span>
