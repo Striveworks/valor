@@ -2,6 +2,7 @@
 that is no auth
 """
 
+import random
 from dataclasses import asdict
 
 import pytest
@@ -151,7 +152,14 @@ def test_evaluate_detection(
             "iou_thresholds_to_return": [0.1, 0.6],
             "label_map": None,
             "recall_score_threshold": 0.0,
-            "compute_pr_curves": False,
+            "metrics_to_return": [
+                "AP",
+                "AR",
+                "mAP",
+                "APAveragedOverIOUs",
+                "mAR",
+                "mAPAveragedOverIOUs",
+            ],
             "pr_curve_iou_threshold": 0.5,
         },
         "status": EvaluationStatus.DONE.value,
@@ -273,7 +281,14 @@ def test_evaluate_detection(
             "iou_thresholds_to_return": [0.1, 0.6],
             "label_map": None,
             "recall_score_threshold": 0.0,
-            "compute_pr_curves": False,
+            "metrics_to_return": [
+                "AP",
+                "AR",
+                "mAP",
+                "APAveragedOverIOUs",
+                "mAR",
+                "mAPAveragedOverIOUs",
+            ],
             "pr_curve_iou_threshold": 0.5,
         },
         "status": EvaluationStatus.DONE.value,
@@ -327,7 +342,14 @@ def test_evaluate_detection(
             "iou_thresholds_to_return": [0.1, 0.6],
             "label_map": None,
             "recall_score_threshold": 0.0,
-            "compute_pr_curves": False,
+            "metrics_to_return": [
+                "AP",
+                "AR",
+                "mAP",
+                "APAveragedOverIOUs",
+                "mAR",
+                "mAPAveragedOverIOUs",
+            ],
             "pr_curve_iou_threshold": 0.5,
         },
         # check metrics below
@@ -398,7 +420,14 @@ def test_evaluate_detection(
             "iou_thresholds_to_return": [0.1, 0.6],
             "label_map": None,
             "recall_score_threshold": 0.0,
-            "compute_pr_curves": False,
+            "metrics_to_return": [
+                "AP",
+                "AR",
+                "mAP",
+                "APAveragedOverIOUs",
+                "mAR",
+                "mAPAveragedOverIOUs",
+            ],
             "pr_curve_iou_threshold": 0.5,
         },
         # check metrics below
@@ -416,6 +445,39 @@ def test_evaluate_detection(
     # test accessing these evaluations via the dataset
     all_evals = dataset.get_evaluations()
     assert len(all_evals) == 6
+
+    # check that metrics arg works correctly
+    selected_metrics = random.sample(
+        [
+            "AP",
+            "AR",
+            "mAP",
+            "APAveragedOverIOUs",
+            "mAR",
+            "mAPAveragedOverIOUs",
+            "PrecisionRecallCurve",
+        ],
+        2,
+    )
+    eval_job_random_metrics = model.evaluate_detection(
+        dataset,
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_return=[0.1, 0.6],
+        filter_by=[
+            Label.key == "k1",
+            Annotation.bounding_box.area >= 1200,
+            Annotation.bounding_box.area <= 1800,
+        ],
+        convert_annotations_to_type=AnnotationType.BOX,
+        metrics_to_return=selected_metrics,
+    )
+    assert (
+        eval_job_random_metrics.wait_for_completion(timeout=30)
+        == EvaluationStatus.DONE
+    )
+    assert set(
+        [metric["type"] for metric in eval_job_random_metrics.metrics]
+    ) == set(selected_metrics)
 
 
 def test_evaluate_detection_with_json_filters(
@@ -563,7 +625,14 @@ def test_evaluate_detection_with_json_filters(
             "iou_thresholds_to_return": [0.1, 0.6],
             "label_map": None,
             "recall_score_threshold": 0.0,
-            "compute_pr_curves": False,
+            "metrics_to_return": [
+                "AP",
+                "AR",
+                "mAP",
+                "APAveragedOverIOUs",
+                "mAR",
+                "mAPAveragedOverIOUs",
+            ],
             "pr_curve_iou_threshold": 0.5,
         },
         # check metrics below
@@ -1068,7 +1137,15 @@ def test_evaluate_detection_with_label_maps(
         dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
-        compute_pr_curves=True,
+        metrics_to_return=[
+            "AP",
+            "AR",
+            "mAP",
+            "APAveragedOverIOUs",
+            "mAR",
+            "mAPAveragedOverIOUs",
+            "PrecisionRecallCurve",
+        ],
     )
 
     assert (
@@ -1688,7 +1765,15 @@ def test_evaluate_detection_with_label_maps(
         iou_thresholds_to_return=[0.1, 0.6],
         label_map=label_mapping,
         recall_score_threshold=0.8,
-        compute_pr_curves=True,
+        metrics_to_return=[
+            "AP",
+            "AR",
+            "mAP",
+            "APAveragedOverIOUs",
+            "mAR",
+            "mAPAveragedOverIOUs",
+            "PrecisionRecallCurve",
+        ],
     )
     assert (
         eval_job.ignored_pred_labels is not None
@@ -1711,7 +1796,15 @@ def test_evaluate_detection_with_label_maps(
             [["class_name", "cat"], ["foo", "bar"]],
         ],
         "recall_score_threshold": 0.8,
-        "compute_pr_curves": True,
+        "metrics_to_return": [
+            "AP",
+            "AR",
+            "mAP",
+            "APAveragedOverIOUs",
+            "mAR",
+            "mAPAveragedOverIOUs",
+            "PrecisionRecallCurve",
+        ],
         "pr_curve_iou_threshold": 0.5,
     }
 

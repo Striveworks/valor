@@ -33,8 +33,9 @@ def test_dataset_exceptions(
     model.add_prediction(
         dset, Prediction(datum=Datum(uid="uid"), annotations=[])
     )
-    with pytest.raises(exceptions.DatasetNotFinalizedError):
+    with pytest.raises(exceptions.ClientException) as e:
         model.evaluate_classification(dset)
+    assert "have not been finalized" in str(e)
 
     dset.finalize()
     with pytest.raises(exceptions.DatasetFinalizedError):
@@ -69,8 +70,9 @@ def test_model_exceptions(client: Client, model_name: str, dataset_name: str):
     dset = Dataset.create(dataset_name)
     dset.add_groundtruth(GroundTruth(datum=Datum(uid="uid"), annotations=[]))
     dset.finalize()
-    with pytest.raises(exceptions.ModelNotFinalizedError):
+    with pytest.raises(exceptions.ClientException) as e:
         model.evaluate_classification(dset)
+    assert "model-dataset pairings have not been finalized" in str(e)
 
     # test `ModelFinalizedError`
     model.finalize_inferences(dset)

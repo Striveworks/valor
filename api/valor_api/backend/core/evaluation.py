@@ -308,7 +308,14 @@ def _create_response(
     """Converts a evaluation row into a response schema."""
     metrics = db.query(
         select(models.Metric)
-        .where(models.Metric.evaluation_id == evaluation.id)
+        .where(
+            and_(
+                models.Metric.evaluation_id == evaluation.id,
+                models.Metric.type.in_(
+                    evaluation.parameters["metrics_to_return"]
+                ),
+            )
+        )
         .subquery()
     ).all()
     confusion_matrices = db.query(
