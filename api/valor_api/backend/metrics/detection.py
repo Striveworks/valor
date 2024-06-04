@@ -613,6 +613,11 @@ def _compute_detection_metrics(
                 grouper_mappings["label_id_to_grouper_id_mapping"],
                 value=models.GroundTruth.label_id,
             ).label("label_id_grouper"),
+            # TODO
+            case(
+                grouper_mappings["label_id_to_grouper_key_mapping"],
+                value=models.GroundTruth.label_id,
+            ).label("label_key_grouper"),
             _annotation_type_to_geojson(target_type, models.Annotation).label(
                 "geojson"
             ),
@@ -635,6 +640,11 @@ def _compute_detection_metrics(
                 grouper_mappings["label_id_to_grouper_id_mapping"],
                 value=models.Prediction.label_id,
             ).label("label_id_grouper"),
+            # TODO
+            case(
+                grouper_mappings["label_id_to_grouper_key_mapping"],
+                value=models.Prediction.label_id,
+            ).label("label_key_grouper"),
             _annotation_type_to_geojson(target_type, models.Annotation).label(
                 "geojson"
             ),
@@ -660,6 +670,9 @@ def _compute_detection_metrics(
             pd.c.label_id.label("pd_label_id"),
             gt.c.label_id_grouper.label("gt_label_id_grouper"),
             pd.c.label_id_grouper.label("pd_label_id_grouper"),
+            # TODO
+            gt.c.label_key_grouper.label("gt_label_key_grouper"),
+            pd.c.label_key_grouper.label("pd_label_key_grouper"),
             gt.c.annotation_id.label("gt_ann_id"),
             pd.c.annotation_id.label("pd_ann_id"),
             pd.c.score.label("score"),
@@ -717,12 +730,6 @@ def _compute_detection_metrics(
         .select_from(joint)
         .join(gt_annotation, gt_annotation.id == joint.c.gt_ann_id)
         .join(pd_annotation, pd_annotation.id == joint.c.pd_ann_id)
-        .where(
-            and_(
-                joint.c.gt_id.isnot(None),
-                joint.c.pd_id.isnot(None),
-            )
-        )
         .subquery()
     )
 
@@ -733,7 +740,8 @@ def _compute_detection_metrics(
 
     # Filter out repeated predictions
     pd_set = set()
-    ranking = {}
+    sorted_ranked_pairs = defaultdict(list)
+
     for row in ordered_ious:
         (
             dataset_name,
@@ -746,22 +754,25 @@ def _compute_detection_metrics(
             _,
             _,
             gt_label_id_grouper,
-            _,
+            pd_label_id_grouper,
             score,
             iou,
             gt_geojson,
             _,
         ) = row
 
+        # TODO make sure the extra ious are turned off by default
+        # TODO remove grouper key stuff from metric_utils if not needed
         # there should only be one rankedpair per prediction but
         # there can be multiple rankedpairs per groundtruth at this point (i.e. before
         # an iou threshold is specified)
         if pd_id not in pd_set:
             pd_set.add(pd_id)
-            if gt_label_id_grouper not in ranking:
-                ranking[gt_label_id_grouper] = []
 
-            ranking[gt_label_id_grouper].append(
+            # if the two grouper ids match, then we know the prediction and groundtruth share the same mapped label key + value
+            # if gt_label_id_grouper == pd_label_id_grouper:
+
+            sorted_ranked_pairs[gt_label_id_grouper].append(
                 RankedPair(
                     dataset_name=dataset_name,
                     pd_datum_uid=pd_datum_uid,
@@ -793,10 +804,10 @@ def _compute_detection_metrics(
     ).all()
 
     for pd_id, score, dataset_name, pd_datum_uid, grouper_id in predictions:
-        if grouper_id in ranking and pd_id not in pd_set:
-            # add to ranking in sorted order
+        if grouper_id in sorted_ranked_pairs and pd_id not in pd_set:
+            # add to sorted_ranked_pairs in sorted order
             bisect.insort(  # type: ignore - bisect type issue
-                ranking[grouper_id],
+                sorted_ranked_pairs[grouper_id],
                 RankedPair(
                     dataset_name=dataset_name,
                     pd_datum_uid=pd_datum_uid,
@@ -860,7 +871,7 @@ def _compute_detection_metrics(
     ).all()
 
     pr_curves = _compute_curves(
-        sorted_ranked_pairs=ranking,
+        sorted_ranked_pairs=sorted_ranked_pairs,
         grouper_mappings=grouper_mappings,
         groundtruths_per_grouper=groundtruths_per_grouper,
         false_positive_entries=false_positive_entries,
@@ -875,7 +886,7 @@ def _compute_detection_metrics(
     ap_ar_output = []
 
     ap_metrics, ar_metrics = _calculate_ap_and_ar(
-        sorted_ranked_pairs=ranking,
+        sorted_ranked_pairs=sorted_ranked_pairs,
         number_of_groundtruths_per_grouper=number_of_groundtruths_per_grouper,
         iou_thresholds=parameters.iou_thresholds_to_compute,
         grouper_mappings=grouper_mappings,
