@@ -486,14 +486,24 @@ def _validate_create_or_get_evaluations(
     prediction_filter.model_names = [evaluation.model_name]
     parameters = job_request.parameters
 
-    datasets = db.query(Query(models.Dataset).filter(groundtruth_filter).any()).distinct().all()  # type: ignore - SQLAlchemy type issue
-    model = db.query(Query(models.Model).filter(prediction_filter).any()).distinct().one_or_none()  # type: ignore - SQLAlchemy type issue
-
-    datasets = [
-        dataset
-        for dataset in datasets
-        if dataset.status == enums.TableStatus.FINALIZED
-    ]
+    datasets = (
+        db.query(
+            Query(models.Dataset)  # type: ignore - SQLAlchemy type issue
+            .filter(groundtruth_filter)
+            .predictions()
+        )
+        .distinct()
+        .all()
+    )
+    model = (
+        db.query(
+            Query(models.Model)
+            .filter(prediction_filter)
+            .predictions()  # type: ignore - SQLAlchemy type issue
+        )
+        .distinct()
+        .one_or_none()
+    )
 
     # verify model and datasets have data for this evaluation
     if not datasets:

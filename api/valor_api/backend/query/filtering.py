@@ -119,6 +119,7 @@ metadata_symbol_type_casting = {
     "polygon": lambda x: ST_GeomFromGeoJSON(x["value"]),
     "box": lambda x: ST_GeomFromGeoJSON(x["value"]),
     "multipolygon": lambda x: ST_GeomFromGeoJSON(x["value"]),
+    "geojson": lambda x: ST_GeomFromGeoJSON(x["value"]),
 }
 
 
@@ -148,6 +149,7 @@ value_dtype_to_casting = {
     "multipolygon": lambda x: ST_GeomFromGeoJSON(
         MultiPolygon(value=x).to_json()
     ),
+    "geojson": lambda x: ST_GeomFromGeoJSON(x),
 }
 
 

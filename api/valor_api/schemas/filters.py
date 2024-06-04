@@ -528,7 +528,7 @@ class GeospatialFilter(BaseModel):
             lhs=Symbol(
                 type="geojson", name=name, key=key, attribute=attribute
             ),
-            rhs=Value(type="geojson", value=self.value.model_dump()),
+            rhs=Value(type="geojson", value=self.value.geometry.to_json()),
         )
         match self.operator:
             case "inside":
