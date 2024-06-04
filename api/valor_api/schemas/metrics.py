@@ -429,7 +429,7 @@ class PrecisionRecallCurve(BaseModel):
     value: dict
         A nested dictionary where the first key is the class label, the second key is the confidence threshold (e.g., 0.05), the third key is the metric name (e.g., "precision"), and the final key is either the value itself (for precision, recall, etc.) or a list of tuples containing data for each observation.
     pr_curve_iou_threshold: float, optional
-        The IOU threshold to use when calculating precision-recall curves. Defaults to 0.5. Does nothing when compute_pr_curves is set to False or None.
+        The IOU threshold to use when calculating precision-recall curves. Defaults to 0.5.
     """
 
     label_key: str
