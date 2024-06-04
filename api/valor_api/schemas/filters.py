@@ -806,17 +806,19 @@ class AdvancedFilter(BaseModel):
         ignore_groundtruths: bool = False,
         ignore_predictions: bool = False,
     ):
-        def filter_strings(
-            name: str, values: list[str] | list[TaskType]
-        ) -> Equal | Or | None:
+        def filter_equatable(
+            name: str,
+            values: list[str] | list[TaskType] | list[int],
+            type_str: str = "string",
+        ) -> FunctionType | None:
             if len(values) > 1:
                 return Or(
                     logical_or=[
                         Equal(
                             eq=Operands(
-                                lhs=Symbol(type="string", name=name),
+                                lhs=Symbol(type=type_str, name=name),
                                 rhs=Value(
-                                    type="string",
+                                    type=type_str,
                                     value=value.value
                                     if isinstance(value, TaskType)
                                     else value,
@@ -834,8 +836,8 @@ class AdvancedFilter(BaseModel):
                 )
                 return Equal(
                     eq=Operands(
-                        lhs=Symbol(type="string", name=name),
-                        rhs=Value(type="string", value=value),
+                        lhs=Symbol(type=type_str, name=name),
+                        rhs=Value(type=type_str, value=value),
                     )
                 )
             else:
@@ -909,9 +911,31 @@ class AdvancedFilter(BaseModel):
                                 ),
                             ]
                         )
-                        for key, value in values
+                        for label in values
+                        for key, value in label.items()
                     ]
                 )
+            elif len(values) == 1:
+                key = list(values[0].keys())[0]
+                value = list(values[0].values())[0]
+                return And(
+                    logical_and=[
+                        Equal(
+                            eq=Operands(
+                                lhs=Symbol(type="string", name="label.key"),
+                                rhs=Value(type="string", value=key),
+                            )
+                        ),
+                        Equal(
+                            eq=Operands(
+                                lhs=Symbol(type="string", name="label.value"),
+                                rhs=Value(type="string", value=value),
+                            )
+                        ),
+                    ]
+                )
+            else:
+                return None
 
         dataset_names = None
         dataset_metadata = None
@@ -930,9 +954,10 @@ class AdvancedFilter(BaseModel):
         labels = None
         label_keys = None
         label_scores = None
+        label_ids = None
 
         if filter_.dataset_names:
-            dataset_names = filter_strings(
+            dataset_names = filter_equatable(
                 name="dataset.name", values=filter_.dataset_names
             )
         if filter_.dataset_metadata:
@@ -940,7 +965,7 @@ class AdvancedFilter(BaseModel):
                 name="dataset.metadata", values=filter_.dataset_metadata
             )
         if filter_.model_names:
-            model_names = filter_strings(
+            model_names = filter_equatable(
                 name="model.name", values=filter_.model_names
             )
         if filter_.model_metadata:
@@ -948,7 +973,7 @@ class AdvancedFilter(BaseModel):
                 name="model.metadata", values=filter_.model_metadata
             )
         if filter_.datum_uids:
-            datum_uids = filter_strings(
+            datum_uids = filter_equatable(
                 name="datum.uid", values=filter_.datum_uids
             )
         if filter_.datum_metadata:
@@ -956,7 +981,7 @@ class AdvancedFilter(BaseModel):
                 name="datum.metadata", values=filter_.datum_metadata
             )
         if filter_.task_types:
-            annotation_task_types = filter_strings(
+            annotation_task_types = filter_equatable(
                 name="annotation.task_type", values=filter_.task_types
             )
         if filter_.annotation_metadata:
@@ -1005,7 +1030,7 @@ class AdvancedFilter(BaseModel):
         if filter_.labels:
             labels = filter_labels(filter_.labels)
         if filter_.label_keys:
-            label_keys = filter_strings(
+            label_keys = filter_equatable(
                 name="label.key", values=filter_.label_keys
             )
         if filter_.label_scores:
@@ -1013,6 +1038,10 @@ class AdvancedFilter(BaseModel):
                 type_str="float",
                 name="label.score",
                 values=filter_.label_scores,
+            )
+        if filter_.label_ids:
+            label_ids = filter_equatable(
+                name="label.id", values=filter_.label_ids, type_str="integer"
             )
 
         def and_if_list(values: list[FunctionType]) -> FunctionType | None:
@@ -1023,7 +1052,7 @@ class AdvancedFilter(BaseModel):
             else:
                 return None
 
-        groundtruth_filter = [
+        annotation_filter = [
             expr
             for expr in [
                 dataset_names,
@@ -1038,8 +1067,6 @@ class AdvancedFilter(BaseModel):
                 annotation_polygon_area,
                 annotation_raster,
                 annotation_raster_area,
-                labels,
-                label_keys,
             ]
             if expr is not None
         ]
@@ -1048,21 +1075,6 @@ class AdvancedFilter(BaseModel):
             for expr in [
                 model_names,
                 model_metadata,
-                dataset_names,
-                dataset_metadata,
-                datum_uids,
-                datum_metadata,
-                label_scores,
-                annotation_task_types,
-                annotation_metadata,
-                annotation_box,
-                annotation_box_area,
-                annotation_polygon,
-                annotation_polygon_area,
-                annotation_raster,
-                annotation_raster_area,
-                labels,
-                label_keys,
                 label_scores,
             ]
             if expr is not None
@@ -1072,15 +1084,17 @@ class AdvancedFilter(BaseModel):
             for expr in [
                 labels,
                 label_keys,
+                label_ids,
+                label_scores,
             ]
             if expr is not None
         ]
 
-        f = cls(labels=and_if_list(label_filter))
+        f = cls(
+            annotations=and_if_list(annotation_filter),
+            labels=and_if_list(label_filter),
+        )
         if ignore_groundtruths:
-            f.predictions = and_if_list(values=groundtruth_filter)
-        elif ignore_predictions:
-            f.groundtruths = and_if_list(values=prediction_filter)
-        else:
-            f.annotations = and_if_list(values=prediction_filter)
+            f.predictions = and_if_list(values=prediction_filter)
+
         return f
