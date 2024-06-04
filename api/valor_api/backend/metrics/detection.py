@@ -663,7 +663,7 @@ def _compute_detection_metrics(
         number_of_groundtruths_per_grouper[grouper_id] += 1
 
     # Optionally compute precision-recall curves
-    if "PrecisionRecallCurve" in parameters.metrics_to_return:
+    if "PrecisionRecallCurve" in parameters.metrics_to_return:  # type: ignore - metrics_to_return is guaranteed not to be None
         false_positive_entries = db.query(
             select(
                 joint.c.dataset_name,

@@ -945,9 +945,7 @@ class Model(StaticCollection):
             parameters=EvaluationParameters(
                 task_type=TaskType.CLASSIFICATION,
                 label_map=self._create_label_map(label_map=label_map),
-                metrics_to_return=(
-                    metrics_to_return if metrics_to_return else [""]
-                ),
+                metrics_to_return=metrics_to_return,
             ),
             meta={},
         )
@@ -1020,7 +1018,7 @@ class Model(StaticCollection):
             iou_thresholds_to_return=iou_thresholds_to_return,
             label_map=self._create_label_map(label_map=label_map),
             recall_score_threshold=recall_score_threshold,
-            metrics_to_return=metrics_to_return if metrics_to_return else [""],
+            metrics_to_return=metrics_to_return,
             pr_curve_iou_threshold=pr_curve_iou_threshold,
         )
         datum_filter = self._format_constraints(datasets, filter_by)
@@ -1076,9 +1074,7 @@ class Model(StaticCollection):
             parameters=EvaluationParameters(
                 task_type=TaskType.SEMANTIC_SEGMENTATION,
                 label_map=self._create_label_map(label_map=label_map),
-                metrics_to_return=(
-                    metrics_to_return if metrics_to_return else [""]
-                ),
+                metrics_to_return=metrics_to_return,
             ),
             meta={},
         )

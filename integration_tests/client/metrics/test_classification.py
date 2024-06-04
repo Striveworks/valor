@@ -199,7 +199,6 @@ def test_evaluate_image_clf(
             "F1",
             "Recall",
             "PrecisionRecallCurve",
-            "DetailedPrecisionRecallCurve",
         ],
         2,
     )

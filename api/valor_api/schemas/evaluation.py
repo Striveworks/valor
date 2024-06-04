@@ -16,6 +16,8 @@ class EvaluationParameters(BaseModel):
 
     Attributes
     ----------
+    metrics: list[str]
+        The list of metrics to compute, store, and return to the user.
     convert_annotations_to_type: AnnotationType | None = None
         The type to convert all annotations to.
     iou_thresholds_to_compute: List[float], optional
@@ -26,20 +28,18 @@ class EvaluationParameters(BaseModel):
         Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
     recall_score_threshold: float, default=0
         The confidence score threshold for use when determining whether to count a prediction as a true positive or not while calculating Average Recall.
-    metrics: List[str]
-        The list of metrics to compute, store, and return to the user.
     pr_curve_iou_threshold: float, optional
             The IOU threshold to use when calculating precision-recall curves for object detection tasks. Defaults to 0.5.
     """
 
     task_type: TaskType
 
+    metrics_to_return: list[str] | None = None
     convert_annotations_to_type: AnnotationType | None = None
     iou_thresholds_to_compute: list[float] | None = None
     iou_thresholds_to_return: list[float] | None = None
     label_map: LabelMapType | None = None
     recall_score_threshold: float | None = 0
-    metrics_to_return: list[str] = [""]
     pr_curve_iou_threshold: float | None = 0.5
 
     # pydantic setting
@@ -51,7 +51,7 @@ class EvaluationParameters(BaseModel):
         """Validate the IOU thresholds."""
 
         # set default metrics for each task type
-        if values.metrics_to_return == [""]:
+        if values.metrics_to_return is None:
             match values.task_type:
                 case TaskType.CLASSIFICATION:
                     values.metrics_to_return = [

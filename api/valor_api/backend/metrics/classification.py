@@ -909,7 +909,7 @@ def compute_clf_metrics(
         prediction_filter=prediction_filter,
         groundtruth_filter=groundtruth_filter,
         label_map=parameters.label_map,
-        metrics_to_return=parameters.metrics_to_return,
+        metrics_to_return=parameters.metrics_to_return,  # type: ignore - metrics_to_return is guaranteed not to be None
     )
 
     confusion_matrices_mappings = create_metric_mappings(
