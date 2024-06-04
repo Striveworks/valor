@@ -16,6 +16,25 @@ def _load_dataset_schema(
     return schemas.Dataset(name=dataset.name, metadata=dataset.meta)
 
 
+def _validate_dataset_contains_datums(db: Session, name: str):
+    """
+    Validates whether a dataset contains at least one datum.
+
+    Raises
+    ------
+    DatasetEmptyError
+        If the dataset contains no datums.
+    """
+    datum_count = (
+        db.query(func.count(models.Datum.id))
+        .join(models.Dataset, models.Dataset.id == models.Datum.dataset_id)
+        .where(models.Dataset.name == name)
+        .scalar()
+    )
+    if datum_count == 0:
+        raise exceptions.DatasetEmptyError(name)
+
+
 def create_dataset(
     db: Session,
     dataset: schemas.Dataset,
@@ -255,14 +274,7 @@ def set_dataset_status(
         ):
             raise exceptions.EvaluationRunningError(dataset_name=name)
     elif status == enums.TableStatus.FINALIZED:
-        datum_count = (
-            db.query(func.count(models.Datum.id))
-            .join(models.Dataset, models.Dataset.id == models.Datum.dataset_id)
-            .where(models.Dataset.name == name)
-            .scalar()
-        )
-        if datum_count == 0:
-            raise exceptions.DatasetEmptyError(name)
+        _validate_dataset_contains_datums(db=db, name=name)
 
     try:
         dataset.status = status
