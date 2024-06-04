@@ -35,7 +35,7 @@ class EvaluationParameters:
     iou_thresholds_to_return: Optional[List[float]] = None
     label_map: Optional[List[List[List[str]]]] = None
     recall_score_threshold: float = 0
-    metrics_to_return: list[str] | None = None
+    metrics_to_return: Optional[List[str]] = None
     pr_curve_iou_threshold: float = 0.5
 
 

@@ -908,7 +908,7 @@ class Model(StaticCollection):
         datasets: Optional[Union[Dataset, List[Dataset]]] = None,
         filter_by: Optional[FilterType] = None,
         label_map: Optional[Dict[Label, Label]] = None,
-        metrics_to_return: list[str] | None = None,
+        metrics_to_return: Optional[List[str]] = None,
         allow_retries: bool = False,
     ) -> Evaluation:
         """
@@ -969,7 +969,7 @@ class Model(StaticCollection):
         iou_thresholds_to_return: Optional[List[float]] = None,
         label_map: Optional[Dict[Label, Label]] = None,
         recall_score_threshold: float = 0,
-        metrics_to_return: list[str] | None = None,
+        metrics_to_return: Optional[List[str]] = None,
         pr_curve_iou_threshold: float = 0.5,
         allow_retries: bool = False,
     ) -> Evaluation:
@@ -1044,7 +1044,7 @@ class Model(StaticCollection):
         datasets: Optional[Union[Dataset, List[Dataset]]] = None,
         filter_by: Optional[FilterType] = None,
         label_map: Optional[Dict[Label, Label]] = None,
-        metrics_to_return: list[str] | None = None,
+        metrics_to_return: Optional[List[str]] = None,
         allow_retries: bool = False,
     ) -> Evaluation:
         """
