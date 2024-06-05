@@ -4,7 +4,9 @@ from valor_api.backend import models
 from valor_api.backend.query.filtering import (
     _recursive_search_logic_tree,
     create_cte,
+    map_filter_to_tables,
 )
+from valor_api.schemas.filters import AdvancedFilter as Filter
 from valor_api.schemas.filters import (
     And,
     Equal,
@@ -38,6 +40,10 @@ def test_create_cte_validation():
 
 
 def test__recursive_search_logic_tree():
+
+    # validation
+    with pytest.raises(TypeError):
+        _recursive_search_logic_tree(func="string")  # type: ignore - testing
 
     # test one arg function
     tree, _, tables = _recursive_search_logic_tree(
@@ -80,3 +86,48 @@ def test__recursive_search_logic_tree():
     )
     assert tables == [models.Annotation, models.Dataset]
     assert tree == {"and": [0, 1]}
+
+
+def test_map_filter_to_labels():
+
+    fn = IsNull(isnull=Symbol(type="box", name="annotation.bounding_box"))
+
+    filter_ = Filter(
+        datasets=fn,
+        models=fn,
+        datums=fn,
+        annotations=fn,
+        groundtruths=fn,
+        predictions=fn,
+        labels=fn,
+        embeddings=fn,
+    )
+
+    assert map_filter_to_tables(filter_, label_source=models.Annotation) == {
+        models.Dataset,
+        models.Model,
+        models.Datum,
+        models.Annotation,
+        models.GroundTruth,
+        models.Prediction,
+        models.Label,
+        models.Embedding,
+    }
+    assert map_filter_to_tables(filter_, label_source=models.GroundTruth) == {
+        models.Dataset,
+        models.Model,
+        models.Datum,
+        models.Annotation,
+        models.GroundTruth,
+        models.Label,
+        models.Embedding,
+    }
+    assert map_filter_to_tables(filter_, label_source=models.Prediction) == {
+        models.Dataset,
+        models.Model,
+        models.Datum,
+        models.Annotation,
+        models.Prediction,
+        models.Label,
+        models.Embedding,
+    }

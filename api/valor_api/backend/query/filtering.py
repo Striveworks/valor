@@ -201,7 +201,9 @@ def _recursive_search_logic_tree(
     tables: list[TableTypeAlias] | None = None,
 ) -> tuple[int | dict, list[CTE], list[TableTypeAlias]]:
     if not isinstance(func, OneArgFunction | TwoArgFunction | NArgFunction):
-        raise ValueError
+        raise TypeError(
+            f"Expected input to be of type 'OneArgFunction | TwoArgFunction | NArgFunction'. Received '{func}'."
+        )
     cte_list = cte_list if cte_list else list()
     tables = tables if tables else list()
     logical_tree = dict()
