@@ -121,6 +121,7 @@ def parse_detection_into_raster(
             Annotation(
                 labels=[scored_label],
                 raster=Raster.from_numpy(mask),
+                is_instance_segmentation=True,
             )
             for mask, scored_label in list(zip(masks, labels))
         ],

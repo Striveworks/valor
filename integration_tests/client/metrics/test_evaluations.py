@@ -1,5 +1,4 @@
 import pytest
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from valor import (
@@ -60,22 +59,20 @@ def test_restart_failed_evaluation(db: Session, client: Client):
     assert dataset
     assert model
 
-    # create evaluation and overwrite status to failed
+    # create evaluation
     eval1 = model.evaluate_classification(dataset, allow_retries=False)
-    assert eval1.status == enums.EvaluationStatus.PENDING
-    try:
-        evaluation = core.fetch_evaluation_from_id(
-            db=db, evaluation_id=eval1.id
-        )
-        evaluation.status = enums.EvaluationStatus.FAILED
-        db.commit()
-    except IntegrityError as e:
-        db.rollback()
-        raise e
+    eval1.wait_for_completion(
+        timeout=30
+    )  # the overwrite below doesn't work unless status is DONE
+    assert eval1.status == enums.EvaluationStatus.DONE
+
+    # overwrite status to failed
+    evaluation = core.fetch_evaluation_from_id(db=db, evaluation_id=eval1.id)
+    evaluation.status = enums.EvaluationStatus.FAILED
+    db.commit()
 
     # get evaluation and verify it is failed
     eval2 = model.evaluate_classification(dataset, allow_retries=False)
-    eval2.wait_for_completion(timeout=30)
     assert eval2.id == eval1.id
     assert eval2.status == enums.EvaluationStatus.FAILED
 

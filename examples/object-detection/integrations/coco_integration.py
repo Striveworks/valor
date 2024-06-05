@@ -109,21 +109,19 @@ def _parse_image_to_datum(image: dict) -> Datum:
 
 def _parse_categories(
     categories: List[dict],
-) -> Dict[int, Union[TaskType, Dict[str, str]]]:
+) -> Dict[int, Union[bool, Dict[str, str]]]:
     """
     Parse COCO categories into `valor.enums.TaskType` and `valor.Label`
     """
     return {
         category["id"]: {
-            "task_type": (
-                TaskType.OBJECT_DETECTION
-                if category["isthing"]
-                else TaskType.SEMANTIC_SEGMENTATION
-            ),
             "labels": {
                 "supercategory": category["supercategory"],
                 "name": category["name"],
             },
+            "is_instance_segmentation": (
+                True if category["isthing"] else False
+            ),
         }
         for category in categories
     }  # type: ignore - dict typing
@@ -144,7 +142,6 @@ def create_annotations_from_instance_segmentations(
 ) -> List[Annotation]:
     return [
         Annotation(
-            task_type=TaskType.OBJECT_DETECTION,
             labels=[
                 Label(
                     key="supercategory",
@@ -169,12 +166,13 @@ def create_annotations_from_instance_segmentations(
                 Label(key="iscrowd", value=str(segmentation["iscrowd"])),
             ],
             raster=Raster.from_numpy(mask_ids == segmentation["id"]),
+            is_instance_segmentation=True,
         )
         for segmentation in image["segments_info"]
         if category_id_to_labels_and_task[segmentation["category_id"]][
-            "task_type"
+            "is_instance_segmentation"
         ]  # type: ignore - dict typing
-        == TaskType.OBJECT_DETECTION
+        is True
     ]
 
 
@@ -192,8 +190,8 @@ def create_annotations_from_semantic_segmentations(
     for segmentation in image["segments_info"]:
         category_id = segmentation["category_id"]
         if (
-            category_id_to_labels_and_task[category_id]["task_type"]  # type: ignore - dict typing
-            == TaskType.SEMANTIC_SEGMENTATION
+            category_id_to_labels_and_task[category_id]["is_instance_segmentation"]  # type: ignore - dict typing
+            is False
         ):
             for key, value in [
                 (
@@ -221,9 +219,9 @@ def create_annotations_from_semantic_segmentations(
     # create annotations for semantic segmentation
     return [
         Annotation(
-            task_type=TaskType.SEMANTIC_SEGMENTATION,
             labels=[Label(key=key, value=str(value))],
             raster=Raster.from_numpy(semantic_masks[key][value]),
+            is_instance_segmentation=False,
         )
         for key in semantic_masks
         for value in semantic_masks[key]
@@ -234,9 +232,8 @@ def _create_groundtruths_from_coco_panoptic(
     data: dict,
     masks_path: Path,
 ) -> List[GroundTruth]:
-    # extract task_type and labels from categories
+    # extract labels from categories
     category_id_to_labels_and_task = _parse_categories(data["categories"])
-
     # create datums
     image_id_to_datum = {
         image["id"]: _parse_image_to_datum(image) for image in data["images"]
