@@ -1,10 +1,10 @@
 import math
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
-from valor import Annotation, GroundTruth, Prediction, enums, schemas
+from valor import Annotation, GroundTruth, Prediction, schemas
 
 # https://sashat.me/2017/01/11/list-of-20-simple-distinct-colors/
 COLOR_MAP = [
@@ -48,11 +48,10 @@ def _polygons_to_binary_mask(
     return np.array(mask)
 
 
-# TODO move outside of valor
 def create_combined_segmentation_mask(
     annotated_datum: Union[GroundTruth, Prediction],
     label_key: str,
-    task_type: Union[enums.TaskType, None] = None,
+    filter_on_instance_segmentations: bool = False,
 ) -> Tuple[Image.Image, Dict[str, Image.Image]]:
     """
     Creates a combined segmentation mask from a list of segmentations.
@@ -63,8 +62,8 @@ def create_combined_segmentation_mask(
         A list of segmentations. These all must have the same `image` attribute.
     label_key : str
         The label key to use.
-    task_type : enums.TaskType
-        The associated task type.
+    filter_on_instance_segmentations : bool, optional
+        Whether to filter on instance segmentations or not.
 
     Returns
     -------
@@ -110,28 +109,12 @@ def create_combined_segmentation_mask(
             f"Segmentation bounds not properly defined. {(img_h, img_w)}"
         )
 
-    # validate task type
-    if task_type is not None and task_type not in [
-        enums.TaskType.OBJECT_DETECTION,
-        enums.TaskType.SEMANTIC_SEGMENTATION,
-    ]:
-        raise RuntimeError(
-            "Expected either Instance or Semantic segmentation task_type."
-        )
-
-    # create valid task type list
-    if task_type is None:
-        task_types = [
-            enums.TaskType.OBJECT_DETECTION,
-            enums.TaskType.SEMANTIC_SEGMENTATION,
-        ]
-    else:
-        task_types = [task_type]
-
     # unpack raster annotations
     annotations: List[Annotation] = []
     for annotation in annotated_datum.annotations:
-        if annotation.task_type in task_types:
+        if (
+            annotation.is_instance_segmentation or False
+        ) == filter_on_instance_segmentations:
             annotations.append(annotation)
 
     # unpack label values
@@ -338,4 +321,32 @@ def draw_raster_on_image(
     blend = Image.blend(img, mask_img, alpha=alpha)
     img.paste(blend, (0, 0), mask=Image.fromarray(binary_mask))
 
+    return img
+
+
+def draw_detections_on_image(
+    detections: Sequence[Union[GroundTruth, Prediction]],
+    img: Image.Image,
+) -> Image.Image:
+    """
+    Draws detections (bounding boxes and labels) on an image.
+    Parameters
+    -------
+    detections : List[Union[GroundTruth, Prediction]]
+        A list of `GroundTruths` or `Predictions` to draw on the image.
+    img : Image.Image
+        The image to draw the detections on.
+    Returns
+    -------
+    img : Image.Image
+        An image with the detections drawn on.
+    """
+
+    annotations = []
+    for datum in detections:
+        annotations.extend(datum.annotations)
+
+    for i, detection in enumerate(annotations):
+        if detection.raster and detection.is_instance_segmentatino is True:
+            img = _draw_detection_on_image(detection, img, inplace=i != 0)
     return img

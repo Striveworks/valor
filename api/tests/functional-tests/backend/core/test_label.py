@@ -82,6 +82,7 @@ def instance_seg_gt_anns1(
             schemas.Label(key="inssegk1", value="inssegv1"),
             schemas.Label(key="inssegk2", value="inssegv2"),
         ],
+        is_instance_segmentation=True,
     )
 
 
@@ -95,6 +96,7 @@ def instance_seg_gt_anns2(
             schemas.Label(key="inssegk2", value="inssegv2"),
             schemas.Label(key="inssegk3", value="inssegv3"),
         ],
+        is_instance_segmentation=True,
     )
 
 
@@ -503,9 +505,7 @@ def test_label_functions(
 
     assert get_label_keys(
         db,
-        schemas.Filter(
-            dataset_names=[dataset_name],
-        ),
+        schemas.Filter(dataset_names=[dataset_name], require_raster=True),
         ignore_predictions=True,
     ) == {
         "semsegk1",

@@ -96,7 +96,6 @@ def _match_annotation_to_implied_task_type(
         implied_type = "empty"
 
     else:
-        # TODO long message
         raise ValueError(
             "Input didn't match any known patterns. Classification tasks should only contain labels. Object detection tasks should contain labels and polygons, bounding boxes, or rasters with is_instnace_segmentation == True. Segmentation tasks should contain labels and rasters with is_instance_segmentation != True."
         )
