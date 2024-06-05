@@ -11,7 +11,7 @@ import PIL.Image
 import requests
 from tqdm import tqdm
 
-from valor import Annotation, Client, Dataset, Datum, GroundTruth, Label
+from valor import Annotation, Dataset, Datum, GroundTruth, Label
 from valor.enums import TaskType
 from valor.metatypes import ImageMetadata
 from valor.schemas import Raster
@@ -83,7 +83,7 @@ def download_image(datum: Datum) -> PIL.Image.Image:
     """
     Download image using Datum.
     """
-    url = datum.metadata["coco_url"].get_value()
+    url = datum.metadata["coco_url"]
     if not isinstance(url, str):
         raise TypeError("datum.metadata['coco_url'] is not type 'str'.")
     img_data = BytesIO(requests.get(url).content)
@@ -278,7 +278,6 @@ def create_dataset_from_coco_panoptic(
     destination: str = "./coco",
     coco_url: str = "http://images.cocodataset.org/annotations/panoptic_annotations_trainval2017.zip",
     limit: int = 0,
-    delete_if_exists: bool = False,
 ) -> Dataset:
     """
     Creates Dataset and associated GroundTruths.
@@ -297,12 +296,8 @@ def create_dataset_from_coco_panoptic(
         Local path to unzipped annotations.
     limit : int, default=0
         Limits the number of datums. Default to 0 for no action.
-    delete_if_exists : bool, default=False
-        Reset the Valor dataset before attempting creation.
 
     """
-    client = Client()
-
     # download and unzip coco dataset
     data = download_coco_panoptic(
         destination=Path(destination),
@@ -316,30 +311,23 @@ def create_dataset_from_coco_panoptic(
     if limit > 0:
         data["annotations"] = data["annotations"][:limit]
 
-    # if reset, delete the dataset if it exists
-    if delete_if_exists and client.get_dataset(name) is not None:
-        client.delete_dataset(name, timeout=5)
+    # create groundtruths
+    gts = _create_groundtruths_from_coco_panoptic(
+        data=data,
+        masks_path=masks_path,
+    )
 
-    if client.get_dataset(name) is not None:
-        dataset = Dataset.create(name)
-    else:
-        # create groundtruths
-        gts = _create_groundtruths_from_coco_panoptic(
-            data=data,
-            masks_path=masks_path,
-        )
+    # extract metadata
+    metadata = data["info"].copy()
+    metadata["licenses"] = str(data["licenses"])
 
-        # extract metadata
-        metadata = data["info"].copy()
-        metadata["licenses"] = str(data["licenses"])
-
-        # create dataset
-        dataset = Dataset.create(
-            name,
-            metadata=metadata,
-        )
-        for gt in tqdm(gts, desc="Uploading"):
-            dataset.add_groundtruth(gt)
-        dataset.finalize()
+    # create dataset
+    dataset = Dataset.create(
+        name,
+        metadata=metadata,
+    )
+    for gt in tqdm(gts, desc="Uploading"):
+        dataset.add_groundtruth(gt)
+    dataset.finalize()
 
     return dataset
