@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Optional, Union
 import numpy as np
 
 from valor.schemas.symbolic.types import (
+    Bool,
     Box,
     Dictionary,
     Embedding,
@@ -261,6 +262,8 @@ class Annotation(StaticCollection):
         A raster to assign to the `Annotation`.
     embedding: List[float]
         An embedding, described by a list of values with type float and a maximum length of 16,000.
+    is_instance_segmentation: bool, optional
+        A boolean describing whether we should treat the Raster attached to an annotation as an instance segmentation or not. If set to true, then the Annotation will be validated for use in object detection tasks. If set to false, then the Annotation will be validated for use in semantic segmentation tasks.
 
     Examples
     --------
@@ -289,12 +292,14 @@ class Annotation(StaticCollection):
     >>> annotation = Annotation.create(
     ...     labels=[Label(key="k1", value="v1")],
     ...     raster=Raster(...),
+    ...     is_instance_segmentation=True
     ... )
 
     Semantic-Segmentation Raster
     >>> annotation = Annotation.create(
     ...     labels=[Label(key="k1", value="v1")],
     ...     raster=Raster(...),
+    ...     is_instance_segmentation=False # or None
     ... )
 
     Defining all supported annotation types is allowed!
@@ -318,6 +323,9 @@ class Annotation(StaticCollection):
     embedding: Embedding = Embedding.symbolic(
         owner="annotation", name="embedding"
     )
+    is_instance_segmentation: Bool = Bool.symbolic(
+        owner="annotation", name="is_instance_segmentation"
+    )
 
     def __init__(
         self,
@@ -328,6 +336,7 @@ class Annotation(StaticCollection):
         polygon: Optional[Polygon] = None,
         raster: Optional[Raster] = None,
         embedding: Optional[Embedding] = None,
+        is_instance_segmentation: Optional[bool] = None,
     ):
         """
         Constructs an annotation.
@@ -346,6 +355,8 @@ class Annotation(StaticCollection):
             A raster annotation.
         embedding: List[float], optional
             An embedding, described by a list of values with type float and a maximum length of 16,000.
+        is_instance_segmentation: bool, optional
+            A boolean describing whether we should treat the Raster attached to an annotation as an instance segmentation or not. If set to true, then the Annotation will be validated for use in object detection tasks. If set to false, then the Annotation will be validated for use in semantic segmentation tasks.
         """
         super().__init__(
             metadata=metadata if metadata else dict(),
@@ -354,6 +365,7 @@ class Annotation(StaticCollection):
             polygon=polygon,
             raster=raster,
             embedding=embedding,
+            is_instance_segmentation=is_instance_segmentation,
         )
 
     @staticmethod
@@ -364,6 +376,7 @@ class Annotation(StaticCollection):
             "polygon": Polygon.nullable,
             "raster": Raster.nullable,
             "embedding": Embedding.nullable,
+            "is_instance_segmentation": Bool.nullable,
         }
 
 

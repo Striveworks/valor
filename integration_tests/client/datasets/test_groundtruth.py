@@ -11,9 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from valor import Annotation, Client, Dataset, Datum, GroundTruth, Label
-
-# TODO fix
-# from valor.exceptions import ClientException
+from valor.exceptions import ClientException
 from valor.schemas import Box, MultiPolygon, Polygon, Raster
 from valor_api.backend import models
 
@@ -122,35 +120,34 @@ def test_create_gt_segs_as_polys_or_masks(
         (xmax, ymin),
         (xmin, ymin),
     ]
-    # poly = Polygon([pts])
+    poly = Polygon([pts])
     multipoly = MultiPolygon([[pts]])
 
     dataset = Dataset.create(dataset_name)
 
     # check we get an error for adding semantic segmentation with duplicate labels
-    # TODO fix test
-    # with pytest.raises(ClientException) as exc_info:
-    #     gts = GroundTruth(
-    #         datum=img1,
-    #         annotations=[
-    #             Annotation(
-    #                 labels=[Label(key="k1", value="v1")],
-    #                 raster=Raster.from_numpy(mask),
-    #             ),
-    #             Annotation(
-    #                 labels=[Label(key="k1", value="v1")],
-    #                 raster=Raster.from_geometry(
-    #                     poly,
-    #                     height=image_height,
-    #                     width=image_width,
-    #                 ),
-    #             ),
-    #         ],
-    #     )
+    with pytest.raises(ClientException) as exc_info:
+        gts = GroundTruth(
+            datum=img1,
+            annotations=[
+                Annotation(
+                    labels=[Label(key="k1", value="v1")],
+                    raster=Raster.from_numpy(mask),
+                ),
+                Annotation(
+                    labels=[Label(key="k1", value="v1")],
+                    raster=Raster.from_geometry(
+                        poly,
+                        height=image_height,
+                        width=image_width,
+                    ),
+                ),
+            ],
+        )
 
-    #     dataset.add_groundtruth(gts)
+        dataset.add_groundtruth(gts)
 
-    # assert "one annotation per label" in str(exc_info.value)
+    assert "one annotation per label" in str(exc_info.value)
 
     # fine with instance segmentation though
     gts = GroundTruth(

@@ -185,7 +185,7 @@ def test_prediction():
     string = str(pred)
     assert (
         string
-        == "{'datum': {'uid': 'somefile', 'metadata': {}}, 'annotations': [{'metadata': {}, 'labels': [{'key': 'test', 'value': 'value', 'score': 1.0}], 'bounding_box': None, 'polygon': None, 'raster': None, 'embedding': None}, {'metadata': {}, 'labels': [{'key': 'test', 'value': 'value', 'score': 1.0}], 'bounding_box': None, 'polygon': None, 'raster': None, 'embedding': None}]}"
+        == "{'datum': {'uid': 'somefile', 'metadata': {}}, 'annotations': [{'metadata': {}, 'labels': [{'key': 'test', 'value': 'value', 'score': 1.0}], 'bounding_box': None, 'polygon': None, 'raster': None, 'embedding': None, 'is_instance_segmentation': None}, {'metadata': {}, 'labels': [{'key': 'test', 'value': 'value', 'score': 1.0}], 'bounding_box': None, 'polygon': None, 'raster': None, 'embedding': None, 'is_instance_segmentation': None}]}"
     )
     assert "dataset_name" not in string
 
@@ -204,21 +204,6 @@ def test_prediction():
             datum=datum,
             annotations=[pds[0], pds[1], "annotation"],  # type: ignore
         )
-
-    # TODO move test
-    # with pytest.raises(ValueError) as e:
-    #     Prediction(
-    #         datum=datum,
-    #         annotations=[
-    #             Annotation(
-    #                 labels=[
-    #                     Label(key="test", value="value", score=0.8),
-    #                     Label(key="test", value="other", score=0.1),
-    #                 ],
-    #             )
-    #         ],
-    #     )
-    # assert "for label key test got scores summing to 0.9" in str(e)
 
     # test equalities
     with pytest.raises(TypeError):

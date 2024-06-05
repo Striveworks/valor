@@ -419,78 +419,93 @@ def test_prediction(metadata, predicted_annotations, labels, scored_labels):
             annotations=[predicted_annotations[0], 1234],  # type: ignore - purposefully throwing error
         )
 
-    # TODO move test to evaluation
     # check sum to 1
-    # with pytest.raises(ValidationError) as e:
-    #     schemas.Prediction(
-    #         dataset_name="name",
-    #         model_name="name",
-    #         datum=schemas.Datum(
-    #             uid="uid",
-    #         ),
-    #         annotations=[
-    #             schemas.Annotation(
-    #                 labels=scored_labels[1:],
-    #             )
-    #         ],
-    #     )
-    # assert "prediction scores must sum to 1" in str(e.value.errors()[0]["msg"])
+    with pytest.raises(ValidationError) as e:
+        schemas.Prediction(
+            dataset_name="name",
+            model_name="name",
+            datum=schemas.Datum(
+                uid="uid",
+            ),
+            annotations=[
+                schemas.Annotation(
+                    labels=scored_labels[1:],
+                )
+            ],
+        )
+    assert "prediction scores must sum to 1" in str(e.value.errors()[0]["msg"])
 
     # check score is provided
+    with pytest.raises(ValueError) as e:
+        schemas.Prediction(
+            dataset_name="name",
+            model_name="name",
+            datum=schemas.Datum(
+                uid="uid",
+            ),
+            annotations=[
+                schemas.Annotation(
+                    labels=labels,
+                )
+            ],
+        )
+    assert "Prediction labels must have scores for classification" in str(e)
 
-    # TODO move test to evaluation
-    # with pytest.raises(ValueError) as e:
-    #     schemas.Prediction(
-    #         dataset_name="name",
-    #         model_name="name",
-    #         datum=schemas.Datum(
-    #             uid="uid",
-    #         ),
-    #         annotations=[
-    #             schemas.Annotation(
-    #                 labels=labels,
-    #             )
-    #         ],
-    #     )
-    # assert "Missing score for label" in str(e)
+    with pytest.raises(ValueError) as e:
+        schemas.Prediction(
+            dataset_name="name",
+            model_name="name",
+            datum=schemas.Datum(
+                uid="uid",
+            ),
+            annotations=[
+                schemas.Annotation(
+                    labels=labels,
+                    bounding_box=schemas.Box.from_extrema(0, 1, 0, 1),
+                )
+            ],
+        )
+    assert "Prediction labels must have scores for object detection" in str(e)
 
-    # TODO fix validation
-    # with pytest.raises(ValueError) as e:
-    #     schemas.Prediction(
-    #         dataset_name="name",
-    #         model_name="name",
-    #         datum=schemas.Datum(
-    #             uid="uid",
-    #         ),
-    #         annotations=[
-    #             schemas.Annotation(
-    #                 labels=labels,
-    #                 bounding_box=schemas.Box.from_extrema(0, 1, 0, 1),
-    #             )
-    #         ],
-    #     )
-    # assert "Missing score for label" in str(e)
+    with pytest.raises(ValueError) as e:
+        schemas.Prediction(
+            dataset_name="name",
+            model_name="name",
+            datum=schemas.Datum(
+                uid="uid",
+                metadata={
+                    "height": 10,
+                    "width": 10,
+                },
+            ),
+            annotations=[
+                schemas.Annotation(
+                    labels=scored_labels,
+                    raster=schemas.Raster.from_numpy(np.zeros((10, 10)) == 0),
+                    is_instance_segmentation=False,
+                )
+            ],
+        )
+    assert "Semantic segmentation tasks cannot have scores" in str(e)
 
-    # TODO check validation
-    # with pytest.raises(ValueError) as e:
-    #     schemas.Prediction(
-    #         dataset_name="name",
-    #         model_name="name",
-    #         datum=schemas.Datum(
-    #             uid="uid",
-    #             metadata={
-    #                 "height": 10,
-    #                 "width": 10,
-    #             },
-    #         ),
-    #         annotations=[
-    #             schemas.Annotation(
-    #                 labels=scored_labels,
-    #                 raster=schemas.Raster.from_numpy(np.zeros((10, 10)) == 0),
-    #             )
-    #         ],
-    #     )
-    # assert "Semantic segmentation tasks cannot have scores" in str(e)
+    # check inappropriate usage of is_instance_segmentation
+    with pytest.raises(ValidationError) as e:
+        schemas.Prediction(
+            dataset_name="name",
+            model_name="name",
+            datum=schemas.Datum(
+                uid="uid",
+            ),
+            annotations=[
+                schemas.Annotation(
+                    labels=scored_labels[1:], is_instance_segmentation=True
+                )
+            ],
+        )
+    assert (
+        "is_instance_segmentation should only be used when passing a Raster"
+        in str(e.value.errors()[0]["msg"])
+    )
 
 
 def test_semantic_segmentation_validation():
@@ -517,51 +532,50 @@ def test_semantic_segmentation_validation():
 
     assert len(gt.annotations) == 2
 
-    # with pytest.raises(ValidationError) as e:
-    #     schemas.GroundTruth(
-    #         dataset_name="name",
-    #         datum=schemas.Datum(
-    #             uid="uid",
-    #         ),
-    #         annotations=[
-    #             schemas.Annotation(
-    #                 labels=[
-    #                     schemas.Label(key="k1", value="v1"),
-    #                     schemas.Label(key="k1", value="v1"),
-    #                 ],
-    #                 raster=schemas.Raster.from_numpy(np.zeros((10, 10)) == 1),
-    #             ),
-    #             schemas.Annotation(
-    #                 labels=[schemas.Label(key="k3", value="v3")],
-    #                 raster=schemas.Raster.from_numpy(np.zeros((10, 10)) == 1),
-    #             ),
-    #         ],
-    #     )
-    # assert "one annotation per label" in str(e.value)
+    with pytest.raises(ValidationError) as e:
+        schemas.GroundTruth(
+            dataset_name="name",
+            datum=schemas.Datum(
+                uid="uid",
+            ),
+            annotations=[
+                schemas.Annotation(
+                    labels=[
+                        schemas.Label(key="k1", value="v1"),
+                        schemas.Label(key="k1", value="v1"),
+                    ],
+                    raster=schemas.Raster.from_numpy(np.zeros((10, 10)) == 1),
+                ),
+                schemas.Annotation(
+                    labels=[schemas.Label(key="k3", value="v3")],
+                    raster=schemas.Raster.from_numpy(np.zeros((10, 10)) == 1),
+                ),
+            ],
+        )
+    assert "one annotation per label" in str(e.value)
 
-    # TODO fix test?
-    # with pytest.raises(ValidationError) as e:
-    #     schemas.GroundTruth(
-    #         dataset_name="name",
-    #         datum=schemas.Datum(
-    #             uid="uid",
-    #         ),
-    #         annotations=[
-    #             schemas.Annotation(
-    #                 labels=[
-    #                     schemas.Label(key="k1", value="v1"),
-    #                     schemas.Label(key="k1", value="v2"),
-    #                 ],
-    #                 raster=schemas.Raster.from_numpy(np.zeros((10, 10)) == 1),
-    #             ),
-    #             schemas.Annotation(
-    #                 labels=[schemas.Label(key="k1", value="v1")],
-    #                 raster=schemas.Raster.from_numpy(np.zeros((10, 10)) == 1),
-    #             ),
-    #         ],
-    #     )
+    with pytest.raises(ValidationError) as e:
+        schemas.GroundTruth(
+            dataset_name="name",
+            datum=schemas.Datum(
+                uid="uid",
+            ),
+            annotations=[
+                schemas.Annotation(
+                    labels=[
+                        schemas.Label(key="k1", value="v1"),
+                        schemas.Label(key="k1", value="v2"),
+                    ],
+                    raster=schemas.Raster.from_numpy(np.zeros((10, 10)) == 1),
+                ),
+                schemas.Annotation(
+                    labels=[schemas.Label(key="k1", value="v1")],
+                    raster=schemas.Raster.from_numpy(np.zeros((10, 10)) == 1),
+                ),
+            ],
+        )
 
-    # assert "one annotation per label" in str(e.value)
+    assert "one annotation per label" in str(e.value)
 
     # this is valid
     schemas.Prediction(
@@ -585,27 +599,26 @@ def test_semantic_segmentation_validation():
         ],
     )
 
-    # TODO fix validation
-    # with pytest.raises(ValueError) as e:
-    #     schemas.Prediction(
-    #         dataset_name="name",
-    #         model_name="model",
-    #         datum=schemas.Datum(
-    #             uid="uid",
-    #         ),
-    #         annotations=[
-    #             schemas.Annotation(
-    #                 labels=[
-    #                     schemas.Label(key="k1", value="v1"),
-    #                     schemas.Label(key="k1", value="v1"),
-    #                 ],
-    #                 raster=schemas.Raster.from_numpy(np.zeros((10, 10)) == 1),
-    #             ),
-    #             schemas.Annotation(
-    #                 labels=[schemas.Label(key="k3", value="v3")],
-    #                 raster=schemas.Raster.from_numpy(np.zeros((10, 10)) == 1),
-    #             ),
-    #         ],
-    #     )
+    with pytest.raises(ValueError) as e:
+        schemas.Prediction(
+            dataset_name="name",
+            model_name="model",
+            datum=schemas.Datum(
+                uid="uid",
+            ),
+            annotations=[
+                schemas.Annotation(
+                    labels=[
+                        schemas.Label(key="k1", value="v1"),
+                        schemas.Label(key="k1", value="v1"),
+                    ],
+                    raster=schemas.Raster.from_numpy(np.zeros((10, 10)) == 1),
+                ),
+                schemas.Annotation(
+                    labels=[schemas.Label(key="k3", value="v3")],
+                    raster=schemas.Raster.from_numpy(np.zeros((10, 10)) == 1),
+                ),
+            ],
+        )
 
-    # assert "one annotation per label" in str(e.value)
+    assert "one annotation per label" in str(e.value)

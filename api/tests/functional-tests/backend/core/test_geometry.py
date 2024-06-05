@@ -119,18 +119,6 @@ def create_segmentation_dataset_from_geometries(
     return dataset_name
 
 
-# TODO delete
-# def test_get_annotation_type(
-#     db: Session, dataset_name: str, create_classification_dataset
-# ):
-#     # tests uncovered case where `AnnotationType.NONE` is returned.
-#     dataset = fetch_dataset(db, dataset_name)
-#     assert (
-#         get_annotation_type(db, enums.TaskType.CLASSIFICATION, dataset)
-#         == enums.AnnotationType.NONE
-#     )
-
-
 def test_convert_geometry_input(
     db: Session, dataset_name: str, dataset_model_create
 ):

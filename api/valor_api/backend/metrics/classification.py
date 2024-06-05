@@ -893,11 +893,6 @@ def compute_clf_metrics(
     prediction_filter.model_names = [evaluation.model_name]
     parameters = schemas.EvaluationParameters(**evaluation.parameters)
 
-    # TODO delete
-    # load task type into filters
-    # groundtruth_filter.task_types = [parameters.task_type]
-    # prediction_filter.task_types = [parameters.task_type]
-
     log_evaluation_item_counts(
         db=db,
         evaluation=evaluation,

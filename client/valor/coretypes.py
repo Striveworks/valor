@@ -156,37 +156,6 @@ class Prediction(StaticCollection):
         """
         super().__init__(datum=datum, annotations=annotations)
 
-        # validation
-        # for annotation in self.annotations:
-        # # TODO need to edit this logic
-        # task_type = annotation.task_type
-        # if task_type in [
-        #     TaskType.CLASSIFICATION,
-        #     TaskType.OBJECT_DETECTION,
-        # ]:
-        #     for label in annotation.labels:
-        #         label_score = label.score
-        #         if label_score is None:
-        #             raise ValueError(
-        #                 f"For task type `{task_type}` prediction labels must have scores, but got `None`"
-        #             )
-        # if task_type == TaskType.CLASSIFICATION:
-
-        #     label_keys_to_sum = {}
-        #     for scored_label in annotation.labels:
-        #         label_key = scored_label.key
-        #         label_score = scored_label.score
-        #         if label_key not in label_keys_to_sum:
-        #             label_keys_to_sum[label_key] = 0.0
-        #         label_keys_to_sum[label_key] += label_score
-
-        #     for k, total_score in label_keys_to_sum.items():
-        #         if abs(total_score - 1) > 1e-5:
-        #             raise ValueError(
-        #                 "For each label key, prediction scores must sum to 1, but"
-        #                 f" for label key {k} got scores summing to {total_score}."
-        #             )
-
 
 class Evaluation:
     """

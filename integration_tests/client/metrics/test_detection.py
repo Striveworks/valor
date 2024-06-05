@@ -1790,26 +1790,25 @@ def test_evaluate_detection_with_label_maps(
         )
 
     # spot check a few geojson results
-    # TODO delete?
-    # pr_metric = [
-    #     m for m in pr_metrics if m["parameters"]["label_key"] == "foo"
-    # ][0]
-    # assert (
-    #     pr_metric["value"]["bar"]["0.4"]["fn"][0][2]
-    #     == '{"type":"Polygon","coordinates":[[[10,10],[60,10],[60,40],[10,40],[10,10]]]}'
-    # )
-    # assert (
-    #     pr_metric["value"]["bar"]["0.4"]["tp"][0][2]
-    #     == '{"type":"Polygon","coordinates":[[[15,0],[70,0],[70,20],[15,20],[15,0]]]}'
-    # )
+    pr_metric = [
+        m for m in pr_metrics if m["parameters"]["label_key"] == "foo"
+    ][0]
+    assert (
+        pr_metric["value"]["bar"]["0.4"]["fn"][0][2]
+        == '{"type":"Polygon","coordinates":[[[10,10],[60,10],[60,40],[10,40],[10,10]]]}'
+    )
+    assert (
+        pr_metric["value"]["bar"]["0.4"]["tp"][0][2]
+        == '{"type":"Polygon","coordinates":[[[15,0],[70,0],[70,20],[15,20],[15,0]]]}'
+    )
 
-    # pr_metric = [
-    #     m for m in pr_metrics if m["parameters"]["label_key"] == "k2"
-    # ][0]
-    # assert (
-    #     pr_metric["value"]["v2"]["0.1"]["fp"][0][2]
-    #     == '{"type":"Polygon","coordinates":[[[15,0],[70,0],[70,20],[15,20],[15,0]]]}'
-    # )
+    pr_metric = [
+        m for m in pr_metrics if m["parameters"]["label_key"] == "k2"
+    ][0]
+    assert (
+        pr_metric["value"]["v2"]["0.1"]["fp"][0][2]
+        == '{"type":"Polygon","coordinates":[[[15,0],[70,0],[70,20],[15,20],[15,0]]]}'
+    )
 
     assert eval_job.parameters.label_map == [
         [["class_name", "maine coon cat"], ["foo", "bar"]],

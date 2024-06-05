@@ -280,14 +280,6 @@ def convert_geometry(
         else models.Annotation.model_id.is_(None)
     )
 
-    # TODO delete
-    # define task type expression
-    # task_type_expr = (
-    #     models.Annotation.task_type == task_type.value
-    #     if task_type
-    #     else models.Annotation.task_type.isnot(None)
-    # )
-
     # define where expression
     where_conditions = [
         models.Datum.dataset_id == dataset.id,
