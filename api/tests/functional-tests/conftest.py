@@ -440,6 +440,7 @@ def predictions_with_rasters(
                         )
                     ],
                     raster=schemas.Raster.from_numpy(raster),
+                    is_instance_segmentation=True,
                 )
                 for raster, class_label, score in zip(
                     preds["rasters"], preds["labels"], preds["scores"]

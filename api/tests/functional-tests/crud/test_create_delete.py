@@ -224,6 +224,7 @@ def groundtruth_instance_segmentations(
                         height=img2.metadata["height"],
                         width=img2.metadata["width"],
                     ),
+                    is_instance_segmentation=True,
                 ),
             ],
         ),
@@ -253,6 +254,7 @@ def prediction_instance_segmentations(
                     raster=schemas.Raster(
                         mask=b64_mask1,
                     ),
+                    is_instance_segmentation=True,
                 ),
                 schemas.Annotation(
                     labels=[
@@ -262,6 +264,7 @@ def prediction_instance_segmentations(
                     raster=schemas.Raster(
                         mask=b64_mask1,
                     ),
+                    is_instance_segmentation=True,
                 ),
                 schemas.Annotation(
                     labels=[
@@ -271,6 +274,7 @@ def prediction_instance_segmentations(
                     raster=schemas.Raster(
                         mask=b64_mask1,
                     ),
+                    is_instance_segmentation=True,
                 ),
                 schemas.Annotation(
                     labels=[
@@ -280,6 +284,7 @@ def prediction_instance_segmentations(
                     raster=schemas.Raster(
                         mask=b64_mask1,
                     ),
+                    is_instance_segmentation=True,
                 ),
             ],
         )
@@ -754,7 +759,7 @@ def test_create_predicted_segmentations_check_area_and_delete_model(
     for gt in groundtruth_instance_segmentations:
         crud.create_groundtruths(db=db, groundtruths=[gt])
 
-    # check this gives an error since the model has not been crated yet
+    # check this gives an error since the model has not been created yet
     with pytest.raises(exceptions.ModelDoesNotExistError) as exc_info:
         for pd in prediction_instance_segmentations:
             crud.create_predictions(db=db, predictions=[pd])
@@ -999,6 +1004,7 @@ def test_gt_seg_as_mask_or_polys(
         raster=schemas.Raster(
             mask=mask_b64,
         ),
+        is_instance_segmentation=True,
     )
     gt2 = schemas.Annotation(
         labels=[schemas.Label(key="k1", value="v1")],
@@ -1006,6 +1012,7 @@ def test_gt_seg_as_mask_or_polys(
             mask=mask_b64,
             geometry=schemas.MultiPolygon(value=[poly.value]),
         ),
+        is_instance_segmentation=True,
     )
     gt = schemas.GroundTruth(
         dataset_name=dataset_name,

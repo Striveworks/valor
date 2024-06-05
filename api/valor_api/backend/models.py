@@ -130,6 +130,7 @@ class Annotation(Base):
     polygon = mapped_column(Geometry("POLYGON"), nullable=True)
     raster = mapped_column(GDALRaster, nullable=True)
     embedding_id = mapped_column(ForeignKey("embedding.id"), nullable=True)
+    is_instance_segmentation: Mapped[bool] = mapped_column(nullable=False)
 
     # relationships
     datum: Mapped["Datum"] = relationship(back_populates="annotations")
