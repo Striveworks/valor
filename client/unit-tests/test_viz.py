@@ -6,11 +6,28 @@ from valor import Annotation, GroundTruth, Label
 from valor.metatypes import ImageMetadata
 from valor.schemas import Box, MultiPolygon, Polygon, Raster
 from valor.viz import (
+    _draw_detection_on_image,
     _polygons_to_binary_mask,
     create_combined_segmentation_mask,
     draw_bounding_box_on_image,
     draw_detections_on_image,
+    draw_raster_on_image,
 )
+
+
+@pytest.fixture
+def bounding_box() -> Box:
+    return Box(
+        value=[
+            [
+                (107, 207),
+                (107, 307),
+                (207, 307),
+                (207, 207),
+                (107, 207),
+            ]
+        ]
+    )
 
 
 @pytest.fixture
@@ -166,6 +183,43 @@ def test_create_combined_segmentation_mask(poly1: Polygon):
     assert len(legend) == 2  # background color 'black' is not counted
 
 
+def test__draw_detections_on_image(bounding_poly: Polygon, bounding_box: Box):
+    # test polygon
+    poly_detection = Annotation(
+        labels=[Label(key="k", value="v")],
+        polygon=bounding_poly,
+    )
+
+    img = PIL.Image.new("RGB", (300, 300))
+
+    output = _draw_detection_on_image(
+        detection=poly_detection, img=img, inplace=True
+    )
+
+    assert output.size == (300, 300)
+
+    # check unique colors only have red component
+    unique_rgb = np.unique(np.array(output).reshape(-1, 3), axis=0)
+    assert unique_rgb[:, 1:].sum() == 0
+
+    # test bounding box
+    poly_detection = Annotation(
+        labels=[Label(key="k", value="v")], bounding_box=bounding_box
+    )
+
+    img = PIL.Image.new("RGB", (300, 300))
+
+    output = _draw_detection_on_image(
+        detection=poly_detection, img=img, inplace=True
+    )
+
+    assert output.size == (300, 300)
+
+    # check unique colors only have red component
+    unique_rgb = np.unique(np.array(output).reshape(-1, 3), axis=0)
+    assert unique_rgb[:, 1:].sum() == 0
+
+
 def test_draw_detections_on_image(bounding_poly: Polygon):
     detections = [
         GroundTruth(
@@ -180,13 +234,31 @@ def test_draw_detections_on_image(bounding_poly: Polygon):
     ]
     img = PIL.Image.new("RGB", (300, 300))
 
-    img = draw_detections_on_image(detections, img)
+    output = draw_detections_on_image(detections, img)
 
-    assert img.size == (300, 300)
+    assert output.size == (300, 300)
 
     # check unique colors only have red component
-    unique_rgb = np.unique(np.array(img).reshape(-1, 3), axis=0)
+    unique_rgb = np.unique(np.array(output).reshape(-1, 3), axis=0)
     assert unique_rgb[:, 1:].sum() == 0
+
+
+def test_draw_raster_on_image(raster):
+
+    img = PIL.Image.new("RGB", (20, 20))
+
+    output = draw_raster_on_image(raster, img)
+
+    assert output.size == (20, 20)
+
+    # check unique colors only have red component
+    unique_rgb = np.unique(np.array(output).reshape(-1, 3), axis=0)
+    assert unique_rgb[:, 1:].sum() == 0
+
+    # test errors
+    img2 = PIL.Image.new("RGB", (300, 300))
+    with pytest.raises(ValueError):
+        draw_raster_on_image(raster, img2)
 
 
 def test_draw_bounding_box_on_image():

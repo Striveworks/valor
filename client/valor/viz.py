@@ -309,13 +309,14 @@ def draw_raster_on_image(
     """
     img = img.copy()
     binary_mask = raster.array
-    if not binary_mask:
-        raise ValueError
     mask_arr = np.zeros(
         (binary_mask.shape[0], binary_mask.shape[1], 3), dtype=np.uint8
     )
     mask_arr[binary_mask] = color
     mask_img = Image.fromarray(mask_arr)
+
+    if mask_img.size != img.size:
+        raise ValueError("Input image and raster must be the same size.")
     blend = Image.blend(img, mask_img, alpha=alpha)
     img.paste(blend, (0, 0), mask=Image.fromarray(binary_mask))
 
@@ -345,6 +346,6 @@ def draw_detections_on_image(
         annotations.extend(datum.annotations)
 
     for i, detection in enumerate(annotations):
-        if detection.raster and detection.is_instance_segmentatino is True:
+        if detection.raster and detection.is_instance_segmentation is True:
             img = _draw_detection_on_image(detection, img, inplace=i != 0)
     return img
