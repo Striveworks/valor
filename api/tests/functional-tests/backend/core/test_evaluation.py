@@ -529,7 +529,7 @@ def test_get_evaluations(
         model_names=[finalized_model],
         offset=0,
         limit=6,
-        metrics_to_sort_by={"IOU": {"k1": "v1"}},
+        metrics_to_sort_by={"IOU": {"key": "k1", "value": "v1"}},
     )
 
     assert len(evaluations) == 2
