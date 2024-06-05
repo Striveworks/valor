@@ -67,6 +67,9 @@ def test__recursive_select_to_table_names():
         "datum"
     ]
 
+    # test function without args
+    assert _recursive_select_to_table_names(func.ST_AREA()) == []
+
     # test (Case)
     assert (
         _recursive_select_to_table_names(

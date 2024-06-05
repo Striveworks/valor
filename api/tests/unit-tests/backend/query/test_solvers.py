@@ -10,7 +10,7 @@ from valor_api.backend.query.solvers import (
     _join_label_to_annotation,
     _join_prediction_to_datum,
     _solve_graph,
-    generate_filter_query,
+    generate_filter_subquery,
     generate_query,
 )
 
@@ -166,10 +166,10 @@ def test_generate_query_validation():
         )
 
 
-def test_generate_filter_query_validation():
+def test_generate_filter_subquery_validation():
     # test label source validation
     with pytest.raises(ValueError):
-        generate_filter_query(
+        generate_filter_subquery(
             conditions=None,  # type: ignore - testing
             select_from=models.Annotation,
             label_source=models.Dataset,
@@ -178,7 +178,7 @@ def test_generate_filter_query_validation():
 
     # test that a valid logic tree has been created
     with pytest.raises(ValueError):
-        generate_filter_query(
+        generate_filter_subquery(
             conditions=None,  # type: ignore - testing
             select_from=models.Annotation,
             label_source=models.Annotation,
