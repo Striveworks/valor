@@ -128,7 +128,7 @@ metadata_attribute_type_casting = {
 }
 
 
-value_dtype_to_casting = {
+value_type_casting = {
     "boolean": lambda x: x,
     "integer": lambda x: x,
     "float": lambda x: x,
@@ -170,7 +170,7 @@ def create_cte(
 
     op = opstr_to_operator[opstr]
     table, lhs = symbol_name_to_table_value_tuple[symbol.name]
-    rhs = value_dtype_to_casting[value.type](value.value) if value else None
+    rhs = value_type_casting[value.type](value.value) if value else None
 
     # add keying
     if symbol.key:

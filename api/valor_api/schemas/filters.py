@@ -1052,7 +1052,7 @@ class AdvancedFilter(BaseModel):
             else:
                 return None
 
-        annotation_filter = [
+        groundtruth_filter = [
             expr
             for expr in [
                 dataset_names,
@@ -1067,15 +1067,53 @@ class AdvancedFilter(BaseModel):
                 annotation_polygon_area,
                 annotation_raster,
                 annotation_raster_area,
+                labels,
+                label_keys,
+                label_ids,
             ]
             if expr is not None
         ]
         prediction_filter = [
             expr
             for expr in [
+                dataset_names,
+                dataset_metadata,
+                datum_uids,
+                datum_metadata,
                 model_names,
                 model_metadata,
+                annotation_task_types,
+                annotation_metadata,
+                annotation_box,
+                annotation_box_area,
+                annotation_polygon,
+                annotation_polygon_area,
+                annotation_raster,
+                annotation_raster_area,
+                labels,
+                label_keys,
+                label_ids,
                 label_scores,
+            ]
+            if expr is not None
+        ]
+        annotation_filter = [
+            expr
+            for expr in [
+                dataset_names,
+                dataset_metadata,
+                datum_uids,
+                datum_metadata,
+                model_names,
+                model_metadata,
+                annotation_task_types,
+                annotation_metadata,
+                annotation_box,
+                annotation_box_area,
+                annotation_polygon,
+                annotation_polygon_area,
+                annotation_raster,
+                annotation_raster_area,
             ]
             if expr is not None
         ]
@@ -1090,11 +1128,13 @@ class AdvancedFilter(BaseModel):
             if expr is not None
         ]
 
-        f = cls(
-            annotations=and_if_list(annotation_filter),
-            labels=and_if_list(label_filter),
-        )
+        f = cls()
         if ignore_groundtruths:
             f.predictions = and_if_list(values=prediction_filter)
+        elif ignore_predictions:
+            f.groundtruths = and_if_list(values=groundtruth_filter)
+        else:
+            f.annotations = and_if_list(values=annotation_filter)
+            f.labels = and_if_list(values=label_filter)
 
         return f

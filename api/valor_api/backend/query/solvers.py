@@ -103,7 +103,150 @@ def _join_datum_to_groundtruth(selection: Select):
     ).join(Datum, Datum.id == annotation.c.datum_id)
 
 
-map_label_source_to_neighbor_mapping = {
+table_joins_with_annotation_as_label_source = {
+    Dataset: {Datum: lambda x: x.join(Datum, Datum.dataset_id == Dataset.id)},
+    Model: {
+        Annotation: lambda x: x.join(
+            Annotation, Annotation.model_id == Model.id
+        )
+    },
+    Datum: {
+        Dataset: lambda x: x.join(Dataset, Dataset.id == Datum.dataset_id),
+        Annotation: lambda x: x.join(
+            Annotation, Annotation.datum_id == Datum.id
+        ),
+    },
+    Annotation: {
+        Datum: lambda x: x.join(Datum, Datum.id == Annotation.datum_id),
+        Model: lambda x: x.join(Model, Model.id == Annotation.model_id),
+        Embedding: lambda x: x.join(
+            Embedding, Embedding.id == Annotation.embedding_id
+        ),
+        Label: _join_label_to_annotation,
+    },
+    GroundTruth: {
+        Label: lambda x: x.join(Label, Label.id == GroundTruth.label_id)
+    },
+    Prediction: {
+        Label: lambda x: x.join(Label, Label.id == Prediction.label_id)
+    },
+    Label: {
+        Annotation: _join_annotation_to_label,
+        GroundTruth: lambda x: x.join(
+            GroundTruth, GroundTruth.label_id == Label.id
+        ),
+        Prediction: lambda x: x.join(
+            Prediction, Prediction.label_id == Label.id
+        ),
+    },
+    Embedding: {
+        Annotation: lambda x: x.join(
+            Annotation, Annotation.embedding_id == Embedding.id
+        )
+    },
+}
+
+
+table_joins_with_groundtruth_as_label_source = {
+    Dataset: {Datum: lambda x: x.join(Datum, Datum.dataset_id == Dataset.id)},
+    Model: {
+        Annotation: lambda x: x.join(
+            Annotation, Annotation.model_id == Model.id
+        )
+    },
+    Datum: {
+        Dataset: lambda x: x.join(Dataset, Dataset.id == Datum.dataset_id),
+        Annotation: lambda x: x.join(
+            Annotation, Annotation.datum_id == Datum.id
+        ),
+        Prediction: _join_prediction_to_datum,
+    },
+    Annotation: {
+        Datum: lambda x: x.join(Datum, Datum.id == Annotation.datum_id),
+        Model: lambda x: x.join(Model, Model.id == Annotation.model_id),
+        GroundTruth: lambda x: x.join(
+            GroundTruth, GroundTruth.annotation_id == Annotation.id
+        ),
+        Embedding: lambda x: x.join(
+            Embedding, Embedding.id == Annotation.embedding_id
+        ),
+    },
+    GroundTruth: {
+        Annotation: lambda x: x.join(
+            Annotation, Annotation.id == GroundTruth.annotation_id
+        ),
+        Label: lambda x: x.join(Label, Label.id == GroundTruth.label_id),
+    },
+    Prediction: {
+        Datum: _join_datum_to_prediction,
+    },
+    Label: {
+        GroundTruth: lambda x: x.join(
+            GroundTruth, GroundTruth.label_id == Label.id
+        ),
+    },
+    Embedding: {
+        Annotation: lambda x: x.join(
+            Annotation, Annotation.embedding_id == Embedding.id
+        )
+    },
+}
+
+
+table_joins_with_prediction_as_label_source = {
+    Dataset: {Datum: lambda x: x.join(Datum, Datum.dataset_id == Dataset.id)},
+    Model: {
+        Annotation: lambda x: x.join(
+            Annotation, Annotation.model_id == Model.id
+        )
+    },
+    Datum: {
+        Dataset: lambda x: x.join(Dataset, Dataset.id == Datum.dataset_id),
+        Annotation: lambda x: x.join(
+            Annotation, Annotation.datum_id == Datum.id
+        ),
+        GroundTruth: _join_groundtruth_to_datum,
+    },
+    Annotation: {
+        Datum: lambda x: x.join(Datum, Datum.id == Annotation.datum_id),
+        Model: lambda x: x.join(Model, Model.id == Annotation.model_id),
+        Prediction: lambda x: x.join(
+            Prediction, Prediction.annotation_id == Annotation.id
+        ),
+        Embedding: lambda x: x.join(
+            Embedding, Embedding.id == Annotation.embedding_id
+        ),
+    },
+    GroundTruth: {
+        Datum: _join_datum_to_groundtruth,
+    },
+    Prediction: {
+        Annotation: lambda x: x.join(
+            Annotation, Annotation.id == Prediction.annotation_id
+        ),
+        Label: lambda x: x.join(Label, Label.id == Prediction.label_id),
+    },
+    Label: {
+        Prediction: lambda x: x.join(
+            Prediction, Prediction.label_id == Label.id
+        ),
+    },
+    Embedding: {
+        Annotation: lambda x: x.join(
+            Annotation, Annotation.embedding_id == Embedding.id
+        )
+    },
+}
+
+
+map_label_source_to_neighbor_joins = {
+    Annotation: table_joins_with_annotation_as_label_source,
+    GroundTruth: table_joins_with_groundtruth_as_label_source,
+    Prediction: table_joins_with_prediction_as_label_source,
+}
+
+
+map_label_source_to_neighbor_tables = {
     Annotation: {
         Dataset: {Datum},
         Model: {Annotation},
@@ -133,146 +276,6 @@ map_label_source_to_neighbor_mapping = {
         GroundTruth: {Datum},
         Prediction: {Annotation, Label},
         Label: {Prediction},
-    },
-}
-
-
-map_label_source_to_neighbor_joins = {
-    Annotation: {
-        Dataset: {
-            Datum: lambda x: x.join(Datum, Datum.dataset_id == Dataset.id)
-        },
-        Model: {
-            Annotation: lambda x: x.join(
-                Annotation, Annotation.model_id == Model.id
-            )
-        },
-        Datum: {
-            Dataset: lambda x: x.join(Dataset, Dataset.id == Datum.dataset_id),
-            Annotation: lambda x: x.join(
-                Annotation, Annotation.datum_id == Datum.id
-            ),
-        },
-        Annotation: {
-            Datum: lambda x: x.join(Datum, Datum.id == Annotation.datum_id),
-            Model: lambda x: x.join(Model, Model.id == Annotation.model_id),
-            Embedding: lambda x: x.join(
-                Embedding, Embedding.id == Annotation.embedding_id
-            ),
-            Label: _join_label_to_annotation,
-        },
-        GroundTruth: {
-            Label: lambda x: x.join(Label, Label.id == GroundTruth.label_id)
-        },
-        Prediction: {
-            Label: lambda x: x.join(Label, Label.id == Prediction.label_id)
-        },
-        Label: {
-            Annotation: _join_annotation_to_label,
-            GroundTruth: lambda x: x.join(
-                GroundTruth, GroundTruth.label_id == Label.id
-            ),
-            Prediction: lambda x: x.join(
-                Prediction, Prediction.label_id == Label.id
-            ),
-        },
-        Embedding: {
-            Annotation: lambda x: x.join(
-                Annotation, Annotation.embedding_id == Embedding.id
-            )
-        },
-    },
-    GroundTruth: {
-        Dataset: {
-            Datum: lambda x: x.join(Datum, Datum.dataset_id == Dataset.id)
-        },
-        Model: {
-            Annotation: lambda x: x.join(
-                Annotation, Annotation.model_id == Model.id
-            )
-        },
-        Datum: {
-            Dataset: lambda x: x.join(Dataset, Dataset.id == Datum.dataset_id),
-            Annotation: lambda x: x.join(
-                Annotation, Annotation.datum_id == Datum.id
-            ),
-            Prediction: _join_prediction_to_datum,
-        },
-        Annotation: {
-            Datum: lambda x: x.join(Datum, Datum.id == Annotation.datum_id),
-            Model: lambda x: x.join(Model, Model.id == Annotation.model_id),
-            GroundTruth: lambda x: x.join(
-                GroundTruth, GroundTruth.annotation_id == Annotation.id
-            ),
-            Embedding: lambda x: x.join(
-                Embedding, Embedding.id == Annotation.embedding_id
-            ),
-        },
-        GroundTruth: {
-            Annotation: lambda x: x.join(
-                Annotation, Annotation.id == GroundTruth.annotation_id
-            ),
-            Label: lambda x: x.join(Label, Label.id == GroundTruth.label_id),
-        },
-        Prediction: {
-            Datum: _join_datum_to_prediction,
-        },
-        Label: {
-            GroundTruth: lambda x: x.join(
-                GroundTruth, GroundTruth.label_id == Label.id
-            ),
-        },
-        Embedding: {
-            Annotation: lambda x: x.join(
-                Annotation, Annotation.embedding_id == Embedding.id
-            )
-        },
-    },
-    Prediction: {
-        Dataset: {
-            Datum: lambda x: x.join(Datum, Datum.dataset_id == Dataset.id)
-        },
-        Model: {
-            Annotation: lambda x: x.join(
-                Annotation, Annotation.model_id == Model.id
-            )
-        },
-        Datum: {
-            Dataset: lambda x: x.join(Dataset, Dataset.id == Datum.dataset_id),
-            Annotation: lambda x: x.join(
-                Annotation, Annotation.datum_id == Datum.id
-            ),
-            GroundTruth: _join_groundtruth_to_datum,
-        },
-        Annotation: {
-            Datum: lambda x: x.join(Datum, Datum.id == Annotation.datum_id),
-            Model: lambda x: x.join(Model, Model.id == Annotation.model_id),
-            Prediction: lambda x: x.join(
-                Prediction, Prediction.annotation_id == Annotation.id
-            ),
-            Embedding: lambda x: x.join(
-                Embedding, Embedding.id == Annotation.embedding_id
-            ),
-        },
-        GroundTruth: {
-            Datum: _join_datum_to_groundtruth,
-        },
-        Prediction: {
-            Annotation: lambda x: x.join(
-                Annotation, Annotation.id == Prediction.annotation_id
-            ),
-            Label: lambda x: x.join(Label, Label.id == Prediction.label_id),
-        },
-        Label: {
-            Prediction: lambda x: x.join(
-                Prediction, Prediction.label_id == Label.id
-            ),
-        },
-        Embedding: {
-            Annotation: lambda x: x.join(
-                Annotation, Annotation.embedding_id == Embedding.id
-            )
-        },
     },
 }
 
@@ -310,7 +313,7 @@ def _solve_graph(
     if label_source is LabelSourceAlias:
         raise ValueError
 
-    table_mapping = map_label_source_to_neighbor_mapping[label_source]
+    table_mapping = map_label_source_to_neighbor_tables[label_source]
     join_mapping = map_label_source_to_neighbor_joins[label_source]
 
     ordered_tables = [select_from]

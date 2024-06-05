@@ -410,7 +410,9 @@ def _compute_roc_auc(
             label
             for label in labels
             if schemas.Label(key=label.key, value=label.value)
-            in core.get_labels(db=db, filters=label_filter)
+            in core.get_labels(
+                db=db, filters=label_filter, ignore_predictions=True
+            )
         ]
 
         if not in_scope_labels:
