@@ -801,6 +801,7 @@ def pred_instance_segs(
                 Annotation(
                     labels=[Label(key="k1", value="v1", score=0.87)],
                     raster=Raster.from_numpy(mask_1),
+                    is_instance_segmentation=True,
                 )
             ],
         ),
@@ -810,6 +811,7 @@ def pred_instance_segs(
                 Annotation(
                     labels=[Label(key="k2", value="v2", score=0.92)],
                     raster=Raster.from_numpy(mask_2),
+                    is_instance_segmentation=True,
                 )
             ],
         ),

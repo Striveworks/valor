@@ -156,6 +156,7 @@ def test_create_gt_segs_as_polys_or_masks(
             Annotation(
                 labels=[Label(key="k1", value="v1")],
                 raster=Raster.from_numpy(mask),
+                is_instance_segmentation=True,
             ),
             Annotation(
                 labels=[Label(key="k1", value="v1")],
@@ -164,6 +165,7 @@ def test_create_gt_segs_as_polys_or_masks(
                     height=image_height,
                     width=image_width,
                 ),
+                is_instance_segmentation=True,
             ),
         ],
     )
