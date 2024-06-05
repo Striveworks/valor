@@ -80,3 +80,7 @@ def test__recursive_select_to_table_names():
         )
         == []
     )
+
+    # test not implemented
+    with pytest.raises(NotImplementedError):
+        _recursive_select_to_table_names("hello")  # type: ignore - testing

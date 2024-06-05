@@ -67,15 +67,10 @@ def _recursive_select_to_table_names(
     """
     if isinstance(argument, Table):
         return [argument.name]
-    elif isinstance(argument, TableTypeAlias):
-        return [argument.__tablename__]
+    # elif isinstance(argument, TableTypeAlias):
+    #     return [argument.__tablename__]
     elif isinstance(argument, DeclarativeMeta):
-        if "__table__" in argument.__dict__:
-            return _recursive_select_to_table_names(
-                argument.__dict__["__table__"]
-            )
-        else:
-            return [argument.__dict__["__tablename__"]]
+        return _recursive_select_to_table_names(argument.__table__)  # type: ignore - sqlalchemy
     elif isinstance(argument, InstrumentedAttribute):
         return _recursive_select_to_table_names(argument.table)
     elif isinstance(argument, UnaryExpression):
