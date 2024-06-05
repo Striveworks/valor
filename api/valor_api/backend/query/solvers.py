@@ -127,6 +127,30 @@ def _join_datum_to_groundtruth(selection: Select) -> Select[Any]:
     ).join(Datum, Datum.id == annotation.c.datum_id)
 
 
+def _join_datum_to_model(selection: Select) -> Select[Any]:
+    """
+    Joins Datum to Model.
+
+    Aliases Annotation so that the join does not affect other operations.
+    """
+    annotation = alias(Annotation)
+    return selection.join(
+        annotation, annotation.c.model_id == Model.id, isouter=True
+    ).join(Datum, Datum.id == annotation.c.datum_id)
+
+
+def _join_model_to_datum(selection: Select) -> Select[Any]:
+    """
+    Joins Model to Datum.
+
+    Aliases Annotation so that the join does not affect other operations.
+    """
+    annotation = alias(Annotation)
+    return selection.join(
+        annotation, annotation.c.datum_id == Datum.id, isouter=True
+    ).join(Model, Model.id == annotation.c.model_id)
+
+
 table_joins_with_annotation_as_label_source = {
     Dataset: {Datum: lambda x: x.join(Datum, Datum.dataset_id == Dataset.id)},
     Model: {
@@ -173,13 +197,10 @@ table_joins_with_annotation_as_label_source = {
 
 table_joins_with_groundtruth_as_label_source = {
     Dataset: {Datum: lambda x: x.join(Datum, Datum.dataset_id == Dataset.id)},
-    Model: {
-        Annotation: lambda x: x.join(
-            Annotation, Annotation.model_id == Model.id
-        )
-    },
+    Model: {Datum: _join_datum_to_model},
     Datum: {
         Dataset: lambda x: x.join(Dataset, Dataset.id == Datum.dataset_id),
+        Model: _join_model_to_datum,
         Annotation: lambda x: x.join(
             Annotation, Annotation.datum_id == Datum.id
         ),
@@ -187,7 +208,6 @@ table_joins_with_groundtruth_as_label_source = {
     },
     Annotation: {
         Datum: lambda x: x.join(Datum, Datum.id == Annotation.datum_id),
-        Model: lambda x: x.join(Model, Model.id == Annotation.model_id),
         GroundTruth: lambda x: x.join(
             GroundTruth, GroundTruth.annotation_id == Annotation.id
         ),

@@ -5,9 +5,11 @@ from valor_api.backend import models
 from valor_api.backend.query.solvers import (
     _join_annotation_to_label,
     _join_datum_to_groundtruth,
+    _join_datum_to_model,
     _join_datum_to_prediction,
     _join_groundtruth_to_datum,
     _join_label_to_annotation,
+    _join_model_to_datum,
     _join_prediction_to_datum,
     _solve_graph,
     generate_filter_subquery,
@@ -118,6 +120,35 @@ def test__join_datum_to_groundtruth():
         .join(
             annotation,
             annotation.c.id == models.GroundTruth.annotation_id,
+            isouter=True,
+        )
+        .join(models.Datum, models.Datum.id == annotation.c.datum_id)
+    )
+
+
+def test__join_model_to_datum():
+    stmt = str(_join_model_to_datum(select(models.Datum.id)))
+    annotation = alias(models.Annotation)
+    assert stmt == str(
+        select(models.Datum.id)
+        .join(
+            annotation, annotation.c.datum_id == models.Datum.id, isouter=True
+        )
+        .join(
+            models.Model,
+            models.Model.id == annotation.c.model_id,
+        )
+    )
+
+
+def test__join_datum_to_model():
+    stmt = str(_join_datum_to_model(select(models.Model.id)))
+    annotation = alias(models.Annotation)
+    assert stmt == str(
+        select(models.Model.id)
+        .join(
+            annotation,
+            annotation.c.model_id == models.Model.id,
             isouter=True,
         )
         .join(models.Datum, models.Datum.id == annotation.c.datum_id)
