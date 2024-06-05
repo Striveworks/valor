@@ -83,7 +83,7 @@ def download_image(datum: Datum) -> PIL.Image.Image:
     """
     Download image using Datum.
     """
-    url = datum.metadata["coco_url"].get_value()
+    url = datum.metadata["coco_url"]
     if not isinstance(url, str):
         raise TypeError("datum.metadata['coco_url'] is not type 'str'.")
     img_data = BytesIO(requests.get(url).content)
@@ -317,29 +317,29 @@ def create_dataset_from_coco_panoptic(
         data["annotations"] = data["annotations"][:limit]
 
     # if reset, delete the dataset if it exists
-    if delete_if_exists and client.get_dataset(name) is not None:
-        client.delete_dataset(name, timeout=5)
+    if delete_if_exists:
+        try:
+            client.delete_dataset(name, timeout=5)
+        except Exception:
+            pass
 
-    if client.get_dataset(name) is not None:
-        dataset = Dataset.create(name)
-    else:
-        # create groundtruths
-        gts = _create_groundtruths_from_coco_panoptic(
-            data=data,
-            masks_path=masks_path,
-        )
+    # create groundtruths
+    gts = _create_groundtruths_from_coco_panoptic(
+        data=data,
+        masks_path=masks_path,
+    )
 
-        # extract metadata
-        metadata = data["info"].copy()
-        metadata["licenses"] = str(data["licenses"])
+    # extract metadata
+    metadata = data["info"].copy()
+    metadata["licenses"] = str(data["licenses"])
 
-        # create dataset
-        dataset = Dataset.create(
-            name,
-            metadata=metadata,
-        )
-        for gt in tqdm(gts, desc="Uploading"):
-            dataset.add_groundtruth(gt)
-        dataset.finalize()
+    # create dataset
+    dataset = Dataset.create(
+        name,
+        metadata=metadata,
+    )
+    for gt in tqdm(gts, desc="Uploading"):
+        dataset.add_groundtruth(gt)
+    dataset.finalize()
 
     return dataset
