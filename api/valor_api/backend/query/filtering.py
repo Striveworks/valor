@@ -4,6 +4,7 @@ from geoalchemy2.functions import ST_Area, ST_Count, ST_GeomFromGeoJSON
 from sqlalchemy import (
     CTE,
     TIMESTAMP,
+    BinaryExpression,
     Boolean,
     Float,
     Integer,
@@ -153,10 +154,26 @@ value_type_casting = {
 }
 
 
-# @TODO - Need to implement exceptions
 def create_cte(
     opstr: str, symbol: Symbol, value: Value | None = None
 ) -> tuple[TableTypeAlias, CTE]:
+    """
+    Creates a CTE from a binary expression.
+
+    Parameters
+    ----------
+    opstr : str
+        The expression operator.
+    symbol : Symbol
+        The lhs of the expression.
+    value : Value, optional
+        The rhs of the expression, if it exists.
+
+    Returns
+    -------
+    tuple[TableTypeAlias, CTE]
+        A tuple of a table to join on and the CTE.
+    """
     if not isinstance(symbol, Symbol):
         raise ValueError(f"CTE passed a symbol with type '{type(symbol)}'.")
     elif not isinstance(value, Value) and value is not None:
@@ -194,12 +211,14 @@ def create_cte(
     return (table, select(table.id).where(op(lhs, rhs)).cte())
 
 
-# @TODO - Need to implement exceptions
 def _recursive_search_logic_tree(
     func: OneArgFunction | TwoArgFunction | NArgFunction,
     cte_list: list | None = None,
     tables: list[TableTypeAlias] | None = None,
 ) -> tuple[int | dict, list[CTE], list[TableTypeAlias]]:
+    """
+    Walks the filtering function to produce dependencies.
+    """
     if not isinstance(func, OneArgFunction | TwoArgFunction | NArgFunction):
         raise TypeError(
             f"Expected input to be of type 'OneArgFunction | TwoArgFunction | NArgFunction'. Received '{func}'."
@@ -241,6 +260,21 @@ def _recursive_search_logic_tree(
 def map_filter_to_tables(
     filter_: Filter | None, label_source: LabelSourceAlias
 ) -> set[TableTypeAlias]:
+    """
+    Maps a filter to a set of required tables.
+
+    Parameters
+    ----------
+    filter_ : Filter
+        The filter to search.
+    label_source : LabelSourceAlias
+        The table to use as a source of labels.
+
+    Returns
+    -------
+    set[TableTypeAlias]
+        The set of tables required by the filter.
+    """
     tables = set()
     if filter_ is not None:
         if filter_.datasets:
@@ -267,14 +301,44 @@ def map_filter_to_tables(
 def generate_dependencies(
     func: OneArgFunction | TwoArgFunction | NArgFunction | None,
 ) -> tuple[int | dict | None, list[CTE], list[TableTypeAlias]]:
+    """
+    Recursively generates the dependencies for createing a filter subquery.
+
+    Parameters
+    ----------
+    func : OneArgFunction | TwoArgFunction | NArgFunction, optional
+        An optional filtering function.
+
+    Returns
+    -------
+    tuple[int | dict | None, list[CTE], list[TableTypeAlias]]
+        A tuple containing a logical index tree, ordered list of CTE's and an ordered list of tables.
+    """
     if func is None:
         return (None, list(), list())
     return _recursive_search_logic_tree(func)
 
 
 def generate_logical_expression(
-    root, tree: int | dict[str, int | dict | list], prefix: str
-):
+    root: CTE, tree: int | dict[str, int | dict | list], prefix: str
+) -> BinaryExpression:
+    """
+    Generates the 'where' expression from a logical tree.
+
+    Parameters
+    ----------
+    root : CTE
+        The CTE that evaluates the binary expressions.
+    tree : int | dict[str, int | dict | list]
+        The logical index tree.
+    prefix : str
+        The prefix of the relevant CTE.
+
+    Returns
+    -------
+    BinaryExpression
+        A binary expression that can be used in a WHERE statement.
+    """
     if isinstance(tree, int):
         return getattr(root.c, f"{prefix}{tree}") == 1
     if not isinstance(tree, dict) or len(tree.keys()) != 1:

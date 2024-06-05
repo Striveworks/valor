@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Callable
 
 from sqlalchemy import Select, Subquery, alias, case, or_, select
 from sqlalchemy.orm import InstrumentedAttribute, Query
@@ -25,8 +25,12 @@ from valor_api.schemas.filters import AdvancedFilter as Filter
 from valor_api.schemas.filters import FunctionType
 
 
-def _join_label_to_annotation(selection: Select):
-    """TODO"""
+def _join_label_to_annotation(selection: Select) -> Select[Any]:
+    """
+    Joins Label to Annotation.
+
+    Aliases GroundTruth and Prediction so that the join does not affect other operations.
+    """
     groundtruth = alias(GroundTruth)
     prediction = alias(Prediction)
     return (
@@ -50,8 +54,12 @@ def _join_label_to_annotation(selection: Select):
     )
 
 
-def _join_annotation_to_label(selection: Select):
-    """TODO"""
+def _join_annotation_to_label(selection: Select) -> Select[Any]:
+    """
+    Joins Annotation to Label.
+
+    Aliases GroundTruth and Prediction so that the join does not affect other operations.
+    """
     groundtruth = alias(GroundTruth)
     prediction = alias(Prediction)
     return (
@@ -71,32 +79,48 @@ def _join_annotation_to_label(selection: Select):
     )
 
 
-def _join_prediction_to_datum(selection: Select):
-    """TODO"""
+def _join_prediction_to_datum(selection: Select) -> Select[Any]:
+    """
+    Joins Prediction to Datum.
+
+    Aliases Annotation so that the join does not affect other operations.
+    """
     annotation = alias(Annotation)
     return selection.join(
         annotation, annotation.c.datum_id == Datum.id, isouter=True
     ).join(Prediction, Prediction.annotation_id == annotation.c.id)
 
 
-def _join_datum_to_prediction(selection: Select):
-    """TODO"""
+def _join_datum_to_prediction(selection: Select) -> Select[Any]:
+    """
+    Joins Datum to Prediction.
+
+    Aliases Annotation so that the join does not affect other operations.
+    """
     annotation = alias(Annotation)
     return selection.join(
         annotation, annotation.c.id == Prediction.annotation_id, isouter=True
     ).join(Datum, Datum.id == annotation.c.datum_id)
 
 
-def _join_groundtruth_to_datum(selection: Select):
-    """TODO"""
+def _join_groundtruth_to_datum(selection: Select) -> Select[Any]:
+    """
+    Joins GroundTruth to Datum.
+
+    Aliases Annotation so that the join does not affect other operations.
+    """
     annotation = alias(Annotation)
     return selection.join(
         annotation, annotation.c.datum_id == Datum.id, isouter=True
     ).join(GroundTruth, GroundTruth.annotation_id == annotation.c.id)
 
 
-def _join_datum_to_groundtruth(selection: Select):
-    """TODO"""
+def _join_datum_to_groundtruth(selection: Select) -> Select[Any]:
+    """
+    Joins Datum to GroundTruth.
+
+    Aliases Annotation so that the join does not affect other operations.
+    """
     annotation = alias(Annotation)
     return selection.join(
         annotation, annotation.c.id == GroundTruth.annotation_id, isouter=True
@@ -286,10 +310,27 @@ def _recursive_search(
     mapping: dict[TableTypeAlias, set[TableTypeAlias]],
     cache: list[TableTypeAlias] | None = None,
 ) -> list[TableTypeAlias]:
-    """TODO"""
+    """
+    Depth-first search of table graph.
+
+    Parameters
+    ----------
+    table : TableTypeAlias
+        The starting node.
+    target : TableTypeAlias
+        The desired endpoint.
+    mapping : dict[TableTypeAlias, set[TableTypeAlias]]
+        A mapping of tables to their neighbors.
+    cache : list[TableTypeAlias] | None, optional
+        A cache of previously visited nodes.
+
+    Returns
+    -------
+    list[TableTypeAlias]
+        An ordered list of tables representing join order.
+    """
     if cache is None:
         cache = [table]
-
     for neighbor in mapping[table]:
         if neighbor in cache:
             continue
@@ -300,7 +341,6 @@ def _recursive_search(
             neighbor, target=target, mapping=mapping, cache=[*cache, neighbor]
         ):
             return retval
-
     return []
 
 
@@ -308,8 +348,24 @@ def _solve_graph(
     select_from: TableTypeAlias,
     label_source: LabelSourceAlias,
     tables: set[TableTypeAlias],
-):
-    """TODO"""
+) -> list[Callable]:
+    """
+    Returns a list of join operations that connect the 'select_from' table to all the provided 'tables'.
+
+    Parameters
+    ----------
+    select_from : TableTypeAlias
+        The table that is being selected from.
+    label_source : LabelSourceAlias
+        The table that is being used as the source of labels.
+    tables : set[TableTypeAlias]
+        The set of tables that need to be joined.
+
+    Returns
+    -------
+    list[Callable]
+        An ordered list of join operations.
+    """
     if label_source not in {GroundTruth, Prediction, Annotation}:
         raise ValueError(
             "Label source must be either GroundTruth, Prediction or Annotation."
@@ -321,23 +377,19 @@ def _solve_graph(
     ordered_tables = [select_from]
     ordered_joins = []
     for target in tables:
-
         if select_from is target:
             continue
-
         solution = _recursive_search(
             table=select_from,
             target=target,
             mapping=table_mapping,
         )
-
         for idx in range(1, len(solution)):
             lhs = solution[idx - 1]
             rhs = solution[idx]
             if rhs not in ordered_tables:
                 ordered_tables.append(rhs)
                 ordered_joins.append(join_mapping[lhs][rhs])
-
     return ordered_joins
 
 
@@ -348,7 +400,29 @@ def generate_query(
     label_source: LabelSourceAlias,
     filter_: Filter | None = None,
 ) -> Select[Any] | Query[Any]:
-    """TODO"""
+    """
+    Generates the main query.
+
+    Includes all args-related and filter-related tables.
+
+    Parameters
+    ----------
+    select_statement : Select[Any] | Query[Any]
+        The select statement.
+    args : tuple[TableTypeAlias | InstrumentedAttribute | UnaryExpression]
+        The user's list of positional arguments.
+    select_from : TableTypeAlias
+        The table to center the query over.
+    label_source : LabelSourceAlias
+        The table to use as a source of labels.
+    filter_ : Filter, optional
+        An optional filter to apply to the query.
+
+    Returns
+    -------
+    Select[Any] | Query[Any]
+        The main body of the query. Does not include filter conditions.
+    """
     if label_source not in {Annotation, GroundTruth, Prediction}:
         raise ValueError(f"Invalid label source '{label_source}'.")
 
@@ -366,13 +440,31 @@ def generate_query(
     return query
 
 
-def generate_filter_query(
+def generate_filter_subquery(
     conditions: FunctionType,
     select_from: TableTypeAlias,
     label_source: LabelSourceAlias,
     prefix: str,
 ) -> Subquery[Any]:
-    """TODO"""
+    """
+    Generates the filtering subquery.
+
+    Parameters
+    ----------
+    conditions : FunctionType
+        The filtering function to apply.
+    select_from : TableTypeAlias
+        The table to center the query over.
+    label_source : LabelSourceAlias
+        The table to use as a source of labels.
+    prefix : str
+        The prefix to use in naming the CTE queries.
+
+    Returns
+    -------
+    Subquery[Any]
+        A filtering subquery.
+    """
     if label_source not in {Annotation, GroundTruth, Prediction}:
         raise ValueError(f"Invalid label source '{label_source}'.")
 
@@ -420,7 +512,21 @@ def generate_filter_queries(
     filter_: Filter,
     label_source: LabelSourceAlias,
 ) -> list[tuple[Subquery[Any], TableTypeAlias]]:
-    """TODO"""
+    """
+    Generates the filtering subqueries.
+
+    Parameters
+    ----------
+    filter_ : Filter
+        The filter to apply.
+    label_source : LabelSourceAlias
+        The table to use as a source of labels.
+
+    Returns
+    -------
+    list[tuple[Subquery[Any], TableTypeAlias]]
+        A list of tuples containing a filtering subquery and the table to join it on.
+    """
 
     def _generator(
         conditions: FunctionType,
@@ -428,7 +534,7 @@ def generate_filter_queries(
         label_source: LabelSourceAlias,
         prefix: str,
     ):
-        return generate_filter_query(
+        return generate_filter_subquery(
             conditions=conditions,
             select_from=select_from,
             label_source=label_source,
@@ -525,7 +631,25 @@ def solver(
     filter_: Filter | None,
     label_source: LabelSourceAlias,
 ) -> Select[Any] | Query[Any]:
-    """TODO"""
+    """
+    Solves and generates a query from the provided arguements.
+
+    Parameters
+    ----------
+    *args : tuple[Any]
+        A list of select statement arguments.
+    stmt : Select[Any] | Query[Any]
+        A selection or query using the provided args.
+    filter_ : Filter, optional
+        An optional filter.
+    label_source : LabelSourceAlias
+        The table to use as a source of labels.
+
+    Returns
+    -------
+    Select[Any] | Query[Any]
+        An executable query that meets all conditions.
+    """
 
     select_from = map_arguments_to_tables(args[0]).pop()
     if select_from is Label:

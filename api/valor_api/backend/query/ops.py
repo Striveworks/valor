@@ -10,7 +10,23 @@ from valor_api.schemas.filters import AdvancedFilter, Filter
 def select_from_annotations(
     *args, filter_: AdvancedFilter | None = None
 ) -> Select[Any]:
-    """TODO"""
+    """
+    Creates a select statement from provided arguments and filters.
+
+    Labels are queried from the combination of groundtruths and predictions.
+
+    Parameters
+    ----------
+    *args : tuple[Any]
+        A list of selection args.
+    filter_ : Filter, optional
+        An optional filter.
+
+    Returns
+    -------
+    Select[Any]
+        A select statement that meets all conditions.
+    """
     query = solver(
         *args, stmt=select(*args), filter_=filter_, label_source=Annotation
     )
@@ -24,7 +40,23 @@ def select_from_annotations(
 def select_from_groundtruths(
     *args, filter_: AdvancedFilter | None = None
 ) -> Select[Any]:
-    """TODO"""
+    """
+    Creates a select statement from provided arguments and filters.
+
+    Labels are queried from groundtruths.
+
+    Parameters
+    ----------
+    *args : tuple[Any]
+        A list of selection args.
+    filter_ : Filter, optional
+        An optional filter.
+
+    Returns
+    -------
+    Select[Any]
+        A select statement that meets all conditions.
+    """
     query = solver(
         *args, stmt=select(*args), filter_=filter_, label_source=GroundTruth
     )
@@ -38,7 +70,23 @@ def select_from_groundtruths(
 def select_from_predictions(
     *args, filter_: AdvancedFilter | None = None
 ) -> Select[Any]:
-    """TODO"""
+    """
+    Creates a select statement from provided arguments and filters.
+
+    Labels are queried from predictions.
+
+    Parameters
+    ----------
+    *args : tuple[Any]
+        A list of selection args.
+    filter_ : Filter, optional
+        An optional filter.
+
+    Returns
+    -------
+    Select[Any]
+        A select statement that meets all conditions.
+    """
     query = solver(
         *args, stmt=select(*args), filter_=filter_, label_source=Prediction
     )
