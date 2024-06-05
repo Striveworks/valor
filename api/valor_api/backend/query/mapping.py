@@ -70,11 +70,12 @@ def _recursive_select_to_table_names(
     elif isinstance(argument, TableTypeAlias):
         return [argument.__tablename__]
     elif isinstance(argument, DeclarativeMeta):
-        if "__tablename__" not in argument.__dict__:
-            raise AttributeError(
-                f"DeclarativeMeta object '{argument}' missing __tablename__ attribute."
+        if "__table__" in argument.__dict__:
+            return _recursive_select_to_table_names(
+                argument.__dict__["__table__"]
             )
-        return [argument.__dict__["__tablename__"]]
+        else:
+            return [argument.__dict__["__tablename__"]]
     elif isinstance(argument, InstrumentedAttribute):
         return _recursive_select_to_table_names(argument.table)
     elif isinstance(argument, UnaryExpression):
