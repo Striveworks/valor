@@ -342,7 +342,7 @@ def generate_logical_expression(
     if isinstance(tree, int):
         return getattr(root.c, f"{prefix}{tree}") == 1
     if not isinstance(tree, dict) or len(tree.keys()) != 1:
-        raise ValueError
+        raise ValueError("If not an 'int', expected tree to be dictionary.")
 
     logical_operators = {
         "and": and_,
@@ -353,7 +353,7 @@ def generate_logical_expression(
     if op == "and" or op == "or":
         args = tree[op]
         if not isinstance(args, list):
-            raise ValueError
+            raise ValueError("Expected a list of expressions.")
         return logical_operators[op](
             *[
                 (getattr(root.c, f"{prefix}{arg}") == 1)

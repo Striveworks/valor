@@ -4,6 +4,7 @@ from valor_api.backend import models
 from valor_api.backend.query.filtering import (
     _recursive_search_logic_tree,
     create_cte,
+    generate_logical_expression,
     map_filter_to_tables,
 )
 from valor_api.schemas.filters import AdvancedFilter as Filter
@@ -131,3 +132,21 @@ def test_map_filter_to_labels():
         models.Label,
         models.Embedding,
     }
+
+
+def test_generate_logical_expression_validation():
+    from sqlalchemy import select
+
+    # tree should be an int or a dict
+    with pytest.raises(ValueError):
+        generate_logical_expression(
+            root=select(models.Label.id).cte(),
+            tree=[0, 1],  # type: ignore - testing
+            prefix="cte",
+        )
+
+    # n-arg expressions should be represented by a list
+    with pytest.raises(ValueError):
+        generate_logical_expression(
+            root=select(models.Label.id).cte(), tree={"and": 0}, prefix="cte"
+        )

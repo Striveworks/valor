@@ -296,23 +296,6 @@ class Outside(BaseModel):
         return self.outside.rhs
 
 
-class Contains(BaseModel):
-    contains: Operands
-    model_config = ConfigDict(extra="forbid")
-
-    @property
-    def op(self) -> str:
-        return type(self).__name__.lower()
-
-    @property
-    def lhs(self):
-        return self.contains.lhs
-
-    @property
-    def rhs(self):
-        return self.contains.rhs
-
-
 NArgFunction = And | Or
 OneArgFunction = Not | IsNull | IsNotNull
 TwoArgFunction = (
@@ -325,7 +308,6 @@ TwoArgFunction = (
     | Intersects
     | Inside
     | Outside
-    | Contains
 )
 FunctionType = OneArgFunction | TwoArgFunction | NArgFunction
 
@@ -379,7 +361,7 @@ class StringFilter(BaseModel):
             case "!=":
                 return NotEqual(ne=operands)
             case _:
-                raise RuntimeError
+                raise NotImplementedError(self.operator)
 
 
 class NumericFilter(BaseModel):
@@ -440,7 +422,7 @@ class NumericFilter(BaseModel):
             case "<=":
                 return LessThanEqual(le=operands)
             case _:
-                raise RuntimeError
+                raise NotImplementedError(self.operator)
 
 
 class BooleanFilter(BaseModel):
@@ -490,7 +472,7 @@ class BooleanFilter(BaseModel):
             case "!=":
                 return NotEqual(ne=operands)
             case _:
-                raise RuntimeError
+                raise NotImplementedError(self.operator)
 
 
 class GeospatialFilter(BaseModel):
@@ -538,7 +520,7 @@ class GeospatialFilter(BaseModel):
             case "intersect":
                 return Intersects(intersects=operands)
             case _:
-                raise RuntimeError
+                raise NotImplementedError(self.operator)
 
 
 class DateTimeFilter(BaseModel):
@@ -617,7 +599,7 @@ class DateTimeFilter(BaseModel):
             case "<=":
                 return LessThanEqual(le=operands)
             case _:
-                raise RuntimeError
+                raise NotImplementedError(self.operator)
 
 
 class Filter(BaseModel):
