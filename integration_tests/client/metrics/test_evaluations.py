@@ -28,7 +28,6 @@ def test_restart_failed_evaluation(db: Session, client: Client):
                 datum=schemas.Datum(uid="123"),
                 annotations=[
                     schemas.Annotation(
-                        task_type=enums.TaskType.CLASSIFICATION,
                         labels=[schemas.Label(key="class", value="dog")],
                     )
                 ],
@@ -45,7 +44,6 @@ def test_restart_failed_evaluation(db: Session, client: Client):
                 datum=schemas.Datum(uid="123"),
                 annotations=[
                     schemas.Annotation(
-                        task_type=enums.TaskType.CLASSIFICATION,
                         labels=[
                             schemas.Label(key="class", value="dog", score=1.0)
                         ],
@@ -77,6 +75,7 @@ def test_restart_failed_evaluation(db: Session, client: Client):
 
     # get evaluation and verify it is failed
     eval2 = model.evaluate_classification(dataset, allow_retries=False)
+    eval2.wait_for_completion(timeout=30)
     assert eval2.id == eval1.id
     assert eval2.status == enums.EvaluationStatus.FAILED
 

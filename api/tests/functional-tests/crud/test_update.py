@@ -1,7 +1,7 @@
 import pytest
 from sqlalchemy.orm import Session
 
-from valor_api import crud, enums, exceptions, schemas
+from valor_api import crud, exceptions, schemas
 
 
 def test_dataset_finalization(db: Session):
@@ -18,7 +18,6 @@ def test_dataset_finalization(db: Session):
                 datum=schemas.Datum(uid="123"),
                 annotations=[
                     schemas.Annotation(
-                        task_type=enums.TaskType.CLASSIFICATION,
                         labels=[schemas.Label(key="class", value="dog")],
                     )
                 ],

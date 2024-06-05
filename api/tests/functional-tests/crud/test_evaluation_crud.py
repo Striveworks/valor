@@ -16,7 +16,6 @@ def test_evaluation_creation_exceptions(db: Session):
                 datum=schemas.Datum(uid="123"),
                 annotations=[
                     schemas.Annotation(
-                        task_type=enums.TaskType.CLASSIFICATION,
                         labels=[schemas.Label(key="class", value="dog")],
                     )
                 ],
@@ -100,7 +99,6 @@ def test_evaluation_creation_exceptions(db: Session):
                 datum=schemas.Datum(uid="123"),
                 annotations=[
                     schemas.Annotation(
-                        task_type=enums.TaskType.CLASSIFICATION,
                         labels=[
                             schemas.Label(key="class", value="dog", score=1.0)
                         ],
@@ -136,7 +134,6 @@ def test_restart_failed_evaluation(db: Session):
                 datum=schemas.Datum(uid="123"),
                 annotations=[
                     schemas.Annotation(
-                        task_type=enums.TaskType.CLASSIFICATION,
                         labels=[schemas.Label(key="class", value="dog")],
                     )
                 ],
@@ -153,7 +150,6 @@ def test_restart_failed_evaluation(db: Session):
                 datum=schemas.Datum(uid="123"),
                 annotations=[
                     schemas.Annotation(
-                        task_type=enums.TaskType.CLASSIFICATION,
                         labels=[
                             schemas.Label(key="class", value="dog", score=1.0)
                         ],
