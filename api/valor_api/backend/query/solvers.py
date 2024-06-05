@@ -310,8 +310,10 @@ def _solve_graph(
     tables: set[TableTypeAlias],
 ):
     """TODO"""
-    if label_source is LabelSourceAlias:
-        raise ValueError
+    if label_source not in {GroundTruth, Prediction, Annotation}:
+        raise ValueError(
+            "Label source must be either GroundTruth, Prediction or Annotation."
+        )
 
     table_mapping = map_label_source_to_neighbor_tables[label_source]
     join_mapping = map_label_source_to_neighbor_joins[label_source]
@@ -371,10 +373,12 @@ def generate_filter_query(
     prefix: str,
 ) -> Subquery[Any]:
     """TODO"""
-    tree, ordered_ctes, ordered_tables = generate_dependencies(conditions)
+    if label_source not in {Annotation, GroundTruth, Prediction}:
+        raise ValueError(f"Invalid label source '{label_source}'.")
 
+    tree, ordered_ctes, ordered_tables = generate_dependencies(conditions)
     if tree is None:
-        raise ValueError
+        raise ValueError(f"Invalid function given as input. '{conditions}'")
 
     tables = set(ordered_tables)
     tables.discard(select_from)
