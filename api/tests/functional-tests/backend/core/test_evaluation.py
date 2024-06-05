@@ -826,7 +826,23 @@ def test__fetch_evaluations_and_mark_for_deletion(
     db: Session, finalized_dataset: str, finalized_model: str
 ):
     # create two evaluations
-    for pr_curves in [True, False]:
+    for metrics_to_return in [
+        [
+            "Precision",
+            "Recall",
+            "F1",
+            "Accuracy",
+            "ROCAUC",
+        ],
+        [
+            "Precision",
+            "Recall",
+            "F1",
+            "Accuracy",
+            "ROCAUC",
+            "PrecisionRecallCurve",
+        ],
+    ]:
         core.create_or_get_evaluations(
             db,
             schemas.EvaluationRequest(
@@ -834,7 +850,7 @@ def test__fetch_evaluations_and_mark_for_deletion(
                 datum_filter=schemas.Filter(dataset_names=[finalized_dataset]),
                 parameters=schemas.EvaluationParameters(
                     task_type=enums.TaskType.CLASSIFICATION,
-                    compute_pr_curves=pr_curves,
+                    metrics_to_return=metrics_to_return,
                 ),
                 meta={},
             ),

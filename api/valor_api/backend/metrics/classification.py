@@ -627,7 +627,7 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
     groundtruth_filter: schemas.Filter,
     grouper_key: str,
     grouper_mappings: dict[str, dict[str, dict]],
-    compute_pr_curves: bool,
+    metrics_to_return: list[str],
 ) -> (
     tuple[
         schemas.ConfusionMatrix,
@@ -654,8 +654,8 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
         The filter to be used to query groundtruths.
     grouper_mappings: dict[str, dict[str, dict]]
         A dictionary of mappings that connect groupers to their related labels.
-    compute_pr_curves: bool
-        A boolean which determines whether we calculate precision-recall curves or not.
+    metrics: list[str]
+        The list of metrics to compute, store, and return to the user.
 
     Returns
     -------
@@ -728,7 +728,7 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
         ),
     ]
 
-    if compute_pr_curves:
+    if "PrecisionRecallCurve" in metrics_to_return:
         # calculate the number of unique datums
         # used to determine the number of true negatives
         pd_datums = db.query(
@@ -795,7 +795,7 @@ def _compute_clf_metrics(
     db: Session,
     prediction_filter: schemas.Filter,
     groundtruth_filter: schemas.Filter,
-    compute_pr_curves: bool,
+    metrics_to_return: list[str],
     label_map: LabelMapType | None = None,
 ) -> tuple[
     list[schemas.ConfusionMatrix],
@@ -819,8 +819,8 @@ def _compute_clf_metrics(
         The filter to be used to query predictions.
     groundtruth_filter : schemas.Filter
         The filter to be used to query groundtruths.
-    compute_pr_curves: bool
-        A boolean which determines whether we calculate precision-recall curves or not.
+    metrics: list[str]
+        The list of metrics to compute, store, and return to the user.
     label_map: LabelMapType, optional
         Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
 
@@ -853,7 +853,7 @@ def _compute_clf_metrics(
             groundtruth_filter=groundtruth_filter,
             grouper_key=grouper_key,
             grouper_mappings=grouper_mappings,
-            compute_pr_curves=compute_pr_curves,
+            metrics_to_return=metrics_to_return,
         )
         if cm_and_metrics is not None:
             confusion_matrices.append(cm_and_metrics[0])
@@ -905,11 +905,7 @@ def compute_clf_metrics(
         prediction_filter=prediction_filter,
         groundtruth_filter=groundtruth_filter,
         label_map=parameters.label_map,
-        compute_pr_curves=(
-            parameters.compute_pr_curves
-            if parameters.compute_pr_curves is not None
-            else False
-        ),
+        metrics_to_return=parameters.metrics_to_return,  # type: ignore - metrics_to_return is guaranteed not to be None
     )
 
     confusion_matrices_mappings = create_metric_mappings(

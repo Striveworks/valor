@@ -194,12 +194,7 @@ test('evaluation methods', async () => {
       modelName,
       datasetName,
       'classification',
-      null,
-      null,
-      null,
-      null,
-      true,
-      null
+      ['Precision', 'Recall', 'F1', 'Accuracy', 'ROCAUC', 'PrecisionRecallCurve']
     );
     expect(['running', 'pending', 'done']).toContain(evaluation.status);
 

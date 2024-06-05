@@ -20,7 +20,40 @@ from valor_api.backend import core
 
 def test_restart_failed_evaluation(db: Session, client: Client):
     crud.create_dataset(db=db, dataset=schemas.Dataset(name="dataset"))
+    crud.create_groundtruths(
+        db=db,
+        groundtruths=[
+            schemas.GroundTruth(
+                dataset_name="dataset",
+                datum=schemas.Datum(uid="123"),
+                annotations=[
+                    schemas.Annotation(
+                        task_type=enums.TaskType.CLASSIFICATION,
+                        labels=[schemas.Label(key="class", value="dog")],
+                    )
+                ],
+            )
+        ],
+    )
     crud.create_model(db=db, model=schemas.Model(name="model"))
+    crud.create_predictions(
+        db=db,
+        predictions=[
+            schemas.Prediction(
+                dataset_name="dataset",
+                model_name="model",
+                datum=schemas.Datum(uid="123"),
+                annotations=[
+                    schemas.Annotation(
+                        task_type=enums.TaskType.CLASSIFICATION,
+                        labels=[
+                            schemas.Label(key="class", value="dog", score=1.0)
+                        ],
+                    )
+                ],
+            )
+        ],
+    )
     crud.finalize(db=db, dataset_name="dataset")
 
     # retrieve dataset and model on the client-side
@@ -31,7 +64,7 @@ def test_restart_failed_evaluation(db: Session, client: Client):
 
     # create evaluation and overwrite status to failed
     eval1 = model.evaluate_classification(dataset, allow_retries=False)
-    assert eval1.status == enums.EvaluationStatus.DONE
+    assert eval1.status == enums.EvaluationStatus.PENDING
     try:
         evaluation = core.fetch_evaluation_from_id(
             db=db, evaluation_id=eval1.id
@@ -49,6 +82,7 @@ def test_restart_failed_evaluation(db: Session, client: Client):
 
     # get evaluation and allow retries, this should result in a finished eval
     eval3 = model.evaluate_classification(dataset, allow_retries=True)
+    eval3.wait_for_completion(timeout=30)
     assert eval3.id == eval1.id
     assert eval3.status == enums.EvaluationStatus.DONE
 

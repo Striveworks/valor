@@ -692,7 +692,18 @@ def test_compute_classification(
     )
 
     confusion, metrics = _compute_clf_metrics(
-        db, model_filter, datum_filter, label_map=None, compute_pr_curves=True
+        db,
+        model_filter,
+        datum_filter,
+        label_map=None,
+        metrics_to_return=[
+            "Precision",
+            "Recall",
+            "F1",
+            "Accuracy",
+            "ROCAUC",
+            "PrecisionRecallCurve",
+        ],
     )
 
     # Make matrices accessible by label_key
