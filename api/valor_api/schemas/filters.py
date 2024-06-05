@@ -1052,89 +1052,115 @@ class AdvancedFilter(BaseModel):
             else:
                 return None
 
-        groundtruth_filter = [
-            expr
-            for expr in [
-                dataset_names,
-                dataset_metadata,
-                datum_uids,
-                datum_metadata,
-                annotation_task_types,
-                annotation_metadata,
-                annotation_box,
-                annotation_box_area,
-                annotation_polygon,
-                annotation_polygon_area,
-                annotation_raster,
-                annotation_raster_area,
-                labels,
-                label_keys,
-                label_ids,
+        groundtruth_filter = and_if_list(
+            [
+                expr
+                for expr in [
+                    dataset_names,
+                    dataset_metadata,
+                    datum_uids,
+                    datum_metadata,
+                    annotation_task_types,
+                    annotation_metadata,
+                    annotation_box,
+                    annotation_box_area,
+                    annotation_polygon,
+                    annotation_polygon_area,
+                    annotation_raster,
+                    annotation_raster_area,
+                    labels,
+                    label_keys,
+                    label_ids,
+                ]
+                if expr is not None
             ]
-            if expr is not None
-        ]
-        prediction_filter = [
-            expr
-            for expr in [
-                dataset_names,
-                dataset_metadata,
-                datum_uids,
-                datum_metadata,
-                model_names,
-                model_metadata,
-                annotation_task_types,
-                annotation_metadata,
-                annotation_box,
-                annotation_box_area,
-                annotation_polygon,
-                annotation_polygon_area,
-                annotation_raster,
-                annotation_raster_area,
-                labels,
-                label_keys,
-                label_ids,
-                label_scores,
+        )
+        prediction_filter = and_if_list(
+            [
+                expr
+                for expr in [
+                    dataset_names,
+                    dataset_metadata,
+                    datum_uids,
+                    datum_metadata,
+                    model_names,
+                    model_metadata,
+                    annotation_task_types,
+                    annotation_metadata,
+                    annotation_box,
+                    annotation_box_area,
+                    annotation_polygon,
+                    annotation_polygon_area,
+                    annotation_raster,
+                    annotation_raster_area,
+                    labels,
+                    label_keys,
+                    label_ids,
+                    label_scores,
+                ]
+                if expr is not None
             ]
-            if expr is not None
-        ]
-        annotation_filter = [
-            expr
-            for expr in [
-                dataset_names,
-                dataset_metadata,
-                datum_uids,
-                datum_metadata,
-                model_names,
-                model_metadata,
-                annotation_task_types,
-                annotation_metadata,
-                annotation_box,
-                annotation_box_area,
-                annotation_polygon,
-                annotation_polygon_area,
-                annotation_raster,
-                annotation_raster_area,
+        )
+        annotation_filter = and_if_list(
+            [
+                expr
+                for expr in [
+                    datum_uids,
+                    datum_metadata,
+                    annotation_task_types,
+                    annotation_metadata,
+                    annotation_box,
+                    annotation_box_area,
+                    annotation_polygon,
+                    annotation_polygon_area,
+                    annotation_raster,
+                    annotation_raster_area,
+                ]
+                if expr is not None
             ]
-            if expr is not None
-        ]
-        label_filter = [
-            expr
-            for expr in [
-                labels,
-                label_keys,
-                label_ids,
-                label_scores,
+        )
+        label_filter = and_if_list(
+            [
+                expr
+                for expr in [
+                    labels,
+                    label_keys,
+                    label_ids,
+                    label_scores,
+                ]
+                if expr is not None
             ]
-            if expr is not None
-        ]
+        )
+        dataset_filter = and_if_list(
+            [
+                expr
+                for expr in [
+                    dataset_names,
+                    dataset_metadata,
+                ]
+                if expr is not None
+            ]
+        )
+        model_filter = and_if_list(
+            [
+                expr
+                for expr in [
+                    model_names,
+                    model_metadata,
+                ]
+                if expr is not None
+            ]
+        )
 
         f = cls()
         if ignore_groundtruths:
-            f.predictions = and_if_list(values=prediction_filter)
+            f.predictions = prediction_filter
         elif ignore_predictions:
-            f.groundtruths = and_if_list(values=groundtruth_filter)
+            f.groundtruths = groundtruth_filter
         else:
-            f.annotations = and_if_list(values=annotation_filter)
-            f.labels = and_if_list(values=label_filter)
+            f.annotations = annotation_filter
+            f.labels = label_filter
+            f.models = model_filter
+            f.datasets = dataset_filter
 
         return f
