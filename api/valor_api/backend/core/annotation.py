@@ -75,8 +75,6 @@ def _create_annotation(
         polygon = annotation.polygon.to_wkt()
     if annotation.raster:
         raster = annotation.raster.to_psql()
-    if annotation.raster:
-        raster = annotation.raster.to_psql()
     if annotation.embedding:
         embedding_id = _create_embedding(db=db, value=annotation.embedding)
 
