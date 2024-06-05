@@ -158,15 +158,19 @@ def create_cte(
     opstr: str, symbol: Symbol, value: Value | None = None
 ) -> tuple[TableTypeAlias, CTE]:
     if not isinstance(symbol, Symbol):
-        raise ValueError
+        raise ValueError(f"CTE passed a symbol with type '{type(symbol)}'.")
     elif not isinstance(value, Value) and value is not None:
-        raise ValueError
+        raise ValueError(f"CTE passed a value with type '{type(value)}'.")
     elif value and symbol.type != value.type:
-        if (
-            not symbol.attribute
-            or attribute_type[symbol.attribute] != value.type
-        ):
-            raise ValueError
+        symbol_type = (
+            attribute_type[symbol.attribute]
+            if symbol.attribute
+            else symbol.type
+        )
+        if symbol_type != value.type:
+            raise TypeError(
+                f"Type mismatch between symbol and value. {symbol_type} != {value.type}."
+            )
 
     op = opstr_to_operator[opstr]
     table, lhs = symbol_name_to_table_value_tuple[symbol.name]
