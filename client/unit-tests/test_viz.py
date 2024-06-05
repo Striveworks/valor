@@ -4,10 +4,11 @@ import pytest
 
 from valor import Annotation, GroundTruth, Label
 from valor.metatypes import ImageMetadata
-from valor.schemas import MultiPolygon, Polygon, Raster
+from valor.schemas import Box, MultiPolygon, Polygon, Raster
 from valor.viz import (
     _polygons_to_binary_mask,
     create_combined_segmentation_mask,
+    draw_bounding_box_on_image,
     draw_detections_on_image,
 )
 
@@ -180,6 +181,30 @@ def test_draw_detections_on_image(bounding_poly: Polygon):
     img = PIL.Image.new("RGB", (300, 300))
 
     img = draw_detections_on_image(detections, img)
+
+    assert img.size == (300, 300)
+
+    # check unique colors only have red component
+    unique_rgb = np.unique(np.array(img).reshape(-1, 3), axis=0)
+    assert unique_rgb[:, 1:].sum() == 0
+
+
+def test_draw_bounding_box_on_image():
+    box = Box(
+        value=[
+            [
+                (10, 20),
+                (10, 30),
+                (20, 30),
+                (20, 20),
+                (10, 20),
+            ]
+        ]
+    )
+
+    img = PIL.Image.new("RGB", (300, 300))
+
+    img = draw_bounding_box_on_image(bounding_box=box, img=img)
 
     assert img.size == (300, 300)
 

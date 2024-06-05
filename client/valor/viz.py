@@ -192,8 +192,6 @@ def draw_bounding_box_on_image(
         Pillow image with bounding box drawn on it.
     """
     coords = bounding_box.get_value()
-    if not coords:
-        raise ValueError("Bounding box contains 'None'")
     return _draw_bounding_polygon_on_image(
         schemas.Polygon(coords), img, color=color, inplace=False
     )

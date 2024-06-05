@@ -523,6 +523,30 @@ def test_get_evaluations(
     combined = first + second
     assert len(combined)
 
+    evaluations, headers = core.get_paginated_evaluations(
+        db=db,
+        dataset_names=[finalized_dataset],
+        model_names=[finalized_model],
+        offset=0,
+        limit=6,
+        metrics_to_sort_by={"IOU": {"k1": "v1"}},
+    )
+
+    assert len(evaluations) == 2
+    assert headers == {"content-range": "items 0-1/2"}
+
+    # test that we can reconstitute the full set using paginated calls
+    first, header = core.get_paginated_evaluations(db, offset=1, limit=1)
+    assert len(first) == 1
+    assert header == {"content-range": "items 1-1/2"}
+
+    second, header = core.get_paginated_evaluations(db, offset=0, limit=1)
+    assert len(second) == 1
+    assert header == {"content-range": "items 0-0/2"}
+
+    combined = first + second
+    assert len(combined)
+
 
 def test_get_evaluation_requests_from_model(
     db: Session, finalized_dataset: str, finalized_model: str
