@@ -947,6 +947,7 @@ def test_detection_exceptions(db: Session):
                         bounding_box=schemas.Box.from_extrema(
                             xmin=0, xmax=1, ymin=0, ymax=1
                         ),
+                        is_instance=True,
                     )
                 ],
             )
@@ -974,6 +975,7 @@ def test_detection_exceptions(db: Session):
                         bounding_box=schemas.Box.from_extrema(
                             xmin=0, xmax=1, ymin=0, ymax=1
                         ),
+                        is_instance=True,
                     )
                 ],
             )

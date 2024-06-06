@@ -229,6 +229,7 @@ def test_post_groundtruth_bbox_detection(client: TestClient):
                         [0, 0],
                     ]
                 ],
+                "is_instance": True,
             }
         ],
     }
@@ -284,6 +285,7 @@ def test_post_groundtruth_polygon_detection(client: TestClient):
                         [4, 4],
                     ],
                 ],
+                "is_instance": True,
             }
         ],
     }
@@ -377,6 +379,7 @@ def test_get_groundtruth(crud, client: TestClient):
                         [0, 0],
                     ]
                 ],
+                "is_instance": True,
             }
         ],
     }
@@ -513,6 +516,7 @@ def test_post_prediction_bbox_detection(client: TestClient):
                         [0, 0],
                     ]
                 ],
+                "is_instance": True,
             },
         ],
     }
@@ -570,6 +574,7 @@ def test_post_prediction_polygon_detection(client: TestClient):
                         [4, 4],
                     ],
                 ],
+                "is_instance": True,
             }
         ],
     }
@@ -670,6 +675,7 @@ def test_get_prediction(crud, client: TestClient):
                         [0, 0],
                     ]
                 ],
+                "is_instance": True,
             },
         ],
     }

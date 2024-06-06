@@ -233,6 +233,7 @@ def groundtruth_annotations_cat(
             bounding_box=schemas.Box.from_extrema(
                 xmin=0, ymin=0, xmax=10, ymax=10
             ),
+            is_instance=True,
             metadata=metadata_1,
         ),
         schemas.Annotation(
@@ -240,6 +241,7 @@ def groundtruth_annotations_cat(
             bounding_box=schemas.Box.from_extrema(
                 xmin=0, ymin=0, xmax=1, ymax=50
             ),
+            is_instance=True,
             metadata=metadata_2,
         ),
         schemas.Annotation(
@@ -274,6 +276,7 @@ def groundtruth_annotations_dog(
             bounding_box=schemas.Box.from_extrema(
                 xmin=0, ymin=0, xmax=10, ymax=10
             ),
+            is_instance=True,
             metadata=metadata_3,
         ),
         schemas.Annotation(
@@ -281,6 +284,7 @@ def groundtruth_annotations_dog(
             bounding_box=schemas.Box.from_extrema(
                 xmin=0, ymin=0, xmax=1, ymax=50
             ),
+            is_instance=True,
             metadata=metadata_4,
         ),
         schemas.Annotation(
@@ -320,6 +324,7 @@ def prediction_annotations_cat(
             bounding_box=schemas.Box.from_extrema(
                 xmin=0, ymin=0, xmax=10, ymax=10
             ),
+            is_instance=True,
             metadata=metadata_1,
         ),
         schemas.Annotation(
@@ -330,6 +335,7 @@ def prediction_annotations_cat(
             bounding_box=schemas.Box.from_extrema(
                 xmin=0, ymin=0, xmax=1, ymax=50
             ),
+            is_instance=True,
             metadata=metadata_2,
         ),
         schemas.Annotation(
@@ -375,6 +381,7 @@ def prediction_annotations_dog(
             bounding_box=schemas.Box.from_extrema(
                 xmin=0, ymin=0, xmax=10, ymax=10
             ),
+            is_instance=True,
             metadata=metadata_3,
         ),
         schemas.Annotation(
@@ -385,6 +392,7 @@ def prediction_annotations_dog(
             bounding_box=schemas.Box.from_extrema(
                 xmin=0, ymin=0, xmax=1, ymax=50
             ),
+            is_instance=True,
             metadata=metadata_4,
         ),
         schemas.Annotation(

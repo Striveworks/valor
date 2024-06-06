@@ -106,6 +106,7 @@ def groundtruth_detections(
                             ]
                         ]
                     ),
+                    is_instance=True,
                 ),
                 schemas.Annotation(
                     labels=[schemas.Label(key="k2", value="v2")],
@@ -121,6 +122,7 @@ def groundtruth_detections(
                             ]
                         ]
                     ),
+                    is_instance=True,
                 ),
             ],
         )
@@ -155,6 +157,7 @@ def prediction_detections(
                             ]
                         ]
                     ),
+                    is_instance=True,
                 ),
                 schemas.Annotation(
                     labels=[
@@ -172,6 +175,7 @@ def prediction_detections(
                             ]
                         ]
                     ),
+                    is_instance=True,
                 ),
             ],
         )
@@ -197,6 +201,7 @@ def groundtruth_instance_segmentations(
                 schemas.Annotation(
                     labels=[schemas.Label(key="k1", value="v1")],
                     polygon=poly_with_hole,
+                    is_instance=True,
                 ),
             ],
         ),
@@ -207,10 +212,12 @@ def groundtruth_instance_segmentations(
                 schemas.Annotation(
                     labels=[schemas.Label(key="k1", value="v1")],
                     polygon=poly_without_hole,
+                    is_instance=True,
                 ),
                 schemas.Annotation(
                     labels=[schemas.Label(key="k3", value="v3")],
                     polygon=poly_without_hole,
+                    is_instance=True,
                 ),
                 schemas.Annotation(
                     labels=[schemas.Label(key="k1", value="v1")],
@@ -539,6 +546,7 @@ def test_create_detections_as_bbox_or_poly(
                 ]
             ]
         ),
+        is_instance=True,
     )
 
     det2 = schemas.Annotation(
@@ -549,6 +557,7 @@ def test_create_detections_as_bbox_or_poly(
             xmax=xmax,
             ymax=ymax,
         ),
+        is_instance=True,
     )
 
     crud.create_dataset(db=db, dataset=schemas.Dataset(name=dataset_name))

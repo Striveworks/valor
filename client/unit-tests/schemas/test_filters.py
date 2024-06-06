@@ -2,7 +2,6 @@ import datetime
 from dataclasses import asdict
 
 from valor import Annotation, Dataset, Datum, Filter, Label, Model
-from valor.enums import TaskType
 
 
 def test_empty_filter():
@@ -75,10 +74,7 @@ def test_declarative_filtering():
                 {"value": {"duration": 172800.0}, "operator": "<="},
             ]
         },
-        "task_types": [
-            TaskType.CLASSIFICATION.value,
-            TaskType.OBJECT_DETECTION.value,
-        ],
+        "task_types": None,
         "require_bounding_box": True,
         "bounding_box_area": [
             {"value": 1000, "operator": ">="},

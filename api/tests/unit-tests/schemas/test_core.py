@@ -158,6 +158,7 @@ def test_annotation_without_scores(metadata, bbox, polygon, raster, labels):
         labels=labels,
         metadata={},
         bounding_box=bbox,
+        is_instance=True,
     )
     schemas.Annotation(
         labels=labels,
@@ -170,10 +171,12 @@ def test_annotation_without_scores(metadata, bbox, polygon, raster, labels):
     schemas.Annotation(
         labels=labels,
         bounding_box=bbox,
+        is_instance=True,
     )
     schemas.Annotation(
         labels=labels,
         raster=raster,
+        is_instance=True,
     )
     schemas.Annotation(
         labels=[],
@@ -229,11 +232,13 @@ def test_annotation_with_scores(
         labels=scored_labels,
         metadata={},
         bounding_box=bbox,
+        is_instance=True,
     )
     schemas.Annotation(
         labels=scored_labels,
         metadata={},
         raster=raster,
+        is_instance=True,
     )
     schemas.Annotation(
         labels=scored_labels,
@@ -241,10 +246,12 @@ def test_annotation_with_scores(
     schemas.Annotation(
         labels=scored_labels,
         bounding_box=bbox,
+        is_instance=True,
     )
     schemas.Annotation(
         labels=scored_labels,
         raster=raster,
+        is_instance=True,
     )
 
     # test property `scored_labels`
@@ -462,6 +469,7 @@ def test_prediction(metadata, predicted_annotations, labels, scored_labels):
                 schemas.Annotation(
                     labels=labels,
                     bounding_box=schemas.Box.from_extrema(0, 1, 0, 1),
+                    is_instance=True,
                 )
             ],
         )
@@ -500,7 +508,7 @@ def test_prediction(metadata, predicted_annotations, labels, scored_labels):
                 schemas.Annotation(labels=scored_labels[1:], is_instance=True)
             ],
         )
-    assert "is_instance should only be used when passing a Raster" in str(
+    assert "supports bounding_box, polygon and raster" in str(
         e.value.errors()[0]["msg"]
     )
 

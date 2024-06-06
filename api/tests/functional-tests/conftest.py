@@ -217,6 +217,7 @@ def groundtruths(
                         xmax=box[2],
                         ymax=box[3],
                     ),
+                    is_instance=True,
                 )
                 for box, class_label in zip(gts["boxes"], gts["labels"])
             ],
@@ -328,6 +329,7 @@ def predictions(
                         xmax=box[2],
                         ymax=box[3],
                     ),
+                    is_instance=True,
                 )
                 for box, class_label, score in zip(
                     preds["boxes"], preds["labels"], preds["scores"]
@@ -597,6 +599,7 @@ def groundtruth_detections(
                             ]
                         ]
                     ),
+                    is_instance=True,
                 ),
                 schemas.Annotation(
                     labels=[schemas.Label(key="k2", value="v2")],
@@ -622,6 +625,7 @@ def groundtruth_detections(
                             ]
                         ]
                     ),
+                    is_instance=True,
                 ),
             ],
         ),
@@ -649,6 +653,7 @@ def groundtruth_detections(
                     raster=schemas.Raster.from_numpy(
                         np.zeros((80, 32), dtype=bool)
                     ),
+                    is_instance=True,
                 ),
                 schemas.Annotation(
                     labels=[schemas.Label(key="k2", value="v2")],
@@ -690,6 +695,7 @@ def prediction_detections(
                             ]
                         ]
                     ),
+                    is_instance=True,
                 ),
                 schemas.Annotation(
                     labels=[
@@ -707,6 +713,7 @@ def prediction_detections(
                             ]
                         ]
                     ),
+                    is_instance=True,
                 ),
             ],
         )
@@ -779,6 +786,7 @@ def created_dataset(db: Session, dataset_name: str) -> str:
                         bounding_box=schemas.Box.from_extrema(
                             xmin=0, xmax=1, ymin=0, ymax=1
                         ),
+                        is_instance=True,
                     )
                 ],
             ),
@@ -837,6 +845,7 @@ def created_model(db: Session, model_name: str, created_dataset: str) -> str:
                         bounding_box=schemas.Box.from_extrema(
                             xmin=0, xmax=1, ymin=0, ymax=1
                         ),
+                        is_instance=True,
                     )
                 ],
             ),

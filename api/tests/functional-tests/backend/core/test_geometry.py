@@ -62,14 +62,17 @@ def create_object_detection_dataset(
             Annotation(
                 labels=labels,
                 bounding_box=bbox,
+                is_instance=True,
             ),
             Annotation(
                 labels=labels,
                 polygon=polygon,
+                is_instance=True,
             ),
             Annotation(
                 labels=labels,
                 raster=raster,
+                is_instance=True,
             ),
         ],
     )

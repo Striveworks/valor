@@ -340,7 +340,7 @@ class Annotation(BaseModel):
             and values.data["bounding_box"] is None
         ):
             raise ValueError(
-                "is_instance should only be used when passing a object detection to the Annotation."
+                "is_instance=True currently only supports bounding_box, polygon and raster."
             )
         return is_instance
 
