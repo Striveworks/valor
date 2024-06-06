@@ -1,13 +1,36 @@
-from typing import Sequence
+from typing import Callable, Sequence
 
 import numpy
 import pytest
 from sqlalchemy import distinct, func
+from sqlalchemy.exc import ArgumentError
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 
 from valor_api import crud, schemas
-from valor_api.backend import Query, models
+from valor_api.backend import models
+from valor_api.backend.query.ops import (
+    select_from_annotations,
+    select_from_groundtruths,
+    select_from_predictions,
+)
+from valor_api.schemas.filters import AdvancedFilter as Filter
+from valor_api.schemas.filters import (
+    And,
+    Equal,
+    GreaterThan,
+    GreaterThanEqual,
+    Inside,
+    Intersects,
+    IsNotNull,
+    LessThan,
+    LessThanEqual,
+    NotEqual,
+    Operands,
+    Outside,
+    Symbol,
+    Value,
+)
 
 dset_name = "dataset1"
 model_name1 = "model1"
@@ -648,28 +671,75 @@ def model_sim(
     crud.finalize(db=db, dataset_name=dset_name, model_name=model_name2)
 
 
+def create_dataset_filter(name: str) -> Equal:
+    return Equal(
+        eq=Operands(
+            lhs=Symbol(type="string", name="dataset.name"),
+            rhs=Value(type="string", value=name),
+        )
+    )
+
+
+def create_model_filter(name: str) -> Equal:
+    return Equal(
+        eq=Operands(
+            lhs=Symbol(type="string", name="model.name"),
+            rhs=Value(type="string", value=name),
+        )
+    )
+
+
+def create_datum_filter(uid: str) -> Equal:
+    return Equal(
+        eq=Operands(
+            lhs=Symbol(type="string", name="datum.uid"),
+            rhs=Value(type="string", value=uid),
+        )
+    )
+
+
+def create_label_filter(key: str, value: str) -> And:
+    return And(
+        logical_and=[
+            Equal(
+                eq=Operands(
+                    lhs=Symbol(type="string", name="label.key"),
+                    rhs=Value(type="string", value=key),
+                )
+            ),
+            Equal(
+                eq=Operands(
+                    lhs=Symbol(type="string", name="label.value"),
+                    rhs=Value(type="string", value=value),
+                )
+            ),
+        ]
+    )
+
+
 def test_query_datasets(
     db: Session,
     model_sim,
 ):
     # Check that passing a non-InstrumentedAttribute returns None
-    with pytest.raises(NotImplementedError):  # type: ignore
-        Query("not_a_valid_attribute")
+    with pytest.raises(ArgumentError):
+        select_from_groundtruths("not a valid attribute")
 
     # Q: Get names for datasets where label class=cat exists in groundtruths.
-    f = schemas.Filter(labels=[{"class": "cat"}])
-    query_obj = Query(distinct(models.Dataset.name))
-    assert len(query_obj._selected) == 1
-    q = query_obj.filter(f).groundtruths()
-
-    dataset_names = db.query(q).all()  # type: ignore - SQLAlchemy type issue
+    f = Filter(groundtruths=create_label_filter(key="class", value="cat"))
+    dataset_names = select_from_groundtruths(
+        distinct(models.Dataset.name), filter_=f
+    )
+    dataset_names = db.query(dataset_names.subquery()).all()
     assert len(dataset_names) == 1
     assert (dset_name,) in dataset_names
 
     # Q: Get names for datasets where label=tree exists in groundtruths
-    f = schemas.Filter(labels=[{"class": "tree"}])
-    q = Query(models.Dataset.name).filter(f).groundtruths()
-    dataset_names = db.query(q).all()  # type: ignore - SQLAlchemy type issue
+    f = Filter(groundtruths=create_label_filter(key="class", value="tree"))
+    dataset_names = select_from_groundtruths(
+        distinct(models.Dataset.name), filter_=f
+    )
+    dataset_names = db.query(dataset_names.subquery()).all()
     assert len(dataset_names) == 0
 
 
@@ -677,73 +747,81 @@ def test_query_models(
     db: Session,
     model_sim,
 ):
-    # Q: Get names for all models that operate over a dataset that meets the name equality
-    f = schemas.Filter(
-        dataset_names=[dset_name],
+    # Q: Get names for all models that operate over a dataset.
+    f = Filter(
+        predictions=create_dataset_filter(dset_name),
     )
-    q = Query(models.Model.name).filter(f).any()
-    model_names = db.query(q).distinct().all()  # type: ignore - SQLAlchemy type issue
-    assert len(model_names) == 2
-    assert (model_name1,) in model_names
-    assert (model_name2,) in model_names
-
-    # Q: Get names for models where label=cat exists in predictions
-    f = schemas.Filter(labels=[{"class": "cat"}])
-    q = Query(models.Model.name).filter(f).predictions()
-    model_names = db.query(q).distinct().all()  # type: ignore - SQLAlchemy type issue
-    assert len(model_names) == 2
-    assert (model_name1,) in model_names
-    assert (model_name2,) in model_names
-
-    # Q: Get names for models where label=tree exists in predictions
-    f = schemas.Filter(labels=[{"class": "tree"}])
-    q = Query(models.Model.name).filter(f).predictions()
-    model_names = db.query(q).distinct().all()  # type: ignore - SQLAlchemy type issue
-    assert len(model_names) == 0
-
-    # Q: Get names for models that operate over dataset.
-    f = schemas.Filter(dataset_names=[dset_name])
-    q = Query(models.Model.name).filter(f).any()
-    model_names = db.query(q).distinct().all()  # type: ignore - SQLAlchemy type issue
+    model_names = select_from_annotations(
+        models.Model.name, filter_=f
+    ).distinct()
+    model_names = db.query(model_names.subquery()).all()
     assert len(model_names) == 2
     assert (model_name1,) in model_names
     assert (model_name2,) in model_names
 
     # Q: Get names for models that operate over dataset that doesn't exist.
-    f = schemas.Filter(dataset_names=["invalid"])
-    q = Query(models.Model.name).filter(f).any()
-    model_names = db.query(q).distinct().all()  # type: ignore - SQLAlchemy type issue
+    f = Filter(predictions=create_dataset_filter("invalid"))
+    model_names = select_from_annotations(
+        models.Model.name, filter_=f
+    ).distinct()
+    model_names = db.query(model_names.subquery()).all()
+    assert len(model_names) == 0
+
+    # Q: Get names for models where label=cat exists in predictions
+    f = Filter(predictions=create_label_filter(key="class", value="cat"))
+    model_names = select_from_predictions(
+        models.Model.name, filter_=f
+    ).distinct()
+    model_names = db.query(model_names.subquery()).all()
+    assert len(model_names) == 2
+    assert (model_name1,) in model_names
+    assert (model_name2,) in model_names
+
+    # Q: Get names for models where label=tree exists in predictions
+    f = Filter(predictions=create_label_filter(key="class", value="tree"))
+    model_names = select_from_predictions(
+        models.Model.name, filter_=f
+    ).distinct()
+    model_names = db.query(model_names.subquery()).all()
     assert len(model_names) == 0
 
     # Q: Get models with metadatum with `numeric` > 0.5.
-    f = schemas.Filter(
-        model_metadata={
-            "some_numeric_attribute": [
-                schemas.NumericFilter(
-                    value=0.5,
-                    operator=">",
+    f = Filter(
+        predictions=GreaterThan(
+            gt=Operands(
+                lhs=Symbol(
+                    type="float",
+                    name="model.metadata",
+                    key="some_numeric_attribute",
                 ),
-            ]
-        }
+                rhs=Value(type="float", value=0.5),
+            )
+        ),
     )
-    q = Query(models.Model.name).filter(f).any()
-    model_names = db.query(q).distinct().all()  # type: ignore - SQLAlchemy type issue
+    model_names = select_from_predictions(
+        models.Model.name, filter_=f
+    ).distinct()
+    model_names = db.query(model_names.subquery()).all()
     assert len(model_names) == 1
     assert (model_name2,) in model_names
 
     # Q: Get models with metadatum with `numeric` < 0.5.
-    f = schemas.Filter(
-        model_metadata={
-            "some_numeric_attribute": [
-                schemas.NumericFilter(
-                    value=0.5,
-                    operator="<",
+    f = Filter(
+        predictions=LessThan(
+            lt=Operands(
+                lhs=Symbol(
+                    type="float",
+                    name="model.metadata",
+                    key="some_numeric_attribute",
                 ),
-            ]
-        }
+                rhs=Value(type="float", value=0.5),
+            )
+        ),
     )
-    q = Query(models.Model.name).filter(f).any()
-    model_names = db.query(q).distinct().all()  # type: ignore - SQLAlchemy type issue
+    model_names = select_from_predictions(
+        models.Model.name, filter_=f
+    ).distinct()
+    model_names = db.query(model_names.subquery()).all()
     assert len(model_names) == 1
     assert (model_name1,) in model_names
 
@@ -753,124 +831,203 @@ def test_query_by_metadata(
     model_sim,
 ):
     # Q: Get datums with metadatum with `numeric` < 0.5, `str` == 'abc', and `bool` == True.
-    f = schemas.Filter(
-        datum_metadata={
-            "some_numeric_attribute": [
-                schemas.NumericFilter(
-                    value=0.5,
-                    operator="<",
+    f = Filter(
+        datums=And(
+            logical_and=[
+                LessThan(
+                    lt=Operands(
+                        lhs=Symbol(
+                            type="float",
+                            name="datum.metadata",
+                            key="some_numeric_attribute",
+                        ),
+                        rhs=Value(type="float", value=0.5),
+                    )
                 ),
-            ],
-            "some_str_attribute": [
-                schemas.StringFilter(
-                    value="abc",
-                    operator="==",
+                Equal(
+                    eq=Operands(
+                        lhs=Symbol(
+                            type="string",
+                            name="datum.metadata",
+                            key="some_str_attribute",
+                        ),
+                        rhs=Value(type="string", value="abc"),
+                    )
                 ),
-            ],
-            "some_bool_attribute": [
-                schemas.BooleanFilter(
-                    value=True,
-                    operator="==",
-                )
-            ],
-        }
+                Equal(
+                    eq=Operands(
+                        lhs=Symbol(
+                            type="boolean",
+                            name="datum.metadata",
+                            key="some_bool_attribute",
+                        ),
+                        rhs=Value(type="boolean", value=True),
+                    )
+                ),
+            ]
+        )
     )
-    q = Query(models.Datum.uid).filter(f).any()
-    datum_uids = db.query(q).distinct().all()  # type: ignore - SQLAlchemy type issue
+    datum_uids = select_from_annotations(
+        models.Datum.uid, filter_=f
+    ).distinct()
+    datum_uids = db.query(datum_uids.subquery()).all()
     assert len(datum_uids) == 1
     assert (datum_uid1,) in datum_uids
 
     # repeat with `bool` == False or != `True` and check we get nothing
-    for val, op in ([False, "=="], [True, "!="]):
-        f = schemas.Filter(
-            datum_metadata={
-                "some_numeric_attribute": [
-                    schemas.NumericFilter(
-                        value=0.5,
-                        operator="<",
-                    ),
-                ],
-                "some_str_attribute": [
-                    schemas.StringFilter(
-                        value="abc",
-                        operator="==",
-                    ),
-                ],
-                "some_bool_attribute": [
-                    schemas.BooleanFilter(
-                        value=val,
-                        operator=op,
-                    )
-                ],
-            }
+    negative1 = Equal(
+        eq=Operands(
+            lhs=Symbol(
+                type="boolean",
+                name="datum.metadata",
+                key="some_bool_attribute",
+            ),
+            rhs=Value(type="boolean", value=False),
         )
-        q = Query(models.Datum.uid).filter(f).any()
-        datum_uids = db.query(q).distinct().all()  # type: ignore - SQLAlchemy type issue
+    )
+    negative2 = NotEqual(
+        ne=Operands(
+            lhs=Symbol(
+                type="boolean",
+                name="datum.metadata",
+                key="some_bool_attribute",
+            ),
+            rhs=Value(type="boolean", value=True),
+        )
+    )
+    for bool_filter in [negative1, negative2]:
+        f = Filter(
+            groundtruths=And(
+                logical_and=[
+                    LessThan(
+                        lt=Operands(
+                            lhs=Symbol(
+                                type="float",
+                                name="datum.metadata",
+                                key="some_numeric_attribute",
+                            ),
+                            rhs=Value(type="float", value=0.5),
+                        )
+                    ),
+                    Equal(
+                        eq=Operands(
+                            lhs=Symbol(
+                                type="string",
+                                name="datum.metadata",
+                                key="some_str_attribute",
+                            ),
+                            rhs=Value(type="string", value="abc"),
+                        )
+                    ),
+                    bool_filter,
+                ]
+            )
+        )
+        datum_uids = select_from_annotations(
+            models.Datum.uid, filter_=f
+        ).distinct()
+        datum_uids = db.query(datum_uids.subquery()).all()
         assert len(datum_uids) == 0
 
     # Q: Get datums with metadatum with `numeric` > 0.5 and `str` == 'abc'.
-    f = schemas.Filter(
-        datum_metadata={
-            "some_numeric_attribute": [
-                schemas.NumericFilter(
-                    value=0.5,
-                    operator=">",
+    f = Filter(
+        datums=And(
+            logical_and=[
+                GreaterThan(
+                    gt=Operands(
+                        lhs=Symbol(
+                            type="float",
+                            name="datum.metadata",
+                            key="some_numeric_attribute",
+                        ),
+                        rhs=Value(type="float", value=0.5),
+                    )
                 ),
-            ],
-            "some_str_attribute": [
-                schemas.StringFilter(
-                    value="abc",
-                    operator="==",
+                Equal(
+                    eq=Operands(
+                        lhs=Symbol(
+                            type="string",
+                            name="datum.metadata",
+                            key="some_str_attribute",
+                        ),
+                        rhs=Value(type="string", value="abc"),
+                    )
                 ),
-            ],
-        }
+            ]
+        )
     )
-    q = Query(models.Datum.uid).filter(f).any()
-    datum_uids = db.query(q).distinct().all()  # type: ignore - SQLAlchemy type issue
+    datum_uids = select_from_annotations(
+        models.Datum.uid, filter_=f
+    ).distinct()
+    datum_uids = db.query(datum_uids.subquery()).all()
     assert len(datum_uids) == 1
     assert (datum_uid2,) in datum_uids
 
     # Q: Get datums with metadatum with `numeric` < 0.5 and `str` == 'xyz'.
-    f = schemas.Filter(
-        datum_metadata={
-            "some_numeric_attribute": [
-                schemas.NumericFilter(
-                    value=0.5,
-                    operator="<",
+    f = Filter(
+        datums=And(
+            logical_and=[
+                LessThan(
+                    lt=Operands(
+                        lhs=Symbol(
+                            type="float",
+                            name="datum.metadata",
+                            key="some_numeric_attribute",
+                        ),
+                        rhs=Value(type="float", value=0.5),
+                    )
                 ),
-            ],
-            "some_str_attribute": [
-                schemas.StringFilter(
-                    value="xyz",
-                    operator="==",
+                Equal(
+                    eq=Operands(
+                        lhs=Symbol(
+                            type="string",
+                            name="datum.metadata",
+                            key="some_str_attribute",
+                        ),
+                        rhs=Value(type="string", value="xyz"),
+                    )
                 ),
-            ],
-        }
+            ]
+        )
     )
-    q = Query(models.Datum.uid).filter(f).any()
-    datum_uids = db.query(q).distinct().all()  # type: ignore - SQLAlchemy type issue
+    datum_uids = select_from_annotations(
+        models.Datum.uid, filter_=f
+    ).distinct()
+    datum_uids = db.query(datum_uids.subquery()).all()
     assert len(datum_uids) == 1
     assert (datum_uid3,) in datum_uids
 
     # Q: Get models with metadatum with `numeric` > 0.5 and `str` == 'xyz'.
-    f = schemas.Filter(
-        datum_metadata={
-            "some_numeric_attribute": [
-                schemas.NumericFilter(
-                    value=0.5,
-                    operator=">",
+    f = Filter(
+        datums=And(
+            logical_and=[
+                GreaterThan(
+                    gt=Operands(
+                        lhs=Symbol(
+                            type="float",
+                            name="datum.metadata",
+                            key="some_numeric_attribute",
+                        ),
+                        rhs=Value(type="float", value=0.5),
+                    )
                 ),
-            ],
-            "some_str_attribute": [
-                schemas.StringFilter(
-                    value="xyz",
-                    operator="==",
+                Equal(
+                    eq=Operands(
+                        lhs=Symbol(
+                            type="string",
+                            name="datum.metadata",
+                            key="some_str_attribute",
+                        ),
+                        rhs=Value(type="string", value="xyz"),
+                    )
                 ),
-            ],
-        }
+            ]
+        )
     )
-    q = Query(models.Datum.uid).filter(f).any()
-    datum_uids = db.query(q).distinct().all()  # type: ignore - SQLAlchemy type issue
+    datum_uids = select_from_annotations(
+        models.Datum.uid, filter_=f
+    ).distinct()
+    datum_uids = db.query(datum_uids.subquery()).all()
     assert len(datum_uids) == 1
     assert (datum_uid4,) in datum_uids
 
@@ -880,25 +1037,31 @@ def test_query_datums(
     model_sim,
 ):
     # Q: Get datums with groundtruth labels of "cat"
-    f = schemas.Filter(labels=[{"class": "cat"}])
-    q = Query(models.Datum.uid).filter(f).groundtruths()
-    datum_uids = db.query(q).distinct().all()  # type: ignore - SQLAlchemy type issue
+    f = Filter(groundtruths=create_label_filter(key="class", value="cat"))
+    datum_uids = select_from_groundtruths(
+        models.Datum.uid, filter_=f
+    ).distinct()
+    datum_uids = db.query(datum_uids.subquery()).all()
     assert len(datum_uids) == 2
     assert (datum_uid1,) in datum_uids
     assert (datum_uid2,) in datum_uids
 
     # Q: Get datums with groundtruth labels of "dog"
-    f = schemas.Filter(labels=[{"class": "dog"}])
-    q = Query(models.Datum.uid).filter(f).groundtruths()
-    datum_uids = db.query(q).distinct().all()  # type: ignore - SQLAlchemy type issue
+    f = Filter(groundtruths=create_label_filter(key="class", value="dog"))
+    datum_uids = select_from_groundtruths(
+        models.Datum.uid, filter_=f
+    ).distinct()
+    datum_uids = db.query(datum_uids.subquery()).all()
     assert len(datum_uids) == 2
     assert (datum_uid3,) in datum_uids
     assert (datum_uid4,) in datum_uids
 
     # Q: Get datums with prediction labels of "cat"
-    f = schemas.Filter(labels=[{"class": "cat"}])
-    q = Query(models.Datum.uid).filter(f).predictions()
-    datum_uids = db.query(q).distinct().all()  # type: ignore - SQLAlchemy type issue
+    f = Filter(predictions=create_label_filter(key="class", value="cat"))
+    datum_uids = select_from_predictions(
+        models.Datum.uid, filter_=f
+    ).distinct()
+    datum_uids = db.query(datum_uids.subquery()).all()
     assert len(datum_uids) == 4
     assert (datum_uid1,) in datum_uids
     assert (datum_uid2,) in datum_uids
@@ -911,36 +1074,52 @@ def test_complex_queries(
     model_sim,
 ):
     # Q: Get datums that `model1` has annotations for with label `dog` and prediction score > 0.9.
-    f = schemas.Filter(
-        model_names=[model_name1],
-        labels=[{"class": "dog"}],
-        label_scores=[
-            schemas.NumericFilter(
-                value=0.9,
-                operator=">",
-            ),
-        ],
+    f = Filter(
+        predictions=And(
+            logical_and=[
+                create_model_filter(model_name1),
+                create_label_filter(key="class", value="dog"),
+                GreaterThan(
+                    gt=Operands(
+                        lhs=Symbol(type="float", name="label.score"),
+                        rhs=Value(type="float", value=0.9),
+                    )
+                ),
+            ]
+        )
     )
-    q = Query(models.Datum.uid).filter(f).predictions()
-    datum_uids = db.query(q).distinct().all()  # type: ignore - SQLAlchemy type issue
+    datum_uids = select_from_predictions(
+        models.Datum.uid, filter_=f
+    ).distinct()
+    datum_uids = db.query(datum_uids.subquery()).all()
     assert len(datum_uids) == 2
     assert (datum_uid3,) in datum_uids
     assert (datum_uid4,) in datum_uids
 
     # Q: Get datums that `model1` has `bounding_box` annotations for with label `dog` and prediction score > 0.75.
-    f = schemas.Filter(
-        model_names=[model_name1],
-        labels=[{"class": "dog"}],
-        label_scores=[
-            schemas.NumericFilter(
-                value=0.75,
-                operator=">",
-            )
-        ],
-        require_bounding_box=True,
+    f = Filter(
+        predictions=And(
+            logical_and=[
+                create_model_filter(model_name1),
+                create_label_filter(key="class", value="dog"),
+                GreaterThan(
+                    gt=Operands(
+                        lhs=Symbol(type="float", name="label.score"),
+                        rhs=Value(type="float", value=0.75),
+                    )
+                ),
+                IsNotNull(
+                    isnotnull=Symbol(
+                        type="box", name="annotation.bounding_box"
+                    )
+                ),
+            ]
+        )
     )
-    q = Query(models.Datum.uid).filter(f).predictions()
-    datum_uids = db.query(q).distinct().all()  # type: ignore - SQLAlchemy type issue
+    datum_uids = select_from_predictions(
+        models.Datum.uid, filter_=f
+    ).distinct()
+    datum_uids = db.query(datum_uids.subquery()).all()
     assert len(datum_uids) == 2
     assert (datum_uid3,) in datum_uids
     assert (datum_uid4,) in datum_uids
@@ -950,24 +1129,36 @@ def test_query_by_annotation_geometry(
     db: Session,
     model_sim,
 ):
-    f = schemas.Filter(
-        bounding_box_area=[
-            schemas.NumericFilter(
-                value=75,
-                operator=">",
+    bounding_box_filter = GreaterThan(
+        gt=Operands(
+            lhs=Symbol(
+                type="float", name="annotation.bounding_box", attribute="area"
             ),
-        ],
+            rhs=Value(type="float", value=75),
+        )
     )
 
     # Q: Get `bounding_box` annotations that have an area > 75.
-    q = Query(models.Annotation).filter(f).any()
-    annotations = db.query(q).all()  # type: ignore - SQLAlchemy type issue
+    f = Filter(
+        annotations=bounding_box_filter,
+    )
+    annotations = select_from_predictions(models.Annotation, filter_=f)
+    annotations = db.query(annotations.subquery()).all()
     assert len(annotations) == 12
 
     # Q: Get `bounding_box` annotations from `model1` that have an area > 75.
-    f.model_names = [model_name1]
-    q = Query(models.Annotation).filter(f).any()
-    annotations = db.query(q).all()  # type: ignore - SQLAlchemy type issue
+    f = Filter(
+        predictions=And(
+            logical_and=[
+                create_model_filter(model_name1),
+                bounding_box_filter,
+            ]
+        )
+    )
+    annotations = select_from_predictions(
+        models.Annotation, filter_=f
+    ).distinct()
+    annotations = db.query(annotations.subquery()).all()
     assert len(annotations) == 4
 
 
@@ -975,17 +1166,18 @@ def test_multiple_tables_in_args(
     db: Session,
     model_sim,
 ):
-    f = schemas.Filter(
-        datum_uids=[datum_uid1],
+    f = Filter(
+        groundtruths=create_datum_filter(datum_uid1),
+        predictions=create_datum_filter(datum_uid1),
     )
 
     # Q: Get model + dataset name pairings for a datum with `uid1` using the full tables
-    name_pairings = (
-        db.query(Query(models.Model.name, models.Dataset.name).filter(f).any())  # type: ignore - SQLAlchemy type issue
-        .distinct()
-        .all()
-    )
-    assert len(name_pairings) == 2
+    pairings = select_from_annotations(
+        models.Model, models.Dataset, filter_=f
+    ).distinct()
+    pairings = db.query(pairings.subquery()).all()
+    assert len(pairings) == 2
+    name_pairings = [(pair[1], pair[6]) for pair in pairings]
     assert (
         model_name1,
         dset_name,
@@ -996,8 +1188,10 @@ def test_multiple_tables_in_args(
     ) in name_pairings
 
     # Q: Get model + dataset name pairings for a datum with `uid1` using the table attributes directly
-    q = Query(models.Model.name, models.Dataset.name).filter(f).any()
-    name_pairings = db.query(q).distinct().all()  # type: ignore - SQLAlchemy type issue
+    name_pairings = select_from_annotations(
+        models.Model.name, models.Dataset.name, filter_=f
+    ).distinct()
+    name_pairings = db.query(name_pairings.subquery()).all()
     assert len(name_pairings) == 2
     assert (
         model_name1,
@@ -1009,14 +1203,11 @@ def test_multiple_tables_in_args(
     ) in name_pairings
 
     # Q: Get model + dataset name pairings for a datum with `uid1` using a mix of full tables and attributes
-    q = Query(models.Model.name, models.Dataset).filter(f).any()
-    name_pairings = [
-        (
-            pair[0],
-            pair[2],
-        )
-        for pair in db.query(q).distinct().all()  # type: ignore - SQLAlchemy type issue
-    ]
+    pairings = select_from_annotations(
+        models.Model.name, models.Dataset, filter_=f
+    ).distinct()
+    pairings = db.query(pairings.subquery()).all()
+    name_pairings = [(pair[0], pair[2]) for pair in pairings]
     assert len(name_pairings) == 2
     assert (
         model_name1,
@@ -1028,50 +1219,90 @@ def test_multiple_tables_in_args(
     ) in name_pairings
 
 
-def _get_geospatial_names_from_filter(
-    db: Session,
-    geodict: dict[
-        str,
-        list[list[list[list[float | int]]]]
-        | list[list[list[float | int]]]
-        | list[float | int]
-        | str,
-    ],
-    operator: str,
-    model_object: models.Datum | InstrumentedAttribute,
-    arg_name: str,
+def create_geospatial_inside_filter(
+    symbol_name: str,
+    value: Value,
 ):
-    f = schemas.Filter(
-        **{
-            arg_name: {
-                "some_geo_attribute": [
-                    schemas.GeospatialFilter(
-                        value=geodict,  # type: ignore - conversion should occur
-                        operator=operator,
-                    ),
-                ]
-            }
-        }  # type: ignore
+    return Inside(
+        inside=Operands(
+            lhs=Symbol(
+                type=value.type, name=symbol_name, key="some_geo_attribute"
+            ),
+            rhs=value,
+        )
     )
 
-    q = Query(model_object).filter(f).any()
-    names = db.query(q).distinct().all()  # type: ignore - SQLAlchemy type issue
-    return names
+
+def create_geospatial_outside_filter(
+    symbol_name: str,
+    value: Value,
+):
+    return Outside(
+        outside=Operands(
+            lhs=Symbol(
+                type=value.type, name=symbol_name, key="some_geo_attribute"
+            ),
+            rhs=value,
+        )
+    )
+
+
+def create_geospatial_intersects_filter(
+    symbol_name: str,
+    value: Value,
+):
+    return Intersects(
+        intersects=Operands(
+            lhs=Symbol(
+                type=value.type, name=symbol_name, key="some_geo_attribute"
+            ),
+            rhs=value,
+        )
+    )
+
+
+def _get_geospatial_names_from_filter(
+    db: Session,
+    value: Value,
+    operator: str,
+    model_object: models.Datum | InstrumentedAttribute,
+    symbol_name: str,
+    func: Callable = select_from_annotations,
+):
+    match operator:
+        case "inside":
+            geofilter = create_geospatial_inside_filter(
+                symbol_name=symbol_name, value=value
+            )
+        case "outside":
+            geofilter = create_geospatial_outside_filter(
+                symbol_name=symbol_name, value=value
+            )
+        case "intersects":
+            geofilter = create_geospatial_intersects_filter(
+                symbol_name=symbol_name, value=value
+            )
+        case _:
+            raise NotImplementedError
+
+    f = Filter(
+        annotations=geofilter,
+    )
+    return db.query(func(model_object, filter_=f).distinct().subquery()).all()
 
 
 def test_datum_geospatial_filters(
     db: Session,
     model_sim,
     model_object=models.Datum.uid,
-    arg_name: str = "datum_metadata",
+    symbol_name: str = "datum.metadata",
 ):
-
     # test inside filters
     names = _get_geospatial_names_from_filter(
         db=db,
-        geodict={
-            "type": "Polygon",
-            "coordinates": [
+        value=Value(
+            type="polygon",
+            value=[
                 [
                     [-20, -20],
                     [60, -20],
@@ -1080,12 +1311,11 @@ def test_datum_geospatial_filters(
                     [-20, -20],
                 ]
             ],
-        },
+        ),
         operator="inside",
         model_object=model_object,
-        arg_name=arg_name,
+        symbol_name=symbol_name,
     )
-
     assert len(names) == 2
     assert ("uid1",) in names
     assert ("uid3",) in names
@@ -1093,9 +1323,9 @@ def test_datum_geospatial_filters(
     # test intersections
     names = _get_geospatial_names_from_filter(
         db=db,
-        geodict={
-            "type": "Polygon",
-            "coordinates": [
+        value=Value(
+            type="polygon",
+            value=[
                 [
                     [60, 60],
                     [110, 60],
@@ -1104,12 +1334,11 @@ def test_datum_geospatial_filters(
                     [60, 60],
                 ]
             ],
-        },
-        operator="intersect",
+        ),
+        operator="intersects",
         model_object=model_object,
-        arg_name=arg_name,
+        symbol_name=symbol_name,
     )
-
     assert len(names) == 2
     assert ("uid2",) in names
     assert ("uid4",) in names
@@ -1117,24 +1346,23 @@ def test_datum_geospatial_filters(
     # test point
     names = _get_geospatial_names_from_filter(
         db=db,
-        geodict={
-            "type": "Point",
-            "coordinates": [81, 80],
-        },
-        operator="intersect",
+        value=Value(
+            type="point",
+            value=[81, 80],
+        ),
+        operator="intersects",
         model_object=model_object,
-        arg_name=arg_name,
+        symbol_name=symbol_name,
     )
-
     assert len(names) == 1
     assert ("uid4",) in names
 
     # test multipolygon
     names = _get_geospatial_names_from_filter(
         db=db,
-        geodict={
-            "type": "MultiPolygon",
-            "coordinates": [
+        value=Value(
+            type="multipolygon",
+            value=[
                 [
                     [
                         [-20, -20],
@@ -1154,12 +1382,11 @@ def test_datum_geospatial_filters(
                     ]
                 ],
             ],
-        },
-        operator="intersect",
+        ),
+        operator="intersects",
         model_object=model_object,
-        arg_name=arg_name,
+        symbol_name=symbol_name,
     )
-
     assert len(names) == 3
     assert ("uid1",) in names
     assert ("uid2",) in names
@@ -1168,29 +1395,27 @@ def test_datum_geospatial_filters(
     # test WHERE miss
     names = _get_geospatial_names_from_filter(
         db=db,
-        geodict={
-            "type": "Point",
-            "coordinates": [-11, -11],
-        },
-        operator="intersect",
+        value=Value(
+            type="point",
+            value=[-11, -11],
+        ),
+        operator="intersects",
         model_object=model_object,
-        arg_name=arg_name,
+        symbol_name=symbol_name,
     )
-
     assert len(names) == 0
 
     # test outside
     names = _get_geospatial_names_from_filter(
         db=db,
-        geodict={
-            "type": "Point",
-            "coordinates": [-11, -11],
-        },
+        value=Value(
+            type="point",
+            value=[-11, -11],
+        ),
         operator="outside",
         model_object=model_object,
-        arg_name=arg_name,
+        symbol_name=symbol_name,
     )
-
     assert len(names) == 4
     assert ("uid1",) in names
     assert ("uid2",) in names
@@ -1199,9 +1424,9 @@ def test_datum_geospatial_filters(
 
     names = _get_geospatial_names_from_filter(
         db=db,
-        geodict={
-            "type": "Polygon",
-            "coordinates": [
+        value=Value(
+            type="polygon",
+            value=[
                 [
                     [-20, -20],
                     [60, -20],
@@ -1210,12 +1435,11 @@ def test_datum_geospatial_filters(
                     [-20, -20],
                 ]
             ],
-        },
+        ),
         operator="outside",
         model_object=model_object,
-        arg_name=arg_name,
+        symbol_name=symbol_name,
     )
-
     assert len(names) == 2
     assert ("uid2",) in names
     assert ("uid4",) in names
@@ -1225,15 +1449,15 @@ def test_dataset_geospatial_filters(
     db: Session,
     model_sim,
     model_object=models.Dataset.name,
-    arg_name: str = "dataset_metadata",
+    symbol_name: str = "dataset.metadata",
 ):
 
     # test inside filters
     names = _get_geospatial_names_from_filter(
         db=db,
-        geodict={
-            "type": "Polygon",
-            "coordinates": [
+        value=Value(
+            type="polygon",
+            value=[
                 [
                     [-20, -20],
                     [60, -20],
@@ -1242,36 +1466,34 @@ def test_dataset_geospatial_filters(
                     [-20, -20],
                 ]
             ],
-        },
+        ),
         operator="inside",
         model_object=model_object,
-        arg_name=arg_name,
+        symbol_name=symbol_name,
     )
-
     assert len(names) == 1
     assert ("dataset1",) in names
 
     # test point
     names = _get_geospatial_names_from_filter(
         db=db,
-        geodict={
-            "type": "Point",
-            "coordinates": [1, 1],
-        },
-        operator="intersect",
+        value=Value(
+            type="point",
+            value=[1, 1],
+        ),
+        operator="intersects",
         model_object=model_object,
-        arg_name=arg_name,
+        symbol_name=symbol_name,
     )
-
     assert len(names) == 1
     assert ("dataset1",) in names
 
     # test multipolygon
     names = _get_geospatial_names_from_filter(
         db=db,
-        geodict={
-            "type": "MultiPolygon",
-            "coordinates": [
+        value=Value(
+            type="multipolygon",
+            value=[
                 [
                     [
                         [-20, -20],
@@ -1291,41 +1513,38 @@ def test_dataset_geospatial_filters(
                     ]
                 ],
             ],
-        },
-        operator="intersect",
+        ),
+        operator="intersects",
         model_object=model_object,
-        arg_name=arg_name,
+        symbol_name=symbol_name,
     )
-
     assert len(names) == 1
     assert ("dataset1",) in names
 
     # test WHERE miss
     names = _get_geospatial_names_from_filter(
         db=db,
-        geodict={
-            "type": "Point",
-            "coordinates": [-11, -11],
-        },
-        operator="intersect",
+        value=Value(
+            type="point",
+            value=[-11, -11],
+        ),
+        operator="intersects",
         model_object=model_object,
-        arg_name=arg_name,
+        symbol_name=symbol_name,
     )
-
     assert len(names) == 0
 
     # test outside
     names = _get_geospatial_names_from_filter(
         db=db,
-        geodict={
-            "type": "Point",
-            "coordinates": [-11, -11],
-        },
+        value=Value(
+            type="point",
+            value=[-11, -11],
+        ),
         operator="outside",
         model_object=model_object,
-        arg_name=arg_name,
+        symbol_name=symbol_name,
     )
-
     assert len(names) == 1
     assert ("dataset1",) in names
 
@@ -1334,15 +1553,15 @@ def test_model_geospatial_filters(
     db: Session,
     model_sim,
     model_object=models.Model.name,
-    arg_name: str = "model_metadata",
+    symbol_name: str = "model.metadata",
 ):
 
     # test inside filters
     names = _get_geospatial_names_from_filter(
         db=db,
-        geodict={
-            "type": "Polygon",
-            "coordinates": [
+        value=Value(
+            type="polygon",
+            value=[
                 [
                     [-20, -20],
                     [60, -20],
@@ -1351,36 +1570,36 @@ def test_model_geospatial_filters(
                     [-20, -20],
                 ]
             ],
-        },
+        ),
         operator="inside",
         model_object=model_object,
-        arg_name=arg_name,
+        symbol_name=symbol_name,
+        func=select_from_predictions,
     )
-
     assert len(names) == 1
     assert ("model1",) in names
 
     # test point
     names = _get_geospatial_names_from_filter(
         db=db,
-        geodict={
-            "type": "Point",
-            "coordinates": [1, 1],
-        },
-        operator="intersect",
+        value=Value(
+            type="point",
+            value=[1, 1],
+        ),
+        operator="intersects",
         model_object=model_object,
-        arg_name=arg_name,
+        symbol_name=symbol_name,
+        func=select_from_predictions,
     )
-
     assert len(names) == 1
     assert ("model1",) in names
 
     # test multipolygon
     names = _get_geospatial_names_from_filter(
         db=db,
-        geodict={
-            "type": "MultiPolygon",
-            "coordinates": [
+        value=Value(
+            type="multipolygon",
+            value=[
                 [
                     [
                         [-20, -20],
@@ -1400,40 +1619,40 @@ def test_model_geospatial_filters(
                     ]
                 ],
             ],
-        },
-        operator="intersect",
+        ),
+        operator="intersects",
         model_object=model_object,
-        arg_name=arg_name,
+        symbol_name=symbol_name,
+        func=select_from_predictions,
     )
-
     assert len(names) == 1
     assert ("model1",) in names
 
     # test WHERE miss
     names = _get_geospatial_names_from_filter(
         db=db,
-        geodict={
-            "type": "Point",
-            "coordinates": [-11, -11],
-        },
-        operator="intersect",
+        value=Value(
+            type="point",
+            value=[-11, -11],
+        ),
+        operator="intersects",
         model_object=model_object,
-        arg_name=arg_name,
+        symbol_name=symbol_name,
     )
     assert len(names) == 0
 
     # test outside
     names = _get_geospatial_names_from_filter(
         db=db,
-        geodict={
-            "type": "Point",
-            "coordinates": [-11, -11],
-        },
+        value=Value(
+            type="point",
+            value=[-11, -11],
+        ),
         operator="outside",
         model_object=model_object,
-        arg_name=arg_name,
+        symbol_name=symbol_name,
+        func=select_from_predictions,
     )
-
     assert len(names) == 2
     assert ("model1",) in names
     assert ("model2",) in names
@@ -1513,8 +1732,91 @@ def duration_metadata() -> list[schemas.Duration]:
     ]
 
 
-def _test_dataset_datetime_query(
+def time_filter(
     db: Session,
+    symbol_name: str,
+    type_str: str,
+    key: str,
+    value: str | float,
+    op: str,
+):
+    match op:
+        case "==":
+            f = Equal(
+                eq=Operands(
+                    lhs=Symbol(type=type_str, name=symbol_name, key=key),
+                    rhs=Value(type=type_str, value=value),
+                )
+            )
+        case "!=":
+            f = NotEqual(
+                ne=Operands(
+                    lhs=Symbol(type=type_str, name=symbol_name, key=key),
+                    rhs=Value(type=type_str, value=value),
+                )
+            )
+        case ">":
+            f = GreaterThan(
+                gt=Operands(
+                    lhs=Symbol(type=type_str, name=symbol_name, key=key),
+                    rhs=Value(type=type_str, value=value),
+                )
+            )
+        case ">=":
+            f = GreaterThanEqual(
+                ge=Operands(
+                    lhs=Symbol(type=type_str, name=symbol_name, key=key),
+                    rhs=Value(type=type_str, value=value),
+                )
+            )
+        case "<":
+            f = LessThan(
+                lt=Operands(
+                    lhs=Symbol(type=type_str, name=symbol_name, key=key),
+                    rhs=Value(type=type_str, value=value),
+                )
+            )
+        case "<=":
+            f = LessThanEqual(
+                le=Operands(
+                    lhs=Symbol(type=type_str, name=symbol_name, key=key),
+                    rhs=Value(type=type_str, value=value),
+                )
+            )
+        case _:
+            raise NotImplementedError
+
+    match symbol_name:
+        case "dataset.metadata":
+            f = Filter(datasets=f)
+            return db.query(
+                select_from_groundtruths(models.Dataset, filter_=f).subquery()
+            ).all()
+        case "model.metadata":
+            f = Filter(models=f)
+            return db.query(
+                select_from_predictions(models.Model, filter_=f).subquery()
+            ).all()
+        case "datum.metadata":
+            f = Filter(datums=f)
+            return db.query(
+                select_from_groundtruths(models.Datum, filter_=f).subquery()
+            ).all()
+        case "annotation.metadata":
+            f = Filter(annotations=f)
+            return db.query(
+                select_from_groundtruths(
+                    models.Annotation, filter_=f
+                ).subquery()
+            ).all()
+        case _:
+            raise NotImplementedError(symbol_name)
+
+
+def _test_datetime_query(
+    db: Session,
+    symbol_name: str,
+    symbol_type: str,
     key: str,
     metadata_: Sequence[
         schemas.DateTime | schemas.Date | schemas.Time | schemas.Duration
@@ -1524,158 +1826,322 @@ def _test_dataset_datetime_query(
     The metadata_ param is a pytest fixture containing sequential timestamps.
     """
 
-    time_filter = lambda idx, op: (  # noqa: E731
-        Query(models.Dataset)
-        .filter(
-            schemas.Filter(
-                dataset_metadata={
-                    key: [
-                        schemas.DateTimeFilter(
-                            value=metadata_[idx], operator=op
-                        )
-                    ]
-                }
-            )
-        )
-        .any()
-    )
-
     # Check equality operator
     op = "=="
 
-    results = db.query(time_filter(0, op)).all()  # type: ignore - SQLAlchemy type issue
+    results = time_filter(
+        db=db,
+        symbol_name=symbol_name,
+        type_str=symbol_type,
+        key=key,
+        value=metadata_[0].value,
+        op=op,
+    )
     assert len(results) == 0
 
-    results = db.query(time_filter(1, op)).all()  # type: ignore - SQLAlchemy type issue
+    results = time_filter(
+        db=db,
+        symbol_name=symbol_name,
+        type_str=symbol_type,
+        key=key,
+        value=metadata_[1].value,
+        op=op,
+    )
     assert len(results) == 1
-    assert results[0].name == "dataset1"
 
-    results = db.query(time_filter(2, op)).all()  # type: ignore - SQLAlchemy type issue
+    results = time_filter(
+        db=db,
+        symbol_name=symbol_name,
+        type_str=symbol_type,
+        key=key,
+        value=metadata_[2].value,
+        op=op,
+    )
     assert len(results) == 0
 
-    results = db.query(time_filter(3, op)).all()  # type: ignore - SQLAlchemy type issue
+    results = time_filter(
+        db=db,
+        symbol_name=symbol_name,
+        type_str=symbol_type,
+        key=key,
+        value=metadata_[3].value,
+        op=op,
+    )
     assert len(results) == 1
-    assert results[0].name == "dataset2"
 
-    results = db.query(time_filter(4, op)).all()  # type: ignore - SQLAlchemy type issue
+    results = time_filter(
+        db=db,
+        symbol_name=symbol_name,
+        type_str=symbol_type,
+        key=key,
+        value=metadata_[4].value,
+        op=op,
+    )
     assert len(results) == 0
 
     # Check inequality operator
     op = "!="
 
-    results = db.query(time_filter(0, op)).all()  # type: ignore - SQLAlchemy type issue
+    results = time_filter(
+        db=db,
+        symbol_name=symbol_name,
+        type_str=symbol_type,
+        key=key,
+        value=metadata_[0].value,
+        op=op,
+    )
     assert len(results) == 2
-    assert "dataset1" in [result.name for result in results]
-    assert "dataset2" in [result.name for result in results]
 
-    results = db.query(time_filter(1, op)).all()  # type: ignore - SQLAlchemy type issue
+    results = time_filter(
+        db=db,
+        symbol_name=symbol_name,
+        type_str=symbol_type,
+        key=key,
+        value=metadata_[1].value,
+        op=op,
+    )
     assert len(results) == 1
-    assert results[0].name == "dataset2"
 
-    results = db.query(time_filter(2, op)).all()  # type: ignore - SQLAlchemy type issue
+    results = time_filter(
+        db=db,
+        symbol_name=symbol_name,
+        type_str=symbol_type,
+        key=key,
+        value=metadata_[2].value,
+        op=op,
+    )
     assert len(results) == 2
-    assert "dataset1" in [result.name for result in results]
-    assert "dataset2" in [result.name for result in results]
 
-    results = db.query(time_filter(3, op)).all()  # type: ignore - SQLAlchemy type issue
+    results = time_filter(
+        db=db,
+        symbol_name=symbol_name,
+        type_str=symbol_type,
+        key=key,
+        value=metadata_[3].value,
+        op=op,
+    )
     assert len(results) == 1
-    assert results[0].name == "dataset1"
 
-    results = db.query(time_filter(4, op)).all()  # type: ignore - SQLAlchemy type issue
+    results = time_filter(
+        db=db,
+        symbol_name=symbol_name,
+        type_str=symbol_type,
+        key=key,
+        value=metadata_[4].value,
+        op=op,
+    )
     assert len(results) == 2
-    assert "dataset1" in [result.name for result in results]
-    assert "dataset2" in [result.name for result in results]
 
     # Check less-than operator
     op = "<"
 
-    results = db.query(time_filter(0, op)).all()  # type: ignore - SQLAlchemy type issue
+    results = time_filter(
+        db=db,
+        symbol_name=symbol_name,
+        type_str=symbol_type,
+        key=key,
+        value=metadata_[0].value,
+        op=op,
+    )
     assert len(results) == 0
 
-    results = db.query(time_filter(1, op)).all()  # type: ignore - SQLAlchemy type issue
+    results = time_filter(
+        db=db,
+        symbol_name=symbol_name,
+        type_str=symbol_type,
+        key=key,
+        value=metadata_[1].value,
+        op=op,
+    )
     assert len(results) == 0
 
-    results = db.query(time_filter(2, op)).all()  # type: ignore - SQLAlchemy type issue
+    results = time_filter(
+        db=db,
+        symbol_name=symbol_name,
+        type_str=symbol_type,
+        key=key,
+        value=metadata_[2].value,
+        op=op,
+    )
     assert len(results) == 1
-    assert results[0].name == "dataset1"
 
-    results = db.query(time_filter(3, op)).all()  # type: ignore - SQLAlchemy type issue
+    results = time_filter(
+        db=db,
+        symbol_name=symbol_name,
+        type_str=symbol_type,
+        key=key,
+        value=metadata_[3].value,
+        op=op,
+    )
     assert len(results) == 1
-    assert results[0].name == "dataset1"
 
-    results = db.query(time_filter(4, op)).all()  # type: ignore - SQLAlchemy type issue
+    results = time_filter(
+        db=db,
+        symbol_name=symbol_name,
+        type_str=symbol_type,
+        key=key,
+        value=metadata_[4].value,
+        op=op,
+    )
     assert len(results) == 2
-    assert "dataset1" in [result.name for result in results]
-    assert "dataset2" in [result.name for result in results]
 
     # Check greater-than operator
     op = ">"
 
-    results = db.query(time_filter(0, op)).all()  # type: ignore - SQLAlchemy type issue
+    results = time_filter(
+        db=db,
+        symbol_name=symbol_name,
+        type_str=symbol_type,
+        key=key,
+        value=metadata_[0].value,
+        op=op,
+    )
     assert len(results) == 2
-    assert "dataset1" in [result.name for result in results]
-    assert "dataset2" in [result.name for result in results]
 
-    results = db.query(time_filter(1, op)).all()  # type: ignore - SQLAlchemy type issue
+    results = time_filter(
+        db=db,
+        symbol_name=symbol_name,
+        type_str=symbol_type,
+        key=key,
+        value=metadata_[1].value,
+        op=op,
+    )
     assert len(results) == 1
-    assert results[0].name == "dataset2"
 
-    results = db.query(time_filter(2, op)).all()  # type: ignore - SQLAlchemy type issue
+    results = time_filter(
+        db=db,
+        symbol_name=symbol_name,
+        type_str=symbol_type,
+        key=key,
+        value=metadata_[2].value,
+        op=op,
+    )
     assert len(results) == 1
-    assert results[0].name == "dataset2"
 
-    results = db.query(time_filter(3, op)).all()  # type: ignore - SQLAlchemy type issue
+    results = time_filter(
+        db=db,
+        symbol_name=symbol_name,
+        type_str=symbol_type,
+        key=key,
+        value=metadata_[3].value,
+        op=op,
+    )
     assert len(results) == 0
 
-    results = db.query(time_filter(4, op)).all()  # type: ignore - SQLAlchemy type issue
+    results = time_filter(
+        db=db,
+        symbol_name=symbol_name,
+        type_str=symbol_type,
+        key=key,
+        value=metadata_[4].value,
+        op=op,
+    )
     assert len(results) == 0
 
     # Check less-than or equal operator
     op = "<="
 
-    results = db.query(time_filter(0, op)).all()  # type: ignore - SQLAlchemy type issue
+    results = time_filter(
+        db=db,
+        symbol_name=symbol_name,
+        type_str=symbol_type,
+        key=key,
+        value=metadata_[0].value,
+        op=op,
+    )
     assert len(results) == 0
 
-    results = db.query(time_filter(1, op)).all()  # type: ignore - SQLAlchemy type issue
+    results = time_filter(
+        db=db,
+        symbol_name=symbol_name,
+        type_str=symbol_type,
+        key=key,
+        value=metadata_[1].value,
+        op=op,
+    )
     assert len(results) == 1
-    assert results[0].name == "dataset1"
 
-    results = db.query(time_filter(2, op)).all()  # type: ignore - SQLAlchemy type issue
+    results = time_filter(
+        db=db,
+        symbol_name=symbol_name,
+        type_str=symbol_type,
+        key=key,
+        value=metadata_[2].value,
+        op=op,
+    )
     assert len(results) == 1
-    assert results[0].name == "dataset1"
 
-    results = db.query(time_filter(3, op)).all()  # type: ignore - SQLAlchemy type issue
+    results = time_filter(
+        db=db,
+        symbol_name=symbol_name,
+        type_str=symbol_type,
+        key=key,
+        value=metadata_[3].value,
+        op=op,
+    )
     assert len(results) == 2
-    assert "dataset1" in [result.name for result in results]
-    assert "dataset2" in [result.name for result in results]
 
-    results = db.query(time_filter(4, op)).all()  # type: ignore - SQLAlchemy type issue
+    results = time_filter(
+        db=db,
+        symbol_name=symbol_name,
+        type_str=symbol_type,
+        key=key,
+        value=metadata_[4].value,
+        op=op,
+    )
     assert len(results) == 2
-    assert "dataset1" in [result.name for result in results]
-    assert "dataset2" in [result.name for result in results]
 
     # Check greater-than or equal operator
     op = ">="
 
-    results = db.query(time_filter(0, op)).all()  # type: ignore - SQLAlchemy type issue
+    results = time_filter(
+        db=db,
+        symbol_name=symbol_name,
+        type_str=symbol_type,
+        key=key,
+        value=metadata_[0].value,
+        op=op,
+    )
     assert len(results) == 2
-    assert "dataset1" in [result.name for result in results]
-    assert "dataset2" in [result.name for result in results]
 
-    results = db.query(time_filter(1, op)).all()  # type: ignore - SQLAlchemy type issue
+    results = time_filter(
+        db=db,
+        symbol_name=symbol_name,
+        type_str=symbol_type,
+        key=key,
+        value=metadata_[1].value,
+        op=op,
+    )
     assert len(results) == 2
-    assert "dataset1" in [result.name for result in results]
-    assert "dataset2" in [result.name for result in results]
 
-    results = db.query(time_filter(2, op)).all()  # type: ignore - SQLAlchemy type issue
+    results = time_filter(
+        db=db,
+        symbol_name=symbol_name,
+        type_str=symbol_type,
+        key=key,
+        value=metadata_[2].value,
+        op=op,
+    )
     assert len(results) == 1
-    assert results[0].name == "dataset2"
 
-    results = db.query(time_filter(3, op)).all()  # type: ignore - SQLAlchemy type issue
+    results = time_filter(
+        db=db,
+        symbol_name=symbol_name,
+        type_str=symbol_type,
+        key=key,
+        value=metadata_[3].value,
+        op=op,
+    )
     assert len(results) == 1
-    assert results[0].name == "dataset2"
 
-    results = db.query(time_filter(4, op)).all()  # type: ignore - SQLAlchemy type issue
+    results = time_filter(
+        db=db,
+        symbol_name=symbol_name,
+        type_str=symbol_type,
+        key=key,
+        value=metadata_[4].value,
+        op=op,
+    )
     assert len(results) == 0
 
 
@@ -1728,176 +2194,18 @@ def test_dataset_datetime_queries(
         ),
     )
 
-    _test_dataset_datetime_query(db, datetime_key, datetime_metadata)
-    _test_dataset_datetime_query(db, date_key, date_metadata)
-    _test_dataset_datetime_query(db, time_key, time_metadata)
-    _test_dataset_datetime_query(db, duration_key, duration_metadata)
-
-
-def _test_model_datetime_query(
-    db: Session,
-    key: str,
-    metadata_: Sequence[
-        schemas.DateTime | schemas.Date | schemas.Time | schemas.Duration
-    ],
-):
-    """
-    The metadata_ param is a pytest fixture containing sequential timestamps.
-    """
-
-    time_filter = lambda idx, op: (  # noqa: E731
-        Query(models.Model)
-        .filter(
-            schemas.Filter(
-                model_metadata={
-                    key: [
-                        schemas.DateTimeFilter(
-                            value=metadata_[idx], operator=op
-                        )
-                    ]
-                }
-            )
-        )
-        .any()
+    _test_datetime_query(
+        db, "dataset.metadata", "datetime", datetime_key, datetime_metadata
     )
-
-    # Check equality operator
-    op = "=="
-
-    results = db.query(time_filter(0, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 0
-
-    results = db.query(time_filter(1, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 1
-    assert results[0].name == "model1"
-
-    results = db.query(time_filter(2, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 0
-
-    results = db.query(time_filter(3, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 1
-    assert results[0].name == "model2"
-
-    results = db.query(time_filter(4, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 0
-
-    # Check inequality operator
-    op = "!="
-
-    results = db.query(time_filter(0, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 2
-    assert "model1" in [result.name for result in results]
-    assert "model2" in [result.name for result in results]
-
-    results = db.query(time_filter(1, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 1
-    assert results[0].name == "model2"
-
-    results = db.query(time_filter(2, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 2
-    assert "model1" in [result.name for result in results]
-    assert "model2" in [result.name for result in results]
-
-    results = db.query(time_filter(3, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 1
-    assert results[0].name == "model1"
-
-    results = db.query(time_filter(4, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 2
-    assert "model1" in [result.name for result in results]
-    assert "model2" in [result.name for result in results]
-
-    # Check less-than operator
-    op = "<"
-
-    results = db.query(time_filter(0, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 0
-
-    results = db.query(time_filter(1, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 0
-
-    results = db.query(time_filter(2, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 1
-    assert results[0].name == "model1"
-
-    results = db.query(time_filter(3, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 1
-    assert results[0].name == "model1"
-
-    results = db.query(time_filter(4, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 2
-    assert "model1" in [result.name for result in results]
-    assert "model2" in [result.name for result in results]
-
-    # Check greater-than operator
-    op = ">"
-
-    results = db.query(time_filter(0, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 2
-    assert "model1" in [result.name for result in results]
-    assert "model2" in [result.name for result in results]
-
-    results = db.query(time_filter(1, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 1
-    assert results[0].name == "model2"
-
-    results = db.query(time_filter(2, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 1
-    assert results[0].name == "model2"
-
-    results = db.query(time_filter(3, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 0
-
-    results = db.query(time_filter(4, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 0
-
-    # Check less-than or equal operator
-    op = "<="
-
-    results = db.query(time_filter(0, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 0
-
-    results = db.query(time_filter(1, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 1
-    assert results[0].name == "model1"
-
-    results = db.query(time_filter(2, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 1
-    assert results[0].name == "model1"
-
-    results = db.query(time_filter(3, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 2
-    assert "model1" in [result.name for result in results]
-    assert "model2" in [result.name for result in results]
-
-    results = db.query(time_filter(4, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 2
-    assert "model1" in [result.name for result in results]
-    assert "model2" in [result.name for result in results]
-
-    # Check greater-than or equal operator
-    op = ">="
-
-    results = db.query(time_filter(0, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 2
-    assert "model1" in [result.name for result in results]
-    assert "model2" in [result.name for result in results]
-
-    results = db.query(time_filter(1, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 2
-    assert "model1" in [result.name for result in results]
-    assert "model2" in [result.name for result in results]
-
-    results = db.query(time_filter(2, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 1
-    assert results[0].name == "model2"
-
-    results = db.query(time_filter(3, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 1
-    assert results[0].name == "model2"
-
-    results = db.query(time_filter(4, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 0
+    _test_datetime_query(
+        db, "dataset.metadata", "date", date_key, date_metadata
+    )
+    _test_datetime_query(
+        db, "dataset.metadata", "time", time_key, time_metadata
+    )
+    _test_datetime_query(
+        db, "dataset.metadata", "duration", duration_key, duration_metadata
+    )
 
 
 def test_model_datetime_queries(
@@ -1949,208 +2257,14 @@ def test_model_datetime_queries(
         ),
     )
 
-    _test_model_datetime_query(db, datetime_key, datetime_metadata)
-    _test_model_datetime_query(db, date_key, date_metadata)
-    _test_model_datetime_query(db, time_key, time_metadata)
-    _test_model_datetime_query(db, duration_key, duration_metadata)
-
-
-def _test_datum_datetime_query(
-    db: Session,
-    key: str,
-    metadata_: Sequence[
-        schemas.DateTime | schemas.Date | schemas.Time | schemas.Duration
-    ],
-):
-    """
-    The metadata_ param is a pytest fixture containing sequential timestamps.
-    """
-
-    time_filter = lambda idx, op: (  # noqa: E731
-        Query(models.Datum)
-        .filter(
-            schemas.Filter(
-                datum_metadata={
-                    key: [
-                        schemas.DateTimeFilter(
-                            value=metadata_[idx], operator=op
-                        )
-                    ]
-                }
-            )
-        )
-        .any()
+    _test_datetime_query(
+        db, "model.metadata", "datetime", datetime_key, datetime_metadata
     )
-
-    assert len(db.query(models.Datum).all()) == 4
-
-    # Check equality operator
-    op = "=="
-
-    results = db.query(time_filter(0, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 0
-
-    results = db.query(time_filter(1, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 1
-    assert results[0].uid == datum_uid1
-
-    results = db.query(time_filter(2, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 2
-    assert datum_uid2 in [result.uid for result in results]
-    assert datum_uid3 in [result.uid for result in results]
-
-    results = db.query(time_filter(3, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 1
-    assert results[0].uid == datum_uid4
-
-    results = db.query(time_filter(4, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 0
-
-    # Check inequality operator
-    op = "!="
-
-    results = db.query(time_filter(0, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 4
-    assert datum_uid1 in [result.uid for result in results]
-    assert datum_uid2 in [result.uid for result in results]
-    assert datum_uid3 in [result.uid for result in results]
-    assert datum_uid4 in [result.uid for result in results]
-
-    results = db.query(time_filter(1, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 3
-    assert datum_uid2 in [result.uid for result in results]
-    assert datum_uid3 in [result.uid for result in results]
-    assert datum_uid4 in [result.uid for result in results]
-
-    results = db.query(time_filter(2, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 2
-    assert datum_uid1 in [result.uid for result in results]
-    assert datum_uid4 in [result.uid for result in results]
-
-    results = db.query(time_filter(3, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 3
-    assert datum_uid1 in [result.uid for result in results]
-    assert datum_uid2 in [result.uid for result in results]
-    assert datum_uid3 in [result.uid for result in results]
-
-    results = db.query(time_filter(4, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 4
-    assert datum_uid1 in [result.uid for result in results]
-    assert datum_uid2 in [result.uid for result in results]
-    assert datum_uid3 in [result.uid for result in results]
-    assert datum_uid4 in [result.uid for result in results]
-
-    # Check less-than operator
-    op = "<"
-
-    results = db.query(time_filter(0, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 0
-
-    results = db.query(time_filter(1, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 0
-
-    results = db.query(time_filter(2, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 1
-    assert results[0].uid == datum_uid1
-
-    results = db.query(time_filter(3, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 3
-    assert datum_uid1 in [result.uid for result in results]
-    assert datum_uid2 in [result.uid for result in results]
-    assert datum_uid3 in [result.uid for result in results]
-
-    results = db.query(time_filter(4, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 4
-    assert datum_uid1 in [result.uid for result in results]
-    assert datum_uid2 in [result.uid for result in results]
-    assert datum_uid3 in [result.uid for result in results]
-    assert datum_uid4 in [result.uid for result in results]
-
-    # Check greater-than operator
-    op = ">"
-
-    results = db.query(time_filter(0, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 4
-    assert datum_uid1 in [result.uid for result in results]
-    assert datum_uid2 in [result.uid for result in results]
-    assert datum_uid3 in [result.uid for result in results]
-    assert datum_uid4 in [result.uid for result in results]
-
-    results = db.query(time_filter(1, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 3
-    assert datum_uid2 in [result.uid for result in results]
-    assert datum_uid3 in [result.uid for result in results]
-    assert datum_uid4 in [result.uid for result in results]
-
-    results = db.query(time_filter(2, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 1
-    assert results[0].uid == datum_uid4
-
-    results = db.query(time_filter(3, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 0
-
-    results = db.query(time_filter(4, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 0
-
-    # Check less-than or equal operator
-    op = "<="
-
-    results = db.query(time_filter(0, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 0
-
-    results = db.query(time_filter(1, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 1
-    assert results[0].uid == datum_uid1
-
-    results = db.query(time_filter(2, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 3
-    assert datum_uid1 in [result.uid for result in results]
-    assert datum_uid2 in [result.uid for result in results]
-    assert datum_uid3 in [result.uid for result in results]
-
-    results = db.query(time_filter(3, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 4
-    assert datum_uid1 in [result.uid for result in results]
-    assert datum_uid2 in [result.uid for result in results]
-    assert datum_uid3 in [result.uid for result in results]
-    assert datum_uid4 in [result.uid for result in results]
-
-    results = db.query(time_filter(4, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 4
-    assert datum_uid1 in [result.uid for result in results]
-    assert datum_uid2 in [result.uid for result in results]
-    assert datum_uid3 in [result.uid for result in results]
-    assert datum_uid4 in [result.uid for result in results]
-
-    # Check greater-than or equal operator
-    op = ">="
-
-    results = db.query(time_filter(0, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 4
-    assert datum_uid1 in [result.uid for result in results]
-    assert datum_uid2 in [result.uid for result in results]
-    assert datum_uid3 in [result.uid for result in results]
-    assert datum_uid4 in [result.uid for result in results]
-
-    results = db.query(time_filter(1, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 4
-    assert datum_uid1 in [result.uid for result in results]
-    assert datum_uid2 in [result.uid for result in results]
-    assert datum_uid3 in [result.uid for result in results]
-    assert datum_uid4 in [result.uid for result in results]
-
-    results = db.query(time_filter(2, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 3
-    assert datum_uid2 in [result.uid for result in results]
-    assert datum_uid3 in [result.uid for result in results]
-    assert datum_uid4 in [result.uid for result in results]
-
-    results = db.query(time_filter(3, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 1
-    assert results[0].uid == datum_uid4
-
-    results = db.query(time_filter(4, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 0
+    _test_datetime_query(db, "model.metadata", "date", date_key, date_metadata)
+    _test_datetime_query(db, "model.metadata", "time", time_key, time_metadata)
+    _test_datetime_query(
+        db, "model.metadata", "duration", duration_key, duration_metadata
+    )
 
 
 def test_datum_datetime_queries(
@@ -2173,23 +2287,15 @@ def test_datum_datetime_queries(
         return {"type": type(value).__name__.lower(), "value": value.value}
 
     datum_1.metadata[datetime_key] = add_metadata_typing(datetime_metadata[1])
-    datum_2.metadata[datetime_key] = add_metadata_typing(datetime_metadata[2])
-    datum_3.metadata[datetime_key] = add_metadata_typing(datetime_metadata[2])
     datum_4.metadata[datetime_key] = add_metadata_typing(datetime_metadata[3])
 
     datum_1.metadata[date_key] = add_metadata_typing(date_metadata[1])
-    datum_2.metadata[date_key] = add_metadata_typing(date_metadata[2])
-    datum_3.metadata[date_key] = add_metadata_typing(date_metadata[2])
     datum_4.metadata[date_key] = add_metadata_typing(date_metadata[3])
 
     datum_1.metadata[time_key] = add_metadata_typing(time_metadata[1])
-    datum_2.metadata[time_key] = add_metadata_typing(time_metadata[2])
-    datum_3.metadata[time_key] = add_metadata_typing(time_metadata[2])
     datum_4.metadata[time_key] = add_metadata_typing(time_metadata[3])
 
     datum_1.metadata[duration_key] = add_metadata_typing(duration_metadata[1])
-    datum_2.metadata[duration_key] = add_metadata_typing(duration_metadata[2])
-    datum_3.metadata[duration_key] = add_metadata_typing(duration_metadata[2])
     datum_4.metadata[duration_key] = add_metadata_typing(duration_metadata[3])
 
     annotation = schemas.Annotation(
@@ -2208,12 +2314,6 @@ def test_datum_datetime_queries(
         groundtruths=[
             schemas.GroundTruth(
                 dataset_name=dset_name, datum=datum_1, annotations=[annotation]
-            ),
-            schemas.GroundTruth(
-                dataset_name=dset_name, datum=datum_2, annotations=[annotation]
-            ),
-            schemas.GroundTruth(
-                dataset_name=dset_name, datum=datum_3, annotations=[annotation]
             ),
             schemas.GroundTruth(
                 dataset_name=dset_name, datum=datum_4, annotations=[annotation]
@@ -2250,148 +2350,14 @@ def test_datum_datetime_queries(
         ),
     )
 
-    _test_datum_datetime_query(db, datetime_key, datetime_metadata)
-    _test_datum_datetime_query(db, date_key, date_metadata)
-    _test_datum_datetime_query(db, time_key, time_metadata)
-    _test_datum_datetime_query(db, duration_key, duration_metadata)
-
-
-def _test_annotation_datetime_query(
-    db: Session,
-    key: str,
-    metadata_: Sequence[
-        schemas.DateTime | schemas.Date | schemas.Time | schemas.Duration
-    ],
-):
-    """
-    The metadata_ param is a pytest fixture containing sequential timestamps.
-    """
-
-    assert len(db.query(models.Annotation).all()) == 4
-
-    time_filter = lambda idx, op: (  # noqa: E731
-        Query(models.Annotation)
-        .filter(
-            schemas.Filter(
-                annotation_metadata={
-                    key: [
-                        schemas.DateTimeFilter(
-                            value=metadata_[idx], operator=op
-                        )
-                    ]
-                }
-            )
-        )
-        .any()
+    _test_datetime_query(
+        db, "datum.metadata", "datetime", datetime_key, datetime_metadata
     )
-
-    # Check equality operator
-    op = "=="
-
-    results = db.query(time_filter(0, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 0
-
-    results = db.query(time_filter(1, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 1
-
-    results = db.query(time_filter(2, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 2
-
-    results = db.query(time_filter(3, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 1
-
-    results = db.query(time_filter(4, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 0
-
-    # Check inequality operator
-    op = "!="
-
-    results = db.query(time_filter(0, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 4
-
-    results = db.query(time_filter(1, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 3
-
-    results = db.query(time_filter(2, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 2
-
-    results = db.query(time_filter(3, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 3
-
-    results = db.query(time_filter(4, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 4
-
-    # Check less-than operator
-    op = "<"
-
-    results = db.query(time_filter(0, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 0
-
-    results = db.query(time_filter(1, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 0
-
-    results = db.query(time_filter(2, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 1
-
-    results = db.query(time_filter(3, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 3
-
-    results = db.query(time_filter(4, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 4
-
-    # Check greater-than operator
-    op = ">"
-
-    results = db.query(time_filter(0, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 4
-
-    results = db.query(time_filter(1, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 3
-
-    results = db.query(time_filter(2, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 1
-
-    results = db.query(time_filter(3, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 0
-
-    results = db.query(time_filter(4, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 0
-
-    # Check less-than or equal operator
-    op = "<="
-
-    results = db.query(time_filter(0, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 0
-
-    results = db.query(time_filter(1, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 1
-
-    results = db.query(time_filter(2, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 3
-
-    results = db.query(time_filter(3, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 4
-
-    results = db.query(time_filter(4, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 4
-
-    # Check greater-than or equal operator
-    op = ">="
-
-    results = db.query(time_filter(0, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 4
-
-    results = db.query(time_filter(1, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 4
-
-    results = db.query(time_filter(2, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 3
-
-    results = db.query(time_filter(3, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 1
-
-    results = db.query(time_filter(4, op)).all()  # type: ignore - SQLAlchemy type issue
-    assert len(results) == 0
+    _test_datetime_query(db, "datum.metadata", "date", date_key, date_metadata)
+    _test_datetime_query(db, "datum.metadata", "time", time_key, time_metadata)
+    _test_datetime_query(
+        db, "datum.metadata", "duration", duration_key, duration_metadata
+    )
 
 
 def test_annotation_datetime_queries(
@@ -2419,36 +2385,6 @@ def test_annotation_datetime_queries(
             duration_key: {
                 "type": "duration",
                 "value": duration_metadata[1].value,
-            },
-        },
-    )
-    annotation_2 = schemas.Annotation(
-        labels=[schemas.Label(key="k2", value="v2")],
-        metadata={
-            datetime_key: {
-                "type": "datetime",
-                "value": datetime_metadata[2].value,
-            },
-            date_key: {"type": "date", "value": date_metadata[2].value},
-            time_key: {"type": "time", "value": time_metadata[2].value},
-            duration_key: {
-                "type": "duration",
-                "value": duration_metadata[2].value,
-            },
-        },
-    )
-    annotation_3 = schemas.Annotation(
-        labels=[schemas.Label(key="k3", value="v3")],
-        metadata={
-            datetime_key: {
-                "type": "datetime",
-                "value": datetime_metadata[2].value,
-            },
-            date_key: {"type": "date", "value": date_metadata[2].value},
-            time_key: {"type": "time", "value": time_metadata[2].value},
-            duration_key: {
-                "type": "duration",
-                "value": duration_metadata[2].value,
             },
         },
     )
@@ -2483,68 +2419,60 @@ def test_annotation_datetime_queries(
                 datum=datum_1,
                 annotations=[
                     annotation_1,
-                    annotation_2,
-                    annotation_3,
                     annotation_4,
                 ],
             )
         ],
     )
 
-    _test_annotation_datetime_query(db, datetime_key, datetime_metadata)
-    _test_annotation_datetime_query(db, date_key, date_metadata)
-    _test_annotation_datetime_query(db, time_key, time_metadata)
-    _test_annotation_datetime_query(db, duration_key, duration_metadata)
+    _test_datetime_query(
+        db, "annotation.metadata", "datetime", datetime_key, datetime_metadata
+    )
+    _test_datetime_query(
+        db, "annotation.metadata", "date", date_key, date_metadata
+    )
+    _test_datetime_query(
+        db, "annotation.metadata", "time", time_key, time_metadata
+    )
+    _test_datetime_query(
+        db, "annotation.metadata", "duration", duration_key, duration_metadata
+    )
 
 
 def test_query_expression_types(
     db: Session,
     model_sim,
 ):
+    cat_filter = Filter(
+        groundtruths=create_label_filter(key="class", value="cat")
+    )
+
     # Test `distinct`
-    f = schemas.Filter(labels=[{"class": "cat"}])
-    q = Query(distinct(models.Dataset.name)).filter(f).groundtruths()
-    dataset_names = db.query(q).all()  # type: ignore - SQLAlchemy type issue
+    dataset_names = select_from_groundtruths(
+        distinct(models.Dataset.name), filter_=cat_filter
+    )
+    dataset_names = db.query(dataset_names.subquery()).all()
     assert len(dataset_names) == 1
     assert (dset_name,) in dataset_names
 
     # Test `func.count`, note this returns 10 b/c of joins.
-    f = schemas.Filter(labels=[{"class": "cat"}])
-    q = (
-        Query(func.count(models.Dataset.name))
-        .filter(f)
-        .groundtruths(as_subquery=False)
+    count = select_from_groundtruths(
+        func.count(models.Dataset.name), filter_=cat_filter
     )
-    assert db.scalar(q) == 10  # type: ignore - SQLAlchemy type issue
+    count = db.scalar(count)
+    assert count == 10
 
     # Test `func.count` with nested distinct.
-    f = schemas.Filter(labels=[{"class": "cat"}])
-    q = (
-        Query(func.count(distinct(models.Dataset.name)))
-        .filter(f)
-        .groundtruths(as_subquery=False)
+    count = select_from_groundtruths(
+        func.count(distinct(models.Dataset.name)), filter_=cat_filter
     )
-    assert db.scalar(q) == 1  # type: ignore - SQLAlchemy type issue
-
-    # Test distinct with nested`func.count`
-    #   This is to test the recursive table search
-    #   querying with this order-of-ops will fail.
-    f = schemas.Filter(labels=[{"class": "cat"}])
-    q = Query(distinct(func.count(models.Dataset.name))).filter(f)
-    assert q._selected == {models.Dataset}
-
-    # Test `func.count` without args, note this returns 10 b/c of joins.
-    f = schemas.Filter(labels=[{"class": "cat"}])
-    q = (
-        Query(func.count())
-        .select_from(models.Dataset)
-        .filter(f)
-        .groundtruths(as_subquery=False)
-    )
-    assert db.scalar(q) == 10  # type: ignore - SQLAlchemy type issue
+    count = db.scalar(count)
+    assert count == 1
 
     # Test nested functions
-    q = Query(func.max(func.ST_Area(models.Annotation.box))).groundtruths(
-        as_subquery=False
+    max_area = select_from_groundtruths(
+        func.max(func.ST_Area(models.Annotation.box)),
+        filter_=cat_filter,
     )
-    assert db.scalar(q) == 100.0  # type: ignore - SQLAlchemy type issue
+    max_area = db.scalar(max_area)
+    assert max_area == 100.0

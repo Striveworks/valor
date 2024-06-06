@@ -214,8 +214,9 @@ def _split_request(
     """
 
     # 1.a - get all datasets, note this uses the unmodified filter
+    subquery = Query(models.Dataset).filter(job_request.datum_filter).any()
     datasets_to_evaluate = (
-        db.query(Query(models.Dataset).filter(job_request.datum_filter).any())  # type: ignore - SQLAlchemy type issue
+        db.query(subquery)  # type: ignore - SQLAlchemy type issue
         .distinct()
         .all()
     )
@@ -485,14 +486,24 @@ def _validate_create_or_get_evaluations(
     prediction_filter.model_names = [evaluation.model_name]
     parameters = job_request.parameters
 
-    datasets = db.query(Query(models.Dataset).filter(groundtruth_filter).any()).distinct().all()  # type: ignore - SQLAlchemy type issue
-    model = db.query(Query(models.Model).filter(prediction_filter).any()).distinct().one_or_none()  # type: ignore - SQLAlchemy type issue
-
-    datasets = [
-        dataset
-        for dataset in datasets
-        if dataset.status == enums.TableStatus.FINALIZED
-    ]
+    datasets = (
+        db.query(
+            Query(models.Dataset)  # type: ignore - SQLAlchemy type issue
+            .filter(groundtruth_filter)
+            .predictions()
+        )
+        .distinct()
+        .all()
+    )
+    model = (
+        db.query(
+            Query(models.Model)
+            .filter(prediction_filter)
+            .predictions()  # type: ignore - SQLAlchemy type issue
+        )
+        .distinct()
+        .one_or_none()
+    )
 
     # verify model and datasets have data for this evaluation
     if not datasets:
@@ -538,7 +549,6 @@ def create_or_get_evaluations(
     list[schemas.EvaluationResponse]
         A list of evaluation responses.
     """
-
     created_rows = []
     existing_rows = []
     for subrequest in _split_request(db, job_request):
