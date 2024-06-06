@@ -627,10 +627,10 @@ def _compute_detection_metrics(
                 value=models.GroundTruth.label_id,
             ).label("label_id_grouper"),
             # TODO
-            case(
-                grouper_mappings["label_id_to_grouper_key_mapping"],
-                value=models.GroundTruth.label_id,
-            ).label("label_key_grouper"),
+            # case(
+            #     grouper_mappings["label_id_to_grouper_key_mapping"],
+            #     value=models.GroundTruth.label_id,
+            # ).label("label_key_grouper"),
             _annotation_type_to_geojson(target_type, models.Annotation).label(
                 "geojson"
             ),
@@ -654,10 +654,10 @@ def _compute_detection_metrics(
                 value=models.Prediction.label_id,
             ).label("label_id_grouper"),
             # TODO
-            case(
-                grouper_mappings["label_id_to_grouper_key_mapping"],
-                value=models.Prediction.label_id,
-            ).label("label_key_grouper"),
+            # case(
+            #     grouper_mappings["label_id_to_grouper_key_mapping"],
+            #     value=models.Prediction.label_id,
+            # ).label("label_key_grouper"),
             _annotation_type_to_geojson(target_type, models.Annotation).label(
                 "geojson"
             ),
@@ -684,8 +684,8 @@ def _compute_detection_metrics(
             gt.c.label_id_grouper.label("gt_label_id_grouper"),
             pd.c.label_id_grouper.label("pd_label_id_grouper"),
             # TODO
-            gt.c.label_key_grouper.label("gt_label_key_grouper"),
-            pd.c.label_key_grouper.label("pd_label_key_grouper"),
+            # gt.c.label_key_grouper.label("gt_label_key_grouper"),
+            # pd.c.label_key_grouper.label("pd_label_key_grouper"),
             gt.c.annotation_id.label("gt_ann_id"),
             pd.c.annotation_id.label("pd_ann_id"),
             pd.c.score.label("score"),

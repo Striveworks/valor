@@ -413,6 +413,12 @@ def test__compute_curves(db: Session):
         false_positive_entries=false_positive_entries,
         iou_threshold=0.5,
         pr_curve_max_examples=1,
+        parameters=schemas.EvaluationParameters(
+            task_type=enums.TaskType.OBJECT_DETECTION,
+            metrics_to_return=[
+                "PrecisionRecallCurve",
+            ],
+        ),
     )
 
     pr_expected_answers = {
@@ -463,6 +469,13 @@ def test__compute_curves(db: Session):
         false_positive_entries=false_positive_entries,
         iou_threshold=0.9,
         pr_curve_max_examples=1,
+        parameters=schemas.EvaluationParameters(
+            task_type=enums.TaskType.OBJECT_DETECTION,
+            metrics_to_return=[
+                "PrecisionRecallCurve",
+                "DetailedPrecisionRecallCurve",
+            ],
+        ),
     )
 
     pr_expected_answers = {
@@ -593,6 +606,13 @@ def test__compute_curves(db: Session):
         false_positive_entries=false_positive_entries,
         iou_threshold=0.9,
         pr_curve_max_examples=3,
+        parameters=schemas.EvaluationParameters(
+            task_type=enums.TaskType.OBJECT_DETECTION,
+            metrics_to_return=[
+                "PrecisionRecallCurve",
+                "DetailedPrecisionRecallCurve",
+            ],
+        ),
     )
 
     for (
@@ -641,6 +661,13 @@ def test__compute_curves(db: Session):
         false_positive_entries=false_positive_entries,
         iou_threshold=0.9,
         pr_curve_max_examples=0,
+        parameters=schemas.EvaluationParameters(
+            task_type=enums.TaskType.OBJECT_DETECTION,
+            metrics_to_return=[
+                "PrecisionRecallCurve",
+                "DetailedPrecisionRecallCurve",
+            ],
+        ),
     )
 
     for (
@@ -854,7 +881,7 @@ def test__compute_detection_metrics(
         for m in expected_metrics:
             assert m in actual_metrics, f"{metric_type} {m} not in actual"
 
-    pr_metrics = metrics[-2].model_dump(exclude_none=True)
+    pr_metrics = metrics[-1].model_dump(exclude_none=True)
 
     pr_expected_answers = {
         # (class, 4)
@@ -1013,8 +1040,8 @@ def test__compute_detection_metrics_with_rasters(
         {"ious": iou_thresholds, "value": 0.667, "label_key": "class"},
     ]
 
-    non_pr_metrics = metrics[:-2]
-    pr_metrics = metrics[-2]
+    non_pr_metrics = metrics[:-1]
+    pr_metrics = metrics[-1]
     for m in non_pr_metrics:
         assert m in expected
 

@@ -950,6 +950,10 @@ def test__compute_curves(
         grouper_mappings=grouper_mappings,
         unique_datums=unique_datums,
         pr_curve_max_examples=1,
+        metrics_to_return=[
+            "PrecisionRecallCurve",
+            "DetailedPrecisionRecallCurve",
+        ],
     )
 
     # check PrecisionRecallCurve
@@ -1089,6 +1093,10 @@ def test__compute_curves(
         grouper_mappings=grouper_mappings,
         unique_datums=unique_datums,
         pr_curve_max_examples=3,
+        metrics_to_return=[
+            "PrecisionRecallCurve",
+            "DetailedPrecisionRecallCurve",
+        ],
     )
 
     # these outputs shouldn't have changed
@@ -1140,6 +1148,10 @@ def test__compute_curves(
         grouper_mappings=grouper_mappings,
         unique_datums=unique_datums,
         pr_curve_max_examples=0,
+        metrics_to_return=[
+            "PrecisionRecallCurve",
+            "DetailedPrecisionRecallCurve",
+        ],
     )
 
     # these outputs shouldn't have changed
