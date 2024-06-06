@@ -123,7 +123,10 @@ def _validate_groundtruth_annotations(annotations: list["Annotation"]) -> None:
     labels = []
     indices = dict()
     for index, annotation in enumerate(annotations):
-        assert isinstance(annotation.implied_task_types, list)
+        # handle type error
+        if not isinstance(annotation.implied_task_types, list):
+            raise ValueError("implied_task_types should be a list.")
+
         if "semantic-segmentation" in annotation.implied_task_types:
             for label in annotation.labels:
                 if label in labels:
@@ -152,7 +155,9 @@ def _validate_prediction_annotations(annotations: list["Annotation"]) -> None:
     labels = []
     indices = dict()
     for index, annotation in enumerate(annotations):
-        assert isinstance(annotation.implied_task_types, list)
+        # handle type error
+        if not isinstance(annotation.implied_task_types, list):
+            raise ValueError("implied_task_types should be a list.")
 
         # Check that the label scores sum to 1.
         if "classification" in annotation.implied_task_types:

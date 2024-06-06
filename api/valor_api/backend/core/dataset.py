@@ -360,6 +360,16 @@ def get_n_groundtruth_rasters_in_dataset(db: Session, name: str) -> int:
 def get_unique_task_types_in_dataset(
     db: Session, name: str
 ) -> list[list[str]]:
+    """
+    Fetch the unique implied task types associated with the annotation in a dataset.
+
+    Parameters
+    -------
+    db : Session
+        The database Session you want to query against.
+    name : str
+        The name of the dataset to query for.
+    """
     return db.scalars(
         select(models.Annotation.implied_task_types)
         .join(models.GroundTruth)
