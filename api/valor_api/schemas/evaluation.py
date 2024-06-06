@@ -16,6 +16,8 @@ class EvaluationParameters(BaseModel):
 
     Attributes
     ----------
+    metrics: list[str], optional
+        The list of metrics to compute, store, and return to the user.
     convert_annotations_to_type: AnnotationType | None = None
         The type to convert all annotations to.
     iou_thresholds_to_compute: List[float], optional
@@ -33,6 +35,8 @@ class EvaluationParameters(BaseModel):
     """
 
     task_type: TaskType
+    metrics_to_return: list[str] | None = None
+      
     convert_annotations_to_type: AnnotationType | None = None
     iou_thresholds_to_compute: list[float] | None = None
     iou_thresholds_to_return: list[float] | None = None
@@ -48,6 +52,29 @@ class EvaluationParameters(BaseModel):
     @classmethod
     def _validate_parameters(cls, values):
         """Validate EvaluationParameters via type-specific checks."""
+
+        # set default metrics for each task type
+        if values.metrics_to_return is None:
+            match values.task_type:
+                case TaskType.CLASSIFICATION:
+                    values.metrics_to_return = [
+                        "Accuracy",
+                        "Precision",
+                        "Recall",
+                        "F1",
+                        "ROCAUC",
+                    ]
+                case TaskType.OBJECT_DETECTION:
+                    values.metrics_to_return = [
+                        "AP",
+                        "AR",
+                        "mAP",
+                        "APAveragedOverIOUs",
+                        "mAR",
+                        "mAPAveragedOverIOUs",
+                    ]
+                case TaskType.SEMANTIC_SEGMENTATION:
+                    values.metrics_to_return = ["IOU", "mIOU"]
 
         match values.task_type:
             case TaskType.CLASSIFICATION | TaskType.SEMANTIC_SEGMENTATION:

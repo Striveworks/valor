@@ -2,6 +2,7 @@
 that is no auth
 """
 
+import random
 from datetime import date, datetime, timedelta, timezone
 
 import pytest
@@ -16,7 +17,7 @@ from valor import (
     Model,
     Prediction,
 )
-from valor.enums import EvaluationStatus, TaskType
+from valor.enums import EvaluationStatus
 from valor.exceptions import ClientException
 
 
@@ -193,6 +194,48 @@ def test_evaluate_image_clf(
         eval_job.meta["duration"] <= 5
     )  # eval should definitely take less than 5 seconds, usually around .4
 
+    # check that metrics arg works correctly
+    selected_metrics = random.sample(
+        [
+            "Accuracy",
+            "ROCAUC",
+            "Precision",
+            "F1",
+            "Recall",
+            "PrecisionRecallCurve",
+        ],
+        2,
+    )
+    eval_job_random_metrics = model.evaluate_classification(
+        dataset, metrics_to_return=selected_metrics
+    )
+    assert (
+        eval_job_random_metrics.wait_for_completion(timeout=30)
+        == EvaluationStatus.DONE
+    )
+    assert set(
+        [metric["type"] for metric in eval_job_random_metrics.metrics]
+    ) == set(selected_metrics)
+
+    # check that passing None to metrics returns the assumed list of default metrics
+    default_metrics = [
+        "Accuracy",
+        "ROCAUC",
+        "Precision",
+        "F1",
+        "Recall",
+    ]
+    eval_job_random_metrics = model.evaluate_classification(
+        dataset, metrics_to_return=None
+    )
+    assert (
+        eval_job_random_metrics.wait_for_completion(timeout=30)
+        == EvaluationStatus.DONE
+    )
+    assert set(
+        [metric["type"] for metric in eval_job_random_metrics.metrics]
+    ) == set(default_metrics)
+
 
 def test_evaluate_tabular_clf(
     client: Client,
@@ -209,7 +252,6 @@ def test_evaluate_tabular_clf(
             datum=Datum(uid=f"uid{i}"),
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
                     labels=[Label(key="class", value=str(t))],
                 )
             ],
@@ -223,7 +265,7 @@ def test_evaluate_tabular_clf(
     model = Model.create(name=model_name)
     with pytest.raises(ClientException) as exc_info:
         model.evaluate_classification(dataset).wait_for_completion(timeout=30)
-    assert "has not been finalized" in str(exc_info)
+    assert "not been finalized" in str(exc_info)
 
     dataset.finalize()
 
@@ -232,7 +274,6 @@ def test_evaluate_tabular_clf(
             datum=Datum(uid=f"uid{i}"),
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
                     labels=[
                         Label(key="class", value=str(i), score=pred[i])
                         for i in range(len(pred))
@@ -248,7 +289,7 @@ def test_evaluate_tabular_clf(
     # test model finalization
     with pytest.raises(ClientException) as exc_info:
         model.evaluate_classification(dataset)
-    assert "has not been finalized" in str(exc_info)
+    assert "have not been finalized" in str(exc_info)
 
     # model is automatically finalized if all datums have a prediction
     model.add_prediction(dataset, pds[-1])
@@ -442,7 +483,6 @@ def test_stratify_clf_metrics(
             ),
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
                     labels=[Label(key="class", value=str(label_value))],
                 )
             ],
@@ -463,7 +503,6 @@ def test_stratify_clf_metrics(
             ),
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
                     labels=[
                         Label(key="class", value=str(pidx), score=pred[pidx])
                         for pidx in range(len(pred))
@@ -596,7 +635,6 @@ def test_stratify_clf_metrics_by_time(
             ),
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
                     labels=[Label(key="class", value=str(label_value))],
                 )
             ],
@@ -616,7 +654,6 @@ def test_stratify_clf_metrics_by_time(
             ),
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
                     labels=[
                         Label(key="class", value=str(pidx), score=pred[pidx])
                         for pidx in range(len(pred))
@@ -723,7 +760,6 @@ def gt_clfs_with_label_maps(
             datum=img5,
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
                     labels=[
                         Label(key="k4", value="v4"),
                         Label(key="k5", value="v5"),
@@ -736,7 +772,6 @@ def gt_clfs_with_label_maps(
             datum=img6,
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
                     labels=[
                         Label(key="k4", value="v4"),
                         Label(key="class", value="british shorthair"),
@@ -748,7 +783,6 @@ def gt_clfs_with_label_maps(
             datum=img8,
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
                     labels=[
                         Label(key="k3", value="v3"),
                         Label(key="class", value="tabby cat"),
@@ -771,7 +805,6 @@ def pred_clfs_with_label_maps(
             datum=img5,
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
                     labels=[
                         Label(key="k4", value="v1", score=0.47),
                         Label(key="k4", value="v8", score=0.53),
@@ -785,7 +818,6 @@ def pred_clfs_with_label_maps(
             datum=img6,
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
                     labels=[
                         Label(key="k4", value="v4", score=0.71),
                         Label(key="k4", value="v5", score=0.29),
@@ -798,7 +830,6 @@ def pred_clfs_with_label_maps(
             datum=img8,
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
                     labels=[
                         Label(key="k3", value="v1", score=1.0),
                         Label(key="class", value="cat", score=1.0),
@@ -1003,6 +1034,14 @@ def test_evaluate_classification_with_label_maps(
         dataset,
         label_map=label_mapping,
         pr_curve_max_examples=3,
+        metrics_to_return=[
+            "Precision",
+            "Recall",
+            "F1",
+            "Accuracy",
+            "ROCAUC",
+            "PrecisionRecallCurve",
+        ],
     )
     assert eval_job.id
     assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
@@ -1185,7 +1224,6 @@ def gt_clfs_label_key_mismatch(
             datum=img5,
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
                     labels=[
                         Label(key="k4", value="v4"),
                         Label(key="k5", value="v5"),
@@ -1197,7 +1235,6 @@ def gt_clfs_label_key_mismatch(
             datum=img6,
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
                     labels=[Label(key="k4", value="v4")],
                 )
             ],
@@ -1206,7 +1243,6 @@ def gt_clfs_label_key_mismatch(
             datum=img8,
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
                     labels=[Label(key="k3", value="v3")],
                 )
             ],
@@ -1223,7 +1259,6 @@ def pred_clfs_label_key_mismatch(
             datum=img5,
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
                     labels=[
                         Label(key="k12", value="v12", score=0.47),
                         Label(key="k12", value="v16", score=0.53),
@@ -1236,7 +1271,6 @@ def pred_clfs_label_key_mismatch(
             datum=img6,
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
                     labels=[
                         Label(key="k4", value="v4", score=0.71),
                         Label(key="k4", value="v5", score=0.29),

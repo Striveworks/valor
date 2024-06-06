@@ -223,24 +223,60 @@ def _split_request(
         raise exceptions.EvaluationRequestError(
             "No datasets meet the requirements of this request."
         )
+    elif any(
+        [
+            dataset.status != enums.TableStatus.FINALIZED
+            for dataset in datasets_to_evaluate
+        ]
+    ):
+        unfinalized_datasets = [
+            dataset.name
+            for dataset in datasets_to_evaluate
+            if dataset.status != enums.TableStatus.FINALIZED
+        ]
+        raise exceptions.EvaluationRequestError(
+            f"The following datasets have not been finalized and are required for this evaluation. {unfinalized_datasets}`"
+        )
 
-    # 1.b - get all models, note this uses the unmodified filter
-    model_filter = schemas.Filter(model_names=job_request.model_names)
-    model_to_evaluate = (
-        db.query(Query(models.Model).filter(model_filter).any())  # type: ignore - SQLAlchemy type issue
+    # 1.b - get all models, note this just looks up the models by name and does not apply the filter.
+    models_to_evaluate = (
+        db.query(models.Model)
+        .where(models.Model.name.in_(job_request.model_names))
         .distinct()
         .all()
     )
-    if not model_to_evaluate:
+    if not models_to_evaluate:
         raise exceptions.EvaluationRequestError(
             "No models meet the requirements of this request."
+        )
+    elif any(
+        [
+            core.get_model_status(
+                db=db, dataset_name=dataset.name, model_name=model.name
+            )
+            != enums.TableStatus.FINALIZED
+            for model in models_to_evaluate
+            for dataset in datasets_to_evaluate
+        ]
+    ):
+        pairings = [
+            (model.name, dataset.name)
+            for model in models_to_evaluate
+            for dataset in datasets_to_evaluate
+            if core.get_model_status(
+                db=db, dataset_name=dataset.name, model_name=model.name
+            )
+            != enums.TableStatus.FINALIZED
+        ]
+        raise exceptions.EvaluationRequestError(
+            f"The following model-dataset pairings have not been finalized. {pairings}"
         )
 
     # 2 - verify all models and datasets are ready for evaluation
     _verify_ready_to_evaluate(
         db=db,
         dataset_list=datasets_to_evaluate,
-        model_list=model_to_evaluate,
+        model_list=models_to_evaluate,
     )
 
     # 3 - create explicit filter with dataset names
@@ -259,7 +295,7 @@ def _split_request(
             parameters=job_request.parameters,
             meta={},
         )
-        for model in model_to_evaluate
+        for model in models_to_evaluate
     ]
 
 
@@ -271,7 +307,14 @@ def _create_response(
     """Converts a evaluation row into a response schema."""
     metrics = db.query(
         select(models.Metric)
-        .where(models.Metric.evaluation_id == evaluation.id)
+        .where(
+            and_(
+                models.Metric.evaluation_id == evaluation.id,
+                models.Metric.type.in_(
+                    evaluation.parameters["metrics_to_return"]
+                ),
+            )
+        )
         .subquery()
     ).all()
     confusion_matrices = db.query(
@@ -434,7 +477,6 @@ def _validate_create_or_get_evaluations(
     -------
     model.Evaluation
         The row that was passed as input.
-
     """
 
     # unpack filters and params
@@ -446,17 +488,31 @@ def _validate_create_or_get_evaluations(
     datasets = db.query(Query(models.Dataset).filter(groundtruth_filter).any()).distinct().all()  # type: ignore - SQLAlchemy type issue
     model = db.query(Query(models.Model).filter(prediction_filter).any()).distinct().one_or_none()  # type: ignore - SQLAlchemy type issue
 
+    datasets = [
+        dataset
+        for dataset in datasets
+        if dataset.status == enums.TableStatus.FINALIZED
+    ]
+
     # verify model and datasets have data for this evaluation
-    if len(datasets) == 0 or model is None:
-        evaluation.status = enums.EvaluationStatus.DONE
-    elif job_request.parameters.task_type == enums.TaskType.CLASSIFICATION:
-        # check that prediction label keys match ground truth label keys
+    if not datasets:
+        raise exceptions.EvaluationRequestError(
+            "No finalized datasets were found that met the filter criteria."
+        )
+    elif model is None:
+        raise exceptions.EvaluationRequestError(
+            f"The model '{evaluation.model_name}' did not meet the filter criteria."
+        )
+
+    # check that prediction label keys match ground truth label keys
+    if job_request.parameters.task_type == enums.TaskType.CLASSIFICATION:
         core.validate_matching_label_keys(
             db=db,
             label_map=parameters.label_map,
             groundtruth_filter=groundtruth_filter,
             prediction_filter=prediction_filter,
         )
+
     return evaluation
 
 
@@ -505,6 +561,17 @@ def create_or_get_evaluations(
                     job_request=subrequest,
                     evaluation=evaluation,
                 )
+                try:
+                    evaluation.status = enums.EvaluationStatus.PENDING
+                    db.commit()
+                except IntegrityError:
+                    db.rollback()
+                    raise exceptions.EvaluationStateError(
+                        evaluation_id=evaluation.id,
+                        current_state=enums.EvaluationStatus.FAILED,
+                        requested_state=enums.EvaluationStatus.PENDING,
+                    )
+
             existing_rows.append(evaluation)
 
         # create evaluation row

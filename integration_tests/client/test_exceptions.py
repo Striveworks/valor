@@ -11,7 +11,6 @@ from valor import (
     Prediction,
     exceptions,
 )
-from valor.enums import TaskType
 
 
 def test_dataset_exceptions(
@@ -33,8 +32,9 @@ def test_dataset_exceptions(
     model.add_prediction(
         dset, Prediction(datum=Datum(uid="uid"), annotations=[])
     )
-    with pytest.raises(exceptions.DatasetNotFinalizedError):
+    with pytest.raises(exceptions.ClientException) as e:
         model.evaluate_classification(dset)
+    assert "have not been finalized" in str(e)
 
     dset.finalize()
     with pytest.raises(exceptions.DatasetFinalizedError):
@@ -69,8 +69,9 @@ def test_model_exceptions(client: Client, model_name: str, dataset_name: str):
     dset = Dataset.create(dataset_name)
     dset.add_groundtruth(GroundTruth(datum=Datum(uid="uid"), annotations=[]))
     dset.finalize()
-    with pytest.raises(exceptions.ModelNotFinalizedError):
+    with pytest.raises(exceptions.ClientException) as e:
         model.evaluate_classification(dset)
+    assert "model-dataset pairings have not been finalized" in str(e)
 
     # test `ModelFinalizedError`
     model.finalize_inferences(dset)
@@ -94,7 +95,6 @@ def test_annotation_exceptions(
             datum=Datum(uid="uid"),
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
                     labels=[Label(key="key", value="value", score=1.0)],
                 )
             ],

@@ -1,5 +1,5 @@
 import math
-from typing import Any, Union
+from typing import Union
 
 from pydantic import (
     BaseModel,
@@ -8,8 +8,8 @@ from pydantic import (
     field_validator,
     model_validator,
 )
+from typing_extensions import Self
 
-from valor_api.enums import TaskType
 from valor_api.schemas.geometry import Box, Polygon, Raster
 from valor_api.schemas.validators import (
     validate_metadata,
@@ -29,34 +29,11 @@ MetadataType = dict[
 ]
 
 
-def _check_if_empty_annotation(annotation: "Annotation") -> bool:
-    """
-    Checks if the annotation is empty.
-
-    Parameters
-    ----------
-    annotation : Annotation
-        The annotation to check.
-
-    Returns
-    -------
-    bool
-        Whether the annotation is empty.
-    """
-    return (
-        not annotation.labels
-        and annotation.bounding_box is None
-        and annotation.polygon is None
-        and annotation.raster is None
-        and annotation.embedding is None
-    )
-
-
-def _validate_annotation_by_task_type(
+def _match_annotation_to_implied_task_type(
     annotation: "Annotation",
-) -> "Annotation":
+) -> list[str]:
     """
-    Validates the contents of an annotation by task type.
+    Match an annotation to an implied task type based on the arguments that were passed to the Annotation constructor.
 
     Parameters
     ----------
@@ -66,73 +43,70 @@ def _validate_annotation_by_task_type(
     Raises
     ------
     ValueError
-        If the contents of the annotation do not match the task type.
-    NotImplementedError
-        If the task type is not recognized.
+        If the contents of the annotation do not match an expected pattern.
     """
-    if _check_if_empty_annotation(annotation):
-        if annotation.task_type != TaskType.SKIP:
-            annotation.task_type = TaskType.EMPTY
-    match annotation.task_type:
-        case TaskType.CLASSIFICATION:
-            if not (
-                annotation.labels
-                and annotation.bounding_box is None
-                and annotation.polygon is None
-                and annotation.raster is None
-                and annotation.embedding is None
-            ):
-                raise ValueError(
-                    "Annotations with task type `classification` do not support geometries or embeddings."
-                )
-        case TaskType.OBJECT_DETECTION:
-            if not (
-                annotation.labels
-                and (
-                    annotation.bounding_box is not None
-                    or annotation.polygon is not None
-                    or annotation.raster is not None
-                )
-                and annotation.embedding is None
-            ):
-                raise ValueError(
-                    "Annotations with task type `object-detection` do not support embeddings."
-                )
-        case TaskType.SEMANTIC_SEGMENTATION:
-            if not (
-                annotation.labels
-                and annotation.raster is not None
-                and annotation.bounding_box is None
-                and annotation.polygon is None
-                and annotation.embedding is None
-            ):
-                raise ValueError(
-                    "Annotations with task type `semantic-segmentation` only supports rasters."
-                )
-        case TaskType.EMBEDDING:
-            if not (
-                annotation.embedding is not None
-                and not annotation.labels
-                and annotation.bounding_box is None
-                and annotation.polygon is None
-                and annotation.raster is None
-            ):
-                raise ValueError(
-                    "Annotation with task type `embedding` do not support labels or geometries."
-                )
-        case TaskType.EMPTY | TaskType.SKIP:
-            if not _check_if_empty_annotation(annotation):
-                raise ValueError("Annotation is not empty.")
-        case _:
-            raise NotImplementedError(
-                f"Task type `{annotation.task_type}` is not supported."
-            )
-    return annotation
+
+    implied_type = None
+    # classification annotations have labels, but not anything else
+    if (
+        annotation.labels
+        and annotation.bounding_box is None
+        and annotation.polygon is None
+        and annotation.raster is None
+        and annotation.embedding is None
+    ):
+        implied_type = ["classification"]
+    # object detection annotations have bounding boxes, polygons, and/or rasters
+    elif (
+        annotation.labels
+        and (
+            annotation.bounding_box is not None
+            or annotation.polygon is not None
+            or annotation.raster is not None
+        )
+        and annotation.is_instance is True
+        and annotation.embedding is None
+    ):
+        implied_type = ["object-detection"]
+    # semantic segmentation tasks only support rasters
+    elif (
+        annotation.labels
+        and annotation.raster is not None
+        and annotation.is_instance is not True
+        and annotation.bounding_box is None
+        and annotation.polygon is None
+        and annotation.embedding is None
+    ):
+        implied_type = ["semantic-segmentation"]
+    # embedding tasks only support enbeddings
+    elif (
+        annotation.embedding is not None
+        and not annotation.labels
+        and annotation.bounding_box is None
+        and annotation.polygon is None
+        and annotation.raster is None
+    ):
+        implied_type = ["embedding"]
+    # empty annotations shouldn't contain anything
+    elif (
+        not annotation.labels
+        and annotation.embedding is None
+        and annotation.bounding_box is None
+        and annotation.polygon is None
+        and annotation.raster is None
+    ):
+        implied_type = ["empty"]
+    else:
+        raise ValueError(
+            "Input didn't match any known patterns. Classification tasks should only contain labels. Object detection tasks should contain labels and polygons, bounding boxes, or rasters with is_instance == True. Segmentation tasks should contain labels and rasters with is_instance != True."
+        )
+
+    return implied_type
 
 
 def _validate_groundtruth_annotations(annotations: list["Annotation"]) -> None:
     """
-    Check that a label appears once in the annotations for semenatic segmentations.
+    Validate all of the annotations that are passed into a Groundtruth constructor.
 
     Parameters
     ----------
@@ -142,12 +116,16 @@ def _validate_groundtruth_annotations(annotations: list["Annotation"]) -> None:
     Raises
     ------
     ValueError
-        If the contents of an annotation does not match the task type.
+        If the contents of an annotation does not match expected patterns.
     """
     labels = []
     indices = dict()
     for index, annotation in enumerate(annotations):
-        if annotation.task_type == TaskType.SEMANTIC_SEGMENTATION:
+        # handle type error
+        if not isinstance(annotation.implied_task_types, list):
+            raise ValueError("implied_task_types should be a list.")
+
+        if "semantic-segmentation" in annotation.implied_task_types:
             for label in annotation.labels:
                 if label in labels:
                     raise ValueError(
@@ -160,7 +138,7 @@ def _validate_groundtruth_annotations(annotations: list["Annotation"]) -> None:
 
 def _validate_prediction_annotations(annotations: list["Annotation"]) -> None:
     """
-    Validate prediction annotations by task type.
+    Validate all of the annotations that are passed into a Prediction constructor.
 
     Parameters
     ----------
@@ -170,18 +148,22 @@ def _validate_prediction_annotations(annotations: list["Annotation"]) -> None:
     Raises
     ------
     ValueError
-        If the contents of an annotation does not match the task type.
+        If the contents of an annotation does not match expected patterns.
     """
     labels = []
     indices = dict()
     for index, annotation in enumerate(annotations):
-        if annotation.task_type == TaskType.CLASSIFICATION:
-            # Check that the label scores sum to 1.
+        # handle type error
+        if not isinstance(annotation.implied_task_types, list):
+            raise ValueError("implied_task_types should be a list.")
+
+        # Check that the label scores sum to 1.
+        if "classification" in annotation.implied_task_types:
             label_keys_to_sum = {}
             for scored_label in annotation.labels:
                 if scored_label.score is None:
                     raise ValueError(
-                        f"Missing score for label in {annotation.task_type} task."
+                        "Prediction labels must have scores for classification tasks."
                     )
                 label_key = scored_label.key
                 if label_key not in label_keys_to_sum:
@@ -193,16 +175,14 @@ def _validate_prediction_annotations(annotations: list["Annotation"]) -> None:
                         "For each label key, prediction scores must sum to 1, but"
                         f" for label key {k} got scores summing to {total_score}."
                     )
-
-        elif annotation.task_type == TaskType.OBJECT_DETECTION:
+        elif "object-detection" in annotation.implied_task_types:
             # Check that we have scores for all the labels.
             for label in annotation.labels:
                 if label.score is None:
                     raise ValueError(
-                        f"Missing score for label in {annotation.task_type} task."
+                        "Prediction labels must have scores for object detection tasks."
                     )
-
-        elif annotation.task_type == TaskType.SEMANTIC_SEGMENTATION:
+        elif "semantic-segmentation" in annotation.implied_task_types:
             for label in annotation.labels:
                 # Check that score is not defined.
                 if label.score is not None:
@@ -293,8 +273,6 @@ class Annotation(BaseModel):
 
     Attributes
     ----------
-    task_type: TaskType
-        The task type associated with the 'Annotation'.
     metadata: dict, optional
         A dictionary of metadata that describes the 'Annotation'.
     labels: List[Label], optional
@@ -307,22 +285,64 @@ class Annotation(BaseModel):
         A raster to assign to the 'Annotation'.
     embedding: list[float], optional
         A jsonb to assign to the 'Annotation'.
+    is_instance: bool, optional
+        A boolean describing whether we should treat the Raster attached to an annotation as an instance segmentation or not. If set to true, then the Annotation will be validated for use in object detection tasks. If set to false, then the Annotation will be validated for use in semantic segmentation tasks.
+    implied_task_types: list[str], optional
+        The validated task types that are applicable to each Annotation. Doesn't need to bet set by the user.
     """
 
-    task_type: TaskType
     metadata: MetadataType = dict()
     labels: list[Label] = list()
     bounding_box: Box | None = None
     polygon: Polygon | None = None
     raster: Raster | None = None
     embedding: list[float] | None = None
+    is_instance: bool | None = None
     model_config = ConfigDict(extra="forbid")
+    implied_task_types: list[str] | None = None
+
+    @field_validator("implied_task_types")
+    @classmethod
+    def _validate_implied_task_types(
+        cls, implied_task_types: list[str]
+    ) -> None:
+        """Raise error if user tries to pass in an improper value into implied_task_types."""
+        if implied_task_types and any(
+            [
+                x
+                not in [
+                    "classification",
+                    "semantic-segmentation",
+                    "object-detection",
+                    "embedding",
+                    "empty",
+                ]
+                for x in implied_task_types
+            ]
+        ):
+            raise ValueError(
+                "Invalid value in implied_task_types. implied_task_types should not be set by the user; it will be determined automatically based on the user's supplied inputs to Annotation."
+            )
 
     @model_validator(mode="after")
+    def _set_implied_task_types(self) -> Self:
+        """Set implied_task_types."""
+        self.implied_task_types = _match_annotation_to_implied_task_type(self)
+        return self
+
+    @field_validator("is_instance")
     @classmethod
-    def validate_by_task_type(cls, values: Any) -> Any:
-        """Validates the annotation by task type."""
-        return _validate_annotation_by_task_type(values)
+    def _validate_is_instance(cls, is_instance: bool | None, values: any) -> bool | None:  # type: ignore - pydantic field validator
+        """Validates that is_instance was used correctly."""
+        if is_instance is True and (
+            values.data["raster"] is None
+            and values.data["polygon"] is None
+            and values.data["bounding_box"] is None
+        ):
+            raise ValueError(
+                "is_instance=True currently only supports bounding_box, polygon and raster."
+            )
+        return is_instance
 
     @field_validator("metadata")
     @classmethod
@@ -415,7 +435,7 @@ class GroundTruth(BaseModel):
     def validate_annotations(cls, v: list[Annotation]) -> list[Annotation]:
         """Validates the 'annotations' attribute."""
         if not v:
-            v = [Annotation(task_type=TaskType.EMPTY)]
+            v = [Annotation()]
         _validate_groundtruth_annotations(v)
         return v
 
@@ -461,7 +481,7 @@ class Prediction(BaseModel):
     def validate_annotations(cls, v: list[Annotation]) -> list[Annotation]:
         """Validates the 'annotations' attribute."""
         if not v:
-            v = [Annotation(task_type=TaskType.EMPTY)]
+            v = [Annotation()]
         _validate_prediction_annotations(v)
         return v
 

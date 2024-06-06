@@ -2,7 +2,7 @@ import math
 
 import pytest
 
-from valor_api import enums, schemas
+from valor_api import schemas
 
 
 @pytest.fixture
@@ -117,14 +117,13 @@ def scored_labels(labels) -> list[schemas.Label]:
 def groundtruth_annotations(labels) -> list[schemas.Annotation]:
     return [
         schemas.Annotation(
-            labels=[labels[0]], task_type=enums.TaskType.CLASSIFICATION
+            labels=[labels[0]],
         ),
         schemas.Annotation(
-            labels=[labels[2]], task_type=enums.TaskType.CLASSIFICATION
+            labels=[labels[2]],
         ),
         schemas.Annotation(
             labels=[labels[3]],
-            task_type=enums.TaskType.CLASSIFICATION,
         ),
     ]
 
@@ -134,12 +133,11 @@ def predicted_annotations(scored_labels) -> list[schemas.Annotation]:
     return [
         schemas.Annotation(
             labels=[scored_labels[0], scored_labels[1]],
-            task_type=enums.TaskType.CLASSIFICATION,
         ),
         schemas.Annotation(
-            labels=[scored_labels[2]], task_type=enums.TaskType.CLASSIFICATION
+            labels=[scored_labels[2]],
         ),
         schemas.Annotation(
-            labels=[scored_labels[3]], task_type=enums.TaskType.CLASSIFICATION
+            labels=[scored_labels[3]],
         ),
     ]

@@ -70,7 +70,6 @@ class GroundTruth(StaticCollection):
     ...     datum=Datum(uid="uid1"),
     ...     annotations=[
     ...         Annotation(
-    ...             task_type=TaskType.CLASSIFICATION,
     ...             labels=[Label(key="k1", value="v1")],
     ...         )
     ...     ]
@@ -125,7 +124,6 @@ class Prediction(StaticCollection):
     ...     datum=Datum(uid="uid1"),
     ...     annotations=[
     ...         Annotation(
-    ...             task_type=TaskType.CLASSIFICATION,
     ...             labels=[
     ...                 Label(key="k1", value="v1", score=0.9),
     ...                 Label(key="k1", value="v1", score=0.1)
@@ -157,36 +155,6 @@ class Prediction(StaticCollection):
             The list of predicted annotations.
         """
         super().__init__(datum=datum, annotations=annotations)
-
-        # validation
-        for annotation in self.annotations:
-            task_type = annotation.task_type
-            if task_type in [
-                TaskType.CLASSIFICATION,
-                TaskType.OBJECT_DETECTION,
-            ]:
-                for label in annotation.labels:
-                    label_score = label.score
-                    if label_score is None:
-                        raise ValueError(
-                            f"For task type `{task_type}` prediction labels must have scores, but got `None`"
-                        )
-            if task_type == TaskType.CLASSIFICATION:
-
-                label_keys_to_sum = {}
-                for scored_label in annotation.labels:
-                    label_key = scored_label.key
-                    label_score = scored_label.score
-                    if label_key not in label_keys_to_sum:
-                        label_keys_to_sum[label_key] = 0.0
-                    label_keys_to_sum[label_key] += label_score
-
-                for k, total_score in label_keys_to_sum.items():
-                    if abs(total_score - 1) > 1e-5:
-                        raise ValueError(
-                            "For each label key, prediction scores must sum to 1, but"
-                            f" for label key {k} got scores summing to {total_score}."
-                        )
 
 
 class Evaluation:
@@ -393,15 +361,12 @@ class DatasetSummary:
     num_bounding_boxes: int
     num_polygons: int
     num_rasters: int
-    task_types: List[TaskType]
+    task_types: list[list[str]]
     labels: List[Label]
     datum_metadata: List[dict]
     annotation_metadata: List[dict]
 
     def __post_init__(self):
-        for i, tt in enumerate(self.task_types):
-            if isinstance(tt, str):
-                self.task_types[i] = TaskType(tt)
         for i, label in enumerate(self.labels):
             if isinstance(label, dict):
                 self.labels[i] = Label(**label)
@@ -641,8 +606,6 @@ class Dataset(StaticCollection):
             num_polygons: total number of polygons in the dataset
 
             num_rasters: total number of rasters in the dataset
-
-            task_types: list of the unique task types in the dataset
 
             labels: list of the unique labels in the dataset
 
@@ -909,6 +872,7 @@ class Model(StaticCollection):
         filter_by: Optional[FilterType] = None,
         label_map: Optional[Dict[Label, Label]] = None,
         pr_curve_max_examples: int = 1,
+        metrics_to_return: Optional[List[str]] = None,
         allow_retries: bool = False,
     ) -> Evaluation:
         """
@@ -922,6 +886,8 @@ class Model(StaticCollection):
             Optional set of constraints to filter evaluation by.
         label_map : Dict[Label, Label], optional
             Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
+        metrics: List[str], optional
+            The list of metrics to compute, store, and return to the user.
         allow_retries : bool, default = False
             Option to retry previously failed evaluations.
 
@@ -944,6 +910,7 @@ class Model(StaticCollection):
                 task_type=TaskType.CLASSIFICATION,
                 label_map=self._create_label_map(label_map=label_map),
                 pr_curve_max_examples=pr_curve_max_examples,
+                metrics_to_return=metrics_to_return,
             ),
             meta={},
         )
@@ -965,6 +932,7 @@ class Model(StaticCollection):
         iou_thresholds_to_return: Optional[List[float]] = None,
         label_map: Optional[Dict[Label, Label]] = None,
         recall_score_threshold: float = 0,
+        metrics_to_return: Optional[List[str]] = None,
         pr_curve_iou_threshold: float = 0.5,
         pr_curve_max_examples: int = 1,
         allow_retries: bool = False,
@@ -1016,6 +984,7 @@ class Model(StaticCollection):
             iou_thresholds_to_return=iou_thresholds_to_return,
             label_map=self._create_label_map(label_map=label_map),
             recall_score_threshold=recall_score_threshold,
+            metrics_to_return=metrics_to_return,
             pr_curve_iou_threshold=pr_curve_iou_threshold,
             pr_curve_max_examples=pr_curve_max_examples,
         )
@@ -1040,6 +1009,7 @@ class Model(StaticCollection):
         datasets: Optional[Union[Dataset, List[Dataset]]] = None,
         filter_by: Optional[FilterType] = None,
         label_map: Optional[Dict[Label, Label]] = None,
+        metrics_to_return: Optional[List[str]] = None,
         allow_retries: bool = False,
     ) -> Evaluation:
         """
@@ -1053,6 +1023,8 @@ class Model(StaticCollection):
             Optional set of constraints to filter evaluation by.
         label_map : Dict[Label, Label], optional
             Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
+        metrics: List[str], optional
+            The list of metrics to compute, store, and return to the user.
         allow_retries : bool, default = False
             Option to retry previously failed evaluations.
 
@@ -1069,6 +1041,7 @@ class Model(StaticCollection):
             parameters=EvaluationParameters(
                 task_type=TaskType.SEMANTIC_SEGMENTATION,
                 label_map=self._create_label_map(label_map=label_map),
+                metrics_to_return=metrics_to_return,
             ),
             meta={},
         )

@@ -68,7 +68,6 @@ def classification_test_data(db: Session, dataset_name: str, model_name: str):
             datum=imgs[i],
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.CLASSIFICATION,
                     labels=[
                         schemas.Label(key="animal", value=animal_gts[i]),
                         schemas.Label(key="color", value=color_gts[i]),
@@ -86,7 +85,6 @@ def classification_test_data(db: Session, dataset_name: str, model_name: str):
             datum=imgs[i],
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.CLASSIFICATION,
                     labels=[
                         schemas.Label(key="animal", value=value, score=score)
                         for value, score in animal_preds[i].items()
@@ -709,6 +707,14 @@ def test_compute_classification(
         groundtruth_filter=datum_filter,
         label_map=None,
         pr_curve_max_examples=0,
+        metrics_to_return=[
+            "Precision",
+            "Recall",
+            "F1",
+            "Accuracy",
+            "ROCAUC",
+            "PrecisionRecallCurve",
+        ],
     )
 
     # Make matrices accessible by label_key

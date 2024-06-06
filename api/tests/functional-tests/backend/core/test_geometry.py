@@ -38,7 +38,6 @@ def create_classification_dataset(db: Session, dataset_name: str):
                 datum=schemas.Datum(uid="uid1"),
                 annotations=[
                     schemas.Annotation(
-                        task_type=enums.TaskType.CLASSIFICATION,
                         labels=[schemas.Label(key="k1", value="v1")],
                     )
                 ],
@@ -56,26 +55,25 @@ def create_object_detection_dataset(
     raster: Raster,
 ):
     datum = Datum(uid="uid1")
-    task_type = enums.TaskType.OBJECT_DETECTION
     labels = [schemas.Label(key="k1", value="v1")]
     groundtruth = GroundTruth(
         dataset_name=dataset_name,
         datum=datum,
         annotations=[
             Annotation(
-                task_type=task_type,
                 labels=labels,
                 bounding_box=bbox,
+                is_instance=True,
             ),
             Annotation(
-                task_type=task_type,
                 labels=labels,
                 polygon=polygon,
+                is_instance=True,
             ),
             Annotation(
-                task_type=task_type,
                 labels=labels,
                 raster=raster,
+                is_instance=True,
             ),
         ],
     )
@@ -94,33 +92,28 @@ def create_segmentation_dataset_from_geometries(
     raster: Raster,
 ):
     datum = Datum(uid="uid1")
-    task_type = enums.TaskType.OBJECT_DETECTION
     labels = [schemas.Label(key="k1", value="v1")]
     groundtruth = GroundTruth(
         dataset_name=dataset_name,
         datum=datum,
         annotations=[
             Annotation(
-                task_type=task_type,
                 labels=labels,
                 raster=Raster(
                     mask=raster.mask,
                     geometry=polygon,
                 ),
+                is_instance=True,
             ),
             Annotation(
-                task_type=task_type,
                 labels=labels,
                 raster=Raster(
                     mask=raster.mask,
                     geometry=multipolygon,
                 ),
+                is_instance=True,
             ),
-            Annotation(
-                task_type=task_type,
-                labels=labels,
-                raster=raster,
-            ),
+            Annotation(labels=labels, raster=raster, is_instance=True),
         ],
     )
     dataset = schemas.Dataset(name=dataset_name)
@@ -415,14 +408,12 @@ def test_create_raster_from_polygons_with_decimal_coordinates(
 
     # create raster annotation
     datum = Datum(uid="uid1")
-    task_type = enums.TaskType.OBJECT_DETECTION
     labels = [schemas.Label(key="k1", value="v1")]
     groundtruth = GroundTruth(
         dataset_name=dataset_name,
         datum=datum,
         annotations=[
             Annotation(
-                task_type=task_type,
                 labels=labels,
                 raster=Raster(
                     mask=raster.mask,

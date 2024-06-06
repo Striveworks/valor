@@ -850,21 +850,23 @@ def _compute_detection_metrics(
         number_of_groundtruths_per_grouper[grouper_id] += 1
 
     # Optionally compute precision-recall curves
-    false_positive_entries = db.query(
-        select(
-            joint.c.dataset_name,
-            joint.c.gt_datum_uid,
-            joint.c.pd_datum_uid,
-            joint.c.gt_label_id_grouper.label("gt_label_id_grouper"),
-            joint.c.pd_label_id_grouper.label("pd_label_id_grouper"),
-            joint.c.score.label("score"),
-            joint.c.pd_geojson,
-        )
-        .select_from(joint)
-        .where(
-            or_(
-                joint.c.gt_id.is_(None),
-                joint.c.pd_id.is_(None),
+    if "PrecisionRecallCurve" in parameters.metrics_to_return:  # type: ignore - metrics_to_return is guaranteed not to be None
+        false_positive_entries = db.query(
+            select(
+                joint.c.dataset_name,
+                joint.c.gt_datum_uid,
+                joint.c.pd_datum_uid,
+                joint.c.gt_label_id_grouper.label("gt_label_id_grouper"),
+                joint.c.pd_label_id_grouper.label("pd_label_id_grouper"),
+                joint.c.score.label("score"),
+                joint.c.pd_geojson,
+            )
+            .select_from(joint)
+            .where(
+                or_(
+                    joint.c.gt_id.is_(None),
+                    joint.c.pd_id.is_(None),
+                )
             )
         )
         .subquery()

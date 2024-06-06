@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 from pydantic import ValidationError
 
-from valor_api import enums, schemas
+from valor_api import schemas
 from valor_api.schemas.validators import validate_type_string
 
 
@@ -152,61 +152,54 @@ def test_datum(metadata):
 def test_annotation_without_scores(metadata, bbox, polygon, raster, labels):
     # valid
     gt = schemas.Annotation(
-        task_type=enums.TaskType.CLASSIFICATION,
         labels=labels,
     )
     schemas.Annotation(
-        task_type=enums.TaskType.OBJECT_DETECTION,
         labels=labels,
         metadata={},
         bounding_box=bbox,
+        is_instance=True,
     )
     schemas.Annotation(
-        task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
         labels=labels,
         metadata={},
         raster=raster,
     )
     schemas.Annotation(
-        task_type=enums.TaskType.CLASSIFICATION.value,  # type: ignore - purposefully throwing error
         labels=labels,
     )
     schemas.Annotation(
-        task_type=enums.TaskType.OBJECT_DETECTION.value,  # type: ignore - purposefully throwing error
         labels=labels,
         bounding_box=bbox,
+        is_instance=True,
     )
     schemas.Annotation(
-        task_type=enums.TaskType.SEMANTIC_SEGMENTATION.value,  # type: ignore - purposefully throwing error
         labels=labels,
         raster=raster,
+        is_instance=True,
     )
     schemas.Annotation(
-        task_type=enums.TaskType.SEMANTIC_SEGMENTATION.value,  # type: ignore - purposefully throwing error
         labels=[],
     )
 
-    # test property `task_type`
+    # test property `implied_task_type`
     with pytest.raises(ValidationError):
-        schemas.Annotation(task_type=124123)  # type: ignore - purposefully throwing error
+        schemas.Annotation(implied_task_types=124123)  # type: ignore - purposefully throwing error
 
     # test property `labels`
     with pytest.raises(ValidationError):
         schemas.Annotation(
             labels=labels[0],
-            task_type=enums.TaskType.CLASSIFICATION,
         )
     with pytest.raises(ValidationError):
         schemas.Annotation(
             labels=[labels[0], 123],  # type: ignore - purposefully throwing error
-            task_type=enums.TaskType.CLASSIFICATION,
         )
     assert gt.labels == labels
 
     # test property `metadata`
     with pytest.raises(ValidationError):
         schemas.Annotation(
-            task_type=enums.TaskType.CLASSIFICATION.value,  # type: ignore - purposefully throwing error
             labels=labels,
             metadata={123: 123},  # type: ignore - purposefully throwing error
         )
@@ -214,25 +207,21 @@ def test_annotation_without_scores(metadata, bbox, polygon, raster, labels):
     # test geometric properties
     with pytest.raises(ValidationError):
         schemas.Annotation(
-            task_type=enums.TaskType.OBJECT_DETECTION,
             labels=labels,
             bounding_box=polygon,
         )
     with pytest.raises(ValidationError):
         schemas.Annotation(
-            task_type=enums.TaskType.OBJECT_DETECTION,
             labels=labels,
             polygon=bbox,
         )
     with pytest.raises(ValidationError):
         schemas.Annotation(
-            task_type=enums.TaskType.OBJECT_DETECTION,
             labels=labels,
             multipolygon=bbox,  # type: ignore - purposefully throwing error
         )
     with pytest.raises(ValidationError):
         schemas.Annotation(
-            task_type=enums.TaskType.OBJECT_DETECTION,
             labels=labels,
             raster=bbox,
         )
@@ -242,46 +231,37 @@ def test_annotation_with_scores(
     metadata, bbox, polygon, raster, scored_labels
 ):
     # valid
-    pd = schemas.Annotation(
-        task_type=enums.TaskType.CLASSIFICATION, labels=scored_labels
-    )
+    pd = schemas.Annotation(labels=scored_labels)
     schemas.Annotation(
-        task_type=enums.TaskType.OBJECT_DETECTION,
         labels=scored_labels,
         metadata={},
         bounding_box=bbox,
+        is_instance=True,
     )
     schemas.Annotation(
-        task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
         labels=scored_labels,
         metadata={},
         raster=raster,
+        is_instance=True,
     )
     schemas.Annotation(
-        task_type=enums.TaskType.CLASSIFICATION,
         labels=scored_labels,
     )
     schemas.Annotation(
-        task_type=enums.TaskType.OBJECT_DETECTION,
         labels=scored_labels,
         bounding_box=bbox,
+        is_instance=True,
     )
     schemas.Annotation(
-        task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
         labels=scored_labels,
         raster=raster,
+        is_instance=True,
     )
-
-    # test property `task_type`
-    with pytest.raises(ValidationError):
-        schemas.Annotation(
-            task_type=1245123,  # type: ignore - purposefully throwing error
-        )
 
     # test property `scored_labels`
     with pytest.raises(ValidationError) as e:
         schemas.Annotation(
-            labels=scored_labels[0], task_type=enums.TaskType.CLASSIFICATION
+            labels=scored_labels[0],
         )
     assert "should be a valid dictionary or instance of Label" in str(
         e.value.errors()[0]["msg"]
@@ -292,13 +272,11 @@ def test_annotation_with_scores(
     # test property `metadata`
     with pytest.raises(ValidationError):
         schemas.Annotation(
-            task_type=enums.TaskType.CLASSIFICATION,
             labels=scored_labels,
             metadata=123,  # type: ignore - purposefully throwing error
         )
     with pytest.raises(ValidationError):
         schemas.Annotation(
-            task_type=enums.TaskType.CLASSIFICATION,
             labels=scored_labels,
             metadata={123: "123"},  # type: ignore - purposefully throwing error
         )
@@ -306,25 +284,21 @@ def test_annotation_with_scores(
     # test geometric properties
     with pytest.raises(ValidationError):
         schemas.Annotation(
-            task_type=enums.TaskType.OBJECT_DETECTION,
             labels=scored_labels,
             bounding_box=polygon,
         )
     with pytest.raises(ValidationError):
         schemas.Annotation(
-            task_type=enums.TaskType.OBJECT_DETECTION,
             labels=scored_labels,
             polygon=bbox,
         )
     with pytest.raises(ValidationError):
         schemas.Annotation(
-            task_type=enums.TaskType.OBJECT_DETECTION,
             labels=scored_labels,
             multipolygon=bbox,  # type: ignore - purposefully throwing error
         )
     with pytest.raises(ValidationError) as e:
         schemas.Annotation(
-            task_type=enums.TaskType.OBJECT_DETECTION,
             labels=scored_labels,
             raster=bbox,
         )
@@ -339,7 +313,6 @@ def test_groundtruth(metadata, groundtruth_annotations, raster):
         ),
         annotations=[
             schemas.Annotation(
-                task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
                 labels=[schemas.Label(key="k1", value="v1")],
                 raster=raster,
             )
@@ -468,14 +441,12 @@ def test_prediction(metadata, predicted_annotations, labels, scored_labels):
             annotations=[
                 schemas.Annotation(
                     labels=scored_labels[1:],
-                    task_type=enums.TaskType.CLASSIFICATION,
                 )
             ],
         )
     assert "prediction scores must sum to 1" in str(e.value.errors()[0]["msg"])
 
     # check score is provided
-
     with pytest.raises(ValueError) as e:
         schemas.Prediction(
             dataset_name="name",
@@ -485,12 +456,11 @@ def test_prediction(metadata, predicted_annotations, labels, scored_labels):
             ),
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.CLASSIFICATION,
                     labels=labels,
                 )
             ],
         )
-    assert "Missing score for label" in str(e)
+    assert "Prediction labels must have scores for classification" in str(e)
 
     with pytest.raises(ValueError) as e:
         schemas.Prediction(
@@ -501,13 +471,13 @@ def test_prediction(metadata, predicted_annotations, labels, scored_labels):
             ),
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.OBJECT_DETECTION,
                     labels=labels,
                     bounding_box=schemas.Box.from_extrema(0, 1, 0, 1),
+                    is_instance=True,
                 )
             ],
         )
-    assert "Missing score for label" in str(e)
+    assert "Prediction labels must have scores for object detection" in str(e)
 
     with pytest.raises(ValueError) as e:
         schemas.Prediction(
@@ -523,12 +493,28 @@ def test_prediction(metadata, predicted_annotations, labels, scored_labels):
             annotations=[
                 schemas.Annotation(
                     labels=scored_labels,
-                    task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
                     raster=schemas.Raster.from_numpy(np.zeros((10, 10)) == 0),
+                    is_instance=False,
                 )
             ],
         )
     assert "Semantic segmentation tasks cannot have scores" in str(e)
+
+    # check inappropriate usage of is_instance
+    with pytest.raises(ValidationError) as e:
+        schemas.Prediction(
+            dataset_name="name",
+            model_name="name",
+            datum=schemas.Datum(
+                uid="uid",
+            ),
+            annotations=[
+                schemas.Annotation(labels=scored_labels[1:], is_instance=True)
+            ],
+        )
+    assert "supports bounding_box, polygon and raster" in str(
+        e.value.errors()[0]["msg"]
+    )
 
 
 def test_semantic_segmentation_validation():
@@ -540,7 +526,6 @@ def test_semantic_segmentation_validation():
         ),
         annotations=[
             schemas.Annotation(
-                task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
                 labels=[
                     schemas.Label(key="k1", value="v1"),
                     schemas.Label(key="k2", value="v2"),
@@ -548,7 +533,6 @@ def test_semantic_segmentation_validation():
                 raster=schemas.Raster.from_numpy(np.zeros((10, 10)) == 1),
             ),
             schemas.Annotation(
-                task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
                 labels=[schemas.Label(key="k1", value="v3")],
                 raster=schemas.Raster.from_numpy(np.zeros((10, 10)) == 1),
             ),
@@ -565,7 +549,6 @@ def test_semantic_segmentation_validation():
             ),
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
                     labels=[
                         schemas.Label(key="k1", value="v1"),
                         schemas.Label(key="k1", value="v1"),
@@ -573,7 +556,6 @@ def test_semantic_segmentation_validation():
                     raster=schemas.Raster.from_numpy(np.zeros((10, 10)) == 1),
                 ),
                 schemas.Annotation(
-                    task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
                     labels=[schemas.Label(key="k3", value="v3")],
                     raster=schemas.Raster.from_numpy(np.zeros((10, 10)) == 1),
                 ),
@@ -589,7 +571,6 @@ def test_semantic_segmentation_validation():
             ),
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
                     labels=[
                         schemas.Label(key="k1", value="v1"),
                         schemas.Label(key="k1", value="v2"),
@@ -597,7 +578,6 @@ def test_semantic_segmentation_validation():
                     raster=schemas.Raster.from_numpy(np.zeros((10, 10)) == 1),
                 ),
                 schemas.Annotation(
-                    task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
                     labels=[schemas.Label(key="k1", value="v1")],
                     raster=schemas.Raster.from_numpy(np.zeros((10, 10)) == 1),
                 ),
@@ -615,7 +595,6 @@ def test_semantic_segmentation_validation():
         ),
         annotations=[
             schemas.Annotation(
-                task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
                 labels=[
                     schemas.Label(key="k1", value="v1"),
                     schemas.Label(key="k2", value="v2"),
@@ -623,7 +602,6 @@ def test_semantic_segmentation_validation():
                 raster=schemas.Raster.from_numpy(np.zeros((10, 10)) == 1),
             ),
             schemas.Annotation(
-                task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
                 labels=[schemas.Label(key="k1", value="v3")],
                 raster=schemas.Raster.from_numpy(np.zeros((10, 10)) == 1),
             ),
@@ -639,7 +617,6 @@ def test_semantic_segmentation_validation():
             ),
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
                     labels=[
                         schemas.Label(key="k1", value="v1"),
                         schemas.Label(key="k1", value="v1"),
@@ -647,7 +624,6 @@ def test_semantic_segmentation_validation():
                     raster=schemas.Raster.from_numpy(np.zeros((10, 10)) == 1),
                 ),
                 schemas.Annotation(
-                    task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
                     labels=[schemas.Label(key="k3", value="v3")],
                     raster=schemas.Raster.from_numpy(np.zeros((10, 10)) == 1),
                 ),

@@ -9,7 +9,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from valor import Annotation, Client, Dataset, Datum, GroundTruth, Label
-from valor.enums import TaskType
 from valor.metatypes import ImageMetadata
 from valor.schemas import Box
 from valor_api.backend import models
@@ -44,9 +43,9 @@ def dataset_with_metadata(
             datum=img1,
             annotations=[
                 Annotation(
-                    task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k", value="v")],
                     bounding_box=Box([rect1]),
+                    is_instance=True,
                 ),
             ],
         )
@@ -56,7 +55,6 @@ def dataset_with_metadata(
             datum=img2,
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
                     labels=[Label(key="k", value="v")],
                 )
             ],

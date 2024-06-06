@@ -16,6 +16,25 @@ def _load_dataset_schema(
     return schemas.Dataset(name=dataset.name, metadata=dataset.meta)
 
 
+def _validate_dataset_contains_datums(db: Session, name: str):
+    """
+    Validates whether a dataset contains at least one datum.
+
+    Raises
+    ------
+    DatasetEmptyError
+        If the dataset contains no datums.
+    """
+    datum_count = (
+        db.query(func.count(models.Datum.id))
+        .join(models.Dataset, models.Dataset.id == models.Datum.dataset_id)
+        .where(models.Dataset.name == name)
+        .scalar()
+    )
+    if datum_count == 0:
+        raise exceptions.DatasetEmptyError(name)
+
+
 def create_dataset(
     db: Session,
     dataset: schemas.Dataset,
@@ -254,6 +273,8 @@ def set_dataset_status(
             dataset_names=[name],
         ):
             raise exceptions.EvaluationRunningError(dataset_name=name)
+    elif status == enums.TableStatus.FINALIZED:
+        _validate_dataset_contains_datums(db=db, name=name)
 
     try:
         dataset.status = status
@@ -339,14 +360,32 @@ def get_n_groundtruth_rasters_in_dataset(db: Session, name: str) -> int:
 def get_unique_task_types_in_dataset(
     db: Session, name: str
 ) -> list[enums.TaskType]:
-    return db.scalars(
-        select(models.Annotation.task_type)
-        .join(models.GroundTruth)
-        .join(models.Datum)
-        .join(models.Dataset)
+    """
+    Fetch the unique implied task types associated with the annotation in a dataset.
+
+    Parameters
+    -------
+    db : Session
+        The database Session you want to query against.
+    name : str
+        The name of the dataset to query for.
+    """
+    task_types = (
+        db.query(
+            func.jsonb_array_elements_text(
+                models.Annotation.implied_task_types
+            )
+        )
+        .select_from(models.Annotation)
+        .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
+        .join(models.Dataset, models.Dataset.id == models.Datum.dataset_id)
         .where(models.Dataset.name == name)
         .distinct()
-    ).all()  # type: ignore - SQLAlchemy type issue
+        .all()
+    )
+    return [
+        enums.TaskType(task_type_tuple[0]) for task_type_tuple in task_types
+    ]
 
 
 def get_unique_datum_metadata_in_dataset(

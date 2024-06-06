@@ -143,9 +143,7 @@ def test_EvaluationRequest():
     with pytest.raises(ValidationError):
         schemas.EvaluationRequest(
             model_filter=schemas.Filter(),  # type: ignore - purposefully throwing error
-            datum_filter=schemas.Filter(
-                task_types=[enums.TaskType.CLASSIFICATION]
-            ),
+            datum_filter=schemas.Filter(),
             parameters=schemas.EvaluationParameters(
                 task_type=enums.TaskType.CLASSIFICATION,
             ),

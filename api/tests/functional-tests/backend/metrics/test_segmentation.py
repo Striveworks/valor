@@ -411,13 +411,13 @@ def test__compute_segmentation_metrics(
     metrics = _compute_segmentation_metrics(
         db,
         parameters=schemas.EvaluationParameters(
-            task_type=enums.TaskType.CLASSIFICATION,
-            label_map=None,
+            task_type=enums.TaskType.SEMANTIC_SEGMENTATION, label_map=None
         ),
         prediction_filter=prediction_filter,
         groundtruth_filter=groundtruth_filter,
     )
-    # should have five metrics (one IOU for each of the four labels, and three mIOUs)
+    # should have seven metrics
+    # (one IOU for each of the four labels from the groundtruth set, and three mIOUs for each included label key)
     assert len(metrics) == 7
     for metric in metrics[:-3]:
         assert isinstance(metric, schemas.IOUMetric)

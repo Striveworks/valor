@@ -68,7 +68,6 @@ def test__verify_ready_to_evaluate(
                 datum=schemas.Datum(uid="uid1"),
                 annotations=[
                     schemas.Annotation(
-                        task_type=enums.TaskType.CLASSIFICATION,
                         labels=[schemas.Label(key="k1", value="v1")],
                     )
                 ],
@@ -94,7 +93,6 @@ def test__verify_ready_to_evaluate(
                 datum=schemas.Datum(uid="uid1"),
                 annotations=[
                     schemas.Annotation(
-                        task_type=enums.TaskType.CLASSIFICATION,
                         labels=[
                             schemas.Label(key="k1", value="v1", score=1.0)
                         ],
@@ -121,7 +119,6 @@ def test__verify_ready_to_evaluate(
                 datum=schemas.Datum(uid="uid1"),
                 annotations=[
                     schemas.Annotation(
-                        task_type=enums.TaskType.CLASSIFICATION,
                         labels=[
                             schemas.Label(key="k1", value="v1", score=1.0)
                         ],
@@ -501,6 +498,55 @@ def test_get_evaluations(
     combined = first + second
     assert len(combined)
 
+    # test metrics_to_sort_by when there aren't any metrics to sort by
+    evaluations, headers = core.get_paginated_evaluations(
+        db=db,
+        dataset_names=[finalized_dataset],
+        model_names=[finalized_model],
+        offset=0,
+        limit=6,
+        metrics_to_sort_by={"IOU": "k1"},
+    )
+
+    assert len(evaluations) == 2
+    assert headers == {"content-range": "items 0-1/2"}
+
+    # test that we can reconstitute the full set using paginated calls
+    first, header = core.get_paginated_evaluations(db, offset=1, limit=1)
+    assert len(first) == 1
+    assert header == {"content-range": "items 1-1/2"}
+
+    second, header = core.get_paginated_evaluations(db, offset=0, limit=1)
+    assert len(second) == 1
+    assert header == {"content-range": "items 0-0/2"}
+
+    combined = first + second
+    assert len(combined)
+
+    evaluations, headers = core.get_paginated_evaluations(
+        db=db,
+        dataset_names=[finalized_dataset],
+        model_names=[finalized_model],
+        offset=0,
+        limit=6,
+        metrics_to_sort_by={"IOU": {"key": "k1", "value": "v1"}},
+    )
+
+    assert len(evaluations) == 2
+    assert headers == {"content-range": "items 0-1/2"}
+
+    # test that we can reconstitute the full set using paginated calls
+    first, header = core.get_paginated_evaluations(db, offset=1, limit=1)
+    assert len(first) == 1
+    assert header == {"content-range": "items 1-1/2"}
+
+    second, header = core.get_paginated_evaluations(db, offset=0, limit=1)
+    assert len(second) == 1
+    assert header == {"content-range": "items 0-0/2"}
+
+    combined = first + second
+    assert len(combined)
+
 
 def test_get_evaluation_requests_from_model(
     db: Session, finalized_dataset: str, finalized_model: str
@@ -829,7 +875,23 @@ def test__fetch_evaluations_and_mark_for_deletion(
     db: Session, finalized_dataset: str, finalized_model: str
 ):
     # create two evaluations
-    for pr_curve_max_examples in [1, 5]:
+    for metrics_to_return in [
+        [
+            "Precision",
+            "Recall",
+            "F1",
+            "Accuracy",
+            "ROCAUC",
+        ],
+        [
+            "Precision",
+            "Recall",
+            "F1",
+            "Accuracy",
+            "ROCAUC",
+            "PrecisionRecallCurve",
+        ],
+    ]:
         core.create_or_get_evaluations(
             db,
             schemas.EvaluationRequest(
@@ -837,7 +899,7 @@ def test__fetch_evaluations_and_mark_for_deletion(
                 datum_filter=schemas.Filter(dataset_names=[finalized_dataset]),
                 parameters=schemas.EvaluationParameters(
                     task_type=enums.TaskType.CLASSIFICATION,
-                    pr_curve_max_examples=pr_curve_max_examples,
+                    metrics_to_return=metrics_to_return,
                 ),
                 meta={},
             ),

@@ -107,7 +107,6 @@ const createDatasetsAndModels = async () => {
       },
       [
         {
-          task_type: 'classification',
           metadata: {},
           labels: [{ key: 'label-key', value: 'label-value' }],
           bounding_box: null,
@@ -125,7 +124,6 @@ const createDatasetsAndModels = async () => {
       },
       [
         {
-          task_type: 'classification',
           metadata: {},
           labels: [{ key: 'label-key', value: 'label-value-with-no-prediction' }],
           bounding_box: null,
@@ -154,7 +152,6 @@ const createDatasetsAndModels = async () => {
             },
             [
               {
-                task_type: 'classification',
                 metadata: {},
                 labels: [{ key: 'label-key', value: 'label-value', score: 1.0 }],
                 bounding_box: null,
@@ -173,7 +170,6 @@ const createDatasetsAndModels = async () => {
             },
             [
               {
-                task_type: 'classification',
                 metadata: {},
                 labels: [{ key: 'label-key', value: 'label-value', score: 1.0 }],
                 bounding_box: null,
@@ -200,12 +196,7 @@ test('evaluation methods', async () => {
       modelName,
       datasetName,
       'classification',
-      null,
-      null,
-      null,
-      null,
-      null,
-      null
+      ['Precision', 'Recall', 'F1', 'Accuracy', 'ROCAUC', 'PrecisionRecallCurve']
     );
     expect(['running', 'pending', 'done']).toContain(evaluation.status);
 

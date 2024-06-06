@@ -187,12 +187,11 @@ def test_get_dataset_summary(
     assert summary.num_bounding_boxes == 3
     assert summary.num_polygons == 1
     assert summary.num_rasters == 1
-    assert set(summary.task_types) == set(
-        [
-            enums.TaskType.OBJECT_DETECTION.value,
-            enums.TaskType.CLASSIFICATION.value,
-        ]
-    )
+    assert set(summary.task_types) == {
+        enums.TaskType.OBJECT_DETECTION,
+        enums.TaskType.CLASSIFICATION,
+        enums.TaskType.EMPTY,
+    }
     assert summary.datum_metadata == [
         {
             "width": 32,

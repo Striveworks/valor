@@ -750,6 +750,7 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
     grouper_key: str,
     grouper_mappings: dict[str, dict[str, dict]],
     pr_curve_max_examples: int,
+    metrics_to_return: list[str],
 ) -> (
     tuple[
         schemas.ConfusionMatrix,
@@ -778,6 +779,8 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
         A dictionary of mappings that connect groupers to their related labels.
     pr_curve_max_examples: int
         The maximum number of datum examples to store per true positive, false negative, etc.
+    metrics: list[str]
+        The list of metrics to compute, store, and return to the user.
 
     Returns
     -------
@@ -850,31 +853,33 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
         ),
     ]
 
-    # calculate the number of unique datums
-    # used to determine the number of true negatives
-    pd_datums = db.query(
-        Query(models.Dataset.name, models.Datum.uid)  # type: ignore - sqlalchemy issues
-        .filter(prediction_filter)
-        .predictions()
-    ).all()
-    gt_datums = db.query(
-        Query(models.Dataset.name, models.Datum.uid)  # type: ignore - sqlalchemy issues
-        .filter(groundtruth_filter)
-        .groundtruths()
-    ).all()
-    unique_datums = set(pd_datums + gt_datums)
+    if "PrecisionRecallCurve" in metrics_to_return:
+        # calculate the number of unique datums
+        # used to determine the number of true negatives
+        pd_datums = db.query(
+            Query(models.Dataset.name, models.Datum.uid)  # type: ignore - sqlalchemy issues
+            .filter(prediction_filter)
+            .predictions()
+        ).all()
+        gt_datums = db.query(
+            Query(models.Dataset.name, models.Datum.uid)  # type: ignore - sqlalchemy issues
+            .filter(groundtruth_filter)
+            .groundtruths()
+        ).all()
+        unique_datums = set(pd_datums + gt_datums)
 
-    pr_curves = _compute_curves(
-        db=db,
-        groundtruths=groundtruths,
-        predictions=predictions,
-        grouper_key=grouper_key,
-        grouper_mappings=grouper_mappings,
-        unique_datums=unique_datums,
-        pr_curve_max_examples=pr_curve_max_examples,
-    )
-
-    output += pr_curves
+        pr_curves = _compute_curves(
+            db=db,
+            groundtruths=groundtruths,
+            predictions=predictions,
+            grouper_key=grouper_key,
+            grouper_mappings=grouper_mappings,
+            unique_datums=unique_datums,
+        )
+        output = schemas.PrecisionRecallCurve(
+            label_key=grouper_key, value=pr_curves
+        )
+        metrics.append(output)
 
     # metrics that are per label
     for grouper_value in grouper_mappings["grouper_key_to_labels_mapping"][
@@ -913,6 +918,7 @@ def _compute_clf_metrics(
     prediction_filter: schemas.Filter,
     groundtruth_filter: schemas.Filter,
     pr_curve_max_examples: int,
+    metrics_to_return: list[str],
     label_map: LabelMapType | None = None,
 ) -> tuple[
     list[schemas.ConfusionMatrix],
@@ -936,6 +942,8 @@ def _compute_clf_metrics(
         The filter to be used to query predictions.
     groundtruth_filter : schemas.Filter
         The filter to be used to query groundtruths.
+    metrics: list[str]
+        The list of metrics to compute, store, and return to the user.
     label_map: LabelMapType, optional
         Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
     pr_curve_max_examples: int
@@ -972,6 +980,7 @@ def _compute_clf_metrics(
             grouper_key=grouper_key,
             grouper_mappings=grouper_mappings,
             pr_curve_max_examples=pr_curve_max_examples,
+            metrics_to_return=metrics_to_return,
         )
         if cm_and_metrics is not None:
             confusion_matrices.append(cm_and_metrics[0])
@@ -1032,6 +1041,7 @@ def compute_clf_metrics(
             if parameters.pr_curve_max_examples
             else 0
         ),
+        metrics_to_return=parameters.metrics_to_return,  # type: ignore - metrics_to_return is guaranteed not to be None
     )
 
     confusion_matrices_mappings = create_metric_mappings(

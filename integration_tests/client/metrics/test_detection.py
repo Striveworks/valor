@@ -2,6 +2,7 @@
 that is no auth
 """
 
+import random
 from dataclasses import asdict
 
 import pytest
@@ -151,6 +152,14 @@ def test_evaluate_detection(
             "iou_thresholds_to_return": [0.1, 0.6],
             "label_map": None,
             "recall_score_threshold": 0.0,
+            "metrics_to_return": [
+                "AP",
+                "AR",
+                "mAP",
+                "APAveragedOverIOUs",
+                "mAR",
+                "mAPAveragedOverIOUs",
+            ],
             "pr_curve_iou_threshold": 0.5,
             "pr_curve_max_examples": 1,
         },
@@ -277,6 +286,15 @@ def test_evaluate_detection(
             "iou_thresholds_to_return": [0.1, 0.6],
             "label_map": None,
             "recall_score_threshold": 0.0,
+
+            "metrics_to_return": [
+                "AP",
+                "AR",
+                "mAP",
+                "APAveragedOverIOUs",
+                "mAR",
+                "mAPAveragedOverIOUs",
+            ],
             "pr_curve_iou_threshold": 0.5,
             "pr_curve_max_examples": 1,
         },
@@ -335,6 +353,14 @@ def test_evaluate_detection(
             "iou_thresholds_to_return": [0.1, 0.6],
             "label_map": None,
             "recall_score_threshold": 0.0,
+            "metrics_to_return": [
+                "AP",
+                "AR",
+                "mAP",
+                "APAveragedOverIOUs",
+                "mAR",
+                "mAPAveragedOverIOUs",
+            ],
             "pr_curve_iou_threshold": 0.5,
             "pr_curve_max_examples": 1,
         },
@@ -347,32 +373,15 @@ def test_evaluate_detection(
     assert min_area_1200_metrics != expected_metrics
 
     # check for difference with max area now dividing the set of annotations
-    eval_job_max_area_1200 = model.evaluate_detection(
-        dataset,
-        iou_thresholds_to_compute=[0.1, 0.6],
-        iou_thresholds_to_return=[0.1, 0.6],
-        filter_by=[
-            Label.key == "k1",
-            Annotation.bounding_box.area <= 1200,
-        ],
-        convert_annotations_to_type=AnnotationType.BOX,
-    )
-    # this computation will return 'EvaluationStatus.DONE' immediately as no predictions exist that meet the filter requirements.
-    eval_job_max_area_1200.wait_for_completion(timeout=30)
-    result = eval_job_max_area_1200.to_dict()
-    result.pop("meta")
-    max_area_1200_metrics = result.pop("metrics")
-    assert result == {
-        "id": eval_job_max_area_1200.id,
-        "model_name": model_name,
-        "datum_filter": {
-            **default_filter_properties,
-            "dataset_names": ["test_dataset"],
-            "bounding_box_area": [
-                {
-                    "operator": "<=",
-                    "value": 1200.0,
-                },
+    # this results in an empty prediction set which raises an error
+    with pytest.raises(ClientException) as e:
+        model.evaluate_detection(
+            dataset,
+            iou_thresholds_to_compute=[0.1, 0.6],
+            iou_thresholds_to_return=[0.1, 0.6],
+            filter_by=[
+                Label.key == "k1",
+                Annotation.bounding_box.area <= 1200,
             ],
             "label_keys": ["k1"],
         },
@@ -393,6 +402,7 @@ def test_evaluate_detection(
         "ignored_pred_labels": [],
     }
     assert max_area_1200_metrics != expected_metrics
+
 
     # should perform the same as the first min area evaluation
     # except now has an upper bound
@@ -439,6 +449,14 @@ def test_evaluate_detection(
             "iou_thresholds_to_return": [0.1, 0.6],
             "label_map": None,
             "recall_score_threshold": 0.0,
+            "metrics_to_return": [
+                "AP",
+                "AR",
+                "mAP",
+                "APAveragedOverIOUs",
+                "mAR",
+                "mAPAveragedOverIOUs",
+            ],
             "pr_curve_iou_threshold": 0.5,
             "pr_curve_max_examples": 1,
         },
@@ -456,7 +474,40 @@ def test_evaluate_detection(
 
     # test accessing these evaluations via the dataset
     all_evals = dataset.get_evaluations()
-    assert len(all_evals) == 7
+    assert len(all_evals) == 6
+
+    # check that metrics arg works correctly
+    selected_metrics = random.sample(
+        [
+            "AP",
+            "AR",
+            "mAP",
+            "APAveragedOverIOUs",
+            "mAR",
+            "mAPAveragedOverIOUs",
+            "PrecisionRecallCurve",
+        ],
+        2,
+    )
+    eval_job_random_metrics = model.evaluate_detection(
+        dataset,
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_return=[0.1, 0.6],
+        filter_by=[
+            Label.key == "k1",
+            Annotation.bounding_box.area >= 1200,
+            Annotation.bounding_box.area <= 1800,
+        ],
+        convert_annotations_to_type=AnnotationType.BOX,
+        metrics_to_return=selected_metrics,
+    )
+    assert (
+        eval_job_random_metrics.wait_for_completion(timeout=30)
+        == EvaluationStatus.DONE
+    )
+    assert set(
+        [metric["type"] for metric in eval_job_random_metrics.metrics]
+    ) == set(selected_metrics)
 
 
 def test_evaluate_detection_with_json_filters(
@@ -604,6 +655,14 @@ def test_evaluate_detection_with_json_filters(
             "iou_thresholds_to_return": [0.1, 0.6],
             "label_map": None,
             "recall_score_threshold": 0.0,
+            "metrics_to_return": [
+                "AP",
+                "AR",
+                "mAP",
+                "APAveragedOverIOUs",
+                "mAR",
+                "mAPAveragedOverIOUs",
+            ],
             "pr_curve_iou_threshold": 0.5,
             "pr_curve_max_examples": 1,
         },
@@ -1126,6 +1185,15 @@ def test_evaluate_detection_with_label_maps(
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
         pr_curve_max_examples=1,
+        metrics_to_return=[
+            "AP",
+            "AR",
+            "mAP",
+            "APAveragedOverIOUs",
+            "mAR",
+            "mAPAveragedOverIOUs",
+            "PrecisionRecallCurve",
+        ],
     )
 
     assert (
@@ -1836,6 +1904,15 @@ def test_evaluate_detection_with_label_maps(
         iou_thresholds_to_return=[0.1, 0.6],
         label_map=label_mapping,
         recall_score_threshold=0.8,
+        metrics_to_return=[
+            "AP",
+            "AR",
+            "mAP",
+            "APAveragedOverIOUs",
+            "mAR",
+            "mAPAveragedOverIOUs",
+            "PrecisionRecallCurve",
+        ],
     )
 
     assert (
@@ -1859,6 +1936,15 @@ def test_evaluate_detection_with_label_maps(
             [["class_name", "cat"], ["foo", "bar"]],
         ],
         "recall_score_threshold": 0.8,
+        "metrics_to_return": [
+            "AP",
+            "AR",
+            "mAP",
+            "APAveragedOverIOUs",
+            "mAR",
+            "mAPAveragedOverIOUs",
+            "PrecisionRecallCurve",
+        ],
         "pr_curve_iou_threshold": 0.5,
         "pr_curve_max_examples": 1,
     }
@@ -1928,11 +2014,11 @@ def test_evaluate_detection_false_negatives_single_image_baseline(
             datum=Datum(uid="uid1"),
             annotations=[
                 Annotation(
-                    task_type=TaskType.OBJECT_DETECTION,
                     bounding_box=Box.from_extrema(
                         xmin=10, xmax=20, ymin=10, ymax=20
                     ),
                     labels=[Label(key="key", value="value")],
+                    is_instance=True,
                 )
             ],
         )
@@ -1946,18 +2032,18 @@ def test_evaluate_detection_false_negatives_single_image_baseline(
             datum=Datum(uid="uid1"),
             annotations=[
                 Annotation(
-                    task_type=TaskType.OBJECT_DETECTION,
                     bounding_box=Box.from_extrema(
                         xmin=10, xmax=20, ymin=10, ymax=20
                     ),
                     labels=[Label(key="key", value="value", score=0.8)],
+                    is_instance=True,
                 ),
                 Annotation(
-                    task_type=TaskType.OBJECT_DETECTION,
                     bounding_box=Box.from_extrema(
                         xmin=100, xmax=110, ymin=100, ymax=200
                     ),
                     labels=[Label(key="key", value="value", score=0.7)],
+                    is_instance=True,
                 ),
             ],
         ),
@@ -1989,11 +2075,11 @@ def test_evaluate_detection_false_negatives_single_image(
             datum=Datum(uid="uid1"),
             annotations=[
                 Annotation(
-                    task_type=TaskType.OBJECT_DETECTION,
                     bounding_box=Box.from_extrema(
                         xmin=10, xmax=20, ymin=10, ymax=20
                     ),
                     labels=[Label(key="key", value="value")],
+                    is_instance=True,
                 )
             ],
         )
@@ -2007,18 +2093,18 @@ def test_evaluate_detection_false_negatives_single_image(
             datum=Datum(uid="uid1"),
             annotations=[
                 Annotation(
-                    task_type=TaskType.OBJECT_DETECTION,
                     bounding_box=Box.from_extrema(
                         xmin=10, xmax=20, ymin=10, ymax=20
                     ),
                     labels=[Label(key="key", value="value", score=0.8)],
+                    is_instance=True,
                 ),
                 Annotation(
-                    task_type=TaskType.OBJECT_DETECTION,
                     bounding_box=Box.from_extrema(
                         xmin=100, xmax=110, ymin=100, ymax=200
                     ),
                     labels=[Label(key="key", value="value", score=0.9)],
+                    is_instance=True,
                 ),
             ],
         ),
@@ -2056,17 +2142,17 @@ def test_evaluate_detection_false_negatives_two_images_one_empty_low_confidence_
                 datum=Datum(uid="uid1"),
                 annotations=[
                     Annotation(
-                        task_type=TaskType.OBJECT_DETECTION,
                         bounding_box=Box.from_extrema(
                             xmin=10, xmax=20, ymin=10, ymax=20
                         ),
                         labels=[Label(key="key", value="value")],
+                        is_instance=True,
                     )
                 ],
             ),
             GroundTruth(
                 datum=Datum(uid="uid2"),
-                annotations=[Annotation(task_type=TaskType.EMPTY)],
+                annotations=[Annotation()],
             ),
         ]
     )
@@ -2080,11 +2166,11 @@ def test_evaluate_detection_false_negatives_two_images_one_empty_low_confidence_
                 datum=Datum(uid="uid1"),
                 annotations=[
                     Annotation(
-                        task_type=TaskType.OBJECT_DETECTION,
                         bounding_box=Box.from_extrema(
                             xmin=10, xmax=20, ymin=10, ymax=20
                         ),
                         labels=[Label(key="key", value="value", score=0.8)],
+                        is_instance=True,
                     ),
                 ],
             ),
@@ -2092,11 +2178,11 @@ def test_evaluate_detection_false_negatives_two_images_one_empty_low_confidence_
                 datum=Datum(uid="uid2"),
                 annotations=[
                     Annotation(
-                        task_type=TaskType.OBJECT_DETECTION,
                         bounding_box=Box.from_extrema(
                             xmin=10, xmax=20, ymin=10, ymax=20
                         ),
                         labels=[Label(key="key", value="value", score=0.7)],
+                        is_instance=True,
                     ),
                 ],
             ),
@@ -2133,17 +2219,17 @@ def test_evaluate_detection_false_negatives_two_images_one_empty_high_confidence
                 datum=Datum(uid="uid1"),
                 annotations=[
                     Annotation(
-                        task_type=TaskType.OBJECT_DETECTION,
                         bounding_box=Box.from_extrema(
                             xmin=10, xmax=20, ymin=10, ymax=20
                         ),
                         labels=[Label(key="key", value="value")],
+                        is_instance=True,
                     )
                 ],
             ),
             GroundTruth(
                 datum=Datum(uid="uid2"),
-                annotations=[Annotation(task_type=TaskType.EMPTY)],
+                annotations=[Annotation()],
             ),
         ]
     )
@@ -2157,11 +2243,11 @@ def test_evaluate_detection_false_negatives_two_images_one_empty_high_confidence
                 datum=Datum(uid="uid1"),
                 annotations=[
                     Annotation(
-                        task_type=TaskType.OBJECT_DETECTION,
                         bounding_box=Box.from_extrema(
                             xmin=10, xmax=20, ymin=10, ymax=20
                         ),
                         labels=[Label(key="key", value="value", score=0.8)],
+                        is_instance=True,
                     ),
                 ],
             ),
@@ -2169,11 +2255,11 @@ def test_evaluate_detection_false_negatives_two_images_one_empty_high_confidence
                 datum=Datum(uid="uid2"),
                 annotations=[
                     Annotation(
-                        task_type=TaskType.OBJECT_DETECTION,
                         bounding_box=Box.from_extrema(
                             xmin=10, xmax=20, ymin=10, ymax=20
                         ),
                         labels=[Label(key="key", value="value", score=0.9)],
+                        is_instance=True,
                     ),
                 ],
             ),
@@ -2211,11 +2297,11 @@ def test_evaluate_detection_false_negatives_two_images_one_only_with_different_c
                 datum=Datum(uid="uid1"),
                 annotations=[
                     Annotation(
-                        task_type=TaskType.OBJECT_DETECTION,
                         bounding_box=Box.from_extrema(
                             xmin=10, xmax=20, ymin=10, ymax=20
                         ),
                         labels=[Label(key="key", value="value")],
+                        is_instance=True,
                     )
                 ],
             ),
@@ -2223,11 +2309,11 @@ def test_evaluate_detection_false_negatives_two_images_one_only_with_different_c
                 datum=Datum(uid="uid2"),
                 annotations=[
                     Annotation(
-                        task_type=TaskType.OBJECT_DETECTION,
                         bounding_box=Box.from_extrema(
                             xmin=10, xmax=20, ymin=10, ymax=20
                         ),
                         labels=[Label(key="key", value="other value")],
+                        is_instance=True,
                     )
                 ],
             ),
@@ -2243,11 +2329,11 @@ def test_evaluate_detection_false_negatives_two_images_one_only_with_different_c
                 datum=Datum(uid="uid1"),
                 annotations=[
                     Annotation(
-                        task_type=TaskType.OBJECT_DETECTION,
                         bounding_box=Box.from_extrema(
                             xmin=10, xmax=20, ymin=10, ymax=20
                         ),
                         labels=[Label(key="key", value="value", score=0.8)],
+                        is_instance=True,
                     ),
                 ],
             ),
@@ -2255,11 +2341,11 @@ def test_evaluate_detection_false_negatives_two_images_one_only_with_different_c
                 datum=Datum(uid="uid2"),
                 annotations=[
                     Annotation(
-                        task_type=TaskType.OBJECT_DETECTION,
                         bounding_box=Box.from_extrema(
                             xmin=10, xmax=20, ymin=10, ymax=20
                         ),
                         labels=[Label(key="key", value="value", score=0.7)],
+                        is_instance=True,
                     ),
                 ],
             ),
@@ -2315,11 +2401,11 @@ def test_evaluate_detection_false_negatives_two_images_one_only_with_different_c
                 datum=Datum(uid="uid1"),
                 annotations=[
                     Annotation(
-                        task_type=TaskType.OBJECT_DETECTION,
                         bounding_box=Box.from_extrema(
                             xmin=10, xmax=20, ymin=10, ymax=20
                         ),
                         labels=[Label(key="key", value="value")],
+                        is_instance=True,
                     )
                 ],
             ),
@@ -2327,11 +2413,11 @@ def test_evaluate_detection_false_negatives_two_images_one_only_with_different_c
                 datum=Datum(uid="uid2"),
                 annotations=[
                     Annotation(
-                        task_type=TaskType.OBJECT_DETECTION,
                         bounding_box=Box.from_extrema(
                             xmin=10, xmax=20, ymin=10, ymax=20
                         ),
                         labels=[Label(key="key", value="other value")],
+                        is_instance=True,
                     )
                 ],
             ),
@@ -2347,11 +2433,11 @@ def test_evaluate_detection_false_negatives_two_images_one_only_with_different_c
                 datum=Datum(uid="uid1"),
                 annotations=[
                     Annotation(
-                        task_type=TaskType.OBJECT_DETECTION,
                         bounding_box=Box.from_extrema(
                             xmin=10, xmax=20, ymin=10, ymax=20
                         ),
                         labels=[Label(key="key", value="value", score=0.8)],
+                        is_instance=True,
                     ),
                 ],
             ),
@@ -2359,11 +2445,11 @@ def test_evaluate_detection_false_negatives_two_images_one_only_with_different_c
                 datum=Datum(uid="uid2"),
                 annotations=[
                     Annotation(
-                        task_type=TaskType.OBJECT_DETECTION,
                         bounding_box=Box.from_extrema(
                             xmin=10, xmax=20, ymin=10, ymax=20
                         ),
                         labels=[Label(key="key", value="value", score=0.9)],
+                        is_instance=True,
                     ),
                 ],
             ),
