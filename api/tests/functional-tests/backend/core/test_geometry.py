@@ -13,6 +13,7 @@ from valor_api.backend.core.geometry import (
     _convert_raster_to_polygon,
     _raster_to_png_b64,
     convert_geometry,
+    get_annotation_type,
 )
 from valor_api.crud import create_dataset, create_groundtruths
 from valor_api.schemas import (
@@ -119,6 +120,17 @@ def create_segmentation_dataset_from_geometries(
     create_dataset(db=db, dataset=dataset)
     create_groundtruths(db=db, groundtruths=[groundtruth])
     return dataset_name
+
+
+def test_get_annotation_type(
+    db: Session, dataset_name: str, create_classification_dataset
+):
+    # tests uncovered case where `AnnotationType.NONE` is returned.
+    dataset = fetch_dataset(db, dataset_name)
+    assert (
+        get_annotation_type(db, enums.TaskType.CLASSIFICATION, dataset)
+        == enums.AnnotationType.NONE
+    )
 
 
 def test_convert_geometry_input(

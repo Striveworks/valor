@@ -182,6 +182,10 @@ def test_annotation_without_scores(metadata, bbox, polygon, raster, labels):
         labels=[],
     )
 
+    # test property `implied_task_type`
+    with pytest.raises(ValidationError):
+        schemas.Annotation(implied_task_types=124123)  # type: ignore - purposefully throwing error
+
     # test property `labels`
     with pytest.raises(ValidationError):
         schemas.Annotation(
