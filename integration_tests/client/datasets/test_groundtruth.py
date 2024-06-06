@@ -11,7 +11,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from valor import Annotation, Client, Dataset, Datum, GroundTruth, Label
-from valor.enums import TaskType
 from valor.exceptions import ClientException
 from valor.schemas import Box, MultiPolygon, Polygon, Raster
 from valor_api.backend import models
@@ -39,14 +38,13 @@ def test_create_gt_detections_as_bbox_or_poly(
         datum=image,
         annotations=[
             Annotation(
-                task_type=TaskType.OBJECT_DETECTION,
                 labels=[Label(key="k", value="v")],
                 bounding_box=Box.from_extrema(
                     xmin=xmin, ymin=ymin, xmax=xmax, ymax=ymax
                 ),
+                is_instance=True,
             ),
             Annotation(
-                task_type=TaskType.OBJECT_DETECTION,
                 labels=[Label(key="k", value="v")],
                 polygon=Polygon(
                     [
@@ -59,6 +57,7 @@ def test_create_gt_detections_as_bbox_or_poly(
                         ]
                     ]
                 ),
+                is_instance=True,
             ),
         ],
     )
@@ -95,9 +94,49 @@ def test_create_gt_detections_as_bbox_or_poly(
     )
     for det in detections.annotations:
         if det.bounding_box:
-            assert det.to_dict() == gt.annotations[0].to_dict()
+            assert det.to_dict() == {
+                "type": "annotation",
+                "value": {
+                    "metadata": {},
+                    "labels": [{"key": "k", "value": "v", "score": None}],
+                    "bounding_box": [
+                        [
+                            (10.0, 25.0),
+                            (30.0, 25.0),
+                            (30.0, 50.0),
+                            (10.0, 50.0),
+                            (10.0, 25.0),
+                        ]
+                    ],
+                    "polygon": None,
+                    "raster": None,
+                    "embedding": None,
+                    "is_instance": True,
+                    "implied_task_types": ["object-detection"],
+                },
+            }
         else:
-            assert det.to_dict() == gt.annotations[1].to_dict()
+            assert det.to_dict() == {
+                "type": "annotation",
+                "value": {
+                    "metadata": {},
+                    "labels": [{"key": "k", "value": "v", "score": None}],
+                    "bounding_box": None,
+                    "polygon": [
+                        [
+                            (10.0, 25.0),
+                            (30.0, 25.0),
+                            (30.0, 50.0),
+                            (10.0, 50.0),
+                            (10.0, 25.0),
+                        ]
+                    ],
+                    "raster": None,
+                    "embedding": None,
+                    "is_instance": True,
+                    "implied_task_types": ["object-detection"],
+                },
+            }
 
 
 def test_create_gt_segs_as_polys_or_masks(
@@ -134,12 +173,10 @@ def test_create_gt_segs_as_polys_or_masks(
             datum=img1,
             annotations=[
                 Annotation(
-                    task_type=TaskType.SEMANTIC_SEGMENTATION,
                     labels=[Label(key="k1", value="v1")],
                     raster=Raster.from_numpy(mask),
                 ),
                 Annotation(
-                    task_type=TaskType.SEMANTIC_SEGMENTATION,
                     labels=[Label(key="k1", value="v1")],
                     raster=Raster.from_geometry(
                         poly,
@@ -159,18 +196,18 @@ def test_create_gt_segs_as_polys_or_masks(
         datum=img1,
         annotations=[
             Annotation(
-                task_type=TaskType.SEMANTIC_SEGMENTATION,
                 labels=[Label(key="k1", value="v1")],
                 raster=Raster.from_numpy(mask),
+                is_instance=True,
             ),
             Annotation(
-                task_type=TaskType.OBJECT_DETECTION,
                 labels=[Label(key="k1", value="v1")],
                 raster=Raster.from_geometry(
                     multipoly,
                     height=image_height,
                     width=image_width,
                 ),
+                is_instance=True,
             ),
         ],
     )

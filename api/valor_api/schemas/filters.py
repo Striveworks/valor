@@ -496,6 +496,35 @@ class Outside(BaseModel):
         return self.outside.rhs
 
 
+class Contains(BaseModel):
+    """
+    Checks if symbolic list contains a provided value.
+
+    Attributes
+    ----------
+    contains : Operands
+        The operands of the function.
+    """
+
+    contains: Operands
+    model_config = ConfigDict(extra="forbid")
+
+    @property
+    def op(self) -> str:
+        """Returns the operator name."""
+        return type(self).__name__.lower()
+
+    @property
+    def lhs(self):
+        """Returns the lhs operand."""
+        return self.contains.lhs
+
+    @property
+    def rhs(self):
+        """Returns the rhs operand."""
+        return self.contains.rhs
+
+
 NArgFunction = And | Or
 OneArgFunction = Not | IsNull | IsNotNull
 TwoArgFunction = (
@@ -508,6 +537,7 @@ TwoArgFunction = (
     | Intersects
     | Inside
     | Outside
+    | Contains
 )
 FunctionType = OneArgFunction | TwoArgFunction | NArgFunction
 
@@ -1211,6 +1241,34 @@ class AdvancedFilter(BaseModel):
             else:
                 return None
 
+        def filter_task_types(values: list[TaskType]):
+            if len(values) > 1:
+                return Or(
+                    logical_or=[
+                        Contains(
+                            contains=Operands(
+                                lhs=Symbol(
+                                    type="tasktype",
+                                    name="annotation.task_type",
+                                ),
+                                rhs=Value(
+                                    type="tasktype", value=task_type.value
+                                ),
+                            )
+                        )
+                        for task_type in values
+                    ]
+                )
+            elif len(values) == 1:
+                return Contains(
+                    contains=Operands(
+                        lhs=Symbol(
+                            type="tasktype", name="annotation.task_type"
+                        ),
+                        rhs=Value(type="tasktype", value=values[0].value),
+                    )
+                )
+
         dataset_names = None
         dataset_metadata = None
         model_names = None
@@ -1255,8 +1313,8 @@ class AdvancedFilter(BaseModel):
                 name="datum.metadata", values=filter_.datum_metadata
             )
         if filter_.task_types:
-            annotation_task_types = filter_equatable(
-                name="annotation.task_type", values=filter_.task_types
+            annotation_task_types = filter_task_types(
+                values=filter_.task_types
             )
         if filter_.annotation_metadata:
             annotation_metadata = filter_metadata(

@@ -943,11 +943,11 @@ def test_detection_exceptions(db: Session):
                 datum=schemas.Datum(uid="uid"),
                 annotations=[
                     schemas.Annotation(
-                        task_type=enums.TaskType.OBJECT_DETECTION,
                         labels=[schemas.Label(key="k1", value="v1")],
                         bounding_box=schemas.Box.from_extrema(
                             xmin=0, xmax=1, ymin=0, ymax=1
                         ),
+                        is_instance=True,
                     )
                 ],
             )
@@ -969,13 +969,13 @@ def test_detection_exceptions(db: Session):
                 datum=schemas.Datum(uid="uid"),
                 annotations=[
                     schemas.Annotation(
-                        task_type=enums.TaskType.OBJECT_DETECTION,
                         labels=[
                             schemas.Label(key="k1", value="v1", score=1.0)
                         ],
                         bounding_box=schemas.Box.from_extrema(
                             xmin=0, xmax=1, ymin=0, ymax=1
                         ),
+                        is_instance=True,
                     )
                 ],
             )

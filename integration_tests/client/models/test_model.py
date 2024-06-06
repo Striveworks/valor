@@ -24,7 +24,6 @@ from valor import (
     Model,
     Prediction,
 )
-from valor.enums import TaskType
 from valor.exceptions import ClientException
 from valor_api.backend import models
 
@@ -304,7 +303,6 @@ def test_create_tabular_model_with_predicted_classifications(
                 datum=Datum(uid="uid1"),
                 annotations=[
                     Annotation(
-                        task_type=TaskType.CLASSIFICATION,
                         labels=[
                             Label(key="k1", value="v1"),
                             Label(key="k2", value="v2"),
@@ -316,7 +314,6 @@ def test_create_tabular_model_with_predicted_classifications(
                 datum=Datum(uid="uid2"),
                 annotations=[
                     Annotation(
-                        task_type=TaskType.CLASSIFICATION,
                         labels=[Label(key="k1", value="v3")],
                     )
                 ],
@@ -327,7 +324,6 @@ def test_create_tabular_model_with_predicted_classifications(
                 datum=Datum(uid="uid1"),
                 annotations=[
                     Annotation(
-                        task_type=TaskType.CLASSIFICATION,
                         labels=[
                             Label(key="k1", value="v1", score=0.6),
                             Label(key="k1", value="v2", score=0.4),
@@ -340,7 +336,6 @@ def test_create_tabular_model_with_predicted_classifications(
                 datum=Datum(uid="uid2"),
                 annotations=[
                     Annotation(
-                        task_type=TaskType.CLASSIFICATION,
                         labels=[
                             Label(key="k1", value="v1", score=0.1),
                             Label(key="k1", value="v2", score=0.9),
@@ -419,7 +414,6 @@ def test_add_empty_prediction(
             datum=extra_datum,
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
                     labels=[Label(key="k1", value="v1")],
                 )
             ],
@@ -448,7 +442,6 @@ def test_add_empty_prediction(
     pred = model.get_prediction(dataset, extra_datum)
     assert pred
     assert len(pred.annotations) == 1
-    assert pred.annotations[0].task_type == TaskType.EMPTY
 
     client.delete_dataset(dataset_name, timeout=30)
 
@@ -470,7 +463,6 @@ def test_add_skipped_prediction(
             datum=extra_datum,
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
                     labels=[Label(key="k1", value="v1")],
                 )
             ],
@@ -485,7 +477,6 @@ def test_add_skipped_prediction(
     pred = model.get_prediction(dataset, extra_datum)
     assert pred
     assert len(pred.annotations) == 1
-    assert pred.annotations[0].task_type == TaskType.SKIP
 
     client.delete_dataset(dataset_name, timeout=30)
 

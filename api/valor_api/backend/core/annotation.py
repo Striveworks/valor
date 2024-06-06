@@ -9,7 +9,7 @@ from valor_api import schemas
 from valor_api.backend import models
 from valor_api.backend.core.geometry import _raster_to_png_b64
 from valor_api.backend.query import Query
-from valor_api.enums import ModelStatus, TableStatus, TaskType
+from valor_api.enums import ModelStatus, TableStatus
 
 
 def _create_embedding(
@@ -69,35 +69,25 @@ def _create_annotation(
     raster = None
     embedding_id = None
 
-    # task-based conversion
-    match annotation.task_type:
-        case TaskType.OBJECT_DETECTION:
-            if annotation.bounding_box:
-                box = annotation.bounding_box.to_wkt()
-            if annotation.polygon:
-                polygon = annotation.polygon.to_wkt()
-            if annotation.raster:
-                raster = annotation.raster.to_psql()
-        case TaskType.SEMANTIC_SEGMENTATION:
-            if annotation.raster:
-                raster = annotation.raster.to_psql()
-        case TaskType.EMBEDDING:
-            if annotation.embedding:
-                embedding_id = _create_embedding(
-                    db=db, value=annotation.embedding
-                )
-        case _:
-            pass
+    if annotation.bounding_box:
+        box = annotation.bounding_box.to_wkt()
+    if annotation.polygon:
+        polygon = annotation.polygon.to_wkt()
+    if annotation.raster:
+        raster = annotation.raster.to_psql()
+    if annotation.embedding:
+        embedding_id = _create_embedding(db=db, value=annotation.embedding)
 
     mapping = {
         "datum_id": datum.id,
         "model_id": model.id if model else None,
-        "task_type": annotation.task_type,
         "meta": annotation.metadata,
         "box": box,
         "polygon": polygon,
         "raster": raster,
         "embedding_id": embedding_id,
+        "is_instance": annotation.is_instance,
+        "implied_task_types": annotation.implied_task_types,
     }
     return mapping
 
@@ -189,7 +179,7 @@ def create_skipped_annotations(
     annotation_list = [
         _create_annotation(
             db=db,
-            annotation=schemas.Annotation(task_type=TaskType.SKIP),
+            annotation=schemas.Annotation(),
             datum=datum,
             model=model,
         )
@@ -288,13 +278,14 @@ def get_annotation(
         )
 
     return schemas.Annotation(
-        task_type=annotation.task_type,  # type: ignore - models.Annotation.task_type should be a string in psql
         labels=labels,
         metadata=annotation.meta,
         bounding_box=box,
         polygon=polygon,  # type: ignore - guaranteed to be a polygon in this case
         raster=raster,
         embedding=embedding,
+        is_instance=annotation.is_instance,
+        implied_task_types=annotation.implied_task_types,
     )
 
 

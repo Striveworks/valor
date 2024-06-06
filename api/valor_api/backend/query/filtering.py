@@ -57,9 +57,9 @@ map_opstr_to_operator = {
     "intersects": lambda lhs, rhs: func.ST_Intersects(lhs, rhs),
     "inside": lambda lhs, rhs: func.ST_Covers(rhs, lhs),
     "outside": lambda lhs, rhs: not_(func.ST_Covers(rhs, lhs)),
-    "contains": None,
     "isnull": lambda lhs, _: lhs.is_(None),
     "isnotnull": lambda lhs, _: lhs.isnot(None),
+    "contains": lambda lhs, rhs: lhs.op("?")(rhs),
 }
 
 # Map a symbol to a tuple containing a table and the relevant attribute.
@@ -74,7 +74,7 @@ map_name_to_table_column = {
     "annotation.polygon": (Annotation, Annotation.polygon),
     "annotation.raster": (Annotation, Annotation.raster),
     "annotation.metadata": (Annotation, Annotation.meta),
-    "annotation.task_type": (Annotation, Annotation.task_type),
+    "annotation.task_type": (Annotation, Annotation.implied_task_types),
     "annotation.embedding": (Embedding, Embedding.value),
     "annotation.labels": (Label, Label),
     "annotation.model_id": (Annotation, Annotation.model_id),  # remove
@@ -110,7 +110,7 @@ map_type_to_jsonb_type_cast = {
     "integer": lambda x: x.astext.cast(Integer),
     "float": lambda x: x.astext.cast(Float),
     "string": lambda x: x.astext,
-    "tasktypeenum": lambda x: x.astext,
+    "tasktype": lambda x: x.astext,
     "datetime": lambda x: cast(
         x["value"].astext, type_=TIMESTAMP(timezone=True)
     ),
@@ -140,7 +140,7 @@ map_value_type_to_type_cast = {
     "integer": lambda x: x,
     "float": lambda x: x,
     "string": lambda x: x,
-    "tasktypeenum": lambda x: x,
+    "tasktype": lambda x: x,
     "datetime": lambda x: cast(x, type_=TIMESTAMP(timezone=True)),
     "date": lambda x: cast(x, type_=TIMESTAMP(timezone=True)),
     "time": lambda x: cast(x, type_=INTERVAL),

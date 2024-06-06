@@ -56,6 +56,8 @@ def get_annotation_type(
     ----------
     db : Session
         The database Session you want to query against.
+    task_type: TaskType
+        The implied task type to filter on.
     dataset : models.Dataset
         The dataset associated with the annotation.
     model : models.Model
@@ -84,7 +86,7 @@ def get_annotation_type(
             .join(models.Dataset, models.Dataset.id == models.Datum.dataset_id)
             .where(
                 models.Datum.dataset_id == dataset.id,
-                models.Annotation.task_type == task_type.value,
+                models.Annotation.implied_task_types.op("?")(task_type.value),
                 model_expr,
                 col.isnot(None),
             )
@@ -239,8 +241,8 @@ def convert_geometry(
         The dataset of the geometry.
     model : models.Model, optional
         The model of the geometry.
-    task_type : enums.TaskType, optional
-        A task type to stratify the conversion by.
+    task_type: TaskType, optional
+        Optional task type to search by.
     """
     # Check typing
     valid_geometric_types = [
@@ -285,9 +287,9 @@ def convert_geometry(
 
     # define task type expression
     task_type_expr = (
-        models.Annotation.task_type == task_type.value
+        models.Annotation.implied_task_types.op("?")(task_type.value)
         if task_type
-        else models.Annotation.task_type.isnot(None)
+        else models.Annotation.implied_task_types.isnot(None)
     )
 
     # define where expression

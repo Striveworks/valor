@@ -136,7 +136,6 @@ def test_post_groundtruth(client: TestClient):
                 "labels": [
                     {"key": "k1", "value": "v1"},
                 ],
-                "task_type": TaskType.CLASSIFICATION.value,
                 "metadata": {},
             }
         ],
@@ -175,7 +174,6 @@ def test_post_groundtruth_classification(client: TestClient):
                     {"key": "k1", "value": "v1"},
                     {"key": "k1", "value": "v2"},
                 ],
-                "task_type": TaskType.CLASSIFICATION.value,
                 "metadata": {
                     "meta1": 0.4,
                     "meta2": "v1",
@@ -186,7 +184,6 @@ def test_post_groundtruth_classification(client: TestClient):
                     {"key": "k2", "value": "v1"},
                     {"key": "k2", "value": "v2"},
                 ],
-                "task_type": TaskType.CLASSIFICATION.value,
                 "metadata": {
                     "meta1": 0.4,
                     "meta2": "v1",
@@ -219,7 +216,6 @@ def test_post_groundtruth_bbox_detection(client: TestClient):
                     {"key": "k1", "value": "v1"},
                     {"key": "k1", "value": "v2"},
                 ],
-                "task_type": TaskType.OBJECT_DETECTION.value,
                 "metadata": {
                     "meta1": 0.4,
                     "meta2": "v1",
@@ -233,6 +229,7 @@ def test_post_groundtruth_bbox_detection(client: TestClient):
                         [0, 0],
                     ]
                 ],
+                "is_instance": True,
             }
         ],
     }
@@ -260,7 +257,6 @@ def test_post_groundtruth_polygon_detection(client: TestClient):
                     {"key": "k1", "value": "v1"},
                     {"key": "k1", "value": "v2"},
                 ],
-                "task_type": TaskType.OBJECT_DETECTION.value,
                 "metadata": {
                     "meta1": 0.4,
                     "meta2": "v1",
@@ -289,6 +285,7 @@ def test_post_groundtruth_polygon_detection(client: TestClient):
                         [4, 4],
                     ],
                 ],
+                "is_instance": True,
             }
         ],
     }
@@ -316,7 +313,6 @@ def test_post_groundtruth_raster_segmentation(client: TestClient):
                     {"key": "k1", "value": "v1"},
                     {"key": "k1", "value": "v2"},
                 ],
-                "task_type": TaskType.OBJECT_DETECTION.value,
                 "metadata": {
                     "meta1": 0.4,
                     "meta2": "v1",
@@ -324,13 +320,13 @@ def test_post_groundtruth_raster_segmentation(client: TestClient):
                 "raster": {
                     "mask": "iVBORw0KGgoAAAANSUhEUgAAABQAAAAUAQAAAACl8iCgAAAAF0lEQVR4nGP4f4CBiYGBIGZgsP9AjDoAuysDE0GVDN8AAAAASUVORK5CYII=",
                 },
+                "is_instance": True,
             },
             {
                 "labels": [
                     {"key": "k1", "value": "v1"},
                     {"key": "k1", "value": "v2"},
                 ],
-                "task_type": TaskType.SEMANTIC_SEGMENTATION.value,
                 "metadata": {
                     "meta1": 0.4,
                     "meta2": "v1",
@@ -338,6 +334,7 @@ def test_post_groundtruth_raster_segmentation(client: TestClient):
                 "raster": {
                     "mask": "iVBORw0KGgoAAAANSUhEUgAAABQAAAAUAQAAAACl8iCgAAAAF0lEQVR4nGP4f4CBiYGBIGZgsP9AjDoAuysDE0GVDN8AAAAASUVORK5CYII=",
                 },
+                "is_instance": True,
             },
         ],
     }
@@ -369,7 +366,6 @@ def test_get_groundtruth(crud, client: TestClient):
                     {"key": "k1", "value": "v1", "score": 0.1},
                     {"key": "k1", "value": "v2", "score": 0.1},
                 ],
-                "task_type": TaskType.OBJECT_DETECTION.value,
                 "metadata": {
                     "meta1": 0.4,
                     "meta2": "v1",
@@ -383,6 +379,7 @@ def test_get_groundtruth(crud, client: TestClient):
                         [0, 0],
                     ]
                 ],
+                "is_instance": True,
             }
         ],
     }
@@ -417,7 +414,6 @@ def test_post_prediction(client: TestClient):
                     {"key": "k1", "value": "v1", "score": 0.9},
                     {"key": "k1", "value": "v2", "score": 0.1},
                 ],
-                "task_type": TaskType.CLASSIFICATION.value,
                 "metadata": {},
             }
         ],
@@ -465,7 +461,6 @@ def test_post_prediction_classification(client: TestClient):
                     {"key": "k1", "value": "v1", "score": 0.9},
                     {"key": "k1", "value": "v2", "score": 0.1},
                 ],
-                "task_type": TaskType.CLASSIFICATION.value,
                 "metadata": {
                     "meta1": 0.4,
                     "meta2": "v1",
@@ -476,7 +471,6 @@ def test_post_prediction_classification(client: TestClient):
                     {"key": "k1", "value": "v1", "score": 0.9},
                     {"key": "k1", "value": "v2", "score": 0.1},
                 ],
-                "task_type": TaskType.CLASSIFICATION.value,
                 "metadata": {
                     "meta1": 0.4,
                     "meta2": "v1",
@@ -509,7 +503,6 @@ def test_post_prediction_bbox_detection(client: TestClient):
                     {"key": "k1", "value": "v1", "score": 0.9},
                     {"key": "k1", "value": "v2", "score": 0.1},
                 ],
-                "task_type": TaskType.OBJECT_DETECTION.value,
                 "metadata": {
                     "meta1": 0.4,
                     "meta2": "v1",
@@ -523,6 +516,7 @@ def test_post_prediction_bbox_detection(client: TestClient):
                         [0, 0],
                     ]
                 ],
+                "is_instance": True,
             },
         ],
     }
@@ -552,7 +546,6 @@ def test_post_prediction_polygon_detection(client: TestClient):
                     {"key": "k1", "value": "v1", "score": 0.9},
                     {"key": "k1", "value": "v2", "score": 0.1},
                 ],
-                "task_type": TaskType.OBJECT_DETECTION.value,
                 "metadata": {
                     "meta1": 0.4,
                     "meta2": "v1",
@@ -581,6 +574,7 @@ def test_post_prediction_polygon_detection(client: TestClient):
                         [4, 4],
                     ],
                 ],
+                "is_instance": True,
             }
         ],
     }
@@ -613,7 +607,6 @@ def test_post_prediction_raster_segmentation(client: TestClient):
                         {"key": "k1", "value": "v1", "score": 0.9},
                         {"key": "k1", "value": "v2", "score": 0.1},
                     ],
-                    "task_type": TaskType.OBJECT_DETECTION.value,
                     "metadata": {
                         "meta1": 0.4,
                         "meta2": "v1",
@@ -621,13 +614,13 @@ def test_post_prediction_raster_segmentation(client: TestClient):
                     "raster": {
                         "mask": "iVBORw0KGgoAAAANSUhEUgAAABQAAAAUAQAAAACl8iCgAAAAF0lEQVR4nGP4f4CBiYGBIGZgsP9AjDoAuysDE0GVDN8AAAAASUVORK5CYII=",
                     },
+                    "is_instance": True,
                 },
                 {
                     "labels": [
                         {"key": "k1", "value": "v1"},
                         {"key": "k1", "value": "v2"},
                     ],
-                    "task_type": TaskType.SEMANTIC_SEGMENTATION.value,
                     "metadata": {
                         "meta1": 0.4,
                         "meta2": "v1",
@@ -635,6 +628,7 @@ def test_post_prediction_raster_segmentation(client: TestClient):
                     "raster": {
                         "mask": "iVBORw0KGgoAAAANSUhEUgAAABQAAAAUAQAAAACl8iCgAAAAF0lEQVR4nGP4f4CBiYGBIGZgsP9AjDoAuysDE0GVDN8AAAAASUVORK5CYII=",
                     },
+                    "is_instance": False,
                 },
             ],
         }
@@ -668,7 +662,6 @@ def test_get_prediction(crud, client: TestClient):
                     {"key": "k1", "value": "v1", "score": 0.1},
                     {"key": "k1", "value": "v2", "score": 0.1},
                 ],
-                "task_type": TaskType.OBJECT_DETECTION.value,
                 "metadata": {
                     "meta1": 0.4,
                     "meta2": "v1",
@@ -682,6 +675,7 @@ def test_get_prediction(crud, client: TestClient):
                         [0, 0],
                     ]
                 ],
+                "is_instance": True,
             },
         ],
     }
