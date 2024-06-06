@@ -357,6 +357,19 @@ def get_n_groundtruth_rasters_in_dataset(db: Session, name: str) -> int:
     )
 
 
+def get_unique_task_types_in_dataset(
+    db: Session, name: str
+) -> list[list[str]]:
+    return db.scalars(
+        select(models.Annotation.implied_task_types)
+        .join(models.GroundTruth)
+        .join(models.Datum)
+        .join(models.Dataset)
+        .where(models.Dataset.name == name)
+        .distinct()
+    ).all()  # type: ignore - SQLAlchemy type issue
+
+
 def get_unique_datum_metadata_in_dataset(
     db: Session, name: str
 ) -> list[MetadataType]:
@@ -404,6 +417,7 @@ def get_dataset_summary(db: Session, name: str) -> schemas.DatasetSummary:
         ),
         num_polygons=get_n_groundtruth_polygons_in_dataset(db, name),
         num_rasters=get_n_groundtruth_rasters_in_dataset(db, name),
+        task_types=get_unique_task_types_in_dataset(db, name),
         labels=list(gt_labels),
         datum_metadata=get_unique_datum_metadata_in_dataset(db, name),
         annotation_metadata=get_unique_groundtruth_annotation_metadata_in_dataset(

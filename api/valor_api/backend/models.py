@@ -52,7 +52,7 @@ class GDALRaster(Raster):
         # ST_SetBandNoDataValue tells PostGIS that values of 0 should be null
         # ST_SetGeoReference makes the convention consistent with image indices
         return ST_SetGeoReference(
-            ST_SetBandNoDataValue(func.ST_FromGDALRaster(bindvalue), 0),
+            ST_SetBandNoDataValue(func.ST_FromGDALRaster(bindvalue), 0),  # type: ignore
             "1 0 0 1 0 0",
             "GDAL",
         )
@@ -131,6 +131,7 @@ class Annotation(Base):
     raster = mapped_column(GDALRaster, nullable=True)
     embedding_id = mapped_column(ForeignKey("embedding.id"), nullable=True)
     is_instance_segmentation: Mapped[bool] = mapped_column(nullable=False)
+    implied_task_types = mapped_column(JSONB)
 
     # relationships
     datum: Mapped["Datum"] = relationship(back_populates="annotations")

@@ -149,6 +149,7 @@ def test_get_dataset_summary(
     assert summary.num_bounding_boxes == 3
     assert summary.num_polygons == 1
     assert summary.num_rasters == 1
+    assert summary.task_types == [["classification"], ["object-detection"]]
     assert summary.datum_metadata == [
         {
             "width": 32,

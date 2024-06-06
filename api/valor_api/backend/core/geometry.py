@@ -8,7 +8,9 @@ from PIL import Image
 from sqlalchemy import (
     BinaryExpression,
     Float,
+    String,
     Update,
+    cast,
     distinct,
     func,
     select,
@@ -45,6 +47,7 @@ class RawGeometry(Geometry):
 
 def get_annotation_type(
     db: Session,
+    task_type: str,
     dataset: models.Dataset,
     model: models.Model | None = None,
 ) -> AnnotationType:
@@ -55,6 +58,8 @@ def get_annotation_type(
     ----------
     db : Session
         The database Session you want to query against.
+    task_type: str
+        The implied task type to filter on.
     dataset : models.Dataset
         The dataset associated with the annotation.
     model : models.Model
@@ -83,6 +88,9 @@ def get_annotation_type(
             .join(models.Dataset, models.Dataset.id == models.Datum.dataset_id)
             .where(
                 models.Datum.dataset_id == dataset.id,
+                cast(models.Annotation.implied_task_types, String).ilike(
+                    f"%{task_type}%"
+                ),
                 model_expr,
                 col.isnot(None),
             )

@@ -863,13 +863,13 @@ def _convert_annotations_to_common_type(
         prediction_type = AnnotationType.RASTER
         for dataset in datasets:
             dataset_type = core.get_annotation_type(
-                db=db,
-                dataset=dataset,
+                db=db, dataset=dataset, task_type="object-detection"
             )
             model_type = core.get_annotation_type(
                 db=db,
                 dataset=dataset,
                 model=model,
+                task_type="object-detection",
             )
             groundtruth_type = (
                 dataset_type
@@ -883,7 +883,9 @@ def _convert_annotations_to_common_type(
 
     for dataset in datasets:
         # dataset
-        source_type = core.get_annotation_type(db=db, dataset=dataset)
+        source_type = core.get_annotation_type(
+            db=db, dataset=dataset, task_type="object-detection"
+        )
         core.convert_geometry(
             db=db,
             dataset=dataset,
@@ -892,9 +894,7 @@ def _convert_annotations_to_common_type(
         )
         # model
         source_type = core.get_annotation_type(
-            db=db,
-            dataset=dataset,
-            model=model,
+            db=db, dataset=dataset, model=model, task_type="object-detection"
         )
         core.convert_geometry(
             db=db,

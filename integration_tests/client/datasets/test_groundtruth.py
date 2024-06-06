@@ -92,9 +92,49 @@ def test_create_gt_detections_as_bbox_or_poly(
     )
     for det in detections.annotations:
         if det.bounding_box:
-            assert det.to_dict() == gt.annotations[0].to_dict()
+            assert det.to_dict() == {
+                "type": "annotation",
+                "value": {
+                    "metadata": {},
+                    "labels": [{"key": "k", "value": "v", "score": None}],
+                    "bounding_box": [
+                        [
+                            (10.0, 25.0),
+                            (30.0, 25.0),
+                            (30.0, 50.0),
+                            (10.0, 50.0),
+                            (10.0, 25.0),
+                        ]
+                    ],
+                    "polygon": None,
+                    "raster": None,
+                    "embedding": None,
+                    "is_instance_segmentation": None,
+                    "implied_task_types": ["object-detection"],
+                },
+            }
         else:
-            assert det.to_dict() == gt.annotations[1].to_dict()
+            assert det.to_dict() == {
+                "type": "annotation",
+                "value": {
+                    "metadata": {},
+                    "labels": [{"key": "k", "value": "v", "score": None}],
+                    "bounding_box": None,
+                    "polygon": [
+                        [
+                            (10.0, 25.0),
+                            (30.0, 25.0),
+                            (30.0, 50.0),
+                            (10.0, 50.0),
+                            (10.0, 25.0),
+                        ]
+                    ],
+                    "raster": None,
+                    "embedding": None,
+                    "is_instance_segmentation": None,
+                    "implied_task_types": ["object-detection"],
+                },
+            }
 
 
 def test_create_gt_segs_as_polys_or_masks(

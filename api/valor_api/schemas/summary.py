@@ -10,6 +10,7 @@ class DatasetSummary(BaseModel):
     num_bounding_boxes: int
     num_polygons: int
     num_rasters: int
+    task_types: list[list[str]]
     labels: list[Label]
     datum_metadata: list[MetadataType]
     annotation_metadata: list[MetadataType]

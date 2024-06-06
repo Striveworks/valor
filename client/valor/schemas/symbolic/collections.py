@@ -264,6 +264,8 @@ class Annotation(StaticCollection):
         An embedding, described by a list of values with type float and a maximum length of 16,000.
     is_instance_segmentation: bool, optional
         A boolean describing whether we should treat the Raster attached to an annotation as an instance segmentation or not. If set to true, then the Annotation will be validated for use in object detection tasks. If set to false, then the Annotation will be validated for use in semantic segmentation tasks.
+    implied_task_types: list[str], optional
+        The validated task types that are applicable to each Annotation. Doesn't need to bet set by the user.
 
     Examples
     --------
@@ -326,6 +328,9 @@ class Annotation(StaticCollection):
     is_instance_segmentation: Bool = Bool.symbolic(
         owner="annotation", name="is_instance_segmentation"
     )
+    implied_task_types: SymbolicList[String] = SymbolicList[String].symbolic(
+        owner="annotation", name="implied_task_types"
+    )
 
     def __init__(
         self,
@@ -337,6 +342,7 @@ class Annotation(StaticCollection):
         raster: Optional[Raster] = None,
         embedding: Optional[Embedding] = None,
         is_instance_segmentation: Optional[bool] = None,
+        implied_task_types: Optional[List[String]] = None,
     ):
         """
         Constructs an annotation.
@@ -357,6 +363,9 @@ class Annotation(StaticCollection):
             An embedding, described by a list of values with type float and a maximum length of 16,000.
         is_instance_segmentation: bool, optional
             A boolean describing whether we should treat the Raster attached to an annotation as an instance segmentation or not. If set to true, then the Annotation will be validated for use in object detection tasks. If set to false, then the Annotation will be validated for use in semantic segmentation tasks.
+        implied_task_types: list[str], optional
+            The validated task types that are applicable to each Annotation. Doesn't need to bet set by the user.
+
         """
         super().__init__(
             metadata=metadata if metadata else dict(),
@@ -366,6 +375,7 @@ class Annotation(StaticCollection):
             raster=raster,
             embedding=embedding,
             is_instance_segmentation=is_instance_segmentation,
+            implied_task_types=implied_task_types,
         )
 
     @staticmethod
@@ -377,6 +387,7 @@ class Annotation(StaticCollection):
             "raster": Raster.nullable,
             "embedding": Embedding.nullable,
             "is_instance_segmentation": Bool.nullable,
+            "implied_task_types": SymbolicList,
         }
 
 

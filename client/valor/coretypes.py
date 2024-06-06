@@ -361,6 +361,7 @@ class DatasetSummary:
     num_bounding_boxes: int
     num_polygons: int
     num_rasters: int
+    task_types: list[list[str]]
     labels: List[Label]
     datum_metadata: List[dict]
     annotation_metadata: List[dict]
