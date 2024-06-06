@@ -482,13 +482,13 @@ def test_prediction(metadata, predicted_annotations, labels, scored_labels):
                 schemas.Annotation(
                     labels=scored_labels,
                     raster=schemas.Raster.from_numpy(np.zeros((10, 10)) == 0),
-                    is_instance_segmentation=False,
+                    is_instance=False,
                 )
             ],
         )
     assert "Semantic segmentation tasks cannot have scores" in str(e)
 
-    # check inappropriate usage of is_instance_segmentation
+    # check inappropriate usage of is_instance
     with pytest.raises(ValidationError) as e:
         schemas.Prediction(
             dataset_name="name",
@@ -497,14 +497,11 @@ def test_prediction(metadata, predicted_annotations, labels, scored_labels):
                 uid="uid",
             ),
             annotations=[
-                schemas.Annotation(
-                    labels=scored_labels[1:], is_instance_segmentation=True
-                )
+                schemas.Annotation(labels=scored_labels[1:], is_instance=True)
             ],
         )
-    assert (
-        "is_instance_segmentation should only be used when passing a Raster"
-        in str(e.value.errors()[0]["msg"])
+    assert "is_instance should only be used when passing a Raster" in str(
+        e.value.errors()[0]["msg"]
     )
 
 

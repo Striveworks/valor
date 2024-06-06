@@ -135,7 +135,7 @@ export type Annotation = {
   polygon?: number[][][];
   raster?: object;
   embedding?: number[];
-  is_instance_segmentation?: boolean;
+  is_instance?: boolean;
 };
 
 export type Metric = {

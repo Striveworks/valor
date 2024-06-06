@@ -86,7 +86,7 @@ def _create_annotation(
         "polygon": polygon,
         "raster": raster,
         "embedding_id": embedding_id,
-        "is_instance_segmentation": annotation.is_instance_segmentation,
+        "is_instance": annotation.is_instance,
         "implied_task_types": annotation.implied_task_types,
     }
     return mapping
@@ -284,7 +284,7 @@ def get_annotation(
         polygon=polygon,  # type: ignore - guaranteed to be a polygon in this case
         raster=raster,
         embedding=embedding,
-        is_instance_segmentation=annotation.is_instance_segmentation,
+        is_instance=annotation.is_instance,
         implied_task_types=annotation.implied_task_types,
     )
 

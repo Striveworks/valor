@@ -130,7 +130,7 @@ class Annotation(Base):
     polygon = mapped_column(Geometry("POLYGON"), nullable=True)
     raster = mapped_column(GDALRaster, nullable=True)
     embedding_id = mapped_column(ForeignKey("embedding.id"), nullable=True)
-    is_instance_segmentation: Mapped[bool] = mapped_column(nullable=False)
+    is_instance: Mapped[bool] = mapped_column(nullable=False)
     implied_task_types = mapped_column(JSONB)
 
     # relationships

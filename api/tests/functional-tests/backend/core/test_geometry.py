@@ -99,7 +99,7 @@ def create_segmentation_dataset_from_geometries(
                     mask=raster.mask,
                     geometry=polygon,
                 ),
-                is_instance_segmentation=True,
+                is_instance=True,
             ),
             Annotation(
                 labels=labels,
@@ -107,11 +107,9 @@ def create_segmentation_dataset_from_geometries(
                     mask=raster.mask,
                     geometry=multipolygon,
                 ),
-                is_instance_segmentation=True,
+                is_instance=True,
             ),
-            Annotation(
-                labels=labels, raster=raster, is_instance_segmentation=True
-            ),
+            Annotation(labels=labels, raster=raster, is_instance=True),
         ],
     )
     dataset = schemas.Dataset(name=dataset_name)

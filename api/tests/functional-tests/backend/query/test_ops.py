@@ -246,13 +246,13 @@ def groundtruth_annotations_cat(
             labels=[label_cat],
             raster=raster_1,
             metadata=metadata_1,
-            is_instance_segmentation=True,
+            is_instance=True,
         ),
         schemas.Annotation(
             labels=[label_cat],
             raster=raster_2,
             metadata=metadata_2,
-            is_instance_segmentation=True,
+            is_instance=True,
         ),
     ]
 
@@ -287,13 +287,13 @@ def groundtruth_annotations_dog(
             labels=[label_dog],
             raster=raster_1,
             metadata=metadata_3,
-            is_instance_segmentation=True,
+            is_instance=True,
         ),
         schemas.Annotation(
             labels=[label_dog],
             raster=raster_2,
             metadata=metadata_4,
-            is_instance_segmentation=True,
+            is_instance=True,
         ),
     ]
 
@@ -339,7 +339,7 @@ def prediction_annotations_cat(
             ],
             raster=raster_1,
             metadata=metadata_1,
-            is_instance_segmentation=True,
+            is_instance=True,
         ),
         schemas.Annotation(
             labels=[
@@ -348,7 +348,7 @@ def prediction_annotations_cat(
             ],
             raster=raster_2,
             metadata=metadata_2,
-            is_instance_segmentation=True,
+            is_instance=True,
         ),
     ]
 
@@ -394,7 +394,7 @@ def prediction_annotations_dog(
             ],
             raster=raster_1,
             metadata=metadata_3,
-            is_instance_segmentation=True,
+            is_instance=True,
         ),
         schemas.Annotation(
             labels=[
@@ -403,7 +403,7 @@ def prediction_annotations_dog(
             ],
             raster=raster_2,
             metadata=metadata_4,
-            is_instance_segmentation=True,
+            is_instance=True,
         ),
     ]
 

@@ -109,7 +109,7 @@ def test_create_gt_detections_as_bbox_or_poly(
                     "polygon": None,
                     "raster": None,
                     "embedding": None,
-                    "is_instance_segmentation": None,
+                    "is_instance": None,
                     "implied_task_types": ["object-detection"],
                 },
             }
@@ -131,7 +131,7 @@ def test_create_gt_detections_as_bbox_or_poly(
                     ],
                     "raster": None,
                     "embedding": None,
-                    "is_instance_segmentation": None,
+                    "is_instance": None,
                     "implied_task_types": ["object-detection"],
                 },
             }
@@ -196,7 +196,7 @@ def test_create_gt_segs_as_polys_or_masks(
             Annotation(
                 labels=[Label(key="k1", value="v1")],
                 raster=Raster.from_numpy(mask),
-                is_instance_segmentation=True,
+                is_instance=True,
             ),
             Annotation(
                 labels=[Label(key="k1", value="v1")],
@@ -205,7 +205,7 @@ def test_create_gt_segs_as_polys_or_masks(
                     height=image_height,
                     width=image_width,
                 ),
-                is_instance_segmentation=True,
+                is_instance=True,
             ),
         ],
     )

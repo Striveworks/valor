@@ -318,7 +318,7 @@ def test_post_groundtruth_raster_segmentation(client: TestClient):
                 "raster": {
                     "mask": "iVBORw0KGgoAAAANSUhEUgAAABQAAAAUAQAAAACl8iCgAAAAF0lEQVR4nGP4f4CBiYGBIGZgsP9AjDoAuysDE0GVDN8AAAAASUVORK5CYII=",
                 },
-                "is_instance_segmentation": True,
+                "is_instance": True,
             },
             {
                 "labels": [
@@ -332,7 +332,7 @@ def test_post_groundtruth_raster_segmentation(client: TestClient):
                 "raster": {
                     "mask": "iVBORw0KGgoAAAANSUhEUgAAABQAAAAUAQAAAACl8iCgAAAAF0lEQVR4nGP4f4CBiYGBIGZgsP9AjDoAuysDE0GVDN8AAAAASUVORK5CYII=",
                 },
-                "is_instance_segmentation": True,
+                "is_instance": True,
             },
         ],
     }
@@ -609,7 +609,7 @@ def test_post_prediction_raster_segmentation(client: TestClient):
                     "raster": {
                         "mask": "iVBORw0KGgoAAAANSUhEUgAAABQAAAAUAQAAAACl8iCgAAAAF0lEQVR4nGP4f4CBiYGBIGZgsP9AjDoAuysDE0GVDN8AAAAASUVORK5CYII=",
                     },
-                    "is_instance_segmentation": True,
+                    "is_instance": True,
                 },
                 {
                     "labels": [
@@ -623,7 +623,7 @@ def test_post_prediction_raster_segmentation(client: TestClient):
                     "raster": {
                         "mask": "iVBORw0KGgoAAAANSUhEUgAAABQAAAAUAQAAAACl8iCgAAAAF0lEQVR4nGP4f4CBiYGBIGZgsP9AjDoAuysDE0GVDN8AAAAASUVORK5CYII=",
                     },
-                    "is_instance_segmentation": False,
+                    "is_instance": False,
                 },
             ],
         }

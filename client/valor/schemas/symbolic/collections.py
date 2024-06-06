@@ -262,7 +262,7 @@ class Annotation(StaticCollection):
         A raster to assign to the `Annotation`.
     embedding: List[float]
         An embedding, described by a list of values with type float and a maximum length of 16,000.
-    is_instance_segmentation: bool, optional
+    is_instance: bool, optional
         A boolean describing whether we should treat the Raster attached to an annotation as an instance segmentation or not. If set to true, then the Annotation will be validated for use in object detection tasks. If set to false, then the Annotation will be validated for use in semantic segmentation tasks.
     implied_task_types: list[str], optional
         The validated task types that are applicable to each Annotation. Doesn't need to bet set by the user.
@@ -294,14 +294,14 @@ class Annotation(StaticCollection):
     >>> annotation = Annotation.create(
     ...     labels=[Label(key="k1", value="v1")],
     ...     raster=Raster(...),
-    ...     is_instance_segmentation=True
+    ...     is_instance=True
     ... )
 
     Semantic-Segmentation Raster
     >>> annotation = Annotation.create(
     ...     labels=[Label(key="k1", value="v1")],
     ...     raster=Raster(...),
-    ...     is_instance_segmentation=False # or None
+    ...     is_instance=False # or None
     ... )
 
     Defining all supported annotation types is allowed!
@@ -325,9 +325,7 @@ class Annotation(StaticCollection):
     embedding: Embedding = Embedding.symbolic(
         owner="annotation", name="embedding"
     )
-    is_instance_segmentation: Bool = Bool.symbolic(
-        owner="annotation", name="is_instance_segmentation"
-    )
+    is_instance: Bool = Bool.symbolic(owner="annotation", name="is_instance")
     implied_task_types: SymbolicList[String] = SymbolicList[String].symbolic(
         owner="annotation", name="implied_task_types"
     )
@@ -341,7 +339,7 @@ class Annotation(StaticCollection):
         polygon: Optional[Polygon] = None,
         raster: Optional[Raster] = None,
         embedding: Optional[Embedding] = None,
-        is_instance_segmentation: Optional[bool] = None,
+        is_instance: Optional[bool] = None,
         implied_task_types: Optional[List[String]] = None,
     ):
         """
@@ -361,7 +359,7 @@ class Annotation(StaticCollection):
             A raster annotation.
         embedding: List[float], optional
             An embedding, described by a list of values with type float and a maximum length of 16,000.
-        is_instance_segmentation: bool, optional
+        is_instance: bool, optional
             A boolean describing whether we should treat the Raster attached to an annotation as an instance segmentation or not. If set to true, then the Annotation will be validated for use in object detection tasks. If set to false, then the Annotation will be validated for use in semantic segmentation tasks.
         implied_task_types: list[str], optional
             The validated task types that are applicable to each Annotation. Doesn't need to bet set by the user.
@@ -374,7 +372,7 @@ class Annotation(StaticCollection):
             polygon=polygon,
             raster=raster,
             embedding=embedding,
-            is_instance_segmentation=is_instance_segmentation,
+            is_instance=is_instance,
             implied_task_types=implied_task_types,
         )
 
@@ -386,7 +384,7 @@ class Annotation(StaticCollection):
             "polygon": Polygon.nullable,
             "raster": Raster.nullable,
             "embedding": Embedding.nullable,
-            "is_instance_segmentation": Bool.nullable,
+            "is_instance": Bool.nullable,
             "implied_task_types": SymbolicList,
         }
 

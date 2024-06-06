@@ -119,9 +119,7 @@ def _parse_categories(
                 "supercategory": category["supercategory"],
                 "name": category["name"],
             },
-            "is_instance_segmentation": (
-                True if category["isthing"] else False
-            ),
+            "is_instance": (True if category["isthing"] else False),
         }
         for category in categories
     }  # type: ignore - dict typing
@@ -166,11 +164,11 @@ def create_annotations_from_instance_segmentations(
                 Label(key="iscrowd", value=str(segmentation["iscrowd"])),
             ],
             raster=Raster.from_numpy(mask_ids == segmentation["id"]),
-            is_instance_segmentation=True,
+            is_instance=True,
         )
         for segmentation in image["segments_info"]
         if category_id_to_labels_and_task[segmentation["category_id"]][
-            "is_instance_segmentation"
+            "is_instance"
         ]  # type: ignore - dict typing
         is True
     ]
@@ -190,7 +188,7 @@ def create_annotations_from_semantic_segmentations(
     for segmentation in image["segments_info"]:
         category_id = segmentation["category_id"]
         if (
-            category_id_to_labels_and_task[category_id]["is_instance_segmentation"]  # type: ignore - dict typing
+            category_id_to_labels_and_task[category_id]["is_instance"]  # type: ignore - dict typing
             is False
         ):
             for key, value in [
@@ -221,7 +219,7 @@ def create_annotations_from_semantic_segmentations(
         Annotation(
             labels=[Label(key=key, value=str(value))],
             raster=Raster.from_numpy(semantic_masks[key][value]),
-            is_instance_segmentation=False,
+            is_instance=False,
         )
         for key in semantic_masks
         for value in semantic_masks[key]

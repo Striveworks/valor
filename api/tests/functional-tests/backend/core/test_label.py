@@ -82,7 +82,7 @@ def instance_seg_gt_anns1(
             schemas.Label(key="inssegk1", value="inssegv1"),
             schemas.Label(key="inssegk2", value="inssegv2"),
         ],
-        is_instance_segmentation=True,
+        is_instance=True,
     )
 
 
@@ -96,7 +96,7 @@ def instance_seg_gt_anns2(
             schemas.Label(key="inssegk2", value="inssegv2"),
             schemas.Label(key="inssegk3", value="inssegv3"),
         ],
-        is_instance_segmentation=True,
+        is_instance=True,
     )
 
 

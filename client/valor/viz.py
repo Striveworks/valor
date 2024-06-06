@@ -113,7 +113,7 @@ def create_combined_segmentation_mask(
     annotations: List[Annotation] = []
     for annotation in annotated_datum.annotations:
         if (
-            annotation.is_instance_segmentation or False
+            annotation.is_instance or False
         ) == filter_on_instance_segmentations:
             annotations.append(annotation)
 
@@ -346,6 +346,6 @@ def draw_detections_on_image(
         annotations.extend(datum.annotations)
 
     for i, detection in enumerate(annotations):
-        if detection.raster and detection.is_instance_segmentation is True:
+        if detection.raster and detection.is_instance is True:
             img = _draw_detection_on_image(detection, img, inplace=i != 0)
     return img

@@ -224,7 +224,7 @@ def groundtruth_instance_segmentations(
                         height=img2.metadata["height"],
                         width=img2.metadata["width"],
                     ),
-                    is_instance_segmentation=True,
+                    is_instance=True,
                 ),
             ],
         ),
@@ -254,7 +254,7 @@ def prediction_instance_segmentations(
                     raster=schemas.Raster(
                         mask=b64_mask1,
                     ),
-                    is_instance_segmentation=True,
+                    is_instance=True,
                 ),
                 schemas.Annotation(
                     labels=[
@@ -264,7 +264,7 @@ def prediction_instance_segmentations(
                     raster=schemas.Raster(
                         mask=b64_mask1,
                     ),
-                    is_instance_segmentation=True,
+                    is_instance=True,
                 ),
                 schemas.Annotation(
                     labels=[
@@ -274,7 +274,7 @@ def prediction_instance_segmentations(
                     raster=schemas.Raster(
                         mask=b64_mask1,
                     ),
-                    is_instance_segmentation=True,
+                    is_instance=True,
                 ),
                 schemas.Annotation(
                     labels=[
@@ -284,7 +284,7 @@ def prediction_instance_segmentations(
                     raster=schemas.Raster(
                         mask=b64_mask1,
                     ),
-                    is_instance_segmentation=True,
+                    is_instance=True,
                 ),
             ],
         )
@@ -1004,7 +1004,7 @@ def test_gt_seg_as_mask_or_polys(
         raster=schemas.Raster(
             mask=mask_b64,
         ),
-        is_instance_segmentation=True,
+        is_instance=True,
     )
     gt2 = schemas.Annotation(
         labels=[schemas.Label(key="k1", value="v1")],
@@ -1012,7 +1012,7 @@ def test_gt_seg_as_mask_or_polys(
             mask=mask_b64,
             geometry=schemas.MultiPolygon(value=[poly.value]),
         ),
-        is_instance_segmentation=True,
+        is_instance=True,
     )
     gt = schemas.GroundTruth(
         dataset_name=dataset_name,

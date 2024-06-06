@@ -64,7 +64,7 @@ def _match_annotation_to_implied_task_type(
             or annotation.polygon is not None
             or (
                 annotation.raster is not None
-                and annotation.is_instance_segmentation is True
+                and annotation.is_instance is True
             )
         )
         and annotation.embedding is None
@@ -74,7 +74,7 @@ def _match_annotation_to_implied_task_type(
     elif (
         annotation.labels
         and annotation.raster is not None
-        and annotation.is_instance_segmentation is not True
+        and annotation.is_instance is not True
         and annotation.bounding_box is None
         and annotation.polygon is None
         and annotation.embedding is None
@@ -100,7 +100,7 @@ def _match_annotation_to_implied_task_type(
         implied_type = ["empty"]
     else:
         raise ValueError(
-            "Input didn't match any known patterns. Classification tasks should only contain labels. Object detection tasks should contain labels and polygons, bounding boxes, or rasters with is_instnace_segmentation == True. Segmentation tasks should contain labels and rasters with is_instance_segmentation != True."
+            "Input didn't match any known patterns. Classification tasks should only contain labels. Object detection tasks should contain labels and polygons, bounding boxes, or rasters with is_instnace_segmentation == True. Segmentation tasks should contain labels and rasters with is_instance != True."
         )
 
     return implied_type
@@ -287,7 +287,7 @@ class Annotation(BaseModel):
         A raster to assign to the 'Annotation'.
     embedding: list[float], optional
         A jsonb to assign to the 'Annotation'.
-    is_instance_segmentation: bool, optional
+    is_instance: bool, optional
         A boolean describing whether we should treat the Raster attached to an annotation as an instance segmentation or not. If set to true, then the Annotation will be validated for use in object detection tasks. If set to false, then the Annotation will be validated for use in semantic segmentation tasks.
     implied_task_types: list[str], optional
         The validated task types that are applicable to each Annotation. Doesn't need to bet set by the user.
@@ -299,7 +299,7 @@ class Annotation(BaseModel):
     polygon: Polygon | None = None
     raster: Raster | None = None
     embedding: list[float] | None = None
-    is_instance_segmentation: bool | None = None
+    is_instance: bool | None = None
     model_config = ConfigDict(extra="forbid")
     implied_task_types: list[str] | None = None
 
@@ -332,15 +332,15 @@ class Annotation(BaseModel):
         self.implied_task_types = _match_annotation_to_implied_task_type(self)
         return self
 
-    @field_validator("is_instance_segmentation")
+    @field_validator("is_instance")
     @classmethod
-    def _validate_is_instance_segmentation(cls, is_instance_segmentation: bool | None, values: any) -> bool | None:  # type: ignore - pydantic field validator
-        """Validates that is_instance_segmentation was used correctly."""
-        if is_instance_segmentation is True and values.data["raster"] is None:
+    def _validate_is_instance(cls, is_instance: bool | None, values: any) -> bool | None:  # type: ignore - pydantic field validator
+        """Validates that is_instance was used correctly."""
+        if is_instance is True and values.data["raster"] is None:
             raise ValueError(
-                "is_instance_segmentation should only be used when passing a Raster to the Annotaiton."
+                "is_instance should only be used when passing a Raster to the Annotaiton."
             )
-        return is_instance_segmentation
+        return is_instance
 
     @field_validator("metadata")
     @classmethod
