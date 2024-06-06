@@ -48,6 +48,7 @@ def parse_detection_into_bounding_box(
             Annotation(
                 labels=[scored_label],
                 bounding_box=bbox,
+                is_instance=True,
             )
             for bbox, scored_label in list(zip(bboxes, labels))
         ],
