@@ -105,7 +105,6 @@ const createDatasetsAndModels = async () => {
       },
       [
         {
-          task_type: 'classification',
           metadata: {},
           labels: [{ key: 'label-key', value: 'label-value' }],
           bounding_box: null,
@@ -123,7 +122,6 @@ const createDatasetsAndModels = async () => {
       },
       [
         {
-          task_type: 'classification',
           metadata: {},
           labels: [{ key: 'label-key', value: 'label-value-with-no-prediction' }],
           bounding_box: null,
@@ -152,7 +150,6 @@ const createDatasetsAndModels = async () => {
             },
             [
               {
-                task_type: 'classification',
                 metadata: {},
                 labels: [{ key: 'label-key', value: 'label-value', score: 1.0 }],
                 bounding_box: null,
@@ -171,7 +168,6 @@ const createDatasetsAndModels = async () => {
             },
             [
               {
-                task_type: 'classification',
                 metadata: {},
                 labels: [{ key: 'label-key', value: 'label-value', score: 1.0 }],
                 bounding_box: null,

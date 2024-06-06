@@ -68,7 +68,6 @@ def test__verify_ready_to_evaluate(
                 datum=schemas.Datum(uid="uid1"),
                 annotations=[
                     schemas.Annotation(
-                        task_type=enums.TaskType.CLASSIFICATION,
                         labels=[schemas.Label(key="k1", value="v1")],
                     )
                 ],
@@ -94,7 +93,6 @@ def test__verify_ready_to_evaluate(
                 datum=schemas.Datum(uid="uid1"),
                 annotations=[
                     schemas.Annotation(
-                        task_type=enums.TaskType.CLASSIFICATION,
                         labels=[
                             schemas.Label(key="k1", value="v1", score=1.0)
                         ],
@@ -121,7 +119,6 @@ def test__verify_ready_to_evaluate(
                 datum=schemas.Datum(uid="uid1"),
                 annotations=[
                     schemas.Annotation(
-                        task_type=enums.TaskType.CLASSIFICATION,
                         labels=[
                             schemas.Label(key="k1", value="v1", score=1.0)
                         ],
@@ -484,6 +481,55 @@ def test_get_evaluations(
         model_names=[finalized_model],
         offset=0,
         limit=6,
+    )
+
+    assert len(evaluations) == 2
+    assert headers == {"content-range": "items 0-1/2"}
+
+    # test that we can reconstitute the full set using paginated calls
+    first, header = core.get_paginated_evaluations(db, offset=1, limit=1)
+    assert len(first) == 1
+    assert header == {"content-range": "items 1-1/2"}
+
+    second, header = core.get_paginated_evaluations(db, offset=0, limit=1)
+    assert len(second) == 1
+    assert header == {"content-range": "items 0-0/2"}
+
+    combined = first + second
+    assert len(combined)
+
+    # test metrics_to_sort_by when there aren't any metrics to sort by
+    evaluations, headers = core.get_paginated_evaluations(
+        db=db,
+        dataset_names=[finalized_dataset],
+        model_names=[finalized_model],
+        offset=0,
+        limit=6,
+        metrics_to_sort_by={"IOU": "k1"},
+    )
+
+    assert len(evaluations) == 2
+    assert headers == {"content-range": "items 0-1/2"}
+
+    # test that we can reconstitute the full set using paginated calls
+    first, header = core.get_paginated_evaluations(db, offset=1, limit=1)
+    assert len(first) == 1
+    assert header == {"content-range": "items 1-1/2"}
+
+    second, header = core.get_paginated_evaluations(db, offset=0, limit=1)
+    assert len(second) == 1
+    assert header == {"content-range": "items 0-0/2"}
+
+    combined = first + second
+    assert len(combined)
+
+    evaluations, headers = core.get_paginated_evaluations(
+        db=db,
+        dataset_names=[finalized_dataset],
+        model_names=[finalized_model],
+        offset=0,
+        limit=6,
+        metrics_to_sort_by={"IOU": {"key": "k1", "value": "v1"}},
     )
 
     assert len(evaluations) == 2

@@ -1,5 +1,4 @@
 import pytest
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from valor import (
@@ -12,7 +11,7 @@ from valor import (
     Model,
     Prediction,
 )
-from valor.enums import EvaluationStatus, TaskType
+from valor.enums import EvaluationStatus
 from valor.exceptions import ClientException
 from valor_api import crud, enums, schemas
 from valor_api.backend import core
@@ -28,7 +27,6 @@ def test_restart_failed_evaluation(db: Session, client: Client):
                 datum=schemas.Datum(uid="123"),
                 annotations=[
                     schemas.Annotation(
-                        task_type=enums.TaskType.CLASSIFICATION,
                         labels=[schemas.Label(key="class", value="dog")],
                     )
                 ],
@@ -45,7 +43,6 @@ def test_restart_failed_evaluation(db: Session, client: Client):
                 datum=schemas.Datum(uid="123"),
                 annotations=[
                     schemas.Annotation(
-                        task_type=enums.TaskType.CLASSIFICATION,
                         labels=[
                             schemas.Label(key="class", value="dog", score=1.0)
                         ],
@@ -62,18 +59,17 @@ def test_restart_failed_evaluation(db: Session, client: Client):
     assert dataset
     assert model
 
-    # create evaluation and overwrite status to failed
+    # create evaluation
     eval1 = model.evaluate_classification(dataset, allow_retries=False)
-    assert eval1.status == enums.EvaluationStatus.PENDING
-    try:
-        evaluation = core.fetch_evaluation_from_id(
-            db=db, evaluation_id=eval1.id
-        )
-        evaluation.status = enums.EvaluationStatus.FAILED
-        db.commit()
-    except IntegrityError as e:
-        db.rollback()
-        raise e
+    eval1.wait_for_completion(
+        timeout=30
+    )  # the overwrite below doesn't work unless status is DONE
+    assert eval1.status == enums.EvaluationStatus.DONE
+
+    # overwrite status to failed
+    evaluation = core.fetch_evaluation_from_id(db=db, evaluation_id=eval1.id)
+    evaluation.status = enums.EvaluationStatus.FAILED
+    db.commit()
 
     # get evaluation and verify it is failed
     eval2 = model.evaluate_classification(dataset, allow_retries=False)
@@ -112,7 +108,6 @@ def test_get_sorted_evaluations(
             ),
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
                     labels=[Label(key="class", value=str(label_value))],
                 )
             ],
@@ -133,7 +128,6 @@ def test_get_sorted_evaluations(
             ),
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
                     labels=[
                         Label(key="class", value=str(pidx), score=pred[pidx])
                         for pidx in range(len(pred))

@@ -129,13 +129,13 @@ export type Datum = {
 };
 
 export type Annotation = {
-  task_type: TaskType;
   metadata: Partial<Record<string, any>>;
   labels: Label[];
   bounding_box?: number[][][];
   polygon?: number[][][];
   raster?: object;
   embedding?: number[];
+  is_instance?: boolean;
 };
 
 export type Metric = {
