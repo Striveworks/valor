@@ -1896,6 +1896,7 @@ def test_evaluate_detection_false_negatives_single_image_baseline(
                         xmin=10, xmax=20, ymin=10, ymax=20
                     ),
                     labels=[Label(key="key", value="value")],
+                    is_instance=True,
                 )
             ],
         )
@@ -1913,12 +1914,14 @@ def test_evaluate_detection_false_negatives_single_image_baseline(
                         xmin=10, xmax=20, ymin=10, ymax=20
                     ),
                     labels=[Label(key="key", value="value", score=0.8)],
+                    is_instance=True,
                 ),
                 Annotation(
                     bounding_box=Box.from_extrema(
                         xmin=100, xmax=110, ymin=100, ymax=200
                     ),
                     labels=[Label(key="key", value="value", score=0.7)],
+                    is_instance=True,
                 ),
             ],
         ),
@@ -1954,6 +1957,7 @@ def test_evaluate_detection_false_negatives_single_image(
                         xmin=10, xmax=20, ymin=10, ymax=20
                     ),
                     labels=[Label(key="key", value="value")],
+                    is_instance=True,
                 )
             ],
         )
@@ -1971,12 +1975,14 @@ def test_evaluate_detection_false_negatives_single_image(
                         xmin=10, xmax=20, ymin=10, ymax=20
                     ),
                     labels=[Label(key="key", value="value", score=0.8)],
+                    is_instance=True,
                 ),
                 Annotation(
                     bounding_box=Box.from_extrema(
                         xmin=100, xmax=110, ymin=100, ymax=200
                     ),
                     labels=[Label(key="key", value="value", score=0.9)],
+                    is_instance=True,
                 ),
             ],
         ),
@@ -2018,6 +2024,7 @@ def test_evaluate_detection_false_negatives_two_images_one_empty_low_confidence_
                             xmin=10, xmax=20, ymin=10, ymax=20
                         ),
                         labels=[Label(key="key", value="value")],
+                        is_instance=True,
                     )
                 ],
             ),
@@ -2041,6 +2048,7 @@ def test_evaluate_detection_false_negatives_two_images_one_empty_low_confidence_
                             xmin=10, xmax=20, ymin=10, ymax=20
                         ),
                         labels=[Label(key="key", value="value", score=0.8)],
+                        is_instance=True,
                     ),
                 ],
             ),
@@ -2052,6 +2060,7 @@ def test_evaluate_detection_false_negatives_two_images_one_empty_low_confidence_
                             xmin=10, xmax=20, ymin=10, ymax=20
                         ),
                         labels=[Label(key="key", value="value", score=0.7)],
+                        is_instance=True,
                     ),
                 ],
             ),
@@ -2092,6 +2101,7 @@ def test_evaluate_detection_false_negatives_two_images_one_empty_high_confidence
                             xmin=10, xmax=20, ymin=10, ymax=20
                         ),
                         labels=[Label(key="key", value="value")],
+                        is_instance=True,
                     )
                 ],
             ),
@@ -2115,6 +2125,7 @@ def test_evaluate_detection_false_negatives_two_images_one_empty_high_confidence
                             xmin=10, xmax=20, ymin=10, ymax=20
                         ),
                         labels=[Label(key="key", value="value", score=0.8)],
+                        is_instance=True,
                     ),
                 ],
             ),
@@ -2126,6 +2137,7 @@ def test_evaluate_detection_false_negatives_two_images_one_empty_high_confidence
                             xmin=10, xmax=20, ymin=10, ymax=20
                         ),
                         labels=[Label(key="key", value="value", score=0.9)],
+                        is_instance=True,
                     ),
                 ],
             ),
@@ -2167,6 +2179,7 @@ def test_evaluate_detection_false_negatives_two_images_one_only_with_different_c
                             xmin=10, xmax=20, ymin=10, ymax=20
                         ),
                         labels=[Label(key="key", value="value")],
+                        is_instance=True,
                     )
                 ],
             ),
@@ -2178,6 +2191,7 @@ def test_evaluate_detection_false_negatives_two_images_one_only_with_different_c
                             xmin=10, xmax=20, ymin=10, ymax=20
                         ),
                         labels=[Label(key="key", value="other value")],
+                        is_instance=True,
                     )
                 ],
             ),
@@ -2197,6 +2211,7 @@ def test_evaluate_detection_false_negatives_two_images_one_only_with_different_c
                             xmin=10, xmax=20, ymin=10, ymax=20
                         ),
                         labels=[Label(key="key", value="value", score=0.8)],
+                        is_instance=True,
                     ),
                 ],
             ),
@@ -2208,6 +2223,7 @@ def test_evaluate_detection_false_negatives_two_images_one_only_with_different_c
                             xmin=10, xmax=20, ymin=10, ymax=20
                         ),
                         labels=[Label(key="key", value="value", score=0.7)],
+                        is_instance=True,
                     ),
                 ],
             ),
@@ -2267,6 +2283,7 @@ def test_evaluate_detection_false_negatives_two_images_one_only_with_different_c
                             xmin=10, xmax=20, ymin=10, ymax=20
                         ),
                         labels=[Label(key="key", value="value")],
+                        is_instance=True,
                     )
                 ],
             ),
@@ -2278,6 +2295,7 @@ def test_evaluate_detection_false_negatives_two_images_one_only_with_different_c
                             xmin=10, xmax=20, ymin=10, ymax=20
                         ),
                         labels=[Label(key="key", value="other value")],
+                        is_instance=True,
                     )
                 ],
             ),
@@ -2297,6 +2315,7 @@ def test_evaluate_detection_false_negatives_two_images_one_only_with_different_c
                             xmin=10, xmax=20, ymin=10, ymax=20
                         ),
                         labels=[Label(key="key", value="value", score=0.8)],
+                        is_instance=True,
                     ),
                 ],
             ),
@@ -2308,6 +2327,7 @@ def test_evaluate_detection_false_negatives_two_images_one_only_with_different_c
                             xmin=10, xmax=20, ymin=10, ymax=20
                         ),
                         labels=[Label(key="key", value="value", score=0.9)],
+                        is_instance=True,
                     ),
                 ],
             ),

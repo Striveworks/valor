@@ -45,6 +45,7 @@ def dataset_with_metadata(
                 Annotation(
                     labels=[Label(key="k", value="v")],
                     bounding_box=Box([rect1]),
+                    is_instance=True,
                 ),
             ],
         )

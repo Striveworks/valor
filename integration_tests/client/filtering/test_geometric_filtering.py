@@ -76,6 +76,7 @@ def groundtruths_with_areas(
                         Annotation(
                             labels=[Label(key="box", value=str(idx))],
                             bounding_box=bbox,
+                            is_instance=True,
                         )
                     ],
                 ),
@@ -85,6 +86,7 @@ def groundtruths_with_areas(
                         Annotation(
                             labels=[Label(key="polygon", value=str(idx))],
                             polygon=polygon,
+                            is_instance=True,
                         )
                     ],
                 ),
@@ -98,6 +100,7 @@ def groundtruths_with_areas(
                                 height=image_height_width[0],
                                 width=image_height_width[1],
                             ),
+                            is_instance=True,
                         )
                     ],
                 ),
@@ -113,6 +116,7 @@ def groundtruths_with_areas(
                         Annotation(
                             labels=[Label(key="raster", value=str(idx))],
                             raster=raster,
+                            is_instance=True,
                         )
                     ],
                 ),

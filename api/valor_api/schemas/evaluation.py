@@ -141,6 +141,12 @@ class EvaluationRequest(BaseModel):
     def _validate_request(cls, values):
         """Validate the request."""
 
+        # verify filters do not contain task type.
+        if values.datum_filter.task_types is not None:
+            raise ValueError(
+                "`datum_filter` should not define the task_types constraint. Please set this in evaluation `parameters`."
+            )
+
         # verify `model_names` is of type list[str]
         if isinstance(values.model_names, list):
             if len(values.model_names) == 0:

@@ -68,6 +68,7 @@ def _generate_gt_annotation(
         labels=labels,
         raster=raster,
         bounding_box=(bounding_box),
+        is_instance=True,
     )
 
 
@@ -169,6 +170,7 @@ def _generate_prediction_annotation(
     return Annotation(
         labels=labels,
         bounding_box=box,
+        is_instance=True,
     )
 
 

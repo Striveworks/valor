@@ -8,9 +8,7 @@ from PIL import Image
 from sqlalchemy import (
     BinaryExpression,
     Float,
-    String,
     Update,
-    cast,
     distinct,
     func,
     select,
@@ -21,7 +19,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from valor_api.backend import models
-from valor_api.enums import AnnotationType
+from valor_api.enums import AnnotationType, TaskType
 
 
 class GeometricValueType(CompositeType):
@@ -47,7 +45,7 @@ class RawGeometry(Geometry):
 
 def get_annotation_type(
     db: Session,
-    task_type: str,
+    task_type: TaskType,
     dataset: models.Dataset,
     model: models.Model | None = None,
 ) -> AnnotationType:
@@ -58,7 +56,7 @@ def get_annotation_type(
     ----------
     db : Session
         The database Session you want to query against.
-    task_type: str
+    task_type: TaskType
         The implied task type to filter on.
     dataset : models.Dataset
         The dataset associated with the annotation.
@@ -88,9 +86,7 @@ def get_annotation_type(
             .join(models.Dataset, models.Dataset.id == models.Datum.dataset_id)
             .where(
                 models.Datum.dataset_id == dataset.id,
-                cast(models.Annotation.implied_task_types, String).ilike(
-                    f"%{task_type}%"
-                ),
+                models.Annotation.implied_task_types.op("?")(task_type.value),
                 model_expr,
                 col.isnot(None),
             )
@@ -228,6 +224,7 @@ def convert_geometry(
     target_type: AnnotationType,
     dataset: models.Dataset,
     model: models.Model | None = None,
+    task_type: TaskType | None = None,
 ):
     """
     Converts geometry into some target type
@@ -244,8 +241,8 @@ def convert_geometry(
         The dataset of the geometry.
     model : models.Model, optional
         The model of the geometry.
-    task_type : enums.TaskType, optional
-        A task type to stratify the conversion by.
+    task_type: TaskType, optional
+        Optional task type to search by.
     """
     # Check typing
     valid_geometric_types = [
@@ -288,8 +285,16 @@ def convert_geometry(
         else models.Annotation.model_id.is_(None)
     )
 
+    # define task type expression
+    task_type_expr = (
+        models.Annotation.implied_task_types.op("?")(task_type.value)
+        if task_type
+        else models.Annotation.implied_task_types.isnot(None)
+    )
+
     # define where expression
     where_conditions = [
+        task_type_expr,
         models.Datum.dataset_id == dataset.id,
         model_expr,
     ]

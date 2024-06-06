@@ -307,10 +307,12 @@ def gt_dets1(
             datum=img1,
             annotations=[
                 Annotation(
+                    is_instance=True,
                     labels=[Label(key="k1", value="v1")],
                     bounding_box=Box([rect1]),
                 ),
                 Annotation(
+                    is_instance=True,
                     labels=[Label(key="k2", value="v2")],
                     bounding_box=Box([rect3]),
                 ),
@@ -320,6 +322,7 @@ def gt_dets1(
             datum=img2,
             annotations=[
                 Annotation(
+                    is_instance=True,
                     labels=[Label(key="k1", value="v1")],
                     bounding_box=Box([rect2]),
                 )
@@ -342,10 +345,12 @@ def gt_dets2(
             datum=img5,
             annotations=[
                 Annotation(
+                    is_instance=True,
                     labels=[Label(key="k1", value="v1")],
                     polygon=Polygon([rect1]),
                 ),
                 Annotation(
+                    is_instance=True,
                     labels=[Label(key="k2", value="v2")],
                     bounding_box=Box([rect3]),
                 ),
@@ -355,6 +360,7 @@ def gt_dets2(
             datum=img6,
             annotations=[
                 Annotation(
+                    is_instance=True,
                     labels=[Label(key="k1", value="v1")],
                     polygon=Polygon([rect2]),
                 )
@@ -364,6 +370,7 @@ def gt_dets2(
             datum=img8,
             annotations=[
                 Annotation(
+                    is_instance=True,
                     labels=[Label(key="k3", value="v3")],
                     bounding_box=Box([rect3]),
                 )
@@ -385,18 +392,22 @@ def gts_det_with_label_maps(
             datum=img1,
             annotations=[
                 Annotation(
+                    is_instance=True,
                     labels=[Label(key="class_name", value="maine coon cat")],
                     bounding_box=Box([rect1]),
                 ),
                 Annotation(
+                    is_instance=True,
                     labels=[Label(key="class", value="british shorthair")],
                     bounding_box=Box([rect3]),
                 ),
                 Annotation(
+                    is_instance=True,
                     labels=[Label(key="k1", value="v1")],
                     bounding_box=Box([rect1]),
                 ),
                 Annotation(
+                    is_instance=True,
                     labels=[Label(key="k2", value="v2")],
                     bounding_box=Box([rect3]),
                 ),
@@ -406,10 +417,12 @@ def gts_det_with_label_maps(
             datum=img2,
             annotations=[
                 Annotation(
+                    is_instance=True,
                     labels=[Label(key="class", value="siamese cat")],
                     bounding_box=Box([rect2]),
                 ),
                 Annotation(
+                    is_instance=True,
                     labels=[Label(key="k1", value="v1")],
                     bounding_box=Box([rect2]),
                 ),
@@ -431,6 +444,7 @@ def gt_poly_dets1(
             datum=img1,
             annotations=[
                 Annotation(
+                    is_instance=True,
                     labels=[Label(key="k1", value="v1")],
                     polygon=Polygon([rect1]),
                 ),
@@ -440,6 +454,7 @@ def gt_poly_dets1(
             datum=img2,
             annotations=[
                 Annotation(
+                    is_instance=True,
                     labels=[Label(key="k1", value="v1")],
                     polygon=Polygon([rect2]),
                 )
@@ -468,6 +483,7 @@ def gt_segs(
             datum=img1,
             annotations=[
                 Annotation(
+                    is_instance=True,
                     labels=[Label(key="k1", value="v1")],
                     raster=Raster.from_geometry(
                         geometry=multipolygon1,
@@ -476,6 +492,7 @@ def gt_segs(
                     ),
                 ),
                 Annotation(
+                    is_instance=False,
                     labels=[Label(key="k2", value="v2")],
                     raster=Raster.from_geometry(
                         geometry=multipolygon31,
@@ -489,6 +506,7 @@ def gt_segs(
             datum=img2,
             annotations=[
                 Annotation(
+                    is_instance=True,
                     labels=[Label(key="k1", value="v1")],
                     raster=Raster.from_geometry(
                         geometry=multipolygon2_1,
@@ -514,6 +532,7 @@ def gt_semantic_segs1(
             datum=img1,
             annotations=[
                 Annotation(
+                    is_instance=False,
                     labels=[Label(key="k2", value="v2")],
                     raster=Raster.from_geometry(
                         MultiPolygon(
@@ -544,6 +563,7 @@ def gt_semantic_segs1_mask(
         datum=img1,
         annotations=[
             Annotation(
+                is_instance=False,
                 labels=[Label(key="k2", value="v2")],
                 raster=raster,
             )
@@ -563,6 +583,7 @@ def gt_semantic_segs2(
             datum=img2,
             annotations=[
                 Annotation(
+                    is_instance=False,
                     labels=[Label(key="k3", value="v3")],
                     raster=Raster.from_geometry(
                         MultiPolygon(
@@ -590,6 +611,7 @@ def gt_semantic_segs2_mask(
         datum=img2,
         annotations=[
             Annotation(
+                is_instance=False,
                 labels=[Label(key="k2", value="v2")],
                 raster=raster,
             )
@@ -605,6 +627,7 @@ def gt_semantic_segs_mismatch(img1: Datum) -> GroundTruth:
         datum=img1,
         annotations=[
             Annotation(
+                is_instance=False,
                 labels=[Label(key="k3", value="v3")],
                 raster=raster,
             )
@@ -671,6 +694,7 @@ def pred_dets(
             datum=img1,
             annotations=[
                 Annotation(
+                    is_instance=True,
                     labels=[Label(key="k1", value="v1", score=0.3)],
                     bounding_box=Box([rect1]),
                 )
@@ -680,6 +704,7 @@ def pred_dets(
             datum=img2,
             annotations=[
                 Annotation(
+                    is_instance=True,
                     labels=[Label(key="k2", value="v2", score=0.98)],
                     bounding_box=Box([rect2]),
                 )
@@ -700,6 +725,7 @@ def pred_dets2(
             datum=img1,
             annotations=[
                 Annotation(
+                    is_instance=True,
                     labels=[Label(key="k1", value="v1", score=0.7)],
                     bounding_box=Box([rect3]),
                 )
@@ -709,6 +735,7 @@ def pred_dets2(
             datum=img2,
             annotations=[
                 Annotation(
+                    is_instance=True,
                     labels=[Label(key="k2", value="v2", score=0.98)],
                     bounding_box=Box([rect4]),
                 )
@@ -729,10 +756,12 @@ def preds_det_with_label_maps(
             datum=img1,
             annotations=[
                 Annotation(
+                    is_instance=True,
                     labels=[Label(key="class", value="cat", score=0.3)],
                     bounding_box=Box([rect1]),
                 ),
                 Annotation(
+                    is_instance=True,
                     labels=[Label(key="k1", value="v1", score=0.3)],
                     bounding_box=Box([rect1]),
                 ),
@@ -742,10 +771,12 @@ def preds_det_with_label_maps(
             datum=img2,
             annotations=[
                 Annotation(
+                    is_instance=True,
                     labels=[Label(key="class_name", value="cat", score=0.98)],
                     bounding_box=Box([rect2]),
                 ),
                 Annotation(
+                    is_instance=True,
                     labels=[Label(key="k2", value="v2", score=0.98)],
                     bounding_box=Box([rect2]),
                 ),
@@ -761,6 +792,7 @@ def pred_poly_dets(pred_dets: list[Prediction]) -> list[Prediction]:
             datum=det.datum,
             annotations=[
                 Annotation(
+                    is_instance=True,
                     labels=annotation.labels.get_value(),
                     polygon=(
                         Polygon([annotation.bounding_box.boundary])
@@ -799,9 +831,9 @@ def pred_instance_segs(
             datum=img1,
             annotations=[
                 Annotation(
+                    is_instance=True,
                     labels=[Label(key="k1", value="v1", score=0.87)],
                     raster=Raster.from_numpy(mask_1),
-                    is_instance=True,
                 )
             ],
         ),
@@ -809,9 +841,9 @@ def pred_instance_segs(
             datum=img2,
             annotations=[
                 Annotation(
+                    is_instance=True,
                     labels=[Label(key="k2", value="v2", score=0.92)],
                     raster=Raster.from_numpy(mask_2),
-                    is_instance=True,
                 )
             ],
         ),
@@ -833,6 +865,7 @@ def pred_semantic_segs(
             datum=img1,
             annotations=[
                 Annotation(
+                    is_instance=False,
                     labels=[Label(key="k2", value="v2")],
                     raster=Raster.from_numpy(mask_1),
                 )
@@ -842,6 +875,7 @@ def pred_semantic_segs(
             datum=img2,
             annotations=[
                 Annotation(
+                    is_instance=False,
                     labels=[Label(key="k1", value="v1")],
                     raster=Raster.from_numpy(mask_2),
                 )

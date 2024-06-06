@@ -927,6 +927,14 @@ def test_detection_exceptions(db: Session):
     assert row
     evaluation_id = row.id
 
+    # test that no datasets are found that meet the filter requirements
+    # - this is b/c no ground truths exist that match the evaluation task type.
+    with pytest.raises(RuntimeError) as e:
+        compute_detection_metrics(db=db, evaluation_id=evaluation_id)
+    assert "No datasets could be found that meet filter requirements." in str(
+        e
+    )
+
     crud.create_groundtruths(
         db=db,
         groundtruths=[

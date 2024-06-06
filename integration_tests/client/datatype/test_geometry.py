@@ -101,6 +101,7 @@ def test_boundary(
                 Annotation(
                     labels=[Label(key="k1", value="v1")],
                     polygon=rect1_poly,
+                    is_instance=True,
                 )
             ],
         )
@@ -135,6 +136,7 @@ def test_iou(
                 Annotation(
                     labels=[Label(key="k", value="v")],
                     polygon=rect1_poly,
+                    is_instance=True,
                 )
             ],
         )
@@ -153,6 +155,7 @@ def test_iou(
                 Annotation(
                     polygon=rect2_poly,
                     labels=[Label(key="k", value="v", score=0.6)],
+                    is_instance=True,
                 )
             ],
         ),
@@ -192,6 +195,7 @@ def test_add_raster_and_boundary_box(
                     xmin=10, ymin=10, xmax=60, ymax=40
                 ),
                 raster=raster,
+                is_instance=True,
             )
         ],
     )

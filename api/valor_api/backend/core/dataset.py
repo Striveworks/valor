@@ -359,7 +359,7 @@ def get_n_groundtruth_rasters_in_dataset(db: Session, name: str) -> int:
 
 def get_unique_task_types_in_dataset(
     db: Session, name: str
-) -> list[list[str]]:
+) -> list[enums.TaskType]:
     """
     Fetch the unique implied task types associated with the annotation in a dataset.
 
@@ -370,14 +370,22 @@ def get_unique_task_types_in_dataset(
     name : str
         The name of the dataset to query for.
     """
-    return db.scalars(
-        select(models.Annotation.implied_task_types)
-        .join(models.GroundTruth)
-        .join(models.Datum)
-        .join(models.Dataset)
+    task_types = (
+        db.query(
+            func.jsonb_array_elements_text(
+                models.Annotation.implied_task_types
+            )
+        )
+        .select_from(models.Annotation)
+        .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
+        .join(models.Dataset, models.Dataset.id == models.Datum.dataset_id)
         .where(models.Dataset.name == name)
         .distinct()
-    ).all()  # type: ignore - SQLAlchemy type issue
+        .all()
+    )
+    return [
+        enums.TaskType(task_type_tuple[0]) for task_type_tuple in task_types
+    ]
 
 
 def get_unique_datum_metadata_in_dataset(

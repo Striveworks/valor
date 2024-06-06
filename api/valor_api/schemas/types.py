@@ -62,11 +62,9 @@ def _match_annotation_to_implied_task_type(
         and (
             annotation.bounding_box is not None
             or annotation.polygon is not None
-            or (
-                annotation.raster is not None
-                and annotation.is_instance is True
-            )
+            or annotation.raster is not None
         )
+        and annotation.is_instance is True
         and annotation.embedding is None
     ):
         implied_type = ["object-detection"]
@@ -100,7 +98,7 @@ def _match_annotation_to_implied_task_type(
         implied_type = ["empty"]
     else:
         raise ValueError(
-            "Input didn't match any known patterns. Classification tasks should only contain labels. Object detection tasks should contain labels and polygons, bounding boxes, or rasters with is_instnace_segmentation == True. Segmentation tasks should contain labels and rasters with is_instance != True."
+            "Input didn't match any known patterns. Classification tasks should only contain labels. Object detection tasks should contain labels and polygons, bounding boxes, or rasters with is_instance == True. Segmentation tasks should contain labels and rasters with is_instance != True."
         )
 
     return implied_type
@@ -336,9 +334,13 @@ class Annotation(BaseModel):
     @classmethod
     def _validate_is_instance(cls, is_instance: bool | None, values: any) -> bool | None:  # type: ignore - pydantic field validator
         """Validates that is_instance was used correctly."""
-        if is_instance is True and values.data["raster"] is None:
+        if is_instance is True and (
+            values.data["raster"] is None
+            and values.data["polygon"] is None
+            and values.data["bounding_box"] is None
+        ):
             raise ValueError(
-                "is_instance should only be used when passing a Raster to the Annotaiton."
+                "is_instance should only be used when passing a object detection to the Annotation."
             )
         return is_instance
 

@@ -42,6 +42,7 @@ def test_create_gt_detections_as_bbox_or_poly(
                 bounding_box=Box.from_extrema(
                     xmin=xmin, ymin=ymin, xmax=xmax, ymax=ymax
                 ),
+                is_instance=True,
             ),
             Annotation(
                 labels=[Label(key="k", value="v")],
@@ -56,6 +57,7 @@ def test_create_gt_detections_as_bbox_or_poly(
                         ]
                     ]
                 ),
+                is_instance=True,
             ),
         ],
     )
@@ -109,7 +111,7 @@ def test_create_gt_detections_as_bbox_or_poly(
                     "polygon": None,
                     "raster": None,
                     "embedding": None,
-                    "is_instance": None,
+                    "is_instance": True,
                     "implied_task_types": ["object-detection"],
                 },
             }
@@ -131,7 +133,7 @@ def test_create_gt_detections_as_bbox_or_poly(
                     ],
                     "raster": None,
                     "embedding": None,
-                    "is_instance": None,
+                    "is_instance": True,
                     "implied_task_types": ["object-detection"],
                 },
             }

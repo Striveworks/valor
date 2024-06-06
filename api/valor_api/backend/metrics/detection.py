@@ -863,13 +863,15 @@ def _convert_annotations_to_common_type(
         prediction_type = AnnotationType.RASTER
         for dataset in datasets:
             dataset_type = core.get_annotation_type(
-                db=db, dataset=dataset, task_type="object-detection"
+                db=db,
+                dataset=dataset,
+                task_type=enums.TaskType.OBJECT_DETECTION,
             )
             model_type = core.get_annotation_type(
                 db=db,
                 dataset=dataset,
                 model=model,
-                task_type="object-detection",
+                task_type=enums.TaskType.OBJECT_DETECTION,
             )
             groundtruth_type = (
                 dataset_type
@@ -884,17 +886,21 @@ def _convert_annotations_to_common_type(
     for dataset in datasets:
         # dataset
         source_type = core.get_annotation_type(
-            db=db, dataset=dataset, task_type="object-detection"
+            db=db, dataset=dataset, task_type=enums.TaskType.OBJECT_DETECTION
         )
         core.convert_geometry(
             db=db,
             dataset=dataset,
             source_type=source_type,
             target_type=target_type,
+            task_type=enums.TaskType.OBJECT_DETECTION,
         )
         # model
         source_type = core.get_annotation_type(
-            db=db, dataset=dataset, model=model, task_type="object-detection"
+            db=db,
+            dataset=dataset,
+            model=model,
+            task_type=enums.TaskType.OBJECT_DETECTION,
         )
         core.convert_geometry(
             db=db,
@@ -902,6 +908,7 @@ def _convert_annotations_to_common_type(
             model=model,
             source_type=source_type,
             target_type=target_type,
+            task_type=enums.TaskType.OBJECT_DETECTION,
         )
 
     return target_type
@@ -928,6 +935,10 @@ def compute_detection_metrics(*_, db: Session, evaluation_id: int):
     prediction_filter = groundtruth_filter.model_copy()
     prediction_filter.model_names = [evaluation.model_name]
     parameters = schemas.EvaluationParameters(**evaluation.parameters)
+
+    # load task type into filters
+    groundtruth_filter.task_types = [parameters.task_type]
+    prediction_filter.task_types = [parameters.task_type]
 
     log_evaluation_item_counts(
         db=db,

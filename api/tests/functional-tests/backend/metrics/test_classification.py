@@ -135,9 +135,11 @@ def test_compute_confusion_matrix_at_grouper_key(
 ):
     prediction_filter = schemas.Filter(
         model_names=[model_name],
+        task_types=[enums.TaskType.CLASSIFICATION],
     )
     groundtruth_filter = schemas.Filter(
         dataset_names=[dataset_name],
+        task_types=[enums.TaskType.CLASSIFICATION],
     )
 
     labels = fetch_union_of_labels(
@@ -293,6 +295,7 @@ def test_compute_confusion_matrix_at_grouper_key_and_filter(
     groundtruth_filter = schemas.Filter(
         dataset_names=[dataset_name],
         model_names=[model_name],
+        task_types=[enums.TaskType.CLASSIFICATION],
         datum_metadata={"md1": [schemas.StringFilter(value="md1-val0")]},
     )
 
@@ -386,6 +389,7 @@ def test_compute_confusion_matrix_at_grouper_key_using_label_map(
     groundtruth_filter = schemas.Filter(
         dataset_names=[dataset_name],
         model_names=[model_name],
+        task_types=[enums.TaskType.CLASSIFICATION],
         datum_metadata={"md1": [schemas.StringFilter(value="md1-val0")]},
     )
 
@@ -502,9 +506,11 @@ def test_compute_roc_auc(
     """
     prediction_filter = schemas.Filter(
         model_names=[model_name],
+        task_types=[enums.TaskType.CLASSIFICATION],
     )
     groundtruth_filter = schemas.Filter(
         dataset_names=[dataset_name],
+        task_types=[enums.TaskType.CLASSIFICATION],
     )
 
     labels = fetch_union_of_labels(
@@ -587,6 +593,7 @@ def test_compute_roc_auc_groupby_metadata(
     )
     groundtruth_filter = schemas.Filter(
         dataset_names=[dataset_name],
+        task_types=[enums.TaskType.CLASSIFICATION],
         datum_metadata={"md1": [schemas.StringFilter(value="md1-val0")]},
     )
 
@@ -646,9 +653,11 @@ def test_compute_roc_auc_with_label_map(
 
     prediction_filter = schemas.Filter(
         model_names=[model_name],
+        task_types=[enums.TaskType.CLASSIFICATION],
     )
     groundtruth_filter = schemas.Filter(
         dataset_names=[dataset_name],
+        task_types=[enums.TaskType.CLASSIFICATION],
     )
 
     labels = fetch_union_of_labels(
@@ -689,6 +698,7 @@ def test_compute_classification(
     datum_filter = schemas.Filter(
         dataset_names=[dataset_name],
         model_names=[model_name],
+        task_types=[enums.TaskType.CLASSIFICATION],
     )
 
     confusion, metrics = _compute_clf_metrics(
@@ -868,9 +878,11 @@ def test__compute_curves(
 
     prediction_filter = schemas.Filter(
         model_names=[model_name],
+        task_types=[enums.TaskType.CLASSIFICATION],
     )
     groundtruth_filter = schemas.Filter(
         dataset_names=[dataset_name],
+        task_types=[enums.TaskType.CLASSIFICATION],
     )
 
     labels = fetch_union_of_labels(

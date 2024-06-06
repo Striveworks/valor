@@ -8,6 +8,7 @@ from pydantic import (
     model_validator,
 )
 
+from valor_api.enums import TaskType
 from valor_api.schemas.geometry import GeoJSON
 from valor_api.schemas.timestamp import Date, DateTime, Duration, Time
 
@@ -213,6 +214,8 @@ class Filter(BaseModel):
         A dictionary of `Model` metadata to filter on.
     datum_metadata: Dict[str, list[StringFilter | NumericFilter | DateTimeFilter | BooleanFilter | GeospatialFilter]], default=None
         A dictionary of `Datum` metadata to filter on.
+    task_types: List[TaskType], default=None
+        A list of task types to filter on.
     annotation_metadata: Dict[str, list[StringFilter | NumericFilter | DateTimeFilter | BooleanFilter | GeospatialFilter]], default=None
         A dictionary of `Annotation` metadata to filter on.
     require_bounding_box : bool, optional
@@ -286,6 +289,7 @@ class Filter(BaseModel):
     ) = None
 
     # annotations
+    task_types: list[TaskType] | None = None
     annotation_metadata: (
         dict[
             str,

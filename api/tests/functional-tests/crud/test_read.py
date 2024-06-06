@@ -1,7 +1,7 @@
 import pytest
 from sqlalchemy.orm import Session
 
-from valor_api import crud, exceptions, schemas
+from valor_api import crud, enums, exceptions, schemas
 
 
 def test_get_dataset(
@@ -68,6 +68,33 @@ def test_get_labels_from_dataset(
     assert schemas.Label(key="k2", value="v2") in ds1
     assert headers == {"content-range": "items 0-1/2"}
 
+    # NEGATIVE - Test filter by task type
+    ds1, _ = crud.get_labels(
+        db=db,
+        filters=schemas.Filter(
+            dataset_names=[dataset_name],
+            task_types=[
+                enums.TaskType.CLASSIFICATION,
+                enums.TaskType.SEMANTIC_SEGMENTATION,
+            ],
+        ),
+        ignore_prediction_labels=True,
+    )
+    assert ds1 == {schemas.Label(key="k2", value="v2")}
+
+    # POSITIVE - Test filter by task type
+    ds1, _ = crud.get_labels(
+        db=db,
+        filters=schemas.Filter(
+            dataset_names=[dataset_name],
+            task_types=[enums.TaskType.OBJECT_DETECTION],
+        ),
+        ignore_prediction_labels=True,
+    )
+    assert len(ds1) == 2
+    assert schemas.Label(key="k1", value="v1") in ds1
+    assert schemas.Label(key="k2", value="v2") in ds1
+
     # NEGATIVE - Test filter by annotation type
     ds1, _ = crud.get_labels(
         db=db,
@@ -123,6 +150,17 @@ def test_get_labels_from_model(
     assert schemas.Label(key="k2", value="v1") in md1
     assert schemas.Label(key="k2", value="v2") in md1
 
+    # Test get all but polygon labels from model 1
+    md1, _ = crud.get_labels(
+        db=db,
+        filters=schemas.Filter(
+            model_names=[model_name],
+            task_types=[enums.TaskType.CLASSIFICATION],
+        ),
+        ignore_groundtruth_labels=True,
+    )
+    assert md1 == set()
+
     # Test get only polygon labels from model 1
     md1, _ = crud.get_labels(
         db=db,
@@ -149,7 +187,11 @@ def test_get_dataset_summary(
     assert summary.num_bounding_boxes == 3
     assert summary.num_polygons == 1
     assert summary.num_rasters == 1
-    assert summary.task_types == [["classification"], ["object-detection"]]
+    assert set(summary.task_types) == {
+        enums.TaskType.OBJECT_DETECTION,
+        enums.TaskType.CLASSIFICATION,
+        enums.TaskType.EMPTY,
+    }
     assert summary.datum_metadata == [
         {
             "width": 32,

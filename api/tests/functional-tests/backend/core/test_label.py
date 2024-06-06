@@ -3,7 +3,7 @@ from base64 import b64encode
 import pytest
 from sqlalchemy.orm import Session
 
-from valor_api import crud, schemas
+from valor_api import crud, enums, schemas
 from valor_api.backend import models
 from valor_api.backend.core.label import (
     create_labels,
@@ -347,12 +347,14 @@ def test_get_joint_labels(
         db=db,
         lhs=schemas.Filter(
             dataset_names=[dataset_name],
+            task_types=[enums.TaskType.CLASSIFICATION],
             require_bounding_box=False,
             require_polygon=False,
             require_raster=False,
         ),
         rhs=schemas.Filter(
             model_names=[model_name],
+            task_types=[enums.TaskType.CLASSIFICATION],
             require_bounding_box=False,
             require_polygon=False,
             require_raster=False,
@@ -375,9 +377,11 @@ def test_get_joint_keys(
         db=db,
         lhs=schemas.Filter(
             dataset_names=[dataset_name],
+            task_types=[enums.TaskType.CLASSIFICATION],
         ),
         rhs=schemas.Filter(
             model_names=[model_name],
+            task_types=[enums.TaskType.CLASSIFICATION],
         ),
     )
     assert len(keys) == 1
@@ -394,12 +398,14 @@ def test_get_disjoint_labels(
         db=db,
         lhs=schemas.Filter(
             dataset_names=[dataset_name],
+            task_types=[enums.TaskType.CLASSIFICATION],
             require_bounding_box=False,
             require_polygon=False,
             require_raster=False,
         ),
         rhs=schemas.Filter(
             model_names=[model_name],
+            task_types=[enums.TaskType.CLASSIFICATION],
             require_bounding_box=False,
             require_polygon=False,
             require_raster=False,
@@ -428,9 +434,11 @@ def test_get_disjoint_keys(
         db=db,
         lhs=schemas.Filter(
             dataset_names=[dataset_name],
+            task_types=[enums.TaskType.CLASSIFICATION],
         ),
         rhs=schemas.Filter(
             model_names=[model_name],
+            task_types=[enums.TaskType.CLASSIFICATION],
         ),
     )
     assert len(ds_unique) == 1
@@ -505,22 +513,32 @@ def test_label_functions(
 
     assert get_label_keys(
         db,
-        schemas.Filter(dataset_names=[dataset_name], require_raster=True),
+        schemas.Filter(
+            dataset_names=[dataset_name],
+            task_types=[enums.TaskType.SEMANTIC_SEGMENTATION],
+        ),
+        ignore_predictions=True,
+    ) == {"semsegk1", "semsegk2", "semsegk3"}
+
+    assert get_labels(
+        db,
+        schemas.Filter(
+            dataset_names=[dataset_name],
+            task_types=[enums.TaskType.SEMANTIC_SEGMENTATION],
+            require_raster=True,
+        ),
         ignore_predictions=True,
     ) == {
-        "semsegk1",
-        "semsegk2",
-        "semsegk3",
-        "inssegk2",
-        "inssegk1",
-        "inssegk3",
+        schemas.Label(key="semsegk1", value="semsegv1"),
+        schemas.Label(key="semsegk2", value="semsegv2"),
+        schemas.Label(key="semsegk3", value="semsegv3"),
     }
-
     assert (
         get_labels(
             db,
             schemas.Filter(
                 dataset_names=[dataset_name],
+                task_types=[enums.TaskType.SEMANTIC_SEGMENTATION],
                 require_polygon=True,
             ),
             ignore_predictions=True,
@@ -533,6 +551,7 @@ def test_label_functions(
         schemas.Filter(
             model_names=[model_name],
             dataset_names=[dataset_name],
+            task_types=[enums.TaskType.SEMANTIC_SEGMENTATION],
         ),
         ignore_groundtruths=True,
     ) == {"semsegk1", "semsegk2", "semsegk3_pred"}
@@ -543,6 +562,7 @@ def test_label_functions(
             model_names=[model_name],
             dataset_names=[dataset_name],
             require_raster=True,
+            task_types=[enums.TaskType.SEMANTIC_SEGMENTATION],
         ),
         ignore_groundtruths=True,
     ) == {
@@ -558,17 +578,68 @@ def test_label_functions(
                 model_names=[model_name],
                 dataset_names=[dataset_name],
                 require_polygon=True,
+                task_types=[enums.TaskType.SEMANTIC_SEGMENTATION],
             ),
             ignore_groundtruths=True,
         )
         == set()
     )
 
+    assert (
+        get_label_keys(
+            db,
+            schemas.Filter(
+                dataset_names=[dataset_name],
+                task_types=[enums.TaskType.CLASSIFICATION],
+            ),
+            ignore_predictions=True,
+        )
+        == set()
+    )
+    assert (
+        get_labels(
+            db,
+            schemas.Filter(
+                model_names=[model_name],
+                dataset_names=[dataset_name],
+                task_types=[enums.TaskType.CLASSIFICATION],
+            ),
+            ignore_groundtruths=True,
+        )
+        == set()
+    )
+
+    assert get_label_keys(
+        db,
+        schemas.Filter(
+            dataset_names=[dataset_name],
+            task_types=[enums.TaskType.OBJECT_DETECTION],
+        ),
+        ignore_predictions=True,
+    ) == {"inssegk1", "inssegk2", "inssegk3"}
+
     assert get_labels(
         db,
         schemas.Filter(
             dataset_names=[dataset_name],
             require_raster=True,
+            task_types=[enums.TaskType.OBJECT_DETECTION],
+        ),
+        ignore_predictions=True,
+    ) == {
+        schemas.Label(key="inssegk1", value="inssegv1"),
+        schemas.Label(key="inssegk2", value="inssegv2"),
+        schemas.Label(key="inssegk3", value="inssegv3"),
+    }
+    assert get_labels(
+        db,
+        schemas.Filter(
+            dataset_names=[dataset_name],
+            require_raster=True,
+            task_types=[
+                enums.TaskType.OBJECT_DETECTION,
+                enums.TaskType.SEMANTIC_SEGMENTATION,
+            ],
         ),
         ignore_predictions=True,
     ) == {
@@ -583,11 +654,34 @@ def test_label_functions(
     assert get_label_keys(
         db,
         schemas.Filter(
+            dataset_names=[dataset_name],
+            task_types=[enums.TaskType.SEMANTIC_SEGMENTATION],
+        ),
+        ignore_predictions=True,
+    ) == {"semsegk1", "semsegk2", "semsegk3"}
+
+    assert get_label_keys(
+        db,
+        schemas.Filter(
             model_names=[model_name],
             dataset_names=[dataset_name],
+            task_types=[enums.TaskType.SEMANTIC_SEGMENTATION],
         ),
         ignore_groundtruths=True,
     ) == {"semsegk1", "semsegk2", "semsegk3_pred"}
+
+    assert (
+        get_labels(
+            db,
+            schemas.Filter(
+                model_names=[model_name],
+                dataset_names=[dataset_name],
+                task_types=[enums.TaskType.OBJECT_DETECTION],
+            ),
+            ignore_groundtruths=True,
+        )
+        == set()
+    )
 
     assert get_labels(
         db,
@@ -595,6 +689,10 @@ def test_label_functions(
             model_names=[model_name],
             dataset_names=[dataset_name],
             require_raster=True,
+            task_types=[
+                enums.TaskType.SEMANTIC_SEGMENTATION,
+                enums.TaskType.OBJECT_DETECTION,
+            ],
         ),
         ignore_groundtruths=True,
     ) == {
@@ -602,3 +700,16 @@ def test_label_functions(
         schemas.Label(key="semsegk2", value="semsegv2"),
         schemas.Label(key="semsegk3_pred", value="semsegv3_pred"),
     }
+    assert (
+        get_labels(
+            db,
+            schemas.Filter(
+                model_names=[model_name],
+                dataset_names=[dataset_name],
+                require_raster=True,
+                task_types=[enums.TaskType.OBJECT_DETECTION],
+            ),
+            ignore_groundtruths=True,
+        )
+        == set()
+    )

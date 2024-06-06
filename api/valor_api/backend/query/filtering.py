@@ -14,6 +14,7 @@ from valor_api.backend.models import (
     Prediction,
 )
 from valor_api.backend.query.types import TableTypeAlias
+from valor_api.enums import TaskType
 from valor_api.schemas import (
     BooleanFilter,
     DateTimeFilter,
@@ -279,6 +280,14 @@ def filter_by_annotation(
         A list of expressions that can be used in a WHERE clause.
     """
     expressions = []
+    if filter_.task_types:
+        expressions.append(
+            [
+                Annotation.implied_task_types.op("?")(task_type.value)
+                for task_type in filter_.task_types
+                if isinstance(task_type, TaskType)
+            ]
+        )
     if filter_.annotation_metadata:
         expressions.append(
             _filter_by_metadata(filter_.annotation_metadata, Annotation),

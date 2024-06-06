@@ -40,6 +40,7 @@ def test_create_pred_detections_as_bbox_or_poly(
                 bounding_box=Box.from_extrema(
                     xmin=xmin, ymin=ymin, xmax=xmax, ymax=ymax
                 ),
+                is_instance=True,
             ),
             Annotation(
                 labels=[Label(key="k", value="v", score=0.4)],
@@ -54,6 +55,7 @@ def test_create_pred_detections_as_bbox_or_poly(
                         ]
                     ]
                 ),
+                is_instance=True,
             ),
         ],
     )
