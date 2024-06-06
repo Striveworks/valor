@@ -67,8 +67,6 @@ def _recursive_select_to_table_names(
     """
     if isinstance(argument, Table):
         return [argument.name]
-    # elif isinstance(argument, TableTypeAlias):
-    #     return [argument.__tablename__]
     elif isinstance(argument, DeclarativeMeta):
         return _recursive_select_to_table_names(argument.__table__)  # type: ignore - sqlalchemy
     elif isinstance(argument, InstrumentedAttribute):
@@ -106,8 +104,8 @@ def map_arguments_to_tables(*args) -> set[TableTypeAlias]:
 
     Parameters
     ----------
-    args : tuple[Any]
-        A tuple of arguments from a selection statement.
+    *args : tuple[Any]
+        A variable length list of arguments from a selection statement.
 
     Returns
     -------

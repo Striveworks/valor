@@ -8,7 +8,7 @@ from valor_api.schemas.filters import AdvancedFilter, Filter
 
 
 def select_from_annotations(
-    *args, filter_: AdvancedFilter | None = None
+    *args: Any, filter_: AdvancedFilter | None = None
 ) -> Select[Any]:
     """
     Creates a select statement from provided arguments and filters.
@@ -17,8 +17,8 @@ def select_from_annotations(
 
     Parameters
     ----------
-    *args : tuple[Any]
-        A list of selection args.
+    *args : Any
+        A variable list of models or model attributes. (e.g. Label or Label.key)
     filter_ : Filter, optional
         An optional filter.
 
@@ -38,7 +38,7 @@ def select_from_annotations(
 
 
 def select_from_groundtruths(
-    *args, filter_: AdvancedFilter | None = None
+    *args: Any, filter_: AdvancedFilter | None = None
 ) -> Select[Any]:
     """
     Creates a select statement from provided arguments and filters.
@@ -47,8 +47,8 @@ def select_from_groundtruths(
 
     Parameters
     ----------
-    *args : tuple[Any]
-        A list of selection args.
+    *args : Any
+        A variable list of models or model attributes. (e.g. Label or Label.key)
     filter_ : Filter, optional
         An optional filter.
 
@@ -68,7 +68,7 @@ def select_from_groundtruths(
 
 
 def select_from_predictions(
-    *args, filter_: AdvancedFilter | None = None
+    *args: Any, filter_: AdvancedFilter | None = None
 ) -> Select[Any]:
     """
     Creates a select statement from provided arguments and filters.
@@ -77,8 +77,8 @@ def select_from_predictions(
 
     Parameters
     ----------
-    *args : tuple[Any]
-        A list of selection args.
+    *args : Any
+        A variable list of models or model attributes. (e.g. Label or Label.key)
     filter_ : Filter, optional
         An optional filter.
 
@@ -103,8 +103,8 @@ class Query:
 
     Attributes
     ----------
-    *args : TableTypeAlias | InstrumentedAttribute
-        args is a list of models or model attributes. (e.g. Label or Label.key)
+    *args : Any
+        args is a variable list of models or model attributes. (e.g. Label or Label.key)
 
     Examples
     ----------
@@ -117,7 +117,7 @@ class Query:
     >>> q = Query(Label.key).filter(f).any()
     """
 
-    def __init__(self, *args):
+    def __init__(self, *args: Any):
         self._args = args
         self._filter = None
 

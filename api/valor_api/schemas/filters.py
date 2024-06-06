@@ -60,6 +60,21 @@ filterable_types_to_validator = {
 
 
 class Symbol(BaseModel):
+    """
+    A symbolic variable.
+
+    Attributes
+    ----------
+    type : str
+        The data type that this symbol represents.
+    name : str
+        The name of the symbol.
+    key : str, optional
+        Optional key to define dictionary access of a value.
+    attribute : str, optional
+        Optional attribute that modifies the underlying value.
+    """
+
     type: str
     name: str
     key: str | None = None
@@ -67,232 +82,417 @@ class Symbol(BaseModel):
 
 
 class Value(BaseModel):
+    """
+    A typed value.
+
+    Attributes
+    ----------
+    type : str
+        The type of the value.
+    value : bool | int | float | str | list | dict
+        The stored value.
+    """
+
     type: str
     value: bool | int | float | str | list | dict
     model_config = ConfigDict(extra="forbid")
 
 
 class Operands(BaseModel):
+    """
+    Function operands.
+
+    Attributes
+    ----------
+    lhs : Symbol
+        The symbol representing a table column this function should be applied to.
+    rhs : Value
+        A value to perform a comparison over.
+    """
+
     lhs: Symbol
     rhs: Value
     model_config = ConfigDict(extra="forbid")
 
 
 class And(BaseModel):
+    """
+    Logical function representing an AND operation.
+
+    Attributes
+    ----------
+    logical_and : list[FunctionType]
+        A list of functions to AND together.
+    """
+
     logical_and: list["FunctionType"]
     model_config = ConfigDict(extra="forbid")
 
     @property
     def op(self) -> str:
+        """Returns the operator name."""
         return type(self).__name__.lower()
 
     @property
-    def args(self):
+    def args(self) -> list["FunctionType"]:
+        """Returns the list of functional arguments."""
         return self.logical_and
 
 
 class Or(BaseModel):
+    """
+    Logical function representing an OR operation.
+
+    Attributes
+    ----------
+    logical_or : list[FunctionType]
+        A list of functions to OR together.
+    """
+
     logical_or: list["FunctionType"]
     model_config = ConfigDict(extra="forbid")
 
     @property
     def op(self) -> str:
+        """Returns the operator name."""
         return type(self).__name__.lower()
 
     @property
     def args(self):
+        """Returns the list of functional arguments."""
         return self.logical_or
 
 
 class Not(BaseModel):
+    """
+    Logical function representing an OR operation.
+
+    Attributes
+    ----------
+    logical_not : FunctionType
+        A functions to logically negate.
+    """
+
     logical_not: "FunctionType"
     model_config = ConfigDict(extra="forbid")
 
     @property
     def op(self) -> str:
+        """Returns the operator name."""
         return type(self).__name__.lower()
 
     @property
     def arg(self):
+        """Returns the functional argument."""
         return self.logical_not
 
 
 class IsNull(BaseModel):
+    """
+    Checks if symbol represents a null value.
+
+    Attributes
+    ----------
+    isnull : Symbol
+        The symbolic argument.
+    """
+
     isnull: Symbol
     model_config = ConfigDict(extra="forbid")
 
     @property
     def op(self) -> str:
+        """Returns the operator name."""
         return type(self).__name__.lower()
 
     @property
     def arg(self):
+        """Returns the symbolic argument."""
         return self.isnull
 
 
 class IsNotNull(BaseModel):
+    """
+    Checks if symbol represents an existing value.
+
+    Attributes
+    ----------
+    isnotnull : Symbol
+        The symbolic argument.
+    """
+
     isnotnull: Symbol
     model_config = ConfigDict(extra="forbid")
 
     @property
     def op(self) -> str:
+        """Returns the operator name."""
         return type(self).__name__.lower()
 
     @property
     def arg(self):
+        """Returns the symbolic argument."""
         return self.isnotnull
 
 
 class Equal(BaseModel):
+    """
+    Checks if symbol is equal to a provided value.
+
+    Attributes
+    ----------
+    eq : Operands
+        The operands of the function.
+    """
+
     eq: Operands
     model_config = ConfigDict(extra="forbid")
 
     @property
     def op(self) -> str:
+        """Returns the operator name."""
         return type(self).__name__.lower()
 
     @property
     def lhs(self):
+        """Returns the lhs operand."""
         return self.eq.lhs
 
     @property
     def rhs(self):
+        """Returns the rhs operand."""
         return self.eq.rhs
 
 
 class NotEqual(BaseModel):
+    """
+    Checks if symbol is not equal to a provided value.
+
+    Attributes
+    ----------
+    ne : Operands
+        The operands of the function.
+    """
+
     ne: Operands
     model_config = ConfigDict(extra="forbid")
 
     @property
     def op(self) -> str:
+        """Returns the operator name."""
         return type(self).__name__.lower()
 
     @property
     def lhs(self):
+        """Returns the lhs operand."""
         return self.ne.lhs
 
     @property
     def rhs(self):
+        """Returns the rhs operand."""
         return self.ne.rhs
 
 
 class GreaterThan(BaseModel):
+    """
+    Checks if symbol is greater than a provided value.
+
+    Attributes
+    ----------
+    gt : Operands
+        The operands of the function.
+    """
+
     gt: Operands
     model_config = ConfigDict(extra="forbid")
 
     @property
     def op(self) -> str:
+        """Returns the operator name."""
         return type(self).__name__.lower()
 
     @property
     def lhs(self):
+        """Returns the lhs operand."""
         return self.gt.lhs
 
     @property
     def rhs(self):
+        """Returns the rhs operand."""
         return self.gt.rhs
 
 
 class GreaterThanEqual(BaseModel):
+    """
+    Checks if symbol is greater than or equal to a provided value.
+
+    Attributes
+    ----------
+    ge : Operands
+        The operands of the function.
+    """
+
     ge: Operands
     model_config = ConfigDict(extra="forbid")
 
     @property
     def op(self) -> str:
+        """Returns the operator name."""
         return type(self).__name__.lower()
 
     @property
     def lhs(self):
+        """Returns the lhs operand."""
         return self.ge.lhs
 
     @property
     def rhs(self):
+        """Returns the rhs operand."""
         return self.ge.rhs
 
 
 class LessThan(BaseModel):
+    """
+    Checks if symbol is less than a provided value.
+
+    Attributes
+    ----------
+    lt : Operands
+        The operands of the function.
+    """
+
     lt: Operands
     model_config = ConfigDict(extra="forbid")
 
     @property
     def op(self) -> str:
+        """Returns the operator name."""
         return type(self).__name__.lower()
 
     @property
     def lhs(self):
+        """Returns the lhs operand."""
         return self.lt.lhs
 
     @property
     def rhs(self):
+        """Returns the rhs operand."""
         return self.lt.rhs
 
 
 class LessThanEqual(BaseModel):
+    """
+    Checks if symbol is less than or equal to a provided value.
+
+    Attributes
+    ----------
+    le : Operands
+        The operands of the function.
+    """
+
     le: Operands
     model_config = ConfigDict(extra="forbid")
 
     @property
     def op(self) -> str:
+        """Returns the operator name."""
         return type(self).__name__.lower()
 
     @property
     def lhs(self):
+        """Returns the lhs operand."""
         return self.le.lhs
 
     @property
     def rhs(self):
+        """Returns the rhs operand."""
         return self.le.rhs
 
 
 class Intersects(BaseModel):
+    """
+    Checks if symbol intersects a provided value.
+
+    Attributes
+    ----------
+    intersects : Operands
+        The operands of the function.
+    """
+
     intersects: Operands
     model_config = ConfigDict(extra="forbid")
 
     @property
     def op(self) -> str:
+        """Returns the operator name."""
         return type(self).__name__.lower()
 
     @property
     def lhs(self):
+        """Returns the lhs operand."""
         return self.intersects.lhs
 
     @property
     def rhs(self):
+        """Returns the rhs operand."""
         return self.intersects.rhs
 
 
 class Inside(BaseModel):
+    """
+    Checks if symbol is inside a provided value.
+
+    Attributes
+    ----------
+    inside : Operands
+        The operands of the function.
+    """
+
     inside: Operands
     model_config = ConfigDict(extra="forbid")
 
     @property
     def op(self) -> str:
+        """Returns the operator name."""
         return type(self).__name__.lower()
 
     @property
     def lhs(self):
+        """Returns the lhs operand."""
         return self.inside.lhs
 
     @property
     def rhs(self):
+        """Returns the rhs operand."""
         return self.inside.rhs
 
 
 class Outside(BaseModel):
+    """
+    Checks if symbol is outside a provided value.
+
+    Attributes
+    ----------
+    outside : Operands
+        The operands of the function.
+    """
+
     outside: Operands
     model_config = ConfigDict(extra="forbid")
 
     @property
     def op(self) -> str:
+        """Returns the operator name."""
         return type(self).__name__.lower()
 
     @property
     def lhs(self):
+        """Returns the lhs operand."""
         return self.outside.lhs
 
     @property
     def rhs(self):
+        """Returns the rhs operand."""
         return self.outside.rhs
 
 
@@ -351,6 +551,24 @@ class StringFilter(BaseModel):
     def to_function(
         self, name: str, key: str | None = None, attribute: str | None = None
     ) -> FunctionType:
+        """
+        Converts the filter object into a function.
+
+        This is for backwards-compatibility.
+
+        Parameters
+        ----------
+        name : str
+            The symbol name.
+        key : str, optional
+            An optional key to access the symbol by.
+        attribute : str, optional
+            An optional attribute to modify the symbol with.
+
+        Returns
+        -------
+        FunctionType
+        """
         operands = Operands(
             lhs=Symbol(type="string", name=name, key=key, attribute=attribute),
             rhs=Value(type="string", value=self.value),
@@ -404,6 +622,26 @@ class NumericFilter(BaseModel):
         attribute: str | None = None,
         type_str: str = "float",
     ) -> FunctionType:
+        """
+        Converts the filter object into a function.
+
+        This is for backwards-compatibility.
+
+        Parameters
+        ----------
+        name : str
+            The symbol name.
+        key : str, optional
+            An optional key to access the symbol by.
+        attribute : str, optional
+            An optional attribute to modify the symbol with.
+        type_str: str, default="float"
+            An optional override for the symbolic type.
+
+        Returns
+        -------
+        FunctionType
+        """
         operands = Operands(
             lhs=Symbol(type=type_str, name=name, key=key, attribute=attribute),
             rhs=Value(type="float", value=self.value),
@@ -460,6 +698,24 @@ class BooleanFilter(BaseModel):
     def to_function(
         self, name: str, key: str | None = None, attribute: str | None = None
     ) -> FunctionType:
+        """
+        Converts the filter object into a function.
+
+        This is for backwards-compatibility.
+
+        Parameters
+        ----------
+        name : str
+            The symbol name.
+        key : str, optional
+            An optional key to access the symbol by.
+        attribute : str, optional
+            An optional attribute to modify the symbol with.
+
+        Returns
+        -------
+        FunctionType
+        """
         operands = Operands(
             lhs=Symbol(
                 type="boolean", name=name, key=key, attribute=attribute
@@ -506,6 +762,24 @@ class GeospatialFilter(BaseModel):
     def to_function(
         self, name: str, key: str | None = None, attribute: str | None = None
     ) -> FunctionType:
+        """
+        Converts the filter object into a function.
+
+        This is for backwards-compatibility.
+
+        Parameters
+        ----------
+        name : str
+            The symbol name.
+        key : str, optional
+            An optional key to access the symbol by.
+        attribute : str, optional
+            An optional attribute to modify the symbol with.
+
+        Returns
+        -------
+        FunctionType
+        """
         operands = Operands(
             lhs=Symbol(
                 type="geojson", name=name, key=key, attribute=attribute
@@ -580,6 +854,24 @@ class DateTimeFilter(BaseModel):
     def to_function(
         self, name: str, key: str | None = None, attribute: str | None = None
     ) -> FunctionType:
+        """
+        Converts the filter object into a function.
+
+        This is for backwards-compatibility.
+
+        Parameters
+        ----------
+        name : str
+            The symbol name.
+        key : str, optional
+            An optional key to access the symbol by.
+        attribute : str, optional
+            An optional attribute to modify the symbol with.
+
+        Returns
+        -------
+        FunctionType
+        """
         type_str = type(self.value).__name__.lower()
         operands = Operands(
             lhs=Symbol(type=type_str, name=name, key=key, attribute=attribute),

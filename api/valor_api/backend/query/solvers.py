@@ -151,6 +151,7 @@ def _join_model_to_datum(selection: Select) -> Select[Any]:
     ).join(Model, Model.id == annotation.c.model_id)
 
 
+# Map table to neighbor joins. Annotation as label source.
 table_joins_with_annotation_as_label_source = {
     Dataset: {Datum: lambda x: x.join(Datum, Datum.dataset_id == Dataset.id)},
     Model: {
@@ -195,6 +196,7 @@ table_joins_with_annotation_as_label_source = {
 }
 
 
+# Map table to neighbor joins. GroundTruth as label source.
 table_joins_with_groundtruth_as_label_source = {
     Dataset: {Datum: lambda x: x.join(Datum, Datum.dataset_id == Dataset.id)},
     Model: {Datum: _join_datum_to_model},
@@ -237,6 +239,7 @@ table_joins_with_groundtruth_as_label_source = {
 }
 
 
+# Map table to neighbor joins. Prediction as label source.
 table_joins_with_prediction_as_label_source = {
     Dataset: {Datum: lambda x: x.join(Datum, Datum.dataset_id == Dataset.id)},
     Model: {
@@ -283,6 +286,7 @@ table_joins_with_prediction_as_label_source = {
 }
 
 
+# Maps label source to dictionaries containing neighor join mappings.
 map_label_source_to_neighbor_joins = {
     Annotation: table_joins_with_annotation_as_label_source,
     GroundTruth: table_joins_with_groundtruth_as_label_source,
@@ -290,6 +294,7 @@ map_label_source_to_neighbor_joins = {
 }
 
 
+# Maps label source to dictionary containing neighbor mappings.
 map_label_source_to_neighbor_tables = {
     Annotation: {
         Dataset: {Datum},
@@ -535,6 +540,8 @@ def generate_filter_queries(
     """
     Generates the filtering subqueries.
 
+    For each attribute defined in the filter a subquery is created that implements it.
+
     Parameters
     ----------
     filter_ : Filter
@@ -653,6 +660,27 @@ def solver(
 ) -> Select[Any] | Query[Any]:
     """
     Solves and generates a query from the provided arguements.
+
+    Description
+    -----------
+    To construct complex queries it is necessary to describe the relationship between predictions and groundtruths.
+    By splitting the underlying table relationships into three foundatational graphs the complex relationships can be described by
+    sequental lists. From these sequential graphs it is possible to construct the minimum set of nodes required to generate a query.
+    For queries that can be described by a single foundational graph, the solution is to trim both ends of the sequence until you
+    reach nodes in the query set. The relationships of the remaining nodes can then be used to construct the query. Depending on the
+    configuration the solver will choose a table  as the linking point between these two graphs allowing the generation of a
+    query and subquery. This configuration is handled by the 'label_source' parameter.
+
+    The graph structure is determined soley by label source as the Label table is the only table that can create cycles in the
+    graph (e.g. Annotation -> GroundTruth -> Label -> Prediction -> Annotation). Cycles are not ideal as a solver would not be able to
+    determine stopping conditions or whether the chosen path is correct. For this reason, we choose either the Annotation, GroundTruth
+    or Prediction table to be our 'label_source' and rearrange the graph structure accordingly.
+
+    All information regarding the structure of the three graphs can be found above in the following dictionaries.
+    - map_label_source_to_neighbor_joins
+    - map_label_source_to_neighbor_tables
+
+    See documentation for more information.
 
     Parameters
     ----------

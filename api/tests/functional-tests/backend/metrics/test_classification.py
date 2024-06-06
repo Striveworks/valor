@@ -597,10 +597,6 @@ def test_compute_roc_auc_groupby_metadata(
         dataset_names=[dataset_name],
         task_types=[enums.TaskType.CLASSIFICATION],
         datum_metadata={"md1": [schemas.StringFilter(value="md1-val0")]},
-        labels=[
-            {"animal": "bird"},
-            {"animal": "dog"},
-        ],
     )
 
     labels = fetch_union_of_labels(

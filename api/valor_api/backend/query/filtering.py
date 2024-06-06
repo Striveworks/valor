@@ -46,7 +46,8 @@ from valor_api.schemas.geometry import (
     Polygon,
 )
 
-opstr_to_operator = {
+# Map an operation to a callable function.
+map_opstr_to_operator = {
     "equal": operator.eq,
     "notequal": operator.ne,
     "greaterthan": operator.gt,
@@ -61,8 +62,8 @@ opstr_to_operator = {
     "isnotnull": lambda lhs, _: lhs.isnot(None),
 }
 
-
-symbol_name_to_table_value_tuple = {
+# Map a symbol to a tuple containing a table and the relevant attribute.
+map_name_to_table_column = {
     "dataset.name": (Dataset, Dataset.name),
     "dataset.metadata": (Dataset, Dataset.meta),
     "model.name": (Model, Model.name),
@@ -85,7 +86,8 @@ symbol_name_to_table_value_tuple = {
 }
 
 
-symbol_supports_attribute = {
+# Map a symbol's attribute type to a modifying function.
+map_attribute_to_type_cast = {
     "area": {
         "annotation.bounding_box": lambda x: ST_Area(x),
         "annotation.polygon": lambda x: ST_Area(x),
@@ -98,10 +100,12 @@ symbol_supports_attribute = {
 }
 
 
-attribute_type = {"area": "float"}
+# Map a symbol's attribute to the type expected by the operation.
+map_symbol_attribute_to_type = {"area": "float"}
 
 
-metadata_symbol_type_casting = {
+# Map a type to a type casting function. This is used for accessing JSONB values.
+map_type_to_jsonb_type_cast = {
     "boolean": lambda x: x.astext.cast(Boolean),
     "integer": lambda x: x.astext.cast(Integer),
     "float": lambda x: x.astext.cast(Float),
@@ -124,12 +128,14 @@ metadata_symbol_type_casting = {
 }
 
 
-metadata_attribute_type_casting = {
+# Map an attribute to a type casting function. This is used for accessing JSONB values.
+map_attribute_to_jsonb_type_cast = {
     "area": lambda x: ST_GeomFromGeoJSON(x["value"]),
 }
 
 
-value_type_casting = {
+# Map a value type to a type casting function.
+map_value_type_to_type_cast = {
     "boolean": lambda x: x,
     "integer": lambda x: x,
     "float": lambda x: x,
@@ -180,7 +186,7 @@ def create_cte(
         raise ValueError(f"CTE passed a value with type '{type(value)}'.")
     elif value and symbol.type != value.type:
         symbol_type = (
-            attribute_type[symbol.attribute]
+            map_symbol_attribute_to_type[symbol.attribute]
             if symbol.attribute
             else symbol.type
         )
@@ -189,9 +195,11 @@ def create_cte(
                 f"Type mismatch between symbol and value. {symbol_type} != {value.type}."
             )
 
-    op = opstr_to_operator[opstr]
-    table, lhs = symbol_name_to_table_value_tuple[symbol.name]
-    rhs = value_type_casting[value.type](value.value) if value else None
+    op = map_opstr_to_operator[opstr]
+    table, lhs = map_name_to_table_column[symbol.name]
+    rhs = (
+        map_value_type_to_type_cast[value.type](value.value) if value else None
+    )
 
     # add keying
     if symbol.key:
@@ -199,13 +207,13 @@ def create_cte(
 
         # add type cast
         if not symbol.attribute:
-            lhs = metadata_symbol_type_casting[symbol.type](lhs)
+            lhs = map_type_to_jsonb_type_cast[symbol.type](lhs)
         else:
-            lhs = metadata_attribute_type_casting[symbol.attribute](lhs)
+            lhs = map_attribute_to_jsonb_type_cast[symbol.attribute](lhs)
 
     # add attribute modifier
     if symbol.attribute:
-        modifier = symbol_supports_attribute[symbol.attribute][symbol.name]
+        modifier = map_attribute_to_type_cast[symbol.attribute][symbol.name]
         lhs = modifier(lhs)
 
     return (table, select(table.id).where(op(lhs, rhs)).cte())
@@ -302,7 +310,7 @@ def generate_dependencies(
     func: OneArgFunction | TwoArgFunction | NArgFunction | None,
 ) -> tuple[int | dict | None, list[CTE], list[TableTypeAlias]]:
     """
-    Recursively generates the dependencies for createing a filter subquery.
+    Recursively generates the dependencies for creating a filter subquery.
 
     Parameters
     ----------
