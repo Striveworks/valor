@@ -1178,8 +1178,6 @@ def test_create_detection_metrics(
         "mAR",
         "mAP",
         "mAPAveragedOverIOUs",
-        "PrecisionRecallCurve",
-        "DetailedPrecisionRecallCurve",
     }
 
     assert set(
@@ -1398,8 +1396,6 @@ def test_create_clf_metrics(
         "Recall",
         "F1",
         "ROCAUC",
-        "PrecisionRecallCurve",
-        "DetailedPrecisionRecallCurve",
     }
     # should have two accuracy metrics and ROC AUC scores (for label keys "k1" and "k2")
     # and four recall, precision, and f1, for the labels ("k1", "v1"), ("k2", "v2"),
@@ -1474,7 +1470,7 @@ def test_create_clf_metrics(
     )
     assert query
     metrics = query.metrics
-    assert len(metrics) == 26
+    assert len(metrics) == 22
     confusion_matrices = db.scalars(
         select(models.ConfusionMatrix).where(
             models.ConfusionMatrix.evaluation_id == evaluation_id

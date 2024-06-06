@@ -426,9 +426,7 @@ def test_evaluate_tabular_clf(
     )
 
     metrics_from_eval_settings_id = results[0].metrics
-    assert (
-        len(metrics_from_eval_settings_id) == len(expected_metrics) + 2
-    )  # PrecisionRecallCurve + DetailedPrecisionRecallCurvel
+    assert len(metrics_from_eval_settings_id) == len(expected_metrics)
     for m in metrics_from_eval_settings_id:
         if m["type"] not in [
             "PrecisionRecallCurve",
@@ -600,9 +598,7 @@ def test_stratify_clf_metrics(
     ]
 
     for metrics in [val2_metrics, val_bool_metrics]:
-        assert (
-            len(metrics) == len(expected_metrics) + 2
-        )  # PrecisionRecallCurve and DetailedPrecisionRecallCurve
+        assert len(metrics) == len(expected_metrics)
         for m in metrics:
             if m["type"] not in [
                 "PrecisionRecallCurve",
@@ -736,15 +732,9 @@ def test_stratify_clf_metrics_by_time(
         },
     ]
 
-    assert (
-        len(val2_metrics) == len(expected_metrics) + 2
-    )  # PrecisionRecallCurve and DetailedPrecisionRecallCurve
+    assert len(val2_metrics) == len(expected_metrics)
     for m in val2_metrics:
-        if m["type"] not in [
-            "PrecisionRecallCurve",
-            "DetailedPrecisionRecallCurve",
-        ]:
-            assert m in expected_metrics
+        assert m in expected_metrics
     for m in expected_metrics:
         assert m in val2_metrics
 
@@ -1041,6 +1031,7 @@ def test_evaluate_classification_with_label_maps(
             "Accuracy",
             "ROCAUC",
             "PrecisionRecallCurve",
+            "DetailedPrecisionRecallCurve",
         ],
     )
     assert eval_job.id

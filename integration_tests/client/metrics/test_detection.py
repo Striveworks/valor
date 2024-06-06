@@ -286,7 +286,6 @@ def test_evaluate_detection(
             "iou_thresholds_to_return": [0.1, 0.6],
             "label_map": None,
             "recall_score_threshold": 0.0,
-
             "metrics_to_return": [
                 "AP",
                 "AR",
@@ -383,26 +382,9 @@ def test_evaluate_detection(
                 Label.key == "k1",
                 Annotation.bounding_box.area <= 1200,
             ],
-            "label_keys": ["k1"],
-        },
-        "parameters": {
-            "task_type": TaskType.OBJECT_DETECTION.value,
-            "convert_annotations_to_type": AnnotationType.BOX.value,
-            "iou_thresholds_to_compute": [0.1, 0.6],
-            "iou_thresholds_to_return": [0.1, 0.6],
-            "label_map": None,
-            "recall_score_threshold": 0.0,
-            "pr_curve_iou_threshold": 0.5,
-            "pr_curve_max_examples": 1,
-        },
-        # check metrics below
-        "status": EvaluationStatus.DONE.value,
-        "confusion_matrices": [],
-        "missing_pred_labels": [{"key": "k1", "value": "v1"}],
-        "ignored_pred_labels": [],
-    }
-    assert max_area_1200_metrics != expected_metrics
-
+            convert_annotations_to_type=AnnotationType.BOX,
+        )
+    assert "\\'test_model\\' did not meet the filter criteria" in str(e)
 
     # should perform the same as the first min area evaluation
     # except now has an upper bound
@@ -1193,6 +1175,7 @@ def test_evaluate_detection_with_label_maps(
             "mAR",
             "mAPAveragedOverIOUs",
             "PrecisionRecallCurve",
+            "DetailedPrecisionRecallCurve",
         ],
     )
 
