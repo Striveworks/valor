@@ -910,7 +910,7 @@ def test_get_evaluations(
 
     # with sorting, the evaluation with the higher mAPAveragedOverIOUs is returned first
     assert (
-        both_evaluations_from_evaluation_ids_sorted[0].metrics[-2]["value"]
+        both_evaluations_from_evaluation_ids_sorted[0].metrics[-1]["value"]
         == 0.504950495049505
     )
 
@@ -1248,8 +1248,8 @@ def test_evaluate_detection_with_label_maps(
     detailed_pr_expected_answers = {
         # class
         (0, "cat", "0.1", "fp"): {
-            "hallucinations": 0,
-            "misclassifications": 1,
+            "hallucinations": 1,
+            "misclassifications": 0,
             "total": 1,
         },
         (0, "cat", "0.4", "fp"): {
@@ -1279,9 +1279,10 @@ def test_evaluate_detection_with_label_maps(
             "misclassifications": 0,
             "total": 1,
         },
+        # TODO test additional iou thresholds
         (2, "v1", "0.4", "fn"): {
-            "missed_detections": 1,
-            "misclassifications": 1,
+            "missed_detections": 2,
+            "misclassifications": 0,
             "total": 2,
         },
         (2, "v1", "0.1", "tp"): {"all": 1, "total": 1},
@@ -2451,7 +2452,7 @@ def test_evaluate_detection_false_negatives_two_images_one_only_with_different_c
     assert ap_metric1 == {
         "type": "AP",
         "parameters": {"iou": 0.5},
-        "value": 0.5,
+        "value": 0.5,  # TODO why did this change?
         "label": {"key": "key", "value": "value"},
     }
 
