@@ -434,3 +434,47 @@ def validate_computation(fn: Callable) -> Callable:
         return result
 
     return wrapper
+
+
+def prepare_filter_for_evaluation(
+    db: Session,
+    filter_: schemas.Filter,
+    dataset_names: list[str],
+    model_name: str,
+    task_type: enums.TaskType,
+    label_map: LabelMapType | None = None,
+) -> tuple[schemas.Filter, schemas.Filter]:
+    """
+    Prepares the filter for use by an evaluation method.
+
+    This function will be expanded in a future PR.
+
+    Parameters
+    ----------
+    db : Session
+        The database session.
+    filter_ : Filter
+        The data filter.
+    dataset_names : list[str]
+        A list of dataset names to filter by.
+    model_name : str
+        A model name to filter by.
+    task_type : TaskType
+        A task type to filter by.
+    label_map : LabelMapType, optional
+        An optional label mapping.
+
+    Returns
+    -------
+    Filter
+        A filter ready for evaluation.
+    """
+
+    groundtruth_filter = filter_.model_copy()
+    groundtruth_filter.task_types = [task_type]
+    groundtruth_filter.dataset_names = dataset_names
+
+    predictions_filter = groundtruth_filter.model_copy()
+    predictions_filter.model_names = [model_name]
+
+    return (groundtruth_filter, predictions_filter)

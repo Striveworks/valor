@@ -78,22 +78,25 @@ def test_EvaluationParameters():
 
 def test_EvaluationRequest():
     schemas.EvaluationRequest(
+        dataset_names=["ds"],
         model_names=["name"],
-        datum_filter=schemas.Filter(),
+        filter=schemas.Filter(),
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.CLASSIFICATION
         ),
     )
     schemas.EvaluationRequest(
+        dataset_names=["ds"],
         model_names=["name"],
-        datum_filter=schemas.Filter(),
+        filter=schemas.Filter(),
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.CLASSIFICATION
         ),
     )
     schemas.EvaluationRequest(
+        dataset_names=["ds"],
         model_names=["name", "other"],
-        datum_filter=schemas.Filter(),
+        filter=schemas.Filter(),
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.CLASSIFICATION
         ),
@@ -102,14 +105,16 @@ def test_EvaluationRequest():
     # test missing args
     with pytest.raises(ValidationError):
         schemas.EvaluationRequest(
-            model_filter=None,  # type: ignore - purposefully throwing error
-            datum_filter=schemas.Filter(),
+            dataset_names=["ds"],
+            model_names=None,  # type: ignore - purposefully throwing error
+            filter=schemas.Filter(),
             parameters=schemas.EvaluationParameters(
                 task_type=enums.TaskType.CLASSIFICATION
             ),
         )
     with pytest.raises(ValidationError):
         schemas.EvaluationRequest(
+            dataset_names=["ds"],
             model_names=["name"],
             datum_filter=None,  # type: ignore - purposefully throwing error
             parameters=schemas.EvaluationParameters(
@@ -118,26 +123,29 @@ def test_EvaluationRequest():
         )
     with pytest.raises(ValidationError):
         schemas.EvaluationRequest(
+            dataset_names=["ds"],
             model_names=["name"],
-            datum_filter=schemas.Filter(),
+            filter=schemas.Filter(),
             parameters=None,  # type: ignore - purposefully throwing error
         )
 
-    # test `model_names` validator
+    # test `dataset_names` validator
     with pytest.raises(ValidationError):
         schemas.EvaluationRequest(
-            model_names=[],
-            datum_filter=schemas.Filter(),
+            dataset_names=[],
+            model_names=["md"],
+            filter=schemas.Filter(),
             parameters=schemas.EvaluationParameters(
                 task_type=enums.TaskType.CLASSIFICATION
             ),
         )
 
-    # test `datum_filter` validator
+    # test `model_names` validator
     with pytest.raises(ValidationError):
         schemas.EvaluationRequest(
-            model_filter=schemas.Filter(),  # type: ignore - purposefully throwing error
-            datum_filter=schemas.Filter(),
+            dataset_names=["ds"],
+            model_names=[],
+            filter=schemas.Filter(),
             parameters=schemas.EvaluationParameters(
                 task_type=enums.TaskType.CLASSIFICATION
             ),
@@ -147,8 +155,9 @@ def test_EvaluationRequest():
 def test_EvaluationResponse():
     schemas.EvaluationResponse(
         id=1,
+        dataset_names=["ds"],
         model_name="test",
-        datum_filter=schemas.Filter(),
+        filter=schemas.Filter(),
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.CLASSIFICATION
         ),
@@ -163,8 +172,9 @@ def test_EvaluationResponse():
     with pytest.raises(ValidationError):
         schemas.EvaluationResponse(
             id=None,  # type: ignore - purposefully throwing error
+            dataset_names=["ds"],
             model_name="test",
-            datum_filter=schemas.Filter(),
+            filter=schemas.Filter(),
             parameters=schemas.EvaluationParameters(
                 task_type=enums.TaskType.CLASSIFICATION
             ),
@@ -179,8 +189,9 @@ def test_EvaluationResponse():
     with pytest.raises(ValidationError):
         schemas.EvaluationResponse(
             id=1,
+            dataset_names=["ds"],
             model_name=None,  # type: ignore - purposefully throwing error
-            datum_filter=schemas.Filter(),
+            filter=schemas.Filter(),
             parameters=schemas.EvaluationParameters(
                 task_type=enums.TaskType.CLASSIFICATION
             ),
@@ -195,8 +206,9 @@ def test_EvaluationResponse():
     with pytest.raises(ValidationError):
         schemas.EvaluationResponse(
             id=1,
+            dataset_names=["ds"],
             model_name="name",
-            datum_filter=schemas.Filter(),
+            filter=schemas.Filter(),
             parameters=None,  # type: ignore - purposefully throwing error
             status=enums.EvaluationStatus.DONE,
             metrics=[],
@@ -209,8 +221,9 @@ def test_EvaluationResponse():
     with pytest.raises(ValidationError):
         schemas.EvaluationResponse(
             id=1,
+            dataset_names=["ds"],
             model_name="name",
-            datum_filter=schemas.Filter(),
+            filter=schemas.Filter(),
             parameters=schemas.EvaluationParameters(
                 task_type=enums.TaskType.CLASSIFICATION
             ),

@@ -29,23 +29,23 @@ def test_evaluation_creation_exceptions(db: Session):
         core.create_or_get_evaluations(
             db=db,
             job_request=schemas.EvaluationRequest(
+                dataset_names=["does_not_exist"],
                 model_names=["mymodel"],
-                datum_filter=schemas.Filter(dataset_names=["does_not_exist"]),
                 parameters=schemas.EvaluationParameters(
                     task_type=enums.TaskType.CLASSIFICATION
                 ),
             ),
             allow_retries=False,
         )
-    assert "datasets" in str(e)
+    assert "DatasetDoesNotExist" in str(e)
 
     # test dataset not finalized
     with pytest.raises(exceptions.EvaluationRequestError) as e:
         core.create_or_get_evaluations(
             db=db,
             job_request=schemas.EvaluationRequest(
+                dataset_names=["mydataset"],
                 model_names=["mymodel"],
-                datum_filter=schemas.Filter(dataset_names=["mydataset"]),
                 parameters=schemas.EvaluationParameters(
                     task_type=enums.TaskType.CLASSIFICATION
                 ),
@@ -61,30 +61,30 @@ def test_evaluation_creation_exceptions(db: Session):
         core.create_or_get_evaluations(
             db=db,
             job_request=schemas.EvaluationRequest(
+                dataset_names=["mydataset"],
                 model_names=["does_not_exist"],
-                datum_filter=schemas.Filter(dataset_names=["mydataset"]),
                 parameters=schemas.EvaluationParameters(
                     task_type=enums.TaskType.CLASSIFICATION
                 ),
             ),
             allow_retries=False,
         )
-    assert "models" in str(e)
+    assert "ModelDoesNotExist" in str(e)
 
     # test model not finalized
     with pytest.raises(exceptions.EvaluationRequestError) as e:
         core.create_or_get_evaluations(
             db=db,
             job_request=schemas.EvaluationRequest(
+                dataset_names=["mydataset"],
                 model_names=["mymodel"],
-                datum_filter=schemas.Filter(dataset_names=["mydataset"]),
                 parameters=schemas.EvaluationParameters(
                     task_type=enums.TaskType.CLASSIFICATION
                 ),
             ),
             allow_retries=False,
         )
-    assert "mymodel" in str(e)
+    assert "ModelNotFinalized" in str(e)
 
     crud.create_predictions(
         db=db,
@@ -107,8 +107,8 @@ def test_evaluation_creation_exceptions(db: Session):
     evaluations = core.create_or_get_evaluations(
         db=db,
         job_request=schemas.EvaluationRequest(
+            dataset_names=["mydataset"],
             model_names=["mymodel"],
-            datum_filter=schemas.Filter(dataset_names=["mydataset"]),
             parameters=schemas.EvaluationParameters(
                 task_type=enums.TaskType.CLASSIFICATION
             ),
@@ -159,8 +159,8 @@ def test_restart_failed_evaluation(db: Session):
     evaluations1 = core.create_or_get_evaluations(
         db=db,
         job_request=schemas.EvaluationRequest(
+            dataset_names=["dataset"],
             model_names=["model"],
-            datum_filter=schemas.Filter(dataset_names=["dataset"]),
             parameters=schemas.EvaluationParameters(
                 task_type=enums.TaskType.CLASSIFICATION
             ),
@@ -183,8 +183,8 @@ def test_restart_failed_evaluation(db: Session):
     evaluations2 = crud.create_or_get_evaluations(
         db=db,
         job_request=schemas.EvaluationRequest(
+            dataset_names=["dataset"],
             model_names=["model"],
-            datum_filter=schemas.Filter(dataset_names=["dataset"]),
             parameters=schemas.EvaluationParameters(
                 task_type=enums.TaskType.CLASSIFICATION
             ),
@@ -199,8 +199,8 @@ def test_restart_failed_evaluation(db: Session):
     evaluations3 = crud.create_or_get_evaluations(
         db=db,
         job_request=schemas.EvaluationRequest(
+            dataset_names=["dataset"],
             model_names=["model"],
-            datum_filter=schemas.Filter(dataset_names=["dataset"]),
             parameters=schemas.EvaluationParameters(
                 task_type=enums.TaskType.CLASSIFICATION
             ),
@@ -215,8 +215,8 @@ def test_restart_failed_evaluation(db: Session):
     evaluations4 = crud.create_or_get_evaluations(
         db=db,
         job_request=schemas.EvaluationRequest(
+            dataset_names=["dataset"],
             model_names=["model"],
-            datum_filter=schemas.Filter(dataset_names=["dataset"]),
             parameters=schemas.EvaluationParameters(
                 task_type=enums.TaskType.CLASSIFICATION
             ),

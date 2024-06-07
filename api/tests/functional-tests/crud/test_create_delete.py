@@ -1118,10 +1118,10 @@ def test_create_detection_metrics(
             geometric_filters = None
 
         job_request = schemas.EvaluationRequest(
+            dataset_names=["test_dataset"],
             model_names=["test_model"],
-            datum_filter=schemas.Filter(
+            filter=schemas.Filter(
                 label_keys=[label_key],
-                dataset_names=["test_dataset"],
                 bounding_box_area=geometric_filters,
             ),
             parameters=schemas.EvaluationParameters(
@@ -1279,10 +1279,9 @@ def test_create_detection_metrics(
     model_evals[0].meta = {}
 
     assert model_evals[1] == schemas.EvaluationResponse(
+        dataset_names=[dataset_name],
         model_name=model_name,
-        datum_filter=schemas.Filter(
-            label_keys=["class"], dataset_names=[dataset_name]
-        ),
+        filter=schemas.Filter(label_keys=["class"]),
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.OBJECT_DETECTION,
             convert_annotations_to_type=enums.AnnotationType.BOX,
@@ -1301,9 +1300,9 @@ def test_create_detection_metrics(
         meta={},
     )
     assert model_evals[0] == schemas.EvaluationResponse(
+        dataset_names=[dataset_name],
         model_name=model_name,
-        datum_filter=schemas.Filter(
-            dataset_names=[dataset_name],
+        filter=schemas.Filter(
             label_keys=["class"],
             bounding_box_area=[
                 schemas.NumericFilter(
@@ -1357,8 +1356,8 @@ def test_create_clf_metrics(
     crud.finalize(db=db, model_name=model_name, dataset_name=dataset_name)
 
     job_request = schemas.EvaluationRequest(
+        dataset_names=[dataset_name],
         model_names=[model_name],
-        datum_filter=schemas.Filter(dataset_names=[dataset_name]),
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.CLASSIFICATION
         ),

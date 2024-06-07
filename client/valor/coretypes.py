@@ -172,6 +172,8 @@ class Evaluation:
         ----------
         id : int
             The ID of the evaluation.
+        dataset_names : list[str]
+            The names of the datasets the model was evaluated over.
         model_name : str
             The name of the evaluated model.
         datum_filter : schemas.Filter
@@ -194,8 +196,9 @@ class Evaluation:
         self,
         *_,
         id: int,
+        dataset_names: list[str],
         model_name: str,
-        datum_filter: Filter,
+        filter: Filter,
         parameters: EvaluationParameters,
         status: EvaluationStatus,
         metrics: List[Dict],
@@ -205,11 +208,10 @@ class Evaluation:
         **kwargs,
     ):
         self.id = id
+        self.dataset_names = dataset_names
         self.model_name = model_name
         self.datum_filter = (
-            Filter(**datum_filter)
-            if isinstance(datum_filter, dict)
-            else datum_filter
+            Filter(**filter) if isinstance(filter, dict) else filter
         )
         self.parameters = (
             EvaluationParameters(**parameters)
@@ -293,6 +295,7 @@ class Evaluation:
         """
         return {
             "id": self.id,
+            "dataset_names": self.dataset_names,
             "model_name": self.model_name,
             "datum_filter": asdict(self.datum_filter),
             "parameters": asdict(self.parameters),
@@ -868,7 +871,7 @@ class Model(StaticCollection):
 
     def evaluate_classification(
         self,
-        datasets: Optional[Union[Dataset, List[Dataset]]] = None,
+        datasets: Union[Dataset, List[Dataset]],
         filter_by: Optional[FilterType] = None,
         label_map: Optional[Dict[Label, Label]] = None,
         metrics_to_return: Optional[List[str]] = None,
@@ -902,9 +905,11 @@ class Model(StaticCollection):
 
         # format request
         datum_filter = self._format_constraints(datasets, filter_by)
+        datasets = datasets if isinstance(datasets, list) else [datasets]
         request = EvaluationRequest(
-            model_names=[self.name],  # type: ignore
-            datum_filter=datum_filter,
+            dataset_names=[dataset.name.get_value() for dataset in datasets],
+            model_names=[self.name.get_value()],
+            filter=datum_filter,
             parameters=EvaluationParameters(
                 task_type=TaskType.CLASSIFICATION,
                 label_map=self._create_label_map(label_map=label_map),
@@ -986,7 +991,7 @@ class Model(StaticCollection):
         datum_filter = self._format_constraints(datasets, filter_by)
         request = EvaluationRequest(
             model_names=[self.name],  # type: ignore
-            datum_filter=datum_filter,
+            filter=datum_filter,
             parameters=parameters,
         )
 
@@ -1031,7 +1036,7 @@ class Model(StaticCollection):
         datum_filter = self._format_constraints(datasets, filter_by)
         request = EvaluationRequest(
             model_names=[self.name],  # type: ignore
-            datum_filter=datum_filter,
+            filter=datum_filter,
             parameters=EvaluationParameters(
                 task_type=TaskType.SEMANTIC_SEGMENTATION,
                 label_map=self._create_label_map(label_map=label_map),

@@ -900,8 +900,9 @@ def test_delete_model(crud, client: TestClient):
 def test_post_detection_metrics(client: TestClient):
     response = schemas.EvaluationResponse(
         id=1,
+        dataset_names=["dsetname"],
         model_name="modelname",
-        datum_filter=schemas.Filter(dataset_names=["dsetname"]),
+        filter=schemas.Filter(),
         parameters=schemas.EvaluationParameters(
             task_type=TaskType.OBJECT_DETECTION
         ),
@@ -915,10 +916,8 @@ def test_post_detection_metrics(client: TestClient):
     ).model_dump()
 
     example_json = schemas.EvaluationRequest(
+        dataset_names=["dsetname"],
         model_names=["modelname"],
-        datum_filter=schemas.Filter(
-            dataset_names=["dsetname"],
-        ),
         parameters=schemas.EvaluationParameters(
             task_type=TaskType.OBJECT_DETECTION
         ),
@@ -936,8 +935,9 @@ def test_post_detection_metrics(client: TestClient):
 def test_post_clf_metrics(client: TestClient):
     response = schemas.EvaluationResponse(
         id=1,
+        dataset_names=["dsetname"],
         model_name="modelname",
-        datum_filter=schemas.Filter(dataset_names=["dsetname"]),
+        filter=schemas.Filter(),
         parameters=schemas.EvaluationParameters(
             task_type=TaskType.CLASSIFICATION
         ),
@@ -950,7 +950,7 @@ def test_post_clf_metrics(client: TestClient):
 
     example_json = schemas.EvaluationRequest(
         model_names=["modelname"],
-        datum_filter=schemas.Filter(dataset_names=["dsetname"]),
+        dataset_names=["dsetname"],
         parameters=schemas.EvaluationParameters(
             task_type=TaskType.CLASSIFICATION
         ),
@@ -968,8 +968,9 @@ def test_post_clf_metrics(client: TestClient):
 def test_post_semenatic_segmentation_metrics(client: TestClient):
     response = schemas.EvaluationResponse(
         id=1,
+        dataset_names=["dset_name"],
         model_name="modelname",
-        datum_filter=schemas.Filter(dataset_names=["dsetname"]),
+        filter=schemas.Filter(),
         parameters=schemas.EvaluationParameters(
             task_type=TaskType.SEMANTIC_SEGMENTATION
         ),
@@ -984,7 +985,7 @@ def test_post_semenatic_segmentation_metrics(client: TestClient):
 
     example_json = schemas.EvaluationRequest(
         model_names=["modelname"],
-        datum_filter=schemas.Filter(dataset_names=["dsetname"]),
+        dataset_names=["dsetname"],
         parameters=schemas.EvaluationParameters(
             task_type=TaskType.SEMANTIC_SEGMENTATION
         ),

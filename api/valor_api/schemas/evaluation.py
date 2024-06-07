@@ -1,6 +1,6 @@
 import datetime
 
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 from valor_api.enums import AnnotationType, EvaluationStatus, TaskType
 from valor_api.schemas.filters import Filter
@@ -127,7 +127,7 @@ class EvaluationRequest(BaseModel):
 
     dataset_names: list[str]
     model_names: list[str]
-    filter: Filter | None = None
+    filter: Filter = Filter()
     parameters: EvaluationParameters
 
     # pydantic setting
@@ -135,6 +135,24 @@ class EvaluationRequest(BaseModel):
         extra="forbid",
         protected_namespaces=("protected_",),
     )
+
+    @field_validator("dataset_names")
+    @classmethod
+    def _validate_dataset_names(cls, v: list[str]) -> list[str]:
+        if len(v) == 0:
+            raise ValueError(
+                "Evaluation request must contain at least one dataset name."
+            )
+        return v
+
+    @field_validator("model_names")
+    @classmethod
+    def _validate_model_names(cls, v: list[str]) -> list[str]:
+        if len(v) == 0:
+            raise ValueError(
+                "Evaluation request must contain at least one model name."
+            )
+        return v
 
 
 class EvaluationResponse(BaseModel):
@@ -172,7 +190,7 @@ class EvaluationResponse(BaseModel):
     id: int
     dataset_names: list[str]
     model_name: str
-    filter: Filter | None
+    filter: Filter
     parameters: EvaluationParameters
     status: EvaluationStatus
     created_at: datetime.datetime
