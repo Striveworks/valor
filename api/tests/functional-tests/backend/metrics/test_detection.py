@@ -31,7 +31,6 @@ def _round_dict(d: dict, prec: int = 3) -> None:
 
 def test__compute_curves(db: Session):
     # these inputs are taken directly from test__compute_detection_metrics (below)
-    # TODO call another evaluation test with a lower iou threshold like .85
     sorted_ranked_pairs = {
         3262893736873277849: [
             RankedPair(
@@ -777,12 +776,13 @@ def test__compute_curves(db: Session):
         grouper_mappings=grouper_mappings,
         groundtruths_per_grouper=groundtruths_per_grouper,
         predictions_per_grouper=predictions_per_grouper,
-        iou_threshold=0.5,
+        pr_curve_iou_threshold=0.5,
         pr_curve_max_examples=1,
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.OBJECT_DETECTION,
             metrics_to_return=[
                 "PrecisionRecallCurve",
+                "DetailedPrecisionRecallCurve",
             ],
         ),
     )
@@ -827,13 +827,98 @@ def test__compute_curves(db: Session):
         actual_count = output[0].value[value][threshold][metric]
         assert actual_count == expected_count
 
+    # check DetailedPrecisionRecallCurve
+    detailed_pr_expected_answers = {
+        # (class, 4)
+        ("4", 0.05, "tp"): {"all": 2, "total": 2},
+        ("4", 0.05, "fn"): {
+            "missed_detections": 0,
+            "misclassifications": 0,
+            "total": 0,
+        },
+        # (class, 2)
+        ("2", 0.05, "tp"): {"all": 1, "total": 1},
+        ("2", 0.05, "fn"): {
+            "missed_detections": 0,
+            "misclassifications": 1,
+            "total": 1,
+        },
+        ("2", 0.75, "tp"): {"all": 0, "total": 0},
+        ("2", 0.75, "fn"): {
+            "missed_detections": 2,
+            "misclassifications": 0,
+            "total": 2,
+        },
+        # (class, 49)
+        ("49", 0.05, "tp"): {"all": 8, "total": 8},
+        # (class, 3)
+        ("3", 0.05, "tp"): {"all": 0, "total": 0},
+        ("3", 0.05, "fp"): {
+            "hallucinations": 0,
+            "misclassifications": 1,
+            "total": 1,
+        },
+        # (class, 1)
+        ("1", 0.05, "tp"): {"all": 1, "total": 1},
+        ("1", 0.8, "fn"): {
+            "missed_detections": 1,
+            "misclassifications": 0,
+            "total": 1,
+        },
+        # (class, 0)
+        ("0", 0.05, "tp"): {"all": 5, "total": 5},
+        ("0", 0.95, "fn"): {
+            "missed_detections": 4,
+            "misclassifications": 0,
+            "total": 4,
+        },
+    }
+
+    for (
+        value,
+        threshold,
+        metric,
+    ), expected_output in detailed_pr_expected_answers.items():
+        model_output = output[1].value[value][threshold][metric]
+        assert isinstance(model_output, dict)
+        assert model_output["total"] == expected_output["total"]
+        assert all(
+            [
+                model_output["observations"][key]["count"]  # type: ignore - we know this element is a dict
+                == expected_output[key]
+                for key in [
+                    key
+                    for key in expected_output.keys()
+                    if key not in ["total"]
+                ]
+            ]
+        )
+
+    # spot check number of examples
+    assert (
+        len(
+            output[1].value["0"][0.95]["fn"]["observations"]["missed_detections"][  # type: ignore - we know this element is a dict
+                "examples"
+            ]
+        )
+        == 1
+    )
+    assert (
+        len(
+            output[1].value["49"][0.05]["tp"]["observations"]["all"][  # type: ignore - we know this element is a dict
+                "examples"
+            ]
+        )
+        == 1
+    )
+
     # do a second test with a much higher iou_threshold
     second_output = _compute_curves(
         sorted_ranked_pairs=sorted_ranked_pairs,
         grouper_mappings=grouper_mappings,
         groundtruths_per_grouper=groundtruths_per_grouper,
         predictions_per_grouper=predictions_per_grouper,
-        iou_threshold=0.9,
+        pr_curve_iou_threshold=0.9,
         pr_curve_max_examples=1,
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.OBJECT_DETECTION,
@@ -964,13 +1049,13 @@ def test__compute_curves(db: Session):
         == 1
     )
 
-    # # repeat the above, but with a higher pr_max_curves_example
+    # repeat the above, but with a higher pr_max_curves_example
     second_output = _compute_curves(
         sorted_ranked_pairs=sorted_ranked_pairs,
         grouper_mappings=grouper_mappings,
         groundtruths_per_grouper=groundtruths_per_grouper,
         predictions_per_grouper=predictions_per_grouper,
-        iou_threshold=0.9,
+        pr_curve_iou_threshold=0.9,
         pr_curve_max_examples=3,
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.OBJECT_DETECTION,
@@ -1025,7 +1110,7 @@ def test__compute_curves(db: Session):
         grouper_mappings=grouper_mappings,
         groundtruths_per_grouper=groundtruths_per_grouper,
         predictions_per_grouper=predictions_per_grouper,
-        iou_threshold=0.9,
+        pr_curve_iou_threshold=0.9,
         pr_curve_max_examples=0,
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.OBJECT_DETECTION,

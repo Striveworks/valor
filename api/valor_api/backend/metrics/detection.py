@@ -23,9 +23,6 @@ from valor_api.backend.metrics.metric_utils import (
 from valor_api.backend.query import Query
 from valor_api.enums import AnnotationType
 
-# TODO make this a user-supplied param
-IOU_THRESHOLD = 0.9
-
 
 @dataclass
 class RankedPair:
@@ -72,7 +69,7 @@ def _compute_curves(
     grouper_mappings: dict[str, dict[str, schemas.Label]],
     groundtruths_per_grouper: dict[int, list],
     predictions_per_grouper: dict[int, list],
-    iou_threshold: float,
+    pr_curve_iou_threshold: float,
     pr_curve_max_examples: int,
     parameters: schemas.EvaluationParameters,
 ) -> list[schemas.PrecisionRecallCurve | schemas.DetailedPrecisionRecallCurve]:
@@ -89,7 +86,7 @@ def _compute_curves(
         A dictionary containing the (dataset_name, datum_id, gt_id) for all groundtruths associated with a grouper.
     predictions_per_grouper: dict[int, int]
         A dictionary containing the (dataset_name, datum_id, gt_id) for all predictions associated with a grouper.
-    iou_threshold: float
+    pr_curve_iou_threshold: float
         The IOU threshold to use as a cut-off for our predictions.
     pr_curve_max_examples: int
         The maximum number of datum examples to store per true positive, false negative, etc.
@@ -154,7 +151,7 @@ def _compute_curves(
             for row in sorted_ranked_pairs[int(grouper_id)]:
                 if (
                     row.score >= confidence_threshold
-                    and row.iou >= iou_threshold
+                    and row.iou >= pr_curve_iou_threshold
                     and row.gt_id not in seen_gts
                     and row.is_match is True
                 ):
@@ -189,7 +186,7 @@ def _compute_curves(
                         misclassification_detected = any(
                             [
                                 score >= confidence_threshold
-                                and iou >= IOU_THRESHOLD
+                                and iou >= pr_curve_iou_threshold
                                 for (iou, score) in pd_datums[first_key][
                                     second_key
                                 ]
@@ -225,7 +222,7 @@ def _compute_curves(
                         second_key = (dataset_name, datum_uid, pd_id)
                         misclassification_detected = any(
                             [
-                                iou >= IOU_THRESHOLD
+                                iou >= pr_curve_iou_threshold
                                 and score >= confidence_threshold
                                 for (iou, score) in gt_datums[first_key][
                                     second_key
@@ -368,7 +365,7 @@ def _compute_curves(
         schemas.PrecisionRecallCurve(
             label_key=key,
             value=dict(value),
-            pr_curve_iou_threshold=iou_threshold,
+            pr_curve_iou_threshold=pr_curve_iou_threshold,
         )
         for key, value in pr_output.items()
     ]
@@ -382,7 +379,7 @@ def _compute_curves(
             schemas.DetailedPrecisionRecallCurve(
                 label_key=key,
                 value=dict(value),
-                pr_curve_iou_threshold=iou_threshold,
+                pr_curve_iou_threshold=pr_curve_iou_threshold,
             )
             for key, value in detailed_pr_output.items()
         ]
@@ -964,7 +961,7 @@ def _compute_detection_metrics(
             grouper_mappings=grouper_mappings,
             groundtruths_per_grouper=groundtruths_per_grouper,
             predictions_per_grouper=predictions_per_grouper,
-            iou_threshold=parameters.pr_curve_iou_threshold,
+            pr_curve_iou_threshold=parameters.pr_curve_iou_threshold,
             pr_curve_max_examples=(
                 parameters.pr_curve_max_examples
                 if parameters.pr_curve_max_examples

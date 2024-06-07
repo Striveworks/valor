@@ -1279,7 +1279,6 @@ def test_evaluate_detection_with_label_maps(
             "misclassifications": 0,
             "total": 1,
         },
-        # TODO test additional iou thresholds
         (2, "v1", "0.4", "fn"): {
             "missed_detections": 2,
             "misclassifications": 0,
@@ -2481,6 +2480,7 @@ def test_detailed_precision_recall_curve(
     rect2,
     rect3,
     rect4,
+    rect5,
 ):
     gts = [
         GroundTruth(
@@ -2527,7 +2527,7 @@ def test_detailed_precision_recall_curve(
                 Annotation(
                     is_instance=True,
                     labels=[Label(key="k1", value="not_v2", score=0.3)],
-                    bounding_box=Box([rect3]),
+                    bounding_box=Box([rect5]),
                 ),
                 Annotation(
                     is_instance=True,
@@ -2607,18 +2607,12 @@ def test_detailed_precision_recall_curve(
         == 0
     )
 
-    # one fn misclassification that becomes a missed detection when score threshold >.35
+    # one fn missed_dection that becomes a misclassification when pr_curve_iou_threshold <= .48 and score threshold <= .3
     assert (
         eval_job.metrics[0]["value"]["v2"]["0.3"]["fn"]["observations"][
-            "misclassifications"
+            "missed_detections"
         ]["count"]
         == 1
-    )
-    assert (
-        eval_job.metrics[0]["value"]["v2"]["0.35"]["fn"]["observations"][
-            "misclassifications"
-        ]["count"]
-        == 0
     )
     assert (
         eval_job.metrics[0]["value"]["v2"]["0.35"]["fn"]["observations"][
@@ -2629,21 +2623,179 @@ def test_detailed_precision_recall_curve(
     assert eval_job.metrics[0]["value"]["v2"]["0.05"]["tp"]["total"] == 0
     assert eval_job.metrics[0]["value"]["v2"]["0.05"]["fp"]["total"] == 0
 
-    # one fp misclassification that disappears when score threshold >.35
+    # one fp hallucination that becomes a misclassification when pr_curve_iou_threshold <= .48 and score threshold <= .3
     assert (
         eval_job.metrics[0]["value"]["not_v2"]["0.05"]["fp"]["observations"][
-            "misclassifications"
+            "hallucinations"
         ]["count"]
         == 1
     )
     assert (
-        eval_job.metrics[0]["value"]["not_v2"]["0.35"]["fp"]["observations"][
+        eval_job.metrics[0]["value"]["not_v2"]["0.05"]["fp"]["observations"][
             "misclassifications"
         ]["count"]
         == 0
     )
     assert eval_job.metrics[0]["value"]["not_v2"]["0.05"]["tp"]["total"] == 0
     assert eval_job.metrics[0]["value"]["not_v2"]["0.05"]["fn"]["total"] == 0
+
+    # one fp hallucination that disappears when score threshold >.15
+    assert (
+        eval_job.metrics[0]["value"]["hallucination"]["0.05"]["fp"][
+            "observations"
+        ]["hallucinations"]["count"]
+        == 1
+    )
+    assert (
+        eval_job.metrics[0]["value"]["hallucination"]["0.35"]["fp"][
+            "observations"
+        ]["hallucinations"]["count"]
+        == 0
+    )
+    assert (
+        eval_job.metrics[0]["value"]["hallucination"]["0.05"]["tp"]["total"]
+        == 0
+    )
+    assert (
+        eval_job.metrics[0]["value"]["hallucination"]["0.05"]["fn"]["total"]
+        == 0
+    )
+
+    # one missed detection and one hallucination due to low iou overlap
+    assert (
+        eval_job.metrics[0]["value"]["low_iou"]["0.3"]["fn"]["observations"][
+            "missed_detections"
+        ]["count"]
+        == 1
+    )
+    assert (
+        eval_job.metrics[0]["value"]["low_iou"]["0.95"]["fn"]["observations"][
+            "missed_detections"
+        ]["count"]
+        == 1
+    )
+    assert (
+        eval_job.metrics[0]["value"]["low_iou"]["0.3"]["fp"]["observations"][
+            "hallucinations"
+        ]["count"]
+        == 1
+    )
+    assert (
+        eval_job.metrics[0]["value"]["low_iou"]["0.55"]["fp"]["observations"][
+            "hallucinations"
+        ]["count"]
+        == 0
+    )
+
+    # repeat tests using a lower IOU threshold
+    eval_job_low_iou_threshold = model.evaluate_detection(
+        dataset,
+        pr_curve_max_examples=1,
+        metrics_to_return=[
+            "DetailedPrecisionRecallCurve",
+        ],
+        pr_curve_iou_threshold=0.45,  # actual IOU is .481
+    )
+    eval_job_low_iou_threshold.wait_for_completion(timeout=30)
+
+    # one true positive that becomes a false negative when score > .5
+    assert eval_job.metrics[0]["value"]["v1"]["0.3"]["tp"]["total"] == 1
+    assert eval_job.metrics[0]["value"]["v1"]["0.55"]["tp"]["total"] == 0
+    assert eval_job.metrics[0]["value"]["v1"]["0.55"]["fn"]["total"] == 1
+    assert (
+        eval_job.metrics[0]["value"]["v1"]["0.55"]["fn"]["observations"][
+            "missed_detections"
+        ]["count"]
+        == 1
+    )
+    assert eval_job.metrics[0]["value"]["v1"]["0.05"]["fn"]["total"] == 0
+    assert eval_job.metrics[0]["value"]["v1"]["0.05"]["fp"]["total"] == 0
+
+    # one missed detection that never changes
+    assert (
+        eval_job.metrics[0]["value"]["missed_detection"]["0.05"]["fn"][
+            "observations"
+        ]["missed_detections"]["count"]
+        == 1
+    )
+    assert (
+        eval_job.metrics[0]["value"]["missed_detection"]["0.95"]["fn"][
+            "observations"
+        ]["missed_detections"]["count"]
+        == 1
+    )
+    assert (
+        eval_job.metrics[0]["value"]["missed_detection"]["0.05"]["tp"]["total"]
+        == 0
+    )
+    assert (
+        eval_job.metrics[0]["value"]["missed_detection"]["0.05"]["fp"]["total"]
+        == 0
+    )
+
+    # one fn missed_dection that becomes a misclassification when pr_curve_iou_threshold <= .48 and score threshold <= .3
+    assert (
+        eval_job_low_iou_threshold.metrics[0]["value"]["v2"]["0.3"]["fn"][
+            "observations"
+        ]["misclassifications"]["count"]
+        == 1
+    )
+    assert (
+        eval_job_low_iou_threshold.metrics[0]["value"]["v2"]["0.3"]["fn"][
+            "observations"
+        ]["missed_detections"]["count"]
+        == 0
+    )
+    assert (
+        eval_job_low_iou_threshold.metrics[0]["value"]["v2"]["0.35"]["fn"][
+            "observations"
+        ]["misclassifications"]["count"]
+        == 0
+    )
+    assert (
+        eval_job_low_iou_threshold.metrics[0]["value"]["v2"]["0.35"]["fn"][
+            "observations"
+        ]["missed_detections"]["count"]
+        == 1
+    )
+    assert (
+        eval_job_low_iou_threshold.metrics[0]["value"]["v2"]["0.05"]["tp"][
+            "total"
+        ]
+        == 0
+    )
+    assert (
+        eval_job_low_iou_threshold.metrics[0]["value"]["v2"]["0.05"]["fp"][
+            "total"
+        ]
+        == 0
+    )
+
+    # one fp hallucination that becomes a misclassification when pr_curve_iou_threshold <= .48 and score threshold <= .3
+    assert (
+        eval_job_low_iou_threshold.metrics[0]["value"]["not_v2"]["0.05"]["fp"][
+            "observations"
+        ]["hallucinations"]["count"]
+        == 0
+    )
+    assert (
+        eval_job_low_iou_threshold.metrics[0]["value"]["not_v2"]["0.05"]["fp"][
+            "observations"
+        ]["misclassifications"]["count"]
+        == 1
+    )
+    assert (
+        eval_job_low_iou_threshold.metrics[0]["value"]["not_v2"]["0.05"]["tp"][
+            "total"
+        ]
+        == 0
+    )
+    assert (
+        eval_job_low_iou_threshold.metrics[0]["value"]["not_v2"]["0.05"]["fn"][
+            "total"
+        ]
+        == 0
+    )
 
     # one fp hallucination that disappears when score threshold >.15
     assert (
