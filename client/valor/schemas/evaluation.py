@@ -56,8 +56,6 @@ class EvaluationRequest:
         The filter object used to define what the model(s) is evaluating against.
     parameters : EvaluationParameters
         Any parameters that are used to modify an evaluation method.
-    metadata: dict[str, str | float | dict], optional
-        Metadata about the evaluation run.
     """
 
     dataset_names: Union[str, List[str]]
