@@ -512,9 +512,9 @@ def generate_filter_subquery(
 
     # construct query
     query = select(
-        select_from.id.label("id"),  # type: ignore - sqlalchemy issue
+        select_from.id.label("id"),
         *[
-            case((expr, 1), else_=0).label(f"{prefix}{idx}")  # type: ignore - sqlalchemy issue
+            case((expr, 1), else_=0).label(f"{prefix}{idx}")
             for idx, expr in enumerate(expressions)
         ],
     )

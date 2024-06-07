@@ -42,7 +42,7 @@ def test_scored_label():
 
     # test validation
     with pytest.raises(TypeError):
-        assert Label(key="k", value="v", score="boo")  # type: ignore
+        assert Label(key="k", value="v", score="boo")  # type: ignore - testing
 
     # test property `key`
     assert l1.key == "test"

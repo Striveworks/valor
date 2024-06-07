@@ -520,19 +520,46 @@ class _PrecisionRecallF1Base(BaseModel):
 
 
 class PrecisionMetric(_PrecisionRecallF1Base):
-    """Describes an precision metric."""
+    """
+    Describes an precision metric.
+
+    Attributes
+    ----------
+    label : Label
+        A key-value pair.
+    value : float, optional
+        The metric value.
+    """
 
     __type__ = "Precision"
 
 
 class RecallMetric(_PrecisionRecallF1Base):
-    """Describes a recall metric."""
+    """
+    Describes a recall metric.
+
+    Attributes
+    ----------
+    label : Label
+        A key-value pair.
+    value : float, optional
+        The metric value.
+    """
 
     __type__ = "Recall"
 
 
 class F1Metric(_PrecisionRecallF1Base):
-    """Describes an F1 metric."""
+    """
+    Describes an F1 metric.
+
+    Attributes
+    ----------
+    label : Label
+        A key-value pair.
+    value : float, optional
+        The metric value.
+    """
 
     __type__ = "F1"
 
@@ -565,8 +592,13 @@ class ROCAUCMetric(BaseModel):
         ----------
         A mapping dictionary.
         """
+        value = (
+            self.value
+            if (self.value is not None and not np.isnan(self.value))
+            else -1
+        )
         return {
-            "value": self.value if not np.isnan(self.value) else -1,  # type: ignore - numpy type error; np.isnan can take None
+            "value": value,
             "type": "ROCAUC",
             "parameters": {"label_key": self.label_key},
             "evaluation_id": evaluation_id,

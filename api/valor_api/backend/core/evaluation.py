@@ -2,6 +2,7 @@ from datetime import timezone
 from typing import Sequence
 
 from sqlalchemy import (
+    ColumnElement,
     and_,
     asc,
     case,
@@ -19,12 +20,12 @@ from sqlalchemy.sql.elements import BinaryExpression
 
 from valor_api import api_utils, enums, exceptions, schemas
 from valor_api.backend import core, models
-from valor_api.backend.query import Query
+from valor_api.backend.query import generate_query
 
 
 def _create_dataset_expr_from_list(
     dataset_names: list[str],
-) -> BinaryExpression | None:
+) -> ColumnElement[bool] | BinaryExpression[bool] | None:
     """
     Creates a sqlalchemy or_ expression from a list of str.
 
@@ -52,12 +53,12 @@ def _create_dataset_expr_from_list(
                 models.Evaluation.datum_filter["dataset_names"].op("?")(name)
                 for name in dataset_names
             ]
-        )  # type: ignore - SQLAlchemy type issue
+        )
 
 
 def _create_model_expr_from_list(
     model_names: list[str],
-) -> BinaryExpression | None:
+) -> BinaryExpression[bool] | ColumnElement[bool] | None:
     """
     Creates a sqlalchemy or_ expression from a list of str.
 
@@ -76,14 +77,16 @@ def _create_model_expr_from_list(
     if not model_names:
         return None
     elif len(model_names) == 1:
-        return models.Evaluation.model_name == model_names[0]  # type: ignore - SQLAlchemy type issue
+        return models.Evaluation.model_name == model_names[0]
     else:
         return or_(
             *[models.Evaluation.model_name == name for name in model_names]
-        )  # type: ignore - SQLAlchemy type issue
+        )
 
 
-def _create_eval_expr_from_list(ids: list[int]) -> BinaryExpression | None:
+def _create_eval_expr_from_list(
+    ids: list[int],
+) -> BinaryExpression[bool] | ColumnElement[bool] | None:
     """
     Creates a sqlalchemy or_ expression from a list of int.
 
@@ -102,9 +105,9 @@ def _create_eval_expr_from_list(ids: list[int]) -> BinaryExpression | None:
     if not ids:
         return None
     elif len(ids) == 1:
-        return models.Evaluation.id == ids[0]  # type: ignore - SQLAlchemy type issue
+        return models.Evaluation.id == ids[0]
     else:
-        return or_(*[models.Evaluation.id == id_ for id_ in ids])  # type: ignore - SQLAlchemy type issue
+        return or_(*[(models.Evaluation.id == id_) for id_ in ids])
 
 
 def _create_bulk_expression(
@@ -214,9 +217,12 @@ def _split_request(
     """
 
     # 1.a - get all datasets, note this uses the unmodified filter
-    subquery = Query(models.Dataset).filter(job_request.datum_filter).any()
     datasets_to_evaluate = (
-        db.query(subquery)  # type: ignore - SQLAlchemy type issue
+        generate_query(
+            models.Dataset,
+            db=db,
+            filter_=job_request.datum_filter,
+        )
         .distinct()
         .all()
     )
@@ -328,7 +334,7 @@ def _create_response(
         model_name=evaluation.model_name,
         datum_filter=evaluation.datum_filter,
         parameters=evaluation.parameters,
-        status=evaluation.status,  # type: ignore - must be str in psql
+        status=enums.EvaluationStatus(evaluation.status),
         metrics=[
             _convert_db_metric_to_pydantic_metric(db, metric)
             for metric in metrics
@@ -487,19 +493,22 @@ def _validate_create_or_get_evaluations(
     parameters = job_request.parameters
 
     datasets = (
-        db.query(
-            Query(models.Dataset)  # type: ignore - SQLAlchemy type issue
-            .filter(groundtruth_filter)
-            .predictions()
+        generate_query(
+            models.Dataset,
+            db=db,
+            filter_=groundtruth_filter,
+            label_source=models.GroundTruth,
         )
         .distinct()
         .all()
     )
+
     model = (
-        db.query(
-            Query(models.Model)
-            .filter(prediction_filter)
-            .predictions()  # type: ignore - SQLAlchemy type issue
+        generate_query(
+            models.Model,
+            db=db,
+            filter_=prediction_filter,
+            label_source=models.Prediction,
         )
         .distinct()
         .one_or_none()
@@ -916,7 +925,7 @@ def get_evaluation_requests_from_model(
             model_name=model_name,
             datum_filter=eval_.datum_filter,
             parameters=eval_.parameters,
-            status=eval_.status,  # type: ignore - must be str in psql
+            status=enums.EvaluationStatus(eval_.status),
             created_at=eval_.created_at.replace(tzinfo=timezone.utc),
             meta=eval_.meta,
         )

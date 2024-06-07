@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from valor_api import api_utils, enums, exceptions, schemas
 from valor_api.backend import core, models
-from valor_api.backend.query import Query
+from valor_api.backend.query import generate_select
 from valor_api.schemas.types import MetadataType
 
 
@@ -165,9 +165,12 @@ def get_paginated_datasets(
             "Offset should be an int greater than or equal to zero. Limit should be an int greater than or equal to -1."
         )
 
-    datasets_subquery = (
-        Query(models.Dataset.id.label("id")).filter(filters).any()
-    )
+    advanced_filter = filters.to_advanced_filter() if filters else None
+    datasets_subquery = generate_select(
+        models.Dataset.id.label("id"),
+        filter_=advanced_filter,
+        label_source=models.GroundTruth,
+    ).subquery()
 
     if datasets_subquery is None:
         raise RuntimeError(
