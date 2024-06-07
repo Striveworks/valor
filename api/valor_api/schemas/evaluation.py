@@ -36,7 +36,7 @@ class EvaluationParameters(BaseModel):
 
     task_type: TaskType
     metrics_to_return: list[str] | None = None
-      
+
     convert_annotations_to_type: AnnotationType | None = None
     iou_thresholds_to_compute: list[float] | None = None
     iou_thresholds_to_return: list[float] | None = None

@@ -2468,3 +2468,226 @@ def test_evaluate_detection_false_negatives_two_images_one_only_with_different_c
         "value": 0,
         "label": {"key": "key", "value": "other value"},
     }
+
+
+def test_detailed_precision_recall_curve(
+    db: Session,
+    model_name,
+    dataset_name,
+    img1,
+    img2,
+    rect1,
+    rect2,
+    rect3,
+    rect4,
+):
+    gts = [
+        GroundTruth(
+            datum=img1,
+            annotations=[
+                Annotation(
+                    is_instance=True,
+                    labels=[Label(key="k1", value="v1")],
+                    bounding_box=Box([rect1]),
+                ),
+                Annotation(
+                    is_instance=True,
+                    labels=[Label(key="k1", value="missed_detection")],
+                    bounding_box=Box([rect2]),
+                ),
+                Annotation(
+                    is_instance=True,
+                    labels=[Label(key="k1", value="v2")],
+                    bounding_box=Box([rect3]),
+                ),
+            ],
+        ),
+        GroundTruth(
+            datum=img2,
+            annotations=[
+                Annotation(
+                    is_instance=True,
+                    labels=[Label(key="k1", value="low_iou")],
+                    bounding_box=Box([rect1]),
+                ),
+            ],
+        ),
+    ]
+
+    pds = [
+        Prediction(
+            datum=img1,
+            annotations=[
+                Annotation(
+                    is_instance=True,
+                    labels=[Label(key="k1", value="v1", score=0.5)],
+                    bounding_box=Box([rect1]),
+                ),
+                Annotation(
+                    is_instance=True,
+                    labels=[Label(key="k1", value="not_v2", score=0.3)],
+                    bounding_box=Box([rect3]),
+                ),
+                Annotation(
+                    is_instance=True,
+                    labels=[Label(key="k1", value="hallucination", score=0.1)],
+                    bounding_box=Box([rect4]),
+                ),
+            ],
+        ),
+        # prediction for img2 has the wrong bounding box, so it should count as a hallucination
+        Prediction(
+            datum=img2,
+            annotations=[
+                Annotation(
+                    is_instance=True,
+                    labels=[Label(key="k1", value="low_iou", score=0.5)],
+                    bounding_box=Box([rect2]),
+                ),
+            ],
+        ),
+    ]
+
+    dataset = Dataset.create(dataset_name)
+
+    for gt in gts:
+        dataset.add_groundtruth(gt)
+
+    dataset.finalize()
+
+    model = Model.create(model_name)
+
+    for pd in pds:
+        model.add_prediction(dataset, pd)
+
+    model.finalize_inferences(dataset)
+
+    eval_job = model.evaluate_detection(
+        dataset,
+        pr_curve_max_examples=1,
+        metrics_to_return=[
+            "DetailedPrecisionRecallCurve",
+        ],
+    )
+    eval_job.wait_for_completion(timeout=30)
+
+    # one true positive that becomes a false negative when score > .5
+    assert eval_job.metrics[0]["value"]["v1"]["0.3"]["tp"]["total"] == 1
+    assert eval_job.metrics[0]["value"]["v1"]["0.55"]["tp"]["total"] == 0
+    assert eval_job.metrics[0]["value"]["v1"]["0.55"]["fn"]["total"] == 1
+    assert (
+        eval_job.metrics[0]["value"]["v1"]["0.55"]["fn"]["observations"][
+            "missed_detections"
+        ]["count"]
+        == 1
+    )
+    assert eval_job.metrics[0]["value"]["v1"]["0.05"]["fn"]["total"] == 0
+    assert eval_job.metrics[0]["value"]["v1"]["0.05"]["fp"]["total"] == 0
+
+    # one missed detection that never changes
+    assert (
+        eval_job.metrics[0]["value"]["missed_detection"]["0.05"]["fn"][
+            "observations"
+        ]["missed_detections"]["count"]
+        == 1
+    )
+    assert (
+        eval_job.metrics[0]["value"]["missed_detection"]["0.95"]["fn"][
+            "observations"
+        ]["missed_detections"]["count"]
+        == 1
+    )
+    assert (
+        eval_job.metrics[0]["value"]["missed_detection"]["0.05"]["tp"]["total"]
+        == 0
+    )
+    assert (
+        eval_job.metrics[0]["value"]["missed_detection"]["0.05"]["fp"]["total"]
+        == 0
+    )
+
+    # one fn misclassification that becomes a missed detection when score threshold >.35
+    assert (
+        eval_job.metrics[0]["value"]["v2"]["0.3"]["fn"]["observations"][
+            "misclassifications"
+        ]["count"]
+        == 1
+    )
+    assert (
+        eval_job.metrics[0]["value"]["v2"]["0.35"]["fn"]["observations"][
+            "misclassifications"
+        ]["count"]
+        == 0
+    )
+    assert (
+        eval_job.metrics[0]["value"]["v2"]["0.35"]["fn"]["observations"][
+            "missed_detections"
+        ]["count"]
+        == 1
+    )
+    assert eval_job.metrics[0]["value"]["v2"]["0.05"]["tp"]["total"] == 0
+    assert eval_job.metrics[0]["value"]["v2"]["0.05"]["fp"]["total"] == 0
+
+    # one fp misclassification that disappears when score threshold >.35
+    assert (
+        eval_job.metrics[0]["value"]["not_v2"]["0.05"]["fp"]["observations"][
+            "misclassifications"
+        ]["count"]
+        == 1
+    )
+    assert (
+        eval_job.metrics[0]["value"]["not_v2"]["0.35"]["fp"]["observations"][
+            "misclassifications"
+        ]["count"]
+        == 0
+    )
+    assert eval_job.metrics[0]["value"]["not_v2"]["0.05"]["tp"]["total"] == 0
+    assert eval_job.metrics[0]["value"]["not_v2"]["0.05"]["fn"]["total"] == 0
+
+    # one fp hallucination that disappears when score threshold >.15
+    assert (
+        eval_job.metrics[0]["value"]["hallucination"]["0.05"]["fp"][
+            "observations"
+        ]["hallucinations"]["count"]
+        == 1
+    )
+    assert (
+        eval_job.metrics[0]["value"]["hallucination"]["0.35"]["fp"][
+            "observations"
+        ]["hallucinations"]["count"]
+        == 0
+    )
+    assert (
+        eval_job.metrics[0]["value"]["hallucination"]["0.05"]["tp"]["total"]
+        == 0
+    )
+    assert (
+        eval_job.metrics[0]["value"]["hallucination"]["0.05"]["fn"]["total"]
+        == 0
+    )
+
+    # one missed detection and one hallucination due to low iou overlap
+    assert (
+        eval_job.metrics[0]["value"]["low_iou"]["0.3"]["fn"]["observations"][
+            "missed_detections"
+        ]["count"]
+        == 1
+    )
+    assert (
+        eval_job.metrics[0]["value"]["low_iou"]["0.95"]["fn"]["observations"][
+            "missed_detections"
+        ]["count"]
+        == 1
+    )
+    assert (
+        eval_job.metrics[0]["value"]["low_iou"]["0.3"]["fp"]["observations"][
+            "hallucinations"
+        ]["count"]
+        == 1
+    )
+    assert (
+        eval_job.metrics[0]["value"]["low_iou"]["0.55"]["fp"]["observations"][
+            "hallucinations"
+        ]["count"]
+        == 0
+    )

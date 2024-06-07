@@ -36,6 +36,7 @@ def test__calculate_ap_and_ar():
                 score=0.8,
                 iou=0.6,
                 gt_geojson="",
+                is_match=True,
             ),
             RankedPair(
                 dataset_name="test_dataset",
@@ -46,6 +47,7 @@ def test__calculate_ap_and_ar():
                 score=0.6,
                 iou=0.8,
                 gt_geojson="",
+                is_match=True,
             ),
             RankedPair(
                 dataset_name="test_dataset",
@@ -56,6 +58,7 @@ def test__calculate_ap_and_ar():
                 score=0.4,
                 iou=1.0,
                 gt_geojson="",
+                is_match=True,
             ),
         ],
         "1": [
@@ -68,6 +71,7 @@ def test__calculate_ap_and_ar():
                 score=0.0,
                 iou=1.0,
                 gt_geojson="",
+                is_match=True,
             ),
             RankedPair(
                 dataset_name="test_dataset",
@@ -78,6 +82,7 @@ def test__calculate_ap_and_ar():
                 score=0.0,
                 iou=1.0,
                 gt_geojson="",
+                is_match=True,
             ),
         ],
         "2": [
@@ -90,6 +95,7 @@ def test__calculate_ap_and_ar():
                 score=1.0,
                 iou=1.0,
                 gt_geojson="",
+                is_match=True,
             ),
         ],
     }
