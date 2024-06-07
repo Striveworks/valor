@@ -115,17 +115,19 @@ class EvaluationRequest(BaseModel):
 
     Attributes
     ----------
+    dataset_names : list[str]
+        The names of the evaluated datasets.
     model_names : str | list[str]
         The model(s) to evaluate.
-    datum_filter : schemas.Filter
-        The filter object used to define what datums the model is evaluating over.
+    filter : schemas.Filter, optional
+        The filter object used to define what data to evaluate.
     parameters : DetectionParameters, optional
         Any parameters that are used to modify an evaluation method.
     """
 
     dataset_names: list[str]
     model_names: list[str]
-    filter: Filter
+    filter: Filter | None = None
     parameters: EvaluationParameters
 
     # pydantic setting
@@ -143,9 +145,11 @@ class EvaluationResponse(BaseModel):
     ----------
     id : int
         The ID of the evaluation.
+    dataset_names : list[str]
+        The names of the evaluated datasets.
     model_name : str
         The name of the evaluated model.
-    datum_filter : schemas.Filter
+    filter : schemas.Filter
         The evaluation filter used in the evaluation.
     parameters : schemas.EvaluationParameters
         Any parameters used by the evaluation method.
@@ -166,8 +170,9 @@ class EvaluationResponse(BaseModel):
     """
 
     id: int
+    dataset_names: list[str]
     model_name: str
-    datum_filter: Filter
+    filter: Filter | None
     parameters: EvaluationParameters
     status: EvaluationStatus
     created_at: datetime.datetime

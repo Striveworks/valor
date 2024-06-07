@@ -209,6 +209,7 @@ class Evaluation(Base):
 
     # columns
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    dataset_names = mapped_column(JSONB, nullable=False)
     model_name: Mapped[str] = mapped_column(nullable=False)
     datum_filter = mapped_column(JSONB, nullable=False)
     parameters = mapped_column(JSONB, nullable=False)
