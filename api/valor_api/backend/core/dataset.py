@@ -101,8 +101,8 @@ def fetch_dataset(
         db.query(models.Dataset)
         .where(
             and_(
-                (models.Dataset.name == name),
-                (models.Dataset.status != enums.TableStatus.DELETING),
+                models.Dataset.name == name,
+                models.Dataset.status != enums.TableStatus.DELETING,
             )
         )
         .one_or_none()
@@ -166,7 +166,9 @@ def get_paginated_datasets(
         )
 
     datasets_subquery = generate_select(
-        models.Dataset.id.label("id"), filter_=filters
+        models.Dataset.id.label("id"),
+        filter_=filters,
+        label_source=models.GroundTruth,
     ).subquery()
 
     if datasets_subquery is None:
