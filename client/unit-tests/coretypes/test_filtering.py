@@ -1,4 +1,5 @@
 import datetime
+from typing import Union
 
 import pytest
 
@@ -29,12 +30,13 @@ def polygon() -> Polygon:
 @pytest.fixture
 def geojson(
     polygon: Polygon,
-) -> dict[str, str | list[list[tuple[float, float]]]]:
+) -> dict[str, Union[str, list[list[tuple[float, float]]]]]:
     return {"type": "Polygon", "coordinates": polygon.get_value()}
 
 
 def test__format_filter(
-    geojson: dict[str, str | list[list[tuple[float, float]]]], polygon: Polygon
+    geojson: dict[str, Union[str, list[list[tuple[float, float]]]]],
+    polygon: Polygon,
 ):
 
     filter_object = Filter(
