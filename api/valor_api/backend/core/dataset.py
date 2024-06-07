@@ -165,9 +165,10 @@ def get_paginated_datasets(
             "Offset should be an int greater than or equal to zero. Limit should be an int greater than or equal to -1."
         )
 
+    advanced_filter = filters.to_advanced_filter() if filters else None
     datasets_subquery = generate_select(
         models.Dataset.id.label("id"),
-        filter_=filters,
+        filter_=advanced_filter,
         label_source=models.GroundTruth,
     ).subquery()
 
