@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List, Optional, Union
 
 from valor.enums import AnnotationType, TaskType
@@ -48,23 +48,25 @@ class EvaluationRequest:
 
     Attributes
     ----------
+    dataset_names : List[str]
+        The list of datasets we want to evaluate by name.
     model_names : List[str]
         The list of models we want to evaluate by name.
     datum_filter : schemas.Filter
         The filter object used to define what the model(s) is evaluating against.
     parameters : EvaluationParameters
         Any parameters that are used to modify an evaluation method.
-    meta: dict[str, str | float | dict], optional
+    metadata: dict[str, str | float | dict], optional
         Metadata about the evaluation run.
     """
 
+    dataset_names: Union[str, List[str]]
     model_names: Union[str, List[str]]
-    datum_filter: Filter
     parameters: EvaluationParameters
-    meta: Optional[dict]
+    filter: Optional[Filter] = field(default=None)
 
     def __post_init__(self):
-        if isinstance(self.datum_filter, dict):
-            self.datum_filter = Filter(**self.datum_filter)
+        if isinstance(self.filter, dict):
+            self.filter = Filter(**self.filter)
         if isinstance(self.parameters, dict):
             self.parameters = EvaluationParameters(**self.parameters)
