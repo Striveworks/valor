@@ -765,7 +765,6 @@ def test_classification(
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.CLASSIFICATION,
         ),
-        meta={},
     )
 
     # creates evaluation job

@@ -449,7 +449,6 @@ def test_compute_semantic_segmentation_metrics(
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
         ),
-        meta={},
     )
 
     evaluations = create_or_get_evaluations(db=db, job_request=job_request)

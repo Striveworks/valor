@@ -31,7 +31,6 @@ def test_validate_computation(
             parameters=schemas.EvaluationParameters(
                 task_type=enums.TaskType.CLASSIFICATION,
             ),
-            meta={},
         ),
     )
     assert len(created) == 1

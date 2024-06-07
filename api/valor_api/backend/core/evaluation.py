@@ -300,7 +300,6 @@ def _split_request(
             model_names=[model.name],
             datum_filter=job_request.datum_filter,
             parameters=job_request.parameters,
-            meta={},
         )
         for model in models_to_evaluate
     ]
@@ -600,7 +599,7 @@ def create_or_get_evaluations(
                 datum_filter=subrequest.datum_filter.model_dump(),
                 parameters=subrequest.parameters.model_dump(),
                 status=enums.EvaluationStatus.PENDING,
-                meta={},  # meta stores data about the run after it completes; should be an empty dictionary at creation time
+                meta={},
             )
             evaluation = _validate_create_or_get_evaluations(
                 db=db,

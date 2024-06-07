@@ -121,14 +121,11 @@ class EvaluationRequest(BaseModel):
         The filter object used to define what datums the model is evaluating over.
     parameters : DetectionParameters, optional
         Any parameters that are used to modify an evaluation method.
-    meta: dict[str, str | int | float]
-        Metadata about the evaluation run
     """
 
     model_names: list[str]
     datum_filter: Filter
     parameters: EvaluationParameters
-    meta: dict[str, str | int | float] | None
 
     # pydantic setting
     model_config = ConfigDict(
