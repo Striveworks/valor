@@ -412,7 +412,6 @@ export class ValorClient {
         metrics_to_return: metrics_to_return,
         pr_curve_iou_threshold: prCurveIouThreshold
       },
-      meta: {}
     });
     return this.unmarshalEvaluation(response.data[0]);
   }
@@ -456,7 +455,6 @@ export class ValorClient {
         recall_score_threshold: recallScoreThreshold,
         pr_curve_iou_threshold: prCurveIouThreshold
       },
-      meta: {}
     });
     return response.data.map(this.unmarshalEvaluation);
   }
