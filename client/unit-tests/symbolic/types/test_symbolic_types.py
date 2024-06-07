@@ -120,8 +120,8 @@ def test_variable():
         },
     }
     assert Variable.symbolic().get_symbol() == Symbol(name="variable")
-    assert Variable(None).is_none().get_value() is True  # type: ignore - schema fix required
-    assert Variable(1234).is_none().get_value() is False  # type: ignore - schema fix required
+    assert Variable(None).is_none().get_value() is True  # type: ignore - issue #604
+    assert Variable(1234).is_none().get_value() is False  # type: ignore - issue #604
     with pytest.raises(TypeError):
         Variable(1234).get_symbol()
 
@@ -138,8 +138,8 @@ def test_variable():
             },
         },
     }
-    assert Variable(None).is_not_none().get_value() is False  # type: ignore - schema fix required
-    assert Variable(1234).is_not_none().get_value() is True  # type: ignore - schema fix required
+    assert Variable(None).is_not_none().get_value() is False  # type: ignore - issue #604
+    assert Variable(1234).is_not_none().get_value() is True  # type: ignore - issue #604
 
 
 def _test_equatable(varA, varB, varC):
@@ -640,38 +640,38 @@ def test_bool():
     # test nullable
     v1 = objcls.nullable(None)
     assert v1.get_value() is None
-    assert v1.is_none().get_value() is True  # type: ignore - schema fix required
-    assert v1.is_not_none().get_value() is False  # type: ignore - schema fix required
+    assert v1.is_none().get_value() is True  # type: ignore - issue #604
+    assert v1.is_not_none().get_value() is False  # type: ignore - issue #604
     v2 = objcls.nullable(permutations[0][0])
     assert v2.get_value() is not None
-    assert v2.is_none().get_value() is False  # type: ignore - schema fix required
-    assert v2.is_not_none().get_value() is True  # type: ignore - schema fix required
+    assert v2.is_none().get_value() is False  # type: ignore - issue #604
+    assert v2.is_not_none().get_value() is True  # type: ignore - issue #604
 
     # test encoding
     _test_encoding(objcls, True, True)
     _test_encoding(objcls, False, False)
 
     # test and operation
-    assert (Bool(True) & Bool(True)).get_value() is True  # type: ignore - schema fix required
-    assert (Bool(True) & Bool(False)).get_value() is False  # type: ignore - schema fix required
-    assert (Bool(False) & Bool(True)).get_value() is False  # type: ignore - schema fix required
-    assert (Bool(False) & Bool(False)).get_value() is False  # type: ignore - schema fix required
+    assert (Bool(True) & Bool(True)).get_value() is True  # type: ignore - issue #604
+    assert (Bool(True) & Bool(False)).get_value() is False  # type: ignore - issue #604
+    assert (Bool(False) & Bool(True)).get_value() is False  # type: ignore - issue #604
+    assert (Bool(False) & Bool(False)).get_value() is False  # type: ignore - issue #604
 
     # test or operation
-    assert (Bool(True) | Bool(True)).get_value() is True  # type: ignore - schema fix required
-    assert (Bool(True) | Bool(False)).get_value() is True  # type: ignore - schema fix required
-    assert (Bool(False) | Bool(True)).get_value() is True  # type: ignore - schema fix required
-    assert (Bool(False) | Bool(False)).get_value() is False  # type: ignore - schema fix required
+    assert (Bool(True) | Bool(True)).get_value() is True  # type: ignore - issue #604
+    assert (Bool(True) | Bool(False)).get_value() is True  # type: ignore - issue #604
+    assert (Bool(False) | Bool(True)).get_value() is True  # type: ignore - issue #604
+    assert (Bool(False) | Bool(False)).get_value() is False  # type: ignore - issue #604
 
     # test xor operation
-    assert (Bool(True) ^ Bool(True)).get_value() is False  # type: ignore - schema fix required
-    assert (Bool(True) ^ Bool(False)).get_value() is True  # type: ignore - schema fix required
-    assert (Bool(False) ^ Bool(True)).get_value() is True  # type: ignore - schema fix required
-    assert (Bool(False) ^ Bool(False)).get_value() is False  # type: ignore - schema fix required
+    assert (Bool(True) ^ Bool(True)).get_value() is False  # type: ignore - issue #604
+    assert (Bool(True) ^ Bool(False)).get_value() is True  # type: ignore - issue #604
+    assert (Bool(False) ^ Bool(True)).get_value() is True  # type: ignore - issue #604
+    assert (Bool(False) ^ Bool(False)).get_value() is False  # type: ignore - issue #604
 
     # test negation operation
-    assert (~Bool(True)).get_value() is False  # type: ignore - schema fix required
-    assert (~Bool(False)).get_value() is True  # type: ignore - schema fix required
+    assert (~Bool(True)).get_value() is False  # type: ignore - issue #604
+    assert (~Bool(False)).get_value() is True  # type: ignore - issue #604
     assert (~Bool.symbolic()).to_dict() == {
         "op": "negate",
         "arg": {
@@ -712,20 +712,20 @@ def test_integer():
         _test_unsupported(objcls, permutations, op)
 
     # test equatable
-    assert (Integer.nullable(None) == Integer(1)).get_value() is False  # type: ignore - schema fix required
-    assert (Integer(1) == Integer.nullable(None)).get_value() is False  # type: ignore - schema fix required
-    assert (Integer.nullable(None) != Integer(1)).get_value() is True  # type: ignore - schema fix required
-    assert (Integer(1) != Integer.nullable(None)).get_value() is True  # type: ignore - schema fix required
+    assert (Integer.nullable(None) == Integer(1)).get_value() is False  # type: ignore - issue #604
+    assert (Integer(1) == Integer.nullable(None)).get_value() is False  # type: ignore - issue #604
+    assert (Integer.nullable(None) != Integer(1)).get_value() is True  # type: ignore - issue #604
+    assert (Integer(1) != Integer.nullable(None)).get_value() is True  # type: ignore - issue #604
 
     # test nullable
     v1 = objcls.nullable(None)
     assert v1.get_value() is None
-    assert v1.is_none().get_value() is True  # type: ignore - schema fix required
-    assert v1.is_not_none().get_value() is False  # type: ignore - schema fix required
+    assert v1.is_none().get_value() is True  # type: ignore - issue #604
+    assert v1.is_not_none().get_value() is False  # type: ignore - issue #604
     v2 = objcls.nullable(permutations[0][0])
     assert v2.get_value() is not None
-    assert v2.is_none().get_value() is False  # type: ignore - schema fix required
-    assert v2.is_not_none().get_value() is True  # type: ignore - schema fix required
+    assert v2.is_none().get_value() is False  # type: ignore - issue #604
+    assert v2.is_not_none().get_value() is True  # type: ignore - issue #604
 
     # test encoding
     _test_encoding(objcls, 10, 10)
@@ -759,12 +759,12 @@ def test_float():
     # test nullable
     v1 = objcls.nullable(None)
     assert v1.get_value() is None
-    assert v1.is_none().get_value() is True  # type: ignore - schema fix required
-    assert v1.is_not_none().get_value() is False  # type: ignore - schema fix required
+    assert v1.is_none().get_value() is True  # type: ignore - issue #604
+    assert v1.is_not_none().get_value() is False  # type: ignore - issue #604
     v2 = objcls.nullable(permutations[0][0])
     assert v2.get_value() is not None
-    assert v2.is_none().get_value() is False  # type: ignore - schema fix required
-    assert v2.is_not_none().get_value() is True  # type: ignore - schema fix required
+    assert v2.is_none().get_value() is False  # type: ignore - issue #604
+    assert v2.is_not_none().get_value() is True  # type: ignore - issue #604
 
     # test encoding
     _test_encoding(objcls, 1.23, 1.23)
@@ -802,12 +802,12 @@ def test_string():
     # test nullable
     v1 = objcls.nullable(None)
     assert v1.get_value() is None
-    assert v1.is_none().get_value() is True  # type: ignore - schema fix required
-    assert v1.is_not_none().get_value() is False  # type: ignore - schema fix required
+    assert v1.is_none().get_value() is True  # type: ignore - issue #604
+    assert v1.is_not_none().get_value() is False  # type: ignore - issue #604
     v2 = objcls.nullable(permutations[0][0])
     assert v2.get_value() is not None
-    assert v2.is_none().get_value() is False  # type: ignore - schema fix required
-    assert v2.is_not_none().get_value() is True  # type: ignore - schema fix required
+    assert v2.is_none().get_value() is False  # type: ignore - issue #604
+    assert v2.is_not_none().get_value() is True  # type: ignore - issue #604
 
     # test encoding
     _test_encoding(objcls, "hello", "hello")
@@ -853,12 +853,12 @@ def test_datetime():
     # test nullable
     v1 = objcls.nullable(None)
     assert v1.get_value() is None
-    assert v1.is_none().get_value() is True  # type: ignore - schema fix required
-    assert v1.is_not_none().get_value() is False  # type: ignore - schema fix required
+    assert v1.is_none().get_value() is True  # type: ignore - issue #604
+    assert v1.is_not_none().get_value() is False  # type: ignore - issue #604
     v2 = objcls.nullable(permutations[0][0])
     assert v2.get_value() is not None
-    assert v2.is_none().get_value() is False  # type: ignore - schema fix required
-    assert v2.is_not_none().get_value() is True  # type: ignore - schema fix required
+    assert v2.is_none().get_value() is False  # type: ignore - issue #604
+    assert v2.is_not_none().get_value() is True  # type: ignore - issue #604
 
     # test encoding
     _test_encoding(
@@ -908,12 +908,12 @@ def test_date():
     # test nullable
     v1 = objcls.nullable(None)
     assert v1.get_value() is None
-    assert v1.is_none().get_value() is True  # type: ignore - schema fix required
-    assert v1.is_not_none().get_value() is False  # type: ignore - schema fix required
+    assert v1.is_none().get_value() is True  # type: ignore - issue #604
+    assert v1.is_not_none().get_value() is False  # type: ignore - issue #604
     v2 = objcls.nullable(permutations[0][0])
     assert v2.get_value() is not None
-    assert v2.is_none().get_value() is False  # type: ignore - schema fix required
-    assert v2.is_not_none().get_value() is True  # type: ignore - schema fix required
+    assert v2.is_none().get_value() is False  # type: ignore - issue #604
+    assert v2.is_not_none().get_value() is True  # type: ignore - issue #604
 
     # test encoding
     _test_encoding(
@@ -949,12 +949,12 @@ def test_time():
     # test nullable
     v1 = objcls.nullable(None)
     assert v1.get_value() is None
-    assert v1.is_none().get_value() is True  # type: ignore - schema fix required
-    assert v1.is_not_none().get_value() is False  # type: ignore - schema fix required
+    assert v1.is_none().get_value() is True  # type: ignore - issue #604
+    assert v1.is_not_none().get_value() is False  # type: ignore - issue #604
     v2 = objcls.nullable(permutations[0][0])
     assert v2.get_value() is not None
-    assert v2.is_none().get_value() is False  # type: ignore - schema fix required
-    assert v2.is_not_none().get_value() is True  # type: ignore - schema fix required
+    assert v2.is_none().get_value() is False  # type: ignore - issue #604
+    assert v2.is_not_none().get_value() is True  # type: ignore - issue #604
 
     # test encoding
     _test_encoding(objcls, datetime.time(hour=1), "01:00:00")
@@ -988,12 +988,12 @@ def test_duration():
     # test nullable
     v1 = objcls.nullable(None)
     assert v1.get_value() is None
-    assert v1.is_none().get_value() is True  # type: ignore - schema fix required
-    assert v1.is_not_none().get_value() is False  # type: ignore - schema fix required
+    assert v1.is_none().get_value() is True  # type: ignore - issue #604
+    assert v1.is_not_none().get_value() is False  # type: ignore - issue #604
     v2 = objcls.nullable(permutations[0][0])
     assert v2.get_value() is not None
-    assert v2.is_none().get_value() is False  # type: ignore - schema fix required
-    assert v2.is_not_none().get_value() is True  # type: ignore - schema fix required
+    assert v2.is_none().get_value() is False  # type: ignore - issue #604
+    assert v2.is_not_none().get_value() is True  # type: ignore - issue #604
 
     # test encoding
     _test_encoding(objcls, datetime.timedelta(seconds=1), 1.0)
@@ -1023,12 +1023,12 @@ def test_point():
     # test nullable
     v1 = objcls.nullable(None)
     assert v1.get_value() is None
-    assert v1.is_none().get_value() is True  # type: ignore - schema fix required
-    assert v1.is_not_none().get_value() is False  # type: ignore - schema fix required
+    assert v1.is_none().get_value() is True  # type: ignore - issue #604
+    assert v1.is_not_none().get_value() is False  # type: ignore - issue #604
     v2 = objcls.nullable(permutations[0][0])
     assert v2.get_value() is not None
-    assert v2.is_none().get_value() is False  # type: ignore - schema fix required
-    assert v2.is_not_none().get_value() is True  # type: ignore - schema fix required
+    assert v2.is_none().get_value() is False  # type: ignore - issue #604
+    assert v2.is_not_none().get_value() is True  # type: ignore - issue #604
 
     # test encoding
     _test_encoding(objcls, (1, -1), (1, -1))
@@ -1063,12 +1063,12 @@ def test_multipoint():
     # test nullable
     v1 = objcls.nullable(None)
     assert v1.get_value() is None
-    assert v1.is_none().get_value() is True  # type: ignore - schema fix required
-    assert v1.is_not_none().get_value() is False  # type: ignore - schema fix required
+    assert v1.is_none().get_value() is True  # type: ignore - issue #604
+    assert v1.is_not_none().get_value() is False  # type: ignore - issue #604
     v2 = objcls.nullable(permutations[0][0])
     assert v2.get_value() is not None
-    assert v2.is_none().get_value() is False  # type: ignore - schema fix required
-    assert v2.is_not_none().get_value() is True  # type: ignore - schema fix required
+    assert v2.is_none().get_value() is False  # type: ignore - issue #604
+    assert v2.is_not_none().get_value() is True  # type: ignore - issue #604
 
     # test encoding
     _test_encoding(objcls, [(0, 0), (1, 1)], [(0, 0), (1, 1)])
@@ -1103,12 +1103,12 @@ def test_linestring():
     # test nullable
     v1 = objcls.nullable(None)
     assert v1.get_value() is None
-    assert v1.is_none().get_value() is True  # type: ignore - schema fix required
-    assert v1.is_not_none().get_value() is False  # type: ignore - schema fix required
+    assert v1.is_none().get_value() is True  # type: ignore - issue #604
+    assert v1.is_not_none().get_value() is False  # type: ignore - issue #604
     v2 = objcls.nullable(permutations[0][0])
     assert v2.get_value() is not None
-    assert v2.is_none().get_value() is False  # type: ignore - schema fix required
-    assert v2.is_not_none().get_value() is True  # type: ignore - schema fix required
+    assert v2.is_none().get_value() is False  # type: ignore - issue #604
+    assert v2.is_not_none().get_value() is True  # type: ignore - issue #604
 
     # test encoding
     _test_encoding(objcls, [(0, 0), (1, 1)], [(0, 0), (1, 1)])
@@ -1148,12 +1148,12 @@ def test_multilinestring():
     # test nullable
     v1 = objcls.nullable(None)
     assert v1.get_value() is None
-    assert v1.is_none().get_value() is True  # type: ignore - schema fix required
-    assert v1.is_not_none().get_value() is False  # type: ignore - schema fix required
+    assert v1.is_none().get_value() is True  # type: ignore - issue #604
+    assert v1.is_not_none().get_value() is False  # type: ignore - issue #604
     v2 = objcls.nullable(permutations[0][0])
     assert v2.get_value() is not None
-    assert v2.is_none().get_value() is False  # type: ignore - schema fix required
-    assert v2.is_not_none().get_value() is True  # type: ignore - schema fix required
+    assert v2.is_none().get_value() is False  # type: ignore - issue #604
+    assert v2.is_not_none().get_value() is True  # type: ignore - issue #604
 
     # test encoding
     _test_encoding(objcls, [[(0, 0), (1, 1)]], [[(0, 0), (1, 1)]])
@@ -1196,12 +1196,12 @@ def test_polygon():
     # test nullable
     v1 = objcls.nullable(None)
     assert v1.get_value() is None
-    assert v1.is_none().get_value() is True  # type: ignore - schema fix required
-    assert v1.is_not_none().get_value() is False  # type: ignore - schema fix required
+    assert v1.is_none().get_value() is True  # type: ignore - issue #604
+    assert v1.is_not_none().get_value() is False  # type: ignore - issue #604
     v2 = objcls.nullable(permutations[0][0])
     assert v2.get_value() is not None
-    assert v2.is_none().get_value() is False  # type: ignore - schema fix required
-    assert v2.is_not_none().get_value() is True  # type: ignore - schema fix required
+    assert v2.is_none().get_value() is False  # type: ignore - issue #604
+    assert v2.is_not_none().get_value() is True  # type: ignore - issue #604
 
     # test encoding
     _test_encoding(
@@ -1272,12 +1272,12 @@ def test_multipolygon():
     # test nullable
     v1 = objcls.nullable(None)
     assert v1.get_value() is None
-    assert v1.is_none().get_value() is True  # type: ignore - schema fix required
-    assert v1.is_not_none().get_value() is False  # type: ignore - schema fix required
+    assert v1.is_none().get_value() is True  # type: ignore - issue #604
+    assert v1.is_not_none().get_value() is False  # type: ignore - issue #604
     v2 = objcls.nullable(permutations[0][0])
     assert v2.get_value() is not None
-    assert v2.is_none().get_value() is False  # type: ignore - schema fix required
-    assert v2.is_not_none().get_value() is True  # type: ignore - schema fix required
+    assert v2.is_none().get_value() is False  # type: ignore - issue #604
+    assert v2.is_not_none().get_value() is True  # type: ignore - issue #604
 
     # test encoding
     _test_encoding(

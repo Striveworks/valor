@@ -245,7 +245,7 @@ def test_list():
     }
 
     # test decode from json dict
-    assert List[Float].decode_value([0.1, 0.2, 0.3]).get_value() == [  # type: ignore - schema fix required
+    assert List[Float].decode_value([0.1, 0.2, 0.3]).get_value() == [  # type: ignore - issue #604
         0.1,
         0.2,
         0.3,
@@ -388,12 +388,12 @@ def test_dictionary():
     # test nullable
     v1 = objcls.nullable(None)
     assert v1.get_value() is None
-    assert v1.is_none().get_value() is True  # type: ignore - schema fix required
-    assert v1.is_not_none().get_value() is False  # type: ignore - schema fix required
+    assert v1.is_none().get_value() is True  # type: ignore - issue #604
+    assert v1.is_not_none().get_value() is False  # type: ignore - issue #604
     v2 = objcls.nullable(permutations[0][0])
     assert v2.get_value() is not None
-    assert v2.is_none().get_value() is False  # type: ignore - schema fix required
-    assert v2.is_not_none().get_value() is True  # type: ignore - schema fix required
+    assert v2.is_none().get_value() is False  # type: ignore - issue #604
+    assert v2.is_not_none().get_value() is True  # type: ignore - issue #604
 
     # test encoding
     assert {
