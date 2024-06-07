@@ -82,7 +82,7 @@ def test__format_filter(
             Dataset.metadata["some_str"] == "foobar",
             Dataset.metadata["some_float"] >= 0.123,
             Dataset.metadata["some_datetime"] > datetime.timedelta(days=1),
-            Dataset.metadata["some_geospatial"].intersects(polygon),  # type: ignore - schema fix required
+            Dataset.metadata["some_geospatial"].intersects(polygon),  # type: ignore - issue #605
         ]
     )
 
