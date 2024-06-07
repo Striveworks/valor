@@ -193,7 +193,12 @@ def get_paginated_datasets(
 
     datasets = (
         db.query(models.Dataset)
-        .where(models.Dataset.id == datasets_subquery.c.id)
+        .where(
+            and_(
+                models.Dataset.id == datasets_subquery.c.id,
+                models.Dataset.status != enums.TableStatus.DELETING,
+            )
+        )
         .order_by(desc(models.Dataset.created_at))
         .offset(offset)
         .limit(limit)
@@ -232,7 +237,13 @@ def get_dataset_status(
     enums.TableStatus
         The status of the dataset.
     """
-    dataset = fetch_dataset(db, name)
+    dataset = (
+        db.query(models.Dataset)
+        .where(models.Dataset.name == name)
+        .one_or_none()
+    )
+    if dataset is None:
+        raise exceptions.DatasetDoesNotExistError(name)
     return enums.TableStatus(dataset.status)
 
 
@@ -291,7 +302,12 @@ def get_n_datums_in_dataset(db: Session, name: str) -> int:
     return (
         db.query(models.Datum)
         .join(models.Dataset)
-        .where(models.Dataset.name == name)
+        .where(
+            and_(
+                models.Dataset.name == name,
+                models.Dataset.status != enums.TableStatus.DELETING,
+            )
+        )
         .count()
     )
 
@@ -303,7 +319,12 @@ def get_n_groundtruth_annotations(db: Session, name: str) -> int:
         .join(models.GroundTruth)
         .join(models.Datum)
         .join(models.Dataset)
-        .where(models.Dataset.name == name)
+        .where(
+            and_(
+                models.Dataset.name == name,
+                models.Dataset.status != enums.TableStatus.DELETING,
+            )
+        )
         .count()
     )
 
@@ -317,6 +338,7 @@ def get_n_groundtruth_bounding_boxes_in_dataset(db: Session, name: str) -> int:
         .where(
             and_(
                 models.Dataset.name == name,
+                models.Dataset.status != enums.TableStatus.DELETING,
                 models.Annotation.box.isnot(None),
             )
         )
@@ -334,6 +356,7 @@ def get_n_groundtruth_polygons_in_dataset(db: Session, name: str) -> int:
         .where(
             and_(
                 models.Dataset.name == name,
+                models.Dataset.status != enums.TableStatus.DELETING,
                 models.Annotation.polygon.isnot(None),
             )
         )
@@ -351,6 +374,7 @@ def get_n_groundtruth_rasters_in_dataset(db: Session, name: str) -> int:
         .where(
             and_(
                 models.Dataset.name == name,
+                models.Dataset.status != enums.TableStatus.DELETING,
                 models.Annotation.raster.isnot(None),
             )
         )
@@ -381,7 +405,12 @@ def get_unique_task_types_in_dataset(
         .select_from(models.Annotation)
         .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
         .join(models.Dataset, models.Dataset.id == models.Datum.dataset_id)
-        .where(models.Dataset.name == name)
+        .where(
+            and_(
+                models.Dataset.name == name,
+                models.Dataset.status != enums.TableStatus.DELETING,
+            )
+        )
         .distinct()
         .all()
     )
@@ -396,7 +425,12 @@ def get_unique_datum_metadata_in_dataset(
     md = db.scalars(
         select(models.Datum.meta)
         .join(models.Dataset)
-        .where(models.Dataset.name == name)
+        .where(
+            and_(
+                models.Dataset.name == name,
+                models.Dataset.status != enums.TableStatus.DELETING,
+            )
+        )
         .distinct()
     ).all()
 
@@ -413,7 +447,12 @@ def get_unique_groundtruth_annotation_metadata_in_dataset(
         .join(models.GroundTruth)
         .join(models.Datum)
         .join(models.Dataset)
-        .where(models.Dataset.name == name)
+        .where(
+            and_(
+                models.Dataset.name == name,
+                models.Dataset.status != enums.TableStatus.DELETING,
+            )
+        )
         .distinct()
     ).all()
 
@@ -460,8 +499,8 @@ def delete_dataset(
     name : str
         The name of the dataset.
     """
-    set_dataset_status(db, name, enums.TableStatus.DELETING)
     dataset = fetch_dataset(db, name=name)
+    set_dataset_status(db, name, enums.TableStatus.DELETING)
 
     core.delete_evaluations(db=db, dataset_names=[name])
     core.delete_dataset_predictions(db, dataset)
