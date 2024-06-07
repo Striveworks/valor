@@ -101,8 +101,8 @@ def fetch_dataset(
         db.query(models.Dataset)
         .where(
             and_(
-                models.Dataset.name == name  # type: ignore https://github.com/microsoft/pyright/issues/5062
-                and models.Dataset.status != enums.TableStatus.DELETING  # type: ignore nhttps://github.com/microsoft/pyright/issues/5062
+                models.Dataset.name == name,
+                models.Dataset.status != enums.TableStatus.DELETING,
             )
         )
         .one_or_none()
@@ -230,7 +230,13 @@ def get_dataset_status(
     enums.TableStatus
         The status of the dataset.
     """
-    dataset = fetch_dataset(db, name)
+    dataset = (
+        db.query(models.Dataset)
+        .where(models.Dataset.name == name)
+        .one_or_none()
+    )
+    if dataset is None:
+        raise exceptions.DatasetDoesNotExistError(name)
     return enums.TableStatus(dataset.status)
 
 
