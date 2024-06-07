@@ -464,8 +464,8 @@ def delete_dataset(
     name : str
         The name of the dataset.
     """
-    set_dataset_status(db, name, enums.TableStatus.DELETING)
     dataset = fetch_dataset(db, name=name)
+    set_dataset_status(db, name, enums.TableStatus.DELETING)
 
     core.delete_evaluations(db=db, dataset_names=[name])
     core.delete_dataset_predictions(db, dataset)
