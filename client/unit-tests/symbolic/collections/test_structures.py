@@ -245,7 +245,7 @@ def test_list():
     }
 
     # test decode from json dict
-    assert List[Float].decode_value([0.1, 0.2, 0.3]).get_value() == [  # type: ignore
+    assert List[Float].decode_value([0.1, 0.2, 0.3]).get_value() == [  # type: ignore - schema fix required
         0.1,
         0.2,
         0.3,
@@ -267,13 +267,13 @@ def test_list():
 
     # test that untyped wrapper is not implemented
     with pytest.raises(TypeError):
-        List()  # type: ignore - intentionally missing args
+        List()  # type: ignore - testing
 
 
 def test_dictionary_value():
     # test cannot hold a value
     with pytest.raises(ValueError):
-        DictionaryValue(1)  # type: ignore - intentionally incorrect
+        DictionaryValue(1)  # type: ignore - testing
 
     # test symbol cannot already attribute
     with pytest.raises(ValueError) as e:
@@ -388,12 +388,12 @@ def test_dictionary():
     # test nullable
     v1 = objcls.nullable(None)
     assert v1.get_value() is None
-    assert v1.is_none().get_value() is True  # type: ignore - always a bool
-    assert v1.is_not_none().get_value() is False  # type: ignore - always a bool
+    assert v1.is_none().get_value() is True  # type: ignore - schema fix required
+    assert v1.is_not_none().get_value() is False  # type: ignore - schema fix required
     v2 = objcls.nullable(permutations[0][0])
     assert v2.get_value() is not None
-    assert v2.is_none().get_value() is False  # type: ignore - always a bool
-    assert v2.is_not_none().get_value() is True  # type: ignore - always a bool
+    assert v2.is_none().get_value() is False  # type: ignore - schema fix required
+    assert v2.is_not_none().get_value() is True  # type: ignore - schema fix required
 
     # test encoding
     assert {

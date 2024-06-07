@@ -8,7 +8,7 @@ from sqlalchemy.sql import func
 
 from valor_api import enums, logger, schemas
 from valor_api.backend import core, models
-from valor_api.backend.query import Query
+from valor_api.backend.query import generate_select
 
 LabelMapType = list[list[list[str]]]
 
@@ -230,28 +230,39 @@ def create_metric_mappings(
     """
     ret = []
     for metric in metrics:
-        if hasattr(metric, "label"):
+        if isinstance(
+            metric,
+            (
+                schemas.APMetric,
+                schemas.ARMetric,
+                schemas.APMetricAveragedOverIOUs,
+                schemas.PrecisionMetric,
+                schemas.RecallMetric,
+                schemas.F1Metric,
+                schemas.IOUMetric,
+            ),
+        ):
             label = core.fetch_label(
                 db=db,
-                label=metric.label,  # type: ignore - https://github.com/microsoft/pylance-release/issues/2237
+                label=metric.label,
             )
 
             # create the label in the database if it doesn't exist
             # this is useful if the user maps existing labels to a non-existant grouping label
             if not label:
-                label_map = core.create_labels(db=db, labels=[metric.label])  # type: ignore - https://github.com/microsoft/pylance-release/issues/2237
+                label_map = core.create_labels(db=db, labels=[metric.label])
                 label_id = list(label_map.values())[0]
             else:
                 label_id = label.id
 
             ret.append(
                 metric.db_mapping(
-                    label_id=label_id,  # type: ignore - https://github.com/microsoft/pylance-release/issues/2237
+                    label_id=label_id,
                     evaluation_id=evaluation_id,
                 )
             )
         else:
-            ret.append(metric.db_mapping(evaluation_id=evaluation_id))  # type: ignore - unnecessary since we're checking for label attribute above
+            ret.append(metric.db_mapping(evaluation_id=evaluation_id))
 
     return ret
 
@@ -309,15 +320,12 @@ def log_evaluation_item_counts(
         The filter to be used to query groundtruths.
     """
     # get ground truth, prediction, annotation, and label counts
-    gt_subquery = (
-        Query(
-            models.Datum.id.label("datum_id"),
-            models.GroundTruth,
-        )
-        .filter(groundtruth_filter)
-        .groundtruths(as_subquery=False)
-        .alias()
-    )
+    gt_subquery = generate_select(
+        models.Datum.id.label("datum_id"),
+        models.GroundTruth,
+        filter_=groundtruth_filter,
+        label_source=models.GroundTruth,
+    ).alias()
 
     gts = db.execute(
         select(
@@ -333,15 +341,12 @@ def log_evaluation_item_counts(
     else:
         gt_datums, gt_annotation_id, gt_label_id = map(set, zip(*gts))
 
-    pd_subquery = (
-        Query(
-            models.Datum.id.label("datum_id"),
-            models.Prediction,
-        )
-        .filter(prediction_filter)
-        .predictions(as_subquery=False)
-        .alias()
-    )
+    pd_subquery = generate_select(
+        models.Datum.id.label("datum_id"),
+        models.Prediction,
+        filter_=prediction_filter,
+        label_source=models.Prediction,
+    ).alias()
 
     pds = db.execute(
         select(

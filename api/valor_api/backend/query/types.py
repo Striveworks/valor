@@ -1,3 +1,5 @@
+from typing import Type
+
 from valor_api.backend.models import (
     Annotation,
     Dataset,
@@ -10,13 +12,13 @@ from valor_api.backend.models import (
 )
 
 TableTypeAlias = (
-    Dataset
-    | Model
-    | Datum
-    | Annotation
-    | GroundTruth
-    | Prediction
-    | Label
-    | Embedding
+    Type[Dataset]
+    | Type[Model]
+    | Type[Datum]
+    | Type[Annotation]
+    | Type[GroundTruth]
+    | Type[Prediction]
+    | Type[Label]
+    | Type[Embedding]
 )
-LabelSourceAlias = GroundTruth | Prediction | Annotation
+LabelSourceAlias = Type[GroundTruth] | Type[Prediction] | Type[Annotation]

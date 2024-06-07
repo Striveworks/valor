@@ -76,7 +76,7 @@ def test_appendable_function(variables):
 
     # test case where too few args
     with pytest.raises(TypeError):
-        AppendableFunction(x)  # type: ignore - edge case test
+        AppendableFunction(x)  # type: ignore - testing
 
     # test that all appendable functions define a overloadable function
     assert issubclass(And, AppendableFunction)
@@ -201,7 +201,7 @@ def test_two_arg_function(variables):
 
     # test cases where too few args are provided
     with pytest.raises(TypeError):
-        TwoArgumentFunction(x)  # type: ignore - edge case test
+        TwoArgumentFunction(x)  # type: ignore - testing
     # test case where too many args are provided
     with pytest.raises(TypeError):
-        TwoArgumentFunction(x, y, z)  # type: ignore - edge case test
+        TwoArgumentFunction(x, y, z)  # type: ignore - testing

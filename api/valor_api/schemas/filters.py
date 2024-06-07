@@ -542,6 +542,23 @@ TwoArgFunction = (
 FunctionType = OneArgFunction | TwoArgFunction | NArgFunction
 
 
+class AdvancedFilter(BaseModel):
+    """
+    Filter schema that stores filters as logical trees under tables.
+
+    The intent is for this object to replace 'Filter' in a future PR.
+    """
+
+    datasets: FunctionType | None = None
+    models: FunctionType | None = None
+    datums: FunctionType | None = None
+    annotations: FunctionType | None = None
+    groundtruths: FunctionType | None = None
+    predictions: FunctionType | None = None
+    labels: FunctionType | None = None
+    embeddings: FunctionType | None = None
+
+
 #
 
 
@@ -1050,66 +1067,11 @@ class Filter(BaseModel):
         protected_namespaces=("protected_",),
     )
 
-
-# we want to pass a Filter as a query parameters instead of a body
-# so we make a new model `FilterQueryParams` where every value is a JSON string
-model_fields = Filter.model_fields
-model_def_dict = {kwarg: (str | None, None) for kwarg in model_fields}
-FilterQueryParams = create_model(
-    "FilterQueryParams",
-    __config__=ConfigDict(extra="forbid"),
-    **model_def_dict,  # type: ignore
-)
-
-
-def convert_filter_query_params_to_filter_obj(filter_query_params) -> Filter:
-    """Converts a `FilterQueryParams` object to a `Filter` object by
-    loading from JSON strings.
-
-    Parameters
-    ----------
-    filter_query_params : FilterQueryParams
-        The `FilterQueryParams` object to convert.
-
-    Returns
-    -------
-    Filter
-        The converted `Filter` object.
-    """
-    return Filter(
-        **{
-            k: json.loads(v if v is not None else "null")
-            for k, v in filter_query_params.model_dump().items()
-        }
-    )
-
-
-#
-
-
-class AdvancedFilter(BaseModel):
-    """
-    New filter schema to replace the ab
-
-    The intent is for this object to replace 'Filter' in a future PR.
-    """
-
-    datasets: FunctionType | None = None
-    models: FunctionType | None = None
-    datums: FunctionType | None = None
-    annotations: FunctionType | None = None
-    groundtruths: FunctionType | None = None
-    predictions: FunctionType | None = None
-    labels: FunctionType | None = None
-    embeddings: FunctionType | None = None
-
-    @classmethod
-    def from_simple_filter(
-        cls,
-        filter_: Filter,
+    def to_advanced_filter(
+        self,
         ignore_groundtruths: bool = False,
         ignore_predictions: bool = False,
-    ):
+    ) -> AdvancedFilter:
         def filter_equatable(
             name: str,
             values: list[str] | list[TaskType] | list[int],
@@ -1288,92 +1250,90 @@ class AdvancedFilter(BaseModel):
         label_scores = None
         label_ids = None
 
-        if filter_.dataset_names:
+        if self.dataset_names:
             dataset_names = filter_equatable(
-                name="dataset.name", values=filter_.dataset_names
+                name="dataset.name", values=self.dataset_names
             )
-        if filter_.dataset_metadata:
+        if self.dataset_metadata:
             dataset_metadata = filter_metadata(
-                name="dataset.metadata", values=filter_.dataset_metadata
+                name="dataset.metadata", values=self.dataset_metadata
             )
-        if filter_.model_names:
+        if self.model_names:
             model_names = filter_equatable(
-                name="model.name", values=filter_.model_names
+                name="model.name", values=self.model_names
             )
-        if filter_.model_metadata:
+        if self.model_metadata:
             model_metadata = filter_metadata(
-                name="model.metadata", values=filter_.model_metadata
+                name="model.metadata", values=self.model_metadata
             )
-        if filter_.datum_uids:
+        if self.datum_uids:
             datum_uids = filter_equatable(
-                name="datum.uid", values=filter_.datum_uids
+                name="datum.uid", values=self.datum_uids
             )
-        if filter_.datum_metadata:
+        if self.datum_metadata:
             datum_metadata = filter_metadata(
-                name="datum.metadata", values=filter_.datum_metadata
+                name="datum.metadata", values=self.datum_metadata
             )
-        if filter_.task_types:
-            annotation_task_types = filter_task_types(
-                values=filter_.task_types
-            )
-        if filter_.annotation_metadata:
+        if self.task_types:
+            annotation_task_types = filter_task_types(values=self.task_types)
+        if self.annotation_metadata:
             annotation_metadata = filter_metadata(
-                name="annotation.metadata", values=filter_.annotation_metadata
+                name="annotation.metadata", values=self.annotation_metadata
             )
-        if filter_.require_bounding_box is not None:
+        if self.require_bounding_box is not None:
             annotation_box = annotation_geometry_exist(
                 type_str="box",
                 name="annotation.bounding_box",
-                exists=filter_.require_bounding_box,
+                exists=self.require_bounding_box,
             )
-        if filter_.bounding_box_area:
+        if self.bounding_box_area:
             annotation_box_area = filter_numerics(
                 type_str="box",
                 name="annotation.bounding_box",
                 attribute="area",
-                values=filter_.bounding_box_area,
+                values=self.bounding_box_area,
             )
-        if filter_.require_polygon is not None:
+        if self.require_polygon is not None:
             annotation_polygon = annotation_geometry_exist(
                 type_str="polygon",
                 name="annotation.polygon",
-                exists=filter_.require_polygon,
+                exists=self.require_polygon,
             )
-        if filter_.polygon_area:
+        if self.polygon_area:
             annotation_polygon_area = filter_numerics(
                 type_str="polygon",
                 name="annotation.polygon",
                 attribute="area",
-                values=filter_.polygon_area,
+                values=self.polygon_area,
             )
-        if filter_.require_raster is not None:
+        if self.require_raster is not None:
             annotation_raster = annotation_geometry_exist(
                 type_str="raster",
                 name="annotation.raster",
-                exists=filter_.require_raster,
+                exists=self.require_raster,
             )
-        if filter_.raster_area:
+        if self.raster_area:
             annotation_raster_area = filter_numerics(
                 type_str="raster",
                 name="annotation.raster",
                 attribute="area",
-                values=filter_.raster_area,
+                values=self.raster_area,
             )
-        if filter_.labels:
-            labels = filter_labels(filter_.labels)
-        if filter_.label_keys:
+        if self.labels:
+            labels = filter_labels(self.labels)
+        if self.label_keys:
             label_keys = filter_equatable(
-                name="label.key", values=filter_.label_keys
+                name="label.key", values=self.label_keys
             )
-        if filter_.label_scores:
+        if self.label_scores:
             label_scores = filter_numerics(
                 type_str="float",
                 name="label.score",
-                values=filter_.label_scores,
+                values=self.label_scores,
             )
-        if filter_.label_ids:
+        if self.label_ids:
             label_ids = filter_equatable(
-                name="label.id", values=filter_.label_ids, type_str="integer"
+                name="label.id", values=self.label_ids, type_str="integer"
             )
 
         def and_if_list(values: list[FunctionType]) -> FunctionType | None:
@@ -1484,7 +1444,7 @@ class AdvancedFilter(BaseModel):
             ]
         )
 
-        f = cls()
+        f = AdvancedFilter()
         if ignore_groundtruths:
             f.predictions = prediction_filter
         elif ignore_predictions:
@@ -1496,3 +1456,36 @@ class AdvancedFilter(BaseModel):
             f.datasets = dataset_filter
 
         return f
+
+
+# we want to pass a Filter as a query parameters instead of a body
+# so we make a new model `FilterQueryParams` where every value is a JSON string
+model_fields = Filter.model_fields
+model_def_dict = {kwarg: (str | None, None) for kwarg in model_fields}
+FilterQueryParams = create_model(
+    "FilterQueryParams",
+    __config__=ConfigDict(extra="forbid"),
+    **model_def_dict,  # type: ignore
+)
+
+
+def convert_filter_query_params_to_filter_obj(filter_query_params) -> Filter:
+    """Converts a `FilterQueryParams` object to a `Filter` object by
+    loading from JSON strings.
+
+    Parameters
+    ----------
+    filter_query_params : FilterQueryParams
+        The `FilterQueryParams` object to convert.
+
+    Returns
+    -------
+    Filter
+        The converted `Filter` object.
+    """
+    return Filter(
+        **{
+            k: json.loads(v if v is not None else "null")
+            for k, v in filter_query_params.model_dump().items()
+        }
+    )

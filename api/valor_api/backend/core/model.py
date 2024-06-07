@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from valor_api import api_utils, exceptions, schemas
 from valor_api.backend import core, models
-from valor_api.backend.query import Query
+from valor_api.backend.query import generate_select
 from valor_api.enums import ModelStatus, TableStatus
 
 
@@ -182,7 +182,11 @@ def get_paginated_models(
             "Offset should be an int greater than or equal to zero. Limit should be an int greater than or equal to -1."
         )
 
-    subquery = Query(models.Model.id.label("id")).filter(filters).any()
+    subquery = generate_select(
+        models.Model.id.label("id"),
+        filter_=filters,
+        label_source=models.Prediction,
+    ).subquery()
 
     count = (
         db.query(func.count(models.Model.id))

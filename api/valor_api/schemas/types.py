@@ -1,5 +1,5 @@
 import math
-from typing import Union
+from typing import Any, Optional, Union
 
 from pydantic import (
     BaseModel,
@@ -332,7 +332,9 @@ class Annotation(BaseModel):
 
     @field_validator("is_instance")
     @classmethod
-    def _validate_is_instance(cls, is_instance: bool | None, values: any) -> bool | None:  # type: ignore - pydantic field validator
+    def _validate_is_instance(
+        cls, is_instance: bool | None, values: Any
+    ) -> Optional[bool]:
         """Validates that is_instance was used correctly."""
         if is_instance is True and (
             values.data["raster"] is None
@@ -352,21 +354,24 @@ class Annotation(BaseModel):
         return v
 
     @field_serializer("bounding_box")
-    def serialize_bounding_box(bounding_box: Box | None) -> dict | None:  # type: ignore - pydantic field_serializer
+    @staticmethod
+    def serialize_bounding_box(bounding_box: Box | None) -> Optional[dict]:
         """Serializes the 'bounding_box' attribute."""
         if bounding_box is None:
             return None
         return bounding_box.model_dump()["value"]
 
     @field_serializer("polygon")
-    def serialize_polygon(polygon: Polygon | None) -> dict | None:  # type: ignore - pydantic field_serializer
+    @staticmethod
+    def serialize_polygon(polygon: Polygon | None) -> Optional[dict]:
         """Serializes the 'polygon' attribute."""
         if polygon is None:
             return None
         return polygon.model_dump()["value"]
 
     @field_serializer("raster")
-    def serialize_raster(raster: Raster | None) -> dict | None:  # type: ignore - pydantic field_serializer
+    @staticmethod
+    def serialize_raster(raster: Raster | None) -> Optional[dict]:
         """Serializes the 'raster' attribute."""
         if raster is None:
             return None

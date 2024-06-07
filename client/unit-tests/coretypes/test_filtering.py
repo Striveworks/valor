@@ -27,11 +27,15 @@ def polygon() -> Polygon:
 
 
 @pytest.fixture
-def geojson(polygon: Polygon):
+def geojson(
+    polygon: Polygon,
+) -> dict[str, str | list[list[tuple[float, float]]]]:
     return {"type": "Polygon", "coordinates": polygon.get_value()}
 
 
-def test__format_filter(geojson, polygon):
+def test__format_filter(
+    geojson: dict[str, str | list[list[tuple[float, float]]]], polygon: Polygon
+):
 
     filter_object = Filter(
         dataset_names=["a", "b", "c"],
@@ -76,7 +80,7 @@ def test__format_filter(geojson, polygon):
             Dataset.metadata["some_str"] == "foobar",
             Dataset.metadata["some_float"] >= 0.123,
             Dataset.metadata["some_datetime"] > datetime.timedelta(days=1),
-            Dataset.metadata["some_geospatial"].intersects(polygon),  # type: ignore
+            Dataset.metadata["some_geospatial"].intersects(polygon),  # type: ignore - schema fix required
         ]
     )
 

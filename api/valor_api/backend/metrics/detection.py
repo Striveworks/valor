@@ -19,7 +19,7 @@ from valor_api.backend.metrics.metric_utils import (
     log_evaluation_item_counts,
     validate_computation,
 )
-from valor_api.backend.query import Query
+from valor_api.backend.query import generate_query, generate_select
 from valor_api.enums import AnnotationType
 
 
@@ -428,47 +428,43 @@ def _compute_detection_metrics(
     )
 
     # Join gt, datum, annotation, label. Map grouper_ids to each label_id.
-    gt = (
-        Query(
-            models.Dataset.name.label("dataset_name"),
-            models.GroundTruth.id.label("id"),
-            models.GroundTruth.annotation_id.label("annotation_id"),
-            models.GroundTruth.label_id.label("label_id"),
-            models.Annotation.datum_id.label("datum_id"),
-            models.Datum.uid.label("datum_uid"),
-            case(
-                grouper_mappings["label_id_to_grouper_id_mapping"],
-                value=models.GroundTruth.label_id,
-            ).label("label_id_grouper"),
-            _annotation_type_to_geojson(target_type, models.Annotation).label(
-                "geojson"
-            ),
-        )
-        .filter(groundtruth_filter)
-        .groundtruths("groundtruths")
-    )
+    gt = generate_select(
+        models.Dataset.name.label("dataset_name"),
+        models.GroundTruth.id.label("id"),
+        models.GroundTruth.annotation_id.label("annotation_id"),
+        models.GroundTruth.label_id.label("label_id"),
+        models.Annotation.datum_id.label("datum_id"),
+        models.Datum.uid.label("datum_uid"),
+        case(
+            grouper_mappings["label_id_to_grouper_id_mapping"],
+            value=models.GroundTruth.label_id,
+        ).label("label_id_grouper"),
+        _annotation_type_to_geojson(target_type, models.Annotation).label(
+            "geojson"
+        ),
+        filter_=groundtruth_filter,
+        label_source=models.GroundTruth,
+    ).subquery("groundtruths")
 
     # Join pd, datum, annotation, label
-    pd = (
-        Query(
-            models.Dataset.name.label("dataset_name"),
-            models.Prediction.id.label("id"),
-            models.Prediction.annotation_id.label("annotation_id"),
-            models.Prediction.label_id.label("label_id"),
-            models.Prediction.score.label("score"),
-            models.Annotation.datum_id.label("datum_id"),
-            models.Datum.uid.label("datum_uid"),
-            case(
-                grouper_mappings["label_id_to_grouper_id_mapping"],
-                value=models.Prediction.label_id,
-            ).label("label_id_grouper"),
-            _annotation_type_to_geojson(target_type, models.Annotation).label(
-                "geojson"
-            ),
-        )
-        .filter(prediction_filter)
-        .predictions("predictions")
-    )
+    pd = generate_select(
+        models.Dataset.name.label("dataset_name"),
+        models.Prediction.id.label("id"),
+        models.Prediction.annotation_id.label("annotation_id"),
+        models.Prediction.label_id.label("label_id"),
+        models.Prediction.score.label("score"),
+        models.Annotation.datum_id.label("datum_id"),
+        models.Datum.uid.label("datum_uid"),
+        case(
+            grouper_mappings["label_id_to_grouper_id_mapping"],
+            value=models.Prediction.label_id,
+        ).label("label_id_grouper"),
+        _annotation_type_to_geojson(target_type, models.Annotation).label(
+            "geojson"
+        ),
+        filter_=prediction_filter,
+        label_source=models.Prediction,
+    ).subquery("predictions")
 
     joint = (
         select(
@@ -491,9 +487,9 @@ def _compute_detection_metrics(
             pd.c.annotation_id.label("pd_ann_id"),
             pd.c.score.label("score"),
         )
-        .select_from(pd)  # type: ignore - SQLAlchemy type issue
+        .select_from(pd)
         .outerjoin(
-            gt,  # type: ignore - SQLAlchemy type issue
+            gt,
             and_(
                 pd.c.datum_id == gt.c.datum_id,
                 pd.c.label_id_grouper == gt.c.label_id_grouper,
@@ -601,8 +597,8 @@ def _compute_detection_metrics(
             )
 
     # get pds not appearing
-    predictions = db.query(
-        Query(
+    predictions = (
+        generate_query(
             models.Prediction.id,
             models.Prediction.score,
             models.Dataset.name,
@@ -610,12 +606,13 @@ def _compute_detection_metrics(
                 grouper_mappings["label_id_to_grouper_id_mapping"],
                 value=models.Prediction.label_id,
             ).label("label_id_grouper"),
+            db=db,
+            filter_=prediction_filter,
+            label_source=models.Prediction,
         )
-        .filter(prediction_filter)
-        .predictions(as_subquery=False)
-        .where(models.Prediction.id.notin_(pd_set))  # type: ignore - SQLAlchemy type issue
-        .subquery()
-    ).all()
+        .where(models.Prediction.id.notin_(pd_set))
+        .all()
+    )
 
     for pd_id, score, dataset_name, grouper_id in predictions:
         if grouper_id in ranking and pd_id not in pd_set:
@@ -638,22 +635,21 @@ def _compute_detection_metrics(
     groundtruths_per_grouper = defaultdict(list)
     number_of_groundtruths_per_grouper = defaultdict(int)
 
-    groundtruths = db.query(
-        Query(
-            models.GroundTruth.id,
-            case(
-                grouper_mappings["label_id_to_grouper_id_mapping"],
-                value=models.GroundTruth.label_id,
-            ).label("label_id_grouper"),
-            models.Datum.uid.label("datum_uid"),
-            models.Dataset.name.label("dataset_name"),
-            _annotation_type_to_geojson(target_type, models.Annotation).label(
-                "gt_geojson"
-            ),
-        )
-        .filter(groundtruth_filter)
-        .groundtruths()  # type: ignore - SQLAlchemy type issue
-    ).all()  # type: ignore - SQLAlchemy type issue
+    groundtruths = generate_query(
+        models.GroundTruth.id,
+        case(
+            grouper_mappings["label_id_to_grouper_id_mapping"],
+            value=models.GroundTruth.label_id,
+        ).label("label_id_grouper"),
+        models.Datum.uid.label("datum_uid"),
+        models.Dataset.name.label("dataset_name"),
+        _annotation_type_to_geojson(target_type, models.Annotation).label(
+            "gt_geojson"
+        ),
+        db=db,
+        filter_=groundtruth_filter,
+        label_source=models.GroundTruth,
+    ).all()
 
     for gt_id, grouper_id, datum_uid, dset_name, gt_geojson in groundtruths:
         # we're ok with duplicates since they indicate multiple groundtruths for a given dataset/datum_id
@@ -662,8 +658,11 @@ def _compute_detection_metrics(
         )
         number_of_groundtruths_per_grouper[grouper_id] += 1
 
+    if parameters.metrics_to_return is None:
+        raise RuntimeError("Metrics to return should always contains values.")
+
     # Optionally compute precision-recall curves
-    if "PrecisionRecallCurve" in parameters.metrics_to_return:  # type: ignore - metrics_to_return is guaranteed not to be None
+    if "PrecisionRecallCurve" in parameters.metrics_to_return:
         false_positive_entries = db.query(
             select(
                 joint.c.dataset_name,
@@ -816,10 +815,10 @@ def _compute_mean_detection_metrics_from_aps(
     # dictionary for mapping an iou threshold to set of APs
     vals = defaultdict(lambda: defaultdict(list))
     for ap in ap_scores:
-        if hasattr(ap, "iou"):
-            iou = ap.iou  # type: ignore - pyright doesn't consider hasattr checks
+        if isinstance(ap, schemas.APMetric):
+            iou = ap.iou
         else:
-            iou = frozenset(ap.ious)  # type: ignore - pyright doesn't consider hasattr checks
+            iou = frozenset(ap.ious)
         vals[ap.label.key][iou].append(ap.value)
 
     # get mAP metrics at the individual IOUs
@@ -949,12 +948,22 @@ def compute_detection_metrics(*_, db: Session, evaluation_id: int):
 
     # fetch model and datasets
     datasets = (
-        db.query(Query(models.Dataset).filter(groundtruth_filter).any())  # type: ignore - SQLAlchemy type issue
+        generate_query(
+            models.Dataset,
+            db=db,
+            filter_=groundtruth_filter,
+            label_source=models.GroundTruth,
+        )
         .distinct()
         .all()
     )
     model = (
-        db.query(Query(models.Model).filter(prediction_filter).any())  # type: ignore - SQLAlchemy type issue
+        generate_query(
+            models.Model,
+            db=db,
+            filter_=prediction_filter,
+            label_source=models.Prediction,
+        )
         .distinct()
         .one_or_none()
     )

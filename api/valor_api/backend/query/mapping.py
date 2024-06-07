@@ -68,7 +68,7 @@ def _recursive_select_to_table_names(
     if isinstance(argument, Table):
         return [argument.name]
     elif isinstance(argument, DeclarativeMeta):
-        return _recursive_select_to_table_names(argument.__table__)  # type: ignore - sqlalchemy
+        return _recursive_select_to_table_names(argument.__table__)  # type: ignore - sqlalchemy issue
     elif isinstance(argument, InstrumentedAttribute):
         return _recursive_select_to_table_names(argument.table)
     elif isinstance(argument, UnaryExpression):
