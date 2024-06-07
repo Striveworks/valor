@@ -592,8 +592,11 @@ class ROCAUCMetric(BaseModel):
         ----------
         A mapping dictionary.
         """
-        value = self.value if self.value is not None else -1
-        value = value if not np.isnan(value) else -1
+        value = (
+            self.value
+            if (self.value is not None and not np.isnan(self.value))
+            else -1
+        )
         return {
             "value": value,
             "type": "ROCAUC",
