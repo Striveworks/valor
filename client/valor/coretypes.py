@@ -910,7 +910,6 @@ class Model(StaticCollection):
                 label_map=self._create_label_map(label_map=label_map),
                 metrics_to_return=metrics_to_return,
             ),
-            meta={},
         )
 
         # create evaluation
@@ -989,7 +988,6 @@ class Model(StaticCollection):
             model_names=[self.name],  # type: ignore
             datum_filter=datum_filter,
             parameters=parameters,
-            meta={},
         )
 
         # create evaluation
@@ -1039,7 +1037,6 @@ class Model(StaticCollection):
                 label_map=self._create_label_map(label_map=label_map),
                 metrics_to_return=metrics_to_return,
             ),
-            meta={},
         )
 
         # create evaluation

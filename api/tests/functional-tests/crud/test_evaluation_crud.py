@@ -34,7 +34,6 @@ def test_evaluation_creation_exceptions(db: Session):
                 parameters=schemas.EvaluationParameters(
                     task_type=enums.TaskType.CLASSIFICATION
                 ),
-                meta=None,
             ),
             allow_retries=False,
         )
@@ -50,7 +49,6 @@ def test_evaluation_creation_exceptions(db: Session):
                 parameters=schemas.EvaluationParameters(
                     task_type=enums.TaskType.CLASSIFICATION
                 ),
-                meta=None,
             ),
             allow_retries=False,
         )
@@ -68,7 +66,6 @@ def test_evaluation_creation_exceptions(db: Session):
                 parameters=schemas.EvaluationParameters(
                     task_type=enums.TaskType.CLASSIFICATION
                 ),
-                meta=None,
             ),
             allow_retries=False,
         )
@@ -84,7 +81,6 @@ def test_evaluation_creation_exceptions(db: Session):
                 parameters=schemas.EvaluationParameters(
                     task_type=enums.TaskType.CLASSIFICATION
                 ),
-                meta=None,
             ),
             allow_retries=False,
         )
@@ -116,7 +112,6 @@ def test_evaluation_creation_exceptions(db: Session):
             parameters=schemas.EvaluationParameters(
                 task_type=enums.TaskType.CLASSIFICATION
             ),
-            meta=None,
         ),
         allow_retries=False,
     )
@@ -169,7 +164,6 @@ def test_restart_failed_evaluation(db: Session):
             parameters=schemas.EvaluationParameters(
                 task_type=enums.TaskType.CLASSIFICATION
             ),
-            meta=None,
         ),
         allow_retries=False,
     )
@@ -194,7 +188,6 @@ def test_restart_failed_evaluation(db: Session):
             parameters=schemas.EvaluationParameters(
                 task_type=enums.TaskType.CLASSIFICATION
             ),
-            meta=None,
         ),
         allow_retries=False,
     )
@@ -211,7 +204,6 @@ def test_restart_failed_evaluation(db: Session):
             parameters=schemas.EvaluationParameters(
                 task_type=enums.TaskType.CLASSIFICATION
             ),
-            meta=None,
         ),
         allow_retries=True,
     )
@@ -228,7 +220,6 @@ def test_restart_failed_evaluation(db: Session):
             parameters=schemas.EvaluationParameters(
                 task_type=enums.TaskType.CLASSIFICATION
             ),
-            meta=None,
         ),
         allow_retries=False,
     )

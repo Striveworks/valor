@@ -199,7 +199,6 @@ def test_model_status_with_evaluations(
             parameters=schemas.EvaluationParameters(
                 task_type=enums.TaskType.CLASSIFICATION,
             ),
-            meta={},
         ),
     )
     assert len(created) == 1
