@@ -123,8 +123,9 @@ class EvaluationRequest(BaseModel):
         Any parameters that are used to modify an evaluation method.
     """
 
+    dataset_names: list[str]
     model_names: list[str]
-    datum_filter: Filter
+    filter: Filter
     parameters: EvaluationParameters
 
     # pydantic setting
@@ -132,28 +133,6 @@ class EvaluationRequest(BaseModel):
         extra="forbid",
         protected_namespaces=("protected_",),
     )
-
-    @model_validator(mode="after")
-    @classmethod
-    def _validate_request(cls, values):
-        """Validate the request."""
-
-        # verify filters do not contain task type.
-        if values.datum_filter.task_types is not None:
-            raise ValueError(
-                "`datum_filter` should not define the task_types constraint. Please set this in evaluation `parameters`."
-            )
-
-        # verify `model_names` is of type list[str]
-        if isinstance(values.model_names, list):
-            if len(values.model_names) == 0:
-                raise ValueError(
-                    "`model_names` should specify at least one model."
-                )
-        elif isinstance(values.model_names, str):
-            values.model_names = [values.model_names]
-
-        return values
 
 
 class EvaluationResponse(BaseModel):
