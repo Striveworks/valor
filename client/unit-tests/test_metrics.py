@@ -51,6 +51,8 @@ def combine_tps_fps_thresholds(
         tps[k] = curr1 + curr2
         k += 1
 
+    fps = np.arange(1, ret_length + 1) - tps
+
     return tps, fps, thresholds
 
 
@@ -81,4 +83,4 @@ def test_combine_tps_fps_thresholds():
 
     np.testing.assert_equal(thresholds, np.array([0.9, 0.8, 0.7, 0.6, 0.5]))
     np.testing.assert_equal(tps, np.array([0, 1, 2, 2, 3]))
-    # np.testing.assert_equal(fps, np.array([1, 1, 1, 2, 2]))
+    np.testing.assert_equal(fps, np.array([1, 1, 1, 2, 2]))
