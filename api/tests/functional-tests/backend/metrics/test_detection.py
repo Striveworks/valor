@@ -5,8 +5,9 @@ from sqlalchemy.orm import Session
 from valor_api import crud, enums, schemas
 from valor_api.backend.metrics.detection import (
     RankedPair,
-    _compute_curves,
+    _compute_detailed_curves,
     _compute_detection_metrics,
+    _compute_detection_metrics_with_detailed_precision_recall_curve,
     compute_detection_metrics,
 )
 from valor_api.backend.models import (
@@ -29,7 +30,7 @@ def _round_dict(d: dict, prec: int = 3) -> None:
             _round_dict(v, prec)
 
 
-def test__compute_curves(db: Session):
+def test__compute_detailed_curves(db: Session):
     # these inputs are taken directly from test__compute_detection_metrics (below)
     sorted_ranked_pairs = {
         3262893736873277849: [
@@ -771,7 +772,7 @@ def test__compute_curves(db: Session):
         ],
     }
 
-    output = _compute_curves(
+    output = _compute_detailed_curves(
         sorted_ranked_pairs=sorted_ranked_pairs,
         grouper_mappings=grouper_mappings,
         groundtruths_per_grouper=groundtruths_per_grouper,
@@ -913,7 +914,7 @@ def test__compute_curves(db: Session):
     )
 
     # do a second test with a much higher iou_threshold
-    second_output = _compute_curves(
+    second_output = _compute_detailed_curves(
         sorted_ranked_pairs=sorted_ranked_pairs,
         grouper_mappings=grouper_mappings,
         groundtruths_per_grouper=groundtruths_per_grouper,
@@ -1050,7 +1051,7 @@ def test__compute_curves(db: Session):
     )
 
     # repeat the above, but with a higher pr_max_curves_example
-    second_output = _compute_curves(
+    second_output = _compute_detailed_curves(
         sorted_ranked_pairs=sorted_ranked_pairs,
         grouper_mappings=grouper_mappings,
         groundtruths_per_grouper=groundtruths_per_grouper,
@@ -1105,7 +1106,7 @@ def test__compute_curves(db: Session):
     )
 
     # test behavior if pr_curve_max_examples == 0
-    second_output = _compute_curves(
+    second_output = _compute_detailed_curves(
         sorted_ranked_pairs=sorted_ranked_pairs,
         grouper_mappings=grouper_mappings,
         groundtruths_per_grouper=groundtruths_per_grouper,
@@ -1160,12 +1161,18 @@ def test__compute_curves(db: Session):
     )
 
 
-def test__compute_detection_metrics(
+def test__compute_detection(
     db: Session,
     groundtruths: list[list[GroundTruth]],
     predictions: list[list[Prediction]],
 ):
     iou_thresholds = set([round(0.5 + 0.05 * i, 2) for i in range(10)])
+
+    def _metric_to_dict(m) -> dict:
+        m = m.model_dump(exclude_none=True)
+        _round_dict(m, 3)
+        return m
+
     metrics = _compute_detection_metrics(
         db=db,
         parameters=schemas.EvaluationParameters(
@@ -1194,10 +1201,411 @@ def test__compute_detection_metrics(
         target_type=enums.AnnotationType.BOX,
     )
 
-    def _metric_to_dict(m) -> dict:
-        m = m.model_dump(exclude_none=True)
-        _round_dict(m, 3)
-        return m
+    ap_metrics = [
+        _metric_to_dict(m) for m in metrics if isinstance(m, schemas.APMetric)
+    ]
+    map_metrics = [
+        _metric_to_dict(m) for m in metrics if isinstance(m, schemas.mAPMetric)
+    ]
+    ap_metrics_ave_over_ious = [
+        _metric_to_dict(m)
+        for m in metrics
+        if isinstance(m, schemas.APMetricAveragedOverIOUs)
+    ]
+    map_metrics_ave_over_ious = [
+        _metric_to_dict(m)
+        for m in metrics
+        if isinstance(m, schemas.mAPMetricAveragedOverIOUs)
+    ]
+    ar_metrics = [
+        _metric_to_dict(m) for m in metrics if isinstance(m, schemas.ARMetric)
+    ]
+    mar_metrics = [
+        _metric_to_dict(m) for m in metrics if isinstance(m, schemas.mARMetric)
+    ]
+
+    # cf with torch metrics/pycocotools results listed here:
+    # https://github.com/Lightning-AI/metrics/blob/107dbfd5fb158b7ae6d76281df44bd94c836bfce/tests/unittests/detection/test_map.py#L231
+    expected_ap_metrics = [
+        {"iou": 0.5, "value": 0.505, "label": {"key": "class", "value": "2"}},
+        {"iou": 0.75, "value": 0.505, "label": {"key": "class", "value": "2"}},
+        {"iou": 0.5, "value": 0.79, "label": {"key": "class", "value": "49"}},
+        {
+            "iou": 0.75,
+            "value": 0.576,
+            "label": {"key": "class", "value": "49"},
+        },
+        {"iou": 0.5, "value": 1.0, "label": {"key": "class", "value": "0"}},
+        {"iou": 0.75, "value": 0.723, "label": {"key": "class", "value": "0"}},
+        {"iou": 0.5, "value": 1.0, "label": {"key": "class", "value": "1"}},
+        {"iou": 0.75, "value": 1.0, "label": {"key": "class", "value": "1"}},
+        {"iou": 0.5, "value": 1.0, "label": {"key": "class", "value": "4"}},
+        {"iou": 0.75, "value": 1.0, "label": {"key": "class", "value": "4"}},
+    ]
+    expected_map_metrics = [
+        {"iou": 0.5, "value": 0.859, "label_key": "class"},
+        {"iou": 0.75, "value": 0.761, "label_key": "class"},
+    ]
+    expected_ap_metrics_ave_over_ious = [
+        {
+            "ious": iou_thresholds,
+            "value": 0.454,
+            "label": {"key": "class", "value": "2"},
+        },
+        {
+            "ious": iou_thresholds,
+            "value": 0.555,  # note COCO had 0.556
+            "label": {"key": "class", "value": "49"},
+        },
+        {
+            "ious": iou_thresholds,
+            "value": 0.725,
+            "label": {"key": "class", "value": "0"},
+        },
+        {
+            "ious": iou_thresholds,
+            "value": 0.8,
+            "label": {"key": "class", "value": "1"},
+        },
+        {
+            "ious": iou_thresholds,
+            "value": 0.650,
+            "label": {"key": "class", "value": "4"},
+        },
+    ]
+    expected_map_metrics_ave_over_ious = [
+        {"ious": iou_thresholds, "value": 0.637, "label_key": "class"}
+    ]
+    expected_ar_metrics = [
+        {
+            "ious": iou_thresholds,
+            "value": 0.45,
+            "label": {"key": "class", "value": "2"},
+        },
+        {
+            "ious": iou_thresholds,
+            "value": -1,
+            "label": {"key": "class", "value": "3"},
+        },
+        {
+            "ious": iou_thresholds,
+            "value": 0.58,
+            "label": {"key": "class", "value": "49"},
+        },
+        {
+            "ious": iou_thresholds,
+            "value": 0.78,
+            "label": {"key": "class", "value": "0"},
+        },
+        {
+            "ious": iou_thresholds,
+            "value": 0.8,
+            "label": {"key": "class", "value": "1"},
+        },
+        {
+            "ious": iou_thresholds,
+            "value": 0.65,
+            "label": {"key": "class", "value": "4"},
+        },
+    ]
+    expected_mar_metrics = [
+        {"ious": iou_thresholds, "value": 0.652, "label_key": "class"},
+    ]
+
+    for metric_type, actual_metrics, expected_metrics in [
+        ("AP", ap_metrics, expected_ap_metrics),
+        ("mAP", map_metrics, expected_map_metrics),
+        (
+            "APAveOverIOUs",
+            ap_metrics_ave_over_ious,
+            expected_ap_metrics_ave_over_ious,
+        ),
+        (
+            "mAPAveOverIOUs",
+            map_metrics_ave_over_ious,
+            expected_map_metrics_ave_over_ious,
+        ),
+        ("AR", ar_metrics, expected_ar_metrics),
+        ("mAR", mar_metrics, expected_mar_metrics),
+    ]:
+
+        for m in actual_metrics:
+            assert m in expected_metrics, f"{metric_type} {m} not in expected"
+        for m in expected_metrics:
+            assert m in actual_metrics, f"{metric_type} {m} not in actual"
+
+    pr_metrics = metrics[-1].model_dump(exclude_none=True)
+
+    pr_expected_answers = {
+        # (class, 4)
+        ("class", "4", 0.05, "tp"): 2,
+        ("class", "4", 0.05, "fn"): 0,
+        ("class", "4", 0.25, "tp"): 1,
+        ("class", "4", 0.25, "fn"): 1,
+        ("class", "4", 0.55, "tp"): 0,
+        ("class", "4", 0.55, "fn"): 2,
+        # (class, 2)
+        ("class", "2", 0.05, "tp"): 1,
+        ("class", "2", 0.05, "fn"): 1,
+        ("class", "2", 0.75, "tp"): 0,
+        ("class", "2", 0.75, "fn"): 2,
+        # (class, 49)
+        ("class", "49", 0.05, "tp"): 8,
+        ("class", "49", 0.3, "tp"): 5,
+        ("class", "49", 0.5, "tp"): 4,
+        ("class", "49", 0.85, "tp"): 1,
+        # (class, 3)
+        ("class", "3", 0.05, "tp"): 0,
+        ("class", "3", 0.05, "fp"): 1,
+        # (class, 1)
+        ("class", "1", 0.05, "tp"): 1,
+        ("class", "1", 0.35, "tp"): 0,
+        # (class, 0)
+        ("class", "0", 0.05, "tp"): 5,
+        ("class", "0", 0.5, "tp"): 3,
+        ("class", "0", 0.95, "tp"): 1,
+        ("class", "0", 0.95, "fn"): 4,
+    }
+
+    for (
+        _,
+        value,
+        threshold,
+        metric,
+    ), expected_value in pr_expected_answers.items():
+        assert pr_metrics["value"][value][threshold][metric] == expected_value
+
+    # now add PrecisionRecallCurve
+    metrics = _compute_detection_metrics(
+        db=db,
+        parameters=schemas.EvaluationParameters(
+            task_type=enums.TaskType.OBJECT_DETECTION,
+            convert_annotations_to_type=enums.AnnotationType.BOX,
+            iou_thresholds_to_compute=list(iou_thresholds),
+            iou_thresholds_to_return=[0.5, 0.75],
+            metrics_to_return=[
+                "AP",
+                "AR",
+                "mAP",
+                "APAveragedOverIOUs",
+                "mAR",
+                "mAPAveragedOverIOUs",
+                "PrecisionRecallCurve",
+            ],
+        ),
+        prediction_filter=schemas.Filter(
+            model_names=["test_model"],
+            label_keys=["class"],
+        ),
+        groundtruth_filter=schemas.Filter(
+            dataset_names=["test_dataset"],
+            label_keys=["class"],
+        ),
+        target_type=enums.AnnotationType.BOX,
+    )
+
+    ap_metrics = [
+        _metric_to_dict(m) for m in metrics if isinstance(m, schemas.APMetric)
+    ]
+    map_metrics = [
+        _metric_to_dict(m) for m in metrics if isinstance(m, schemas.mAPMetric)
+    ]
+    ap_metrics_ave_over_ious = [
+        _metric_to_dict(m)
+        for m in metrics
+        if isinstance(m, schemas.APMetricAveragedOverIOUs)
+    ]
+    map_metrics_ave_over_ious = [
+        _metric_to_dict(m)
+        for m in metrics
+        if isinstance(m, schemas.mAPMetricAveragedOverIOUs)
+    ]
+    ar_metrics = [
+        _metric_to_dict(m) for m in metrics if isinstance(m, schemas.ARMetric)
+    ]
+    mar_metrics = [
+        _metric_to_dict(m) for m in metrics if isinstance(m, schemas.mARMetric)
+    ]
+
+    # cf with torch metrics/pycocotools results listed here:
+    # https://github.com/Lightning-AI/metrics/blob/107dbfd5fb158b7ae6d76281df44bd94c836bfce/tests/unittests/detection/test_map.py#L231
+    expected_ap_metrics = [
+        {"iou": 0.5, "value": 0.505, "label": {"key": "class", "value": "2"}},
+        {"iou": 0.75, "value": 0.505, "label": {"key": "class", "value": "2"}},
+        {"iou": 0.5, "value": 0.79, "label": {"key": "class", "value": "49"}},
+        {
+            "iou": 0.75,
+            "value": 0.576,
+            "label": {"key": "class", "value": "49"},
+        },
+        {"iou": 0.5, "value": 1.0, "label": {"key": "class", "value": "0"}},
+        {"iou": 0.75, "value": 0.723, "label": {"key": "class", "value": "0"}},
+        {"iou": 0.5, "value": 1.0, "label": {"key": "class", "value": "1"}},
+        {"iou": 0.75, "value": 1.0, "label": {"key": "class", "value": "1"}},
+        {"iou": 0.5, "value": 1.0, "label": {"key": "class", "value": "4"}},
+        {"iou": 0.75, "value": 1.0, "label": {"key": "class", "value": "4"}},
+    ]
+    expected_map_metrics = [
+        {"iou": 0.5, "value": 0.859, "label_key": "class"},
+        {"iou": 0.75, "value": 0.761, "label_key": "class"},
+    ]
+    expected_ap_metrics_ave_over_ious = [
+        {
+            "ious": iou_thresholds,
+            "value": 0.454,
+            "label": {"key": "class", "value": "2"},
+        },
+        {
+            "ious": iou_thresholds,
+            "value": 0.555,  # note COCO had 0.556
+            "label": {"key": "class", "value": "49"},
+        },
+        {
+            "ious": iou_thresholds,
+            "value": 0.725,
+            "label": {"key": "class", "value": "0"},
+        },
+        {
+            "ious": iou_thresholds,
+            "value": 0.8,
+            "label": {"key": "class", "value": "1"},
+        },
+        {
+            "ious": iou_thresholds,
+            "value": 0.650,
+            "label": {"key": "class", "value": "4"},
+        },
+    ]
+    expected_map_metrics_ave_over_ious = [
+        {"ious": iou_thresholds, "value": 0.637, "label_key": "class"}
+    ]
+    expected_ar_metrics = [
+        {
+            "ious": iou_thresholds,
+            "value": 0.45,
+            "label": {"key": "class", "value": "2"},
+        },
+        {
+            "ious": iou_thresholds,
+            "value": -1,
+            "label": {"key": "class", "value": "3"},
+        },
+        {
+            "ious": iou_thresholds,
+            "value": 0.58,
+            "label": {"key": "class", "value": "49"},
+        },
+        {
+            "ious": iou_thresholds,
+            "value": 0.78,
+            "label": {"key": "class", "value": "0"},
+        },
+        {
+            "ious": iou_thresholds,
+            "value": 0.8,
+            "label": {"key": "class", "value": "1"},
+        },
+        {
+            "ious": iou_thresholds,
+            "value": 0.65,
+            "label": {"key": "class", "value": "4"},
+        },
+    ]
+    expected_mar_metrics = [
+        {"ious": iou_thresholds, "value": 0.652, "label_key": "class"},
+    ]
+
+    for metric_type, actual_metrics, expected_metrics in [
+        ("AP", ap_metrics, expected_ap_metrics),
+        ("mAP", map_metrics, expected_map_metrics),
+        (
+            "APAveOverIOUs",
+            ap_metrics_ave_over_ious,
+            expected_ap_metrics_ave_over_ious,
+        ),
+        (
+            "mAPAveOverIOUs",
+            map_metrics_ave_over_ious,
+            expected_map_metrics_ave_over_ious,
+        ),
+        ("AR", ar_metrics, expected_ar_metrics),
+        ("mAR", mar_metrics, expected_mar_metrics),
+    ]:
+
+        for m in actual_metrics:
+            assert m in expected_metrics, f"{metric_type} {m} not in expected"
+        for m in expected_metrics:
+            assert m in actual_metrics, f"{metric_type} {m} not in actual"
+
+    pr_metrics = metrics[-1].model_dump(exclude_none=True)
+
+    pr_expected_answers = {
+        # (class, 4)
+        ("class", "4", 0.05, "tp"): 2,
+        ("class", "4", 0.05, "fn"): 0,
+        ("class", "4", 0.25, "tp"): 1,
+        ("class", "4", 0.25, "fn"): 1,
+        ("class", "4", 0.55, "tp"): 0,
+        ("class", "4", 0.55, "fn"): 2,
+        # (class, 2)
+        ("class", "2", 0.05, "tp"): 1,
+        ("class", "2", 0.05, "fn"): 1,
+        ("class", "2", 0.75, "tp"): 0,
+        ("class", "2", 0.75, "fn"): 2,
+        # (class, 49)
+        ("class", "49", 0.05, "tp"): 8,
+        ("class", "49", 0.3, "tp"): 5,
+        ("class", "49", 0.5, "tp"): 4,
+        ("class", "49", 0.85, "tp"): 1,
+        # (class, 3)
+        ("class", "3", 0.05, "tp"): 0,
+        ("class", "3", 0.05, "fp"): 1,
+        # (class, 1)
+        ("class", "1", 0.05, "tp"): 1,
+        ("class", "1", 0.35, "tp"): 0,
+        # (class, 0)
+        ("class", "0", 0.05, "tp"): 5,
+        ("class", "0", 0.5, "tp"): 3,
+        ("class", "0", 0.95, "tp"): 1,
+        ("class", "0", 0.95, "fn"): 4,
+    }
+
+    for (
+        _,
+        value,
+        threshold,
+        metric,
+    ), expected_value in pr_expected_answers.items():
+        assert pr_metrics["value"][value][threshold][metric] == expected_value
+
+    # finally, test the DetailedPrecisionRecallCurve version
+    metrics = _compute_detection_metrics_with_detailed_precision_recall_curve(
+        db=db,
+        parameters=schemas.EvaluationParameters(
+            task_type=enums.TaskType.OBJECT_DETECTION,
+            convert_annotations_to_type=enums.AnnotationType.BOX,
+            iou_thresholds_to_compute=list(iou_thresholds),
+            iou_thresholds_to_return=[0.5, 0.75],
+            metrics_to_return=[
+                "AP",
+                "AR",
+                "mAP",
+                "APAveragedOverIOUs",
+                "mAR",
+                "mAPAveragedOverIOUs",
+                "PrecisionRecallCurve",
+            ],
+        ),
+        prediction_filter=schemas.Filter(
+            model_names=["test_model"],
+            label_keys=["class"],
+        ),
+        groundtruth_filter=schemas.Filter(
+            dataset_names=["test_dataset"],
+            label_keys=["class"],
+        ),
+        target_type=enums.AnnotationType.BOX,
+    )
 
     ap_metrics = [
         _metric_to_dict(m) for m in metrics if isinstance(m, schemas.APMetric)
@@ -1381,6 +1789,146 @@ def test__compute_detection_metrics_with_rasters(
 ):
     iou_thresholds = set([round(0.5 + 0.05 * i, 2) for i in range(10)])
     metrics = _compute_detection_metrics(
+        db=db,
+        parameters=schemas.EvaluationParameters(
+            task_type=enums.TaskType.OBJECT_DETECTION,
+            convert_annotations_to_type=enums.AnnotationType.RASTER,
+            iou_thresholds_to_compute=list(iou_thresholds),
+            iou_thresholds_to_return=[0.5, 0.75],
+            metrics_to_return=[
+                "AP",
+                "AR",
+                "mAP",
+                "APAveragedOverIOUs",
+                "mAR",
+                "mAPAveragedOverIOUs",
+                "PrecisionRecallCurve",
+            ],
+        ),
+        prediction_filter=schemas.Filter(
+            model_names=["test_model"],
+            label_keys=["class"],
+        ),
+        groundtruth_filter=schemas.Filter(
+            dataset_names=["test_dataset"],
+            label_keys=["class"],
+        ),
+        target_type=enums.AnnotationType.RASTER,
+    )
+
+    metrics = [m.model_dump(exclude_none=True) for m in metrics]
+
+    for m in metrics:
+        _round_dict(m, 3)
+
+    expected = [
+        # AP METRICS
+        {
+            "iou": 0.5,
+            "value": 1.0,
+            "label": {"key": "class", "value": "label2"},
+        },
+        {
+            "iou": 0.75,
+            "value": 1.0,
+            "label": {"key": "class", "value": "label2"},
+        },
+        {
+            "iou": 0.5,
+            "value": 1.0,
+            "label": {"key": "class", "value": "label1"},
+        },
+        {
+            "iou": 0.75,
+            "value": 1.0,
+            "label": {"key": "class", "value": "label1"},
+        },
+        {
+            "iou": 0.5,
+            "value": 0.0,
+            "label": {"key": "class", "value": "label3"},
+        },
+        {
+            "iou": 0.75,
+            "value": 0.0,
+            "label": {"key": "class", "value": "label3"},
+        },
+        # AP METRICS AVERAGED OVER IOUS
+        {
+            "ious": iou_thresholds,
+            "value": 1.0,
+            "label": {"key": "class", "value": "label2"},
+        },
+        {
+            "ious": iou_thresholds,
+            "value": -1.0,
+            "label": {"key": "class", "value": "label4"},
+        },
+        {
+            "ious": iou_thresholds,
+            "value": 1.0,
+            "label": {"key": "class", "value": "label1"},
+        },
+        {
+            "ious": iou_thresholds,
+            "value": 0.0,
+            "label": {"key": "class", "value": "label3"},
+        },
+        # mAP METRICS
+        {"iou": 0.5, "value": 0.667, "label_key": "class"},
+        {"iou": 0.75, "value": 0.667, "label_key": "class"},
+        # mAP METRICS AVERAGED OVER IOUS
+        {"ious": iou_thresholds, "value": 0.667, "label_key": "class"},
+        # AR METRICS
+        {
+            "ious": iou_thresholds,
+            "value": 1.0,
+            "label": {"key": "class", "value": "label2"},
+        },
+        {
+            "ious": iou_thresholds,
+            "value": 1.0,
+            "label": {"key": "class", "value": "label1"},
+        },
+        {
+            "ious": iou_thresholds,
+            "value": 0.0,
+            "label": {"key": "class", "value": "label3"},
+        },
+        # mAR METRICS
+        {"ious": iou_thresholds, "value": 0.667, "label_key": "class"},
+    ]
+
+    non_pr_metrics = metrics[:-1]
+    pr_metrics = metrics[-1]
+    for m in non_pr_metrics:
+        assert m in expected
+
+    for m in expected:
+        assert m in non_pr_metrics
+
+    pr_expected_answers = {
+        ("class", "label1", 0.05, "tp"): 1,
+        ("class", "label1", 0.35, "tp"): 0,
+        ("class", "label2", 0.05, "tp"): 1,
+        ("class", "label2", 0.05, "fp"): 0,
+        ("class", "label2", 0.95, "fp"): 0,
+        ("class", "label3", 0.05, "tp"): 0,
+        ("class", "label3", 0.05, "fn"): 1,
+        ("class", "label4", 0.05, "tp"): 0,
+        ("class", "label4", 0.05, "fp"): 1,
+    }
+
+    for (
+        _,
+        value,
+        threshold,
+        metric,
+    ), expected_value in pr_expected_answers.items():
+        assert pr_metrics["value"][value][threshold][metric] == expected_value
+
+    # test DetailedPrecisionRecallCurve version
+    metrics = _compute_detection_metrics_with_detailed_precision_recall_curve(
         db=db,
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.OBJECT_DETECTION,

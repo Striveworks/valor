@@ -2451,7 +2451,7 @@ def test_evaluate_detection_false_negatives_two_images_one_only_with_different_c
     assert ap_metric1 == {
         "type": "AP",
         "parameters": {"iou": 0.5},
-        "value": 0.5,  # TODO why did this change?
+        "value": 0.5,
         "label": {"key": "key", "value": "value"},
     }
 

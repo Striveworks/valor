@@ -1052,7 +1052,6 @@ def compute_clf_metrics(
             if parameters.pr_curve_max_examples
             else 0
         ),
-        metrics_to_return=parameters.metrics_to_return,  # type: ignore - metrics_to_return is guaranteed not to be None
         metrics_to_return=parameters.metrics_to_return,
     )
 
