@@ -18,7 +18,7 @@ from valor import (
     Prediction,
 )
 from valor.enums import EvaluationStatus
-from valor.exceptions import ClientException
+from valor.exceptions import ClientException, EvaluationRequestError
 
 
 def test_evaluate_image_clf(
@@ -184,11 +184,10 @@ def test_evaluate_image_clf(
     }
 
     for key, value in expected_metadata.items():
-        assert eval_job.meta[key] == value
+        assert eval_job.meta[key] == value  # type: ignore - issue #605
 
-    assert (
-        eval_job.meta["duration"] <= 5
-    )  # eval should definitely take less than 5 seconds, usually around .4
+    # eval should definitely take less than 5 seconds, usually around .4
+    assert eval_job.meta["duration"] <= 5  # type: ignore - issue #605
 
     # check that metrics arg works correctly
     selected_metrics = random.sample(
@@ -259,9 +258,9 @@ def test_evaluate_tabular_clf(
 
     # test dataset finalization
     model = Model.create(name=model_name)
-    with pytest.raises(ClientException) as exc_info:
+    with pytest.raises(EvaluationRequestError) as exc_info:
         model.evaluate_classification(dataset).wait_for_completion(timeout=30)
-    assert "not been finalized" in str(exc_info)
+    assert "DatasetNotFinalizedError" in str(exc_info)
 
     dataset.finalize()
 
@@ -283,9 +282,9 @@ def test_evaluate_tabular_clf(
         model.add_prediction(dataset, pd)
 
     # test model finalization
-    with pytest.raises(ClientException) as exc_info:
+    with pytest.raises(EvaluationRequestError) as exc_info:
         model.evaluate_classification(dataset)
-    assert "have not been finalized" in str(exc_info)
+    assert "ModelNotFinalizedError" in str(exc_info)
 
     # model is automatically finalized if all datums have a prediction
     model.add_prediction(dataset, pds[-1])
@@ -403,10 +402,10 @@ def test_evaluate_tabular_clf(
     # check evaluation
     results = model.get_evaluations()
     assert len(results) == 1
-    assert results[0].datum_filter.dataset_names is not None
-    assert len(results[0].datum_filter.dataset_names) == 1
-    assert results[0].datum_filter.dataset_names[0] == dataset_name
+    assert len(results[0].dataset_names) == 1
+    assert results[0].dataset_names[0] == dataset_name
     assert results[0].model_name == model_name
+    assert results[0].datum_filter.dataset_names is None
     assert isinstance(results[0].created_at, datetime)
     # check created at is within a minute of the current time
     assert (datetime.now(timezone.utc) - results[0].created_at) < timedelta(

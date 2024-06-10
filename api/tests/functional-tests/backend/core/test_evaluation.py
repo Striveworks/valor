@@ -202,7 +202,7 @@ def test_validate_request(
     )
 
     # test dataset in deleting state
-    with pytest.raises(exceptions.EvaluationRequestError) as e:
+    with pytest.raises(exceptions.DatasetDoesNotExistError) as e:
         validate_request(
             db=db,
             job_request=schemas.EvaluationRequest(

@@ -139,10 +139,10 @@ def test_evaluate_detection(
 
     assert result_dict == {
         "id": eval_job.id,
+        "dataset_names": ["test_dataset"],
         "model_name": model_name,
         "datum_filter": {
             **default_filter_properties,
-            "dataset_names": ["test_dataset"],
             "label_keys": ["k1"],
         },
         "parameters": {
@@ -258,10 +258,10 @@ def test_evaluate_detection(
     actual_metrics = eval_job_bounded_area_10_2000_dict.pop("metrics")
     assert eval_job_bounded_area_10_2000_dict == {
         "id": eval_job_bounded_area_10_2000.id,
+        "dataset_names": ["test_dataset"],
         "model_name": model_name,
         "datum_filter": {
             **default_filter_properties,
-            "dataset_names": ["test_dataset"],
             "bounding_box_area": [
                 {
                     "operator": ">=",
@@ -323,10 +323,10 @@ def test_evaluate_detection(
     min_area_1200_metrics = result.pop("metrics")
     assert result == {
         "id": eval_job_min_area_1200.id,
+        "dataset_names": ["test_dataset"],
         "model_name": model_name,
         "datum_filter": {
             **default_filter_properties,
-            "dataset_names": ["test_dataset"],
             "bounding_box_area": [
                 {
                     "operator": ">=",
@@ -397,10 +397,10 @@ def test_evaluate_detection(
     bounded_area_metrics = result.pop("metrics")
     assert result == {
         "id": eval_job_bounded_area_1200_1800.id,
+        "dataset_names": ["test_dataset"],
         "model_name": model_name,
         "datum_filter": {
             **default_filter_properties,
-            "dataset_names": ["test_dataset"],
             "bounding_box_area": [
                 {
                     "operator": ">=",
@@ -602,10 +602,10 @@ def test_evaluate_detection_with_json_filters(
     bounded_area_metrics = result.pop("metrics")
     assert result == {
         "id": eval_job_bounded_area_1200_1800.id,
+        "dataset_names": ["test_dataset"],
         "model_name": model_name,
         "datum_filter": {
             **default_filter_properties,
-            "dataset_names": ["test_dataset"],
             "bounding_box_area": [
                 {
                     "operator": ">=",

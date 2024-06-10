@@ -11,6 +11,7 @@ from valor.enums import AnnotationType, EvaluationStatus, TableStatus, TaskType
 from valor.exceptions import (
     ClientException,
     DatasetDoesNotExistError,
+    EvaluationDoesNotExist,
     ModelDoesNotExistError,
 )
 from valor.schemas import (
@@ -250,7 +251,7 @@ class Evaluation:
         """
         response = self.conn.get_evaluations(evaluation_ids=[self.id])
         if not response:
-            raise ClientException("Not Found")
+            raise EvaluationDoesNotExist(self.id)
         self.update(**response[0])
         return self.status
 
@@ -907,8 +908,8 @@ class Model(StaticCollection):
         datum_filter = self._format_constraints(datasets, filter_by)
         datasets = datasets if isinstance(datasets, list) else [datasets]
         request = EvaluationRequest(
-            dataset_names=[dataset.name.get_value() for dataset in datasets],
-            model_names=[self.name.get_value()],
+            dataset_names=[dataset.name for dataset in datasets],  # type: ignore - issue #604
+            model_names=[self.name],  # type: ignore - issue #604
             filter=datum_filter,
             parameters=EvaluationParameters(
                 task_type=TaskType.CLASSIFICATION,
@@ -927,7 +928,7 @@ class Model(StaticCollection):
 
     def evaluate_detection(
         self,
-        datasets: Optional[Union[Dataset, List[Dataset]]] = None,
+        datasets: Union[Dataset, List[Dataset]],
         filter_by: Optional[FilterType] = None,
         convert_annotations_to_type: Optional[AnnotationType] = None,
         iou_thresholds_to_compute: Optional[List[float]] = None,
@@ -989,8 +990,10 @@ class Model(StaticCollection):
             pr_curve_iou_threshold=pr_curve_iou_threshold,
         )
         datum_filter = self._format_constraints(datasets, filter_by)
+        datasets = datasets if isinstance(datasets, list) else [datasets]
         request = EvaluationRequest(
-            model_names=[self.name],  # type: ignore
+            dataset_names=[dataset.name for dataset in datasets],  # type: ignore - issue #604
+            model_names=[self.name],  # type: ignore - issue #604
             filter=datum_filter,
             parameters=parameters,
         )
@@ -1005,7 +1008,7 @@ class Model(StaticCollection):
 
     def evaluate_segmentation(
         self,
-        datasets: Optional[Union[Dataset, List[Dataset]]] = None,
+        datasets: Union[Dataset, List[Dataset]],
         filter_by: Optional[FilterType] = None,
         label_map: Optional[Dict[Label, Label]] = None,
         metrics_to_return: Optional[List[str]] = None,
@@ -1034,8 +1037,10 @@ class Model(StaticCollection):
         """
         # format request
         datum_filter = self._format_constraints(datasets, filter_by)
+        datasets = datasets if isinstance(datasets, list) else [datasets]
         request = EvaluationRequest(
-            model_names=[self.name],  # type: ignore
+            dataset_names=[dataset.name for dataset in datasets],  # type: ignore - issue #604
+            model_names=[self.name],  # type: ignore - issue #604
             filter=datum_filter,
             parameters=EvaluationParameters(
                 task_type=TaskType.SEMANTIC_SEGMENTATION,

@@ -164,15 +164,8 @@ def validate_request(
     ----------
     db : Session
         The database session.
-    dataset_names : list[str]
-        The list of dataset names to validate.
-    model_names : list[str]
-        The list of model names to validate.
-
-    Returns
-    -------
-    tuple[list[models.Dataset], list[models.Model]]
-        A tuple containing the list of dataset rows and the list of model rows.
+    job_request : EvaluationRequest
+        The evaluation request to validate.
 
     Raises
     ------
@@ -181,58 +174,52 @@ def validate_request(
     """
     if not job_request.dataset_names:
         raise exceptions.EvaluationRequestError(
-            "At least one dataset is required to start an evaluation."
+            msg="At least one dataset is required to start an evaluation."
         )
     if not job_request.model_names:
         raise exceptions.EvaluationRequestError(
-            "At least one model is required to start an evaluation."
+            msg="At least one model is required to start an evaluation."
         )
 
     errors = []
     for dataset_name in job_request.dataset_names:
+
+        # verify dataset status
         try:
-            core.fetch_dataset(db=db, name=dataset_name)
+            dataset_status = core.get_dataset_status(db=db, name=dataset_name)
         except exceptions.DatasetDoesNotExistError as e:
             errors.append(e)
             continue
 
-        for model_name in job_request.model_names:
-            try:
-                core.fetch_model(db=db, name=model_name)
-            except exceptions.ModelDoesNotExistError as e:
-                errors.append(e)
+        match enums.TableStatus(dataset_status):
+            case enums.TableStatus.CREATING:
+                errors.append(
+                    exceptions.DatasetNotFinalizedError(dataset_name)
+                )
+            case enums.TableStatus.DELETING | None:
+                errors.append(
+                    exceptions.DatasetDoesNotExistError(dataset_name)
+                )
+            case enums.TableStatus.FINALIZED:
+                pass
+            case _:
+                raise NotImplementedError(
+                    f"A case for `{dataset_status}` is not a supported status."
+                )
 
-    if errors:
-        raise exceptions.EvaluationRequestError(
-            f"Failed to fetch rows with the following errors: {errors}"
-        )
-
-    for dataset_name in job_request.dataset_names:
         for model_name in job_request.model_names:
-            # verify dataset status
-            dataset_status = core.get_dataset_status(db=db, name=dataset_name)
-            match enums.TableStatus(dataset_status):
-                case enums.TableStatus.CREATING:
-                    errors.append(
-                        exceptions.DatasetNotFinalizedError(dataset_name)
-                    )
-                case enums.TableStatus.DELETING | None:
-                    errors.append(
-                        exceptions.DatasetDoesNotExistError(dataset_name)
-                    )
-                case enums.TableStatus.FINALIZED:
-                    pass
-                case _:
-                    raise NotImplementedError(
-                        f"A case for `{dataset_status}` is not a supported status."
-                    )
 
             # verify model status
-            model_status = core.get_model_status(
-                db=db,
-                dataset_name=dataset_name,
-                model_name=model_name,
-            )
+            try:
+                model_status = core.get_model_status(
+                    db=db,
+                    dataset_name=dataset_name,
+                    model_name=model_name,
+                )
+            except exceptions.ModelDoesNotExistError as e:
+                errors.append(e)
+                continue
+
             match model_status:
                 case enums.TableStatus.CREATING:
                     errors.append(
@@ -254,7 +241,7 @@ def validate_request(
 
     if errors:
         raise exceptions.EvaluationRequestError(
-            f"Failed validation with the following errors: {errors}"
+            msg="Failed request validation.", errors=errors
         )
 
 
@@ -363,11 +350,11 @@ def _validate_create_evaluation(
     # verify model and datasets have data for this evaluation
     if not datasets:
         raise exceptions.EvaluationRequestError(
-            "No finalized datasets were found that met the filter criteria."
+            msg="No finalized datasets were found that met the filter criteria."
         )
     elif model is None:
         raise exceptions.EvaluationRequestError(
-            f"The model '{evaluation.model_name}' did not meet the filter criteria."
+            msg=f"The model '{evaluation.model_name}' did not meet the filter criteria."
         )
 
     # check that prediction label keys match ground truth label keys

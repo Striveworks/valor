@@ -389,12 +389,12 @@ def test_generate_prediction_data(client: Client):
     eval_dict["meta"] = {}
 
     assert eval_dict == {
+        "dataset_names": [dataset_name],
         "model_name": model_name,
         "datum_filter": {
             **asdict(
                 Filter()
             ),  # default filter properties with overrides below
-            "dataset_names": [dataset_name],
             "label_keys": ["k1"],
         },
         "parameters": {

@@ -119,6 +119,7 @@ def test_geospatial_filter(
 
     # filtering by concatenation of datasets geospatially
     eval_job = model.evaluate_detection(
+        datasets=dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
         filter_by={
