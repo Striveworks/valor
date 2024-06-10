@@ -60,17 +60,18 @@ def _test_post_endpoints(
     example_json: dict,
     expected_status_code=200,
     endpoint_only_has_post=True,
+    return_value=[],
 ):
     crud_method = getattr(crud, crud_method_name)
     # have mock method return empty list (type hint in main is satisfied)
-    crud_method.return_value = []
+    crud_method.return_value = return_value
     resp = client.post(endpoint, json=example_json)
     assert resp.status_code == expected_status_code
 
     crud_method.assert_called_once()
 
     # now send a bad payload and make sure we get a 422
-    resp = client.post(endpoint, json={})
+    resp = client.post(endpoint, json={"abc": "def"})
     assert resp.status_code == 422
 
     # send an invalid method and make sure we get a 405
@@ -722,15 +723,25 @@ def test_post_datasets(client: TestClient):
         assert resp.status_code == 409
 
 
-""" GET /datasets """
+""" POST /datasets/filter """
 
 
-@patch("valor_api.main.crud")
-def test_get_datasets(crud, client: TestClient):
-    crud.get_datasets.return_value = ([], {"headers": "headers"})
-    resp = client.get("/datasets")
-    assert resp.status_code == 200
-    crud.get_datasets.assert_called_once()
+def test_get_datasets(client: TestClient):
+    #     crud.get_datasets.return_value =
+    #     resp = client.post("")
+    #     assert resp.status_code == 200
+    #     crud.get_datasets.assert_called_once()
+    example_json = schemas.Filter().model_dump()
+
+    _test_post_endpoints(
+        client=client,
+        endpoint="/datasets/filter",
+        crud_method_name="get_datasets",
+        example_json=example_json,
+        expected_status_code=200,
+        endpoint_only_has_post=True,
+        return_value=([], {"headers": "headers"}),
+    )
 
 
 """ GET /datasets/{dataset_name} """
@@ -831,13 +842,13 @@ def test_post_models(client: TestClient):
         assert resp.status_code == 409
 
 
-""" GET /models"""
+""" POST /models/filter"""
 
 
 @patch("valor_api.main.crud")
 def test_get_models(crud, client: TestClient):
     crud.get_models.return_value = ([], {"headers": "headers"})
-    resp = client.get("/models")
+    resp = client.post("/models/filter")
     assert resp.status_code == 200
     crud.get_models.assert_called_once()
 
@@ -1039,13 +1050,13 @@ def test_get_model_labels(crud, client: TestClient):
         assert resp.status_code == 404
 
 
-""" GET /data/dataset/{dataset_name} """
+""" POST /data/filter """
 
 
 @patch("valor_api.main.crud")
 def test_get_datums(crud, client: TestClient):
     crud.get_datums.return_value = ([], {"headers": "headers"})
-    resp = client.get("/data")
+    resp = client.post("/data/filter")
     assert resp.status_code == 200
     crud.get_datums.assert_called_once()
 
@@ -1053,10 +1064,10 @@ def test_get_datums(crud, client: TestClient):
         "valor_api.main.crud.get_datums",
         side_effect=exceptions.DatasetDoesNotExistError(""),
     ):
-        resp = client.get("/data")
+        resp = client.get("/data/filter")
         assert resp.status_code == 404
 
-    resp = client.post("/data")
+    resp = client.post("/data/filter")
     assert resp.status_code == 405
 
 
@@ -1085,17 +1096,17 @@ def test_get_datum(crud, client: TestClient):
     assert resp.status_code == 405
 
 
-""" GET /labels """
+""" GET /labels/filter """
 
 
 @patch("valor_api.main.crud")
 def test_get_labels(crud, client: TestClient):
     crud.get_labels.return_value = ([], {"headers": "headers"})
-    resp = client.get("/labels")
+    resp = client.post("/labels/filter")
     assert resp.status_code == 200
     crud.get_labels.assert_called_once()
 
-    resp = client.post("/labels")
+    resp = client.get("/labels/filter")
     assert resp.status_code == 405
 
 
