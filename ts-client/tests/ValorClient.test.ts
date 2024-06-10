@@ -197,13 +197,12 @@ test('evaluation methods', async () => {
       ['Precision', 'Recall', 'F1', 'Accuracy', 'ROCAUC', 'PrecisionRecallCurve']
     );
     expect(['running', 'pending', 'done']).toContain(evaluation.status);
-
     while (evaluation.status !== 'done') {
       await new Promise((resolve) => setTimeout(resolve, 1000));
       evaluation = await client.getEvaluationById(evaluation.id);
     }
     expect(evaluation.metrics.length).toBeGreaterThan(0);
-    expect(evaluation.datum_filter.dataset_names).toStrictEqual([datasetName]);
+    expect(evaluation.dataset_names).toStrictEqual([datasetName]);
 
     // get the ROCAUC metric, and check that its null (backend returns -1 here)
     const rocaucMetric = evaluation.metrics.find((metric) => metric.type === 'ROCAUC');
@@ -224,6 +223,7 @@ test('evaluation methods', async () => {
     const timeDiff = Math.abs(now.getTime() - evaluation.created_at.getTime());
     expect(timeDiff).toBeLessThan(60 * 1000);
   };
+
   // evaluate against all models and datasets
   await Promise.all(
     modelNames.map(async (modelName) => {
@@ -234,6 +234,7 @@ test('evaluation methods', async () => {
       );
     })
   );
+
   // check we can get evaluations by model names
   expect((await client.getEvaluationsByModelNames([modelNames[0]])).length).toBe(2);
   expect(
@@ -244,10 +245,12 @@ test('evaluation methods', async () => {
     ).length
   ).toBe(4);
   expect((await client.getEvaluationsByModelNames(['no-such-model'])).length).toBe(0);
+
   // check we can get evaluations by dataset name
   expect((await client.getEvaluationsByDatasetNames([datasetNames[0]])).length).toBe(2);
   expect((await client.getEvaluationsByDatasetNames(datasetNames)).length).toBe(4);
   expect((await client.getEvaluationsByDatasetNames(['no-such-dataset'])).length).toBe(0);
+
   // check we can get evaluations by model names and dataset names
   expect(
     (await client.getEvaluationsByModelNamesAndDatasetNames(modelNames, datasetNames))

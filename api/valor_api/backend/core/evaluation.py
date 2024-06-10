@@ -461,13 +461,14 @@ def _fetch_evaluation_from_subrequest(
             "Subrequests should only reference a single model name."
         )
 
-    datum_filter = subrequest.filter.model_dump() if subrequest.filter else {}
     evaluation = (
         db.query(models.Evaluation)
         .where(
             and_(
+                models.Evaluation.dataset_names == subrequest.dataset_names,
                 models.Evaluation.model_name == subrequest.model_names[0],
-                models.Evaluation.datum_filter == datum_filter,
+                models.Evaluation.datum_filter
+                == subrequest.filter.model_dump(),
                 models.Evaluation.parameters
                 == subrequest.parameters.model_dump(),
             )

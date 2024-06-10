@@ -201,6 +201,7 @@ class Evaluation(Base):
     __tablename__ = "evaluation"
     __table_args__ = (
         UniqueConstraint(
+            "dataset_names",
             "model_name",
             "datum_filter",
             "parameters",
