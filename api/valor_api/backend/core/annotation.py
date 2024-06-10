@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from valor_api import schemas
 from valor_api.backend import models
 from valor_api.backend.core.geometry import _raster_to_png_b64
-from valor_api.backend.query import Query
+from valor_api.backend.query import generate_query
 from valor_api.enums import ModelStatus, TableStatus
 
 
@@ -214,29 +214,31 @@ def get_annotation(
     """
     # retrieve all labels associated with annotation
     if annotation.model_id:
-        q = Query(
+        query = generate_query(
             models.Label.key,
             models.Label.value,
             models.Prediction.score,
-        ).predictions(as_subquery=False)
-        q = q.where(models.Prediction.annotation_id == annotation.id)  # type: ignore - SQLAlchemy type issue
+            db=db,
+            label_source=models.Prediction,
+        ).where(models.Prediction.annotation_id == annotation.id)
         labels = [
             schemas.Label(
                 key=scored_label[0],
                 value=scored_label[1],
                 score=scored_label[2],
             )
-            for scored_label in db.query(q.subquery()).all()
+            for scored_label in query.all()
         ]
     else:
-        q = Query(
+        query = generate_query(
             models.Label.key,
             models.Label.value,
-        ).groundtruths(as_subquery=False)
-        q = q.where(models.GroundTruth.annotation_id == annotation.id)  # type: ignore - SQLAlchemy type issue
+            db=db,
+            label_source=models.GroundTruth,
+        ).where(models.GroundTruth.annotation_id == annotation.id)
         labels = [
             schemas.Label(key=label[0], value=label[1])
-            for label in db.query(q.subquery()).all()
+            for label in query.all()
         ]
 
     # initialize
@@ -281,7 +283,7 @@ def get_annotation(
         labels=labels,
         metadata=annotation.meta,
         bounding_box=box,
-        polygon=polygon,  # type: ignore - guaranteed to be a polygon in this case
+        polygon=polygon,
         raster=raster,
         embedding=embedding,
         is_instance=annotation.is_instance,

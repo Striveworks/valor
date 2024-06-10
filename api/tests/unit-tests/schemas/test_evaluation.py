@@ -85,7 +85,6 @@ def test_EvaluationRequest():
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.CLASSIFICATION,
         ),
-        meta={},
     )
     schemas.EvaluationRequest(
         model_names=["name"],
@@ -93,7 +92,6 @@ def test_EvaluationRequest():
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.CLASSIFICATION,
         ),
-        meta={},
     )
     schemas.EvaluationRequest(
         model_names=["name", "other"],
@@ -101,7 +99,6 @@ def test_EvaluationRequest():
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.CLASSIFICATION,
         ),
-        meta={},
     )
 
     # test missing args
@@ -136,7 +133,6 @@ def test_EvaluationRequest():
             parameters=schemas.EvaluationParameters(
                 task_type=enums.TaskType.CLASSIFICATION,
             ),
-            meta={},
         )
 
     # test `datum_filter` validator

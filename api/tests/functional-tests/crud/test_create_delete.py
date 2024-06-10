@@ -1130,7 +1130,6 @@ def test_create_detection_metrics(
                 iou_thresholds_to_compute=[0.2, 0.6],
                 iou_thresholds_to_return=[0.2],
             ),
-            meta={},
         )
 
         # create evaluation (return AP Response)
@@ -1367,7 +1366,6 @@ def test_create_clf_metrics(
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.CLASSIFICATION,
         ),
-        meta={},
     )
 
     # create clf evaluation (returns Clf Response)

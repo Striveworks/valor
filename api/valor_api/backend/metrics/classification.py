@@ -18,7 +18,7 @@ from valor_api.backend.metrics.metric_utils import (
     log_evaluation_item_counts,
     validate_computation,
 )
-from valor_api.backend.query import Query
+from valor_api.backend.query import generate_query, generate_select
 
 LabelMapType = list[list[list[str]]]
 
@@ -115,7 +115,7 @@ def _compute_curves(
             )
             .select_from(groundtruths)
             .join(
-                predictions_that_meet_criteria,  # type: ignore
+                predictions_that_meet_criteria,
                 groundtruths.c.datum_id
                 == predictions_that_meet_criteria.c.datum_id,
                 isouter=True,
@@ -129,7 +129,7 @@ def _compute_curves(
                 models.Datum.id == groundtruths.c.datum_id,
             )
             .group_by(
-                b,  # type: ignore - SQLAlchemy Bundle not compatible with _first
+                b,  # type: ignore - SQLAlchemy Bundle typing issue
                 predictions_that_meet_criteria.c.datum_id,
                 predictions_that_meet_criteria.c.datum_uid,
                 predictions_that_meet_criteria.c.dataset_name,
@@ -394,27 +394,23 @@ def _compute_binary_roc_auc(
     # query to get the datum_ids and label values of groundtruths that have the given label key
     gts_filter = groundtruth_filter.model_copy()
     gts_filter.label_keys = [label.key]
-    gts_query = (
-        Query(
-            models.Annotation.datum_id.label("datum_id"),
-            models.Label.value.label("label_value"),
-        )
-        .filter(gts_filter)
-        .groundtruths("groundtruth_subquery")
-    )
+    gts_query = generate_select(
+        models.Annotation.datum_id.label("datum_id"),
+        models.Label.value.label("label_value"),
+        filter_=gts_filter,
+        label_source=models.GroundTruth,
+    ).subquery("groundtruth_subquery")
 
     # get the prediction scores for the given label (key and value)
     preds_filter = prediction_filter.model_copy()
     preds_filter.labels = [{label.key: label.value}]
-    preds_query = (
-        Query(
-            models.Annotation.datum_id.label("datum_id"),
-            models.Prediction.score.label("score"),
-            models.Label.value.label("label_value"),
-        )
-        .filter(preds_filter)
-        .predictions("prediction_subquery")
-    )
+    preds_query = generate_select(
+        models.Annotation.datum_id.label("datum_id"),
+        models.Prediction.score.label("score"),
+        models.Label.value.label("label_value"),
+        filter_=preds_filter,
+        label_source=models.Prediction,
+    ).subquery("prediction_subquery")
 
     # number of ground truth labels that match the given label value
     n_pos = db.scalar(
@@ -448,8 +444,8 @@ def _compute_binary_roc_auc(
             .label("is_false_positive"),
         )
         .select_from(
-            preds_query.join(  # type: ignore
-                gts_query, preds_query.c.datum_id == gts_query.c.datum_id  # type: ignore
+            preds_query.join(
+                gts_query, preds_query.c.datum_id == gts_query.c.datum_id
             )
         )
         .alias("basic_counts")
@@ -545,7 +541,9 @@ def _compute_roc_auc(
             label
             for label in labels
             if schemas.Label(key=label.key, value=label.value)
-            in core.get_labels(db=db, filters=label_filter)
+            in core.get_labels(
+                db=db, filters=label_filter, ignore_predictions=True
+            )
         ]
 
         if not in_scope_labels:
@@ -679,7 +677,7 @@ def _compute_confusion_matrix_at_grouper_key(
             models.Label,
             models.Label.id == groundtruths.c.label_id,
         )
-        .group_by(b)  # type: ignore - SQLAlchemy Bundle not compatible with _first
+        .group_by(b)  # type: ignore - SQLAlchemy Bundle typing issue
     )
 
     res = db.execute(total_query).all()
@@ -815,27 +813,21 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
     pFilter = prediction_filter.model_copy()
     pFilter.label_keys = label_key_filter
 
-    groundtruths = (
-        Query(
-            models.GroundTruth,
-            models.Annotation.datum_id.label("datum_id"),
-            models.Dataset.name.label("dataset_name"),
-        )
-        .filter(gFilter)
-        .groundtruths(as_subquery=False)
-        .alias()
-    )
+    groundtruths = generate_select(
+        models.GroundTruth,
+        models.Annotation.datum_id.label("datum_id"),
+        models.Dataset.name.label("dataset_name"),
+        filter_=gFilter,
+        label_source=models.GroundTruth,
+    ).alias()
 
-    predictions = (
-        Query(
-            models.Prediction,
-            models.Annotation.datum_id.label("datum_id"),
-            models.Dataset.name.label("dataset_name"),
-        )
-        .filter(pFilter)
-        .predictions(as_subquery=False)
-        .alias()
-    )
+    predictions = generate_select(
+        models.Prediction,
+        models.Annotation.datum_id.label("datum_id"),
+        models.Dataset.name.label("dataset_name"),
+        filter_=pFilter,
+        label_source=models.Prediction,
+    ).alias()
 
     confusion_matrix = _compute_confusion_matrix_at_grouper_key(
         db=db,
@@ -869,17 +861,21 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
     if "PrecisionRecallCurve" in metrics_to_return:
         # calculate the number of unique datums
         # used to determine the number of true negatives
-        pd_datums = db.query(
-            Query(models.Dataset.name, models.Datum.uid)  # type: ignore - sqlalchemy issues
-            .filter(prediction_filter)
-            .predictions()
+        gt_datums = generate_query(
+            models.Dataset.name,
+            models.Datum.uid,
+            db=db,
+            filter_=groundtruth_filter,
+            label_source=models.GroundTruth,
         ).all()
-        gt_datums = db.query(
-            Query(models.Dataset.name, models.Datum.uid)  # type: ignore - sqlalchemy issues
-            .filter(groundtruth_filter)
-            .groundtruths()
+        pd_datums = generate_query(
+            models.Dataset.name,
+            models.Datum.uid,
+            db=db,
+            filter_=prediction_filter,
+            label_source=models.Prediction,
         ).all()
-        unique_datums = set(pd_datums + gt_datums)
+        unique_datums = set(gt_datums + pd_datums)
 
         pr_curves = _compute_curves(
             db=db,
@@ -1043,6 +1039,9 @@ def compute_clf_metrics(
         groundtruth_filter=groundtruth_filter,
     )
 
+    if parameters.metrics_to_return is None:
+        raise RuntimeError("Metrics to return should always be defined here.")
+
     confusion_matrices, metrics = _compute_clf_metrics(
         db=db,
         prediction_filter=prediction_filter,
@@ -1054,6 +1053,7 @@ def compute_clf_metrics(
             else 0
         ),
         metrics_to_return=parameters.metrics_to_return,  # type: ignore - metrics_to_return is guaranteed not to be None
+        metrics_to_return=parameters.metrics_to_return,
     )
 
     confusion_matrices_mappings = create_metric_mappings(

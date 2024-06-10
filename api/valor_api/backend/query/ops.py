@@ -1,125 +1,123 @@
-from sqlalchemy.sql.elements import BinaryExpression, ColumnElement
+from typing import Any
 
-from valor_api.backend.models import (
-    Annotation,
-    Dataset,
-    Datum,
-    GroundTruth,
-    Label,
-    Model,
-    Prediction,
-)
-from valor_api.backend.query.filtering import (
-    filter_by_annotation,
-    filter_by_dataset,
-    filter_by_datum,
-    filter_by_label,
-    filter_by_model,
-    filter_by_prediction,
-)
-from valor_api.backend.query.mapping import map_arguments_to_tables
-from valor_api.backend.query.solvers import solve_graph
-from valor_api.backend.query.types import TableTypeAlias
-from valor_api.schemas import Filter
+from sqlalchemy import Select, select
+from sqlalchemy.orm import Query, Session
+
+from valor_api.backend.models import Annotation, GroundTruth, Prediction
+from valor_api.backend.query.solvers import solver
+from valor_api.backend.query.types import LabelSourceAlias
+from valor_api.schemas.filters import AdvancedFilter, Filter
 
 
-class Query:
+def _format_filter_to_advanced_filter(
+    f: Filter | AdvancedFilter | None, label_source: LabelSourceAlias
+) -> AdvancedFilter | None:
+    if f is None:
+        return None
+    elif isinstance(f, AdvancedFilter):
+        return f
+    elif label_source is GroundTruth:
+        return f.to_advanced_filter(ignore_predictions=True)
+    elif label_source is Prediction:
+        return f.to_advanced_filter(ignore_groundtruths=True)
+    else:
+        return f.to_advanced_filter()
+
+
+def generate_select(
+    *args: Any,
+    filter_: Filter | AdvancedFilter | None = None,
+    label_source: LabelSourceAlias = Annotation,
+) -> Select[Any]:
     """
-    Query generator object.
+    Creates a select statement from provided arguments and filters.
 
-    Attributes
+    The label source determines which graph structure to use.
+
+    Parameters
     ----------
-    *args : TableTypeAlias | InstrumentedAttribute
-        args is a list of models or model attributes. (e.g. Label or Label.key)
+    *args : Any
+        A variable list of models or model attributes. (e.g. Label or Label.key)
+    filter_ : Filter | AdvancedFilter, optional
+        An optional filter.
+    label_source : LabelSourceAlias, default=Annotation
+        The table to source labels from. This determines graph structure.
 
-    Examples
-    ----------
-    Querying
-    >>> f = schemas.Filter(...)
-    >>> q = Query(Label).filter(f).any()
+    Returns
+    -------
+    Select[Any]
+        A select statement that meets all conditions.
 
-    Querying model attributes.
-    >>> f = schemas.Filter(...)
-    >>> q = Query(Label.key).filter(f).any()
+    Raises
+    ------
+    ValueError
+        If label source is not a valid table.
+    RunTimeError
+        If the output of the solver does not match the input type.
     """
-
-    def __init__(self, *args):
-        self._args = args
-        self._selected: set[TableTypeAlias] = map_arguments_to_tables(args)
-        self._filtered = set()
-        self._expressions: dict[TableTypeAlias, list[ColumnElement[bool]]] = {}
-
-    def select_from(self, *args):
-        self._selected = map_arguments_to_tables(args)
-        return self
-
-    def _add_expressions(
-        self,
-        table: TableTypeAlias,
-        expressions: list[ColumnElement[bool] | BinaryExpression],
-    ) -> None:
-        if len(expressions) == 0:
-            return
-        self._filtered.add(table)
-        if table not in self._expressions:
-            self._expressions[table] = []
-        self._expressions[table].extend(expressions)
-
-    def filter(self, filter_: Filter | None):
-        """Parses `schemas.Filter`"""
-        if filter_ is None:
-            return self
-        if not isinstance(filter_, Filter):
-            raise TypeError(
-                "filter_ should be of type `schemas.Filter` or `None`"
-            )
-        self._add_expressions(Annotation, filter_by_annotation(filter_))
-        self._add_expressions(Model, filter_by_model(filter_))
-        self._add_expressions(Label, filter_by_label(filter_))
-        self._add_expressions(Dataset, filter_by_dataset(filter_))
-        self._add_expressions(Datum, filter_by_datum(filter_))
-        self._add_expressions(Prediction, filter_by_prediction(filter_))
-        return self
-
-    def any(
-        self,
-        name: str = "generated_subquery",
-        *,
-        pivot: TableTypeAlias | None = None,
-        as_subquery: bool = True,
-    ):
-        """
-        Generates a sqlalchemy subquery. Graph is chosen automatically as best fit.
-        """
-        query, subquery = solve_graph(
-            select_args=self._args,
-            selected_tables=self._selected,
-            filter_by_tables=self._filtered,
-            expressions=self._expressions,
-            pivot_table=pivot,
+    if label_source not in {Annotation, GroundTruth, Prediction}:
+        raise ValueError(
+            "Label source must be either Annotation, GroundTruth or Prediction."
         )
-        if query is None:
-            raise RuntimeError("No solution found to query.")
+    query = solver(
+        *args,
+        stmt=select(*args),
+        filter_=_format_filter_to_advanced_filter(filter_, label_source),
+        label_source=label_source,
+    )
+    if not isinstance(query, Select):
+        raise RuntimeError(
+            "The output type of 'generate_query' should match the type of the 'select_statement' arguement."
+        )
+    return query
 
-        if subquery is not None:
-            query = query.where(Datum.id.in_(subquery))
-        return query.subquery(name) if as_subquery else query
 
-    def groundtruths(
-        self, name: str = "generated_subquery", *, as_subquery: bool = True
-    ):
-        """
-        Generates a sqlalchemy subquery using a groundtruths-focused graph.
-        """
-        return self.any(name, pivot=GroundTruth, as_subquery=as_subquery)
+def generate_query(
+    *args: Any,
+    db: Session,
+    filter_: Filter | AdvancedFilter | None = None,
+    label_source: LabelSourceAlias = Annotation,
+) -> Query[Any]:
+    """
+    Creates a query statement from provided arguments and filters.
 
-    def predictions(
-        self,
-        name: str = "generated_subquery",
-        *,
-        as_subquery: bool = True,
-    ):
-        """
-        Generates a sqlalchemy subquery using a predictions-focused graph.
-        """
-        return self.any(name, pivot=Prediction, as_subquery=as_subquery)
+    The label source determines which graph structure to use.
+
+    Parameters
+    ----------
+    *args : Any
+        A variable list of models or model attributes. (e.g. Label or Label.key)
+    db : Session
+        The database session to call query against.
+    filter_ : Filter | AdvancedFilter, optional
+        An optional filter.
+    label_source : LabelSourceAlias, default=Annotation
+        The table to source labels from. This determines graph structure.
+
+    Returns
+    -------
+    Select[Any]
+        A select statement that meets all conditions.
+
+    Raises
+    ------
+    ValueError
+        If label source is not a valid table.
+    RunTimeError
+        If the output of the solver does not match the input type.
+    """
+    if label_source not in {Annotation, GroundTruth, Prediction}:
+        raise ValueError(
+            "Label source must be either Annotation, GroundTruth or Prediction."
+        )
+    query = solver(
+        *args,
+        stmt=db.query(*args),
+        filter_=_format_filter_to_advanced_filter(filter_, label_source),
+        label_source=label_source,
+    )
+    if not isinstance(query, Query):
+        raise RuntimeError(
+            "The output type of 'generate_query' should match the type of the 'select_statement' arguement."
+        )
+    return query

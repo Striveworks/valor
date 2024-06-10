@@ -922,7 +922,6 @@ def test_post_detection_metrics(client: TestClient):
         parameters=schemas.EvaluationParameters(
             task_type=TaskType.OBJECT_DETECTION,
         ),
-        meta={},
     ).model_dump()
 
     _test_post_evaluation_endpoint(
@@ -955,7 +954,6 @@ def test_post_clf_metrics(client: TestClient):
         parameters=schemas.EvaluationParameters(
             task_type=TaskType.CLASSIFICATION,
         ),
-        meta={},
     ).model_dump()
 
     _test_post_evaluation_endpoint(
@@ -990,7 +988,6 @@ def test_post_semenatic_segmentation_metrics(client: TestClient):
         parameters=schemas.EvaluationParameters(
             task_type=TaskType.SEMANTIC_SEGMENTATION,
         ),
-        meta={},
     ).model_dump()
 
     _test_post_evaluation_endpoint(

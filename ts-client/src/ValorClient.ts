@@ -415,7 +415,6 @@ export class ValorClient {
         pr_curve_iou_threshold: prCurveIouThreshold,
         pr_curve_max_examples: prCurveMaxExamples
       },
-      meta: {}
     });
     return this.unmarshalEvaluation(response.data[0]);
   }
@@ -463,7 +462,6 @@ export class ValorClient {
         pr_curve_iou_threshold: prCurveIouThreshold,
         pr_curve_max_examples: prCurveMaxExamples
       },
-      meta: {}
     });
     return response.data.map(this.unmarshalEvaluation);
   }

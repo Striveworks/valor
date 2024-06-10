@@ -56,7 +56,7 @@ def test_annotation(bbox, polygon, raster, labels, metadata):
     with pytest.raises(TypeError):
         Annotation(
             labels=labels,
-            bounding_box=Polygon([[(0, 0), (1, 0), (1, 1), (0, 0)]]),  # type: ignore
+            bounding_box=Polygon(value=[[(0, 0), (1, 0), (1, 1), (0, 0)]]),  # type: ignore - testing
         )
     with pytest.raises(TypeError):
         Annotation(
@@ -66,17 +66,17 @@ def test_annotation(bbox, polygon, raster, labels, metadata):
     with pytest.raises(TypeError):
         Annotation(
             labels=labels,
-            metadata=[1234],  # type: ignore
+            metadata=[1234],  # type: ignore - testing
         )
     with pytest.raises(TypeError):
         Annotation(
             labels=labels,
-            metadata={1: 1},  # type: ignore
+            metadata={1: 1},  # type: ignore - testing
         )
     with pytest.raises(ValueError):
         Annotation(
             labels=labels,
-            metadata={"test": None},  # type: ignore
+            metadata={"test": None},  # type: ignore - testing
         )
 
 
@@ -92,10 +92,10 @@ def test_groundtruth_annotation():
 
     # test `__post_init__`
     with pytest.raises(TypeError) as e:
-        Annotation(labels=l1)  # type: ignore
+        Annotation(labels=l1)  # type: ignore - testing
     assert "List[Label]" in str(e)
     with pytest.raises(TypeError):
-        Annotation(labels=[l1, l2, "label"])  # type: ignore
+        Annotation(labels=[l1, l2, "label"])  # type: ignore - testing
 
 
 def test_prediction_annotation():
@@ -115,10 +115,10 @@ def test_prediction_annotation():
 
     # test `__post_init__`
     with pytest.raises(TypeError) as e:
-        Annotation(labels=s1)  # type: ignore
+        Annotation(labels=s1)  # type: ignore - testing
     assert "List[Label]" in str(e)
     with pytest.raises(TypeError):
-        Annotation(labels=[s1, s2, "label"])  # type: ignore
+        Annotation(labels=[s1, s2, "label"])  # type: ignore - testing
 
 
 def test_groundtruth():
@@ -138,19 +138,19 @@ def test_groundtruth():
     # test `__post_init__`
     with pytest.raises(TypeError):
         GroundTruth(
-            datum="datum",  # type: ignore
+            datum="datum",  # type: ignore - testing
             annotations=gts,
         )
     with pytest.raises(TypeError) as e:
         GroundTruth(
             datum=datum,
-            annotations=gts[0],  # type: ignore
+            annotations=gts[0],  # type: ignore - testing
         )
     assert "List[Annotation]" in str(e)
     with pytest.raises(TypeError):
         GroundTruth(
             datum=datum,
-            annotations=[gts[0], gts[1], "annotation"],  # type: ignore
+            annotations=[gts[0], gts[1], "annotation"],  # type: ignore - testing
         )
 
     # test equalities
@@ -191,18 +191,18 @@ def test_prediction():
 
     # test `__post_init__`
     with pytest.raises(TypeError):
-        Prediction(datum="datum", annotations=pds)  # type: ignore
+        Prediction(datum="datum", annotations=pds)  # type: ignore - testing
     with pytest.raises(TypeError) as e:
         Prediction(
             datum=datum,
-            annotations=pds[0],  # type: ignore
+            annotations=pds[0],  # type: ignore - testing
         )
     assert "List[Annotation]" in str(e)
 
     with pytest.raises(TypeError):
         Prediction(
             datum=datum,
-            annotations=[pds[0], pds[1], "annotation"],  # type: ignore
+            annotations=[pds[0], pds[1], "annotation"],  # type: ignore - testing
         )
 
     # test equalities

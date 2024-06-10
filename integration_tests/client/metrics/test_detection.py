@@ -384,7 +384,7 @@ def test_evaluate_detection(
             ],
             convert_annotations_to_type=AnnotationType.BOX,
         )
-    assert "\\'test_model\\' did not meet the filter criteria" in str(e)
+    assert "filter criteria" in str(e)
 
     # should perform the same as the first min area evaluation
     # except now has an upper bound

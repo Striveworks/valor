@@ -143,7 +143,7 @@ def images() -> list[schemas.Datum]:
 @pytest.fixture
 def groundtruths(
     db: Session, images: list[schemas.Datum]
-) -> list[list[models.GroundTruth]]:
+) -> list[models.GroundTruth]:
     """Creates a dataset called "test_dataset" with some ground truth
     detections. These detections are taken from a torchmetrics unit test (see test_metrics.py)
     """
@@ -232,7 +232,7 @@ def groundtruths(
         )
     crud.finalize(db=db, dataset_name=dataset_name)
 
-    return db.query(models.GroundTruth).all()  # type: ignore - SQLAlchemy type issue
+    return db.query(models.GroundTruth).all()
 
 
 # predictions to use for testing AP
@@ -242,7 +242,7 @@ def predictions(
     dataset_name: str,
     model_name: str,
     images: list[schemas.Datum],
-) -> list[list[models.Prediction]]:
+) -> list[models.Prediction]:
     """Creates a model called "test_model" with some predicted
     detections on the dataset "test_dataset". These predictions are taken
     from a torchmetrics unit test (see test_metrics.py)
@@ -346,7 +346,7 @@ def predictions(
         )
     crud.finalize(db=db, dataset_name=dataset_name, model_name=model_name)
 
-    return db.query(models.Prediction).all()  # type: ignore - SQLAlchemy type issue
+    return db.query(models.Prediction).all()
 
 
 @pytest.fixture
@@ -354,7 +354,7 @@ def groundtruths_with_rasters(
     db: Session,
     dataset_name: str,
     img1: schemas.Datum,
-) -> list[list[models.GroundTruth]]:
+) -> list[models.GroundTruth]:
     """Used to test object detection functionality on rasters"""
     dataset_name = "test_dataset"
     crud.create_dataset(
@@ -393,7 +393,7 @@ def groundtruths_with_rasters(
     )
     crud.finalize(db=db, dataset_name=dataset_name)
 
-    return db.query(models.GroundTruth).all()  # type: ignore - SQLAlchemy type issue
+    return db.query(models.GroundTruth).all()
 
 
 @pytest.fixture
@@ -402,7 +402,7 @@ def predictions_with_rasters(
     dataset_name: str,
     model_name: str,
     img1: schemas.Datum,
-) -> list[list[models.Prediction]]:
+) -> list[models.Prediction]:
     """Used to test object detection functionality on rasters"""
 
     crud.create_model(
@@ -458,7 +458,7 @@ def predictions_with_rasters(
         )
     crud.finalize(db=db, dataset_name=dataset_name, model_name=model_name)
 
-    return db.query(models.Prediction).all()  # type: ignore - SQLAlchemy type issue
+    return db.query(models.Prediction).all()
 
 
 @pytest.fixture

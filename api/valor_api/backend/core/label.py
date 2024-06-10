@@ -1,12 +1,14 @@
-from sqlalchemy import Subquery, and_, desc, func, or_, select
+from typing import Any
+
+from sqlalchemy import and_, desc, func, or_, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
-from sqlalchemy.sql.selectable import Select
+from sqlalchemy.orm import InstrumentedAttribute, Query, Session
 
 from valor_api import api_utils, schemas
 from valor_api.backend import models
-from valor_api.backend.query import Query
+from valor_api.backend.query import generate_query, generate_select
+from valor_api.backend.query.types import TableTypeAlias
 
 LabelMapType = list[list[list[str]]]
 
@@ -38,16 +40,13 @@ def validate_matching_label_keys(
         If the distinct ground truth label keys don't match the distinct prediction label keys for any datum.
     """
 
-    gts = (
-        Query(
-            models.Annotation.datum_id.label("datum_id"),
-            models.Label.key.label("label_key"),
-            models.Label.value.label("label_value"),
-        )
-        .filter(groundtruth_filter)
-        .groundtruths(as_subquery=False)
-        .alias()
-    )
+    gts = generate_select(
+        models.Annotation.datum_id.label("datum_id"),
+        models.Label.key.label("label_key"),
+        models.Label.value.label("label_value"),
+        filter_=groundtruth_filter,
+        label_source=models.GroundTruth,
+    ).alias()
 
     gt_label_keys_by_datum = (
         select(
@@ -61,16 +60,13 @@ def validate_matching_label_keys(
         .subquery()
     )
 
-    preds = (
-        Query(
-            models.Annotation.datum_id.label("datum_id"),
-            models.Label.key.label("label_key"),
-            models.Label.value.label("label_value"),
-        )
-        .filter(prediction_filter)
-        .predictions(as_subquery=False)
-        .alias()
-    )
+    preds = generate_select(
+        models.Annotation.datum_id.label("datum_id"),
+        models.Label.key.label("label_key"),
+        models.Label.value.label("label_value"),
+        filter_=prediction_filter,
+        label_source=models.Prediction,
+    ).alias()
 
     preds_label_keys_by_datum = (
         select(
@@ -234,23 +230,34 @@ def create_labels(
     return {(row.key, row.value): row.id for row in label_rows}
 
 
-def _getter_statement(
-    selection,
+def _getter_query(
+    db: Session,
+    selection: TableTypeAlias | InstrumentedAttribute,
     filters: schemas.Filter | None = None,
     ignore_groundtruths: bool = False,
     ignore_predictions: bool = False,
-) -> Subquery | Select:
+) -> Query[Any]:
     """Builds sql statement for other functions."""
-    stmt = Query(selection)
-    if filters:
-        stmt = stmt.filter(filters)
     if not ignore_groundtruths and ignore_predictions:
-        stmt = stmt.groundtruths(as_subquery=False)
+        return generate_query(
+            selection,
+            db=db,
+            filter_=filters,
+            label_source=models.GroundTruth,
+        )
     elif ignore_groundtruths and not ignore_predictions:
-        stmt = stmt.predictions(as_subquery=False)
+        return generate_query(
+            selection,
+            db=db,
+            filter_=filters,
+            label_source=models.Prediction,
+        )
     else:
-        stmt = stmt.any(as_subquery=False)
-    return stmt
+        return generate_query(
+            selection,
+            db=db,
+            filter_=filters,
+        )
 
 
 def get_labels(
@@ -278,7 +285,8 @@ def get_labels(
     set[schemas.Label]
         A set of labels.
     """
-    stmt = _getter_statement(
+    query = _getter_query(
+        db=db,
         selection=models.Label,
         filters=filters,
         ignore_groundtruths=ignore_groundtruths,
@@ -286,7 +294,7 @@ def get_labels(
     )
     return {
         schemas.Label(key=label.key, value=label.value)
-        for label in db.query(stmt.subquery()).all()  # type: ignore - SQLAlchemy type issue
+        for label in query.all()
     }
 
 
@@ -321,7 +329,8 @@ def get_paginated_labels(
     tuple[set[schemas.Label], dict[str, str]]
         A tuple containing the labels and response headers to return to the user.
     """
-    subquery = _getter_statement(
+    query = _getter_query(
+        db=db,
         selection=models.Label,
         filters=filters,
         ignore_groundtruths=ignore_groundtruths,
@@ -333,7 +342,7 @@ def get_paginated_labels(
             "Offset should be an int greater than or equal to zero. Limit should be an int greater than or equal to -1."
         )
 
-    count = len(db.query(subquery.subquery()).distinct().all())  # type: ignore - sqlalchemy type error
+    count = len(query.distinct().all())
 
     if offset > count:
         raise ValueError(
@@ -344,7 +353,13 @@ def get_paginated_labels(
     if limit == -1:
         limit = count
 
-    labels = db.query(subquery.subquery()).distinct().order_by(desc("created_at")).offset(offset).limit(limit).all()  # type: ignore - sqlalchemy type error
+    labels = (
+        query.distinct()
+        .order_by(desc(models.Label.created_at))
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
 
     contents = {
         schemas.Label(key=label.key, value=label.value) for label in labels
@@ -384,13 +399,14 @@ def get_label_keys(
     set[str]
         A set of label keys.
     """
-    stmt = _getter_statement(
+    query = _getter_query(
+        db=db,
         selection=models.Label.key,
         filters=filters,
         ignore_groundtruths=ignore_groundtruths,
         ignore_predictions=ignore_predictions,
     )
-    return {key for key in db.scalars(stmt)}  # type: ignore - SQLAlchemy type issue
+    return {key for key in db.scalars(query.statement)}
 
 
 def get_joint_labels(
@@ -550,13 +566,14 @@ def fetch_labels(
     -------
     set[models.Label]
     """
-    stmt = _getter_statement(
+    query = _getter_query(
+        db=db,
         selection=models.Label,
         filters=filter_,
         ignore_groundtruths=ignore_groundtruths,
         ignore_predictions=ignore_predictions,
     )
-    return set(db.query(stmt.subquery()).all())  # type: ignore - SQLAlchemy type issue
+    return set(query.all())
 
 
 def fetch_union_of_labels(

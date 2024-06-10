@@ -16,7 +16,7 @@ from valor_api.backend.metrics.classification import (
     compute_clf_metrics,
 )
 from valor_api.backend.metrics.metric_utils import create_grouper_mappings
-from valor_api.backend.query import Query
+from valor_api.backend.query import generate_query, generate_select
 
 
 @pytest.fixture
@@ -166,22 +166,17 @@ def test_compute_confusion_matrix_at_grouper_key(
     pFilter = prediction_filter.model_copy()
     pFilter.label_keys = label_key_filter
 
-    groundtruths = (
-        Query(
-            models.GroundTruth,
-            models.Annotation.datum_id.label("datum_id"),
-        )
-        .filter(gFilter)
-        .groundtruths(as_subquery=False)
-        .alias()
-    )
-
-    predictions = (
-        Query(models.Prediction)
-        .filter(pFilter)
-        .predictions(as_subquery=False)
-        .alias()
-    )
+    groundtruths = generate_select(
+        models.GroundTruth,
+        models.Annotation.datum_id.label("datum_id"),
+        filter_=gFilter,
+        label_source=models.GroundTruth,
+    ).alias()
+    predictions = generate_select(
+        models.Prediction,
+        filter_=pFilter,
+        label_source=models.Prediction,
+    ).alias()
 
     cm = _compute_confusion_matrix_at_grouper_key(
         db=db,
@@ -228,22 +223,17 @@ def test_compute_confusion_matrix_at_grouper_key(
     pFilter = prediction_filter.model_copy()
     pFilter.label_keys = label_key_filter
 
-    groundtruths = (
-        Query(
-            models.GroundTruth,
-            models.Annotation.datum_id.label("datum_id"),
-        )
-        .filter(gFilter)
-        .groundtruths(as_subquery=False)
-        .alias()
-    )
-
-    predictions = (
-        Query(models.Prediction)
-        .filter(pFilter)
-        .predictions(as_subquery=False)
-        .alias()
-    )
+    groundtruths = generate_select(
+        models.GroundTruth,
+        models.Annotation.datum_id.label("datum_id"),
+        filter_=gFilter,
+        label_source=models.GroundTruth,
+    ).alias()
+    predictions = generate_select(
+        models.Prediction,
+        filter_=pFilter,
+        label_source=models.Prediction,
+    ).alias()
 
     cm = _compute_confusion_matrix_at_grouper_key(
         db=db,
@@ -323,22 +313,17 @@ def test_compute_confusion_matrix_at_grouper_key_and_filter(
     pFilter = prediction_filter.model_copy()
     pFilter.label_keys = label_key_filter
 
-    groundtruths = (
-        Query(
-            models.GroundTruth,
-            models.Annotation.datum_id.label("datum_id"),
-        )
-        .filter(gFilter)
-        .groundtruths(as_subquery=False)
-        .alias()
-    )
-
-    predictions = (
-        Query(models.Prediction)
-        .filter(pFilter)
-        .predictions(as_subquery=False)
-        .alias()
-    )
+    groundtruths = generate_select(
+        models.GroundTruth,
+        models.Annotation.datum_id.label("datum_id"),
+        filter_=gFilter,
+        label_source=models.GroundTruth,
+    ).alias()
+    predictions = generate_select(
+        models.Prediction,
+        filter_=pFilter,
+        label_source=models.Prediction,
+    ).alias()
 
     cm = _compute_confusion_matrix_at_grouper_key(
         db,
@@ -417,22 +402,17 @@ def test_compute_confusion_matrix_at_grouper_key_using_label_map(
     pFilter = prediction_filter.model_copy()
     pFilter.label_keys = label_key_filter
 
-    groundtruths = (
-        Query(
-            models.GroundTruth,
-            models.Annotation.datum_id.label("datum_id"),
-        )
-        .filter(gFilter)
-        .groundtruths(as_subquery=False)
-        .alias()
-    )
-
-    predictions = (
-        Query(models.Prediction)
-        .filter(pFilter)
-        .predictions(as_subquery=False)
-        .alias()
-    )
+    groundtruths = generate_select(
+        models.GroundTruth,
+        models.Annotation.datum_id.label("datum_id"),
+        filter_=gFilter,
+        label_source=models.GroundTruth,
+    ).alias()
+    predictions = generate_select(
+        models.Prediction,
+        filter_=pFilter,
+        label_source=models.Prediction,
+    ).alias()
 
     cm = _compute_confusion_matrix_at_grouper_key(
         db,
@@ -786,7 +766,6 @@ def test_classification(
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.CLASSIFICATION,
         ),
-        meta={},
     )
 
     # creates evaluation job
@@ -910,35 +889,36 @@ def test__compute_curves(
     pFilter = prediction_filter.model_copy()
     pFilter.label_keys = label_key_filter
 
-    groundtruths = (
-        Query(
-            models.GroundTruth,
-            models.Annotation.datum_id.label("datum_id"),
-            models.Dataset.name.label("dataset_name"),
-        )
-        .filter(gFilter)
-        .groundtruths(as_subquery=False)
-        .alias()
-    )
-
-    predictions = (
-        Query(models.Prediction, models.Dataset.name.label("dataset_name"))
-        .filter(pFilter)
-        .predictions(as_subquery=False)
-        .alias()
-    )
+    groundtruths = generate_select(
+        models.GroundTruth,
+        models.Annotation.datum_id.label("datum_id"),
+        models.Dataset.name.label("dataset_name"),
+        filter_=gFilter,
+        label_source=models.GroundTruth,
+    ).alias()
+    predictions = generate_select(
+        models.Prediction,
+        models.Dataset.name.label("dataset_name"),
+        filter_=pFilter,
+        label_source=models.Prediction,
+    ).alias()
 
     # calculate the number of unique datums
     # used to determine the number of true negatives
-    pd_datums = db.query(
-        Query(models.Dataset.name, models.Datum.uid)  # type: ignore - sqlalchemy issues
-        .filter(prediction_filter)
-        .predictions()
+
+    gt_datums = generate_query(
+        models.Dataset.name,
+        models.Datum.uid,
+        db=db,
+        filter_=groundtruth_filter,
+        label_source=models.GroundTruth,
     ).all()
-    gt_datums = db.query(
-        Query(models.Dataset.name, models.Datum.uid)  # type: ignore - sqlalchemy issues
-        .filter(groundtruth_filter)
-        .groundtruths()
+    pd_datums = generate_query(
+        models.Dataset.name,
+        models.Datum.uid,
+        db=db,
+        filter_=prediction_filter,
+        label_source=models.Prediction,
     ).all()
     unique_datums = set(pd_datums + gt_datums)
 
