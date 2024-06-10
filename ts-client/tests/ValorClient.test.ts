@@ -5,8 +5,6 @@ import { ValorClient } from '../src/ValorClient';
 const baseURL = 'http://localhost:8000';
 const client = new ValorClient(baseURL);
 
-jest.setTimeout(30000); // longest evaluation takes ~25 seconds
-
 beforeEach(async () => {
   // make sure there are no datasets or models in the backend
   const datasets = await client.getAllDatasets();
@@ -365,7 +363,7 @@ test('bulk create or get evaluations', async () => {
     expect(evaluations.length).toBe(2);
     // check all evaluations are pending
     while (evaluations.every((evaluation) => evaluation.status !== 'done')) {
-      await new Promise((resolve) => setTimeout(resolve, 10000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       evaluations = await client.getEvaluationsByIds(
         evaluations.map((evaluation) => evaluation.id)
       );
