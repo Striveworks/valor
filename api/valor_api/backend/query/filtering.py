@@ -28,8 +28,8 @@ from valor_api.backend.models import (
     Prediction,
 )
 from valor_api.backend.query.types import LabelSourceAlias, TableTypeAlias
-from valor_api.schemas.filters import AdvancedFilter as Filter
 from valor_api.schemas.filters import (
+    Filter,
     NArgFunction,
     OneArgFunction,
     Symbol,

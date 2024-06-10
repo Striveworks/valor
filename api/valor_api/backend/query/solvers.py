@@ -21,8 +21,7 @@ from valor_api.backend.query.filtering import (
 )
 from valor_api.backend.query.mapping import map_arguments_to_tables
 from valor_api.backend.query.types import LabelSourceAlias, TableTypeAlias
-from valor_api.schemas.filters import AdvancedFilter as Filter
-from valor_api.schemas.filters import FunctionType
+from valor_api.schemas.filters import Filter, FunctionType
 
 
 def _join_label_to_annotation(selection: Select) -> Select[Any]:

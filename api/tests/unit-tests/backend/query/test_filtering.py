@@ -7,10 +7,10 @@ from valor_api.backend.query.filtering import (
     generate_logical_expression,
     map_filter_to_tables,
 )
-from valor_api.schemas.filters import AdvancedFilter as Filter
 from valor_api.schemas.filters import (
     And,
     Equal,
+    Filter,
     IsNull,
     Not,
     Operands,

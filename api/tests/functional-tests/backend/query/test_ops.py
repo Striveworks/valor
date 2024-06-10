@@ -11,10 +11,10 @@ from valor_api import crud, schemas
 from valor_api.backend import models
 from valor_api.backend.query.ops import generate_query, generate_select
 from valor_api.backend.query.types import LabelSourceAlias
-from valor_api.schemas.filters import AdvancedFilter as Filter
 from valor_api.schemas.filters import (
     And,
     Equal,
+    Filter,
     GreaterThan,
     GreaterThanEqual,
     Inside,
