@@ -52,7 +52,7 @@ class EvaluationRequest:
         The list of datasets we want to evaluate by name.
     model_names : List[str]
         The list of models we want to evaluate by name.
-    datum_filter : schemas.Filter
+    filter : schemas.Filter
         The filter object used to define what the model(s) is evaluating against.
     parameters : EvaluationParameters
         Any parameters that are used to modify an evaluation method.

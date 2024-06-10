@@ -141,7 +141,7 @@ def test_evaluate_detection(
         "id": eval_job.id,
         "dataset_names": ["test_dataset"],
         "model_name": model_name,
-        "datum_filter": {
+        "filter": {
             **default_filter_properties,
             "label_keys": ["k1"],
         },
@@ -260,7 +260,7 @@ def test_evaluate_detection(
         "id": eval_job_bounded_area_10_2000.id,
         "dataset_names": ["test_dataset"],
         "model_name": model_name,
-        "datum_filter": {
+        "filter": {
             **default_filter_properties,
             "bounding_box_area": [
                 {
@@ -325,7 +325,7 @@ def test_evaluate_detection(
         "id": eval_job_min_area_1200.id,
         "dataset_names": ["test_dataset"],
         "model_name": model_name,
-        "datum_filter": {
+        "filter": {
             **default_filter_properties,
             "bounding_box_area": [
                 {
@@ -399,7 +399,7 @@ def test_evaluate_detection(
         "id": eval_job_bounded_area_1200_1800.id,
         "dataset_names": ["test_dataset"],
         "model_name": model_name,
-        "datum_filter": {
+        "filter": {
             **default_filter_properties,
             "bounding_box_area": [
                 {
@@ -604,7 +604,7 @@ def test_evaluate_detection_with_json_filters(
         "id": eval_job_bounded_area_1200_1800.id,
         "dataset_names": ["test_dataset"],
         "model_name": model_name,
-        "datum_filter": {
+        "filter": {
             **default_filter_properties,
             "bounding_box_area": [
                 {

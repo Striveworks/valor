@@ -177,8 +177,8 @@ class Evaluation:
             The names of the datasets the model was evaluated over.
         model_name : str
             The name of the evaluated model.
-        datum_filter : schemas.Filter
-            The filter used to select the datums for evaluation.
+        filter : schemas.Filter
+            The filter used to select data partitions for evaluation.
         status : EvaluationStatus
             The status of the evaluation.
         metrics : List[dict]
@@ -211,9 +211,7 @@ class Evaluation:
         self.id = id
         self.dataset_names = dataset_names
         self.model_name = model_name
-        self.datum_filter = (
-            Filter(**filter) if isinstance(filter, dict) else filter
-        )
+        self.filter = Filter(**filter) if isinstance(filter, dict) else filter
         self.parameters = (
             EvaluationParameters(**parameters)
             if isinstance(parameters, dict)
@@ -298,7 +296,7 @@ class Evaluation:
             "id": self.id,
             "dataset_names": self.dataset_names,
             "model_name": self.model_name,
-            "datum_filter": asdict(self.datum_filter),
+            "filter": asdict(self.filter),
             "parameters": asdict(self.parameters),
             "status": self.status.value,
             "metrics": self.metrics,
@@ -813,7 +811,7 @@ class Model(StaticCollection):
         datasets: Optional[Union[Dataset, List[Dataset]]] = None,
         filter_by: Optional[FilterType] = None,
     ) -> Filter:
-        """Formats the 'datum_filter' for any evaluation requests."""
+        """Formats the 'filter' for any evaluation requests."""
 
         # get list of dataset names
         dataset_names_from_obj = []
@@ -905,12 +903,12 @@ class Model(StaticCollection):
             )
 
         # format request
-        datum_filter = self._format_constraints(datasets, filter_by)
+        data_filter = self._format_constraints(datasets, filter_by)
         datasets = datasets if isinstance(datasets, list) else [datasets]
         request = EvaluationRequest(
             dataset_names=[dataset.name for dataset in datasets],  # type: ignore - issue #604
             model_names=[self.name],  # type: ignore - issue #604
-            filter=datum_filter,
+            filter=data_filter,
             parameters=EvaluationParameters(
                 task_type=TaskType.CLASSIFICATION,
                 label_map=self._create_label_map(label_map=label_map),
@@ -989,12 +987,12 @@ class Model(StaticCollection):
             metrics_to_return=metrics_to_return,
             pr_curve_iou_threshold=pr_curve_iou_threshold,
         )
-        datum_filter = self._format_constraints(datasets, filter_by)
+        data_filter = self._format_constraints(datasets, filter_by)
         datasets = datasets if isinstance(datasets, list) else [datasets]
         request = EvaluationRequest(
             dataset_names=[dataset.name for dataset in datasets],  # type: ignore - issue #604
             model_names=[self.name],  # type: ignore - issue #604
-            filter=datum_filter,
+            filter=data_filter,
             parameters=parameters,
         )
 
@@ -1036,12 +1034,12 @@ class Model(StaticCollection):
             A job object that can be used to track the status of the job and get the metrics of it upon completion
         """
         # format request
-        datum_filter = self._format_constraints(datasets, filter_by)
+        data_filter = self._format_constraints(datasets, filter_by)
         datasets = datasets if isinstance(datasets, list) else [datasets]
         request = EvaluationRequest(
             dataset_names=[dataset.name for dataset in datasets],  # type: ignore - issue #604
             model_names=[self.name],  # type: ignore - issue #604
-            filter=datum_filter,
+            filter=data_filter,
             parameters=EvaluationParameters(
                 task_type=TaskType.SEMANTIC_SEGMENTATION,
                 label_map=self._create_label_map(label_map=label_map),

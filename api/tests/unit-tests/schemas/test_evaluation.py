@@ -116,7 +116,7 @@ def test_EvaluationRequest():
         schemas.EvaluationRequest(
             dataset_names=["ds"],
             model_names=["name"],
-            datum_filter=None,  # type: ignore - purposefully throwing error
+            filter=None,  # type: ignore - purposefully throwing error
             parameters=schemas.EvaluationParameters(
                 task_type=enums.TaskType.CLASSIFICATION
             ),

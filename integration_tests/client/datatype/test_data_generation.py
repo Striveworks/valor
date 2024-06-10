@@ -391,7 +391,7 @@ def test_generate_prediction_data(client: Client):
     assert eval_dict == {
         "dataset_names": [dataset_name],
         "model_name": model_name,
-        "datum_filter": {
+        "filter": {
             **asdict(
                 Filter()
             ),  # default filter properties with overrides below

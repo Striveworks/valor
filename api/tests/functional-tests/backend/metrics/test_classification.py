@@ -675,7 +675,7 @@ def test_compute_classification(
     model_filter = schemas.Filter(
         dataset_names=[dataset_name], model_names=[model_name]
     )
-    datum_filter = schemas.Filter(
+    dataset_filter = schemas.Filter(
         dataset_names=[dataset_name],
         model_names=[model_name],
         task_types=[enums.TaskType.CLASSIFICATION],
@@ -684,7 +684,7 @@ def test_compute_classification(
     confusion, metrics = _compute_clf_metrics(
         db,
         model_filter,
-        datum_filter,
+        dataset_filter,
         label_map=None,
         metrics_to_return=[
             "Precision",
