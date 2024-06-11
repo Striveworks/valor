@@ -9,8 +9,8 @@ from valor.metrics.classification import (
     get_tps_fps_thresholds,
 )
 from valor.metrics.detection import (
-    compute_ap_metrics,
     ap_from_intermediate_metric_data,
+    compute_ap_metrics,
     get_intermediate_metric_data_for_label,
 )
 from valor.schemas import Box
@@ -268,9 +268,9 @@ def test_compute_ap_metrics_in_pieces(
             preds2, gts2, label, iou_thresholds
         )
 
-        metrics["AP"][(label.key, label.value)] = (
-            ap_from_intermediate_metric_data(intermediate1, intermediate2)
-        )
+        metrics["AP"][
+            (label.key, label.value)
+        ] = ap_from_intermediate_metric_data(intermediate1, intermediate2)
 
     round_dict_(metrics, 3)
 
