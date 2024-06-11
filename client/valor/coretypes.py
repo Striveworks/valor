@@ -875,6 +875,7 @@ class Model(StaticCollection):
         datasets: Union[Dataset, List[Dataset]],
         filter_by: Optional[FilterType] = None,
         label_map: Optional[Dict[Label, Label]] = None,
+        pr_curve_max_examples: int = 1,
         metrics_to_return: Optional[List[str]] = None,
         allow_retries: bool = False,
     ) -> Evaluation:
@@ -914,6 +915,7 @@ class Model(StaticCollection):
             parameters=EvaluationParameters(
                 task_type=TaskType.CLASSIFICATION,
                 label_map=self._create_label_map(label_map=label_map),
+                pr_curve_max_examples=pr_curve_max_examples,
                 metrics_to_return=metrics_to_return,
             ),
         )
@@ -937,6 +939,7 @@ class Model(StaticCollection):
         recall_score_threshold: float = 0,
         metrics_to_return: Optional[List[str]] = None,
         pr_curve_iou_threshold: float = 0.5,
+        pr_curve_max_examples: int = 1,
         allow_retries: bool = False,
     ) -> Evaluation:
         """
@@ -958,10 +961,10 @@ class Model(StaticCollection):
             Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
         recall_score_threshold: float, default=0
             The confidence score threshold for use when determining whether to count a prediction as a true positive or not while calculating Average Recall.
-        metrics: List[str], optional
-            The list of metrics to compute, store, and return to the user.
         pr_curve_iou_threshold: float, optional
             The IOU threshold to use when calculating precision-recall curves. Defaults to 0.5.
+        pr_curve_max_examples: int, optional
+            The maximum number of datum examples to store when calculating PR curves.
         allow_retries : bool, default = False
             Option to retry previously failed evaluations.
 
@@ -988,6 +991,7 @@ class Model(StaticCollection):
             recall_score_threshold=recall_score_threshold,
             metrics_to_return=metrics_to_return,
             pr_curve_iou_threshold=pr_curve_iou_threshold,
+            pr_curve_max_examples=pr_curve_max_examples,
         )
         filters = self._format_constraints(datasets, filter_by)
         datasets = datasets if isinstance(datasets, list) else [datasets]

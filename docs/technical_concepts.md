@@ -16,7 +16,7 @@ Note that Valor does _not_ store raw data (such as underlying images) or facilit
 
 ## Supported Task Types
 
-As of January 2024, Valor supports the following types of supervised learning tasks and associated metrics:
+As of May 2024, Valor supports the following types of supervised learning tasks and associated metrics:
 
 - Classification (including multi-label classification)
   - F1
@@ -24,11 +24,15 @@ As of January 2024, Valor supports the following types of supervised learning ta
   - Accuracy
   - Precision
   - Recall
+  - Precision Recall Curve
+  - Detailed Precision Recall Curve
 - Object detection
   - AP
   - mAP
   - AP Averaged Over IOUs
   - mAP Averaged Over IOUs
+  - Precision Recall Curve
+  - Detailed Precision Recall Curve
 - Segmentation (including both instance and semantic segmentation)
   - IOU
   - mIOU

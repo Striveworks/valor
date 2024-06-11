@@ -413,6 +413,7 @@ def test_generate_prediction_data(client: Client):
                 "mAPAveragedOverIOUs",
             ],
             "pr_curve_iou_threshold": 0.5,
+            "pr_curve_max_examples": 1,
         },
         "meta": {},
     }

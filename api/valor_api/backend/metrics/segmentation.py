@@ -206,12 +206,12 @@ def _compute_segmentation_metrics(
             "grouper_id_to_grouper_label_mapping"
         ][grouper_id]
 
-        ret.append(
+        ret += [
             IOUMetric(
                 label=grouper_label,
                 value=computed_iou_score,
             )
-        )
+        ]
 
         ious_per_grouper_key[grouper_label.key].append(computed_iou_score)
 

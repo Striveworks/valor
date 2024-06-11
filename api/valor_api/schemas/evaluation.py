@@ -16,7 +16,11 @@ class EvaluationParameters(BaseModel):
 
     Attributes
     ----------
-    metrics: list[str], optional
+    task_type: TaskType
+        The task type of a given evaluation.
+    label_map: Optional[List[List[List[str]]]]
+        Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
+    metrics: List[str], optional
         The list of metrics to compute, store, and return to the user.
     convert_annotations_to_type: AnnotationType | None = None
         The type to convert all annotations to.
@@ -24,31 +28,32 @@ class EvaluationParameters(BaseModel):
         A list of floats describing which Intersection over Unions (IoUs) to use when calculating metrics (i.e., mAP).
     iou_thresholds_to_return: List[float], optional
         A list of floats describing which Intersection over Union (IoUs) thresholds to calculate a metric for. Must be a subset of `iou_thresholds_to_compute`.
-    label_map: LabelMapType, optional
-        Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
     recall_score_threshold: float, default=0
         The confidence score threshold for use when determining whether to count a prediction as a true positive or not while calculating Average Recall.
     pr_curve_iou_threshold: float, optional
             The IOU threshold to use when calculating precision-recall curves for object detection tasks. Defaults to 0.5.
+    pr_curve_max_examples: int
+        The maximum number of datum examples to store when calculating PR curves.
     """
 
     task_type: TaskType
-
     metrics_to_return: list[str] | None = None
+    label_map: LabelMapType | None = None
+
     convert_annotations_to_type: AnnotationType | None = None
     iou_thresholds_to_compute: list[float] | None = None
     iou_thresholds_to_return: list[float] | None = None
-    label_map: LabelMapType | None = None
     recall_score_threshold: float | None = 0
-    pr_curve_iou_threshold: float | None = 0.5
+    pr_curve_iou_threshold: float = 0.5
+    pr_curve_max_examples: int = 1
 
     # pydantic setting
     model_config = ConfigDict(extra="forbid")
 
     @model_validator(mode="after")
     @classmethod
-    def _validate_by_task_type(cls, values):
-        """Validate the IOU thresholds."""
+    def _validate_parameters(cls, values):
+        """Validate EvaluationParameters via type-specific checks."""
 
         # set default metrics for each task type
         if values.metrics_to_return is None:
