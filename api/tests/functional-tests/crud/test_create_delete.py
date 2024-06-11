@@ -1236,6 +1236,8 @@ def test_create_detection_metrics(
             "mAR",
             "mAP",
             "mAPAveragedOverIOUs",
+            "PrecisionRecallCurve",
+            "DetailedPrecisionRecallCurve",
         }
 
     # test when min area and max area are specified
@@ -1261,6 +1263,8 @@ def test_create_detection_metrics(
             "mAR",
             "mAP",
             "mAPAveragedOverIOUs",
+            "PrecisionRecallCurve",
+            "DetailedPrecisionRecallCurve",
         }
 
     # check we have the right evaluations
@@ -1360,7 +1364,7 @@ def test_create_clf_metrics(
         model_names=[model_name],
         datum_filter=schemas.Filter(dataset_names=[dataset_name]),
         parameters=schemas.EvaluationParameters(
-            task_type=enums.TaskType.CLASSIFICATION
+            task_type=enums.TaskType.CLASSIFICATION,
         ),
     )
 
@@ -1464,7 +1468,7 @@ def test_create_clf_metrics(
     )
     assert query
     metrics = query.metrics
-    assert len(metrics) == 2 + 2 + 6 + 6 + 6
+    assert len(metrics) == 22
     confusion_matrices = db.scalars(
         select(models.ConfusionMatrix).where(
             models.ConfusionMatrix.evaluation_id == evaluation_id

@@ -7,7 +7,9 @@ from valor_api import enums, schemas
 
 
 def test_EvaluationParameters():
-    schemas.EvaluationParameters(task_type=enums.TaskType.CLASSIFICATION)
+    schemas.EvaluationParameters(
+        task_type=enums.TaskType.CLASSIFICATION,
+    )
 
     schemas.EvaluationParameters(
         task_type=enums.TaskType.OBJECT_DETECTION,
@@ -57,7 +59,7 @@ def test_EvaluationParameters():
         schemas.EvaluationParameters(
             task_type=enums.TaskType.OBJECT_DETECTION,
             iou_thresholds_to_compute=None,
-            iou_thresholds_to_return=0.2,  # type: ignore - purposefully throwing error
+            iou_thresholds_to_return=0.2,  # type: ignore - purposefully throwing error,
         )
 
     with pytest.raises(ValidationError):
@@ -81,21 +83,21 @@ def test_EvaluationRequest():
         model_names=["name"],
         datum_filter=schemas.Filter(),
         parameters=schemas.EvaluationParameters(
-            task_type=enums.TaskType.CLASSIFICATION
+            task_type=enums.TaskType.CLASSIFICATION,
         ),
     )
     schemas.EvaluationRequest(
         model_names=["name"],
         datum_filter=schemas.Filter(),
         parameters=schemas.EvaluationParameters(
-            task_type=enums.TaskType.CLASSIFICATION
+            task_type=enums.TaskType.CLASSIFICATION,
         ),
     )
     schemas.EvaluationRequest(
         model_names=["name", "other"],
         datum_filter=schemas.Filter(),
         parameters=schemas.EvaluationParameters(
-            task_type=enums.TaskType.CLASSIFICATION
+            task_type=enums.TaskType.CLASSIFICATION,
         ),
     )
 
@@ -105,7 +107,7 @@ def test_EvaluationRequest():
             model_filter=None,  # type: ignore - purposefully throwing error
             datum_filter=schemas.Filter(),
             parameters=schemas.EvaluationParameters(
-                task_type=enums.TaskType.CLASSIFICATION
+                task_type=enums.TaskType.CLASSIFICATION,
             ),
         )
     with pytest.raises(ValidationError):
@@ -113,7 +115,7 @@ def test_EvaluationRequest():
             model_names=["name"],
             datum_filter=None,  # type: ignore - purposefully throwing error
             parameters=schemas.EvaluationParameters(
-                task_type=enums.TaskType.CLASSIFICATION
+                task_type=enums.TaskType.CLASSIFICATION,
             ),
         )
     with pytest.raises(ValidationError):
@@ -129,7 +131,7 @@ def test_EvaluationRequest():
             model_names=[],
             datum_filter=schemas.Filter(),
             parameters=schemas.EvaluationParameters(
-                task_type=enums.TaskType.CLASSIFICATION
+                task_type=enums.TaskType.CLASSIFICATION,
             ),
         )
 
@@ -139,7 +141,7 @@ def test_EvaluationRequest():
             model_filter=schemas.Filter(),  # type: ignore - purposefully throwing error
             datum_filter=schemas.Filter(),
             parameters=schemas.EvaluationParameters(
-                task_type=enums.TaskType.CLASSIFICATION
+                task_type=enums.TaskType.CLASSIFICATION,
             ),
         )
 
@@ -150,7 +152,7 @@ def test_EvaluationResponse():
         model_name="test",
         datum_filter=schemas.Filter(),
         parameters=schemas.EvaluationParameters(
-            task_type=enums.TaskType.CLASSIFICATION
+            task_type=enums.TaskType.CLASSIFICATION,
         ),
         status=enums.EvaluationStatus.DONE,
         metrics=[],
@@ -166,7 +168,7 @@ def test_EvaluationResponse():
             model_name="test",
             datum_filter=schemas.Filter(),
             parameters=schemas.EvaluationParameters(
-                task_type=enums.TaskType.CLASSIFICATION
+                task_type=enums.TaskType.CLASSIFICATION,
             ),
             status=enums.EvaluationStatus.DONE,
             metrics=[],
@@ -182,7 +184,7 @@ def test_EvaluationResponse():
             model_name=None,  # type: ignore - purposefully throwing error
             datum_filter=schemas.Filter(),
             parameters=schemas.EvaluationParameters(
-                task_type=enums.TaskType.CLASSIFICATION
+                task_type=enums.TaskType.CLASSIFICATION,
             ),
             status=enums.EvaluationStatus.DONE,
             metrics=[],
@@ -212,7 +214,7 @@ def test_EvaluationResponse():
             model_name="name",
             datum_filter=schemas.Filter(),
             parameters=schemas.EvaluationParameters(
-                task_type=enums.TaskType.CLASSIFICATION
+                task_type=enums.TaskType.CLASSIFICATION,
             ),
             status=None,  # type: ignore - purposefully throwing error
             metrics=[],
