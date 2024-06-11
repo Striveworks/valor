@@ -13,6 +13,7 @@ from valor_api.backend.metrics.metric_utils import (
     get_or_create_row,
     log_evaluation_duration,
     log_evaluation_item_counts,
+    prepare_filter_for_evaluation,
     validate_computation,
 )
 from valor_api.backend.query import generate_select
@@ -26,7 +27,7 @@ def _generate_groundtruth_query(
     return generate_select(
         models.Annotation.id.label("annotation_id"),
         models.Annotation.datum_id.label("datum_id"),
-        filter_=groundtruth_filter,
+        filters=groundtruth_filter,
         label_source=models.GroundTruth,
     ).subquery("gt")
 
@@ -39,7 +40,7 @@ def _generate_prediction_query(
     return generate_select(
         models.Annotation.id.label("annotation_id"),
         models.Annotation.datum_id.label("datum_id"),
-        filter_=prediction_filter,
+        filters=prediction_filter,
         label_source=models.Prediction,
     ).subquery("pd")
 
@@ -251,14 +252,15 @@ def compute_semantic_segmentation_metrics(
     evaluation = core.fetch_evaluation_from_id(db, evaluation_id)
 
     # unpack filters and params
-    groundtruth_filter = schemas.Filter(**evaluation.datum_filter)
-    prediction_filter = groundtruth_filter.model_copy()
-    prediction_filter.model_names = [evaluation.model_name]
     parameters = schemas.EvaluationParameters(**evaluation.parameters)
-
-    # load task type into filters
-    groundtruth_filter.task_types = [parameters.task_type]
-    prediction_filter.task_types = [parameters.task_type]
+    groundtruth_filter, prediction_filter = prepare_filter_for_evaluation(
+        db=db,
+        filters=schemas.Filter(**evaluation.filters),
+        dataset_names=evaluation.dataset_names,
+        model_name=evaluation.model_name,
+        task_type=parameters.task_type,
+        label_map=parameters.label_map,
+    )
 
     log_evaluation_item_counts(
         db=db,

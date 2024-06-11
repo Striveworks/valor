@@ -147,8 +147,9 @@ export type Metric = {
 
 export type Evaluation = {
   id: number;
+  dataset_names: string[];
   model_name: string;
-  datum_filter: { dataset_names: string[]; object: any };
+  filters: any;
   parameters: { task_type: TaskType; object: any };
   status: 'pending' | 'running' | 'done' | 'failed' | 'deleting';
   metrics: Metric[];
@@ -403,8 +404,9 @@ export class ValorClient {
     prCurveMaxExamples?: number
   ): Promise<Evaluation> {
     const response = await this.client.post('/evaluations', {
+      dataset_names: [dataset],
       model_names: [model],
-      datum_filter: { dataset_names: [dataset] },
+      filters: {},
       parameters: {
         task_type: taskType,
         iou_thresholds_to_compute: iouThresholdsToCompute,
@@ -450,8 +452,9 @@ export class ValorClient {
     prCurveMaxExamples?: number
   ): Promise<Evaluation[]> {
     const response = await this.client.post('/evaluations', {
+      dataset_names: [dataset],
       model_names: models,
-      datum_filter: { dataset_names: [dataset] },
+      filters: {},
       parameters: {
         task_type: taskType,
         metrics_to_return: metrics_to_return,

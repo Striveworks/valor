@@ -11,6 +11,7 @@ from valor.enums import AnnotationType, EvaluationStatus, TableStatus, TaskType
 from valor.exceptions import (
     ClientException,
     DatasetDoesNotExistError,
+    EvaluationDoesNotExist,
     ModelDoesNotExistError,
 )
 from valor.schemas import (
@@ -172,10 +173,12 @@ class Evaluation:
         ----------
         id : int
             The ID of the evaluation.
+        dataset_names : list[str]
+            The names of the datasets the model was evaluated over.
         model_name : str
             The name of the evaluated model.
-        datum_filter : schemas.Filter
-            The filter used to select the datums for evaluation.
+        filters : schemas.Filter
+            The filter used to select data partitions for evaluation.
         status : EvaluationStatus
             The status of the evaluation.
         metrics : List[dict]
@@ -194,8 +197,9 @@ class Evaluation:
         self,
         *_,
         id: int,
+        dataset_names: list[str],
         model_name: str,
-        datum_filter: Filter,
+        filters: Filter,
         parameters: EvaluationParameters,
         status: EvaluationStatus,
         metrics: List[Dict],
@@ -205,11 +209,10 @@ class Evaluation:
         **kwargs,
     ):
         self.id = id
+        self.dataset_names = dataset_names
         self.model_name = model_name
-        self.datum_filter = (
-            Filter(**datum_filter)
-            if isinstance(datum_filter, dict)
-            else datum_filter
+        self.filters = (
+            Filter(**filters) if isinstance(filters, dict) else Filter()
         )
         self.parameters = (
             EvaluationParameters(**parameters)
@@ -248,7 +251,7 @@ class Evaluation:
         """
         response = self.conn.get_evaluations(evaluation_ids=[self.id])
         if not response:
-            raise ClientException("Not Found")
+            raise EvaluationDoesNotExist(self.id)
         self.update(**response[0])
         return self.status
 
@@ -293,8 +296,9 @@ class Evaluation:
         """
         return {
             "id": self.id,
+            "dataset_names": self.dataset_names,
             "model_name": self.model_name,
-            "datum_filter": asdict(self.datum_filter),
+            "filters": asdict(self.filters),
             "parameters": asdict(self.parameters),
             "status": self.status.value,
             "metrics": self.metrics,
@@ -551,16 +555,16 @@ class Dataset(StaticCollection):
         List[Datum]
             A list of `Datums` associated with the dataset.
         """
-        filter_ = _format_filter(filter_by)
-        if isinstance(filter_, Filter):
-            filter_ = asdict(filter_)
+        filters = _format_filter(filter_by)
+        if isinstance(filters, Filter):
+            filters = asdict(filters)
 
-        if filter_.get("dataset_names"):
+        if filters.get("dataset_names"):
             raise ValueError(
                 "Cannot filter by dataset_names when calling `Dataset.get_datums`."
             )
-        filter_["dataset_names"] = [self.name]  # type: ignore
-        return Client(self.conn).get_datums(filter_by=filter_)
+        filters["dataset_names"] = [self.name]  # type: ignore
+        return Client(self.conn).get_datums(filter_by=filters)
 
     def get_evaluations(
         self,
@@ -809,7 +813,7 @@ class Model(StaticCollection):
         datasets: Optional[Union[Dataset, List[Dataset]]] = None,
         filter_by: Optional[FilterType] = None,
     ) -> Filter:
-        """Formats the 'datum_filter' for any evaluation requests."""
+        """Formats the 'filter' for any evaluation requests."""
 
         # get list of dataset names
         dataset_names_from_obj = []
@@ -819,17 +823,17 @@ class Model(StaticCollection):
             dataset_names_from_obj = [datasets.name]
 
         # create a 'schemas.Filter' object from the constraints.
-        filter_ = _format_filter(filter_by)
+        filters = _format_filter(filter_by)
 
         # reset model name
-        filter_.model_names = None
-        filter_.model_metadata = None
+        filters.model_names = None
+        filters.model_metadata = None
 
         # set dataset names
-        if not filter_.dataset_names:
-            filter_.dataset_names = []
-        filter_.dataset_names.extend(dataset_names_from_obj)  # type: ignore
-        return filter_
+        if not filters.dataset_names:
+            filters.dataset_names = []
+        filters.dataset_names.extend(dataset_names_from_obj)  # type: ignore
+        return filters
 
     def _create_label_map(
         self,
@@ -868,7 +872,7 @@ class Model(StaticCollection):
 
     def evaluate_classification(
         self,
-        datasets: Optional[Union[Dataset, List[Dataset]]] = None,
+        datasets: Union[Dataset, List[Dataset]],
         filter_by: Optional[FilterType] = None,
         label_map: Optional[Dict[Label, Label]] = None,
         pr_curve_max_examples: int = 1,
@@ -902,10 +906,12 @@ class Model(StaticCollection):
             )
 
         # format request
-        datum_filter = self._format_constraints(datasets, filter_by)
+        filters = self._format_constraints(datasets, filter_by)
+        datasets = datasets if isinstance(datasets, list) else [datasets]
         request = EvaluationRequest(
-            model_names=[self.name],  # type: ignore
-            datum_filter=datum_filter,
+            dataset_names=[dataset.name for dataset in datasets],  # type: ignore - issue #604
+            model_names=[self.name],  # type: ignore - issue #604
+            filters=filters,
             parameters=EvaluationParameters(
                 task_type=TaskType.CLASSIFICATION,
                 label_map=self._create_label_map(label_map=label_map),
@@ -924,7 +930,7 @@ class Model(StaticCollection):
 
     def evaluate_detection(
         self,
-        datasets: Optional[Union[Dataset, List[Dataset]]] = None,
+        datasets: Union[Dataset, List[Dataset]],
         filter_by: Optional[FilterType] = None,
         convert_annotations_to_type: Optional[AnnotationType] = None,
         iou_thresholds_to_compute: Optional[List[float]] = None,
@@ -987,10 +993,12 @@ class Model(StaticCollection):
             pr_curve_iou_threshold=pr_curve_iou_threshold,
             pr_curve_max_examples=pr_curve_max_examples,
         )
-        datum_filter = self._format_constraints(datasets, filter_by)
+        filters = self._format_constraints(datasets, filter_by)
+        datasets = datasets if isinstance(datasets, list) else [datasets]
         request = EvaluationRequest(
-            model_names=[self.name],  # type: ignore
-            datum_filter=datum_filter,
+            dataset_names=[dataset.name for dataset in datasets],  # type: ignore - issue #604
+            model_names=[self.name],  # type: ignore - issue #604
+            filters=filters,
             parameters=parameters,
         )
 
@@ -1004,7 +1012,7 @@ class Model(StaticCollection):
 
     def evaluate_segmentation(
         self,
-        datasets: Optional[Union[Dataset, List[Dataset]]] = None,
+        datasets: Union[Dataset, List[Dataset]],
         filter_by: Optional[FilterType] = None,
         label_map: Optional[Dict[Label, Label]] = None,
         metrics_to_return: Optional[List[str]] = None,
@@ -1032,10 +1040,12 @@ class Model(StaticCollection):
             A job object that can be used to track the status of the job and get the metrics of it upon completion
         """
         # format request
-        datum_filter = self._format_constraints(datasets, filter_by)
+        filters = self._format_constraints(datasets, filter_by)
+        datasets = datasets if isinstance(datasets, list) else [datasets]
         request = EvaluationRequest(
-            model_names=[self.name],  # type: ignore
-            datum_filter=datum_filter,
+            dataset_names=[dataset.name for dataset in datasets],  # type: ignore - issue #604
+            model_names=[self.name],  # type: ignore - issue #604
+            filters=filters,
             parameters=EvaluationParameters(
                 task_type=TaskType.SEMANTIC_SEGMENTATION,
                 label_map=self._create_label_map(label_map=label_map),
@@ -1152,9 +1162,9 @@ class Client:
         List[valor.Label]
             A list of labels.
         """
-        filter_ = _format_filter(filter_by)
-        filter_ = asdict(filter_)
-        return [Label(**label) for label in self.conn.get_labels(filter_)]
+        filters = _format_filter(filter_by)
+        filters = asdict(filters)
+        return [Label(**label) for label in self.conn.get_labels(filters)]
 
     def get_labels_from_dataset(
         self, dataset: Union[Dataset, str]
@@ -1343,11 +1353,11 @@ class Client:
         List[valor.Dataset]
             A list of datasets.
         """
-        filter_ = _format_filter(filter_by)
-        if isinstance(filter_, Filter):
-            filter_ = asdict(filter_)
+        filters = _format_filter(filter_by)
+        if isinstance(filters, Filter):
+            filters = asdict(filters)
         dataset_list = []
-        for kwargs in self.conn.get_datasets(filter_):
+        for kwargs in self.conn.get_datasets(filters):
             dataset = Dataset.decode_value({**kwargs, "connection": self.conn})
             dataset_list.append(dataset)
         return dataset_list
@@ -1369,12 +1379,12 @@ class Client:
         List[valor.Datum]
             A list datums.
         """
-        filter_ = _format_filter(filter_by)
-        if isinstance(filter_, Filter):
-            filter_ = asdict(filter_)
+        filters = _format_filter(filter_by)
+        if isinstance(filters, Filter):
+            filters = asdict(filters)
         return [
             Datum.decode_value(datum)
-            for datum in self.conn.get_datums(filter_)
+            for datum in self.conn.get_datums(filters)
         ]
 
     def get_datum(
@@ -1608,11 +1618,11 @@ class Client:
         List[valor.Model]
             A list of models.
         """
-        filter_ = _format_filter(filter_by)
-        if isinstance(filter_, Filter):
-            filter_ = asdict(filter_)
+        filters = _format_filter(filter_by)
+        if isinstance(filters, Filter):
+            filters = asdict(filters)
         model_list = []
-        for kwargs in self.conn.get_models(filter_):
+        for kwargs in self.conn.get_models(filters):
             model = Model.decode_value({**kwargs, "connection": self.conn})
             model_list.append(model)
         return model_list

@@ -207,7 +207,7 @@ def get_paginated_datums(
 
     subquery = generate_select(
         models.Datum.id,
-        filter_=filters,
+        filters=filters,
     ).subquery()
     if subquery is None:
         raise RuntimeError("Subquery is unexpectedly None.")

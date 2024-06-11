@@ -16,6 +16,7 @@ from valor_api.backend.metrics.metric_utils import (
     get_or_create_row,
     log_evaluation_duration,
     log_evaluation_item_counts,
+    prepare_filter_for_evaluation,
     validate_computation,
 )
 from valor_api.backend.query import generate_query, generate_select
@@ -397,7 +398,7 @@ def _compute_binary_roc_auc(
     gts_query = generate_select(
         models.Annotation.datum_id.label("datum_id"),
         models.Label.value.label("label_value"),
-        filter_=gts_filter,
+        filters=gts_filter,
         label_source=models.GroundTruth,
     ).subquery("groundtruth_subquery")
 
@@ -408,7 +409,7 @@ def _compute_binary_roc_auc(
         models.Annotation.datum_id.label("datum_id"),
         models.Prediction.score.label("score"),
         models.Label.value.label("label_value"),
-        filter_=preds_filter,
+        filters=preds_filter,
         label_source=models.Prediction,
     ).subquery("prediction_subquery")
 
@@ -817,7 +818,7 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
         models.GroundTruth,
         models.Annotation.datum_id.label("datum_id"),
         models.Dataset.name.label("dataset_name"),
-        filter_=gFilter,
+        filters=gFilter,
         label_source=models.GroundTruth,
     ).alias()
 
@@ -825,7 +826,7 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
         models.Prediction,
         models.Annotation.datum_id.label("datum_id"),
         models.Dataset.name.label("dataset_name"),
-        filter_=pFilter,
+        filters=pFilter,
         label_source=models.Prediction,
     ).alias()
 
@@ -865,14 +866,14 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
             models.Dataset.name,
             models.Datum.uid,
             db=db,
-            filter_=groundtruth_filter,
+            filters=groundtruth_filter,
             label_source=models.GroundTruth,
         ).all()
         pd_datums = generate_query(
             models.Dataset.name,
             models.Datum.uid,
             db=db,
-            filter_=prediction_filter,
+            filters=prediction_filter,
             label_source=models.Prediction,
         ).all()
         unique_datums = set(gt_datums + pd_datums)
@@ -1023,14 +1024,15 @@ def compute_clf_metrics(
     evaluation = core.fetch_evaluation_from_id(db, evaluation_id)
 
     # unpack filters and params
-    groundtruth_filter = schemas.Filter(**evaluation.datum_filter)
-    prediction_filter = groundtruth_filter.model_copy()
-    prediction_filter.model_names = [evaluation.model_name]
     parameters = schemas.EvaluationParameters(**evaluation.parameters)
-
-    # load task type into filters
-    groundtruth_filter.task_types = [parameters.task_type]
-    prediction_filter.task_types = [parameters.task_type]
+    groundtruth_filter, prediction_filter = prepare_filter_for_evaluation(
+        db=db,
+        filters=schemas.Filter(**evaluation.filters),
+        dataset_names=evaluation.dataset_names,
+        model_name=evaluation.model_name,
+        task_type=parameters.task_type,
+        label_map=parameters.label_map,
+    )
 
     log_evaluation_item_counts(
         db=db,

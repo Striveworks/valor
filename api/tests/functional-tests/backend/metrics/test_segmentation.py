@@ -444,8 +444,8 @@ def test_compute_semantic_segmentation_metrics(
     )
 
     job_request = schemas.EvaluationRequest(
+        dataset_names=[dataset_name],
         model_names=[model_name],
-        datum_filter=schemas.Filter(dataset_names=[dataset_name]),
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
         ),

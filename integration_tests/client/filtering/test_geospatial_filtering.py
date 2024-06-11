@@ -119,6 +119,7 @@ def test_geospatial_filter(
 
     # filtering by concatenation of datasets geospatially
     eval_job = model.evaluate_detection(
+        datasets=dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
         filter_by={
@@ -154,8 +155,8 @@ def test_geospatial_filter(
     )
     assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
 
-    assert eval_job.datum_filter.datum_metadata
-    assert eval_job.datum_filter.datum_metadata["geospatial"] == [
+    assert eval_job.filters.datum_metadata
+    assert eval_job.filters.datum_metadata["geospatial"] == [
         Constraint(value=geodict, operator="intersect")
     ]
     assert len(eval_job.metrics) == 16

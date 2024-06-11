@@ -1,6 +1,6 @@
 import datetime
 
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 from valor_api.enums import AnnotationType, EvaluationStatus, TaskType
 from valor_api.schemas.filters import Filter
@@ -120,16 +120,19 @@ class EvaluationRequest(BaseModel):
 
     Attributes
     ----------
+    dataset_names : list[str]
+        The names of the evaluated datasets.
     model_names : str | list[str]
         The model(s) to evaluate.
-    datum_filter : schemas.Filter
-        The filter object used to define what datums the model is evaluating over.
+    filters : schemas.Filter, optional
+        The filter object used to define what data to evaluate.
     parameters : DetectionParameters, optional
         Any parameters that are used to modify an evaluation method.
     """
 
+    dataset_names: list[str]
     model_names: list[str]
-    datum_filter: Filter
+    filters: Filter = Filter()
     parameters: EvaluationParameters
 
     # pydantic setting
@@ -138,27 +141,23 @@ class EvaluationRequest(BaseModel):
         protected_namespaces=("protected_",),
     )
 
-    @model_validator(mode="after")
+    @field_validator("dataset_names")
     @classmethod
-    def _validate_request(cls, values):
-        """Validate the request."""
-
-        # verify filters do not contain task type.
-        if values.datum_filter.task_types is not None:
+    def _validate_dataset_names(cls, v: list[str]) -> list[str]:
+        if len(v) == 0:
             raise ValueError(
-                "`datum_filter` should not define the task_types constraint. Please set this in evaluation `parameters`."
+                "Evaluation request must contain at least one dataset name."
             )
+        return v
 
-        # verify `model_names` is of type list[str]
-        if isinstance(values.model_names, list):
-            if len(values.model_names) == 0:
-                raise ValueError(
-                    "`model_names` should specify at least one model."
-                )
-        elif isinstance(values.model_names, str):
-            values.model_names = [values.model_names]
-
-        return values
+    @field_validator("model_names")
+    @classmethod
+    def _validate_model_names(cls, v: list[str]) -> list[str]:
+        if len(v) == 0:
+            raise ValueError(
+                "Evaluation request must contain at least one model name."
+            )
+        return v
 
 
 class EvaluationResponse(BaseModel):
@@ -169,9 +168,11 @@ class EvaluationResponse(BaseModel):
     ----------
     id : int
         The ID of the evaluation.
+    dataset_names : list[str]
+        The names of the evaluated datasets.
     model_name : str
         The name of the evaluated model.
-    datum_filter : schemas.Filter
+    filters : schemas.Filter
         The evaluation filter used in the evaluation.
     parameters : schemas.EvaluationParameters
         Any parameters used by the evaluation method.
@@ -192,8 +193,9 @@ class EvaluationResponse(BaseModel):
     """
 
     id: int
+    dataset_names: list[str]
     model_name: str
-    datum_filter: Filter
+    filters: Filter
     parameters: EvaluationParameters
     status: EvaluationStatus
     created_at: datetime.datetime

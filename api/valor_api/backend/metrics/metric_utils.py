@@ -330,7 +330,7 @@ def log_evaluation_item_counts(
     gt_subquery = generate_select(
         models.Datum.id.label("datum_id"),
         models.GroundTruth,
-        filter_=groundtruth_filter,
+        filters=groundtruth_filter,
         label_source=models.GroundTruth,
     ).alias()
 
@@ -351,7 +351,7 @@ def log_evaluation_item_counts(
     pd_subquery = generate_select(
         models.Datum.id.label("datum_id"),
         models.Prediction,
-        filter_=prediction_filter,
+        filters=prediction_filter,
         label_source=models.Prediction,
     ).alias()
 
@@ -441,3 +441,47 @@ def validate_computation(fn: Callable) -> Callable:
         return result
 
     return wrapper
+
+
+def prepare_filter_for_evaluation(
+    db: Session,
+    filters: schemas.Filter,
+    dataset_names: list[str],
+    model_name: str,
+    task_type: enums.TaskType,
+    label_map: LabelMapType | None = None,
+) -> tuple[schemas.Filter, schemas.Filter]:
+    """
+    Prepares the filter for use by an evaluation method.
+
+    This function will be expanded in a future PR.
+
+    Parameters
+    ----------
+    db : Session
+        The database session.
+    filters : Filter
+        The data filter.
+    dataset_names : list[str]
+        A list of dataset names to filter by.
+    model_name : str
+        A model name to filter by.
+    task_type : TaskType
+        A task type to filter by.
+    label_map : LabelMapType, optional
+        An optional label mapping.
+
+    Returns
+    -------
+    Filter
+        A filter ready for evaluation.
+    """
+
+    groundtruth_filter = filters.model_copy()
+    groundtruth_filter.task_types = [task_type]
+    groundtruth_filter.dataset_names = dataset_names
+
+    predictions_filter = groundtruth_filter.model_copy()
+    predictions_filter.model_names = [model_name]
+
+    return (groundtruth_filter, predictions_filter)
