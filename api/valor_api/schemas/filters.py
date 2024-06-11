@@ -1,4 +1,8 @@
-from pydantic import BaseModel, ConfigDict
+from enum import Enum
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict, model_validator
+
 
 from valor_api.schemas.validators import (
     validate_type_bool,
@@ -19,55 +23,147 @@ from valor_api.schemas.validators import (
 )
 
 
-def validate_type_symbol(x):
-    if not isinstance(x, Symbol):
-        raise TypeError
+class SupportedType(str, Enum):
+    BOOLEAN = "boolean"
+    INTEGER = "integer"
+    FLOAT = "float"
+    STRING = "string"
+    TASK_TYPE= "tasktype"
+    DATETIME = "datetime"
+    DATE = "date"
+    TIME = "time"
+    DURATION = "duration"
+    POINT = "point"
+    MULTIPOINT = "multipoint"
+    LINESTRING = "linestring"
+    MULTILINESTRING = "multilinestring"
+    POLYGON = "polygon"
+    BOX = "box"
+    MULTIPOLYGON = "multipolygon"
+    RASTER = "raster"
+    GEOJSON = "geojson"
+    EMBEDDING = "embedding"
+    LABEL = "label"
 
 
-filterable_types_to_validator = {
-    "symbol": validate_type_symbol,
-    "bool": validate_type_bool,
-    "string": validate_type_string,
-    "integer": validate_type_integer,
-    "float": validate_type_float,
-    "datetime": validate_type_datetime,
-    "date": validate_type_date,
-    "time": validate_type_time,
-    "duration": validate_type_duration,
-    "point": validate_type_point,
-    "multipoint": validate_type_multipoint,
-    "linestring": validate_type_linestring,
-    "multilinestring": validate_type_multilinestring,
-    "polygon": validate_type_polygon,
-    "box": validate_type_box,
-    "multipolygon": validate_type_multipolygon,
-    "tasktypeenum": validate_type_string,
-    "label": None,
-    "embedding": None,
-    "raster": None,
+map_type_to_validator = {
+    SupportedType.BOOLEAN: validate_type_bool,
+    SupportedType.STRING: validate_type_string,
+    SupportedType.INTEGER: validate_type_integer,
+    SupportedType.FLOAT: validate_type_float,
+    SupportedType.DATETIME: validate_type_datetime,
+    SupportedType.DATE: validate_type_date,
+    SupportedType.TIME: validate_type_time,
+    SupportedType.DURATION: validate_type_duration,
+    SupportedType.POINT: validate_type_point,
+    SupportedType.MULTIPOINT: validate_type_multipoint,
+    SupportedType.LINESTRING: validate_type_linestring,
+    SupportedType.MULTILINESTRING: validate_type_multilinestring,
+    SupportedType.POLYGON: validate_type_polygon,
+    SupportedType.BOX: validate_type_box,
+    SupportedType.MULTIPOLYGON: validate_type_multipolygon,
+    SupportedType.TASK_TYPE: validate_type_string,
+    SupportedType.LABEL: None,
+    SupportedType.EMBEDDING: None,
+    SupportedType.RASTER: None,
 }
 
 
-class Symbol(BaseModel):
-    """
-    A symbolic variable.
+class Symbol(str, Enum):
+    DATASET_NAME = "dataset.name"
+    DATASET_META = "dataset.metadata"
+    MODEL_NAME = "model.name"
+    MODEL_META = "model.metadata"
+    DATUM_UID = "datum.uid"
+    DATUM_META = "datum.metadata"
+    ANNOTATION_META = "annotation.metadata"
+    TASK_TYPE = "annotation.task_type"
+    BOX = "annotation.bounding_box"
+    POLYGON = "annotation.polygon"
+    RASTER = "annotation.raster"
+    EMBEDDING = "annotation.embedding"
+    LABELS = "annotation.labels"
+    LABEL_KEY = "label.key"
+    LABEL_VALUE = "label.value"
+    SCORE = "label.score"
 
-    Attributes
-    ----------
-    type : str
-        The data type that this symbol represents.
-    name : str
-        The name of the symbol.
-    key : str, optional
-        Optional key to define dictionary access of a value.
-    attribute : str, optional
-        Optional attribute that modifies the underlying value.
-    """
+    # 'area' attribute
+    DATASET_META_AREA = "dataset.metadata.area"
+    MODEL_META_AREA = "dataset.metadata.area"
+    DATUM_META_AREA = "dataset.metadata.area"
+    ANNOTATION_META_AREA = "dataset.metadata.area"
+    BOX_AREA = "annotation.bounding_box.area"
+    POLYGON_AREA = "annotation.polygon.area"
+    RASTER_AREA = "annotation.raster.area"
 
-    type: str
-    name: str
-    key: str | None = None
-    attribute: str | None = None
+    @property
+    def type(self) -> SupportedType | None:
+        """
+        Get the type associated with a symbol.
+
+        Returns
+        -------
+        SupportedType
+            The supported type.
+
+        Raises
+        ------
+        NotImplementedError
+            If the symbol does not have a type defined.
+        """
+        map_symbol_to_type = {
+            Symbol.DATASET_NAME : SupportedType.STRING,
+            Symbol.MODEL_NAME : SupportedType.STRING,
+            Symbol.DATUM_UID : SupportedType.STRING,
+            Symbol.TASK_TYPE : SupportedType.TASK_TYPE,
+            Symbol.BOX : SupportedType.BOX,
+            Symbol.POLYGON : SupportedType.POLYGON,
+            Symbol.EMBEDDING : SupportedType.EMBEDDING,
+            Symbol.LABEL_KEY : SupportedType.STRING,
+            Symbol.LABEL_VALUE : SupportedType.STRING,
+            Symbol.SCORE : SupportedType.FLOAT,
+
+            # 'area' attribue
+            Symbol.DATASET_META_AREA : SupportedType.FLOAT,
+            Symbol.MODEL_META_AREA : SupportedType.FLOAT,
+            Symbol.DATUM_META_AREA : SupportedType.FLOAT,
+            Symbol.ANNOTATION_META_AREA : SupportedType.FLOAT,
+            Symbol.BOX_AREA : SupportedType.FLOAT,
+            Symbol.POLYGON_AREA : SupportedType.FLOAT,
+            Symbol.RASTER_AREA : SupportedType.FLOAT,
+            
+            # unsupported
+            Symbol.DATASET_META : None,
+            Symbol.MODEL_META : None,
+            Symbol.DATUM_META : None,
+            Symbol.ANNOTATION_META : None,
+            Symbol.RASTER : None,
+            Symbol.LABELS : None,
+        }
+        if self not in map_symbol_to_type:
+            raise NotImplementedError(f"{self} is does not have a type.")
+        return map_symbol_to_type[self]
+
+
+class FilterOperator(str, Enum):
+    EQ = "eq"
+    NE = "ne"
+    GT = "gt"
+    GTE = "gte"
+    LT = "lt"
+    LTE = "lte"
+    INTERSECTS = "intersects"
+    INSIDE = "inside"
+    OUTSIDE = "outside"
+    CONTAINS = "contains"
+    ISNULL = "isnull"
+    ISNOTNULL = "isnotnull"
+
+
+class LogicalOperator(str, Enum):
+    AND = "and"
+    OR = "or"
+    NOT = "not"
 
 
 class Value(BaseModel):
@@ -76,459 +172,86 @@ class Value(BaseModel):
 
     Attributes
     ----------
-    type : str
+    type : SupportedType
         The type of the value.
     value : bool | int | float | str | list | dict
         The stored value.
     """
 
-    type: str
+    type: SupportedType
     value: bool | int | float | str | list | dict
     model_config = ConfigDict(extra="forbid")
 
+    @model_validator(mode='after')
+    def _validate_value(self):
+        if self.type not in map_type_to_validator:
+            raise TypeError(f"'{self.type}' is not a valid type.")
+        map_type_to_validator[self.type](self.value)
+        return self
+    
+    @classmethod
+    def infer(
+        cls, 
+        value: bool | int | float | str,
+    ):  
+        type_ = type(value)
+        if type_ is bool:
+            return cls(type=SupportedType.BOOLEAN, value=value)
+        elif type_ is int:
+            return cls(type=SupportedType.INTEGER, value=value)
+        elif type_ is float:
+            return cls(type=SupportedType.FLOAT, value=value)
+        elif type_ is str:
+            return cls(type=SupportedType.STRING, value=value)
+        else:
+            raise TypeError(f"Type inference is not supported for type '{type_}'.")
+        
 
-class Operands(BaseModel):
-    """
-    Function operands.
-
-    Attributes
-    ----------
-    lhs : Symbol
-        The symbol representing a table column this function should be applied to.
-    rhs : Value
-        A value to perform a comparison over.
-    """
-
+class Condition(BaseModel):
     lhs: Symbol
-    rhs: Value
+    lhs_key: str | None = None
+    rhs: Value | None = None
+    rhs_key: str | None = None
+    op: FilterOperator
     model_config = ConfigDict(extra="forbid")
 
-
-class And(BaseModel):
-    """
-    Logical function representing an AND operation.
-
-    Attributes
-    ----------
-    logical_and : list[FunctionType]
-        A list of functions to AND together.
-    """
-
-    logical_and: list["FunctionType"]
-    model_config = ConfigDict(extra="forbid")
-
-    @property
-    def op(self) -> str:
-        """Returns the operator name."""
-        return type(self).__name__.lower()
-
-    @property
-    def args(self) -> list["FunctionType"]:
-        """Returns the list of functional arguments."""
-        return self.logical_and
-
-
-class Or(BaseModel):
-    """
-    Logical function representing an OR operation.
-
-    Attributes
-    ----------
-    logical_or : list[FunctionType]
-        A list of functions to OR together.
-    """
-
-    logical_or: list["FunctionType"]
-    model_config = ConfigDict(extra="forbid")
-
-    @property
-    def op(self) -> str:
-        """Returns the operator name."""
-        return type(self).__name__.lower()
-
-    @property
-    def args(self):
-        """Returns the list of functional arguments."""
-        return self.logical_or
-
-
-class Not(BaseModel):
-    """
-    Logical function representing an OR operation.
-
-    Attributes
-    ----------
-    logical_not : FunctionType
-        A functions to logically negate.
-    """
-
-    logical_not: "FunctionType"
-    model_config = ConfigDict(extra="forbid")
-
-    @property
-    def op(self) -> str:
-        """Returns the operator name."""
-        return type(self).__name__.lower()
-
-    @property
-    def arg(self):
-        """Returns the functional argument."""
-        return self.logical_not
-
-
-class IsNull(BaseModel):
-    """
-    Checks if symbol represents a null value.
-
-    Attributes
-    ----------
-    isnull : Symbol
-        The symbolic argument.
-    """
-
-    isnull: Symbol
-    model_config = ConfigDict(extra="forbid")
-
-    @property
-    def op(self) -> str:
-        """Returns the operator name."""
-        return type(self).__name__.lower()
-
-    @property
-    def arg(self):
-        """Returns the symbolic argument."""
-        return self.isnull
-
-
-class IsNotNull(BaseModel):
-    """
-    Checks if symbol represents an existing value.
-
-    Attributes
-    ----------
-    isnotnull : Symbol
-        The symbolic argument.
-    """
-
-    isnotnull: Symbol
-    model_config = ConfigDict(extra="forbid")
-
-    @property
-    def op(self) -> str:
-        """Returns the operator name."""
-        return type(self).__name__.lower()
-
-    @property
-    def arg(self):
-        """Returns the symbolic argument."""
-        return self.isnotnull
-
-
-class Equal(BaseModel):
-    """
-    Checks if symbol is equal to a provided value.
-
-    Attributes
-    ----------
-    eq : Operands
-        The operands of the function.
-    """
-
-    eq: Operands
-    model_config = ConfigDict(extra="forbid")
-
-    @property
-    def op(self) -> str:
-        """Returns the operator name."""
-        return type(self).__name__.lower()
-
-    @property
-    def lhs(self):
-        """Returns the lhs operand."""
-        return self.eq.lhs
-
-    @property
-    def rhs(self):
-        """Returns the rhs operand."""
-        return self.eq.rhs
-
-
-class NotEqual(BaseModel):
-    """
-    Checks if symbol is not equal to a provided value.
-
-    Attributes
-    ----------
-    ne : Operands
-        The operands of the function.
-    """
-
-    ne: Operands
-    model_config = ConfigDict(extra="forbid")
-
-    @property
-    def op(self) -> str:
-        """Returns the operator name."""
-        return type(self).__name__.lower()
-
-    @property
-    def lhs(self):
-        """Returns the lhs operand."""
-        return self.ne.lhs
-
-    @property
-    def rhs(self):
-        """Returns the rhs operand."""
-        return self.ne.rhs
-
-
-class GreaterThan(BaseModel):
-    """
-    Checks if symbol is greater than a provided value.
-
-    Attributes
-    ----------
-    gt : Operands
-        The operands of the function.
-    """
-
-    gt: Operands
-    model_config = ConfigDict(extra="forbid")
-
-    @property
-    def op(self) -> str:
-        """Returns the operator name."""
-        return type(self).__name__.lower()
-
-    @property
-    def lhs(self):
-        """Returns the lhs operand."""
-        return self.gt.lhs
-
-    @property
-    def rhs(self):
-        """Returns the rhs operand."""
-        return self.gt.rhs
-
-
-class GreaterThanEqual(BaseModel):
-    """
-    Checks if symbol is greater than or equal to a provided value.
-
-    Attributes
-    ----------
-    ge : Operands
-        The operands of the function.
-    """
-
-    ge: Operands
-    model_config = ConfigDict(extra="forbid")
-
-    @property
-    def op(self) -> str:
-        """Returns the operator name."""
-        return type(self).__name__.lower()
-
-    @property
-    def lhs(self):
-        """Returns the lhs operand."""
-        return self.ge.lhs
-
-    @property
-    def rhs(self):
-        """Returns the rhs operand."""
-        return self.ge.rhs
-
-
-class LessThan(BaseModel):
-    """
-    Checks if symbol is less than a provided value.
-
-    Attributes
-    ----------
-    lt : Operands
-        The operands of the function.
-    """
-
-    lt: Operands
-    model_config = ConfigDict(extra="forbid")
-
-    @property
-    def op(self) -> str:
-        """Returns the operator name."""
-        return type(self).__name__.lower()
-
-    @property
-    def lhs(self):
-        """Returns the lhs operand."""
-        return self.lt.lhs
-
-    @property
-    def rhs(self):
-        """Returns the rhs operand."""
-        return self.lt.rhs
-
-
-class LessThanEqual(BaseModel):
-    """
-    Checks if symbol is less than or equal to a provided value.
-
-    Attributes
-    ----------
-    le : Operands
-        The operands of the function.
-    """
-
-    le: Operands
-    model_config = ConfigDict(extra="forbid")
-
-    @property
-    def op(self) -> str:
-        """Returns the operator name."""
-        return type(self).__name__.lower()
-
-    @property
-    def lhs(self):
-        """Returns the lhs operand."""
-        return self.le.lhs
-
-    @property
-    def rhs(self):
-        """Returns the rhs operand."""
-        return self.le.rhs
-
-
-class Intersects(BaseModel):
-    """
-    Checks if symbol intersects a provided value.
-
-    Attributes
-    ----------
-    intersects : Operands
-        The operands of the function.
-    """
-
-    intersects: Operands
-    model_config = ConfigDict(extra="forbid")
-
-    @property
-    def op(self) -> str:
-        """Returns the operator name."""
-        return type(self).__name__.lower()
-
-    @property
-    def lhs(self):
-        """Returns the lhs operand."""
-        return self.intersects.lhs
-
-    @property
-    def rhs(self):
-        """Returns the rhs operand."""
-        return self.intersects.rhs
-
-
-class Inside(BaseModel):
-    """
-    Checks if symbol is inside a provided value.
-
-    Attributes
-    ----------
-    inside : Operands
-        The operands of the function.
-    """
-
-    inside: Operands
-    model_config = ConfigDict(extra="forbid")
-
-    @property
-    def op(self) -> str:
-        """Returns the operator name."""
-        return type(self).__name__.lower()
-
-    @property
-    def lhs(self):
-        """Returns the lhs operand."""
-        return self.inside.lhs
-
-    @property
-    def rhs(self):
-        """Returns the rhs operand."""
-        return self.inside.rhs
-
-
-class Outside(BaseModel):
-    """
-    Checks if symbol is outside a provided value.
-
-    Attributes
-    ----------
-    outside : Operands
-        The operands of the function.
-    """
-
-    outside: Operands
-    model_config = ConfigDict(extra="forbid")
-
-    @property
-    def op(self) -> str:
-        """Returns the operator name."""
-        return type(self).__name__.lower()
-
-    @property
-    def lhs(self):
-        """Returns the lhs operand."""
-        return self.outside.lhs
-
-    @property
-    def rhs(self):
-        """Returns the rhs operand."""
-        return self.outside.rhs
-
-
-class Contains(BaseModel):
-    """
-    Checks if symbolic list contains a provided value.
-
-    Attributes
-    ----------
-    contains : Operands
-        The operands of the function.
-    """
-
-    contains: Operands
-    model_config = ConfigDict(extra="forbid")
-
-    @property
-    def op(self) -> str:
-        """Returns the operator name."""
-        return type(self).__name__.lower()
-
-    @property
-    def lhs(self):
-        """Returns the lhs operand."""
-        return self.contains.lhs
-
-    @property
-    def rhs(self):
-        """Returns the rhs operand."""
-        return self.contains.rhs
-
-
-NArgFunction = And | Or
-OneArgFunction = Not | IsNull | IsNotNull
-TwoArgFunction = (
-    Equal
-    | NotEqual
-    | GreaterThan
-    | GreaterThanEqual
-    | LessThan
-    | LessThanEqual
-    | Intersects
-    | Inside
-    | Outside
-    | Contains
-)
-FunctionType = OneArgFunction | TwoArgFunction | NArgFunction
+    @model_validator(mode='after')
+    def _validate_object(self):
+
+        # validate operator
+        match self.op:
+            case (
+                FilterOperator.EQ
+                | FilterOperator.NE
+                | FilterOperator.GT
+                | FilterOperator.GTE
+                | FilterOperator.LT
+                | FilterOperator.LTE
+                | FilterOperator.INTERSECTS
+                | FilterOperator.INSIDE
+                | FilterOperator.OUTSIDE
+                | FilterOperator.CONTAINS
+            ):
+                if self.rhs is None:
+                    raise ValueError("TODO")
+            case (            
+                FilterOperator.ISNULL
+                | FilterOperator.ISNOTNULL
+            ):
+                if self.rhs is not None:
+                    raise ValueError("TODO")
+            case _:
+                raise NotImplementedError(f"Filter operator '{self.op}' is not implemented.")
+
+        return self
+        
+
+class LogicalFunction(BaseModel):
+    args: "Condition | LogicalFunction | list[Condition] | list[LogicalFunction] | list[Condition | LogicalFunction]"
+    op: LogicalOperator
+
+
+FunctionType = Condition | LogicalFunction
 
 
 class Filter(BaseModel):
@@ -546,3 +269,28 @@ class Filter(BaseModel):
     predictions: FunctionType | None = None
     labels: FunctionType | None = None
     embeddings: FunctionType | None = None
+    model_config = ConfigDict(extra="forbid")
+
+
+def soft_and(items: list[FunctionType]) -> FunctionType:
+    if len(items) > 1:
+        return LogicalFunction(
+            args=items,
+            op=LogicalOperator.AND,
+        )
+    elif len(items) == 1:
+        return items[0]
+    else:
+        raise ValueError("Passed an empty list.")
+    
+
+def soft_or(items: list[FunctionType]) -> FunctionType:
+    if len(items) > 1:
+        return LogicalFunction(
+            args=items,
+            op=LogicalOperator.AND,
+        )
+    elif len(items) == 1:
+        return items[0]
+    else:
+        raise ValueError("Passed an empty list.")

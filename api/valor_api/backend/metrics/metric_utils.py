@@ -476,12 +476,11 @@ def prepare_filter_for_evaluation(
     Filter
         A filter ready for evaluation.
     """
-
+    
     groundtruth_filter = filters.model_copy()
-    groundtruth_filter.task_types = [task_type]
-    groundtruth_filter.dataset_names = dataset_names
+    groundtruth_filter.predictions = None
 
-    predictions_filter = groundtruth_filter.model_copy()
-    predictions_filter.model_names = [model_name]
+    predictions_filter = filters.model_copy()
+    predictions_filter.groundtruths = None
 
     return (groundtruth_filter, predictions_filter)

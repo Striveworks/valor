@@ -6,37 +6,70 @@ from valor_api.backend.query.filtering import (
     create_cte,
     generate_logical_expression,
     map_filter_to_tables,
+    map_symbol_to_resources,
+    map_keyed_symbol_to_resources,
+    map_opstr_to_operator,
+    map_type_to_type_cast,
+    map_type_to_jsonb_type_cast,
 )
 from valor_api.schemas.filters import (
-    And,
-    Equal,
     Filter,
-    IsNull,
-    Not,
-    Operands,
     Symbol,
     Value,
+    LogicalFunction,
+    Condition,
+    FilterOperator,
+    LogicalOperator,
+    SupportedType,
 )
+
+
+def test_map_to_resources():
+    for symbol in Symbol:
+        # test that there is a singular mapping for each symbol
+        assert (
+            (symbol in map_symbol_to_resources)
+            != (symbol in map_keyed_symbol_to_resources)
+        )
+
+def test_map_to_operator():
+    for op in FilterOperator:
+        # test that each op has an associated function
+        assert op in map_opstr_to_operator
+
+
+def test_map_to_type_cast():
+    for type_ in SupportedType:
+        # value type cast
+        assert type_ in map_type_to_type_cast
+        # jsonb type cast
+        assert type_ in map_type_to_jsonb_type_cast
 
 
 def test_create_cte_validation():
     with pytest.raises(ValueError):
         create_cte(
-            opstr="eq",
-            symbol="symbol",  # type: ignore - testing
-            value=Value(type="string", value="some_name"),
+            Condition(
+                lhs="symbol",  # type: ignore - testing
+                rhs=Value(type=SupportedType.STRING, value="some_name"),
+                op=FilterOperator.EQ,
+            )
         )
     with pytest.raises(ValueError):
         create_cte(
-            opstr="eq",
-            symbol=Symbol(type="string", name="dataset.name"),
-            value="value",  # type: ignore - testing
+            Condition(
+                lhs=Symbol.DATASET_NAME,
+                rhs="value",  # type: ignore - testing
+                op=FilterOperator.EQ,
+            )
         )
     with pytest.raises(TypeError):
         create_cte(
-            opstr="eq",
-            symbol=Symbol(type="string", name="dataset.name"),
-            value=Value(type="integer", value=1),
+            Condition(
+                lhs=Symbol.DATASET_NAME,
+                rhs=Value(type=SupportedType.INTEGER, value=1),
+                op=FilterOperator.EQ,
+            )
         )
 
 
@@ -48,10 +81,12 @@ def test__recursive_search_logic_tree():
 
     # test one arg function
     tree, _, tables = _recursive_search_logic_tree(
-        func=Not(
-            logical_not=IsNull(
-                isnull=Symbol(type="box", name="annotation.bounding_box")
-            )
+        func=LogicalFunction(
+            args=Condition(
+                lhs=Symbol.BOX,
+                op=FilterOperator.ISNULL,
+            ),
+            op=LogicalOperator.NOT,
         )
     )
     assert tables == [models.Annotation]
@@ -59,11 +94,10 @@ def test__recursive_search_logic_tree():
 
     # test two arg function
     tree, _, tables = _recursive_search_logic_tree(
-        func=Equal(
-            eq=Operands(
-                lhs=Symbol(type="string", name="dataset.name"),
-                rhs=Value(type="string", value="some_name"),
-            )
+        func=Condition(
+            lhs=Symbol.DATASET_NAME,
+            rhs=Value.infer("some_name"),
+            op=FilterOperator.EQ,
         )
     )
     assert tables == [models.Dataset]
@@ -71,18 +105,19 @@ def test__recursive_search_logic_tree():
 
     # test n arg function
     tree, _, tables = _recursive_search_logic_tree(
-        func=And(
-            logical_and=[
-                IsNull(
-                    isnull=Symbol(type="box", name="annotation.bounding_box")
+        func=LogicalFunction(
+            args=[
+                Condition(
+                    lhs=Symbol.BOX,
+                    op=FilterOperator.ISNULL,
                 ),
-                Equal(
-                    eq=Operands(
-                        lhs=Symbol(type="string", name="dataset.name"),
-                        rhs=Value(type="string", value="some_name"),
-                    )
-                ),
-            ]
+                Condition(
+                    lhs=Symbol.DATASET_NAME,
+                    rhs=Value(type=SupportedType.STRING, value="some_name"),
+                    op=FilterOperator.EQ,
+                )
+            ],
+            op=LogicalOperator.AND,
         )
     )
     assert tables == [models.Annotation, models.Dataset]
@@ -91,7 +126,10 @@ def test__recursive_search_logic_tree():
 
 def test_map_filter_to_labels():
 
-    fn = IsNull(isnull=Symbol(type="box", name="annotation.bounding_box"))
+    fn = Condition(
+        lhs=Symbol.BOX,
+        op=FilterOperator.ISNULL,
+    )
 
     filters = Filter(
         datasets=fn,

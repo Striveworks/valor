@@ -4,7 +4,18 @@ from .evaluation import (
     EvaluationRequest,
     EvaluationResponse,
 )
-from .filters import Filter
+from .filters import (
+    Filter,
+    Symbol,
+    Value,
+    FilterOperator,
+    Condition,
+    LogicalFunction,
+    LogicalOperator,
+    SupportedType,
+    soft_and,
+    soft_or,
+)
 from .geometry import (
     Box,
     LineString,
@@ -95,6 +106,15 @@ __all__ = [
     "EvaluationResponse",
     "EvaluationParameters",
     "Filter",
+    "Symbol",
+    "Value",
+    "FilterOperator",
+    "Condition",
+    "LogicalFunction",
+    "LogicalOperator",
+    "SupportedType",
+    "soft_and",
+    "soft_or",
     "Health",
     "Readiness",
     "DatasetSummary",

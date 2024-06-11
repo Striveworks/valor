@@ -1108,6 +1108,3 @@ def test_get_labels(crud, client: TestClient):
 
     resp = client.get("/labels/filter")
     assert resp.status_code == 405
-
-
-""" GET /user """

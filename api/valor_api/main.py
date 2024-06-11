@@ -2,14 +2,7 @@ import json
 import os
 from typing import Annotated
 
-from fastapi import (
-    BackgroundTasks,
-    Depends,
-    FastAPI,
-    HTTPException,
-    Query,
-    Response,
-)
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Response, Query
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
@@ -24,7 +17,6 @@ from valor_api.logging import (
     handle_unhandled_exception,
     log_endpoint_middleware,
 )
-from valor_api.schemas import filters
 from valor_api.settings import auth_settings
 
 token_auth_scheme = auth.OptionalHTTPBearer()
@@ -236,20 +228,17 @@ def get_prediction(
 """ LABELS """
 
 
-@app.post(
-    "/labels/filter",
+@app.get(
+    "/labels",
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
     tags=["Labels"],
-    description="Fetch labels.",
+    description="Fetch all labels.",
 )
 def get_labels(
     response: Response,
-    filters: schemas.Filter = schemas.Filter(),
-    offset: int = Query(
-        0, description="Number of items to offset the results by."
-    ),
-    limit: int = Query(-1, description="Maximum number of items to return."),
+    offset: int = Query(0, description="The start index of the items to return."),
+    limit: int = Query(-1, description="The number of items to return. Returns all items when set to -1."),
     db: Session = Depends(get_db),
 ) -> list[schemas.Label]:
     """
@@ -261,8 +250,6 @@ def get_labels(
     ----------
     response: Response
         The FastAPI response object. Used to return a content-range header to the user.
-    filters : Filter, default=Filter
-        A filter to constrain results by.
     offset : int, optional
         The start index of the items to return.
     limit : int, optional
@@ -274,6 +261,56 @@ def get_labels(
     -------
     list[schemas.Label]
         A list of all labels in the database.
+    """
+    try:
+        content, headers = crud.get_labels(
+            db=db,
+            filters=schemas.Filter(),
+            offset=offset,
+            limit=limit,
+        )
+        response.headers.update(headers)
+        return list(content)
+    except Exception as e:
+        raise exceptions.create_http_error(e)
+    
+
+@app.post(
+    "/labels/filter",
+    status_code=200,
+    dependencies=[Depends(token_auth_scheme)],
+    tags=["Labels"],
+    description="Fetch labels using a filter.",
+)
+def get_filtered_labels(
+    response: Response,
+    filters: schemas.Filter,
+    offset: int = Query(0, description="The start index of the items to return."),
+    limit: int = Query(-1, description="The number of items to return. Returns all items when set to -1."),
+    db: Session = Depends(get_db),
+) -> list[schemas.Label]:
+    """
+    Fetch labels using a filter.
+
+    POST Endpoint: `/labels/filter`
+
+    Parameters
+    ----------
+    response: Response
+        The FastAPI response object. Used to return a content-range header to the user.
+    filters : Filter
+        The filter to constrain the results by.
+    offset : int, optional
+        The start index of the items to return.
+    limit : int, optional
+        The number of items to return. Returns all items when set to -1.
+    db : Session
+        The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
+
+    Returns
+    -------
+    list[schemas.Label]
+        A list of labels.
     """
     try:
         content, headers = crud.get_labels(
@@ -297,10 +334,8 @@ def get_labels(
 def get_labels_from_dataset(
     response: Response,
     dataset_name: str,
-    offset: int = Query(
-        0, description="Number of items to offset the results by."
-    ),
-    limit: int = Query(-1, description="Maximum number of items to return."),
+    offset: int = Query(0, description="The start index of the items to return."),
+    limit: int = Query(-1, description="The number of items to return. Returns all items when set to -1."),
     db: Session = Depends(get_db),
 ) -> list[schemas.Label]:
     """
@@ -333,11 +368,10 @@ def get_labels_from_dataset(
         content, headers = crud.get_labels(
             db=db,
             filters=schemas.Filter(
-                groundtruths=filters.Equal(
-                    eq=filters.Operands(
-                        lhs=filters.Symbol(type="string", name="dataset.name"),
-                        rhs=filters.Value(type="string", value=dataset_name),
-                    )
+                groundtruths=schemas.Condition(
+                    symbol=schemas.Symbol(name="dataset.name"),
+                    value=schemas.Value(type="string", value=dataset_name),
+                    op=schemas.FilterOperator.EQ,
                 )
             ),
             ignore_prediction_labels=True,
@@ -360,10 +394,8 @@ def get_labels_from_dataset(
 def get_labels_from_model(
     response: Response,
     model_name: str,
-    offset: int = Query(
-        0, description="Number of items to offset the results by."
-    ),
-    limit: int = Query(-1, description="Maximum number of items to return."),
+    offset: int = Query(0, description="The start index of the items to return."),
+    limit: int = Query(-1, description="The number of items to return. Returns all items when set to -1."),
     db: Session = Depends(get_db),
 ) -> list[schemas.Label]:
     """
@@ -398,11 +430,10 @@ def get_labels_from_model(
         content, headers = crud.get_labels(
             db=db,
             filters=schemas.Filter(
-                predictions=filters.Equal(
-                    eq=filters.Operands(
-                        lhs=filters.Symbol(type="string", name="model.name"),
-                        rhs=filters.Value(type="string", value=model_name),
-                    )
+                predictions=schemas.Condition(
+                    symbol=schemas.Symbol(name="model.name"),
+                    value=schemas.Value(type="string", value=model_name),
+                    op=schemas.FilterOperator.EQ,
                 )
             ),
             ignore_groundtruth_labels=True,
@@ -449,33 +480,30 @@ def create_dataset(dataset: schemas.Dataset, db: Session = Depends(get_db)):
         raise exceptions.create_http_error(e)
 
 
-@app.post(
-    "/datasets/filter",
+@app.get(
+    "/datasets",
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
     tags=["Datasets"],
-    description="Fetch datasets.",
+    description="Fetch datasets using optional JSON strings as query parameters.",
 )
 def get_datasets(
     response: Response,
-    filters: schemas.Filter,
-    offset: int = Query(
-        0, description="Number of items to offset the results by."
-    ),
-    limit: int = Query(-1, description="Maximum number of items to return."),
+    offset: int = Query(0, description="The start index of the items to return."),
+    limit: int = Query(-1, description="The number of items to return. Returns all items when set to -1."),
     db: Session = Depends(get_db),
 ) -> list[schemas.Dataset]:
     """
     Fetch all datasets from the database.
 
-    POST Endpoint: `/datasets/filter`
+    GET Endpoint: `/datasets`
 
     Parameters
     ----------
-    filters : schemas.Filter, optional
-        An optional filter to constrain results by. All fields should be specified as strings in a JSON.
     response: Response
         The FastAPI response object. Used to return a content-range header to the user.
+    filters : schemas.FilterQueryParams, optional
+        An optional filter to constrain results by. All fields should be specified as strings in a JSON.
     offset : int, optional
         The start index of the items to return.
     limit : int, optional
@@ -491,12 +519,62 @@ def get_datasets(
     try:
         content, headers = crud.get_datasets(
             db=db,
-            filters=filters,
+            filters=schemas.Filter(),
             offset=offset,
             limit=limit,
         )
         response.headers.update(headers)
         return content
+    except Exception as e:
+        raise exceptions.create_http_error(e)
+
+
+@app.post(
+    "/datasets/filter",
+    status_code=200,
+    dependencies=[Depends(token_auth_scheme)],
+    tags=["Datasets"],
+    description="Fetch datasets using a filter.",
+)
+def get_filtered_datasets(
+    response: Response,
+    filters: schemas.Filter,
+    offset: int = Query(0, description="The start index of the items to return."),
+    limit: int = Query(-1, description="The number of items to return. Returns all items when set to -1."),
+    db: Session = Depends(get_db),
+) -> list[schemas.Dataset]:
+    """
+    Fetch datasets using a filter.
+
+    POST Endpoint: `/datasets/filter`
+
+    Parameters
+    ----------
+    response: Response
+        The FastAPI response object. Used to return a content-range header to the user.
+    filters : Filter
+        The filter to constrain the results by.
+    offset : int, optional
+        The start index of the items to return.
+    limit : int, optional
+        The number of items to return. Returns all items when set to -1.
+    db : Session
+        The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
+
+    Returns
+    -------
+    list[schemas.Datasets]
+        A list of datasets.
+    """
+    try:
+        content, headers = crud.get_datasets(
+            db=db,
+            filters=filters,
+            offset=offset,
+            limit=limit,
+        )
+        response.headers.update(headers)
+        return list(content)
     except Exception as e:
         raise exceptions.create_http_error(e)
 
@@ -685,20 +763,17 @@ def delete_dataset(
 """ DATUMS """
 
 
-@app.post(
-    "/data/filter",
+@app.get(
+    "/data",
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
     tags=["Datums"],
-    description="Fetch datums.",
+    description="Fetch all datums.",
 )
 def get_datums(
     response: Response,
-    filters: schemas.Filter,
-    offset: int = Query(
-        0, description="Number of items to offset the results by."
-    ),
-    limit: int = Query(-1, description="Maximum number of items to return."),
+    offset: int = Query(0, description="The start index of the items to return."),
+    limit: int = Query(-1, description="The number of items to return. Returns all items when set to -1."),
     db: Session = Depends(get_db),
 ) -> list[schemas.Datum]:
     """
@@ -710,8 +785,6 @@ def get_datums(
     ----------
     response: Response
         The FastAPI response object. Used to return a content-range header to the user.
-    filters : schemas.Filter, optional
-        An optional filter to constrain results by.
     offset : int, optional
         The start index of the items to return.
     limit : int, optional
@@ -732,12 +805,62 @@ def get_datums(
     try:
         content, headers = crud.get_datums(
             db=db,
-            filters=filters,
+            filters=schemas.Filter(),
             offset=offset,
             limit=limit,
         )
         response.headers.update(headers)
         return content
+    except Exception as e:
+        raise exceptions.create_http_error(e)
+
+
+@app.post(
+    "/data/filter",
+    status_code=200,
+    dependencies=[Depends(token_auth_scheme)],
+    tags=["Datums"],
+    description="Fetch datums using a filter.",
+)
+def get_filtered_datums(
+    response: Response,
+    filters: schemas.Filter,
+    offset: int = Query(0, description="The start index of the items to return."),
+    limit: int = Query(-1, description="The number of items to return. Returns all items when set to -1."),
+    db: Session = Depends(get_db),
+) -> list[schemas.Datum]:
+    """
+    Fetch datums using a filter.
+
+    POST Endpoint: `/data/filter`
+
+    Parameters
+    ----------
+    response: Response
+        The FastAPI response object. Used to return a content-range header to the user.
+    filters : Filter
+        The filter to constrain the results by.
+    offset : int, optional
+        The start index of the items to return.
+    limit : int, optional
+        The number of items to return. Returns all items when set to -1.
+    db : Session
+        The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
+
+    Returns
+    -------
+    list[schemas.Datum]
+        A list of datums.
+    """
+    try:
+        content, headers = crud.get_datums(
+            db=db,
+            filters=filters,
+            offset=offset,
+            limit=limit,
+        )
+        response.headers.update(headers)
+        return list(content)
     except Exception as e:
         raise exceptions.create_http_error(e)
 
@@ -775,27 +898,20 @@ def get_datum(
         datums, _ = crud.get_datums(
             db=db,
             filters=schemas.Filter(
-                datums=filters.And(
-                    logical_and=[
-                        filters.Equal(
-                            eq=filters.Operands(
-                                lhs=filters.Symbol(
-                                    type="string", name="dataset.name"
-                                ),
-                                rhs=filters.Value(
-                                    type="string", value=dataset_name
-                                ),
-                            )
+                datums=schemas.LogicalFunction(
+                    args=[
+                        schemas.Condition(
+                            symbol=schemas.Symbol(name="dataset.name"),
+                            value=schemas.Value(type="string", value=dataset_name),
+                            op=schemas.FilterOperator.EQ,
                         ),
-                        filters.Equal(
-                            eq=filters.Operands(
-                                lhs=filters.Symbol(
-                                    type="string", name="datum.uid"
-                                ),
-                                rhs=filters.Value(type="string", value=uid),
-                            )
+                        schemas.Condition(
+                            symbol=schemas.Symbol(name="datum.uid"),
+                            value=schemas.Value(type="string", value=uid),
+                            op=schemas.FilterOperator.EQ,
                         ),
-                    ]
+                    ],
+                    op=schemas.LogicalOperator.AND,
                 )
             ),
         )
@@ -843,21 +959,18 @@ def create_model(model: schemas.Model, db: Session = Depends(get_db)):
         raise exceptions.create_http_error(e)
 
 
-@app.post(
-    "/models/filter",
+@app.get(
+    "/models",
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
     tags=["Models"],
-    description="Fetch models.",
+    description="Fetch all models.",
     response_model=list[schemas.Model],
 )
 def get_models(
     response: Response,
-    filters: schemas.Filter,
-    offset: int = Query(
-        0, description="Number of items to offset the results by."
-    ),
-    limit: int = Query(-1, description="Maximum number of items to return."),
+    offset: int = Query(0, description="The start index of the items to return."),
+    limit: int = Query(-1, description="The number of items to return. Returns all items when set to -1."),
     db: Session = Depends(get_db),
 ) -> list[schemas.Model]:
     """
@@ -869,8 +982,6 @@ def get_models(
     ----------
     response: Response
         The FastAPI response object. Used to return a content-range header to the user.
-    filters : schemas.Filter, optional
-        An optional filter to constrain results by.
     offset : int, optional
         The start index of the items to return.
     limit : int, optional
@@ -885,7 +996,7 @@ def get_models(
     """
     content, headers = crud.get_models(
         db=db,
-        filters=filters,
+        filters=schemas.Filter(),
         offset=offset,
         limit=limit,
     )
@@ -893,6 +1004,56 @@ def get_models(
     response.headers.update(headers)
 
     return content
+
+
+@app.post(
+    "/models/filter",
+    status_code=200,
+    dependencies=[Depends(token_auth_scheme)],
+    tags=["Models"],
+    description="Fetch models using a filter.",
+)
+def get_filtered_models(
+    response: Response,
+    filters: schemas.Filter,
+    offset: int = Query(0, description="The start index of the items to return."),
+    limit: int = Query(-1, description="The number of items to return. Returns all items when set to -1."),
+    db: Session = Depends(get_db),
+) -> list[schemas.Model]:
+    """
+    Fetch models using a filter.
+
+    POST Endpoint: `/models/filter`
+
+    Parameters
+    ----------
+    response: Response
+        The FastAPI response object. Used to return a content-range header to the user.
+    filters : Filter
+        The filter to constrain the results by.
+    offset : int, optional
+        The start index of the items to return.
+    limit : int, optional
+        The number of items to return. Returns all items when set to -1.
+    db : Session
+        The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
+
+    Returns
+    -------
+    list[schemas.Model]
+        A list of models.
+    """
+    try:
+        content, headers = crud.get_models(
+            db=db,
+            filters=filters,
+            offset=offset,
+            limit=limit,
+        )
+        response.headers.update(headers)
+        return list(content)
+    except Exception as e:
+        raise exceptions.create_http_error(e)
 
 
 @app.get(
@@ -1150,13 +1311,11 @@ def create_or_get_evaluations(
 )
 def get_evaluations(
     response: Response,
-    datasets: str | None = None,
-    models: str | None = None,
-    evaluation_ids: str | None = None,
-    offset: int = Query(
-        0, description="Number of items to offset the results by."
-    ),
-    limit: int = Query(-1, description="Maximum number of items to return."),
+    datasets: str | None = Query(None, description="An optional set of dataset names to constrain by."),
+    models: str | None = Query(None, description="An optional set of model names to constrain by."),
+    evaluation_ids: str | None = Query(None, description="An optional set of evaluation_ids to constrain by."),
+    offset: int = Query(0, description="The start index of the items to return."),
+    limit: int = Query(-1, description="The number of items to return. Returns all items when set to -1."),
     metrics_to_sort_by: str | None = None,
     db: Session = Depends(get_db),
 ) -> list[schemas.EvaluationResponse]:
@@ -1176,11 +1335,11 @@ def get_evaluations(
     response: Response
         The FastAPI response object. Used to return a content-range header to the user.
     datasets : str
-        An optional set of dataset names to return metrics for
+        An optional set of dataset names to constrain by.
     models : str
-        An optional set of model names to return metrics for
+        An optional set of model names to constrain by.
     evaluation_ids : str
-        An optional set of evaluation_ids to return metrics for
+        An optional set of evaluation_ids to constrain by.
     db : Session
         The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
     offset : int, optional

@@ -295,35 +295,30 @@ def _create_response(
     )
 
 
-def _validate_create_evaluation(
+def _validate_evaluation_filter(
     db: Session,
-    job_request: schemas.EvaluationRequest,
     evaluation: models.Evaluation,
-) -> models.Evaluation:
+):
     """
-    Validates whether a new or failed should proceed to a computation.
+    Validates whether a new evaluation should proceed to a computation.
 
     Parameters
     ----------
     db : Session
         The database session.
-    job_request : schemas.EvaluationRequest
-        The evaluations to create.
     evaluation : models.Evaluation
         The evaluation row to validate.
-
-    Returns
-    -------
-    model.Evaluation
-        The row that was passed as input.
     """
 
     # unpack filters and params
-    groundtruth_filter = job_request.filters.model_copy()
-    groundtruth_filter.task_types = [job_request.parameters.task_type]
-    prediction_filter = groundtruth_filter.model_copy()
-    prediction_filter.model_names = [evaluation.model_name]
-    parameters = job_request.parameters
+    filters = schemas.Filter(**evaluation.filters)
+    parameters = schemas.EvaluationParameters(**evaluation.parameters)
+    
+    groundtruth_filter = filters.model_copy()
+    groundtruth_filter.predictions = None
+
+    predictions_filter = filters.model_copy()
+    predictions_filter.groundtruths = None
 
     datasets = (
         generate_query(
@@ -340,7 +335,7 @@ def _validate_create_evaluation(
         generate_query(
             models.Model,
             db=db,
-            filters=prediction_filter,
+            filters=predictions_filter,
             label_source=models.Prediction,
         )
         .distinct()
@@ -350,7 +345,7 @@ def _validate_create_evaluation(
     # verify model and datasets have data for this evaluation
     if not datasets:
         raise exceptions.EvaluationRequestError(
-            msg="No finalized datasets were found that met the filter criteria."
+            msg="No datasets were found that met the filter criteria."
         )
     elif model is None:
         raise exceptions.EvaluationRequestError(
@@ -358,15 +353,13 @@ def _validate_create_evaluation(
         )
 
     # check that prediction label keys match ground truth label keys
-    if job_request.parameters.task_type == enums.TaskType.CLASSIFICATION:
+    if parameters.task_type == enums.TaskType.CLASSIFICATION:
         core.validate_matching_label_keys(
             db=db,
             label_map=parameters.label_map,
-            groundtruth_filter=groundtruth_filter,
-            prediction_filter=prediction_filter,
+            groundtruth_filter=filters,
+            prediction_filter=filters,
         )
-
-    return evaluation
 
 
 def _create_responses(
@@ -488,11 +481,80 @@ def _split_request(
     job_request : EvaluationRequest
         The job request to split (if multiple model names exist).
     """
+
+
+    # create dataset constraint
+    dataset_conditions = schemas.soft_or(
+        [
+            schemas.Condition(
+                lhs=schemas.Symbol.DATASET_NAME,
+                rhs=schemas.Value.infer(name),
+                op=schemas.FilterOperator.EQ,
+            )
+            for name in job_request.dataset_names
+        ]
+    )
+
+    # create model constraint
+    model_conditions = schemas.soft_or(
+        [
+            schemas.Condition(
+                lhs=schemas.Symbol.MODEL_NAME,
+                rhs=schemas.Value.infer(name),
+                op=schemas.FilterOperator.EQ,
+            )
+            for name in job_request.dataset_names
+        ]
+    )
+
+    # create task type constraint
+    task_type_condition = schemas.Condition(
+        lhs=schemas.Symbol.TASK_TYPE,
+        rhs=schemas.Value(
+            type=schemas.SupportedType.TASK_TYPE, 
+            value=job_request.parameters.task_type
+        ),
+        op=schemas.FilterOperator.CONTAINS,
+    )
+
+    # create a copy of the filter
+    filters = job_request.filters.model_copy()
+
+    # create new annotations filter
+    filters.annotations = schemas.soft_and(
+        [
+            filters.annotations,
+            task_type_condition,
+        ]
+    ) if filters.annotations else task_type_condition
+
+    # create new groundtruth filter
+    filters.groundtruths = schemas.soft_and(
+        [
+            filters.groundtruths,
+            dataset_conditions,
+        ]
+    ) if filters.groundtruths else dataset_conditions
+
+    # create new prediction filter
+    filters.predictions = schemas.soft_and(
+        [
+            filters.predictions,
+            dataset_conditions,
+            model_conditions,
+        ]
+    ) if filters.predictions else schemas.soft_and(
+        [
+            dataset_conditions,
+            model_conditions,
+        ]
+    )
+
     return [
         schemas.EvaluationRequest(
             dataset_names=job_request.dataset_names,
             model_names=[model_name],
-            filters=job_request.filters,
+            filters=filters,
             parameters=job_request.parameters,
         )
         for model_name in job_request.model_names
@@ -524,12 +586,6 @@ def create_or_get_evaluations(
 
     # verify that all datasets and models are ready to be evaluated
     validate_request(db=db, job_request=job_request)
-
-    # reset dataset and model related filters
-    job_request.filters.dataset_names = None
-    job_request.filters.dataset_metadata = None
-    job_request.filters.model_names = None
-    job_request.filters.model_metadata = None
 
     created_rows = []
     existing_rows = []
@@ -571,9 +627,8 @@ def create_or_get_evaluations(
                 status=enums.EvaluationStatus.PENDING,
                 meta=dict(),
             )
-            evaluation = _validate_create_evaluation(
+            _validate_evaluation_filter(
                 db=db,
-                job_request=subrequest,
                 evaluation=evaluation,
             )
             created_rows.append(evaluation)
