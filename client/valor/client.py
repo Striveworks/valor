@@ -193,6 +193,9 @@ class ClientConnection:
         method_name: str,
         endpoint: str,
         ignore_auth: bool = False,
+        max_retries: int = 0,
+        initial_timeout: float = 0.1,
+        exponential_backoff: int = 2,
         *args,
         **kwargs,
     ):
@@ -209,6 +212,12 @@ class ClientConnection:
             Option to ignore authentication when you know the endpoint does not
             require a bearer token. this is used by the `_get_access_token_from_username_and_password`
             to avoid infinite recursion.
+        max_retries : int
+            Maximum number of retries before giving up. Turned off by default.
+        initial_timeout : float
+            Initial timeout value in seconds.
+        exponential_backoff : integer
+            The factor by which we multiple initial_timeout for each subsequent retry.
         """
         accepted_methods = ["get", "post", "put", "delete"]
         if method_name not in accepted_methods:
@@ -224,30 +233,30 @@ class ClientConnection:
         url = urljoin(self.host, endpoint)
         requests_method = getattr(requests, method_name)
 
-        tried = False
-        while True:
+        retries = 0
+        resp = requests.Response()
+        while retries <= max_retries:
             if self.access_token is not None:
                 headers = {"Authorization": f"Bearer {self.access_token}"}
             else:
                 headers = None
             resp = requests_method(url, headers=headers, *args, **kwargs)
-            if not resp.ok:
-                # check if unauthorized and if using username and password, get a new
-                # token and try the request again
-                if (
-                    resp.status_code in [401, 403]
-                    and self._using_username_password
-                    and not tried
-                    and not ignore_auth
-                ):
-                    self._get_access_token_from_username_and_password()
-                else:
-                    raise_client_exception(resp)
-            else:
-                break
-            tried = True
+            if resp.ok:
+                return resp
+            elif (
+                resp.status_code in [401, 403]
+                and self._using_username_password
+                and retries == 0
+                and not ignore_auth
+            ):
+                self._get_access_token_from_username_and_password()
 
-        return resp
+            retries += 1
+
+            time.sleep(initial_timeout * exponential_backoff**retries)
+
+        raise_client_exception(resp)
+        return resp  # resolves type errors
 
     def _requests_post_rel_host(self, endpoint: str, *args, **kwargs):
         """
@@ -282,7 +291,12 @@ class ClientConnection:
         )
 
     def create_groundtruths(
-        self, groundtruths: List[dict], ignore_existing_datums: bool = False
+        self,
+        groundtruths: List[dict],
+        ignore_existing_datums: bool = False,
+        max_retries: int = 0,
+        initial_timeout: float = 0.1,
+        exponential_backoff: int = 2,
     ) -> None:
         """
         Creates ground truths.
@@ -297,17 +311,29 @@ class ClientConnection:
             If True, will ignore datums that already exist in the backend.
             If False, will raise an error if any datums already exist.
             Default is False.
+        max_retries : int
+            Maximum number of retries before giving up.
+        initial_timeout : float
+            Initial timeout value in seconds.
+        exponential_backoff : integer
+            The factor by which we multiple initial_timeout for each subsequent retry.
         """
         self._requests_post_rel_host(
             "groundtruths",
             json=groundtruths,
             params={"ignore_existing_datums": ignore_existing_datums},
+            max_retries=max_retries,
+            initial_timeout=initial_timeout,
+            exponential_backoff=exponential_backoff,
         )
 
     def get_groundtruth(
         self,
         dataset_name: str,
         datum_uid: str,
+        max_retries: int = 0,
+        initial_timeout: float = 0.1,
+        exponential_backoff: int = 2,
     ) -> dict:
         """
         Get a particular ground truth.
@@ -320,6 +346,12 @@ class ClientConnection:
             The name of the dataset the datum belongs to.
         datum_uid : str
             The uid of the desired datum.
+        max_retries : int
+            Maximum number of retries before giving up.
+        initial_timeout : float
+            Initial timeout value in seconds.
+        exponential_backoff : integer
+            The factor by which we multiple initial_timeout for each subsequent retry.
 
         Returns
         ----------
@@ -327,10 +359,19 @@ class ClientConnection:
             The requested ground truth.
         """
         return self._requests_get_rel_host(
-            f"groundtruths/dataset/{dataset_name}/datum/{datum_uid}"
+            f"groundtruths/dataset/{dataset_name}/datum/{datum_uid}",
+            max_retries=max_retries,
+            initial_timeout=initial_timeout,
+            exponential_backoff=exponential_backoff,
         ).json()
 
-    def create_predictions(self, predictions: List[dict]) -> None:
+    def create_predictions(
+        self,
+        predictions: List[dict],
+        max_retries: int = 0,
+        initial_timeout: float = 0.1,
+        exponential_backoff: int = 2,
+    ) -> None:
         """
         Creates predictions.
 
@@ -340,14 +381,29 @@ class ClientConnection:
         ----------
         predictions : List[dict]
             The predictions to be created.
+        max_retries : int
+            Maximum number of retries before giving up.
+        initial_timeout : float
+            Initial timeout value in seconds.
+        exponential_backoff : integer
+            The factor by which we multiple initial_timeout for each subsequent retry.
         """
-        self._requests_post_rel_host("predictions", json=predictions)
+        self._requests_post_rel_host(
+            "predictions",
+            json=predictions,
+            max_retries=max_retries,
+            initial_timeout=initial_timeout,
+            exponential_backoff=exponential_backoff,
+        )
 
     def get_prediction(
         self,
         dataset_name: str,
         model_name: str,
         datum_uid: str,
+        max_retries: int = 0,
+        initial_timeout: float = 0.1,
+        exponential_backoff: int = 2,
     ) -> dict:
         """
         Get a particular prediction.
@@ -362,6 +418,12 @@ class ClientConnection:
             The name of the model that made the prediction.
         datum_uid : str
             The uid of the desired datum.
+        max_retries : int
+            Maximum number of retries before giving up.
+        initial_timeout : float
+            Initial timeout value in seconds.
+        exponential_backoff : integer
+            The factor by which we multiple initial_timeout for each subsequent retry.
 
         Returns
         ----------
@@ -370,23 +432,55 @@ class ClientConnection:
         """
         return self._requests_get_rel_host(
             f"predictions/model/{model_name}/dataset/{dataset_name}/datum/{datum_uid}",
+            max_retries=max_retries,
+            initial_timeout=initial_timeout,
+            exponential_backoff=exponential_backoff,
         ).json()
 
     def get_labels(
         self,
         filter_: Optional[dict] = None,
+        max_retries: int = 0,
+        initial_timeout: float = 0.1,
+        exponential_backoff: int = 2,
     ) -> List[dict]:
         """
         Gets all labels using an optional filter.
 
-        `GET` endpoint.
+        Parameters
+        ----------
+        filter_ : Filter, optional
+            Optional filter to constrain by.
+        max_retries : int
+            Maximum number of retries before giving up.
+        initial_timeout : float
+            Initial timeout value in seconds.
+        exponential_backoff : integer
+            The factor by which we multiple initial_timeout for each subsequent retry.
+
+        Returns
+        ------
+        List[dict]
+            A list of labels.
         """
         kwargs = {}
         if filter_:
             kwargs["params"] = {k: json.dumps(v) for k, v in filter_.items()}
-        return self._requests_get_rel_host("labels", **kwargs).json()
+        return self._requests_get_rel_host(
+            "labels",
+            max_retries=max_retries,
+            initial_timeout=initial_timeout,
+            exponential_backoff=exponential_backoff,
+            **kwargs,
+        ).json()
 
-    def get_labels_from_dataset(self, name: str) -> List[dict]:
+    def get_labels_from_dataset(
+        self,
+        name: str,
+        max_retries: int = 0,
+        initial_timeout: float = 0.1,
+        exponential_backoff: int = 2,
+    ) -> List[dict]:
         """
         Get all labels associated with a dataset's ground truths.
 
@@ -396,15 +490,32 @@ class ClientConnection:
         ----------
         name : str
             The name of the dataset to search by.
+        max_retries : int
+            Maximum number of retries before giving up.
+        initial_timeout : float
+            Initial timeout value in seconds.
+        exponential_backoff : integer
+            The factor by which we multiple initial_timeout for each subsequent retry.
 
         Returns
         ------
         List[dict]
             A list of labels.
         """
-        return self._requests_get_rel_host(f"labels/dataset/{name}").json()
+        return self._requests_get_rel_host(
+            f"labels/dataset/{name}",
+            max_retries=max_retries,
+            initial_timeout=initial_timeout,
+            exponential_backoff=exponential_backoff,
+        ).json()
 
-    def get_labels_from_model(self, name: str) -> List[dict]:
+    def get_labels_from_model(
+        self,
+        name: str,
+        max_retries: int = 0,
+        initial_timeout: float = 0.1,
+        exponential_backoff: int = 2,
+    ) -> List[dict]:
         """
         Get all labels associated with a model's predictions.
 
@@ -414,15 +525,32 @@ class ClientConnection:
         ----------
         name : str
             The name of the model to search by.
+        max_retries : int
+            Maximum number of retries before giving up.
+        initial_timeout : float
+            Initial timeout value in seconds.
+        exponential_backoff : integer
+            The factor by which we multiple initial_timeout for each subsequent retry.
 
         Returns
         ------
         List[dict]
             A list of labels.
         """
-        return self._requests_get_rel_host(f"labels/model/{name}").json()
+        return self._requests_get_rel_host(
+            f"labels/model/{name}",
+            max_retries=max_retries,
+            initial_timeout=initial_timeout,
+            exponential_backoff=exponential_backoff,
+        ).json()
 
-    def create_dataset(self, dataset: dict):
+    def create_dataset(
+        self,
+        dataset: dict,
+        max_retries: int = 0,
+        initial_timeout: float = 0.1,
+        exponential_backoff: int = 2,
+    ):
         """
         Creates a dataset.
 
@@ -432,10 +560,28 @@ class ClientConnection:
         ----------
         dataset : dict
             A dictionary describing dataset attributes. See `valor.coretypes.Dataset` for reference.
+        max_retries : int
+            Maximum number of retries before giving up.
+        initial_timeout : float
+            Initial timeout value in seconds.
+        exponential_backoff : integer
+            The factor by which we multiple initial_timeout for each subsequent retry.
         """
-        self._requests_post_rel_host("datasets", json=dataset)
+        self._requests_post_rel_host(
+            "datasets",
+            json=dataset,
+            max_retries=max_retries,
+            initial_timeout=initial_timeout,
+            exponential_backoff=exponential_backoff,
+        )
 
-    def get_datasets(self, filter_: Optional[dict] = None) -> List[dict]:
+    def get_datasets(
+        self,
+        filter_: Optional[dict] = None,
+        max_retries: int = 0,
+        initial_timeout: float = 0.1,
+        exponential_backoff: int = 2,
+    ) -> List[dict]:
         """
         Get all datasets with option to filter.
 
@@ -445,6 +591,12 @@ class ClientConnection:
         ----------
         filter_ : Filter, optional
             Optional filter to constrain by.
+        max_retries : int
+            Maximum number of retries before giving up.
+        initial_timeout : float
+            Initial timeout value in seconds.
+        exponential_backoff : integer
+            The factor by which we multiple initial_timeout for each subsequent retry.
 
         Returns
         ------
@@ -454,9 +606,21 @@ class ClientConnection:
         kwargs = {}
         if filter_:
             kwargs["params"] = {k: json.dumps(v) for k, v in filter_.items()}
-        return self._requests_get_rel_host("datasets", **kwargs).json()
+        return self._requests_get_rel_host(
+            "datasets",
+            max_retries=max_retries,
+            initial_timeout=initial_timeout,
+            exponential_backoff=exponential_backoff,
+            **kwargs,
+        ).json()
 
-    def get_dataset(self, name: str) -> dict:
+    def get_dataset(
+        self,
+        name: str,
+        max_retries: int = 0,
+        initial_timeout: float = 0.1,
+        exponential_backoff: int = 2,
+    ) -> dict:
         """
         Gets a dataset by name.
 
@@ -466,15 +630,32 @@ class ClientConnection:
         ----------
         name : str
             The name of the dataset to fetch.
+        max_retries : int
+            Maximum number of retries before giving up.
+        initial_timeout : float
+            Initial timeout value in seconds.
+        exponential_backoff : integer
+            The factor by which we multiple initial_timeout for each subsequent retry.
 
         Returns
         -------
         dict
             A dictionary containing all of the associated dataset attributes.
         """
-        return self._requests_get_rel_host(f"datasets/{name}").json()
+        return self._requests_get_rel_host(
+            f"datasets/{name}",
+            max_retries=max_retries,
+            initial_timeout=initial_timeout,
+            exponential_backoff=exponential_backoff,
+        ).json()
 
-    def get_dataset_status(self, name: str) -> TableStatus:
+    def get_dataset_status(
+        self,
+        name: str,
+        max_retries: int = 0,
+        initial_timeout: float = 0.1,
+        exponential_backoff: int = 2,
+    ) -> TableStatus:
         """
         Get the state of a given dataset.
 
@@ -484,16 +665,33 @@ class ClientConnection:
         ----------
         name : str
             The name of the dataset we want to fetch the state of.
+        max_retries : int
+            Maximum number of retries before giving up.
+        initial_timeout : float
+            Initial timeout value in seconds.
+        exponential_backoff : integer
+            The factor by which we multiple initial_timeout for each subsequent retry.
 
         Returns
         ------
         TableStatus
             The state of the dataset.
         """
-        resp = self._requests_get_rel_host(f"datasets/{name}/status").json()
+        resp = self._requests_get_rel_host(
+            f"datasets/{name}/status",
+            max_retries=max_retries,
+            initial_timeout=initial_timeout,
+            exponential_backoff=exponential_backoff,
+        ).json()
         return TableStatus(resp)
 
-    def get_dataset_summary(self, name: str) -> dict:
+    def get_dataset_summary(
+        self,
+        name: str,
+        max_retries: int = 0,
+        initial_timeout: float = 0.1,
+        exponential_backoff: int = 2,
+    ) -> dict:
         """
         Gets the summary of a dataset.
 
@@ -503,13 +701,24 @@ class ClientConnection:
         ----------
         name : str
             The name of the dataset to create a summary for.
+        max_retries : int
+            Maximum number of retries before giving up.
+        initial_timeout : float
+            Initial timeout value in seconds.
+        exponential_backoff : integer
+            The factor by which we multiple initial_timeout for each subsequent retry.
 
         Returns
         -------
         dict
             A dictionary containing the dataset summary.
         """
-        return self._requests_get_rel_host(f"datasets/{name}/summary").json()
+        return self._requests_get_rel_host(
+            f"datasets/{name}/summary",
+            max_retries=max_retries,
+            initial_timeout=initial_timeout,
+            exponential_backoff=exponential_backoff,
+        ).json()
 
     def finalize_dataset(self, name: str) -> None:
         """
@@ -522,7 +731,7 @@ class ClientConnection:
         name : str
             The name of the dataset.
         """
-        return self._requests_put_rel_host(f"datasets/{name}/finalize")
+        self._requests_put_rel_host(f"datasets/{name}/finalize")
 
     def delete_dataset(self, name: str) -> None:
         """
@@ -537,7 +746,13 @@ class ClientConnection:
         """
         self._requests_delete_rel_host(f"datasets/{name}")
 
-    def get_datums(self, filter_: Optional[dict] = None) -> List[dict]:
+    def get_datums(
+        self,
+        filter_: Optional[dict] = None,
+        max_retries: int = 0,
+        initial_timeout: float = 0.1,
+        exponential_backoff: int = 2,
+    ) -> List[dict]:
         """
         Get all datums using an optional filter.
 
@@ -547,6 +762,12 @@ class ClientConnection:
         ----------
         filter_ : dict, optional
             Optional filter to constrain by.
+        max_retries : int
+            Maximum number of retries before giving up.
+        initial_timeout : float
+            Initial timeout value in seconds.
+        exponential_backoff : integer
+            The factor by which we multiple initial_timeout for each subsequent retry.
 
         Returns
         -------
@@ -556,12 +777,21 @@ class ClientConnection:
         kwargs = {}
         if filter_:
             kwargs["params"] = {k: json.dumps(v) for k, v in filter_.items()}
-        return self._requests_get_rel_host("data", **kwargs).json()
+        return self._requests_get_rel_host(
+            "data",
+            max_retries=max_retries,
+            initial_timeout=initial_timeout,
+            exponential_backoff=exponential_backoff,
+            **kwargs,
+        ).json()
 
     def get_datum(
         self,
         dataset_name: str,
         uid: str,
+        max_retries: int = 0,
+        initial_timeout: float = 0.1,
+        exponential_backoff: int = 2,
     ) -> dict:
         """
         Get datum.
@@ -572,16 +802,31 @@ class ClientConnection:
             The dataset the datum belongs to.
         uid : str
             The UID of the datum.
+        max_retries : int
+            Maximum number of retries before giving up.
+        initial_timeout : float
+            Initial timeout value in seconds.
+        exponential_backoff : integer
+            The factor by which we multiple initial_timeout for each subsequent retry.
         Returns
         -------
         dict
             A dictionary describing a datum.
         """
         return self._requests_get_rel_host(
-            f"data/dataset/{dataset_name}/uid/{uid}"
+            f"data/dataset/{dataset_name}/uid/{uid}",
+            max_retries=max_retries,
+            initial_timeout=initial_timeout,
+            exponential_backoff=exponential_backoff,
         ).json()
 
-    def create_model(self, model: dict) -> None:
+    def create_model(
+        self,
+        model: dict,
+        max_retries: int = 0,
+        initial_timeout: float = 0.1,
+        exponential_backoff: int = 2,
+    ) -> None:
         """
         Creates a model.
 
@@ -591,10 +836,28 @@ class ClientConnection:
         ----------
         model : dict
             A dictionary describing model attributes. See `valor.coretypes.Model` for reference.
+        max_retries : int
+            Maximum number of retries before giving up.
+        initial_timeout : float
+            Initial timeout value in seconds.
+        exponential_backoff : integer
+            The factor by which we multiple initial_timeout for each subsequent retry.
         """
-        self._requests_post_rel_host("models", json=model)
+        self._requests_post_rel_host(
+            "models",
+            json=model,
+            max_retries=max_retries,
+            initial_timeout=initial_timeout,
+            exponential_backoff=exponential_backoff,
+        )
 
-    def get_models(self, filter_: Optional[dict] = None) -> List[dict]:
+    def get_models(
+        self,
+        filter_: Optional[dict] = None,
+        max_retries: int = 0,
+        initial_timeout: float = 0.1,
+        exponential_backoff: int = 2,
+    ) -> List[dict]:
         """
         Get all models using an optional filter.
 
@@ -604,6 +867,12 @@ class ClientConnection:
         ----------
         filter_ : Filter, optional
             Optional filter to constrain by.
+        max_retries : int
+            Maximum number of retries before giving up.
+        initial_timeout : float
+            Initial timeout value in seconds.
+        exponential_backoff : integer
+            The factor by which we multiple initial_timeout for each subsequent retry.
 
         Returns
         ------
@@ -613,9 +882,21 @@ class ClientConnection:
         kwargs = {}
         if filter_:
             kwargs["params"] = {k: json.dumps(v) for k, v in filter_.items()}
-        return self._requests_get_rel_host("models", **kwargs).json()
+        return self._requests_get_rel_host(
+            "models",
+            max_retries=max_retries,
+            initial_timeout=initial_timeout,
+            exponential_backoff=exponential_backoff,
+            **kwargs,
+        ).json()
 
-    def get_model(self, name: str) -> dict:
+    def get_model(
+        self,
+        name: str,
+        max_retries: int = 0,
+        initial_timeout: float = 0.1,
+        exponential_backoff: int = 2,
+    ) -> dict:
         """
         Gets a model by name.
 
@@ -625,15 +906,32 @@ class ClientConnection:
         ----------
         name : str
             The name of the model to fetch.
+        max_retries : int
+            Maximum number of retries before giving up.
+        initial_timeout : float
+            Initial timeout value in seconds.
+        exponential_backoff : integer
+            The factor by which we multiple initial_timeout for each subsequent retry.
 
         Returns
         -------
         dict
             A dictionary containing all of the associated model attributes.
         """
-        return self._requests_get_rel_host(f"models/{name}").json()
+        return self._requests_get_rel_host(
+            f"models/{name}",
+            max_retries=max_retries,
+            initial_timeout=initial_timeout,
+            exponential_backoff=exponential_backoff,
+        ).json()
 
-    def get_model_eval_requests(self, name: str) -> List[dict]:
+    def get_model_eval_requests(
+        self,
+        name: str,
+        max_retries: int = 0,
+        initial_timeout: float = 0.1,
+        exponential_backoff: int = 2,
+    ) -> List[dict]:
         """
         Get all evaluations that have been created for a model.
 
@@ -645,6 +943,12 @@ class ClientConnection:
         ----------
         name : str
             The name of the model.
+        max_retries : int
+            Maximum number of retries before giving up.
+        initial_timeout : float
+            Initial timeout value in seconds.
+        exponential_backoff : integer
+            The factor by which we multiple initial_timeout for each subsequent retry.
 
         Returns
         -------
@@ -652,13 +956,19 @@ class ClientConnection:
             A list of evaluations.
         """
         return self._requests_get_rel_host(
-            f"/models/{name}/eval-requests"
+            f"/models/{name}/eval-requests",
+            max_retries=max_retries,
+            initial_timeout=initial_timeout,
+            exponential_backoff=exponential_backoff,
         ).json()
 
     def get_model_status(
         self,
         dataset_name: str,
         model_name: str,
+        max_retries: int = 0,
+        initial_timeout: float = 0.1,
+        exponential_backoff: int = 2,
     ) -> TableStatus:
         """
         Get the state of a given model over a dataset.
@@ -671,6 +981,12 @@ class ClientConnection:
             The name of the dataset that the model is operating over.
         model_name : str
             The name of the model we want to fetch the state of.
+        max_retries : int
+            Maximum number of retries before giving up.
+        initial_timeout : float
+            Initial timeout value in seconds.
+        exponential_backoff : integer
+            The factor by which we multiple initial_timeout for each subsequent retry.
 
         Returns
         ------
@@ -678,7 +994,10 @@ class ClientConnection:
             The state of the `Model`.
         """
         resp = self._requests_get_rel_host(
-            f"models/{model_name}/dataset/{dataset_name}/status"
+            f"models/{model_name}/dataset/{dataset_name}/status",
+            max_retries=max_retries,
+            initial_timeout=initial_timeout,
+            exponential_backoff=exponential_backoff,
         ).json()
         return TableStatus(resp)
 
@@ -751,6 +1070,9 @@ class ClientConnection:
         metrics_to_sort_by: Optional[
             Dict[str, Union[Dict[str, str], str]]
         ] = None,
+        max_retries: int = 0,
+        initial_timeout: float = 0.1,
+        exponential_backoff: int = 2,
     ) -> List[dict]:
         """
         Returns all evaluations associated with user-supplied dataset and/or model names.
@@ -767,6 +1089,12 @@ class ClientConnection:
             A list of dataset names that we want to return metrics for.
         metrics_to_sort_by: dict[str, str | dict[str, str]], optional
             An optional dict of metric types to sort the evaluations by.
+        max_retries : int
+            Maximum number of retries before giving up.
+        initial_timeout : float
+            Initial timeout value in seconds.
+        exponential_backoff : integer
+            The factor by which we multiple initial_timeout for each subsequent retry.
 
         Returns
         -------
@@ -799,35 +1127,80 @@ class ClientConnection:
         query_str = urlencode(params)
         endpoint = f"evaluations?{query_str}"
 
-        return self._requests_get_rel_host(endpoint).json()
+        return self._requests_get_rel_host(
+            endpoint,
+            max_retries=max_retries,
+            initial_timeout=initial_timeout,
+            exponential_backoff=exponential_backoff,
+        ).json()
 
-    def get_user(self) -> Union[str, None]:
+    def get_user(
+        self,
+        max_retries: int = 0,
+        initial_timeout: float = 0.1,
+        exponential_backoff: int = 2,
+    ) -> Union[str, None]:
         """
         Gets the users e-mail address (in the case when auth is enabled)
         or returns None in the case of a no-auth back end.
 
         `GET` endpoint.
 
+        Parameters
+        -------
+        max_retries : int
+            Maximum number of retries before giving up.
+        initial_timeout : float
+            Initial timeout value in seconds.
+        exponential_backoff : integer
+            The factor by which we multiple initial_timeout for each subsequent retry.
+
+
         Returns
         -------
         Union[str, None]
             The user's email address or `None` if it doesn't exist.
         """
-        resp = self._requests_get_rel_host("user").json()
+        resp = self._requests_get_rel_host(
+            "user",
+            max_retries=max_retries,
+            initial_timeout=initial_timeout,
+            exponential_backoff=exponential_backoff,
+        ).json()
         return resp["email"]
 
-    def get_api_version(self) -> str:
+    def get_api_version(
+        self,
+        max_retries: int = 0,
+        initial_timeout: float = 0.1,
+        exponential_backoff: int = 2,
+    ) -> str:
         """
         Gets the version number of the API.
 
         `GET` endpoint.
+
+        Parameters
+        -------
+        max_retries : int
+            Maximum number of retries before giving up.
+        initial_timeout : float
+            Initial timeout value in seconds.
+        exponential_backoff : integer
+            The factor by which we multiple initial_timeout for each subsequent retry.
+
 
         Returns
         -------
         Union[str, None]
             The api version or `None` if it doesn't exist.
         """
-        resp = self._requests_get_rel_host("api-version").json()
+        resp = self._requests_get_rel_host(
+            "api-version",
+            max_retries=max_retries,
+            initial_timeout=initial_timeout,
+            exponential_backoff=exponential_backoff,
+        ).json()
         return resp["api_version"]
 
     def health(self) -> str:
