@@ -252,10 +252,7 @@ def test_list():
     ]
 
     # test comparison between valued variable and value
-    assert (variable == [0.1, 0.2, 0.3]).to_dict() == {
-        "type": "bool",
-        "value": True,
-    }
+    assert variable == [0.1, 0.2, 0.3]
 
     # test setting list to non-list type
     with pytest.raises(TypeError):
@@ -388,12 +385,12 @@ def test_dictionary():
     # test nullable
     v1 = objcls.nullable(None)
     assert v1.get_value() is None
-    assert v1.is_none().get_value() is True  # type: ignore - issue #604
-    assert v1.is_not_none().get_value() is False  # type: ignore - issue #604
+    assert v1.is_none()  # type: ignore - issue #604
+    assert not v1.is_not_none()  # type: ignore - issue #604
     v2 = objcls.nullable(permutations[0][0])
     assert v2.get_value() is not None
-    assert v2.is_none().get_value() is False  # type: ignore - issue #604
-    assert v2.is_not_none().get_value() is True  # type: ignore - issue #604
+    assert not v2.is_none()  # type: ignore - issue #604
+    assert v2.is_not_none()  # type: ignore - issue #604
 
     # test encoding
     assert {
