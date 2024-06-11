@@ -72,9 +72,9 @@ def _calculate_ap_and_ar(
     recall_score_threshold: float,
 ) -> Tuple[list[schemas.APMetric], list[schemas.ARMetric]]:
     """
-    Computes the average precision. Return is a dict with keys
+    Computes the average precision and average recall metrics. Returns a dict with keys
     `f"IoU={iou_thres}"` for each `iou_thres` in `iou_thresholds` as well as
-    `f"IoU={min(iou_thresholds)}:{max(iou_thresholds)}"` which is the average
+    `f"IoU={min(iou_thresholds)}:{max(iou_thresholds)}", which is the average
     of the scores across all of the IoU thresholds.
     """
     if recall_score_threshold < 0 or recall_score_threshold > 1.0:
