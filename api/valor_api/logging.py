@@ -25,7 +25,7 @@ async def log_endpoint_middleware(
         path=request.url.path,
         hostname=request.url.hostname,
         status=response.status_code,
-        duration_ms=duration_seconds * 1000
+        duration_ms=duration_seconds * 1000,
     )
     return response
 
