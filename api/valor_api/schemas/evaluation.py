@@ -24,9 +24,9 @@ class EvaluationParameters(BaseModel):
         The list of metrics to compute, store, and return to the user.
     convert_annotations_to_type: AnnotationType | None = None
         The type to convert all annotations to.
-    iou_thresholds_to_compute : Optional[List[float]]
+    iou_thresholds_to_compute: List[float], optional
         A list of floats describing which Intersection over Unions (IoUs) to use when calculating metrics (i.e., mAP).
-    iou_thresholds_to_return: Optional[List[float]]
+    iou_thresholds_to_return: List[float], optional
         A list of floats describing which Intersection over Union (IoUs) thresholds to calculate a metric for. Must be a subset of `iou_thresholds_to_compute`.
     recall_score_threshold: float, default=0
         The confidence score threshold for use when determining whether to count a prediction as a true positive or not while calculating Average Recall.
