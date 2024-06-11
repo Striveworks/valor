@@ -185,7 +185,7 @@ def get_paginated_models(
     advanced_filter = filters.to_advanced_filter() if filters else None
     subquery = generate_select(
         models.Model.id.label("id"),
-        filter_=advanced_filter,
+        filters=advanced_filter,
         label_source=models.Prediction,
     ).subquery()
 

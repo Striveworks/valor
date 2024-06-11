@@ -902,7 +902,7 @@ def test_post_detection_metrics(client: TestClient):
         id=1,
         dataset_names=["dsetname"],
         model_name="modelname",
-        filter=schemas.Filter(),
+        filters=schemas.Filter(),
         parameters=schemas.EvaluationParameters(
             task_type=TaskType.OBJECT_DETECTION
         ),
@@ -937,7 +937,7 @@ def test_post_clf_metrics(client: TestClient):
         id=1,
         dataset_names=["dsetname"],
         model_name="modelname",
-        filter=schemas.Filter(),
+        filters=schemas.Filter(),
         parameters=schemas.EvaluationParameters(
             task_type=TaskType.CLASSIFICATION
         ),
@@ -970,7 +970,7 @@ def test_post_semenatic_segmentation_metrics(client: TestClient):
         id=1,
         dataset_names=["dset_name"],
         model_name="modelname",
-        filter=schemas.Filter(),
+        filters=schemas.Filter(),
         parameters=schemas.EvaluationParameters(
             task_type=TaskType.SEMANTIC_SEGMENTATION
         ),

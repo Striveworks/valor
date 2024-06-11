@@ -323,7 +323,7 @@ def log_evaluation_item_counts(
     gt_subquery = generate_select(
         models.Datum.id.label("datum_id"),
         models.GroundTruth,
-        filter_=groundtruth_filter,
+        filters=groundtruth_filter,
         label_source=models.GroundTruth,
     ).alias()
 
@@ -344,7 +344,7 @@ def log_evaluation_item_counts(
     pd_subquery = generate_select(
         models.Datum.id.label("datum_id"),
         models.Prediction,
-        filter_=prediction_filter,
+        filters=prediction_filter,
         label_source=models.Prediction,
     ).alias()
 
@@ -438,7 +438,7 @@ def validate_computation(fn: Callable) -> Callable:
 
 def prepare_filter_for_evaluation(
     db: Session,
-    filter_: schemas.Filter,
+    filters: schemas.Filter,
     dataset_names: list[str],
     model_name: str,
     task_type: enums.TaskType,
@@ -453,7 +453,7 @@ def prepare_filter_for_evaluation(
     ----------
     db : Session
         The database session.
-    filter_ : Filter
+    filters : Filter
         The data filter.
     dataset_names : list[str]
         A list of dataset names to filter by.
@@ -470,7 +470,7 @@ def prepare_filter_for_evaluation(
         A filter ready for evaluation.
     """
 
-    groundtruth_filter = filter_.model_copy()
+    groundtruth_filter = filters.model_copy()
     groundtruth_filter.task_types = [task_type]
     groundtruth_filter.dataset_names = dataset_names
 

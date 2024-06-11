@@ -272,7 +272,7 @@ def _create_response(
         id=evaluation.id,
         dataset_names=evaluation.dataset_names,
         model_name=evaluation.model_name,
-        filter=evaluation.datum_filter,
+        filters=evaluation.filters,
         parameters=evaluation.parameters,
         status=enums.EvaluationStatus(evaluation.status),
         metrics=[
@@ -319,7 +319,7 @@ def _validate_create_evaluation(
     """
 
     # unpack filters and params
-    groundtruth_filter = job_request.filter.model_copy()
+    groundtruth_filter = job_request.filters.model_copy()
     groundtruth_filter.task_types = [job_request.parameters.task_type]
     prediction_filter = groundtruth_filter.model_copy()
     prediction_filter.model_names = [evaluation.model_name]
@@ -329,7 +329,7 @@ def _validate_create_evaluation(
         generate_query(
             models.Dataset,
             db=db,
-            filter_=groundtruth_filter,
+            filters=groundtruth_filter,
             label_source=models.GroundTruth,
         )
         .distinct()
@@ -340,7 +340,7 @@ def _validate_create_evaluation(
         generate_query(
             models.Model,
             db=db,
-            filter_=prediction_filter,
+            filters=prediction_filter,
             label_source=models.Prediction,
         )
         .distinct()
@@ -393,8 +393,8 @@ def _create_responses(
         if evaluation.id is None:
             raise exceptions.EvaluationDoesNotExistError()
 
-        datum_filter = schemas.Filter(**evaluation.datum_filter)
-        model_filter = datum_filter.model_copy()
+        dataset_filter = schemas.Filter(**evaluation.filters)
+        model_filter = dataset_filter.model_copy()
         model_filter.dataset_names = None
         model_filter.model_names = [evaluation.model_name]
         parameters = schemas.EvaluationParameters(**evaluation.parameters)
@@ -411,7 +411,7 @@ def _create_responses(
                     ignored_pred_labels,
                 ) = core.get_disjoint_labels(
                     db,
-                    datum_filter,
+                    dataset_filter,
                     model_filter,
                     label_map=parameters.label_map,
                 )
@@ -467,8 +467,7 @@ def _fetch_evaluation_from_subrequest(
             and_(
                 models.Evaluation.dataset_names == subrequest.dataset_names,
                 models.Evaluation.model_name == subrequest.model_names[0],
-                models.Evaluation.datum_filter
-                == subrequest.filter.model_dump(),
+                models.Evaluation.filters == subrequest.filters.model_dump(),
                 models.Evaluation.parameters
                 == subrequest.parameters.model_dump(),
             )
@@ -493,7 +492,7 @@ def _split_request(
         schemas.EvaluationRequest(
             dataset_names=job_request.dataset_names,
             model_names=[model_name],
-            filter=job_request.filter,
+            filters=job_request.filters,
             parameters=job_request.parameters,
         )
         for model_name in job_request.model_names
@@ -527,10 +526,10 @@ def create_or_get_evaluations(
     validate_request(db=db, job_request=job_request)
 
     # reset dataset and model related filters
-    job_request.filter.dataset_names = None
-    job_request.filter.dataset_metadata = None
-    job_request.filter.model_names = None
-    job_request.filter.model_metadata = None
+    job_request.filters.dataset_names = None
+    job_request.filters.dataset_metadata = None
+    job_request.filters.model_names = None
+    job_request.filters.model_metadata = None
 
     created_rows = []
     existing_rows = []
@@ -567,7 +566,7 @@ def create_or_get_evaluations(
             evaluation = models.Evaluation(
                 dataset_names=subrequest.dataset_names,
                 model_name=subrequest.model_names[0],
-                datum_filter=subrequest.filter.model_dump(),
+                filters=subrequest.filters.model_dump(),
                 parameters=subrequest.parameters.model_dump(),
                 status=enums.EvaluationStatus.PENDING,
                 meta=dict(),
@@ -846,7 +845,7 @@ def get_evaluation_requests_from_model(
             id=eval_.id,
             dataset_names=eval_.dataset_names,
             model_name=model_name,
-            filter=eval_.datum_filter,
+            filters=eval_.filters,
             parameters=eval_.parameters,
             status=enums.EvaluationStatus(eval_.status),
             created_at=eval_.created_at.replace(tzinfo=timezone.utc),

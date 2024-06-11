@@ -169,12 +169,12 @@ def test_compute_confusion_matrix_at_grouper_key(
     groundtruths = generate_select(
         models.GroundTruth,
         models.Annotation.datum_id.label("datum_id"),
-        filter_=gFilter,
+        filters=gFilter,
         label_source=models.GroundTruth,
     ).alias()
     predictions = generate_select(
         models.Prediction,
-        filter_=pFilter,
+        filters=pFilter,
         label_source=models.Prediction,
     ).alias()
 
@@ -226,12 +226,12 @@ def test_compute_confusion_matrix_at_grouper_key(
     groundtruths = generate_select(
         models.GroundTruth,
         models.Annotation.datum_id.label("datum_id"),
-        filter_=gFilter,
+        filters=gFilter,
         label_source=models.GroundTruth,
     ).alias()
     predictions = generate_select(
         models.Prediction,
-        filter_=pFilter,
+        filters=pFilter,
         label_source=models.Prediction,
     ).alias()
 
@@ -316,12 +316,12 @@ def test_compute_confusion_matrix_at_grouper_key_and_filter(
     groundtruths = generate_select(
         models.GroundTruth,
         models.Annotation.datum_id.label("datum_id"),
-        filter_=gFilter,
+        filters=gFilter,
         label_source=models.GroundTruth,
     ).alias()
     predictions = generate_select(
         models.Prediction,
-        filter_=pFilter,
+        filters=pFilter,
         label_source=models.Prediction,
     ).alias()
 
@@ -405,12 +405,12 @@ def test_compute_confusion_matrix_at_grouper_key_using_label_map(
     groundtruths = generate_select(
         models.GroundTruth,
         models.Annotation.datum_id.label("datum_id"),
-        filter_=gFilter,
+        filters=gFilter,
         label_source=models.GroundTruth,
     ).alias()
     predictions = generate_select(
         models.Prediction,
-        filter_=pFilter,
+        filters=pFilter,
         label_source=models.Prediction,
     ).alias()
 
@@ -892,13 +892,13 @@ def test__compute_curves(
         models.GroundTruth,
         models.Annotation.datum_id.label("datum_id"),
         models.Dataset.name.label("dataset_name"),
-        filter_=gFilter,
+        filters=gFilter,
         label_source=models.GroundTruth,
     ).alias()
     predictions = generate_select(
         models.Prediction,
         models.Dataset.name.label("dataset_name"),
-        filter_=pFilter,
+        filters=pFilter,
         label_source=models.Prediction,
     ).alias()
 
@@ -909,14 +909,14 @@ def test__compute_curves(
         models.Dataset.name,
         models.Datum.uid,
         db=db,
-        filter_=groundtruth_filter,
+        filters=groundtruth_filter,
         label_source=models.GroundTruth,
     ).all()
     pd_datums = generate_query(
         models.Dataset.name,
         models.Datum.uid,
         db=db,
-        filter_=prediction_filter,
+        filters=prediction_filter,
         label_source=models.Prediction,
     ).all()
     unique_datums = set(pd_datums + gt_datums)

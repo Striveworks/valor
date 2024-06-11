@@ -310,7 +310,7 @@ def test_create_evaluation(
     assert rows[0].id == evaluation_id
     assert rows[0].dataset_names == [finalized_dataset]
     assert rows[0].model_name == finalized_model
-    assert rows[0].datum_filter == schemas.Filter().model_dump()
+    assert rows[0].filters == schemas.Filter().model_dump()
     assert (
         rows[0].parameters
         == schemas.EvaluationParameters(

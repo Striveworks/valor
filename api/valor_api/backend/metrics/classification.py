@@ -263,7 +263,7 @@ def _compute_binary_roc_auc(
     gts_query = generate_select(
         models.Annotation.datum_id.label("datum_id"),
         models.Label.value.label("label_value"),
-        filter_=gts_filter,
+        filters=gts_filter,
         label_source=models.GroundTruth,
     ).subquery("groundtruth_subquery")
 
@@ -274,7 +274,7 @@ def _compute_binary_roc_auc(
         models.Annotation.datum_id.label("datum_id"),
         models.Prediction.score.label("score"),
         models.Label.value.label("label_value"),
-        filter_=preds_filter,
+        filters=preds_filter,
         label_source=models.Prediction,
     ).subquery("prediction_subquery")
 
@@ -680,7 +680,7 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
         models.GroundTruth,
         models.Annotation.datum_id.label("datum_id"),
         models.Dataset.name.label("dataset_name"),
-        filter_=gFilter,
+        filters=gFilter,
         label_source=models.GroundTruth,
     ).alias()
 
@@ -688,7 +688,7 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
         models.Prediction,
         models.Annotation.datum_id.label("datum_id"),
         models.Dataset.name.label("dataset_name"),
-        filter_=pFilter,
+        filters=pFilter,
         label_source=models.Prediction,
     ).alias()
 
@@ -728,14 +728,14 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
             models.Dataset.name,
             models.Datum.uid,
             db=db,
-            filter_=groundtruth_filter,
+            filters=groundtruth_filter,
             label_source=models.GroundTruth,
         ).all()
         pd_datums = generate_query(
             models.Dataset.name,
             models.Datum.uid,
             db=db,
-            filter_=prediction_filter,
+            filters=prediction_filter,
             label_source=models.Prediction,
         ).all()
         unique_datums = set(gt_datums + pd_datums)
@@ -888,7 +888,7 @@ def compute_clf_metrics(
     parameters = schemas.EvaluationParameters(**evaluation.parameters)
     groundtruth_filter, prediction_filter = prepare_filter_for_evaluation(
         db=db,
-        filter_=schemas.Filter(**evaluation.datum_filter),
+        filters=schemas.Filter(**evaluation.filters),
         dataset_names=evaluation.dataset_names,
         model_name=evaluation.model_name,
         task_type=parameters.task_type,

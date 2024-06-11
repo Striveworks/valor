@@ -443,7 +443,7 @@ def _compute_detection_metrics(
         _annotation_type_to_geojson(target_type, models.Annotation).label(
             "geojson"
         ),
-        filter_=groundtruth_filter,
+        filters=groundtruth_filter,
         label_source=models.GroundTruth,
     ).subquery("groundtruths")
 
@@ -463,7 +463,7 @@ def _compute_detection_metrics(
         _annotation_type_to_geojson(target_type, models.Annotation).label(
             "geojson"
         ),
-        filter_=prediction_filter,
+        filters=prediction_filter,
         label_source=models.Prediction,
     ).subquery("predictions")
 
@@ -608,7 +608,7 @@ def _compute_detection_metrics(
                 value=models.Prediction.label_id,
             ).label("label_id_grouper"),
             db=db,
-            filter_=prediction_filter,
+            filters=prediction_filter,
             label_source=models.Prediction,
         )
         .where(models.Prediction.id.notin_(pd_set))
@@ -648,7 +648,7 @@ def _compute_detection_metrics(
             "gt_geojson"
         ),
         db=db,
-        filter_=groundtruth_filter,
+        filters=groundtruth_filter,
         label_source=models.GroundTruth,
     ).all()
 
@@ -934,7 +934,7 @@ def compute_detection_metrics(*_, db: Session, evaluation_id: int):
     parameters = schemas.EvaluationParameters(**evaluation.parameters)
     groundtruth_filter, prediction_filter = prepare_filter_for_evaluation(
         db=db,
-        filter_=schemas.Filter(**evaluation.datum_filter),
+        filters=schemas.Filter(**evaluation.filters),
         dataset_names=evaluation.dataset_names,
         model_name=evaluation.model_name,
         task_type=parameters.task_type,
@@ -953,7 +953,7 @@ def compute_detection_metrics(*_, db: Session, evaluation_id: int):
         generate_query(
             models.Dataset,
             db=db,
-            filter_=groundtruth_filter,
+            filters=groundtruth_filter,
             label_source=models.GroundTruth,
         )
         .distinct()
@@ -963,7 +963,7 @@ def compute_detection_metrics(*_, db: Session, evaluation_id: int):
         generate_query(
             models.Model,
             db=db,
-            filter_=prediction_filter,
+            filters=prediction_filter,
             label_source=models.Prediction,
         )
         .distinct()

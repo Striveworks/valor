@@ -119,7 +119,7 @@ class EvaluationRequest(BaseModel):
         The names of the evaluated datasets.
     model_names : str | list[str]
         The model(s) to evaluate.
-    filter : schemas.Filter, optional
+    filters : schemas.Filter, optional
         The filter object used to define what data to evaluate.
     parameters : DetectionParameters, optional
         Any parameters that are used to modify an evaluation method.
@@ -127,7 +127,7 @@ class EvaluationRequest(BaseModel):
 
     dataset_names: list[str]
     model_names: list[str]
-    filter: Filter = Filter()
+    filters: Filter = Filter()
     parameters: EvaluationParameters
 
     # pydantic setting
@@ -167,7 +167,7 @@ class EvaluationResponse(BaseModel):
         The names of the evaluated datasets.
     model_name : str
         The name of the evaluated model.
-    filter : schemas.Filter
+    filters : schemas.Filter
         The evaluation filter used in the evaluation.
     parameters : schemas.EvaluationParameters
         Any parameters used by the evaluation method.
@@ -190,7 +190,7 @@ class EvaluationResponse(BaseModel):
     id: int
     dataset_names: list[str]
     model_name: str
-    filter: Filter
+    filters: Filter
     parameters: EvaluationParameters
     status: EvaluationStatus
     created_at: datetime.datetime

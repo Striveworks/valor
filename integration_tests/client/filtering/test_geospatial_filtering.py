@@ -155,8 +155,8 @@ def test_geospatial_filter(
     )
     assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
 
-    assert eval_job.filter.datum_metadata
-    assert eval_job.filter.datum_metadata["geospatial"] == [
+    assert eval_job.filters.datum_metadata
+    assert eval_job.filters.datum_metadata["geospatial"] == [
         Constraint(value=geodict, operator="intersect")
     ]
     assert len(eval_job.metrics) == 16

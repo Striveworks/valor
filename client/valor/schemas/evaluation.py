@@ -52,7 +52,7 @@ class EvaluationRequest:
         The list of datasets we want to evaluate by name.
     model_names : List[str]
         The list of models we want to evaluate by name.
-    filter : schemas.Filter
+    filters : schemas.Filter
         The filter object used to define what the model(s) is evaluating against.
     parameters : EvaluationParameters
         Any parameters that are used to modify an evaluation method.
@@ -61,10 +61,10 @@ class EvaluationRequest:
     dataset_names: Union[str, List[str]]
     model_names: Union[str, List[str]]
     parameters: EvaluationParameters
-    filter: Optional[Filter] = field(default=None)
+    filters: Optional[Filter] = field(default=None)
 
     def __post_init__(self):
-        if isinstance(self.filter, dict):
-            self.filter = Filter(**self.filter)
+        if isinstance(self.filters, dict):
+            self.filters = Filter(**self.filters)
         if isinstance(self.parameters, dict):
             self.parameters = EvaluationParameters(**self.parameters)

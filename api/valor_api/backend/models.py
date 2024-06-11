@@ -203,7 +203,7 @@ class Evaluation(Base):
         UniqueConstraint(
             "dataset_names",
             "model_name",
-            "datum_filter",
+            "filters",
             "parameters",
         ),
     )
@@ -212,7 +212,7 @@ class Evaluation(Base):
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     dataset_names = mapped_column(JSONB, nullable=False)
     model_name: Mapped[str] = mapped_column(nullable=False)
-    datum_filter = mapped_column(JSONB, nullable=False)
+    filters = mapped_column(JSONB, nullable=False)
     parameters = mapped_column(JSONB, nullable=False)
     status: Mapped[str] = mapped_column(nullable=False)
     created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
