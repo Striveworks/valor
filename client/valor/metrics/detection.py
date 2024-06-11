@@ -114,16 +114,14 @@ def _get_tp_fp_single_image_single_class(
 
 
 @dataclass
-class IntermediateMetricData:
-    iou_threshold: float
+class IntermediateMetricDataAtLabelAndIoUThreshold:
     n_gt: int
     tp: Union[List[float], None] = None
     fp: Union[List[float], None] = None
     scores: Union[List[float], None] = None
 
     def copy(self):
-        return IntermediateMetricData(
-            iou_threshold=self.iou_threshold,
+        return IntermediateMetricDataAtLabelAndIoUThreshold(
             n_gt=self.n_gt,
             tp=self.tp.copy() if self.tp is not None else None,
             fp=self.fp.copy() if self.fp is not None else None,
@@ -131,11 +129,10 @@ class IntermediateMetricData:
         )
 
 
-def combine_intermediate_metric_data(
-    imd1: IntermediateMetricData, imd2: IntermediateMetricData
-) -> IntermediateMetricData:
-    if imd1.iou_threshold != imd2.iou_threshold:
-        raise ValueError("iou thresholds must be the same")
+def combine_intermediate_metric_data_at_iou(
+    imd1: IntermediateMetricDataAtLabelAndIoUThreshold,
+    imd2: IntermediateMetricDataAtLabelAndIoUThreshold,
+) -> IntermediateMetricDataAtLabelAndIoUThreshold:
     n_gt = imd1.n_gt + imd2.n_gt
     if imd1.tp is None or imd1.tp is None:
         return imd2.copy()
@@ -151,21 +148,33 @@ def combine_intermediate_metric_data(
         thresholds2=imd2.scores,
     )
 
-    return IntermediateMetricData(
-        iou_threshold=imd1.iou_threshold,
-        n_gt=n_gt,
-        tp=tps,
-        fp=fps,
-        scores=scores,
+    return IntermediateMetricDataAtLabelAndIoUThreshold(
+        n_gt=n_gt, tp=tps, fp=fps, scores=scores
     )
 
 
-def get_intermediate_metric_data(
+def combine_intermediate_metric_data(
+    imd1: Dict[float, IntermediateMetricDataAtLabelAndIoUThreshold],
+    imd2: Dict[float, IntermediateMetricDataAtLabelAndIoUThreshold],
+) -> Dict[float, IntermediateMetricDataAtLabelAndIoUThreshold]:
+
+    if set(imd1.keys()) != set(imd2.keys()):
+        raise ValueError("iou thresholds must be the same")
+
+    return {
+        iou_thres: combine_intermediate_metric_data_at_iou(
+            imd1[iou_thres], imd2[iou_thres]
+        )
+        for iou_thres in imd1
+    }
+
+
+def get_intermediate_metric_data_for_label(
     predictions: List[Prediction],
     groundtruths: List[GroundTruth],
     label: Label,
     iou_thresholds: List[float],
-) -> List[IntermediateMetricData]:
+) -> Dict[float, IntermediateMetricDataAtLabelAndIoUThreshold]:
     if len(predictions) != len(groundtruths):
         raise ValueError(
             "Number of predictions and groundtruths must be the same"
@@ -194,12 +203,12 @@ def get_intermediate_metric_data(
     n_gt = sum([len(gt_box) for gt_box in groundtruth_boxes])
 
     if n_gt == 0:
-        return [
-            IntermediateMetricData(iou_threshold=iou_thres, n_gt=0)
+        return {
+            iou_thres: IntermediateMetricDataAtLabelAndIoUThreshold(n_gt=0)
             for iou_thres in iou_thresholds
-        ]
+        }
 
-    ret = []
+    ret = {}
     for iou_thres in iou_thresholds:
         match_infos = []
         for preds, gts in zip(predicted_boxes_and_scores, groundtruth_boxes):
@@ -220,20 +229,19 @@ def get_intermediate_metric_data(
         cum_fp = _cumsum(fp)
         scores = [m.score for m in match_infos]
 
-        ret.append(
-            IntermediateMetricData(
-                iou_threshold=iou_thres,
-                tp=cum_tp,
-                fp=cum_fp,
-                scores=scores,
-                n_gt=n_gt,
-            )
+        ret[iou_thres] = IntermediateMetricDataAtLabelAndIoUThreshold(
+            tp=cum_tp,
+            fp=cum_fp,
+            scores=scores,
+            n_gt=n_gt,
         )
     return ret
 
 
 def ap_from_intermediate_metric_data(
-    *intermediate_metric_data: IntermediateMetricData,
+    *intermediate_metric_data: Dict[
+        float, IntermediateMetricDataAtLabelAndIoUThreshold
+    ],
 ):
     imd = intermediate_metric_data[0]
     for other_imd in intermediate_metric_data[1:]:
@@ -241,26 +249,21 @@ def ap_from_intermediate_metric_data(
 
     # total number of groundtruth objects across all images
     ret = {}
-    iou_thresholds = []
-    for tp_fp_threshold in imd:
-        iou_thresholds.append(tp_fp_threshold.iou_threshold)
-        if tp_fp_threshold.fp is None or tp_fp_threshold.tp is None:
-            ret[f"IoU={tp_fp_threshold.iou_threshold}"] = -1.0
+    for iou_threshold, imd_at_iou in imd.items():
+        if imd_at_iou.fp is None or imd_at_iou.tp is None:
+            ret[f"IoU={iou_threshold}"] = -1.0
         else:
             precisions = [
-                tp / (tp + fp)
-                for tp, fp in zip(tp_fp_threshold.tp, tp_fp_threshold.fp)
+                tp / (tp + fp) for tp, fp in zip(imd_at_iou.tp, imd_at_iou.fp)
             ]
-            recalls = [tp / tp_fp_threshold.n_gt for tp in tp_fp_threshold.tp]
+            recalls = [tp / imd_at_iou.n_gt for tp in imd_at_iou.tp]
 
-            ret[
-                f"IoU={tp_fp_threshold.iou_threshold}"
-            ] = calculate_ap_101_pt_interp(
+            ret[f"IoU={iou_threshold}"] = calculate_ap_101_pt_interp(
                 precisions=precisions, recalls=recalls
             )
-    ret[f"IoU={min(iou_thresholds)}:{max(iou_thresholds)}"] = sum(
-        [ret[f"IoU={iou_thres}"] for iou_thres in iou_thresholds]
-    ) / len(iou_thresholds)
+    ret[f"IoU={min(imd.keys())}:{max(imd.keys())}"] = sum(
+        [ret[f"IoU={iou_thres}"] for iou_thres in imd]
+    ) / len(imd)
     return ret
 
 
@@ -280,7 +283,7 @@ def ap(
             "Number of predictions and groundtruths must be the same"
         )
 
-    tp_fp_thresholds = get_intermediate_metric_data(
+    tp_fp_thresholds = get_intermediate_metric_data_for_label(
         predictions=predictions,
         groundtruths=groundtruths,
         label=label,

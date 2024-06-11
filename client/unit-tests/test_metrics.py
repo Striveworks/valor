@@ -8,7 +8,11 @@ from valor.metrics.classification import (
     combine_tps_fps_thresholds,
     get_tps_fps_thresholds,
 )
-from valor.metrics.detection import compute_ap_metrics
+from valor.metrics.detection import (
+    compute_ap_metrics,
+    ap_from_intermediate_metric_data,
+    get_intermediate_metric_data_for_label,
+)
 from valor.schemas import Box
 
 
@@ -231,6 +235,50 @@ def test_compute_ap_metrics(
     # cf with torch metrics/pycocotools results listed here:
     # https://github.com/Lightning-AI/metrics/blob/107dbfd5fb158b7ae6d76281df44bd94c836bfce/tests/unittests/detection/test_map.py#L231
     assert metrics == expected_ap_metrics
+
+
+def test_compute_ap_metrics_in_pieces(
+    groundtruths: List[GroundTruth],
+    predictions: List[Prediction],
+    expected_ap_metrics: dict,
+):
+    """Check that we can compute the AP metrics by chunking out the images and then
+    aggregating the intermediate data
+    """
+    iou_thresholds = [round(0.5 + 0.05 * i, 2) for i in range(10)]
+
+    gts1 = groundtruths[:2]
+    preds1 = predictions[:2]
+    gts2 = groundtruths[2:]
+    preds2 = predictions[2:]
+
+    metrics = {"AP": {}}
+    for label in [
+        Label(key="class", value="2"),
+        Label(key="class", value="49"),
+        Label(key="class", value="3"),
+        Label(key="class", value="0"),
+        Label(key="class", value="1"),
+        Label(key="class", value="4"),
+    ]:
+        intermediate1 = get_intermediate_metric_data_for_label(
+            preds1, gts1, label, iou_thresholds
+        )
+        intermediate2 = get_intermediate_metric_data_for_label(
+            preds2, gts2, label, iou_thresholds
+        )
+
+        metrics["AP"][(label.key, label.value)] = (
+            ap_from_intermediate_metric_data(intermediate1, intermediate2)
+        )
+
+    round_dict_(metrics, 3)
+
+    for iou_thres in [i for i in iou_thresholds if i not in [0.5, 0.75]]:
+        k = f"IoU={iou_thres}"
+        for class_label in metrics["AP"].keys():
+            metrics["AP"][class_label].pop(k)
+    assert metrics["AP"] == expected_ap_metrics["AP"]
 
 
 def test_get_tps_fps_thresholds():
