@@ -355,7 +355,6 @@ test('bulk create or get evaluations', async () => {
   // bulk create evaluations for each dataset
   for (const datasetName of datasetNames) {
     await client.finalizeDataset(datasetName);
-
     let evaluations = await client.bulkCreateOrGetEvaluations(
       modelNames,
       datasetName,
@@ -363,7 +362,6 @@ test('bulk create or get evaluations', async () => {
     );
     expect(evaluations.length).toBe(2);
     // check all evaluations are pending
-
     while (evaluations.every((evaluation) => evaluation.status !== 'done')) {
       await new Promise((resolve) => setTimeout(resolve, 1000));
       evaluations = await client.getEvaluationsByIds(

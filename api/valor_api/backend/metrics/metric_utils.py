@@ -20,6 +20,7 @@ def _create_detection_grouper_mappings(
     """Create grouper mappings for use when evaluating detections."""
 
     label_id_to_grouper_id_mapping = {}
+    label_id_to_grouper_key_mapping = {}
     grouper_id_to_grouper_label_mapping = {}
     grouper_id_to_label_ids_mapping = defaultdict(list)
 
@@ -29,8 +30,12 @@ def _create_detection_grouper_mappings(
         )
         # create an integer to track each group by
         grouper_id = hash((mapped_key, mapped_value))
+        # create a separate grouper_key_id which is used to cross-join labels that share a given key
+        # when computing IOUs for PrecisionRecallCurve
+        grouper_key_id = mapped_key
 
         label_id_to_grouper_id_mapping[label.id] = grouper_id
+        label_id_to_grouper_key_mapping[label.id] = grouper_key_id
         grouper_id_to_grouper_label_mapping[grouper_id] = schemas.Label(
             key=mapped_key, value=mapped_value
         )
@@ -38,6 +43,7 @@ def _create_detection_grouper_mappings(
 
     return {
         "label_id_to_grouper_id_mapping": label_id_to_grouper_id_mapping,
+        "label_id_to_grouper_key_mapping": label_id_to_grouper_key_mapping,
         "grouper_id_to_label_ids_mapping": grouper_id_to_label_ids_mapping,
         "grouper_id_to_grouper_label_mapping": grouper_id_to_grouper_label_mapping,
     }
@@ -208,6 +214,7 @@ def create_metric_mappings(
         | schemas.IOUMetric
         | schemas.mIOUMetric
         | schemas.PrecisionRecallCurve
+        | schemas.DetailedPrecisionRecallCurve
     ],
     evaluation_id: int,
 ) -> list[dict]:

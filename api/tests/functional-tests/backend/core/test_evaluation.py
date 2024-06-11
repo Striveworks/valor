@@ -282,7 +282,7 @@ def test_create_evaluation(
     assert (
         rows[0].parameters
         == schemas.EvaluationParameters(
-            task_type=enums.TaskType.CLASSIFICATION
+            task_type=enums.TaskType.CLASSIFICATION,
         ).model_dump()
     )
 
