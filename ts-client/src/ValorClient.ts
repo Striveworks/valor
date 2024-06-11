@@ -149,7 +149,7 @@ export type Evaluation = {
   id: number;
   dataset_names: string[];
   model_name: string;
-  filter: any;
+  filters: any;
   parameters: { task_type: TaskType; object: any };
   status: 'pending' | 'running' | 'done' | 'failed' | 'deleting';
   metrics: Metric[];
@@ -404,7 +404,7 @@ export class ValorClient {
     const response = await this.client.post('/evaluations', {
       dataset_names: [dataset],
       model_names: [model],
-      filter: {},
+      filters: {},
       parameters: {
         task_type: taskType,
         iou_thresholds_to_compute: iouThresholdsToCompute,
@@ -448,7 +448,7 @@ export class ValorClient {
     const response = await this.client.post('/evaluations', {
       dataset_names: [dataset],
       model_names: models,
-      filter: {},
+      filters: {},
       parameters: {
         task_type: taskType,
         metrics_to_return: metrics_to_return,
