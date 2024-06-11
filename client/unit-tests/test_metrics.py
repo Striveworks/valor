@@ -62,7 +62,7 @@ def test_get_tps_thresholds():
     np.testing.assert_equal(tps, np.array([0, 1, 2, 2, 3]))
 
 
-def test_combine_tps_fps_thresholds():
+def test_combine_tps_thresholds():
     y_true1 = np.array([1, 1])
     y_score1 = np.array([0.8, 0.5])
 
