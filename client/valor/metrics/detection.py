@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple, Union
 
 from valor.coretypes import GroundTruth, Label, Prediction
+from valor.metrics.classification import combine_tps_fps_thresholds
 from valor.schemas import Box
 
 # TODO: all of these assume the box is axis aligned
@@ -113,20 +114,58 @@ def _get_tp_fp_single_image_single_class(
 
 
 @dataclass
-class TpFpThresholds:
+class IntermediateMetricData:
     iou_threshold: float
     n_gt: int
     tp: Union[List[float], None] = None
     fp: Union[List[float], None] = None
     scores: Union[List[float], None] = None
 
+    def copy(self):
+        return IntermediateMetricData(
+            iou_threshold=self.iou_threshold,
+            n_gt=self.n_gt,
+            tp=self.tp.copy() if self.tp is not None else None,
+            fp=self.fp.copy() if self.fp is not None else None,
+            scores=self.scores.copy() if self.scores is not None else None,
+        )
 
-def get_tps_fps_thresholds(
+
+def combine_intermediate_metric_data(
+    imd1: IntermediateMetricData, imd2: IntermediateMetricData
+) -> IntermediateMetricData:
+    if imd1.iou_threshold != imd2.iou_threshold:
+        raise ValueError("iou thresholds must be the same")
+    n_gt = imd1.n_gt + imd2.n_gt
+    if imd1.tp is None or imd1.tp is None:
+        return imd2.copy()
+    if imd2.tp is None or imd2.tp is None:
+        return imd1.copy()
+
+    tps, fps, scores = combine_tps_fps_thresholds(
+        tps1=imd1.tp,
+        fps1=imd1.fp,
+        thresholds1=imd1.scores,
+        tps2=imd2.tp,
+        fps2=imd2.fp,
+        thresholds2=imd2.scores,
+    )
+
+    return IntermediateMetricData(
+        iou_threshold=imd1.iou_threshold,
+        n_gt=n_gt,
+        tp=tps,
+        fp=fps,
+        scores=scores,
+    )
+
+
+def get_intermediate_metric_data(
     predictions: List[Prediction],
     groundtruths: List[GroundTruth],
     label: Label,
     iou_thresholds: List[float],
-) -> List[TpFpThresholds]:
+) -> List[IntermediateMetricData]:
     if len(predictions) != len(groundtruths):
         raise ValueError(
             "Number of predictions and groundtruths must be the same"
@@ -156,7 +195,7 @@ def get_tps_fps_thresholds(
 
     if n_gt == 0:
         return [
-            TpFpThresholds(iou_threshold=iou_thres, n_gt=0)
+            IntermediateMetricData(iou_threshold=iou_thres, n_gt=0)
             for iou_thres in iou_thresholds
         ]
 
@@ -182,7 +221,7 @@ def get_tps_fps_thresholds(
         scores = [m.score for m in match_infos]
 
         ret.append(
-            TpFpThresholds(
+            IntermediateMetricData(
                 iou_threshold=iou_thres,
                 tp=cum_tp,
                 fp=cum_fp,
@@ -190,6 +229,38 @@ def get_tps_fps_thresholds(
                 n_gt=n_gt,
             )
         )
+    return ret
+
+
+def ap_from_intermediate_metric_data(
+    *intermediate_metric_data: IntermediateMetricData,
+):
+    imd = intermediate_metric_data[0]
+    for other_imd in intermediate_metric_data[1:]:
+        imd = combine_intermediate_metric_data(imd, other_imd)
+
+    # total number of groundtruth objects across all images
+    ret = {}
+    iou_thresholds = []
+    for tp_fp_threshold in imd:
+        iou_thresholds.append(tp_fp_threshold.iou_threshold)
+        if tp_fp_threshold.fp is None or tp_fp_threshold.tp is None:
+            ret[f"IoU={tp_fp_threshold.iou_threshold}"] = -1.0
+        else:
+            precisions = [
+                tp / (tp + fp)
+                for tp, fp in zip(tp_fp_threshold.tp, tp_fp_threshold.fp)
+            ]
+            recalls = [tp / tp_fp_threshold.n_gt for tp in tp_fp_threshold.tp]
+
+            ret[
+                f"IoU={tp_fp_threshold.iou_threshold}"
+            ] = calculate_ap_101_pt_interp(
+                precisions=precisions, recalls=recalls
+            )
+    ret[f"IoU={min(iou_thresholds)}:{max(iou_thresholds)}"] = sum(
+        [ret[f"IoU={iou_thres}"] for iou_thres in iou_thresholds]
+    ) / len(iou_thresholds)
     return ret
 
 
@@ -209,33 +280,15 @@ def ap(
             "Number of predictions and groundtruths must be the same"
         )
 
-    tp_fp_thresholds = get_tps_fps_thresholds(
+    tp_fp_thresholds = get_intermediate_metric_data(
         predictions=predictions,
         groundtruths=groundtruths,
         label=label,
         iou_thresholds=iou_thresholds,
     )
 
-    # total number of groundtruth objects across all images
-    ret = {}
-    for tp_fp_threshold in tp_fp_thresholds:
-        if tp_fp_threshold.fp is None or tp_fp_threshold.tp is None:
-            ret[f"IoU={tp_fp_threshold.iou_threshold}"] = -1.0
-        else:
-            precisions = [
-                tp / (tp + fp)
-                for tp, fp in zip(tp_fp_threshold.tp, tp_fp_threshold.fp)
-            ]
-            recalls = [tp / tp_fp_threshold.n_gt for tp in tp_fp_threshold.tp]
+    ret = ap_from_intermediate_metric_data(tp_fp_thresholds)
 
-            ret[
-                f"IoU={tp_fp_threshold.iou_threshold}"
-            ] = calculate_ap_101_pt_interp(
-                precisions=precisions, recalls=recalls
-            )
-    ret[f"IoU={min(iou_thresholds)}:{max(iou_thresholds)}"] = sum(
-        [ret[f"IoU={iou_thres}"] for iou_thres in iou_thresholds]
-    ) / len(iou_thresholds)
     return ret
 
 

@@ -158,38 +158,9 @@ def predictions() -> List[Prediction]:
     ]
 
 
-def round_dict_(d: dict, prec: int) -> None:
-    """Modifies a dictionary in place by rounding every float in it
-    to three decimal places
-    """
-    for k, v in d.items():
-        if isinstance(v, float):
-            d[k] = round(v, prec)
-        elif isinstance(v, dict):
-            round_dict_(v, prec)
-
-
-def test_compute_ap_metrics(
-    groundtruths: List[GroundTruth], predictions: List[Prediction]
-):
-    iou_thresholds = [round(0.5 + 0.05 * i, 2) for i in range(10)]
-    metrics = compute_ap_metrics(
-        predictions=predictions,
-        groundtruths=groundtruths,
-        iou_thresholds=iou_thresholds,
-    )
-
-    for iou_thres in [i for i in iou_thresholds if i not in [0.5, 0.75]]:
-        k = f"IoU={iou_thres}"
-        metrics["mAP"].pop(k)
-        for class_label in metrics["AP"].keys():
-            metrics["AP"][class_label].pop(k)
-
-    round_dict_(metrics, 3)
-
-    # cf with torch metrics/pycocotools results listed here:
-    # https://github.com/Lightning-AI/metrics/blob/107dbfd5fb158b7ae6d76281df44bd94c836bfce/tests/unittests/detection/test_map.py#L231
-    assert metrics == {
+@pytest.fixture
+def expected_ap_metrics() -> dict:
+    return {
         "AP": {
             ("class", "2"): {
                 "IoU=0.5": 0.505,
@@ -224,6 +195,42 @@ def test_compute_ap_metrics(
         },
         "mAP": {"IoU=0.5": 0.859, "IoU=0.75": 0.761, "IoU=0.5:0.95": 0.637},
     }
+
+
+def round_dict_(d: dict, prec: int) -> None:
+    """Modifies a dictionary in place by rounding every float in it
+    to three decimal places
+    """
+    for k, v in d.items():
+        if isinstance(v, float):
+            d[k] = round(v, prec)
+        elif isinstance(v, dict):
+            round_dict_(v, prec)
+
+
+def test_compute_ap_metrics(
+    groundtruths: List[GroundTruth],
+    predictions: List[Prediction],
+    expected_ap_metrics: dict,
+):
+    iou_thresholds = [round(0.5 + 0.05 * i, 2) for i in range(10)]
+    metrics = compute_ap_metrics(
+        predictions=predictions,
+        groundtruths=groundtruths,
+        iou_thresholds=iou_thresholds,
+    )
+
+    for iou_thres in [i for i in iou_thresholds if i not in [0.5, 0.75]]:
+        k = f"IoU={iou_thres}"
+        metrics["mAP"].pop(k)
+        for class_label in metrics["AP"].keys():
+            metrics["AP"][class_label].pop(k)
+
+    round_dict_(metrics, 3)
+
+    # cf with torch metrics/pycocotools results listed here:
+    # https://github.com/Lightning-AI/metrics/blob/107dbfd5fb158b7ae6d76281df44bd94c836bfce/tests/unittests/detection/test_map.py#L231
+    assert metrics == expected_ap_metrics
 
 
 def test_get_tps_fps_thresholds():
