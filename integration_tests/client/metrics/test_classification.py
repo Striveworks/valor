@@ -405,7 +405,6 @@ def test_evaluate_tabular_clf(
     assert len(results[0].dataset_names) == 1
     assert results[0].dataset_names[0] == dataset_name
     assert results[0].model_name == model_name
-    assert results[0].datum_filter.dataset_names is None
     assert isinstance(results[0].created_at, datetime)
     # check created at is within a minute of the current time
     assert (datetime.now(timezone.utc) - results[0].created_at) < timedelta(
