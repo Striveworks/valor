@@ -327,44 +327,44 @@ class Variable:
             raise TypeError(f"{type(self).__name__} is a valued object.")
         return self._value
 
-    def is_none(self) -> typing.Union["Bool", IsNull]:
+    def is_none(self) -> typing.Union[bool, IsNull]:
         """Conditional whether variable is 'None'"""
         if self.is_value:
-            return Bool(self.get_value() is None)
+            return self.get_value() is None
         return IsNull(self)
 
-    def is_not_none(self) -> typing.Union["Bool", IsNotNull]:
+    def is_not_none(self) -> typing.Union[bool, IsNotNull]:
         """Conditional whether variable is not 'None'"""
         if self.is_value:
-            return Bool(self.get_value() is not None)
+            return self.get_value() is not None
         return IsNotNull(self)
 
-    def __eq__(self, value: typing.Any) -> typing.Union["Bool", Eq]:  # type: ignore - overriding __eq__
+    def __eq__(self, value: typing.Any) -> typing.Union[bool, Eq]:  # type: ignore - overriding __eq__
         raise AttributeError(
             f"'{type(self).__name__}' object has no attribute '__eq__'"
         )
 
-    def __ne__(self, value: typing.Any) -> typing.Union["Bool", Ne]:  # type: ignore - overriding __ne__
+    def __ne__(self, value: typing.Any) -> typing.Union[bool, Ne]:  # type: ignore - overriding __ne__
         raise AttributeError(
             f"'{type(self).__name__}' object has no attribute '__ne__'"
         )
 
-    def __gt__(self, value: typing.Any) -> typing.Union["Bool", Gt]:
+    def __gt__(self, value: typing.Any) -> typing.Union[bool, Gt]:
         raise AttributeError(
             f"'{type(self).__name__}' object has no attribute '__gt__'"
         )
 
-    def __ge__(self, value: typing.Any) -> typing.Union["Bool", Ge]:
+    def __ge__(self, value: typing.Any) -> typing.Union[bool, Ge]:
         raise AttributeError(
             f"'{type(self).__name__}' object has no attribute '__ge__'"
         )
 
-    def __lt__(self, value: typing.Any) -> typing.Union["Bool", Lt]:
+    def __lt__(self, value: typing.Any) -> typing.Union[bool, Lt]:
         raise AttributeError(
             f"'{type(self).__name__}' object has no attribute '__lt__'"
         )
 
-    def __le__(self, value: typing.Any) -> typing.Union["Bool", Le]:
+    def __le__(self, value: typing.Any) -> typing.Union[bool, Le]:
         raise AttributeError(
             f"'{type(self).__name__}' object has no attribute '__le__'"
         )
@@ -407,39 +407,39 @@ class Bool(Variable):
                 f"Expected type '{bool}' received type '{type(value)}'"
             )
 
-    def __eq__(self, value: typing.Any) -> typing.Union["Bool", Eq]:
+    def __eq__(self, value: typing.Any) -> typing.Union[bool, Eq]:
         other = self.preprocess(value)
         if self.is_value and other.is_value:
-            return type(self)(self.get_value() is other.get_value())
+            return self.get_value() is other.get_value()
         return Eq(self, other)
 
-    def __ne__(self, value: typing.Any) -> typing.Union["Bool", Ne]:
+    def __ne__(self, value: typing.Any) -> typing.Union[bool, Ne]:
         other = self.preprocess(value)
         if self.is_value and other.is_value:
-            return type(self)(self.get_value() is not other.get_value())
+            return self.get_value() is not other.get_value()
         return Ne(self, other)
 
-    def __and__(self, value: typing.Any) -> typing.Union["Bool", And]:
+    def __and__(self, value: typing.Any) -> typing.Union[bool, And]:
         other = self.preprocess(value)
         if self.is_value and other.is_value:
-            return type(self)(self.get_value() and other.get_value())
+            return self.get_value() and other.get_value()
         return And(self, other)
 
-    def __or__(self, value: typing.Any) -> typing.Union["Bool", Or]:
+    def __or__(self, value: typing.Any) -> typing.Union[bool, Or]:
         other = self.preprocess(value)
         if self.is_value and other.is_value:
-            return type(self)(self.get_value() or other.get_value())
+            return self.get_value() or other.get_value()
         return Or(self, other)
 
-    def __xor__(self, value: typing.Any) -> typing.Union["Bool", Xor]:
+    def __xor__(self, value: typing.Any) -> typing.Union[bool, Xor]:
         other = self.preprocess(value)
         if self.is_value and other.is_value:
             return self != value
         return Xor(self, other)
 
-    def __invert__(self) -> typing.Union["Bool", Negate]:
+    def __invert__(self) -> typing.Union[bool, Negate]:
         if self.is_value:
-            return type(self)(not self.get_value())
+            return not self.get_value()
         return Negate(self)
 
 
@@ -448,30 +448,30 @@ class Equatable(Variable):
     Variable modifier to handle equatable values.
     """
 
-    def __eq__(self, value: typing.Any) -> typing.Union["Bool", Eq]:
+    def __eq__(self, value: typing.Any) -> typing.Union[Eq, bool]:
         other = self.preprocess(value)
         if self.is_value and other.is_value:
             lhs = self.encode_value()
             rhs = other.encode_value()
             if lhs is None:
-                return Bool(rhs is None)
+                return rhs is None
             elif rhs is None:
-                return Bool(lhs is None)
+                return lhs is None
             else:
-                return Bool(bool(lhs == rhs))
+                return lhs == rhs
         return Eq(self, other)
 
-    def __ne__(self, value: typing.Any) -> typing.Union["Bool", Ne]:
+    def __ne__(self, value: typing.Any) -> typing.Union[bool, Ne]:
         other = self.preprocess(value)
         if self.is_value and other.is_value:
             lhs = self.encode_value()
             rhs = other.encode_value()
             if lhs is None:
-                return Bool(rhs is not None)
+                return rhs is not None
             elif rhs is None:
-                return Bool(lhs is not None)
+                return lhs is not None
             else:
-                return Bool(lhs != rhs)
+                return lhs != rhs
         return Ne(self, other)
 
     def in_(self, vlist: typing.List[typing.Any]) -> Or:
@@ -489,28 +489,28 @@ class Quantifiable(Equatable):
     Variable modifier to handle quantifiable values.
     """
 
-    def __gt__(self, value: typing.Any) -> typing.Union["Bool", Gt]:
+    def __gt__(self, value: typing.Any) -> typing.Union[bool, Gt]:
         other = self.preprocess(value)
         if self.is_value and other.is_value:
-            return Bool(self.get_value() > other.get_value())
+            return self.get_value() > other.get_value()
         return Gt(self, other)
 
-    def __ge__(self, value: typing.Any) -> typing.Union["Bool", Ge]:
+    def __ge__(self, value: typing.Any) -> typing.Union[bool, Ge]:
         other = self.preprocess(value)
         if self.is_value and other.is_value:
-            return Bool(self.get_value() >= other.get_value())
+            return self.get_value() >= other.get_value()
         return Ge(self, other)
 
-    def __lt__(self, value: typing.Any) -> typing.Union["Bool", Lt]:
+    def __lt__(self, value: typing.Any) -> typing.Union[bool, Lt]:
         other = self.preprocess(value)
         if self.is_value and other.is_value:
-            return Bool(self.get_value() < other.get_value())
+            return self.get_value() < other.get_value()
         return Lt(self, other)
 
-    def __le__(self, value: typing.Any) -> typing.Union["Bool", Le]:
+    def __le__(self, value: typing.Any) -> typing.Union[bool, Le]:
         other = self.preprocess(value)
         if self.is_value and other.is_value:
-            return Bool(self.get_value() <= other.get_value())
+            return self.get_value() <= other.get_value()
         return Le(self, other)
 
 
