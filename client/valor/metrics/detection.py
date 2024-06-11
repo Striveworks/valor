@@ -1,8 +1,8 @@
 import heapq
 from dataclasses import dataclass
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
-from valor.coretypes import Annotation, GroundTruth, Prediction
+from valor.coretypes import GroundTruth, Label, Prediction
 from valor.schemas import Box
 
 # TODO: all of these assume the box is axis aligned
@@ -52,7 +52,7 @@ def _match_array(
         best_match_idx, current_max_iou = None, None
         for j, iou in enumerate(ious[i]):
             if iou >= iou_thres and j not in matches:
-                if best_match_idx is None or iou > current_max_iou:
+                if best_match_idx is None or iou > current_max_iou:  # type: ignore
                     best_match_idx = j
                     current_max_iou = iou
 
@@ -62,15 +62,17 @@ def _match_array(
 
 
 def iou_matrix(
-    predictions: List[Prediction],
-    groundtruths: List[GroundTruth],
+    predicted_boxes_and_scores: List[Tuple[Box, float]],
+    groundtruth_boxes: List[Box],
 ) -> List[List[float]]:
     """Returns a list of lists where the entry at [i][j]
     is the iou between `predictions[i]` and `groundtruths[j]`.
     """
+    if len(predicted_boxes_and_scores) == 0:
+        return [[]]
     return [
-        [iou(p.boundary, g.boundary) for g in groundtruths]
-        for p in predictions
+        [iou(p[0], g) for g in groundtruth_boxes]
+        for p in predicted_boxes_and_scores
     ]
 
 
@@ -89,31 +91,32 @@ class DetectionMatchInfo:
 
 
 def _get_tp_fp_single_image_single_class(
-    predictions: List[Annotation],
-    groundtruths: List[Annotation],
+    predicted_boxes_and_scores: List[Tuple[Box, float]],
+    groundtruth_boxes: List[Box],
     iou_threshold: float,
 ) -> List[DetectionMatchInfo]:
-    predictions = sorted(
-        predictions,
-        key=lambda p: p.score,
-        reverse=True,
+    predicted_boxes_and_scores = sorted(
+        predicted_boxes_and_scores, key=lambda p: p[1], reverse=True
     )
 
-    ious = iou_matrix(groundtruths=groundtruths, predictions=predictions)
+    ious = iou_matrix(
+        groundtruth_boxes=groundtruth_boxes,
+        predicted_boxes_and_scores=predicted_boxes_and_scores,
+    )
 
     matches = _match_array(ious, iou_threshold)
 
     return [
-        DetectionMatchInfo(tp=(match is not None), score=prediction.score)
-        for match, prediction in zip(matches, predictions)
+        DetectionMatchInfo(tp=(match is not None), score=p[1])
+        for match, p in zip(matches, predicted_boxes_and_scores)
     ]
 
 
 def ap(
-    predictions: List[List[Prediction]],
-    groundtruths: List[List[GroundTruth]],
-    class_label: str,
-    iou_thresholds: list[float],
+    predictions: List[Prediction],
+    groundtruths: List[GroundTruth],
+    label: Label,
+    iou_thresholds: List[float],
 ) -> Dict[float, float]:
     """Computes the average precision. Return is a dict with keys
     `f"IoU={iou_thres}"` for each `iou_thres` in `iou_thresholds` as well as
@@ -125,17 +128,27 @@ def ap(
             "Number of predictions and groundtruths must be the same"
         )
 
-    predictions = [
-        [p for p in preds if p.class_label == class_label]
-        for preds in predictions
+    predicted_boxes_and_scores = [
+        [
+            (ann.bounding_box, la.score)
+            for ann in pred.annotations
+            for la in ann.labels
+            if la.key == label.key and la.value == label.value
+        ]
+        for pred in predictions
     ]
-    groundtruths = [
-        [gt for gt in gts if gt.class_label == class_label]
-        for gts in groundtruths
+    groundtruth_boxes = [
+        [
+            ann.bounding_box
+            for ann in gt.annotations
+            for la in ann.labels
+            if la.key == label.key and la.value == label.value
+        ]
+        for gt in groundtruths
     ]
 
     # total number of groundtruth objects across all images
-    n_gt = sum([len(gts) for gts in groundtruths])
+    n_gt = sum([len(gt_box) for gt_box in groundtruth_boxes])
 
     ret = {}
     if n_gt == 0:
@@ -143,11 +156,13 @@ def ap(
     else:
         for iou_thres in iou_thresholds:
             match_infos = []
-            for preds, gts in zip(predictions, groundtruths):
+            for preds, gts in zip(
+                predicted_boxes_and_scores, groundtruth_boxes
+            ):
                 match_infos.extend(
                     _get_tp_fp_single_image_single_class(
-                        predictions=preds,
-                        groundtruths=gts,
+                        predicted_boxes_and_scores=preds,  # type: ignore
+                        groundtruth_boxes=gts,
                         iou_threshold=iou_thres,
                     )
                 )
@@ -180,8 +195,8 @@ def ap(
 
 
 def compute_ap_metrics(
-    predictions: List[List[Prediction]],
-    groundtruths: List[List[GroundTruth]],
+    predictions: List[Prediction],
+    groundtruths: List[GroundTruth],
     iou_thresholds: List[float],
 ) -> dict:
     """Computes average precision metrics. Note that this is not an optimized method
@@ -191,19 +206,27 @@ def compute_ap_metrics(
     and mAP scores by `d["mAP"][iou_key]` where `iou_key` is `f"IoU={iou_thres}"` or
     `f"IoU={min(iou_thresholds)}:{max(iou_thresholds)}"`
     """
-    class_labels = set(
-        [pred.class_label for preds in predictions for pred in preds]
-    ).union([gt.class_label for gts in groundtruths for gt in gts])
+    class_label_tuples = set(
+        (la.key, la.value)
+        for pred in predictions
+        for ann in pred.annotations
+        for la in ann.labels
+    ).union(
+        (la.key, la.value)
+        for gt in groundtruths
+        for ann in gt.annotations
+        for la in ann.labels
+    )
 
     ret = {
         "AP": {
-            class_label: ap(
+            (la_key, la_value): ap(
                 predictions=predictions,
                 groundtruths=groundtruths,
-                class_label=class_label,
+                label=Label(key=la_key, value=la_value),  # type: ignore
                 iou_thresholds=iou_thresholds,
             )
-            for class_label in class_labels
+            for la_key, la_value in class_label_tuples
         }
     }
 
@@ -218,9 +241,9 @@ def compute_ap_metrics(
     keys_to_avg_over = [f"IoU={iou_thres}" for iou_thres in iou_thresholds] + [
         f"IoU={min(iou_thresholds)}:{max(iou_thresholds)}"
     ]
-    ret["mAP"] = {
+    ret["mAP"] = {  # type: ignore
         k: _ave_ignore_minus_one(
-            [ret["AP"][class_label][k] for class_label in class_labels]
+            [ret["AP"][class_label][k] for class_label in class_label_tuples]  # type: ignore
         )
         for k in keys_to_avg_over
     }
