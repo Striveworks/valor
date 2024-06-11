@@ -8,7 +8,7 @@
 <link href="../metadata_and_filtering/" rel="prev"/>
 <link href="../endpoints/" rel="next"/>
 <link href="../assets/images/favicon.png" rel="icon"/>
-<meta content="mkdocs-1.6.0, mkdocs-material-9.5.25" name="generator"/>
+<meta content="mkdocs-1.6.0, mkdocs-material-9.5.26" name="generator"/>
 <title>Metrics - Valor</title>
 <link href="../assets/stylesheets/main.6543a935.min.css" rel="stylesheet"/>
 <link href="../assets/stylesheets/palette.06af60db.min.css" rel="stylesheet"/>
@@ -72,7 +72,7 @@
 </nav>
 </form>
 <div class="md-search__output">
-<div class="md-search__scrollwrap" data-md-scrollfix="">
+<div class="md-search__scrollwrap" data-md-scrollfix="" tabindex="0">
 <div class="md-search-result" data-md-component="search-result">
 <div class="md-search-result__meta">
             Initializing search
@@ -501,8 +501,13 @@
 </tr>
 <tr>
 <td style="text-align: left;">Precision-Recall Curves</td>
-<td style="text-align: left;">Outputs a nested dictionary containing the true positives, false positives, true negatives, false negatives, precision, recall, and F1 score for each (label key, label value, confidence threshold) combination. Computing this metric requires passing <code>PrecisionRecallCurve</code> into the list of <code>metrics_to_return</code> at evaluation time.</td>
+<td style="text-align: left;">Outputs a nested dictionary containing the true positives, false positives, true negatives, false negatives, precision, recall, and F1 score for each (label key, label value, confidence threshold) combination.</td>
 <td style="text-align: left;">See <a href="#precision-recall-curves">precision-recall curve methods</a></td>
+</tr>
+<tr>
+<td style="text-align: left;">Detailed Precision-Recall Curves</td>
+<td style="text-align: left;">Similar to <code>PrecisionRecallCurve</code>, except this metric a) classifies false positives as <code>hallucinations</code> or <code>misclassifications</code>, b) classifies false negatives as <code>misclassifications</code> or <code>missed_detections</code>, and c) gives example datums for each observation, up to a maximum of <code>pr_curve_max_examples</code>.</td>
+<td style="text-align: left;">See <a href="#detailedprecisionrecallcurve">detailed precision-recall curve methods</a></td>
 </tr>
 </tbody>
 </table>
@@ -548,8 +553,13 @@
 </tr>
 <tr>
 <td style="text-align: left;">Precision-Recall Curves</td>
-<td style="text-align: left;">Outputs a nested dictionary containing the true positives, false positives, true negatives, false negatives, precision, recall, and F1 score for each (label key, label value, confidence threshold) combination. Computing this metric requires passing <code>PrecisionRecallCurve</code> into the list of <code>metrics_to_return</code> at evaluation time. These curves are calculated using a default IOU threshold of 0.5; you can set your own threshold by passing a float between 0 and 1 to the <code>pr_curve_iou_threshold</code> parameter at evaluation time.</td>
+<td style="text-align: left;">Outputs a nested dictionary containing the true positives, false positives, true negatives, false negatives, precision, recall, and F1 score for each (label key, label value, confidence threshold) combination. These curves are calculated using a default IOU threshold of 0.5; you can set your own threshold by passing a float between 0 and 1 to the <code>pr_curve_iou_threshold</code> parameter at evaluation time.</td>
 <td style="text-align: left;">See <a href="#precision-recall-curves">precision-recall curve methods</a></td>
+</tr>
+<tr>
+<td style="text-align: left;">Detailed Precision-Recall Curves</td>
+<td style="text-align: left;">Similar to <code>PrecisionRecallCurve</code>, except this metric a) classifies false positives as <code>hallucinations</code> or <code>misclassifications</code>, b) classifies false negatives as <code>misclassifications</code> or <code>missed_detections</code>, and c) gives example datums and bounding boxes for each observation, up to a maximum of <code>pr_curve_max_examples</code>.</td>
+<td style="text-align: left;">See <a href="#detailedprecisionrecallcurve">detailed precision-recall curve methods</a></td>
 </tr>
 </tbody>
 </table>
@@ -717,44 +727,114 @@
 <p>Note that this metric differs from COCO's calculation in two ways:</p>
 <ul>
 <li>COCO averages across classes while calculating AR, while we calculate AR separately for each class. Our AR calculations matches the original FAIR definition of AR, while our mAR calculations match what COCO calls AR.</li>
-<li>COCO calculates three different AR metrics (AR@1, AR@5, AR@100)) by considering only the top 1/5/100 most confident predictions during the matching process. Valor, on the other hand, allows users to input a <code>recall_score_threshold</code> value that will prevent low-confidence predictions from being counted as true positives when calculating AR.</li>
+<li>COCO calculates three different AR metrics (AR@1, AR@5, AR@100) by considering only the top 1/5/100 most confident predictions during the matching process. Valor, on the other hand, allows users to input a <code>recall_score_threshold</code> value that will prevent low-confidence predictions from being counted as true positives when calculating AR.</li>
 </ul>
 <h2 id="precision-recall-curves">Precision-Recall Curves</h2>
-<p>Precision-recall curves offer insight into which confidence threshold you should pick for your production pipeline. To compute these curves for your classification or object detection workflow, simply pass <code>PrecisionRecallCurve</code> into the list of <code>metrics_to_return</code> when initiating your evaluation. Valor will then tabulate the true positives, false positives, true negatives, false negatives, precision, recall, and F1 score for each (label key, label value, confidence threshold) combination, and store them in a nested dictionary for your use. When using the Valor Python client, the output will be formatted as follows:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a href="#__codelineno-2-1" id="__codelineno-2-1" name="__codelineno-2-1"></a><span class="p">{</span>
-</span><span id="__span-2-2"><a href="#__codelineno-2-2" id="__codelineno-2-2" name="__codelineno-2-2"></a>    <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"PrecisionRecallCurve"</span><span class="p">,</span>
-</span><span id="__span-2-3"><a href="#__codelineno-2-3" id="__codelineno-2-3" name="__codelineno-2-3"></a>    <span class="s2">"parameters"</span><span class="p">:</span> <span class="p">{</span>
-</span><span id="__span-2-4"><a href="#__codelineno-2-4" id="__codelineno-2-4" name="__codelineno-2-4"></a>        <span class="s2">"label_key"</span><span class="p">:</span> <span class="s2">"class"</span><span class="p">,</span> <span class="c1"># The key of the label.</span>
-</span><span id="__span-2-5"><a href="#__codelineno-2-5" id="__codelineno-2-5" name="__codelineno-2-5"></a>        <span class="s2">"pr_curve_iou_threshold"</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span> <span class="c1"># Note that this value will be None for classification tasks. For detection tasks, we use 0.5 as the default threshold, but allow users to pass an optional `pr_curve_iou_threshold` parameter in their evaluation call.</span>
-</span><span id="__span-2-6"><a href="#__codelineno-2-6" id="__codelineno-2-6" name="__codelineno-2-6"></a>    <span class="p">},</span>
-</span><span id="__span-2-7"><a href="#__codelineno-2-7" id="__codelineno-2-7" name="__codelineno-2-7"></a>    <span class="s2">"value"</span><span class="p">:</span> <span class="p">{</span>
-</span><span id="__span-2-8"><a href="#__codelineno-2-8" id="__codelineno-2-8" name="__codelineno-2-8"></a>        <span class="s2">"cat"</span><span class="p">:</span> <span class="p">{</span> <span class="c1"># The value of the label.</span>
-</span><span id="__span-2-9"><a href="#__codelineno-2-9" id="__codelineno-2-9" name="__codelineno-2-9"></a>            <span class="s2">"0.05"</span><span class="p">:</span> <span class="p">{</span> <span class="c1"># The confidence score threshold, ranging from 0.05 to 0.95 in increments of 0.05.</span>
-</span><span id="__span-2-10"><a href="#__codelineno-2-10" id="__codelineno-2-10" name="__codelineno-2-10"></a>                <span class="s2">"fn"</span><span class="p">:</span> <span class="p">[],</span>
-</span><span id="__span-2-11"><a href="#__codelineno-2-11" id="__codelineno-2-11" name="__codelineno-2-11"></a>                <span class="s2">"fp"</span><span class="p">:</span> <span class="p">[</span>
-</span><span id="__span-2-12"><a href="#__codelineno-2-12" id="__codelineno-2-12" name="__codelineno-2-12"></a>                    <span class="p">(</span>
-</span><span id="__span-2-13"><a href="#__codelineno-2-13" id="__codelineno-2-13" name="__codelineno-2-13"></a>                        <span class="s1">'test_dataset'</span><span class="p">,</span>
-</span><span id="__span-2-14"><a href="#__codelineno-2-14" id="__codelineno-2-14" name="__codelineno-2-14"></a>                        <span class="mi">1</span><span class="p">,</span>
-</span><span id="__span-2-15"><a href="#__codelineno-2-15" id="__codelineno-2-15" name="__codelineno-2-15"></a>                        <span class="s1">'{"type":"Polygon","coordinates":[[[464.08,105.09],[495.74,105.09],[495.74,146.99],[464.08,146.99],[464.08,105.09]]]}'</span>
-</span><span id="__span-2-16"><a href="#__codelineno-2-16" id="__codelineno-2-16" name="__codelineno-2-16"></a>                    <span class="p">)</span> <span class="c1"># There's one false positive for this (key, value, confidence threshold) combination as indicated by the one tuple shown here. This tuple contains that observation's dataset name, datum ID, and coordinates in the form of a GeoJSON string. For classification tasks, this tuple will only contain the given observation's dataset name and datum ID.</span>
-</span><span id="__span-2-17"><a href="#__codelineno-2-17" id="__codelineno-2-17" name="__codelineno-2-17"></a>                <span class="p">],</span>
-</span><span id="__span-2-18"><a href="#__codelineno-2-18" id="__codelineno-2-18" name="__codelineno-2-18"></a>                <span class="s2">"tp"</span><span class="p">:</span> <span class="p">[],</span>
-</span><span id="__span-2-19"><a href="#__codelineno-2-19" id="__codelineno-2-19" name="__codelineno-2-19"></a>                <span class="s2">"recall"</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span>
-</span><span id="__span-2-20"><a href="#__codelineno-2-20" id="__codelineno-2-20" name="__codelineno-2-20"></a>                <span class="s2">"f1_score"</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span>
-</span><span id="__span-2-21"><a href="#__codelineno-2-21" id="__codelineno-2-21" name="__codelineno-2-21"></a>                <span class="s2">"precision"</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+<p>Precision-recall curves offer insight into which confidence threshold you should pick for your production pipeline. The <code>PrecisionRecallCurve</code> metric includes the true positives, false positives, true negatives, false negatives, precision, recall, and F1 score for each (label key, label value, confidence threshold) combination. When using the Valor Python client, the output will be formatted as follows:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a href="#__codelineno-2-1" id="__codelineno-2-1" name="__codelineno-2-1"></a><span class="n">pr_evaluation</span> <span class="o">=</span> <span class="n">evaluate_detection</span><span class="p">(</span>
+</span><span id="__span-2-2"><a href="#__codelineno-2-2" id="__codelineno-2-2" name="__codelineno-2-2"></a>    <span class="n">data</span><span class="o">=</span><span class="n">dataset</span><span class="p">,</span>
+</span><span id="__span-2-3"><a href="#__codelineno-2-3" id="__codelineno-2-3" name="__codelineno-2-3"></a><span class="p">)</span>
+</span><span id="__span-2-4"><a href="#__codelineno-2-4" id="__codelineno-2-4" name="__codelineno-2-4"></a><span class="nb">print</span><span class="p">(</span><span class="n">pr_evaluation</span><span class="p">)</span>
+</span><span id="__span-2-5"><a href="#__codelineno-2-5" id="__codelineno-2-5" name="__codelineno-2-5"></a>
+</span><span id="__span-2-6"><a href="#__codelineno-2-6" id="__codelineno-2-6" name="__codelineno-2-6"></a><span class="p">[</span><span class="o">...</span><span class="p">,</span>
+</span><span id="__span-2-7"><a href="#__codelineno-2-7" id="__codelineno-2-7" name="__codelineno-2-7"></a><span class="p">{</span>
+</span><span id="__span-2-8"><a href="#__codelineno-2-8" id="__codelineno-2-8" name="__codelineno-2-8"></a>    <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"PrecisionRecallCurve"</span><span class="p">,</span>
+</span><span id="__span-2-9"><a href="#__codelineno-2-9" id="__codelineno-2-9" name="__codelineno-2-9"></a>    <span class="s2">"parameters"</span><span class="p">:</span> <span class="p">{</span>
+</span><span id="__span-2-10"><a href="#__codelineno-2-10" id="__codelineno-2-10" name="__codelineno-2-10"></a>        <span class="s2">"label_key"</span><span class="p">:</span> <span class="s2">"class"</span><span class="p">,</span> <span class="c1"># The key of the label.</span>
+</span><span id="__span-2-11"><a href="#__codelineno-2-11" id="__codelineno-2-11" name="__codelineno-2-11"></a>        <span class="s2">"pr_curve_iou_threshold"</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span> <span class="c1"># Note that this value will be None for classification tasks. For detection tasks, we use 0.5 as the default threshold, but allow users to pass an optional `pr_curve_iou_threshold` parameter in their evaluation call.</span>
+</span><span id="__span-2-12"><a href="#__codelineno-2-12" id="__codelineno-2-12" name="__codelineno-2-12"></a>    <span class="p">},</span>
+</span><span id="__span-2-13"><a href="#__codelineno-2-13" id="__codelineno-2-13" name="__codelineno-2-13"></a>    <span class="s2">"value"</span><span class="p">:</span> <span class="p">{</span>
+</span><span id="__span-2-14"><a href="#__codelineno-2-14" id="__codelineno-2-14" name="__codelineno-2-14"></a>        <span class="s2">"cat"</span><span class="p">:</span> <span class="p">{</span> <span class="c1"># The value of the label.</span>
+</span><span id="__span-2-15"><a href="#__codelineno-2-15" id="__codelineno-2-15" name="__codelineno-2-15"></a>            <span class="s2">"0.05"</span><span class="p">:</span> <span class="p">{</span> <span class="c1"># The confidence score threshold, ranging from 0.05 to 0.95 in increments of 0.05.</span>
+</span><span id="__span-2-16"><a href="#__codelineno-2-16" id="__codelineno-2-16" name="__codelineno-2-16"></a>                <span class="s2">"fn"</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+</span><span id="__span-2-17"><a href="#__codelineno-2-17" id="__codelineno-2-17" name="__codelineno-2-17"></a>                <span class="s2">"fp"</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+</span><span id="__span-2-18"><a href="#__codelineno-2-18" id="__codelineno-2-18" name="__codelineno-2-18"></a>                <span class="s2">"tp"</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
+</span><span id="__span-2-19"><a href="#__codelineno-2-19" id="__codelineno-2-19" name="__codelineno-2-19"></a>                <span class="s2">"recall"</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+</span><span id="__span-2-20"><a href="#__codelineno-2-20" id="__codelineno-2-20" name="__codelineno-2-20"></a>                <span class="s2">"precision"</span><span class="p">:</span> <span class="mf">0.75</span><span class="p">,</span>
+</span><span id="__span-2-21"><a href="#__codelineno-2-21" id="__codelineno-2-21" name="__codelineno-2-21"></a>                <span class="s2">"f1_score"</span><span class="p">:</span> <span class="mf">.857</span><span class="p">,</span>
 </span><span id="__span-2-22"><a href="#__codelineno-2-22" id="__codelineno-2-22" name="__codelineno-2-22"></a>            <span class="p">},</span>
 </span><span id="__span-2-23"><a href="#__codelineno-2-23" id="__codelineno-2-23" name="__codelineno-2-23"></a>            <span class="o">...</span>
+</span><span id="__span-2-24"><a href="#__codelineno-2-24" id="__codelineno-2-24" name="__codelineno-2-24"></a>        <span class="p">},</span>
+</span><span id="__span-2-25"><a href="#__codelineno-2-25" id="__codelineno-2-25" name="__codelineno-2-25"></a>    <span class="p">}</span>
+</span><span id="__span-2-26"><a href="#__codelineno-2-26" id="__codelineno-2-26" name="__codelineno-2-26"></a><span class="p">}]</span>
 </span></code></pre></div>
 <p>It's important to note that these curves are computed slightly differently from our other aggregate metrics above:</p>
 <h3 id="classification-tasks">Classification Tasks</h3>
 <p>Valor calculates its aggregate precision, recall, and F1 metrics by matching the highest confidence prediction with each groundtruth. One issue with this approach is that we may throw away useful information in cases where prediction labels all have similarly strong confidence scores. For example: if our top two predictions for a given ground truth are <code>{“label”: cat, “score”:.91}</code> and <code>{“label”: dog, “score”:.90}</code>, then our aggregated precision and recall metrics would penalize the <code>dog</code> label even though its confidence score was nearly equal to the <code>cat</code> label.</p>
 <p>We think the approach above makes sense when calculating aggregate precision and recall metrics, but, when calculating the <code>PrecisionRecallCurve</code> value for each label, we consider all ground truth-prediction matches in order to treat each label as its own, separate binary classification problem.</p>
 <h3 id="detection-tasks">Detection Tasks</h3>
-<p>The <code>PrecisionRecallCurve</code> values differ from the precision-recall curves used to calculate <a href="#average-precision-ap">Average Precsion</a> in two subtle ways:</p>
+<p>The <code>PrecisionRecallCurve</code> values differ from the precision-recall curves used to calculate <a href="#average-precision-ap">Average Precision</a> in two subtle ways:</p>
 <ul>
 <li>The <code>PrecisionRecallCurve</code> values visualize how precision and recall change as confidence thresholds vary from 0.05 to 0.95 in increments of 0.05. In contrast, the precision-recall curves used to calculate Average Precision are non-uniform; they vary over the actual confidence scores for each ground truth-prediction match.</li>
 <li>If your pipeline predicts a label on an image, but that label doesn't exist on any ground truths in that particular image, then the <code>PrecisionRecallCurve</code> values will consider that prediction to be a false positive, whereas the other detection metrics will ignore that particular prediction.</li>
 </ul>
+<h3 id="detailedprecisionrecallcurve">DetailedPrecisionRecallCurve</h3>
+<p>Valor also includes a more detailed version of <code>PrecisionRecallCurve</code> which can be useful for debugging your model's false positives and false negatives. When calculating <code>DetailedPrecisionCurve</code>, Valor will classify false positives as either <code>hallucinations</code> or <code>misclassifications</code> and your false negatives as either <code>missed_detections</code> or <code>misclassifications</code> using the following logic:</p>
+<h4 id="classification-tasks_1">Classification Tasks</h4>
+<ul>
+<li>A <strong>false positive</strong> is a <code>misclassification</code> if there is a qualified prediction (with <code>score &gt;= score_threshold</code>) with the same <code>Label.key</code> as the groundtruth on the datum, but the <code>Label.value</code> is incorrect. For example: if there's a photo with one groundtruth label on it (e.g., <code>Label(key='animal', value='dog')</code>), and we predicted another label value (e.g., <code>Label(key='animal', value='cat')</code>) on that datum, we'd say it's a <code>misclassification</code> since the key was correct but the value was not. Any false positives that do not meet this criteria are considered to be <code>hallucinations</code>.</li>
+<li>Similarly, a <strong>false negative</strong> is a <code>misclassification</code> if there is a prediction with the same <code>Label.key</code> as the groundtruth on the datum, but the <code>Label.value</code> is incorrect. Any false negatives that do not meet this criteria are considered to be <code>missed_detections</code>.</li>
+</ul>
+<h4 id="object-detection-tasks">Object Detection Tasks</h4>
+<ul>
+<li>A <strong>false positive</strong> is a <code>misclassification</code> if a) there is a qualified prediction with the same <code>Label.key</code> as the groundtruth on the datum, but the <code>Label.value</code> is incorrect, and b) the qualified prediction and groundtruth have an IOU &gt;= <code>pr_curve_iou_threshold</code>. For example: if there's a photo with one groundtruth label on it (e.g., <code>Label(key='animal', value='dog')</code>), and we predicted another bounding box directly over that same object (e.g., <code>Label(key='animal', value='cat')</code>), we'd say it's a <code>misclassification</code>. Any false positives that do not meet this criteria are considered to be <code>hallucinations</code>.</li>
+<li>A <strong>false negative</strong> is determined to be a <code>misclassification</code> if the two criteria above are met: a) there is a qualified prediction with the same <code>Label.key</code> as the groundtruth on the datum, but the <code>Label.value</code> is incorrect, and b) the qualified prediction and groundtruth have an IOU &gt;= <code>pr_curve_iou_threshold</code>. Any false negatives that do not meet this criteria are considered to be <code>missed_detections</code>.</li>
+</ul>
+<p>The <code>DetailedPrecisionRecallOutput</code> also includes up to <code>n</code> examples of each type of error, where <code>n</code> is set using <code>pr_curve_max_examples</code>. An example output is as follows:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a href="#__codelineno-3-1" id="__codelineno-3-1" name="__codelineno-3-1"></a><span class="c1"># To retrieve more detailed examples for each `fn`, `fp`, and `tp`, look at the `DetailedPrecisionRecallCurve` metric</span>
+</span><span id="__span-3-2"><a href="#__codelineno-3-2" id="__codelineno-3-2" name="__codelineno-3-2"></a><span class="n">detailed_evaluation</span> <span class="o">=</span> <span class="n">evaluate_detection</span><span class="p">(</span>
+</span><span id="__span-3-3"><a href="#__codelineno-3-3" id="__codelineno-3-3" name="__codelineno-3-3"></a>    <span class="n">data</span><span class="o">=</span><span class="n">dataset</span><span class="p">,</span>
+</span><span id="__span-3-4"><a href="#__codelineno-3-4" id="__codelineno-3-4" name="__codelineno-3-4"></a>    <span class="n">pr_curve_max_examples</span><span class="o">=</span><span class="mi">1</span> <span class="c1"># The maximum number of examples to return for each obseration type (e.g., hallucinations, misclassifications, etc.)</span>
+</span><span id="__span-3-5"><a href="#__codelineno-3-5" id="__codelineno-3-5" name="__codelineno-3-5"></a>    <span class="n">metrics_to_return</span><span class="o">=</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="s1">'DetailedPrecisionRecallCurve'</span><span class="p">]</span> <span class="c1"># DetailedPrecisionRecallCurve isn't returned by default; the user must ask for it explicitely</span>
+</span><span id="__span-3-6"><a href="#__codelineno-3-6" id="__codelineno-3-6" name="__codelineno-3-6"></a><span class="p">)</span>
+</span><span id="__span-3-7"><a href="#__codelineno-3-7" id="__codelineno-3-7" name="__codelineno-3-7"></a><span class="nb">print</span><span class="p">(</span><span class="n">detailed_evaluation</span><span class="p">)</span>
+</span><span id="__span-3-8"><a href="#__codelineno-3-8" id="__codelineno-3-8" name="__codelineno-3-8"></a>
+</span><span id="__span-3-9"><a href="#__codelineno-3-9" id="__codelineno-3-9" name="__codelineno-3-9"></a><span class="p">[</span><span class="o">...</span><span class="p">,</span>
+</span><span id="__span-3-10"><a href="#__codelineno-3-10" id="__codelineno-3-10" name="__codelineno-3-10"></a><span class="p">{</span>
+</span><span id="__span-3-11"><a href="#__codelineno-3-11" id="__codelineno-3-11" name="__codelineno-3-11"></a>    <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"PrecisionRecallCurve"</span><span class="p">,</span>
+</span><span id="__span-3-12"><a href="#__codelineno-3-12" id="__codelineno-3-12" name="__codelineno-3-12"></a>    <span class="s2">"parameters"</span><span class="p">:</span> <span class="p">{</span>
+</span><span id="__span-3-13"><a href="#__codelineno-3-13" id="__codelineno-3-13" name="__codelineno-3-13"></a>        <span class="s2">"label_key"</span><span class="p">:</span> <span class="s2">"class"</span><span class="p">,</span> <span class="c1"># The key of the label.</span>
+</span><span id="__span-3-14"><a href="#__codelineno-3-14" id="__codelineno-3-14" name="__codelineno-3-14"></a>        <span class="s2">"pr_curve_iou_threshold"</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span>
+</span><span id="__span-3-15"><a href="#__codelineno-3-15" id="__codelineno-3-15" name="__codelineno-3-15"></a>    <span class="p">},</span>
+</span><span id="__span-3-16"><a href="#__codelineno-3-16" id="__codelineno-3-16" name="__codelineno-3-16"></a>    <span class="s2">"value"</span><span class="p">:</span> <span class="p">{</span>
+</span><span id="__span-3-17"><a href="#__codelineno-3-17" id="__codelineno-3-17" name="__codelineno-3-17"></a>        <span class="s2">"cat"</span><span class="p">:</span> <span class="p">{</span> <span class="c1"># The value of the label.</span>
+</span><span id="__span-3-18"><a href="#__codelineno-3-18" id="__codelineno-3-18" name="__codelineno-3-18"></a>            <span class="s2">"0.05"</span><span class="p">:</span> <span class="p">{</span> <span class="c1"># The confidence score threshold, ranging from 0.05 to 0.95 in increments of 0.05.</span>
+</span><span id="__span-3-19"><a href="#__codelineno-3-19" id="__codelineno-3-19" name="__codelineno-3-19"></a>                <span class="s2">"fp"</span><span class="p">:</span> <span class="p">{</span>
+</span><span id="__span-3-20"><a href="#__codelineno-3-20" id="__codelineno-3-20" name="__codelineno-3-20"></a>                    <span class="s2">"total"</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+</span><span id="__span-3-21"><a href="#__codelineno-3-21" id="__codelineno-3-21" name="__codelineno-3-21"></a>                    <span class="s2">"observations"</span><span class="p">:</span> <span class="p">{</span>
+</span><span id="__span-3-22"><a href="#__codelineno-3-22" id="__codelineno-3-22" name="__codelineno-3-22"></a>                        <span class="s1">'hallucinations'</span><span class="p">:</span> <span class="p">{</span>
+</span><span id="__span-3-23"><a href="#__codelineno-3-23" id="__codelineno-3-23" name="__codelineno-3-23"></a>                            <span class="s2">"count"</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+</span><span id="__span-3-24"><a href="#__codelineno-3-24" id="__codelineno-3-24" name="__codelineno-3-24"></a>                            <span class="s2">"examples"</span><span class="p">:</span> <span class="p">[</span>
+</span><span id="__span-3-25"><a href="#__codelineno-3-25" id="__codelineno-3-25" name="__codelineno-3-25"></a>                                <span class="p">(</span>
+</span><span id="__span-3-26"><a href="#__codelineno-3-26" id="__codelineno-3-26" name="__codelineno-3-26"></a>                                    <span class="s1">'test_dataset'</span><span class="p">,</span>
+</span><span id="__span-3-27"><a href="#__codelineno-3-27" id="__codelineno-3-27" name="__codelineno-3-27"></a>                                     <span class="mi">1</span><span class="p">,</span>
+</span><span id="__span-3-28"><a href="#__codelineno-3-28" id="__codelineno-3-28" name="__codelineno-3-28"></a>                                    <span class="s1">'{"type":"Polygon","coordinates":[[[464.08,105.09],[495.74,105.09],[495.74,146.99],[464.08,146.99],[464.08,105.91]]]}'</span>
+</span><span id="__span-3-29"><a href="#__codelineno-3-29" id="__codelineno-3-29" name="__codelineno-3-29"></a>                               <span class="p">)</span> <span class="c1"># There's one false positive for this (key, value, confidence threshold) combination as indicated by the one tuple shown here. This tuple contains that observation's dataset name, datum ID, and coordinates in the form of a GeoJSON string. For classification tasks, this tuple will only contain the given observation's dataset name and datum ID.</span>
+</span><span id="__span-3-30"><a href="#__codelineno-3-30" id="__codelineno-3-30" name="__codelineno-3-30"></a>                            <span class="p">],</span>
+</span><span id="__span-3-31"><a href="#__codelineno-3-31" id="__codelineno-3-31" name="__codelineno-3-31"></a>                        <span class="p">}</span>
+</span><span id="__span-3-32"><a href="#__codelineno-3-32" id="__codelineno-3-32" name="__codelineno-3-32"></a>                    <span class="p">},</span>
+</span><span id="__span-3-33"><a href="#__codelineno-3-33" id="__codelineno-3-33" name="__codelineno-3-33"></a>                <span class="p">},</span>
+</span><span id="__span-3-34"><a href="#__codelineno-3-34" id="__codelineno-3-34" name="__codelineno-3-34"></a>                <span class="s2">"tp"</span><span class="p">:</span> <span class="p">{</span>
+</span><span id="__span-3-35"><a href="#__codelineno-3-35" id="__codelineno-3-35" name="__codelineno-3-35"></a>                    <span class="s2">"total"</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
+</span><span id="__span-3-36"><a href="#__codelineno-3-36" id="__codelineno-3-36" name="__codelineno-3-36"></a>                    <span class="s2">"observations"</span><span class="p">:</span> <span class="p">{</span>
+</span><span id="__span-3-37"><a href="#__codelineno-3-37" id="__codelineno-3-37" name="__codelineno-3-37"></a>                        <span class="s1">'all'</span><span class="p">:</span> <span class="p">{</span>
+</span><span id="__span-3-38"><a href="#__codelineno-3-38" id="__codelineno-3-38" name="__codelineno-3-38"></a>                            <span class="s2">"count"</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
+</span><span id="__span-3-39"><a href="#__codelineno-3-39" id="__codelineno-3-39" name="__codelineno-3-39"></a>                            <span class="s2">"examples"</span><span class="p">:</span> <span class="p">[</span>
+</span><span id="__span-3-40"><a href="#__codelineno-3-40" id="__codelineno-3-40" name="__codelineno-3-40"></a>                                <span class="p">(</span>
+</span><span id="__span-3-41"><a href="#__codelineno-3-41" id="__codelineno-3-41" name="__codelineno-3-41"></a>                                    <span class="s1">'test_dataset'</span><span class="p">,</span>
+</span><span id="__span-3-42"><a href="#__codelineno-3-42" id="__codelineno-3-42" name="__codelineno-3-42"></a>                                     <span class="mi">2</span><span class="p">,</span>
+</span><span id="__span-3-43"><a href="#__codelineno-3-43" id="__codelineno-3-43" name="__codelineno-3-43"></a>                                    <span class="s1">'{"type":"Polygon","coordinates":[[[464.08,105.09],[495.74,105.09],[495.74,146.99],[464.08,146.99],[464.08,105.91]]]}'</span>
+</span><span id="__span-3-44"><a href="#__codelineno-3-44" id="__codelineno-3-44" name="__codelineno-3-44"></a>                               <span class="p">)</span> <span class="c1"># We only return one example since `pr_curve_max_examples` is set to 1 by default; update this argument at evaluation time to store and retrieve an arbitrary number of examples.</span>
+</span><span id="__span-3-45"><a href="#__codelineno-3-45" id="__codelineno-3-45" name="__codelineno-3-45"></a>                            <span class="p">],</span>
+</span><span id="__span-3-46"><a href="#__codelineno-3-46" id="__codelineno-3-46" name="__codelineno-3-46"></a>                        <span class="p">},</span>
+</span><span id="__span-3-47"><a href="#__codelineno-3-47" id="__codelineno-3-47" name="__codelineno-3-47"></a>                    <span class="p">}</span>
+</span><span id="__span-3-48"><a href="#__codelineno-3-48" id="__codelineno-3-48" name="__codelineno-3-48"></a>                <span class="p">},</span>
+</span><span id="__span-3-49"><a href="#__codelineno-3-49" id="__codelineno-3-49" name="__codelineno-3-49"></a>                <span class="s2">"fn"</span><span class="p">:</span> <span class="p">{</span><span class="o">...</span><span class="p">},</span>
+</span><span id="__span-3-50"><a href="#__codelineno-3-50" id="__codelineno-3-50" name="__codelineno-3-50"></a>            <span class="p">},</span>
+</span><span id="__span-3-51"><a href="#__codelineno-3-51" id="__codelineno-3-51" name="__codelineno-3-51"></a>        <span class="p">},</span>
+</span><span id="__span-3-52"><a href="#__codelineno-3-52" id="__codelineno-3-52" name="__codelineno-3-52"></a>    <span class="p">}</span>
+</span><span id="__span-3-53"><a href="#__codelineno-3-53" id="__codelineno-3-53" name="__codelineno-3-53"></a><span class="p">}]</span>
+</span></code></pre></div>
 </article>
 </div>
 <script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
@@ -779,7 +859,7 @@
 <div class="md-dialog__inner md-typeset"></div>
 </div>
 <script id="__config" type="application/json">{"base": "..", "features": ["navigation.expand"], "search": "../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
-<script src="../assets/javascripts/bundle.081f42fc.min.js"></script>
+<script src="../assets/javascripts/bundle.ad660dcc.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 <script>document$.subscribe(() => {
             window.update_swagger_ui_iframe_height = function (id) {
