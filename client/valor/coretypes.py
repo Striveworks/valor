@@ -26,7 +26,7 @@ from valor.schemas import (
 from valor.schemas import List as SymbolicList
 from valor.schemas import StaticCollection, String
 
-FilterType = Union[list, dict, Filter]  # TODO - Remove  this
+FilterType = Union[list, dict, Filter]  # TODO - Remove this
 
 
 def _format_filter(filter_by: Optional[FilterType]) -> Filter:
