@@ -215,10 +215,16 @@ The `PrecisionRecallCurve` values differ from the precision-recall curves used t
 
 ### DetailedPrecisionRecallCurve
 
-Valor also includes a more detailed version of `PrecisionRecallCurve` which can be useful for debugging your model's false positives and false negatives. When calculating `DetailedPrecisionCurve`, Valor will:
-- Classify your false positives as being either `hallucinations` (i.e., our model predicted that a datum contained a certain label key when there wasn't actually any groundtruths with that label key associated with that datum) or `misclassifications` (our model correctly associated a certain label key with a datum, but its prediction gave it the wrong label value or bounding box).
-- Classify your false negative as being either `missed_detections` (our model didn't produce any predictions with the `Groundtruth`'s label key for a given datum) or `misclassifications` (our model correctly associated a certain label key with a datum, but its prediction gave it the wrong label value or bounding box).
-- Include `n` examples of each observation type (where `n` is less than or equal to the `pr_curve_max_examples` that you can pass at evaluation time)
+Valor also includes a more detailed version of `PrecisionRecallCurve` which can be useful for debugging your model's false positives and false negatives. When calculating `DetailedPrecisionCurve`, Valor will classify false positives as either `hallucinations` or `misclassifications` and your false negatives as either `missed_detections` or `misclassifications` using the following logic:
+- **For classification tasks**:
+  - A **false positive** is a `misclassification` if there is a qualified prediction (with `score >= score_threshold`) with the same `Label.key` as the groundtruth on the datum, but the `Label.value` is incorrect. For example: if there's a photo with one groundtruth label on it (e.g., `Label(key='animal', value='dog')`), and we predicted another label value (e.g., `Label(key='animal', value='cat')`) on that datum, we'd say it's a `misclassification` since the key was correct but the value was not. Any false positives that do not meet this criteria are considered to be `hallucinations`.
+  - Similarly, a **false negative** is a `misclassification` if there is a prediction with the same `Label.key` as the groundtruth on the datum, but the `Label.value` is incorrect. Any false negatives that do not meet this criteria are considered to be `missed_detections`.
+
+- **For object detection tasks**
+  - A **false positive** is a `misclassification` if a) there is a qualified prediction with the same `Label.key` as the groundtruth on the datum, but the `Label.value` is incorrect, and b) the qualified prediction and groundtruth have an IOU >= `pr_curve_iou_threshold`. For example: if there's a photo with one groundtruth label on it (e.g., `Label(key='animal', value='dog')`), and we predicted another bounding box directly over that same object (e.g., `Label(key='animal', value='cat')`), we'd say it's a `misclassification`. Any false positives that do not meet this criteria are considered to be `hallucinations`.
+  - A **false negative** is determined to be a `misclassification` if the two criteria above are met: a) there is a qualified prediction with the same `Label.key` as the groundtruth on the datum, but the `Label.value` is incorrect, and b) the qualified prediction and groundtruth have an IOU >= `pr_curve_iou_threshold`. Any false negatives that do not meet this criteria are considered to be `missed_detections`.
+
+The `DetailedPrecisionRecallOutput also includes up to *n* examples of each type of error, where *n* is set using `pr_curve_max_eamplse. An example output is as follows.
 
 
 ```python
@@ -226,6 +232,7 @@ Valor also includes a more detailed version of `PrecisionRecallCurve` which can 
 detailed_evaluation = evaluate_detection(
     data=dataset,
     pr_curve_max_examples=1 # The maximum number of examples to return for each obseration type (e.g., hallucinations, misclassifications, etc.)
+    metrics_to_return=[..., 'DetailedPrecisionRecallCurve'] # DetailedPrecisionRecallCurve isn't returned by default; the user must ask for it explicitely
 )
 print(detailed_evaluation)
 
