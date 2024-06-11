@@ -1253,6 +1253,28 @@ class Box(Polygon):
         """
         return Polygon(self.get_value())
 
+    # @property
+    # def is_axis_aligned(self) -> bool:
+    #     """
+    #     Returns whether the box is axis-aligned.
+
+    #     Returns
+    #     -------
+    #     bool
+    #     """
+
+    #     def _diff(pt1, pt2):
+    #         return (pt1[0] - pt2[0], pt1[1] - pt2[1])
+
+    #     vec1 = _diff(self.boundary[1], self.boundary[0])
+    #     vec2 = _diff(self.boundary[2], self.boundary[1])
+    #     vec3 = _diff(self.boundary[3], self.boundary[2])
+    #     vec4 = _diff(self.boundary[0], self.boundary[3])
+
+    #     if vec1[0] == 0 and vec2[1] == 0 and vec3[0] == 0 and vec4[1] == 0:
+    #         return True
+    #     return False
+
 
 class MultiPolygon(Spatial):
     """

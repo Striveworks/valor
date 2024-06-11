@@ -1,6 +1,35 @@
-from typing import Tuple
+from typing import Iterable, Tuple
 
 import numpy as np
+
+from valor.coretypes import GroundTruth, Label, Prediction
+
+
+def get_tps_fps_thresholds(
+    data: Iterable[Tuple[GroundTruth, Prediction]], label: Label
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    y_true, y_score = [], []
+    for gt, pred in data:
+        gt_match = False
+        if len(gt.annotations) != 0:
+            raise ValueError("Ground truth must have exactly one annotation")
+        if len(pred.annotations) != 0:
+            raise ValueError("Prediction must have exactly one annotation")
+
+        for la in gt.annotations[0].labels:
+            if la.key == label.key and la.value == label.value:
+                gt_match = True
+                break
+        y_true.append(gt_match)
+
+        label_score = 0.0
+        for la in pred.annotations[0].labels:
+            if la.key == label.key and la.value == label.value:
+                label_score = la.score
+                break
+        y_score.append(label_score)
+
+    return get_tps_fps_thresholds(np.array(y_true), np.array(y_score))
 
 
 def get_tps_fps_thresholds(
