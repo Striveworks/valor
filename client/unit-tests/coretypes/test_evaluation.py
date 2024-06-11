@@ -24,10 +24,9 @@ def test_to_dataframe():
 
     df = Evaluation(
         id=1,
+        dataset_names=["dataset1"],
         model_name="model1",
-        datum_filter=schemas.Filter(
-            dataset_names=["dataset1"],
-        ),
+        filter=schemas.Filter(),
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.CLASSIFICATION,
         ),

@@ -20,6 +20,7 @@ def _create_detection_grouper_mappings(
     """Create grouper mappings for use when evaluating detections."""
 
     label_id_to_grouper_id_mapping = {}
+    label_id_to_grouper_key_mapping = {}
     grouper_id_to_grouper_label_mapping = {}
     grouper_id_to_label_ids_mapping = defaultdict(list)
 
@@ -29,8 +30,12 @@ def _create_detection_grouper_mappings(
         )
         # create an integer to track each group by
         grouper_id = hash((mapped_key, mapped_value))
+        # create a separate grouper_key_id which is used to cross-join labels that share a given key
+        # when computing IOUs for PrecisionRecallCurve
+        grouper_key_id = mapped_key
 
         label_id_to_grouper_id_mapping[label.id] = grouper_id
+        label_id_to_grouper_key_mapping[label.id] = grouper_key_id
         grouper_id_to_grouper_label_mapping[grouper_id] = schemas.Label(
             key=mapped_key, value=mapped_value
         )
@@ -38,6 +43,7 @@ def _create_detection_grouper_mappings(
 
     return {
         "label_id_to_grouper_id_mapping": label_id_to_grouper_id_mapping,
+        "label_id_to_grouper_key_mapping": label_id_to_grouper_key_mapping,
         "grouper_id_to_label_ids_mapping": grouper_id_to_label_ids_mapping,
         "grouper_id_to_grouper_label_mapping": grouper_id_to_grouper_label_mapping,
     }
@@ -208,6 +214,7 @@ def create_metric_mappings(
         | schemas.IOUMetric
         | schemas.mIOUMetric
         | schemas.PrecisionRecallCurve
+        | schemas.DetailedPrecisionRecallCurve
     ],
     evaluation_id: int,
 ) -> list[dict]:
@@ -323,7 +330,7 @@ def log_evaluation_item_counts(
     gt_subquery = generate_select(
         models.Datum.id.label("datum_id"),
         models.GroundTruth,
-        filter_=groundtruth_filter,
+        filters=groundtruth_filter,
         label_source=models.GroundTruth,
     ).alias()
 
@@ -344,7 +351,7 @@ def log_evaluation_item_counts(
     pd_subquery = generate_select(
         models.Datum.id.label("datum_id"),
         models.Prediction,
-        filter_=prediction_filter,
+        filters=prediction_filter,
         label_source=models.Prediction,
     ).alias()
 
@@ -434,3 +441,47 @@ def validate_computation(fn: Callable) -> Callable:
         return result
 
     return wrapper
+
+
+def prepare_filter_for_evaluation(
+    db: Session,
+    filters: schemas.Filter,
+    dataset_names: list[str],
+    model_name: str,
+    task_type: enums.TaskType,
+    label_map: LabelMapType | None = None,
+) -> tuple[schemas.Filter, schemas.Filter]:
+    """
+    Prepares the filter for use by an evaluation method.
+
+    This function will be expanded in a future PR.
+
+    Parameters
+    ----------
+    db : Session
+        The database session.
+    filters : Filter
+        The data filter.
+    dataset_names : list[str]
+        A list of dataset names to filter by.
+    model_name : str
+        A model name to filter by.
+    task_type : TaskType
+        A task type to filter by.
+    label_map : LabelMapType, optional
+        An optional label mapping.
+
+    Returns
+    -------
+    Filter
+        A filter ready for evaluation.
+    """
+
+    groundtruth_filter = filters.model_copy()
+    groundtruth_filter.task_types = [task_type]
+    groundtruth_filter.dataset_names = dataset_names
+
+    predictions_filter = groundtruth_filter.model_copy()
+    predictions_filter.model_names = [model_name]
+
+    return (groundtruth_filter, predictions_filter)

@@ -439,18 +439,19 @@ class ClientConnection:
 
     def get_labels(
         self,
-        filter_: Optional[dict] = None,
+        filters: Optional[dict] = None,
         max_retries: int = 0,
         initial_timeout: float = 0.1,
         exponential_backoff: int = 2,
+
     ) -> List[dict]:
         """
         Gets all labels using an optional filter.
 
         Parameters
         ----------
-        filter_ : Filter, optional
-            Optional filter to constrain by.
+        filters : dict, optional
+            An optional filter.
         max_retries : int
             Maximum number of retries before giving up.
         initial_timeout : float
@@ -464,8 +465,8 @@ class ClientConnection:
             A list of labels.
         """
         kwargs = {}
-        if filter_:
-            kwargs["params"] = {k: json.dumps(v) for k, v in filter_.items()}
+        if filters:
+            kwargs["params"] = {k: json.dumps(v) for k, v in filters.items()}
         return self._requests_get_rel_host(
             "labels",
             max_retries=max_retries,
@@ -474,6 +475,7 @@ class ClientConnection:
             **kwargs,
         ).json()
 
+      
     def get_labels_from_dataset(
         self,
         name: str,
@@ -577,7 +579,7 @@ class ClientConnection:
 
     def get_datasets(
         self,
-        filter_: Optional[dict] = None,
+        filters: Optional[dict] = None,
         max_retries: int = 0,
         initial_timeout: float = 0.1,
         exponential_backoff: int = 2,
@@ -589,8 +591,8 @@ class ClientConnection:
 
         Parameters
         ----------
-        filter_ : Filter, optional
-            Optional filter to constrain by.
+        filters : Filter, optional
+            An optional filter.
         max_retries : int
             Maximum number of retries before giving up.
         initial_timeout : float
@@ -604,8 +606,8 @@ class ClientConnection:
             A list of dictionaries describing all the datasets attributed to the `Client` object.
         """
         kwargs = {}
-        if filter_:
-            kwargs["params"] = {k: json.dumps(v) for k, v in filter_.items()}
+        if filters:
+            kwargs["params"] = {k: json.dumps(v) for k, v in filters.items()}
         return self._requests_get_rel_host(
             "datasets",
             max_retries=max_retries,
@@ -613,6 +615,7 @@ class ClientConnection:
             exponential_backoff=exponential_backoff,
             **kwargs,
         ).json()
+
 
     def get_dataset(
         self,
@@ -748,7 +751,7 @@ class ClientConnection:
 
     def get_datums(
         self,
-        filter_: Optional[dict] = None,
+        filters: Optional[dict] = None,
         max_retries: int = 0,
         initial_timeout: float = 0.1,
         exponential_backoff: int = 2,
@@ -760,8 +763,8 @@ class ClientConnection:
 
         Parameters
         ----------
-        filter_ : dict, optional
-            Optional filter to constrain by.
+        filters : dict, optional
+            An optional filter.
         max_retries : int
             Maximum number of retries before giving up.
         initial_timeout : float
@@ -775,7 +778,7 @@ class ClientConnection:
             A list of dictionaries describing all the datums of the specified dataset.
         """
         kwargs = {}
-        if filter_:
+        if filters:
             kwargs["params"] = {k: json.dumps(v) for k, v in filter_.items()}
         return self._requests_get_rel_host(
             "data",
@@ -784,6 +787,7 @@ class ClientConnection:
             exponential_backoff=exponential_backoff,
             **kwargs,
         ).json()
+
 
     def get_datum(
         self,
@@ -853,7 +857,7 @@ class ClientConnection:
 
     def get_models(
         self,
-        filter_: Optional[dict] = None,
+        filters: Optional[dict] = None,
         max_retries: int = 0,
         initial_timeout: float = 0.1,
         exponential_backoff: int = 2,
@@ -865,8 +869,8 @@ class ClientConnection:
 
         Parameters
         ----------
-        filter_ : Filter, optional
-            Optional filter to constrain by.
+        filters : Filter, optional
+            An optional filter.
         max_retries : int
             Maximum number of retries before giving up.
         initial_timeout : float
@@ -880,8 +884,8 @@ class ClientConnection:
             A list of dictionaries describing all the models.
         """
         kwargs = {}
-        if filter_:
-            kwargs["params"] = {k: json.dumps(v) for k, v in filter_.items()}
+        if filters:
+            kwargs["params"] = {k: json.dumps(v) for k, v in filters.items()}
         return self._requests_get_rel_host(
             "models",
             max_retries=max_retries,

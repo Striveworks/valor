@@ -168,7 +168,7 @@ def get_paginated_datasets(
     advanced_filter = filters.to_advanced_filter() if filters else None
     datasets_subquery = generate_select(
         models.Dataset.id.label("id"),
-        filter_=advanced_filter,
+        filters=advanced_filter,
         label_source=models.GroundTruth,
     ).subquery()
 

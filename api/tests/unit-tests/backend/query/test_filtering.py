@@ -93,7 +93,7 @@ def test_map_filter_to_labels():
 
     fn = IsNull(isnull=Symbol(type="box", name="annotation.bounding_box"))
 
-    filter_ = Filter(
+    filters = Filter(
         datasets=fn,
         models=fn,
         datums=fn,
@@ -104,7 +104,7 @@ def test_map_filter_to_labels():
         embeddings=fn,
     )
 
-    assert map_filter_to_tables(filter_, label_source=models.Annotation) == {
+    assert map_filter_to_tables(filters, label_source=models.Annotation) == {
         models.Dataset,
         models.Model,
         models.Datum,
@@ -114,7 +114,7 @@ def test_map_filter_to_labels():
         models.Label,
         models.Embedding,
     }
-    assert map_filter_to_tables(filter_, label_source=models.GroundTruth) == {
+    assert map_filter_to_tables(filters, label_source=models.GroundTruth) == {
         models.Dataset,
         models.Model,
         models.Datum,
@@ -123,7 +123,7 @@ def test_map_filter_to_labels():
         models.Label,
         models.Embedding,
     }
-    assert map_filter_to_tables(filter_, label_source=models.Prediction) == {
+    assert map_filter_to_tables(filters, label_source=models.Prediction) == {
         models.Dataset,
         models.Model,
         models.Datum,
