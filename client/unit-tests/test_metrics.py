@@ -1,7 +1,21 @@
+from typing import Tuple
+
 import numpy as np
 
 
-def get_tps_fps_thresholds(y_true, y_score):
+def get_tps_fps_thresholds(
+    y_true: np.ndarray, y_score: np.ndarray
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    if len(y_true) != len(y_score):
+        raise ValueError(
+            "y_true and y_score must have the same length, but got "
+            f"{len(y_true)} and {len(y_score)}"
+        )
+    if y_true.dtype != bool:
+        raise ValueError("y_true must be a boolean array")
+    if y_score.dtype != float or y_score.min() < 0 or y_score.max() > 1:
+        raise ValueError("y_score must be a float array in the range [0, 1]")
+
     sorted_indices = np.argsort(y_score)[::-1]
     y_true = y_true[sorted_indices]
     y_score = y_score[sorted_indices]
@@ -15,8 +29,13 @@ def get_tps_fps_thresholds(y_true, y_score):
 
 
 def combine_tps_fps_thresholds(
-    tps1, fps1, thresholds1, tps2, fps2, thresholds2
-):
+    tps1: np.ndarray,
+    fps1: np.ndarray,
+    thresholds1: np.ndarray,
+    tps2: np.ndarray,
+    fps2: np.ndarray,
+    thresholds2: np.ndarray,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     i, j, k = 0, 0, 0
     ret_length = len(thresholds1) + len(thresholds2)
     tps = np.zeros(ret_length)
@@ -61,7 +80,7 @@ def combine_tps_fps_thresholds(
 
 
 def test_get_tps_fps_thresholds():
-    y_true = np.array([1, 0, 1, 1, 0])
+    y_true = np.array([True, False, True, True, False])
     y_score = np.array([0.8, 0.9, 0.7, 0.5, 0.6])
 
     tps, fps, thresholds = get_tps_fps_thresholds(y_true, y_score)
@@ -72,10 +91,10 @@ def test_get_tps_fps_thresholds():
 
 
 def test_combine_tps_fps_thresholds():
-    y_true1 = np.array([1, 1])
+    y_true1 = np.array([True, True])
     y_score1 = np.array([0.8, 0.5])
 
-    y_true2 = np.array([0, 0, 1])
+    y_true2 = np.array([False, False, True])
     y_score2 = np.array([0.9, 0.6, 0.7])
 
     tps1, fps1, thresholds1 = get_tps_fps_thresholds(y_true1, y_score1)
@@ -91,10 +110,10 @@ def test_combine_tps_fps_thresholds():
 
 
 def test_combine_tps_fps_thresholds_dup_threshold():
-    y_true1 = np.array([1, 1])
+    y_true1 = np.array([True, True])
     y_score1 = np.array([0.8, 0.5])
 
-    y_true2 = np.array([0, 0, 1])
+    y_true2 = np.array([False, False, True])
     y_score2 = np.array([0.9, 0.5, 0.7])
 
     tps1, fps1, thresholds1 = get_tps_fps_thresholds(y_true1, y_score1)
