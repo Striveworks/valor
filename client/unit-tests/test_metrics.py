@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def get_tps_fps_thresholds(y_true, y_score):
+def get_tps_thresholds(y_true: np.ndarray, y_score: np.ndarray):
     sorted_indices = np.argsort(y_score)[::-1]
     y_true = y_true[sorted_indices]
     y_score = y_score[sorted_indices]
@@ -11,15 +11,11 @@ def get_tps_fps_thresholds(y_true, y_score):
     threshold_idxs = distinct_value_indices
 
     tps = np.cumsum(y_true)[threshold_idxs]
-    fps = threshold_idxs - tps + 1
 
-    return tps, fps, y_score[threshold_idxs]
+    return tps, y_score[threshold_idxs]
 
 
-def combine_tps_fps_thresholds(
-    tps1, fps1, thresholds1, tps2, fps2, thresholds2
-):
-
+def combine_tps_thresholds(tps1, thresholds1, tps2, thresholds2):
     i, j, k = 0, 0, 0
     ret_length = len(thresholds1) + len(thresholds2)
     tps = np.zeros(ret_length)
@@ -56,15 +52,14 @@ def combine_tps_fps_thresholds(
     return tps, fps, thresholds
 
 
-def test_get_tps_fps_thresholds():
+def test_get_tps_thresholds():
     y_true = np.array([1, 0, 1, 1, 0])
     y_score = np.array([0.8, 0.9, 0.7, 0.5, 0.6])
 
-    tps, fps, thresholds = get_tps_fps_thresholds(y_true, y_score)
+    tps, thresholds = get_tps_thresholds(y_true, y_score)
 
     np.testing.assert_equal(thresholds, np.array([0.9, 0.8, 0.7, 0.6, 0.5]))
     np.testing.assert_equal(tps, np.array([0, 1, 2, 2, 3]))
-    np.testing.assert_equal(fps, np.array([1, 1, 1, 2, 2]))
 
 
 def test_combine_tps_fps_thresholds():
@@ -74,13 +69,12 @@ def test_combine_tps_fps_thresholds():
     y_true2 = np.array([0, 0, 1])
     y_score2 = np.array([0.9, 0.6, 0.7])
 
-    tps1, fps1, thresholds1 = get_tps_fps_thresholds(y_true1, y_score1)
-    tps2, fps2, thresholds2 = get_tps_fps_thresholds(y_true2, y_score2)
+    tps1, thresholds1 = get_tps_thresholds(y_true1, y_score1)
+    tps2, thresholds2 = get_tps_thresholds(y_true2, y_score2)
 
-    tps, fps, thresholds = combine_tps_fps_thresholds(
-        tps1, fps1, thresholds1, tps2, fps2, thresholds2
+    tps, fps, thresholds = combine_tps_thresholds(
+        tps1, thresholds1, tps2, thresholds2
     )
 
     np.testing.assert_equal(thresholds, np.array([0.9, 0.8, 0.7, 0.6, 0.5]))
     np.testing.assert_equal(tps, np.array([0, 1, 2, 2, 3]))
-    np.testing.assert_equal(fps, np.array([1, 1, 1, 2, 2]))
