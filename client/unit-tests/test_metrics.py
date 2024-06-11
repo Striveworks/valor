@@ -23,8 +23,8 @@ def combine_tps_thresholds(tps1, thresholds1, tps2, thresholds2):
     thresholds = np.zeros(ret_length)
 
     curr1, curr2 = 0, 0
-
-    while k < ret_length:
+    dup_thresholds = 0
+    while k < ret_length - dup_thresholds:
 
         t1 = thresholds1[i] if i < len(thresholds1) else -1
         t2 = thresholds2[j] if j < len(thresholds2) else -1
@@ -33,12 +33,12 @@ def combine_tps_thresholds(tps1, thresholds1, tps2, thresholds2):
             thresholds[k] = t1
             if i < len(thresholds1) - 1:
                 i += 1
-
         elif t1 == t2:
             thresholds[k] = t1
             curr1, curr2 = tps1[i], tps2[j]
             i += 1
             j += 1
+            dup_thresholds += 1
         else:
             curr2 = tps2[j]
             thresholds[k] = t2
@@ -47,7 +47,10 @@ def combine_tps_thresholds(tps1, thresholds1, tps2, thresholds2):
         tps[k] = curr1 + curr2
         k += 1
 
-    fps = np.arange(1, ret_length + 1) - tps
+    tps = tps[: ret_length - dup_thresholds]
+    thresholds = thresholds[: ret_length - dup_thresholds]
+
+    fps = np.arange(1, ret_length - dup_thresholds + 1) - tps
 
     return tps, fps, thresholds
 
@@ -78,3 +81,21 @@ def test_combine_tps_thresholds():
 
     np.testing.assert_equal(thresholds, np.array([0.9, 0.8, 0.7, 0.6, 0.5]))
     np.testing.assert_equal(tps, np.array([0, 1, 2, 2, 3]))
+
+
+def test_combine_tps_dupe_thresholds():
+    y_true1 = np.array([1, 1])
+    y_score1 = np.array([0.8, 0.5])
+
+    y_true2 = np.array([0, 0, 1])
+    y_score2 = np.array([0.9, 0.5, 0.7])
+
+    tps1, thresholds1 = get_tps_thresholds(y_true1, y_score1)
+    tps2, thresholds2 = get_tps_thresholds(y_true2, y_score2)
+
+    tps, fps, thresholds = combine_tps_thresholds(
+        tps1, thresholds1, tps2, thresholds2
+    )
+
+    np.testing.assert_equal(thresholds, np.array([0.9, 0.8, 0.7, 0.5]))
+    np.testing.assert_equal(tps, np.array([0, 1, 2, 3]))
