@@ -1,6 +1,6 @@
 import heapq
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 from valor.coretypes import GroundTruth, Label, Prediction
 from valor.schemas import Box
@@ -112,17 +112,21 @@ def _get_tp_fp_single_image_single_class(
     ]
 
 
-def ap(
+@dataclass
+class TpFpThresholds:
+    iou_threshold: float
+    n_gt: int
+    tp: Union[List[float], None] = None
+    fp: Union[List[float], None] = None
+    scores: Union[List[float], None] = None
+
+
+def get_tps_fps_thresholds(
     predictions: List[Prediction],
     groundtruths: List[GroundTruth],
     label: Label,
     iou_thresholds: List[float],
-) -> Dict[float, float]:
-    """Computes the average precision. Return is a dict with keys
-    `f"IoU={iou_thres}"` for each `iou_thres` in `iou_thresholds` as well as
-    `f"IoU={min(iou_thresholds)}:{max(iou_thresholds)}"` which is the average
-    of the scores across all of the IoU thresholds.
-    """
+) -> List[TpFpThresholds]:
     if len(predictions) != len(groundtruths):
         raise ValueError(
             "Number of predictions and groundtruths must be the same"
@@ -150,47 +154,88 @@ def ap(
     # total number of groundtruth objects across all images
     n_gt = sum([len(gt_box) for gt_box in groundtruth_boxes])
 
-    ret = {}
     if n_gt == 0:
-        ret.update({f"IoU={iou_thres}": -1.0 for iou_thres in iou_thresholds})
-    else:
-        for iou_thres in iou_thresholds:
-            match_infos = []
-            for preds, gts in zip(
-                predicted_boxes_and_scores, groundtruth_boxes
-            ):
-                match_infos.extend(
-                    _get_tp_fp_single_image_single_class(
-                        predicted_boxes_and_scores=preds,  # type: ignore
-                        groundtruth_boxes=gts,
-                        iou_threshold=iou_thres,
-                    )
-                )
+        return [
+            TpFpThresholds(iou_threshold=iou_thres, n_gt=0)
+            for iou_thres in iou_thresholds
+        ]
 
-            match_infos = sorted(
-                match_infos, key=lambda m: m.score, reverse=True
+    ret = []
+    for iou_thres in iou_thresholds:
+        match_infos = []
+        for preds, gts in zip(predicted_boxes_and_scores, groundtruth_boxes):
+            match_infos.extend(
+                _get_tp_fp_single_image_single_class(
+                    predicted_boxes_and_scores=preds,  # type: ignore
+                    groundtruth_boxes=gts,
+                    iou_threshold=iou_thres,
+                )
             )
 
-            tp = [float(m.tp) for m in match_infos]
-            fp = [float(not m.tp) for m in match_infos]
+        match_infos = sorted(match_infos, key=lambda m: m.score, reverse=True)
 
-            cum_tp = _cumsum(tp)
-            cum_fp = _cumsum(fp)
+        tp = [float(m.tp) for m in match_infos]
+        fp = [float(not m.tp) for m in match_infos]
 
+        cum_tp = _cumsum(tp)
+        cum_fp = _cumsum(fp)
+        scores = [m.score for m in match_infos]
+
+        ret.append(
+            TpFpThresholds(
+                iou_threshold=iou_thres,
+                tp=cum_tp,
+                fp=cum_fp,
+                scores=scores,
+                n_gt=n_gt,
+            )
+        )
+    return ret
+
+
+def ap(
+    predictions: List[Prediction],
+    groundtruths: List[GroundTruth],
+    label: Label,
+    iou_thresholds: List[float],
+) -> Dict[float, float]:
+    """Computes the average precision. Return is a dict with keys
+    `f"IoU={iou_thres}"` for each `iou_thres` in `iou_thresholds` as well as
+    `f"IoU={min(iou_thresholds)}:{max(iou_thresholds)}"` which is the average
+    of the scores across all of the IoU thresholds.
+    """
+    if len(predictions) != len(groundtruths):
+        raise ValueError(
+            "Number of predictions and groundtruths must be the same"
+        )
+
+    tp_fp_thresholds = get_tps_fps_thresholds(
+        predictions=predictions,
+        groundtruths=groundtruths,
+        label=label,
+        iou_thresholds=iou_thresholds,
+    )
+
+    # total number of groundtruth objects across all images
+    ret = {}
+    for tp_fp_threshold in tp_fp_thresholds:
+        if tp_fp_threshold.fp is None or tp_fp_threshold.tp is None:
+            ret[f"IoU={tp_fp_threshold.iou_threshold}"] = -1.0
+        else:
             precisions = [
-                ctp / (ctp + cfp) for ctp, cfp in zip(cum_tp, cum_fp)
+                tp / (tp + fp)
+                for tp, fp in zip(tp_fp_threshold.tp, tp_fp_threshold.fp)
             ]
-            recalls = [ctp / n_gt for ctp in cum_tp]
+            recalls = [tp / tp_fp_threshold.n_gt for tp in tp_fp_threshold.tp]
 
-            ret[f"IoU={iou_thres}"] = calculate_ap_101_pt_interp(
+            ret[
+                f"IoU={tp_fp_threshold.iou_threshold}"
+            ] = calculate_ap_101_pt_interp(
                 precisions=precisions, recalls=recalls
             )
-
-    # compute average over all IoUs
     ret[f"IoU={min(iou_thresholds)}:{max(iou_thresholds)}"] = sum(
         [ret[f"IoU={iou_thres}"] for iou_thres in iou_thresholds]
     ) / len(iou_thresholds)
-
     return ret
 
 
