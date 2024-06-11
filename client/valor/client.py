@@ -443,7 +443,6 @@ class ClientConnection:
         max_retries: int = 0,
         initial_timeout: float = 0.1,
         exponential_backoff: int = 2,
-
     ) -> List[dict]:
         """
         Gets all labels using an optional filter.
@@ -475,7 +474,6 @@ class ClientConnection:
             **kwargs,
         ).json()
 
-      
     def get_labels_from_dataset(
         self,
         name: str,
@@ -615,7 +613,6 @@ class ClientConnection:
             exponential_backoff=exponential_backoff,
             **kwargs,
         ).json()
-
 
     def get_dataset(
         self,
@@ -779,7 +776,7 @@ class ClientConnection:
         """
         kwargs = {}
         if filters:
-            kwargs["params"] = {k: json.dumps(v) for k, v in filter_.items()}
+            kwargs["params"] = {k: json.dumps(v) for k, v in filters.items()}
         return self._requests_get_rel_host(
             "data",
             max_retries=max_retries,
@@ -787,7 +784,6 @@ class ClientConnection:
             exponential_backoff=exponential_backoff,
             **kwargs,
         ).json()
-
 
     def get_datum(
         self,
