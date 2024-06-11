@@ -266,14 +266,14 @@ def _recursive_search_logic_tree(
 
 
 def map_filter_to_tables(
-    filter_: Filter | None, label_source: LabelSourceAlias
+    filters: Filter | None, label_source: LabelSourceAlias
 ) -> set[TableTypeAlias]:
     """
     Maps a filter to a set of required tables.
 
     Parameters
     ----------
-    filter_ : Filter
+    filters : Filter
         The filter to search.
     label_source : LabelSourceAlias
         The table to use as a source of labels.
@@ -284,24 +284,24 @@ def map_filter_to_tables(
         The set of tables required by the filter.
     """
     tables = set()
-    if filter_ is not None:
-        if filter_.datasets:
+    if filters is not None:
+        if filters.datasets:
             tables.add(Dataset)
-        if filter_.models:
+        if filters.models:
             tables.add(Model)
-        if filter_.datums:
+        if filters.datums:
             tables.add(Datum)
-        if filter_.annotations:
+        if filters.annotations:
             tables.add(Annotation)
-        if filter_.groundtruths:
+        if filters.groundtruths:
             table = GroundTruth if label_source is not Prediction else Datum
             tables.add(table)
-        if filter_.predictions:
+        if filters.predictions:
             table = Prediction if label_source is not GroundTruth else Datum
             tables.add(table)
-        if filter_.labels:
+        if filters.labels:
             tables.add(Label)
-        if filter_.embeddings:
+        if filters.embeddings:
             tables.add(Embedding)
     return tables
 

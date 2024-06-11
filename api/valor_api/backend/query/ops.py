@@ -11,7 +11,7 @@ from valor_api.schemas.filters import Filter
 
 def generate_select(
     *args: Any,
-    filter_: Filter | None = None,
+    filters: Filter | None = None,
     label_source: LabelSourceAlias = Annotation,
 ) -> Select[Any]:
     """
@@ -23,7 +23,7 @@ def generate_select(
     ----------
     *args : Any
         A variable list of models or model attributes. (e.g. Label or Label.key)
-    filter_ : Filter  optional
+    filters : Filter, optional
         An optional filter.
     label_source : LabelSourceAlias, default=Annotation
         The table to source labels from. This determines graph structure.
@@ -47,7 +47,7 @@ def generate_select(
     query = solver(
         *args,
         stmt=select(*args),
-        filter_=filter_,
+        filters=filters,
         label_source=label_source,
     )
     if not isinstance(query, Select):
@@ -60,7 +60,7 @@ def generate_select(
 def generate_query(
     *args: Any,
     db: Session,
-    filter_: Filter | None = None,
+    filters: Filter | None = None,
     label_source: LabelSourceAlias = Annotation,
 ) -> Query[Any]:
     """
@@ -74,7 +74,7 @@ def generate_query(
         A variable list of models or model attributes. (e.g. Label or Label.key)
     db : Session
         The database session to call query against.
-    filter_ : Filter  optional
+    filters : Filter, optional
         An optional filter.
     label_source : LabelSourceAlias, default=Annotation
         The table to source labels from. This determines graph structure.
@@ -98,7 +98,7 @@ def generate_query(
     query = solver(
         *args,
         stmt=db.query(*args),
-        filter_=filter_,
+        filters=filters,
         label_source=label_source,
     )
     if not isinstance(query, Query):

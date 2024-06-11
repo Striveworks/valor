@@ -1120,7 +1120,7 @@ def test_create_detection_metrics(
         job_request = schemas.EvaluationRequest(
             dataset_names=["test_dataset"],
             model_names=["test_model"],
-            filter=schemas.Filter(
+            filters=schemas.Filter(
                 label_keys=[label_key],
                 bounding_box_area=geometric_filters,
             ),
@@ -1236,6 +1236,8 @@ def test_create_detection_metrics(
             "mAR",
             "mAP",
             "mAPAveragedOverIOUs",
+            "PrecisionRecallCurve",
+            "DetailedPrecisionRecallCurve",
         }
 
     # test when min area and max area are specified
@@ -1261,6 +1263,8 @@ def test_create_detection_metrics(
             "mAR",
             "mAP",
             "mAPAveragedOverIOUs",
+            "PrecisionRecallCurve",
+            "DetailedPrecisionRecallCurve",
         }
 
     # check we have the right evaluations
@@ -1281,7 +1285,7 @@ def test_create_detection_metrics(
     assert model_evals[1] == schemas.EvaluationResponse(
         dataset_names=[dataset_name],
         model_name=model_name,
-        filter=schemas.Filter(label_keys=["class"]),
+        filters=schemas.Filter(label_keys=["class"]),
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.OBJECT_DETECTION,
             convert_annotations_to_type=enums.AnnotationType.BOX,
@@ -1302,7 +1306,7 @@ def test_create_detection_metrics(
     assert model_evals[0] == schemas.EvaluationResponse(
         dataset_names=[dataset_name],
         model_name=model_name,
-        filter=schemas.Filter(
+        filters=schemas.Filter(
             label_keys=["class"],
             bounding_box_area=[
                 schemas.NumericFilter(
@@ -1359,7 +1363,7 @@ def test_create_clf_metrics(
         dataset_names=[dataset_name],
         model_names=[model_name],
         parameters=schemas.EvaluationParameters(
-            task_type=enums.TaskType.CLASSIFICATION
+            task_type=enums.TaskType.CLASSIFICATION,
         ),
     )
 
@@ -1463,7 +1467,7 @@ def test_create_clf_metrics(
     )
     assert query
     metrics = query.metrics
-    assert len(metrics) == 2 + 2 + 6 + 6 + 6
+    assert len(metrics) == 22
     confusion_matrices = db.scalars(
         select(models.ConfusionMatrix).where(
             models.ConfusionMatrix.evaluation_id == evaluation_id

@@ -184,7 +184,7 @@ def get_paginated_models(
 
     subquery = generate_select(
         models.Model.id.label("id"),
-        filter_=filters,
+        filters=filters,
         label_source=models.Prediction,
     ).subquery()
 

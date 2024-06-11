@@ -726,7 +726,7 @@ def test_query_datasets(
     f = Filter(groundtruths=create_label_filter(key="class", value="cat"))
     dataset_names = generate_select(
         distinct(models.Dataset.name),
-        filter_=f,
+        filters=f,
         label_source=models.GroundTruth,
     )
     dataset_names = db.query(dataset_names.subquery()).all()
@@ -737,7 +737,7 @@ def test_query_datasets(
     f = Filter(groundtruths=create_label_filter(key="class", value="tree"))
     dataset_names = generate_select(
         distinct(models.Dataset.name),
-        filter_=f,
+        filters=f,
         label_source=models.GroundTruth,
     )
     dataset_names = db.query(dataset_names.subquery()).all()
@@ -752,7 +752,7 @@ def test_query_models(
     f = Filter(
         predictions=create_dataset_filter(dset_name),
     )
-    model_names = generate_select(models.Model.name, filter_=f).distinct()
+    model_names = generate_select(models.Model.name, filters=f).distinct()
     model_names = db.query(model_names.subquery()).all()
     assert len(model_names) == 2
     assert (model_name1,) in model_names
@@ -760,14 +760,14 @@ def test_query_models(
 
     # Q: Get names for models that operate over dataset that doesn't exist.
     f = Filter(predictions=create_dataset_filter("invalid"))
-    model_names = generate_select(models.Model.name, filter_=f).distinct()
+    model_names = generate_select(models.Model.name, filters=f).distinct()
     model_names = db.query(model_names.subquery()).all()
     assert len(model_names) == 0
 
     # Q: Get names for models where label=cat exists in predictions
     f = Filter(predictions=create_label_filter(key="class", value="cat"))
     model_names = generate_select(
-        models.Model.name, filter_=f, label_source=models.Prediction
+        models.Model.name, filters=f, label_source=models.Prediction
     ).distinct()
     model_names = db.query(model_names.subquery()).all()
     assert len(model_names) == 2
@@ -777,7 +777,7 @@ def test_query_models(
     # Q: Get names for models where label=tree exists in predictions
     f = Filter(predictions=create_label_filter(key="class", value="tree"))
     model_names = generate_select(
-        models.Model.name, filter_=f, label_source=models.Prediction
+        models.Model.name, filters=f, label_source=models.Prediction
     ).distinct()
     model_names = db.query(model_names.subquery()).all()
     assert len(model_names) == 0
@@ -796,7 +796,7 @@ def test_query_models(
         ),
     )
     model_names = generate_select(
-        models.Model.name, filter_=f, label_source=models.Prediction
+        models.Model.name, filters=f, label_source=models.Prediction
     ).distinct()
     model_names = db.query(model_names.subquery()).all()
     assert len(model_names) == 1
@@ -816,7 +816,7 @@ def test_query_models(
         ),
     )
     model_names = generate_select(
-        models.Model.name, filter_=f, label_source=models.Prediction
+        models.Model.name, filters=f, label_source=models.Prediction
     ).distinct()
     model_names = db.query(model_names.subquery()).all()
     assert len(model_names) == 1
@@ -864,7 +864,7 @@ def test_query_by_metadata(
             ]
         )
     )
-    datum_uids = generate_select(models.Datum.uid, filter_=f).distinct()
+    datum_uids = generate_select(models.Datum.uid, filters=f).distinct()
     datum_uids = db.query(datum_uids.subquery()).all()
     assert len(datum_uids) == 1
     assert (datum_uid1,) in datum_uids
@@ -918,7 +918,7 @@ def test_query_by_metadata(
                 ]
             )
         )
-        datum_uids = generate_select(models.Datum.uid, filter_=f).distinct()
+        datum_uids = generate_select(models.Datum.uid, filters=f).distinct()
         datum_uids = db.query(datum_uids.subquery()).all()
         assert len(datum_uids) == 0
 
@@ -949,7 +949,7 @@ def test_query_by_metadata(
             ]
         )
     )
-    datum_uids = generate_select(models.Datum.uid, filter_=f).distinct()
+    datum_uids = generate_select(models.Datum.uid, filters=f).distinct()
     datum_uids = db.query(datum_uids.subquery()).all()
     assert len(datum_uids) == 1
     assert (datum_uid2,) in datum_uids
@@ -981,7 +981,7 @@ def test_query_by_metadata(
             ]
         )
     )
-    datum_uids = generate_select(models.Datum.uid, filter_=f).distinct()
+    datum_uids = generate_select(models.Datum.uid, filters=f).distinct()
     datum_uids = db.query(datum_uids.subquery()).all()
     assert len(datum_uids) == 1
     assert (datum_uid3,) in datum_uids
@@ -1013,7 +1013,7 @@ def test_query_by_metadata(
             ]
         )
     )
-    datum_uids = generate_select(models.Datum.uid, filter_=f).distinct()
+    datum_uids = generate_select(models.Datum.uid, filters=f).distinct()
     datum_uids = db.query(datum_uids.subquery()).all()
     assert len(datum_uids) == 1
     assert (datum_uid4,) in datum_uids
@@ -1026,7 +1026,7 @@ def test_query_datums(
     # Q: Get datums with groundtruth labels of "cat"
     f = Filter(groundtruths=create_label_filter(key="class", value="cat"))
     datum_uids = generate_select(
-        models.Datum.uid, filter_=f, label_source=models.GroundTruth
+        models.Datum.uid, filters=f, label_source=models.GroundTruth
     ).distinct()
     datum_uids = db.query(datum_uids.subquery()).all()
     assert len(datum_uids) == 2
@@ -1036,7 +1036,7 @@ def test_query_datums(
     # Q: Get datums with groundtruth labels of "dog"
     f = Filter(groundtruths=create_label_filter(key="class", value="dog"))
     datum_uids = generate_select(
-        models.Datum.uid, filter_=f, label_source=models.GroundTruth
+        models.Datum.uid, filters=f, label_source=models.GroundTruth
     ).distinct()
     datum_uids = db.query(datum_uids.subquery()).all()
     assert len(datum_uids) == 2
@@ -1047,7 +1047,7 @@ def test_query_datums(
     f = Filter(predictions=create_label_filter(key="class", value="cat"))
     datum_uids = generate_select(
         models.Datum.uid,
-        filter_=f,
+        filters=f,
         label_source=models.Prediction,
     ).distinct()
     datum_uids = db.query(datum_uids.subquery()).all()
@@ -1079,7 +1079,7 @@ def test_complex_queries(
     )
     datum_uids = generate_select(
         models.Datum.uid,
-        filter_=f,
+        filters=f,
         label_source=models.Prediction,
     ).distinct()
     datum_uids = db.query(datum_uids.subquery()).all()
@@ -1109,7 +1109,7 @@ def test_complex_queries(
     )
     datum_uids = generate_select(
         models.Datum.uid,
-        filter_=f,
+        filters=f,
         label_source=models.Prediction,
     ).distinct()
     datum_uids = db.query(datum_uids.subquery()).all()
@@ -1136,7 +1136,7 @@ def test_query_by_annotation_geometry(
         annotations=bounding_box_filter,
     )
     annotations = generate_select(
-        models.Annotation, filter_=f, label_source=models.Prediction
+        models.Annotation, filters=f, label_source=models.Prediction
     )
     annotations = db.query(annotations.subquery()).all()
     assert len(annotations) == 12
@@ -1151,7 +1151,7 @@ def test_query_by_annotation_geometry(
         )
     )
     annotations = generate_select(
-        models.Annotation, filter_=f, label_source=models.Prediction
+        models.Annotation, filters=f, label_source=models.Prediction
     ).distinct()
     annotations = db.query(annotations.subquery()).all()
     assert len(annotations) == 4
@@ -1168,7 +1168,7 @@ def test_multiple_tables_in_args(
 
     # Q: Get model + dataset name pairings for a datum with `uid1` using the full tables
     pairings = generate_select(
-        models.Model, models.Dataset, filter_=f
+        models.Model, models.Dataset, filters=f
     ).distinct()
     pairings = db.query(pairings.subquery()).all()
     assert len(pairings) == 2
@@ -1184,7 +1184,7 @@ def test_multiple_tables_in_args(
 
     # Q: Get model + dataset name pairings for a datum with `uid1` using the table attributes directly
     name_pairings = generate_select(
-        models.Model.name, models.Dataset.name, filter_=f
+        models.Model.name, models.Dataset.name, filters=f
     ).distinct()
     name_pairings = db.query(name_pairings.subquery()).all()
     assert len(name_pairings) == 2
@@ -1199,7 +1199,7 @@ def test_multiple_tables_in_args(
 
     # Q: Get model + dataset name pairings for a datum with `uid1` using a mix of full tables and attributes
     pairings = generate_select(
-        models.Model.name, models.Dataset, filter_=f
+        models.Model.name, models.Dataset, filters=f
     ).distinct()
     pairings = db.query(pairings.subquery()).all()
     name_pairings = [(pair[0], pair[2]) for pair in pairings]
@@ -1285,7 +1285,7 @@ def _get_geospatial_names_from_filter(
     )
     return (
         generate_query(
-            model_object, db=db, filter_=f, label_source=label_source
+            model_object, db=db, filters=f, label_source=label_source
         )
         .distinct()
         .all()
@@ -1793,7 +1793,7 @@ def time_filter(
             return generate_query(
                 models.Dataset,
                 db=db,
-                filter_=f,
+                filters=f,
                 label_source=models.GroundTruth,
             ).all()
         case "model.metadata":
@@ -1801,7 +1801,7 @@ def time_filter(
             return generate_query(
                 models.Model,
                 db=db,
-                filter_=f,
+                filters=f,
                 label_source=models.Prediction,
             ).all()
         case "datum.metadata":
@@ -1809,7 +1809,7 @@ def time_filter(
             return generate_query(
                 models.Datum,
                 db=db,
-                filter_=f,
+                filters=f,
                 label_source=models.GroundTruth,
             ).all()
         case "annotation.metadata":
@@ -1817,7 +1817,7 @@ def time_filter(
             return generate_query(
                 models.Annotation,
                 db=db,
-                filter_=f,
+                filters=f,
                 label_source=models.GroundTruth,
             ).all()
         case _:
@@ -2463,7 +2463,7 @@ def test_query_expression_types(
         generate_query(
             models.Dataset.name,
             db=db,
-            filter_=cat_filter,
+            filters=cat_filter,
             label_source=models.GroundTruth,
         )
         .distinct()
@@ -2477,7 +2477,7 @@ def test_query_expression_types(
         generate_query(
             func.count(models.Dataset.name),
             db=db,
-            filter_=cat_filter,
+            filters=cat_filter,
             label_source=models.GroundTruth,
         )
         .distinct()
@@ -2490,7 +2490,7 @@ def test_query_expression_types(
         generate_query(
             func.count(distinct(models.Dataset.name)),
             db=db,
-            filter_=cat_filter,
+            filters=cat_filter,
             label_source=models.GroundTruth,
         )
         .distinct()
@@ -2502,7 +2502,7 @@ def test_query_expression_types(
     max_area = generate_query(
         func.max(func.ST_Area(models.Annotation.box)),
         db=db,
-        filter_=cat_filter,
+        filters=cat_filter,
         label_source=models.GroundTruth,
     ).scalar()
     assert max_area == 100.0

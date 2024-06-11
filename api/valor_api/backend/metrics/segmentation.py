@@ -27,7 +27,7 @@ def _generate_groundtruth_query(
     return generate_select(
         models.Annotation.id.label("annotation_id"),
         models.Annotation.datum_id.label("datum_id"),
-        filter_=groundtruth_filter,
+        filters=groundtruth_filter,
         label_source=models.GroundTruth,
     ).subquery("gt")
 
@@ -40,7 +40,7 @@ def _generate_prediction_query(
     return generate_select(
         models.Annotation.id.label("annotation_id"),
         models.Annotation.datum_id.label("datum_id"),
-        filter_=prediction_filter,
+        filters=prediction_filter,
         label_source=models.Prediction,
     ).subquery("pd")
 
@@ -206,12 +206,12 @@ def _compute_segmentation_metrics(
             "grouper_id_to_grouper_label_mapping"
         ][grouper_id]
 
-        ret.append(
+        ret += [
             IOUMetric(
                 label=grouper_label,
                 value=computed_iou_score,
             )
-        )
+        ]
 
         ious_per_grouper_key[grouper_label.key].append(computed_iou_score)
 
@@ -255,7 +255,7 @@ def compute_semantic_segmentation_metrics(
     parameters = schemas.EvaluationParameters(**evaluation.parameters)
     groundtruth_filter, prediction_filter = prepare_filter_for_evaluation(
         db=db,
-        filter_=schemas.Filter(**evaluation.datum_filter),
+        filters=schemas.Filter(**evaluation.filters),
         dataset_names=evaluation.dataset_names,
         model_name=evaluation.model_name,
         task_type=parameters.task_type,

@@ -391,7 +391,7 @@ def test_generate_prediction_data(client: Client):
     assert eval_dict == {
         "dataset_names": [dataset_name],
         "model_name": model_name,
-        "datum_filter": {
+        "filters": {
             **asdict(
                 Filter()
             ),  # default filter properties with overrides below
@@ -413,6 +413,7 @@ def test_generate_prediction_data(client: Client):
                 "mAPAveragedOverIOUs",
             ],
             "pr_curve_iou_threshold": 0.5,
+            "pr_curve_max_examples": 1,
         },
         "meta": {},
     }

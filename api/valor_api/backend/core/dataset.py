@@ -167,7 +167,7 @@ def get_paginated_datasets(
 
     datasets_subquery = generate_select(
         models.Dataset.id.label("id"),
-        filter_=filters,
+        filters=filters,
         label_source=models.GroundTruth,
     ).subquery()
 

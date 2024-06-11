@@ -913,9 +913,9 @@ def test_post_detection_metrics(client: TestClient):
         id=1,
         dataset_names=["dsetname"],
         model_name="modelname",
-        filter=schemas.Filter(),
+        filters=schemas.Filter(),
         parameters=schemas.EvaluationParameters(
-            task_type=TaskType.OBJECT_DETECTION
+            task_type=TaskType.OBJECT_DETECTION,
         ),
         status=EvaluationStatus.PENDING,
         metrics=[],
@@ -930,7 +930,7 @@ def test_post_detection_metrics(client: TestClient):
         dataset_names=["dsetname"],
         model_names=["modelname"],
         parameters=schemas.EvaluationParameters(
-            task_type=TaskType.OBJECT_DETECTION
+            task_type=TaskType.OBJECT_DETECTION,
         ),
     ).model_dump()
 
@@ -948,7 +948,7 @@ def test_post_clf_metrics(client: TestClient):
         id=1,
         dataset_names=["dsetname"],
         model_name="modelname",
-        filter=schemas.Filter(),
+        filters=schemas.Filter(),
         parameters=schemas.EvaluationParameters(
             task_type=TaskType.CLASSIFICATION
         ),
@@ -963,7 +963,7 @@ def test_post_clf_metrics(client: TestClient):
         model_names=["modelname"],
         dataset_names=["dsetname"],
         parameters=schemas.EvaluationParameters(
-            task_type=TaskType.CLASSIFICATION
+            task_type=TaskType.CLASSIFICATION,
         ),
     ).model_dump()
 
@@ -981,9 +981,9 @@ def test_post_semenatic_segmentation_metrics(client: TestClient):
         id=1,
         dataset_names=["dset_name"],
         model_name="modelname",
-        filter=schemas.Filter(),
+        filters=schemas.Filter(),
         parameters=schemas.EvaluationParameters(
-            task_type=TaskType.SEMANTIC_SEGMENTATION
+            task_type=TaskType.SEMANTIC_SEGMENTATION,
         ),
         status=EvaluationStatus.PENDING,
         metrics=[],
@@ -998,7 +998,7 @@ def test_post_semenatic_segmentation_metrics(client: TestClient):
         model_names=["modelname"],
         dataset_names=["dsetname"],
         parameters=schemas.EvaluationParameters(
-            task_type=TaskType.SEMANTIC_SEGMENTATION
+            task_type=TaskType.SEMANTIC_SEGMENTATION,
         ),
     ).model_dump()
 

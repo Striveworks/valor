@@ -162,7 +162,7 @@ def test_restart_failed_evaluation(db: Session):
             dataset_names=["dataset"],
             model_names=["model"],
             parameters=schemas.EvaluationParameters(
-                task_type=enums.TaskType.CLASSIFICATION
+                task_type=enums.TaskType.CLASSIFICATION,
             ),
         ),
         allow_retries=False,
@@ -186,7 +186,7 @@ def test_restart_failed_evaluation(db: Session):
             dataset_names=["dataset"],
             model_names=["model"],
             parameters=schemas.EvaluationParameters(
-                task_type=enums.TaskType.CLASSIFICATION
+                task_type=enums.TaskType.CLASSIFICATION,
             ),
         ),
         allow_retries=False,
@@ -202,7 +202,7 @@ def test_restart_failed_evaluation(db: Session):
             dataset_names=["dataset"],
             model_names=["model"],
             parameters=schemas.EvaluationParameters(
-                task_type=enums.TaskType.CLASSIFICATION
+                task_type=enums.TaskType.CLASSIFICATION,
             ),
         ),
         allow_retries=True,

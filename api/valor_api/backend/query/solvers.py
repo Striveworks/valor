@@ -422,7 +422,7 @@ def generate_query(
     args: tuple[TableTypeAlias | InstrumentedAttribute | UnaryExpression],
     select_from: TableTypeAlias,
     label_source: LabelSourceAlias,
-    filter_: Filter | None = None,
+    filters: Filter | None = None,
 ) -> Select[Any] | Query[Any]:
     """
     Generates the main query.
@@ -439,7 +439,7 @@ def generate_query(
         The table to center the query over.
     label_source : LabelSourceAlias
         The table to use as a source of labels.
-    filter_ : Filter, optional
+    filters : Filter, optional
         An optional filter to apply to the query.
 
     Returns
@@ -451,7 +451,7 @@ def generate_query(
         raise ValueError(f"Invalid label source '{label_source}'.")
 
     arg_tables = map_arguments_to_tables(*args)
-    filter_tables = map_filter_to_tables(filter_, label_source)
+    filter_tables = map_filter_to_tables(filters, label_source)
 
     tables = arg_tables.union(filter_tables)
     tables.discard(select_from)
@@ -533,7 +533,7 @@ def generate_filter_subquery(
 
 
 def generate_filter_queries(
-    filter_: Filter,
+    filters: Filter,
     label_source: LabelSourceAlias,
 ) -> list[tuple[Subquery[Any], TableTypeAlias]]:
     """
@@ -543,7 +543,7 @@ def generate_filter_queries(
 
     Parameters
     ----------
-    filter_ : Filter
+    filters : Filter
         The filter to apply.
     label_source : LabelSourceAlias
         The table to use as a source of labels.
@@ -568,8 +568,8 @@ def generate_filter_queries(
         )
 
     queries = list()
-    if filter_.datasets:
-        conditions = filter_.datasets
+    if filters.datasets:
+        conditions = filters.datasets
         select_from = Dataset
         prefix = "ds"
         queries.append(
@@ -578,8 +578,8 @@ def generate_filter_queries(
                 select_from,
             )
         )
-    if filter_.models:
-        conditions = filter_.models
+    if filters.models:
+        conditions = filters.models
         select_from = Model
         prefix = "md"
         queries.append(
@@ -588,8 +588,8 @@ def generate_filter_queries(
                 select_from,
             )
         )
-    if filter_.datums:
-        conditions = filter_.datums
+    if filters.datums:
+        conditions = filters.datums
         select_from = Datum
         prefix = "dt"
         queries.append(
@@ -598,8 +598,8 @@ def generate_filter_queries(
                 select_from,
             )
         )
-    if filter_.annotations:
-        conditions = filter_.annotations
+    if filters.annotations:
+        conditions = filters.annotations
         select_from = Annotation
         prefix = "an"
         queries.append(
@@ -608,8 +608,8 @@ def generate_filter_queries(
                 select_from,
             )
         )
-    if filter_.groundtruths:
-        conditions = filter_.groundtruths
+    if filters.groundtruths:
+        conditions = filters.groundtruths
         select_from = GroundTruth if label_source is not Prediction else Datum
         prefix = "gt"
         queries.append(
@@ -618,8 +618,8 @@ def generate_filter_queries(
                 select_from,
             )
         )
-    if filter_.predictions:
-        conditions = filter_.predictions
+    if filters.predictions:
+        conditions = filters.predictions
         select_from = Prediction if label_source is not GroundTruth else Datum
         prefix = "pd"
         queries.append(
@@ -628,8 +628,8 @@ def generate_filter_queries(
                 select_from,
             )
         )
-    if filter_.labels:
-        conditions = filter_.labels
+    if filters.labels:
+        conditions = filters.labels
         select_from = Label
         prefix = "lb"
         queries.append(
@@ -638,8 +638,8 @@ def generate_filter_queries(
                 select_from,
             )
         )
-    if filter_.embeddings:
-        conditions = filter_.embeddings
+    if filters.embeddings:
+        conditions = filters.embeddings
         select_from = Embedding
         prefix = "em"
         queries.append(
@@ -654,7 +654,7 @@ def generate_filter_queries(
 def solver(
     *args,
     stmt: Select[Any] | Query[Any],
-    filter_: Filter | None,
+    filters: Filter | None,
     label_source: LabelSourceAlias,
 ) -> Select[Any] | Query[Any]:
     """
@@ -687,7 +687,7 @@ def solver(
         A list of select statement arguments.
     stmt : Select[Any] | Query[Any]
         A selection or query using the provided args.
-    filter_ : Filter, optional
+    filters : Filter, optional
         An optional filter.
     label_source : LabelSourceAlias
         The table to use as a source of labels.
@@ -706,11 +706,11 @@ def solver(
         args=args,
         select_from=select_from,
         label_source=label_source,
-        filter_=filter_,
+        filters=filters,
     )
-    if filter_ is not None:
+    if filters is not None:
         filter_subqueries = generate_filter_queries(
-            filter_=filter_, label_source=label_source
+            filters=filters, label_source=label_source
         )
         for subquery, selected_from in filter_subqueries:
             query = query.join(subquery, subquery.c.id == selected_from.id)
