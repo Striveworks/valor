@@ -26,7 +26,7 @@ def _format_filter_to_advanced_filter(
 
 def generate_select(
     *args: Any,
-    filter_: Filter | AdvancedFilter | None = None,
+    filters: Filter | AdvancedFilter | None = None,
     label_source: LabelSourceAlias = Annotation,
 ) -> Select[Any]:
     """
@@ -38,7 +38,7 @@ def generate_select(
     ----------
     *args : Any
         A variable list of models or model attributes. (e.g. Label or Label.key)
-    filter_ : Filter | AdvancedFilter, optional
+    filters : Filter | AdvancedFilter, optional
         An optional filter.
     label_source : LabelSourceAlias, default=Annotation
         The table to source labels from. This determines graph structure.
@@ -62,7 +62,7 @@ def generate_select(
     query = solver(
         *args,
         stmt=select(*args),
-        filter_=_format_filter_to_advanced_filter(filter_, label_source),
+        filters=_format_filter_to_advanced_filter(filters, label_source),
         label_source=label_source,
     )
     if not isinstance(query, Select):
@@ -75,7 +75,7 @@ def generate_select(
 def generate_query(
     *args: Any,
     db: Session,
-    filter_: Filter | AdvancedFilter | None = None,
+    filters: Filter | AdvancedFilter | None = None,
     label_source: LabelSourceAlias = Annotation,
 ) -> Query[Any]:
     """
@@ -89,7 +89,7 @@ def generate_query(
         A variable list of models or model attributes. (e.g. Label or Label.key)
     db : Session
         The database session to call query against.
-    filter_ : Filter | AdvancedFilter, optional
+    filters : Filter | AdvancedFilter, optional
         An optional filter.
     label_source : LabelSourceAlias, default=Annotation
         The table to source labels from. This determines graph structure.
@@ -113,7 +113,7 @@ def generate_query(
     query = solver(
         *args,
         stmt=db.query(*args),
-        filter_=_format_filter_to_advanced_filter(filter_, label_source),
+        filters=_format_filter_to_advanced_filter(filters, label_source),
         label_source=label_source,
     )
     if not isinstance(query, Query):

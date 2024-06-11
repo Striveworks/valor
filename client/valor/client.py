@@ -374,16 +374,26 @@ class ClientConnection:
 
     def get_labels(
         self,
-        filter_: Optional[dict] = None,
+        filters: Optional[dict] = None,
     ) -> List[dict]:
         """
         Gets all labels using an optional filter.
 
         `GET` endpoint.
+
+        Parameters
+        ----------
+        filters : dict, optional
+            An optional filter.
+
+        Returns
+        -------
+        list[dict]
+            A list of labels.
         """
         kwargs = {}
-        if filter_:
-            kwargs["params"] = {k: json.dumps(v) for k, v in filter_.items()}
+        if filters:
+            kwargs["params"] = {k: json.dumps(v) for k, v in filters.items()}
         return self._requests_get_rel_host("labels", **kwargs).json()
 
     def get_labels_from_dataset(self, name: str) -> List[dict]:
@@ -435,7 +445,7 @@ class ClientConnection:
         """
         self._requests_post_rel_host("datasets", json=dataset)
 
-    def get_datasets(self, filter_: Optional[dict] = None) -> List[dict]:
+    def get_datasets(self, filters: Optional[dict] = None) -> List[dict]:
         """
         Get all datasets with option to filter.
 
@@ -443,8 +453,8 @@ class ClientConnection:
 
         Parameters
         ----------
-        filter_ : Filter, optional
-            Optional filter to constrain by.
+        filters : Filter, optional
+            An optional filter.
 
         Returns
         ------
@@ -452,8 +462,8 @@ class ClientConnection:
             A list of dictionaries describing all the datasets attributed to the `Client` object.
         """
         kwargs = {}
-        if filter_:
-            kwargs["params"] = {k: json.dumps(v) for k, v in filter_.items()}
+        if filters:
+            kwargs["params"] = {k: json.dumps(v) for k, v in filters.items()}
         return self._requests_get_rel_host("datasets", **kwargs).json()
 
     def get_dataset(self, name: str) -> dict:
@@ -537,7 +547,7 @@ class ClientConnection:
         """
         self._requests_delete_rel_host(f"datasets/{name}")
 
-    def get_datums(self, filter_: Optional[dict] = None) -> List[dict]:
+    def get_datums(self, filters: Optional[dict] = None) -> List[dict]:
         """
         Get all datums using an optional filter.
 
@@ -545,8 +555,8 @@ class ClientConnection:
 
         Parameters
         ----------
-        filter_ : dict, optional
-            Optional filter to constrain by.
+        filters : dict, optional
+            An optional filter.
 
         Returns
         -------
@@ -554,8 +564,8 @@ class ClientConnection:
             A list of dictionaries describing all the datums of the specified dataset.
         """
         kwargs = {}
-        if filter_:
-            kwargs["params"] = {k: json.dumps(v) for k, v in filter_.items()}
+        if filters:
+            kwargs["params"] = {k: json.dumps(v) for k, v in filters.items()}
         return self._requests_get_rel_host("data", **kwargs).json()
 
     def get_datum(
@@ -594,7 +604,7 @@ class ClientConnection:
         """
         self._requests_post_rel_host("models", json=model)
 
-    def get_models(self, filter_: Optional[dict] = None) -> List[dict]:
+    def get_models(self, filters: Optional[dict] = None) -> List[dict]:
         """
         Get all models using an optional filter.
 
@@ -602,8 +612,8 @@ class ClientConnection:
 
         Parameters
         ----------
-        filter_ : Filter, optional
-            Optional filter to constrain by.
+        filters : Filter, optional
+            An optional filter.
 
         Returns
         ------
@@ -611,8 +621,8 @@ class ClientConnection:
             A list of dictionaries describing all the models.
         """
         kwargs = {}
-        if filter_:
-            kwargs["params"] = {k: json.dumps(v) for k, v in filter_.items()}
+        if filters:
+            kwargs["params"] = {k: json.dumps(v) for k, v in filters.items()}
         return self._requests_get_rel_host("models", **kwargs).json()
 
     def get_model(self, name: str) -> dict:

@@ -18,6 +18,7 @@ from valor_api.backend.metrics.metric_utils import (
     get_or_create_row,
     log_evaluation_duration,
     log_evaluation_item_counts,
+    prepare_filter_for_evaluation,
     validate_computation,
 )
 from valor_api.backend.query import generate_query
@@ -757,7 +758,7 @@ def _compute_detection_metrics(
             "geojson"
         ),
         db=db,
-        filter_=groundtruth_filter,
+        filters=groundtruth_filter,
         label_source=models.GroundTruth,
     ).subquery("groundtruths")
 
@@ -776,7 +777,7 @@ def _compute_detection_metrics(
             "geojson"
         ),
         db=db,
-        filter_=prediction_filter,
+        filters=prediction_filter,
         label_source=models.Prediction,
     ).subquery("predictions")
 
@@ -1129,7 +1130,7 @@ def _compute_detection_metrics_with_detailed_precision_recall_curve(
             "geojson"
         ),
         db=db,
-        filter_=groundtruth_filter,
+        filters=groundtruth_filter,
         label_source=models.GroundTruth,
     ).subquery("groundtruths")
 
@@ -1152,7 +1153,7 @@ def _compute_detection_metrics_with_detailed_precision_recall_curve(
             "geojson"
         ),
         db=db,
-        filter_=prediction_filter,
+        filters=prediction_filter,
         label_source=models.Prediction,
     ).subquery("predictions")
 
@@ -1637,14 +1638,15 @@ def compute_detection_metrics(*_, db: Session, evaluation_id: int):
     evaluation = core.fetch_evaluation_from_id(db, evaluation_id)
 
     # unpack filters and params
-    groundtruth_filter = schemas.Filter(**evaluation.datum_filter)
-    prediction_filter = groundtruth_filter.model_copy()
-    prediction_filter.model_names = [evaluation.model_name]
     parameters = schemas.EvaluationParameters(**evaluation.parameters)
-
-    # load task type into filters
-    groundtruth_filter.task_types = [parameters.task_type]
-    prediction_filter.task_types = [parameters.task_type]
+    groundtruth_filter, prediction_filter = prepare_filter_for_evaluation(
+        db=db,
+        filters=schemas.Filter(**evaluation.filters),
+        dataset_names=evaluation.dataset_names,
+        model_name=evaluation.model_name,
+        task_type=parameters.task_type,
+        label_map=parameters.label_map,
+    )
 
     log_evaluation_item_counts(
         db=db,
@@ -1658,7 +1660,7 @@ def compute_detection_metrics(*_, db: Session, evaluation_id: int):
         generate_query(
             models.Dataset,
             db=db,
-            filter_=groundtruth_filter,
+            filters=groundtruth_filter,
             label_source=models.GroundTruth,
         )
         .distinct()
@@ -1668,7 +1670,7 @@ def compute_detection_metrics(*_, db: Session, evaluation_id: int):
         generate_query(
             models.Model,
             db=db,
-            filter_=prediction_filter,
+            filters=prediction_filter,
             label_source=models.Prediction,
         )
         .distinct()

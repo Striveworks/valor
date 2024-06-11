@@ -348,8 +348,17 @@ class EvaluationRequestError(Exception):
     Raises an exception if the user request fails.
     """
 
-    def __init__(self, msg: str):
-        super().__init__(msg)
+    def __init__(self, msg: str, errors: list[Exception] | None = None):
+        request_error = {
+            "description": msg,
+            "errors": [],
+        }
+        if errors is not None:
+            request_error["errors"] = [
+                {"name": type(error).__name__, "detail": str(error)}
+                for error in errors
+            ]
+        super().__init__(json.dumps(request_error))
 
 
 class EvaluationStateError(Exception):
@@ -385,6 +394,7 @@ error_to_status_code = {
     Exception: 400,
     ValueError: 400,
     AttributeError: 400,
+    EvaluationRequestError: 400,
     # 404
     DatasetDoesNotExistError: 404,
     DatumDoesNotExistError: 404,
@@ -437,6 +447,7 @@ def create_http_error(
         | PredictionAlreadyExistsError
         | EvaluationAlreadyExistsError
         | EvaluationRunningError
+        | EvaluationRequestError
         | EvaluationStateError
         | NotImplementedError
         | ServiceUnavailable

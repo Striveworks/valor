@@ -2056,7 +2056,7 @@ def test_detection_exceptions(db: Session):
     )
     evaluation = Evaluation(
         model_name=model_name,
-        datum_filter={"dataset_names": [dataset_name]},
+        filters={"dataset_names": [dataset_name]},
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.OBJECT_DETECTION,
             iou_thresholds_to_compute=[0.5],
