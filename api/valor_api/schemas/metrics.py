@@ -496,19 +496,22 @@ class DetailedPrecisionRecallCurve(_BasePrecisionRecallCurve):
     """
 
     value: dict[
-        str,  # '4'
+        str,  # the label value
         dict[
-            float,  # 0.95
+            float,  # the IOU threshold
             dict[
-                str,  # tp
+                str,  # the metric (e.g., "tp" for true positive)
                 dict[
-                    str,  # observations, total
-                    int
+                    str,  # the label for the next level of the dictionary (e.g., "observations" or "total")
+                    int  # the count of classifications
                     | dict[
-                        str,  # all
+                        str,  # the subclassification for the label (e.g., "misclassifications")
                         dict[
-                            str,  # count, examples
-                            int | list[tuple[str, str] | tuple[str, str, str]],
+                            str,  # the label for the next level of the dictionary (e.g., "count" or "examples")
+                            int  # the count of subclassifications
+                            | list[
+                                tuple[str, str] | tuple[str, str, str]
+                            ],  # a list containing examples
                         ],
                     ],
                 ],
