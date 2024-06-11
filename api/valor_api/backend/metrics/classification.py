@@ -57,8 +57,8 @@ def _compute_curves(
 
     Returns
     -------
-    dict[str,dict[float, dict[str, int | float | list[tuple[str, str]] | list[tuple[str, str, str]] | None]]
-        A nested dictionary where the first key is the class label, the second key is the confidence threshold (e.g., 0.05), the third key is the metric name (e.g., "precision"), and the final key is either the value itself (for precision, recall, etc.) or a list of tuples containing the (dataset_name, datum_id) for each observation.
+    list[schemas.PrecisionRecallCurve | schemas.DetailedPrecisionRecallCurve]
+        The PrecisionRecallCurve and/or DetailedPrecisionRecallCurve metrics.
     """
 
     pr_output = defaultdict(lambda: defaultdict(dict))

@@ -231,8 +231,8 @@ def _compute_curves(
 
     Returns
     -------
-    dict
-        A nested dictionary where the first key is the class label, the second key is the confidence threshold (e.g., 0.05), the third key is the metric name (e.g., "precision"), and the final key is either the value itself (for precision, recall, etc.) or a list of tuples containing the (dataset_name, datum_id, bounding boxes) for each observation.
+    list[schemas.PrecisionRecallCurve]
+        A list of PrecisionRecallCurve metrics.
     """
 
     output = defaultdict(dict)
@@ -355,8 +355,8 @@ def _compute_detailed_curves(
 
     Returns
     -------
-    dict
-        A nested dictionary where the first key is the class label, the second key is the confidence threshold (e.g., 0.05), the third key is the metric name (e.g., "precision"), and the final key is either the value itself (for precision, recall, etc.) or a list of tuples containing the (dataset_name, datum_id, bounding boxes) for each observation.
+    list[schemas.PrecisionRecallCurve | schemas.DetailedPrecisionRecallCurve]
+        A list of PrecisionRecallCurve and DetailedPrecisionRecallCurve metrics.
     """
     pr_output = defaultdict(dict)
     detailed_pr_output = defaultdict(dict)
@@ -680,7 +680,7 @@ def _compute_detection_metrics(
     Returns
     ----------
     List[schemas.APMetric | schemas.ARMetric | schemas.APMetricAveragedOverIOUs | schemas.mAPMetric | schemas.mARMetric | schemas.mAPMetricAveragedOverIOUs | schemas.PrecisionRecallCurve]
-        A list of average precision metrics.
+        A list of metrics to return to the user.
 
     """
 
@@ -1047,8 +1047,8 @@ def _compute_detection_metrics_with_detailed_precision_recall_curve(
 
     Returns
     ----------
-    List[schemas.APMetric | schemas.ARMetric | schemas.APMetricAveragedOverIOUs | schemas.mAPMetric | schemas.mARMetric | schemas.mAPMetricAveragedOverIOUs | schemas.PrecisionRecallCurve]
-        A list of average precision metrics.
+    List[schemas.APMetric | schemas.ARMetric | schemas.APMetricAveragedOverIOUs | schemas.mAPMetric | schemas.mARMetric | schemas.mAPMetricAveragedOverIOUs | schemas.PrecisionRecallCurve | schemas.DetailedPrecisionRecallCurve]
+        A list of metrics to return to the user.
 
     """
 
