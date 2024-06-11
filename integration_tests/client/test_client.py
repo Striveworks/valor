@@ -175,6 +175,45 @@ def test__requests_wrapper(client: Client):
         client.conn._requests_wrapper("get", "not_an_endpoint")
 
 
+def test__requests_wrapper_retries(client: Client, monkeypatch):
+    """Tests the retry logic in _requests_wrapper to see if we call requests.get the appropriate number of times."""
+    calls = 0
+
+    def _mock_request(*args, **kwargs):
+        """Mock the request.get call so we can validate it was called the correct number of times"""
+        nonlocal calls
+        import pdb
+
+        pdb.set_trace()
+        resp = requests.Response()
+        attempts = [200, 200, 200, 200]
+        resp.status_code = attempts[calls]
+        calls += 1
+        return resp
+
+    def _skip(*args, **kwargs):
+        """Skip a function call."""
+        pass
+
+    monkeypatch.setattr("requests.get", _mock_request)
+    monkeypatch.setattr(
+        client.ClientConnection._get_access_token_from_username_and_password,
+        _skip,
+    )
+
+    for max_retries, expected_calls in [(3, 1), (4, 1)]:
+        client.conn._requests_wrapper(
+            method_name="get",
+            endpoint="test",
+            ignore_auth=False,
+            max_retries=max_retries,
+            initial_timeout=0.1,
+            exponential_backoff=1,
+        )
+
+        assert calls == expected_calls
+
+
 def test_get_labels(
     client: Client,
     created_dataset: Dataset,
