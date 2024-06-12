@@ -498,7 +498,7 @@ class DetailedPrecisionRecallCurve(_BasePrecisionRecallCurve):
     value: dict[
         str,  # the label value
         dict[
-            float,  # the IOU threshold
+            float,  # the score threshold
             dict[
                 str,  # the metric (e.g., "tp" for true positive)
                 dict[
