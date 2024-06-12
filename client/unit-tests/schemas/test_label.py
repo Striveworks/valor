@@ -76,3 +76,22 @@ def test_scored_label():
     assert s1.__hash__() != s3.__hash__()
     assert s1.__hash__() != s4.__hash__()
     assert s1.__hash__() != s5.__hash__()
+
+
+def test_label_equality():
+    label1 = Label(key="test", value="value")
+    label2 = Label(key="test", value="value")
+    label3 = Label(key="test", value="other")
+    label4 = Label(key="other", value="value")
+
+    eq1 = label1 == label2
+    assert type(eq1) == bool
+    assert eq1
+
+    eq2 = label1 == label3
+    assert type(eq2) == bool
+    assert not eq2
+
+    eq3 = label1 == label4
+    assert type(eq3) == bool
+    assert not eq3
