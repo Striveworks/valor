@@ -310,6 +310,20 @@ def test_box():
         Box(value)
 
 
+def test_box_axis_aligned():
+    assert Box.from_extrema(0, 1, 2, 3).is_axis_aligned
+
+    assert Box([[(5, 2), (10, 2), (10, 3), (5, 3), (5, 2)]]).is_axis_aligned
+
+    assert not Box(
+        [[(-1, 0), (0, 1), (1, 0), (0, -1), (-1, 0)]]
+    ).is_axis_aligned
+
+    assert not Box(
+        [[(0, 2), (1, 7), (2, 3), (-1, -10), (0, 2)]]
+    ).is_axis_aligned
+
+
 def test_raster():
     objcls = Raster
 

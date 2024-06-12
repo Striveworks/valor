@@ -6,15 +6,13 @@ from valor.coretypes import GroundTruth, Label, Prediction
 from valor.metrics.classification import combine_tps_fps_thresholds
 from valor.schemas import Box
 
-# TODO: all of these assume the box is axis aligned
 
-
-def area(rect: Box) -> float:
+def _area(rect: Box) -> float:
     """Computes the area of a rectangle"""
     return (rect.xmax - rect.xmin) * (rect.ymax - rect.ymin)
 
 
-def intersection_area(rect1: Box, rect2: Box) -> float:
+def _intersection_area(rect1: Box, rect2: Box) -> float:
     """Computes the intersection area of two rectangles"""
     inter_xmin = max(rect1.xmin, rect2.xmin)
     inter_xmax = min(rect1.xmax, rect2.xmax)
@@ -30,8 +28,11 @@ def intersection_area(rect1: Box, rect2: Box) -> float:
 
 def iou(rect1: Box, rect2: Box) -> float:
     """Computes the "intersection over union" of two rectangles"""
-    inter_area = intersection_area(rect1, rect2)
-    return inter_area / (area(rect1) + area(rect2) - inter_area)
+    for r in [rect1, rect2]:
+        if not r.is_axis_aligned:
+            raise ValueError("Rectangles must be axis aligned")
+    inter_area = _intersection_area(rect1, rect2)
+    return inter_area / (_area(rect1) + _area(rect2) - inter_area)
 
 
 def _match_array(

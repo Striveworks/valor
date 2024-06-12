@@ -1253,27 +1253,39 @@ class Box(Polygon):
         """
         return Polygon(self.get_value())
 
-    # @property
-    # def is_axis_aligned(self) -> bool:
-    #     """
-    #     Returns whether the box is axis-aligned.
+    @property
+    def is_axis_aligned(self) -> bool:
+        """
+        Returns whether the box is axis-aligned.
 
-    #     Returns
-    #     -------
-    #     bool
-    #     """
+        Returns
+        -------
+        bool
+        """
 
-    #     def _diff(pt1, pt2):
-    #         return (pt1[0] - pt2[0], pt1[1] - pt2[1])
+        def _diff(pt1, pt2):
+            return (pt1[0] - pt2[0], pt1[1] - pt2[1])
 
-    #     vec1 = _diff(self.boundary[1], self.boundary[0])
-    #     vec2 = _diff(self.boundary[2], self.boundary[1])
-    #     vec3 = _diff(self.boundary[3], self.boundary[2])
-    #     vec4 = _diff(self.boundary[0], self.boundary[3])
+        def _check_opposite(v1, v2):
+            return v1[0] == -v2[0] and v1[1] == -v2[1]
 
-    #     if vec1[0] == 0 and vec2[1] == 0 and vec3[0] == 0 and vec4[1] == 0:
-    #         return True
-    #     return False
+        def _check_orthogonal(v1, v2):
+            return v1[0] * v2[0] + v1[1] * v2[1] == 0
+
+        vec1 = _diff(self.boundary[1], self.boundary[0])
+        vec2 = _diff(self.boundary[2], self.boundary[1])
+        vec3 = _diff(self.boundary[3], self.boundary[2])
+        vec4 = _diff(self.boundary[0], self.boundary[3])
+
+        if not _check_opposite(vec1, vec3):
+            return False
+        if not _check_opposite(vec2, vec4):
+            return False
+        if not _check_orthogonal(vec1, vec2):
+            return False
+        if vec1[0] * vec2[0] != 0 or vec1[1] * vec2[1] != 0:
+            return False
+        return True
 
 
 class MultiPolygon(Spatial):
