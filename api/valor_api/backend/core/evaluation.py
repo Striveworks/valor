@@ -313,7 +313,7 @@ def _validate_evaluation_filter(
     # unpack filters and params
     filters = schemas.Filter(**evaluation.filters)
     parameters = schemas.EvaluationParameters(**evaluation.parameters)
-    
+
     groundtruth_filter = filters.model_copy()
     groundtruth_filter.predictions = None
 
@@ -322,7 +322,7 @@ def _validate_evaluation_filter(
 
     datasets = (
         generate_query(
-            models.Dataset,
+            models.Dataset.name,
             db=db,
             filters=groundtruth_filter,
             label_source=models.GroundTruth,
@@ -333,11 +333,12 @@ def _validate_evaluation_filter(
 
     model = (
         generate_query(
-            models.Model,
+            models.Model.name,
             db=db,
             filters=predictions_filter,
             label_source=models.Prediction,
         )
+        .where(models.Model.name == evaluation.model_name)
         .distinct()
         .one_or_none()
     )
@@ -386,11 +387,14 @@ def _create_responses(
         if evaluation.id is None:
             raise exceptions.EvaluationDoesNotExistError()
 
-        dataset_filter = schemas.Filter(**evaluation.filters)
-        model_filter = dataset_filter.model_copy()
-        model_filter.dataset_names = None
-        model_filter.model_names = [evaluation.model_name]
         parameters = schemas.EvaluationParameters(**evaluation.parameters)
+        filters = schemas.Filter(**evaluation.filters)
+
+        groundtruth_filter = filters.model_copy()
+        groundtruth_filter.predictions = None
+
+        prediction_filter = filters.model_copy()
+        prediction_filter.groundtruths = None
 
         match parameters.task_type:
             case enums.TaskType.CLASSIFICATION:
@@ -404,8 +408,8 @@ def _create_responses(
                     ignored_pred_labels,
                 ) = core.get_disjoint_labels(
                     db,
-                    dataset_filter,
-                    model_filter,
+                    groundtruth_filter,
+                    prediction_filter,
                     label_map=parameters.label_map,
                 )
                 kwargs = {
@@ -482,79 +486,11 @@ def _split_request(
         The job request to split (if multiple model names exist).
     """
 
-
-    # create dataset constraint
-    dataset_conditions = schemas.soft_or(
-        [
-            schemas.Condition(
-                lhs=schemas.Symbol.DATASET_NAME,
-                rhs=schemas.Value.infer(name),
-                op=schemas.FilterOperator.EQ,
-            )
-            for name in job_request.dataset_names
-        ]
-    )
-
-    # create model constraint
-    model_conditions = schemas.soft_or(
-        [
-            schemas.Condition(
-                lhs=schemas.Symbol.MODEL_NAME,
-                rhs=schemas.Value.infer(name),
-                op=schemas.FilterOperator.EQ,
-            )
-            for name in job_request.dataset_names
-        ]
-    )
-
-    # create task type constraint
-    task_type_condition = schemas.Condition(
-        lhs=schemas.Symbol.TASK_TYPE,
-        rhs=schemas.Value(
-            type=schemas.SupportedType.TASK_TYPE, 
-            value=job_request.parameters.task_type
-        ),
-        op=schemas.FilterOperator.CONTAINS,
-    )
-
-    # create a copy of the filter
-    filters = job_request.filters.model_copy()
-
-    # create new annotations filter
-    filters.annotations = schemas.soft_and(
-        [
-            filters.annotations,
-            task_type_condition,
-        ]
-    ) if filters.annotations else task_type_condition
-
-    # create new groundtruth filter
-    filters.groundtruths = schemas.soft_and(
-        [
-            filters.groundtruths,
-            dataset_conditions,
-        ]
-    ) if filters.groundtruths else dataset_conditions
-
-    # create new prediction filter
-    filters.predictions = schemas.soft_and(
-        [
-            filters.predictions,
-            dataset_conditions,
-            model_conditions,
-        ]
-    ) if filters.predictions else schemas.soft_and(
-        [
-            dataset_conditions,
-            model_conditions,
-        ]
-    )
-
     return [
         schemas.EvaluationRequest(
             dataset_names=job_request.dataset_names,
             model_names=[model_name],
-            filters=filters,
+            filters=job_request.filters,
             parameters=job_request.parameters,
         )
         for model_name in job_request.model_names

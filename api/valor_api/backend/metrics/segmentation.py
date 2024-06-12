@@ -189,8 +189,26 @@ def _compute_segmentation_metrics(
         "grouper_id_to_label_ids_mapping"
     ].items():
         # set filter
-        groundtruth_filter.label_ids = [label_id for label_id in label_ids]
-        prediction_filter.label_ids = [label_id for label_id in label_ids]
+        groundtruth_filter.labels = schemas.soft_or(
+            [
+                schemas.Condition(
+                    lhs=schemas.Symbol.LABEL_ID,
+                    rhs=schemas.Value.infer(label_id),
+                    op=schemas.FilterOperator.EQ,
+                )
+                for label_id in label_ids
+            ]
+        )
+        prediction_filter.labels = schemas.soft_or(
+            [
+                schemas.Condition(
+                    lhs=schemas.Symbol.LABEL_ID,
+                    rhs=schemas.Value.infer(label_id),
+                    op=schemas.FilterOperator.EQ,
+                )
+                for label_id in label_ids
+            ]
+        )
 
         computed_iou_score = _compute_iou(
             db,

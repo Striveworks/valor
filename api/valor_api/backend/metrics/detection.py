@@ -1696,14 +1696,34 @@ def compute_detection_metrics(*_, db: Session, evaluation_id: int):
     )
     match target_type:
         case AnnotationType.BOX:
-            groundtruth_filter.require_bounding_box = True
-            prediction_filter.require_bounding_box = True
+            symbol = schemas.Symbol.BOX
         case AnnotationType.POLYGON:
-            groundtruth_filter.require_polygon = True
-            prediction_filter.require_polygon = True
+            symbol = schemas.Symbol.POLYGON
         case AnnotationType.RASTER:
-            groundtruth_filter.require_raster = True
-            prediction_filter.require_raster = True
+            symbol = schemas.Symbol.RASTER
+        case _:
+            raise TypeError(
+                f"'{target_type}' is not a valid type for object detection."
+            )
+
+    groundtruth_filter.annotations = schemas.soft_and(
+        [
+            groundtruth_filter.annotations,
+            schemas.Condition(
+                lhs=symbol,
+                op=schemas.FilterOperator.ISNOTNULL,
+            ),
+        ]
+    )
+    prediction_filter.annotations = schemas.soft_and(
+        [
+            prediction_filter.annotations,
+            schemas.Condition(
+                lhs=symbol,
+                op=schemas.FilterOperator.ISNOTNULL,
+            ),
+        ]
+    )
 
     if (
         parameters.metrics_to_return

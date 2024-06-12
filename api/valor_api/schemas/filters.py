@@ -1,5 +1,4 @@
 from enum import Enum
-from typing import Any
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
@@ -96,6 +95,16 @@ class Symbol(str, Enum):
     POLYGON_AREA = "annotation.polygon.area"
     RASTER_AREA = "annotation.raster.area"
 
+    # api-only attributes
+    DATASET_ID = "dataset.id"
+    MODEL_ID = "model.id"
+    DATUM_ID = "datum.id"
+    ANNOTATION_ID = "annotation.id"
+    GROUNDTRUTH_ID = "groundtruth.id"
+    PREDICTION_ID = "prediction.id"
+    LABEL_ID = "label.id"
+    EMBEDDING_ID = "embedding.id"
+
     @property
     def type(self) -> SupportedType | None:
         """
@@ -130,6 +139,15 @@ class Symbol(str, Enum):
             Symbol.BOX_AREA: SupportedType.FLOAT,
             Symbol.POLYGON_AREA: SupportedType.FLOAT,
             Symbol.RASTER_AREA: SupportedType.FLOAT,
+            # api-only
+            Symbol.DATASET_ID: SupportedType.INTEGER,
+            Symbol.MODEL_ID: SupportedType.INTEGER,
+            Symbol.DATUM_ID: SupportedType.INTEGER,
+            Symbol.ANNOTATION_ID: SupportedType.INTEGER,
+            Symbol.GROUNDTRUTH_ID: SupportedType.INTEGER,
+            Symbol.PREDICTION_ID: SupportedType.INTEGER,
+            Symbol.LABEL_ID: SupportedType.INTEGER,
+            Symbol.EMBEDDING_ID: SupportedType.INTEGER,
             # unsupported
             Symbol.DATASET_META: None,
             Symbol.MODEL_META: None,
@@ -273,25 +291,27 @@ class Filter(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
-def soft_and(items: list[FunctionType]) -> FunctionType:
+def soft_and(items: list[FunctionType | None]) -> FunctionType:
+    conditions = [item for item in items if item is not None]
     if len(items) > 1:
         return LogicalFunction(
-            args=items,
+            args=conditions,
             op=LogicalOperator.AND,
         )
     elif len(items) == 1:
-        return items[0]
+        return conditions[0]
     else:
         raise ValueError("Passed an empty list.")
 
 
-def soft_or(items: list[FunctionType]) -> FunctionType:
+def soft_or(items: list[FunctionType | None]) -> FunctionType:
+    conditions = [item for item in items if item is not None]
     if len(items) > 1:
         return LogicalFunction(
-            args=items,
-            op=LogicalOperator.AND,
+            args=conditions,
+            op=LogicalOperator.OR,
         )
     elif len(items) == 1:
-        return items[0]
+        return conditions[0]
     else:
         raise ValueError("Passed an empty list.")

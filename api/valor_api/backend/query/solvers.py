@@ -307,9 +307,9 @@ map_label_source_to_neighbor_tables = {
     },
     GroundTruth: {
         Dataset: {Datum},
-        Model: {Annotation},
-        Datum: {Dataset, Annotation, Prediction},
-        Annotation: {Datum, Model, GroundTruth, Embedding},
+        Model: {Datum},
+        Datum: {Dataset, Model, Annotation, Prediction},
+        Annotation: {Datum, GroundTruth, Embedding},
         Embedding: {Annotation},
         GroundTruth: {Annotation, Label},
         Prediction: {Datum},

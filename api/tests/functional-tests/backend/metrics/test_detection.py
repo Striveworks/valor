@@ -1163,12 +1163,38 @@ def test__compute_detection(
             ],
         ),
         prediction_filter=schemas.Filter(
-            model_names=["test_model"],
-            label_keys=["class"],
+            predictions=schemas.LogicalFunction(
+                args=[
+                    schemas.Condition(
+                        lhs=schemas.Symbol.MODEL_NAME,
+                        rhs=schemas.Value.infer("test_model"),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol.LABEL_KEY,
+                        rhs=schemas.Value.infer("class"),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                ],
+                op=schemas.LogicalOperator.AND,
+            )
         ),
         groundtruth_filter=schemas.Filter(
-            dataset_names=["test_dataset"],
-            label_keys=["class"],
+            groundtruths=schemas.LogicalFunction(
+                args=[
+                    schemas.Condition(
+                        lhs=schemas.Symbol.DATASET_NAME,
+                        rhs=schemas.Value.infer("test_dataset"),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol.LABEL_KEY,
+                        rhs=schemas.Value.infer("class"),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                ],
+                op=schemas.LogicalOperator.AND,
+            )
         ),
         target_type=enums.AnnotationType.BOX,
     )
@@ -1366,12 +1392,38 @@ def test__compute_detection(
             ],
         ),
         prediction_filter=schemas.Filter(
-            model_names=["test_model"],
-            label_keys=["class"],
+            predictions=schemas.LogicalFunction(
+                args=[
+                    schemas.Condition(
+                        lhs=schemas.Symbol.MODEL_NAME,
+                        rhs=schemas.Value.infer("test_model"),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol.LABEL_KEY,
+                        rhs=schemas.Value.infer("class"),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                ],
+                op=schemas.LogicalOperator.AND,
+            )
         ),
         groundtruth_filter=schemas.Filter(
-            dataset_names=["test_dataset"],
-            label_keys=["class"],
+            groundtruths=schemas.LogicalFunction(
+                args=[
+                    schemas.Condition(
+                        lhs=schemas.Symbol.DATASET_NAME,
+                        rhs=schemas.Value.infer("test_dataset"),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol.LABEL_KEY,
+                        rhs=schemas.Value.infer("class"),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                ],
+                op=schemas.LogicalOperator.AND,
+            )
         ),
         target_type=enums.AnnotationType.BOX,
     )
@@ -1569,12 +1621,38 @@ def test__compute_detection(
             ],
         ),
         prediction_filter=schemas.Filter(
-            model_names=["test_model"],
-            label_keys=["class"],
+            predictions=schemas.LogicalFunction(
+                args=[
+                    schemas.Condition(
+                        lhs=schemas.Symbol.MODEL_NAME,
+                        rhs=schemas.Value.infer("test_model"),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol.LABEL_KEY,
+                        rhs=schemas.Value.infer("class"),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                ],
+                op=schemas.LogicalOperator.AND,
+            )
         ),
         groundtruth_filter=schemas.Filter(
-            dataset_names=["test_dataset"],
-            label_keys=["class"],
+            groundtruths=schemas.LogicalFunction(
+                args=[
+                    schemas.Condition(
+                        lhs=schemas.Symbol.DATASET_NAME,
+                        rhs=schemas.Value.infer("test_dataset"),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol.LABEL_KEY,
+                        rhs=schemas.Value.infer("class"),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                ],
+                op=schemas.LogicalOperator.AND,
+            )
         ),
         target_type=enums.AnnotationType.BOX,
     )
@@ -1778,12 +1856,38 @@ def test__compute_detection_metrics_with_rasters(
             ],
         ),
         prediction_filter=schemas.Filter(
-            model_names=["test_model"],
-            label_keys=["class"],
+            predictions=schemas.LogicalFunction(
+                args=[
+                    schemas.Condition(
+                        lhs=schemas.Symbol.MODEL_NAME,
+                        rhs=schemas.Value.infer("test_model"),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol.LABEL_KEY,
+                        rhs=schemas.Value.infer("class"),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                ],
+                op=schemas.LogicalOperator.AND,
+            )
         ),
         groundtruth_filter=schemas.Filter(
-            dataset_names=["test_dataset"],
-            label_keys=["class"],
+            groundtruths=schemas.LogicalFunction(
+                args=[
+                    schemas.Condition(
+                        lhs=schemas.Symbol.DATASET_NAME,
+                        rhs=schemas.Value.infer("test_dataset"),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol.LABEL_KEY,
+                        rhs=schemas.Value.infer("class"),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                ],
+                op=schemas.LogicalOperator.AND,
+            )
         ),
         target_type=enums.AnnotationType.RASTER,
     )
@@ -1918,12 +2022,38 @@ def test__compute_detection_metrics_with_rasters(
             ],
         ),
         prediction_filter=schemas.Filter(
-            model_names=["test_model"],
-            label_keys=["class"],
+            predictions=schemas.LogicalFunction(
+                args=[
+                    schemas.Condition(
+                        lhs=schemas.Symbol.MODEL_NAME,
+                        rhs=schemas.Value.infer("test_model"),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol.LABEL_KEY,
+                        rhs=schemas.Value.infer("class"),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                ],
+                op=schemas.LogicalOperator.AND,
+            )
         ),
         groundtruth_filter=schemas.Filter(
-            dataset_names=["test_dataset"],
-            label_keys=["class"],
+            groundtruths=schemas.LogicalFunction(
+                args=[
+                    schemas.Condition(
+                        lhs=schemas.Symbol.DATASET_NAME,
+                        rhs=schemas.Value.infer("test_dataset"),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol.LABEL_KEY,
+                        rhs=schemas.Value.infer("class"),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                ],
+                op=schemas.LogicalOperator.AND,
+            )
         ),
         target_type=enums.AnnotationType.RASTER,
     )
@@ -2055,8 +2185,18 @@ def test_detection_exceptions(db: Session):
         status=enums.ModelStatus.READY,
     )
     evaluation = Evaluation(
+        dataset_names=[dataset_name],
         model_name=model_name,
-        filters={"dataset_names": [dataset_name]},
+        filters={
+            "datasets": {
+                "lhs": "dataset.name",
+                "rhs": {
+                    "type": "string",
+                    "value": dataset_name,
+                },
+                "op": "eq",
+            }
+        },
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.OBJECT_DETECTION,
             iou_thresholds_to_compute=[0.5],

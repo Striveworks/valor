@@ -394,7 +394,16 @@ def _compute_binary_roc_auc(
     """
     # query to get the datum_ids and label values of groundtruths that have the given label key
     gts_filter = groundtruth_filter.model_copy()
-    gts_filter.label_keys = [label.key]
+    gts_filter.labels = schemas.soft_and(
+        [
+            gts_filter.labels,
+            schemas.Condition(
+                lhs=schemas.Symbol.LABEL_KEY,
+                rhs=schemas.Value.infer(label.key),
+                op=schemas.FilterOperator.EQ,
+            ),
+        ]
+    )
     gts_query = generate_select(
         models.Annotation.datum_id.label("datum_id"),
         models.Label.value.label("label_value"),
@@ -404,7 +413,22 @@ def _compute_binary_roc_auc(
 
     # get the prediction scores for the given label (key and value)
     preds_filter = prediction_filter.model_copy()
-    preds_filter.labels = [{label.key: label.value}]
+    preds_filter.labels = schemas.soft_and(
+        [
+            preds_filter.labels,
+            schemas.Condition(
+                lhs=schemas.Symbol.LABEL_KEY,
+                rhs=schemas.Value.infer(label.key),
+                op=schemas.FilterOperator.EQ,
+            ),
+            schemas.Condition(
+                lhs=schemas.Symbol.LABEL_VALUE,
+                rhs=schemas.Value.infer(label.value),
+                op=schemas.FilterOperator.EQ,
+            ),
+        ]
+    )
+
     preds_query = generate_select(
         models.Annotation.datum_id.label("datum_id"),
         models.Prediction.score.label("score"),
@@ -535,7 +559,21 @@ def _compute_roc_auc(
 
     for grouper_value, labels in value_to_labels_mapping.items():
         label_filter = groundtruth_filter.model_copy()
-        label_filter.label_ids = [label.id for label in labels]
+        label_filter.labels = schemas.soft_and(
+            [
+                label_filter.labels,
+                schemas.soft_or(
+                    [
+                        schemas.Condition(
+                            lhs=schemas.Symbol.LABEL_ID,
+                            rhs=schemas.Value.infer(label.id),
+                            op=schemas.FilterOperator.EQ,
+                        )
+                        for label in labels
+                    ]
+                ),
+            ]
+        )
 
         # some labels in the "labels" argument may be out-of-scope given our groundtruth_filter, so we fetch all labels that are within scope of the groundtruth_filter to make sure we don't calculate ROCAUC for inappropriate labels
         in_scope_labels = [
@@ -803,16 +841,45 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
         matrix and the second a list of all metrics (accuracy, ROC AUC, precisions, recalls, and f1s).
     """
 
-    label_key_filter = list(
+    label_keys = list(
         grouper_mappings["grouper_key_to_label_keys_mapping"][grouper_key]
     )
 
-    # get groundtruths and predictions that conform to filters
+    # groundtruths filter
     gFilter = groundtruth_filter.model_copy()
-    gFilter.label_keys = label_key_filter
+    gFilter.labels = schemas.soft_and(
+        [
+            gFilter.labels,
+            schemas.soft_or(
+                [
+                    schemas.Condition(
+                        lhs=schemas.Symbol.LABEL_KEY,
+                        rhs=schemas.Value.infer(key),
+                        op=schemas.FilterOperator.EQ,
+                    )
+                    for key in label_keys
+                ]
+            ),
+        ]
+    )
 
+    # predictions filter
     pFilter = prediction_filter.model_copy()
-    pFilter.label_keys = label_key_filter
+    pFilter.labels = schemas.soft_and(
+        [
+            pFilter.labels,
+            schemas.soft_or(
+                [
+                    schemas.Condition(
+                        lhs=schemas.Symbol.LABEL_KEY,
+                        rhs=schemas.Value.infer(key),
+                        op=schemas.FilterOperator.EQ,
+                    )
+                    for key in label_keys
+                ]
+            ),
+        ]
+    )
 
     groundtruths = generate_select(
         models.GroundTruth,
@@ -967,8 +1034,8 @@ def _compute_clf_metrics(
 
     labels = core.fetch_union_of_labels(
         db=db,
-        rhs=prediction_filter,
         lhs=groundtruth_filter,
+        rhs=prediction_filter,
     )
 
     grouper_mappings = create_grouper_mappings(

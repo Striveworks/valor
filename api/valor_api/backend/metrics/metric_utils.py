@@ -476,7 +476,77 @@ def prepare_filter_for_evaluation(
     Filter
         A filter ready for evaluation.
     """
-    
+
+    # create dataset constraint
+    dataset_conditions = schemas.soft_or(
+        [
+            schemas.Condition(
+                lhs=schemas.Symbol.DATASET_NAME,
+                rhs=schemas.Value.infer(name),
+                op=schemas.FilterOperator.EQ,
+            )
+            for name in dataset_names
+        ]
+    )
+
+    # create model constraint
+    model_condition = schemas.Condition(
+        lhs=schemas.Symbol.MODEL_NAME,
+        rhs=schemas.Value.infer(model_name),
+        op=schemas.FilterOperator.EQ,
+    )
+
+    # create task type constraint
+    task_type_condition = schemas.Condition(
+        lhs=schemas.Symbol.TASK_TYPE,
+        rhs=schemas.Value(
+            type=schemas.SupportedType.TASK_TYPE, value=task_type
+        ),
+        op=schemas.FilterOperator.CONTAINS,
+    )
+
+    # create new annotations filter
+    filters.annotations = (
+        schemas.soft_and(
+            [
+                filters.annotations,
+                task_type_condition,
+            ]
+        )
+        if filters.annotations
+        else task_type_condition
+    )
+
+    # create new groundtruth filter
+    filters.groundtruths = (
+        schemas.soft_and(
+            [
+                filters.groundtruths,
+                dataset_conditions,
+            ]
+        )
+        if filters.groundtruths
+        else dataset_conditions
+    )
+
+    # create new prediction filter
+    filters.predictions = (
+        schemas.soft_and(
+            [
+                filters.predictions,
+                dataset_conditions,
+                model_condition,
+            ]
+        )
+        if filters.predictions
+        else schemas.soft_and(
+            [
+                dataset_conditions,
+                model_condition,
+            ]
+        )
+    )
+
     groundtruth_filter = filters.model_copy()
     groundtruth_filter.predictions = None
 
