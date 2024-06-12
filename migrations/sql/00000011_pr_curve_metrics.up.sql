@@ -1,7 +1,18 @@
 -- Update 'pr_curve_iou_threshold' to 0.5 if it is NULL
 UPDATE evaluation
 SET parameters = jsonb_set(parameters, '{pr_curve_iou_threshold}', '0.5'::jsonb, false)
-WHERE parameters->'pr_curve_iou_threshold' IS NULL;
+WHERE (
+    NOT parameters ? 'pr_curve_iou_threshold'
+    OR parameters->>'pr_curve_iou_threshold' IS NULL
+);
+
+-- Update 'pr_curve_iou_threshold' to 0.5 if it is NULL
+UPDATE metric
+SET parameters = jsonb_set(parameters, '{pr_curve_iou_threshold}', '0.5'::jsonb, false)
+WHERE (
+    metric.type = 'PrecisionRecallCurve'
+    AND metric.parameters->>'pr_curve_iou_threshold' IS NULL
+);
 
 CREATE OR REPLACE FUNCTION convert_pr_curve(jsonb)
 RETURNS jsonb LANGUAGE plpgsql AS $$
@@ -32,7 +43,7 @@ BEGIN
     RETURN result;
 END $$;
 
--- Convert 'PrecisionRecall' metrics to the new schema format.
+-- Convert 'PrecisionRecallCurve' metrics to the new schema format.
 UPDATE metric
 SET value = convert_pr_curve(value)
 WHERE metric.type = 'PrecisionRecallCurve';
