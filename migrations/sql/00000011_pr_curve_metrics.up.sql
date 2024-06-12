@@ -23,10 +23,10 @@ BEGIN
             FOR metric_key, metric_value IN SELECT * FROM jsonb_each(score_threshold_dict)
             LOOP
                 IF jsonb_typeof(metric_value) != 'array' THEN
-                    metric_dict := jsonb_set(metric_dict, '{' || metric_key || '}', metric_value, true);
+                    metric_dict := jsonb_set(metric_dict, ARRAY[metric_key], metric_value, true);
                 END IF;
             END LOOP;
-            result := jsonb_set(result, '{' || label_value || ',' || score_threshold || '}', metric_dict, true);
+            result := jsonb_set(result, ARRAY[label_value, score_threshold], metric_dict, true);
         END LOOP;
     END LOOP;
     RETURN result;
