@@ -465,7 +465,10 @@ class Dataset(StaticCollection):
         Union[valor.Dataset, None]
             The dataset or 'None' if it doesn't exist.
         """
-        return Client(connection).get_dataset(name)
+        try:
+            return Client(connection).get_dataset(name)
+        except DatasetDoesNotExistError:
+            return None
 
     def add_groundtruth(
         self,
@@ -734,7 +737,10 @@ class Model(StaticCollection):
         Union[valor.Model, None]
             The model or 'None' if it doesn't exist.
         """
-        return Client(connection).get_model(name)
+        try:
+            return Client(connection).get_model(name)
+        except ModelDoesNotExistError:
+            return None
 
     def add_prediction(
         self,
