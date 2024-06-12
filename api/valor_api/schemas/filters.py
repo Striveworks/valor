@@ -3,7 +3,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
-
+from valor_api.enums import TaskType
 from valor_api.schemas.validators import (
     validate_type_bool,
     validate_type_box,
@@ -28,7 +28,7 @@ class SupportedType(str, Enum):
     INTEGER = "integer"
     FLOAT = "float"
     STRING = "string"
-    TASK_TYPE= "tasktype"
+    TASK_TYPE = "tasktype"
     DATETIME = "datetime"
     DATE = "date"
     TIME = "time"
@@ -112,33 +112,31 @@ class Symbol(str, Enum):
             If the symbol does not have a type defined.
         """
         map_symbol_to_type = {
-            Symbol.DATASET_NAME : SupportedType.STRING,
-            Symbol.MODEL_NAME : SupportedType.STRING,
-            Symbol.DATUM_UID : SupportedType.STRING,
-            Symbol.TASK_TYPE : SupportedType.TASK_TYPE,
-            Symbol.BOX : SupportedType.BOX,
-            Symbol.POLYGON : SupportedType.POLYGON,
-            Symbol.EMBEDDING : SupportedType.EMBEDDING,
-            Symbol.LABEL_KEY : SupportedType.STRING,
-            Symbol.LABEL_VALUE : SupportedType.STRING,
-            Symbol.SCORE : SupportedType.FLOAT,
-
+            Symbol.DATASET_NAME: SupportedType.STRING,
+            Symbol.MODEL_NAME: SupportedType.STRING,
+            Symbol.DATUM_UID: SupportedType.STRING,
+            Symbol.TASK_TYPE: SupportedType.TASK_TYPE,
+            Symbol.BOX: SupportedType.BOX,
+            Symbol.POLYGON: SupportedType.POLYGON,
+            Symbol.EMBEDDING: SupportedType.EMBEDDING,
+            Symbol.LABEL_KEY: SupportedType.STRING,
+            Symbol.LABEL_VALUE: SupportedType.STRING,
+            Symbol.SCORE: SupportedType.FLOAT,
             # 'area' attribue
-            Symbol.DATASET_META_AREA : SupportedType.FLOAT,
-            Symbol.MODEL_META_AREA : SupportedType.FLOAT,
-            Symbol.DATUM_META_AREA : SupportedType.FLOAT,
-            Symbol.ANNOTATION_META_AREA : SupportedType.FLOAT,
-            Symbol.BOX_AREA : SupportedType.FLOAT,
-            Symbol.POLYGON_AREA : SupportedType.FLOAT,
-            Symbol.RASTER_AREA : SupportedType.FLOAT,
-            
+            Symbol.DATASET_META_AREA: SupportedType.FLOAT,
+            Symbol.MODEL_META_AREA: SupportedType.FLOAT,
+            Symbol.DATUM_META_AREA: SupportedType.FLOAT,
+            Symbol.ANNOTATION_META_AREA: SupportedType.FLOAT,
+            Symbol.BOX_AREA: SupportedType.FLOAT,
+            Symbol.POLYGON_AREA: SupportedType.FLOAT,
+            Symbol.RASTER_AREA: SupportedType.FLOAT,
             # unsupported
-            Symbol.DATASET_META : None,
-            Symbol.MODEL_META : None,
-            Symbol.DATUM_META : None,
-            Symbol.ANNOTATION_META : None,
-            Symbol.RASTER : None,
-            Symbol.LABELS : None,
+            Symbol.DATASET_META: None,
+            Symbol.MODEL_META: None,
+            Symbol.DATUM_META: None,
+            Symbol.ANNOTATION_META: None,
+            Symbol.RASTER: None,
+            Symbol.LABELS: None,
         }
         if self not in map_symbol_to_type:
             raise NotImplementedError(f"{self} is does not have a type.")
@@ -182,18 +180,18 @@ class Value(BaseModel):
     value: bool | int | float | str | list | dict
     model_config = ConfigDict(extra="forbid")
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def _validate_value(self):
         if self.type not in map_type_to_validator:
             raise TypeError(f"'{self.type}' is not a valid type.")
         map_type_to_validator[self.type](self.value)
         return self
-    
+
     @classmethod
     def infer(
-        cls, 
-        value: bool | int | float | str,
-    ):  
+        cls,
+        value: bool | int | float | str | TaskType,
+    ):
         type_ = type(value)
         if type_ is bool:
             return cls(type=SupportedType.BOOLEAN, value=value)
@@ -203,9 +201,13 @@ class Value(BaseModel):
             return cls(type=SupportedType.FLOAT, value=value)
         elif type_ is str:
             return cls(type=SupportedType.STRING, value=value)
+        elif type_ is TaskType:
+            return cls(type=SupportedType.TASK_TYPE, value=value)
         else:
-            raise TypeError(f"Type inference is not supported for type '{type_}'.")
-        
+            raise TypeError(
+                f"Type inference is not supported for type '{type_}'."
+            )
+
 
 class Condition(BaseModel):
     lhs: Symbol
@@ -215,7 +217,7 @@ class Condition(BaseModel):
     op: FilterOperator
     model_config = ConfigDict(extra="forbid")
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def _validate_object(self):
 
         # validate operator
@@ -234,17 +236,16 @@ class Condition(BaseModel):
             ):
                 if self.rhs is None:
                     raise ValueError("TODO")
-            case (            
-                FilterOperator.ISNULL
-                | FilterOperator.ISNOTNULL
-            ):
+            case (FilterOperator.ISNULL | FilterOperator.ISNOTNULL):
                 if self.rhs is not None:
                     raise ValueError("TODO")
             case _:
-                raise NotImplementedError(f"Filter operator '{self.op}' is not implemented.")
+                raise NotImplementedError(
+                    f"Filter operator '{self.op}' is not implemented."
+                )
 
         return self
-        
+
 
 class LogicalFunction(BaseModel):
     args: "Condition | LogicalFunction | list[Condition] | list[LogicalFunction] | list[Condition | LogicalFunction]"
@@ -282,7 +283,7 @@ def soft_and(items: list[FunctionType]) -> FunctionType:
         return items[0]
     else:
         raise ValueError("Passed an empty list.")
-    
+
 
 def soft_or(items: list[FunctionType]) -> FunctionType:
     if len(items) > 1:

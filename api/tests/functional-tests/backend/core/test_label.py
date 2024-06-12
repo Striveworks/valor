@@ -367,10 +367,7 @@ def test_get_joint_labels(
                     ),
                     schemas.Condition(
                         lhs=schemas.Symbol.TASK_TYPE,
-                        rhs=schemas.Value(
-                            type=schemas.SupportedType.TASK_TYPE,
-                            value=enums.TaskType.CLASSIFICATION,
-                        ),
+                        rhs=schemas.Value.infer(enums.TaskType.CLASSIFICATION),
                         op=schemas.FilterOperator.CONTAINS,
                     ),
                     schemas.Condition(
@@ -386,7 +383,7 @@ def test_get_joint_labels(
                         op=schemas.FilterOperator.ISNULL,
                     ),
                 ],
-                op=schemas.LogicalOperator.AND
+                op=schemas.LogicalOperator.AND,
             )
         ),
         rhs=schemas.Filter(
@@ -399,10 +396,7 @@ def test_get_joint_labels(
                     ),
                     schemas.Condition(
                         lhs=schemas.Symbol.TASK_TYPE,
-                        rhs=schemas.Value(
-                            type=schemas.SupportedType.TASK_TYPE,
-                            value=enums.TaskType.CLASSIFICATION,
-                        ),
+                        rhs=schemas.Value.infer(enums.TaskType.CLASSIFICATION),
                         op=schemas.FilterOperator.CONTAINS,
                     ),
                     schemas.Condition(
@@ -418,7 +412,7 @@ def test_get_joint_labels(
                         op=schemas.FilterOperator.ISNULL,
                     ),
                 ],
-                op=schemas.LogicalOperator.AND
+                op=schemas.LogicalOperator.AND,
             )
         ),
     )
@@ -447,14 +441,11 @@ def test_get_joint_keys(
                     ),
                     schemas.Condition(
                         lhs=schemas.Symbol.TASK_TYPE,
-                        rhs=schemas.Value(
-                            type=schemas.SupportedType.TASK_TYPE,
-                            value=enums.TaskType.CLASSIFICATION,
-                        ),
+                        rhs=schemas.Value.infer(enums.TaskType.CLASSIFICATION),
                         op=schemas.FilterOperator.CONTAINS,
                     ),
                 ],
-                op=schemas.LogicalOperator.AND
+                op=schemas.LogicalOperator.AND,
             )
         ),
         rhs=schemas.Filter(
@@ -467,14 +458,11 @@ def test_get_joint_keys(
                     ),
                     schemas.Condition(
                         lhs=schemas.Symbol.TASK_TYPE,
-                        rhs=schemas.Value(
-                            type=schemas.SupportedType.TASK_TYPE,
-                            value=enums.TaskType.CLASSIFICATION,
-                        ),
+                        rhs=schemas.Value.infer(enums.TaskType.CLASSIFICATION),
                         op=schemas.FilterOperator.CONTAINS,
                     ),
                 ],
-                op=schemas.LogicalOperator.AND
+                op=schemas.LogicalOperator.AND,
             )
         ),
     )
@@ -500,10 +488,7 @@ def test_get_disjoint_labels(
                     ),
                     schemas.Condition(
                         lhs=schemas.Symbol.TASK_TYPE,
-                        rhs=schemas.Value(
-                            type=schemas.SupportedType.TASK_TYPE,
-                            value=enums.TaskType.CLASSIFICATION,
-                        ),
+                        rhs=schemas.Value.infer(enums.TaskType.CLASSIFICATION),
                         op=schemas.FilterOperator.CONTAINS,
                     ),
                     schemas.Condition(
@@ -519,7 +504,7 @@ def test_get_disjoint_labels(
                         op=schemas.FilterOperator.ISNULL,
                     ),
                 ],
-                op=schemas.LogicalOperator.AND
+                op=schemas.LogicalOperator.AND,
             )
         ),
         rhs=schemas.Filter(
@@ -532,10 +517,7 @@ def test_get_disjoint_labels(
                     ),
                     schemas.Condition(
                         lhs=schemas.Symbol.TASK_TYPE,
-                        rhs=schemas.Value(
-                            type=schemas.SupportedType.TASK_TYPE,
-                            value=enums.TaskType.CLASSIFICATION,
-                        ),
+                        rhs=schemas.Value.infer(enums.TaskType.CLASSIFICATION),
                         op=schemas.FilterOperator.CONTAINS,
                     ),
                     schemas.Condition(
@@ -551,7 +533,7 @@ def test_get_disjoint_labels(
                         op=schemas.FilterOperator.ISNULL,
                     ),
                 ],
-                op=schemas.LogicalOperator.AND
+                op=schemas.LogicalOperator.AND,
             )
         ),
     )
@@ -580,20 +562,17 @@ def test_get_disjoint_keys(
             labels=schemas.LogicalFunction(
                 args=[
                     schemas.Condition(
-                        lhs=schemas.Symbol.MODEL_NAME,
-                        rhs=schemas.Value.infer(model_name),
+                        lhs=schemas.Symbol.DATASET_NAME,
+                        rhs=schemas.Value.infer(dataset_name),
                         op=schemas.FilterOperator.EQ,
                     ),
                     schemas.Condition(
                         lhs=schemas.Symbol.TASK_TYPE,
-                        rhs=schemas.Value(
-                            type=schemas.SupportedType.TASK_TYPE,
-                            value=enums.TaskType.CLASSIFICATION,
-                        ),
+                        rhs=schemas.Value.infer(enums.TaskType.CLASSIFICATION),
                         op=schemas.FilterOperator.CONTAINS,
                     ),
                 ],
-                op=schemas.LogicalOperator.AND
+                op=schemas.LogicalOperator.AND,
             )
         ),
         rhs=schemas.Filter(
@@ -606,14 +585,11 @@ def test_get_disjoint_keys(
                     ),
                     schemas.Condition(
                         lhs=schemas.Symbol.TASK_TYPE,
-                        rhs=schemas.Value(
-                            type=schemas.SupportedType.TASK_TYPE,
-                            value=enums.TaskType.CLASSIFICATION,
-                        ),
+                        rhs=schemas.Value.infer(enums.TaskType.CLASSIFICATION),
                         op=schemas.FilterOperator.CONTAINS,
                     ),
                 ],
-                op=schemas.LogicalOperator.AND
+                op=schemas.LogicalOperator.AND,
             )
         ),
     )
@@ -699,14 +675,13 @@ def test_label_functions(
                     ),
                     schemas.Condition(
                         lhs=schemas.Symbol.TASK_TYPE,
-                        rhs=schemas.Value(
-                            type=schemas.SupportedType.TASK_TYPE,
-                            value=enums.TaskType.SEMANTIC_SEGMENTATION,
+                        rhs=schemas.Value.infer(
+                            enums.TaskType.SEMANTIC_SEGMENTATION
                         ),
                         op=schemas.FilterOperator.CONTAINS,
                     ),
                 ],
-                op=schemas.LogicalOperator.AND
+                op=schemas.LogicalOperator.AND,
             )
         ),
         ignore_predictions=True,
@@ -724,9 +699,8 @@ def test_label_functions(
                     ),
                     schemas.Condition(
                         lhs=schemas.Symbol.TASK_TYPE,
-                        rhs=schemas.Value(
-                            type=schemas.SupportedType.TASK_TYPE,
-                            value=enums.TaskType.SEMANTIC_SEGMENTATION,
+                        rhs=schemas.Value.infer(
+                            enums.TaskType.SEMANTIC_SEGMENTATION
                         ),
                         op=schemas.FilterOperator.CONTAINS,
                     ),
@@ -735,7 +709,7 @@ def test_label_functions(
                         op=schemas.FilterOperator.ISNOTNULL,
                     ),
                 ],
-                op=schemas.LogicalOperator.AND
+                op=schemas.LogicalOperator.AND,
             )
         ),
         ignore_predictions=True,
@@ -757,9 +731,8 @@ def test_label_functions(
                         ),
                         schemas.Condition(
                             lhs=schemas.Symbol.TASK_TYPE,
-                            rhs=schemas.Value(
-                                type=schemas.SupportedType.TASK_TYPE,
-                                value=enums.TaskType.SEMANTIC_SEGMENTATION,
+                            rhs=schemas.Value.infer(
+                                enums.TaskType.SEMANTIC_SEGMENTATION
                             ),
                             op=schemas.FilterOperator.CONTAINS,
                         ),
@@ -768,7 +741,7 @@ def test_label_functions(
                             op=schemas.FilterOperator.ISNOTNULL,
                         ),
                     ],
-                    op=schemas.LogicalOperator.AND
+                    op=schemas.LogicalOperator.AND,
                 )
             ),
             ignore_predictions=True,
@@ -793,14 +766,13 @@ def test_label_functions(
                     ),
                     schemas.Condition(
                         lhs=schemas.Symbol.TASK_TYPE,
-                        rhs=schemas.Value(
-                            type=schemas.SupportedType.TASK_TYPE,
-                            value=enums.TaskType.SEMANTIC_SEGMENTATION,
+                        rhs=schemas.Value.infer(
+                            enums.TaskType.SEMANTIC_SEGMENTATION
                         ),
                         op=schemas.FilterOperator.CONTAINS,
                     ),
                 ],
-                op=schemas.LogicalOperator.AND
+                op=schemas.LogicalOperator.AND,
             )
         ),
         ignore_groundtruths=True,
@@ -823,9 +795,8 @@ def test_label_functions(
                     ),
                     schemas.Condition(
                         lhs=schemas.Symbol.TASK_TYPE,
-                        rhs=schemas.Value(
-                            type=schemas.SupportedType.TASK_TYPE,
-                            value=enums.TaskType.SEMANTIC_SEGMENTATION,
+                        rhs=schemas.Value.infer(
+                            enums.TaskType.SEMANTIC_SEGMENTATION
                         ),
                         op=schemas.FilterOperator.CONTAINS,
                     ),
@@ -834,7 +805,7 @@ def test_label_functions(
                         op=schemas.FilterOperator.ISNOTNULL,
                     ),
                 ],
-                op=schemas.LogicalOperator.AND
+                op=schemas.LogicalOperator.AND,
             )
         ),
         ignore_groundtruths=True,
@@ -862,9 +833,8 @@ def test_label_functions(
                         ),
                         schemas.Condition(
                             lhs=schemas.Symbol.TASK_TYPE,
-                            rhs=schemas.Value(
-                                type=schemas.SupportedType.TASK_TYPE,
-                                value=enums.TaskType.SEMANTIC_SEGMENTATION,
+                            rhs=schemas.Value.infer(
+                                enums.TaskType.SEMANTIC_SEGMENTATION
                             ),
                             op=schemas.FilterOperator.CONTAINS,
                         ),
@@ -873,7 +843,7 @@ def test_label_functions(
                             op=schemas.FilterOperator.ISNOTNULL,
                         ),
                     ],
-                    op=schemas.LogicalOperator.AND
+                    op=schemas.LogicalOperator.AND,
                 )
             ),
             ignore_groundtruths=True,
@@ -894,14 +864,13 @@ def test_label_functions(
                         ),
                         schemas.Condition(
                             lhs=schemas.Symbol.TASK_TYPE,
-                            rhs=schemas.Value(
-                                type=schemas.SupportedType.TASK_TYPE,
-                                value=enums.TaskType.CLASSIFICATION,
+                            rhs=schemas.Value.infer(
+                                enums.TaskType.CLASSIFICATION
                             ),
                             op=schemas.FilterOperator.CONTAINS,
                         ),
                     ],
-                    op=schemas.LogicalOperator.AND
+                    op=schemas.LogicalOperator.AND,
                 )
             ),
             ignore_predictions=True,
@@ -926,14 +895,13 @@ def test_label_functions(
                         ),
                         schemas.Condition(
                             lhs=schemas.Symbol.TASK_TYPE,
-                            rhs=schemas.Value(
-                                type=schemas.SupportedType.TASK_TYPE,
-                                value=enums.TaskType.CLASSIFICATION,
+                            rhs=schemas.Value.infer(
+                                enums.TaskType.CLASSIFICATION
                             ),
                             op=schemas.FilterOperator.CONTAINS,
                         ),
                     ],
-                    op=schemas.LogicalOperator.AND
+                    op=schemas.LogicalOperator.AND,
                 )
             ),
             ignore_groundtruths=True,
@@ -953,14 +921,13 @@ def test_label_functions(
                     ),
                     schemas.Condition(
                         lhs=schemas.Symbol.TASK_TYPE,
-                        rhs=schemas.Value(
-                            type=schemas.SupportedType.TASK_TYPE,
-                            value=enums.TaskType.OBJECT_DETECTION,
+                        rhs=schemas.Value.infer(
+                            enums.TaskType.OBJECT_DETECTION
                         ),
                         op=schemas.FilterOperator.CONTAINS,
                     ),
                 ],
-                op=schemas.LogicalOperator.AND
+                op=schemas.LogicalOperator.AND,
             )
         ),
         ignore_predictions=True,
@@ -978,9 +945,8 @@ def test_label_functions(
                     ),
                     schemas.Condition(
                         lhs=schemas.Symbol.TASK_TYPE,
-                        rhs=schemas.Value(
-                            type=schemas.SupportedType.TASK_TYPE,
-                            value=enums.TaskType.OBJECT_DETECTION,
+                        rhs=schemas.Value.infer(
+                            enums.TaskType.OBJECT_DETECTION
                         ),
                         op=schemas.FilterOperator.CONTAINS,
                     ),
@@ -989,7 +955,7 @@ def test_label_functions(
                         op=schemas.FilterOperator.ISNOTNULL,
                     ),
                 ],
-                op=schemas.LogicalOperator.AND
+                op=schemas.LogicalOperator.AND,
             )
         ),
         ignore_predictions=True,
@@ -1012,17 +978,15 @@ def test_label_functions(
                         args=[
                             schemas.Condition(
                                 lhs=schemas.Symbol.TASK_TYPE,
-                                rhs=schemas.Value(
-                                    type=schemas.SupportedType.TASK_TYPE,
-                                    value=enums.TaskType.OBJECT_DETECTION,
+                                rhs=schemas.Value.infer(
+                                    enums.TaskType.OBJECT_DETECTION
                                 ),
                                 op=schemas.FilterOperator.CONTAINS,
                             ),
                             schemas.Condition(
                                 lhs=schemas.Symbol.TASK_TYPE,
-                                rhs=schemas.Value(
-                                    type=schemas.SupportedType.TASK_TYPE,
-                                    value=enums.TaskType.SEMANTIC_SEGMENTATION,
+                                rhs=schemas.Value.infer(
+                                    enums.TaskType.SEMANTIC_SEGMENTATION
                                 ),
                                 op=schemas.FilterOperator.CONTAINS,
                             ),
@@ -1034,7 +998,7 @@ def test_label_functions(
                         op=schemas.FilterOperator.ISNOTNULL,
                     ),
                 ],
-                op=schemas.LogicalOperator.AND
+                op=schemas.LogicalOperator.AND,
             )
         ),
         ignore_predictions=True,
@@ -1059,14 +1023,13 @@ def test_label_functions(
                     ),
                     schemas.Condition(
                         lhs=schemas.Symbol.TASK_TYPE,
-                        rhs=schemas.Value(
-                            type=schemas.SupportedType.TASK_TYPE,
-                            value=enums.TaskType.SEMANTIC_SEGMENTATION,
+                        rhs=schemas.Value.infer(
+                            enums.TaskType.SEMANTIC_SEGMENTATION
                         ),
                         op=schemas.FilterOperator.CONTAINS,
                     ),
                 ],
-                op=schemas.LogicalOperator.AND
+                op=schemas.LogicalOperator.AND,
             )
         ),
         ignore_predictions=True,
@@ -1089,14 +1052,13 @@ def test_label_functions(
                     ),
                     schemas.Condition(
                         lhs=schemas.Symbol.TASK_TYPE,
-                        rhs=schemas.Value(
-                            type=schemas.SupportedType.TASK_TYPE,
-                            value=enums.TaskType.SEMANTIC_SEGMENTATION,
+                        rhs=schemas.Value.infer(
+                            enums.TaskType.SEMANTIC_SEGMENTATION
                         ),
                         op=schemas.FilterOperator.CONTAINS,
                     ),
                 ],
-                op=schemas.LogicalOperator.AND
+                op=schemas.LogicalOperator.AND,
             )
         ),
         ignore_groundtruths=True,
@@ -1120,14 +1082,13 @@ def test_label_functions(
                         ),
                         schemas.Condition(
                             lhs=schemas.Symbol.TASK_TYPE,
-                            rhs=schemas.Value(
-                                type=schemas.SupportedType.TASK_TYPE,
-                                value=enums.TaskType.OBJECT_DETECTION,
+                            rhs=schemas.Value.infer(
+                                enums.TaskType.OBJECT_DETECTION
                             ),
                             op=schemas.FilterOperator.CONTAINS,
                         ),
                     ],
-                    op=schemas.LogicalOperator.AND
+                    op=schemas.LogicalOperator.AND,
                 )
             ),
             ignore_groundtruths=True,
@@ -1154,17 +1115,15 @@ def test_label_functions(
                         args=[
                             schemas.Condition(
                                 lhs=schemas.Symbol.TASK_TYPE,
-                                rhs=schemas.Value(
-                                    type=schemas.SupportedType.TASK_TYPE,
-                                    value=enums.TaskType.OBJECT_DETECTION,
+                                rhs=schemas.Value.infer(
+                                    enums.TaskType.OBJECT_DETECTION
                                 ),
                                 op=schemas.FilterOperator.CONTAINS,
                             ),
                             schemas.Condition(
                                 lhs=schemas.Symbol.TASK_TYPE,
-                                rhs=schemas.Value(
-                                    type=schemas.SupportedType.TASK_TYPE,
-                                    value=enums.TaskType.SEMANTIC_SEGMENTATION,
+                                rhs=schemas.Value.infer(
+                                    enums.TaskType.SEMANTIC_SEGMENTATION
                                 ),
                                 op=schemas.FilterOperator.CONTAINS,
                             ),
@@ -1176,7 +1135,7 @@ def test_label_functions(
                         op=schemas.FilterOperator.ISNOTNULL,
                     ),
                 ],
-                op=schemas.LogicalOperator.AND
+                op=schemas.LogicalOperator.AND,
             )
         ),
         ignore_groundtruths=True,
@@ -1203,9 +1162,8 @@ def test_label_functions(
                         ),
                         schemas.Condition(
                             lhs=schemas.Symbol.TASK_TYPE,
-                            rhs=schemas.Value(
-                                type=schemas.SupportedType.TASK_TYPE,
-                                value=enums.TaskType.OBJECT_DETECTION,
+                            rhs=schemas.Value.infer(
+                                enums.TaskType.OBJECT_DETECTION
                             ),
                             op=schemas.FilterOperator.CONTAINS,
                         ),
@@ -1214,7 +1172,7 @@ def test_label_functions(
                             op=schemas.FilterOperator.ISNOTNULL,
                         ),
                     ],
-                    op=schemas.LogicalOperator.AND
+                    op=schemas.LogicalOperator.AND,
                 )
             ),
             ignore_groundtruths=True,
