@@ -8,5 +8,5 @@ RUN chmod +x /entrypoint.sh
 RUN apk --update add postgresql-client
 
 ENTRYPOINT ["/entrypoint.sh"]
-CMD ["up", "1"]
+CMD ["up"]
 USER 65532:65532
