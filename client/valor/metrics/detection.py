@@ -124,7 +124,27 @@ class IntermediateMetricDataAtLabelAndIoUThreshold:
         )
 
 
-def combine_intermediate_metric_data_at_iou(
+IntermediateMetricDataAtLabel = Dict[
+    float, IntermediateMetricDataAtLabelAndIoUThreshold
+]  # maps IoU threshold to IntermediateMetricDataAtLabelAndIoUThreshold
+
+IntermediateMetricData = Dict[
+    Tuple[str, str], IntermediateMetricDataAtLabel
+]  # maps label key and value tuple to IntermediateMetricDataAtLabel
+
+
+def accept_arbitrary_args(func):
+    def wrapper(*args):
+        ret = args[0]
+        for arg in args[1:]:
+            ret = func(ret, arg)
+        return ret
+
+    return wrapper
+
+
+@accept_arbitrary_args
+def combine_intermediate_metric_data_at_label_and_iou(
     imd1: IntermediateMetricDataAtLabelAndIoUThreshold,
     imd2: IntermediateMetricDataAtLabelAndIoUThreshold,
 ) -> IntermediateMetricDataAtLabelAndIoUThreshold:
@@ -148,28 +168,57 @@ def combine_intermediate_metric_data_at_iou(
     )
 
 
-def combine_intermediate_metric_data(
-    imd1: Dict[float, IntermediateMetricDataAtLabelAndIoUThreshold],
-    imd2: Dict[float, IntermediateMetricDataAtLabelAndIoUThreshold],
+@accept_arbitrary_args
+def combine_intermediate_metric_data_at_label(
+    imd1: IntermediateMetricDataAtLabel, imd2: IntermediateMetricDataAtLabel
 ) -> Dict[float, IntermediateMetricDataAtLabelAndIoUThreshold]:
 
     if set(imd1.keys()) != set(imd2.keys()):
         raise ValueError("iou thresholds must be the same")
 
     return {
-        iou_thres: combine_intermediate_metric_data_at_iou(
+        iou_thres: combine_intermediate_metric_data_at_label_and_iou(
             imd1[iou_thres], imd2[iou_thres]
         )
         for iou_thres in imd1
     }
 
 
-def get_intermediate_metric_data_for_label(
+@accept_arbitrary_args
+def combine_intermediate_metric_data(
+    imd1: IntermediateMetricData, imd2: IntermediateMetricData
+):
+    """Combines two IntermediateMetricData objects. Does not require that the
+    both have the same labels.
+    """
+
+    def _copy(
+        imd: IntermediateMetricDataAtLabel,
+    ) -> IntermediateMetricDataAtLabel:
+        return {iou_thres: imd[iou_thres].copy() for iou_thres in imd}
+
+    ret = {}
+    for label in imd1:
+        if label in imd2:
+            ret[label] = combine_intermediate_metric_data_at_label(
+                imd1[label], imd2[label]
+            )
+        else:
+            ret[label] = _copy(imd1[label])
+
+    for label in imd2:
+        if label not in imd1:
+            ret[label] = _copy(imd2[label])
+
+    return ret
+
+
+def get_intermediate_metric_data_at_label(
     predictions: List[Prediction],
     groundtruths: List[GroundTruth],
     label: Label,
     iou_thresholds: List[float],
-) -> Dict[float, IntermediateMetricDataAtLabelAndIoUThreshold]:
+) -> IntermediateMetricDataAtLabel:
     if len(predictions) != len(groundtruths):
         raise ValueError(
             "Number of predictions and groundtruths must be the same"
@@ -233,15 +282,41 @@ def get_intermediate_metric_data_for_label(
     return ret
 
 
-def ap_from_intermediate_metric_data(
-    *intermediate_metric_data: Dict[
-        float, IntermediateMetricDataAtLabelAndIoUThreshold
-    ],
-):
-    imd = intermediate_metric_data[0]
-    for other_imd in intermediate_metric_data[1:]:
-        imd = combine_intermediate_metric_data(imd, other_imd)
+def get_intermediate_metric_data(
+    predictions: List[Prediction],
+    groundtruths: List[GroundTruth],
+    iou_thresholds: List[float],
+) -> IntermediateMetricData:
+    label_tuples = set(
+        (
+            str(la.key),
+            str(la.value),
+        )  # str casting is unnecessary but appeases pyright
+        for pred in predictions
+        for ann in pred.annotations
+        for la in ann.labels
+    ).union(
+        (str(la.key), str(la.value))
+        for gt in groundtruths
+        for ann in gt.annotations
+        for la in ann.labels
+    )
 
+    return {
+        label_tuple: get_intermediate_metric_data_at_label(
+            predictions=predictions,
+            groundtruths=groundtruths,
+            label=Label(key=label_tuple[0], value=label_tuple[1]),
+            iou_thresholds=iou_thresholds,
+        )
+        for label_tuple in label_tuples
+    }
+
+
+def compute_ap_metrics_from_intermediate_metric_data_at_label(
+    *intermediate_metric_data: IntermediateMetricDataAtLabel,
+):
+    imd = combine_intermediate_metric_data_at_label(*intermediate_metric_data)
     # total number of groundtruth objects across all images
     ret = {}
     for iou_threshold, imd_at_iou in imd.items():
@@ -278,16 +353,14 @@ def ap(
             "Number of predictions and groundtruths must be the same"
         )
 
-    tp_fp_thresholds = get_intermediate_metric_data_for_label(
-        predictions=predictions,
-        groundtruths=groundtruths,
-        label=label,
-        iou_thresholds=iou_thresholds,
+    return compute_ap_metrics_from_intermediate_metric_data_at_label(
+        get_intermediate_metric_data_at_label(
+            predictions=predictions,
+            groundtruths=groundtruths,
+            label=label,
+            iou_thresholds=iou_thresholds,
+        )
     )
-
-    ret = ap_from_intermediate_metric_data(tp_fp_thresholds)
-
-    return ret
 
 
 def compute_ap_metrics(
@@ -347,6 +420,18 @@ def compute_ap_metrics(
     return ret
 
 
+def compute_ap_metrics_from_intermediate_metric_data(
+    *intermediate_metric_data: IntermediateMetricData,
+):
+    imd = combine_intermediate_metric_data(*intermediate_metric_data)
+    return {
+        label: compute_ap_metrics_from_intermediate_metric_data_at_label(
+            imd_at_label
+        )
+        for label, imd_at_label in imd.items()
+    }
+
+
 def calculate_ap_101_pt_interp(precisions, recalls):
     """Use the 101 point interpolation method (following torchmetrics)"""
     assert len(precisions) == len(recalls)
@@ -373,3 +458,16 @@ def calculate_ap_101_pt_interp(precisions, recalls):
             continue
         ret -= prec_heap[0][0]
     return ret / 101
+
+
+def evaluate_detection(*intermediate_metric_data: IntermediateMetricData):
+    """Evaluate detection metrics from intermediate metric data.
+
+    Parameters
+    ----------
+    intermediate_metric_data
+        Each of these is a dictionary, indexed by label key and value tuples. The value is itself
+        a dictionary indexed by IoU threshold, with the value being a `IntermediateMetricDataAtLabelAndIoUThreshold`
+        object.
+    """
+    pass
