@@ -20,7 +20,7 @@ class EvaluationParameters(BaseModel):
         The task type of a given evaluation.
     label_map: Optional[List[List[List[str]]]]
         Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
-    metrics: List[str], optional
+    metrics_to_return: List[str], optional
         The list of metrics to compute, store, and return to the user.
     convert_annotations_to_type: AnnotationType | None = None
         The type to convert all annotations to.
