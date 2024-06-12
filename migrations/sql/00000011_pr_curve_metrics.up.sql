@@ -1,6 +1,6 @@
 -- Update 'pr_curve_iou_threshold' to 0.5 if it is NULL
 UPDATE evaluation
-SET parameters = jsonb_set(parameters,'{pr_curve_iou_threshold}', '0.5'::jsonb, false)
+SET parameters = jsonb_set(parameters, '{pr_curve_iou_threshold}', '0.5'::jsonb, false)
 WHERE parameters->'pr_curve_iou_threshold' IS NULL;
 
 CREATE OR REPLACE FUNCTION convert_pr_curve(jsonb)
@@ -23,10 +23,10 @@ BEGIN
             FOR metric_key, metric_value IN SELECT * FROM jsonb_each(score_threshold_dict)
             LOOP
                 IF jsonb_typeof(metric_value) != 'array' THEN
-                    metric_dict := jsonb_set(metric_dict, '{' || metric_key || '}', metric_value);
+                    metric_dict := jsonb_set(metric_dict, '{' || metric_key || '}', metric_value, true);
                 END IF;
             END LOOP;
-            result := jsonb_set(result, '{' || label_value || ',' || score_threshold || '}', metric_dict);
+            result := jsonb_set(result, '{' || label_value || ',' || score_threshold || '}', metric_dict, true);
         END LOOP;
     END LOOP;
     RETURN result;
