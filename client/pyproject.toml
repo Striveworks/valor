@@ -16,6 +16,7 @@ build-backend = "setuptools.build_meta"
 
 [project.optional-dependencies]
 test = ["pytest", "coverage"]
+local-metrics = ["numpy >= 1.24.3"]
 
 [tool.black]
 line-length = 79

@@ -2,6 +2,8 @@ import heapq
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple, Union
 
+import numpy as np
+
 from valor.coretypes import GroundTruth, Label, Prediction
 from valor.metrics.classification import combine_tps_fps_thresholds
 from valor.schemas import Box
@@ -78,14 +80,6 @@ def iou_matrix(
     ]
 
 
-def _cumsum(a: list) -> list:
-    ret = [0]
-    for x in a:
-        ret.append(ret[-1] + x)
-
-    return ret[1:]
-
-
 @dataclass
 class DetectionMatchInfo:
     tp: bool
@@ -117,9 +111,9 @@ def _get_tp_fp_single_image_single_class(
 @dataclass
 class IntermediateMetricDataAtLabelAndIoUThreshold:
     n_gt: int
-    tp: Union[List[float], None] = None
-    fp: Union[List[float], None] = None
-    scores: Union[List[float], None] = None
+    tp: Union[np.ndarray, None] = None
+    fp: Union[np.ndarray, None] = None
+    scores: Union[np.ndarray, None] = None
 
     def copy(self):
         return IntermediateMetricDataAtLabelAndIoUThreshold(
@@ -135,9 +129,9 @@ def combine_intermediate_metric_data_at_iou(
     imd2: IntermediateMetricDataAtLabelAndIoUThreshold,
 ) -> IntermediateMetricDataAtLabelAndIoUThreshold:
     n_gt = imd1.n_gt + imd2.n_gt
-    if imd1.tp is None or imd1.tp is None:
+    if imd1.tp is None or imd1.fp is None or imd1.scores is None:
         return imd2.copy()
-    if imd2.tp is None or imd2.tp is None:
+    if imd2.tp is None or imd2.fp is None or imd2.scores is None:
         return imd1.copy()
 
     tps, fps, scores = combine_tps_fps_thresholds(
@@ -223,12 +217,12 @@ def get_intermediate_metric_data_for_label(
 
         match_infos = sorted(match_infos, key=lambda m: m.score, reverse=True)
 
-        tp = [float(m.tp) for m in match_infos]
-        fp = [float(not m.tp) for m in match_infos]
+        tp = np.array([float(m.tp) for m in match_infos])
+        fp = np.array([float(not m.tp) for m in match_infos])
 
-        cum_tp = _cumsum(tp)
-        cum_fp = _cumsum(fp)
-        scores = [m.score for m in match_infos]
+        cum_tp = tp.cumsum()
+        cum_fp = fp.cumsum()
+        scores = np.array([m.score for m in match_infos])
 
         ret[iou_thres] = IntermediateMetricDataAtLabelAndIoUThreshold(
             tp=cum_tp,

@@ -5,7 +5,7 @@ import numpy as np
 from valor.coretypes import GroundTruth, Label, Prediction
 
 
-def get_tps_fps_thresholds(
+def get_tps_fps_thresholds_from_groundtruths_predictions(
     data: Iterable[Tuple[GroundTruth, Prediction]], label: Label
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     y_true, y_score = [], []
@@ -106,3 +106,7 @@ def combine_tps_fps_thresholds(
         fps[: ret_length - dups],
         thresholds[: ret_length - dups],
     )
+
+
+def binary_roc_auc_from_intermediate_metric_data():
+    pass
