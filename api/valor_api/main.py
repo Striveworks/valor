@@ -2,7 +2,14 @@ import json
 import os
 from typing import Annotated
 
-from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Response, Query
+from fastapi import (
+    BackgroundTasks,
+    Depends,
+    FastAPI,
+    HTTPException,
+    Query,
+    Response,
+)
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
@@ -237,8 +244,13 @@ def get_prediction(
 )
 def get_labels(
     response: Response,
-    offset: int = Query(0, description="The start index of the items to return."),
-    limit: int = Query(-1, description="The number of items to return. Returns all items when set to -1."),
+    offset: int = Query(
+        0, description="The start index of the items to return."
+    ),
+    limit: int = Query(
+        -1,
+        description="The number of items to return. Returns all items when set to -1.",
+    ),
     db: Session = Depends(get_db),
 ) -> list[schemas.Label]:
     """
@@ -273,7 +285,7 @@ def get_labels(
         return list(content)
     except Exception as e:
         raise exceptions.create_http_error(e)
-    
+
 
 @app.post(
     "/labels/filter",
@@ -285,8 +297,13 @@ def get_labels(
 def get_filtered_labels(
     response: Response,
     filters: schemas.Filter,
-    offset: int = Query(0, description="The start index of the items to return."),
-    limit: int = Query(-1, description="The number of items to return. Returns all items when set to -1."),
+    offset: int = Query(
+        0, description="The start index of the items to return."
+    ),
+    limit: int = Query(
+        -1,
+        description="The number of items to return. Returns all items when set to -1.",
+    ),
     db: Session = Depends(get_db),
 ) -> list[schemas.Label]:
     """
@@ -334,8 +351,13 @@ def get_filtered_labels(
 def get_labels_from_dataset(
     response: Response,
     dataset_name: str,
-    offset: int = Query(0, description="The start index of the items to return."),
-    limit: int = Query(-1, description="The number of items to return. Returns all items when set to -1."),
+    offset: int = Query(
+        0, description="The start index of the items to return."
+    ),
+    limit: int = Query(
+        -1,
+        description="The number of items to return. Returns all items when set to -1.",
+    ),
     db: Session = Depends(get_db),
 ) -> list[schemas.Label]:
     """
@@ -369,8 +391,8 @@ def get_labels_from_dataset(
             db=db,
             filters=schemas.Filter(
                 groundtruths=schemas.Condition(
-                    symbol=schemas.Symbol(name="dataset.name"),
-                    value=schemas.Value(type="string", value=dataset_name),
+                    lhs=schemas.Symbol.DATASET_NAME,
+                    rhs=schemas.Value.infer(dataset_name),
                     op=schemas.FilterOperator.EQ,
                 )
             ),
@@ -394,8 +416,13 @@ def get_labels_from_dataset(
 def get_labels_from_model(
     response: Response,
     model_name: str,
-    offset: int = Query(0, description="The start index of the items to return."),
-    limit: int = Query(-1, description="The number of items to return. Returns all items when set to -1."),
+    offset: int = Query(
+        0, description="The start index of the items to return."
+    ),
+    limit: int = Query(
+        -1,
+        description="The number of items to return. Returns all items when set to -1.",
+    ),
     db: Session = Depends(get_db),
 ) -> list[schemas.Label]:
     """
@@ -430,9 +457,9 @@ def get_labels_from_model(
         content, headers = crud.get_labels(
             db=db,
             filters=schemas.Filter(
-                predictions=schemas.Condition(
-                    symbol=schemas.Symbol(name="model.name"),
-                    value=schemas.Value(type="string", value=model_name),
+                groundtruths=schemas.Condition(
+                    lhs=schemas.Symbol.MODEL_NAME,
+                    rhs=schemas.Value.infer(model_name),
                     op=schemas.FilterOperator.EQ,
                 )
             ),
@@ -489,8 +516,13 @@ def create_dataset(dataset: schemas.Dataset, db: Session = Depends(get_db)):
 )
 def get_datasets(
     response: Response,
-    offset: int = Query(0, description="The start index of the items to return."),
-    limit: int = Query(-1, description="The number of items to return. Returns all items when set to -1."),
+    offset: int = Query(
+        0, description="The start index of the items to return."
+    ),
+    limit: int = Query(
+        -1,
+        description="The number of items to return. Returns all items when set to -1.",
+    ),
     db: Session = Depends(get_db),
 ) -> list[schemas.Dataset]:
     """
@@ -539,8 +571,13 @@ def get_datasets(
 def get_filtered_datasets(
     response: Response,
     filters: schemas.Filter,
-    offset: int = Query(0, description="The start index of the items to return."),
-    limit: int = Query(-1, description="The number of items to return. Returns all items when set to -1."),
+    offset: int = Query(
+        0, description="The start index of the items to return."
+    ),
+    limit: int = Query(
+        -1,
+        description="The number of items to return. Returns all items when set to -1.",
+    ),
     db: Session = Depends(get_db),
 ) -> list[schemas.Dataset]:
     """
@@ -772,8 +809,13 @@ def delete_dataset(
 )
 def get_datums(
     response: Response,
-    offset: int = Query(0, description="The start index of the items to return."),
-    limit: int = Query(-1, description="The number of items to return. Returns all items when set to -1."),
+    offset: int = Query(
+        0, description="The start index of the items to return."
+    ),
+    limit: int = Query(
+        -1,
+        description="The number of items to return. Returns all items when set to -1.",
+    ),
     db: Session = Depends(get_db),
 ) -> list[schemas.Datum]:
     """
@@ -825,8 +867,13 @@ def get_datums(
 def get_filtered_datums(
     response: Response,
     filters: schemas.Filter,
-    offset: int = Query(0, description="The start index of the items to return."),
-    limit: int = Query(-1, description="The number of items to return. Returns all items when set to -1."),
+    offset: int = Query(
+        0, description="The start index of the items to return."
+    ),
+    limit: int = Query(
+        -1,
+        description="The number of items to return. Returns all items when set to -1.",
+    ),
     db: Session = Depends(get_db),
 ) -> list[schemas.Datum]:
     """
@@ -901,13 +948,13 @@ def get_datum(
                 datums=schemas.LogicalFunction(
                     args=[
                         schemas.Condition(
-                            symbol=schemas.Symbol(name="dataset.name"),
-                            value=schemas.Value(type="string", value=dataset_name),
+                            lhs=schemas.Symbol.DATASET_NAME,
+                            rhs=schemas.Value.infer(dataset_name),
                             op=schemas.FilterOperator.EQ,
                         ),
                         schemas.Condition(
-                            symbol=schemas.Symbol(name="datum.uid"),
-                            value=schemas.Value(type="string", value=uid),
+                            lhs=schemas.Symbol.DATUM_UID,
+                            rhs=schemas.Value.infer(uid),
                             op=schemas.FilterOperator.EQ,
                         ),
                     ],
@@ -969,8 +1016,13 @@ def create_model(model: schemas.Model, db: Session = Depends(get_db)):
 )
 def get_models(
     response: Response,
-    offset: int = Query(0, description="The start index of the items to return."),
-    limit: int = Query(-1, description="The number of items to return. Returns all items when set to -1."),
+    offset: int = Query(
+        0, description="The start index of the items to return."
+    ),
+    limit: int = Query(
+        -1,
+        description="The number of items to return. Returns all items when set to -1.",
+    ),
     db: Session = Depends(get_db),
 ) -> list[schemas.Model]:
     """
@@ -1016,8 +1068,13 @@ def get_models(
 def get_filtered_models(
     response: Response,
     filters: schemas.Filter,
-    offset: int = Query(0, description="The start index of the items to return."),
-    limit: int = Query(-1, description="The number of items to return. Returns all items when set to -1."),
+    offset: int = Query(
+        0, description="The start index of the items to return."
+    ),
+    limit: int = Query(
+        -1,
+        description="The number of items to return. Returns all items when set to -1.",
+    ),
     db: Session = Depends(get_db),
 ) -> list[schemas.Model]:
     """
@@ -1311,11 +1368,25 @@ def create_or_get_evaluations(
 )
 def get_evaluations(
     response: Response,
-    datasets: str | None = Query(None, description="An optional set of dataset names to constrain by."),
-    models: str | None = Query(None, description="An optional set of model names to constrain by."),
-    evaluation_ids: str | None = Query(None, description="An optional set of evaluation_ids to constrain by."),
-    offset: int = Query(0, description="The start index of the items to return."),
-    limit: int = Query(-1, description="The number of items to return. Returns all items when set to -1."),
+    datasets: str
+    | None = Query(
+        None, description="An optional set of dataset names to constrain by."
+    ),
+    models: str
+    | None = Query(
+        None, description="An optional set of model names to constrain by."
+    ),
+    evaluation_ids: str
+    | None = Query(
+        None, description="An optional set of evaluation_ids to constrain by."
+    ),
+    offset: int = Query(
+        0, description="The start index of the items to return."
+    ),
+    limit: int = Query(
+        -1,
+        description="The number of items to return. Returns all items when set to -1.",
+    ),
     metrics_to_sort_by: str | None = None,
     db: Session = Depends(get_db),
 ) -> list[schemas.EvaluationResponse]:

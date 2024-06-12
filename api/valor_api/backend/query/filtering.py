@@ -29,13 +29,13 @@ from valor_api.backend.models import (
 )
 from valor_api.backend.query.types import LabelSourceAlias, TableTypeAlias
 from valor_api.schemas.filters import (
+    Condition,
     Filter,
+    FilterOperator,
+    LogicalFunction,
+    SupportedType,
     Symbol,
     Value,
-    Condition,
-    LogicalFunction,
-    FilterOperator,
-    SupportedType,
 )
 from valor_api.schemas.geometry import (
     Box,
@@ -83,16 +83,19 @@ map_symbol_to_resources = {
     Symbol.LABEL_KEY: (Label, Label.key),
     Symbol.LABEL_VALUE: (Label, Label.value),
     Symbol.SCORE: (Prediction, Prediction.score),
-
     # 'area' attribute
     Symbol.BOX_AREA: (Annotation, ST_Area(Annotation.box)),
     Symbol.POLYGON_AREA: (Annotation, ST_Area(Annotation.polygon)),
-    Symbol.RASTER_AREA: (Annotation, ST_Area(Annotation.raster)),
-
+    Symbol.RASTER_AREA: (Annotation, ST_Count(Annotation.raster)),
     # backend use only
-    "label.id": (Label, Label.id),
-    "model.id": (Model, Model.id),
-    "annotation.model_id": (Annotation, Annotation.model_id),
+    Symbol.DATASET_ID: (Dataset, Dataset.id),
+    Symbol.MODEL_ID: (Model, Model.id),
+    Symbol.DATUM_ID: (Datum, Datum.id),
+    Symbol.ANNOTATION_ID: (Annotation, Annotation.id),
+    Symbol.GROUNDTRUTH_ID: (GroundTruth, GroundTruth.id),
+    Symbol.PREDICTION_ID: (Prediction, Prediction.id),
+    Symbol.LABEL_ID: (Label, Label.id),
+    Symbol.EMBEDDING_ID: (Embedding, Embedding.id),
 }
 
 
@@ -102,12 +105,23 @@ map_keyed_symbol_to_resources = {
     Symbol.MODEL_META: (Model, lambda key: Model.meta[key]),
     Symbol.DATUM_META: (Datum, lambda key: Datum.meta[key]),
     Symbol.ANNOTATION_META: (Annotation, lambda key: Annotation.meta[key]),
-
     # 'area' attribute
-    Symbol.DATASET_META_AREA: (Dataset, lambda key: ST_Area(ST_GeomFromGeoJSON(Dataset.meta[key]["value"]))),
-    Symbol.MODEL_META_AREA: (Model, lambda key: ST_Area(ST_GeomFromGeoJSON(Model.meta[key]["value"]))),
-    Symbol.DATUM_META_AREA: (Datum, lambda key: ST_Area(ST_GeomFromGeoJSON(Datum.meta[key]["value"]))),
-    Symbol.ANNOTATION_META_AREA: (Annotation, lambda key: ST_Area(ST_GeomFromGeoJSON(Annotation.meta[key]["value"]))),
+    Symbol.DATASET_META_AREA: (
+        Dataset,
+        lambda key: ST_Area(ST_GeomFromGeoJSON(Dataset.meta[key]["value"])),
+    ),
+    Symbol.MODEL_META_AREA: (
+        Model,
+        lambda key: ST_Area(ST_GeomFromGeoJSON(Model.meta[key]["value"])),
+    ),
+    Symbol.DATUM_META_AREA: (
+        Datum,
+        lambda key: ST_Area(ST_GeomFromGeoJSON(Datum.meta[key]["value"])),
+    ),
+    Symbol.ANNOTATION_META_AREA: (
+        Annotation,
+        lambda key: ST_Area(ST_GeomFromGeoJSON(Annotation.meta[key]["value"])),
+    ),
 }
 
 
@@ -121,7 +135,9 @@ map_type_to_jsonb_type_cast = {
     SupportedType.DATETIME: lambda x: cast(
         x["value"].astext, type_=TIMESTAMP(timezone=True)
     ),
-    SupportedType.DATE: lambda x: cast(x["value"].astext, type_=TIMESTAMP(timezone=True)),
+    SupportedType.DATE: lambda x: cast(
+        x["value"].astext, type_=TIMESTAMP(timezone=True)
+    ),
     SupportedType.TIME: lambda x: cast(x["value"].astext, type_=INTERVAL),
     SupportedType.DURATION: lambda x: cast(x["value"].astext, type_=INTERVAL),
     SupportedType.POINT: lambda x: ST_GeomFromGeoJSON(x["value"]),
@@ -132,7 +148,6 @@ map_type_to_jsonb_type_cast = {
     SupportedType.BOX: lambda x: ST_GeomFromGeoJSON(x["value"]),
     SupportedType.MULTIPOLYGON: lambda x: ST_GeomFromGeoJSON(x["value"]),
     SupportedType.GEOJSON: lambda x: ST_GeomFromGeoJSON(x["value"]),
-
     # unsupported
     SupportedType.RASTER: raise_not_implemented,
     SupportedType.EMBEDDING: raise_not_implemented,
@@ -151,19 +166,26 @@ map_type_to_type_cast = {
     SupportedType.DATE: lambda x: cast(x, type_=TIMESTAMP(timezone=True)),
     SupportedType.TIME: lambda x: cast(x, type_=INTERVAL),
     SupportedType.DURATION: lambda x: cast(cast(x, TEXT), type_=INTERVAL),
-    SupportedType.POINT: lambda x: ST_GeomFromGeoJSON(Point(value=x).to_json()),
-    SupportedType.MULTIPOINT: lambda x: ST_GeomFromGeoJSON(MultiPoint(value=x).to_json()),
-    SupportedType.LINESTRING: lambda x: ST_GeomFromGeoJSON(LineString(value=x).to_json()),
+    SupportedType.POINT: lambda x: ST_GeomFromGeoJSON(
+        Point(value=x).to_json()
+    ),
+    SupportedType.MULTIPOINT: lambda x: ST_GeomFromGeoJSON(
+        MultiPoint(value=x).to_json()
+    ),
+    SupportedType.LINESTRING: lambda x: ST_GeomFromGeoJSON(
+        LineString(value=x).to_json()
+    ),
     SupportedType.MULTILINESTRING: lambda x: ST_GeomFromGeoJSON(
         MultiLineString(value=x).to_dict()
     ),
-    SupportedType.POLYGON: lambda x: ST_GeomFromGeoJSON(Polygon(value=x).to_json()),
+    SupportedType.POLYGON: lambda x: ST_GeomFromGeoJSON(
+        Polygon(value=x).to_json()
+    ),
     SupportedType.BOX: lambda x: ST_GeomFromGeoJSON(Box(value=x).to_json()),
     SupportedType.MULTIPOLYGON: lambda x: ST_GeomFromGeoJSON(
         MultiPolygon(value=x).to_json()
     ),
     SupportedType.GEOJSON: lambda x: ST_GeomFromGeoJSON(x),
-
     # unsupported
     SupportedType.RASTER: raise_not_implemented,
     SupportedType.EMBEDDING: raise_not_implemented,
@@ -204,17 +226,25 @@ def create_cte(condition: Condition) -> tuple[TableTypeAlias, CTE]:
         table, generate_column = map_keyed_symbol_to_resources[condition.lhs]
         lhs = generate_column(condition.lhs_key)
     else:
-        raise NotImplementedError(f"Symbol '{condition.lhs}' does not match any existing templates.")
+        raise NotImplementedError(
+            f"Symbol '{condition.lhs}' does not match any existing templates."
+        )
 
     if condition.rhs and condition.lhs_key and condition.lhs.type is None:
         lhs = map_type_to_jsonb_type_cast[condition.rhs.type](lhs)
-    elif isinstance(condition.rhs, Value) and condition.rhs.type != condition.lhs.type:
-        raise TypeError(f"Type mismatch between '{condition.lhs}' and '{condition.rhs}'.")
-    
+    elif (
+        isinstance(condition.rhs, Value)
+        and condition.rhs.type != condition.lhs.type
+    ):
+        raise TypeError(
+            f"Type mismatch between '{condition.lhs}' and '{condition.rhs}'."
+        )
+
     op = map_opstr_to_operator[condition.op]
     rhs = (
-        map_type_to_type_cast[condition.rhs.type](condition.rhs.value) 
-        if isinstance(condition.rhs, Value) else None
+        map_type_to_type_cast[condition.rhs.type](condition.rhs.value)
+        if isinstance(condition.rhs, Value)
+        else None
     )
 
     return (table, select(table.id).where(op(lhs, rhs)).cte())
@@ -234,7 +264,7 @@ def _recursive_search_logic_tree(
         )
     cte_list = cte_list if cte_list else list()
     tables = tables if tables else list()
-    logical_tree = dict()           
+    logical_tree = dict()
 
     if isinstance(func, Condition):
         table, cte = create_cte(func)
@@ -258,7 +288,9 @@ def _recursive_search_logic_tree(
             logical_tree[func.op] = branches
             return (logical_tree, cte_list, tables)
     else:
-        raise TypeError(f"Recieved an unsupported type '{type(func)}' in func.")
+        raise TypeError(
+            f"Recieved an unsupported type '{type(func)}' in func."
+        )
 
 
 def map_filter_to_tables(
