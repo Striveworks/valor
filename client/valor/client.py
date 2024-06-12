@@ -193,6 +193,9 @@ class ClientConnection:
         method_name: str,
         endpoint: str,
         ignore_auth: bool = False,
+        max_retries_on_timeout=2,
+        initial_timeout: float = 2,
+        exponential_backoff: int = 2,
         *args,
         **kwargs,
     ):
@@ -209,6 +212,12 @@ class ClientConnection:
             Option to ignore authentication when you know the endpoint does not
             require a bearer token. this is used by the `_get_access_token_from_username_and_password`
             to avoid infinite recursion.
+        max_retries_on_timeout: int
+            The maximum number of retries when the requests module returns a Timeout error.
+        initial_timeout : float
+            The initial timeout value between how often we'll retry request methods.
+        exponential_backoff : integer
+            The factor by which we multiple initial_timeout for each subsequent retry.
         """
         accepted_methods = ["get", "post", "put", "delete"]
         if method_name not in accepted_methods:
@@ -224,13 +233,29 @@ class ClientConnection:
         url = urljoin(self.host, endpoint)
         requests_method = getattr(requests, method_name)
 
+        timeout_retries = 0
         tried = False
         while True:
             if self.access_token is not None:
                 headers = {"Authorization": f"Bearer {self.access_token}"}
             else:
                 headers = None
-            resp = requests_method(url, headers=headers, *args, **kwargs)
+
+            try:
+                resp = requests_method(
+                    url, headers=headers, timeout=10, *args, **kwargs
+                )
+            except requests.exceptions.Timeout as e:
+                if timeout_retries < max_retries_on_timeout:
+                    time.sleep(
+                        initial_timeout
+                        * exponential_backoff**timeout_retries
+                    )
+                    timeout_retries += 1
+                    continue
+                else:
+                    raise TimeoutError(str(e))
+
             if not resp.ok:
                 # check if unauthorized and if using username and password, get a new
                 # token and try the request again
