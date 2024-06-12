@@ -26,7 +26,7 @@ def test_to_dataframe():
         id=1,
         dataset_names=["dataset1"],
         model_name="model1",
-        filter=schemas.Filter(),
+        filters=schemas.Filter(),
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.CLASSIFICATION,
         ),
