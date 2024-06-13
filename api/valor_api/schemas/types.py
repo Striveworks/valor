@@ -35,7 +35,6 @@ MetadataType = dict[
 ]
 
 
-
 def _match_annotation_to_implied_task_type(
     annotation: "Annotation",
 ) -> list[str]:
@@ -95,14 +94,14 @@ def _match_annotation_to_implied_task_type(
         implied_type = ["embedding"]
     # text generation tasks only support text
     elif (  # TODO Check that this is fine. Note that for this task type, context could or could not be present.
-                annotation.text is not None
-                and not annotation.labels
-                and annotation.bounding_box is None
-                and annotation.polygon is None
-                and annotation.raster is None
-                and annotation.embedding is None
+        annotation.text is not None
+        and not annotation.labels
+        and annotation.bounding_box is None
+        and annotation.polygon is None
+        and annotation.raster is None
+        and annotation.embedding is None
     ):
-      implied_type = ['text-genenration']
+        implied_type = ["text-genenration"]
     # empty annotations shouldn't contain anything
     elif (
         not annotation.labels
@@ -216,7 +215,7 @@ def _validate_prediction_annotations(annotations: list["Annotation"]) -> None:
                 indices[label] = index
 
         # TODO Is there anything to check here? It doesn't seem like there is anything different to validate with a prediction annotation than groundtruth annotation for TEXT_GENERATION.
-        elif annotation.task_type == TaskType.TEXT_GENERATION:
+        elif "text-generation" in annotation.implied_task_types:
             pass
 
 
@@ -313,7 +312,7 @@ class Annotation(BaseModel):
         TODO
     context: list[str], optional
         TODO
-        
+
     """
 
     metadata: MetadataType = dict()

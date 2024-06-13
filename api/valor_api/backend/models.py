@@ -124,7 +124,6 @@ class Annotation(Base):
     model_id: Mapped[int] = mapped_column(
         ForeignKey("model.id"), nullable=True, index=True
     )
-    task_type: Mapped[str] = mapped_column(nullable=False)
     text: Mapped[str] = mapped_column(nullable=True)
     context = mapped_column(JSONB)
 

@@ -8,7 +8,6 @@ from valor import (
     Label,
     Model,
     Prediction,
-    enums,
 )
 from valor.schemas import (
     Box,
@@ -19,10 +18,8 @@ from valor.schemas import (
     Polygon,
     Raster,
     String,
-    TaskTypeEnum,
     Text,
 )
-from valor.schemas import Box, Dictionary, Float, List, Polygon, Raster, String
 
 
 def test_label_typing():
@@ -87,13 +84,11 @@ def test_annotation_typing():
     text = "Example text."
     context = ["context 1", "context 2"]
     annotation = Annotation(
-        task_type=enums.TaskType.TEXT_GENERATION,
         metadata={},
         text=text,
         context=context,
     )
 
-    assert type(annotation.task_type) is enums.TaskType
     assert type(annotation.labels) is List[Label]
     assert type(annotation.metadata) is Dictionary
     assert annotation.bounding_box is None

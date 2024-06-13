@@ -16,6 +16,7 @@ from valor.schemas.symbolic.types import (
     Polygon,
     Raster,
     String,
+    Text,
     Variable,
     _convert_simple_variables_to_standard_types,
     get_type_by_name,
@@ -379,9 +380,9 @@ class Annotation(StaticCollection):
         """
         super().__init__(
             metadata=metadata if metadata else dict(),
-            labels=labels
-            if labels
-            else list(),  # TODO Will setting labels to an empty list cause issues for text generation?
+            labels=(
+                labels if labels else list()
+            ),  # TODO Will setting labels to an empty list cause issues for text generation?
             bounding_box=bounding_box,
             polygon=polygon,
             raster=raster,

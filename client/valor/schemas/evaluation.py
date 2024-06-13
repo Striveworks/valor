@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import List, Optional, Union
+from typing import Dict, List, Optional, Union
 
 from valor.enums import AnnotationType, TaskType
 from valor.schemas.filters import Filter

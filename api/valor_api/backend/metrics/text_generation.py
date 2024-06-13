@@ -18,7 +18,7 @@ from valor_api.backend.metrics.metric_utils import (  # log_evaluation_item_coun
     log_evaluation_duration,
     validate_computation,
 )
-from valor_api.backend.query import Query
+from valor_api.backend.query import generate_query
 
 LabelMapType = list[list[list[str]]]
 
@@ -40,27 +40,24 @@ LLM_GUIDED_METRICS = {
 
 # TODO update this for text comparison metrics
 def _generate_datum_query(
+    db: Session,
     datum_filter: schemas.Filter,
 ) -> NamedFromClause | Subquery:
     """Generate a sqlalchemy query to fetch datums."""
-    return (
-        Query(
-            models.Datum,
-            models.Datum.id.label("datum_id"),
-            models.Datum.uid.label("datum_uid"),
-            # models.Datum.dataset_id.label("dataset_id"),
-            models.Dataset.name.label(
-                "dataset_name"
-            ),  # TODO Will this only get dataset_name that matches the dataset_id?
-            models.Datum.text.label("datum_text"),
-            models.Datum.meta.label("datum_meta"),
-        )
-        .filter(datum_filter)
-        .datums(
-            as_subquery=False
-        )  # TODO should I change this? as_subquery=False
-        .alias()
-    )
+    return generate_query(
+        models.Datum,
+        models.Datum.id.label("datum_id"),
+        models.Datum.uid.label("datum_uid"),
+        # models.Datum.dataset_id.label("dataset_id"),
+        models.Dataset.name.label(
+            "dataset_name"
+        ),  # TODO Will this only get dataset_name that matches the dataset_id?
+        models.Datum.text.label("datum_text"),
+        models.Datum.meta.label("datum_meta"),
+        db=db,
+        filters=datum_filter,
+        label_source=models.GroundTruth,
+    ).subquery()
 
 
 # def _generate_groundtruth_query(
@@ -83,31 +80,27 @@ def _generate_datum_query(
 
 
 def _generate_prediction_query(
+    db: Session,
     prediction_filter: schemas.Filter,
 ) -> NamedFromClause | Subquery:
     """Generate a sqlalchemy query to fetch a prediction."""
 
-    return (
-        Query(
-            models.Prediction,
-            # models.Annotation.id.label("annotation_id"),
-            models.Annotation.datum_id.label("datum_id"),
-            models.Annotation.model_id.label("model_id"),
-            models.Model.name.label(
-                "model_name"
-            ),  # TODO Will this only get the model_name that matches the model_id?
-            models.Annotation.task_type.label("task_type"),
-            models.Annotation.text.label("prediction_text"),
-            models.Annotation.context.label("prediction_context"),
-            models.Annotation.meta.label("prediction_annotation_meta"),
-            models.Prediction.id.label("prediction_id"),
-        )
-        .filter(prediction_filter)
-        .predictions(
-            as_subquery=False
-        )  # TODO should I change this? as_subquery=False
-        .alias()
-    )
+    return generate_query(
+        models.Prediction,
+        # models.Annotation.id.label("annotation_id"),
+        models.Annotation.datum_id.label("datum_id"),
+        models.Annotation.model_id.label("model_id"),
+        models.Model.name.label(
+            "model_name"
+        ),  # TODO Will this only get the model_name that matches the model_id?
+        models.Annotation.text.label("prediction_text"),
+        models.Annotation.context.label("prediction_context"),
+        models.Annotation.meta.label("prediction_annotation_meta"),
+        models.Prediction.id.label("prediction_id"),
+        db=db,
+        label_source=models.Prediction,
+        filters=prediction_filter,
+    ).subquery()
 
 
 def setup_llm_client(
@@ -201,8 +194,10 @@ def _compute_text_generation_metrics(
     Sequence[schemas.AnswerCorrectnessMetric | schemas.AnswerRelevanceMetric | schemas.BiasMetric | schemas.CoherenceMetric | schemas.ContextPrecisionMetric | schemas.ContextRecallMetric | schemas.ContextRelevanceMetric | schemas.FaithfulnessMetric | schemas.GrammaticalityMetric | schemas.HallucinationMetric | schemas.SummarizationMetric | schemas.ToxicityMetric]
         A list of metrics.
     """
-    datum_subquery = _generate_datum_query(datum_filter)
-    prediction_subquery = _generate_prediction_query(prediction_filter)
+    datum_subquery = _generate_datum_query(db=db, datum_filter=datum_filter)
+    prediction_subquery = _generate_prediction_query(
+        db=db, prediction_filter=prediction_filter
+    )
 
     # TODO Remove unnecessary columns in the select.
     total_query = (
@@ -322,10 +317,6 @@ def compute_text_generation_metrics(
     groundtruth_filter.task_types = [parameters.task_type]
     prediction_filter.task_types = [parameters.task_type]
 
-    # get the metrics to compute
-    metrics = parameters.metrics
-    assert metrics, "No metrics to compute."
-
     # get llm api params
     llm_api_params = parameters.llm_api_params
 
@@ -337,11 +328,13 @@ def compute_text_generation_metrics(
     #     groundtruth_filter=groundtruth_filter,
     # )
 
+    assert parameters.metrics_to_return
+
     metrics = _compute_text_generation_metrics(
         db=db,
         prediction_filter=prediction_filter,
         datum_filter=datum_filter,
-        metrics=metrics,
+        metrics=parameters.metrics_to_return,
         llm_api_params=llm_api_params,
     )
 

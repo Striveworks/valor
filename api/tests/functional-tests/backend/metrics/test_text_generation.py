@@ -126,7 +126,6 @@ def text_generation_test_data(db: Session, dataset_name: str, model_name: str):
                 datum=datums[i],
                 annotations=[
                     schemas.Annotation(
-                        task_type=enums.TaskType.TEXT_GENERATION,
                         text=predictions[i],
                         context=context_per_prediction[i],
                         # metadata=metadata_per_prediction[i],
@@ -340,11 +339,11 @@ def test_text_generation(
 
     # default request
     job_request = schemas.EvaluationRequest(
+        dataset_names=[dataset_name],
         model_names=[model_name],
-        datum_filter=schemas.Filter(dataset_names=[dataset_name]),
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.TEXT_GENERATION,
-            metrics=metrics,
+            metrics_to_return=metrics,
             llm_api_params={
                 "client": "openai",
                 # "api_url": "https://api.openai.com/v1/chat/completions",
@@ -355,7 +354,6 @@ def test_text_generation(
                 },
             },
         ),
-        meta={},
     )
 
     # creates evaluation job
