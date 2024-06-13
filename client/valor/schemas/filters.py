@@ -1,7 +1,42 @@
 from dataclasses import asdict, dataclass
 from typing import Optional, Union
 
-from valor.schemas.symbolic.operators import FunctionType
+from valor.schemas.symbolic.operators import (
+    And,
+    Contains,
+    Eq,
+    FunctionType,
+    Gt,
+    Gte,
+    Inside,
+    Intersects,
+    IsNotNull,
+    IsNull,
+    Lt,
+    Lte,
+    Ne,
+    Not,
+    Or,
+    Outside,
+)
+
+FunctionTypeTuple = (
+    And,
+    Or,
+    Not,
+    IsNull,
+    IsNotNull,
+    Eq,
+    Ne,
+    Gt,
+    Gte,
+    Lt,
+    Lte,
+    Intersects,
+    Inside,
+    Outside,
+    Contains,
+)
 
 
 @dataclass
@@ -16,21 +51,21 @@ class Filter:
     embeddings: Optional[Union[dict, FunctionType]] = None
 
     def __post_init__(self):
-        if isinstance(self.datasets, FunctionType):
+        if isinstance(self.datasets, FunctionTypeTuple):
             self.datasets = self.datasets.to_dict()
-        if isinstance(self.models, FunctionType):
+        if isinstance(self.models, FunctionTypeTuple):
             self.models = self.models.to_dict()
-        if isinstance(self.datums, FunctionType):
+        if isinstance(self.datums, FunctionTypeTuple):
             self.datums = self.datums.to_dict()
-        if isinstance(self.annotations, FunctionType):
+        if isinstance(self.annotations, FunctionTypeTuple):
             self.annotations = self.annotations.to_dict()
-        if isinstance(self.groundtruths, FunctionType):
+        if isinstance(self.groundtruths, FunctionTypeTuple):
             self.groundtruths = self.groundtruths.to_dict()
-        if isinstance(self.predictions, FunctionType):
+        if isinstance(self.predictions, FunctionTypeTuple):
             self.predictions = self.predictions.to_dict()
-        if isinstance(self.labels, FunctionType):
+        if isinstance(self.labels, FunctionTypeTuple):
             self.labels = self.labels.to_dict()
-        if isinstance(self.embeddings, FunctionType):
+        if isinstance(self.embeddings, FunctionTypeTuple):
             self.embeddings = self.embeddings.to_dict()
 
     def to_dict(self) -> dict:
