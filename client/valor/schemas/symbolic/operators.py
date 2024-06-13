@@ -1,31 +1,37 @@
-from typing import Any
+from typing import Any, Optional, Union
 
 
-class Function:
-    """Base class for defining a function."""
+class Condition:
+    """Base class for defined a filter condition."""
 
-    _operator = None
+    def __init__(self, lhs: Any, rhs: Optional[Any] = None) -> None:
+        """
+        TODO
 
-    def __init__(self, *args) -> None:
-        for arg in args:
-            if not hasattr(arg, "to_dict"):
-                raise ValueError(
-                    "Functions can only take arguments that have a 'to_dict' method defined."
+        """
+
+        self.op = type(self).__name__.lower()
+
+        # validate lhs
+        lhd = lhs.to_dict()
+        if lhd.keys() != {"name", "key"}:
+            raise ValueError
+        self.lhs = lhd["name"]
+        self.lhs_key = lhd["key"]
+
+        # validate rhs - symbols are not current supported
+        self.rhs = None
+        self.rhs_key = None
+        if rhs is not None:
+            rhd = rhs.to_dict()
+            if rhd.keys() == {"name", "key"}:
+                raise NotImplementedError(
+                    "Symbols are not supported currently as rhs values."
                 )
-        self._args = list(args)
-
-    def __repr__(self):
-        args = ", ".join([arg.__repr__() for arg in self._args])
-        return f"{type(self).__name__}({args})"
-
-    def __str__(self):
-        values = [arg.__repr__() for arg in self._args]
-        if self._operator is None:
-            args = ", ".join(values)
-            return f"{type(self).__name__}({args})"
-        else:
-            args = f" {self._operator} ".join(values)
-            return f"({args})"
+            elif rhd.keys() == {"type", "value"}:
+                self.rhs = rhd
+            else:
+                raise ValueError
 
     def __and__(self, other: Any):
         return And(self, other)
@@ -33,191 +39,187 @@ class Function:
     def __or__(self, other: Any):
         return Or(self, other)
 
-    def __xor__(self, other: Any):
-        return Xor(self, other)
-
     def __invert__(self):
-        return Negate(self)
+        return Not(self)
 
     def to_dict(self):
-        """Encode to a JSON-compatible dictionary."""
         return {
-            "op": type(self).__name__.lower(),
-            "args": [arg.to_dict() for arg in self._args],
+            "lhs": self.lhs,
+            "lhs_key": self.lhs_key,
+            "rhs": self.rhs,
+            "rhs_key": self.rhs_key,
+            "op": self.op,
         }
 
 
-class OneArgumentFunction(Function):
-    """Base class for defining single argument functions."""
-
-    def __init__(self, arg) -> None:
-        super().__init__(arg)
-
-    @property
-    def arg(self):
-        """Returns the argument."""
-        return self._args[0]
-
-    def to_dict(self):
-        """Encode to a JSON-compatible dictionary."""
-        return {"op": type(self).__name__.lower(), "arg": self.arg.to_dict()}
-
-
-class TwoArgumentFunction(Function):
-    """Base class for defining two argument functions."""
-
-    def __init__(self, lhs: Any, rhs: Any) -> None:
-        self._lhs = lhs
-        self._rhs = rhs
-        super().__init__(lhs, rhs)
-
-    @property
-    def lhs(self):
-        """Returns the lhs operand."""
-        return self._lhs
-
-    @property
-    def rhs(self):
-        """Returns the rhs operand."""
-        return self._rhs
-
-    def to_dict(self):
-        """Encode to a JSON-compatible dictionary."""
-        return {
-            "op": type(self).__name__.lower(),
-            "lhs": self.lhs.to_dict(),
-            "rhs": self.rhs.to_dict(),
-        }
-
-
-class AppendableFunction(Function):
-    """Base class for defining functions with an unlimited number of arguments."""
-
-    _function = None
+class Function:
+    """Base class for defining a logical function."""
 
     def __init__(self, *args) -> None:
-        """
-        Appendable function.
-        """
-        if len(args) < 2:
-            raise TypeError(
-                f"missing {2 - len(args)} required positional argument"
-            )
-        flat_args = []
+        if len(args) == 0:
+            raise ValueError("Expected at least one argument.")
         for arg in args:
-            if isinstance(arg, type(self)):
-                flat_args += arg._args
-            else:
-                flat_args.append(arg)
-        super().__init__(*flat_args)
+            if not hasattr(arg, "to_dict"):
+                raise ValueError(
+                    "Functions can only take arguments that have a 'to_dict' method defined."
+                )
+        self._args = list(args) if len(args) > 1 else args[0]
 
-    def append(self, value: Any):
-        """Appends an argument to the function."""
-        self._args.append(value)
-        return self
+    def __repr__(self):
+        args = ", ".join([arg.__repr__() for arg in self._args])
+        return f"{type(self).__name__}({args})"
 
-
-class And(AppendableFunction):
-    """Implementation of logical AND (&)."""
-
-    _operator = "&"
+    def __str__(self):
+        values = [arg.__repr__() for arg in self._args]
+        args = ", ".join(values)
+        return f"{type(self).__name__}({args})"
 
     def __and__(self, other: Any):
-        self.append(other)
-        return self
-
-
-class Or(AppendableFunction):
-    """Implementation of logical OR (|)."""
-
-    _operator = "|"
+        return And(self, other)
 
     def __or__(self, other: Any):
-        self.append(other)
+        return Or(self, other)
+
+    def __invert__(self):
+        return Not(self)
+
+    def to_dict(self):
+        """Encode to a JSON-compatible dictionary."""
+        args = (
+            [arg.to_dict() for arg in self._args]
+            if isinstance(self._args, list)
+            else self._args.to_dict()
+        )
+        return {"op": type(self).__name__.lower(), "args": args}
+
+
+class And(Function):
+    """Implementation of logical AND (&)."""
+
+    pass
+
+    def __and__(self, other: Any):
+        if isinstance(other, And):
+            self._args.extend(other._args)
+        else:
+            self._args.append(other)
         return self
 
 
-class Xor(AppendableFunction):
-    """Implementation of logical XOR (^)."""
+class Or(Function):
+    """Implementation of logical OR (|)."""
 
-    _operator = "^"
+    pass
 
-    def __xor__(self, other: Any):
-        self.append(other)
+    def __or__(self, other: Any):
+        if isinstance(other, Or):
+            self._args.extend(other._args)
+        else:
+            self._args.append(other)
         return self
 
 
-class Negate(OneArgumentFunction):
+class Not(Function):
     """Implementation of logical negation (~)."""
 
-    _operator = "~"
+    def __init__(self, *args):
+        if len(args) != 1:
+            raise ValueError("Negation only takes one argument.")
+        super().__init__(*args)
 
     def __invert__(self):
         """Inverts negation so return contents."""
-        return self.arg
+        if isinstance(self._args, list):
+            raise ValueError("Negation only takes one argument.")
+        return self._args
 
 
-class IsNull(OneArgumentFunction):
+class IsNull(Condition):
     """Implementation of is null value check."""
 
     pass
 
 
-class IsNotNull(OneArgumentFunction):
+class IsNotNull(Condition):
     """Implementation of is not null value check."""
 
     pass
 
 
-class Eq(TwoArgumentFunction):
+class Eq(Condition):
     """Implementation of the equality operator '=='."""
 
-    _operator = "=="
+    pass
 
 
-class Ne(TwoArgumentFunction):
+class Ne(Condition):
     """Implementation of the inequality operator '!='."""
 
-    _operator = "!="
+    pass
 
 
-class Gt(TwoArgumentFunction):
+class Gt(Condition):
     """Implementation of the greater-than operator '>'."""
 
-    _operator = ">"
+    pass
 
 
-class Ge(TwoArgumentFunction):
+class Gte(Condition):
     """Implementation of the greater-than or equal operator '>='."""
 
-    _operator = ">="
+    pass
 
 
-class Lt(TwoArgumentFunction):
+class Lt(Condition):
     """Implementation of the less-than operator '<'."""
 
-    _operator = "<"
+    pass
 
 
-class Le(TwoArgumentFunction):
+class Lte(Condition):
     """Implementation of the less-than or equal operator '<='."""
 
-    _operator = "<="
+    pass
 
 
-class Intersects(TwoArgumentFunction):
+class Intersects(Condition):
     """Implementation of the spatial 'intersects' operator."""
 
     pass
 
 
-class Inside(TwoArgumentFunction):
+class Inside(Condition):
     """Implementation of the spatial 'inside' operator."""
 
     pass
 
 
-class Outside(TwoArgumentFunction):
+class Outside(Condition):
     """Implementation of the spatial 'outside' operator."""
 
     pass
+
+
+class Contains(Condition):
+    """Implementation of the list 'contains' operator."""
+
+    pass
+
+
+FunctionType = Union[
+    And,
+    Or,
+    Not,
+    IsNull,
+    IsNotNull,
+    Eq,
+    Ne,
+    Gt,
+    Gte,
+    Lt,
+    Lte,
+    Intersects,
+    Inside,
+    Outside,
+    Contains,
+]

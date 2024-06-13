@@ -4,7 +4,16 @@ that is no auth
 
 import random
 
-from valor import Client, Dataset, Datum, GroundTruth, Label, Model, Prediction
+from valor import (
+    Client,
+    Dataset,
+    Datum,
+    Filter,
+    GroundTruth,
+    Label,
+    Model,
+    Prediction,
+)
 from valor.enums import EvaluationStatus
 
 
@@ -107,9 +116,7 @@ def test_evaluate_segmentation_with_filter(
     color = Datum.metadata["color"]
     eval_job = model.evaluate_segmentation(
         dataset,
-        filter_by=[
-            color == "red",
-        ],
+        filters=Filter(datums=(color == "red")),  # type: ignore #605
     )
     assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
 

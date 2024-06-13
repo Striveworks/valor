@@ -116,9 +116,9 @@ def test_evaluate_detection(
         dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
-        filter_by=[
-            Label.key == "k1",
-        ],
+        filters=Filter(
+            labels=(Label.key == "k1"),
+        ),
         convert_annotations_to_type=AnnotationType.BOX,
     )
     assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
@@ -143,7 +143,14 @@ def test_evaluate_detection(
         "model_name": model_name,
         "filters": {
             **default_filter_properties,
-            "label_keys": ["k1"],
+            "labels": {
+                "lhs": "label.key",
+                "op": "eq",
+                "rhs": {
+                    "type": "string",
+                    "value": "k1",
+                },
+            },
         },
         "parameters": {
             "task_type": TaskType.OBJECT_DETECTION.value,
@@ -182,10 +189,10 @@ def test_evaluate_detection(
         dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
-        filter_by=[
-            Annotation.labels == [Label(key="k1", value="v1")],
-            Annotation.bounding_box.is_not_none(),
-        ],
+        filters=Filter(
+            annotations=Annotation.bounding_box.is_not_none(),
+            labels=((Label.key == "k1") & (Label.value == "v1")),
+        ),
     )
     assert (
         eval_job_value_filter_using_in_.wait_for_completion(timeout=30)
@@ -202,9 +209,9 @@ def test_evaluate_detection(
         dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
-        filter_by=[
-            Annotation.labels == [Label(key="k1", value="v1")],
-        ],
+        filters=Filter(
+            labels=((Label.key == "k1") & (Label.value == "v1")),
+        ),
         convert_annotations_to_type=AnnotationType.BOX,
     )
     assert (
@@ -224,9 +231,9 @@ def test_evaluate_detection(
             dataset,
             iou_thresholds_to_compute=[0.1, 0.6],
             iou_thresholds_to_return=[0.1, 0.6],
-            filter_by=[
-                Annotation.labels == [Label(key="k1", value="v2")],
-            ],
+            filters=Filter(
+                labels=((Label.key == "k1") & (Label.value == "v2")),
+            ),
             convert_annotations_to_type=AnnotationType.BOX,
         )
     assert "EvaluationRequestError" in str(e)
@@ -244,11 +251,13 @@ def test_evaluate_detection(
         dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
-        filter_by=[
-            Label.key == "k1",
-            Annotation.bounding_box.area >= 10,
-            Annotation.bounding_box.area <= 2000,
-        ],
+        filters=Filter(
+            labels=(Label.key == "k1"),
+            annotations=(
+                (Annotation.bounding_box.area >= 10.0)
+                & (Annotation.bounding_box.area <= 2000.0)
+            ),
+        ),
         convert_annotations_to_type=AnnotationType.BOX,
     )
 
@@ -267,17 +276,35 @@ def test_evaluate_detection(
         "model_name": model_name,
         "filters": {
             **default_filter_properties,
-            "bounding_box_area": [
-                {
-                    "operator": ">=",
-                    "value": 10.0,
+            "annotations": {
+                "args": [
+                    {
+                        "lhs": "annotation.bounding_box.area",
+                        "op": "gte",
+                        "rhs": {
+                            "type": "float",
+                            "value": 10.0,
+                        },
+                    },
+                    {
+                        "lhs": "annotation.bounding_box.area",
+                        "op": "lte",
+                        "rhs": {
+                            "type": "float",
+                            "value": 2000.0,
+                        },
+                    },
+                ],
+                "op": "and",
+            },
+            "labels": {
+                "lhs": "label.key",
+                "op": "eq",
+                "rhs": {
+                    "type": "string",
+                    "value": "k1",
                 },
-                {
-                    "operator": "<=",
-                    "value": 2000.0,
-                },
-            ],
-            "label_keys": ["k1"],
+            },
         },
         "parameters": {
             "task_type": TaskType.OBJECT_DETECTION.value,
@@ -318,10 +345,10 @@ def test_evaluate_detection(
         dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
-        filter_by=[
-            Label.key == "k1",
-            Annotation.bounding_box.area >= 1200,
-        ],
+        filters=Filter(
+            labels=(Label.key == "k1"),
+            annotations=(Annotation.bounding_box.area >= 1200.0),
+        ),
         convert_annotations_to_type=AnnotationType.BOX,
     )
     assert (
@@ -337,13 +364,22 @@ def test_evaluate_detection(
         "model_name": model_name,
         "filters": {
             **default_filter_properties,
-            "bounding_box_area": [
-                {
-                    "operator": ">=",
+            "annotations": {
+                "lhs": "annotation.bounding_box.area",
+                "op": "gte",
+                "rhs": {
+                    "type": "float",
                     "value": 1200.0,
                 },
-            ],
-            "label_keys": ["k1"],
+            },
+            "labels": {
+                "lhs": "label.key",
+                "op": "eq",
+                "rhs": {
+                    "type": "string",
+                    "value": "k1",
+                },
+            },
         },
         "parameters": {
             "task_type": TaskType.OBJECT_DETECTION.value,
@@ -378,10 +414,10 @@ def test_evaluate_detection(
             dataset,
             iou_thresholds_to_compute=[0.1, 0.6],
             iou_thresholds_to_return=[0.1, 0.6],
-            filter_by=[
-                Label.key == "k1",
-                Annotation.bounding_box.area <= 1200,
-            ],
+            filters=Filter(
+                labels=(Label.key == "k1"),
+                annotations=(Annotation.bounding_box.area <= 1200.0),
+            ),
             convert_annotations_to_type=AnnotationType.BOX,
         )
     assert "filter criteria" in str(e)
@@ -392,11 +428,13 @@ def test_evaluate_detection(
         dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
-        filter_by=[
-            Label.key == "k1",
-            Annotation.bounding_box.area >= 1200,
-            Annotation.bounding_box.area <= 1800,
-        ],
+        filters=Filter(
+            labels=(Label.key == "k1"),
+            annotations=(
+                (Annotation.bounding_box.area >= 1200.0)
+                & (Annotation.bounding_box.area <= 1800.0)
+            ),
+        ),
         convert_annotations_to_type=AnnotationType.BOX,
     )
     assert (
@@ -412,17 +450,35 @@ def test_evaluate_detection(
         "model_name": model_name,
         "filters": {
             **default_filter_properties,
-            "bounding_box_area": [
-                {
-                    "operator": ">=",
-                    "value": 1200.0,
+            "annotations": {
+                "args": [
+                    {
+                        "lhs": "annotation.bounding_box.area",
+                        "op": "gte",
+                        "rhs": {
+                            "type": "float",
+                            "value": 1200.0,
+                        },
+                    },
+                    {
+                        "lhs": "annotation.bounding_box.area",
+                        "op": "lte",
+                        "rhs": {
+                            "type": "float",
+                            "value": 1800.0,
+                        },
+                    },
+                ],
+                "op": "and",
+            },
+            "labels": {
+                "lhs": "label.key",
+                "op": "eq",
+                "rhs": {
+                    "type": "string",
+                    "value": "k1",
                 },
-                {
-                    "operator": "<=",
-                    "value": 1800.0,
-                },
-            ],
-            "label_keys": ["k1"],
+            },
         },
         "parameters": {
             "task_type": TaskType.OBJECT_DETECTION.value,
@@ -475,11 +531,13 @@ def test_evaluate_detection(
         dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
-        filter_by=[
-            Label.key == "k1",
-            Annotation.bounding_box.area >= 1200,
-            Annotation.bounding_box.area <= 1800,
-        ],
+        filters=Filter(
+            labels=(Label.key == "k1"),
+            annotations=(
+                (Annotation.bounding_box.area >= 1200.0)
+                & (Annotation.bounding_box.area <= 1800.0)
+            ),
+        ),
         convert_annotations_to_type=AnnotationType.BOX,
         metrics_to_return=selected_metrics,
     )
@@ -512,10 +570,10 @@ def test_evaluate_detection_with_json_filters(
     # test default iou arguments
     eval_results = model.evaluate_detection(
         dataset,
-        filter_by=[
-            Label.key == "k1",
-            Annotation.bounding_box.is_not_none(),
-        ],
+        filters=Filter(
+            labels=(Label.key == "k1"),
+            annotations=Annotation.bounding_box.is_not_none(),
+        ),
     )
     assert (
         eval_results.wait_for_completion(timeout=30) == EvaluationStatus.DONE
@@ -572,10 +630,10 @@ def test_evaluate_detection_with_json_filters(
         dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
-        filter_by=[
-            Label.key == "k1",
-            Annotation.bounding_box.area >= 1200,
-        ],
+        filters=Filter(
+            labels=(Label.key == "k1"),
+            annotations=(Annotation.bounding_box.area >= 1200.0),
+        ),
         convert_annotations_to_type=AnnotationType.BOX,
     )
     assert (
@@ -588,20 +646,13 @@ def test_evaluate_detection_with_json_filters(
         dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
-        filter_by={
-            **default_filter_properties,
-            "bounding_box_area": [
-                {
-                    "operator": ">=",
-                    "value": 1200.0,
-                },
-                {
-                    "operator": "<=",
-                    "value": 1800.0,
-                },
-            ],
-            "label_keys": ["k1"],
-        },
+        filters=Filter(
+            labels=(Label.key == "k1"),
+            annotations=(
+                (Annotation.bounding_box.area >= 1200.0)
+                & (Annotation.bounding_box.area <= 1800.0)
+            ),
+        ),
         convert_annotations_to_type=AnnotationType.BOX,
     )
 
@@ -618,17 +669,35 @@ def test_evaluate_detection_with_json_filters(
         "model_name": model_name,
         "filters": {
             **default_filter_properties,
-            "bounding_box_area": [
-                {
-                    "operator": ">=",
-                    "value": 1200.0,
+            "annotations": {
+                "args": [
+                    {
+                        "lhs": "annotation.bounding_box.area",
+                        "op": "gte",
+                        "rhs": {
+                            "type": "float",
+                            "value": 1200.0,
+                        },
+                    },
+                    {
+                        "lhs": "annotation.bounding_box.area",
+                        "op": "lte",
+                        "rhs": {
+                            "type": "float",
+                            "value": 1800.0,
+                        },
+                    },
+                ],
+                "op": "and",
+            },
+            "labels": {
+                "lhs": "label.key",
+                "op": "eq",
+                "rhs": {
+                    "type": "string",
+                    "value": "k1",
                 },
-                {
-                    "operator": "<=",
-                    "value": 1800.0,
-                },
-            ],
-            "label_keys": ["k1"],
+            },
         },
         "parameters": {
             "task_type": TaskType.OBJECT_DETECTION.value,
@@ -686,10 +755,10 @@ def test_get_evaluations(
         dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
-        filter_by=[
-            Label.key == "k1",
-            Annotation.bounding_box.is_not_none(),
-        ],
+        filters=Filter(
+            labels=(Label.key == "k1"),
+            annotations=(Annotation.bounding_box.is_not_none()),
+        ),
     )
     eval_job.wait_for_completion(timeout=30)
 
@@ -828,10 +897,10 @@ def test_get_evaluations(
         dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
-        filter_by=[
-            Label.key == "k1",
-            Annotation.bounding_box.is_not_none(),
-        ],
+        filters=Filter(
+            labels=(Label.key == "k1"),
+            annotations=(Annotation.bounding_box.is_not_none()),
+        ),
     )
     eval_job2.wait_for_completion(timeout=30)
 
@@ -918,7 +987,7 @@ def test_get_evaluations(
     with pytest.raises(ClientException):
         both_evaluations_from_evaluation_ids_sorted = client.get_evaluations(
             evaluation_ids=[eval_job.id, eval_job2.id],
-            metrics_to_sort_by=["AP"],
+            metrics_to_sort_by=["AP"],  # type: ignore - testing
         )
 
 

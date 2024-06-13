@@ -364,7 +364,7 @@ def test_generate_prediction_data(client: Client):
         dataset,
         iou_thresholds_to_compute=[0.1, 0.9],
         iou_thresholds_to_return=[0.1, 0.9],
-        filter_by=[Label.key == "k1"],
+        filters=Filter(labels=(Label.key == "k1")),  # type: ignore - issue #605
         convert_annotations_to_type=AnnotationType.BOX,
     )
     assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
@@ -395,7 +395,14 @@ def test_generate_prediction_data(client: Client):
             **asdict(
                 Filter()
             ),  # default filter properties with overrides below
-            "label_keys": ["k1"],
+            "labels": {
+                "lhs": "label.key",
+                "op": "eq",
+                "rhs": {
+                    "type": "string",
+                    "value": "k1",
+                },
+            },
         },
         "parameters": {
             "task_type": TaskType.OBJECT_DETECTION.value,
