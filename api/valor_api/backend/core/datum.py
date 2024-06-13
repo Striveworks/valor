@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from valor_api import api_utils, exceptions, schemas
 from valor_api.backend import models
-from valor_api.backend.query import Query
+from valor_api.backend.query import generate_select
 
 
 def create_datums(
@@ -208,7 +208,10 @@ def get_paginated_datums(
             "Offset should be an int greater than or equal to zero. Limit should be an int greater than or equal to -1."
         )
 
-    subquery = Query(models.Datum.id).filter(filters).any()
+    subquery = generate_select(
+        models.Datum.id,
+        filters=filters,
+    ).subquery()
     if subquery is None:
         raise RuntimeError("Subquery is unexpectedly None.")
 

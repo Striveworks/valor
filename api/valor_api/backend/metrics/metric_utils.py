@@ -8,7 +8,7 @@ from sqlalchemy.sql import func
 
 from valor_api import enums, logger, schemas
 from valor_api.backend import core, models
-from valor_api.backend.query import Query
+from valor_api.backend.query import generate_select
 
 LabelMapType = list[list[list[str]]]
 
@@ -20,6 +20,7 @@ def _create_detection_grouper_mappings(
     """Create grouper mappings for use when evaluating detections."""
 
     label_id_to_grouper_id_mapping = {}
+    label_id_to_grouper_key_mapping = {}
     grouper_id_to_grouper_label_mapping = {}
     grouper_id_to_label_ids_mapping = defaultdict(list)
 
@@ -29,8 +30,12 @@ def _create_detection_grouper_mappings(
         )
         # create an integer to track each group by
         grouper_id = hash((mapped_key, mapped_value))
+        # create a separate grouper_key_id which is used to cross-join labels that share a given key
+        # when computing IOUs for PrecisionRecallCurve
+        grouper_key_id = mapped_key
 
         label_id_to_grouper_id_mapping[label.id] = grouper_id
+        label_id_to_grouper_key_mapping[label.id] = grouper_key_id
         grouper_id_to_grouper_label_mapping[grouper_id] = schemas.Label(
             key=mapped_key, value=mapped_value
         )
@@ -38,6 +43,7 @@ def _create_detection_grouper_mappings(
 
     return {
         "label_id_to_grouper_id_mapping": label_id_to_grouper_id_mapping,
+        "label_id_to_grouper_key_mapping": label_id_to_grouper_key_mapping,
         "grouper_id_to_label_ids_mapping": grouper_id_to_label_ids_mapping,
         "grouper_id_to_grouper_label_mapping": grouper_id_to_grouper_label_mapping,
     }
@@ -208,6 +214,7 @@ def create_metric_mappings(
         | schemas.IOUMetric
         | schemas.mIOUMetric
         | schemas.PrecisionRecallCurve
+        | schemas.DetailedPrecisionRecallCurve
         | schemas.AnswerCorrectnessMetric
         | schemas.AnswerRelevanceMetric
         | schemas.BiasMetric
@@ -242,28 +249,39 @@ def create_metric_mappings(
     """
     ret = []
     for metric in metrics:
-        if hasattr(metric, "label"):
+        if isinstance(
+            metric,
+            (
+                schemas.APMetric,
+                schemas.ARMetric,
+                schemas.APMetricAveragedOverIOUs,
+                schemas.PrecisionMetric,
+                schemas.RecallMetric,
+                schemas.F1Metric,
+                schemas.IOUMetric,
+            ),
+        ):
             label = core.fetch_label(
                 db=db,
-                label=metric.label,  # type: ignore - https://github.com/microsoft/pylance-release/issues/2237
+                label=metric.label,
             )
 
             # create the label in the database if it doesn't exist
             # this is useful if the user maps existing labels to a non-existant grouping label
             if not label:
-                label_map = core.create_labels(db=db, labels=[metric.label])  # type: ignore - https://github.com/microsoft/pylance-release/issues/2237
+                label_map = core.create_labels(db=db, labels=[metric.label])
                 label_id = list(label_map.values())[0]
             else:
                 label_id = label.id
 
             ret.append(
                 metric.db_mapping(
-                    label_id=label_id,  # type: ignore - https://github.com/microsoft/pylance-release/issues/2237
+                    label_id=label_id,
                     evaluation_id=evaluation_id,
                 )
             )
         else:
-            ret.append(metric.db_mapping(evaluation_id=evaluation_id))  # type: ignore - unnecessary since we're checking for label attribute above
+            ret.append(metric.db_mapping(evaluation_id=evaluation_id))
 
     return ret
 
@@ -321,15 +339,12 @@ def log_evaluation_item_counts(
         The filter to be used to query groundtruths.
     """
     # get ground truth, prediction, annotation, and label counts
-    gt_subquery = (
-        Query(
-            models.Datum.id.label("datum_id"),
-            models.GroundTruth,
-        )
-        .filter(groundtruth_filter)
-        .groundtruths(as_subquery=False)
-        .alias()
-    )
+    gt_subquery = generate_select(
+        models.Datum.id.label("datum_id"),
+        models.GroundTruth,
+        filters=groundtruth_filter,
+        label_source=models.GroundTruth,
+    ).alias()
 
     gts = db.execute(
         select(
@@ -345,15 +360,12 @@ def log_evaluation_item_counts(
     else:
         gt_datums, gt_annotation_id, gt_label_id = map(set, zip(*gts))
 
-    pd_subquery = (
-        Query(
-            models.Datum.id.label("datum_id"),
-            models.Prediction,
-        )
-        .filter(prediction_filter)
-        .predictions(as_subquery=False)
-        .alias()
-    )
+    pd_subquery = generate_select(
+        models.Datum.id.label("datum_id"),
+        models.Prediction,
+        filters=prediction_filter,
+        label_source=models.Prediction,
+    ).alias()
 
     pds = db.execute(
         select(
@@ -441,3 +453,47 @@ def validate_computation(fn: Callable) -> Callable:
         return result
 
     return wrapper
+
+
+def prepare_filter_for_evaluation(
+    db: Session,
+    filters: schemas.Filter,
+    dataset_names: list[str],
+    model_name: str,
+    task_type: enums.TaskType,
+    label_map: LabelMapType | None = None,
+) -> tuple[schemas.Filter, schemas.Filter]:
+    """
+    Prepares the filter for use by an evaluation method.
+
+    This function will be expanded in a future PR.
+
+    Parameters
+    ----------
+    db : Session
+        The database session.
+    filters : Filter
+        The data filter.
+    dataset_names : list[str]
+        A list of dataset names to filter by.
+    model_name : str
+        A model name to filter by.
+    task_type : TaskType
+        A task type to filter by.
+    label_map : LabelMapType, optional
+        An optional label mapping.
+
+    Returns
+    -------
+    Filter
+        A filter ready for evaluation.
+    """
+
+    groundtruth_filter = filters.model_copy()
+    groundtruth_filter.task_types = [task_type]
+    groundtruth_filter.dataset_names = dataset_names
+
+    predictions_filter = groundtruth_filter.model_copy()
+    predictions_filter.model_names = [model_name]
+
+    return (groundtruth_filter, predictions_filter)

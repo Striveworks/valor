@@ -22,6 +22,7 @@ from valor.schemas import (
     TaskTypeEnum,
     Text,
 )
+from valor.schemas import Box, Dictionary, Float, List, Polygon, Raster, String
 
 
 def test_label_typing():
@@ -46,7 +47,6 @@ def test_label_typing():
 
 
 def test_annotation_typing():
-    assert type(Annotation.task_type) is TaskTypeEnum
     assert type(Annotation.labels) is List[Label]
     assert type(Annotation.metadata) is Dictionary
     assert type(Annotation.bounding_box) is Box
@@ -56,10 +56,8 @@ def test_annotation_typing():
     assert type(Annotation.context) is Context
 
     annotation = Annotation(
-        task_type=enums.TaskType.CLASSIFICATION,
         labels=[],
     )
-    assert type(annotation.task_type) is enums.TaskType
     assert type(annotation.labels) is List[Label]
     assert type(annotation.metadata) is Dictionary
     assert annotation.bounding_box is None
@@ -72,14 +70,12 @@ def test_annotation_typing():
     polygon = Polygon([bbox.boundary])
     raster = Raster.from_numpy(np.zeros((10, 10)) == 0)
     annotation = Annotation(
-        task_type=enums.TaskType.CLASSIFICATION,
         labels=[],
         metadata={},
         bounding_box=bbox,
         polygon=polygon,
         raster=raster,
     )
-    assert type(annotation.task_type) is enums.TaskType
     assert type(annotation.labels) is List[Label]
     assert type(annotation.metadata) is Dictionary
     assert type(annotation.bounding_box) is Box

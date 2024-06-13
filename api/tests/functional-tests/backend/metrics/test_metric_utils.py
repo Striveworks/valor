@@ -26,12 +26,11 @@ def test_validate_computation(
     created = core.create_or_get_evaluations(
         db,
         schemas.EvaluationRequest(
+            dataset_names=[created_dataset],
             model_names=[created_model],
-            datum_filter=schemas.Filter(dataset_names=[created_dataset]),
             parameters=schemas.EvaluationParameters(
                 task_type=enums.TaskType.CLASSIFICATION,
             ),
-            meta={},
         ),
     )
     assert len(created) == 1

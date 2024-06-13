@@ -7,7 +7,7 @@ from PIL import Image
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from valor_api import crud, enums, schemas
+from valor_api import crud, schemas
 from valor_api.backend import core, models
 from valor_api.backend.database import Base, make_session
 
@@ -143,7 +143,7 @@ def images() -> list[schemas.Datum]:
 @pytest.fixture
 def groundtruths(
     db: Session, images: list[schemas.Datum]
-) -> list[list[models.GroundTruth]]:
+) -> list[models.GroundTruth]:
     """Creates a dataset called "test_dataset" with some ground truth
     detections. These detections are taken from a torchmetrics unit test (see test_metrics.py)
     """
@@ -210,7 +210,6 @@ def groundtruths(
             datum=image,
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.OBJECT_DETECTION,
                     labels=[schemas.Label(key="class", value=class_label)],
                     bounding_box=schemas.Box.from_extrema(
                         xmin=box[0],
@@ -218,6 +217,7 @@ def groundtruths(
                         xmax=box[2],
                         ymax=box[3],
                     ),
+                    is_instance=True,
                 )
                 for box, class_label in zip(gts["boxes"], gts["labels"])
             ],
@@ -232,7 +232,7 @@ def groundtruths(
         )
     crud.finalize(db=db, dataset_name=dataset_name)
 
-    return db.query(models.GroundTruth).all()  # type: ignore - SQLAlchemy type issue
+    return db.query(models.GroundTruth).all()
 
 
 # predictions to use for testing AP
@@ -242,7 +242,7 @@ def predictions(
     dataset_name: str,
     model_name: str,
     images: list[schemas.Datum],
-) -> list[list[models.Prediction]]:
+) -> list[models.Prediction]:
     """Creates a model called "test_model" with some predicted
     detections on the dataset "test_dataset". These predictions are taken
     from a torchmetrics unit test (see test_metrics.py)
@@ -318,7 +318,6 @@ def predictions(
             datum=image,
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.OBJECT_DETECTION,
                     labels=[
                         schemas.Label(
                             key="class", value=class_label, score=score
@@ -330,6 +329,7 @@ def predictions(
                         xmax=box[2],
                         ymax=box[3],
                     ),
+                    is_instance=True,
                 )
                 for box, class_label, score in zip(
                     preds["boxes"], preds["labels"], preds["scores"]
@@ -346,7 +346,7 @@ def predictions(
         )
     crud.finalize(db=db, dataset_name=dataset_name, model_name=model_name)
 
-    return db.query(models.Prediction).all()  # type: ignore - SQLAlchemy type issue
+    return db.query(models.Prediction).all()
 
 
 @pytest.fixture
@@ -354,7 +354,7 @@ def groundtruths_with_rasters(
     db: Session,
     dataset_name: str,
     img1: schemas.Datum,
-) -> list[list[models.GroundTruth]]:
+) -> list[models.GroundTruth]:
     """Used to test object detection functionality on rasters"""
     dataset_name = "test_dataset"
     crud.create_dataset(
@@ -379,7 +379,6 @@ def groundtruths_with_rasters(
             datum=img1,
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.OBJECT_DETECTION,
                     labels=[schemas.Label(key="class", value=class_label)],
                     raster=schemas.Raster.from_numpy(raster),
                 )
@@ -394,7 +393,7 @@ def groundtruths_with_rasters(
     )
     crud.finalize(db=db, dataset_name=dataset_name)
 
-    return db.query(models.GroundTruth).all()  # type: ignore - SQLAlchemy type issue
+    return db.query(models.GroundTruth).all()
 
 
 @pytest.fixture
@@ -403,7 +402,7 @@ def predictions_with_rasters(
     dataset_name: str,
     model_name: str,
     img1: schemas.Datum,
-) -> list[list[models.Prediction]]:
+) -> list[models.Prediction]:
     """Used to test object detection functionality on rasters"""
 
     crud.create_model(
@@ -437,13 +436,13 @@ def predictions_with_rasters(
             datum=img1,
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.OBJECT_DETECTION,
                     labels=[
                         schemas.Label(
                             key="class", value=class_label, score=score
                         )
                     ],
                     raster=schemas.Raster.from_numpy(raster),
+                    is_instance=True,
                 )
                 for raster, class_label, score in zip(
                     preds["rasters"], preds["labels"], preds["scores"]
@@ -459,7 +458,7 @@ def predictions_with_rasters(
         )
     crud.finalize(db=db, dataset_name=dataset_name, model_name=model_name)
 
-    return db.query(models.Prediction).all()  # type: ignore - SQLAlchemy type issue
+    return db.query(models.Prediction).all()
 
 
 @pytest.fixture
@@ -480,17 +479,14 @@ def pred_semantic_segs_img1_create(
         datum=img1,
         annotations=[
             schemas.Annotation(
-                task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
                 raster=schemas.Raster(mask=b64_mask1),
                 labels=[schemas.Label(key="k1", value="v1")],
             ),
             schemas.Annotation(
-                task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
                 raster=schemas.Raster(mask=b64_mask2),
                 labels=[schemas.Label(key="k2", value="v2")],
             ),
             schemas.Annotation(
-                task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
                 raster=schemas.Raster(mask=b64_mask3),
                 labels=[schemas.Label(key="k2", value="v3")],
             ),
@@ -514,12 +510,10 @@ def pred_semantic_segs_img2_create(
         datum=img2,
         annotations=[
             schemas.Annotation(
-                task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
                 raster=schemas.Raster(mask=b64_mask1),
                 labels=[schemas.Label(key="k1", value="v1")],
             ),
             schemas.Annotation(
-                task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
                 raster=schemas.Raster(mask=b64_mask2),
                 labels=[schemas.Label(key="k2", value="v3")],
             ),
@@ -548,17 +542,14 @@ def gt_semantic_segs_create(
             datum=img1,
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
                     raster=schemas.Raster(mask=b64_mask1),
                     labels=[schemas.Label(key="k1", value="v1")],
                 ),
                 schemas.Annotation(
-                    task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
                     raster=schemas.Raster(mask=b64_mask2),
                     labels=[schemas.Label(key="k1", value="v2")],
                 ),
                 schemas.Annotation(
-                    task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
                     raster=schemas.Raster(mask=b64_mask3),
                     labels=[schemas.Label(key="k3", value="v3")],
                 ),
@@ -569,7 +560,6 @@ def gt_semantic_segs_create(
             datum=img2,
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
                     raster=schemas.Raster(mask=b64_mask4),
                     labels=[
                         schemas.Label(key="k1", value="v1"),
@@ -593,7 +583,6 @@ def groundtruth_detections(
             datum=img1,
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.OBJECT_DETECTION,
                     labels=[
                         schemas.Label(key="k1", value="v1"),
                         schemas.Label(key="k2", value="v2"),
@@ -610,9 +599,9 @@ def groundtruth_detections(
                             ]
                         ]
                     ),
+                    is_instance=True,
                 ),
                 schemas.Annotation(
-                    task_type=enums.TaskType.OBJECT_DETECTION,
                     labels=[schemas.Label(key="k2", value="v2")],
                     metadata={},
                     polygon=schemas.Polygon(
@@ -636,6 +625,7 @@ def groundtruth_detections(
                             ]
                         ]
                     ),
+                    is_instance=True,
                 ),
             ],
         ),
@@ -644,7 +634,6 @@ def groundtruth_detections(
             datum=img2,
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.OBJECT_DETECTION,
                     labels=[
                         schemas.Label(key="k1", value="v1"),
                         schemas.Label(key="k2", value="v2"),
@@ -664,9 +653,9 @@ def groundtruth_detections(
                     raster=schemas.Raster.from_numpy(
                         np.zeros((80, 32), dtype=bool)
                     ),
+                    is_instance=True,
                 ),
                 schemas.Annotation(
-                    task_type=enums.TaskType.CLASSIFICATION,
                     labels=[schemas.Label(key="k2", value="v2")],
                     metadata={
                         "string_key": "string_val",
@@ -689,7 +678,6 @@ def prediction_detections(
             datum=img1,
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.OBJECT_DETECTION,
                     labels=[
                         schemas.Label(key="k1", value="v1", score=0.6),
                         schemas.Label(key="k1", value="v2", score=0.4),
@@ -707,9 +695,9 @@ def prediction_detections(
                             ]
                         ]
                     ),
+                    is_instance=True,
                 ),
                 schemas.Annotation(
-                    task_type=enums.TaskType.OBJECT_DETECTION,
                     labels=[
                         schemas.Label(key="k2", value="v1", score=0.1),
                         schemas.Label(key="k2", value="v2", score=0.9),
@@ -725,6 +713,7 @@ def prediction_detections(
                             ]
                         ]
                     ),
+                    is_instance=True,
                 ),
             ],
         )
@@ -784,7 +773,6 @@ def created_dataset(db: Session, dataset_name: str) -> str:
                 datum=schemas.Datum(uid="uid1"),
                 annotations=[
                     schemas.Annotation(
-                        task_type=enums.TaskType.CLASSIFICATION,
                         labels=[schemas.Label(key="k1", value="v1")],
                     )
                 ],
@@ -794,11 +782,11 @@ def created_dataset(db: Session, dataset_name: str) -> str:
                 datum=schemas.Datum(uid="uid2"),
                 annotations=[
                     schemas.Annotation(
-                        task_type=enums.TaskType.OBJECT_DETECTION,
                         labels=[schemas.Label(key="k1", value="v1")],
                         bounding_box=schemas.Box.from_extrema(
                             xmin=0, xmax=1, ymin=0, ymax=1
                         ),
+                        is_instance=True,
                     )
                 ],
             ),
@@ -813,7 +801,6 @@ def created_dataset(db: Session, dataset_name: str) -> str:
                 ),
                 annotations=[
                     schemas.Annotation(
-                        task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
                         labels=[schemas.Label(key="k1", value="v1")],
                         raster=schemas.Raster.from_numpy(
                             np.zeros((10, 10)) == 0
@@ -840,7 +827,6 @@ def created_model(db: Session, model_name: str, created_dataset: str) -> str:
                 datum=schemas.Datum(uid="uid1"),
                 annotations=[
                     schemas.Annotation(
-                        task_type=enums.TaskType.CLASSIFICATION,
                         labels=[
                             schemas.Label(key="k1", value="v1", score=1.0)
                         ],
@@ -853,13 +839,13 @@ def created_model(db: Session, model_name: str, created_dataset: str) -> str:
                 datum=schemas.Datum(uid="uid2"),
                 annotations=[
                     schemas.Annotation(
-                        task_type=enums.TaskType.OBJECT_DETECTION,
                         labels=[
                             schemas.Label(key="k1", value="v1", score=1.0)
                         ],
                         bounding_box=schemas.Box.from_extrema(
                             xmin=0, xmax=1, ymin=0, ymax=1
                         ),
+                        is_instance=True,
                     )
                 ],
             ),
@@ -875,7 +861,6 @@ def created_model(db: Session, model_name: str, created_dataset: str) -> str:
                 ),
                 annotations=[
                     schemas.Annotation(
-                        task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
                         labels=[schemas.Label(key="k1", value="v1")],
                         raster=schemas.Raster.from_numpy(
                             np.zeros((10, 10)) == 0

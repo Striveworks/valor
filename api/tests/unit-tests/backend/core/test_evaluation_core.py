@@ -13,18 +13,16 @@ def test__create_dataset_expr_from_list():
     # test list with single element
     names = ["1"]
     expr = _create_dataset_expr_from_list(names)
-    assert str(expr) == str(
-        models.Evaluation.datum_filter["dataset_names"].op("?")("1")
-    )
+    assert str(expr) == str(models.Evaluation.dataset_names.op("?")("1"))
 
     # test list with multiple elements
     names = ["1", "2", "3"]
     expr = _create_dataset_expr_from_list(names)
     assert str(expr) == str(
         or_(
-            models.Evaluation.datum_filter["dataset_names"].op("?")("1"),
-            models.Evaluation.datum_filter["dataset_names"].op("?")("2"),
-            models.Evaluation.datum_filter["dataset_names"].op("?")("3"),
+            models.Evaluation.dataset_names.op("?")("1"),
+            models.Evaluation.dataset_names.op("?")("2"),
+            models.Evaluation.dataset_names.op("?")("3"),
         )
     )
 
@@ -83,9 +81,7 @@ def test__create_bulk_expression():
     names = ["1"]
     expr = _create_bulk_expression(dataset_names=names)
     assert len(expr) == 1
-    assert str(expr[0]) == str(
-        models.Evaluation.datum_filter["dataset_names"].op("?")("1")
-    )
+    assert str(expr[0]) == str(models.Evaluation.dataset_names.op("?")("1"))
 
     # test dataset expr with multiple elements
     names = ["1", "2", "3"]
@@ -93,9 +89,9 @@ def test__create_bulk_expression():
     assert len(expr) == 1
     assert str(expr[0]) == str(
         or_(
-            models.Evaluation.datum_filter["dataset_names"].op("?")("1"),
-            models.Evaluation.datum_filter["dataset_names"].op("?")("2"),
-            models.Evaluation.datum_filter["dataset_names"].op("?")("3"),
+            models.Evaluation.dataset_names.op("?")("1"),
+            models.Evaluation.dataset_names.op("?")("2"),
+            models.Evaluation.dataset_names.op("?")("3"),
         )
     )
 

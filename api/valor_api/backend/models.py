@@ -127,6 +127,7 @@ class Annotation(Base):
     task_type: Mapped[str] = mapped_column(nullable=False)
     text: Mapped[str] = mapped_column(nullable=True)
     context = mapped_column(JSONB)
+
     meta = mapped_column(JSONB)
     created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
 
@@ -135,6 +136,8 @@ class Annotation(Base):
     polygon = mapped_column(Geometry("POLYGON"), nullable=True)
     raster = mapped_column(GDALRaster, nullable=True)
     embedding_id = mapped_column(ForeignKey("embedding.id"), nullable=True)
+    is_instance: Mapped[bool] = mapped_column(nullable=False)
+    implied_task_types = mapped_column(JSONB)
 
     # relationships
     datum: Mapped["Datum"] = relationship(back_populates="annotations")
@@ -205,16 +208,18 @@ class Evaluation(Base):
     __tablename__ = "evaluation"
     __table_args__ = (
         UniqueConstraint(
+            "dataset_names",
             "model_name",
-            "datum_filter",
+            "filters",
             "parameters",
         ),
     )
 
     # columns
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    dataset_names = mapped_column(JSONB, nullable=False)
     model_name: Mapped[str] = mapped_column(nullable=False)
-    datum_filter = mapped_column(JSONB, nullable=False)
+    filters = mapped_column(JSONB, nullable=False)
     parameters = mapped_column(JSONB, nullable=False)
     status: Mapped[str] = mapped_column(nullable=False)
     created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())

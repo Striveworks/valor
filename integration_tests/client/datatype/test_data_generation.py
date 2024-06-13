@@ -52,16 +52,11 @@ def _generate_gt_annotation(
     n_labels: int,
 ) -> Annotation:
     """Generate an annotation for a given image with a given number of labels"""
-    task_types = [
-        TaskType.OBJECT_DETECTION,
-        TaskType.SEMANTIC_SEGMENTATION,
-    ]
     mask = _generate_mask(height=height, width=width)
     raster = Raster.from_numpy(mask)
     bounding_box = _generate_bounding_box(
         max_height=height, max_width=width, is_random=True
     )
-    task_type = random.choice(task_types)
 
     labels = []
     for i in range(n_labels):
@@ -70,12 +65,10 @@ def _generate_gt_annotation(
         labels.append(label)
 
     return Annotation(
-        task_type=task_type,
         labels=labels,
         raster=raster,
-        bounding_box=(
-            bounding_box if task_type == TaskType.OBJECT_DETECTION else None
-        ),
+        bounding_box=(bounding_box),
+        is_instance=True,
     )
 
 
@@ -175,9 +168,9 @@ def _generate_prediction_annotation(
         labels.append(label)
 
     return Annotation(
-        task_type=TaskType.OBJECT_DETECTION,
         labels=labels,
         bounding_box=box,
+        is_instance=True,
     )
 
 
@@ -396,12 +389,12 @@ def test_generate_prediction_data(client: Client):
     eval_dict["meta"] = {}
 
     assert eval_dict == {
+        "dataset_names": [dataset_name],
         "model_name": model_name,
-        "datum_filter": {
+        "filters": {
             **asdict(
                 Filter()
             ),  # default filter properties with overrides below
-            "dataset_names": [dataset_name],
             "label_keys": ["k1"],
         },
         "parameters": {
@@ -411,9 +404,16 @@ def test_generate_prediction_data(client: Client):
             "iou_thresholds_to_return": [0.1, 0.9],
             "label_map": None,
             "recall_score_threshold": 0.0,
-            "compute_pr_curves": False,
+            "metrics_to_return": [
+                "AP",
+                "AR",
+                "mAP",
+                "APAveragedOverIOUs",
+                "mAR",
+                "mAPAveragedOverIOUs",
+            ],
             "pr_curve_iou_threshold": 0.5,
-            "metrics": None,
+            "pr_curve_max_examples": 1,
             "llm_api_params": None,
         },
         "meta": {},

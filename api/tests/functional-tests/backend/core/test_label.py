@@ -29,7 +29,6 @@ def semantic_seg_gt_anns1(
     img1_gt_mask_bytes1: bytes,
 ) -> schemas.Annotation:
     return schemas.Annotation(
-        task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
         raster=schemas.Raster(mask=b64encode(img1_gt_mask_bytes1).decode()),
         labels=[
             schemas.Label(key="semsegk1", value="semsegv1"),
@@ -43,7 +42,6 @@ def semantic_seg_gt_anns2(
     img2_gt_mask_bytes1: bytes,
 ) -> schemas.Annotation:
     return schemas.Annotation(
-        task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
         raster=schemas.Raster(mask=b64encode(img2_gt_mask_bytes1).decode()),
         labels=[
             schemas.Label(key="semsegk2", value="semsegv2"),
@@ -55,7 +53,6 @@ def semantic_seg_gt_anns2(
 @pytest.fixture
 def semantic_seg_pred_anns1(img1_gt_mask_bytes1: bytes) -> schemas.Annotation:
     return schemas.Annotation(
-        task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
         raster=schemas.Raster(mask=b64encode(img1_gt_mask_bytes1).decode()),
         labels=[
             schemas.Label(key="semsegk1", value="semsegv1"),
@@ -67,7 +64,6 @@ def semantic_seg_pred_anns1(img1_gt_mask_bytes1: bytes) -> schemas.Annotation:
 @pytest.fixture
 def semantic_seg_pred_anns2(img2_gt_mask_bytes1: bytes) -> schemas.Annotation:
     return schemas.Annotation(
-        task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
         raster=schemas.Raster(mask=b64encode(img2_gt_mask_bytes1).decode()),
         labels=[
             schemas.Label(key="semsegk2", value="semsegv2"),
@@ -81,12 +77,12 @@ def instance_seg_gt_anns1(
     img1_gt_mask_bytes1: bytes,
 ) -> schemas.Annotation:
     return schemas.Annotation(
-        task_type=enums.TaskType.OBJECT_DETECTION,
         raster=schemas.Raster(mask=b64encode(img1_gt_mask_bytes1).decode()),
         labels=[
             schemas.Label(key="inssegk1", value="inssegv1"),
             schemas.Label(key="inssegk2", value="inssegv2"),
         ],
+        is_instance=True,
     )
 
 
@@ -95,12 +91,12 @@ def instance_seg_gt_anns2(
     img2_gt_mask_bytes1: bytes,
 ) -> schemas.Annotation:
     return schemas.Annotation(
-        task_type=enums.TaskType.OBJECT_DETECTION,
         raster=schemas.Raster(mask=b64encode(img2_gt_mask_bytes1).decode()),
         labels=[
             schemas.Label(key="inssegk2", value="inssegv2"),
             schemas.Label(key="inssegk3", value="inssegv3"),
         ],
+        is_instance=True,
     )
 
 
@@ -140,7 +136,6 @@ def create_dataset_model(db: Session, dataset_name: str, model_name: str):
                 datum=schemas.Datum(uid="123"),
                 annotations=[
                     schemas.Annotation(
-                        task_type=enums.TaskType.CLASSIFICATION,
                         labels=[
                             schemas.Label(key="k1", value="v1"),
                             schemas.Label(key="k1", value="v2"),
@@ -160,7 +155,6 @@ def create_dataset_model(db: Session, dataset_name: str, model_name: str):
                 datum=schemas.Datum(uid="123"),
                 annotations=[
                     schemas.Annotation(
-                        task_type=enums.TaskType.CLASSIFICATION,
                         labels=[
                             schemas.Label(key="k1", value="v2", score=0.1),
                             schemas.Label(key="k1", value="v3", score=0.9),

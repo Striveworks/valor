@@ -39,11 +39,11 @@ def test_polygon():
     with pytest.raises(ValueError):
         assert Polygon([[p1, p2, p3]])
     with pytest.raises(TypeError):
-        Polygon(123)  # type: ignore
+        Polygon(123)  # type: ignore - testing
     with pytest.raises(TypeError):
-        Polygon([poly, 123])  # type: ignore
+        Polygon([poly, 123])  # type: ignore - testing
     with pytest.raises(TypeError):
-        Polygon([poly, [123]])  # type: ignore
+        Polygon([poly, [123]])  # type: ignore - testing
 
     # test property 'boundary'
     assert poly.boundary == coords
@@ -76,7 +76,7 @@ def test_box():
     # test validation
     Box(coords)
     with pytest.raises(TypeError) as e:
-        Box(polygon=p1)  # type: ignore
+        Box(polygon=p1)  # type: ignore - testing
     with pytest.raises(ValueError) as e:
         Box([[p1, p2, p3, p4]])
     assert "at least 4 points with the first point being repeated" in str(e)
@@ -100,13 +100,13 @@ def test_multipolygon():
 
     # test validation
     with pytest.raises(TypeError):
-        MultiPolygon(coords)  # type: ignore
+        MultiPolygon(coords)  # type: ignore - testing
     with pytest.raises(TypeError):
-        MultiPolygon([coords])  # type: ignore
+        MultiPolygon([coords])  # type: ignore - testing
     with pytest.raises(TypeError):
-        MultiPolygon([[coords], 123])  # type: ignore
+        MultiPolygon([[coords], 123])  # type: ignore - testing
     with pytest.raises(TypeError):
-        MultiPolygon([[[coords]]])  # type: ignore
+        MultiPolygon([[[coords]]])  # type: ignore - testing
 
 
 def test_raster(raster_raw_mask):
@@ -124,7 +124,7 @@ def test_raster(raster_raw_mask):
 
     # test validation
     with pytest.raises(TypeError):
-        assert Raster({"mask": "test", "geometry": None})  # type: ignore testing
+        assert Raster({"mask": "test", "geometry": None})  # type: ignore - testing
     with pytest.raises(TypeError) as e:
         assert Raster(123)  # type: ignore - testing
 

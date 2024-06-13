@@ -3,14 +3,31 @@ import PIL.Image
 import pytest
 
 from valor import Annotation, GroundTruth, Label
-from valor.enums import TaskType
 from valor.metatypes import ImageMetadata
-from valor.schemas import MultiPolygon, Polygon, Raster
+from valor.schemas import Box, MultiPolygon, Polygon, Raster
 from valor.viz import (
+    _draw_detection_on_image,
     _polygons_to_binary_mask,
     create_combined_segmentation_mask,
+    draw_bounding_box_on_image,
     draw_detections_on_image,
+    draw_raster_on_image,
 )
+
+
+@pytest.fixture
+def bounding_box() -> Box:
+    return Box(
+        value=[
+            [
+                (107, 207),
+                (107, 307),
+                (207, 307),
+                (207, 207),
+                (107, 207),
+            ]
+        ]
+    )
 
 
 @pytest.fixture
@@ -75,7 +92,6 @@ def test_create_combined_segmentation_mask(poly1: Polygon):
         datum=image,
         annotations=[
             Annotation(
-                task_type=TaskType.OBJECT_DETECTION,
                 labels=[
                     Label(key="k1", value="v1"),
                     Label(key="k2", value="v2"),
@@ -88,7 +104,6 @@ def test_create_combined_segmentation_mask(poly1: Polygon):
                 ),
             ),
             Annotation(
-                task_type=TaskType.SEMANTIC_SEGMENTATION,
                 labels=[
                     Label(key="k1", value="v1"),
                     Label(key="k2", value="v3"),
@@ -104,7 +119,6 @@ def test_create_combined_segmentation_mask(poly1: Polygon):
         datum=image,
         annotations=[
             Annotation(
-                task_type=TaskType.OBJECT_DETECTION,
                 labels=[
                     Label(key="k1", value="v1"),
                     Label(key="k2", value="v2"),
@@ -117,7 +131,6 @@ def test_create_combined_segmentation_mask(poly1: Polygon):
                 ),
             ),
             Annotation(
-                task_type=TaskType.SEMANTIC_SEGMENTATION,
                 labels=[
                     Label(key="k1", value="v1"),
                     Label(key="k2", value="v3"),
@@ -134,7 +147,7 @@ def test_create_combined_segmentation_mask(poly1: Polygon):
         create_combined_segmentation_mask(
             gt_with_size_mismatch,
             label_key="k2",
-            task_type=TaskType.SEMANTIC_SEGMENTATION,
+            filter_on_instance_segmentations=False,
         )
     assert "(20, 20) != (2, 2)" in str(exc_info)
 
@@ -143,7 +156,7 @@ def test_create_combined_segmentation_mask(poly1: Polygon):
         create_combined_segmentation_mask(
             gt1,
             label_key="k3",
-            task_type=TaskType.SEMANTIC_SEGMENTATION,
+            filter_on_instance_segmentations=True,
         )
     assert "doesn't have a label" in str(exc_info)
 
@@ -151,7 +164,7 @@ def test_create_combined_segmentation_mask(poly1: Polygon):
     combined_mask, legend = create_combined_segmentation_mask(
         gt1,
         label_key="k1",
-        task_type=TaskType.SEMANTIC_SEGMENTATION,
+        filter_on_instance_segmentations=False,
     )
     combined_mask = np.array(combined_mask)
     # check that we get two unique RGB values (black and one color for label value "v1")
@@ -160,12 +173,51 @@ def test_create_combined_segmentation_mask(poly1: Polygon):
 
     # should have two distinct (non-black) color
     combined_mask, legend = create_combined_segmentation_mask(
-        gt1, label_key="k2"
+        gt1,
+        label_key="k2",
+        filter_on_instance_segmentations=False,
     )
     combined_mask = np.array(combined_mask)
     # check that we get three unique RGB values (black and two colors for label values "v2" and "v3")
     assert combined_mask.shape == (2, 2, 3)
     assert len(legend) == 2  # background color 'black' is not counted
+
+
+def test__draw_detections_on_image(bounding_poly: Polygon, bounding_box: Box):
+    # test polygon
+    poly_detection = Annotation(
+        labels=[Label(key="k", value="v")],
+        polygon=bounding_poly,
+    )
+
+    img = PIL.Image.new("RGB", (300, 300))
+
+    output = _draw_detection_on_image(
+        detection=poly_detection, img=img, inplace=True
+    )
+
+    assert output.size == (300, 300)
+
+    # check unique colors only have red component
+    unique_rgb = np.unique(np.array(output).reshape(-1, 3), axis=0)
+    assert unique_rgb[:, 1:].sum() == 0
+
+    # test bounding box
+    poly_detection = Annotation(
+        labels=[Label(key="k", value="v")], bounding_box=bounding_box
+    )
+
+    img = PIL.Image.new("RGB", (300, 300))
+
+    output = _draw_detection_on_image(
+        detection=poly_detection, img=img, inplace=True
+    )
+
+    assert output.size == (300, 300)
+
+    # check unique colors only have red component
+    unique_rgb = np.unique(np.array(output).reshape(-1, 3), axis=0)
+    assert unique_rgb[:, 1:].sum() == 0
 
 
 def test_draw_detections_on_image(bounding_poly: Polygon):
@@ -174,7 +226,6 @@ def test_draw_detections_on_image(bounding_poly: Polygon):
             datum=ImageMetadata.create("test", 300, 300).datum,
             annotations=[
                 Annotation(
-                    task_type=TaskType.OBJECT_DETECTION,
                     labels=[Label(key="k", value="v")],
                     polygon=bounding_poly,
                 )
@@ -183,7 +234,49 @@ def test_draw_detections_on_image(bounding_poly: Polygon):
     ]
     img = PIL.Image.new("RGB", (300, 300))
 
-    img = draw_detections_on_image(detections, img)
+    output = draw_detections_on_image(detections, img)
+
+    assert output.size == (300, 300)
+
+    # check unique colors only have red component
+    unique_rgb = np.unique(np.array(output).reshape(-1, 3), axis=0)
+    assert unique_rgb[:, 1:].sum() == 0
+
+
+def test_draw_raster_on_image(raster):
+
+    img = PIL.Image.new("RGB", (20, 20))
+
+    output = draw_raster_on_image(raster, img)
+
+    assert output.size == (20, 20)
+
+    # check unique colors only have red component
+    unique_rgb = np.unique(np.array(output).reshape(-1, 3), axis=0)
+    assert unique_rgb[:, 1:].sum() == 0
+
+    # test errors
+    img2 = PIL.Image.new("RGB", (300, 300))
+    with pytest.raises(ValueError):
+        draw_raster_on_image(raster, img2)
+
+
+def test_draw_bounding_box_on_image():
+    box = Box(
+        value=[
+            [
+                (10, 20),
+                (10, 30),
+                (20, 30),
+                (20, 20),
+                (10, 20),
+            ]
+        ]
+    )
+
+    img = PIL.Image.new("RGB", (300, 300))
+
+    img = draw_bounding_box_on_image(bounding_box=box, img=img)
 
     assert img.size == (300, 300)
 

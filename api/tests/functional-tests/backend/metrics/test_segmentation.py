@@ -101,12 +101,12 @@ def test_query_generators(
 
         groundtruth_filter.label_ids = [label_id]
         q = _generate_groundtruth_query(groundtruth_filter)
-        data = db.query(q).all()  # type: ignore - SQLAlchemy type issue
+        data = db.query(q).all()
         assert len(data) == expected_number
 
     groundtruth_filter.label_ids = [10000000]
     q = _generate_groundtruth_query(groundtruth_filter)
-    data = db.query(q).all()  # type: ignore - SQLAlchemy type issue
+    data = db.query(q).all()
     assert len(data) == 0
 
     for label_key, label_value, expected_number in [
@@ -125,12 +125,12 @@ def test_query_generators(
 
         prediction_filter.label_ids = [label_id]
         q = _generate_prediction_query(prediction_filter)
-        data = db.query(q).all()  # type: ignore - SQLAlchemy type issue
+        data = db.query(q).all()
         assert len(data) == expected_number
 
     prediction_filter.label_ids = [10000000]
     q = _generate_prediction_query(prediction_filter)
-    data = db.query(q).all()  # type: ignore - SQLAlchemy type issue
+    data = db.query(q).all()
     assert len(data) == 0
 
 
@@ -411,12 +411,13 @@ def test__compute_segmentation_metrics(
     metrics = _compute_segmentation_metrics(
         db,
         parameters=schemas.EvaluationParameters(
-            task_type=enums.TaskType.CLASSIFICATION, label_map=None
+            task_type=enums.TaskType.SEMANTIC_SEGMENTATION, label_map=None
         ),
         prediction_filter=prediction_filter,
         groundtruth_filter=groundtruth_filter,
     )
-    # should have five metrics (one IOU for each of the four labels, and three mIOUs)
+    # should have seven metrics
+    # (one IOU for each of the four labels from the groundtruth set, and three mIOUs for each included label key)
     assert len(metrics) == 7
     for metric in metrics[:-3]:
         assert isinstance(metric, schemas.IOUMetric)
@@ -443,12 +444,11 @@ def test_compute_semantic_segmentation_metrics(
     )
 
     job_request = schemas.EvaluationRequest(
+        dataset_names=[dataset_name],
         model_names=[model_name],
-        datum_filter=schemas.Filter(dataset_names=[dataset_name]),
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
         ),
-        meta={},
     )
 
     evaluations = create_or_get_evaluations(db=db, job_request=job_request)

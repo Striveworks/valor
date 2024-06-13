@@ -1,3 +1,3 @@
-from .ops import Query
+from .ops import generate_query, generate_select
 
-__all__ = ["Query"]
+__all__ = ["generate_query", "generate_select"]

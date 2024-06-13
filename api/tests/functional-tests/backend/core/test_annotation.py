@@ -2,7 +2,7 @@ import pytest
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from valor_api import enums, exceptions, schemas
+from valor_api import exceptions, schemas
 from valor_api.backend import core, models
 
 
@@ -60,25 +60,11 @@ def test_create_empty_annotations(
 ):
     core.create_groundtruths(db, empty_groundtruths)
 
-    assert (
-        db.scalar(
-            select(func.count())
-            .select_from(models.Annotation)
-            .where(models.Annotation.task_type == enums.TaskType.EMPTY.value)
-        )
-        == 3
-    )
+    assert db.scalar(select(func.count()).select_from(models.Annotation)) == 3
 
     core.create_predictions(db, empty_predictions)
 
-    assert (
-        db.scalar(
-            select(func.count())
-            .select_from(models.Annotation)
-            .where(models.Annotation.task_type == enums.TaskType.EMPTY.value)
-        )
-        == 6
-    )
+    assert db.scalar(select(func.count()).select_from(models.Annotation)) == 6
 
 
 def test_create_annotation_already_exists_error(
@@ -105,7 +91,6 @@ def test_create_annotation_with_embedding(
         datum=schemas.Datum(uid="uid123"),
         annotations=[
             schemas.Annotation(
-                task_type=enums.TaskType.CLASSIFICATION,
                 labels=[schemas.Label(key="class", value="dog")],
             ),
         ],
@@ -117,7 +102,6 @@ def test_create_annotation_with_embedding(
         datum=schemas.Datum(uid="uid123"),
         annotations=[
             schemas.Annotation(
-                task_type=enums.TaskType.EMBEDDING,
                 embedding=[0.5, 0.5, 0.5],
             ),
         ],

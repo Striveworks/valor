@@ -11,7 +11,7 @@ def test_validate_metadata():
     Dictionary({"test": 1.0})
 
     with pytest.raises(TypeError):
-        Dictionary({123: 123})  # type: ignore
+        Dictionary({123: 123})  # type: ignore - testing
 
     # Check int to float conversion
     assert type(Dictionary({"test": 1})["test"]) is int

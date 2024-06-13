@@ -3,6 +3,7 @@ that is no auth
 """
 
 from typing import List
+from unittest.mock import patch
 
 import pytest
 import requests
@@ -18,7 +19,6 @@ from valor import (
     Prediction,
 )
 from valor.client import connect
-from valor.enums import TaskType
 from valor.exceptions import ClientException
 from valor.schemas import Constraint, Filter
 
@@ -48,7 +48,6 @@ def created_dataset(
             datum=Datum(uid="1"),
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
                     labels=dataset_labels,
                 )
             ],
@@ -72,7 +71,6 @@ def created_model(
             datum=Datum(uid="1"),
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
                     labels=model_labels,
                 )
             ],
@@ -176,6 +174,42 @@ def test__requests_wrapper(client: Client):
 
     with pytest.raises(ClientException):
         client.conn._requests_wrapper("get", "not_an_endpoint")
+
+
+@patch("time.sleep")
+def test__requests_wrapper_retries(mock_requests, client: Client, monkeypatch):
+    """Tests the retry logic in _requests_wrapper to see if we call requests.get the appropriate number of times."""
+
+    def _return_mock_response(*args, **kwargs):
+        if mock_requests.call_count <= 3:
+            raise requests.exceptions.Timeout
+        response = requests.Response
+        response.status_code = 200
+        return response
+
+    monkeypatch.setattr("requests.get", _return_mock_response)
+
+    for max_retries in range(1, 3):
+        with pytest.raises(TimeoutError):
+            client.conn._requests_wrapper(
+                method_name="get",
+                endpoint="test",
+                ignore_auth=False,
+                max_retries_on_timeout=max_retries,
+                initial_timeout=0.1,
+                exponential_backoff=1,
+            )
+
+    for max_retries in range(4, 8):
+        client.conn._requests_wrapper(
+            method_name="get",
+            endpoint="test",
+            ignore_auth=False,
+            max_retries_on_timeout=max_retries,
+            initial_timeout=0.1,
+            exponential_backoff=1,
+        )
+        assert mock_requests.call_count == 4
 
 
 def test_get_labels(

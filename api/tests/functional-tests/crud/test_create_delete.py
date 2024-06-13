@@ -90,7 +90,6 @@ def groundtruth_detections(
             datum=img1,
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.OBJECT_DETECTION,
                     labels=[
                         schemas.Label(key="k1", value="v1"),
                         schemas.Label(key="k2", value="v2"),
@@ -107,9 +106,9 @@ def groundtruth_detections(
                             ]
                         ]
                     ),
+                    is_instance=True,
                 ),
                 schemas.Annotation(
-                    task_type=enums.TaskType.OBJECT_DETECTION,
                     labels=[schemas.Label(key="k2", value="v2")],
                     metadata={},
                     bounding_box=schemas.Box(
@@ -123,6 +122,7 @@ def groundtruth_detections(
                             ]
                         ]
                     ),
+                    is_instance=True,
                 ),
             ],
         )
@@ -140,7 +140,6 @@ def prediction_detections(
             datum=img1,
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.OBJECT_DETECTION,
                     labels=[
                         schemas.Label(key="k1", value="v1", score=0.6),
                         schemas.Label(key="k1", value="v2", score=0.4),
@@ -158,9 +157,9 @@ def prediction_detections(
                             ]
                         ]
                     ),
+                    is_instance=True,
                 ),
                 schemas.Annotation(
-                    task_type=enums.TaskType.OBJECT_DETECTION,
                     labels=[
                         schemas.Label(key="k2", value="v1", score=0.1),
                         schemas.Label(key="k2", value="v2", score=0.9),
@@ -176,6 +175,7 @@ def prediction_detections(
                             ]
                         ]
                     ),
+                    is_instance=True,
                 ),
             ],
         )
@@ -199,9 +199,9 @@ def groundtruth_instance_segmentations(
             datum=img1,
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.OBJECT_DETECTION,
                     labels=[schemas.Label(key="k1", value="v1")],
                     polygon=poly_with_hole,
+                    is_instance=True,
                 ),
             ],
         ),
@@ -210,17 +210,16 @@ def groundtruth_instance_segmentations(
             datum=img2,
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.OBJECT_DETECTION,
                     labels=[schemas.Label(key="k1", value="v1")],
                     polygon=poly_without_hole,
+                    is_instance=True,
                 ),
                 schemas.Annotation(
-                    task_type=enums.TaskType.OBJECT_DETECTION,
                     labels=[schemas.Label(key="k3", value="v3")],
                     polygon=poly_without_hole,
+                    is_instance=True,
                 ),
                 schemas.Annotation(
-                    task_type=enums.TaskType.OBJECT_DETECTION,
                     labels=[schemas.Label(key="k1", value="v1")],
                     raster=schemas.Raster.from_geometry(
                         schemas.MultiPolygon(
@@ -232,6 +231,7 @@ def groundtruth_instance_segmentations(
                         height=img2.metadata["height"],
                         width=img2.metadata["width"],
                     ),
+                    is_instance=True,
                 ),
             ],
         ),
@@ -254,7 +254,6 @@ def prediction_instance_segmentations(
             datum=img1,
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.OBJECT_DETECTION,
                     labels=[
                         schemas.Label(key="k1", value="v1", score=0.43),
                         schemas.Label(key="k1", value="v2", score=0.57),
@@ -262,9 +261,9 @@ def prediction_instance_segmentations(
                     raster=schemas.Raster(
                         mask=b64_mask1,
                     ),
+                    is_instance=True,
                 ),
                 schemas.Annotation(
-                    task_type=enums.TaskType.OBJECT_DETECTION,
                     labels=[
                         schemas.Label(key="k2", value="v1", score=0.03),
                         schemas.Label(key="k2", value="v2", score=0.97),
@@ -272,9 +271,9 @@ def prediction_instance_segmentations(
                     raster=schemas.Raster(
                         mask=b64_mask1,
                     ),
+                    is_instance=True,
                 ),
                 schemas.Annotation(
-                    task_type=enums.TaskType.OBJECT_DETECTION,
                     labels=[
                         schemas.Label(key="k2", value="v1", score=0.26),
                         schemas.Label(key="k2", value="v2", score=0.74),
@@ -282,9 +281,9 @@ def prediction_instance_segmentations(
                     raster=schemas.Raster(
                         mask=b64_mask1,
                     ),
+                    is_instance=True,
                 ),
                 schemas.Annotation(
-                    task_type=enums.TaskType.OBJECT_DETECTION,
                     labels=[
                         schemas.Label(key="k2", value="v1", score=0.86),
                         schemas.Label(key="k2", value="v2", score=0.14),
@@ -292,6 +291,7 @@ def prediction_instance_segmentations(
                     raster=schemas.Raster(
                         mask=b64_mask1,
                     ),
+                    is_instance=True,
                 ),
             ],
         )
@@ -310,7 +310,6 @@ def gt_clfs_create(
             datum=img1,
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.CLASSIFICATION,
                     labels=[
                         schemas.Label(key="k1", value="v1"),
                         schemas.Label(key="k2", value="v2"),
@@ -323,7 +322,6 @@ def gt_clfs_create(
             datum=img2,
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.CLASSIFICATION,
                     labels=[schemas.Label(key="k2", value="v3")],
                 ),
             ],
@@ -345,7 +343,6 @@ def pred_clfs_create(
             datum=img1,
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.CLASSIFICATION,
                     labels=[
                         schemas.Label(key="k1", value="v1", score=0.2),
                         schemas.Label(key="k1", value="v2", score=0.8),
@@ -360,7 +357,6 @@ def pred_clfs_create(
             datum=img2,
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.CLASSIFICATION,
                     labels=[
                         schemas.Label(key="k2", value="v2", score=0.8),
                         schemas.Label(key="k2", value="v3", score=0.1),
@@ -538,7 +534,6 @@ def test_create_detections_as_bbox_or_poly(
     xmin, ymin, xmax, ymax = 50, 70, 120, 300
 
     det1 = schemas.Annotation(
-        task_type=enums.TaskType.OBJECT_DETECTION,
         labels=[schemas.Label(key="k", value="v")],
         polygon=schemas.Polygon(
             value=[
@@ -551,10 +546,10 @@ def test_create_detections_as_bbox_or_poly(
                 ]
             ]
         ),
+        is_instance=True,
     )
 
     det2 = schemas.Annotation(
-        task_type=enums.TaskType.OBJECT_DETECTION,
         labels=[schemas.Label(key="k", value="v")],
         bounding_box=schemas.Box.from_extrema(
             xmin=xmin,
@@ -562,6 +557,7 @@ def test_create_detections_as_bbox_or_poly(
             xmax=xmax,
             ymax=ymax,
         ),
+        is_instance=True,
     )
 
     crud.create_dataset(db=db, dataset=schemas.Dataset(name=dataset_name))
@@ -702,9 +698,6 @@ def _test_create_groundtruth_segmentations_and_delete_dataset(
     assert db.scalar(func.count(models.GroundTruth.id)) == expected_gts
     assert db.scalar(func.count(models.Label.id)) == expected_labels
 
-    for a in db.scalars(select(models.Annotation)):
-        assert a.task_type == task
-
     # finalize to free dataset
     crud.finalize(db=db, dataset_name=dataset_name)
 
@@ -775,7 +768,7 @@ def test_create_predicted_segmentations_check_area_and_delete_model(
     for gt in groundtruth_instance_segmentations:
         crud.create_groundtruths(db=db, groundtruths=[gt])
 
-    # check this gives an error since the model has not been crated yet
+    # check this gives an error since the model has not been created yet
     with pytest.raises(exceptions.ModelDoesNotExistError) as exc_info:
         for pd in prediction_instance_segmentations:
             crud.create_predictions(db=db, predictions=[pd])
@@ -872,7 +865,6 @@ def test_segmentation_area_no_hole(
                 datum=img1,
                 annotations=[
                     schemas.Annotation(
-                        task_type=enums.TaskType.OBJECT_DETECTION,
                         labels=[schemas.Label(key="k1", value="v1")],
                         raster=schemas.Raster.from_geometry(
                             schemas.MultiPolygon(
@@ -914,7 +906,6 @@ def test_segmentation_area_with_hole(
                 datum=img1,
                 annotations=[
                     schemas.Annotation(
-                        task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
                         labels=[schemas.Label(key="k1", value="v1")],
                         raster=schemas.Raster.from_geometry(
                             schemas.MultiPolygon(
@@ -958,7 +949,6 @@ def test_segmentation_area_multi_polygon(
                 datum=img1,
                 annotations=[
                     schemas.Annotation(
-                        task_type=enums.TaskType.OBJECT_DETECTION,
                         labels=[schemas.Label(key="k1", value="v1")],
                         raster=schemas.Raster.from_geometry(
                             schemas.MultiPolygon(
@@ -1019,19 +1009,19 @@ def test_gt_seg_as_mask_or_polys(
     )
 
     gt1 = schemas.Annotation(
-        task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
         labels=[schemas.Label(key="k1", value="v1")],
         raster=schemas.Raster(
             mask=mask_b64,
         ),
+        is_instance=True,
     )
     gt2 = schemas.Annotation(
-        task_type=enums.TaskType.OBJECT_DETECTION,
         labels=[schemas.Label(key="k1", value="v1")],
         raster=schemas.Raster(
             mask=mask_b64,
             geometry=schemas.MultiPolygon(value=[poly.value]),
         ),
+        is_instance=True,
     )
     gt = schemas.GroundTruth(
         dataset_name=dataset_name,
@@ -1128,10 +1118,10 @@ def test_create_detection_metrics(
             geometric_filters = None
 
         job_request = schemas.EvaluationRequest(
+            dataset_names=["test_dataset"],
             model_names=["test_model"],
-            datum_filter=schemas.Filter(
+            filters=schemas.Filter(
                 label_keys=[label_key],
-                dataset_names=["test_dataset"],
                 bounding_box_area=geometric_filters,
             ),
             parameters=schemas.EvaluationParameters(
@@ -1140,7 +1130,6 @@ def test_create_detection_metrics(
                 iou_thresholds_to_compute=[0.2, 0.6],
                 iou_thresholds_to_return=[0.2],
             ),
-            meta={},
         )
 
         # create evaluation (return AP Response)
@@ -1247,6 +1236,8 @@ def test_create_detection_metrics(
             "mAR",
             "mAP",
             "mAPAveragedOverIOUs",
+            "PrecisionRecallCurve",
+            "DetailedPrecisionRecallCurve",
         }
 
     # test when min area and max area are specified
@@ -1272,6 +1263,8 @@ def test_create_detection_metrics(
             "mAR",
             "mAP",
             "mAPAveragedOverIOUs",
+            "PrecisionRecallCurve",
+            "DetailedPrecisionRecallCurve",
         }
 
     # check we have the right evaluations
@@ -1290,10 +1283,9 @@ def test_create_detection_metrics(
     model_evals[0].meta = {}
 
     assert model_evals[1] == schemas.EvaluationResponse(
+        dataset_names=[dataset_name],
         model_name=model_name,
-        datum_filter=schemas.Filter(
-            label_keys=["class"], dataset_names=[dataset_name]
-        ),
+        filters=schemas.Filter(label_keys=["class"]),
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.OBJECT_DETECTION,
             convert_annotations_to_type=enums.AnnotationType.BOX,
@@ -1312,9 +1304,9 @@ def test_create_detection_metrics(
         meta={},
     )
     assert model_evals[0] == schemas.EvaluationResponse(
+        dataset_names=[dataset_name],
         model_name=model_name,
-        datum_filter=schemas.Filter(
-            dataset_names=[dataset_name],
+        filters=schemas.Filter(
             label_keys=["class"],
             bounding_box_area=[
                 schemas.NumericFilter(
@@ -1368,12 +1360,11 @@ def test_create_clf_metrics(
     crud.finalize(db=db, model_name=model_name, dataset_name=dataset_name)
 
     job_request = schemas.EvaluationRequest(
+        dataset_names=[dataset_name],
         model_names=[model_name],
-        datum_filter=schemas.Filter(dataset_names=[dataset_name]),
         parameters=schemas.EvaluationParameters(
-            task_type=enums.TaskType.CLASSIFICATION
+            task_type=enums.TaskType.CLASSIFICATION,
         ),
-        meta={},
     )
 
     # create clf evaluation (returns Clf Response)
@@ -1476,7 +1467,7 @@ def test_create_clf_metrics(
     )
     assert query
     metrics = query.metrics
-    assert len(metrics) == 2 + 2 + 6 + 6 + 6
+    assert len(metrics) == 22
     confusion_matrices = db.scalars(
         select(models.ConfusionMatrix).where(
             models.ConfusionMatrix.evaluation_id == evaluation_id

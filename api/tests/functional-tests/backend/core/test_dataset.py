@@ -120,15 +120,15 @@ def test_dataset_status(db: Session, created_dataset):
         == enums.TableStatus.DELETING
     )
 
-    # test others
-    with pytest.raises(exceptions.DatasetStateError):
-        core.set_dataset_status(
-            db, created_dataset, enums.TableStatus.CREATING
-        )
-    with pytest.raises(exceptions.DatasetStateError):
-        core.set_dataset_status(
-            db, created_dataset, enums.TableStatus.FINALIZED
-        )
+    # show that the dataset is unfetchable now that it has been marked for deletion
+    with pytest.raises(exceptions.DatasetDoesNotExistError):
+        core.fetch_dataset(db=db, name=created_dataset)
+
+    # show that the status is still retrievable
+    assert (
+        core.get_dataset_status(db, created_dataset)
+        == enums.TableStatus.DELETING
+    )
 
 
 def test_dataset_status_create_to_delete(db: Session, created_dataset):
@@ -156,12 +156,11 @@ def test_dataset_status_with_evaluations(
     evaluations = core.create_or_get_evaluations(
         db,
         schemas.EvaluationRequest(
+            dataset_names=[created_dataset],
             model_names=[created_model],
-            datum_filter=schemas.Filter(dataset_names=[created_dataset]),
             parameters=schemas.EvaluationParameters(
                 task_type=enums.TaskType.CLASSIFICATION,
             ),
-            meta={},
         ),
     )
     assert len(evaluations) == 1
@@ -248,19 +247,6 @@ def test_get_n_groundtruth_rasters_in_dataset(
     assert (
         core.get_n_groundtruth_rasters_in_dataset(db=db, name=dataset_name)
         == 1
-    )
-
-
-def test_get_unique_task_types_in_dataset(
-    db: Session, dataset_name: str, dataset_model_create
-):
-    assert set(
-        core.get_unique_task_types_in_dataset(db=db, name=dataset_name)
-    ) == set(
-        [
-            enums.TaskType.OBJECT_DETECTION.value,
-            enums.TaskType.CLASSIFICATION.value,
-        ]
     )
 
 

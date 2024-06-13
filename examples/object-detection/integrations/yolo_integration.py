@@ -2,7 +2,7 @@ import numpy
 import PIL
 from PIL.Image import Resampling
 
-from valor import Annotation, Datum, Label, Prediction, enums
+from valor import Annotation, Datum, Label, Prediction
 from valor.metatypes import ImageMetadata
 from valor.schemas import Box, Raster
 
@@ -46,9 +46,9 @@ def parse_detection_into_bounding_box(
         datum=datum,
         annotations=[
             Annotation(
-                task_type=enums.TaskType.OBJECT_DETECTION,
                 labels=[scored_label],
                 bounding_box=bbox,
+                is_instance=True,
             )
             for bbox, scored_label in list(zip(bboxes, labels))
         ],
@@ -120,9 +120,9 @@ def parse_detection_into_raster(
         datum=datum,
         annotations=[
             Annotation(
-                task_type=enums.TaskType.OBJECT_DETECTION,
                 labels=[scored_label],
                 raster=Raster.from_numpy(mask),
+                is_instance=True,
             )
             for mask, scored_label in list(zip(masks, labels))
         ],

@@ -16,7 +16,7 @@ from valor_api.backend.metrics.classification import (
     compute_clf_metrics,
 )
 from valor_api.backend.metrics.metric_utils import create_grouper_mappings
-from valor_api.backend.query import Query
+from valor_api.backend.query import generate_query, generate_select
 
 
 @pytest.fixture
@@ -68,7 +68,6 @@ def classification_test_data(db: Session, dataset_name: str, model_name: str):
             datum=imgs[i],
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.CLASSIFICATION,
                     labels=[
                         schemas.Label(key="animal", value=animal_gts[i]),
                         schemas.Label(key="color", value=color_gts[i]),
@@ -86,7 +85,6 @@ def classification_test_data(db: Session, dataset_name: str, model_name: str):
             datum=imgs[i],
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.CLASSIFICATION,
                     labels=[
                         schemas.Label(key="animal", value=value, score=score)
                         for value, score in animal_preds[i].items()
@@ -168,22 +166,17 @@ def test_compute_confusion_matrix_at_grouper_key(
     pFilter = prediction_filter.model_copy()
     pFilter.label_keys = label_key_filter
 
-    groundtruths = (
-        Query(
-            models.GroundTruth,
-            models.Annotation.datum_id.label("datum_id"),
-        )
-        .filter(gFilter)
-        .groundtruths(as_subquery=False)
-        .alias()
-    )
-
-    predictions = (
-        Query(models.Prediction)
-        .filter(pFilter)
-        .predictions(as_subquery=False)
-        .alias()
-    )
+    groundtruths = generate_select(
+        models.GroundTruth,
+        models.Annotation.datum_id.label("datum_id"),
+        filters=gFilter,
+        label_source=models.GroundTruth,
+    ).alias()
+    predictions = generate_select(
+        models.Prediction,
+        filters=pFilter,
+        label_source=models.Prediction,
+    ).alias()
 
     cm = _compute_confusion_matrix_at_grouper_key(
         db=db,
@@ -230,22 +223,17 @@ def test_compute_confusion_matrix_at_grouper_key(
     pFilter = prediction_filter.model_copy()
     pFilter.label_keys = label_key_filter
 
-    groundtruths = (
-        Query(
-            models.GroundTruth,
-            models.Annotation.datum_id.label("datum_id"),
-        )
-        .filter(gFilter)
-        .groundtruths(as_subquery=False)
-        .alias()
-    )
-
-    predictions = (
-        Query(models.Prediction)
-        .filter(pFilter)
-        .predictions(as_subquery=False)
-        .alias()
-    )
+    groundtruths = generate_select(
+        models.GroundTruth,
+        models.Annotation.datum_id.label("datum_id"),
+        filters=gFilter,
+        label_source=models.GroundTruth,
+    ).alias()
+    predictions = generate_select(
+        models.Prediction,
+        filters=pFilter,
+        label_source=models.Prediction,
+    ).alias()
 
     cm = _compute_confusion_matrix_at_grouper_key(
         db=db,
@@ -325,22 +313,17 @@ def test_compute_confusion_matrix_at_grouper_key_and_filter(
     pFilter = prediction_filter.model_copy()
     pFilter.label_keys = label_key_filter
 
-    groundtruths = (
-        Query(
-            models.GroundTruth,
-            models.Annotation.datum_id.label("datum_id"),
-        )
-        .filter(gFilter)
-        .groundtruths(as_subquery=False)
-        .alias()
-    )
-
-    predictions = (
-        Query(models.Prediction)
-        .filter(pFilter)
-        .predictions(as_subquery=False)
-        .alias()
-    )
+    groundtruths = generate_select(
+        models.GroundTruth,
+        models.Annotation.datum_id.label("datum_id"),
+        filters=gFilter,
+        label_source=models.GroundTruth,
+    ).alias()
+    predictions = generate_select(
+        models.Prediction,
+        filters=pFilter,
+        label_source=models.Prediction,
+    ).alias()
 
     cm = _compute_confusion_matrix_at_grouper_key(
         db,
@@ -419,22 +402,17 @@ def test_compute_confusion_matrix_at_grouper_key_using_label_map(
     pFilter = prediction_filter.model_copy()
     pFilter.label_keys = label_key_filter
 
-    groundtruths = (
-        Query(
-            models.GroundTruth,
-            models.Annotation.datum_id.label("datum_id"),
-        )
-        .filter(gFilter)
-        .groundtruths(as_subquery=False)
-        .alias()
-    )
-
-    predictions = (
-        Query(models.Prediction)
-        .filter(pFilter)
-        .predictions(as_subquery=False)
-        .alias()
-    )
+    groundtruths = generate_select(
+        models.GroundTruth,
+        models.Annotation.datum_id.label("datum_id"),
+        filters=gFilter,
+        label_source=models.GroundTruth,
+    ).alias()
+    predictions = generate_select(
+        models.Prediction,
+        filters=pFilter,
+        label_source=models.Prediction,
+    ).alias()
 
     cm = _compute_confusion_matrix_at_grouper_key(
         db,
@@ -697,14 +675,26 @@ def test_compute_classification(
     model_filter = schemas.Filter(
         dataset_names=[dataset_name], model_names=[model_name]
     )
-    datum_filter = schemas.Filter(
+    dataset_filter = schemas.Filter(
         dataset_names=[dataset_name],
         model_names=[model_name],
         task_types=[enums.TaskType.CLASSIFICATION],
     )
 
     confusion, metrics = _compute_clf_metrics(
-        db, model_filter, datum_filter, label_map=None, compute_pr_curves=True
+        db,
+        prediction_filter=model_filter,
+        groundtruth_filter=dataset_filter,
+        label_map=None,
+        pr_curve_max_examples=0,
+        metrics_to_return=[
+            "Precision",
+            "Recall",
+            "F1",
+            "Accuracy",
+            "ROCAUC",
+            "PrecisionRecallCurve",
+        ],
     )
 
     # Make matrices accessible by label_key
@@ -771,12 +761,11 @@ def test_classification(
 ):
     # default request
     job_request = schemas.EvaluationRequest(
+        dataset_names=[dataset_name],
         model_names=[model_name],
-        datum_filter=schemas.Filter(dataset_names=[dataset_name]),
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.CLASSIFICATION,
         ),
-        meta={},
     )
 
     # creates evaluation job
@@ -900,35 +889,36 @@ def test__compute_curves(
     pFilter = prediction_filter.model_copy()
     pFilter.label_keys = label_key_filter
 
-    groundtruths = (
-        Query(
-            models.GroundTruth,
-            models.Annotation.datum_id.label("datum_id"),
-            models.Dataset.name.label("dataset_name"),
-        )
-        .filter(gFilter)
-        .groundtruths(as_subquery=False)
-        .alias()
-    )
-
-    predictions = (
-        Query(models.Prediction, models.Dataset.name.label("dataset_name"))
-        .filter(pFilter)
-        .predictions(as_subquery=False)
-        .alias()
-    )
+    groundtruths = generate_select(
+        models.GroundTruth,
+        models.Annotation.datum_id.label("datum_id"),
+        models.Dataset.name.label("dataset_name"),
+        filters=gFilter,
+        label_source=models.GroundTruth,
+    ).alias()
+    predictions = generate_select(
+        models.Prediction,
+        models.Dataset.name.label("dataset_name"),
+        filters=pFilter,
+        label_source=models.Prediction,
+    ).alias()
 
     # calculate the number of unique datums
     # used to determine the number of true negatives
-    pd_datums = db.query(
-        Query(models.Dataset.name, models.Datum.uid)  # type: ignore - sqlalchemy issues
-        .filter(prediction_filter)
-        .predictions()
+
+    gt_datums = generate_query(
+        models.Dataset.name,
+        models.Datum.uid,
+        db=db,
+        filters=groundtruth_filter,
+        label_source=models.GroundTruth,
     ).all()
-    gt_datums = db.query(
-        Query(models.Dataset.name, models.Datum.uid)  # type: ignore - sqlalchemy issues
-        .filter(groundtruth_filter)
-        .groundtruths()
+    pd_datums = generate_query(
+        models.Dataset.name,
+        models.Datum.uid,
+        db=db,
+        filters=prediction_filter,
+        label_source=models.Prediction,
     ).all()
     unique_datums = set(pd_datums + gt_datums)
 
@@ -939,8 +929,14 @@ def test__compute_curves(
         grouper_key="animal",
         grouper_mappings=grouper_mappings,
         unique_datums=unique_datums,
+        pr_curve_max_examples=1,
+        metrics_to_return=[
+            "PrecisionRecallCurve",
+            "DetailedPrecisionRecallCurve",
+        ],
     )
 
+    # check PrecisionRecallCurve
     pr_expected_answers = {
         # bird
         ("bird", 0.05, "tp"): 3,
@@ -984,6 +980,196 @@ def test__compute_curves(
         threshold,
         metric,
     ), expected_length in pr_expected_answers.items():
-        list_of_datums = curves[value][threshold][metric]
-        assert isinstance(list_of_datums, list)
-        assert len(list_of_datums) == expected_length
+        classification = curves[0].value[value][threshold][metric]
+        assert classification == expected_length
+
+    # check DetailedPrecisionRecallCurve
+    detailed_pr_expected_answers = {
+        # bird
+        ("bird", 0.05, "tp"): {"all": 3, "total": 3},
+        ("bird", 0.05, "fp"): {
+            "hallucinations": 0,
+            "misclassifications": 1,
+            "total": 1,
+        },
+        ("bird", 0.05, "tn"): {"all": 2, "total": 2},
+        ("bird", 0.05, "fn"): {
+            "missed_detections": 0,
+            "misclassifications": 0,
+            "total": 0,
+        },
+        # dog
+        ("dog", 0.05, "tp"): {"all": 2, "total": 2},
+        ("dog", 0.05, "fp"): {
+            "hallucinations": 0,
+            "misclassifications": 3,
+            "total": 3,
+        },
+        ("dog", 0.05, "tn"): {"all": 1, "total": 1},
+        ("dog", 0.8, "fn"): {
+            "missed_detections": 1,
+            "misclassifications": 1,
+            "total": 2,
+        },
+        # cat
+        ("cat", 0.05, "tp"): {"all": 1, "total": 1},
+        ("cat", 0.05, "fp"): {
+            "hallucinations": 0,
+            "misclassifications": 5,
+            "total": 5,
+        },
+        ("cat", 0.05, "tn"): {"all": 0, "total": 0},
+        ("cat", 0.8, "fn"): {
+            "missed_detections": 0,
+            "misclassifications": 0,
+            "total": 0,
+        },
+    }
+
+    for (
+        value,
+        threshold,
+        metric,
+    ), expected_output in detailed_pr_expected_answers.items():
+        model_output = curves[1].value[value][threshold][metric]
+        assert isinstance(model_output, dict)
+        assert model_output["total"] == expected_output["total"]
+        assert all(
+            [
+                model_output["observations"][key]["count"]  # type: ignore - we know this element is a dict
+                == expected_output[key]
+                for key in [
+                    key
+                    for key in expected_output.keys()
+                    if key not in ["total"]
+                ]
+            ]
+        )
+
+    # spot check number of examples
+    assert (
+        len(
+            curves[1].value["bird"][0.05]["tp"]["observations"]["all"][  # type: ignore - we know this element is a dict
+                "examples"
+            ]
+        )
+        == 1
+    )
+    assert (
+        len(
+            curves[1].value["bird"][0.05]["tn"]["observations"]["all"][  # type: ignore - we know this element is a dict
+                "examples"
+            ]
+        )
+        == 1
+    )
+
+    # repeat the above, but with a higher pr_max_curves_example
+    curves = _compute_curves(
+        db=db,
+        predictions=predictions,
+        groundtruths=groundtruths,
+        grouper_key="animal",
+        grouper_mappings=grouper_mappings,
+        unique_datums=unique_datums,
+        pr_curve_max_examples=3,
+        metrics_to_return=[
+            "PrecisionRecallCurve",
+            "DetailedPrecisionRecallCurve",
+        ],
+    )
+
+    # these outputs shouldn't have changed
+    for (
+        value,
+        threshold,
+        metric,
+    ), expected_output in detailed_pr_expected_answers.items():
+        model_output = curves[1].value[value][threshold][metric]
+        assert isinstance(model_output, dict)
+        assert model_output["total"] == expected_output["total"]
+        assert all(
+            [
+                model_output["observations"][key]["count"]  # type: ignore - we know this element is a dict
+                == expected_output[key]
+                for key in [
+                    key
+                    for key in expected_output.keys()
+                    if key not in ["total"]
+                ]
+            ]
+        )
+
+    assert (
+        len(
+            curves[1].value["bird"][0.05]["tp"]["observations"]["all"][  # type: ignore - we know this element is a dict
+                "examples"
+            ]
+        )
+        == 3
+    )
+    assert (
+        len(
+            (
+                curves[1].value["bird"][0.05]["tn"]["observations"]["all"][  # type: ignore - we know this element is a dict
+                    "examples"
+                ]
+            )
+        )
+        == 2  # only two examples exist
+    )
+
+    # test behavior if pr_curve_max_examples == 0
+    curves = _compute_curves(
+        db=db,
+        predictions=predictions,
+        groundtruths=groundtruths,
+        grouper_key="animal",
+        grouper_mappings=grouper_mappings,
+        unique_datums=unique_datums,
+        pr_curve_max_examples=0,
+        metrics_to_return=[
+            "PrecisionRecallCurve",
+            "DetailedPrecisionRecallCurve",
+        ],
+    )
+
+    # these outputs shouldn't have changed
+    for (
+        value,
+        threshold,
+        metric,
+    ), expected_output in detailed_pr_expected_answers.items():
+        model_output = curves[1].value[value][threshold][metric]
+        assert isinstance(model_output, dict)
+        assert model_output["total"] == expected_output["total"]
+        assert all(
+            [
+                model_output["observations"][key]["count"]  # type: ignore - we know this element is a dict
+                == expected_output[key]
+                for key in [
+                    key
+                    for key in expected_output.keys()
+                    if key not in ["total"]
+                ]
+            ]
+        )
+
+    assert (
+        len(
+            curves[1].value["bird"][0.05]["tp"]["observations"]["all"][  # type: ignore - we know this element is a dict
+                "examples"
+            ]
+        )
+        == 0
+    )
+    assert (
+        len(
+            (
+                curves[1].value["bird"][0.05]["tn"]["observations"]["all"][  # type: ignore - we know this element is a dict
+                    "examples"
+                ]
+            )
+        )
+        == 0
+    )

@@ -11,6 +11,7 @@ from valor.enums import AnnotationType, EvaluationStatus, TableStatus, TaskType
 from valor.exceptions import (
     ClientException,
     DatasetDoesNotExistError,
+    EvaluationDoesNotExist,
     ModelDoesNotExistError,
 )
 from valor.schemas import (
@@ -70,7 +71,6 @@ class GroundTruth(StaticCollection):
     ...     datum=Datum(uid="uid1"),
     ...     annotations=[
     ...         Annotation(
-    ...             task_type=TaskType.CLASSIFICATION,
     ...             labels=[Label(key="k1", value="v1")],
     ...         )
     ...     ]
@@ -125,7 +125,6 @@ class Prediction(StaticCollection):
     ...     datum=Datum(uid="uid1"),
     ...     annotations=[
     ...         Annotation(
-    ...             task_type=TaskType.CLASSIFICATION,
     ...             labels=[
     ...                 Label(key="k1", value="v1", score=0.9),
     ...                 Label(key="k1", value="v1", score=0.1)
@@ -158,37 +157,6 @@ class Prediction(StaticCollection):
         """
         super().__init__(datum=datum, annotations=annotations)
 
-        # validation
-        for annotation in self.annotations:
-            task_type = annotation.task_type
-            if task_type in [
-                TaskType.CLASSIFICATION,
-                TaskType.OBJECT_DETECTION,
-            ]:
-                for label in annotation.labels:
-                    label_score = label.score
-                    if label_score is None:
-                        raise ValueError(
-                            f"For task type '{task_type}' prediction labels must have scores, but got 'None'"
-                        )
-            if task_type == TaskType.CLASSIFICATION:
-
-                label_keys_to_sum = {}
-                for scored_label in annotation.labels:
-                    label_key = scored_label.key
-                    label_score = scored_label.score
-                    if label_key not in label_keys_to_sum:
-                        label_keys_to_sum[label_key] = 0.0
-                    label_keys_to_sum[label_key] += label_score
-
-                for k, total_score in label_keys_to_sum.items():
-                    if abs(total_score - 1) > 1e-5:
-                        raise ValueError(
-                            "For each label key, prediction scores must sum to 1, but"
-                            f" for label key {k} got scores summing to {total_score}."
-                        )
-
-
 class Evaluation:
     """
     Wraps `valor.client.Job` to provide evaluation-specifc members.
@@ -204,10 +172,12 @@ class Evaluation:
         ----------
         id : int
             The ID of the evaluation.
+        dataset_names : list[str]
+            The names of the datasets the model was evaluated over.
         model_name : str
             The name of the evaluated model.
-        datum_filter : schemas.Filter
-            The filter used to select the datums for evaluation.
+        filters : schemas.Filter
+            The filter used to select data partitions for evaluation.
         status : EvaluationStatus
             The status of the evaluation.
         metrics : List[dict]
@@ -226,8 +196,9 @@ class Evaluation:
         self,
         *_,
         id: int,
+        dataset_names: list[str],
         model_name: str,
-        datum_filter: Filter,
+        filters: Filter,
         parameters: EvaluationParameters,
         status: EvaluationStatus,
         metrics: List[Dict],
@@ -237,11 +208,10 @@ class Evaluation:
         **kwargs,
     ):
         self.id = id
+        self.dataset_names = dataset_names
         self.model_name = model_name
-        self.datum_filter = (
-            Filter(**datum_filter)
-            if isinstance(datum_filter, dict)
-            else datum_filter
+        self.filters = (
+            Filter(**filters) if isinstance(filters, dict) else Filter()
         )
         self.parameters = (
             EvaluationParameters(**parameters)
@@ -280,7 +250,7 @@ class Evaluation:
         """
         response = self.conn.get_evaluations(evaluation_ids=[self.id])
         if not response:
-            raise ClientException("Not Found")
+            raise EvaluationDoesNotExist(self.id)
         self.update(**response[0])
         return self.status
 
@@ -325,8 +295,9 @@ class Evaluation:
         """
         return {
             "id": self.id,
+            "dataset_names": self.dataset_names,
             "model_name": self.model_name,
-            "datum_filter": asdict(self.datum_filter),
+            "filters": asdict(self.filters),
             "parameters": asdict(self.parameters),
             "status": self.status.value,
             "metrics": self.metrics,
@@ -393,15 +364,12 @@ class DatasetSummary:
     num_bounding_boxes: int
     num_polygons: int
     num_rasters: int
-    task_types: List[TaskType]
+    task_types: list[list[str]]
     labels: List[Label]
     datum_metadata: List[dict]
     annotation_metadata: List[dict]
 
     def __post_init__(self):
-        for i, tt in enumerate(self.task_types):
-            if isinstance(tt, str):
-                self.task_types[i] = TaskType(tt)
         for i, label in enumerate(self.labels):
             if isinstance(label, dict):
                 self.labels[i] = Label(**label)
@@ -586,16 +554,16 @@ class Dataset(StaticCollection):
         List[Datum]
             A list of `Datums` associated with the dataset.
         """
-        filter_ = _format_filter(filter_by)
-        if isinstance(filter_, Filter):
-            filter_ = asdict(filter_)
+        filters = _format_filter(filter_by)
+        if isinstance(filters, Filter):
+            filters = asdict(filters)
 
-        if filter_.get("dataset_names"):
+        if filters.get("dataset_names"):
             raise ValueError(
                 "Cannot filter by dataset_names when calling `Dataset.get_datums`."
             )
-        filter_["dataset_names"] = [self.name]  # type: ignore
-        return Client(self.conn).get_datums(filter_by=filter_)
+        filters["dataset_names"] = [self.name]  # type: ignore
+        return Client(self.conn).get_datums(filter_by=filters)
 
     def get_evaluations(
         self,
@@ -641,8 +609,6 @@ class Dataset(StaticCollection):
             num_polygons: total number of polygons in the dataset
 
             num_rasters: total number of rasters in the dataset
-
-            task_types: list of the unique task types in the dataset
 
             labels: list of the unique labels in the dataset
 
@@ -846,7 +812,7 @@ class Model(StaticCollection):
         datasets: Optional[Union[Dataset, List[Dataset]]] = None,
         filter_by: Optional[FilterType] = None,
     ) -> Filter:
-        """Formats the 'datum_filter' for any evaluation requests."""
+        """Formats the 'filter' for any evaluation requests."""
 
         # get list of dataset names
         dataset_names_from_obj = []
@@ -856,17 +822,17 @@ class Model(StaticCollection):
             dataset_names_from_obj = [datasets.name]
 
         # create a 'schemas.Filter' object from the constraints.
-        filter_ = _format_filter(filter_by)
+        filters = _format_filter(filter_by)
 
         # reset model name
-        filter_.model_names = None
-        filter_.model_metadata = None
+        filters.model_names = None
+        filters.model_metadata = None
 
         # set dataset names
-        if not filter_.dataset_names:
-            filter_.dataset_names = []
-        filter_.dataset_names.extend(dataset_names_from_obj)  # type: ignore
-        return filter_
+        if not filters.dataset_names:
+            filters.dataset_names = []
+        filters.dataset_names.extend(dataset_names_from_obj)  # type: ignore
+        return filters
 
     def _create_label_map(
         self,
@@ -905,10 +871,11 @@ class Model(StaticCollection):
 
     def evaluate_classification(
         self,
-        datasets: Optional[Union[Dataset, List[Dataset]]] = None,
+        datasets: Union[Dataset, List[Dataset]],
         filter_by: Optional[FilterType] = None,
         label_map: Optional[Dict[Label, Label]] = None,
-        compute_pr_curves: bool = False,
+        pr_curve_max_examples: int = 1,
+        metrics_to_return: Optional[List[str]] = None,
         allow_retries: bool = False,
     ) -> Evaluation:
         """
@@ -922,8 +889,8 @@ class Model(StaticCollection):
             Optional set of constraints to filter evaluation by.
         label_map : Dict[Label, Label], optional
             Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
-        compute_pr_curves: bool
-            A boolean which determines whether we calculate precision-recall curves or not.
+        metrics: List[str], optional
+            The list of metrics to compute, store, and return to the user.
         allow_retries : bool, default = False
             Option to retry previously failed evaluations.
 
@@ -938,16 +905,18 @@ class Model(StaticCollection):
             )
 
         # format request
-        datum_filter = self._format_constraints(datasets, filter_by)
+        filters = self._format_constraints(datasets, filter_by)
+        datasets = datasets if isinstance(datasets, list) else [datasets]
         request = EvaluationRequest(
-            model_names=[self.name],  # type: ignore
-            datum_filter=datum_filter,
+            dataset_names=[dataset.name for dataset in datasets],  # type: ignore - issue #604
+            model_names=[self.name],  # type: ignore - issue #604
+            filters=filters,
             parameters=EvaluationParameters(
                 task_type=TaskType.CLASSIFICATION,
                 label_map=self._create_label_map(label_map=label_map),
-                compute_pr_curves=compute_pr_curves,
+                pr_curve_max_examples=pr_curve_max_examples,
+                metrics_to_return=metrics_to_return,
             ),
-            meta={},
         )
 
         # create evaluation
@@ -960,15 +929,16 @@ class Model(StaticCollection):
 
     def evaluate_detection(
         self,
-        datasets: Optional[Union[Dataset, List[Dataset]]] = None,
+        datasets: Union[Dataset, List[Dataset]],
         filter_by: Optional[FilterType] = None,
         convert_annotations_to_type: Optional[AnnotationType] = None,
         iou_thresholds_to_compute: Optional[List[float]] = None,
         iou_thresholds_to_return: Optional[List[float]] = None,
         label_map: Optional[Dict[Label, Label]] = None,
         recall_score_threshold: float = 0,
-        compute_pr_curves: bool = False,
+        metrics_to_return: Optional[List[str]] = None,
         pr_curve_iou_threshold: float = 0.5,
+        pr_curve_max_examples: int = 1,
         allow_retries: bool = False,
     ) -> Evaluation:
         """
@@ -990,10 +960,10 @@ class Model(StaticCollection):
             Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
         recall_score_threshold: float, default=0
             The confidence score threshold for use when determining whether to count a prediction as a true positive or not while calculating Average Recall.
-        compute_pr_curves: bool, optional
-            A boolean which determines whether we calculate precision-recall curves or not.
         pr_curve_iou_threshold: float, optional
-            The IOU threshold to use when calculating precision-recall curves. Defaults to 0.5. Does nothing when compute_pr_curves is set to False or None.
+            The IOU threshold to use when calculating precision-recall curves. Defaults to 0.5.
+        pr_curve_max_examples: int, optional
+            The maximum number of datum examples to store when calculating PR curves.
         allow_retries : bool, default = False
             Option to retry previously failed evaluations.
 
@@ -1018,15 +988,17 @@ class Model(StaticCollection):
             iou_thresholds_to_return=iou_thresholds_to_return,
             label_map=self._create_label_map(label_map=label_map),
             recall_score_threshold=recall_score_threshold,
-            compute_pr_curves=compute_pr_curves,
+            metrics_to_return=metrics_to_return,
             pr_curve_iou_threshold=pr_curve_iou_threshold,
+            pr_curve_max_examples=pr_curve_max_examples,
         )
-        datum_filter = self._format_constraints(datasets, filter_by)
+        filters = self._format_constraints(datasets, filter_by)
+        datasets = datasets if isinstance(datasets, list) else [datasets]
         request = EvaluationRequest(
-            model_names=[self.name],  # type: ignore
-            datum_filter=datum_filter,
+            dataset_names=[dataset.name for dataset in datasets],  # type: ignore - issue #604
+            model_names=[self.name],  # type: ignore - issue #604
+            filters=filters,
             parameters=parameters,
-            meta={},
         )
 
         # create evaluation
@@ -1039,9 +1011,10 @@ class Model(StaticCollection):
 
     def evaluate_segmentation(
         self,
-        datasets: Optional[Union[Dataset, List[Dataset]]] = None,
+        datasets: Union[Dataset, List[Dataset]],
         filter_by: Optional[FilterType] = None,
         label_map: Optional[Dict[Label, Label]] = None,
+        metrics_to_return: Optional[List[str]] = None,
         allow_retries: bool = False,
     ) -> Evaluation:
         """
@@ -1055,6 +1028,8 @@ class Model(StaticCollection):
             Optional set of constraints to filter evaluation by.
         label_map : Dict[Label, Label], optional
             Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
+        metrics: List[str], optional
+            The list of metrics to compute, store, and return to the user.
         allow_retries : bool, default = False
             Option to retry previously failed evaluations.
 
@@ -1064,15 +1039,17 @@ class Model(StaticCollection):
             A job object that can be used to track the status of the job and get the metrics of it upon completion
         """
         # format request
-        datum_filter = self._format_constraints(datasets, filter_by)
+        filters = self._format_constraints(datasets, filter_by)
+        datasets = datasets if isinstance(datasets, list) else [datasets]
         request = EvaluationRequest(
-            model_names=[self.name],  # type: ignore
-            datum_filter=datum_filter,
+            dataset_names=[dataset.name for dataset in datasets],  # type: ignore - issue #604
+            model_names=[self.name],  # type: ignore - issue #604
+            filters=filters,
             parameters=EvaluationParameters(
                 task_type=TaskType.SEMANTIC_SEGMENTATION,
                 label_map=self._create_label_map(label_map=label_map),
+                metrics_to_return=metrics_to_return,
             ),
-            meta={},
         )
 
         # create evaluation
@@ -1242,9 +1219,9 @@ class Client:
         List[valor.Label]
             A list of labels.
         """
-        filter_ = _format_filter(filter_by)
-        filter_ = asdict(filter_)
-        return [Label(**label) for label in self.conn.get_labels(filter_)]
+        filters = _format_filter(filter_by)
+        filters = asdict(filters)
+        return [Label(**label) for label in self.conn.get_labels(filters)]
 
     def get_labels_from_dataset(
         self, dataset: Union[Dataset, str]
@@ -1433,11 +1410,11 @@ class Client:
         List[valor.Dataset]
             A list of datasets.
         """
-        filter_ = _format_filter(filter_by)
-        if isinstance(filter_, Filter):
-            filter_ = asdict(filter_)
+        filters = _format_filter(filter_by)
+        if isinstance(filters, Filter):
+            filters = asdict(filters)
         dataset_list = []
-        for kwargs in self.conn.get_datasets(filter_):
+        for kwargs in self.conn.get_datasets(filters):
             dataset = Dataset.decode_value({**kwargs, "connection": self.conn})
             dataset_list.append(dataset)
         return dataset_list
@@ -1459,12 +1436,12 @@ class Client:
         List[valor.Datum]
             A list datums.
         """
-        filter_ = _format_filter(filter_by)
-        if isinstance(filter_, Filter):
-            filter_ = asdict(filter_)
+        filters = _format_filter(filter_by)
+        if isinstance(filters, Filter):
+            filters = asdict(filters)
         return [
             Datum.decode_value(datum)
-            for datum in self.conn.get_datums(filter_)
+            for datum in self.conn.get_datums(filters)
         ]
 
     def get_datum(
@@ -1698,11 +1675,11 @@ class Client:
         List[valor.Model]
             A list of models.
         """
-        filter_ = _format_filter(filter_by)
-        if isinstance(filter_, Filter):
-            filter_ = asdict(filter_)
+        filters = _format_filter(filter_by)
+        if isinstance(filters, Filter):
+            filters = asdict(filters)
         model_list = []
-        for kwargs in self.conn.get_models(filter_):
+        for kwargs in self.conn.get_models(filters):
             model = Model.decode_value({**kwargs, "connection": self.conn})
             model_list.append(model)
         return model_list

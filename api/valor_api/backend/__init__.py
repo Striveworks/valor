@@ -36,7 +36,7 @@ from .metrics import (
     compute_detection_metrics,
     compute_semantic_segmentation_metrics,
 )
-from .query import Query
+from .query import generate_query, generate_select
 
 __all__ = [
     "create_dataset",
@@ -66,7 +66,8 @@ __all__ = [
     "compute_semantic_segmentation_metrics",
     "get_paginated_evaluations",
     "get_evaluation_status",
-    "Query",
+    "generate_select",
+    "generate_query",
     "create_or_get_evaluations",
     "set_dataset_status",
     "set_model_status",

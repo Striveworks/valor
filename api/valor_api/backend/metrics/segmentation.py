@@ -1,8 +1,9 @@
 from collections import defaultdict
+from typing import Any
 
 from geoalchemy2.functions import ST_Count, ST_MapAlgebra
 from sqlalchemy.orm import Session, aliased
-from sqlalchemy.sql import Select, func, select
+from sqlalchemy.sql import Subquery, func, select
 
 from valor_api import enums, schemas
 from valor_api.backend import core, models
@@ -12,41 +13,42 @@ from valor_api.backend.metrics.metric_utils import (
     get_or_create_row,
     log_evaluation_duration,
     log_evaluation_item_counts,
+    prepare_filter_for_evaluation,
     validate_computation,
 )
-from valor_api.backend.query import Query
+from valor_api.backend.query import generate_select
 from valor_api.schemas.metrics import IOUMetric, mIOUMetric
 
 
-def _generate_groundtruth_query(groundtruth_filter: schemas.Filter) -> Select:
+def _generate_groundtruth_query(
+    groundtruth_filter: schemas.Filter,
+) -> Subquery[Any]:
     """Generate a sqlalchemy query to fetch a ground truth."""
-    return (
-        Query(
-            models.Annotation.id.label("annotation_id"),
-            models.Annotation.datum_id.label("datum_id"),
-        )
-        .filter(groundtruth_filter)
-        .groundtruths("gt")
-    )  # type: ignore - SQLAlchemy type issue
+    return generate_select(
+        models.Annotation.id.label("annotation_id"),
+        models.Annotation.datum_id.label("datum_id"),
+        filters=groundtruth_filter,
+        label_source=models.GroundTruth,
+    ).subquery("gt")
 
 
-def _generate_prediction_query(prediction_filter: schemas.Filter) -> Select:
+def _generate_prediction_query(
+    prediction_filter: schemas.Filter,
+) -> Subquery[Any]:
     """Generate a sqlalchemy query to fetch a prediction."""
 
-    return (
-        Query(
-            models.Annotation.id.label("annotation_id"),
-            models.Annotation.datum_id.label("datum_id"),
-        )
-        .filter(prediction_filter)
-        .predictions("pd")
-    )  # type: ignore - SQLAlchemy type issue
+    return generate_select(
+        models.Annotation.id.label("annotation_id"),
+        models.Annotation.datum_id.label("datum_id"),
+        filters=prediction_filter,
+        label_source=models.Prediction,
+    ).subquery("pd")
 
 
 def _count_true_positives(
     db: Session,
-    groundtruth_subquery: Select,
-    prediction_subquery: Select,
+    groundtruth_subquery: Subquery[Any],
+    prediction_subquery: Subquery[Any],
 ) -> int:
     """Computes the pixelwise true positives for the given dataset, model, and label"""
     gt_annotation = aliased(models.Annotation)
@@ -63,9 +65,9 @@ def _count_true_positives(
                 )
             )
         )
-        .select_from(groundtruth_subquery)  # type: ignore - SQLAlchemy type issue
+        .select_from(groundtruth_subquery)
         .join(
-            prediction_subquery,  # type: ignore - SQLAlchemy type issue
+            prediction_subquery,
             prediction_subquery.c.datum_id == groundtruth_subquery.c.datum_id,
         )
         .join(
@@ -82,11 +84,13 @@ def _count_true_positives(
     return int(ret)
 
 
-def _count_groundtruths(db: Session, groundtruth_subquery: Select) -> int:
+def _count_groundtruths(
+    db: Session, groundtruth_subquery: Subquery[Any]
+) -> int:
     """Total number of ground truth pixels for the given dataset and label"""
     ret = db.scalar(
         select(func.sum(ST_Count(models.Annotation.raster)))
-        .select_from(groundtruth_subquery)  # type: ignore - SQLAlchemy type issue
+        .select_from(groundtruth_subquery)
         .join(
             models.Annotation,
             models.Annotation.id == groundtruth_subquery.c.annotation_id,
@@ -99,12 +103,12 @@ def _count_groundtruths(db: Session, groundtruth_subquery: Select) -> int:
 
 def _count_predictions(
     db: Session,
-    prediction_subquery: Select,
+    prediction_subquery: Subquery[Any],
 ) -> int:
     """Total number of predicted pixels for the given dataset, model, and label"""
     ret = db.scalar(
         select(func.sum(ST_Count(models.Annotation.raster)))
-        .select_from(prediction_subquery)  # type: ignore - SQLAlchemy type issue
+        .select_from(prediction_subquery)
         .join(
             models.Annotation,
             models.Annotation.id == prediction_subquery.c.annotation_id,
@@ -202,12 +206,12 @@ def _compute_segmentation_metrics(
             "grouper_id_to_grouper_label_mapping"
         ][grouper_id]
 
-        ret.append(
+        ret += [
             IOUMetric(
                 label=grouper_label,
                 value=computed_iou_score,
             )
-        )
+        ]
 
         ious_per_grouper_key[grouper_label.key].append(computed_iou_score)
 
@@ -248,14 +252,15 @@ def compute_semantic_segmentation_metrics(
     evaluation = core.fetch_evaluation_from_id(db, evaluation_id)
 
     # unpack filters and params
-    groundtruth_filter = schemas.Filter(**evaluation.datum_filter)
-    prediction_filter = groundtruth_filter.model_copy()
-    prediction_filter.model_names = [evaluation.model_name]
     parameters = schemas.EvaluationParameters(**evaluation.parameters)
-
-    # load task type into filters
-    groundtruth_filter.task_types = [parameters.task_type]
-    prediction_filter.task_types = [parameters.task_type]
+    groundtruth_filter, prediction_filter = prepare_filter_for_evaluation(
+        db=db,
+        filters=schemas.Filter(**evaluation.filters),
+        dataset_names=evaluation.dataset_names,
+        model_name=evaluation.model_name,
+        task_type=parameters.task_type,
+        label_map=parameters.label_map,
+    )
 
     log_evaluation_item_counts(
         db=db,

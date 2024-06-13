@@ -2,6 +2,7 @@
 that is no auth
 """
 
+import random
 from dataclasses import asdict
 
 import pytest
@@ -138,10 +139,10 @@ def test_evaluate_detection(
 
     assert result_dict == {
         "id": eval_job.id,
+        "dataset_names": ["test_dataset"],
         "model_name": model_name,
-        "datum_filter": {
+        "filters": {
             **default_filter_properties,
-            "dataset_names": ["test_dataset"],
             "label_keys": ["k1"],
         },
         "parameters": {
@@ -151,9 +152,16 @@ def test_evaluate_detection(
             "iou_thresholds_to_return": [0.1, 0.6],
             "label_map": None,
             "recall_score_threshold": 0.0,
-            "compute_pr_curves": False,
+            "metrics_to_return": [
+                "AP",
+                "AR",
+                "mAP",
+                "APAveragedOverIOUs",
+                "mAR",
+                "mAPAveragedOverIOUs",
+            ],
             "pr_curve_iou_threshold": 0.5,
-            "metrics": None,
+            "pr_curve_max_examples": 1,
             "llm_api_params": None,
         },
         "status": EvaluationStatus.DONE.value,
@@ -162,7 +170,11 @@ def test_evaluate_detection(
         "ignored_pred_labels": [],
     }
     for m in actual_metrics:
-        assert m in expected_metrics
+        if m["type"] not in [
+            "PrecisionRecallCurve",
+            "DetailedPrecisionRecallCurve",
+        ]:
+            assert m in expected_metrics
     for m in expected_metrics:
         assert m in actual_metrics
 
@@ -252,10 +264,10 @@ def test_evaluate_detection(
     actual_metrics = eval_job_bounded_area_10_2000_dict.pop("metrics")
     assert eval_job_bounded_area_10_2000_dict == {
         "id": eval_job_bounded_area_10_2000.id,
+        "dataset_names": ["test_dataset"],
         "model_name": model_name,
-        "datum_filter": {
+        "filters": {
             **default_filter_properties,
-            "dataset_names": ["test_dataset"],
             "bounding_box_area": [
                 {
                     "operator": ">=",
@@ -275,9 +287,16 @@ def test_evaluate_detection(
             "iou_thresholds_to_return": [0.1, 0.6],
             "label_map": None,
             "recall_score_threshold": 0.0,
-            "compute_pr_curves": False,
+            "metrics_to_return": [
+                "AP",
+                "AR",
+                "mAP",
+                "APAveragedOverIOUs",
+                "mAR",
+                "mAPAveragedOverIOUs",
+            ],
             "pr_curve_iou_threshold": 0.5,
-            "metrics": None,
+            "pr_curve_max_examples": 1,
             "llm_api_params": None,
         },
         "status": EvaluationStatus.DONE.value,
@@ -287,7 +306,11 @@ def test_evaluate_detection(
     }
 
     for m in actual_metrics:
-        assert m in expected_metrics
+        if m["type"] not in [
+            "PrecisionRecallCurve",
+            "DetailedPrecisionRecallCurve",
+        ]:
+            assert m in expected_metrics
     for m in expected_metrics:
         assert m in actual_metrics
 
@@ -312,10 +335,10 @@ def test_evaluate_detection(
     min_area_1200_metrics = result.pop("metrics")
     assert result == {
         "id": eval_job_min_area_1200.id,
+        "dataset_names": ["test_dataset"],
         "model_name": model_name,
-        "datum_filter": {
+        "filters": {
             **default_filter_properties,
-            "dataset_names": ["test_dataset"],
             "bounding_box_area": [
                 {
                     "operator": ">=",
@@ -331,9 +354,16 @@ def test_evaluate_detection(
             "iou_thresholds_to_return": [0.1, 0.6],
             "label_map": None,
             "recall_score_threshold": 0.0,
-            "compute_pr_curves": False,
+            "metrics_to_return": [
+                "AP",
+                "AR",
+                "mAP",
+                "APAveragedOverIOUs",
+                "mAR",
+                "mAPAveragedOverIOUs",
+            ],
             "pr_curve_iou_threshold": 0.5,
-            "metrics": None,
+            "pr_curve_max_examples": 1,
             "llm_api_params": None,
         },
         # check metrics below
@@ -345,54 +375,19 @@ def test_evaluate_detection(
     assert min_area_1200_metrics != expected_metrics
 
     # check for difference with max area now dividing the set of annotations
-    eval_job_max_area_1200 = model.evaluate_detection(
-        dataset,
-        iou_thresholds_to_compute=[0.1, 0.6],
-        iou_thresholds_to_return=[0.1, 0.6],
-        filter_by=[
-            Label.key == "k1",
-            Annotation.bounding_box.area <= 1200,
-        ],
-        convert_annotations_to_type=AnnotationType.BOX,
-    )
-    # this computation will return 'EvaluationStatus.DONE' immediately as no predictions exist that meet the filter requirements.
-    eval_job_max_area_1200.wait_for_completion(timeout=30)
-    result = eval_job_max_area_1200.to_dict()
-    result.pop("meta")
-    max_area_1200_metrics = result.pop("metrics")
-    assert result == {
-        "id": eval_job_max_area_1200.id,
-        "model_name": model_name,
-        "datum_filter": {
-            **default_filter_properties,
-            "dataset_names": ["test_dataset"],
-            "bounding_box_area": [
-                {
-                    "operator": "<=",
-                    "value": 1200.0,
-                },
+    # this results in an empty prediction set which raises an error
+    with pytest.raises(ClientException) as e:
+        model.evaluate_detection(
+            dataset,
+            iou_thresholds_to_compute=[0.1, 0.6],
+            iou_thresholds_to_return=[0.1, 0.6],
+            filter_by=[
+                Label.key == "k1",
+                Annotation.bounding_box.area <= 1200,
             ],
-            "label_keys": ["k1"],
-        },
-        "parameters": {
-            "task_type": TaskType.OBJECT_DETECTION.value,
-            "convert_annotations_to_type": AnnotationType.BOX.value,
-            "iou_thresholds_to_compute": [0.1, 0.6],
-            "iou_thresholds_to_return": [0.1, 0.6],
-            "label_map": None,
-            "recall_score_threshold": 0.0,
-            "compute_pr_curves": False,
-            "pr_curve_iou_threshold": 0.5,
-            "metrics": None,
-            "llm_api_params": None,
-        },
-        # check metrics below
-        "status": EvaluationStatus.DONE.value,
-        "confusion_matrices": [],
-        "missing_pred_labels": [{"key": "k1", "value": "v1"}],
-        "ignored_pred_labels": [],
-    }
-    assert max_area_1200_metrics != expected_metrics
+            convert_annotations_to_type=AnnotationType.BOX,
+        )
+    assert "filter criteria" in str(e)
 
     # should perform the same as the first min area evaluation
     # except now has an upper bound
@@ -416,10 +411,10 @@ def test_evaluate_detection(
     bounded_area_metrics = result.pop("metrics")
     assert result == {
         "id": eval_job_bounded_area_1200_1800.id,
+        "dataset_names": ["test_dataset"],
         "model_name": model_name,
-        "datum_filter": {
+        "filters": {
             **default_filter_properties,
-            "dataset_names": ["test_dataset"],
             "bounding_box_area": [
                 {
                     "operator": ">=",
@@ -439,9 +434,16 @@ def test_evaluate_detection(
             "iou_thresholds_to_return": [0.1, 0.6],
             "label_map": None,
             "recall_score_threshold": 0.0,
-            "compute_pr_curves": False,
+            "metrics_to_return": [
+                "AP",
+                "AR",
+                "mAP",
+                "APAveragedOverIOUs",
+                "mAR",
+                "mAPAveragedOverIOUs",
+            ],
             "pr_curve_iou_threshold": 0.5,
-            "metrics": None,
+            "pr_curve_max_examples": 1,
             "llm_api_params": None,
         },
         # check metrics below
@@ -458,7 +460,40 @@ def test_evaluate_detection(
 
     # test accessing these evaluations via the dataset
     all_evals = dataset.get_evaluations()
-    assert len(all_evals) == 7
+    assert len(all_evals) == 6
+
+    # check that metrics arg works correctly
+    selected_metrics = random.sample(
+        [
+            "AP",
+            "AR",
+            "mAP",
+            "APAveragedOverIOUs",
+            "mAR",
+            "mAPAveragedOverIOUs",
+            "PrecisionRecallCurve",
+        ],
+        2,
+    )
+    eval_job_random_metrics = model.evaluate_detection(
+        dataset,
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_return=[0.1, 0.6],
+        filter_by=[
+            Label.key == "k1",
+            Annotation.bounding_box.area >= 1200,
+            Annotation.bounding_box.area <= 1800,
+        ],
+        convert_annotations_to_type=AnnotationType.BOX,
+        metrics_to_return=selected_metrics,
+    )
+    assert (
+        eval_job_random_metrics.wait_for_completion(timeout=30)
+        == EvaluationStatus.DONE
+    )
+    assert set(
+        [metric["type"] for metric in eval_job_random_metrics.metrics]
+    ) == set(selected_metrics)
 
 
 def test_evaluate_detection_with_json_filters(
@@ -583,10 +618,10 @@ def test_evaluate_detection_with_json_filters(
     bounded_area_metrics = result.pop("metrics")
     assert result == {
         "id": eval_job_bounded_area_1200_1800.id,
+        "dataset_names": ["test_dataset"],
         "model_name": model_name,
-        "datum_filter": {
+        "filters": {
             **default_filter_properties,
-            "dataset_names": ["test_dataset"],
             "bounding_box_area": [
                 {
                     "operator": ">=",
@@ -606,9 +641,16 @@ def test_evaluate_detection_with_json_filters(
             "iou_thresholds_to_return": [0.1, 0.6],
             "label_map": None,
             "recall_score_threshold": 0.0,
-            "compute_pr_curves": False,
+            "metrics_to_return": [
+                "AP",
+                "AR",
+                "mAP",
+                "APAveragedOverIOUs",
+                "mAR",
+                "mAPAveragedOverIOUs",
+            ],
             "pr_curve_iou_threshold": 0.5,
-            "metrics": None,
+            "pr_curve_max_examples": 1,
             "llm_api_params": None,
         },
         # check metrics below
@@ -761,7 +803,11 @@ def test_get_evaluations(
     assert len(evaluations) == 1
     assert len(evaluations[0].metrics)
     for m in evaluations[0].metrics:
-        assert m in expected_metrics
+        if m["type"] not in [
+            "PrecisionRecallCurve",
+            "DetailedPrecisionRecallCurve",
+        ]:
+            assert m in expected_metrics
     for m in expected_metrics:
         assert m in evaluations[0].metrics
 
@@ -798,7 +844,11 @@ def test_get_evaluations(
 
     assert len(second_model_evaluations) == 1
     for m in second_model_evaluations[0].metrics:
-        assert m in second_model_expected_metrics
+        if m["type"] not in [
+            "PrecisionRecallCurve",
+            "DetailedPrecisionRecallCurve",
+        ]:
+            assert m in second_model_expected_metrics
     for m in second_model_expected_metrics:
         assert m in second_model_evaluations[0].metrics
 
@@ -813,12 +863,20 @@ def test_get_evaluations(
         ]
         if evaluation.model_name == model_name:
             for m in evaluation.metrics:
-                assert m in expected_metrics
+                if m["type"] not in [
+                    "PrecisionRecallCurve",
+                    "DetailedPrecisionRecallCurve",
+                ]:
+                    assert m in expected_metrics
             for m in expected_metrics:
                 assert m in evaluation.metrics
         elif evaluation.model_name == "second_model":
             for m in evaluation.metrics:
-                assert m in second_model_expected_metrics
+                if m["type"] not in [
+                    "PrecisionRecallCurve",
+                    "DetailedPrecisionRecallCurve",
+                ]:
+                    assert m in second_model_expected_metrics
             for m in second_model_expected_metrics:
                 assert m in evaluation.metrics
 
@@ -853,7 +911,7 @@ def test_get_evaluations(
         metrics_to_sort_by={"mAPAveragedOverIOUs": "k1"},
     )
 
-    assert both_evaluations_from_evaluation_ids[0].metrics[-1]["value"] == 0
+    assert both_evaluations_from_evaluation_ids[0].metrics[-2]["value"] == 0
 
     # with sorting, the evaluation with the higher mAPAveragedOverIOUs is returned first
     assert (
@@ -1113,7 +1171,17 @@ def test_evaluate_detection_with_label_maps(
         dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
-        compute_pr_curves=True,
+        pr_curve_max_examples=1,
+        metrics_to_return=[
+            "AP",
+            "AR",
+            "mAP",
+            "APAveragedOverIOUs",
+            "mAR",
+            "mAPAveragedOverIOUs",
+            "PrecisionRecallCurve",
+            "DetailedPrecisionRecallCurve",
+        ],
     )
 
     assert (
@@ -1132,16 +1200,18 @@ def test_evaluate_detection_with_label_maps(
     metrics = eval_job.metrics
 
     pr_metrics = []
+    pr_metrics = []
+    detailed_pr_metrics = []
     for m in metrics:
-        if m["type"] != "PrecisionRecallCurve":
-            assert m in baseline_expected_metrics
-        else:
+        if m["type"] == "PrecisionRecallCurve":
             pr_metrics.append(m)
-
-    for m in baseline_expected_metrics:
-        assert m in metrics
+        elif m["type"] == "DetailedPrecisionRecallCurve":
+            detailed_pr_metrics.append(m)
+        else:
+            assert m in baseline_expected_metrics
 
     pr_metrics.sort(key=lambda x: x["parameters"]["label_key"])
+    detailed_pr_metrics.sort(key=lambda x: x["parameters"]["label_key"])
 
     pr_expected_answers = {
         # class
@@ -1173,24 +1243,105 @@ def test_evaluate_detection_with_label_maps(
         value,
         threshold,
         metric,
-    ), expected_length in pr_expected_answers.items():
+    ), expected_value in pr_expected_answers.items():
         assert (
-            len(pr_metrics[index]["value"][value][threshold][metric])
-            == expected_length
+            pr_metrics[index]["value"][value][threshold][metric]
+            == expected_value
         )
 
-    # spot check a few geojson results
+    # check DetailedPrecisionRecallCurve
+    detailed_pr_expected_answers = {
+        # class
+        (0, "cat", "0.1", "fp"): {
+            "hallucinations": 1,
+            "misclassifications": 0,
+            "total": 1,
+        },
+        (0, "cat", "0.4", "fp"): {
+            "hallucinations": 0,
+            "misclassifications": 0,
+            "total": 0,
+        },
+        (0, "british shorthair", "0.1", "fn"): {
+            "missed_detections": 1,
+            "misclassifications": 0,
+            "total": 1,
+        },
+        # class_name
+        (1, "cat", "0.4", "fp"): {
+            "hallucinations": 1,
+            "misclassifications": 0,
+            "total": 1,
+        },
+        (1, "maine coon cat", "0.1", "fn"): {
+            "missed_detections": 1,
+            "misclassifications": 0,
+            "total": 1,
+        },
+        # k1
+        (2, "v1", "0.1", "fn"): {
+            "missed_detections": 1,
+            "misclassifications": 0,
+            "total": 1,
+        },
+        (2, "v1", "0.4", "fn"): {
+            "missed_detections": 2,
+            "misclassifications": 0,
+            "total": 2,
+        },
+        (2, "v1", "0.1", "tp"): {"all": 1, "total": 1},
+        # k2
+        (3, "v2", "0.1", "fn"): {
+            "missed_detections": 1,
+            "misclassifications": 0,
+            "total": 1,
+        },
+        (3, "v2", "0.1", "fp"): {
+            "hallucinations": 1,
+            "misclassifications": 0,
+            "total": 1,
+        },
+    }
+
+    for (
+        index,
+        value,
+        threshold,
+        metric,
+    ), expected_output in detailed_pr_expected_answers.items():
+        model_output = detailed_pr_metrics[index]["value"][value][threshold][
+            metric
+        ]
+        assert isinstance(model_output, dict)
+        assert model_output["total"] == expected_output["total"]
+        assert all(
+            [
+                model_output["observations"][key]["count"]  # type: ignore - we know this element is a dict
+                == expected_output[key]
+                for key in [
+                    key
+                    for key in expected_output.keys()
+                    if key not in ["total"]
+                ]
+            ]
+        )
+
+    # check that we get at most 1 example
     assert (
-        pr_metrics[0]["value"]["cat"]["0.1"]["fp"][0][2]
-        == '{"type":"Polygon","coordinates":[[[10,10],[60,10],[60,40],[10,40],[10,10]]]}'
+        len(
+            detailed_pr_metrics[0]["value"]["cat"]["0.4"]["fp"]["observations"]["hallucinations"][  # type: ignore - we know this element is a dict
+                "examples"
+            ]
+        )
+        == 0
     )
     assert (
-        pr_metrics[1]["value"]["maine coon cat"]["0.1"]["fn"][0][2]
-        == '{"type":"Polygon","coordinates":[[[10,10],[60,10],[60,40],[10,40],[10,10]]]}'
-    )
-    assert (
-        pr_metrics[3]["value"]["v2"]["0.1"]["fp"][0][2]
-        == '{"type":"Polygon","coordinates":[[[15,0],[70,0],[70,20],[15,20],[15,0]]]}'
+        len(
+            detailed_pr_metrics[2]["value"]["v1"]["0.4"]["fn"]["observations"]["missed_detections"][  # type: ignore - we know this element is a dict
+                "examples"
+            ]
+        )
+        == 1
     )
 
     # now, we correct most of the mismatched labels with a label map
@@ -1400,7 +1551,11 @@ def test_evaluate_detection_with_label_maps(
 
     metrics = eval_job.metrics
     for m in metrics:
-        assert m in cat_expected_metrics
+        if m["type"] not in [
+            "PrecisionRecallCurve",
+            "DetailedPrecisionRecallCurve",
+        ]:
+            assert m in cat_expected_metrics
     for m in cat_expected_metrics:
         assert m in metrics
 
@@ -1577,7 +1732,11 @@ def test_evaluate_detection_with_label_maps(
 
     metrics = eval_job.metrics
     for m in metrics:
-        assert m in foo_expected_metrics
+        if m["type"] not in [
+            "PrecisionRecallCurve",
+            "DetailedPrecisionRecallCurve",
+        ]:
+            assert m in foo_expected_metrics
     for m in foo_expected_metrics:
         assert m in metrics
 
@@ -1733,8 +1892,17 @@ def test_evaluate_detection_with_label_maps(
         iou_thresholds_to_return=[0.1, 0.6],
         label_map=label_mapping,
         recall_score_threshold=0.8,
-        compute_pr_curves=True,
+        metrics_to_return=[
+            "AP",
+            "AR",
+            "mAP",
+            "APAveragedOverIOUs",
+            "mAR",
+            "mAPAveragedOverIOUs",
+            "PrecisionRecallCurve",
+        ],
     )
+
     assert (
         eval_job.ignored_pred_labels is not None
         and eval_job.missing_pred_labels is not None
@@ -1756,9 +1924,17 @@ def test_evaluate_detection_with_label_maps(
             [["class_name", "cat"], ["foo", "bar"]],
         ],
         "recall_score_threshold": 0.8,
-        "compute_pr_curves": True,
+        "metrics_to_return": [
+            "AP",
+            "AR",
+            "mAP",
+            "APAveragedOverIOUs",
+            "mAR",
+            "mAPAveragedOverIOUs",
+            "PrecisionRecallCurve",
+        ],
         "pr_curve_iou_threshold": 0.5,
-        "metrics": None,
+        "pr_curve_max_examples": 1,
         "llm_api_params": None,
     }
 
@@ -1766,10 +1942,12 @@ def test_evaluate_detection_with_label_maps(
 
     pr_metrics = []
     for m in metrics:
-        if m["type"] != "PrecisionRecallCurve":
-            assert m in foo_expected_metrics_with_higher_score_threshold
-        else:
+        if m["type"] == "PrecisionRecallCurve":
             pr_metrics.append(m)
+        elif m["type"] == "DetailedPrecisionRecallCurve":
+            continue
+        else:
+            assert m in foo_expected_metrics_with_higher_score_threshold
 
     for m in foo_expected_metrics_with_higher_score_threshold:
         assert m in metrics
@@ -1797,32 +1975,11 @@ def test_evaluate_detection_with_label_maps(
         value,
         threshold,
         metric,
-    ), expected_length in pr_expected_answers.items():
+    ), expected_value in pr_expected_answers.items():
         assert (
-            len(pr_metrics[index]["value"][value][threshold][metric])
-            == expected_length
+            pr_metrics[index]["value"][value][threshold][metric]
+            == expected_value
         )
-
-    # spot check a few geojson results
-    pr_metric = [
-        m for m in pr_metrics if m["parameters"]["label_key"] == "foo"
-    ][0]
-    assert (
-        pr_metric["value"]["bar"]["0.4"]["fn"][0][2]
-        == '{"type":"Polygon","coordinates":[[[10,10],[60,10],[60,40],[10,40],[10,10]]]}'
-    )
-    assert (
-        pr_metric["value"]["bar"]["0.4"]["tp"][0][2]
-        == '{"type":"Polygon","coordinates":[[[15,0],[70,0],[70,20],[15,20],[15,0]]]}'
-    )
-
-    pr_metric = [
-        m for m in pr_metrics if m["parameters"]["label_key"] == "k2"
-    ][0]
-    assert (
-        pr_metric["value"]["v2"]["0.1"]["fp"][0][2]
-        == '{"type":"Polygon","coordinates":[[[15,0],[70,0],[70,20],[15,20],[15,0]]]}'
-    )
 
     assert eval_job.parameters.label_map == [
         [["class_name", "maine coon cat"], ["foo", "bar"]],
@@ -1846,11 +2003,11 @@ def test_evaluate_detection_false_negatives_single_image_baseline(
             datum=Datum(uid="uid1"),
             annotations=[
                 Annotation(
-                    task_type=TaskType.OBJECT_DETECTION,
                     bounding_box=Box.from_extrema(
                         xmin=10, xmax=20, ymin=10, ymax=20
                     ),
                     labels=[Label(key="key", value="value")],
+                    is_instance=True,
                 )
             ],
         )
@@ -1864,18 +2021,18 @@ def test_evaluate_detection_false_negatives_single_image_baseline(
             datum=Datum(uid="uid1"),
             annotations=[
                 Annotation(
-                    task_type=TaskType.OBJECT_DETECTION,
                     bounding_box=Box.from_extrema(
                         xmin=10, xmax=20, ymin=10, ymax=20
                     ),
                     labels=[Label(key="key", value="value", score=0.8)],
+                    is_instance=True,
                 ),
                 Annotation(
-                    task_type=TaskType.OBJECT_DETECTION,
                     bounding_box=Box.from_extrema(
                         xmin=100, xmax=110, ymin=100, ymax=200
                     ),
                     labels=[Label(key="key", value="value", score=0.7)],
+                    is_instance=True,
                 ),
             ],
         ),
@@ -1907,11 +2064,11 @@ def test_evaluate_detection_false_negatives_single_image(
             datum=Datum(uid="uid1"),
             annotations=[
                 Annotation(
-                    task_type=TaskType.OBJECT_DETECTION,
                     bounding_box=Box.from_extrema(
                         xmin=10, xmax=20, ymin=10, ymax=20
                     ),
                     labels=[Label(key="key", value="value")],
+                    is_instance=True,
                 )
             ],
         )
@@ -1925,18 +2082,18 @@ def test_evaluate_detection_false_negatives_single_image(
             datum=Datum(uid="uid1"),
             annotations=[
                 Annotation(
-                    task_type=TaskType.OBJECT_DETECTION,
                     bounding_box=Box.from_extrema(
                         xmin=10, xmax=20, ymin=10, ymax=20
                     ),
                     labels=[Label(key="key", value="value", score=0.8)],
+                    is_instance=True,
                 ),
                 Annotation(
-                    task_type=TaskType.OBJECT_DETECTION,
                     bounding_box=Box.from_extrema(
                         xmin=100, xmax=110, ymin=100, ymax=200
                     ),
                     labels=[Label(key="key", value="value", score=0.9)],
+                    is_instance=True,
                 ),
             ],
         ),
@@ -1974,17 +2131,17 @@ def test_evaluate_detection_false_negatives_two_images_one_empty_low_confidence_
                 datum=Datum(uid="uid1"),
                 annotations=[
                     Annotation(
-                        task_type=TaskType.OBJECT_DETECTION,
                         bounding_box=Box.from_extrema(
                             xmin=10, xmax=20, ymin=10, ymax=20
                         ),
                         labels=[Label(key="key", value="value")],
+                        is_instance=True,
                     )
                 ],
             ),
             GroundTruth(
                 datum=Datum(uid="uid2"),
-                annotations=[Annotation(task_type=TaskType.EMPTY)],
+                annotations=[Annotation()],
             ),
         ]
     )
@@ -1998,11 +2155,11 @@ def test_evaluate_detection_false_negatives_two_images_one_empty_low_confidence_
                 datum=Datum(uid="uid1"),
                 annotations=[
                     Annotation(
-                        task_type=TaskType.OBJECT_DETECTION,
                         bounding_box=Box.from_extrema(
                             xmin=10, xmax=20, ymin=10, ymax=20
                         ),
                         labels=[Label(key="key", value="value", score=0.8)],
+                        is_instance=True,
                     ),
                 ],
             ),
@@ -2010,11 +2167,11 @@ def test_evaluate_detection_false_negatives_two_images_one_empty_low_confidence_
                 datum=Datum(uid="uid2"),
                 annotations=[
                     Annotation(
-                        task_type=TaskType.OBJECT_DETECTION,
                         bounding_box=Box.from_extrema(
                             xmin=10, xmax=20, ymin=10, ymax=20
                         ),
                         labels=[Label(key="key", value="value", score=0.7)],
+                        is_instance=True,
                     ),
                 ],
             ),
@@ -2051,17 +2208,17 @@ def test_evaluate_detection_false_negatives_two_images_one_empty_high_confidence
                 datum=Datum(uid="uid1"),
                 annotations=[
                     Annotation(
-                        task_type=TaskType.OBJECT_DETECTION,
                         bounding_box=Box.from_extrema(
                             xmin=10, xmax=20, ymin=10, ymax=20
                         ),
                         labels=[Label(key="key", value="value")],
+                        is_instance=True,
                     )
                 ],
             ),
             GroundTruth(
                 datum=Datum(uid="uid2"),
-                annotations=[Annotation(task_type=TaskType.EMPTY)],
+                annotations=[Annotation()],
             ),
         ]
     )
@@ -2075,11 +2232,11 @@ def test_evaluate_detection_false_negatives_two_images_one_empty_high_confidence
                 datum=Datum(uid="uid1"),
                 annotations=[
                     Annotation(
-                        task_type=TaskType.OBJECT_DETECTION,
                         bounding_box=Box.from_extrema(
                             xmin=10, xmax=20, ymin=10, ymax=20
                         ),
                         labels=[Label(key="key", value="value", score=0.8)],
+                        is_instance=True,
                     ),
                 ],
             ),
@@ -2087,11 +2244,11 @@ def test_evaluate_detection_false_negatives_two_images_one_empty_high_confidence
                 datum=Datum(uid="uid2"),
                 annotations=[
                     Annotation(
-                        task_type=TaskType.OBJECT_DETECTION,
                         bounding_box=Box.from_extrema(
                             xmin=10, xmax=20, ymin=10, ymax=20
                         ),
                         labels=[Label(key="key", value="value", score=0.9)],
+                        is_instance=True,
                     ),
                 ],
             ),
@@ -2129,11 +2286,11 @@ def test_evaluate_detection_false_negatives_two_images_one_only_with_different_c
                 datum=Datum(uid="uid1"),
                 annotations=[
                     Annotation(
-                        task_type=TaskType.OBJECT_DETECTION,
                         bounding_box=Box.from_extrema(
                             xmin=10, xmax=20, ymin=10, ymax=20
                         ),
                         labels=[Label(key="key", value="value")],
+                        is_instance=True,
                     )
                 ],
             ),
@@ -2141,11 +2298,11 @@ def test_evaluate_detection_false_negatives_two_images_one_only_with_different_c
                 datum=Datum(uid="uid2"),
                 annotations=[
                     Annotation(
-                        task_type=TaskType.OBJECT_DETECTION,
                         bounding_box=Box.from_extrema(
                             xmin=10, xmax=20, ymin=10, ymax=20
                         ),
                         labels=[Label(key="key", value="other value")],
+                        is_instance=True,
                     )
                 ],
             ),
@@ -2161,11 +2318,11 @@ def test_evaluate_detection_false_negatives_two_images_one_only_with_different_c
                 datum=Datum(uid="uid1"),
                 annotations=[
                     Annotation(
-                        task_type=TaskType.OBJECT_DETECTION,
                         bounding_box=Box.from_extrema(
                             xmin=10, xmax=20, ymin=10, ymax=20
                         ),
                         labels=[Label(key="key", value="value", score=0.8)],
+                        is_instance=True,
                     ),
                 ],
             ),
@@ -2173,11 +2330,11 @@ def test_evaluate_detection_false_negatives_two_images_one_only_with_different_c
                 datum=Datum(uid="uid2"),
                 annotations=[
                     Annotation(
-                        task_type=TaskType.OBJECT_DETECTION,
                         bounding_box=Box.from_extrema(
                             xmin=10, xmax=20, ymin=10, ymax=20
                         ),
                         labels=[Label(key="key", value="value", score=0.7)],
+                        is_instance=True,
                     ),
                 ],
             ),
@@ -2233,11 +2390,11 @@ def test_evaluate_detection_false_negatives_two_images_one_only_with_different_c
                 datum=Datum(uid="uid1"),
                 annotations=[
                     Annotation(
-                        task_type=TaskType.OBJECT_DETECTION,
                         bounding_box=Box.from_extrema(
                             xmin=10, xmax=20, ymin=10, ymax=20
                         ),
                         labels=[Label(key="key", value="value")],
+                        is_instance=True,
                     )
                 ],
             ),
@@ -2245,11 +2402,11 @@ def test_evaluate_detection_false_negatives_two_images_one_only_with_different_c
                 datum=Datum(uid="uid2"),
                 annotations=[
                     Annotation(
-                        task_type=TaskType.OBJECT_DETECTION,
                         bounding_box=Box.from_extrema(
                             xmin=10, xmax=20, ymin=10, ymax=20
                         ),
                         labels=[Label(key="key", value="other value")],
+                        is_instance=True,
                     )
                 ],
             ),
@@ -2265,11 +2422,11 @@ def test_evaluate_detection_false_negatives_two_images_one_only_with_different_c
                 datum=Datum(uid="uid1"),
                 annotations=[
                     Annotation(
-                        task_type=TaskType.OBJECT_DETECTION,
                         bounding_box=Box.from_extrema(
                             xmin=10, xmax=20, ymin=10, ymax=20
                         ),
                         labels=[Label(key="key", value="value", score=0.8)],
+                        is_instance=True,
                     ),
                 ],
             ),
@@ -2277,11 +2434,11 @@ def test_evaluate_detection_false_negatives_two_images_one_only_with_different_c
                 datum=Datum(uid="uid2"),
                 annotations=[
                     Annotation(
-                        task_type=TaskType.OBJECT_DETECTION,
                         bounding_box=Box.from_extrema(
                             xmin=10, xmax=20, ymin=10, ymax=20
                         ),
                         labels=[Label(key="key", value="value", score=0.9)],
+                        is_instance=True,
                     ),
                 ],
             ),
@@ -2317,3 +2474,379 @@ def test_evaluate_detection_false_negatives_two_images_one_only_with_different_c
         "value": 0,
         "label": {"key": "key", "value": "other value"},
     }
+
+
+def test_detailed_precision_recall_curve(
+    db: Session,
+    model_name,
+    dataset_name,
+    img1,
+    img2,
+    rect1,
+    rect2,
+    rect3,
+    rect4,
+    rect5,
+):
+    gts = [
+        GroundTruth(
+            datum=img1,
+            annotations=[
+                Annotation(
+                    is_instance=True,
+                    labels=[Label(key="k1", value="v1")],
+                    bounding_box=Box([rect1]),
+                ),
+                Annotation(
+                    is_instance=True,
+                    labels=[Label(key="k1", value="missed_detection")],
+                    bounding_box=Box([rect2]),
+                ),
+                Annotation(
+                    is_instance=True,
+                    labels=[Label(key="k1", value="v2")],
+                    bounding_box=Box([rect3]),
+                ),
+            ],
+        ),
+        GroundTruth(
+            datum=img2,
+            annotations=[
+                Annotation(
+                    is_instance=True,
+                    labels=[Label(key="k1", value="low_iou")],
+                    bounding_box=Box([rect1]),
+                ),
+            ],
+        ),
+    ]
+
+    pds = [
+        Prediction(
+            datum=img1,
+            annotations=[
+                Annotation(
+                    is_instance=True,
+                    labels=[Label(key="k1", value="v1", score=0.5)],
+                    bounding_box=Box([rect1]),
+                ),
+                Annotation(
+                    is_instance=True,
+                    labels=[Label(key="k1", value="not_v2", score=0.3)],
+                    bounding_box=Box([rect5]),
+                ),
+                Annotation(
+                    is_instance=True,
+                    labels=[Label(key="k1", value="hallucination", score=0.1)],
+                    bounding_box=Box([rect4]),
+                ),
+            ],
+        ),
+        # prediction for img2 has the wrong bounding box, so it should count as a hallucination
+        Prediction(
+            datum=img2,
+            annotations=[
+                Annotation(
+                    is_instance=True,
+                    labels=[Label(key="k1", value="low_iou", score=0.5)],
+                    bounding_box=Box([rect2]),
+                ),
+            ],
+        ),
+    ]
+
+    dataset = Dataset.create(dataset_name)
+
+    for gt in gts:
+        dataset.add_groundtruth(gt)
+
+    dataset.finalize()
+
+    model = Model.create(model_name)
+
+    for pd in pds:
+        model.add_prediction(dataset, pd)
+
+    model.finalize_inferences(dataset)
+
+    eval_job = model.evaluate_detection(
+        dataset,
+        pr_curve_max_examples=1,
+        metrics_to_return=[
+            "DetailedPrecisionRecallCurve",
+        ],
+    )
+    eval_job.wait_for_completion(timeout=30)
+
+    # one true positive that becomes a false negative when score > .5
+    assert eval_job.metrics[0]["value"]["v1"]["0.3"]["tp"]["total"] == 1
+    assert eval_job.metrics[0]["value"]["v1"]["0.55"]["tp"]["total"] == 0
+    assert eval_job.metrics[0]["value"]["v1"]["0.55"]["fn"]["total"] == 1
+    assert (
+        eval_job.metrics[0]["value"]["v1"]["0.55"]["fn"]["observations"][
+            "missed_detections"
+        ]["count"]
+        == 1
+    )
+    assert eval_job.metrics[0]["value"]["v1"]["0.05"]["fn"]["total"] == 0
+    assert eval_job.metrics[0]["value"]["v1"]["0.05"]["fp"]["total"] == 0
+
+    # one missed detection that never changes
+    assert (
+        eval_job.metrics[0]["value"]["missed_detection"]["0.05"]["fn"][
+            "observations"
+        ]["missed_detections"]["count"]
+        == 1
+    )
+    assert (
+        eval_job.metrics[0]["value"]["missed_detection"]["0.95"]["fn"][
+            "observations"
+        ]["missed_detections"]["count"]
+        == 1
+    )
+    assert (
+        eval_job.metrics[0]["value"]["missed_detection"]["0.05"]["tp"]["total"]
+        == 0
+    )
+    assert (
+        eval_job.metrics[0]["value"]["missed_detection"]["0.05"]["fp"]["total"]
+        == 0
+    )
+
+    # one fn missed_dection that becomes a misclassification when pr_curve_iou_threshold <= .48 and score threshold <= .3
+    assert (
+        eval_job.metrics[0]["value"]["v2"]["0.3"]["fn"]["observations"][
+            "missed_detections"
+        ]["count"]
+        == 1
+    )
+    assert (
+        eval_job.metrics[0]["value"]["v2"]["0.35"]["fn"]["observations"][
+            "missed_detections"
+        ]["count"]
+        == 1
+    )
+    assert eval_job.metrics[0]["value"]["v2"]["0.05"]["tp"]["total"] == 0
+    assert eval_job.metrics[0]["value"]["v2"]["0.05"]["fp"]["total"] == 0
+
+    # one fp hallucination that becomes a misclassification when pr_curve_iou_threshold <= .48 and score threshold <= .3
+    assert (
+        eval_job.metrics[0]["value"]["not_v2"]["0.05"]["fp"]["observations"][
+            "hallucinations"
+        ]["count"]
+        == 1
+    )
+    assert (
+        eval_job.metrics[0]["value"]["not_v2"]["0.05"]["fp"]["observations"][
+            "misclassifications"
+        ]["count"]
+        == 0
+    )
+    assert eval_job.metrics[0]["value"]["not_v2"]["0.05"]["tp"]["total"] == 0
+    assert eval_job.metrics[0]["value"]["not_v2"]["0.05"]["fn"]["total"] == 0
+
+    # one fp hallucination that disappears when score threshold >.15
+    assert (
+        eval_job.metrics[0]["value"]["hallucination"]["0.05"]["fp"][
+            "observations"
+        ]["hallucinations"]["count"]
+        == 1
+    )
+    assert (
+        eval_job.metrics[0]["value"]["hallucination"]["0.35"]["fp"][
+            "observations"
+        ]["hallucinations"]["count"]
+        == 0
+    )
+    assert (
+        eval_job.metrics[0]["value"]["hallucination"]["0.05"]["tp"]["total"]
+        == 0
+    )
+    assert (
+        eval_job.metrics[0]["value"]["hallucination"]["0.05"]["fn"]["total"]
+        == 0
+    )
+
+    # one missed detection and one hallucination due to low iou overlap
+    assert (
+        eval_job.metrics[0]["value"]["low_iou"]["0.3"]["fn"]["observations"][
+            "missed_detections"
+        ]["count"]
+        == 1
+    )
+    assert (
+        eval_job.metrics[0]["value"]["low_iou"]["0.95"]["fn"]["observations"][
+            "missed_detections"
+        ]["count"]
+        == 1
+    )
+    assert (
+        eval_job.metrics[0]["value"]["low_iou"]["0.3"]["fp"]["observations"][
+            "hallucinations"
+        ]["count"]
+        == 1
+    )
+    assert (
+        eval_job.metrics[0]["value"]["low_iou"]["0.55"]["fp"]["observations"][
+            "hallucinations"
+        ]["count"]
+        == 0
+    )
+
+    # repeat tests using a lower IOU threshold
+    eval_job_low_iou_threshold = model.evaluate_detection(
+        dataset,
+        pr_curve_max_examples=1,
+        metrics_to_return=[
+            "DetailedPrecisionRecallCurve",
+        ],
+        pr_curve_iou_threshold=0.45,  # actual IOU is .481
+    )
+    eval_job_low_iou_threshold.wait_for_completion(timeout=30)
+
+    # one true positive that becomes a false negative when score > .5
+    assert eval_job.metrics[0]["value"]["v1"]["0.3"]["tp"]["total"] == 1
+    assert eval_job.metrics[0]["value"]["v1"]["0.55"]["tp"]["total"] == 0
+    assert eval_job.metrics[0]["value"]["v1"]["0.55"]["fn"]["total"] == 1
+    assert (
+        eval_job.metrics[0]["value"]["v1"]["0.55"]["fn"]["observations"][
+            "missed_detections"
+        ]["count"]
+        == 1
+    )
+    assert eval_job.metrics[0]["value"]["v1"]["0.05"]["fn"]["total"] == 0
+    assert eval_job.metrics[0]["value"]["v1"]["0.05"]["fp"]["total"] == 0
+
+    # one missed detection that never changes
+    assert (
+        eval_job.metrics[0]["value"]["missed_detection"]["0.05"]["fn"][
+            "observations"
+        ]["missed_detections"]["count"]
+        == 1
+    )
+    assert (
+        eval_job.metrics[0]["value"]["missed_detection"]["0.95"]["fn"][
+            "observations"
+        ]["missed_detections"]["count"]
+        == 1
+    )
+    assert (
+        eval_job.metrics[0]["value"]["missed_detection"]["0.05"]["tp"]["total"]
+        == 0
+    )
+    assert (
+        eval_job.metrics[0]["value"]["missed_detection"]["0.05"]["fp"]["total"]
+        == 0
+    )
+
+    # one fn missed_dection that becomes a misclassification when pr_curve_iou_threshold <= .48 and score threshold <= .3
+    assert (
+        eval_job_low_iou_threshold.metrics[0]["value"]["v2"]["0.3"]["fn"][
+            "observations"
+        ]["misclassifications"]["count"]
+        == 1
+    )
+    assert (
+        eval_job_low_iou_threshold.metrics[0]["value"]["v2"]["0.3"]["fn"][
+            "observations"
+        ]["missed_detections"]["count"]
+        == 0
+    )
+    assert (
+        eval_job_low_iou_threshold.metrics[0]["value"]["v2"]["0.35"]["fn"][
+            "observations"
+        ]["misclassifications"]["count"]
+        == 0
+    )
+    assert (
+        eval_job_low_iou_threshold.metrics[0]["value"]["v2"]["0.35"]["fn"][
+            "observations"
+        ]["missed_detections"]["count"]
+        == 1
+    )
+    assert (
+        eval_job_low_iou_threshold.metrics[0]["value"]["v2"]["0.05"]["tp"][
+            "total"
+        ]
+        == 0
+    )
+    assert (
+        eval_job_low_iou_threshold.metrics[0]["value"]["v2"]["0.05"]["fp"][
+            "total"
+        ]
+        == 0
+    )
+
+    # one fp hallucination that becomes a misclassification when pr_curve_iou_threshold <= .48 and score threshold <= .3
+    assert (
+        eval_job_low_iou_threshold.metrics[0]["value"]["not_v2"]["0.05"]["fp"][
+            "observations"
+        ]["hallucinations"]["count"]
+        == 0
+    )
+    assert (
+        eval_job_low_iou_threshold.metrics[0]["value"]["not_v2"]["0.05"]["fp"][
+            "observations"
+        ]["misclassifications"]["count"]
+        == 1
+    )
+    assert (
+        eval_job_low_iou_threshold.metrics[0]["value"]["not_v2"]["0.05"]["tp"][
+            "total"
+        ]
+        == 0
+    )
+    assert (
+        eval_job_low_iou_threshold.metrics[0]["value"]["not_v2"]["0.05"]["fn"][
+            "total"
+        ]
+        == 0
+    )
+
+    # one fp hallucination that disappears when score threshold >.15
+    assert (
+        eval_job.metrics[0]["value"]["hallucination"]["0.05"]["fp"][
+            "observations"
+        ]["hallucinations"]["count"]
+        == 1
+    )
+    assert (
+        eval_job.metrics[0]["value"]["hallucination"]["0.35"]["fp"][
+            "observations"
+        ]["hallucinations"]["count"]
+        == 0
+    )
+    assert (
+        eval_job.metrics[0]["value"]["hallucination"]["0.05"]["tp"]["total"]
+        == 0
+    )
+    assert (
+        eval_job.metrics[0]["value"]["hallucination"]["0.05"]["fn"]["total"]
+        == 0
+    )
+
+    # one missed detection and one hallucination due to low iou overlap
+    assert (
+        eval_job.metrics[0]["value"]["low_iou"]["0.3"]["fn"]["observations"][
+            "missed_detections"
+        ]["count"]
+        == 1
+    )
+    assert (
+        eval_job.metrics[0]["value"]["low_iou"]["0.95"]["fn"]["observations"][
+            "missed_detections"
+        ]["count"]
+        == 1
+    )
+    assert (
+        eval_job.metrics[0]["value"]["low_iou"]["0.3"]["fp"]["observations"][
+            "hallucinations"
+        ]["count"]
+        == 1
+    )
+    assert (
+        eval_job.metrics[0]["value"]["low_iou"]["0.55"]["fp"]["observations"][
+            "hallucinations"
+        ]["count"]
+        == 0
+    )

@@ -193,6 +193,9 @@ class ClientConnection:
         method_name: str,
         endpoint: str,
         ignore_auth: bool = False,
+        max_retries_on_timeout=2,
+        initial_timeout: float = 2,
+        exponential_backoff: int = 2,
         *args,
         **kwargs,
     ):
@@ -209,6 +212,12 @@ class ClientConnection:
             Option to ignore authentication when you know the endpoint does not
             require a bearer token. this is used by the `_get_access_token_from_username_and_password`
             to avoid infinite recursion.
+        max_retries_on_timeout: int
+            The maximum number of retries when the requests module returns a Timeout error.
+        initial_timeout : float
+            The initial timeout value between how often we'll retry request methods.
+        exponential_backoff : integer
+            The factor by which we multiple initial_timeout for each subsequent retry.
         """
         accepted_methods = ["get", "post", "put", "delete"]
         if method_name not in accepted_methods:
@@ -224,13 +233,29 @@ class ClientConnection:
         url = urljoin(self.host, endpoint)
         requests_method = getattr(requests, method_name)
 
+        timeout_retries = 0
         tried = False
         while True:
             if self.access_token is not None:
                 headers = {"Authorization": f"Bearer {self.access_token}"}
             else:
                 headers = None
-            resp = requests_method(url, headers=headers, *args, **kwargs)
+
+            try:
+                resp = requests_method(
+                    url, headers=headers, timeout=10, *args, **kwargs
+                )
+            except requests.exceptions.Timeout as e:
+                if timeout_retries < max_retries_on_timeout:
+                    time.sleep(
+                        initial_timeout
+                        * exponential_backoff**timeout_retries
+                    )
+                    timeout_retries += 1
+                    continue
+                else:
+                    raise TimeoutError(str(e))
+
             if not resp.ok:
                 # check if unauthorized and if using username and password, get a new
                 # token and try the request again
@@ -374,16 +399,26 @@ class ClientConnection:
 
     def get_labels(
         self,
-        filter_: Optional[dict] = None,
+        filters: Optional[dict] = None,
     ) -> List[dict]:
         """
         Gets all labels using an optional filter.
 
         `GET` endpoint.
+
+        Parameters
+        ----------
+        filters : dict, optional
+            An optional filter.
+
+        Returns
+        -------
+        list[dict]
+            A list of labels.
         """
         kwargs = {}
-        if filter_:
-            kwargs["params"] = {k: json.dumps(v) for k, v in filter_.items()}
+        if filters:
+            kwargs["params"] = {k: json.dumps(v) for k, v in filters.items()}
         return self._requests_get_rel_host("labels", **kwargs).json()
 
     def get_labels_from_dataset(self, name: str) -> List[dict]:
@@ -435,7 +470,7 @@ class ClientConnection:
         """
         self._requests_post_rel_host("datasets", json=dataset)
 
-    def get_datasets(self, filter_: Optional[dict] = None) -> List[dict]:
+    def get_datasets(self, filters: Optional[dict] = None) -> List[dict]:
         """
         Get all datasets with option to filter.
 
@@ -443,8 +478,8 @@ class ClientConnection:
 
         Parameters
         ----------
-        filter_ : Filter, optional
-            Optional filter to constrain by.
+        filters : Filter, optional
+            An optional filter.
 
         Returns
         ------
@@ -452,8 +487,8 @@ class ClientConnection:
             A list of dictionaries describing all the datasets attributed to the `Client` object.
         """
         kwargs = {}
-        if filter_:
-            kwargs["params"] = {k: json.dumps(v) for k, v in filter_.items()}
+        if filters:
+            kwargs["params"] = {k: json.dumps(v) for k, v in filters.items()}
         return self._requests_get_rel_host("datasets", **kwargs).json()
 
     def get_dataset(self, name: str) -> dict:
@@ -537,7 +572,7 @@ class ClientConnection:
         """
         self._requests_delete_rel_host(f"datasets/{name}")
 
-    def get_datums(self, filter_: Optional[dict] = None) -> List[dict]:
+    def get_datums(self, filters: Optional[dict] = None) -> List[dict]:
         """
         Get all datums using an optional filter.
 
@@ -545,8 +580,8 @@ class ClientConnection:
 
         Parameters
         ----------
-        filter_ : dict, optional
-            Optional filter to constrain by.
+        filters : dict, optional
+            An optional filter.
 
         Returns
         -------
@@ -554,8 +589,8 @@ class ClientConnection:
             A list of dictionaries describing all the datums of the specified dataset.
         """
         kwargs = {}
-        if filter_:
-            kwargs["params"] = {k: json.dumps(v) for k, v in filter_.items()}
+        if filters:
+            kwargs["params"] = {k: json.dumps(v) for k, v in filters.items()}
         return self._requests_get_rel_host("data", **kwargs).json()
 
     def get_datum(
@@ -594,7 +629,7 @@ class ClientConnection:
         """
         self._requests_post_rel_host("models", json=model)
 
-    def get_models(self, filter_: Optional[dict] = None) -> List[dict]:
+    def get_models(self, filters: Optional[dict] = None) -> List[dict]:
         """
         Get all models using an optional filter.
 
@@ -602,8 +637,8 @@ class ClientConnection:
 
         Parameters
         ----------
-        filter_ : Filter, optional
-            Optional filter to constrain by.
+        filters : Filter, optional
+            An optional filter.
 
         Returns
         ------
@@ -611,8 +646,8 @@ class ClientConnection:
             A list of dictionaries describing all the models.
         """
         kwargs = {}
-        if filter_:
-            kwargs["params"] = {k: json.dumps(v) for k, v in filter_.items()}
+        if filters:
+            kwargs["params"] = {k: json.dumps(v) for k, v in filters.items()}
         return self._requests_get_rel_host("models", **kwargs).json()
 
     def get_model(self, name: str) -> dict:

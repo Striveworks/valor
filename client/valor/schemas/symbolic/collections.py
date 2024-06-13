@@ -2,8 +2,8 @@ from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
 
-from valor.enums import TaskType
 from valor.schemas.symbolic.types import (
+    Bool,
     Box,
     Context,
     Dictionary,
@@ -16,8 +16,6 @@ from valor.schemas.symbolic.types import (
     Polygon,
     Raster,
     String,
-    TaskTypeEnum,
-    Text,
     Variable,
     _convert_simple_variables_to_standard_types,
     get_type_by_name,
@@ -253,8 +251,6 @@ class Annotation(StaticCollection):
 
     Attributes
     ----------
-    task_type: TaskTypeEnum
-        The task type associated with the `Annotation`.
     metadata: Dictionary
         A dictionary of metadata that describes the `Annotation`.
     labels: List[Label], optional
@@ -267,6 +263,10 @@ class Annotation(StaticCollection):
         A raster to assign to the `Annotation`.
     embedding: List[float]
         An embedding, described by a list of values with type float and a maximum length of 16,000.
+    is_instance: bool, optional
+        A boolean describing whether we should treat the Raster attached to an annotation as an instance segmentation or not. If set to true, then the Annotation will be validated for use in object detection tasks. If set to false, then the Annotation will be validated for use in semantic segmentation tasks.
+    implied_task_types: list[str], optional
+        The validated task types that are applicable to each Annotation. Doesn't need to bet set by the user.
     text: TODO
     context: TODO
 
@@ -275,7 +275,6 @@ class Annotation(StaticCollection):
 
     Classification
     >>> Annotation.create(
-    ...     task_type=TaskType.CLASSIFICATION,
     ...     labels=[
     ...         Label(key="class", value="dog"),
     ...         Label(key="category", value="animal"),
@@ -284,35 +283,32 @@ class Annotation(StaticCollection):
 
     Object-Detection Box
     >>> annotation = Annotation.create(
-    ...     task_type=TaskType.OBJECT_DETECTION,
     ...     labels=[Label(key="k1", value="v1")],
     ...    bounding_box=box2,
     ... )
 
     Object-Detection Polygon
     >>> annotation = Annotation.create(
-    ...     task_type=TaskType.OBJECT_DETECTION,
     ...     labels=[Label(key="k1", value="v1")],
     ...     polygon=BoundingPolygon(...),
     ... )
 
     Object-Detection Raster
     >>> annotation = Annotation.create(
-    ...     task_type=TaskType.OBJECT_DETECTION,
     ...     labels=[Label(key="k1", value="v1")],
     ...     raster=Raster(...),
+    ...     is_instance=True
     ... )
 
     Semantic-Segmentation Raster
     >>> annotation = Annotation.create(
-    ...     task_type=TaskType.SEMANTIC_SEGMENTATION,
     ...     labels=[Label(key="k1", value="v1")],
     ...     raster=Raster(...),
+    ...     is_instance=False # or None
     ... )
 
-    Defining all supported annotation types for a given `task_type` is allowed!
+    Defining all supported annotation types is allowed!
     >>> Annotation.create(
-    ...     task_type=TaskType.OBJECT_DETECTION,
     ...     labels=[Label(key="k1", value="v1")],
     ...     bounding_box=Box(...),
     ...     polygon=BoundingPolygon(...),
@@ -322,9 +318,6 @@ class Annotation(StaticCollection):
     # TODO text generation
     """
 
-    task_type: TaskTypeEnum = TaskTypeEnum.symbolic(
-        owner="annotation", name="task_type"
-    )
     metadata: Dictionary = Dictionary.symbolic(
         owner="annotation", name="metadata"
     )
@@ -337,19 +330,24 @@ class Annotation(StaticCollection):
     embedding: Embedding = Embedding.symbolic(
         owner="annotation", name="embedding"
     )
+    is_instance: Bool = Bool.symbolic(owner="annotation", name="is_instance")
+    implied_task_types: SymbolicList[String] = SymbolicList[String].symbolic(
+        owner="annotation", name="implied_task_types"
+    )
     text: Text = Text.symbolic(owner="annotation", name="text")
     context: Context = Context.symbolic(owner="annotation", name="context")
 
     def __init__(
         self,
         *,
-        task_type: TaskType,
         metadata: Optional[dict] = None,
         labels: Optional[List[Label]] = None,
         bounding_box: Optional[Box] = None,
         polygon: Optional[Polygon] = None,
         raster: Optional[Raster] = None,
         embedding: Optional[Embedding] = None,
+        is_instance: Optional[bool] = None,
+        implied_task_types: Optional[List[String]] = None,
         text: Optional[str] = None,
         context: Optional[List[str]] = None,
     ):
@@ -358,8 +356,6 @@ class Annotation(StaticCollection):
 
         Parameters
         ----------
-        task_type: TaskTypeEnum
-            The task type associated with the `Annotation`.
         metadata: Dict[str, Union[int, float, str, bool, datetime.datetime, datetime.date, datetime.time]]
             A dictionary of metadata that describes the `Annotation`.
         labels: List[Label]
@@ -372,13 +368,16 @@ class Annotation(StaticCollection):
             A raster annotation.
         embedding: List[float], optional
             An embedding, described by a list of values with type float and a maximum length of 16,000.
+        is_instance: bool, optional
+            A boolean describing whether we should treat the Raster attached to an annotation as an instance segmentation or not. If set to true, then the Annotation will be validated for use in object detection tasks. If set to false, then the Annotation will be validated for use in semantic segmentation tasks.
+        implied_task_types: list[str], optional
+            The validated task types that are applicable to each Annotation. Doesn't need to bet set by the user.
         text: str, optional
             TODO
         context: List[str], optional
             TODO
         """
         super().__init__(
-            task_type=task_type,
             metadata=metadata if metadata else dict(),
             labels=labels
             if labels
@@ -387,6 +386,8 @@ class Annotation(StaticCollection):
             polygon=polygon,
             raster=raster,
             embedding=embedding,
+            is_instance=is_instance,
+            implied_task_types=implied_task_types,
             text=text,
             context=context,
         )
@@ -399,6 +400,8 @@ class Annotation(StaticCollection):
             "polygon": Polygon.nullable,
             "raster": Raster.nullable,
             "embedding": Embedding.nullable,
+            "is_instance": Bool.nullable,
+            "implied_task_types": SymbolicList,
         }
 
 

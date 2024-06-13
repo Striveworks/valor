@@ -8,8 +8,8 @@ from sqlalchemy.orm import Session
 from valor_api import schemas
 from valor_api.backend import models
 from valor_api.backend.core.geometry import _raster_to_png_b64
-from valor_api.backend.query import Query
-from valor_api.enums import ModelStatus, TableStatus, TaskType
+from valor_api.backend.query import generate_query
+from valor_api.enums import ModelStatus, TableStatus
 
 
 def _create_embedding(
@@ -71,40 +71,26 @@ def _create_annotation(
     text = None
     context = None
 
-    # task-based conversion
-    match annotation.task_type:
-        case TaskType.OBJECT_DETECTION:
-            if annotation.bounding_box:
-                box = annotation.bounding_box.to_wkt()
-            if annotation.polygon:
-                polygon = annotation.polygon.to_wkt()
-            if annotation.raster:
-                raster = annotation.raster.to_psql()
-        case TaskType.SEMANTIC_SEGMENTATION:
-            if annotation.raster:
-                raster = annotation.raster.to_psql()
-        case TaskType.EMBEDDING:
-            if annotation.embedding:
-                embedding_id = _create_embedding(
-                    db=db, value=annotation.embedding
-                )
-        case TaskType.TEXT_GENERATION:
-            if annotation.text:
-                text = annotation.text
-            if annotation.context:
-                # check if context is a string
-                if isinstance(annotation.context, str):
-                    context = [annotation.context]
-                else:
-                    assert isinstance(annotation.context, list)
-                    context = annotation.context
-        case _:
-            pass
+    if annotation.bounding_box:
+        box = annotation.bounding_box.to_wkt()
+    if annotation.polygon:
+        polygon = annotation.polygon.to_wkt()
+    if annotation.raster:
+        raster = annotation.raster.to_psql()
+    if annotation.embedding:
+        embedding_id = _create_embedding(db=db, value=annotation.embedding)
+    if annotation.text:
+        text = annotation.text
+    if annotation.context:
+        if isinstance(annotation.context, str):
+            context = [annotation.context]
+        else:
+            assert isinstance(annotation.context, list)
+            context = annotation.context
 
     mapping = {
         "datum_id": datum.id,
         "model_id": model.id if model else None,
-        "task_type": annotation.task_type,
         "meta": annotation.metadata,
         "box": box,
         "polygon": polygon,
@@ -112,6 +98,8 @@ def _create_annotation(
         "embedding_id": embedding_id,
         "text": text,
         "context": context,
+        "is_instance": annotation.is_instance,
+        "implied_task_types": annotation.implied_task_types,
     }
     return mapping
 
@@ -203,7 +191,7 @@ def create_skipped_annotations(
     annotation_list = [
         _create_annotation(
             db=db,
-            annotation=schemas.Annotation(task_type=TaskType.SKIP),
+            annotation=schemas.Annotation(),
             datum=datum,
             model=model,
         )
@@ -238,29 +226,31 @@ def get_annotation(
     """
     # retrieve all labels associated with annotation
     if annotation.model_id:
-        q = Query(
+        query = generate_query(
             models.Label.key,
             models.Label.value,
             models.Prediction.score,
-        ).predictions(as_subquery=False)
-        q = q.where(models.Prediction.annotation_id == annotation.id)  # type: ignore - SQLAlchemy type issue
+            db=db,
+            label_source=models.Prediction,
+        ).where(models.Prediction.annotation_id == annotation.id)
         labels = [
             schemas.Label(
                 key=scored_label[0],
                 value=scored_label[1],
                 score=scored_label[2],
             )
-            for scored_label in db.query(q.subquery()).all()
+            for scored_label in query.all()
         ]
     else:
-        q = Query(
+        query = generate_query(
             models.Label.key,
             models.Label.value,
-        ).groundtruths(as_subquery=False)
-        q = q.where(models.GroundTruth.annotation_id == annotation.id)  # type: ignore - SQLAlchemy type issue
+            db=db,
+            label_source=models.GroundTruth,
+        ).where(models.GroundTruth.annotation_id == annotation.id)
         labels = [
             schemas.Label(key=label[0], value=label[1])
-            for label in db.query(q.subquery()).all()
+            for label in query.all()
         ]
 
     # initialize
@@ -312,15 +302,16 @@ def get_annotation(
         context = annotation.context
 
     return schemas.Annotation(
-        task_type=annotation.task_type,  # type: ignore - models.Annotation.task_type should be a string in psql
         labels=labels,
         metadata=annotation.meta,
         bounding_box=box,
-        polygon=polygon,  # type: ignore - guaranteed to be a polygon in this case
+        polygon=polygon,
         raster=raster,
         embedding=embedding,
         text=text,
         context=context,
+        is_instance=annotation.is_instance,
+        implied_task_types=annotation.implied_task_types,
     )
 
 

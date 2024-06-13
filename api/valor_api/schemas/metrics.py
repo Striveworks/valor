@@ -418,7 +418,23 @@ class AccuracyMetric(BaseModel):
         }
 
 
-class PrecisionRecallCurve(BaseModel):
+class _BasePrecisionRecallCurve(BaseModel):
+    """
+    Describes the parent class of our precision-recall curve metrics.
+
+    Attributes
+    ----------
+    label_key: str
+        The label key associated with the metric.
+    pr_curve_iou_threshold: float, optional
+        The IOU threshold to use when calculating precision-recall curves. Defaults to 0.5.
+    """
+
+    label_key: str
+    pr_curve_iou_threshold: float | None = None
+
+
+class PrecisionRecallCurve(_BasePrecisionRecallCurve):
     """
     Describes a precision-recall curve.
 
@@ -429,25 +445,16 @@ class PrecisionRecallCurve(BaseModel):
     value: dict
         A nested dictionary where the first key is the class label, the second key is the confidence threshold (e.g., 0.05), the third key is the metric name (e.g., "precision"), and the final key is either the value itself (for precision, recall, etc.) or a list of tuples containing data for each observation.
     pr_curve_iou_threshold: float, optional
-        The IOU threshold to use when calculating precision-recall curves. Defaults to 0.5. Does nothing when compute_pr_curves is set to False or None.
+        The IOU threshold to use when calculating precision-recall curves. Defaults to 0.5.
     """
 
-    label_key: str
     value: dict[
         str,
         dict[
             float,
-            dict[
-                str,
-                int
-                | float
-                | list[tuple[str, str]]  # for classification tasks
-                | list[tuple[str, str, str]]  # for object detection tasks
-                | None,
-            ],
+            dict[str, int | float | None],
         ],
     ]
-    pr_curve_iou_threshold: float | None = None
 
     def db_mapping(self, evaluation_id: int) -> dict:
         """
@@ -466,6 +473,69 @@ class PrecisionRecallCurve(BaseModel):
         return {
             "value": self.value,
             "type": "PrecisionRecallCurve",
+            "evaluation_id": evaluation_id,
+            "parameters": {
+                "label_key": self.label_key,
+                "pr_curve_iou_threshold": self.pr_curve_iou_threshold,
+            },
+        }
+
+
+class DetailedPrecisionRecallCurve(_BasePrecisionRecallCurve):
+    """
+    Describes a detailed precision-recall curve, which includes datum examples for each classification (e.g., true positive, false negative, etc.).
+
+    Attributes
+    ----------
+    label_key: str
+        The label key associated with the metric.
+    value: dict
+        A nested dictionary where the first key is the class label, the second key is the confidence threshold (e.g., 0.05), the third key is the metric name (e.g., "precision"), and the final key is either the value itself (for precision, recall, etc.) or a list of tuples containing data for each observation.
+    pr_curve_iou_threshold: float, optional
+        The IOU threshold to use when calculating precision-recall curves. Defaults to 0.5.
+    """
+
+    value: dict[
+        str,  # the label value
+        dict[
+            float,  # the score threshold
+            dict[
+                str,  # the metric (e.g., "tp" for true positive)
+                dict[
+                    str,  # the label for the next level of the dictionary (e.g., "observations" or "total")
+                    int  # the count of classifications
+                    | dict[
+                        str,  # the subclassification for the label (e.g., "misclassifications")
+                        dict[
+                            str,  # the label for the next level of the dictionary (e.g., "count" or "examples")
+                            int  # the count of subclassifications
+                            | list[
+                                tuple[str, str] | tuple[str, str, str]
+                            ],  # a list containing examples
+                        ],
+                    ],
+                ],
+            ],
+        ],
+    ]
+
+    def db_mapping(self, evaluation_id: int) -> dict:
+        """
+        Creates a mapping for use when uploading the curves to the database.
+
+        Parameters
+        ----------
+        evaluation_id : int
+            The evaluation id.
+
+        Returns
+        ----------
+        A mapping dictionary.
+        """
+
+        return {
+            "value": self.value,
+            "type": "DetailedPrecisionRecallCurve",
             "evaluation_id": evaluation_id,
             "parameters": {
                 "label_key": self.label_key,
@@ -520,19 +590,46 @@ class _PrecisionRecallF1Base(BaseModel):
 
 
 class PrecisionMetric(_PrecisionRecallF1Base):
-    """Describes an precision metric."""
+    """
+    Describes an precision metric.
+
+    Attributes
+    ----------
+    label : Label
+        A key-value pair.
+    value : float, optional
+        The metric value.
+    """
 
     __type__ = "Precision"
 
 
 class RecallMetric(_PrecisionRecallF1Base):
-    """Describes a recall metric."""
+    """
+    Describes a recall metric.
+
+    Attributes
+    ----------
+    label : Label
+        A key-value pair.
+    value : float, optional
+        The metric value.
+    """
 
     __type__ = "Recall"
 
 
 class F1Metric(_PrecisionRecallF1Base):
-    """Describes an F1 metric."""
+    """
+    Describes an F1 metric.
+
+    Attributes
+    ----------
+    label : Label
+        A key-value pair.
+    value : float, optional
+        The metric value.
+    """
 
     __type__ = "F1"
 
@@ -565,8 +662,13 @@ class ROCAUCMetric(BaseModel):
         ----------
         A mapping dictionary.
         """
+        value = (
+            self.value
+            if (self.value is not None and not np.isnan(self.value))
+            else -1
+        )
         return {
-            "value": self.value if not np.isnan(self.value) else -1,  # type: ignore - numpy type error; np.isnan can take None
+            "value": value,
             "type": "ROCAUC",
             "parameters": {"label_key": self.label_key},
             "evaluation_id": evaluation_id,

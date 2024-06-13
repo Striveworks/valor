@@ -2,7 +2,7 @@ import copy
 
 import pytest
 
-from valor import Annotation, Datum, GroundTruth, Label, Prediction, enums
+from valor import Annotation, Datum, GroundTruth, Label, Prediction
 from valor.schemas import Float, Polygon
 
 
@@ -23,78 +23,60 @@ def test_datum():
 def test_annotation(bbox, polygon, raster, labels, metadata):
     # valid
     Annotation(
-        task_type=enums.TaskType.OBJECT_DETECTION,
         bounding_box=bbox,
         labels=labels,
     )
     Annotation(
-        task_type=enums.TaskType.OBJECT_DETECTION,
         polygon=polygon,
         labels=labels,
     )
+    Annotation(raster=raster, labels=labels)
     Annotation(
-        task_type=enums.TaskType.OBJECT_DETECTION, raster=raster, labels=labels
-    )
-    Annotation(
-        task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
         raster=raster,
         labels=labels,
     )
     Annotation(
-        task_type=enums.TaskType.OBJECT_DETECTION,
         labels=labels,
         bounding_box=bbox,
         polygon=polygon,
         raster=raster,
     )
-    Annotation(task_type=enums.TaskType.CLASSIFICATION, labels=labels)
+    Annotation(labels=labels)
+    Annotation(labels=labels, metadata={})
     Annotation(
-        task_type=enums.TaskType.CLASSIFICATION, labels=labels, metadata={}
-    )
-    Annotation(
-        task_type=enums.TaskType.CLASSIFICATION,
         labels=labels,
         metadata=metadata,
     )
     Annotation(
-        task_type=enums.TaskType.OBJECT_DETECTION,
         labels=labels,
         polygon=bbox,  # bbox is a constrained polygon so this is valid usage
     )
 
     # test `__post_init__`
-    with pytest.raises(ValueError) as e:
-        Annotation(task_type="something", labels=labels)  # type: ignore
-    assert "TaskType" in str(e)
     with pytest.raises(TypeError):
         Annotation(
-            task_type=enums.TaskType.OBJECT_DETECTION,
             labels=labels,
-            bounding_box=Polygon([[(0, 0), (1, 0), (1, 1), (0, 0)]]),  # type: ignore
+            bounding_box=Polygon(value=[[(0, 0), (1, 0), (1, 1), (0, 0)]]),  # type: ignore - testing
         )
     with pytest.raises(TypeError):
         Annotation(
-            task_type=enums.TaskType.OBJECT_DETECTION,
             labels=labels,
             raster=bbox,
         )
     with pytest.raises(TypeError):
         Annotation(
-            task_type=enums.TaskType.CLASSIFICATION,
             labels=labels,
-            metadata=[1234],  # type: ignore
+            metadata=[1234],  # type: ignore - testing
         )
     with pytest.raises(TypeError):
         Annotation(
-            task_type=enums.TaskType.CLASSIFICATION,
             labels=labels,
-            metadata={1: 1},  # type: ignore
+            metadata={1: 1},  # type: ignore - testing
         )
     with pytest.raises(ValueError):
         Annotation(
-            task_type=enums.TaskType.CLASSIFICATION,
             labels=labels,
-            metadata={"test": None},  # type: ignore
+            metadata={"test": None},  # type: ignore - testing
         )
 
 
@@ -105,21 +87,15 @@ def test_groundtruth_annotation():
 
     # valid
     Annotation(
-        task_type=enums.TaskType.CLASSIFICATION,
         labels=[l1, l2, l3],
     )
 
     # test `__post_init__`
-    with pytest.raises(ValueError) as e:
-        Annotation(task_type="soemthing", labels=[l1])  # type: ignore
-    assert "TaskType" in str(e)
     with pytest.raises(TypeError) as e:
-        Annotation(task_type=enums.TaskType.CLASSIFICATION, labels=l1)  # type: ignore
+        Annotation(labels=l1)  # type: ignore - testing
     assert "List[Label]" in str(e)
     with pytest.raises(TypeError):
-        Annotation(
-            task_type=enums.TaskType.CLASSIFICATION, labels=[l1, l2, "label"]  # type: ignore
-        )
+        Annotation(labels=[l1, l2, "label"])  # type: ignore - testing
 
 
 def test_prediction_annotation():
@@ -135,27 +111,22 @@ def test_prediction_annotation():
     s3.score = Float.nullable(1.0)
 
     # valid
-    Annotation(task_type=enums.TaskType.CLASSIFICATION, labels=[s1, s2, s3])
+    Annotation(labels=[s1, s2, s3])
 
     # test `__post_init__`
-    with pytest.raises(ValueError) as e:
-        Annotation(task_type="something", labels=[s1, s2, s3])  # type: ignore
-    assert "TaskType" in str(e)
     with pytest.raises(TypeError) as e:
-        Annotation(task_type=enums.TaskType.CLASSIFICATION, labels=s1)  # type: ignore
+        Annotation(labels=s1)  # type: ignore - testing
     assert "List[Label]" in str(e)
     with pytest.raises(TypeError):
-        Annotation(
-            task_type=enums.TaskType.CLASSIFICATION, labels=[s1, s2, "label"]  # type: ignore
-        )
+        Annotation(labels=[s1, s2, "label"])  # type: ignore - testing
 
 
 def test_groundtruth():
     label = Label(key="test", value="value")
     datum = Datum(uid="somefile")
     gts = [
-        Annotation(task_type=enums.TaskType.CLASSIFICATION, labels=[label]),
-        Annotation(task_type=enums.TaskType.CLASSIFICATION, labels=[label]),
+        Annotation(labels=[label]),
+        Annotation(labels=[label]),
     ]
 
     # valid
@@ -167,19 +138,19 @@ def test_groundtruth():
     # test `__post_init__`
     with pytest.raises(TypeError):
         GroundTruth(
-            datum="datum",  # type: ignore
+            datum="datum",  # type: ignore - testing
             annotations=gts,
         )
     with pytest.raises(TypeError) as e:
         GroundTruth(
             datum=datum,
-            annotations=gts[0],  # type: ignore
+            annotations=gts[0],  # type: ignore - testing
         )
     assert "List[Annotation]" in str(e)
     with pytest.raises(TypeError):
         GroundTruth(
             datum=datum,
-            annotations=[gts[0], gts[1], "annotation"],  # type: ignore
+            annotations=[gts[0], gts[1], "annotation"],  # type: ignore - testing
         )
 
     # test equalities
@@ -203,11 +174,9 @@ def test_prediction():
     datum = Datum(uid="somefile")
     pds = [
         Annotation(
-            task_type=enums.TaskType.CLASSIFICATION,
             labels=[scored_label],
         ),
         Annotation(
-            task_type=enums.TaskType.CLASSIFICATION,
             labels=[scored_label],
         ),
     ]
@@ -216,40 +185,25 @@ def test_prediction():
     string = str(pred)
     assert (
         string
-        == "{'datum': {'uid': 'somefile', 'text': None, 'metadata': {}}, 'annotations': [{'task_type': <TaskType.CLASSIFICATION: 'classification'>, 'metadata': {}, 'labels': [{'key': 'test', 'value': 'value', 'score': 1.0}], 'bounding_box': None, 'polygon': None, 'raster': None, 'embedding': None, 'text': None, 'context': None}, {'task_type': <TaskType.CLASSIFICATION: 'classification'>, 'metadata': {}, 'labels': [{'key': 'test', 'value': 'value', 'score': 1.0}], 'bounding_box': None, 'polygon': None, 'raster': None, 'embedding': None, 'text': None, 'context': None}]}"
+        == "{'datum': {'uid': 'somefile', 'metadata': {}}, 'annotations': [{'metadata': {}, 'labels': [{'key': 'test', 'value': 'value', 'score': 1.0}], 'bounding_box': None, 'polygon': None, 'raster': None, 'embedding': None, 'is_instance': None, 'implied_task_types': None}, {'metadata': {}, 'labels': [{'key': 'test', 'value': 'value', 'score': 1.0}], 'bounding_box': None, 'polygon': None, 'raster': None, 'embedding': None, 'is_instance': None, 'implied_task_types': None}]}"
     )
     assert "dataset_name" not in string
 
     # test `__post_init__`
     with pytest.raises(TypeError):
-        Prediction(datum="datum", annotations=pds)  # type: ignore
+        Prediction(datum="datum", annotations=pds)  # type: ignore - testing
     with pytest.raises(TypeError) as e:
         Prediction(
             datum=datum,
-            annotations=pds[0],  # type: ignore
+            annotations=pds[0],  # type: ignore - testing
         )
     assert "List[Annotation]" in str(e)
 
     with pytest.raises(TypeError):
         Prediction(
             datum=datum,
-            annotations=[pds[0], pds[1], "annotation"],  # type: ignore
+            annotations=[pds[0], pds[1], "annotation"],  # type: ignore - testing
         )
-
-    with pytest.raises(ValueError) as e:
-        Prediction(
-            datum=datum,
-            annotations=[
-                Annotation(
-                    task_type=enums.TaskType.CLASSIFICATION,
-                    labels=[
-                        Label(key="test", value="value", score=0.8),
-                        Label(key="test", value="other", score=0.1),
-                    ],
-                )
-            ],
-        )
-    assert "for label key test got scores summing to 0.9" in str(e)
 
     # test equalities
     with pytest.raises(TypeError):
