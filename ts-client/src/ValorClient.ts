@@ -149,11 +149,7 @@ export type Evaluation = {
   id: number;
   dataset_names: string[];
   model_name: string;
-<<<<<<< HEAD
-  filter: any;
-=======
   filters: any;
->>>>>>> main
   parameters: { task_type: TaskType; object: any };
   status: 'pending' | 'running' | 'done' | 'failed' | 'deleting';
   metrics: Metric[];
@@ -161,16 +157,22 @@ export type Evaluation = {
   created_at: Date;
 };
 
-const metadataDictToString = (input: { [key: string]: string | number }): string => {
-  const result: { [key: string]: Array<{ value: string | number; operator: string }> } =
-    {};
+const metadataDictToFilter = (name: string, input: { [key: string]: string | number }): object => {
+  const args = Object.entries(input).map(([key, value]) => ({
+    op: "eq",
+    lhs: {
+      name: name,
+      key: key
+    },
+    rhs: {
+      type: typeof value === 'string' ? 'string' : 'number',
+      value: value
+    }
+  }));
 
-  Object.entries(input).forEach(([key, value]) => {
-    result[key] = [{ value: value, operator: '==' }];
-  });
-
-  return JSON.stringify(result);
+  return args.length === 1 ? args[0] : { op: "and", args: args };
 };
+
 
 export class ValorClient {
   private client: AxiosInstance;
@@ -192,13 +194,13 @@ export class ValorClient {
    * Fetches datasets matching the filters defined by queryParams. This is private
    * because we define higher-level methods that use this.
    *
-   * @param queryParams An object containing query parameters to filter datasets by.
+   * @param filters An object containing a filter.
    *
    * @returns {Promise<Dataset[]>}
    *
    */
-  private async getDatasets(queryParams: object): Promise<Dataset[]> {
-    const response = await this.client.get('/datasets', { params: queryParams });
+  private async getDatasets(filters: object): Promise<Dataset[]> {
+    const response = await this.client.post('/datasets/filter', filters);
     var datasets: Dataset[] = response.data;
     for (let index = 0, length = datasets.length; index < length; ++index) {
       datasets[index].metadata = decodeMetadata(datasets[index].metadata);
@@ -230,7 +232,7 @@ export class ValorClient {
   public async getDatasetsByMetadata(metadata: {
     [key: string]: string | number;
   }): Promise<Dataset[]> {
-    return this.getDatasets({ dataset_metadata: metadataDictToString(metadata) });
+    return this.getDatasets({ datasets: metadataDictToFilter("dataset.metadata", metadata) });
   }
 
   /**
@@ -285,12 +287,12 @@ export class ValorClient {
    * Fetches models matching the filters defined by queryParams. This is
    * private because we define higher-level methods that use this.
    *
-   * @param queryParams An object containing query parameters to filter models by.
+   * @param filters An object containing query parameters to filter models by.
    *
    * @returns {Promise<Model[]>}
    */
-  private async getModels(queryParams: object): Promise<Model[]> {
-    const response = await this.client.get('/models', { params: queryParams });
+  private async getModels(filters: object): Promise<Model[]> {
+    const response = await this.client.post('/models/filter', filters);
     var models: Model[] = response.data;
     for (let index = 0, length = models.length; index < length; ++index) {
       models[index].metadata = decodeMetadata(models[index].metadata);
@@ -321,7 +323,7 @@ export class ValorClient {
   public async getModelsByMetadata(metadata: {
     [key: string]: string | number;
   }): Promise<Model[]> {
-    return this.getModels({ model_metadata: metadataDictToString(metadata) });
+    return this.getModels({ models: metadataDictToFilter("model.metadata", metadata) });
   }
 
   /**
@@ -410,11 +412,7 @@ export class ValorClient {
     const response = await this.client.post('/evaluations', {
       dataset_names: [dataset],
       model_names: [model],
-<<<<<<< HEAD
-      filter: {},
-=======
       filters: {},
->>>>>>> main
       parameters: {
         task_type: taskType,
         iou_thresholds_to_compute: iouThresholdsToCompute,
@@ -462,11 +460,7 @@ export class ValorClient {
     const response = await this.client.post('/evaluations', {
       dataset_names: [dataset],
       model_names: models,
-<<<<<<< HEAD
-      filter: {},
-=======
       filters: {},
->>>>>>> main
       parameters: {
         task_type: taskType,
         metrics_to_return: metrics_to_return,
