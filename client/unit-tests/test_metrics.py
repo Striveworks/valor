@@ -10,7 +10,7 @@ from valor.metrics.classification import (
 )
 from valor.metrics.detection import (
     compute_ap_metrics,
-    compute_ap_metrics_from_intermediate_metric_data,
+    evaluate_detection,
     get_intermediate_metric_data,
 )
 from valor.schemas import Box
@@ -252,15 +252,10 @@ def test_compute_ap_metrics_in_pieces(
     gts2 = groundtruths[2:]
     preds2 = predictions[2:]
 
-    metrics = {"AP": {}}
     intermediate1 = get_intermediate_metric_data(preds1, gts1, iou_thresholds)
     intermediate2 = get_intermediate_metric_data(preds2, gts2, iou_thresholds)
 
-    metrics = {
-        "AP": compute_ap_metrics_from_intermediate_metric_data(
-            intermediate1, intermediate2
-        )
-    }
+    metrics = evaluate_detection(intermediate1, intermediate2)
 
     round_dict_(metrics, 3)
 

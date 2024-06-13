@@ -124,16 +124,109 @@ class IntermediateMetricDataAtLabelAndIoUThreshold:
         )
 
 
-IntermediateMetricDataAtLabel = Dict[
-    float, IntermediateMetricDataAtLabelAndIoUThreshold
-]  # maps IoU threshold to IntermediateMetricDataAtLabelAndIoUThreshold
+class IntermediateMetricDataAtLabel:
+    """Maps IoU threshold to IntermediateMetricDataAtLabelAndIoUThreshold"""
 
-IntermediateMetricData = Dict[
+    def __init__(
+        self,
+        data: Union[
+            Dict[float, IntermediateMetricDataAtLabelAndIoUThreshold], None
+        ] = None,
+    ):
+        self.data = data or {}
+
+    def __getitem__(self, key: float):
+        return self.data[key]
+
+    def __setitem__(
+        self, key: float, value: IntermediateMetricDataAtLabelAndIoUThreshold
+    ):
+        self.data[key] = value
+
+    def __contains__(self, key: float):
+        return key in self.data
+
+    def __iter__(self):
+        return iter(self.data)
+
+    def __len__(self):
+        return len(self.data)
+
+    def items(self):
+        return self.data.items()
+
+    def keys(self) -> List[float]:
+        return list(self.data.keys())
+
+    @property
+    def iou_thresholds(self) -> List[float]:
+        return list(self.data.keys())
+
+
+class IntermediateMetricData:
+    """Maps label key, value tuple to IntermediateMetricDataAtLabel"""
+
+    def __init__(
+        self,
+        data: Union[
+            Dict[Tuple[str, str], IntermediateMetricDataAtLabel], None
+        ] = None,
+    ):
+        self.data = data or {}
+        # validate all IoU thresholds are the same
+        self.iou_thresholds = None
+
+        for label in self.data:
+            if self.iou_thresholds is None:
+                self.iou_thresholds = self.data[label].iou_thresholds
+            else:
+                if self.iou_thresholds != self.data[label].iou_thresholds:
+                    raise ValueError("All IoU thresholds must be the same")
+
+    def __getitem__(
+        self, key: Tuple[str, str]
+    ) -> IntermediateMetricDataAtLabel:
+        return self.data[key]
+
+    def __setitem__(
+        self, key: Tuple[str, str], value: IntermediateMetricDataAtLabel
+    ):
+        if self.iou_thresholds is None:
+            self.iou_thresholds = value.iou_thresholds
+        else:
+            if self.iou_thresholds != value.iou_thresholds:
+                raise ValueError("All IoU thresholds must be the same")
+        self.data[key] = value
+
+    def __contains__(self, key):
+        return key in self.data
+
+    def __iter__(self):
+        return iter(self.data)
+
+    def __len__(self):
+        return len(self.data)
+
+    def items(self):
+        return self.data.items()
+
+    def keys(self) -> List[Tuple[str, str]]:
+        return list(self.data.keys())
+
+    def labels(self) -> List[Tuple[str, str]]:
+        return list(self.data.keys())
+
+
+Dict[
     Tuple[str, str], IntermediateMetricDataAtLabel
 ]  # maps label key and value tuple to IntermediateMetricDataAtLabel
 
 
 def accept_arbitrary_args(func):
+    """Decorator to make a function that combines two elements
+    accept an arbitrary number of arguments.
+    """
+
     def wrapper(*args):
         ret = args[0]
         for arg in args[1:]:
@@ -171,23 +264,25 @@ def combine_intermediate_metric_data_at_label_and_iou(
 @accept_arbitrary_args
 def combine_intermediate_metric_data_at_label(
     imd1: IntermediateMetricDataAtLabel, imd2: IntermediateMetricDataAtLabel
-) -> Dict[float, IntermediateMetricDataAtLabelAndIoUThreshold]:
+) -> IntermediateMetricDataAtLabel:
 
     if set(imd1.keys()) != set(imd2.keys()):
         raise ValueError("iou thresholds must be the same")
 
-    return {
-        iou_thres: combine_intermediate_metric_data_at_label_and_iou(
-            imd1[iou_thres], imd2[iou_thres]
-        )
-        for iou_thres in imd1
-    }
+    return IntermediateMetricDataAtLabel(
+        {
+            iou_thres: combine_intermediate_metric_data_at_label_and_iou(
+                imd1[iou_thres], imd2[iou_thres]
+            )
+            for iou_thres in imd1
+        }
+    )
 
 
 @accept_arbitrary_args
 def combine_intermediate_metric_data(
     imd1: IntermediateMetricData, imd2: IntermediateMetricData
-):
+) -> IntermediateMetricData:
     """Combines two IntermediateMetricData objects. Does not require that the
     both have the same labels.
     """
@@ -195,9 +290,11 @@ def combine_intermediate_metric_data(
     def _copy(
         imd: IntermediateMetricDataAtLabel,
     ) -> IntermediateMetricDataAtLabel:
-        return {iou_thres: imd[iou_thres].copy() for iou_thres in imd}
+        return IntermediateMetricDataAtLabel(
+            {iou_thres: imd[iou_thres].copy() for iou_thres in imd.keys()}
+        )
 
-    ret = {}
+    ret = IntermediateMetricData({})
     for label in imd1:
         if label in imd2:
             ret[label] = combine_intermediate_metric_data_at_label(
@@ -247,12 +344,14 @@ def get_intermediate_metric_data_at_label(
     n_gt = sum([len(gt_box) for gt_box in groundtruth_boxes])
 
     if n_gt == 0:
-        return {
-            iou_thres: IntermediateMetricDataAtLabelAndIoUThreshold(n_gt=0)
-            for iou_thres in iou_thresholds
-        }
+        return IntermediateMetricDataAtLabel(
+            {
+                iou_thres: IntermediateMetricDataAtLabelAndIoUThreshold(n_gt=0)
+                for iou_thres in iou_thresholds
+            }
+        )
 
-    ret = {}
+    ret = IntermediateMetricDataAtLabel({})
     for iou_thres in iou_thresholds:
         match_infos = []
         for preds, gts in zip(predicted_boxes_and_scores, groundtruth_boxes):
@@ -302,15 +401,17 @@ def get_intermediate_metric_data(
         for la in ann.labels
     )
 
-    return {
-        label_tuple: get_intermediate_metric_data_at_label(
-            predictions=predictions,
-            groundtruths=groundtruths,
-            label=Label(key=label_tuple[0], value=label_tuple[1]),
-            iou_thresholds=iou_thresholds,
-        )
-        for label_tuple in label_tuples
-    }
+    return IntermediateMetricData(
+        {
+            label_tuple: get_intermediate_metric_data_at_label(
+                predictions=predictions,
+                groundtruths=groundtruths,
+                label=Label(key=label_tuple[0], value=label_tuple[1]),
+                iou_thresholds=iou_thresholds,
+            )
+            for label_tuple in label_tuples
+        }
+    )
 
 
 def compute_ap_metrics_from_intermediate_metric_data_at_label(
@@ -421,9 +522,8 @@ def compute_ap_metrics(
 
 
 def compute_ap_metrics_from_intermediate_metric_data(
-    *intermediate_metric_data: IntermediateMetricData,
+    imd: IntermediateMetricData,
 ):
-    imd = combine_intermediate_metric_data(*intermediate_metric_data)
     return {
         label: compute_ap_metrics_from_intermediate_metric_data_at_label(
             imd_at_label
@@ -470,4 +570,6 @@ def evaluate_detection(*intermediate_metric_data: IntermediateMetricData):
         a dictionary indexed by IoU threshold, with the value being a `IntermediateMetricDataAtLabelAndIoUThreshold`
         object.
     """
-    pass
+    imd = combine_intermediate_metric_data(*intermediate_metric_data)
+    ret = {"AP": compute_ap_metrics_from_intermediate_metric_data(imd)}
+    return ret
