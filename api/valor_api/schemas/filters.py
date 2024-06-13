@@ -205,6 +205,22 @@ class Value(BaseModel):
         map_type_to_validator[self.type](self.value)
         return self
 
+    def supports_operator(self, op: FilterOperator):
+        """
+        Validates whether value type supports operator.
+
+        Parameters
+        ----------
+        op : FilterOperator
+            The operator to validate.
+
+        Raises
+        ------
+        TypeError
+            If the type does not support this operation.
+        """
+        return
+
     @classmethod
     def infer(
         cls,
@@ -312,7 +328,7 @@ def soft_and(
             args=items,
             op=LogicalOperator.AND,
         )
-    elif len(conditions) == 1:
+    elif len(items) == 1:
         return items[0]
     else:
         raise ValueError("Passed an empty list.")
