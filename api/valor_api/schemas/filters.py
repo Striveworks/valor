@@ -68,7 +68,7 @@ map_type_to_validator = {
 }
 
 
-class Symbol(str, Enum):
+class SupportedSymbol(str, Enum):
     DATASET_NAME = "dataset.name"
     DATASET_META = "dataset.metadata"
     MODEL_NAME = "model.name"
@@ -105,61 +105,6 @@ class Symbol(str, Enum):
     LABEL_ID = "label.id"
     EMBEDDING_ID = "embedding.id"
 
-    @property
-    def type(self) -> SupportedType | None:
-        """
-        Get the type associated with a symbol.
-
-        Returns
-        -------
-        SupportedType
-            The supported type.
-
-        Raises
-        ------
-        NotImplementedError
-            If the symbol does not have a type defined.
-        """
-        map_symbol_to_type = {
-            Symbol.DATASET_NAME: SupportedType.STRING,
-            Symbol.MODEL_NAME: SupportedType.STRING,
-            Symbol.DATUM_UID: SupportedType.STRING,
-            Symbol.TASK_TYPE: SupportedType.TASK_TYPE,
-            Symbol.BOX: SupportedType.BOX,
-            Symbol.POLYGON: SupportedType.POLYGON,
-            Symbol.EMBEDDING: SupportedType.EMBEDDING,
-            Symbol.LABEL_KEY: SupportedType.STRING,
-            Symbol.LABEL_VALUE: SupportedType.STRING,
-            Symbol.SCORE: SupportedType.FLOAT,
-            # 'area' attribue
-            Symbol.DATASET_META_AREA: SupportedType.FLOAT,
-            Symbol.MODEL_META_AREA: SupportedType.FLOAT,
-            Symbol.DATUM_META_AREA: SupportedType.FLOAT,
-            Symbol.ANNOTATION_META_AREA: SupportedType.FLOAT,
-            Symbol.BOX_AREA: SupportedType.FLOAT,
-            Symbol.POLYGON_AREA: SupportedType.FLOAT,
-            Symbol.RASTER_AREA: SupportedType.FLOAT,
-            # api-only
-            Symbol.DATASET_ID: SupportedType.INTEGER,
-            Symbol.MODEL_ID: SupportedType.INTEGER,
-            Symbol.DATUM_ID: SupportedType.INTEGER,
-            Symbol.ANNOTATION_ID: SupportedType.INTEGER,
-            Symbol.GROUNDTRUTH_ID: SupportedType.INTEGER,
-            Symbol.PREDICTION_ID: SupportedType.INTEGER,
-            Symbol.LABEL_ID: SupportedType.INTEGER,
-            Symbol.EMBEDDING_ID: SupportedType.INTEGER,
-            # unsupported
-            Symbol.DATASET_META: None,
-            Symbol.MODEL_META: None,
-            Symbol.DATUM_META: None,
-            Symbol.ANNOTATION_META: None,
-            Symbol.RASTER: None,
-            Symbol.LABELS: None,
-        }
-        if self not in map_symbol_to_type:
-            raise NotImplementedError(f"{self} is does not have a type.")
-        return map_symbol_to_type[self]
-
 
 class FilterOperator(str, Enum):
     EQ = "eq"
@@ -180,6 +125,77 @@ class LogicalOperator(str, Enum):
     AND = "and"
     OR = "or"
     NOT = "not"
+
+
+class Symbol(BaseModel):
+    """
+    A symbolic value.
+
+    Attributes
+    ----------
+    name : str
+        The name of the symbol.
+    key : str, optional
+        Optional dictionary key if the symbol is representing a dictionary value.
+    """
+
+    name: SupportedSymbol
+    key: str | None = None
+
+    @property
+    def type(self) -> SupportedType | None:
+        """
+        Get the type associated with a symbol.
+
+        Returns
+        -------
+        SupportedType
+            The supported type.
+
+        Raises
+        ------
+        NotImplementedError
+            If the symbol does not have a type defined.
+        """
+        map_symbol_to_type = {
+            SupportedSymbol.DATASET_NAME: SupportedType.STRING,
+            SupportedSymbol.MODEL_NAME: SupportedType.STRING,
+            SupportedSymbol.DATUM_UID: SupportedType.STRING,
+            SupportedSymbol.TASK_TYPE: SupportedType.TASK_TYPE,
+            SupportedSymbol.BOX: SupportedType.BOX,
+            SupportedSymbol.POLYGON: SupportedType.POLYGON,
+            SupportedSymbol.EMBEDDING: SupportedType.EMBEDDING,
+            SupportedSymbol.LABEL_KEY: SupportedType.STRING,
+            SupportedSymbol.LABEL_VALUE: SupportedType.STRING,
+            SupportedSymbol.SCORE: SupportedType.FLOAT,
+            # 'area' attribue
+            SupportedSymbol.DATASET_META_AREA: SupportedType.FLOAT,
+            SupportedSymbol.MODEL_META_AREA: SupportedType.FLOAT,
+            SupportedSymbol.DATUM_META_AREA: SupportedType.FLOAT,
+            SupportedSymbol.ANNOTATION_META_AREA: SupportedType.FLOAT,
+            SupportedSymbol.BOX_AREA: SupportedType.FLOAT,
+            SupportedSymbol.POLYGON_AREA: SupportedType.FLOAT,
+            SupportedSymbol.RASTER_AREA: SupportedType.FLOAT,
+            # api-only
+            SupportedSymbol.DATASET_ID: SupportedType.INTEGER,
+            SupportedSymbol.MODEL_ID: SupportedType.INTEGER,
+            SupportedSymbol.DATUM_ID: SupportedType.INTEGER,
+            SupportedSymbol.ANNOTATION_ID: SupportedType.INTEGER,
+            SupportedSymbol.GROUNDTRUTH_ID: SupportedType.INTEGER,
+            SupportedSymbol.PREDICTION_ID: SupportedType.INTEGER,
+            SupportedSymbol.LABEL_ID: SupportedType.INTEGER,
+            SupportedSymbol.EMBEDDING_ID: SupportedType.INTEGER,
+            # unsupported
+            SupportedSymbol.DATASET_META: None,
+            SupportedSymbol.MODEL_META: None,
+            SupportedSymbol.DATUM_META: None,
+            SupportedSymbol.ANNOTATION_META: None,
+            SupportedSymbol.RASTER: None,
+            SupportedSymbol.LABELS: None,
+        }
+        if self.name not in map_symbol_to_type:
+            raise NotImplementedError(f"{self.name} is does not have a type.")
+        return map_symbol_to_type[self.name]
 
 
 class Value(BaseModel):
@@ -245,9 +261,7 @@ class Value(BaseModel):
 
 class Condition(BaseModel):
     lhs: Symbol
-    lhs_key: str | None = None
     rhs: Value | None = None
-    rhs_key: str | None = None
     op: FilterOperator
     model_config = ConfigDict(extra="forbid")
 
@@ -269,10 +283,14 @@ class Condition(BaseModel):
                 | FilterOperator.CONTAINS
             ):
                 if self.rhs is None:
-                    raise ValueError("TODO")
+                    raise ValueError(
+                        f"Operator '{self.op}' requires a rhs value."
+                    )
             case (FilterOperator.ISNULL | FilterOperator.ISNOTNULL):
                 if self.rhs is not None:
-                    raise ValueError("TODO")
+                    raise ValueError(
+                        f"Operator '{self.op}' does not support a rhs value."
+                    )
             case _:
                 raise NotImplementedError(
                     f"Filter operator '{self.op}' is not implemented."

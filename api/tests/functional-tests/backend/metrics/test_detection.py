@@ -1166,12 +1166,16 @@ def test__compute_detection(
             predictions=schemas.LogicalFunction(
                 args=[
                     schemas.Condition(
-                        lhs=schemas.Symbol.MODEL_NAME,
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.MODEL_NAME
+                        ),
                         rhs=schemas.Value.infer("test_model"),
                         op=schemas.FilterOperator.EQ,
                     ),
                     schemas.Condition(
-                        lhs=schemas.Symbol.LABEL_KEY,
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.LABEL_KEY
+                        ),
                         rhs=schemas.Value.infer("class"),
                         op=schemas.FilterOperator.EQ,
                     ),
@@ -1183,12 +1187,16 @@ def test__compute_detection(
             groundtruths=schemas.LogicalFunction(
                 args=[
                     schemas.Condition(
-                        lhs=schemas.Symbol.DATASET_NAME,
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.DATASET_NAME
+                        ),
                         rhs=schemas.Value.infer("test_dataset"),
                         op=schemas.FilterOperator.EQ,
                     ),
                     schemas.Condition(
-                        lhs=schemas.Symbol.LABEL_KEY,
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.LABEL_KEY
+                        ),
                         rhs=schemas.Value.infer("class"),
                         op=schemas.FilterOperator.EQ,
                     ),
@@ -1395,12 +1403,16 @@ def test__compute_detection(
             predictions=schemas.LogicalFunction(
                 args=[
                     schemas.Condition(
-                        lhs=schemas.Symbol.MODEL_NAME,
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.MODEL_NAME
+                        ),
                         rhs=schemas.Value.infer("test_model"),
                         op=schemas.FilterOperator.EQ,
                     ),
                     schemas.Condition(
-                        lhs=schemas.Symbol.LABEL_KEY,
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.LABEL_KEY
+                        ),
                         rhs=schemas.Value.infer("class"),
                         op=schemas.FilterOperator.EQ,
                     ),
@@ -1412,12 +1424,16 @@ def test__compute_detection(
             groundtruths=schemas.LogicalFunction(
                 args=[
                     schemas.Condition(
-                        lhs=schemas.Symbol.DATASET_NAME,
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.DATASET_NAME
+                        ),
                         rhs=schemas.Value.infer("test_dataset"),
                         op=schemas.FilterOperator.EQ,
                     ),
                     schemas.Condition(
-                        lhs=schemas.Symbol.LABEL_KEY,
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.LABEL_KEY
+                        ),
                         rhs=schemas.Value.infer("class"),
                         op=schemas.FilterOperator.EQ,
                     ),
@@ -1624,12 +1640,16 @@ def test__compute_detection(
             predictions=schemas.LogicalFunction(
                 args=[
                     schemas.Condition(
-                        lhs=schemas.Symbol.MODEL_NAME,
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.MODEL_NAME
+                        ),
                         rhs=schemas.Value.infer("test_model"),
                         op=schemas.FilterOperator.EQ,
                     ),
                     schemas.Condition(
-                        lhs=schemas.Symbol.LABEL_KEY,
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.LABEL_KEY
+                        ),
                         rhs=schemas.Value.infer("class"),
                         op=schemas.FilterOperator.EQ,
                     ),
@@ -1641,12 +1661,16 @@ def test__compute_detection(
             groundtruths=schemas.LogicalFunction(
                 args=[
                     schemas.Condition(
-                        lhs=schemas.Symbol.DATASET_NAME,
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.DATASET_NAME
+                        ),
                         rhs=schemas.Value.infer("test_dataset"),
                         op=schemas.FilterOperator.EQ,
                     ),
                     schemas.Condition(
-                        lhs=schemas.Symbol.LABEL_KEY,
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.LABEL_KEY
+                        ),
                         rhs=schemas.Value.infer("class"),
                         op=schemas.FilterOperator.EQ,
                     ),
@@ -1859,12 +1883,16 @@ def test__compute_detection_metrics_with_rasters(
             predictions=schemas.LogicalFunction(
                 args=[
                     schemas.Condition(
-                        lhs=schemas.Symbol.MODEL_NAME,
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.MODEL_NAME
+                        ),
                         rhs=schemas.Value.infer("test_model"),
                         op=schemas.FilterOperator.EQ,
                     ),
                     schemas.Condition(
-                        lhs=schemas.Symbol.LABEL_KEY,
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.LABEL_KEY
+                        ),
                         rhs=schemas.Value.infer("class"),
                         op=schemas.FilterOperator.EQ,
                     ),
@@ -1876,12 +1904,16 @@ def test__compute_detection_metrics_with_rasters(
             groundtruths=schemas.LogicalFunction(
                 args=[
                     schemas.Condition(
-                        lhs=schemas.Symbol.DATASET_NAME,
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.DATASET_NAME
+                        ),
                         rhs=schemas.Value.infer("test_dataset"),
                         op=schemas.FilterOperator.EQ,
                     ),
                     schemas.Condition(
-                        lhs=schemas.Symbol.LABEL_KEY,
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.LABEL_KEY
+                        ),
                         rhs=schemas.Value.infer("class"),
                         op=schemas.FilterOperator.EQ,
                     ),
@@ -2025,12 +2057,16 @@ def test__compute_detection_metrics_with_rasters(
             predictions=schemas.LogicalFunction(
                 args=[
                     schemas.Condition(
-                        lhs=schemas.Symbol.MODEL_NAME,
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.MODEL_NAME
+                        ),
                         rhs=schemas.Value.infer("test_model"),
                         op=schemas.FilterOperator.EQ,
                     ),
                     schemas.Condition(
-                        lhs=schemas.Symbol.LABEL_KEY,
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.LABEL_KEY
+                        ),
                         rhs=schemas.Value.infer("class"),
                         op=schemas.FilterOperator.EQ,
                     ),
@@ -2042,12 +2078,16 @@ def test__compute_detection_metrics_with_rasters(
             groundtruths=schemas.LogicalFunction(
                 args=[
                     schemas.Condition(
-                        lhs=schemas.Symbol.DATASET_NAME,
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.DATASET_NAME
+                        ),
                         rhs=schemas.Value.infer("test_dataset"),
                         op=schemas.FilterOperator.EQ,
                     ),
                     schemas.Condition(
-                        lhs=schemas.Symbol.LABEL_KEY,
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.LABEL_KEY
+                        ),
                         rhs=schemas.Value.infer("class"),
                         op=schemas.FilterOperator.EQ,
                     ),
@@ -2189,7 +2229,10 @@ def test_detection_exceptions(db: Session):
         model_name=model_name,
         filters={
             "datasets": {
-                "lhs": "dataset.name",
+                "lhs": {
+                    "name": "dataset.name",
+                    "key": None,
+                },
                 "rhs": {
                     "type": "string",
                     "value": dataset_name,

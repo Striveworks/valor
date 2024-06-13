@@ -137,12 +137,14 @@ def test_compute_confusion_matrix_at_grouper_key(
         predictions=schemas.LogicalFunction(
             args=[
                 schemas.Condition(
-                    lhs=schemas.Symbol.MODEL_NAME,
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.MODEL_NAME
+                    ),
                     rhs=schemas.Value.infer(model_name),
                     op=schemas.FilterOperator.EQ,
                 ),
                 schemas.Condition(
-                    lhs=schemas.Symbol.TASK_TYPE,
+                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.TASK_TYPE),
                     rhs=schemas.Value.infer(enums.TaskType.CLASSIFICATION),
                     op=schemas.FilterOperator.CONTAINS,
                 ),
@@ -154,12 +156,14 @@ def test_compute_confusion_matrix_at_grouper_key(
         groundtruths=schemas.LogicalFunction(
             args=[
                 schemas.Condition(
-                    lhs=schemas.Symbol.DATASET_NAME,
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.DATASET_NAME
+                    ),
                     rhs=schemas.Value.infer(dataset_name),
                     op=schemas.FilterOperator.EQ,
                 ),
                 schemas.Condition(
-                    lhs=schemas.Symbol.TASK_TYPE,
+                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.TASK_TYPE),
                     rhs=schemas.Value.infer(enums.TaskType.CLASSIFICATION),
                     op=schemas.FilterOperator.CONTAINS,
                 ),
@@ -189,7 +193,7 @@ def test_compute_confusion_matrix_at_grouper_key(
     gFilter.labels = schemas.soft_or(
         [
             schemas.Condition(
-                lhs=schemas.Symbol.LABEL_KEY,
+                lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
                 rhs=schemas.Value.infer(key),
                 op=schemas.FilterOperator.EQ,
             )
@@ -202,7 +206,7 @@ def test_compute_confusion_matrix_at_grouper_key(
     pFilter.labels = schemas.soft_or(
         [
             schemas.Condition(
-                lhs=schemas.Symbol.LABEL_KEY,
+                lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
                 rhs=schemas.Value.infer(key),
                 op=schemas.FilterOperator.EQ,
             )
@@ -264,7 +268,7 @@ def test_compute_confusion_matrix_at_grouper_key(
     gFilter.labels = schemas.soft_or(
         [
             schemas.Condition(
-                lhs=schemas.Symbol.LABEL_KEY,
+                lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
                 rhs=schemas.Value.infer(key),
                 op=schemas.FilterOperator.EQ,
             )
@@ -277,7 +281,7 @@ def test_compute_confusion_matrix_at_grouper_key(
     pFilter.labels = schemas.soft_or(
         [
             schemas.Condition(
-                lhs=schemas.Symbol.LABEL_KEY,
+                lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
                 rhs=schemas.Value.infer(key),
                 op=schemas.FilterOperator.EQ,
             )
@@ -343,12 +347,16 @@ def test_compute_confusion_matrix_at_grouper_key_and_filter(
         predictions=schemas.LogicalFunction(
             args=[
                 schemas.Condition(
-                    lhs=schemas.Symbol.DATASET_NAME,
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.DATASET_NAME
+                    ),
                     rhs=schemas.Value.infer(dataset_name),
                     op=schemas.FilterOperator.EQ,
                 ),
                 schemas.Condition(
-                    lhs=schemas.Symbol.MODEL_NAME,
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.MODEL_NAME
+                    ),
                     rhs=schemas.Value.infer(model_name),
                     op=schemas.FilterOperator.EQ,
                 ),
@@ -360,23 +368,28 @@ def test_compute_confusion_matrix_at_grouper_key_and_filter(
         groundtruths=schemas.LogicalFunction(
             args=[
                 schemas.Condition(
-                    lhs=schemas.Symbol.DATASET_NAME,
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.DATASET_NAME
+                    ),
                     rhs=schemas.Value.infer(dataset_name),
                     op=schemas.FilterOperator.EQ,
                 ),
                 schemas.Condition(
-                    lhs=schemas.Symbol.MODEL_NAME,
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.MODEL_NAME
+                    ),
                     rhs=schemas.Value.infer(model_name),
                     op=schemas.FilterOperator.EQ,
                 ),
                 schemas.Condition(
-                    lhs=schemas.Symbol.TASK_TYPE,
+                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.TASK_TYPE),
                     rhs=schemas.Value.infer(enums.TaskType.CLASSIFICATION),
                     op=schemas.FilterOperator.CONTAINS,
                 ),
                 schemas.Condition(
-                    lhs=schemas.Symbol.DATUM_META,
-                    lhs_key="md1",
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.DATUM_META, key="md1"
+                    ),
                     rhs=schemas.Value.infer("md1-val0"),
                     op=schemas.FilterOperator.EQ,
                 ),
@@ -406,7 +419,7 @@ def test_compute_confusion_matrix_at_grouper_key_and_filter(
     gFilter.labels = schemas.soft_or(
         [
             schemas.Condition(
-                lhs=schemas.Symbol.LABEL_KEY,
+                lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
                 rhs=schemas.Value.infer(key),
                 op=schemas.FilterOperator.EQ,
             )
@@ -419,7 +432,7 @@ def test_compute_confusion_matrix_at_grouper_key_and_filter(
     pFilter.labels = schemas.soft_or(
         [
             schemas.Condition(
-                lhs=schemas.Symbol.LABEL_KEY,
+                lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
                 rhs=schemas.Value.infer(key),
                 op=schemas.FilterOperator.EQ,
             )
@@ -484,12 +497,16 @@ def test_compute_confusion_matrix_at_grouper_key_using_label_map(
         predictions=schemas.LogicalFunction(
             args=[
                 schemas.Condition(
-                    lhs=schemas.Symbol.DATASET_NAME,
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.DATASET_NAME
+                    ),
                     rhs=schemas.Value.infer(dataset_name),
                     op=schemas.FilterOperator.EQ,
                 ),
                 schemas.Condition(
-                    lhs=schemas.Symbol.MODEL_NAME,
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.MODEL_NAME
+                    ),
                     rhs=schemas.Value.infer(model_name),
                     op=schemas.FilterOperator.EQ,
                 ),
@@ -501,23 +518,28 @@ def test_compute_confusion_matrix_at_grouper_key_using_label_map(
         groundtruths=schemas.LogicalFunction(
             args=[
                 schemas.Condition(
-                    lhs=schemas.Symbol.DATASET_NAME,
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.DATASET_NAME
+                    ),
                     rhs=schemas.Value.infer(dataset_name),
                     op=schemas.FilterOperator.EQ,
                 ),
                 schemas.Condition(
-                    lhs=schemas.Symbol.MODEL_NAME,
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.MODEL_NAME
+                    ),
                     rhs=schemas.Value.infer(model_name),
                     op=schemas.FilterOperator.EQ,
                 ),
                 schemas.Condition(
-                    lhs=schemas.Symbol.TASK_TYPE,
+                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.TASK_TYPE),
                     rhs=schemas.Value.infer(enums.TaskType.CLASSIFICATION),
                     op=schemas.FilterOperator.CONTAINS,
                 ),
                 schemas.Condition(
-                    lhs=schemas.Symbol.DATUM_META,
-                    lhs_key="md1",
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.DATUM_META, key="md1"
+                    ),
                     rhs=schemas.Value.infer("md1-val0"),
                     op=schemas.FilterOperator.EQ,
                 ),
@@ -547,7 +569,7 @@ def test_compute_confusion_matrix_at_grouper_key_using_label_map(
     gFilter.labels = schemas.soft_or(
         [
             schemas.Condition(
-                lhs=schemas.Symbol.LABEL_KEY,
+                lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
                 rhs=schemas.Value.infer(key),
                 op=schemas.FilterOperator.EQ,
             )
@@ -560,7 +582,7 @@ def test_compute_confusion_matrix_at_grouper_key_using_label_map(
     pFilter.labels = schemas.soft_or(
         [
             schemas.Condition(
-                lhs=schemas.Symbol.LABEL_KEY,
+                lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
                 rhs=schemas.Value.infer(key),
                 op=schemas.FilterOperator.EQ,
             )
@@ -654,12 +676,14 @@ def test_compute_roc_auc(
         predictions=schemas.LogicalFunction(
             args=[
                 schemas.Condition(
-                    lhs=schemas.Symbol.MODEL_NAME,
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.MODEL_NAME
+                    ),
                     rhs=schemas.Value.infer(model_name),
                     op=schemas.FilterOperator.EQ,
                 ),
                 schemas.Condition(
-                    lhs=schemas.Symbol.TASK_TYPE,
+                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.TASK_TYPE),
                     rhs=schemas.Value.infer(enums.TaskType.CLASSIFICATION),
                     op=schemas.FilterOperator.CONTAINS,
                 ),
@@ -671,12 +695,14 @@ def test_compute_roc_auc(
         groundtruths=schemas.LogicalFunction(
             args=[
                 schemas.Condition(
-                    lhs=schemas.Symbol.DATASET_NAME,
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.DATASET_NAME
+                    ),
                     rhs=schemas.Value.infer(dataset_name),
                     op=schemas.FilterOperator.EQ,
                 ),
                 schemas.Condition(
-                    lhs=schemas.Symbol.TASK_TYPE,
+                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.TASK_TYPE),
                     rhs=schemas.Value.infer(enums.TaskType.CLASSIFICATION),
                     op=schemas.FilterOperator.CONTAINS,
                 ),
@@ -763,7 +789,7 @@ def test_compute_roc_auc_groupby_metadata(
 
     prediction_filter = schemas.Filter(
         predictions=schemas.Condition(
-            lhs=schemas.Symbol.MODEL_NAME,
+            lhs=schemas.Symbol(name=schemas.SupportedSymbol.MODEL_NAME),
             rhs=schemas.Value.infer(model_name),
             op=schemas.FilterOperator.EQ,
         ),
@@ -772,18 +798,21 @@ def test_compute_roc_auc_groupby_metadata(
         groundtruths=schemas.LogicalFunction(
             args=[
                 schemas.Condition(
-                    lhs=schemas.Symbol.DATASET_NAME,
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.DATASET_NAME
+                    ),
                     rhs=schemas.Value.infer(dataset_name),
                     op=schemas.FilterOperator.EQ,
                 ),
                 schemas.Condition(
-                    lhs=schemas.Symbol.TASK_TYPE,
+                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.TASK_TYPE),
                     rhs=schemas.Value.infer(enums.TaskType.CLASSIFICATION),
                     op=schemas.FilterOperator.CONTAINS,
                 ),
                 schemas.Condition(
-                    lhs=schemas.Symbol.DATUM_META,
-                    lhs_key="md1",
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.DATUM_META, key="md1"
+                    ),
                     rhs=schemas.Value.infer("md1-val0"),
                     op=schemas.FilterOperator.EQ,
                 ),
@@ -849,12 +878,14 @@ def test_compute_roc_auc_with_label_map(
         predictions=schemas.LogicalFunction(
             args=[
                 schemas.Condition(
-                    lhs=schemas.Symbol.MODEL_NAME,
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.MODEL_NAME
+                    ),
                     rhs=schemas.Value.infer(model_name),
                     op=schemas.FilterOperator.EQ,
                 ),
                 schemas.Condition(
-                    lhs=schemas.Symbol.TASK_TYPE,
+                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.TASK_TYPE),
                     rhs=schemas.Value.infer(enums.TaskType.CLASSIFICATION),
                     op=schemas.FilterOperator.CONTAINS,
                 ),
@@ -866,12 +897,14 @@ def test_compute_roc_auc_with_label_map(
         groundtruths=schemas.LogicalFunction(
             args=[
                 schemas.Condition(
-                    lhs=schemas.Symbol.DATASET_NAME,
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.DATASET_NAME
+                    ),
                     rhs=schemas.Value.infer(dataset_name),
                     op=schemas.FilterOperator.EQ,
                 ),
                 schemas.Condition(
-                    lhs=schemas.Symbol.TASK_TYPE,
+                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.TASK_TYPE),
                     rhs=schemas.Value.infer(enums.TaskType.CLASSIFICATION),
                     op=schemas.FilterOperator.CONTAINS,
                 ),
@@ -917,12 +950,16 @@ def test_compute_classification(
         predictions=schemas.LogicalFunction(
             args=[
                 schemas.Condition(
-                    lhs=schemas.Symbol.DATASET_NAME,
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.DATASET_NAME
+                    ),
                     rhs=schemas.Value.infer(dataset_name),
                     op=schemas.FilterOperator.EQ,
                 ),
                 schemas.Condition(
-                    lhs=schemas.Symbol.MODEL_NAME,
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.MODEL_NAME
+                    ),
                     rhs=schemas.Value.infer(model_name),
                     op=schemas.FilterOperator.EQ,
                 ),
@@ -934,17 +971,21 @@ def test_compute_classification(
         groundtruths=schemas.LogicalFunction(
             args=[
                 schemas.Condition(
-                    lhs=schemas.Symbol.DATASET_NAME,
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.DATASET_NAME
+                    ),
                     rhs=schemas.Value.infer(dataset_name),
                     op=schemas.FilterOperator.EQ,
                 ),
                 schemas.Condition(
-                    lhs=schemas.Symbol.MODEL_NAME,
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.MODEL_NAME
+                    ),
                     rhs=schemas.Value.infer(model_name),
                     op=schemas.FilterOperator.EQ,
                 ),
                 schemas.Condition(
-                    lhs=schemas.Symbol.TASK_TYPE,
+                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.TASK_TYPE),
                     rhs=schemas.Value.infer(enums.TaskType.CLASSIFICATION),
                     op=schemas.FilterOperator.CONTAINS,
                 ),
@@ -1132,12 +1173,14 @@ def test__compute_curves(
         predictions=schemas.LogicalFunction(
             args=[
                 schemas.Condition(
-                    lhs=schemas.Symbol.MODEL_NAME,
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.MODEL_NAME
+                    ),
                     rhs=schemas.Value.infer(model_name),
                     op=schemas.FilterOperator.EQ,
                 ),
                 schemas.Condition(
-                    lhs=schemas.Symbol.TASK_TYPE,
+                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.TASK_TYPE),
                     rhs=schemas.Value.infer(enums.TaskType.CLASSIFICATION),
                     op=schemas.FilterOperator.CONTAINS,
                 ),
@@ -1149,12 +1192,14 @@ def test__compute_curves(
         groundtruths=schemas.LogicalFunction(
             args=[
                 schemas.Condition(
-                    lhs=schemas.Symbol.DATASET_NAME,
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.DATASET_NAME
+                    ),
                     rhs=schemas.Value.infer(dataset_name),
                     op=schemas.FilterOperator.EQ,
                 ),
                 schemas.Condition(
-                    lhs=schemas.Symbol.TASK_TYPE,
+                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.TASK_TYPE),
                     rhs=schemas.Value.infer(enums.TaskType.CLASSIFICATION),
                     op=schemas.FilterOperator.CONTAINS,
                 ),
@@ -1184,7 +1229,7 @@ def test__compute_curves(
     gFilter.labels = schemas.soft_or(
         [
             schemas.Condition(
-                lhs=schemas.Symbol.LABEL_KEY,
+                lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
                 rhs=schemas.Value.infer(key),
                 op=schemas.FilterOperator.EQ,
             )
@@ -1197,7 +1242,7 @@ def test__compute_curves(
     pFilter.labels = schemas.soft_or(
         [
             schemas.Condition(
-                lhs=schemas.Symbol.LABEL_KEY,
+                lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
                 rhs=schemas.Value.infer(key),
                 op=schemas.FilterOperator.EQ,
             )

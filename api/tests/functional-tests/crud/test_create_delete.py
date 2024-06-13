@@ -1103,7 +1103,7 @@ def test_create_detection_metrics(
         if min_area:
             conditions.append(
                 schemas.Condition(
-                    lhs=schemas.Symbol.BOX_AREA,
+                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.BOX_AREA),
                     rhs=schemas.Value.infer(float(min_area)),
                     op=schemas.FilterOperator.GTE,
                 )
@@ -1111,7 +1111,7 @@ def test_create_detection_metrics(
         if max_area:
             conditions.append(
                 schemas.Condition(
-                    lhs=schemas.Symbol.BOX_AREA,
+                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.BOX_AREA),
                     rhs=schemas.Value.infer(float(max_area)),
                     op=schemas.FilterOperator.LTE,
                 )
@@ -1125,7 +1125,7 @@ def test_create_detection_metrics(
                 if conditions
                 else None,
                 labels=schemas.Condition(
-                    lhs=schemas.Symbol.LABEL_KEY,
+                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
                     rhs=schemas.Value.infer(label_key),
                     op=schemas.FilterOperator.EQ,
                 ),
@@ -1293,7 +1293,7 @@ def test_create_detection_metrics(
         model_name=model_name,
         filters=schemas.Filter(
             labels=schemas.Condition(
-                lhs=schemas.Symbol.LABEL_KEY,
+                lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
                 rhs=schemas.Value.infer("class"),
                 op=schemas.FilterOperator.EQ,
             )
@@ -1322,19 +1322,23 @@ def test_create_detection_metrics(
             annotations=schemas.soft_and(
                 [
                     schemas.Condition(
-                        lhs=schemas.Symbol.BOX_AREA,
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.BOX_AREA
+                        ),
                         rhs=schemas.Value.infer(float(min_area)),
                         op=schemas.FilterOperator.GTE,
                     ),
                     schemas.Condition(
-                        lhs=schemas.Symbol.BOX_AREA,
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.BOX_AREA
+                        ),
                         rhs=schemas.Value.infer(float(max_area)),
                         op=schemas.FilterOperator.LTE,
                     ),
                 ]
             ),
             labels=schemas.Condition(
-                lhs=schemas.Symbol.LABEL_KEY,
+                lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
                 rhs=schemas.Value.infer("class"),
                 op=schemas.FilterOperator.EQ,
             ),

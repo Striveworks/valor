@@ -1,6 +1,5 @@
 import io
 import random
-from dataclasses import asdict
 from typing import cast
 
 import numpy as np
@@ -313,7 +312,7 @@ def test_generate_segmentation_data(
 
     for image in dataset.get_datums():
         uid = image.uid
-        sample_gt = dataset.get_groundtruth(uid)
+        sample_gt = dataset.get_groundtruth(uid)  # type: ignore - issue #604
 
         assert sample_gt
         sample_annotations = sample_gt.annotations
@@ -392,11 +391,11 @@ def test_generate_prediction_data(client: Client):
         "dataset_names": [dataset_name],
         "model_name": model_name,
         "filters": {
-            **asdict(
-                Filter()
-            ),  # default filter properties with overrides below
+            **Filter().to_dict(),  # default filter properties with overrides below
             "labels": {
-                "lhs": "label.key",
+                "lhs": {
+                    "name": "label.key",
+                },
                 "op": "eq",
                 "rhs": {
                     "type": "string",

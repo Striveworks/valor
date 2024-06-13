@@ -60,7 +60,7 @@ def test_get_labels_from_dataset(
         db=db,
         filters=schemas.Filter(
             labels=schemas.Condition(
-                lhs=schemas.Symbol.DATASET_NAME,
+                lhs=schemas.Symbol(name=schemas.SupportedSymbol.DATASET_NAME),
                 rhs=schemas.Value.infer(dataset_name),
                 op=schemas.FilterOperator.EQ,
             ),
@@ -80,21 +80,27 @@ def test_get_labels_from_dataset(
             groundtruths=schemas.LogicalFunction(
                 args=[
                     schemas.Condition(
-                        lhs=schemas.Symbol.DATASET_NAME,
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.DATASET_NAME
+                        ),
                         rhs=schemas.Value.infer(dataset_name),
                         op=schemas.FilterOperator.EQ,
                     ),
                     schemas.LogicalFunction(
                         args=[
                             schemas.Condition(
-                                lhs=schemas.Symbol.TASK_TYPE,
+                                lhs=schemas.Symbol(
+                                    name=schemas.SupportedSymbol.TASK_TYPE
+                                ),
                                 rhs=schemas.Value.infer(
                                     enums.TaskType.OBJECT_DETECTION
                                 ),
                                 op=schemas.FilterOperator.CONTAINS,
                             ),
                             schemas.Condition(
-                                lhs=schemas.Symbol.TASK_TYPE,
+                                lhs=schemas.Symbol(
+                                    name=schemas.SupportedSymbol.TASK_TYPE
+                                ),
                                 rhs=schemas.Value.infer(
                                     enums.TaskType.SEMANTIC_SEGMENTATION
                                 ),
@@ -120,12 +126,16 @@ def test_get_labels_from_dataset(
             labels=schemas.LogicalFunction(
                 args=[
                     schemas.Condition(
-                        lhs=schemas.Symbol.DATASET_NAME,
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.DATASET_NAME
+                        ),
                         rhs=schemas.Value.infer(dataset_name),
                         op=schemas.FilterOperator.EQ,
                     ),
                     schemas.Condition(
-                        lhs=schemas.Symbol.TASK_TYPE,
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.TASK_TYPE
+                        ),
                         rhs=schemas.Value.infer(
                             enums.TaskType.OBJECT_DETECTION
                         ),
@@ -148,12 +158,14 @@ def test_get_labels_from_dataset(
             labels=schemas.LogicalFunction(
                 args=[
                     schemas.Condition(
-                        lhs=schemas.Symbol.DATASET_NAME,
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.DATASET_NAME
+                        ),
                         rhs=schemas.Value.infer(dataset_name),
                         op=schemas.FilterOperator.EQ,
                     ),
                     schemas.Condition(
-                        lhs=schemas.Symbol.BOX,
+                        lhs=schemas.Symbol(name=schemas.SupportedSymbol.BOX),
                         op=schemas.FilterOperator.ISNULL,
                     ),
                 ],
@@ -172,12 +184,16 @@ def test_get_labels_from_dataset(
             labels=schemas.LogicalFunction(
                 args=[
                     schemas.Condition(
-                        lhs=schemas.Symbol.DATASET_NAME,
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.DATASET_NAME
+                        ),
                         rhs=schemas.Value.infer(dataset_name),
                         op=schemas.FilterOperator.EQ,
                     ),
                     schemas.Condition(
-                        lhs=schemas.Symbol.POLYGON,
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.POLYGON
+                        ),
                         op=schemas.FilterOperator.ISNOTNULL,
                     ),
                 ],
@@ -196,12 +212,14 @@ def test_get_labels_from_dataset(
             labels=schemas.LogicalFunction(
                 args=[
                     schemas.Condition(
-                        lhs=schemas.Symbol.DATASET_NAME,
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.DATASET_NAME
+                        ),
                         rhs=schemas.Value.infer(dataset_name),
                         op=schemas.FilterOperator.EQ,
                     ),
                     schemas.Condition(
-                        lhs=schemas.Symbol.BOX,
+                        lhs=schemas.Symbol(name=schemas.SupportedSymbol.BOX),
                         op=schemas.FilterOperator.ISNOTNULL,
                     ),
                 ],
@@ -225,7 +243,7 @@ def test_get_labels_from_model(
         db=db,
         filters=schemas.Filter(
             labels=schemas.Condition(
-                lhs=schemas.Symbol.MODEL_NAME,
+                lhs=schemas.Symbol(name=schemas.SupportedSymbol.MODEL_NAME),
                 rhs=schemas.Value.infer(model_name),
                 op=schemas.FilterOperator.EQ,
             )
@@ -245,12 +263,16 @@ def test_get_labels_from_model(
             labels=schemas.LogicalFunction(
                 args=[
                     schemas.Condition(
-                        lhs=schemas.Symbol.MODEL_NAME,
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.MODEL_NAME
+                        ),
                         rhs=schemas.Value.infer(model_name),
                         op=schemas.FilterOperator.EQ,
                     ),
                     schemas.Condition(
-                        lhs=schemas.Symbol.TASK_TYPE,
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.TASK_TYPE
+                        ),
                         rhs=schemas.Value.infer(enums.TaskType.CLASSIFICATION),
                         op=schemas.FilterOperator.CONTAINS,
                     ),
@@ -269,12 +291,14 @@ def test_get_labels_from_model(
             labels=schemas.LogicalFunction(
                 args=[
                     schemas.Condition(
-                        lhs=schemas.Symbol.MODEL_NAME,
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.MODEL_NAME
+                        ),
                         rhs=schemas.Value.infer(model_name),
                         op=schemas.FilterOperator.EQ,
                     ),
                     schemas.Condition(
-                        lhs=schemas.Symbol.BOX,
+                        lhs=schemas.Symbol(name=schemas.SupportedSymbol.BOX),
                         op=schemas.FilterOperator.ISNOTNULL,
                     ),
                 ],

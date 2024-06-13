@@ -391,7 +391,9 @@ def get_labels_from_dataset(
             db=db,
             filters=schemas.Filter(
                 groundtruths=schemas.Condition(
-                    lhs=schemas.Symbol.DATASET_NAME,
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.DATASET_NAME
+                    ),
                     rhs=schemas.Value.infer(dataset_name),
                     op=schemas.FilterOperator.EQ,
                 )
@@ -458,7 +460,9 @@ def get_labels_from_model(
             db=db,
             filters=schemas.Filter(
                 groundtruths=schemas.Condition(
-                    lhs=schemas.Symbol.MODEL_NAME,
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.MODEL_NAME
+                    ),
                     rhs=schemas.Value.infer(model_name),
                     op=schemas.FilterOperator.EQ,
                 )
@@ -948,12 +952,16 @@ def get_datum(
                 datums=schemas.LogicalFunction(
                     args=[
                         schemas.Condition(
-                            lhs=schemas.Symbol.DATASET_NAME,
+                            lhs=schemas.Symbol(
+                                name=schemas.SupportedSymbol.DATASET_NAME
+                            ),
                             rhs=schemas.Value.infer(dataset_name),
                             op=schemas.FilterOperator.EQ,
                         ),
                         schemas.Condition(
-                            lhs=schemas.Symbol.DATUM_UID,
+                            lhs=schemas.Symbol(
+                                name=schemas.SupportedSymbol.DATUM_UID
+                            ),
                             rhs=schemas.Value.infer(uid),
                             op=schemas.FilterOperator.EQ,
                         ),

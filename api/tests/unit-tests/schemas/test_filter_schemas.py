@@ -5,6 +5,7 @@ from valor_api.schemas.filters import (
     FilterOperator,
     LogicalFunction,
     LogicalOperator,
+    SupportedSymbol,
     Symbol,
     Value,
     soft_and,
@@ -15,7 +16,7 @@ from valor_api.schemas.filters import (
 @pytest.fixture
 def condition() -> Condition:
     return Condition(
-        lhs=Symbol.DATASET_NAME,
+        lhs=Symbol(name=SupportedSymbol.DATASET_NAME),
         rhs=Value.infer("name"),
         op=FilterOperator.EQ,
     )

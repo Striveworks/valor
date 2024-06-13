@@ -20,7 +20,7 @@ from valor import (
 )
 from valor.client import connect
 from valor.exceptions import ClientException
-from valor.schemas import Filter
+from valor.schemas import And, Filter
 
 
 @pytest.fixture
@@ -258,13 +258,13 @@ def test_get_datasets(
     assert all_datasets[0].name == created_dataset.name
 
     pos_query = client.get_datasets(
-        Filter(labels=(Label.key == "class0") & (Label.value == "1"))
+        Filter(labels=And(Label.key == "class0", Label.value == "1"))
     )
     assert len(pos_query) == 1
     assert pos_query[0].name == created_dataset.name
 
     neg_query = client.get_datasets(
-        Filter(labels=(Label.key == "some_other_class") & (Label.value == "1"))
+        Filter(labels=And(Label.key == "some_other_class", Label.value == "1"))
     )
     assert len(neg_query) == 0
 
@@ -286,13 +286,13 @@ def test_get_models(
     assert all_models[0].name == created_model.name
 
     pos_query = client.get_models(
-        Filter(labels=(Label.key == "class0") & (Label.value == "1"))
+        Filter(labels=And(Label.key == "class0", Label.value == "1"))
     )
     assert len(pos_query) == 1
     assert pos_query[0].name == created_model.name
 
     neg_query = client.get_models(
-        Filter(labels=(Label.key == "some_other_class") & (Label.value == "1"))
+        Filter(labels=And(Label.key == "some_other_class", Label.value == "1"))
     )
     assert len(neg_query) == 0
 
@@ -314,13 +314,13 @@ def test_get_datums(
     assert all_datums[0].uid == "1"
 
     pos_query = client.get_datums(
-        Filter(labels=(Label.key == "class0") & (Label.value == "1"))
+        Filter(labels=And(Label.key == "class0", Label.value == "1"))
     )
     assert len(pos_query) == 1
     assert pos_query[0].uid == "1"
 
     neg_query = client.get_datums(
-        Filter(labels=(Label.key == "some_other_class") & (Label.value == "1"))
+        Filter(labels=And(Label.key == "some_other_class", Label.value == "1"))
     )
     assert len(neg_query) == 0
 

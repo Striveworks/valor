@@ -481,7 +481,7 @@ def prepare_filter_for_evaluation(
     dataset_conditions = schemas.soft_or(
         [
             schemas.Condition(
-                lhs=schemas.Symbol.DATASET_NAME,
+                lhs=schemas.Symbol(name=schemas.SupportedSymbol.DATASET_NAME),
                 rhs=schemas.Value.infer(name),
                 op=schemas.FilterOperator.EQ,
             )
@@ -491,14 +491,14 @@ def prepare_filter_for_evaluation(
 
     # create model constraint
     model_condition = schemas.Condition(
-        lhs=schemas.Symbol.MODEL_NAME,
+        lhs=schemas.Symbol(name=schemas.SupportedSymbol.MODEL_NAME),
         rhs=schemas.Value.infer(model_name),
         op=schemas.FilterOperator.EQ,
     )
 
     # create task type constraint
     task_type_condition = schemas.Condition(
-        lhs=schemas.Symbol.TASK_TYPE,
+        lhs=schemas.Symbol(name=schemas.SupportedSymbol.TASK_TYPE),
         rhs=schemas.Value(
             type=schemas.SupportedType.TASK_TYPE, value=task_type
         ),

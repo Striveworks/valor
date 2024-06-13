@@ -1,3 +1,4 @@
+import warnings
 from typing import Any, Optional, Union
 
 
@@ -9,29 +10,24 @@ class Condition:
         TODO
 
         """
-
-        self.op = type(self).__name__.lower()
-
         # validate lhs
-        lhd = lhs.to_dict()
-        if lhd.keys() != {"name", "key"}:
-            raise ValueError
-        self.lhs = lhd["name"]
-        self.lhs_key = lhd["key"]
+        if not lhs.is_symbolic:
+            warnings.warn(
+                "Values are currently not supported as the lhs operand in the API.",
+                RuntimeWarning,
+            )
 
         # validate rhs - symbols are not current supported
-        self.rhs = None
-        self.rhs_key = None
         if rhs is not None:
-            rhd = rhs.to_dict()
-            if rhd.keys() == {"name", "key"}:
-                raise NotImplementedError(
-                    "Symbols are not supported currently as rhs values."
+            if rhs.is_symbolic:
+                warnings.warn(
+                    "Symbols are currently not supported as the rhs operand in the API.",
+                    RuntimeWarning,
                 )
-            elif rhd.keys() == {"type", "value"}:
-                self.rhs = rhd
-            else:
-                raise ValueError
+
+        self.lhs = lhs
+        self.rhs = rhs
+        self.op = type(self).__name__.lower()
 
     def __and__(self, other: Any):
         return And(self, other)
@@ -44,10 +40,8 @@ class Condition:
 
     def to_dict(self):
         return {
-            "lhs": self.lhs,
-            "lhs_key": self.lhs_key,
-            "rhs": self.rhs,
-            "rhs_key": self.rhs_key,
+            "lhs": self.lhs.to_dict(),
+            "rhs": self.rhs.to_dict() if self.rhs is not None else None,
             "op": self.op,
         }
 
@@ -58,12 +52,18 @@ class Function:
     def __init__(self, *args) -> None:
         if len(args) == 0:
             raise ValueError("Expected at least one argument.")
+
+        self._args = []
         for arg in args:
             if not hasattr(arg, "to_dict"):
                 raise ValueError(
-                    "Functions can only take arguments that have a 'to_dict' method defined."
+                    f"Arguments should be symbolic or functional. Received '{arg}'."
                 )
-        self._args = list(args) if len(args) > 1 else args[0]
+            if isinstance(arg, type(self)):
+                self._args.extend(arg._args)
+            else:
+                self._args.append(arg)
+        self._args = self._args if len(self._args) > 1 else self._args[0]
 
     def __repr__(self):
         args = ", ".join([arg.__repr__() for arg in self._args])
@@ -96,7 +96,10 @@ class Function:
 class And(Function):
     """Implementation of logical AND (&)."""
 
-    pass
+    def __init__(self, *args):
+        if len(args) < 2:
+            raise ValueError("Expected at least two arguments.")
+        super().__init__(*args)
 
     def __and__(self, other: Any):
         if isinstance(other, And):
@@ -109,7 +112,10 @@ class And(Function):
 class Or(Function):
     """Implementation of logical OR (|)."""
 
-    pass
+    def __init__(self, *args):
+        if len(args) < 2:
+            raise ValueError("Expected at least two arguments.")
+        super().__init__(*args)
 
     def __or__(self, other: Any):
         if isinstance(other, Or):
@@ -125,6 +131,8 @@ class Not(Function):
     def __init__(self, *args):
         if len(args) != 1:
             raise ValueError("Negation only takes one argument.")
+        elif isinstance(args[0], Not):
+            return args[0]._args
         super().__init__(*args)
 
     def __invert__(self):

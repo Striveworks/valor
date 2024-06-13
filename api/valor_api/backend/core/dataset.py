@@ -466,7 +466,7 @@ def get_dataset_summary(db: Session, name: str) -> schemas.DatasetSummary:
         db,
         schemas.Filter(
             datasets=schemas.Condition(
-                lhs=schemas.Symbol.DATASET_NAME,
+                lhs=schemas.Symbol(name=schemas.SupportedSymbol.DATASET_NAME),
                 rhs=schemas.Value.infer(name),
                 op=schemas.FilterOperator.EQ,
             )

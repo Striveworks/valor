@@ -3,7 +3,6 @@ that is no auth
 """
 
 import random
-from dataclasses import asdict
 
 import pytest
 import requests
@@ -27,7 +26,7 @@ from valor.exceptions import ClientException
 from valor.schemas import Box
 from valor_api.backend import models
 
-default_filter_properties = asdict(Filter())
+default_filter_properties = Filter().to_dict()
 
 
 def test_evaluate_detection(
@@ -144,7 +143,9 @@ def test_evaluate_detection(
         "filters": {
             **default_filter_properties,
             "labels": {
-                "lhs": "label.key",
+                "lhs": {
+                    "name": "label.key",
+                },
                 "op": "eq",
                 "rhs": {
                     "type": "string",
@@ -279,7 +280,9 @@ def test_evaluate_detection(
             "annotations": {
                 "args": [
                     {
-                        "lhs": "annotation.bounding_box.area",
+                        "lhs": {
+                            "name": "annotation.bounding_box.area",
+                        },
                         "op": "gte",
                         "rhs": {
                             "type": "float",
@@ -287,7 +290,9 @@ def test_evaluate_detection(
                         },
                     },
                     {
-                        "lhs": "annotation.bounding_box.area",
+                        "lhs": {
+                            "name": "annotation.bounding_box.area",
+                        },
                         "op": "lte",
                         "rhs": {
                             "type": "float",
@@ -298,7 +303,9 @@ def test_evaluate_detection(
                 "op": "and",
             },
             "labels": {
-                "lhs": "label.key",
+                "lhs": {
+                    "name": "label.key",
+                },
                 "op": "eq",
                 "rhs": {
                     "type": "string",
@@ -365,7 +372,9 @@ def test_evaluate_detection(
         "filters": {
             **default_filter_properties,
             "annotations": {
-                "lhs": "annotation.bounding_box.area",
+                "lhs": {
+                    "name": "annotation.bounding_box.area",
+                },
                 "op": "gte",
                 "rhs": {
                     "type": "float",
@@ -373,7 +382,9 @@ def test_evaluate_detection(
                 },
             },
             "labels": {
-                "lhs": "label.key",
+                "lhs": {
+                    "name": "label.key",
+                },
                 "op": "eq",
                 "rhs": {
                     "type": "string",
@@ -453,7 +464,9 @@ def test_evaluate_detection(
             "annotations": {
                 "args": [
                     {
-                        "lhs": "annotation.bounding_box.area",
+                        "lhs": {
+                            "name": "annotation.bounding_box.area",
+                        },
                         "op": "gte",
                         "rhs": {
                             "type": "float",
@@ -461,7 +474,9 @@ def test_evaluate_detection(
                         },
                     },
                     {
-                        "lhs": "annotation.bounding_box.area",
+                        "lhs": {
+                            "name": "annotation.bounding_box.area",
+                        },
                         "op": "lte",
                         "rhs": {
                             "type": "float",
@@ -472,7 +487,9 @@ def test_evaluate_detection(
                 "op": "and",
             },
             "labels": {
-                "lhs": "label.key",
+                "lhs": {
+                    "name": "label.key",
+                },
                 "op": "eq",
                 "rhs": {
                     "type": "string",
@@ -672,7 +689,9 @@ def test_evaluate_detection_with_json_filters(
             "annotations": {
                 "args": [
                     {
-                        "lhs": "annotation.bounding_box.area",
+                        "lhs": {
+                            "name": "annotation.bounding_box.area",
+                        },
                         "op": "gte",
                         "rhs": {
                             "type": "float",
@@ -680,7 +699,9 @@ def test_evaluate_detection_with_json_filters(
                         },
                     },
                     {
-                        "lhs": "annotation.bounding_box.area",
+                        "lhs": {
+                            "name": "annotation.bounding_box.area",
+                        },
                         "op": "lte",
                         "rhs": {
                             "type": "float",
@@ -691,7 +712,9 @@ def test_evaluate_detection_with_json_filters(
                 "op": "and",
             },
             "labels": {
-                "lhs": "label.key",
+                "lhs": {
+                    "name": "label.key",
+                },
                 "op": "eq",
                 "rhs": {
                     "type": "string",

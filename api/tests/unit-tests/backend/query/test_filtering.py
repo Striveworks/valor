@@ -6,31 +6,32 @@ from valor_api.backend.query.filtering import (
     create_cte,
     generate_logical_expression,
     map_filter_to_tables,
-    map_symbol_to_resources,
     map_keyed_symbol_to_resources,
     map_opstr_to_operator,
-    map_type_to_type_cast,
+    map_symbol_to_resources,
     map_type_to_jsonb_type_cast,
+    map_type_to_type_cast,
 )
 from valor_api.schemas.filters import (
+    Condition,
     Filter,
+    FilterOperator,
+    LogicalFunction,
+    LogicalOperator,
+    SupportedSymbol,
+    SupportedType,
     Symbol,
     Value,
-    LogicalFunction,
-    Condition,
-    FilterOperator,
-    LogicalOperator,
-    SupportedType,
 )
 
 
 def test_map_to_resources():
-    for symbol in Symbol:
+    for symbol in SupportedSymbol:
         # test that there is a singular mapping for each symbol
-        assert (
-            (symbol in map_symbol_to_resources)
-            != (symbol in map_keyed_symbol_to_resources)
+        assert (symbol in map_symbol_to_resources) != (
+            symbol in map_keyed_symbol_to_resources
         )
+
 
 def test_map_to_operator():
     for op in FilterOperator:
@@ -58,7 +59,7 @@ def test_create_cte_validation():
     with pytest.raises(ValueError):
         create_cte(
             Condition(
-                lhs=Symbol.DATASET_NAME,
+                lhs=Symbol(name=SupportedSymbol.DATASET_NAME),
                 rhs="value",  # type: ignore - testing
                 op=FilterOperator.EQ,
             )
@@ -66,7 +67,7 @@ def test_create_cte_validation():
     with pytest.raises(TypeError):
         create_cte(
             Condition(
-                lhs=Symbol.DATASET_NAME,
+                lhs=Symbol(name=SupportedSymbol.DATASET_NAME),
                 rhs=Value(type=SupportedType.INTEGER, value=1),
                 op=FilterOperator.EQ,
             )
@@ -83,7 +84,7 @@ def test__recursive_search_logic_tree():
     tree, _, tables = _recursive_search_logic_tree(
         func=LogicalFunction(
             args=Condition(
-                lhs=Symbol.BOX,
+                lhs=Symbol(name=SupportedSymbol.BOX),
                 op=FilterOperator.ISNULL,
             ),
             op=LogicalOperator.NOT,
@@ -95,7 +96,7 @@ def test__recursive_search_logic_tree():
     # test two arg function
     tree, _, tables = _recursive_search_logic_tree(
         func=Condition(
-            lhs=Symbol.DATASET_NAME,
+            lhs=Symbol(name=SupportedSymbol.DATASET_NAME),
             rhs=Value.infer("some_name"),
             op=FilterOperator.EQ,
         )
@@ -108,14 +109,14 @@ def test__recursive_search_logic_tree():
         func=LogicalFunction(
             args=[
                 Condition(
-                    lhs=Symbol.BOX,
+                    lhs=Symbol(name=SupportedSymbol.BOX),
                     op=FilterOperator.ISNULL,
                 ),
                 Condition(
-                    lhs=Symbol.DATASET_NAME,
+                    lhs=Symbol(name=SupportedSymbol.DATASET_NAME),
                     rhs=Value(type=SupportedType.STRING, value="some_name"),
                     op=FilterOperator.EQ,
-                )
+                ),
             ],
             op=LogicalOperator.AND,
         )
@@ -127,7 +128,7 @@ def test__recursive_search_logic_tree():
 def test_map_filter_to_labels():
 
     fn = Condition(
-        lhs=Symbol.BOX,
+        lhs=Symbol(name=SupportedSymbol.BOX),
         op=FilterOperator.ISNULL,
     )
 

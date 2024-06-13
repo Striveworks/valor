@@ -2087,7 +2087,7 @@ def get_type_by_name(
 ):
     """Retrieves variable type by name."""
     types_ = {
-        "bool": Boolean,
+        "boolean": Boolean,
         "string": String,
         "integer": Integer,
         "float": Float,

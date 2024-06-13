@@ -192,7 +192,7 @@ def _compute_segmentation_metrics(
         groundtruth_filter.labels = schemas.soft_or(
             [
                 schemas.Condition(
-                    lhs=schemas.Symbol.LABEL_ID,
+                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_ID),
                     rhs=schemas.Value.infer(label_id),
                     op=schemas.FilterOperator.EQ,
                 )
@@ -202,7 +202,7 @@ def _compute_segmentation_metrics(
         prediction_filter.labels = schemas.soft_or(
             [
                 schemas.Condition(
-                    lhs=schemas.Symbol.LABEL_ID,
+                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_ID),
                     rhs=schemas.Value.infer(label_id),
                     op=schemas.FilterOperator.EQ,
                 )

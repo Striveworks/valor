@@ -271,7 +271,7 @@ class Evaluation:
             "id": self.id,
             "dataset_names": self.dataset_names,
             "model_name": self.model_name,
-            "filters": asdict(self.filters),
+            "filters": self.filters.to_dict(),
             "parameters": asdict(self.parameters),
             "status": self.status.value,
             "metrics": self.metrics,

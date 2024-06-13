@@ -3,12 +3,9 @@ import typing
 
 import pytest
 
-from valor.schemas.symbolic.operators import (
-    AppendableFunction,
-    TwoArgumentFunction,
-)
+from valor.schemas.symbolic.operators import Condition, Function
 from valor.schemas.symbolic.types import (
-    Bool,
+    Boolean,
     Date,
     DateTime,
     Duration,
@@ -35,41 +32,24 @@ def test_symbol():
     assert s.__repr__() == "Symbol(name='some_symbol')"
     assert s.__str__() == "some_symbol"
     assert s.to_dict() == {
-        "type": "symbol",
-        "value": {
-            "owner": None,
-            "name": "some_symbol",
-            "key": None,
-            "attribute": None,
-        },
+        "name": "some_symbol",
+        "key": None,
     }
 
     s = Symbol(
-        owner="some_owner",
         name="some_name",
-        attribute="some_attribute",
         key="some_key",
     )
-    assert (
-        s.__repr__()
-        == "Symbol(owner='some_owner', name='some_name', key='some_key', attribute='some_attribute')"
-    )
-    assert s.__str__() == "some_owner.some_name['some_key'].some_attribute"
+    assert s.__repr__() == "Symbol(name='some_name', key='some_key')"
+    assert s.__str__() == "some_name['some_key']"
     assert s.to_dict() == {
-        "type": "symbol",
-        "value": {
-            "owner": "some_owner",
-            "name": "some_name",
-            "key": "some_key",
-            "attribute": "some_attribute",
-        },
+        "name": "some_name",
+        "key": "some_key",
     }
 
     # test '__eq__'
     assert s == Symbol(
-        owner="some_owner",
         name="some_name",
-        attribute="some_attribute",
         key="some_key",
     )
     assert not (s == "symbol")
@@ -78,9 +58,7 @@ def test_symbol():
     assert not (
         s
         != Symbol(
-            owner="some_owner",
             name="some_name",
-            attribute="some_attribute",
             key="some_key",
         )
     )
@@ -109,15 +87,11 @@ def test_variable():
     # test is_none
     assert Variable.symbolic().is_none().to_dict() == {
         "op": "isnull",
-        "arg": {
-            "type": "symbol",
-            "value": {
-                "name": "variable",
-                "owner": None,
-                "key": None,
-                "attribute": None,
-            },
+        "lhs": {
+            "name": "variable",
+            "key": None,
         },
+        "rhs": None,
     }
     assert Variable.symbolic().get_symbol() == Symbol(name="variable")
     assert Variable(None).is_none().get_value() is True  # type: ignore - issue #604
@@ -128,15 +102,11 @@ def test_variable():
     # test is_not_none
     assert Variable.symbolic().is_not_none().to_dict() == {
         "op": "isnotnull",
-        "arg": {
-            "type": "symbol",
-            "value": {
-                "name": "variable",
-                "owner": None,
-                "key": None,
-                "attribute": None,
-            },
+        "lhs": {
+            "name": "variable",
+            "key": None,
         },
+        "rhs": None,
     }
     assert Variable(None).is_not_none().get_value() is False  # type: ignore - issue #604
     assert Variable(1234).is_not_none().get_value() is True  # type: ignore - issue #604
@@ -148,22 +118,12 @@ def _test_equatable(varA, varB, varC):
     assert (varA == varB).to_dict() == {
         "op": "eq",
         "lhs": {
-            "type": "symbol",
-            "value": {
-                "owner": None,
-                "name": "a",
-                "key": None,
-                "attribute": None,
-            },
+            "name": "a",
+            "key": None,
         },
         "rhs": {
-            "type": "symbol",
-            "value": {
-                "owner": None,
-                "name": "b",
-                "key": None,
-                "attribute": None,
-            },
+            "name": "b",
+            "key": None,
         },
     }
     assert (varA == varB).to_dict() == (varA == Symbol("B")).to_dict()
@@ -172,22 +132,12 @@ def _test_equatable(varA, varB, varC):
     assert (varA != varB).to_dict() == {
         "op": "ne",
         "lhs": {
-            "type": "symbol",
-            "value": {
-                "owner": None,
-                "name": "a",
-                "key": None,
-                "attribute": None,
-            },
+            "name": "a",
+            "key": None,
         },
         "rhs": {
-            "type": "symbol",
-            "value": {
-                "owner": None,
-                "name": "b",
-                "key": None,
-                "attribute": None,
-            },
+            "name": "b",
+            "key": None,
         },
     }
     assert (varA != varB).to_dict() == (varA != Symbol("B")).to_dict()
@@ -199,43 +149,23 @@ def _test_equatable(varA, varB, varC):
             {
                 "op": "eq",
                 "lhs": {
-                    "type": "symbol",
-                    "value": {
-                        "owner": None,
-                        "name": "a",
-                        "key": None,
-                        "attribute": None,
-                    },
+                    "name": "a",
+                    "key": None,
                 },
                 "rhs": {
-                    "type": "symbol",
-                    "value": {
-                        "owner": None,
-                        "name": "b",
-                        "key": None,
-                        "attribute": None,
-                    },
+                    "name": "b",
+                    "key": None,
                 },
             },
             {
                 "op": "eq",
                 "lhs": {
-                    "type": "symbol",
-                    "value": {
-                        "owner": None,
-                        "name": "a",
-                        "key": None,
-                        "attribute": None,
-                    },
+                    "name": "a",
+                    "key": None,
                 },
                 "rhs": {
-                    "type": "symbol",
-                    "value": {
-                        "owner": None,
-                        "name": "c",
-                        "key": None,
-                        "attribute": None,
-                    },
+                    "name": "c",
+                    "key": None,
                 },
             },
         ],
@@ -254,92 +184,52 @@ def _test_quantifiable(varA, varB, varC):
     # greater-than
     assert (varA > varB).to_dict() == {
         "lhs": {
-            "type": "symbol",
-            "value": {
-                "attribute": None,
-                "key": None,
-                "name": "a",
-                "owner": None,
-            },
+            "key": None,
+            "name": "a",
         },
         "op": "gt",
         "rhs": {
-            "type": "symbol",
-            "value": {
-                "attribute": None,
-                "key": None,
-                "name": "b",
-                "owner": None,
-            },
+            "name": "b",
+            "key": None,
         },
     }
 
     # greater-than or equal
     assert (varA >= varB).to_dict() == {
         "lhs": {
-            "type": "symbol",
-            "value": {
-                "attribute": None,
-                "key": None,
-                "name": "a",
-                "owner": None,
-            },
+            "key": None,
+            "name": "a",
         },
-        "op": "ge",
+        "op": "gte",
         "rhs": {
-            "type": "symbol",
-            "value": {
-                "attribute": None,
-                "key": None,
-                "name": "b",
-                "owner": None,
-            },
+            "key": None,
+            "name": "b",
         },
     }
 
     # less-than
     assert (varA < varB).to_dict() == {
         "lhs": {
-            "type": "symbol",
-            "value": {
-                "attribute": None,
-                "key": None,
-                "name": "a",
-                "owner": None,
-            },
+            "key": None,
+            "name": "a",
         },
         "op": "lt",
         "rhs": {
-            "type": "symbol",
-            "value": {
-                "attribute": None,
-                "key": None,
-                "name": "b",
-                "owner": None,
-            },
+            "key": None,
+            "name": "b",
         },
     }
 
     # less-than or equal
     assert (varA <= varB).to_dict() == {
         "lhs": {
-            "type": "symbol",
-            "value": {
-                "attribute": None,
-                "key": None,
-                "name": "a",
-                "owner": None,
-            },
+            "key": None,
+            "name": "a",
         },
-        "op": "le",
+        "op": "lte",
         "rhs": {
-            "type": "symbol",
-            "value": {
-                "attribute": None,
-                "key": None,
-                "name": "b",
-                "owner": None,
-            },
+            "key": None,
+            "name": "b",
         },
     }
 
@@ -347,29 +237,21 @@ def _test_quantifiable(varA, varB, varC):
 def _test_nullable(varA, varB, varC):
     # is none
     assert varA.is_none().to_dict() == {
-        "arg": {
-            "type": "symbol",
-            "value": {
-                "attribute": None,
-                "key": None,
-                "name": "a",
-                "owner": None,
-            },
+        "lhs": {
+            "key": None,
+            "name": "a",
         },
+        "rhs": None,
         "op": "isnull",
     }
 
     # is not none
     assert varA.is_not_none().to_dict() == {
-        "arg": {
-            "type": "symbol",
-            "value": {
-                "attribute": None,
-                "key": None,
-                "name": "a",
-                "owner": None,
-            },
+        "lhs": {
+            "key": None,
+            "name": "a",
         },
+        "rhs": None,
         "op": "isnotnull",
     }
 
@@ -378,69 +260,39 @@ def _test_spatial(varA, varB, varC):
     # intersects
     assert varA.intersects(varB).to_dict() == {
         "lhs": {
-            "type": "symbol",
-            "value": {
-                "attribute": None,
-                "key": None,
-                "name": "a",
-                "owner": None,
-            },
+            "key": None,
+            "name": "a",
         },
         "op": "intersects",
         "rhs": {
-            "type": "symbol",
-            "value": {
-                "attribute": None,
-                "key": None,
-                "name": "b",
-                "owner": None,
-            },
+            "key": None,
+            "name": "b",
         },
     }
 
     # inside
     assert varA.inside(varB).to_dict() == {
         "lhs": {
-            "type": "symbol",
-            "value": {
-                "attribute": None,
-                "key": None,
-                "name": "a",
-                "owner": None,
-            },
+            "key": None,
+            "name": "a",
         },
         "op": "inside",
         "rhs": {
-            "type": "symbol",
-            "value": {
-                "attribute": None,
-                "key": None,
-                "name": "b",
-                "owner": None,
-            },
+            "key": None,
+            "name": "b",
         },
     }
 
     # outside
     assert varA.outside(varB).to_dict() == {
         "lhs": {
-            "type": "symbol",
-            "value": {
-                "attribute": None,
-                "key": None,
-                "name": "a",
-                "owner": None,
-            },
+            "key": None,
+            "name": "a",
         },
         "op": "outside",
         "rhs": {
-            "type": "symbol",
-            "value": {
-                "attribute": None,
-                "key": None,
-                "name": "b",
-                "owner": None,
-            },
+            "key": None,
+            "name": "b",
         },
     }
 
@@ -488,9 +340,9 @@ def get_function_name(fn: str) -> str:
         "__or__": "or",
         "__xor__": "xor",
         "__gt__": "gt",
-        "__ge__": "ge",
+        "__ge__": "gte",
         "__lt__": "lt",
-        "__le__": "le",
+        "__le__": "lte",
         "is_none": "isnull",
         "is_not_none": "isnotnull",
         "intersects": "intersects",
@@ -523,13 +375,8 @@ def _test_to_dict(objcls, value, type_name: typing.Optional[str] = None):
     }
     # test symbolic
     assert objcls.symbolic().to_dict() == {
-        "type": "symbol",
-        "value": {
-            "owner": None,
-            "name": type_name,
-            "key": None,
-            "attribute": None,
-        },
+        "name": type_name,
+        "key": None,
     }
 
 
@@ -561,14 +408,14 @@ def _test_generic(
         # test functional dictionary generation
         expr = C.__getattribute__(op)(a)
         expr_dict = expr.to_dict()
-        if issubclass(type(expr), AppendableFunction):
+        if issubclass(type(expr), Function):
             assert len(expr_dict) == 2
             assert expr_dict["op"] == get_function_name(op)
             assert expr_dict["args"] == [
                 C.to_dict(),
                 A.to_dict(),
             ]
-        elif issubclass(type(expr), TwoArgumentFunction):
+        elif issubclass(type(expr), Condition):
             assert len(expr_dict) == 3
             assert expr_dict["op"] == get_function_name(op)
             assert expr_dict["lhs"] == C.to_dict()
@@ -580,7 +427,7 @@ def _test_generic(
 def _test_resolvable(
     objcls, permutations, op, type_name: typing.Optional[str] = None
 ):
-    """Test expressions that can be simplified to 'Bool'"""
+    """Test expressions that can be simplified to 'Boolean'"""
     type_name = type_name if type_name else objcls.__name__.lower()
     for a, b in permutations:
         A = objcls(a)
@@ -611,7 +458,7 @@ def _test_unsupported(objcls, permutations, op):
 
 def test_bool():
     # interoperable with builtin 'bool'
-    objcls = Bool
+    objcls = Boolean
     permutations = [
         (True, True),
         (True, False),
@@ -620,10 +467,10 @@ def test_bool():
     ]
 
     # test supported methods
-    for op in ["__eq__", "__ne__", "__and__", "__or__", "__xor__"]:
+    for op in ["__eq__", "__ne__", "__and__", "__or__"]:
         _test_resolvable(objcls, permutations, op)
-    assert (~Bool(True)).get_value() is False  # type: ignore - this will always return a bool
-    assert (~Bool(False)).get_value() is True  # type: ignore - this will always return a bool
+    assert (~Boolean(True)).get_value() is False  # type: ignore - this will always return a bool
+    assert (~Boolean(False)).get_value() is True  # type: ignore - this will always return a bool
 
     # test unsupported methods
     for op in [
@@ -652,36 +499,25 @@ def test_bool():
     _test_encoding(objcls, False, False)
 
     # test and operation
-    assert (Bool(True) & Bool(True)).get_value() is True  # type: ignore - issue #604
-    assert (Bool(True) & Bool(False)).get_value() is False  # type: ignore - issue #604
-    assert (Bool(False) & Bool(True)).get_value() is False  # type: ignore - issue #604
-    assert (Bool(False) & Bool(False)).get_value() is False  # type: ignore - issue #604
+    assert (Boolean(True) & Boolean(True)).get_value() is True  # type: ignore - issue #604
+    assert (Boolean(True) & Boolean(False)).get_value() is False  # type: ignore - issue #604
+    assert (Boolean(False) & Boolean(True)).get_value() is False  # type: ignore - issue #604
+    assert (Boolean(False) & Boolean(False)).get_value() is False  # type: ignore - issue #604
 
     # test or operation
-    assert (Bool(True) | Bool(True)).get_value() is True  # type: ignore - issue #604
-    assert (Bool(True) | Bool(False)).get_value() is True  # type: ignore - issue #604
-    assert (Bool(False) | Bool(True)).get_value() is True  # type: ignore - issue #604
-    assert (Bool(False) | Bool(False)).get_value() is False  # type: ignore - issue #604
-
-    # test xor operation
-    assert (Bool(True) ^ Bool(True)).get_value() is False  # type: ignore - issue #604
-    assert (Bool(True) ^ Bool(False)).get_value() is True  # type: ignore - issue #604
-    assert (Bool(False) ^ Bool(True)).get_value() is True  # type: ignore - issue #604
-    assert (Bool(False) ^ Bool(False)).get_value() is False  # type: ignore - issue #604
+    assert (Boolean(True) | Boolean(True)).get_value() is True  # type: ignore - issue #604
+    assert (Boolean(True) | Boolean(False)).get_value() is True  # type: ignore - issue #604
+    assert (Boolean(False) | Boolean(True)).get_value() is True  # type: ignore - issue #604
+    assert (Boolean(False) | Boolean(False)).get_value() is False  # type: ignore - issue #604
 
     # test negation operation
-    assert (~Bool(True)).get_value() is False  # type: ignore - issue #604
-    assert (~Bool(False)).get_value() is True  # type: ignore - issue #604
-    assert (~Bool.symbolic()).to_dict() == {
-        "op": "negate",
-        "arg": {
-            "type": "symbol",
-            "value": {
-                "owner": None,
-                "name": "bool",
-                "key": None,
-                "attribute": None,
-            },
+    assert (~Boolean(True)).get_value() is False  # type: ignore - issue #604
+    assert (~Boolean(False)).get_value() is True  # type: ignore - issue #604
+    assert (~Boolean.symbolic()).to_dict() == {
+        "op": "not",
+        "args": {
+            "name": "boolean",
+            "key": None,
         },
     }
 
@@ -704,7 +540,6 @@ def test_integer():
     for op in [
         "__and__",
         "__or__",
-        "__xor__",
         "intersects",
         "inside",
         "outside",
@@ -749,7 +584,6 @@ def test_float():
     for op in [
         "__and__",
         "__or__",
-        "__xor__",
         "intersects",
         "inside",
         "outside",
@@ -792,7 +626,6 @@ def test_string():
         "__le__",
         "__and__",
         "__or__",
-        "__xor__",
         "intersects",
         "inside",
         "outside",
@@ -843,7 +676,6 @@ def test_datetime():
     for op in [
         "__and__",
         "__or__",
-        "__xor__",
         "intersects",
         "inside",
         "outside",
@@ -898,7 +730,6 @@ def test_date():
     for op in [
         "__and__",
         "__or__",
-        "__xor__",
         "intersects",
         "inside",
         "outside",
@@ -939,7 +770,6 @@ def test_time():
     for op in [
         "__and__",
         "__or__",
-        "__xor__",
         "intersects",
         "inside",
         "outside",
@@ -978,7 +808,6 @@ def test_duration():
     for op in [
         "__and__",
         "__or__",
-        "__xor__",
         "intersects",
         "inside",
         "outside",
@@ -1016,7 +845,6 @@ def test_point():
         "__le__",
         "__and__",
         "__or__",
-        "__xor__",
     ]:
         _test_unsupported(objcls, permutations, op)
 
@@ -1056,7 +884,6 @@ def test_multipoint():
         "__le__",
         "__and__",
         "__or__",
-        "__xor__",
     ]:
         _test_unsupported(objcls, permutations, op)
 
@@ -1096,7 +923,6 @@ def test_linestring():
         "__le__",
         "__and__",
         "__or__",
-        "__xor__",
     ]:
         _test_unsupported(objcls, permutations, op)
 
@@ -1141,7 +967,6 @@ def test_multilinestring():
         "__le__",
         "__and__",
         "__or__",
-        "__xor__",
     ]:
         _test_unsupported(objcls, permutations, op)
 
@@ -1189,7 +1014,6 @@ def test_polygon():
         "__le__",
         "__and__",
         "__or__",
-        "__xor__",
     ]:
         _test_unsupported(objcls, permutations, op)
 
@@ -1213,13 +1037,8 @@ def test_polygon():
     # test property 'area'
     assert objcls.symbolic().area.is_symbolic
     assert objcls.symbolic().area.to_dict() == {
-        "type": "symbol",
-        "value": {
-            "owner": None,
-            "name": objcls.__name__.lower(),
-            "key": None,
-            "attribute": "area",
-        },
+        "name": f"{objcls.__name__.lower()}.area",
+        "key": None,
     }
     # test that property 'area' is not accessible when object is a value
     with pytest.raises(ValueError):
@@ -1265,7 +1084,6 @@ def test_multipolygon():
         "__le__",
         "__and__",
         "__or__",
-        "__xor__",
     ]:
         _test_unsupported(objcls, permutations, op)
 
@@ -1289,13 +1107,8 @@ def test_multipolygon():
     # test property 'area'
     assert objcls.symbolic().area.is_symbolic
     assert objcls.symbolic().area.to_dict() == {
-        "type": "symbol",
-        "value": {
-            "owner": None,
-            "name": objcls.__name__.lower(),
-            "key": None,
-            "attribute": "area",
-        },
+        "name": f"{objcls.__name__.lower()}.area",
+        "key": None,
     }
     # test that property 'area' is not accessible when object is a value
     with pytest.raises(ValueError):

@@ -5,14 +5,15 @@ from .evaluation import (
     EvaluationResponse,
 )
 from .filters import (
-    Filter,
-    Symbol,
-    Value,
-    FilterOperator,
     Condition,
+    Filter,
+    FilterOperator,
     LogicalFunction,
     LogicalOperator,
+    SupportedSymbol,
     SupportedType,
+    Symbol,
+    Value,
     soft_and,
     soft_or,
 )
@@ -113,6 +114,7 @@ __all__ = [
     "LogicalFunction",
     "LogicalOperator",
     "SupportedType",
+    "SupportedSymbol",
     "soft_and",
     "soft_or",
     "Health",

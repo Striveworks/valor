@@ -1696,11 +1696,11 @@ def compute_detection_metrics(*_, db: Session, evaluation_id: int):
     )
     match target_type:
         case AnnotationType.BOX:
-            symbol = schemas.Symbol.BOX
+            symbol = schemas.Symbol(name=schemas.SupportedSymbol.BOX)
         case AnnotationType.POLYGON:
-            symbol = schemas.Symbol.POLYGON
+            symbol = schemas.Symbol(name=schemas.SupportedSymbol.POLYGON)
         case AnnotationType.RASTER:
-            symbol = schemas.Symbol.RASTER
+            symbol = schemas.Symbol(name=schemas.SupportedSymbol.RASTER)
         case _:
             raise TypeError(
                 f"'{target_type}' is not a valid type for object detection."

@@ -33,8 +33,8 @@ from valor_api.schemas.filters import (
     Filter,
     FilterOperator,
     LogicalFunction,
+    SupportedSymbol,
     SupportedType,
-    Symbol,
     Value,
 )
 from valor_api.schemas.geometry import (
@@ -71,54 +71,57 @@ map_opstr_to_operator = {
 
 # Map a symbol to a tuple containing (table, column, type string).
 map_symbol_to_resources = {
-    Symbol.DATASET_NAME: (Dataset, Dataset.name),
-    Symbol.MODEL_NAME: (Model, Model.name),
-    Symbol.DATUM_UID: (Datum, Datum.uid),
-    Symbol.BOX: (Annotation, Annotation.box),
-    Symbol.POLYGON: (Annotation, Annotation.polygon),
-    Symbol.RASTER: (Annotation, Annotation.raster),
-    Symbol.TASK_TYPE: (Annotation, Annotation.implied_task_types),
-    Symbol.EMBEDDING: (Embedding, Embedding.value),
-    Symbol.LABELS: (Label, Label),
-    Symbol.LABEL_KEY: (Label, Label.key),
-    Symbol.LABEL_VALUE: (Label, Label.value),
-    Symbol.SCORE: (Prediction, Prediction.score),
+    SupportedSymbol.DATASET_NAME: (Dataset, Dataset.name),
+    SupportedSymbol.MODEL_NAME: (Model, Model.name),
+    SupportedSymbol.DATUM_UID: (Datum, Datum.uid),
+    SupportedSymbol.BOX: (Annotation, Annotation.box),
+    SupportedSymbol.POLYGON: (Annotation, Annotation.polygon),
+    SupportedSymbol.RASTER: (Annotation, Annotation.raster),
+    SupportedSymbol.TASK_TYPE: (Annotation, Annotation.implied_task_types),
+    SupportedSymbol.EMBEDDING: (Embedding, Embedding.value),
+    SupportedSymbol.LABELS: (Label, Label),
+    SupportedSymbol.LABEL_KEY: (Label, Label.key),
+    SupportedSymbol.LABEL_VALUE: (Label, Label.value),
+    SupportedSymbol.SCORE: (Prediction, Prediction.score),
     # 'area' attribute
-    Symbol.BOX_AREA: (Annotation, ST_Area(Annotation.box)),
-    Symbol.POLYGON_AREA: (Annotation, ST_Area(Annotation.polygon)),
-    Symbol.RASTER_AREA: (Annotation, ST_Count(Annotation.raster)),
+    SupportedSymbol.BOX_AREA: (Annotation, ST_Area(Annotation.box)),
+    SupportedSymbol.POLYGON_AREA: (Annotation, ST_Area(Annotation.polygon)),
+    SupportedSymbol.RASTER_AREA: (Annotation, ST_Count(Annotation.raster)),
     # backend use only
-    Symbol.DATASET_ID: (Dataset, Dataset.id),
-    Symbol.MODEL_ID: (Model, Model.id),
-    Symbol.DATUM_ID: (Datum, Datum.id),
-    Symbol.ANNOTATION_ID: (Annotation, Annotation.id),
-    Symbol.GROUNDTRUTH_ID: (GroundTruth, GroundTruth.id),
-    Symbol.PREDICTION_ID: (Prediction, Prediction.id),
-    Symbol.LABEL_ID: (Label, Label.id),
-    Symbol.EMBEDDING_ID: (Embedding, Embedding.id),
+    SupportedSymbol.DATASET_ID: (Dataset, Dataset.id),
+    SupportedSymbol.MODEL_ID: (Model, Model.id),
+    SupportedSymbol.DATUM_ID: (Datum, Datum.id),
+    SupportedSymbol.ANNOTATION_ID: (Annotation, Annotation.id),
+    SupportedSymbol.GROUNDTRUTH_ID: (GroundTruth, GroundTruth.id),
+    SupportedSymbol.PREDICTION_ID: (Prediction, Prediction.id),
+    SupportedSymbol.LABEL_ID: (Label, Label.id),
+    SupportedSymbol.EMBEDDING_ID: (Embedding, Embedding.id),
 }
 
 
 # Map a keyed symbol to a tuple containing (table, column, type string).
 map_keyed_symbol_to_resources = {
-    Symbol.DATASET_META: (Dataset, lambda key: Dataset.meta[key]),
-    Symbol.MODEL_META: (Model, lambda key: Model.meta[key]),
-    Symbol.DATUM_META: (Datum, lambda key: Datum.meta[key]),
-    Symbol.ANNOTATION_META: (Annotation, lambda key: Annotation.meta[key]),
+    SupportedSymbol.DATASET_META: (Dataset, lambda key: Dataset.meta[key]),
+    SupportedSymbol.MODEL_META: (Model, lambda key: Model.meta[key]),
+    SupportedSymbol.DATUM_META: (Datum, lambda key: Datum.meta[key]),
+    SupportedSymbol.ANNOTATION_META: (
+        Annotation,
+        lambda key: Annotation.meta[key],
+    ),
     # 'area' attribute
-    Symbol.DATASET_META_AREA: (
+    SupportedSymbol.DATASET_META_AREA: (
         Dataset,
         lambda key: ST_Area(ST_GeomFromGeoJSON(Dataset.meta[key]["value"])),
     ),
-    Symbol.MODEL_META_AREA: (
+    SupportedSymbol.MODEL_META_AREA: (
         Model,
         lambda key: ST_Area(ST_GeomFromGeoJSON(Model.meta[key]["value"])),
     ),
-    Symbol.DATUM_META_AREA: (
+    SupportedSymbol.DATUM_META_AREA: (
         Datum,
         lambda key: ST_Area(ST_GeomFromGeoJSON(Datum.meta[key]["value"])),
     ),
-    Symbol.ANNOTATION_META_AREA: (
+    SupportedSymbol.ANNOTATION_META_AREA: (
         Annotation,
         lambda key: ST_Area(ST_GeomFromGeoJSON(Annotation.meta[key]["value"])),
     ),
@@ -220,17 +223,22 @@ def create_cte(condition: Condition) -> tuple[TableTypeAlias, CTE]:
     """
 
     # convert lhs (symbol) to sql representation
-    if condition.lhs in map_symbol_to_resources:
-        table, lhs = map_symbol_to_resources[condition.lhs]
-    elif condition.lhs in map_keyed_symbol_to_resources and condition.lhs_key:
-        table, generate_column = map_keyed_symbol_to_resources[condition.lhs]
-        lhs = generate_column(condition.lhs_key)
+    if condition.lhs.name in map_symbol_to_resources:
+        table, lhs = map_symbol_to_resources[condition.lhs.name]
+    elif (
+        condition.lhs.name in map_keyed_symbol_to_resources
+        and condition.lhs.key
+    ):
+        table, generate_column = map_keyed_symbol_to_resources[
+            condition.lhs.name
+        ]
+        lhs = generate_column(condition.lhs.key)
     else:
         raise NotImplementedError(
             f"Symbol '{condition.lhs}' does not match any existing templates."
         )
 
-    if condition.rhs and condition.lhs_key and condition.lhs.type is None:
+    if condition.rhs and condition.lhs.key and condition.lhs.type is None:
         lhs = map_type_to_jsonb_type_cast[condition.rhs.type](lhs)
     elif (
         isinstance(condition.rhs, Value)

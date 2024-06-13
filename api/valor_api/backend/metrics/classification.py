@@ -398,7 +398,7 @@ def _compute_binary_roc_auc(
         [
             gts_filter.labels,
             schemas.Condition(
-                lhs=schemas.Symbol.LABEL_KEY,
+                lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
                 rhs=schemas.Value.infer(label.key),
                 op=schemas.FilterOperator.EQ,
             ),
@@ -417,12 +417,12 @@ def _compute_binary_roc_auc(
         [
             preds_filter.labels,
             schemas.Condition(
-                lhs=schemas.Symbol.LABEL_KEY,
+                lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
                 rhs=schemas.Value.infer(label.key),
                 op=schemas.FilterOperator.EQ,
             ),
             schemas.Condition(
-                lhs=schemas.Symbol.LABEL_VALUE,
+                lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_VALUE),
                 rhs=schemas.Value.infer(label.value),
                 op=schemas.FilterOperator.EQ,
             ),
@@ -565,7 +565,9 @@ def _compute_roc_auc(
                 schemas.soft_or(
                     [
                         schemas.Condition(
-                            lhs=schemas.Symbol.LABEL_ID,
+                            lhs=schemas.Symbol(
+                                name=schemas.SupportedSymbol.LABEL_ID
+                            ),
                             rhs=schemas.Value.infer(label.id),
                             op=schemas.FilterOperator.EQ,
                         )
@@ -853,7 +855,9 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
             schemas.soft_or(
                 [
                     schemas.Condition(
-                        lhs=schemas.Symbol.LABEL_KEY,
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.LABEL_KEY
+                        ),
                         rhs=schemas.Value.infer(key),
                         op=schemas.FilterOperator.EQ,
                     )
@@ -871,7 +875,9 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
             schemas.soft_or(
                 [
                     schemas.Condition(
-                        lhs=schemas.Symbol.LABEL_KEY,
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.LABEL_KEY
+                        ),
                         rhs=schemas.Value.infer(key),
                         op=schemas.FilterOperator.EQ,
                     )
