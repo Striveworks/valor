@@ -292,30 +292,54 @@ class Filter(BaseModel):
 
 
 def soft_and(
-    items: list[FunctionType] | list[FunctionType | None],
+    conditions: list[FunctionType] | list[FunctionType | None],
 ) -> FunctionType:
-    conditions = [item for item in items if item is not None]
+    """
+    Performs an AND operation if more than one element exists.
+
+    Parameters
+    ----------
+    conditions : list[FunctionType | None]
+        A list of conditions or functions.
+
+    Returns
+    -------
+    FunctionType
+    """
+    items = [condition for condition in conditions if condition is not None]
     if len(items) > 1:
         return LogicalFunction(
-            args=conditions,
+            args=items,
             op=LogicalOperator.AND,
         )
-    elif len(items) == 1:
-        return conditions[0]
+    elif len(conditions) == 1:
+        return items[0]
     else:
         raise ValueError("Passed an empty list.")
 
 
 def soft_or(
-    items: list[FunctionType] | list[FunctionType | None],
+    conditions: list[FunctionType] | list[FunctionType | None],
 ) -> FunctionType:
-    conditions = [item for item in items if item is not None]
+    """
+    Performs an OR operation if more than one element exists.
+
+    Parameters
+    ----------
+    conditions : list[FunctionType | None]
+        A list of conditions or functions.
+
+    Returns
+    -------
+    FunctionType
+    """
+    items = [condition for condition in conditions if condition is not None]
     if len(items) > 1:
         return LogicalFunction(
-            args=conditions,
+            args=items,
             op=LogicalOperator.OR,
         )
     elif len(items) == 1:
-        return conditions[0]
+        return items[0]
     else:
         raise ValueError("Passed an empty list.")
