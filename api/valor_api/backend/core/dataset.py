@@ -464,7 +464,13 @@ def get_unique_groundtruth_annotation_metadata_in_dataset(
 def get_dataset_summary(db: Session, name: str) -> schemas.DatasetSummary:
     gt_labels = core.get_labels(
         db,
-        schemas.Filter(dataset_names=[name]),
+        schemas.Filter(
+            datasets=schemas.Condition(
+                lhs=schemas.Symbol.DATASET_NAME,
+                rhs=schemas.Value.infer(name),
+                op=schemas.FilterOperator.EQ,
+            )
+        ),
         ignore_predictions=True,
     )
     return schemas.DatasetSummary(

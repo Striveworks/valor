@@ -291,7 +291,9 @@ class Filter(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
-def soft_and(items: list[FunctionType | None]) -> FunctionType:
+def soft_and(
+    items: list[FunctionType] | list[FunctionType | None],
+) -> FunctionType:
     conditions = [item for item in items if item is not None]
     if len(items) > 1:
         return LogicalFunction(
@@ -304,7 +306,9 @@ def soft_and(items: list[FunctionType | None]) -> FunctionType:
         raise ValueError("Passed an empty list.")
 
 
-def soft_or(items: list[FunctionType | None]) -> FunctionType:
+def soft_or(
+    items: list[FunctionType] | list[FunctionType | None],
+) -> FunctionType:
     conditions = [item for item in items if item is not None]
     if len(items) > 1:
         return LogicalFunction(
