@@ -13,7 +13,6 @@ from sqlalchemy import (
     func,
     not_,
     or_,
-    select,
 )
 from sqlalchemy.dialects.postgresql import INTERVAL, TEXT
 
@@ -196,23 +195,21 @@ map_type_to_type_cast = {
 }
 
 
-def create_cte(condition: Condition) -> tuple[TableTypeAlias, CTE]:
+def create_where_expression(
+    condition: Condition,
+) -> tuple[TableTypeAlias, BinaryExpression]:
     """
-    Creates a CTE from a binary expression.
+    Creates a binary expression from an conditional.
 
     Parameters
     ----------
-    opstr : FilterOperator
-        The expression operator.
-    symbol : Symbol
-        The lhs of the expression.
-    value : Value, optional
-        The rhs of the expression, if it exists.
+    condition : Condition
+        The conditional operation.
 
     Returns
     -------
-    tuple[TableTypeAlias, CTE]
-        A tuple of a table to join on and the CTE.
+    tuple[TableTypeAlias, BinaryExpression]
+        A tuple of a table and its filtering expression.
 
     Raises
     ------
@@ -255,14 +252,14 @@ def create_cte(condition: Condition) -> tuple[TableTypeAlias, CTE]:
         else None
     )
 
-    return (table, select(table.id).where(op(lhs, rhs)).cte())
+    return (table, op(lhs, rhs))
 
 
 def _recursive_search_logic_tree(
     func: Condition | LogicalFunction,
-    cte_list: list | None = None,
+    expr_list: list | None = None,
     tables: list[TableTypeAlias] | None = None,
-) -> tuple[int | dict, list[CTE], list[TableTypeAlias]]:
+) -> tuple[int | dict, list[BinaryExpression], list[TableTypeAlias]]:
     """
     Walks the filtering function to produce dependencies.
     """
@@ -270,31 +267,31 @@ def _recursive_search_logic_tree(
         raise TypeError(
             f"Expected input to be of type 'OneArgFunction | TwoArgFunction | NArgFunction'. Received '{func}'."
         )
-    cte_list = cte_list if cte_list else list()
+    expr_list = expr_list if expr_list else list()
     tables = tables if tables else list()
     logical_tree = dict()
 
     if isinstance(func, Condition):
-        table, cte = create_cte(func)
+        table, cte = create_where_expression(func)
         tables.append(table)
-        cte_list.append(cte)
-        return (len(cte_list) - 1, cte_list, tables)
+        expr_list.append(cte)
+        return (len(expr_list) - 1, expr_list, tables)
     elif isinstance(func, LogicalFunction):
         if isinstance(func.args, (Condition, LogicalFunction)):
-            branch, cte_list, tables = _recursive_search_logic_tree(
-                func.args, cte_list, tables
+            branch, expr_list, tables = _recursive_search_logic_tree(
+                func.args, expr_list, tables
             )
             logical_tree[func.op] = branch
-            return (logical_tree, cte_list, tables)
+            return (logical_tree, expr_list, tables)
         else:
             branches = list()
             for arg in func.args:
-                branch, cte_list, tables = _recursive_search_logic_tree(
-                    arg, cte_list, tables
+                branch, expr_list, tables = _recursive_search_logic_tree(
+                    arg, expr_list, tables
                 )
                 branches.append(branch)
             logical_tree[func.op] = branches
-            return (logical_tree, cte_list, tables)
+            return (logical_tree, expr_list, tables)
     else:
         raise TypeError(
             f"Recieved an unsupported type '{type(func)}' in func."
@@ -344,7 +341,7 @@ def map_filter_to_tables(
 
 def generate_dependencies(
     func: Condition | LogicalFunction | None,
-) -> tuple[int | dict | None, list[CTE], list[TableTypeAlias]]:
+) -> tuple[int | dict | None, list[BinaryExpression], list[TableTypeAlias]]:
     """
     Recursively generates the dependencies for creating a filter subquery.
 
@@ -364,7 +361,7 @@ def generate_dependencies(
 
 
 def generate_logical_expression(
-    root: CTE, tree: int | dict[str, int | dict | list], prefix: str
+    ordered_ctes: list[CTE], tree: int | dict[str, int | dict | list]
 ) -> BinaryExpression:
     """
     Generates the 'where' expression from a logical tree.
@@ -375,8 +372,6 @@ def generate_logical_expression(
         The CTE that evaluates the binary expressions.
     tree : int | dict[str, int | dict | list]
         The logical index tree.
-    prefix : str
-        The prefix of the relevant CTE.
 
     Returns
     -------
@@ -384,7 +379,7 @@ def generate_logical_expression(
         A binary expression that can be used in a WHERE statement.
     """
     if isinstance(tree, int):
-        return getattr(root.c, f"{prefix}{tree}") == 1
+        return ordered_ctes[0].c.id.isnot(None)
     if not isinstance(tree, dict) or len(tree.keys()) != 1:
         raise ValueError("If not an 'int', expected tree to be dictionary.")
 
@@ -400,10 +395,10 @@ def generate_logical_expression(
             raise ValueError("Expected a list of expressions.")
         return logical_operators[op](
             *[
-                (getattr(root.c, f"{prefix}{arg}") == 1)
+                ordered_ctes[arg].c.id.isnot(None)
                 if isinstance(arg, int)
                 else generate_logical_expression(
-                    root=root, tree=arg, prefix=prefix
+                    ordered_ctes=ordered_ctes, tree=arg
                 )
                 for arg in args
             ]
@@ -413,10 +408,12 @@ def generate_logical_expression(
         if isinstance(arg, list):
             raise ValueError
         return (
-            (getattr(root.c, f"{prefix}{arg}") == 0)
+            ordered_ctes[arg].c.id.is_(None)
             if isinstance(arg, int)
             else not_(
-                generate_logical_expression(root=root, tree=arg, prefix=prefix)
+                generate_logical_expression(
+                    ordered_ctes=ordered_ctes, tree=arg
+                )
             )
         )
     else:

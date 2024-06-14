@@ -44,50 +44,44 @@ def test_example_boats_and_swimmers(client: Client):
             )
         )
 
-    # # Just fish
-    # just_fish = client.get_datums(
-    #     Filter(
-    #         labels=And(
-    #             Label.key == "class",
-    #             Label.value != "boat",
-    #             Label.value != "swimmer",
-    #         ),
-    #     )
-    # )
-    # print(just_fish)
-    # assert len(just_fish) == 1
-    # assert just_fish[0].uid == "uid1"
+    # Just fish
+    just_fish = client.get_datums(
+        Filter(
+            datums=And(
+                Label.key == "class",
+                Label.value != "boat",
+                Label.value != "swimmer",
+            ),
+        )
+    )
+    assert len(just_fish) == 1
+    assert just_fish[0].uid == "uid1"
 
-    # # No swimmers
-    # no_swimmers = client.get_datums(
-    #     Filter(
-    #         datums=And(
-    #             Label.key == "class",
-    #             Label.value == "boat",
-    #         ),
-    #         labels=And(
-    #             Label.key == "class",
-    #             Label.value != "swimmer",
-    #         ),
-    #     )
-    # )
-    # print(no_swimmers)
-    # assert len(no_swimmers) == 1
-    # assert no_swimmers[0].uid == "uid2"
+    # No swimmers
+    no_swimmers = client.get_datums(
+        Filter(
+            datums=And(
+                Label.key == "class",
+                Label.value == "boat",
+                Label.value != "swimmer",
+            ),
+        )
+    )
+    assert len(no_swimmers) == 1
+    assert no_swimmers[0].uid == "uid2"
 
-    # # No boats
-    # no_boats = client.get_datums(
-    #     Filter(
-    #         datums=And(
-    #             Label.key == "class",
-    #             Label.value == "swimmer",
-    #             Label.value != "boat"
-    #         ),
-    #     )
-    # )
-    # print(no_boats)
-    # assert len(no_boats) == 1
-    # assert no_boats[0].uid == "uid3"
+    # No boats
+    no_boats = client.get_datums(
+        Filter(
+            datums=And(
+                Label.key == "class",
+                Label.value != "boat",
+                Label.value == "swimmer",
+            ),
+        )
+    )
+    assert len(no_boats) == 1
+    assert no_boats[0].uid == "uid3"
 
     # Both swimmers and boats
     swimmers_and_boats = client.get_datums(
@@ -95,9 +89,6 @@ def test_example_boats_and_swimmers(client: Client):
             datums=And(
                 Label.key == "class",
                 Label.value == "boat",
-            ),
-            labels=And(
-                Label.key == "class",
                 Label.value == "swimmer",
             ),
         )

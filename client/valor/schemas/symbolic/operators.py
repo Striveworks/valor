@@ -163,7 +163,8 @@ class Eq(Condition):
 class Ne(Condition):
     """Implementation of the inequality operator '!='."""
 
-    pass
+    def to_dict(self):
+        return Not(Eq(lhs=self.lhs, rhs=self.rhs)).to_dict()
 
 
 class Gt(Condition):

@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 from valor.schemas import Box, Embedding, Float, Raster, TaskTypeEnum
-from valor.schemas.symbolic.operators import Condition, Function
+from valor.schemas.symbolic.operators import Condition, Eq, Function, Ne
 
 
 def get_function_name(fn: str) -> str:
@@ -80,7 +80,12 @@ def _test_generic(
         # test functional dictionary generation
         expr = C.__getattribute__(op)(a)
         expr_dict = expr.to_dict()
-        if issubclass(type(expr), Function):
+        if isinstance(expr, Ne):
+            # this is an edge case as the Ne operator is currently set to Not(Equal(A, B))
+            assert len(expr_dict) == 2
+            assert expr_dict["op"] == "not"
+            assert expr_dict["args"] == Eq(C, A).to_dict()
+        elif issubclass(type(expr), Function):
             assert len(expr_dict) == 2
             assert expr_dict["op"] == get_function_name(op)
             assert expr_dict["args"] == [

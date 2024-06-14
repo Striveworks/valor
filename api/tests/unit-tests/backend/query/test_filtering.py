@@ -3,7 +3,7 @@ import pytest
 from valor_api.backend import models
 from valor_api.backend.query.filtering import (
     _recursive_search_logic_tree,
-    create_cte,
+    create_where_expression,
     generate_logical_expression,
     map_filter_to_tables,
     map_keyed_symbol_to_resources,
@@ -47,9 +47,9 @@ def test_map_to_type_cast():
         assert type_ in map_type_to_jsonb_type_cast
 
 
-def test_create_cte_validation():
+def test_create_where_expression_validation():
     with pytest.raises(ValueError):
-        create_cte(
+        create_where_expression(
             Condition(
                 lhs="symbol",  # type: ignore - testing
                 rhs=Value(type=SupportedType.STRING, value="some_name"),
@@ -57,7 +57,7 @@ def test_create_cte_validation():
             )
         )
     with pytest.raises(ValueError):
-        create_cte(
+        create_where_expression(
             Condition(
                 lhs=Symbol(name=SupportedSymbol.DATASET_NAME),
                 rhs="value",  # type: ignore - testing
@@ -65,7 +65,7 @@ def test_create_cte_validation():
             )
         )
     with pytest.raises(TypeError):
-        create_cte(
+        create_where_expression(
             Condition(
                 lhs=Symbol(name=SupportedSymbol.DATASET_NAME),
                 rhs=Value(type=SupportedType.INTEGER, value=1),
@@ -179,13 +179,16 @@ def test_generate_logical_expression_validation():
     # tree should be an int or a dict
     with pytest.raises(ValueError):
         generate_logical_expression(
-            root=select(models.Label.id).cte(),
+            ordered_ctes=[
+                select(models.Label.id).cte(),
+                select(models.Label.id).cte(),
+            ],
             tree=[0, 1],  # type: ignore - testing
-            prefix="cte",
         )
 
     # n-arg expressions should be represented by a list
     with pytest.raises(ValueError):
         generate_logical_expression(
-            root=select(models.Label.id).cte(), tree={"and": 0}, prefix="cte"
+            ordered_ctes=[select(models.Label.id).cte()],
+            tree={"and": 0},
         )

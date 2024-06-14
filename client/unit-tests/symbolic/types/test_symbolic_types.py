@@ -3,7 +3,7 @@ import typing
 
 import pytest
 
-from valor.schemas.symbolic.operators import Condition, Function
+from valor.schemas.symbolic.operators import Condition, Eq, Function, Ne
 from valor.schemas.symbolic.types import (
     Boolean,
     Date,
@@ -130,14 +130,17 @@ def _test_equatable(varA, varB, varC):
 
     # not equal
     assert (varA != varB).to_dict() == {
-        "op": "ne",
-        "lhs": {
-            "name": "a",
-            "key": None,
-        },
-        "rhs": {
-            "name": "b",
-            "key": None,
+        "op": "not",
+        "args": {
+            "op": "eq",
+            "lhs": {
+                "name": "a",
+                "key": None,
+            },
+            "rhs": {
+                "name": "b",
+                "key": None,
+            },
         },
     }
     assert (varA != varB).to_dict() == (varA != Symbol("B")).to_dict()
@@ -408,7 +411,12 @@ def _test_generic(
         # test functional dictionary generation
         expr = C.__getattribute__(op)(a)
         expr_dict = expr.to_dict()
-        if issubclass(type(expr), Function):
+        if isinstance(expr, Ne):
+            # this is an edge case as the Ne operator is currently set to Not(Equal(A, B))
+            assert len(expr_dict) == 2
+            assert expr_dict["op"] == "not"
+            assert expr_dict["args"] == Eq(C, A).to_dict()
+        elif issubclass(type(expr), Function):
             assert len(expr_dict) == 2
             assert expr_dict["op"] == get_function_name(op)
             assert expr_dict["args"] == [
