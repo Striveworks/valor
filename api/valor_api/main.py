@@ -1473,6 +1473,41 @@ def get_evaluations(
         raise exceptions.create_http_error(e)
 
 
+@app.delete(
+    "/evaluations/{evaluation_id}",
+    dependencies=[Depends(token_auth_scheme)],
+    tags=["Evaluations"],
+)
+def delete_evaluation(
+    evaluation_id: int,
+    db: Session = Depends(get_db),
+):
+    """
+    Delete a evaluation from the database.
+
+    DELETE Endpoint: `/evaluations/{evaluation_id}`
+
+    Parameters
+    ----------
+    evaluation_id : int
+        The evaluation identifier.
+    db : Session
+        The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
+
+    Raises
+    ------
+    HTTPException (404)
+        If the evaluation doesn't exist.
+    HTTPException (409)
+        If the evaluation isn't in the correct state to be deleted.
+    """
+    logger.debug(f"request to delete evaluation {evaluation_id}")
+    try:
+        crud.delete_evaluation(db=db, evaluation_id=evaluation_id)
+    except Exception as e:
+        raise exceptions.create_http_error(e)
+
+
 """ AUTHENTICATION """
 
 

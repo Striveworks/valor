@@ -831,6 +831,19 @@ class ClientConnection:
 
         return self._requests_get_rel_host(endpoint).json()
 
+    def delete_evaluation(self, evaluation_id: int) -> None:
+        """
+        Deletes an evaluation.
+
+        `DELETE` endpoint.
+
+        Parameters
+        ----------
+        evaluation_id : int
+            The id of the evaluation to be deleted.
+        """
+        self._requests_delete_rel_host(f"evaluations/{evaluation_id}")
+
     def get_user(self) -> Union[str, None]:
         """
         Gets the users e-mail address (in the case when auth is enabled)
