@@ -14,7 +14,7 @@ from valor import (
     Model,
     Prediction,
 )
-from valor.enums import EvaluationStatus
+from valor.enums import EvaluationStatus, MetricType
 
 
 def test_evaluate_segmentation(
@@ -64,7 +64,7 @@ def test_evaluate_segmentation(
 
     # check that metrics arg works correctly
     selected_metrics = random.sample(
-        ["IOU", "mIOU"],
+        [MetricType.IOU, MetricType.mIOU],
         1,
     )
     eval_job_random_metrics = model.evaluate_segmentation(
@@ -220,7 +220,7 @@ def test_evaluate_segmentation_with_label_maps(
     # test only passing in one metric or the other
     eval_job = model.evaluate_segmentation(
         dataset,
-        metrics_to_return=["IOU"],
+        metrics_to_return=[MetricType.IOU],
         label_map={
             Label(key=f"k{i}", value=f"v{i}"): Label(key="foo", value="bar")
             for i in range(1, 4)
@@ -232,7 +232,7 @@ def test_evaluate_segmentation_with_label_maps(
 
     eval_job = model.evaluate_segmentation(
         dataset,
-        metrics_to_return=["mIOU"],
+        metrics_to_return=[MetricType.mIOU],
         label_map={
             Label(key=f"k{i}", value=f"v{i}"): Label(key="foo", value="bar")
             for i in range(1, 4)
@@ -240,4 +240,4 @@ def test_evaluate_segmentation_with_label_maps(
     )
 
     assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
-    assert set([m["type"] for m in eval_job.metrics]) == set(["mIOU"])
+    assert set([m["type"] for m in eval_job.metrics]) == set([MetricType.mIOU])

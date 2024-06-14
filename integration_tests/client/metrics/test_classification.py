@@ -18,7 +18,7 @@ from valor import (
     Model,
     Prediction,
 )
-from valor.enums import EvaluationStatus
+from valor.enums import EvaluationStatus, MetricType
 from valor.exceptions import ClientException, EvaluationRequestError
 
 
@@ -197,12 +197,12 @@ def test_evaluate_image_clf(
     # check that metrics arg works correctly
     selected_metrics = random.sample(
         [
-            "Accuracy",
-            "ROCAUC",
-            "Precision",
-            "F1",
-            "Recall",
-            "PrecisionRecallCurve",
+            MetricType.Accuracy,
+            MetricType.ROCAUC,
+            MetricType.Precision,
+            MetricType.F1,
+            MetricType.Recall,
+            MetricType.PrecisionRecallCurve,
         ],
         2,
     )
@@ -1017,13 +1017,13 @@ def test_evaluate_classification_with_label_maps(
         label_map=label_mapping,
         pr_curve_max_examples=3,
         metrics_to_return=[
-            "Precision",
-            "Recall",
-            "F1",
-            "Accuracy",
-            "ROCAUC",
-            "PrecisionRecallCurve",
-            "DetailedPrecisionRecallCurve",
+            MetricType.Precision,
+            MetricType.Recall,
+            MetricType.F1,
+            MetricType.Accuracy,
+            MetricType.ROCAUC,
+            MetricType.PrecisionRecallCurve,
+            MetricType.DetailedPrecisionRecallCurve,
         ],
     )
     assert eval_job.id

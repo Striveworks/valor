@@ -279,37 +279,38 @@ class Annotation(StaticCollection):
     ... )
 
     Object-Detection Box
-    >>> annotation = Annotation.create(
+    >>> annotation = Annotation(
     ...     labels=[Label(key="k1", value="v1")],
-    ...    bounding_box=box2,
+    ...     bounding_box=box2,
     ... )
 
     Object-Detection Polygon
-    >>> annotation = Annotation.create(
+    >>> annotation = Annotation(
     ...     labels=[Label(key="k1", value="v1")],
     ...     polygon=BoundingPolygon(...),
     ... )
 
-    Object-Detection Raster
-    >>> annotation = Annotation.create(
+     Raster
+    >>> annotation = Annotation(
     ...     labels=[Label(key="k1", value="v1")],
     ...     raster=Raster(...),
     ...     is_instance=True
     ... )
 
-    Semantic-Segmentation Raster
-    >>> annotation = Annotation.create(
-    ...     labels=[Label(key="k1", value="v1")],
-    ...     raster=Raster(...),
-    ...     is_instance=False # or None
-    ... )
-
-    Defining all supported annotation types is allowed!
-    >>> Annotation.create(
+    Object-Detection with all supported Geometries defined.
+    >>> Annotation(
     ...     labels=[Label(key="k1", value="v1")],
     ...     bounding_box=Box(...),
     ...     polygon=BoundingPolygon(...),
     ...     raster=Raster(...),
+    ...     is_instance=True,
+    ... )
+
+    Semantic-Segmentation Raster
+    >>> annotation = Annotation(
+    ...     labels=[Label(key="k1", value="v1")],
+    ...     raster=Raster(...),
+    ...     is_instance=False # or None
     ... )
     """
 
