@@ -22,7 +22,7 @@ from valor import (
     Model,
     Prediction,
 )
-from valor.enums import AnnotationType, EvaluationStatus, TaskType
+from valor.enums import AnnotationType, EvaluationStatus, MetricType, TaskType
 from valor.exceptions import ClientException
 from valor.schemas import Box
 from valor_api.backend import models
@@ -461,13 +461,13 @@ def test_evaluate_detection(
     # check that metrics arg works correctly
     selected_metrics = random.sample(
         [
-            "AP",
-            "AR",
-            "mAP",
-            "APAveragedOverIOUs",
-            "mAR",
-            "mAPAveragedOverIOUs",
-            "PrecisionRecallCurve",
+            MetricType.AP,
+            MetricType.AR,
+            MetricType.mAP,
+            MetricType.APAveragedOverIOUs,
+            MetricType.mAR,
+            MetricType.mAPAveragedOverIOUs,
+            MetricType.PrecisionRecallCurve,
         ],
         2,
     )
@@ -918,7 +918,7 @@ def test_get_evaluations(
     with pytest.raises(ClientException):
         both_evaluations_from_evaluation_ids_sorted = client.get_evaluations(
             evaluation_ids=[eval_job.id, eval_job2.id],
-            metrics_to_sort_by=["AP"],
+            metrics_to_sort_by=[MetricType.AP],  # type: ignore - testing
         )
 
 
@@ -1168,14 +1168,14 @@ def test_evaluate_detection_with_label_maps(
         iou_thresholds_to_return=[0.1, 0.6],
         pr_curve_max_examples=1,
         metrics_to_return=[
-            "AP",
-            "AR",
-            "mAP",
-            "APAveragedOverIOUs",
-            "mAR",
-            "mAPAveragedOverIOUs",
-            "PrecisionRecallCurve",
-            "DetailedPrecisionRecallCurve",
+            MetricType.AP,
+            MetricType.AR,
+            MetricType.mAP,
+            MetricType.APAveragedOverIOUs,
+            MetricType.mAR,
+            MetricType.mAPAveragedOverIOUs,
+            MetricType.PrecisionRecallCurve,
+            MetricType.DetailedPrecisionRecallCurve,
         ],
     )
 
@@ -1888,13 +1888,13 @@ def test_evaluate_detection_with_label_maps(
         label_map=label_mapping,
         recall_score_threshold=0.8,
         metrics_to_return=[
-            "AP",
-            "AR",
-            "mAP",
-            "APAveragedOverIOUs",
-            "mAR",
-            "mAPAveragedOverIOUs",
-            "PrecisionRecallCurve",
+            MetricType.AP,
+            MetricType.AR,
+            MetricType.mAP,
+            MetricType.APAveragedOverIOUs,
+            MetricType.mAR,
+            MetricType.mAPAveragedOverIOUs,
+            MetricType.PrecisionRecallCurve,
         ],
     )
 
@@ -2567,7 +2567,7 @@ def test_detailed_precision_recall_curve(
         dataset,
         pr_curve_max_examples=1,
         metrics_to_return=[
-            "DetailedPrecisionRecallCurve",
+            MetricType.DetailedPrecisionRecallCurve,
         ],
     )
     eval_job.wait_for_completion(timeout=30)
@@ -2692,7 +2692,7 @@ def test_detailed_precision_recall_curve(
         dataset,
         pr_curve_max_examples=1,
         metrics_to_return=[
-            "DetailedPrecisionRecallCurve",
+            MetricType.DetailedPrecisionRecallCurve,
         ],
         pr_curve_iou_threshold=0.45,  # actual IOU is .481
     )
