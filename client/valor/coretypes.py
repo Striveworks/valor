@@ -156,7 +156,7 @@ class Evaluation:
             The names of the datasets the model was evaluated over.
         model_name : str
             The name of the evaluated model.
-        filters : schemas.Filter
+        filters : dict
             The filter used to select data partitions for evaluation.
         status : EvaluationStatus
             The status of the evaluation.
@@ -178,7 +178,7 @@ class Evaluation:
         id: int,
         dataset_names: list[str],
         model_name: str,
-        filters: Filter,
+        filters: dict,
         parameters: EvaluationParameters,
         status: EvaluationStatus,
         metrics: List[Dict],
@@ -190,9 +190,7 @@ class Evaluation:
         self.id = id
         self.dataset_names = dataset_names
         self.model_name = model_name
-        self.filters = (
-            Filter(**filters) if isinstance(filters, dict) else Filter()
-        )
+        self.filters = filters
         self.parameters = (
             EvaluationParameters(**parameters)
             if isinstance(parameters, dict)
@@ -277,7 +275,7 @@ class Evaluation:
             "id": self.id,
             "dataset_names": self.dataset_names,
             "model_name": self.model_name,
-            "filters": self.filters.to_dict(),
+            "filters": self.filters,
             "parameters": asdict(self.parameters),
             "status": self.status.value,
             "metrics": self.metrics,

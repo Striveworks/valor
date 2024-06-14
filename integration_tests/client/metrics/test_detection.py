@@ -26,8 +26,6 @@ from valor.exceptions import ClientException
 from valor.schemas import Box
 from valor_api.backend import models
 
-default_filter_properties = Filter().to_dict()
-
 
 def test_evaluate_detection(
     db: Session,
@@ -141,7 +139,6 @@ def test_evaluate_detection(
         "dataset_names": ["test_dataset"],
         "model_name": model_name,
         "filters": {
-            **default_filter_properties,
             "labels": {
                 "lhs": {
                     "name": "label.key",
@@ -276,7 +273,6 @@ def test_evaluate_detection(
         "dataset_names": ["test_dataset"],
         "model_name": model_name,
         "filters": {
-            **default_filter_properties,
             "annotations": {
                 "args": [
                     {
@@ -370,7 +366,6 @@ def test_evaluate_detection(
         "dataset_names": ["test_dataset"],
         "model_name": model_name,
         "filters": {
-            **default_filter_properties,
             "annotations": {
                 "lhs": {
                     "name": "annotation.bounding_box.area",
@@ -460,7 +455,6 @@ def test_evaluate_detection(
         "dataset_names": ["test_dataset"],
         "model_name": model_name,
         "filters": {
-            **default_filter_properties,
             "annotations": {
                 "args": [
                     {
@@ -685,7 +679,6 @@ def test_evaluate_detection_with_json_filters(
         "dataset_names": ["test_dataset"],
         "model_name": model_name,
         "filters": {
-            **default_filter_properties,
             "annotations": {
                 "args": [
                     {

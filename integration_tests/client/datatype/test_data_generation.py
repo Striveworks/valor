@@ -391,7 +391,6 @@ def test_generate_prediction_data(client: Client):
         "dataset_names": [dataset_name],
         "model_name": model_name,
         "filters": {
-            **Filter().to_dict(),  # default filter properties with overrides below
             "labels": {
                 "lhs": {
                     "name": "label.key",

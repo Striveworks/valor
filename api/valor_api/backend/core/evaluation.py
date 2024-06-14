@@ -1,6 +1,8 @@
+import warnings
 from datetime import timezone
 from typing import Sequence
 
+from pydantic import ValidationError
 from sqlalchemy import (
     ColumnElement,
     and_,
@@ -21,6 +23,7 @@ from sqlalchemy.sql.elements import BinaryExpression
 from valor_api import api_utils, enums, exceptions, schemas
 from valor_api.backend import core, models
 from valor_api.backend.query import generate_query
+from valor_api.schemas import migrations
 
 
 def _create_dataset_expr_from_list(
@@ -245,56 +248,6 @@ def validate_request(
         )
 
 
-def _create_response(
-    db: Session,
-    evaluation: models.Evaluation,
-    **kwargs,
-) -> schemas.EvaluationResponse:
-    """Converts a evaluation row into a response schema."""
-    metrics = db.query(
-        select(models.Metric)
-        .where(
-            and_(
-                models.Metric.evaluation_id == evaluation.id,
-                models.Metric.type.in_(
-                    evaluation.parameters["metrics_to_return"]
-                ),
-            )
-        )
-        .subquery()
-    ).all()
-    confusion_matrices = db.query(
-        select(models.ConfusionMatrix)
-        .where(models.ConfusionMatrix.evaluation_id == evaluation.id)
-        .subquery()
-    ).all()
-    return schemas.EvaluationResponse(
-        id=evaluation.id,
-        dataset_names=evaluation.dataset_names,
-        model_name=evaluation.model_name,
-        filters=evaluation.filters,
-        parameters=evaluation.parameters,
-        status=enums.EvaluationStatus(evaluation.status),
-        metrics=[
-            _convert_db_metric_to_pydantic_metric(db, metric)
-            for metric in metrics
-        ],
-        confusion_matrices=[
-            schemas.ConfusionMatrixResponse(
-                label_key=matrix.label_key,
-                entries=[
-                    schemas.ConfusionMatrixEntry(**entry)
-                    for entry in matrix.value
-                ],
-            )
-            for matrix in confusion_matrices
-        ],
-        created_at=evaluation.created_at.replace(tzinfo=timezone.utc),
-        meta=evaluation.meta,
-        **kwargs,
-    )
-
-
 def _validate_evaluation_filter(
     db: Session,
     evaluation: models.Evaluation,
@@ -363,6 +316,56 @@ def _validate_evaluation_filter(
         )
 
 
+def _create_response(
+    db: Session,
+    evaluation: models.Evaluation,
+    **kwargs,
+) -> schemas.EvaluationResponse:
+    """Converts a evaluation row into a response schema."""
+    metrics = db.query(
+        select(models.Metric)
+        .where(
+            and_(
+                models.Metric.evaluation_id == evaluation.id,
+                models.Metric.type.in_(
+                    evaluation.parameters["metrics_to_return"]
+                ),
+            )
+        )
+        .subquery()
+    ).all()
+    confusion_matrices = db.query(
+        select(models.ConfusionMatrix)
+        .where(models.ConfusionMatrix.evaluation_id == evaluation.id)
+        .subquery()
+    ).all()
+    return schemas.EvaluationResponse(
+        id=evaluation.id,
+        dataset_names=evaluation.dataset_names,
+        model_name=evaluation.model_name,
+        filters=evaluation.filters,
+        parameters=evaluation.parameters,
+        status=enums.EvaluationStatus(evaluation.status),
+        metrics=[
+            _convert_db_metric_to_pydantic_metric(db, metric)
+            for metric in metrics
+        ],
+        confusion_matrices=[
+            schemas.ConfusionMatrixResponse(
+                label_key=matrix.label_key,
+                entries=[
+                    schemas.ConfusionMatrixEntry(**entry)
+                    for entry in matrix.value
+                ],
+            )
+            for matrix in confusion_matrices
+        ],
+        created_at=evaluation.created_at.replace(tzinfo=timezone.utc),
+        meta=evaluation.meta,
+        **kwargs,
+    )
+
+
 def _create_responses(
     db: Session,
     evaluations: list[models.Evaluation],
@@ -388,36 +391,47 @@ def _create_responses(
             raise exceptions.EvaluationDoesNotExistError()
 
         parameters = schemas.EvaluationParameters(**evaluation.parameters)
-        filters = schemas.Filter(**evaluation.filters)
+        kwargs = dict()
+        try:
+            filters = schemas.Filter(**evaluation.filters)
 
-        groundtruth_filter = filters.model_copy()
-        groundtruth_filter.predictions = None
+            groundtruth_filter = filters.model_copy()
+            groundtruth_filter.predictions = None
 
-        prediction_filter = filters.model_copy()
-        prediction_filter.groundtruths = None
+            prediction_filter = filters.model_copy()
+            prediction_filter.groundtruths = None
 
-        match parameters.task_type:
-            case enums.TaskType.CLASSIFICATION:
-                kwargs = {}
-            case (
-                enums.TaskType.OBJECT_DETECTION
-                | enums.TaskType.SEMANTIC_SEGMENTATION
-            ):
-                (
-                    missing_pred_labels,
-                    ignored_pred_labels,
-                ) = core.get_disjoint_labels(
-                    db,
-                    groundtruth_filter,
-                    prediction_filter,
-                    label_map=parameters.label_map,
+            match parameters.task_type:
+                case enums.TaskType.CLASSIFICATION:
+                    kwargs = {}
+                case (
+                    enums.TaskType.OBJECT_DETECTION
+                    | enums.TaskType.SEMANTIC_SEGMENTATION
+                ):
+                    (
+                        missing_pred_labels,
+                        ignored_pred_labels,
+                    ) = core.get_disjoint_labels(
+                        db,
+                        groundtruth_filter,
+                        prediction_filter,
+                        label_map=parameters.label_map,
+                    )
+                    kwargs = {
+                        "missing_pred_labels": missing_pred_labels,
+                        "ignored_pred_labels": ignored_pred_labels,
+                    }
+                case _:
+                    raise NotImplementedError
+        except ValidationError as e:
+            try:
+                migrations.DeprecatedFilter(**evaluation.filters)
+                warnings.warn(
+                    "Evaluation response is using a deprecated filter format.",
+                    DeprecationWarning,
                 )
-                kwargs = {
-                    "missing_pred_labels": missing_pred_labels,
-                    "ignored_pred_labels": ignored_pred_labels,
-                }
-            case _:
-                raise NotImplementedError
+            except ValidationError:
+                raise e
 
         results.append(
             _create_response(
