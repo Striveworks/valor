@@ -3,12 +3,18 @@ from typing import Any, Optional, Union
 
 
 class Condition:
-    """Base class for defined a filter condition."""
+    """Base class for defining a conditional operation."""
 
     def __init__(self, lhs: Any, rhs: Optional[Any] = None) -> None:
         """
-        TODO
+        Create a condition.
 
+        Parameters
+        ----------
+        lhs : Variable
+            A variable.
+        rhs : Variable, optional
+            An optional rhs variable.
         """
         # validate lhs
         if not lhs.is_symbolic:

@@ -112,7 +112,9 @@ def test_get_datums(
         len(
             dataset_with_metadata.get_datums(
                 filters=Filter(
-                    datums=(Datum.metadata["metadatum1"] == "nonexistent value")  # type: ignore - issue #605
+                    datums=(
+                        Datum.metadata["metadatum1"] == "nonexistent value"
+                    )
                 )
             )
         )

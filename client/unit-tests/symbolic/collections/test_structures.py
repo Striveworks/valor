@@ -227,7 +227,9 @@ def test_list():
     }
 
     # test decode from json dict
-    assert List[Float].decode_value([0.1, 0.2, 0.3]).get_value() == [  # type: ignore - issue #604
+    assert List[Float].decode_value(
+        [0.1, 0.2, 0.3]
+    ).get_value() == [  # type: ignore - issue #604
         0.1,
         0.2,
         0.3,

@@ -555,10 +555,18 @@ def test_integer():
         _test_unsupported(objcls, permutations, op)
 
     # test equatable
-    assert (Integer.nullable(None) == Integer(1)).get_value() is False  # type: ignore - issue #604
-    assert (Integer(1) == Integer.nullable(None)).get_value() is False  # type: ignore - issue #604
-    assert (Integer.nullable(None) != Integer(1)).get_value() is True  # type: ignore - issue #604
-    assert (Integer(1) != Integer.nullable(None)).get_value() is True  # type: ignore - issue #604
+    assert (
+        Integer.nullable(None) == Integer(1)
+    ).get_value() is False  # type: ignore - issue #604
+    assert (
+        Integer(1) == Integer.nullable(None)
+    ).get_value() is False  # type: ignore - issue #604
+    assert (
+        Integer.nullable(None) != Integer(1)
+    ).get_value() is True  # type: ignore - issue #604
+    assert (
+        Integer(1) != Integer.nullable(None)
+    ).get_value() is True  # type: ignore - issue #604
 
     # test nullable
     v1 = objcls.nullable(None)
@@ -869,9 +877,6 @@ def test_point():
     # test encoding
     _test_encoding(objcls, (1, -1), (1, -1))
 
-    # test geojson rules
-    pass  # TODO
-
 
 def test_multipoint():
     # interoperable with GeoJSON-style 'multipoint' geometry
@@ -908,9 +913,6 @@ def test_multipoint():
     # test encoding
     _test_encoding(objcls, [(0, 0), (1, 1)], [(0, 0), (1, 1)])
 
-    # test geojson rules
-    pass  # TODO
-
 
 def test_linestring():
     # interoperable with GeoJSON-style 'linestring' geometry
@@ -946,9 +948,6 @@ def test_linestring():
 
     # test encoding
     _test_encoding(objcls, [(0, 0), (1, 1)], [(0, 0), (1, 1)])
-
-    # test geojson rules
-    pass  # TODO
 
 
 def test_multilinestring():
@@ -990,9 +989,6 @@ def test_multilinestring():
 
     # test encoding
     _test_encoding(objcls, [[(0, 0), (1, 1)]], [[(0, 0), (1, 1)]])
-
-    # test geojson rules
-    pass  # TODO
 
 
 def test_polygon():
@@ -1051,9 +1047,6 @@ def test_polygon():
     # test that property 'area' is not accessible when object is a value
     with pytest.raises(ValueError):
         objcls(permutations[0][0]).area
-
-    # test geojson rules
-    pass  # TODO
 
 
 def test_multipolygon():
@@ -1121,9 +1114,6 @@ def test_multipolygon():
     # test that property 'area' is not accessible when object is a value
     with pytest.raises(ValueError):
         objcls(permutations[0][0]).area
-
-    # test geojson rules
-    pass  # TODO
 
 
 def test_nullable():
