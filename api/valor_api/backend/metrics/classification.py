@@ -862,7 +862,10 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
         ),
     ]
 
-    if enums.MetricType.PrecisionRecallCurve in metrics_to_return:
+    if (
+        enums.MetricType.PrecisionRecallCurve in metrics_to_return
+        or enums.MetricType.DetailedPrecisionRecallCurve in metrics_to_return
+    ):
         # calculate the number of unique datums
         # used to determine the number of true negatives
         gt_datums = generate_query(
