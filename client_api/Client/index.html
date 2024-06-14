@@ -273,6 +273,13 @@
 </a>
 </li>
 <li class="md-nav__item">
+<a class="md-nav__link" href="#valor.Client.delete_evaluation">
+<span class="md-ellipsis">
+      delete_evaluation
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
 <a class="md-nav__link" href="#valor.Client.delete_model">
 <span class="md-ellipsis">
       delete_model
@@ -652,6 +659,13 @@
 <a class="md-nav__link" href="#valor.Client.delete_dataset">
 <span class="md-ellipsis">
       delete_dataset
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#valor.Client.delete_evaluation">
+<span class="md-ellipsis">
+      delete_evaluation
     </span>
 </a>
 </li>
@@ -1504,7 +1518,31 @@
 <span class="normal"><a href="#__codelineno-0-1803">1803</a></span>
 <span class="normal"><a href="#__codelineno-0-1804">1804</a></span>
 <span class="normal"><a href="#__codelineno-0-1805">1805</a></span>
-<span class="normal"><a href="#__codelineno-0-1806">1806</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-1140"><a id="__codelineno-0-1140" name="__codelineno-0-1140"></a><span class="k">class</span> <span class="nc">Client</span><span class="p">:</span>
+<span class="normal"><a href="#__codelineno-0-1806">1806</a></span>
+<span class="normal"><a href="#__codelineno-0-1807">1807</a></span>
+<span class="normal"><a href="#__codelineno-0-1808">1808</a></span>
+<span class="normal"><a href="#__codelineno-0-1809">1809</a></span>
+<span class="normal"><a href="#__codelineno-0-1810">1810</a></span>
+<span class="normal"><a href="#__codelineno-0-1811">1811</a></span>
+<span class="normal"><a href="#__codelineno-0-1812">1812</a></span>
+<span class="normal"><a href="#__codelineno-0-1813">1813</a></span>
+<span class="normal"><a href="#__codelineno-0-1814">1814</a></span>
+<span class="normal"><a href="#__codelineno-0-1815">1815</a></span>
+<span class="normal"><a href="#__codelineno-0-1816">1816</a></span>
+<span class="normal"><a href="#__codelineno-0-1817">1817</a></span>
+<span class="normal"><a href="#__codelineno-0-1818">1818</a></span>
+<span class="normal"><a href="#__codelineno-0-1819">1819</a></span>
+<span class="normal"><a href="#__codelineno-0-1820">1820</a></span>
+<span class="normal"><a href="#__codelineno-0-1821">1821</a></span>
+<span class="normal"><a href="#__codelineno-0-1822">1822</a></span>
+<span class="normal"><a href="#__codelineno-0-1823">1823</a></span>
+<span class="normal"><a href="#__codelineno-0-1824">1824</a></span>
+<span class="normal"><a href="#__codelineno-0-1825">1825</a></span>
+<span class="normal"><a href="#__codelineno-0-1826">1826</a></span>
+<span class="normal"><a href="#__codelineno-0-1827">1827</a></span>
+<span class="normal"><a href="#__codelineno-0-1828">1828</a></span>
+<span class="normal"><a href="#__codelineno-0-1829">1829</a></span>
+<span class="normal"><a href="#__codelineno-0-1830">1830</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-1140"><a id="__codelineno-0-1140" name="__codelineno-0-1140"></a><span class="k">class</span> <span class="nc">Client</span><span class="p">:</span>
 </span><span id="__span-0-1141"><a id="__codelineno-0-1141" name="__codelineno-0-1141"></a><span class="w">    </span><span class="sd">"""</span>
 </span><span id="__span-0-1142"><a id="__codelineno-0-1142" name="__codelineno-0-1142"></a><span class="sd">    Valor client object for interacting with the api.</span>
 </span><span id="__span-0-1143"><a id="__codelineno-0-1143" name="__codelineno-0-1143"></a>
@@ -2171,6 +2209,30 @@
 </span><span id="__span-0-1804"><a id="__codelineno-0-1804" name="__codelineno-0-1804"></a>                <span class="n">request</span><span class="p">,</span> <span class="n">allow_retries</span><span class="o">=</span><span class="n">allow_retries</span>
 </span><span id="__span-0-1805"><a id="__codelineno-0-1805" name="__codelineno-0-1805"></a>            <span class="p">)</span>
 </span><span id="__span-0-1806"><a id="__codelineno-0-1806" name="__codelineno-0-1806"></a>        <span class="p">]</span>
+</span><span id="__span-0-1807"><a id="__codelineno-0-1807" name="__codelineno-0-1807"></a>
+</span><span id="__span-0-1808"><a id="__codelineno-0-1808" name="__codelineno-0-1808"></a>    <span class="k">def</span> <span class="nf">delete_evaluation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">evaluation_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">timeout</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="__span-0-1809"><a id="__codelineno-0-1809" name="__codelineno-0-1809"></a><span class="w">        </span><span class="sd">"""</span>
+</span><span id="__span-0-1810"><a id="__codelineno-0-1810" name="__codelineno-0-1810"></a><span class="sd">        Deletes an evaluation.</span>
+</span><span id="__span-0-1811"><a id="__codelineno-0-1811" name="__codelineno-0-1811"></a>
+</span><span id="__span-0-1812"><a id="__codelineno-0-1812" name="__codelineno-0-1812"></a><span class="sd">        Parameters</span>
+</span><span id="__span-0-1813"><a id="__codelineno-0-1813" name="__codelineno-0-1813"></a><span class="sd">        ----------</span>
+</span><span id="__span-0-1814"><a id="__codelineno-0-1814" name="__codelineno-0-1814"></a><span class="sd">        evaluation_id : int</span>
+</span><span id="__span-0-1815"><a id="__codelineno-0-1815" name="__codelineno-0-1815"></a><span class="sd">            The id of the evaluation to be deleted.</span>
+</span><span id="__span-0-1816"><a id="__codelineno-0-1816" name="__codelineno-0-1816"></a><span class="sd">        timeout : int</span>
+</span><span id="__span-0-1817"><a id="__codelineno-0-1817" name="__codelineno-0-1817"></a><span class="sd">            The number of seconds to wait in order to confirm that the model was deleted.</span>
+</span><span id="__span-0-1818"><a id="__codelineno-0-1818" name="__codelineno-0-1818"></a><span class="sd">        """</span>
+</span><span id="__span-0-1819"><a id="__codelineno-0-1819" name="__codelineno-0-1819"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">delete_evaluation</span><span class="p">(</span><span class="n">evaluation_id</span><span class="p">)</span>
+</span><span id="__span-0-1820"><a id="__codelineno-0-1820" name="__codelineno-0-1820"></a>        <span class="k">if</span> <span class="n">timeout</span><span class="p">:</span>
+</span><span id="__span-0-1821"><a id="__codelineno-0-1821" name="__codelineno-0-1821"></a>            <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">timeout</span><span class="p">):</span>
+</span><span id="__span-0-1822"><a id="__codelineno-0-1822" name="__codelineno-0-1822"></a>                <span class="k">try</span><span class="p">:</span>
+</span><span id="__span-0-1823"><a id="__codelineno-0-1823" name="__codelineno-0-1823"></a>                    <span class="bp">self</span><span class="o">.</span><span class="n">get_evaluations</span><span class="p">(</span><span class="n">evaluation_ids</span><span class="o">=</span><span class="p">[</span><span class="n">evaluation_id</span><span class="p">])</span>
+</span><span id="__span-0-1824"><a id="__codelineno-0-1824" name="__codelineno-0-1824"></a>                <span class="k">except</span> <span class="n">EvaluationDoesNotExist</span><span class="p">:</span>
+</span><span id="__span-0-1825"><a id="__codelineno-0-1825" name="__codelineno-0-1825"></a>                    <span class="k">break</span>
+</span><span id="__span-0-1826"><a id="__codelineno-0-1826" name="__codelineno-0-1826"></a>                <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+</span><span id="__span-0-1827"><a id="__codelineno-0-1827" name="__codelineno-0-1827"></a>            <span class="k">else</span><span class="p">:</span>
+</span><span id="__span-0-1828"><a id="__codelineno-0-1828" name="__codelineno-0-1828"></a>                <span class="k">raise</span> <span class="ne">TimeoutError</span><span class="p">(</span>
+</span><span id="__span-0-1829"><a id="__codelineno-0-1829" name="__codelineno-0-1829"></a>                    <span class="s2">"Evaluation wasn't deleted within timeout interval"</span>
+</span><span id="__span-0-1830"><a id="__codelineno-0-1830" name="__codelineno-0-1830"></a>                <span class="p">)</span>
 </span></code></pre></div></td></tr></table></div>
 </details>
 <div class="doc doc-children">
@@ -2764,6 +2826,104 @@ Default is False.</p>
 </span><span id="__span-0-1502"><a id="__codelineno-0-1502" name="__codelineno-0-1502"></a>            <span class="k">raise</span> <span class="ne">TimeoutError</span><span class="p">(</span>
 </span><span id="__span-0-1503"><a id="__codelineno-0-1503" name="__codelineno-0-1503"></a>                <span class="s2">"Dataset wasn't deleted within timeout interval"</span>
 </span><span id="__span-0-1504"><a id="__codelineno-0-1504" name="__codelineno-0-1504"></a>            <span class="p">)</span>
+</span></code></pre></div></td></tr></table></div>
+</details>
+</div>
+</div>
+<div class="doc doc-object doc-function">
+<h3 class="doc doc-heading" id="valor.Client.delete_evaluation">
+<code class="highlight language-python"><span class="n">valor</span><span class="o">.</span><span class="n">Client</span><span class="o">.</span><span class="n">delete_evaluation</span><span class="p">(</span><span class="n">evaluation_id</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span></code>
+</h3>
+<div class="doc doc-contents">
+<p>Deletes an evaluation.</p>
+<p><span class="doc-section-title">Parameters:</span></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr class="doc-section-item">
+<td><code>evaluation_id</code></td>
+<td>
+<code>int</code>
+</td>
+<td>
+<div class="doc-md-description">
+<p>The id of the evaluation to be deleted.</p>
+</div>
+</td>
+<td>
+<em>required</em>
+</td>
+</tr>
+<tr class="doc-section-item">
+<td><code>timeout</code></td>
+<td>
+<code>int</code>
+</td>
+<td>
+<div class="doc-md-description">
+<p>The number of seconds to wait in order to confirm that the model was deleted.</p>
+</div>
+</td>
+<td>
+<code>0</code>
+</td>
+</tr>
+</tbody>
+</table>
+<details class="quote">
+<summary>Source code in <code>valor/coretypes.py</code></summary>
+<div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-1808">1808</a></span>
+<span class="normal"><a href="#__codelineno-0-1809">1809</a></span>
+<span class="normal"><a href="#__codelineno-0-1810">1810</a></span>
+<span class="normal"><a href="#__codelineno-0-1811">1811</a></span>
+<span class="normal"><a href="#__codelineno-0-1812">1812</a></span>
+<span class="normal"><a href="#__codelineno-0-1813">1813</a></span>
+<span class="normal"><a href="#__codelineno-0-1814">1814</a></span>
+<span class="normal"><a href="#__codelineno-0-1815">1815</a></span>
+<span class="normal"><a href="#__codelineno-0-1816">1816</a></span>
+<span class="normal"><a href="#__codelineno-0-1817">1817</a></span>
+<span class="normal"><a href="#__codelineno-0-1818">1818</a></span>
+<span class="normal"><a href="#__codelineno-0-1819">1819</a></span>
+<span class="normal"><a href="#__codelineno-0-1820">1820</a></span>
+<span class="normal"><a href="#__codelineno-0-1821">1821</a></span>
+<span class="normal"><a href="#__codelineno-0-1822">1822</a></span>
+<span class="normal"><a href="#__codelineno-0-1823">1823</a></span>
+<span class="normal"><a href="#__codelineno-0-1824">1824</a></span>
+<span class="normal"><a href="#__codelineno-0-1825">1825</a></span>
+<span class="normal"><a href="#__codelineno-0-1826">1826</a></span>
+<span class="normal"><a href="#__codelineno-0-1827">1827</a></span>
+<span class="normal"><a href="#__codelineno-0-1828">1828</a></span>
+<span class="normal"><a href="#__codelineno-0-1829">1829</a></span>
+<span class="normal"><a href="#__codelineno-0-1830">1830</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-1808"><a id="__codelineno-0-1808" name="__codelineno-0-1808"></a><span class="k">def</span> <span class="nf">delete_evaluation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">evaluation_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">timeout</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="__span-0-1809"><a id="__codelineno-0-1809" name="__codelineno-0-1809"></a><span class="w">    </span><span class="sd">"""</span>
+</span><span id="__span-0-1810"><a id="__codelineno-0-1810" name="__codelineno-0-1810"></a><span class="sd">    Deletes an evaluation.</span>
+</span><span id="__span-0-1811"><a id="__codelineno-0-1811" name="__codelineno-0-1811"></a>
+</span><span id="__span-0-1812"><a id="__codelineno-0-1812" name="__codelineno-0-1812"></a><span class="sd">    Parameters</span>
+</span><span id="__span-0-1813"><a id="__codelineno-0-1813" name="__codelineno-0-1813"></a><span class="sd">    ----------</span>
+</span><span id="__span-0-1814"><a id="__codelineno-0-1814" name="__codelineno-0-1814"></a><span class="sd">    evaluation_id : int</span>
+</span><span id="__span-0-1815"><a id="__codelineno-0-1815" name="__codelineno-0-1815"></a><span class="sd">        The id of the evaluation to be deleted.</span>
+</span><span id="__span-0-1816"><a id="__codelineno-0-1816" name="__codelineno-0-1816"></a><span class="sd">    timeout : int</span>
+</span><span id="__span-0-1817"><a id="__codelineno-0-1817" name="__codelineno-0-1817"></a><span class="sd">        The number of seconds to wait in order to confirm that the model was deleted.</span>
+</span><span id="__span-0-1818"><a id="__codelineno-0-1818" name="__codelineno-0-1818"></a><span class="sd">    """</span>
+</span><span id="__span-0-1819"><a id="__codelineno-0-1819" name="__codelineno-0-1819"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">delete_evaluation</span><span class="p">(</span><span class="n">evaluation_id</span><span class="p">)</span>
+</span><span id="__span-0-1820"><a id="__codelineno-0-1820" name="__codelineno-0-1820"></a>    <span class="k">if</span> <span class="n">timeout</span><span class="p">:</span>
+</span><span id="__span-0-1821"><a id="__codelineno-0-1821" name="__codelineno-0-1821"></a>        <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">timeout</span><span class="p">):</span>
+</span><span id="__span-0-1822"><a id="__codelineno-0-1822" name="__codelineno-0-1822"></a>            <span class="k">try</span><span class="p">:</span>
+</span><span id="__span-0-1823"><a id="__codelineno-0-1823" name="__codelineno-0-1823"></a>                <span class="bp">self</span><span class="o">.</span><span class="n">get_evaluations</span><span class="p">(</span><span class="n">evaluation_ids</span><span class="o">=</span><span class="p">[</span><span class="n">evaluation_id</span><span class="p">])</span>
+</span><span id="__span-0-1824"><a id="__codelineno-0-1824" name="__codelineno-0-1824"></a>            <span class="k">except</span> <span class="n">EvaluationDoesNotExist</span><span class="p">:</span>
+</span><span id="__span-0-1825"><a id="__codelineno-0-1825" name="__codelineno-0-1825"></a>                <span class="k">break</span>
+</span><span id="__span-0-1826"><a id="__codelineno-0-1826" name="__codelineno-0-1826"></a>            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+</span><span id="__span-0-1827"><a id="__codelineno-0-1827" name="__codelineno-0-1827"></a>        <span class="k">else</span><span class="p">:</span>
+</span><span id="__span-0-1828"><a id="__codelineno-0-1828" name="__codelineno-0-1828"></a>            <span class="k">raise</span> <span class="ne">TimeoutError</span><span class="p">(</span>
+</span><span id="__span-0-1829"><a id="__codelineno-0-1829" name="__codelineno-0-1829"></a>                <span class="s2">"Evaluation wasn't deleted within timeout interval"</span>
+</span><span id="__span-0-1830"><a id="__codelineno-0-1830" name="__codelineno-0-1830"></a>            <span class="p">)</span>
 </span></code></pre></div></td></tr></table></div>
 </details>
 </div>
