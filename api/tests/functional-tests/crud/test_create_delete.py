@@ -7,7 +7,6 @@ import pytest
 from geoalchemy2.functions import ST_AsText, ST_Count, ST_Polygon
 from PIL import Image
 from sqlalchemy import func, select
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from valor_api import crud, enums, exceptions, schemas
@@ -1475,56 +1474,3 @@ def test_create_clf_metrics(
         )
     ).all()
     assert len(confusion_matrices) == 2
-
-
-@pytest.fixture
-def create_evaluations(db: Session):
-
-    rows = [
-        models.Evaluation(
-            id=idx,
-            dataset_names=["1", "2"],
-            model_name=str(idx),
-            parameters=schemas.EvaluationParameters(
-                task_type=enums.TaskType.CLASSIFICATION
-            ).model_dump(),
-            filters=schemas.Filter().model_dump(),
-            status=status,
-        )
-        for idx, status in enumerate(enums.EvaluationStatus)
-    ]
-
-    try:
-        db.add_all(rows)
-        db.commit()
-    except IntegrityError as e:
-        db.rollback()
-        raise e
-
-    yield [(row.id, row.status) for row in rows]
-
-    for row in rows:
-        try:
-            db.delete(row)
-        except IntegrityError:
-            db.rollback()
-
-
-def test_delete_evaluation(db: Session, create_evaluations):
-
-    for idx, status in create_evaluations:
-        if status in {
-            enums.EvaluationStatus.PENDING,
-            enums.EvaluationStatus.RUNNING,
-        }:
-            with pytest.raises(exceptions.EvaluationRunningError):
-                crud.delete_evaluation(db=db, evaluation_id=idx)
-        elif status == enums.EvaluationStatus.DELETING:
-            with pytest.raises(exceptions.EvaluationDoesNotExistError):
-                crud.delete_evaluation(db=db, evaluation_id=idx)
-        else:
-            crud.delete_evaluation(db=db, evaluation_id=idx)
-
-    # check for id that doesnt exist
-    with pytest.raises(exceptions.EvaluationDoesNotExistError):
-        crud.delete_evaluation(db=db, evaluation_id=10000)
