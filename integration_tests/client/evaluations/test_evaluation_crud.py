@@ -4,7 +4,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 # client
-from valor import Client
+from valor import Client, Dataset, GroundTruth, Label, Model, Prediction
+from valor.enums import EvaluationStatus
 from valor.exceptions import ClientException
 
 # api
@@ -99,3 +100,56 @@ def test_delete_evaluation(db: Session, client: Client, create_evaluations):
     with pytest.raises(ClientException) as e:
         client.delete_evaluation(evaluation_id=10000)
     assert "EvaluationDoesNotExistError" in str(e)
+
+
+def test_delete_evaluation_scope(
+    client: Client,
+    gt_clfs: list[GroundTruth],
+    pred_clfs: list[Prediction],
+    dataset_name: str,
+    model_name: str,
+):
+    dataset = Dataset.create(dataset_name)
+    for gt in gt_clfs:
+        dataset.add_groundtruth(gt)
+    dataset.finalize()
+
+    model = Model.create(model_name)
+    for pd in pred_clfs:
+        model.add_prediction(dataset, pd)
+    model.finalize_inferences(dataset)
+
+    eval1 = model.evaluate_classification(dataset)
+    assert eval1.wait_for_completion(timeout=30) == EvaluationStatus.DONE
+    eval2 = model.evaluate_classification(
+        dataset, filter_by=[Label.key == "k4"]
+    )
+    assert eval2.wait_for_completion(timeout=30)
+
+    assert eval1.id != eval2.id
+    assert len(client.get_evaluations(evaluation_ids=[eval1.id])) == 1
+    assert len(client.get_evaluations(evaluation_ids=[eval2.id])) == 1
+
+    # delete eval 1
+    client.delete_evaluation(eval1.id)
+
+    assert len(client.get_evaluations(evaluation_ids=[eval1.id])) == 0
+    assert len(client.get_evaluations(evaluation_ids=[eval2.id])) == 1
+
+    # show that we can still make evaluations
+    eval3 = model.evaluate_classification(dataset)
+    assert eval3.wait_for_completion(timeout=30)
+
+    assert eval1.id != eval2.id
+    assert eval1.id != eval3.id
+    assert eval2.id != eval3.id
+    assert len(client.get_evaluations(evaluation_ids=[eval1.id])) == 0
+    assert len(client.get_evaluations(evaluation_ids=[eval2.id])) == 1
+    assert len(client.get_evaluations(evaluation_ids=[eval3.id])) == 1
+
+    # show that eval1 was repreated in eval3
+    assert eval1.id != eval3.id
+    for metric in eval1.metrics:
+        assert metric in eval3.metrics
+    for metric in eval3.metrics:
+        assert metric in eval1.metrics
