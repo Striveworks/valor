@@ -11,7 +11,7 @@ from valor import (
     Model,
     Prediction,
 )
-from valor.enums import EvaluationStatus
+from valor.enums import EvaluationStatus, MetricType
 from valor.exceptions import ClientException
 from valor_api import crud, enums, schemas
 from valor_api.backend import core
@@ -440,10 +440,10 @@ def test_get_sorted_evaluations(
         evaluations = client.get_evaluations(
             datasets=["clf_dataset", "seg_dataset", "det_dataset"],
             metrics_to_sort_by=[
-                "mAPAveragedOverIOUs",
-                "Accuracy",
-                "mIOU",
-            ],
+                MetricType.mAPAveragedOverIOUs,
+                MetricType.Accuracy,
+                MetricType.mIOU,
+            ],  # type: ignore - testing
         )
 
     with pytest.raises(ClientException):
