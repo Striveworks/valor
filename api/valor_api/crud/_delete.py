@@ -35,5 +35,12 @@ def delete_evaluation(*, db: Session, evaluation_id: int):
     ----------
     evaluation_id : int
         The evaluation identifier.
+
+    Raises
+    ------
+    EvaluationRunningError
+        If the evaluation is currently running.
+    EvaluationDoesNotExistError
+        If the evaluation does not exist.
     """
     backend.delete_evaluation_from_id(db=db, evaluation_id=evaluation_id)

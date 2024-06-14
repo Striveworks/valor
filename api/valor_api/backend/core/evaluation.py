@@ -1070,6 +1070,10 @@ def delete_evaluation_from_id(db: Session, evaluation_id: int):
 
     Raises
     ------
+    EvaluationRunningError
+        If the evaluation is currently running.
+    EvaluationDoesNotExistError
+        If the evaluation does not exist.
     """
     evaluation = fetch_evaluation_from_id(db=db, evaluation_id=evaluation_id)
     if evaluation.status in {
