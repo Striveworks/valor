@@ -114,3 +114,22 @@ class EvaluationStatus(str, Enum):
             return {self.DELETING}
         else:
             raise NotImplementedError("State hasn't been implemented.")
+
+
+class MetricType(str, Enum):
+
+    Accuracy = ("Accuracy",)
+    Precision = ("Precision",)
+    Recall = ("Recall",)
+    F1 = ("F1",)
+    ROCAUC = ("ROCAUC",)
+    AP = "AP"
+    AR = "AR"
+    mAP = "mAP"
+    mAR = "mAR"
+    APAveragedOverIOUs = "APAveragedOverIOUs"
+    mAPAveragedOverIOUs = "mAPAveragedOverIOUs"
+    IOU = "IOU"
+    mIOU = "mIOU"
+    PrecisionRecallCurve = "PrecisionRecallCurve"
+    DetailedPrecisionRecallCurve = "DetailedPrecisionRecallCurve"

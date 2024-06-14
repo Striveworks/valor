@@ -7,7 +7,13 @@ from dataclasses import asdict, dataclass
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 from valor.client import ClientConnection, connect, get_connection
-from valor.enums import AnnotationType, EvaluationStatus, TableStatus, TaskType
+from valor.enums import (
+    AnnotationType,
+    EvaluationStatus,
+    MetricType,
+    TableStatus,
+    TaskType,
+)
 from valor.exceptions import (
     ClientException,
     DatasetDoesNotExistError,
@@ -875,7 +881,7 @@ class Model(StaticCollection):
         filter_by: Optional[FilterType] = None,
         label_map: Optional[Dict[Label, Label]] = None,
         pr_curve_max_examples: int = 1,
-        metrics_to_return: Optional[List[str]] = None,
+        metrics_to_return: Optional[List[MetricType]] = None,
         allow_retries: bool = False,
     ) -> Evaluation:
         """
@@ -889,7 +895,7 @@ class Model(StaticCollection):
             Optional set of constraints to filter evaluation by.
         label_map : Dict[Label, Label], optional
             Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
-        metrics: List[str], optional
+        metrics_to_return: List[MetricType], optional
             The list of metrics to compute, store, and return to the user.
         allow_retries : bool, default = False
             Option to retry previously failed evaluations.
@@ -902,6 +908,12 @@ class Model(StaticCollection):
         if not datasets and not filter_by:
             raise ValueError(
                 "Evaluation requires the definition of either datasets, dataset filters or both."
+            )
+        elif metrics_to_return and not set(metrics_to_return).issubset(
+            MetricType.classification()
+        ):
+            raise ValueError(
+                f"The following metrics are not supported for classification: '{set(metrics_to_return) - MetricType.classification()}'"
             )
 
         # format request
@@ -936,7 +948,7 @@ class Model(StaticCollection):
         iou_thresholds_to_return: Optional[List[float]] = None,
         label_map: Optional[Dict[Label, Label]] = None,
         recall_score_threshold: float = 0,
-        metrics_to_return: Optional[List[str]] = None,
+        metrics_to_return: Optional[List[MetricType]] = None,
         pr_curve_iou_threshold: float = 0.5,
         pr_curve_max_examples: int = 1,
         allow_retries: bool = False,
@@ -960,6 +972,8 @@ class Model(StaticCollection):
             Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
         recall_score_threshold: float, default=0
             The confidence score threshold for use when determining whether to count a prediction as a true positive or not while calculating Average Recall.
+        metrics_to_return: List[MetricType], optional
+            The list of metrics to compute, store, and return to the user.
         pr_curve_iou_threshold: float, optional
             The IOU threshold to use when calculating precision-recall curves. Defaults to 0.5.
         pr_curve_max_examples: int, optional
@@ -967,12 +981,18 @@ class Model(StaticCollection):
         allow_retries : bool, default = False
             Option to retry previously failed evaluations.
 
-
         Returns
         -------
         Evaluation
             A job object that can be used to track the status of the job and get the metrics of it upon completion.
         """
+        if metrics_to_return and not set(metrics_to_return).issubset(
+            MetricType.object_detection()
+        ):
+            raise ValueError(
+                f"The following metrics are not supported for object detection: '{set(metrics_to_return) - MetricType.object_detection()}'"
+            )
+
         if iou_thresholds_to_compute is None:
             iou_thresholds_to_compute = [
                 round(0.5 + 0.05 * i, 2) for i in range(10)
@@ -1014,7 +1034,7 @@ class Model(StaticCollection):
         datasets: Union[Dataset, List[Dataset]],
         filter_by: Optional[FilterType] = None,
         label_map: Optional[Dict[Label, Label]] = None,
-        metrics_to_return: Optional[List[str]] = None,
+        metrics_to_return: Optional[List[MetricType]] = None,
         allow_retries: bool = False,
     ) -> Evaluation:
         """
@@ -1028,7 +1048,7 @@ class Model(StaticCollection):
             Optional set of constraints to filter evaluation by.
         label_map : Dict[Label, Label], optional
             Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
-        metrics: List[str], optional
+        metrics_to_return: List[MetricType], optional
             The list of metrics to compute, store, and return to the user.
         allow_retries : bool, default = False
             Option to retry previously failed evaluations.
@@ -1038,6 +1058,13 @@ class Model(StaticCollection):
         Evaluation
             A job object that can be used to track the status of the job and get the metrics of it upon completion
         """
+        if metrics_to_return and not set(metrics_to_return).issubset(
+            MetricType.semantic_segmentation()
+        ):
+            raise ValueError(
+                f"The following metrics are not supported for semantic segmentation: '{set(metrics_to_return) - MetricType.semantic_segmentation()}'"
+            )
+
         # format request
         filters = self._format_constraints(datasets, filter_by)
         datasets = datasets if isinstance(datasets, list) else [datasets]

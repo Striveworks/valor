@@ -688,12 +688,12 @@ def test_compute_classification(
         label_map=None,
         pr_curve_max_examples=0,
         metrics_to_return=[
-            "Precision",
-            "Recall",
-            "F1",
-            "Accuracy",
-            "ROCAUC",
-            "PrecisionRecallCurve",
+            enums.MetricType.Precision,
+            enums.MetricType.Recall,
+            enums.MetricType.F1,
+            enums.MetricType.Accuracy,
+            enums.MetricType.ROCAUC,
+            enums.MetricType.PrecisionRecallCurve,
         ],
     )
 
@@ -931,8 +931,8 @@ def test__compute_curves(
         unique_datums=unique_datums,
         pr_curve_max_examples=1,
         metrics_to_return=[
-            "PrecisionRecallCurve",
-            "DetailedPrecisionRecallCurve",
+            enums.MetricType.PrecisionRecallCurve,
+            enums.MetricType.DetailedPrecisionRecallCurve,
         ],
     )
 
@@ -1074,8 +1074,8 @@ def test__compute_curves(
         unique_datums=unique_datums,
         pr_curve_max_examples=3,
         metrics_to_return=[
-            "PrecisionRecallCurve",
-            "DetailedPrecisionRecallCurve",
+            enums.MetricType.PrecisionRecallCurve,
+            enums.MetricType.DetailedPrecisionRecallCurve,
         ],
     )
 
@@ -1129,8 +1129,8 @@ def test__compute_curves(
         unique_datums=unique_datums,
         pr_curve_max_examples=0,
         metrics_to_return=[
-            "PrecisionRecallCurve",
-            "DetailedPrecisionRecallCurve",
+            enums.MetricType.PrecisionRecallCurve,
+            enums.MetricType.DetailedPrecisionRecallCurve,
         ],
     )
 

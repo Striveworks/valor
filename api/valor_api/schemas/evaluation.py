@@ -2,7 +2,12 @@ import datetime
 
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
-from valor_api.enums import AnnotationType, EvaluationStatus, TaskType
+from valor_api.enums import (
+    AnnotationType,
+    EvaluationStatus,
+    MetricType,
+    TaskType,
+)
 from valor_api.schemas.filters import Filter
 from valor_api.schemas.metrics import ConfusionMatrixResponse, Metric
 from valor_api.schemas.types import Label
@@ -39,7 +44,7 @@ class EvaluationParameters(BaseModel):
     """
 
     task_type: TaskType
-    metrics_to_return: list[str] | None = None
+    metrics_to_return: list[MetricType] | None = None
     label_map: LabelMapType | None = None
 
     convert_annotations_to_type: AnnotationType | None = None
@@ -65,23 +70,26 @@ class EvaluationParameters(BaseModel):
             match values.task_type:
                 case TaskType.CLASSIFICATION:
                     values.metrics_to_return = [
-                        "Accuracy",
-                        "Precision",
-                        "Recall",
-                        "F1",
-                        "ROCAUC",
+                        MetricType.Accuracy,
+                        MetricType.Precision,
+                        MetricType.Recall,
+                        MetricType.F1,
+                        MetricType.ROCAUC,
                     ]
                 case TaskType.OBJECT_DETECTION:
                     values.metrics_to_return = [
-                        "AP",
-                        "AR",
-                        "mAP",
-                        "APAveragedOverIOUs",
-                        "mAR",
-                        "mAPAveragedOverIOUs",
+                        MetricType.AP,
+                        MetricType.AR,
+                        MetricType.mAP,
+                        MetricType.APAveragedOverIOUs,
+                        MetricType.mAR,
+                        MetricType.mAPAveragedOverIOUs,
                     ]
                 case TaskType.SEMANTIC_SEGMENTATION:
-                    values.metrics_to_return = ["IOU", "mIOU"]
+                    values.metrics_to_return = [
+                        MetricType.IOU,
+                        MetricType.mIOU,
+                    ]
 
         match values.task_type:
             case TaskType.CLASSIFICATION | TaskType.SEMANTIC_SEGMENTATION:
