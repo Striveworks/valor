@@ -518,20 +518,16 @@ class Dataset(StaticCollection):
         """
         return Client(self.conn).get_labels_from_dataset(self)
 
-    def get_datums(self, filters: Optional[Filter] = None) -> List[Datum]:
+    def get_datums(self) -> List[Datum]:
         """
         Get all datums associated with a given dataset.
-
-        Parameters
-        ----------
-        filters
-            Optional constraints to filter by.
 
         Returns
         ----------
         List[Datum]
             A list of `Datums` associated with the dataset.
         """
+        filters = Filter(datums=(Dataset.name == self.name))  # type: ignore - #issue 605
         return Client(self.conn).get_datums(filters=filters)
 
     def get_evaluations(
