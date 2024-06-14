@@ -32,6 +32,7 @@ from .datum import (
 from .evaluation import (
     count_active_evaluations,
     create_or_get_evaluations,
+    delete_evaluation_from_id,
     delete_evaluations,
     fetch_evaluation_from_id,
     get_evaluation_requests_from_model,
@@ -131,6 +132,7 @@ __all__ = [
     "get_paginated_evaluations",
     "get_evaluation_status",
     "set_evaluation_status",
+    "delete_evaluation_from_id",
     "get_evaluation_requests_from_model",
     "count_active_evaluations",
     "delete_dataset_annotations",
