@@ -942,7 +942,8 @@ def _compute_detection_metrics(
 
     if (
         parameters.metrics_to_return
-        and "PrecisionRecallCurve" in parameters.metrics_to_return
+        and enums.MetricType.PrecisionRecallCurve
+        in parameters.metrics_to_return
     ):
         false_positive_entries = db.query(
             select(
@@ -1727,7 +1728,8 @@ def compute_detection_metrics(*_, db: Session, evaluation_id: int):
 
     if (
         parameters.metrics_to_return
-        and "DetailedPrecisionRecallCurve" in parameters.metrics_to_return
+        and enums.MetricType.DetailedPrecisionRecallCurve
+        in parameters.metrics_to_return
     ):
         # this function is more computationally expensive since it calculates IOUs for every groundtruth-prediction pair that shares a label key
         metrics = (

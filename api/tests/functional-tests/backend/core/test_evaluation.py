@@ -893,19 +893,19 @@ def test__fetch_evaluations_and_mark_for_deletion(
     # create two evaluations
     for metrics_to_return in [
         [
-            "Precision",
-            "Recall",
-            "F1",
-            "Accuracy",
-            "ROCAUC",
+            enums.MetricType.Precision,
+            enums.MetricType.Recall,
+            enums.MetricType.F1,
+            enums.MetricType.Accuracy,
+            enums.MetricType.ROCAUC,
         ],
         [
-            "Precision",
-            "Recall",
-            "F1",
-            "Accuracy",
-            "ROCAUC",
-            "PrecisionRecallCurve",
+            enums.MetricType.Precision,
+            enums.MetricType.Recall,
+            enums.MetricType.F1,
+            enums.MetricType.Accuracy,
+            enums.MetricType.ROCAUC,
+            enums.MetricType.PrecisionRecallCurve,
         ],
     ]:
         core.create_or_get_evaluations(
