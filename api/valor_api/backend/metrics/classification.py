@@ -32,7 +32,7 @@ def _compute_curves(
     grouper_mappings: dict[str, dict[str, dict]],
     unique_datums: set[tuple[str, str]],
     pr_curve_max_examples: int,
-    metrics_to_return: list[str],
+    metrics_to_return: list[enums.MetricType],
 ) -> list[schemas.PrecisionRecallCurve | schemas.DetailedPrecisionRecallCurve]:
     """
     Calculates precision-recall curves for each class.
@@ -53,7 +53,7 @@ def _compute_curves(
         All of the unique datums associated with the ground truth and prediction filters.
     pr_curve_max_examples: int
         The maximum number of datum examples to store per true positive, false negative, etc.
-    metrics_to_return: list[str]
+    metrics_to_return: list[enums.MetricType]
         The list of metrics requested by the user.
 
     Returns
@@ -260,7 +260,10 @@ def _compute_curves(
                 "f1_score": f1_score,
             }
 
-            if "DetailedPrecisionRecallCurve" in metrics_to_return:
+            if (
+                enums.MetricType.DetailedPrecisionRecallCurve
+                in metrics_to_return
+            ):
 
                 detailed_pr_output[grouper_value][threshold] = {
                     "tp": {
@@ -357,7 +360,7 @@ def _compute_curves(
         ),
     )
 
-    if "DetailedPrecisionRecallCurve" in metrics_to_return:
+    if enums.MetricType.DetailedPrecisionRecallCurve in metrics_to_return:
         output += [
             schemas.DetailedPrecisionRecallCurve(
                 label_key=grouper_key, value=dict(detailed_pr_output)
@@ -762,7 +765,7 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
     grouper_key: str,
     grouper_mappings: dict[str, dict[str, dict]],
     pr_curve_max_examples: int,
-    metrics_to_return: list[str],
+    metrics_to_return: list[enums.MetricType],
 ) -> (
     tuple[
         schemas.ConfusionMatrix,
@@ -791,7 +794,7 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
         A dictionary of mappings that connect groupers to their related labels.
     pr_curve_max_examples: int
         The maximum number of datum examples to store per true positive, false negative, etc.
-    metrics: list[str]
+    metrics_to_return: list[MetricType]
         The list of metrics to compute, store, and return to the user.
 
     Returns
@@ -859,7 +862,7 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
         ),
     ]
 
-    if "PrecisionRecallCurve" in metrics_to_return:
+    if enums.MetricType.PrecisionRecallCurve in metrics_to_return:
         # calculate the number of unique datums
         # used to determine the number of true negatives
         gt_datums = generate_query(
@@ -927,7 +930,7 @@ def _compute_clf_metrics(
     prediction_filter: schemas.Filter,
     groundtruth_filter: schemas.Filter,
     pr_curve_max_examples: int,
-    metrics_to_return: list[str],
+    metrics_to_return: list[enums.MetricType],
     label_map: LabelMapType | None = None,
 ) -> tuple[
     list[schemas.ConfusionMatrix],
@@ -951,7 +954,7 @@ def _compute_clf_metrics(
         The filter to be used to query predictions.
     groundtruth_filter : schemas.Filter
         The filter to be used to query groundtruths.
-    metrics: list[str]
+    metrics_to_return: list[MetricType]
         The list of metrics to compute, store, and return to the user.
     label_map: LabelMapType, optional
         Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
