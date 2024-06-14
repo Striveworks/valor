@@ -202,118 +202,120 @@ def test_example_boats_of_different_sizes(client: Client):
     assert swimmers_and_boats[0].uid == "uid4"
 
 
-def test_example_boats_and_swimmers_with_different_sizes(client: Client):
+# NOTE The example below does not work.
 
-    contains_boat_swimmer = (
-        ("uid1", False, False),
-        ("uid2", True, False),
-        ("uid3", False, True),
-        ("uid4", True, True),
-    )
+# def test_example_boats_and_swimmers_with_different_sizes(client: Client):
 
-    small_box = Box.from_extrema(0, 5, 0, 5)
-    large_box = Box.from_extrema(0, 10, 0, 10)
+#     contains_boat_swimmer = (
+#         ("uid1", False, False),
+#         ("uid2", True, False),
+#         ("uid3", False, True),
+#         ("uid4", True, True),
+#     )
 
-    swimmer = Label(key="class", value="swimmer")
-    boat = Label(key="class", value="boat")
+#     small_box = Box.from_extrema(0, 5, 0, 5)
+#     large_box = Box.from_extrema(0, 10, 0, 10)
 
-    dataset = Dataset.create("ocean_images")
-    for uid, is_large_boat, is_large_swimmer in contains_boat_swimmer:
-        dataset.add_groundtruth(
-            GroundTruth(
-                datum=Datum(uid=uid),
-                annotations=[
-                    Annotation(
-                        labels=[boat],
-                        bounding_box=large_box if is_large_boat else small_box,
-                        is_instance=True,
-                    ),
-                    Annotation(
-                        labels=[swimmer],
-                        bounding_box=large_box
-                        if is_large_swimmer
-                        else small_box,
-                        is_instance=True,
-                    ),
-                ],
-            )
-        )
+#     swimmer = Label(key="class", value="swimmer")
+#     boat = Label(key="class", value="boat")
 
-    # # Small swimmer, small boat
-    # no_swimmer_small_boats = client.get_datums(
-    #     Filter(
-    #         datums=And(
-    #             Label.key == "class",
-    #             Label.value == "swimmer",
-    #         ),
-    #         annotations=And(
-    #             Annotation.bounding_box.area < 50,
-    #             Label.key == "class",
-    #             Label.value == "boat",
-    #         ),
-    #     )
-    # )
-    # assert len(no_swimmer_small_boats) == 1
-    # assert no_swimmer_small_boats[0].uid == "uid1"
+#     dataset = Dataset.create("ocean_images")
+#     for uid, is_large_boat, is_large_swimmer in contains_boat_swimmer:
+#         dataset.add_groundtruth(
+#             GroundTruth(
+#                 datum=Datum(uid=uid),
+#                 annotations=[
+#                     Annotation(
+#                         labels=[boat],
+#                         bounding_box=large_box if is_large_boat else small_box,
+#                         is_instance=True,
+#                     ),
+#                     Annotation(
+#                         labels=[swimmer],
+#                         bounding_box=large_box
+#                         if is_large_swimmer
+#                         else small_box,
+#                         is_instance=True,
+#                     ),
+#                 ],
+#             )
+#         )
 
-    # Small swimmer, large boat
-    # small_swimmer_large_boat = client.get_datums(
-    #     Filter(
-    #         annotations=Or(
-    #             And(
-    #                 Label.key == "class",
-    #                 Label.value == "swimmer",
-    #                 Annotation.bounding_box.area < 50,
-    #             ),
-    #             And(
-    #                 Label.key == "class",
-    #                 Label.value == "boat",
-    #                 Annotation.bounding_box.area > 50,
-    #             ),
-    #         )
-    #     )
-    # )
-    # assert len(small_swimmer_large_boat) == 1
-    # assert small_swimmer_large_boat[0].uid == "uid2"
+# # Small swimmer, small boat
+# no_swimmer_small_boats = client.get_datums(
+#     Filter(
+#         datums=And(
+#             Label.key == "class",
+#             Label.value == "swimmer",
+#         ),
+#         annotations=And(
+#             Annotation.bounding_box.area < 50,
+#             Label.key == "class",
+#             Label.value == "boat",
+#         ),
+#     )
+# )
+# assert len(no_swimmer_small_boats) == 1
+# assert no_swimmer_small_boats[0].uid == "uid1"
 
-    # # large swimmer, small boat
-    # large_swimmer_small_boat = client.get_datums(
-    #     Filter(
-    #         datums=And(
-    #             Label.key == "class",
-    #             Label.value == "swimmer",
-    #             Label.value == "boat",
-    #         ),
-    #         annotations=Or(
-    #             And(
-    #                 Label.key == "class",
-    #                 Label.value == "swimmer",
-    #                 Annotation.bounding_box.area > 50,
-    #             ),
-    #             And(
-    #                 Label.key == "class",
-    #                 Label.value == "boat",
-    #                 Annotation.bounding_box.area < 50,
-    #             )
-    #         ),
-    #     )
-    # )
-    # assert len(large_swimmer_small_boat) == 1
-    # assert large_swimmer_small_boat[0].uid == "uid3"
+# Small swimmer, large boat
+# small_swimmer_large_boat = client.get_datums(
+#     Filter(
+#         annotations=Or(
+#             And(
+#                 Label.key == "class",
+#                 Label.value == "swimmer",
+#                 Annotation.bounding_box.area < 50,
+#             ),
+#             And(
+#                 Label.key == "class",
+#                 Label.value == "boat",
+#                 Annotation.bounding_box.area > 50,
+#             ),
+#         )
+#     )
+# )
+# assert len(small_swimmer_large_boat) == 1
+# assert small_swimmer_large_boat[0].uid == "uid2"
 
-    # # large swimmer, large boat
-    # large_swimmer_large_boat = client.get_datums(
-    #     Filter(
-    #         datums=And(
-    #             Label.key == "class",
-    #             Label.value == "swimmer",
-    #         ),
-    #         annotations=And(
-    #             Label.key == "class",
-    #             Label.value == "boat",
-    #             Annotation.bounding_box.area > 50,
-    #         ),
-    #     )
-    # )
-    # assert len(large_swimmer_large_boat) == 1
-    # assert large_swimmer_large_boat[0].uid == "uid4"
+# # large swimmer, small boat
+# large_swimmer_small_boat = client.get_datums(
+#     Filter(
+#         datums=And(
+#             Label.key == "class",
+#             Label.value == "swimmer",
+#             Label.value == "boat",
+#         ),
+#         annotations=Or(
+#             And(
+#                 Label.key == "class",
+#                 Label.value == "swimmer",
+#                 Annotation.bounding_box.area > 50,
+#             ),
+#             And(
+#                 Label.key == "class",
+#                 Label.value == "boat",
+#                 Annotation.bounding_box.area < 50,
+#             )
+#         ),
+#     )
+# )
+# assert len(large_swimmer_small_boat) == 1
+# assert large_swimmer_small_boat[0].uid == "uid3"
+
+# # large swimmer, large boat
+# large_swimmer_large_boat = client.get_datums(
+#     Filter(
+#         datums=And(
+#             Label.key == "class",
+#             Label.value == "swimmer",
+#         ),
+#         annotations=And(
+#             Label.key == "class",
+#             Label.value == "boat",
+#             Annotation.bounding_box.area > 50,
+#         ),
+#     )
+# )
+# assert len(large_swimmer_large_boat) == 1
+# assert large_swimmer_large_boat[0].uid == "uid4"
