@@ -50,7 +50,7 @@ class Filter:
     labels: Optional[Union[dict, FunctionType]] = None
     embeddings: Optional[Union[dict, FunctionType]] = None
 
-    def __post_init__(self):
+    def to_dict(self) -> dict:
         if isinstance(self.datasets, FunctionTypeTuple):
             self.datasets = self.datasets.to_dict()
         if isinstance(self.models, FunctionTypeTuple):
@@ -67,6 +67,4 @@ class Filter:
             self.labels = self.labels.to_dict()
         if isinstance(self.embeddings, FunctionTypeTuple):
             self.embeddings = self.embeddings.to_dict()
-
-    def to_dict(self) -> dict:
         return asdict(self)

@@ -587,7 +587,7 @@ class ClientConnection:
         List[dict]
             A list of datums in JSON format.
         """
-        filters = filters if filters else dict()
+        filters = filters if isinstance(filters, dict) else dict()
         return self._requests_post_rel_host("data/filter", json=filters).json()
 
     def get_datum(
