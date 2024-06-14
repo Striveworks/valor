@@ -25,3 +25,15 @@ def delete(
         backend.delete_dataset(db, dataset_name)
     elif model_name is not None:
         backend.delete_model(db, model_name)
+
+
+def delete_evaluation(*, db: Session, evaluation_id: int):
+    """
+    Deletes an evaluation by id.
+
+    Parameters
+    ----------
+    evaluation_id : int
+        The evaluation identifier.
+    """
+    backend.delete_evaluation_from_id(db=db, evaluation_id=evaluation_id)

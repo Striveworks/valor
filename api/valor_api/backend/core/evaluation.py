@@ -1055,3 +1055,34 @@ def delete_evaluations(
     except IntegrityError as e:
         db.rollback()
         raise e
+
+
+def delete_evaluation_from_id(db: Session, evaluation_id: int):
+    """
+    Delete a evaluation by id.
+
+    Parameters
+    ----------
+    db : Session
+        The database session.
+    evaluation_id : int
+        The evaluation identifer.
+
+    Raises
+    ------
+    """
+    evaluation = fetch_evaluation_from_id(db=db, evaluation_id=evaluation_id)
+    if evaluation.status in {
+        enums.EvaluationStatus.PENDING,
+        enums.EvaluationStatus.RUNNING,
+    }:
+        raise exceptions.EvaluationRunningError
+    elif evaluation.status in enums.EvaluationStatus.DELETING:
+        return
+
+    try:
+        db.delete(evaluation)
+        db.commit()
+    except IntegrityError as e:
+        db.rollback()
+        raise e
