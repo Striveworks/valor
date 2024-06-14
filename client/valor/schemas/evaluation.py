@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from typing import List, Optional, Union
 
-from valor.enums import AnnotationType, TaskType
+from valor.enums import AnnotationType, MetricType, TaskType
 from valor.schemas.filters import Filter
 
 
@@ -34,7 +34,7 @@ class EvaluationParameters:
 
     task_type: TaskType
     label_map: Optional[List[List[List[str]]]] = None
-    metrics_to_return: Optional[List[str]] = None
+    metrics_to_return: Optional[List[MetricType]] = None
 
     convert_annotations_to_type: Optional[AnnotationType] = None
     iou_thresholds_to_compute: Optional[List[float]] = None
