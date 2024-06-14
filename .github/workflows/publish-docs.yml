@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
     paths:
+      - client/**
       - docs/**
       - .github/workflows/publish-docs.yml
       - mkdocs.yml
