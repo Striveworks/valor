@@ -190,8 +190,8 @@ def test_compute_confusion_matrix_at_grouper_key(
 
     # groundtruths filter
     gFilter = groundtruth_filter.model_copy()
-    gFilter.labels = schemas.soft_or(
-        [
+    gFilter.labels = schemas.LogicalFunction.or_(
+        *[
             schemas.Condition(
                 lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
                 rhs=schemas.Value.infer(key),
@@ -203,8 +203,8 @@ def test_compute_confusion_matrix_at_grouper_key(
 
     # predictions filter
     pFilter = prediction_filter.model_copy()
-    pFilter.labels = schemas.soft_or(
-        [
+    pFilter.labels = schemas.LogicalFunction.or_(
+        *[
             schemas.Condition(
                 lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
                 rhs=schemas.Value.infer(key),
@@ -265,8 +265,8 @@ def test_compute_confusion_matrix_at_grouper_key(
 
     # groundtruths filter
     gFilter = groundtruth_filter.model_copy()
-    gFilter.labels = schemas.soft_or(
-        [
+    gFilter.labels = schemas.LogicalFunction.or_(
+        *[
             schemas.Condition(
                 lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
                 rhs=schemas.Value.infer(key),
@@ -278,8 +278,8 @@ def test_compute_confusion_matrix_at_grouper_key(
 
     # predictions filter
     pFilter = prediction_filter.model_copy()
-    pFilter.labels = schemas.soft_or(
-        [
+    pFilter.labels = schemas.LogicalFunction.or_(
+        *[
             schemas.Condition(
                 lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
                 rhs=schemas.Value.infer(key),
@@ -416,8 +416,8 @@ def test_compute_confusion_matrix_at_grouper_key_and_filter(
 
     # groundtruths filter
     gFilter = groundtruth_filter.model_copy()
-    gFilter.labels = schemas.soft_or(
-        [
+    gFilter.labels = schemas.LogicalFunction.or_(
+        *[
             schemas.Condition(
                 lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
                 rhs=schemas.Value.infer(key),
@@ -429,8 +429,8 @@ def test_compute_confusion_matrix_at_grouper_key_and_filter(
 
     # predictions filter
     pFilter = prediction_filter.model_copy()
-    pFilter.labels = schemas.soft_or(
-        [
+    pFilter.labels = schemas.LogicalFunction.or_(
+        *[
             schemas.Condition(
                 lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
                 rhs=schemas.Value.infer(key),
@@ -566,8 +566,8 @@ def test_compute_confusion_matrix_at_grouper_key_using_label_map(
 
     # groundtruths filter
     gFilter = groundtruth_filter.model_copy()
-    gFilter.labels = schemas.soft_or(
-        [
+    gFilter.labels = schemas.LogicalFunction.or_(
+        *[
             schemas.Condition(
                 lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
                 rhs=schemas.Value.infer(key),
@@ -579,8 +579,8 @@ def test_compute_confusion_matrix_at_grouper_key_using_label_map(
 
     # predictions filter
     pFilter = prediction_filter.model_copy()
-    pFilter.labels = schemas.soft_or(
-        [
+    pFilter.labels = schemas.LogicalFunction.or_(
+        *[
             schemas.Condition(
                 lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
                 rhs=schemas.Value.infer(key),
@@ -1226,8 +1226,8 @@ def test__compute_curves(
 
     # groundtruths filter
     gFilter = groundtruth_filter.model_copy()
-    gFilter.labels = schemas.soft_or(
-        [
+    gFilter.labels = schemas.LogicalFunction.or_(
+        *[
             schemas.Condition(
                 lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
                 rhs=schemas.Value.infer(key),
@@ -1239,8 +1239,8 @@ def test__compute_curves(
 
     # predictions filter
     pFilter = prediction_filter.model_copy()
-    pFilter.labels = schemas.soft_or(
-        [
+    pFilter.labels = schemas.LogicalFunction.or_(
+        *[
             schemas.Condition(
                 lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
                 rhs=schemas.Value.infer(key),

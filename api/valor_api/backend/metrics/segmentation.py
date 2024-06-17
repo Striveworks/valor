@@ -189,8 +189,8 @@ def _compute_segmentation_metrics(
         "grouper_id_to_label_ids_mapping"
     ].items():
         # set filter
-        groundtruth_filter.labels = schemas.soft_or(
-            [
+        groundtruth_filter.labels = schemas.LogicalFunction.or_(
+            *[
                 schemas.Condition(
                     lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_ID),
                     rhs=schemas.Value.infer(label_id),
@@ -199,8 +199,8 @@ def _compute_segmentation_metrics(
                 for label_id in label_ids
             ]
         )
-        prediction_filter.labels = schemas.soft_or(
-            [
+        prediction_filter.labels = schemas.LogicalFunction.or_(
+            *[
                 schemas.Condition(
                     lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_ID),
                     rhs=schemas.Value.infer(label_id),

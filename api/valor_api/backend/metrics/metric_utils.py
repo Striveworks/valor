@@ -478,8 +478,8 @@ def prepare_filter_for_evaluation(
     """
 
     # create dataset constraint
-    dataset_conditions = schemas.soft_or(
-        [
+    dataset_conditions = schemas.LogicalFunction.or_(
+        *[
             schemas.Condition(
                 lhs=schemas.Symbol(name=schemas.SupportedSymbol.DATASET_NAME),
                 rhs=schemas.Value.infer(name),
@@ -507,11 +507,9 @@ def prepare_filter_for_evaluation(
 
     # create new annotations filter
     filters.annotations = (
-        schemas.soft_and(
-            [
-                filters.annotations,
-                task_type_condition,
-            ]
+        schemas.LogicalFunction.and_(
+            filters.annotations,
+            task_type_condition,
         )
         if filters.annotations
         else task_type_condition
@@ -519,11 +517,9 @@ def prepare_filter_for_evaluation(
 
     # create new groundtruth filter
     filters.groundtruths = (
-        schemas.soft_and(
-            [
-                filters.groundtruths,
-                dataset_conditions,
-            ]
+        schemas.LogicalFunction.and_(
+            filters.groundtruths,
+            dataset_conditions,
         )
         if filters.groundtruths
         else dataset_conditions
@@ -531,19 +527,15 @@ def prepare_filter_for_evaluation(
 
     # create new prediction filter
     filters.predictions = (
-        schemas.soft_and(
-            [
-                filters.predictions,
-                dataset_conditions,
-                model_condition,
-            ]
+        schemas.LogicalFunction.and_(
+            filters.predictions,
+            dataset_conditions,
+            model_condition,
         )
         if filters.predictions
-        else schemas.soft_and(
-            [
-                dataset_conditions,
-                model_condition,
-            ]
+        else schemas.LogicalFunction.and_(
+            dataset_conditions,
+            model_condition,
         )
     )
 

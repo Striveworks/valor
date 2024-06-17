@@ -14,8 +14,6 @@ from .filters import (
     SupportedType,
     Symbol,
     Value,
-    soft_and,
-    soft_or,
 )
 from .geometry import (
     Box,
@@ -115,8 +113,6 @@ __all__ = [
     "LogicalOperator",
     "SupportedType",
     "SupportedSymbol",
-    "soft_and",
-    "soft_or",
     "Health",
     "Readiness",
     "DatasetSummary",

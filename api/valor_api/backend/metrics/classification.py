@@ -397,15 +397,13 @@ def _compute_binary_roc_auc(
     """
     # query to get the datum_ids and label values of groundtruths that have the given label key
     gts_filter = groundtruth_filter.model_copy()
-    gts_filter.labels = schemas.soft_and(
-        [
-            gts_filter.labels,
-            schemas.Condition(
-                lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
-                rhs=schemas.Value.infer(label.key),
-                op=schemas.FilterOperator.EQ,
-            ),
-        ]
+    gts_filter.labels = schemas.LogicalFunction.and_(
+        gts_filter.labels,
+        schemas.Condition(
+            lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
+            rhs=schemas.Value.infer(label.key),
+            op=schemas.FilterOperator.EQ,
+        ),
     )
     gts_query = generate_select(
         models.Annotation.datum_id.label("datum_id"),
@@ -416,20 +414,18 @@ def _compute_binary_roc_auc(
 
     # get the prediction scores for the given label (key and value)
     preds_filter = prediction_filter.model_copy()
-    preds_filter.labels = schemas.soft_and(
-        [
-            preds_filter.labels,
-            schemas.Condition(
-                lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
-                rhs=schemas.Value.infer(label.key),
-                op=schemas.FilterOperator.EQ,
-            ),
-            schemas.Condition(
-                lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_VALUE),
-                rhs=schemas.Value.infer(label.value),
-                op=schemas.FilterOperator.EQ,
-            ),
-        ]
+    preds_filter.labels = schemas.LogicalFunction.and_(
+        preds_filter.labels,
+        schemas.Condition(
+            lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
+            rhs=schemas.Value.infer(label.key),
+            op=schemas.FilterOperator.EQ,
+        ),
+        schemas.Condition(
+            lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_VALUE),
+            rhs=schemas.Value.infer(label.value),
+            op=schemas.FilterOperator.EQ,
+        ),
     )
 
     preds_query = generate_select(
@@ -562,22 +558,20 @@ def _compute_roc_auc(
 
     for grouper_value, labels in value_to_labels_mapping.items():
         label_filter = groundtruth_filter.model_copy()
-        label_filter.labels = schemas.soft_and(
-            [
-                label_filter.labels,
-                schemas.soft_or(
-                    [
-                        schemas.Condition(
-                            lhs=schemas.Symbol(
-                                name=schemas.SupportedSymbol.LABEL_ID
-                            ),
-                            rhs=schemas.Value.infer(label.id),
-                            op=schemas.FilterOperator.EQ,
-                        )
-                        for label in labels
-                    ]
-                ),
-            ]
+        label_filter.labels = schemas.LogicalFunction.and_(
+            label_filter.labels,
+            schemas.LogicalFunction.or_(
+                *[
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.LABEL_ID
+                        ),
+                        rhs=schemas.Value.infer(label.id),
+                        op=schemas.FilterOperator.EQ,
+                    )
+                    for label in labels
+                ]
+            ),
         )
 
         # some labels in the "labels" argument may be out-of-scope given our groundtruth_filter, so we fetch all labels that are within scope of the groundtruth_filter to make sure we don't calculate ROCAUC for inappropriate labels
@@ -851,42 +845,34 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
 
     # groundtruths filter
     gFilter = groundtruth_filter.model_copy()
-    gFilter.labels = schemas.soft_and(
-        [
-            gFilter.labels,
-            schemas.soft_or(
-                [
-                    schemas.Condition(
-                        lhs=schemas.Symbol(
-                            name=schemas.SupportedSymbol.LABEL_KEY
-                        ),
-                        rhs=schemas.Value.infer(key),
-                        op=schemas.FilterOperator.EQ,
-                    )
-                    for key in label_keys
-                ]
-            ),
-        ]
+    gFilter.labels = schemas.LogicalFunction.and_(
+        gFilter.labels,
+        schemas.LogicalFunction.or_(
+            *[
+                schemas.Condition(
+                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
+                    rhs=schemas.Value.infer(key),
+                    op=schemas.FilterOperator.EQ,
+                )
+                for key in label_keys
+            ]
+        ),
     )
 
     # predictions filter
     pFilter = prediction_filter.model_copy()
-    pFilter.labels = schemas.soft_and(
-        [
-            pFilter.labels,
-            schemas.soft_or(
-                [
-                    schemas.Condition(
-                        lhs=schemas.Symbol(
-                            name=schemas.SupportedSymbol.LABEL_KEY
-                        ),
-                        rhs=schemas.Value.infer(key),
-                        op=schemas.FilterOperator.EQ,
-                    )
-                    for key in label_keys
-                ]
-            ),
-        ]
+    pFilter.labels = schemas.LogicalFunction.and_(
+        pFilter.labels,
+        schemas.LogicalFunction.or_(
+            *[
+                schemas.Condition(
+                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
+                    rhs=schemas.Value.infer(key),
+                    op=schemas.FilterOperator.EQ,
+                )
+                for key in label_keys
+            ]
+        ),
     )
 
     groundtruths = generate_select(

@@ -1715,23 +1715,19 @@ def compute_detection_metrics(*_, db: Session, evaluation_id: int):
                 f"'{target_type}' is not a valid type for object detection."
             )
 
-    groundtruth_filter.annotations = schemas.soft_and(
-        [
-            groundtruth_filter.annotations,
-            schemas.Condition(
-                lhs=symbol,
-                op=schemas.FilterOperator.ISNOTNULL,
-            ),
-        ]
+    groundtruth_filter.annotations = schemas.LogicalFunction.and_(
+        groundtruth_filter.annotations,
+        schemas.Condition(
+            lhs=symbol,
+            op=schemas.FilterOperator.ISNOTNULL,
+        ),
     )
-    prediction_filter.annotations = schemas.soft_and(
-        [
-            prediction_filter.annotations,
-            schemas.Condition(
-                lhs=symbol,
-                op=schemas.FilterOperator.ISNOTNULL,
-            ),
-        ]
+    prediction_filter.annotations = schemas.LogicalFunction.and_(
+        prediction_filter.annotations,
+        schemas.Condition(
+            lhs=symbol,
+            op=schemas.FilterOperator.ISNOTNULL,
+        ),
     )
 
     if (

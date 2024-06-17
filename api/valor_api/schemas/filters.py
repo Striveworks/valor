@@ -399,6 +399,92 @@ class Condition(BaseModel):
 class LogicalFunction(BaseModel):
     args: "Condition | LogicalFunction | list[Condition] | list[LogicalFunction] | list[Condition | LogicalFunction]"
     op: LogicalOperator
+    model_config = ConfigDict(extra="forbid")
+
+    @classmethod
+    def and_(
+        cls, *args: "Condition | LogicalFunction | None"
+    ) -> "Condition | LogicalFunction":
+        """
+        Performs an AND operation if more than one element exists.
+
+        This is useful when passing the results of a list comprehension.
+
+        Parameters
+        ----------
+        *args
+            Variable length argument list consiting of Condition, LogicalFunction or None type values.
+
+        Returns
+        -------
+        FunctionType
+        """
+        items = [condition for condition in args if condition is not None]
+        if len(items) > 1:
+            return cls(
+                args=items,
+                op=LogicalOperator.AND,
+            )
+        elif len(items) == 1:
+            return items[0]
+        else:
+            raise ValueError("Passed an empty list.")
+
+    @classmethod
+    def or_(
+        cls, *args: "Condition | LogicalFunction | None"
+    ) -> "Condition | LogicalFunction":
+        """
+        Performs an OR operation if more than one element exists.
+
+        This is useful when passing the results of a list comprehension.
+
+        Parameters
+        ----------
+        *args
+            Variable length argument list consiting of Condition, LogicalFunction or None type values.
+
+        Returns
+        -------
+        FunctionType
+        """
+        items = [condition for condition in args if condition is not None]
+        if len(items) > 1:
+            return cls(
+                args=items,
+                op=LogicalOperator.OR,
+            )
+        elif len(items) == 1:
+            return items[0]
+        else:
+            raise ValueError("Passed an empty list.")
+
+    @classmethod
+    def not_(
+        cls, arg: "Condition | LogicalFunction"
+    ) -> "Condition | LogicalFunction":
+        """
+        Performs an NOT operation over a function or condition.
+
+        If the passed argument is a NOT function, this will return the contents.
+
+        Parameters
+        ----------
+        arg : Condition | LogicalFunction
+            A condition or logical function to negate.
+
+        Returns
+        -------
+        FunctionType
+        """
+        if isinstance(arg, LogicalFunction) and arg.op == LogicalOperator.NOT:
+            if isinstance(arg.args, list):
+                raise RuntimeError("Pydantic should have caught this.")
+            return arg.args
+        return cls(
+            args=arg,
+            op=LogicalOperator.NOT,
+        )
 
 
 FunctionType = Condition | LogicalFunction
@@ -420,57 +506,3 @@ class Filter(BaseModel):
     labels: FunctionType | None = None
     embeddings: FunctionType | None = None
     model_config = ConfigDict(extra="forbid")
-
-
-def soft_and(
-    conditions: list[FunctionType] | list[FunctionType | None],
-) -> FunctionType:
-    """
-    Performs an AND operation if more than one element exists.
-
-    Parameters
-    ----------
-    conditions : list[FunctionType | None]
-        A list of conditions or functions.
-
-    Returns
-    -------
-    FunctionType
-    """
-    items = [condition for condition in conditions if condition is not None]
-    if len(items) > 1:
-        return LogicalFunction(
-            args=items,
-            op=LogicalOperator.AND,
-        )
-    elif len(items) == 1:
-        return items[0]
-    else:
-        raise ValueError("Passed an empty list.")
-
-
-def soft_or(
-    conditions: list[FunctionType] | list[FunctionType | None],
-) -> FunctionType:
-    """
-    Performs an OR operation if more than one element exists.
-
-    Parameters
-    ----------
-    conditions : list[FunctionType | None]
-        A list of conditions or functions.
-
-    Returns
-    -------
-    FunctionType
-    """
-    items = [condition for condition in conditions if condition is not None]
-    if len(items) > 1:
-        return LogicalFunction(
-            args=items,
-            op=LogicalOperator.OR,
-        )
-    elif len(items) == 1:
-        return items[0]
-    else:
-        raise ValueError("Passed an empty list.")

@@ -1121,7 +1121,7 @@ def test_create_detection_metrics(
             dataset_names=["test_dataset"],
             model_names=["test_model"],
             filters=schemas.Filter(
-                annotations=schemas.soft_and(conditions)
+                annotations=schemas.LogicalFunction.and_(*conditions)
                 if conditions
                 else None,
                 labels=schemas.Condition(
@@ -1319,23 +1319,17 @@ def test_create_detection_metrics(
         dataset_names=[dataset_name],
         model_name=model_name,
         filters=schemas.Filter(
-            annotations=schemas.soft_and(
-                [
-                    schemas.Condition(
-                        lhs=schemas.Symbol(
-                            name=schemas.SupportedSymbol.BOX_AREA
-                        ),
-                        rhs=schemas.Value.infer(float(min_area)),
-                        op=schemas.FilterOperator.GTE,
-                    ),
-                    schemas.Condition(
-                        lhs=schemas.Symbol(
-                            name=schemas.SupportedSymbol.BOX_AREA
-                        ),
-                        rhs=schemas.Value.infer(float(max_area)),
-                        op=schemas.FilterOperator.LTE,
-                    ),
-                ]
+            annotations=schemas.LogicalFunction.and_(
+                schemas.Condition(
+                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.BOX_AREA),
+                    rhs=schemas.Value.infer(float(min_area)),
+                    op=schemas.FilterOperator.GTE,
+                ),
+                schemas.Condition(
+                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.BOX_AREA),
+                    rhs=schemas.Value.infer(float(max_area)),
+                    op=schemas.FilterOperator.LTE,
+                ),
             ),
             labels=schemas.Condition(
                 lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
