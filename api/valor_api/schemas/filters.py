@@ -121,6 +121,99 @@ class FilterOperator(str, Enum):
     ISNOTNULL = "isnotnull"
 
 
+map_type_to_operators = {
+    SupportedType.BOOLEAN: {FilterOperator.EQ, FilterOperator.NE},
+    SupportedType.STRING: {FilterOperator.EQ, FilterOperator.NE},
+    SupportedType.INTEGER: {
+        FilterOperator.EQ,
+        FilterOperator.NE,
+        FilterOperator.GT,
+        FilterOperator.GTE,
+        FilterOperator.LT,
+        FilterOperator.LTE,
+    },
+    SupportedType.FLOAT: {
+        FilterOperator.EQ,
+        FilterOperator.NE,
+        FilterOperator.GT,
+        FilterOperator.GTE,
+        FilterOperator.LT,
+        FilterOperator.LTE,
+    },
+    SupportedType.DATETIME: {
+        FilterOperator.EQ,
+        FilterOperator.NE,
+        FilterOperator.GT,
+        FilterOperator.GTE,
+        FilterOperator.LT,
+        FilterOperator.LTE,
+    },
+    SupportedType.DATE: {
+        FilterOperator.EQ,
+        FilterOperator.NE,
+        FilterOperator.GT,
+        FilterOperator.GTE,
+        FilterOperator.LT,
+        FilterOperator.LTE,
+    },
+    SupportedType.TIME: {
+        FilterOperator.EQ,
+        FilterOperator.NE,
+        FilterOperator.GT,
+        FilterOperator.GTE,
+        FilterOperator.LT,
+        FilterOperator.LTE,
+    },
+    SupportedType.DURATION: {
+        FilterOperator.EQ,
+        FilterOperator.NE,
+        FilterOperator.GT,
+        FilterOperator.GTE,
+        FilterOperator.LT,
+        FilterOperator.LTE,
+    },
+    SupportedType.POINT: {
+        FilterOperator.INTERSECTS,
+        FilterOperator.INSIDE,
+        FilterOperator.OUTSIDE,
+    },
+    SupportedType.MULTIPOINT: {
+        FilterOperator.INTERSECTS,
+        FilterOperator.INSIDE,
+        FilterOperator.OUTSIDE,
+    },
+    SupportedType.LINESTRING: {
+        FilterOperator.INTERSECTS,
+        FilterOperator.INSIDE,
+        FilterOperator.OUTSIDE,
+    },
+    SupportedType.MULTILINESTRING: {
+        FilterOperator.INTERSECTS,
+        FilterOperator.INSIDE,
+        FilterOperator.OUTSIDE,
+    },
+    SupportedType.POLYGON: {
+        FilterOperator.INTERSECTS,
+        FilterOperator.INSIDE,
+        FilterOperator.OUTSIDE,
+    },
+    SupportedType.BOX: {
+        FilterOperator.INTERSECTS,
+        FilterOperator.INSIDE,
+        FilterOperator.OUTSIDE,
+    },
+    SupportedType.MULTIPOLYGON: {
+        FilterOperator.INTERSECTS,
+        FilterOperator.INSIDE,
+        FilterOperator.OUTSIDE,
+    },
+    SupportedType.TASK_TYPE: {FilterOperator.EQ, FilterOperator.NE},
+    SupportedType.LABEL: {FilterOperator.CONTAINS},
+    SupportedType.EMBEDDING: {},
+    SupportedType.RASTER: {},
+}
+
+
 class LogicalOperator(str, Enum):
     AND = "and"
     OR = "or"
@@ -285,6 +378,10 @@ class Condition(BaseModel):
                 if self.rhs is None:
                     raise ValueError(
                         f"Operator '{self.op}' requires a rhs value."
+                    )
+                elif self.rhs.type not in map_type_to_operators:
+                    raise ValueError(
+                        f"Value type '{self.rhs.type}' does not support operator '{self.op}'."
                     )
             case (FilterOperator.ISNULL | FilterOperator.ISNOTNULL):
                 if self.rhs is not None:
