@@ -336,25 +336,10 @@ def _validate_create_evaluation(
         .all()
     )
 
-    model = (
-        generate_query(
-            models.Model,
-            db=db,
-            filters=prediction_filter,
-            label_source=models.Prediction,
-        )
-        .distinct()
-        .one_or_none()
-    )
-
-    # verify model and datasets have data for this evaluation
+    # verify datums exist for this evaluation
     if not datasets:
         raise exceptions.EvaluationRequestError(
             msg="No finalized datasets were found that met the filter criteria."
-        )
-    elif model is None:
-        raise exceptions.EvaluationRequestError(
-            msg=f"The model '{evaluation.model_name}' did not meet the filter criteria."
         )
 
     # check that prediction label keys match ground truth label keys
