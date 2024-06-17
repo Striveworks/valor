@@ -239,7 +239,7 @@ print(detailed_evaluation)
 
 [...,
 {
-    "type": "PrecisionRecallCurve",
+    "type": "DetailedPrecisionRecallCurve",
     "parameters": {
         "label_key": "class", # The key of the label.
         "pr_curve_iou_threshold": 0.5,
