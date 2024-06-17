@@ -1861,3 +1861,27 @@ class Client:
                 request, allow_retries=allow_retries
             )
         ]
+
+    def delete_evaluation(self, evaluation_id: int, timeout: int = 0) -> None:
+        """
+        Deletes an evaluation.
+
+        Parameters
+        ----------
+        evaluation_id : int
+            The id of the evaluation to be deleted.
+        timeout : int
+            The number of seconds to wait in order to confirm that the model was deleted.
+        """
+        self.conn.delete_evaluation(evaluation_id)
+        if timeout:
+            for _ in range(timeout):
+                try:
+                    self.get_evaluations(evaluation_ids=[evaluation_id])
+                except EvaluationDoesNotExist:
+                    break
+                time.sleep(1)
+            else:
+                raise TimeoutError(
+                    "Evaluation wasn't deleted within timeout interval"
+                )
