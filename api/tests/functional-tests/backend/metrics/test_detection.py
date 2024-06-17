@@ -2287,11 +2287,8 @@ def test_detection_exceptions(db: Session):
         ],
     )
 
-    # test that the model does not meet the filter requirements
-    # - this is b/c no predictions exist that match the evaluation task type.
-    with pytest.raises(RuntimeError) as e:
-        compute_detection_metrics(db=db, evaluation_id=evaluation_id)
-    assert f"Model '{model_name}' does not meet filter requirements." in str(e)
+    # test that the model can be evaluated when no predictions exist that match the evaluation task type.
+    compute_detection_metrics(db=db, evaluation_id=evaluation_id)
 
     crud.create_predictions(
         db=db,

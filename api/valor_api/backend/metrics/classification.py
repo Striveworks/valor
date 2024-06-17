@@ -808,7 +808,7 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
     metrics_to_return: list[enums.MetricType],
 ) -> (
     tuple[
-        schemas.ConfusionMatrix,
+        schemas.ConfusionMatrix | None,
         list[
             schemas.AccuracyMetric
             | schemas.ROCAUCMetric
@@ -817,7 +817,6 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
             | schemas.F1Metric
         ],
     ]
-    | None
 ):
     """
     Computes the confusion matrix and all metrics for a given label key.
@@ -913,25 +912,32 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
         grouper_key=grouper_key,
         grouper_mappings=grouper_mappings,
     )
-
-    if confusion_matrix is None:
-        return None
+    accuracy = (
+        _compute_accuracy_from_cm(confusion_matrix)
+        if confusion_matrix
+        else 0.0
+    )
+    rocauc = (
+        _compute_roc_auc(
+            db=db,
+            prediction_filter=prediction_filter,
+            groundtruth_filter=groundtruth_filter,
+            grouper_key=grouper_key,
+            grouper_mappings=grouper_mappings,
+        )
+        if confusion_matrix
+        else 0.0
+    )
 
     # aggregate metrics (over all label values)
     output = [
         schemas.AccuracyMetric(
             label_key=grouper_key,
-            value=_compute_accuracy_from_cm(confusion_matrix),
+            value=accuracy,
         ),
         schemas.ROCAUCMetric(
             label_key=grouper_key,
-            value=_compute_roc_auc(
-                db=db,
-                prediction_filter=prediction_filter,
-                groundtruth_filter=groundtruth_filter,
-                grouper_key=grouper_key,
-                grouper_mappings=grouper_mappings,
-            ),
+            value=rocauc,
         ),
     ]
 
@@ -970,16 +976,22 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
         output += pr_curves
 
     # metrics that are per label
-    for grouper_value in grouper_mappings["grouper_key_to_labels_mapping"][
+    grouper_label_values = grouper_mappings["grouper_key_to_labels_mapping"][
         grouper_key
-    ].keys():
-        (
-            precision,
-            recall,
-            f1,
-        ) = _compute_precision_and_recall_f1_from_confusion_matrix(
-            confusion_matrix, grouper_value
-        )
+    ].keys()
+    for grouper_value in grouper_label_values:
+        if confusion_matrix:
+            (
+                precision,
+                recall,
+                f1,
+            ) = _compute_precision_and_recall_f1_from_confusion_matrix(
+                confusion_matrix, grouper_value
+            )
+        else:
+            precision = 0.0
+            recall = 0.0
+            f1 = 0.0
 
         pydantic_label = schemas.Label(key=grouper_key, value=grouper_value)
 
@@ -1061,7 +1073,7 @@ def _compute_clf_metrics(
     for grouper_key in grouper_mappings[
         "grouper_key_to_labels_mapping"
     ].keys():
-        cm_and_metrics = _compute_confusion_matrix_and_metrics_at_grouper_key(
+        cm, metrics = _compute_confusion_matrix_and_metrics_at_grouper_key(
             db=db,
             prediction_filter=prediction_filter,
             groundtruth_filter=groundtruth_filter,
@@ -1070,9 +1082,9 @@ def _compute_clf_metrics(
             pr_curve_max_examples=pr_curve_max_examples,
             metrics_to_return=metrics_to_return,
         )
-        if cm_and_metrics is not None:
-            confusion_matrices.append(cm_and_metrics[0])
-            metrics_to_output.extend(cm_and_metrics[1])
+        if cm is not None:
+            confusion_matrices.append(cm)
+        metrics_to_output.extend(metrics)
 
     return confusion_matrices, metrics_to_output
 

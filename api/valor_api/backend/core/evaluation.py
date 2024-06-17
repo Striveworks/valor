@@ -284,26 +284,10 @@ def _validate_evaluation_filter(
         .all()
     )
 
-    model = (
-        generate_query(
-            models.Model.name,
-            db=db,
-            filters=predictions_filter,
-            label_source=models.Prediction,
-        )
-        .where(models.Model.name == evaluation.model_name)
-        .distinct()
-        .one_or_none()
-    )
-
     # verify model and datasets have data for this evaluation
     if not datasets:
         raise exceptions.EvaluationRequestError(
             msg="No datasets were found that met the filter criteria."
-        )
-    elif model is None:
-        raise exceptions.EvaluationRequestError(
-            msg=f"The model '{evaluation.model_name}' did not meet the filter criteria."
         )
 
     # check that prediction label keys match ground truth label keys
@@ -311,8 +295,8 @@ def _validate_evaluation_filter(
         core.validate_matching_label_keys(
             db=db,
             label_map=parameters.label_map,
-            groundtruth_filter=filters,
-            prediction_filter=filters,
+            groundtruth_filter=groundtruth_filter,
+            prediction_filter=predictions_filter,
         )
 
 
