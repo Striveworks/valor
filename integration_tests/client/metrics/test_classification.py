@@ -1293,3 +1293,72 @@ def test_evaluate_classification_mismatched_label_keys(
     with pytest.raises(ClientException) as e:
         model.evaluate_classification(dataset)
     assert "label keys must match" in str(e)
+
+
+def test_evaluate_classification_model_with_no_predictions(
+    client: Client,
+    gt_clfs: list[GroundTruth],
+    dataset_name: str,
+    model_name: str,
+):
+    dataset = Dataset.create(dataset_name)
+    for gt in gt_clfs:
+        dataset.add_groundtruth(gt)
+    dataset.finalize()
+
+    model = Model.create(model_name)
+    for gt in gt_clfs:
+        pd = Prediction(datum=gt.datum, annotations=[])
+        model.add_prediction(dataset, pd)
+    model.finalize_inferences(dataset)
+
+    expected_metrics = [
+        {"type": "Accuracy", "parameters": {"label_key": "k5"}, "value": 0.0},
+        {"type": "ROCAUC", "parameters": {"label_key": "k5"}, "value": 0.0},
+        {
+            "type": "Precision",
+            "value": 0.0,
+            "label": {"key": "k5", "value": "v5"},
+        },
+        {
+            "type": "Recall",
+            "value": 0.0,
+            "label": {"key": "k5", "value": "v5"},
+        },
+        {"type": "F1", "value": 0.0, "label": {"key": "k5", "value": "v5"}},
+        {"type": "Accuracy", "parameters": {"label_key": "k4"}, "value": 0.0},
+        {"type": "ROCAUC", "parameters": {"label_key": "k4"}, "value": 0.0},
+        {
+            "type": "Precision",
+            "value": 0.0,
+            "label": {"key": "k4", "value": "v4"},
+        },
+        {
+            "type": "Recall",
+            "value": 0.0,
+            "label": {"key": "k4", "value": "v4"},
+        },
+        {"type": "F1", "value": 0.0, "label": {"key": "k4", "value": "v4"}},
+        {"type": "Accuracy", "parameters": {"label_key": "k3"}, "value": 0.0},
+        {"type": "ROCAUC", "parameters": {"label_key": "k3"}, "value": 0.0},
+        {
+            "type": "Precision",
+            "value": 0.0,
+            "label": {"key": "k3", "value": "v3"},
+        },
+        {
+            "type": "Recall",
+            "value": 0.0,
+            "label": {"key": "k3", "value": "v3"},
+        },
+        {"type": "F1", "value": 0.0, "label": {"key": "k3", "value": "v3"}},
+    ]
+
+    evaluation = model.evaluate_classification(dataset)
+    assert evaluation.wait_for_completion(timeout=30) == EvaluationStatus.DONE
+
+    computed_metrics = evaluation.metrics
+
+    assert all([metric["value"] == 0 for metric in computed_metrics])
+    assert all([metric in computed_metrics for metric in expected_metrics])
+    assert all([metric in expected_metrics for metric in computed_metrics])

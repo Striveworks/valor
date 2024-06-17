@@ -1678,33 +1678,40 @@ def compute_detection_metrics(*_, db: Session, evaluation_id: int):
         .one_or_none()
     )
 
-    # verify
+    # verify datums exist
     if not datasets:
         raise RuntimeError(
             "No datasets could be found that meet filter requirements."
         )
-    if model is None:
-        raise RuntimeError(
-            f"Model '{evaluation.model_name}' does not meet filter requirements."
-        )
 
-    # ensure that all annotations have a common type to operate over
-    target_type = _convert_annotations_to_common_type(
-        db=db,
-        datasets=datasets,
-        model=model,
-        target_type=parameters.convert_annotations_to_type,
-    )
-    match target_type:
-        case AnnotationType.BOX:
-            groundtruth_filter.require_bounding_box = True
-            prediction_filter.require_bounding_box = True
-        case AnnotationType.POLYGON:
-            groundtruth_filter.require_polygon = True
-            prediction_filter.require_polygon = True
-        case AnnotationType.RASTER:
-            groundtruth_filter.require_raster = True
-            prediction_filter.require_raster = True
+    # no predictions exist
+    if model is not None:
+        # ensure that all annotations have a common type to operate over
+        target_type = _convert_annotations_to_common_type(
+            db=db,
+            datasets=datasets,
+            model=model,
+            target_type=parameters.convert_annotations_to_type,
+        )
+        match target_type:
+            case AnnotationType.BOX:
+                groundtruth_filter.require_bounding_box = True
+                prediction_filter.require_bounding_box = True
+            case AnnotationType.POLYGON:
+                groundtruth_filter.require_polygon = True
+                prediction_filter.require_polygon = True
+            case AnnotationType.RASTER:
+                groundtruth_filter.require_raster = True
+                prediction_filter.require_raster = True
+    else:
+        target_type = min(
+            [
+                core.get_annotation_type(
+                    db=db, task_type=parameters.task_type, dataset=dataset
+                )
+                for dataset in datasets
+            ]
+        )
 
     if (
         parameters.metrics_to_return
