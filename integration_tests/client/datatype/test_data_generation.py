@@ -1,6 +1,5 @@
 import io
 import random
-from dataclasses import asdict
 from typing import cast
 
 import numpy as np
@@ -313,7 +312,7 @@ def test_generate_segmentation_data(
 
     for image in dataset.get_datums():
         uid = image.uid
-        sample_gt = dataset.get_groundtruth(uid)
+        sample_gt = dataset.get_groundtruth(uid)  # type: ignore - issue #604
 
         assert sample_gt
         sample_annotations = sample_gt.annotations
@@ -364,7 +363,7 @@ def test_generate_prediction_data(client: Client):
         dataset,
         iou_thresholds_to_compute=[0.1, 0.9],
         iou_thresholds_to_return=[0.1, 0.9],
-        filter_by=[Label.key == "k1"],
+        filters=Filter(labels=(Label.key == "k1")),
         convert_annotations_to_type=AnnotationType.BOX,
     )
     assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
@@ -392,10 +391,16 @@ def test_generate_prediction_data(client: Client):
         "dataset_names": [dataset_name],
         "model_name": model_name,
         "filters": {
-            **asdict(
-                Filter()
-            ),  # default filter properties with overrides below
-            "label_keys": ["k1"],
+            "labels": {
+                "lhs": {
+                    "name": "label.key",
+                },
+                "op": "eq",
+                "rhs": {
+                    "type": "string",
+                    "value": "k1",
+                },
+            },
         },
         "parameters": {
             "task_type": TaskType.OBJECT_DETECTION.value,

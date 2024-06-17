@@ -10,6 +10,7 @@ from valor_api.enums import (
 )
 from valor_api.schemas.filters import Filter
 from valor_api.schemas.metrics import ConfusionMatrixResponse, Metric
+from valor_api.schemas.migrations import DeprecatedFilter
 from valor_api.schemas.types import Label
 
 LabelMapType = list[list[list[str]]]
@@ -203,7 +204,7 @@ class EvaluationResponse(BaseModel):
     id: int
     dataset_names: list[str]
     model_name: str
-    filters: Filter
+    filters: Filter | DeprecatedFilter
     parameters: EvaluationParameters
     status: EvaluationStatus
     created_at: datetime.datetime

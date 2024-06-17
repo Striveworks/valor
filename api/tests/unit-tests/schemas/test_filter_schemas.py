@@ -1,159 +1,84 @@
-import datetime
-
 import pytest
 
-from valor_api.schemas import DateTime
 from valor_api.schemas.filters import (
-    BooleanFilter,
-    DateTimeFilter,
-    Equal,
-    GeospatialFilter,
-    GreaterThan,
-    GreaterThanEqual,
-    Inside,
-    Intersects,
-    LessThan,
-    LessThanEqual,
-    NotEqual,
-    NumericFilter,
-    Operands,
-    Outside,
-    StringFilter,
+    Condition,
+    FilterOperator,
+    LogicalFunction,
+    LogicalOperator,
+    SupportedSymbol,
     Symbol,
     Value,
-    validate_type_symbol,
 )
-from valor_api.schemas.geometry import GeoJSON
 
 
-def test_validate_type_symbol():
-    x = Symbol(type="string", name="name")
-    y = Value(type="string", value="name")
-    validate_type_symbol(x)
+@pytest.fixture
+def condition() -> Condition:
+    return Condition(
+        lhs=Symbol(name=SupportedSymbol.DATASET_NAME),
+        rhs=Value.infer("name"),
+        op=FilterOperator.EQ,
+    )
+
+
+def test_logical_and(condition: Condition):
+
+    # raises value error if list is empty
+    with pytest.raises(ValueError):
+        LogicalFunction.and_()
+
+    # raises value error if list is empty
+    with pytest.raises(ValueError):
+        LogicalFunction.and_(*[None, None, None])
+
+    # if list has length of 1, return the contents
+    assert LogicalFunction.and_(*[condition]) == condition
+
+    # if list has length > 1, return the logical combination
+    assert LogicalFunction.and_(*[condition, condition]) == LogicalFunction(
+        args=[condition, condition],
+        op=LogicalOperator.AND,
+    )
+
+
+def test_logical_or(condition: Condition):
+
+    # raises value error if list is empty
+    with pytest.raises(ValueError):
+        LogicalFunction.or_()
+
+    # raises value error if list is empty
+    with pytest.raises(ValueError):
+        LogicalFunction.or_(*[None, None, None])
+
+    # if list has length of 1, return the contents
+    assert LogicalFunction.or_(*[condition]) == condition
+
+    # if list has length > 1, return the logical combination
+    assert LogicalFunction.or_(*[condition, condition]) == LogicalFunction(
+        args=[condition, condition],
+        op=LogicalOperator.OR,
+    )
+
+
+def test_logical_not(condition: Condition):
+
+    # raises value error if list is empty
     with pytest.raises(TypeError):
-        validate_type_symbol(y)
+        LogicalFunction.not_()  # type: ignore - testing
 
+    # raises value error if list is empty
+    with pytest.raises(ValueError):
+        LogicalFunction.not_(None)  # type: ignore - testing
 
-def test_string_filter_to_function():
-    name = "owner.name"
-    value = "hello world"
-    operands = Operands(
-        lhs=Symbol(type="string", name=name),
-        rhs=Value(type="string", value=value),
+    # if list has length of 1, return the negation
+    assert LogicalFunction.not_(condition) == LogicalFunction(
+        args=condition,
+        op=LogicalOperator.NOT,
     )
 
-    assert StringFilter(value=value, operator="==",).to_function(
-        name
-    ) == Equal(eq=operands)
+    # double negation should return the original condition
+    assert LogicalFunction.not_(LogicalFunction.not_(condition)) == condition
 
-    assert StringFilter(value=value, operator="!=",).to_function(
-        name
-    ) == NotEqual(ne=operands)
-
-
-def test_boolean_filter_to_function():
-    type_str = "boolean"
-    name = "owner.name"
-    value = True
-    operands = Operands(
-        lhs=Symbol(type=type_str, name=name),
-        rhs=Value(type=type_str, value=value),
-    )
-
-    assert BooleanFilter(value=value, operator="==",).to_function(
-        name
-    ) == Equal(eq=operands)
-
-    assert BooleanFilter(value=value, operator="!=",).to_function(
-        name
-    ) == NotEqual(ne=operands)
-
-
-def test_numeric_filter_to_function():
-    type_str = "float"
-    name = "owner.name"
-    value = 0.123
-    operands = Operands(
-        lhs=Symbol(type=type_str, name=name),
-        rhs=Value(type=type_str, value=value),
-    )
-
-    assert NumericFilter(value=value, operator="==",).to_function(
-        name
-    ) == Equal(eq=operands)
-
-    assert NumericFilter(value=value, operator="!=",).to_function(
-        name
-    ) == NotEqual(ne=operands)
-
-    assert NumericFilter(value=value, operator=">",).to_function(
-        name
-    ) == GreaterThan(gt=operands)
-
-    assert NumericFilter(value=value, operator=">=",).to_function(
-        name
-    ) == GreaterThanEqual(ge=operands)
-
-    assert NumericFilter(value=value, operator="<",).to_function(
-        name
-    ) == LessThan(lt=operands)
-
-    assert NumericFilter(value=value, operator="<=",).to_function(
-        name
-    ) == LessThanEqual(le=operands)
-
-
-def test_datetime_filter_to_function():
-    type_str = "datetime"
-    name = "owner.name"
-    value = DateTime(value=datetime.datetime.now().isoformat())
-    operands = Operands(
-        lhs=Symbol(type=type_str, name=name),
-        rhs=Value(type=type_str, value=value.value),
-    )
-
-    assert DateTimeFilter(value=value, operator="==",).to_function(
-        name
-    ) == Equal(eq=operands)
-
-    assert DateTimeFilter(value=value, operator="!=",).to_function(
-        name
-    ) == NotEqual(ne=operands)
-
-    assert DateTimeFilter(value=value, operator=">",).to_function(
-        name
-    ) == GreaterThan(gt=operands)
-
-    assert DateTimeFilter(value=value, operator=">=",).to_function(
-        name
-    ) == GreaterThanEqual(ge=operands)
-
-    assert DateTimeFilter(value=value, operator="<",).to_function(
-        name
-    ) == LessThan(lt=operands)
-
-    assert DateTimeFilter(value=value, operator="<=",).to_function(
-        name
-    ) == LessThanEqual(le=operands)
-
-
-def test_geospatial_filter_to_function():
-    type_str = "geojson"
-    name = "owner.name"
-    value = GeoJSON(type="Point", coordinates=[0.1, 0.1])
-    operands = Operands(
-        lhs=Symbol(type=type_str, name=name),
-        rhs=Value(type=type_str, value=value.geometry.to_json()),
-    )
-
-    assert GeospatialFilter(value=value, operator="inside",).to_function(
-        name
-    ) == Inside(inside=operands)
-
-    assert GeospatialFilter(value=value, operator="outside",).to_function(
-        name
-    ) == Outside(outside=operands)
-
-    assert GeospatialFilter(value=value, operator="intersect",).to_function(
-        name
-    ) == Intersects(intersects=operands)
+    # not function cannot be passed more than one argument
+    with pytest.raises(TypeError):
+        assert LogicalFunction.not_(condition, condition)  # type: ignore - testing

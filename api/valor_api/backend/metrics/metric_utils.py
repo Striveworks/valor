@@ -477,11 +477,72 @@ def prepare_filter_for_evaluation(
         A filter ready for evaluation.
     """
 
-    groundtruth_filter = filters.model_copy()
-    groundtruth_filter.task_types = [task_type]
-    groundtruth_filter.dataset_names = dataset_names
+    # create dataset constraint
+    dataset_conditions = schemas.LogicalFunction.or_(
+        *[
+            schemas.Condition(
+                lhs=schemas.Symbol(name=schemas.SupportedSymbol.DATASET_NAME),
+                rhs=schemas.Value.infer(name),
+                op=schemas.FilterOperator.EQ,
+            )
+            for name in dataset_names
+        ]
+    )
 
-    predictions_filter = groundtruth_filter.model_copy()
-    predictions_filter.model_names = [model_name]
+    # create model constraint
+    model_condition = schemas.Condition(
+        lhs=schemas.Symbol(name=schemas.SupportedSymbol.MODEL_NAME),
+        rhs=schemas.Value.infer(model_name),
+        op=schemas.FilterOperator.EQ,
+    )
+
+    # create task type constraint
+    task_type_condition = schemas.Condition(
+        lhs=schemas.Symbol(name=schemas.SupportedSymbol.TASK_TYPE),
+        rhs=schemas.Value(
+            type=schemas.SupportedType.TASK_TYPE, value=task_type
+        ),
+        op=schemas.FilterOperator.CONTAINS,
+    )
+
+    # create new annotations filter
+    filters.annotations = (
+        schemas.LogicalFunction.and_(
+            filters.annotations,
+            task_type_condition,
+        )
+        if filters.annotations
+        else task_type_condition
+    )
+
+    # create new groundtruth filter
+    filters.groundtruths = (
+        schemas.LogicalFunction.and_(
+            filters.groundtruths,
+            dataset_conditions,
+        )
+        if filters.groundtruths
+        else dataset_conditions
+    )
+
+    # create new prediction filter
+    filters.predictions = (
+        schemas.LogicalFunction.and_(
+            filters.predictions,
+            dataset_conditions,
+            model_condition,
+        )
+        if filters.predictions
+        else schemas.LogicalFunction.and_(
+            dataset_conditions,
+            model_condition,
+        )
+    )
+
+    groundtruth_filter = filters.model_copy()
+    groundtruth_filter.predictions = None
+
+    predictions_filter = filters.model_copy()
+    predictions_filter.groundtruths = None
 
     return (groundtruth_filter, predictions_filter)

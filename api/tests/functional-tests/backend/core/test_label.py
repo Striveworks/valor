@@ -273,7 +273,13 @@ def test_get_labels_filtered(
 ):
     assert len(db.query(models.Label).all()) == 5
 
-    filters = schemas.Filter(label_keys=["k1"])
+    filters = schemas.Filter(
+        labels=schemas.Condition(
+            lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
+            rhs=schemas.Value.infer("k1"),
+            op=schemas.FilterOperator.EQ,
+        ),
+    )
 
     labels = get_labels(db, filters=filters)
     assert len(labels) == 3
@@ -322,7 +328,13 @@ def test_get_label_keys_filtered(
 ):
     assert len(db.query(models.Label).all()) == 5
 
-    filters = schemas.Filter(label_keys=["k1"])
+    filters = schemas.Filter(
+        labels=schemas.Condition(
+            lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
+            rhs=schemas.Value.infer("k1"),
+            op=schemas.FilterOperator.EQ,
+        ),
+    )
 
     labels = get_label_keys(db, filters=filters)
     assert len(labels) == 1
@@ -346,18 +358,78 @@ def test_get_joint_labels(
     labels = get_joint_labels(
         db=db,
         lhs=schemas.Filter(
-            dataset_names=[dataset_name],
-            task_types=[enums.TaskType.CLASSIFICATION],
-            require_bounding_box=False,
-            require_polygon=False,
-            require_raster=False,
+            labels=schemas.LogicalFunction(
+                args=[
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.DATASET_NAME
+                        ),
+                        rhs=schemas.Value.infer(dataset_name),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.TASK_TYPE
+                        ),
+                        rhs=schemas.Value.infer(enums.TaskType.CLASSIFICATION),
+                        op=schemas.FilterOperator.CONTAINS,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol(name=schemas.SupportedSymbol.BOX),
+                        op=schemas.FilterOperator.ISNULL,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.POLYGON
+                        ),
+                        op=schemas.FilterOperator.ISNULL,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.RASTER
+                        ),
+                        op=schemas.FilterOperator.ISNULL,
+                    ),
+                ],
+                op=schemas.LogicalOperator.AND,
+            )
         ),
         rhs=schemas.Filter(
-            model_names=[model_name],
-            task_types=[enums.TaskType.CLASSIFICATION],
-            require_bounding_box=False,
-            require_polygon=False,
-            require_raster=False,
+            labels=schemas.LogicalFunction(
+                args=[
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.MODEL_NAME
+                        ),
+                        rhs=schemas.Value.infer(model_name),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.TASK_TYPE
+                        ),
+                        rhs=schemas.Value.infer(enums.TaskType.CLASSIFICATION),
+                        op=schemas.FilterOperator.CONTAINS,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol(name=schemas.SupportedSymbol.BOX),
+                        op=schemas.FilterOperator.ISNULL,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.POLYGON
+                        ),
+                        op=schemas.FilterOperator.ISNULL,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.RASTER
+                        ),
+                        op=schemas.FilterOperator.ISNULL,
+                    ),
+                ],
+                op=schemas.LogicalOperator.AND,
+            )
         ),
     )
     assert len(labels) == 1
@@ -376,12 +448,46 @@ def test_get_joint_keys(
     keys = get_joint_keys(
         db=db,
         lhs=schemas.Filter(
-            dataset_names=[dataset_name],
-            task_types=[enums.TaskType.CLASSIFICATION],
+            labels=schemas.LogicalFunction(
+                args=[
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.DATASET_NAME
+                        ),
+                        rhs=schemas.Value.infer(dataset_name),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.TASK_TYPE
+                        ),
+                        rhs=schemas.Value.infer(enums.TaskType.CLASSIFICATION),
+                        op=schemas.FilterOperator.CONTAINS,
+                    ),
+                ],
+                op=schemas.LogicalOperator.AND,
+            )
         ),
         rhs=schemas.Filter(
-            model_names=[model_name],
-            task_types=[enums.TaskType.CLASSIFICATION],
+            labels=schemas.LogicalFunction(
+                args=[
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.MODEL_NAME
+                        ),
+                        rhs=schemas.Value.infer(model_name),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.TASK_TYPE
+                        ),
+                        rhs=schemas.Value.infer(enums.TaskType.CLASSIFICATION),
+                        op=schemas.FilterOperator.CONTAINS,
+                    ),
+                ],
+                op=schemas.LogicalOperator.AND,
+            )
         ),
     )
     assert len(keys) == 1
@@ -397,18 +503,78 @@ def test_get_disjoint_labels(
     ds_unique, md_unique = get_disjoint_labels(
         db=db,
         lhs=schemas.Filter(
-            dataset_names=[dataset_name],
-            task_types=[enums.TaskType.CLASSIFICATION],
-            require_bounding_box=False,
-            require_polygon=False,
-            require_raster=False,
+            labels=schemas.LogicalFunction(
+                args=[
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.DATASET_NAME
+                        ),
+                        rhs=schemas.Value.infer(dataset_name),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.TASK_TYPE
+                        ),
+                        rhs=schemas.Value.infer(enums.TaskType.CLASSIFICATION),
+                        op=schemas.FilterOperator.CONTAINS,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol(name=schemas.SupportedSymbol.BOX),
+                        op=schemas.FilterOperator.ISNULL,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.POLYGON
+                        ),
+                        op=schemas.FilterOperator.ISNULL,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.RASTER
+                        ),
+                        op=schemas.FilterOperator.ISNULL,
+                    ),
+                ],
+                op=schemas.LogicalOperator.AND,
+            )
         ),
         rhs=schemas.Filter(
-            model_names=[model_name],
-            task_types=[enums.TaskType.CLASSIFICATION],
-            require_bounding_box=False,
-            require_polygon=False,
-            require_raster=False,
+            labels=schemas.LogicalFunction(
+                args=[
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.MODEL_NAME
+                        ),
+                        rhs=schemas.Value.infer(model_name),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.TASK_TYPE
+                        ),
+                        rhs=schemas.Value.infer(enums.TaskType.CLASSIFICATION),
+                        op=schemas.FilterOperator.CONTAINS,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol(name=schemas.SupportedSymbol.BOX),
+                        op=schemas.FilterOperator.ISNULL,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.POLYGON
+                        ),
+                        op=schemas.FilterOperator.ISNULL,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.RASTER
+                        ),
+                        op=schemas.FilterOperator.ISNULL,
+                    ),
+                ],
+                op=schemas.LogicalOperator.AND,
+            )
         ),
     )
     assert len(ds_unique) == 2
@@ -433,12 +599,46 @@ def test_get_disjoint_keys(
     ds_unique, md_unique = get_disjoint_keys(
         db=db,
         lhs=schemas.Filter(
-            dataset_names=[dataset_name],
-            task_types=[enums.TaskType.CLASSIFICATION],
+            labels=schemas.LogicalFunction(
+                args=[
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.DATASET_NAME
+                        ),
+                        rhs=schemas.Value.infer(dataset_name),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.TASK_TYPE
+                        ),
+                        rhs=schemas.Value.infer(enums.TaskType.CLASSIFICATION),
+                        op=schemas.FilterOperator.CONTAINS,
+                    ),
+                ],
+                op=schemas.LogicalOperator.AND,
+            )
         ),
         rhs=schemas.Filter(
-            model_names=[model_name],
-            task_types=[enums.TaskType.CLASSIFICATION],
+            labels=schemas.LogicalFunction(
+                args=[
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.MODEL_NAME
+                        ),
+                        rhs=schemas.Value.infer(model_name),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.TASK_TYPE
+                        ),
+                        rhs=schemas.Value.infer(enums.TaskType.CLASSIFICATION),
+                        op=schemas.FilterOperator.CONTAINS,
+                    ),
+                ],
+                op=schemas.LogicalOperator.AND,
+            )
         ),
     )
     assert len(ds_unique) == 1
@@ -514,8 +714,27 @@ def test_label_functions(
     assert get_label_keys(
         db,
         schemas.Filter(
-            dataset_names=[dataset_name],
-            task_types=[enums.TaskType.SEMANTIC_SEGMENTATION],
+            labels=schemas.LogicalFunction(
+                args=[
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.DATASET_NAME
+                        ),
+                        rhs=schemas.Value.infer(dataset_name),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.TASK_TYPE
+                        ),
+                        rhs=schemas.Value.infer(
+                            enums.TaskType.SEMANTIC_SEGMENTATION
+                        ),
+                        op=schemas.FilterOperator.CONTAINS,
+                    ),
+                ],
+                op=schemas.LogicalOperator.AND,
+            )
         ),
         ignore_predictions=True,
     ) == {"semsegk1", "semsegk2", "semsegk3"}
@@ -523,9 +742,33 @@ def test_label_functions(
     assert get_labels(
         db,
         schemas.Filter(
-            dataset_names=[dataset_name],
-            task_types=[enums.TaskType.SEMANTIC_SEGMENTATION],
-            require_raster=True,
+            labels=schemas.LogicalFunction(
+                args=[
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.DATASET_NAME
+                        ),
+                        rhs=schemas.Value.infer(dataset_name),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.TASK_TYPE
+                        ),
+                        rhs=schemas.Value.infer(
+                            enums.TaskType.SEMANTIC_SEGMENTATION
+                        ),
+                        op=schemas.FilterOperator.CONTAINS,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.RASTER
+                        ),
+                        op=schemas.FilterOperator.ISNOTNULL,
+                    ),
+                ],
+                op=schemas.LogicalOperator.AND,
+            )
         ),
         ignore_predictions=True,
     ) == {
@@ -537,9 +780,33 @@ def test_label_functions(
         get_labels(
             db,
             schemas.Filter(
-                dataset_names=[dataset_name],
-                task_types=[enums.TaskType.SEMANTIC_SEGMENTATION],
-                require_polygon=True,
+                labels=schemas.LogicalFunction(
+                    args=[
+                        schemas.Condition(
+                            lhs=schemas.Symbol(
+                                name=schemas.SupportedSymbol.DATASET_NAME
+                            ),
+                            rhs=schemas.Value.infer(dataset_name),
+                            op=schemas.FilterOperator.EQ,
+                        ),
+                        schemas.Condition(
+                            lhs=schemas.Symbol(
+                                name=schemas.SupportedSymbol.TASK_TYPE
+                            ),
+                            rhs=schemas.Value.infer(
+                                enums.TaskType.SEMANTIC_SEGMENTATION
+                            ),
+                            op=schemas.FilterOperator.CONTAINS,
+                        ),
+                        schemas.Condition(
+                            lhs=schemas.Symbol(
+                                name=schemas.SupportedSymbol.POLYGON
+                            ),
+                            op=schemas.FilterOperator.ISNOTNULL,
+                        ),
+                    ],
+                    op=schemas.LogicalOperator.AND,
+                )
             ),
             ignore_predictions=True,
         )
@@ -549,9 +816,34 @@ def test_label_functions(
     assert get_label_keys(
         db,
         schemas.Filter(
-            model_names=[model_name],
-            dataset_names=[dataset_name],
-            task_types=[enums.TaskType.SEMANTIC_SEGMENTATION],
+            labels=schemas.LogicalFunction(
+                args=[
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.DATASET_NAME
+                        ),
+                        rhs=schemas.Value.infer(dataset_name),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.MODEL_NAME
+                        ),
+                        rhs=schemas.Value.infer(model_name),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.TASK_TYPE
+                        ),
+                        rhs=schemas.Value.infer(
+                            enums.TaskType.SEMANTIC_SEGMENTATION
+                        ),
+                        op=schemas.FilterOperator.CONTAINS,
+                    ),
+                ],
+                op=schemas.LogicalOperator.AND,
+            )
         ),
         ignore_groundtruths=True,
     ) == {"semsegk1", "semsegk2", "semsegk3_pred"}
@@ -559,10 +851,40 @@ def test_label_functions(
     assert get_labels(
         db,
         schemas.Filter(
-            model_names=[model_name],
-            dataset_names=[dataset_name],
-            require_raster=True,
-            task_types=[enums.TaskType.SEMANTIC_SEGMENTATION],
+            labels=schemas.LogicalFunction(
+                args=[
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.DATASET_NAME
+                        ),
+                        rhs=schemas.Value.infer(dataset_name),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.MODEL_NAME
+                        ),
+                        rhs=schemas.Value.infer(model_name),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.TASK_TYPE
+                        ),
+                        rhs=schemas.Value.infer(
+                            enums.TaskType.SEMANTIC_SEGMENTATION
+                        ),
+                        op=schemas.FilterOperator.CONTAINS,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.RASTER
+                        ),
+                        op=schemas.FilterOperator.ISNOTNULL,
+                    ),
+                ],
+                op=schemas.LogicalOperator.AND,
+            )
         ),
         ignore_groundtruths=True,
     ) == {
@@ -575,10 +897,40 @@ def test_label_functions(
         get_labels(
             db,
             schemas.Filter(
-                model_names=[model_name],
-                dataset_names=[dataset_name],
-                require_polygon=True,
-                task_types=[enums.TaskType.SEMANTIC_SEGMENTATION],
+                labels=schemas.LogicalFunction(
+                    args=[
+                        schemas.Condition(
+                            lhs=schemas.Symbol(
+                                name=schemas.SupportedSymbol.DATASET_NAME
+                            ),
+                            rhs=schemas.Value.infer(dataset_name),
+                            op=schemas.FilterOperator.EQ,
+                        ),
+                        schemas.Condition(
+                            lhs=schemas.Symbol(
+                                name=schemas.SupportedSymbol.MODEL_NAME
+                            ),
+                            rhs=schemas.Value.infer(model_name),
+                            op=schemas.FilterOperator.EQ,
+                        ),
+                        schemas.Condition(
+                            lhs=schemas.Symbol(
+                                name=schemas.SupportedSymbol.TASK_TYPE
+                            ),
+                            rhs=schemas.Value.infer(
+                                enums.TaskType.SEMANTIC_SEGMENTATION
+                            ),
+                            op=schemas.FilterOperator.CONTAINS,
+                        ),
+                        schemas.Condition(
+                            lhs=schemas.Symbol(
+                                name=schemas.SupportedSymbol.POLYGON
+                            ),
+                            op=schemas.FilterOperator.ISNOTNULL,
+                        ),
+                    ],
+                    op=schemas.LogicalOperator.AND,
+                )
             ),
             ignore_groundtruths=True,
         )
@@ -589,8 +941,27 @@ def test_label_functions(
         get_label_keys(
             db,
             schemas.Filter(
-                dataset_names=[dataset_name],
-                task_types=[enums.TaskType.CLASSIFICATION],
+                labels=schemas.LogicalFunction(
+                    args=[
+                        schemas.Condition(
+                            lhs=schemas.Symbol(
+                                name=schemas.SupportedSymbol.DATASET_NAME
+                            ),
+                            rhs=schemas.Value.infer(dataset_name),
+                            op=schemas.FilterOperator.EQ,
+                        ),
+                        schemas.Condition(
+                            lhs=schemas.Symbol(
+                                name=schemas.SupportedSymbol.TASK_TYPE
+                            ),
+                            rhs=schemas.Value.infer(
+                                enums.TaskType.CLASSIFICATION
+                            ),
+                            op=schemas.FilterOperator.CONTAINS,
+                        ),
+                    ],
+                    op=schemas.LogicalOperator.AND,
+                )
             ),
             ignore_predictions=True,
         )
@@ -600,9 +971,34 @@ def test_label_functions(
         get_labels(
             db,
             schemas.Filter(
-                model_names=[model_name],
-                dataset_names=[dataset_name],
-                task_types=[enums.TaskType.CLASSIFICATION],
+                labels=schemas.LogicalFunction(
+                    args=[
+                        schemas.Condition(
+                            lhs=schemas.Symbol(
+                                name=schemas.SupportedSymbol.DATASET_NAME
+                            ),
+                            rhs=schemas.Value.infer(dataset_name),
+                            op=schemas.FilterOperator.EQ,
+                        ),
+                        schemas.Condition(
+                            lhs=schemas.Symbol(
+                                name=schemas.SupportedSymbol.MODEL_NAME
+                            ),
+                            rhs=schemas.Value.infer(model_name),
+                            op=schemas.FilterOperator.EQ,
+                        ),
+                        schemas.Condition(
+                            lhs=schemas.Symbol(
+                                name=schemas.SupportedSymbol.TASK_TYPE
+                            ),
+                            rhs=schemas.Value.infer(
+                                enums.TaskType.CLASSIFICATION
+                            ),
+                            op=schemas.FilterOperator.CONTAINS,
+                        ),
+                    ],
+                    op=schemas.LogicalOperator.AND,
+                )
             ),
             ignore_groundtruths=True,
         )
@@ -612,8 +1008,27 @@ def test_label_functions(
     assert get_label_keys(
         db,
         schemas.Filter(
-            dataset_names=[dataset_name],
-            task_types=[enums.TaskType.OBJECT_DETECTION],
+            labels=schemas.LogicalFunction(
+                args=[
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.DATASET_NAME
+                        ),
+                        rhs=schemas.Value.infer(dataset_name),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.TASK_TYPE
+                        ),
+                        rhs=schemas.Value.infer(
+                            enums.TaskType.OBJECT_DETECTION
+                        ),
+                        op=schemas.FilterOperator.CONTAINS,
+                    ),
+                ],
+                op=schemas.LogicalOperator.AND,
+            )
         ),
         ignore_predictions=True,
     ) == {"inssegk1", "inssegk2", "inssegk3"}
@@ -621,9 +1036,33 @@ def test_label_functions(
     assert get_labels(
         db,
         schemas.Filter(
-            dataset_names=[dataset_name],
-            require_raster=True,
-            task_types=[enums.TaskType.OBJECT_DETECTION],
+            labels=schemas.LogicalFunction(
+                args=[
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.DATASET_NAME
+                        ),
+                        rhs=schemas.Value.infer(dataset_name),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.TASK_TYPE
+                        ),
+                        rhs=schemas.Value.infer(
+                            enums.TaskType.OBJECT_DETECTION
+                        ),
+                        op=schemas.FilterOperator.CONTAINS,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.RASTER
+                        ),
+                        op=schemas.FilterOperator.ISNOTNULL,
+                    ),
+                ],
+                op=schemas.LogicalOperator.AND,
+            )
         ),
         ignore_predictions=True,
     ) == {
@@ -634,12 +1073,47 @@ def test_label_functions(
     assert get_labels(
         db,
         schemas.Filter(
-            dataset_names=[dataset_name],
-            require_raster=True,
-            task_types=[
-                enums.TaskType.OBJECT_DETECTION,
-                enums.TaskType.SEMANTIC_SEGMENTATION,
-            ],
+            labels=schemas.LogicalFunction(
+                args=[
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.DATASET_NAME
+                        ),
+                        rhs=schemas.Value.infer(dataset_name),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                    schemas.LogicalFunction(
+                        args=[
+                            schemas.Condition(
+                                lhs=schemas.Symbol(
+                                    name=schemas.SupportedSymbol.TASK_TYPE
+                                ),
+                                rhs=schemas.Value.infer(
+                                    enums.TaskType.OBJECT_DETECTION
+                                ),
+                                op=schemas.FilterOperator.CONTAINS,
+                            ),
+                            schemas.Condition(
+                                lhs=schemas.Symbol(
+                                    name=schemas.SupportedSymbol.TASK_TYPE
+                                ),
+                                rhs=schemas.Value.infer(
+                                    enums.TaskType.SEMANTIC_SEGMENTATION
+                                ),
+                                op=schemas.FilterOperator.CONTAINS,
+                            ),
+                        ],
+                        op=schemas.LogicalOperator.OR,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.RASTER
+                        ),
+                        op=schemas.FilterOperator.ISNOTNULL,
+                    ),
+                ],
+                op=schemas.LogicalOperator.AND,
+            )
         ),
         ignore_predictions=True,
     ) == {
@@ -654,8 +1128,27 @@ def test_label_functions(
     assert get_label_keys(
         db,
         schemas.Filter(
-            dataset_names=[dataset_name],
-            task_types=[enums.TaskType.SEMANTIC_SEGMENTATION],
+            labels=schemas.LogicalFunction(
+                args=[
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.DATASET_NAME
+                        ),
+                        rhs=schemas.Value.infer(dataset_name),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.TASK_TYPE
+                        ),
+                        rhs=schemas.Value.infer(
+                            enums.TaskType.SEMANTIC_SEGMENTATION
+                        ),
+                        op=schemas.FilterOperator.CONTAINS,
+                    ),
+                ],
+                op=schemas.LogicalOperator.AND,
+            )
         ),
         ignore_predictions=True,
     ) == {"semsegk1", "semsegk2", "semsegk3"}
@@ -663,9 +1156,34 @@ def test_label_functions(
     assert get_label_keys(
         db,
         schemas.Filter(
-            model_names=[model_name],
-            dataset_names=[dataset_name],
-            task_types=[enums.TaskType.SEMANTIC_SEGMENTATION],
+            labels=schemas.LogicalFunction(
+                args=[
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.DATASET_NAME
+                        ),
+                        rhs=schemas.Value.infer(dataset_name),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.MODEL_NAME
+                        ),
+                        rhs=schemas.Value.infer(model_name),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.TASK_TYPE
+                        ),
+                        rhs=schemas.Value.infer(
+                            enums.TaskType.SEMANTIC_SEGMENTATION
+                        ),
+                        op=schemas.FilterOperator.CONTAINS,
+                    ),
+                ],
+                op=schemas.LogicalOperator.AND,
+            )
         ),
         ignore_groundtruths=True,
     ) == {"semsegk1", "semsegk2", "semsegk3_pred"}
@@ -674,9 +1192,34 @@ def test_label_functions(
         get_labels(
             db,
             schemas.Filter(
-                model_names=[model_name],
-                dataset_names=[dataset_name],
-                task_types=[enums.TaskType.OBJECT_DETECTION],
+                labels=schemas.LogicalFunction(
+                    args=[
+                        schemas.Condition(
+                            lhs=schemas.Symbol(
+                                name=schemas.SupportedSymbol.DATASET_NAME
+                            ),
+                            rhs=schemas.Value.infer(dataset_name),
+                            op=schemas.FilterOperator.EQ,
+                        ),
+                        schemas.Condition(
+                            lhs=schemas.Symbol(
+                                name=schemas.SupportedSymbol.MODEL_NAME
+                            ),
+                            rhs=schemas.Value.infer(model_name),
+                            op=schemas.FilterOperator.EQ,
+                        ),
+                        schemas.Condition(
+                            lhs=schemas.Symbol(
+                                name=schemas.SupportedSymbol.TASK_TYPE
+                            ),
+                            rhs=schemas.Value.infer(
+                                enums.TaskType.OBJECT_DETECTION
+                            ),
+                            op=schemas.FilterOperator.CONTAINS,
+                        ),
+                    ],
+                    op=schemas.LogicalOperator.AND,
+                )
             ),
             ignore_groundtruths=True,
         )
@@ -686,13 +1229,54 @@ def test_label_functions(
     assert get_labels(
         db,
         schemas.Filter(
-            model_names=[model_name],
-            dataset_names=[dataset_name],
-            require_raster=True,
-            task_types=[
-                enums.TaskType.SEMANTIC_SEGMENTATION,
-                enums.TaskType.OBJECT_DETECTION,
-            ],
+            labels=schemas.LogicalFunction(
+                args=[
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.DATASET_NAME
+                        ),
+                        rhs=schemas.Value.infer(dataset_name),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.MODEL_NAME
+                        ),
+                        rhs=schemas.Value.infer(model_name),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                    schemas.LogicalFunction(
+                        args=[
+                            schemas.Condition(
+                                lhs=schemas.Symbol(
+                                    name=schemas.SupportedSymbol.TASK_TYPE
+                                ),
+                                rhs=schemas.Value.infer(
+                                    enums.TaskType.OBJECT_DETECTION
+                                ),
+                                op=schemas.FilterOperator.CONTAINS,
+                            ),
+                            schemas.Condition(
+                                lhs=schemas.Symbol(
+                                    name=schemas.SupportedSymbol.TASK_TYPE
+                                ),
+                                rhs=schemas.Value.infer(
+                                    enums.TaskType.SEMANTIC_SEGMENTATION
+                                ),
+                                op=schemas.FilterOperator.CONTAINS,
+                            ),
+                        ],
+                        op=schemas.LogicalOperator.OR,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.RASTER
+                        ),
+                        op=schemas.FilterOperator.ISNOTNULL,
+                    ),
+                ],
+                op=schemas.LogicalOperator.AND,
+            )
         ),
         ignore_groundtruths=True,
     ) == {
@@ -704,10 +1288,40 @@ def test_label_functions(
         get_labels(
             db,
             schemas.Filter(
-                model_names=[model_name],
-                dataset_names=[dataset_name],
-                require_raster=True,
-                task_types=[enums.TaskType.OBJECT_DETECTION],
+                labels=schemas.LogicalFunction(
+                    args=[
+                        schemas.Condition(
+                            lhs=schemas.Symbol(
+                                name=schemas.SupportedSymbol.DATASET_NAME
+                            ),
+                            rhs=schemas.Value.infer(dataset_name),
+                            op=schemas.FilterOperator.EQ,
+                        ),
+                        schemas.Condition(
+                            lhs=schemas.Symbol(
+                                name=schemas.SupportedSymbol.MODEL_NAME
+                            ),
+                            rhs=schemas.Value.infer(model_name),
+                            op=schemas.FilterOperator.EQ,
+                        ),
+                        schemas.Condition(
+                            lhs=schemas.Symbol(
+                                name=schemas.SupportedSymbol.TASK_TYPE
+                            ),
+                            rhs=schemas.Value.infer(
+                                enums.TaskType.OBJECT_DETECTION
+                            ),
+                            op=schemas.FilterOperator.CONTAINS,
+                        ),
+                        schemas.Condition(
+                            lhs=schemas.Symbol(
+                                name=schemas.SupportedSymbol.RASTER
+                            ),
+                            op=schemas.FilterOperator.ISNOTNULL,
+                        ),
+                    ],
+                    op=schemas.LogicalOperator.AND,
+                )
             ),
             ignore_groundtruths=True,
         )
