@@ -25,8 +25,10 @@ class EvaluationParameters(BaseModel):
         The task type of a given evaluation.
     label_map: Optional[List[List[List[str]]]]
         Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
-    metrics_to_return: List[str], optional
+    metrics_to_return: List[MetricType], optional
         The list of metrics to compute, store, and return to the user.
+    metric_params: dict[str, dict], optional
+        A dictionary of parameters for each metric. The key is the metric name and the value is a dictionary of parameters for that metric (e.g., `{"SentenceBLEU": {"weights": [0.65,0.2,0.1,0.05], "smoothing_function": "method3"}}`).
     convert_annotations_to_type: AnnotationType | None = None
         The type to convert all annotations to.
     iou_thresholds_to_compute: List[float], optional
@@ -40,12 +42,13 @@ class EvaluationParameters(BaseModel):
     pr_curve_max_examples: int
         The maximum number of datum examples to store when calculating PR curves.
     llm_api_params: dict[str, str | dict], optional
-        TODO
+        A dictionary of parameters for the LLM API.
     """
 
     task_type: TaskType
     metrics_to_return: list[MetricType] | None = None
     label_map: LabelMapType | None = None
+    metric_params: dict[str, dict] | None = None
 
     convert_annotations_to_type: AnnotationType | None = None
     iou_thresholds_to_compute: list[float] | None = None
@@ -91,6 +94,7 @@ class EvaluationParameters(BaseModel):
                         MetricType.mIOU,
                     ]
 
+        # TODO Possibly validate metric_params based on task type
         match values.task_type:
             case TaskType.CLASSIFICATION | TaskType.SEMANTIC_SEGMENTATION:
                 if values.convert_annotations_to_type is not None:

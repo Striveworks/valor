@@ -186,10 +186,10 @@ def _compute_text_generation_metrics(
         The filter to be used to query predictions.
     datum_filter : schemas.Filter
         The filter to be used to query groundtruths.
-    metrics_to_return: list[str]
-        TODO
+    metrics_to_return: list[MetricType]
+        The list of metrics to compute, store, and return to the user.
     llm_api_params: dict[str, str | dict], optional
-        TODO
+        A dictionary of parameters for the LLM API.
 
     Returns
     ----------
