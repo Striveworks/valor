@@ -664,7 +664,7 @@ def solver(
     Description
     -----------
     To construct complex queries it is necessary to describe the relationship between predictions and groundtruths.
-    By splitting the underlying table relationships into three foundatational graphs the complex relationships can be described by
+    By splitting the underlying table relationships into three foundational graphs the complex relationships can be described by
     sequental lists. From these sequential graphs it is possible to construct the minimum set of nodes required to generate a query.
     For queries that can be described by a single foundational graph, the solution is to trim both ends of the sequence until you
     reach nodes in the query set. The relationships of the remaining nodes can then be used to construct the query. Depending on the

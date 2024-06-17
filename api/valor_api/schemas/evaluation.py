@@ -147,14 +147,16 @@ class EvaluationParameters(BaseModel):
                     llm_guided_metrics
                 )
 
-                if values.metrics is None or not all(
-                    metric in allowed_metrics for metric in values.metrics
+                if values.metrics_to_return is None or not all(
+                    metric in allowed_metrics
+                    for metric in values.metrics_to_return
                 ):
                     raise ValueError(
-                        f"`metrics` must be a list of metrics from {allowed_metrics}."
+                        f"`metrics_to_return` must be a list of metrics from {allowed_metrics}."
                     )
                 if any(
-                    metric in llm_guided_metrics for metric in values.metrics
+                    metric in llm_guided_metrics
+                    for metric in values.metrics_to_return
                 ):
                     if values.llm_api_params is None:
                         raise ValueError(

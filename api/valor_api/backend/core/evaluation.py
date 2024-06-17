@@ -330,7 +330,7 @@ def _validate_create_evaluation(
             models.Dataset,
             db=db,
             filters=groundtruth_filter,
-            label_source=models.GroundTruth,
+            label_source=models.Annotation,  # TODO check this
         )
         .distinct()
         .all()

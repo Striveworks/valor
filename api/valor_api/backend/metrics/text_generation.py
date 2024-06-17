@@ -19,6 +19,7 @@ from valor_api.backend.metrics.metric_utils import (  # log_evaluation_item_coun
     validate_computation,
 )
 from valor_api.backend.query import generate_query
+from valor_api.enums import MetricType
 
 LabelMapType = list[list[list[str]]]
 
@@ -56,10 +57,11 @@ def _generate_datum_query(
         models.Datum.meta.label("datum_meta"),
         db=db,
         filters=datum_filter,
-        label_source=models.GroundTruth,
+        label_source=models.Annotation,
     ).subquery()
 
 
+# TODO remove this
 # def _generate_groundtruth_query(
 #     datum_filter: schemas.Filter,
 # ) -> NamedFromClause | Subquery:
@@ -157,7 +159,7 @@ def _compute_text_generation_metrics(
     db: Session,
     prediction_filter: schemas.Filter,
     datum_filter: schemas.Filter,
-    metrics: list[str] = [],
+    metrics_to_return: list[MetricType] = [],
     llm_api_params: dict[str, str | dict] | None = None,
 ) -> Sequence[
     schemas.AnswerCorrectnessMetric
@@ -184,7 +186,7 @@ def _compute_text_generation_metrics(
         The filter to be used to query predictions.
     datum_filter : schemas.Filter
         The filter to be used to query groundtruths.
-    metrics: list[str]
+    metrics_to_return: list[str]
         TODO
     llm_api_params: dict[str, str | dict], optional
         TODO
@@ -229,23 +231,25 @@ def _compute_text_generation_metrics(
     res = db.execute(total_query).all()
 
     client = None
-    if any(metric_name in LLM_GUIDED_METRICS for metric_name in metrics):
+    if any(
+        metric_name in LLM_GUIDED_METRICS for metric_name in metrics_to_return
+    ):
         assert (
             llm_api_params is not None
-        ), f"llm_api_params must be provided for the following metrics: {[metric for metric in metrics if metric in LLM_GUIDED_METRICS]}."
+        ), f"llm_api_params must be provided for the following metrics: {[metric for metric in metrics_to_return if metric in LLM_GUIDED_METRICS]}."
         client = setup_llm_client(llm_api_params)
-    ret = []
 
     # TODO Implement the rest of the metrics.
+    ret = []
     for row in res:
-        for metric_name in metrics:
-            if metric_name == "AnswerCorrectness":
+        for metric_type in metrics_to_return:
+            if metric_type == MetricType.AnswerCorrectness:
                 raise NotImplementedError
-            elif metric_name == "AnswerRelevance":
+            elif metric_type == MetricType.AnswerRelevance:
                 raise NotImplementedError
-            elif metric_name == "Bias":
+            elif metric_type == MetricType.Bias:
                 raise NotImplementedError
-            elif metric_name == "Coherence":
+            elif metric_type == MetricType.Coherence:
                 assert client
                 generated_text = row[3]
                 response = client.coherence(text=generated_text)
@@ -259,21 +263,21 @@ def _compute_text_generation_metrics(
                         },
                     )
                 )
-            elif metric_name == "ContextPrecision":
+            elif metric_type == MetricType.ContextPrecision:
                 raise NotImplementedError
-            elif metric_name == "ContextRecall":
+            elif metric_type == MetricType.ContextRecall:
                 raise NotImplementedError
-            elif metric_name == "ContextRelevance":
+            elif metric_type == MetricType.ContextRelevance:
                 raise NotImplementedError
-            elif metric_name == "Faithfulness":
+            elif metric_type == MetricType.Faithfulness:
                 raise NotImplementedError
-            elif metric_name == "Grammaticality":
+            elif metric_type == MetricType.Grammaticality:
                 raise NotImplementedError
-            elif metric_name == "Hallucination":
+            elif metric_type == MetricType.Hallucination:
                 raise NotImplementedError
-            elif metric_name == "Summarization":
+            elif metric_type == MetricType.Summarization:
                 raise NotImplementedError
-            elif metric_name == "Toxicity":
+            elif metric_type == MetricType.Toxicity:
                 raise NotImplementedError
 
     return ret
@@ -305,7 +309,7 @@ def compute_text_generation_metrics(
     evaluation = core.fetch_evaluation_from_id(db, evaluation_id)
 
     # unpack filters and params
-    datum_filter = schemas.Filter(**evaluation.datum_filter)
+    datum_filter = schemas.Filter(**evaluation.filters)
     groundtruth_filter = datum_filter.model_copy()
     prediction_filter = datum_filter.model_copy()
 
@@ -334,7 +338,7 @@ def compute_text_generation_metrics(
         db=db,
         prediction_filter=prediction_filter,
         datum_filter=datum_filter,
-        metrics=parameters.metrics_to_return,
+        metrics_to_return=parameters.metrics_to_return,
         llm_api_params=llm_api_params,
     )
 

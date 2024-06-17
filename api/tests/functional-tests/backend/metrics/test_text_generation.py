@@ -232,7 +232,8 @@ def test_compute_text_generation(
     """
 
     model_filter = schemas.Filter(
-        dataset_names=[dataset_name], model_names=[model_name]
+        dataset_names=[dataset_name],
+        model_names=[model_name],
     )
     datum_filter = schemas.Filter(
         dataset_names=[dataset_name],
@@ -241,19 +242,19 @@ def test_compute_text_generation(
     )
 
     # TODO eventually get all working
-    metrics = [
-        # "AnswerCorrectness",
-        # "AnswerRelevance",
-        # "Bias",
-        "Coherence",
-        # "ContextPrecision",
-        # "ContextRecall",
-        # "ContextRelevance",
-        # "Faithfulness",
-        # "Grammaticality",
-        # "Hallucination",
-        # "Summarization",
-        # "Toxicity",
+    metrics_to_return = [
+        # enums.MetricType.AnswerCorrectness,
+        # enums.MetricType.AnswerRelevance,
+        # enums.MetricType.Bias,
+        enums.MetricType.Coherence,
+        # enums.MetricType.ContextPrecision,
+        # enums.MetricType.ContextRecall,
+        # enums.MetricType.ContextRelevance,
+        # enums.MetricType.Faithfulness,
+        # enums.MetricType.Grammaticality,
+        # enums.MetricType.Hallucination,
+        # enums.MetricType.Summarization,
+        # enums.MetricType.Toxicity,
     ]
 
     # TODO The llm_api_params need to be passed in to this as well.
@@ -261,7 +262,7 @@ def test_compute_text_generation(
         db,
         model_filter,
         datum_filter,
-        metrics=metrics,
+        metrics_to_return=metrics_to_return,
         llm_api_params={
             "client": "openai",
             # "api_url": "https://api.openai.com/v1/chat/completions",
@@ -322,19 +323,19 @@ def test_text_generation(
     model_name: str,
     text_generation_test_data,
 ):
-    metrics = [
-        # "AnswerCorrectness",
-        # "AnswerRelevance",
-        # "Bias",
-        "Coherence",
-        # "ContextPrecision",
-        # "ContextRecall",
-        # "ContextRelevance",
-        # "Faithfulness",
-        # "Grammaticality",
-        # "Hallucination",
-        # "Summarization",
-        # "Toxicity",
+    metrics_to_return = [
+        # enums.MetricType.AnswerCorrectness,
+        # enums.MetricType.AnswerRelevance,
+        # enums.MetricType.Bias,
+        enums.MetricType.Coherence,
+        # enums.MetricType.ContextPrecision,
+        # enums.MetricType.ContextRecall,
+        # enums.MetricType.ContextRelevance,
+        # enums.MetricType.Faithfulness,
+        # enums.MetricType.Grammaticality,
+        # enums.MetricType.Hallucination,
+        # enums.MetricType.Summarization,
+        # enums.MetricType.Toxicity,
     ]
 
     # default request
@@ -343,7 +344,7 @@ def test_text_generation(
         model_names=[model_name],
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.TEXT_GENERATION,
-            metrics_to_return=metrics,
+            metrics_to_return=metrics_to_return,
             llm_api_params={
                 "client": "openai",
                 # "api_url": "https://api.openai.com/v1/chat/completions",

@@ -117,7 +117,6 @@ class EvaluationStatus(str, Enum):
 
 
 class MetricType(str, Enum):
-
     Accuracy = ("Accuracy",)
     Precision = ("Precision",)
     Recall = ("Recall",)
@@ -133,3 +132,15 @@ class MetricType(str, Enum):
     mIOU = "mIOU"
     PrecisionRecallCurve = "PrecisionRecallCurve"
     DetailedPrecisionRecallCurve = "DetailedPrecisionRecallCurve"
+    AnswerCorrectness = "AnswerCorrectness"
+    AnswerRelevance = "AnswerRelevance"
+    Bias = "Bias"
+    Coherence = "Coherence"
+    ContextPrecision = "ContextPrecision"
+    ContextRecall = "ContextRecall"
+    ContextRelevance = "ContextRelevance"
+    Faithfulness = "Faithfulness"
+    Grammaticality = "Grammaticality"
+    Hallucination = "Hallucination"
+    Summarization = "Summarization"
+    Toxicity = "Toxicity"
