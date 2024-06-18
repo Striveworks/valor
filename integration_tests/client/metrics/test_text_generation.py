@@ -10,7 +10,8 @@ from valor import (  # Client,; Dataset,; Model,
     GroundTruth,
     Prediction,
 )
-from valor.enums import TaskType  # EvaluationStatus,
+
+# from valor.enums import TaskType, EvaluationStatus, MetricType
 
 # def test_llm_evaluation(
 #     client: Client,
@@ -32,24 +33,24 @@ from valor.enums import TaskType  # EvaluationStatus,
 
 #     model.finalize_inferences(dataset)
 
-#     metrics_to_compute = [
-#         "Coherence",
-#         # "Summarization",
-#         # "Grammaticality",
-#         # "Hallucination Rate",
-#         # "Toxicity",
-#         # "Bias",
-#         # "Faithfulness",
-#         # "Answer Relevance",
-#         # "Answer Correctness",
-#         # "Context Precision",
-#         # "Context Relevance",
-#         # "Context Recall",
+#     metrics_to_return = [
+#         # MetricType.AnswerCorrectness,
+#         # MetricType.AnswerRelevance,
+#         # MetricType.Bias,
+#         MetricType.Coherence,
+#         # MetricType.ContextPrecision,
+#         # MetricType.ContextRecall,
+#         # MetricType.ContextRelevance,
+#         # MetricType.Faithfulness,
+#         # MetricType.Grammaticality,
+#         # MetricType.Hallucination,
+#         # MetricType.Summarization,
+#         # MetricType.Toxicity,
 #     ]
 
 #     eval_job = model.evaluate_text_generation(
 #         datasets=dataset,
-#         metrics=metrics_to_compute,
+#         metrics_to_return=metrics_to_return,
 #         llm_api_params = {
 #             "client": "openai",
 #             # "api_url":"https://api.openai.com/v1/chat/completions",
@@ -66,10 +67,11 @@ from valor.enums import TaskType  # EvaluationStatus,
 #         #         "smoothing_function": "method3",
 #         #     },
 #         # },
-#         meta={
-#             "llm_api_service": "openai",
-#             "model": "gpt-4o",
-#         },
+#         # TODO Will we have support for evaluation metadata?
+#         # meta={
+#         #     "llm_api_service": "openai",
+#         #     "model": "gpt-4o",
+#         # },
 #     )
 
 #     assert eval_job.id
@@ -220,7 +222,6 @@ def pred_answers(
             datum=q0,
             annotations=[
                 Annotation(
-                    task_type=TaskType.TEXT_GENERATION,
                     text="""Based on the provided context, John Adams and Alexander Hamilton did not get along. John Adams, during his presidency, had grown independent of his cabinet, often making decisions despite opposition from it. Hamilton, who was accustomed to being regularly consulted by Washington, sent Adams a detailed letter with policy suggestions after his inauguration, which Adams dismissively ignored.\n""",
                     context=[
                         """Although aware of Hamilton\'s influence, Adams was convinced that their retention ensured a smoother succession. Adams maintained the economic programs of Hamilton, who regularly consulted with key cabinet members, especially the powerful Treasury Secretary, Oliver Wolcott Jr. Adams was in other respects quite independent of his cabinet, often making decisions despite opposition from it. Hamilton had grown accustomed to being regularly consulted by Washington. Shortly after Adams was inaugurated, Hamilton sent him a detailed letter with policy suggestions. Adams dismissively ignored it.\n\nFailed peace commission and XYZ affair\nHistorian Joseph Ellis writes that "[t]he Adams presidency was destined to be dominated by a single question of American policy to an extent seldom if ever encountered by any succeeding occupant of the office." That question was whether to make war with France or find peace. Britain and France were at war as a result of the French Revolution. Hamilton and the Federalists strongly favored the British monarchy against what they denounced as the political radicalism and anti-religious frenzy of the French Revolution. Jefferson and the Republicans, with their firm opposition to monarchy, strongly supported the French overthrowing their king. The French had supported Jefferson for president in 1796 and became belligerent at his loss.""",
@@ -235,7 +236,6 @@ def pred_answers(
             datum=q1,
             annotations=[
                 Annotation(
-                    task_type=TaskType.TEXT_GENERATION,
                     text="""Yes, Lincoln won the election of 1860. He received the highest number of votes and a majority in the Electoral College, making him the 16th President of the United States. However, it's important to note that he won entirely due to his support in the North and West, as he did not receive any votes in 10 of the 15 Southern slave states.""",
                     context=[
                         """Republican speakers focused first on the party platform, and second on Lincoln's life story, emphasizing his childhood poverty. The goal was to demonstrate the power of \"free labor\", which allowed a common farm boy to work his way to the top by his own efforts. The Republican Party's production of campaign literature dwarfed the combined opposition; a Chicago Tribune writer produced a pamphlet that detailed Lincoln's life and sold 100,000\u2013200,000 copies. Though he did not give public appearances, many sought to visit him and write him. In the runup to the election, he took an office in the Illinois state capitol to deal with the influx of attention. He also hired John George Nicolay as his personal secretary, who would remain in that role during the presidency.On November 6, 1860, Lincoln was elected the 16th president. He was the first Republican president and his victory was entirely due to his support in the North and West. No ballots were cast for him in 10 of the 15 Southern slave states, and he won only two of 996 counties in all the Southern states, an omen of the impending Civil War.""",
@@ -250,7 +250,6 @@ def pred_answers(
             datum=q2,
             annotations=[
                 Annotation(
-                    task_type=TaskType.TEXT_GENERATION,
                     text="""If a turtle egg was kept warm, it would likely hatch into a baby turtle. The sex of the baby turtle would be determined by the incubation temperature, assuming the species is one of those that determine sex thermally. This is because many turtle species have the ability to move around inside their eggs to select the best temperature for development, which can influence their sexual destiny.""",
                     context=[
                         """There is experimental evidence that the embryos of Mauremys reevesii can move around inside their eggs to select the best temperature for development, thus influencing their sexual destiny. In other species, sex is determined genetically. The length of incubation for turtle eggs varies from two to three months for temperate species, and four months to over a year for tropical species. Species that live in warm temperate climates can delay their development.Hatching young turtles break out of the shell using an egg tooth, a sharp projection that exists temporarily on their upper beak. Hatchlings dig themselves out of the nest and find safety in vegetation or water. Some species stay in the nest for longer, be it for overwintering or to wait for the rain to loosen the soil for them to dig out. Young turtles are highly vulnerable to predators, both in the egg and as hatchlings. Mortality is high during this period but significantly decreases when they reach adulthood. Most species grow quickly during their early years and slow down when they are mature.\n\nLifespan\nTurtles can live long lives.""",

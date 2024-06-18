@@ -1136,8 +1136,8 @@ class Model(StaticCollection):
             parameters=EvaluationParameters(
                 task_type=TaskType.TEXT_GENERATION,
                 metrics_to_return=metrics_to_return,
-                # llm_api_params=llm_api_params, # TODO We should not send this in a GET request like this. It needs to be protected in the json payload of a POST request.
                 metric_params=metric_params,
+                llm_api_params=llm_api_params,
             ),
         )
 
