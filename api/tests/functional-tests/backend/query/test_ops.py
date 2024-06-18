@@ -11,20 +11,14 @@ from valor_api import crud, schemas
 from valor_api.backend import models
 from valor_api.backend.query.ops import generate_query, generate_select
 from valor_api.backend.query.types import LabelSourceAlias
-from valor_api.schemas.filters import AdvancedFilter as Filter
 from valor_api.schemas.filters import (
-    And,
-    Equal,
-    GreaterThan,
-    GreaterThanEqual,
-    Inside,
-    Intersects,
-    IsNotNull,
-    LessThan,
-    LessThanEqual,
-    NotEqual,
-    Operands,
-    Outside,
+    Condition,
+    Filter,
+    FilterOperator,
+    LogicalFunction,
+    LogicalOperator,
+    SupportedSymbol,
+    SupportedType,
     Symbol,
     Value,
 )
@@ -44,7 +38,10 @@ def geospatial_coordinates() -> dict[
     dict,
 ]:
     return {
-        "point": {"type": "Point", "coordinates": [125.2750725, 38.760525]},
+        SupportedType.POINT: {
+            "type": "Point",
+            "coordinates": [125.2750725, 38.760525],
+        },
         "polygon1": {
             "type": "Polygon",
             "coordinates": [
@@ -80,7 +77,7 @@ def geospatial_coordinates() -> dict[
                 ]
             ],
         },
-        "multipolygon": {
+        SupportedType.MULTIPOLYGON: {
             "type": "MultiPolygon",
             "coordinates": [
                 [
@@ -138,7 +135,7 @@ def metadata_2(geospatial_coordinates) -> dict[str, int | float | str | dict]:
         "some_bool_attribute": False,
         "some_geo_attribute": {
             "type": "geojson",
-            "value": geospatial_coordinates["multipolygon"],
+            "value": geospatial_coordinates[SupportedType.MULTIPOLYGON],
         },
     }
 
@@ -668,49 +665,45 @@ def model_sim(
     crud.finalize(db=db, dataset_name=dset_name, model_name=model_name2)
 
 
-def create_dataset_filter(name: str) -> Equal:
-    return Equal(
-        eq=Operands(
-            lhs=Symbol(type="string", name="dataset.name"),
-            rhs=Value(type="string", value=name),
-        )
+def create_dataset_filter(name: str) -> Condition:
+    return Condition(
+        lhs=Symbol(name=SupportedSymbol.DATASET_NAME),
+        rhs=Value.infer(name),
+        op=FilterOperator.EQ,
     )
 
 
-def create_model_filter(name: str) -> Equal:
-    return Equal(
-        eq=Operands(
-            lhs=Symbol(type="string", name="model.name"),
-            rhs=Value(type="string", value=name),
-        )
+def create_model_filter(name: str) -> Condition:
+    return Condition(
+        lhs=Symbol(name=SupportedSymbol.MODEL_NAME),
+        rhs=Value.infer(name),
+        op=FilterOperator.EQ,
     )
 
 
-def create_datum_filter(uid: str) -> Equal:
-    return Equal(
-        eq=Operands(
-            lhs=Symbol(type="string", name="datum.uid"),
-            rhs=Value(type="string", value=uid),
-        )
+def create_datum_filter(uid: str) -> Condition:
+    return Condition(
+        lhs=Symbol(name=SupportedSymbol.DATUM_UID),
+        rhs=Value.infer(uid),
+        op=FilterOperator.EQ,
     )
 
 
-def create_label_filter(key: str, value: str) -> And:
-    return And(
-        logical_and=[
-            Equal(
-                eq=Operands(
-                    lhs=Symbol(type="string", name="label.key"),
-                    rhs=Value(type="string", value=key),
-                )
+def create_label_filter(key: str, value: str) -> LogicalFunction:
+    return LogicalFunction(
+        args=[
+            Condition(
+                lhs=Symbol(name=SupportedSymbol.LABEL_KEY),
+                rhs=Value.infer(key),
+                op=FilterOperator.EQ,
             ),
-            Equal(
-                eq=Operands(
-                    lhs=Symbol(type="string", name="label.value"),
-                    rhs=Value(type="string", value=value),
-                )
+            Condition(
+                lhs=Symbol(name=SupportedSymbol.LABEL_VALUE),
+                rhs=Value.infer(value),
+                op=FilterOperator.EQ,
             ),
-        ]
+        ],
+        op=LogicalOperator.AND,
     )
 
 
@@ -784,16 +777,13 @@ def test_query_models(
 
     # Q: Get models with metadatum with `numeric` > 0.5.
     f = Filter(
-        predictions=GreaterThan(
-            gt=Operands(
-                lhs=Symbol(
-                    type="float",
-                    name="model.metadata",
-                    key="some_numeric_attribute",
-                ),
-                rhs=Value(type="float", value=0.5),
-            )
-        ),
+        predictions=Condition(
+            lhs=Symbol(
+                name=SupportedSymbol.MODEL_META, key="some_numeric_attribute"
+            ),
+            rhs=Value.infer(0.5),
+            op=FilterOperator.GT,
+        )
     )
     model_names = generate_select(
         models.Model.name, filters=f, label_source=models.Prediction
@@ -804,16 +794,13 @@ def test_query_models(
 
     # Q: Get models with metadatum with `numeric` < 0.5.
     f = Filter(
-        predictions=LessThan(
-            lt=Operands(
-                lhs=Symbol(
-                    type="float",
-                    name="model.metadata",
-                    key="some_numeric_attribute",
-                ),
-                rhs=Value(type="float", value=0.5),
-            )
-        ),
+        predictions=Condition(
+            lhs=Symbol(
+                name=SupportedSymbol.MODEL_META, key="some_numeric_attribute"
+            ),
+            rhs=Value.infer(0.5),
+            op=FilterOperator.LT,
+        )
     )
     model_names = generate_select(
         models.Model.name, filters=f, label_source=models.Prediction
@@ -829,39 +816,34 @@ def test_query_by_metadata(
 ):
     # Q: Get datums with metadatum with `numeric` < 0.5, `str` == 'abc', and `bool` == True.
     f = Filter(
-        datums=And(
-            logical_and=[
-                LessThan(
-                    lt=Operands(
-                        lhs=Symbol(
-                            type="float",
-                            name="datum.metadata",
-                            key="some_numeric_attribute",
-                        ),
-                        rhs=Value(type="float", value=0.5),
-                    )
+        datums=LogicalFunction(
+            args=[
+                Condition(
+                    lhs=Symbol(
+                        name=SupportedSymbol.DATUM_META,
+                        key="some_numeric_attribute",
+                    ),
+                    rhs=Value.infer(0.5),
+                    op=FilterOperator.LT,
                 ),
-                Equal(
-                    eq=Operands(
-                        lhs=Symbol(
-                            type="string",
-                            name="datum.metadata",
-                            key="some_str_attribute",
-                        ),
-                        rhs=Value(type="string", value="abc"),
-                    )
+                Condition(
+                    lhs=Symbol(
+                        name=SupportedSymbol.DATUM_META,
+                        key="some_str_attribute",
+                    ),
+                    rhs=Value.infer("abc"),
+                    op=FilterOperator.EQ,
                 ),
-                Equal(
-                    eq=Operands(
-                        lhs=Symbol(
-                            type="boolean",
-                            name="datum.metadata",
-                            key="some_bool_attribute",
-                        ),
-                        rhs=Value(type="boolean", value=True),
-                    )
+                Condition(
+                    lhs=Symbol(
+                        name=SupportedSymbol.DATUM_META,
+                        key="some_bool_attribute",
+                    ),
+                    rhs=Value.infer(True),
+                    op=FilterOperator.EQ,
                 ),
-            ]
+            ],
+            op=LogicalOperator.AND,
         )
     )
     datum_uids = generate_select(models.Datum.uid, filters=f).distinct()
@@ -870,52 +852,39 @@ def test_query_by_metadata(
     assert (datum_uid1,) in datum_uids
 
     # repeat with `bool` == False or != `True` and check we get nothing
-    negative1 = Equal(
-        eq=Operands(
-            lhs=Symbol(
-                type="boolean",
-                name="datum.metadata",
-                key="some_bool_attribute",
-            ),
-            rhs=Value(type="boolean", value=False),
-        )
+    negative1 = Condition(
+        lhs=Symbol(name=SupportedSymbol.DATUM_META, key="some_bool_attribute"),
+        rhs=Value.infer(False),
+        op=FilterOperator.EQ,
     )
-    negative2 = NotEqual(
-        ne=Operands(
-            lhs=Symbol(
-                type="boolean",
-                name="datum.metadata",
-                key="some_bool_attribute",
-            ),
-            rhs=Value(type="boolean", value=True),
-        )
+    negative2 = Condition(
+        lhs=Symbol(name=SupportedSymbol.DATUM_META, key="some_bool_attribute"),
+        rhs=Value.infer(True),
+        op=FilterOperator.NE,
     )
     for bool_filter in [negative1, negative2]:
         f = Filter(
-            groundtruths=And(
-                logical_and=[
-                    LessThan(
-                        lt=Operands(
-                            lhs=Symbol(
-                                type="float",
-                                name="datum.metadata",
-                                key="some_numeric_attribute",
-                            ),
-                            rhs=Value(type="float", value=0.5),
-                        )
+            groundtruths=LogicalFunction(
+                args=[
+                    Condition(
+                        lhs=Symbol(
+                            name=SupportedSymbol.DATUM_META,
+                            key="some_numeric_attribute",
+                        ),
+                        rhs=Value.infer(0.5),
+                        op=FilterOperator.LT,
                     ),
-                    Equal(
-                        eq=Operands(
-                            lhs=Symbol(
-                                type="string",
-                                name="datum.metadata",
-                                key="some_str_attribute",
-                            ),
-                            rhs=Value(type="string", value="abc"),
-                        )
+                    Condition(
+                        lhs=Symbol(
+                            name=SupportedSymbol.DATUM_META,
+                            key="some_str_attribute",
+                        ),
+                        rhs=Value.infer("abc"),
+                        op=FilterOperator.EQ,
                     ),
                     bool_filter,
-                ]
+                ],
+                op=LogicalOperator.AND,
             )
         )
         datum_uids = generate_select(models.Datum.uid, filters=f).distinct()
@@ -924,29 +893,26 @@ def test_query_by_metadata(
 
     # Q: Get datums with metadatum with `numeric` > 0.5 and `str` == 'abc'.
     f = Filter(
-        datums=And(
-            logical_and=[
-                GreaterThan(
-                    gt=Operands(
-                        lhs=Symbol(
-                            type="float",
-                            name="datum.metadata",
-                            key="some_numeric_attribute",
-                        ),
-                        rhs=Value(type="float", value=0.5),
-                    )
+        datums=LogicalFunction(
+            args=[
+                Condition(
+                    lhs=Symbol(
+                        name=SupportedSymbol.DATUM_META,
+                        key="some_numeric_attribute",
+                    ),
+                    rhs=Value.infer(0.5),
+                    op=FilterOperator.GT,
                 ),
-                Equal(
-                    eq=Operands(
-                        lhs=Symbol(
-                            type="string",
-                            name="datum.metadata",
-                            key="some_str_attribute",
-                        ),
-                        rhs=Value(type="string", value="abc"),
-                    )
+                Condition(
+                    lhs=Symbol(
+                        name=SupportedSymbol.DATUM_META,
+                        key="some_str_attribute",
+                    ),
+                    rhs=Value.infer("abc"),
+                    op=FilterOperator.EQ,
                 ),
-            ]
+            ],
+            op=LogicalOperator.AND,
         )
     )
     datum_uids = generate_select(models.Datum.uid, filters=f).distinct()
@@ -956,29 +922,26 @@ def test_query_by_metadata(
 
     # Q: Get datums with metadatum with `numeric` < 0.5 and `str` == 'xyz'.
     f = Filter(
-        datums=And(
-            logical_and=[
-                LessThan(
-                    lt=Operands(
-                        lhs=Symbol(
-                            type="float",
-                            name="datum.metadata",
-                            key="some_numeric_attribute",
-                        ),
-                        rhs=Value(type="float", value=0.5),
-                    )
+        datums=LogicalFunction(
+            args=[
+                Condition(
+                    lhs=Symbol(
+                        name=SupportedSymbol.DATUM_META,
+                        key="some_numeric_attribute",
+                    ),
+                    rhs=Value.infer(0.5),
+                    op=FilterOperator.LT,
                 ),
-                Equal(
-                    eq=Operands(
-                        lhs=Symbol(
-                            type="string",
-                            name="datum.metadata",
-                            key="some_str_attribute",
-                        ),
-                        rhs=Value(type="string", value="xyz"),
-                    )
+                Condition(
+                    lhs=Symbol(
+                        name=SupportedSymbol.DATUM_META,
+                        key="some_str_attribute",
+                    ),
+                    rhs=Value.infer("xyz"),
+                    op=FilterOperator.EQ,
                 ),
-            ]
+            ],
+            op=LogicalOperator.AND,
         )
     )
     datum_uids = generate_select(models.Datum.uid, filters=f).distinct()
@@ -988,29 +951,26 @@ def test_query_by_metadata(
 
     # Q: Get models with metadatum with `numeric` > 0.5 and `str` == 'xyz'.
     f = Filter(
-        datums=And(
-            logical_and=[
-                GreaterThan(
-                    gt=Operands(
-                        lhs=Symbol(
-                            type="float",
-                            name="datum.metadata",
-                            key="some_numeric_attribute",
-                        ),
-                        rhs=Value(type="float", value=0.5),
-                    )
+        datums=LogicalFunction(
+            args=[
+                Condition(
+                    lhs=Symbol(
+                        name=SupportedSymbol.DATUM_META,
+                        key="some_numeric_attribute",
+                    ),
+                    rhs=Value.infer(0.5),
+                    op=FilterOperator.GT,
                 ),
-                Equal(
-                    eq=Operands(
-                        lhs=Symbol(
-                            type="string",
-                            name="datum.metadata",
-                            key="some_str_attribute",
-                        ),
-                        rhs=Value(type="string", value="xyz"),
-                    )
+                Condition(
+                    lhs=Symbol(
+                        name=SupportedSymbol.DATUM_META,
+                        key="some_str_attribute",
+                    ),
+                    rhs=Value.infer("xyz"),
+                    op=FilterOperator.EQ,
                 ),
-            ]
+            ],
+            op=LogicalOperator.AND,
         )
     )
     datum_uids = generate_select(models.Datum.uid, filters=f).distinct()
@@ -1064,17 +1024,17 @@ def test_complex_queries(
 ):
     # Q: Get datums that `model1` has annotations for with label `dog` and prediction score > 0.9.
     f = Filter(
-        predictions=And(
-            logical_and=[
+        predictions=LogicalFunction(
+            op=LogicalOperator.AND,
+            args=[
                 create_model_filter(model_name1),
                 create_label_filter(key="class", value="dog"),
-                GreaterThan(
-                    gt=Operands(
-                        lhs=Symbol(type="float", name="label.score"),
-                        rhs=Value(type="float", value=0.9),
-                    )
+                Condition(
+                    lhs=Symbol(name=SupportedSymbol.SCORE),
+                    rhs=Value.infer(0.9),
+                    op=FilterOperator.GT,
                 ),
-            ]
+            ],
         )
     )
     datum_uids = generate_select(
@@ -1089,22 +1049,21 @@ def test_complex_queries(
 
     # Q: Get datums that `model1` has `bounding_box` annotations for with label `dog` and prediction score > 0.75.
     f = Filter(
-        predictions=And(
-            logical_and=[
+        predictions=LogicalFunction(
+            op=LogicalOperator.AND,
+            args=[
                 create_model_filter(model_name1),
                 create_label_filter(key="class", value="dog"),
-                GreaterThan(
-                    gt=Operands(
-                        lhs=Symbol(type="float", name="label.score"),
-                        rhs=Value(type="float", value=0.75),
-                    )
+                Condition(
+                    lhs=Symbol(name=SupportedSymbol.SCORE),
+                    rhs=Value.infer(0.75),
+                    op=FilterOperator.GT,
                 ),
-                IsNotNull(
-                    isnotnull=Symbol(
-                        type="box", name="annotation.bounding_box"
-                    )
+                Condition(
+                    lhs=Symbol(name=SupportedSymbol.BOX),
+                    op=FilterOperator.ISNOTNULL,
                 ),
-            ]
+            ],
         )
     )
     datum_uids = generate_select(
@@ -1122,13 +1081,10 @@ def test_query_by_annotation_geometry(
     db: Session,
     model_sim,
 ):
-    bounding_box_filter = GreaterThan(
-        gt=Operands(
-            lhs=Symbol(
-                type="float", name="annotation.bounding_box", attribute="area"
-            ),
-            rhs=Value(type="float", value=75),
-        )
+    bounding_box_filter = Condition(
+        lhs=Symbol(name=SupportedSymbol.BOX_AREA),
+        rhs=Value.infer(75.0),
+        op=FilterOperator.GT,
     )
 
     # Q: Get `bounding_box` annotations that have an area > 75.
@@ -1143,11 +1099,12 @@ def test_query_by_annotation_geometry(
 
     # Q: Get `bounding_box` annotations from `model1` that have an area > 75.
     f = Filter(
-        predictions=And(
-            logical_and=[
+        predictions=LogicalFunction(
+            op=LogicalOperator.AND,
+            args=[
                 create_model_filter(model_name1),
                 bounding_box_filter,
-            ]
+            ],
         )
     )
     annotations = generate_select(
@@ -1215,67 +1172,61 @@ def test_multiple_tables_in_args(
 
 
 def create_geospatial_inside_filter(
-    symbol_name: str,
+    symbol: Symbol,
     value: Value,
-):
-    return Inside(
-        inside=Operands(
-            lhs=Symbol(
-                type=value.type, name=symbol_name, key="some_geo_attribute"
-            ),
-            rhs=value,
-        )
+) -> Condition:
+    symbol.key = "some_geo_attribute"
+    return Condition(
+        lhs=symbol,
+        rhs=value,
+        op=FilterOperator.INSIDE,
     )
 
 
 def create_geospatial_outside_filter(
-    symbol_name: str,
+    symbol: Symbol,
     value: Value,
-):
-    return Outside(
-        outside=Operands(
-            lhs=Symbol(
-                type=value.type, name=symbol_name, key="some_geo_attribute"
-            ),
-            rhs=value,
-        )
+) -> Condition:
+    symbol.key = "some_geo_attribute"
+    return Condition(
+        lhs=symbol,
+        rhs=value,
+        op=FilterOperator.OUTSIDE,
     )
 
 
 def create_geospatial_intersects_filter(
-    symbol_name: str,
+    symbol: Symbol,
     value: Value,
-):
-    return Intersects(
-        intersects=Operands(
-            lhs=Symbol(
-                type=value.type, name=symbol_name, key="some_geo_attribute"
-            ),
-            rhs=value,
-        )
+) -> Condition:
+    symbol.key = "some_geo_attribute"
+    return Condition(
+        lhs=symbol,
+        rhs=value,
+        op=FilterOperator.INTERSECTS,
     )
 
 
 def _get_geospatial_names_from_filter(
     db: Session,
     value: Value,
-    operator: str,
+    operator: FilterOperator,
     model_object: models.Datum | InstrumentedAttribute,
-    symbol_name: str,
+    symbol: Symbol,
     label_source: LabelSourceAlias = models.Annotation,
 ):
     match operator:
-        case "inside":
+        case FilterOperator.INSIDE:
             geofilter = create_geospatial_inside_filter(
-                symbol_name=symbol_name, value=value
+                symbol=symbol, value=value
             )
-        case "outside":
+        case FilterOperator.OUTSIDE:
             geofilter = create_geospatial_outside_filter(
-                symbol_name=symbol_name, value=value
+                symbol=symbol, value=value
             )
-        case "intersects":
+        case FilterOperator.INTERSECTS:
             geofilter = create_geospatial_intersects_filter(
-                symbol_name=symbol_name, value=value
+                symbol=symbol, value=value
             )
         case _:
             raise NotImplementedError
@@ -1296,13 +1247,14 @@ def test_datum_geospatial_filters(
     db: Session,
     model_sim,
     model_object=models.Datum.uid,
-    symbol_name: str = "datum.metadata",
 ):
+    symbol = Symbol(name=SupportedSymbol.DATUM_META)
+
     # test inside filters
     names = _get_geospatial_names_from_filter(
         db=db,
         value=Value(
-            type="polygon",
+            type=SupportedType.POLYGON,
             value=[
                 [
                     [-20, -20],
@@ -1313,9 +1265,9 @@ def test_datum_geospatial_filters(
                 ]
             ],
         ),
-        operator="inside",
+        operator=FilterOperator.INSIDE,
         model_object=model_object,
-        symbol_name=symbol_name,
+        symbol=symbol,
     )
     assert len(names) == 2
     assert ("uid1",) in names
@@ -1325,7 +1277,7 @@ def test_datum_geospatial_filters(
     names = _get_geospatial_names_from_filter(
         db=db,
         value=Value(
-            type="polygon",
+            type=SupportedType.POLYGON,
             value=[
                 [
                     [60, 60],
@@ -1336,9 +1288,9 @@ def test_datum_geospatial_filters(
                 ]
             ],
         ),
-        operator="intersects",
+        operator=FilterOperator.INTERSECTS,
         model_object=model_object,
-        symbol_name=symbol_name,
+        symbol=symbol,
     )
     assert len(names) == 2
     assert ("uid2",) in names
@@ -1348,12 +1300,12 @@ def test_datum_geospatial_filters(
     names = _get_geospatial_names_from_filter(
         db=db,
         value=Value(
-            type="point",
+            type=SupportedType.POINT,
             value=[81, 80],
         ),
-        operator="intersects",
+        operator=FilterOperator.INTERSECTS,
         model_object=model_object,
-        symbol_name=symbol_name,
+        symbol=symbol,
     )
     assert len(names) == 1
     assert ("uid4",) in names
@@ -1362,7 +1314,7 @@ def test_datum_geospatial_filters(
     names = _get_geospatial_names_from_filter(
         db=db,
         value=Value(
-            type="multipolygon",
+            type=SupportedType.MULTIPOLYGON,
             value=[
                 [
                     [
@@ -1384,9 +1336,9 @@ def test_datum_geospatial_filters(
                 ],
             ],
         ),
-        operator="intersects",
+        operator=FilterOperator.INTERSECTS,
         model_object=model_object,
-        symbol_name=symbol_name,
+        symbol=symbol,
     )
     assert len(names) == 3
     assert ("uid1",) in names
@@ -1397,12 +1349,12 @@ def test_datum_geospatial_filters(
     names = _get_geospatial_names_from_filter(
         db=db,
         value=Value(
-            type="point",
+            type=SupportedType.POINT,
             value=[-11, -11],
         ),
-        operator="intersects",
+        operator=FilterOperator.INTERSECTS,
         model_object=model_object,
-        symbol_name=symbol_name,
+        symbol=symbol,
     )
     assert len(names) == 0
 
@@ -1410,12 +1362,12 @@ def test_datum_geospatial_filters(
     names = _get_geospatial_names_from_filter(
         db=db,
         value=Value(
-            type="point",
+            type=SupportedType.POINT,
             value=[-11, -11],
         ),
-        operator="outside",
+        operator=FilterOperator.OUTSIDE,
         model_object=model_object,
-        symbol_name=symbol_name,
+        symbol=symbol,
     )
     assert len(names) == 4
     assert ("uid1",) in names
@@ -1426,7 +1378,7 @@ def test_datum_geospatial_filters(
     names = _get_geospatial_names_from_filter(
         db=db,
         value=Value(
-            type="polygon",
+            type=SupportedType.POLYGON,
             value=[
                 [
                     [-20, -20],
@@ -1437,9 +1389,9 @@ def test_datum_geospatial_filters(
                 ]
             ],
         ),
-        operator="outside",
+        operator=FilterOperator.OUTSIDE,
         model_object=model_object,
-        symbol_name=symbol_name,
+        symbol=symbol,
     )
     assert len(names) == 2
     assert ("uid2",) in names
@@ -1450,14 +1402,14 @@ def test_dataset_geospatial_filters(
     db: Session,
     model_sim,
     model_object=models.Dataset.name,
-    symbol_name: str = "dataset.metadata",
 ):
+    symbol = Symbol(name=SupportedSymbol.DATASET_META)
 
     # test inside filters
     names = _get_geospatial_names_from_filter(
         db=db,
         value=Value(
-            type="polygon",
+            type=SupportedType.POLYGON,
             value=[
                 [
                     [-20, -20],
@@ -1468,9 +1420,9 @@ def test_dataset_geospatial_filters(
                 ]
             ],
         ),
-        operator="inside",
+        operator=FilterOperator.INSIDE,
         model_object=model_object,
-        symbol_name=symbol_name,
+        symbol=symbol,
     )
     assert len(names) == 1
     assert ("dataset1",) in names
@@ -1479,12 +1431,12 @@ def test_dataset_geospatial_filters(
     names = _get_geospatial_names_from_filter(
         db=db,
         value=Value(
-            type="point",
+            type=SupportedType.POINT,
             value=[1, 1],
         ),
-        operator="intersects",
+        operator=FilterOperator.INTERSECTS,
         model_object=model_object,
-        symbol_name=symbol_name,
+        symbol=symbol,
     )
     assert len(names) == 1
     assert ("dataset1",) in names
@@ -1493,7 +1445,7 @@ def test_dataset_geospatial_filters(
     names = _get_geospatial_names_from_filter(
         db=db,
         value=Value(
-            type="multipolygon",
+            type=SupportedType.MULTIPOLYGON,
             value=[
                 [
                     [
@@ -1515,9 +1467,9 @@ def test_dataset_geospatial_filters(
                 ],
             ],
         ),
-        operator="intersects",
+        operator=FilterOperator.INTERSECTS,
         model_object=model_object,
-        symbol_name=symbol_name,
+        symbol=symbol,
     )
     assert len(names) == 1
     assert ("dataset1",) in names
@@ -1526,12 +1478,12 @@ def test_dataset_geospatial_filters(
     names = _get_geospatial_names_from_filter(
         db=db,
         value=Value(
-            type="point",
+            type=SupportedType.POINT,
             value=[-11, -11],
         ),
-        operator="intersects",
+        operator=FilterOperator.INTERSECTS,
         model_object=model_object,
-        symbol_name=symbol_name,
+        symbol=symbol,
     )
     assert len(names) == 0
 
@@ -1539,12 +1491,12 @@ def test_dataset_geospatial_filters(
     names = _get_geospatial_names_from_filter(
         db=db,
         value=Value(
-            type="point",
+            type=SupportedType.POINT,
             value=[-11, -11],
         ),
-        operator="outside",
+        operator=FilterOperator.OUTSIDE,
         model_object=model_object,
-        symbol_name=symbol_name,
+        symbol=symbol,
     )
     assert len(names) == 1
     assert ("dataset1",) in names
@@ -1554,14 +1506,14 @@ def test_model_geospatial_filters(
     db: Session,
     model_sim,
     model_object=models.Model.name,
-    symbol_name: str = "model.metadata",
 ):
+    symbol = Symbol(name=SupportedSymbol.MODEL_META)
 
     # test inside filters
     names = _get_geospatial_names_from_filter(
         db=db,
         value=Value(
-            type="polygon",
+            type=SupportedType.POLYGON,
             value=[
                 [
                     [-20, -20],
@@ -1572,9 +1524,9 @@ def test_model_geospatial_filters(
                 ]
             ],
         ),
-        operator="inside",
+        operator=FilterOperator.INSIDE,
         model_object=model_object,
-        symbol_name=symbol_name,
+        symbol=symbol,
         label_source=models.Prediction,
     )
     assert len(names) == 1
@@ -1584,12 +1536,12 @@ def test_model_geospatial_filters(
     names = _get_geospatial_names_from_filter(
         db=db,
         value=Value(
-            type="point",
+            type=SupportedType.POINT,
             value=[1, 1],
         ),
-        operator="intersects",
+        operator=FilterOperator.INTERSECTS,
         model_object=model_object,
-        symbol_name=symbol_name,
+        symbol=symbol,
         label_source=models.Prediction,
     )
     assert len(names) == 1
@@ -1599,7 +1551,7 @@ def test_model_geospatial_filters(
     names = _get_geospatial_names_from_filter(
         db=db,
         value=Value(
-            type="multipolygon",
+            type=SupportedType.MULTIPOLYGON,
             value=[
                 [
                     [
@@ -1621,9 +1573,9 @@ def test_model_geospatial_filters(
                 ],
             ],
         ),
-        operator="intersects",
+        operator=FilterOperator.INTERSECTS,
         model_object=model_object,
-        symbol_name=symbol_name,
+        symbol=symbol,
         label_source=models.Prediction,
     )
     assert len(names) == 1
@@ -1633,12 +1585,12 @@ def test_model_geospatial_filters(
     names = _get_geospatial_names_from_filter(
         db=db,
         value=Value(
-            type="point",
+            type=SupportedType.POINT,
             value=[-11, -11],
         ),
-        operator="intersects",
+        operator=FilterOperator.INTERSECTS,
         model_object=model_object,
-        symbol_name=symbol_name,
+        symbol=symbol,
     )
     assert len(names) == 0
 
@@ -1646,12 +1598,12 @@ def test_model_geospatial_filters(
     names = _get_geospatial_names_from_filter(
         db=db,
         value=Value(
-            type="point",
+            type=SupportedType.POINT,
             value=[-11, -11],
         ),
-        operator="outside",
+        operator=FilterOperator.OUTSIDE,
         model_object=model_object,
-        symbol_name=symbol_name,
+        symbol=symbol,
         label_source=models.Prediction,
     )
     assert len(names) == 2
@@ -1735,60 +1687,37 @@ def duration_metadata() -> list[schemas.Duration]:
 
 def time_filter(
     db: Session,
-    symbol_name: str,
-    type_str: str,
+    symbol: Symbol,
+    type_: SupportedType,
     key: str,
     value: str | float,
     op: str,
 ):
     match op:
         case "==":
-            f = Equal(
-                eq=Operands(
-                    lhs=Symbol(type=type_str, name=symbol_name, key=key),
-                    rhs=Value(type=type_str, value=value),
-                )
-            )
+            op = FilterOperator.EQ
         case "!=":
-            f = NotEqual(
-                ne=Operands(
-                    lhs=Symbol(type=type_str, name=symbol_name, key=key),
-                    rhs=Value(type=type_str, value=value),
-                )
-            )
+            op = FilterOperator.NE
         case ">":
-            f = GreaterThan(
-                gt=Operands(
-                    lhs=Symbol(type=type_str, name=symbol_name, key=key),
-                    rhs=Value(type=type_str, value=value),
-                )
-            )
+            op = FilterOperator.GT
         case ">=":
-            f = GreaterThanEqual(
-                ge=Operands(
-                    lhs=Symbol(type=type_str, name=symbol_name, key=key),
-                    rhs=Value(type=type_str, value=value),
-                )
-            )
+            op = FilterOperator.GTE
         case "<":
-            f = LessThan(
-                lt=Operands(
-                    lhs=Symbol(type=type_str, name=symbol_name, key=key),
-                    rhs=Value(type=type_str, value=value),
-                )
-            )
+            op = FilterOperator.LT
         case "<=":
-            f = LessThanEqual(
-                le=Operands(
-                    lhs=Symbol(type=type_str, name=symbol_name, key=key),
-                    rhs=Value(type=type_str, value=value),
-                )
-            )
+            op = FilterOperator.LTE
         case _:
             raise NotImplementedError
 
-    match symbol_name:
-        case "dataset.metadata":
+    symbol.key = key
+    f = Condition(
+        lhs=symbol,
+        rhs=Value(type=type_, value=value),
+        op=op,
+    )
+
+    match symbol:
+        case Symbol(name=SupportedSymbol.DATASET_META):
             f = Filter(datasets=f)
             return generate_query(
                 models.Dataset,
@@ -1796,7 +1725,7 @@ def time_filter(
                 filters=f,
                 label_source=models.GroundTruth,
             ).all()
-        case "model.metadata":
+        case Symbol(name=SupportedSymbol.MODEL_META):
             f = Filter(models=f)
             return generate_query(
                 models.Model,
@@ -1804,7 +1733,7 @@ def time_filter(
                 filters=f,
                 label_source=models.Prediction,
             ).all()
-        case "datum.metadata":
+        case Symbol(name=SupportedSymbol.DATUM_META):
             f = Filter(datums=f)
             return generate_query(
                 models.Datum,
@@ -1812,7 +1741,7 @@ def time_filter(
                 filters=f,
                 label_source=models.GroundTruth,
             ).all()
-        case "annotation.metadata":
+        case Symbol(name=SupportedSymbol.ANNOTATION_META):
             f = Filter(annotations=f)
             return generate_query(
                 models.Annotation,
@@ -1821,13 +1750,13 @@ def time_filter(
                 label_source=models.GroundTruth,
             ).all()
         case _:
-            raise NotImplementedError(symbol_name)
+            raise NotImplementedError(symbol)
 
 
 def _test_datetime_query(
     db: Session,
-    symbol_name: str,
-    symbol_type: str,
+    symbol: Symbol,
+    type_: SupportedType,
     key: str,
     metadata_: Sequence[
         schemas.DateTime | schemas.Date | schemas.Time | schemas.Duration
@@ -1842,8 +1771,8 @@ def _test_datetime_query(
 
     results = time_filter(
         db=db,
-        symbol_name=symbol_name,
-        type_str=symbol_type,
+        symbol=symbol,
+        type_=type_,
         key=key,
         value=metadata_[0].value,
         op=op,
@@ -1852,8 +1781,8 @@ def _test_datetime_query(
 
     results = time_filter(
         db=db,
-        symbol_name=symbol_name,
-        type_str=symbol_type,
+        symbol=symbol,
+        type_=type_,
         key=key,
         value=metadata_[1].value,
         op=op,
@@ -1862,8 +1791,8 @@ def _test_datetime_query(
 
     results = time_filter(
         db=db,
-        symbol_name=symbol_name,
-        type_str=symbol_type,
+        symbol=symbol,
+        type_=type_,
         key=key,
         value=metadata_[2].value,
         op=op,
@@ -1872,8 +1801,8 @@ def _test_datetime_query(
 
     results = time_filter(
         db=db,
-        symbol_name=symbol_name,
-        type_str=symbol_type,
+        symbol=symbol,
+        type_=type_,
         key=key,
         value=metadata_[3].value,
         op=op,
@@ -1882,8 +1811,8 @@ def _test_datetime_query(
 
     results = time_filter(
         db=db,
-        symbol_name=symbol_name,
-        type_str=symbol_type,
+        symbol=symbol,
+        type_=type_,
         key=key,
         value=metadata_[4].value,
         op=op,
@@ -1895,8 +1824,8 @@ def _test_datetime_query(
 
     results = time_filter(
         db=db,
-        symbol_name=symbol_name,
-        type_str=symbol_type,
+        symbol=symbol,
+        type_=type_,
         key=key,
         value=metadata_[0].value,
         op=op,
@@ -1905,8 +1834,8 @@ def _test_datetime_query(
 
     results = time_filter(
         db=db,
-        symbol_name=symbol_name,
-        type_str=symbol_type,
+        symbol=symbol,
+        type_=type_,
         key=key,
         value=metadata_[1].value,
         op=op,
@@ -1915,8 +1844,8 @@ def _test_datetime_query(
 
     results = time_filter(
         db=db,
-        symbol_name=symbol_name,
-        type_str=symbol_type,
+        symbol=symbol,
+        type_=type_,
         key=key,
         value=metadata_[2].value,
         op=op,
@@ -1925,8 +1854,8 @@ def _test_datetime_query(
 
     results = time_filter(
         db=db,
-        symbol_name=symbol_name,
-        type_str=symbol_type,
+        symbol=symbol,
+        type_=type_,
         key=key,
         value=metadata_[3].value,
         op=op,
@@ -1935,8 +1864,8 @@ def _test_datetime_query(
 
     results = time_filter(
         db=db,
-        symbol_name=symbol_name,
-        type_str=symbol_type,
+        symbol=symbol,
+        type_=type_,
         key=key,
         value=metadata_[4].value,
         op=op,
@@ -1948,8 +1877,8 @@ def _test_datetime_query(
 
     results = time_filter(
         db=db,
-        symbol_name=symbol_name,
-        type_str=symbol_type,
+        symbol=symbol,
+        type_=type_,
         key=key,
         value=metadata_[0].value,
         op=op,
@@ -1958,8 +1887,8 @@ def _test_datetime_query(
 
     results = time_filter(
         db=db,
-        symbol_name=symbol_name,
-        type_str=symbol_type,
+        symbol=symbol,
+        type_=type_,
         key=key,
         value=metadata_[1].value,
         op=op,
@@ -1968,8 +1897,8 @@ def _test_datetime_query(
 
     results = time_filter(
         db=db,
-        symbol_name=symbol_name,
-        type_str=symbol_type,
+        symbol=symbol,
+        type_=type_,
         key=key,
         value=metadata_[2].value,
         op=op,
@@ -1978,8 +1907,8 @@ def _test_datetime_query(
 
     results = time_filter(
         db=db,
-        symbol_name=symbol_name,
-        type_str=symbol_type,
+        symbol=symbol,
+        type_=type_,
         key=key,
         value=metadata_[3].value,
         op=op,
@@ -1988,8 +1917,8 @@ def _test_datetime_query(
 
     results = time_filter(
         db=db,
-        symbol_name=symbol_name,
-        type_str=symbol_type,
+        symbol=symbol,
+        type_=type_,
         key=key,
         value=metadata_[4].value,
         op=op,
@@ -2001,8 +1930,8 @@ def _test_datetime_query(
 
     results = time_filter(
         db=db,
-        symbol_name=symbol_name,
-        type_str=symbol_type,
+        symbol=symbol,
+        type_=type_,
         key=key,
         value=metadata_[0].value,
         op=op,
@@ -2011,8 +1940,8 @@ def _test_datetime_query(
 
     results = time_filter(
         db=db,
-        symbol_name=symbol_name,
-        type_str=symbol_type,
+        symbol=symbol,
+        type_=type_,
         key=key,
         value=metadata_[1].value,
         op=op,
@@ -2021,8 +1950,8 @@ def _test_datetime_query(
 
     results = time_filter(
         db=db,
-        symbol_name=symbol_name,
-        type_str=symbol_type,
+        symbol=symbol,
+        type_=type_,
         key=key,
         value=metadata_[2].value,
         op=op,
@@ -2031,8 +1960,8 @@ def _test_datetime_query(
 
     results = time_filter(
         db=db,
-        symbol_name=symbol_name,
-        type_str=symbol_type,
+        symbol=symbol,
+        type_=type_,
         key=key,
         value=metadata_[3].value,
         op=op,
@@ -2041,8 +1970,8 @@ def _test_datetime_query(
 
     results = time_filter(
         db=db,
-        symbol_name=symbol_name,
-        type_str=symbol_type,
+        symbol=symbol,
+        type_=type_,
         key=key,
         value=metadata_[4].value,
         op=op,
@@ -2054,8 +1983,8 @@ def _test_datetime_query(
 
     results = time_filter(
         db=db,
-        symbol_name=symbol_name,
-        type_str=symbol_type,
+        symbol=symbol,
+        type_=type_,
         key=key,
         value=metadata_[0].value,
         op=op,
@@ -2064,8 +1993,8 @@ def _test_datetime_query(
 
     results = time_filter(
         db=db,
-        symbol_name=symbol_name,
-        type_str=symbol_type,
+        symbol=symbol,
+        type_=type_,
         key=key,
         value=metadata_[1].value,
         op=op,
@@ -2074,8 +2003,8 @@ def _test_datetime_query(
 
     results = time_filter(
         db=db,
-        symbol_name=symbol_name,
-        type_str=symbol_type,
+        symbol=symbol,
+        type_=type_,
         key=key,
         value=metadata_[2].value,
         op=op,
@@ -2084,8 +2013,8 @@ def _test_datetime_query(
 
     results = time_filter(
         db=db,
-        symbol_name=symbol_name,
-        type_str=symbol_type,
+        symbol=symbol,
+        type_=type_,
         key=key,
         value=metadata_[3].value,
         op=op,
@@ -2094,8 +2023,8 @@ def _test_datetime_query(
 
     results = time_filter(
         db=db,
-        symbol_name=symbol_name,
-        type_str=symbol_type,
+        symbol=symbol,
+        type_=type_,
         key=key,
         value=metadata_[4].value,
         op=op,
@@ -2107,8 +2036,8 @@ def _test_datetime_query(
 
     results = time_filter(
         db=db,
-        symbol_name=symbol_name,
-        type_str=symbol_type,
+        symbol=symbol,
+        type_=type_,
         key=key,
         value=metadata_[0].value,
         op=op,
@@ -2117,8 +2046,8 @@ def _test_datetime_query(
 
     results = time_filter(
         db=db,
-        symbol_name=symbol_name,
-        type_str=symbol_type,
+        symbol=symbol,
+        type_=type_,
         key=key,
         value=metadata_[1].value,
         op=op,
@@ -2127,8 +2056,8 @@ def _test_datetime_query(
 
     results = time_filter(
         db=db,
-        symbol_name=symbol_name,
-        type_str=symbol_type,
+        symbol=symbol,
+        type_=type_,
         key=key,
         value=metadata_[2].value,
         op=op,
@@ -2137,8 +2066,8 @@ def _test_datetime_query(
 
     results = time_filter(
         db=db,
-        symbol_name=symbol_name,
-        type_str=symbol_type,
+        symbol=symbol,
+        type_=type_,
         key=key,
         value=metadata_[3].value,
         op=op,
@@ -2147,8 +2076,8 @@ def _test_datetime_query(
 
     results = time_filter(
         db=db,
-        symbol_name=symbol_name,
-        type_str=symbol_type,
+        symbol=symbol,
+        type_=type_,
         key=key,
         value=metadata_[4].value,
         op=op,
@@ -2206,16 +2135,32 @@ def test_dataset_datetime_queries(
     )
 
     _test_datetime_query(
-        db, "dataset.metadata", "datetime", datetime_key, datetime_metadata
+        db,
+        Symbol(name=SupportedSymbol.DATASET_META),
+        SupportedType.DATETIME,
+        datetime_key,
+        datetime_metadata,
     )
     _test_datetime_query(
-        db, "dataset.metadata", "date", date_key, date_metadata
+        db,
+        Symbol(name=SupportedSymbol.DATASET_META),
+        SupportedType.DATE,
+        date_key,
+        date_metadata,
     )
     _test_datetime_query(
-        db, "dataset.metadata", "time", time_key, time_metadata
+        db,
+        Symbol(name=SupportedSymbol.DATASET_META),
+        SupportedType.TIME,
+        time_key,
+        time_metadata,
     )
     _test_datetime_query(
-        db, "dataset.metadata", "duration", duration_key, duration_metadata
+        db,
+        Symbol(name=SupportedSymbol.DATASET_META),
+        SupportedType.DURATION,
+        duration_key,
+        duration_metadata,
     )
 
 
@@ -2269,12 +2214,32 @@ def test_model_datetime_queries(
     )
 
     _test_datetime_query(
-        db, "model.metadata", "datetime", datetime_key, datetime_metadata
+        db,
+        Symbol(name=SupportedSymbol.MODEL_META),
+        SupportedType.DATETIME,
+        datetime_key,
+        datetime_metadata,
     )
-    _test_datetime_query(db, "model.metadata", "date", date_key, date_metadata)
-    _test_datetime_query(db, "model.metadata", "time", time_key, time_metadata)
     _test_datetime_query(
-        db, "model.metadata", "duration", duration_key, duration_metadata
+        db,
+        Symbol(name=SupportedSymbol.MODEL_META),
+        SupportedType.DATE,
+        date_key,
+        date_metadata,
+    )
+    _test_datetime_query(
+        db,
+        Symbol(name=SupportedSymbol.MODEL_META),
+        SupportedType.TIME,
+        time_key,
+        time_metadata,
+    )
+    _test_datetime_query(
+        db,
+        Symbol(name=SupportedSymbol.MODEL_META),
+        SupportedType.DURATION,
+        duration_key,
+        duration_metadata,
     )
 
 
@@ -2362,12 +2327,32 @@ def test_datum_datetime_queries(
     )
 
     _test_datetime_query(
-        db, "datum.metadata", "datetime", datetime_key, datetime_metadata
+        db,
+        Symbol(name=SupportedSymbol.DATUM_META),
+        SupportedType.DATETIME,
+        datetime_key,
+        datetime_metadata,
     )
-    _test_datetime_query(db, "datum.metadata", "date", date_key, date_metadata)
-    _test_datetime_query(db, "datum.metadata", "time", time_key, time_metadata)
     _test_datetime_query(
-        db, "datum.metadata", "duration", duration_key, duration_metadata
+        db,
+        Symbol(name=SupportedSymbol.DATUM_META),
+        SupportedType.DATE,
+        date_key,
+        date_metadata,
+    )
+    _test_datetime_query(
+        db,
+        Symbol(name=SupportedSymbol.DATUM_META),
+        SupportedType.TIME,
+        time_key,
+        time_metadata,
+    )
+    _test_datetime_query(
+        db,
+        Symbol(name=SupportedSymbol.DATUM_META),
+        SupportedType.DURATION,
+        duration_key,
+        duration_metadata,
     )
 
 
@@ -2437,16 +2422,32 @@ def test_annotation_datetime_queries(
     )
 
     _test_datetime_query(
-        db, "annotation.metadata", "datetime", datetime_key, datetime_metadata
+        db,
+        Symbol(name=SupportedSymbol.ANNOTATION_META),
+        SupportedType.DATETIME,
+        datetime_key,
+        datetime_metadata,
     )
     _test_datetime_query(
-        db, "annotation.metadata", "date", date_key, date_metadata
+        db,
+        Symbol(name=SupportedSymbol.ANNOTATION_META),
+        SupportedType.DATE,
+        date_key,
+        date_metadata,
     )
     _test_datetime_query(
-        db, "annotation.metadata", "time", time_key, time_metadata
+        db,
+        Symbol(name=SupportedSymbol.ANNOTATION_META),
+        SupportedType.TIME,
+        time_key,
+        time_metadata,
     )
     _test_datetime_query(
-        db, "annotation.metadata", "duration", duration_key, duration_metadata
+        db,
+        Symbol(name=SupportedSymbol.ANNOTATION_META),
+        SupportedType.DURATION,
+        duration_key,
+        duration_metadata,
     )
 
 

@@ -4,7 +4,15 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 # client
-from valor import Client, Dataset, GroundTruth, Label, Model, Prediction
+from valor import (
+    Client,
+    Dataset,
+    Filter,
+    GroundTruth,
+    Label,
+    Model,
+    Prediction,
+)
 from valor.enums import EvaluationStatus
 from valor.exceptions import ClientException
 
@@ -122,7 +130,7 @@ def test_delete_evaluation_scope(
     eval1 = model.evaluate_classification(dataset)
     assert eval1.wait_for_completion(timeout=30) == EvaluationStatus.DONE
     eval2 = model.evaluate_classification(
-        dataset, filter_by=[Label.key == "k4"]
+        dataset, filters=Filter(labels=Label.key == "k4")
     )
     assert eval2.wait_for_completion(timeout=30)
 

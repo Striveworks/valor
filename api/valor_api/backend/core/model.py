@@ -182,10 +182,9 @@ def get_paginated_models(
             "Offset should be an int greater than or equal to zero. Limit should be an int greater than or equal to -1."
         )
 
-    advanced_filter = filters.to_advanced_filter() if filters else None
     subquery = generate_select(
         models.Model.id.label("id"),
-        filters=advanced_filter,
+        filters=filters,
         label_source=models.Prediction,
     ).subquery()
 

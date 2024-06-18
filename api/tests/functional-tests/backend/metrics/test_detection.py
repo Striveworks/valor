@@ -1163,12 +1163,46 @@ def test__compute_detection(
             ],
         ),
         prediction_filter=schemas.Filter(
-            model_names=["test_model"],
-            label_keys=["class"],
+            predictions=schemas.LogicalFunction(
+                args=[
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.MODEL_NAME
+                        ),
+                        rhs=schemas.Value.infer("test_model"),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.LABEL_KEY
+                        ),
+                        rhs=schemas.Value.infer("class"),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                ],
+                op=schemas.LogicalOperator.AND,
+            )
         ),
         groundtruth_filter=schemas.Filter(
-            dataset_names=["test_dataset"],
-            label_keys=["class"],
+            groundtruths=schemas.LogicalFunction(
+                args=[
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.DATASET_NAME
+                        ),
+                        rhs=schemas.Value.infer("test_dataset"),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.LABEL_KEY
+                        ),
+                        rhs=schemas.Value.infer("class"),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                ],
+                op=schemas.LogicalOperator.AND,
+            )
         ),
         target_type=enums.AnnotationType.BOX,
     )
@@ -1366,12 +1400,46 @@ def test__compute_detection(
             ],
         ),
         prediction_filter=schemas.Filter(
-            model_names=["test_model"],
-            label_keys=["class"],
+            predictions=schemas.LogicalFunction(
+                args=[
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.MODEL_NAME
+                        ),
+                        rhs=schemas.Value.infer("test_model"),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.LABEL_KEY
+                        ),
+                        rhs=schemas.Value.infer("class"),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                ],
+                op=schemas.LogicalOperator.AND,
+            )
         ),
         groundtruth_filter=schemas.Filter(
-            dataset_names=["test_dataset"],
-            label_keys=["class"],
+            groundtruths=schemas.LogicalFunction(
+                args=[
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.DATASET_NAME
+                        ),
+                        rhs=schemas.Value.infer("test_dataset"),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.LABEL_KEY
+                        ),
+                        rhs=schemas.Value.infer("class"),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                ],
+                op=schemas.LogicalOperator.AND,
+            )
         ),
         target_type=enums.AnnotationType.BOX,
     )
@@ -1569,12 +1637,46 @@ def test__compute_detection(
             ],
         ),
         prediction_filter=schemas.Filter(
-            model_names=["test_model"],
-            label_keys=["class"],
+            predictions=schemas.LogicalFunction(
+                args=[
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.MODEL_NAME
+                        ),
+                        rhs=schemas.Value.infer("test_model"),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.LABEL_KEY
+                        ),
+                        rhs=schemas.Value.infer("class"),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                ],
+                op=schemas.LogicalOperator.AND,
+            )
         ),
         groundtruth_filter=schemas.Filter(
-            dataset_names=["test_dataset"],
-            label_keys=["class"],
+            groundtruths=schemas.LogicalFunction(
+                args=[
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.DATASET_NAME
+                        ),
+                        rhs=schemas.Value.infer("test_dataset"),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.LABEL_KEY
+                        ),
+                        rhs=schemas.Value.infer("class"),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                ],
+                op=schemas.LogicalOperator.AND,
+            )
         ),
         target_type=enums.AnnotationType.BOX,
     )
@@ -1778,12 +1880,46 @@ def test__compute_detection_metrics_with_rasters(
             ],
         ),
         prediction_filter=schemas.Filter(
-            model_names=["test_model"],
-            label_keys=["class"],
+            predictions=schemas.LogicalFunction(
+                args=[
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.MODEL_NAME
+                        ),
+                        rhs=schemas.Value.infer("test_model"),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.LABEL_KEY
+                        ),
+                        rhs=schemas.Value.infer("class"),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                ],
+                op=schemas.LogicalOperator.AND,
+            )
         ),
         groundtruth_filter=schemas.Filter(
-            dataset_names=["test_dataset"],
-            label_keys=["class"],
+            groundtruths=schemas.LogicalFunction(
+                args=[
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.DATASET_NAME
+                        ),
+                        rhs=schemas.Value.infer("test_dataset"),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.LABEL_KEY
+                        ),
+                        rhs=schemas.Value.infer("class"),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                ],
+                op=schemas.LogicalOperator.AND,
+            )
         ),
         target_type=enums.AnnotationType.RASTER,
     )
@@ -1918,12 +2054,46 @@ def test__compute_detection_metrics_with_rasters(
             ],
         ),
         prediction_filter=schemas.Filter(
-            model_names=["test_model"],
-            label_keys=["class"],
+            predictions=schemas.LogicalFunction(
+                args=[
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.MODEL_NAME
+                        ),
+                        rhs=schemas.Value.infer("test_model"),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.LABEL_KEY
+                        ),
+                        rhs=schemas.Value.infer("class"),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                ],
+                op=schemas.LogicalOperator.AND,
+            )
         ),
         groundtruth_filter=schemas.Filter(
-            dataset_names=["test_dataset"],
-            label_keys=["class"],
+            groundtruths=schemas.LogicalFunction(
+                args=[
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.DATASET_NAME
+                        ),
+                        rhs=schemas.Value.infer("test_dataset"),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.LABEL_KEY
+                        ),
+                        rhs=schemas.Value.infer("class"),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                ],
+                op=schemas.LogicalOperator.AND,
+            )
         ),
         target_type=enums.AnnotationType.RASTER,
     )
@@ -2055,8 +2225,21 @@ def test_detection_exceptions(db: Session):
         status=enums.ModelStatus.READY,
     )
     evaluation = Evaluation(
+        dataset_names=[dataset_name],
         model_name=model_name,
-        filters={"dataset_names": [dataset_name]},
+        filters={
+            "datasets": {
+                "lhs": {
+                    "name": "dataset.name",
+                    "key": None,
+                },
+                "rhs": {
+                    "type": "string",
+                    "value": dataset_name,
+                },
+                "op": "eq",
+            }
+        },
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.OBJECT_DETECTION,
             iou_thresholds_to_compute=[0.5],
@@ -2104,11 +2287,8 @@ def test_detection_exceptions(db: Session):
         ],
     )
 
-    # test that the model does not meet the filter requirements
-    # - this is b/c no predictions exist that match the evaluation task type.
-    with pytest.raises(RuntimeError) as e:
-        compute_detection_metrics(db=db, evaluation_id=evaluation_id)
-    assert f"Model '{model_name}' does not meet filter requirements." in str(e)
+    # test that the model can be evaluated when no predictions exist that match the evaluation task type.
+    compute_detection_metrics(db=db, evaluation_id=evaluation_id)
 
     crud.create_predictions(
         db=db,

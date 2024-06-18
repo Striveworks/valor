@@ -204,7 +204,6 @@ def test_generate_filter_subquery_validation():
             conditions=None,  # type: ignore - testing
             select_from=models.Annotation,
             label_source=models.Dataset,
-            prefix="cte",
         )
 
     # test that a valid logic tree has been created
@@ -213,5 +212,4 @@ def test_generate_filter_subquery_validation():
             conditions=None,  # type: ignore - testing
             select_from=models.Annotation,
             label_source=models.Annotation,
-            prefix="cte",
         )

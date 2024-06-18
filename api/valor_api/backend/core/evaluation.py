@@ -1,6 +1,8 @@
+import warnings
 from datetime import timezone
 from typing import Sequence
 
+from pydantic import ValidationError
 from sqlalchemy import (
     ColumnElement,
     and_,
@@ -21,6 +23,7 @@ from sqlalchemy.sql.elements import BinaryExpression
 from valor_api import api_utils, enums, exceptions, schemas
 from valor_api.backend import core, models
 from valor_api.backend.query import generate_query
+from valor_api.schemas import migrations
 
 
 def _create_dataset_expr_from_list(
@@ -245,6 +248,58 @@ def validate_request(
         )
 
 
+def _validate_evaluation_filter(
+    db: Session,
+    evaluation: models.Evaluation,
+):
+    """
+    Validates whether a new evaluation should proceed to a computation.
+
+    Parameters
+    ----------
+    db : Session
+        The database session.
+    evaluation : models.Evaluation
+        The evaluation row to validate.
+    """
+
+    # unpack filters and params
+    filters = schemas.Filter(**evaluation.filters)
+    parameters = schemas.EvaluationParameters(**evaluation.parameters)
+
+    groundtruth_filter = filters.model_copy()
+    groundtruth_filter.predictions = None
+
+    predictions_filter = filters.model_copy()
+    predictions_filter.groundtruths = None
+
+    datasets = (
+        generate_query(
+            models.Dataset.name,
+            db=db,
+            filters=groundtruth_filter,
+            label_source=models.GroundTruth,
+        )
+        .distinct()
+        .all()
+    )
+
+    # verify model and datasets have data for this evaluation
+    if not datasets:
+        raise exceptions.EvaluationRequestError(
+            msg="No datasets were found that met the filter criteria."
+        )
+
+    # check that prediction label keys match ground truth label keys
+    if parameters.task_type == enums.TaskType.CLASSIFICATION:
+        core.validate_matching_label_keys(
+            db=db,
+            label_map=parameters.label_map,
+            groundtruth_filter=groundtruth_filter,
+            prediction_filter=predictions_filter,
+        )
+
+
 def _create_response(
     db: Session,
     evaluation: models.Evaluation,
@@ -295,80 +350,6 @@ def _create_response(
     )
 
 
-def _validate_create_evaluation(
-    db: Session,
-    job_request: schemas.EvaluationRequest,
-    evaluation: models.Evaluation,
-) -> models.Evaluation:
-    """
-    Validates whether a new or failed should proceed to a computation.
-
-    Parameters
-    ----------
-    db : Session
-        The database session.
-    job_request : schemas.EvaluationRequest
-        The evaluations to create.
-    evaluation : models.Evaluation
-        The evaluation row to validate.
-
-    Returns
-    -------
-    model.Evaluation
-        The row that was passed as input.
-    """
-
-    # unpack filters and params
-    groundtruth_filter = job_request.filters.model_copy()
-    groundtruth_filter.task_types = [job_request.parameters.task_type]
-    prediction_filter = groundtruth_filter.model_copy()
-    prediction_filter.model_names = [evaluation.model_name]
-    parameters = job_request.parameters
-
-    datasets = (
-        generate_query(
-            models.Dataset,
-            db=db,
-            filters=groundtruth_filter,
-            label_source=models.GroundTruth,
-        )
-        .distinct()
-        .all()
-    )
-
-    model = (
-        generate_query(
-            models.Model,
-            db=db,
-            filters=prediction_filter,
-            label_source=models.Prediction,
-        )
-        .distinct()
-        .one_or_none()
-    )
-
-    # verify model and datasets have data for this evaluation
-    if not datasets:
-        raise exceptions.EvaluationRequestError(
-            msg="No finalized datasets were found that met the filter criteria."
-        )
-    elif model is None:
-        raise exceptions.EvaluationRequestError(
-            msg=f"The model '{evaluation.model_name}' did not meet the filter criteria."
-        )
-
-    # check that prediction label keys match ground truth label keys
-    if job_request.parameters.task_type == enums.TaskType.CLASSIFICATION:
-        core.validate_matching_label_keys(
-            db=db,
-            label_map=parameters.label_map,
-            groundtruth_filter=groundtruth_filter,
-            prediction_filter=prediction_filter,
-        )
-
-    return evaluation
-
-
 def _create_responses(
     db: Session,
     evaluations: list[models.Evaluation],
@@ -393,34 +374,48 @@ def _create_responses(
         if evaluation.id is None:
             raise exceptions.EvaluationDoesNotExistError()
 
-        dataset_filter = schemas.Filter(**evaluation.filters)
-        model_filter = dataset_filter.model_copy()
-        model_filter.dataset_names = None
-        model_filter.model_names = [evaluation.model_name]
         parameters = schemas.EvaluationParameters(**evaluation.parameters)
+        kwargs = dict()
+        try:
+            filters = schemas.Filter(**evaluation.filters)
 
-        match parameters.task_type:
-            case enums.TaskType.CLASSIFICATION:
-                kwargs = {}
-            case (
-                enums.TaskType.OBJECT_DETECTION
-                | enums.TaskType.SEMANTIC_SEGMENTATION
-            ):
-                (
-                    missing_pred_labels,
-                    ignored_pred_labels,
-                ) = core.get_disjoint_labels(
-                    db,
-                    dataset_filter,
-                    model_filter,
-                    label_map=parameters.label_map,
+            groundtruth_filter = filters.model_copy()
+            groundtruth_filter.predictions = None
+
+            prediction_filter = filters.model_copy()
+            prediction_filter.groundtruths = None
+
+            match parameters.task_type:
+                case enums.TaskType.CLASSIFICATION:
+                    kwargs = {}
+                case (
+                    enums.TaskType.OBJECT_DETECTION
+                    | enums.TaskType.SEMANTIC_SEGMENTATION
+                ):
+                    (
+                        missing_pred_labels,
+                        ignored_pred_labels,
+                    ) = core.get_disjoint_labels(
+                        db,
+                        groundtruth_filter,
+                        prediction_filter,
+                        label_map=parameters.label_map,
+                    )
+                    kwargs = {
+                        "missing_pred_labels": missing_pred_labels,
+                        "ignored_pred_labels": ignored_pred_labels,
+                    }
+                case _:
+                    raise NotImplementedError
+        except ValidationError as e:
+            try:
+                migrations.DeprecatedFilter(**evaluation.filters)
+                warnings.warn(
+                    "Evaluation response is using a deprecated filter format.",
+                    DeprecationWarning,
                 )
-                kwargs = {
-                    "missing_pred_labels": missing_pred_labels,
-                    "ignored_pred_labels": ignored_pred_labels,
-                }
-            case _:
-                raise NotImplementedError
+            except ValidationError:
+                raise e
 
         results.append(
             _create_response(
@@ -488,6 +483,7 @@ def _split_request(
     job_request : EvaluationRequest
         The job request to split (if multiple model names exist).
     """
+
     return [
         schemas.EvaluationRequest(
             dataset_names=job_request.dataset_names,
@@ -524,12 +520,6 @@ def create_or_get_evaluations(
 
     # verify that all datasets and models are ready to be evaluated
     validate_request(db=db, job_request=job_request)
-
-    # reset dataset and model related filters
-    job_request.filters.dataset_names = None
-    job_request.filters.dataset_metadata = None
-    job_request.filters.model_names = None
-    job_request.filters.model_metadata = None
 
     created_rows = []
     existing_rows = []
@@ -571,9 +561,8 @@ def create_or_get_evaluations(
                 status=enums.EvaluationStatus.PENDING,
                 meta=dict(),
             )
-            evaluation = _validate_create_evaluation(
+            _validate_evaluation_filter(
                 db=db,
-                job_request=subrequest,
                 evaluation=evaluation,
             )
             created_rows.append(evaluation)

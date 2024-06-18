@@ -134,12 +134,42 @@ def test_compute_confusion_matrix_at_grouper_key(
     classification_test_data,
 ):
     prediction_filter = schemas.Filter(
-        model_names=[model_name],
-        task_types=[enums.TaskType.CLASSIFICATION],
+        predictions=schemas.LogicalFunction(
+            args=[
+                schemas.Condition(
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.MODEL_NAME
+                    ),
+                    rhs=schemas.Value.infer(model_name),
+                    op=schemas.FilterOperator.EQ,
+                ),
+                schemas.Condition(
+                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.TASK_TYPE),
+                    rhs=schemas.Value.infer(enums.TaskType.CLASSIFICATION),
+                    op=schemas.FilterOperator.CONTAINS,
+                ),
+            ],
+            op=schemas.LogicalOperator.AND,
+        )
     )
     groundtruth_filter = schemas.Filter(
-        dataset_names=[dataset_name],
-        task_types=[enums.TaskType.CLASSIFICATION],
+        groundtruths=schemas.LogicalFunction(
+            args=[
+                schemas.Condition(
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.DATASET_NAME
+                    ),
+                    rhs=schemas.Value.infer(dataset_name),
+                    op=schemas.FilterOperator.EQ,
+                ),
+                schemas.Condition(
+                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.TASK_TYPE),
+                    rhs=schemas.Value.infer(enums.TaskType.CLASSIFICATION),
+                    op=schemas.FilterOperator.CONTAINS,
+                ),
+            ],
+            op=schemas.LogicalOperator.AND,
+        )
     )
 
     labels = fetch_union_of_labels(
@@ -160,11 +190,29 @@ def test_compute_confusion_matrix_at_grouper_key(
 
     # groundtruths filter
     gFilter = groundtruth_filter.model_copy()
-    gFilter.label_keys = label_key_filter
+    gFilter.labels = schemas.LogicalFunction.or_(
+        *[
+            schemas.Condition(
+                lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
+                rhs=schemas.Value.infer(key),
+                op=schemas.FilterOperator.EQ,
+            )
+            for key in label_key_filter
+        ]
+    )
 
     # predictions filter
     pFilter = prediction_filter.model_copy()
-    pFilter.label_keys = label_key_filter
+    pFilter.labels = schemas.LogicalFunction.or_(
+        *[
+            schemas.Condition(
+                lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
+                rhs=schemas.Value.infer(key),
+                op=schemas.FilterOperator.EQ,
+            )
+            for key in label_key_filter
+        ]
+    )
 
     groundtruths = generate_select(
         models.GroundTruth,
@@ -217,11 +265,29 @@ def test_compute_confusion_matrix_at_grouper_key(
 
     # groundtruths filter
     gFilter = groundtruth_filter.model_copy()
-    gFilter.label_keys = label_key_filter
+    gFilter.labels = schemas.LogicalFunction.or_(
+        *[
+            schemas.Condition(
+                lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
+                rhs=schemas.Value.infer(key),
+                op=schemas.FilterOperator.EQ,
+            )
+            for key in label_key_filter
+        ]
+    )
 
     # predictions filter
     pFilter = prediction_filter.model_copy()
-    pFilter.label_keys = label_key_filter
+    pFilter.labels = schemas.LogicalFunction.or_(
+        *[
+            schemas.Condition(
+                lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
+                rhs=schemas.Value.infer(key),
+                op=schemas.FilterOperator.EQ,
+            )
+            for key in label_key_filter
+        ]
+    )
 
     groundtruths = generate_select(
         models.GroundTruth,
@@ -277,16 +343,59 @@ def test_compute_confusion_matrix_at_grouper_key_and_filter(
     """
     Test filtering by metadata (md1: md1-val0).
     """
-
     prediction_filter = schemas.Filter(
-        dataset_names=[dataset_name],
-        model_names=[model_name],
+        predictions=schemas.LogicalFunction(
+            args=[
+                schemas.Condition(
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.DATASET_NAME
+                    ),
+                    rhs=schemas.Value.infer(dataset_name),
+                    op=schemas.FilterOperator.EQ,
+                ),
+                schemas.Condition(
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.MODEL_NAME
+                    ),
+                    rhs=schemas.Value.infer(model_name),
+                    op=schemas.FilterOperator.EQ,
+                ),
+            ],
+            op=schemas.LogicalOperator.AND,
+        )
     )
     groundtruth_filter = schemas.Filter(
-        dataset_names=[dataset_name],
-        model_names=[model_name],
-        task_types=[enums.TaskType.CLASSIFICATION],
-        datum_metadata={"md1": [schemas.StringFilter(value="md1-val0")]},
+        groundtruths=schemas.LogicalFunction(
+            args=[
+                schemas.Condition(
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.DATASET_NAME
+                    ),
+                    rhs=schemas.Value.infer(dataset_name),
+                    op=schemas.FilterOperator.EQ,
+                ),
+                schemas.Condition(
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.MODEL_NAME
+                    ),
+                    rhs=schemas.Value.infer(model_name),
+                    op=schemas.FilterOperator.EQ,
+                ),
+                schemas.Condition(
+                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.TASK_TYPE),
+                    rhs=schemas.Value.infer(enums.TaskType.CLASSIFICATION),
+                    op=schemas.FilterOperator.CONTAINS,
+                ),
+                schemas.Condition(
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.DATUM_META, key="md1"
+                    ),
+                    rhs=schemas.Value.infer("md1-val0"),
+                    op=schemas.FilterOperator.EQ,
+                ),
+            ],
+            op=schemas.LogicalOperator.AND,
+        )
     )
 
     labels = fetch_union_of_labels(
@@ -307,11 +416,29 @@ def test_compute_confusion_matrix_at_grouper_key_and_filter(
 
     # groundtruths filter
     gFilter = groundtruth_filter.model_copy()
-    gFilter.label_keys = label_key_filter
+    gFilter.labels = schemas.LogicalFunction.or_(
+        *[
+            schemas.Condition(
+                lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
+                rhs=schemas.Value.infer(key),
+                op=schemas.FilterOperator.EQ,
+            )
+            for key in label_key_filter
+        ]
+    )
 
     # predictions filter
     pFilter = prediction_filter.model_copy()
-    pFilter.label_keys = label_key_filter
+    pFilter.labels = schemas.LogicalFunction.or_(
+        *[
+            schemas.Condition(
+                lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
+                rhs=schemas.Value.infer(key),
+                op=schemas.FilterOperator.EQ,
+            )
+            for key in label_key_filter
+        ]
+    )
 
     groundtruths = generate_select(
         models.GroundTruth,
@@ -366,16 +493,59 @@ def test_compute_confusion_matrix_at_grouper_key_using_label_map(
     """
     Test grouping using the label_map
     """
-
     prediction_filter = schemas.Filter(
-        dataset_names=[dataset_name],
-        model_names=[model_name],
+        predictions=schemas.LogicalFunction(
+            args=[
+                schemas.Condition(
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.DATASET_NAME
+                    ),
+                    rhs=schemas.Value.infer(dataset_name),
+                    op=schemas.FilterOperator.EQ,
+                ),
+                schemas.Condition(
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.MODEL_NAME
+                    ),
+                    rhs=schemas.Value.infer(model_name),
+                    op=schemas.FilterOperator.EQ,
+                ),
+            ],
+            op=schemas.LogicalOperator.AND,
+        )
     )
     groundtruth_filter = schemas.Filter(
-        dataset_names=[dataset_name],
-        model_names=[model_name],
-        task_types=[enums.TaskType.CLASSIFICATION],
-        datum_metadata={"md1": [schemas.StringFilter(value="md1-val0")]},
+        groundtruths=schemas.LogicalFunction(
+            args=[
+                schemas.Condition(
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.DATASET_NAME
+                    ),
+                    rhs=schemas.Value.infer(dataset_name),
+                    op=schemas.FilterOperator.EQ,
+                ),
+                schemas.Condition(
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.MODEL_NAME
+                    ),
+                    rhs=schemas.Value.infer(model_name),
+                    op=schemas.FilterOperator.EQ,
+                ),
+                schemas.Condition(
+                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.TASK_TYPE),
+                    rhs=schemas.Value.infer(enums.TaskType.CLASSIFICATION),
+                    op=schemas.FilterOperator.CONTAINS,
+                ),
+                schemas.Condition(
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.DATUM_META, key="md1"
+                    ),
+                    rhs=schemas.Value.infer("md1-val0"),
+                    op=schemas.FilterOperator.EQ,
+                ),
+            ],
+            op=schemas.LogicalOperator.AND,
+        )
     )
 
     labels = fetch_union_of_labels(
@@ -396,11 +566,29 @@ def test_compute_confusion_matrix_at_grouper_key_using_label_map(
 
     # groundtruths filter
     gFilter = groundtruth_filter.model_copy()
-    gFilter.label_keys = label_key_filter
+    gFilter.labels = schemas.LogicalFunction.or_(
+        *[
+            schemas.Condition(
+                lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
+                rhs=schemas.Value.infer(key),
+                op=schemas.FilterOperator.EQ,
+            )
+            for key in label_key_filter
+        ]
+    )
 
     # predictions filter
     pFilter = prediction_filter.model_copy()
-    pFilter.label_keys = label_key_filter
+    pFilter.labels = schemas.LogicalFunction.or_(
+        *[
+            schemas.Condition(
+                lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
+                rhs=schemas.Value.infer(key),
+                op=schemas.FilterOperator.EQ,
+            )
+            for key in label_key_filter
+        ]
+    )
 
     groundtruths = generate_select(
         models.GroundTruth,
@@ -485,12 +673,42 @@ def test_compute_roc_auc(
     ```
     """
     prediction_filter = schemas.Filter(
-        model_names=[model_name],
-        task_types=[enums.TaskType.CLASSIFICATION],
+        predictions=schemas.LogicalFunction(
+            args=[
+                schemas.Condition(
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.MODEL_NAME
+                    ),
+                    rhs=schemas.Value.infer(model_name),
+                    op=schemas.FilterOperator.EQ,
+                ),
+                schemas.Condition(
+                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.TASK_TYPE),
+                    rhs=schemas.Value.infer(enums.TaskType.CLASSIFICATION),
+                    op=schemas.FilterOperator.CONTAINS,
+                ),
+            ],
+            op=schemas.LogicalOperator.AND,
+        )
     )
     groundtruth_filter = schemas.Filter(
-        dataset_names=[dataset_name],
-        task_types=[enums.TaskType.CLASSIFICATION],
+        groundtruths=schemas.LogicalFunction(
+            args=[
+                schemas.Condition(
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.DATASET_NAME
+                    ),
+                    rhs=schemas.Value.infer(dataset_name),
+                    op=schemas.FilterOperator.EQ,
+                ),
+                schemas.Condition(
+                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.TASK_TYPE),
+                    rhs=schemas.Value.infer(enums.TaskType.CLASSIFICATION),
+                    op=schemas.FilterOperator.CONTAINS,
+                ),
+            ],
+            op=schemas.LogicalOperator.AND,
+        )
     )
 
     labels = fetch_union_of_labels(
@@ -568,13 +786,39 @@ def test_compute_roc_auc_groupby_metadata(
 
     which gives 2/3. So we expect our implementation to give the average of 0.5 and 2/3
     """
+
     prediction_filter = schemas.Filter(
-        model_names=[model_name],
+        predictions=schemas.Condition(
+            lhs=schemas.Symbol(name=schemas.SupportedSymbol.MODEL_NAME),
+            rhs=schemas.Value.infer(model_name),
+            op=schemas.FilterOperator.EQ,
+        ),
     )
     groundtruth_filter = schemas.Filter(
-        dataset_names=[dataset_name],
-        task_types=[enums.TaskType.CLASSIFICATION],
-        datum_metadata={"md1": [schemas.StringFilter(value="md1-val0")]},
+        groundtruths=schemas.LogicalFunction(
+            args=[
+                schemas.Condition(
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.DATASET_NAME
+                    ),
+                    rhs=schemas.Value.infer(dataset_name),
+                    op=schemas.FilterOperator.EQ,
+                ),
+                schemas.Condition(
+                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.TASK_TYPE),
+                    rhs=schemas.Value.infer(enums.TaskType.CLASSIFICATION),
+                    op=schemas.FilterOperator.CONTAINS,
+                ),
+                schemas.Condition(
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.DATUM_META, key="md1"
+                    ),
+                    rhs=schemas.Value.infer("md1-val0"),
+                    op=schemas.FilterOperator.EQ,
+                ),
+            ],
+            op=schemas.LogicalOperator.AND,
+        )
     )
 
     labels = fetch_union_of_labels(
@@ -630,14 +874,43 @@ def test_compute_roc_auc_with_label_map(
     assert score == 0.7777777777777778
 
     """
-
     prediction_filter = schemas.Filter(
-        model_names=[model_name],
-        task_types=[enums.TaskType.CLASSIFICATION],
+        predictions=schemas.LogicalFunction(
+            args=[
+                schemas.Condition(
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.MODEL_NAME
+                    ),
+                    rhs=schemas.Value.infer(model_name),
+                    op=schemas.FilterOperator.EQ,
+                ),
+                schemas.Condition(
+                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.TASK_TYPE),
+                    rhs=schemas.Value.infer(enums.TaskType.CLASSIFICATION),
+                    op=schemas.FilterOperator.CONTAINS,
+                ),
+            ],
+            op=schemas.LogicalOperator.AND,
+        )
     )
     groundtruth_filter = schemas.Filter(
-        dataset_names=[dataset_name],
-        task_types=[enums.TaskType.CLASSIFICATION],
+        groundtruths=schemas.LogicalFunction(
+            args=[
+                schemas.Condition(
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.DATASET_NAME
+                    ),
+                    rhs=schemas.Value.infer(dataset_name),
+                    op=schemas.FilterOperator.EQ,
+                ),
+                schemas.Condition(
+                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.TASK_TYPE),
+                    rhs=schemas.Value.infer(enums.TaskType.CLASSIFICATION),
+                    op=schemas.FilterOperator.CONTAINS,
+                ),
+            ],
+            op=schemas.LogicalOperator.AND,
+        )
     )
 
     labels = fetch_union_of_labels(
@@ -672,19 +945,59 @@ def test_compute_classification(
     """
     Tests the _compute_classification function.
     """
-    model_filter = schemas.Filter(
-        dataset_names=[dataset_name], model_names=[model_name]
+
+    prediction_filter = schemas.Filter(
+        predictions=schemas.LogicalFunction(
+            args=[
+                schemas.Condition(
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.DATASET_NAME
+                    ),
+                    rhs=schemas.Value.infer(dataset_name),
+                    op=schemas.FilterOperator.EQ,
+                ),
+                schemas.Condition(
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.MODEL_NAME
+                    ),
+                    rhs=schemas.Value.infer(model_name),
+                    op=schemas.FilterOperator.EQ,
+                ),
+            ],
+            op=schemas.LogicalOperator.AND,
+        )
     )
-    dataset_filter = schemas.Filter(
-        dataset_names=[dataset_name],
-        model_names=[model_name],
-        task_types=[enums.TaskType.CLASSIFICATION],
+    groundtruth_filter = schemas.Filter(
+        groundtruths=schemas.LogicalFunction(
+            args=[
+                schemas.Condition(
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.DATASET_NAME
+                    ),
+                    rhs=schemas.Value.infer(dataset_name),
+                    op=schemas.FilterOperator.EQ,
+                ),
+                schemas.Condition(
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.MODEL_NAME
+                    ),
+                    rhs=schemas.Value.infer(model_name),
+                    op=schemas.FilterOperator.EQ,
+                ),
+                schemas.Condition(
+                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.TASK_TYPE),
+                    rhs=schemas.Value.infer(enums.TaskType.CLASSIFICATION),
+                    op=schemas.FilterOperator.CONTAINS,
+                ),
+            ],
+            op=schemas.LogicalOperator.AND,
+        )
     )
 
     confusion, metrics = _compute_clf_metrics(
         db,
-        prediction_filter=model_filter,
-        groundtruth_filter=dataset_filter,
+        prediction_filter=prediction_filter,
+        groundtruth_filter=groundtruth_filter,
         label_map=None,
         pr_curve_max_examples=0,
         metrics_to_return=[
@@ -857,12 +1170,42 @@ def test__compute_curves(
     """Test that _compute_curves correctly returns precision-recall curves for our animal ground truths."""
 
     prediction_filter = schemas.Filter(
-        model_names=[model_name],
-        task_types=[enums.TaskType.CLASSIFICATION],
+        predictions=schemas.LogicalFunction(
+            args=[
+                schemas.Condition(
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.MODEL_NAME
+                    ),
+                    rhs=schemas.Value.infer(model_name),
+                    op=schemas.FilterOperator.EQ,
+                ),
+                schemas.Condition(
+                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.TASK_TYPE),
+                    rhs=schemas.Value.infer(enums.TaskType.CLASSIFICATION),
+                    op=schemas.FilterOperator.CONTAINS,
+                ),
+            ],
+            op=schemas.LogicalOperator.AND,
+        )
     )
     groundtruth_filter = schemas.Filter(
-        dataset_names=[dataset_name],
-        task_types=[enums.TaskType.CLASSIFICATION],
+        groundtruths=schemas.LogicalFunction(
+            args=[
+                schemas.Condition(
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.DATASET_NAME
+                    ),
+                    rhs=schemas.Value.infer(dataset_name),
+                    op=schemas.FilterOperator.EQ,
+                ),
+                schemas.Condition(
+                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.TASK_TYPE),
+                    rhs=schemas.Value.infer(enums.TaskType.CLASSIFICATION),
+                    op=schemas.FilterOperator.CONTAINS,
+                ),
+            ],
+            op=schemas.LogicalOperator.AND,
+        )
     )
 
     labels = fetch_union_of_labels(
@@ -883,11 +1226,29 @@ def test__compute_curves(
 
     # groundtruths filter
     gFilter = groundtruth_filter.model_copy()
-    gFilter.label_keys = label_key_filter
+    gFilter.labels = schemas.LogicalFunction.or_(
+        *[
+            schemas.Condition(
+                lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
+                rhs=schemas.Value.infer(key),
+                op=schemas.FilterOperator.EQ,
+            )
+            for key in label_key_filter
+        ]
+    )
 
     # predictions filter
     pFilter = prediction_filter.model_copy()
-    pFilter.label_keys = label_key_filter
+    pFilter.labels = schemas.LogicalFunction.or_(
+        *[
+            schemas.Condition(
+                lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
+                rhs=schemas.Value.infer(key),
+                op=schemas.FilterOperator.EQ,
+            )
+            for key in label_key_filter
+        ]
+    )
 
     groundtruths = generate_select(
         models.GroundTruth,

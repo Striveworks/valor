@@ -133,12 +133,12 @@ def test_filter_by_bounding_box(client, groundtruths_with_areas, areas):
 
     label_key = "box"
     all_labels = client.get_labels(
-        Filter.create(
-            [
-                Annotation.bounding_box.is_not_none(),
-                Annotation.polygon.is_none(),
-                Annotation.raster.is_none(),
-            ]
+        Filter(
+            labels=(
+                Annotation.bounding_box.is_not_none()
+                & Annotation.polygon.is_none()
+                & Annotation.raster.is_none()
+            )
         )
     )
     assert set(all_labels) == {
@@ -151,13 +151,13 @@ def test_filter_by_bounding_box(client, groundtruths_with_areas, areas):
     # threshold area
     for idx, area in enumerate(areas):
         thresholded_labels = client.get_labels(
-            Filter.create(
-                [
-                    Annotation.bounding_box.is_not_none(),
-                    Annotation.polygon.is_none(),
-                    Annotation.raster.is_none(),
-                    Annotation.bounding_box.area > area,
-                ]
+            Filter(
+                labels=(
+                    Annotation.bounding_box.is_not_none()
+                    & Annotation.polygon.is_none()
+                    & Annotation.raster.is_none()
+                    & (Annotation.bounding_box.area > area)
+                )
             )
         )
         assert len(thresholded_labels) == len(areas) - idx - 1
@@ -181,12 +181,12 @@ def test_filter_by_polygon(client, groundtruths_with_areas, areas):
 
     label_key = "polygon"
     all_labels = client.get_labels(
-        Filter.create(
-            [
-                Annotation.bounding_box.is_none(),
-                Annotation.polygon.is_not_none(),
-                Annotation.raster.is_none(),
-            ]
+        Filter(
+            labels=(
+                Annotation.bounding_box.is_none()
+                & Annotation.polygon.is_not_none()
+                & Annotation.raster.is_none()
+            )
         )
     )
     assert set(all_labels) == {
@@ -199,13 +199,13 @@ def test_filter_by_polygon(client, groundtruths_with_areas, areas):
     # threshold area
     for idx, area in enumerate(areas):
         thresholded_labels = client.get_labels(
-            Filter.create(
-                [
-                    Annotation.bounding_box.is_none(),
-                    Annotation.polygon.is_not_none(),
-                    Annotation.raster.is_none(),
-                    Annotation.polygon.area > area,
-                ]
+            Filter(
+                labels=(
+                    Annotation.bounding_box.is_none()
+                    & Annotation.polygon.is_not_none()
+                    & Annotation.raster.is_none()
+                    & (Annotation.polygon.area > area)
+                )
             )
         )
         assert len(thresholded_labels) == len(areas) - idx - 1
@@ -230,13 +230,13 @@ def test_filter_by_multipolygon(client, groundtruths_with_areas, areas):
 
     label_key = "multipolygon"
     all_labels = client.get_labels(
-        Filter.create(
-            [
-                Label.key == label_key,
-                Annotation.bounding_box.is_none(),
-                Annotation.polygon.is_none(),
-                Annotation.raster.is_not_none(),
-            ]
+        Filter(
+            labels=(
+                (Label.key == label_key)
+                & Annotation.bounding_box.is_none()
+                & Annotation.polygon.is_none()
+                & Annotation.raster.is_not_none()
+            )
         )
     )
     assert set(all_labels) == {
@@ -249,14 +249,14 @@ def test_filter_by_multipolygon(client, groundtruths_with_areas, areas):
     # threshold area
     for idx, area in enumerate(areas):
         thresholded_labels = client.get_labels(
-            Filter.create(
-                [
-                    Label.key == label_key,
-                    Annotation.bounding_box.is_none(),
-                    Annotation.polygon.is_none(),
-                    Annotation.raster.is_not_none(),
-                    Annotation.raster.area > area,
-                ]
+            Filter(
+                labels=(
+                    (Label.key == label_key)
+                    & Annotation.bounding_box.is_none()
+                    & Annotation.polygon.is_none()
+                    & Annotation.raster.is_not_none()
+                    & (Annotation.raster.area > area)
+                )
             )
         )
         assert len(thresholded_labels) == len(areas) - idx - 1
@@ -280,13 +280,13 @@ def test_filter_by_raster(client, groundtruths_with_areas, areas):
 
     label_key = "raster"
     all_labels = client.get_labels(
-        Filter.create(
-            [
-                Label.key == label_key,
-                Annotation.bounding_box.is_none(),
-                Annotation.polygon.is_none(),
-                Annotation.raster.is_not_none(),
-            ]
+        Filter(
+            labels=(
+                (Label.key == label_key)
+                & Annotation.bounding_box.is_none()
+                & Annotation.polygon.is_none()
+                & Annotation.raster.is_not_none()
+            )
         )
     )
     assert set(all_labels) == {
@@ -299,14 +299,14 @@ def test_filter_by_raster(client, groundtruths_with_areas, areas):
     # threshold area
     for idx, area in enumerate(areas):
         thresholded_labels = client.get_labels(
-            Filter.create(
-                [
-                    Label.key == label_key,
-                    Annotation.bounding_box.is_none(),
-                    Annotation.polygon.is_none(),
-                    Annotation.raster.is_not_none(),
-                    Annotation.raster.area > area,
-                ]
+            Filter(
+                labels=(
+                    (Label.key == label_key)
+                    & Annotation.bounding_box.is_none()
+                    & Annotation.polygon.is_none()
+                    & Annotation.raster.is_not_none()
+                    & (Annotation.raster.area > area)
+                )
             )
         )
         assert len(thresholded_labels) == len(areas) - idx - 1
