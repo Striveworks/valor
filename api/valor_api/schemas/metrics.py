@@ -753,20 +753,21 @@ class AnswerCorrectnessMetric(BaseModel):
 
     Attributes
     ----------
-    label_key : str
-        A label for the metric.
+    value : int
+        TODO
+    parameters : dict
+        TODO
     """
 
-    label_key: str
+    value: float
+    parameters: dict
 
-    def db_mapping(self, label_id: int, evaluation_id: int) -> dict:
+    def db_mapping(self, evaluation_id: int) -> dict:
         """
         Creates a mapping for use when uploading the metric to the database.
 
         Parameters
         ----------
-        label_id : int
-            The label id.
         evaluation_id : int
             The evaluation id.
 
@@ -783,20 +784,21 @@ class AnswerRelevanceMetric(BaseModel):
 
     Attributes
     ----------
-    label_key : str
-        A label for the metric.
+    value : int
+        TODO
+    parameters : dict
+        TODO
     """
 
-    label_key: str
+    value: float
+    parameters: dict
 
-    def db_mapping(self, label_id: int, evaluation_id: int) -> dict:
+    def db_mapping(self, evaluation_id: int) -> dict:
         """
         Creates a mapping for use when uploading the metric to the database.
 
         Parameters
         ----------
-        label_id : int
-            The label id.
         evaluation_id : int
             The evaluation id.
 
@@ -813,20 +815,21 @@ class BiasMetric(BaseModel):
 
     Attributes
     ----------
-    label_key : str
-        A label for the metric.
+    value : int
+        TODO
+    parameters : dict
+        TODO
     """
 
-    label_key: str
+    value: float
+    parameters: dict
 
-    def db_mapping(self, label_id: int, evaluation_id: int) -> dict:
+    def db_mapping(self, evaluation_id: int) -> dict:
         """
         Creates a mapping for use when uploading the metric to the database.
 
         Parameters
         ----------
-        label_id : int
-            The label id.
         evaluation_id : int
             The evaluation id.
 
@@ -843,18 +846,16 @@ class CoherenceMetric(BaseModel):
 
     Attributes
     ----------
-    label : Label
-        A label for the metric.
     value : int
         The coherence score for an individual datapoint, which is an integer between 1 and 5.
+    parameters : dict
+        TODO
     """
 
     value: float
     parameters: dict
 
-    def db_mapping(
-        self, evaluation_id: int
-    ) -> dict:  # TODO what type for label_id?
+    def db_mapping(self, evaluation_id: int) -> dict:
         """
         Creates a mapping for use when uploading the metric to the database.
 
@@ -881,20 +882,21 @@ class ContextPrecisionMetric(BaseModel):
 
     Attributes
     ----------
-    label_key : str
-        A label for the metric.
+    value : int
+        TODO
+    parameters : dict
+        TODO
     """
 
-    label_key: str
+    value: float
+    parameters: dict
 
-    def db_mapping(self, label_id: int, evaluation_id: int) -> dict:
+    def db_mapping(self, evaluation_id: int) -> dict:
         """
         Creates a mapping for use when uploading the metric to the database.
 
         Parameters
         ----------
-        label_id : int
-            The label id.
         evaluation_id : int
             The evaluation id.
 
@@ -911,20 +913,21 @@ class ContextRecallMetric(BaseModel):
 
     Attributes
     ----------
-    label_key : str
-        A label for the metric.
+    value : int
+        TODO
+    parameters : dict
+        TODO
     """
 
-    label_key: str
+    value: float
+    parameters: dict
 
-    def db_mapping(self, label_id: int, evaluation_id: int) -> dict:
+    def db_mapping(self, evaluation_id: int) -> dict:
         """
         Creates a mapping for use when uploading the metric to the database.
 
         Parameters
         ----------
-        label_id : int
-            The label id.
         evaluation_id : int
             The evaluation id.
 
@@ -941,20 +944,21 @@ class ContextRelevanceMetric(BaseModel):
 
     Attributes
     ----------
-    label_key : str
-        A label for the metric.
+    value : int
+        TODO
+    parameters : dict
+        TODO
     """
 
-    label_key: str
+    value: float
+    parameters: dict
 
-    def db_mapping(self, label_id: int, evaluation_id: int) -> dict:
+    def db_mapping(self, evaluation_id: int) -> dict:
         """
         Creates a mapping for use when uploading the metric to the database.
 
         Parameters
         ----------
-        label_id : int
-            The label id.
         evaluation_id : int
             The evaluation id.
 
@@ -971,20 +975,21 @@ class FaithfulnessMetric(BaseModel):
 
     Attributes
     ----------
-    label_key : str
-        A label for the metric.
+    value : int
+        TODO
+    parameters : dict
+        TODO
     """
 
-    label_key: str
+    value: float
+    parameters: dict
 
-    def db_mapping(self, label_id: int, evaluation_id: int) -> dict:
+    def db_mapping(self, evaluation_id: int) -> dict:
         """
         Creates a mapping for use when uploading the metric to the database.
 
         Parameters
         ----------
-        label_id : int
-            The label id.
         evaluation_id : int
             The evaluation id.
 
@@ -1001,20 +1006,21 @@ class GrammaticalityMetric(BaseModel):
 
     Attributes
     ----------
-    label_key : str
-        A label for the metric.
+    value : int
+        TODO
+    parameters : dict
+        TODO
     """
 
-    label_key: str
+    value: float
+    parameters: dict
 
-    def db_mapping(self, label_id: int, evaluation_id: int) -> dict:
+    def db_mapping(self, evaluation_id: int) -> dict:
         """
         Creates a mapping for use when uploading the metric to the database.
 
         Parameters
         ----------
-        label_id : int
-            The label id.
         evaluation_id : int
             The evaluation id.
 
@@ -1031,20 +1037,21 @@ class HallucinationMetric(BaseModel):
 
     Attributes
     ----------
-    label_key : str
-        A label for the metric.
+    value : int
+        TODO
+    parameters : dict
+        TODO
     """
 
-    label_key: str
+    value: float
+    parameters: dict
 
-    def db_mapping(self, label_id: int, evaluation_id: int) -> dict:
+    def db_mapping(self, evaluation_id: int) -> dict:
         """
         Creates a mapping for use when uploading the metric to the database.
 
         Parameters
         ----------
-        label_id : int
-            The label id.
         evaluation_id : int
             The evaluation id.
 
@@ -1061,20 +1068,21 @@ class SummarizationMetric(BaseModel):
 
     Attributes
     ----------
-    label_key : str
-        A label for the metric.
+    value : int
+        TODO
+    parameters : dict
+        TODO
     """
 
-    label_key: str
+    value: float
+    parameters: dict
 
-    def db_mapping(self, label_id: int, evaluation_id: int) -> dict:
+    def db_mapping(self, evaluation_id: int) -> dict:
         """
         Creates a mapping for use when uploading the metric to the database.
 
         Parameters
         ----------
-        label_id : int
-            The label id.
         evaluation_id : int
             The evaluation id.
 
@@ -1091,20 +1099,21 @@ class ToxicityMetric(BaseModel):
 
     Attributes
     ----------
-    label_key : str
-        A label for the metric.
+    value : int
+        TODO
+    parameters : dict
+        TODO
     """
 
-    label_key: str
+    value: float
+    parameters: dict
 
-    def db_mapping(self, label_id: int, evaluation_id: int) -> dict:
+    def db_mapping(self, evaluation_id: int) -> dict:
         """
         Creates a mapping for use when uploading the metric to the database.
 
         Parameters
         ----------
-        label_id : int
-            The label id.
         evaluation_id : int
             The evaluation id.
 
