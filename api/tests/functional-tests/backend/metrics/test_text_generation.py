@@ -231,15 +231,33 @@ def test_compute_text_generation(
     Tests the _compute_text_generation function.
     """
 
-    model_filter = schemas.Filter(
-        dataset_names=[dataset_name],
-        model_names=[model_name],
-    )
     datum_filter = schemas.Filter(
-        dataset_names=[dataset_name],
-        model_names=[model_name],
-        task_types=[enums.TaskType.TEXT_GENERATION],
+        datasets=schemas.LogicalFunction(
+            args=[
+                schemas.Condition(
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.DATASET_NAME,
+                    ),
+                    rhs=schemas.Value.infer(dataset_name),
+                    op=schemas.FilterOperator.EQ,
+                ),
+            ],
+            op=schemas.LogicalOperator.AND,
+        ),
+        models=schemas.LogicalFunction(
+            args=[
+                schemas.Condition(
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.MODEL_NAME,
+                    ),
+                    rhs=schemas.Value.infer(model_name),
+                    op=schemas.FilterOperator.EQ,
+                ),
+            ],
+            op=schemas.LogicalOperator.AND,
+        ),
     )
+    prediction_filter = datum_filter.model_copy()
 
     # TODO eventually get all working
     metrics_to_return = [
@@ -260,8 +278,8 @@ def test_compute_text_generation(
     # TODO The llm_api_params need to be passed in to this as well.
     metrics = _compute_text_generation_metrics(
         db,
-        model_filter,
-        datum_filter,
+        datum_filter=datum_filter,
+        prediction_filter=prediction_filter,
         metrics_to_return=metrics_to_return,
         llm_api_params={
             "client": "openai",

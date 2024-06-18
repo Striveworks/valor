@@ -28,8 +28,8 @@ class EvaluationParameters(BaseModel):
         Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
     metrics_to_return: List[MetricType], optional
         The list of metrics to compute, store, and return to the user.
-    metric_params: dict[str, dict], optional
-        A dictionary of parameters for each metric. The key is the metric name and the value is a dictionary of parameters for that metric (e.g., `{"SentenceBLEU": {"weights": [0.65,0.2,0.1,0.05], "smoothing_function": "method3"}}`).
+    metric_params: dict[MetricType, dict], optional
+        A dictionary of parameters for each metric. The key is the metric type and the value is a dictionary of parameters for that metric (e.g., `{MetricType.SentenceBleu: {"weights": [0.65,0.2,0.1,0.05], "smoothing_function": "method3"}}`).
     convert_annotations_to_type: AnnotationType | None = None
         The type to convert all annotations to.
     iou_thresholds_to_compute: List[float], optional
@@ -49,7 +49,7 @@ class EvaluationParameters(BaseModel):
     task_type: TaskType
     metrics_to_return: list[MetricType] | None = None
     label_map: LabelMapType | None = None
-    metric_params: dict[str, dict] | None = None
+    metric_params: dict[MetricType, dict] | None = None
 
     convert_annotations_to_type: AnnotationType | None = None
     iou_thresholds_to_compute: list[float] | None = None
@@ -94,8 +94,20 @@ class EvaluationParameters(BaseModel):
                         MetricType.IOU,
                         MetricType.mIOU,
                     ]
+                case TaskType.TEXT_GENERATION:
+                    raise ValueError(
+                        "Text generation does not have default metrics. Please specify metrics_to_return."
+                    )
 
-        # TODO Possibly validate metric_params based on task type
+        if values.metric_params is not None and any(
+            metric not in values.metrics_to_return
+            for metric in values.metric_params.keys()
+        ):
+            raise ValueError(
+                "The metrics specified in `metric_params` must be a subset of `metrics_to_return`."
+            )
+
+        # TODO Validate metric_params based on task type.
         match values.task_type:
             case TaskType.CLASSIFICATION | TaskType.SEMANTIC_SEGMENTATION:
                 if values.convert_annotations_to_type is not None:

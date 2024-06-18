@@ -157,8 +157,8 @@ def setup_llm_client(
 
 def _compute_text_generation_metrics(
     db: Session,
-    prediction_filter: schemas.Filter,
     datum_filter: schemas.Filter,
+    prediction_filter: schemas.Filter,
     metrics_to_return: list[MetricType] = [],
     llm_api_params: dict[str, str | dict] | None = None,
 ) -> Sequence[
@@ -182,10 +182,10 @@ def _compute_text_generation_metrics(
     ----------
     db : Session
         The database Session to query against.
+    datum_filter : schemas.Filter
+        The filter to be used to query datums.
     prediction_filter : schemas.Filter
         The filter to be used to query predictions.
-    datum_filter : schemas.Filter
-        The filter to be used to query groundtruths.
     metrics_to_return: list[MetricType]
         The list of metrics to compute, store, and return to the user.
     llm_api_params: dict[str, str | dict], optional
@@ -310,16 +310,16 @@ def compute_text_generation_metrics(
 
     # unpack filters and params
     datum_filter = schemas.Filter(**evaluation.filters)
-    groundtruth_filter = datum_filter.model_copy()
+    # groundtruth_filter = datum_filter.model_copy()
     prediction_filter = datum_filter.model_copy()
 
-    prediction_filter.model_names = [evaluation.model_name]
+    # prediction_filter.model_names = [evaluation.model_name]
     parameters = schemas.EvaluationParameters(**evaluation.parameters)
 
     # load task type into filters
-    datum_filter.task_types = [parameters.task_type]
-    groundtruth_filter.task_types = [parameters.task_type]
-    prediction_filter.task_types = [parameters.task_type]
+    # datum_filter.task_types = [parameters.task_type]
+    # groundtruth_filter.task_types = [parameters.task_type]
+    # prediction_filter.task_types = [parameters.task_type]
 
     # get llm api params
     llm_api_params = parameters.llm_api_params
@@ -336,8 +336,8 @@ def compute_text_generation_metrics(
 
     metrics = _compute_text_generation_metrics(
         db=db,
-        prediction_filter=prediction_filter,
         datum_filter=datum_filter,
+        prediction_filter=prediction_filter,
         metrics_to_return=parameters.metrics_to_return,
         llm_api_params=llm_api_params,
     )

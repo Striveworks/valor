@@ -350,7 +350,6 @@ def _create_response(
     )
 
 
-  
 def _create_responses(
     db: Session,
     evaluations: list[models.Evaluation],
@@ -406,6 +405,8 @@ def _create_responses(
                         "missing_pred_labels": missing_pred_labels,
                         "ignored_pred_labels": ignored_pred_labels,
                     }
+                case enums.TaskType.TEXT_GENERATION:
+                    kwargs = {}
                 case _:
                     raise NotImplementedError
         except ValidationError as e:
