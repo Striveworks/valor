@@ -1,7 +1,6 @@
 from dataclasses import asdict, dataclass, field
 from typing import Dict, List, Optional, Union
 
-
 from valor.enums import AnnotationType, MetricType, TaskType
 from valor.schemas.filters import Filter
 
