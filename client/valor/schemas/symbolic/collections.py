@@ -3,7 +3,7 @@ from typing import Any, Dict, List, Optional, Union
 import numpy as np
 
 from valor.schemas.symbolic.types import (
-    Bool,
+    Boolean,
     Box,
     Context,
     Dictionary,
@@ -332,7 +332,9 @@ class Annotation(StaticCollection):
     embedding: Embedding = Embedding.symbolic(
         owner="annotation", name="embedding"
     )
-    is_instance: Bool = Bool.symbolic(owner="annotation", name="is_instance")
+    is_instance: Boolean = Boolean.symbolic(
+        owner="annotation", name="is_instance"
+    )
     implied_task_types: SymbolicList[String] = SymbolicList[String].symbolic(
         owner="annotation", name="implied_task_types"
     )
@@ -402,7 +404,7 @@ class Annotation(StaticCollection):
             "polygon": Polygon.nullable,
             "raster": Raster.nullable,
             "embedding": Embedding.nullable,
-            "is_instance": Bool.nullable,
+            "is_instance": Boolean.nullable,
             "implied_task_types": SymbolicList,
         }
 

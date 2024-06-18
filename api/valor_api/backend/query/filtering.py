@@ -13,7 +13,6 @@ from sqlalchemy import (
     func,
     not_,
     or_,
-    select,
 )
 from sqlalchemy.dialects.postgresql import INTERVAL, TEXT
 
@@ -28,12 +27,13 @@ from valor_api.backend.models import (
     Prediction,
 )
 from valor_api.backend.query.types import LabelSourceAlias, TableTypeAlias
-from valor_api.schemas.filters import AdvancedFilter as Filter
 from valor_api.schemas.filters import (
-    NArgFunction,
-    OneArgFunction,
-    Symbol,
-    TwoArgFunction,
+    Condition,
+    Filter,
+    FilterOperator,
+    LogicalFunction,
+    SupportedSymbol,
+    SupportedType,
     Value,
 )
 from valor_api.schemas.geometry import (
@@ -46,223 +46,256 @@ from valor_api.schemas.geometry import (
     Polygon,
 )
 
+
+def raise_not_implemented(x):
+    raise NotImplementedError(f"{x} is not implemented.")
+
+
 # Map an operation to a callable function.
 map_opstr_to_operator = {
-    "equal": operator.eq,
-    "notequal": operator.ne,
-    "greaterthan": operator.gt,
-    "greaterthanequal": operator.ge,
-    "lessthan": operator.lt,
-    "lessthanequal": operator.le,
-    "intersects": lambda lhs, rhs: func.ST_Intersects(lhs, rhs),
-    "inside": lambda lhs, rhs: func.ST_Covers(rhs, lhs),
-    "outside": lambda lhs, rhs: not_(func.ST_Covers(rhs, lhs)),
-    "isnull": lambda lhs, _: lhs.is_(None),
-    "isnotnull": lambda lhs, _: lhs.isnot(None),
-    "contains": lambda lhs, rhs: lhs.op("?")(rhs),
-}
-
-# Map a symbol to a tuple containing a table and the relevant attribute.
-map_name_to_table_column = {
-    "dataset.name": (Dataset, Dataset.name),
-    "dataset.metadata": (Dataset, Dataset.meta),
-    "model.name": (Model, Model.name),
-    "model.metadata": (Model, Model.meta),
-    "datum.uid": (Datum, Datum.uid),
-    "datum.metadata": (Datum, Datum.meta),
-    "annotation.bounding_box": (Annotation, Annotation.box),
-    "annotation.polygon": (Annotation, Annotation.polygon),
-    "annotation.raster": (Annotation, Annotation.raster),
-    "annotation.metadata": (Annotation, Annotation.meta),
-    "annotation.task_type": (Annotation, Annotation.implied_task_types),
-    "annotation.embedding": (Embedding, Embedding.value),
-    "annotation.labels": (Label, Label),
-    "annotation.model_id": (Annotation, Annotation.model_id),  # remove
-    "label.key": (Label, Label.key),
-    "label.value": (Label, Label.value),
-    "label.score": (Prediction, Prediction.score),
-    "label.id": (Label, Label.id),  # remove
-    "model.id": (Model, Model.id),
+    FilterOperator.EQ: operator.eq,
+    FilterOperator.NE: operator.ne,
+    FilterOperator.GT: operator.gt,
+    FilterOperator.GTE: operator.ge,
+    FilterOperator.LT: operator.lt,
+    FilterOperator.LTE: operator.le,
+    FilterOperator.INTERSECTS: lambda lhs, rhs: func.ST_Intersects(lhs, rhs),
+    FilterOperator.INSIDE: lambda lhs, rhs: func.ST_Covers(rhs, lhs),
+    FilterOperator.OUTSIDE: lambda lhs, rhs: not_(func.ST_Covers(rhs, lhs)),
+    FilterOperator.ISNULL: lambda lhs, _: lhs.is_(None),
+    FilterOperator.ISNOTNULL: lambda lhs, _: lhs.isnot(None),
+    FilterOperator.CONTAINS: lambda lhs, rhs: lhs.op("?")(rhs),
 }
 
 
-# Map a symbol's attribute type to a modifying function.
-map_attribute_to_type_cast = {
-    "area": {
-        "annotation.bounding_box": lambda x: ST_Area(x),
-        "annotation.polygon": lambda x: ST_Area(x),
-        "annotation.raster": lambda x: ST_Count(x),
-        "dataset.metadata": lambda x: ST_Area(x),
-        "model.metadata": lambda x: ST_Area(x),
-        "datum.metadata": lambda x: ST_Area(x),
-        "annotation.metadata": lambda x: ST_Area(x),
-    }
+# Map a symbol to a tuple containing (table, column, type string).
+map_symbol_to_resources = {
+    SupportedSymbol.DATASET_NAME: (Dataset, Dataset.name),
+    SupportedSymbol.MODEL_NAME: (Model, Model.name),
+    SupportedSymbol.DATUM_UID: (Datum, Datum.uid),
+    SupportedSymbol.BOX: (Annotation, Annotation.box),
+    SupportedSymbol.POLYGON: (Annotation, Annotation.polygon),
+    SupportedSymbol.RASTER: (Annotation, Annotation.raster),
+    SupportedSymbol.TASK_TYPE: (Annotation, Annotation.implied_task_types),
+    SupportedSymbol.EMBEDDING: (Embedding, Embedding.value),
+    SupportedSymbol.LABELS: (Label, Label),
+    SupportedSymbol.LABEL_KEY: (Label, Label.key),
+    SupportedSymbol.LABEL_VALUE: (Label, Label.value),
+    SupportedSymbol.SCORE: (Prediction, Prediction.score),
+    # 'area' attribute
+    SupportedSymbol.BOX_AREA: (Annotation, ST_Area(Annotation.box)),
+    SupportedSymbol.POLYGON_AREA: (Annotation, ST_Area(Annotation.polygon)),
+    SupportedSymbol.RASTER_AREA: (Annotation, ST_Count(Annotation.raster)),
+    # backend use only
+    SupportedSymbol.DATASET_ID: (Dataset, Dataset.id),
+    SupportedSymbol.MODEL_ID: (Model, Model.id),
+    SupportedSymbol.DATUM_ID: (Datum, Datum.id),
+    SupportedSymbol.ANNOTATION_ID: (Annotation, Annotation.id),
+    SupportedSymbol.GROUNDTRUTH_ID: (GroundTruth, GroundTruth.id),
+    SupportedSymbol.PREDICTION_ID: (Prediction, Prediction.id),
+    SupportedSymbol.LABEL_ID: (Label, Label.id),
+    SupportedSymbol.EMBEDDING_ID: (Embedding, Embedding.id),
 }
 
 
-# Map a symbol's attribute to the type expected by the operation.
-map_symbol_attribute_to_type = {"area": "float"}
+# Map a keyed symbol to a tuple containing (table, column, type string).
+map_keyed_symbol_to_resources = {
+    SupportedSymbol.DATASET_META: (Dataset, lambda key: Dataset.meta[key]),
+    SupportedSymbol.MODEL_META: (Model, lambda key: Model.meta[key]),
+    SupportedSymbol.DATUM_META: (Datum, lambda key: Datum.meta[key]),
+    SupportedSymbol.ANNOTATION_META: (
+        Annotation,
+        lambda key: Annotation.meta[key],
+    ),
+    # 'area' attribute
+    SupportedSymbol.DATASET_META_AREA: (
+        Dataset,
+        lambda key: ST_Area(ST_GeomFromGeoJSON(Dataset.meta[key]["value"])),
+    ),
+    SupportedSymbol.MODEL_META_AREA: (
+        Model,
+        lambda key: ST_Area(ST_GeomFromGeoJSON(Model.meta[key]["value"])),
+    ),
+    SupportedSymbol.DATUM_META_AREA: (
+        Datum,
+        lambda key: ST_Area(ST_GeomFromGeoJSON(Datum.meta[key]["value"])),
+    ),
+    SupportedSymbol.ANNOTATION_META_AREA: (
+        Annotation,
+        lambda key: ST_Area(ST_GeomFromGeoJSON(Annotation.meta[key]["value"])),
+    ),
+}
 
 
 # Map a type to a type casting function. This is used for accessing JSONB values.
 map_type_to_jsonb_type_cast = {
-    "boolean": lambda x: x.astext.cast(Boolean),
-    "integer": lambda x: x.astext.cast(Integer),
-    "float": lambda x: x.astext.cast(Float),
-    "string": lambda x: x.astext,
-    "tasktype": lambda x: x.astext,
-    "datetime": lambda x: cast(
+    SupportedType.BOOLEAN: lambda x: x.astext.cast(Boolean),
+    SupportedType.INTEGER: lambda x: x.astext.cast(Integer),
+    SupportedType.FLOAT: lambda x: x.astext.cast(Float),
+    SupportedType.STRING: lambda x: x.astext,
+    SupportedType.TASK_TYPE: lambda x: x.astext,
+    SupportedType.DATETIME: lambda x: cast(
         x["value"].astext, type_=TIMESTAMP(timezone=True)
     ),
-    "date": lambda x: cast(x["value"].astext, type_=TIMESTAMP(timezone=True)),
-    "time": lambda x: cast(x["value"].astext, type_=INTERVAL),
-    "duration": lambda x: cast(x["value"].astext, type_=INTERVAL),
-    "point": lambda x: ST_GeomFromGeoJSON(x["value"]),
-    "multipoint": lambda x: ST_GeomFromGeoJSON(x["value"]),
-    "linestring": lambda x: ST_GeomFromGeoJSON(x["value"]),
-    "multilinestring": lambda x: ST_GeomFromGeoJSON(x["value"]),
-    "polygon": lambda x: ST_GeomFromGeoJSON(x["value"]),
-    "box": lambda x: ST_GeomFromGeoJSON(x["value"]),
-    "multipolygon": lambda x: ST_GeomFromGeoJSON(x["value"]),
-    "geojson": lambda x: ST_GeomFromGeoJSON(x["value"]),
-}
-
-
-# Map an attribute to a type casting function. This is used for accessing JSONB values.
-map_attribute_to_jsonb_type_cast = {
-    "area": lambda x: ST_GeomFromGeoJSON(x["value"]),
+    SupportedType.DATE: lambda x: cast(
+        x["value"].astext, type_=TIMESTAMP(timezone=True)
+    ),
+    SupportedType.TIME: lambda x: cast(x["value"].astext, type_=INTERVAL),
+    SupportedType.DURATION: lambda x: cast(x["value"].astext, type_=INTERVAL),
+    SupportedType.POINT: lambda x: ST_GeomFromGeoJSON(x["value"]),
+    SupportedType.MULTIPOINT: lambda x: ST_GeomFromGeoJSON(x["value"]),
+    SupportedType.LINESTRING: lambda x: ST_GeomFromGeoJSON(x["value"]),
+    SupportedType.MULTILINESTRING: lambda x: ST_GeomFromGeoJSON(x["value"]),
+    SupportedType.POLYGON: lambda x: ST_GeomFromGeoJSON(x["value"]),
+    SupportedType.BOX: lambda x: ST_GeomFromGeoJSON(x["value"]),
+    SupportedType.MULTIPOLYGON: lambda x: ST_GeomFromGeoJSON(x["value"]),
+    SupportedType.GEOJSON: lambda x: ST_GeomFromGeoJSON(x["value"]),
+    # unsupported
+    SupportedType.RASTER: raise_not_implemented,
+    SupportedType.EMBEDDING: raise_not_implemented,
+    SupportedType.LABEL: raise_not_implemented,
 }
 
 
 # Map a value type to a type casting function.
-map_value_type_to_type_cast = {
-    "boolean": lambda x: x,
-    "integer": lambda x: x,
-    "float": lambda x: x,
-    "string": lambda x: x,
-    "tasktype": lambda x: x,
-    "datetime": lambda x: cast(x, type_=TIMESTAMP(timezone=True)),
-    "date": lambda x: cast(x, type_=TIMESTAMP(timezone=True)),
-    "time": lambda x: cast(x, type_=INTERVAL),
-    "duration": lambda x: cast(cast(x, TEXT), type_=INTERVAL),
-    "point": lambda x: ST_GeomFromGeoJSON(Point(value=x).to_json()),
-    "multipoint": lambda x: ST_GeomFromGeoJSON(MultiPoint(value=x).to_json()),
-    "linestring": lambda x: ST_GeomFromGeoJSON(LineString(value=x).to_json()),
-    "multilinestring": lambda x: ST_GeomFromGeoJSON(
+map_type_to_type_cast = {
+    SupportedType.BOOLEAN: lambda x: x,
+    SupportedType.INTEGER: lambda x: x,
+    SupportedType.FLOAT: lambda x: x,
+    SupportedType.STRING: lambda x: x,
+    SupportedType.TASK_TYPE: lambda x: x,
+    SupportedType.DATETIME: lambda x: cast(x, type_=TIMESTAMP(timezone=True)),
+    SupportedType.DATE: lambda x: cast(x, type_=TIMESTAMP(timezone=True)),
+    SupportedType.TIME: lambda x: cast(x, type_=INTERVAL),
+    SupportedType.DURATION: lambda x: cast(cast(x, TEXT), type_=INTERVAL),
+    SupportedType.POINT: lambda x: ST_GeomFromGeoJSON(
+        Point(value=x).to_json()
+    ),
+    SupportedType.MULTIPOINT: lambda x: ST_GeomFromGeoJSON(
+        MultiPoint(value=x).to_json()
+    ),
+    SupportedType.LINESTRING: lambda x: ST_GeomFromGeoJSON(
+        LineString(value=x).to_json()
+    ),
+    SupportedType.MULTILINESTRING: lambda x: ST_GeomFromGeoJSON(
         MultiLineString(value=x).to_dict()
     ),
-    "polygon": lambda x: ST_GeomFromGeoJSON(Polygon(value=x).to_json()),
-    "box": lambda x: ST_GeomFromGeoJSON(Box(value=x).to_json()),
-    "multipolygon": lambda x: ST_GeomFromGeoJSON(
+    SupportedType.POLYGON: lambda x: ST_GeomFromGeoJSON(
+        Polygon(value=x).to_json()
+    ),
+    SupportedType.BOX: lambda x: ST_GeomFromGeoJSON(Box(value=x).to_json()),
+    SupportedType.MULTIPOLYGON: lambda x: ST_GeomFromGeoJSON(
         MultiPolygon(value=x).to_json()
     ),
-    "geojson": lambda x: ST_GeomFromGeoJSON(x),
+    SupportedType.GEOJSON: lambda x: ST_GeomFromGeoJSON(x),
+    # unsupported
+    SupportedType.RASTER: raise_not_implemented,
+    SupportedType.EMBEDDING: raise_not_implemented,
+    SupportedType.LABEL: raise_not_implemented,
 }
 
 
-def create_cte(
-    opstr: str, symbol: Symbol, value: Value | None = None
-) -> tuple[TableTypeAlias, CTE]:
+def create_where_expression(
+    condition: Condition,
+) -> tuple[TableTypeAlias, BinaryExpression]:
     """
-    Creates a CTE from a binary expression.
+    Creates a binary expression from an conditional.
 
     Parameters
     ----------
-    opstr : str
-        The expression operator.
-    symbol : Symbol
-        The lhs of the expression.
-    value : Value, optional
-        The rhs of the expression, if it exists.
+    condition : Condition
+        The conditional operation.
 
     Returns
     -------
-    tuple[TableTypeAlias, CTE]
-        A tuple of a table to join on and the CTE.
-    """
-    if not isinstance(symbol, Symbol):
-        raise ValueError(f"CTE passed a symbol with type '{type(symbol)}'.")
-    elif not isinstance(value, Value) and value is not None:
-        raise ValueError(f"CTE passed a value with type '{type(value)}'.")
-    elif value and symbol.type != value.type:
-        symbol_type = (
-            map_symbol_attribute_to_type[symbol.attribute]
-            if symbol.attribute
-            else symbol.type
-        )
-        if symbol_type != value.type:
-            raise TypeError(
-                f"Type mismatch between symbol and value. {symbol_type} != {value.type}."
-            )
+    tuple[TableTypeAlias, BinaryExpression]
+        A tuple of a table and its filtering expression.
 
-    op = map_opstr_to_operator[opstr]
-    table, lhs = map_name_to_table_column[symbol.name]
+    Raises
+    ------
+    NotImplementedError
+        If the symbol is not implemented.
+    ValueError
+        If there is a type mismatch.
+    """
+
+    # convert lhs (symbol) to sql representation
+    if condition.lhs.name in map_symbol_to_resources:
+        table, lhs = map_symbol_to_resources[condition.lhs.name]
+    elif (
+        condition.lhs.name in map_keyed_symbol_to_resources
+        and condition.lhs.key
+    ):
+        table, generate_column = map_keyed_symbol_to_resources[
+            condition.lhs.name
+        ]
+        lhs = generate_column(condition.lhs.key)
+    else:
+        raise NotImplementedError(
+            f"Symbol '{condition.lhs}' does not match any existing templates."
+        )
+
+    if condition.rhs and condition.lhs.key and condition.lhs.type is None:
+        lhs = map_type_to_jsonb_type_cast[condition.rhs.type](lhs)
+    elif (
+        isinstance(condition.rhs, Value)
+        and condition.rhs.type != condition.lhs.type
+    ):
+        raise TypeError(
+            f"Type mismatch between '{condition.lhs}' and '{condition.rhs}'."
+        )
+
+    op = map_opstr_to_operator[condition.op]
     rhs = (
-        map_value_type_to_type_cast[value.type](value.value) if value else None
+        map_type_to_type_cast[condition.rhs.type](condition.rhs.value)
+        if isinstance(condition.rhs, Value)
+        else None
     )
 
-    # add keying
-    if symbol.key:
-        lhs = lhs[symbol.key]
-
-        # add type cast
-        if not symbol.attribute:
-            lhs = map_type_to_jsonb_type_cast[symbol.type](lhs)
-        else:
-            lhs = map_attribute_to_jsonb_type_cast[symbol.attribute](lhs)
-
-    # add attribute modifier
-    if symbol.attribute:
-        modifier = map_attribute_to_type_cast[symbol.attribute][symbol.name]
-        lhs = modifier(lhs)
-
-    return (table, select(table.id).where(op(lhs, rhs)).cte())
+    return (table, op(lhs, rhs))
 
 
 def _recursive_search_logic_tree(
-    func: OneArgFunction | TwoArgFunction | NArgFunction,
-    cte_list: list | None = None,
+    func: Condition | LogicalFunction,
+    expr_list: list | None = None,
     tables: list[TableTypeAlias] | None = None,
-) -> tuple[int | dict, list[CTE], list[TableTypeAlias]]:
+) -> tuple[int | dict, list[BinaryExpression], list[TableTypeAlias]]:
     """
     Walks the filtering function to produce dependencies.
     """
-    if not isinstance(func, OneArgFunction | TwoArgFunction | NArgFunction):
+    if not isinstance(func, (Condition, LogicalFunction)):
         raise TypeError(
             f"Expected input to be of type 'OneArgFunction | TwoArgFunction | NArgFunction'. Received '{func}'."
         )
-    cte_list = cte_list if cte_list else list()
+    expr_list = expr_list if expr_list else list()
     tables = tables if tables else list()
     logical_tree = dict()
 
-    if isinstance(func, OneArgFunction):
-        if isinstance(func.arg, Symbol):
-            table, cte = create_cte(opstr=func.op, symbol=func.arg)
-            tables.append(table)
-            cte_list.append(cte)
-            return (len(cte_list) - 1, cte_list, tables)
-        else:
-            branch, cte_list, tables = _recursive_search_logic_tree(
-                func.arg, cte_list, tables
+    if isinstance(func, Condition):
+        table, cte = create_where_expression(func)
+        tables.append(table)
+        expr_list.append(cte)
+        return (len(expr_list) - 1, expr_list, tables)
+    elif isinstance(func, LogicalFunction):
+        if isinstance(func.args, (Condition, LogicalFunction)):
+            branch, expr_list, tables = _recursive_search_logic_tree(
+                func.args, expr_list, tables
             )
             logical_tree[func.op] = branch
-            return (logical_tree, cte_list, tables)
-
-    elif isinstance(func, TwoArgFunction):
-        table, cte = create_cte(opstr=func.op, symbol=func.lhs, value=func.rhs)
-        tables.append(table)
-        cte_list.append(cte)
-        return (len(cte_list) - 1, cte_list, tables)
-
-    elif isinstance(func, NArgFunction):
-        branches = list()
-        for arg in func.args:
-            branch, cte_list, tables = _recursive_search_logic_tree(
-                arg, cte_list, tables
-            )
-            branches.append(branch)
-        logical_tree[func.op] = branches
-        return (logical_tree, cte_list, tables)
+            return (logical_tree, expr_list, tables)
+        else:
+            branches = list()
+            for arg in func.args:
+                branch, expr_list, tables = _recursive_search_logic_tree(
+                    arg, expr_list, tables
+                )
+                branches.append(branch)
+            logical_tree[func.op] = branches
+            return (logical_tree, expr_list, tables)
+    else:
+        raise TypeError(
+            f"Recieved an unsupported type '{type(func)}' in func."
+        )
 
 
 def map_filter_to_tables(
@@ -307,14 +340,14 @@ def map_filter_to_tables(
 
 
 def generate_dependencies(
-    func: OneArgFunction | TwoArgFunction | NArgFunction | None,
-) -> tuple[int | dict | None, list[CTE], list[TableTypeAlias]]:
+    func: Condition | LogicalFunction | None,
+) -> tuple[int | dict | None, list[BinaryExpression], list[TableTypeAlias]]:
     """
     Recursively generates the dependencies for creating a filter subquery.
 
     Parameters
     ----------
-    func : OneArgFunction | TwoArgFunction | NArgFunction, optional
+    func : Condition | LogicalFunction, optional
         An optional filtering function.
 
     Returns
@@ -328,7 +361,7 @@ def generate_dependencies(
 
 
 def generate_logical_expression(
-    root: CTE, tree: int | dict[str, int | dict | list], prefix: str
+    ordered_ctes: list[CTE], tree: int | dict[str, int | dict | list]
 ) -> BinaryExpression:
     """
     Generates the 'where' expression from a logical tree.
@@ -339,8 +372,6 @@ def generate_logical_expression(
         The CTE that evaluates the binary expressions.
     tree : int | dict[str, int | dict | list]
         The logical index tree.
-    prefix : str
-        The prefix of the relevant CTE.
 
     Returns
     -------
@@ -348,7 +379,7 @@ def generate_logical_expression(
         A binary expression that can be used in a WHERE statement.
     """
     if isinstance(tree, int):
-        return getattr(root.c, f"{prefix}{tree}") == 1
+        return ordered_ctes[0].c.id.isnot(None)
     if not isinstance(tree, dict) or len(tree.keys()) != 1:
         raise ValueError("If not an 'int', expected tree to be dictionary.")
 
@@ -364,10 +395,10 @@ def generate_logical_expression(
             raise ValueError("Expected a list of expressions.")
         return logical_operators[op](
             *[
-                (getattr(root.c, f"{prefix}{arg}") == 1)
+                ordered_ctes[arg].c.id.isnot(None)
                 if isinstance(arg, int)
                 else generate_logical_expression(
-                    root=root, tree=arg, prefix=prefix
+                    ordered_ctes=ordered_ctes, tree=arg
                 )
                 for arg in args
             ]
@@ -377,10 +408,12 @@ def generate_logical_expression(
         if isinstance(arg, list):
             raise ValueError
         return (
-            (getattr(root.c, f"{prefix}{arg}") == 0)
+            ordered_ctes[arg].c.id.is_(None)
             if isinstance(arg, int)
             else not_(
-                generate_logical_expression(root=root, tree=arg, prefix=prefix)
+                generate_logical_expression(
+                    ordered_ctes=ordered_ctes, tree=arg
+                )
             )
         )
     else:
