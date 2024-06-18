@@ -1693,16 +1693,6 @@ def compute_detection_metrics(*_, db: Session, evaluation_id: int):
             model=model,
             target_type=parameters.convert_annotations_to_type,
         )
-        match target_type:
-            case AnnotationType.BOX:
-                groundtruth_filter.require_bounding_box = True
-                prediction_filter.require_bounding_box = True
-            case AnnotationType.POLYGON:
-                groundtruth_filter.require_polygon = True
-                prediction_filter.require_polygon = True
-            case AnnotationType.RASTER:
-                groundtruth_filter.require_raster = True
-                prediction_filter.require_raster = True
     else:
         target_type = min(
             [
@@ -1712,6 +1702,33 @@ def compute_detection_metrics(*_, db: Session, evaluation_id: int):
                 for dataset in datasets
             ]
         )
+
+    match target_type:
+        case AnnotationType.BOX:
+            symbol = schemas.Symbol(name=schemas.SupportedSymbol.BOX)
+        case AnnotationType.POLYGON:
+            symbol = schemas.Symbol(name=schemas.SupportedSymbol.POLYGON)
+        case AnnotationType.RASTER:
+            symbol = schemas.Symbol(name=schemas.SupportedSymbol.RASTER)
+        case _:
+            raise TypeError(
+                f"'{target_type}' is not a valid type for object detection."
+            )
+
+    groundtruth_filter.annotations = schemas.LogicalFunction.and_(
+        groundtruth_filter.annotations,
+        schemas.Condition(
+            lhs=symbol,
+            op=schemas.FilterOperator.ISNOTNULL,
+        ),
+    )
+    prediction_filter.annotations = schemas.LogicalFunction.and_(
+        prediction_filter.annotations,
+        schemas.Condition(
+            lhs=symbol,
+            op=schemas.FilterOperator.ISNOTNULL,
+        ),
+    )
 
     if (
         parameters.metrics_to_return

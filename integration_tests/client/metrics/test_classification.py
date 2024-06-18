@@ -12,6 +12,7 @@ from valor import (
     Client,
     Dataset,
     Datum,
+    Filter,
     GroundTruth,
     Label,
     Model,
@@ -511,9 +512,7 @@ def test_stratify_clf_metrics(
 
     eval_results_val2 = model.evaluate_classification(
         dataset,
-        filter_by=[
-            Datum.metadata["md1"] == "md1-val2",
-        ],
+        filters=Filter(datums=(Datum.metadata["md1"] == "md1-val2")),  # type: ignore - issue #605
     )
     assert (
         eval_results_val2.wait_for_completion(timeout=30)
@@ -524,10 +523,7 @@ def test_stratify_clf_metrics(
     # should get the same thing if we use the boolean filter
     eval_results_bool = model.evaluate_classification(
         dataset,
-        filter_by=[
-            Datum.metadata["md3"]
-            == True  # noqa: E712 - 'is' keyword is not overloadable, so we have to use 'symbol == True'
-        ],
+        filters=Filter(datums=(Datum.metadata["md3"] == True)),  # type: ignore - issue #605 # noqa: E712
     )
     assert (
         eval_results_bool.wait_for_completion(timeout=30)
@@ -660,9 +656,7 @@ def test_stratify_clf_metrics_by_time(
 
     eval_results_val2 = model.evaluate_classification(
         dataset,
-        filter_by=[
-            Datum.metadata["md1"] == date.fromisoformat("2002-01-01"),
-        ],
+        filters=Filter(datums=(Datum.metadata["md1"] == date.fromisoformat("2002-01-01"))),  # type: ignore - issue #605
     )
     assert (
         eval_results_val2.wait_for_completion(timeout=30)
