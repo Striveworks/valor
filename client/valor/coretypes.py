@@ -1028,7 +1028,7 @@ class Model(StaticCollection):
         self,
         datasets: Union[Dataset, List[Dataset]],
         metrics_to_return: List[MetricType],
-        filter_by: Optional[FilterType] = None,
+        filters: Optional[Filter] = None,
         metric_params: Optional[
             Dict[str, dict]
         ] = None,  # TODO More detailed typing?
@@ -1045,7 +1045,7 @@ class Model(StaticCollection):
             The dataset or list of datasets to evaluate against.
         metrics_to_return: List[MetricType]
             The list of metrics to compute, store, and return to the user. This is not optional for text generation evaluations.
-        filter_by: FilterType, optional
+        filters : Filter, optional
             Optional set of constraints to filter evaluation by.
         metric_params: Dict[str, dict], optional
             A dictionary of parameters for each metric. The key is the metric name and the value is a dictionary of parameters for that metric (e.g., `{"SentenceBLEU": {"weights": [0.65,0.2,0.1,0.05], "smoothing_function": "method3"}}`).
@@ -1057,14 +1057,20 @@ class Model(StaticCollection):
         Evaluation
             A job object that can be used to track the status of the job and get the metrics of it upon completion.
         """
-        if not datasets and not filter_by:
+        if not datasets and not filters:
             raise ValueError(
                 "Evaluation requires the definition of either datasets, dataset filters or both."
             )
+        if metrics_to_return and not set(metrics_to_return).issubset(
+            MetricType.text_generation()
+        ):
+            raise ValueError(
+                f"The following metrics are not supported for text generation: '{set(metrics_to_return) - MetricType.text_generation()}'"
+            )
 
         # format request
-        filters = self._format_constraints(datasets, filter_by)
         datasets = datasets if isinstance(datasets, list) else [datasets]
+        filters = filters if filters else Filter()
         request = EvaluationRequest(
             dataset_names=[dataset.name for dataset in datasets],  # type: ignore - issue #604
             model_names=[self.name],  # type: ignore - issue #604
