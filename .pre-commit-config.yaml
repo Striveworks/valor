@@ -51,4 +51,8 @@ repos:
             "GeoAlchemy2",
             "psycopg2-binary",
             "pgvector",
+            "absl-py",
+            "nltk",
+            "rouge_score",
+            "evaluate",
           ]

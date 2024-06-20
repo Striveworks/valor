@@ -1,8 +1,10 @@
 from typing import Sequence
 
+import evaluate
+from nltk.translate import bleu_score
 from sqlalchemy import Subquery
 from sqlalchemy.orm import Session
-from sqlalchemy.sql import select
+from sqlalchemy.sql import functions, select
 from sqlalchemy.sql.selectable import NamedFromClause
 
 from valor_api import schemas
@@ -37,6 +39,118 @@ LLM_GUIDED_METRICS = {
     "Summarization",
     "Toxicity",
 }
+
+TEXT_COMPARISON_METRICS = {"BLEU", "ROUGE"}
+
+
+# TODO add docs?
+def _calculate_rouge_scores(
+    prediction: str,
+    references: list[str],
+    rouge_types: list[str] = ["rouge1", "rouge2", "rougeL", "rougeLsum"],
+    use_stemmer: bool = False,
+) -> list[dict]:
+    """
+    Calculate ROUGE scores for a prediction (or list of predictions) given some set of references.
+
+    Parameters
+    ----------
+    prediction: str | list[str]
+        The prediction (or list of predictions) to score. Each prediction should be a string with tokens separated by spaces.
+    references: list[str] | list[list[str]]
+        A list of reference for a given prediction. Each reference should be a string with tokens separated by spaces.
+    rouge_types: list[str]
+        A list of rouge types to calculate. Defaults to ['rouge1', 'rouge2', 'rougeL', 'rougeLsum'], where `rouge1` is unigram-based scoring, `rouge2` is bigram-based scoring, `rougeL` is scoring based on sentences (i.e., splitting on "." and ignoring "\n"), and `rougeLsum` is scoring based on splitting the text using "\n".
+    use_stemmer: bool
+        If True, uses Porter stemmer to strip word suffixes. Defaults to False.
+
+    Raises
+    ----------
+    ValueError
+        If prediction is neither a string nor a list.
+    """
+    if not prediction or not references or isinstance(references, str):
+        raise ValueError(
+            "Received incorrect inputs. predictions should be a string, references a list of strings, and weights a list/tuple of floats"
+        )
+
+    rouge = evaluate.load("rouge")
+
+    # handle case where user passes in a single prediction
+    if isinstance(prediction, str):
+        processed_prediction = [prediction]
+        processed_references = [references]
+        # handle case where user passes multiple predictions
+    elif isinstance(prediction, list) and all(
+        [isinstance(lst, list) for lst in references]
+    ):
+        processed_prediction = prediction
+        processed_references = references
+    else:
+        raise ValueError(
+            "prediction should be a str or list[str]. If prediction is a list[str], then references must be a list of lists."
+        )
+
+    metrics = rouge.compute(
+        predictions=processed_prediction,
+        references=processed_references,
+        rouge_types=rouge_types,
+        use_stemmer=use_stemmer,
+        use_aggregator=False,  # TODO do we want to use non-aggregate metrics in some way?
+    )
+    assert metrics is not None  # handle type error
+
+    return [
+        {
+            "prediction": processed_prediction[i],
+            "references": processed_references[i],
+            "value": {key: value[i] for key, value in metrics.items()},
+        }
+        for i in range(len(processed_prediction))
+    ]
+
+
+def _calculate_sentence_bleu(
+    prediction: str,
+    references: list[str],
+    weights: list[float] = [0.25, 0.25, 0.25, 0.25],
+) -> dict:
+    """
+    Calculate sentence BLEU scores for a set of prediction-groundtruth pairs.
+
+    Parameters
+    ----------
+    prediction: str
+        The prediction to score. Each prediction should be a string with tokens separated by spaces.
+    references: list[str] | list[list[str]
+        A list of reference for each prediction or a list of several references per prediction. Each reference should be a string with tokens separated by spaces.
+    weights: list[float]
+        The default BLEU calculates a score for up to 4-grams using uniform
+        weights (this is called BLEU-4). To evaluate your translations with
+        higher/lower order ngrams, use customized weights. Example: when accounting
+        for up to 5-grams with uniform weights (this is called BLEU-5) use [1/5]*5
+    """
+    if (
+        not prediction
+        or not references
+        or not weights
+        or isinstance(references, str)
+        or len(weights) == 0
+    ):
+        raise ValueError(
+            "Received incorrect inputs. predictions should be a string, references a list of strings, and weights a list/tuple of floats"
+        )
+    split_prediction = prediction.split()
+    split_references = [reference.split() for reference in references]
+    return {
+        "prediction": prediction,
+        "references": references,
+        "value": bleu_score.sentence_bleu(
+            references=split_references,
+            hypothesis=split_prediction,
+            weights=weights,
+        ),
+    }
 
 
 # TODO update this for text comparison metrics
@@ -230,6 +344,100 @@ def _compute_text_generation_metrics(
 
     res = db.execute(total_query).all()
 
+    output = []
+    if any(
+        [metric in TEXT_COMPARISON_METRICS for metric in metrics_to_return]
+    ):
+        # get reference text to compare against from groundtruths
+        # use array_agg since there can be multiple references for a given datum_uid
+        groundtruth_subquery = (
+            generate_query(
+                models.GroundTruth.id,
+                models.Datum.id.label("datum_id"),
+                models.Datum.uid.label("datum_uid"),
+                models.Dataset.name.label("dataset_name"),
+                functions.array_agg(models.Annotation.text).label(
+                    "groundtruth_text"
+                ),
+                db=db,
+                label_source=models.GroundTruth,
+                filters=datum_filter,
+            )
+            .group_by(
+                models.GroundTruth.id,
+                models.Datum.id,
+                models.Datum.uid,
+                models.Dataset.name,
+            )
+            .subquery()
+        )
+
+        joint_subquery = (
+            select(
+                groundtruth_subquery.c.datum_uid,
+                groundtruth_subquery.c.dataset_name,
+                functions.array_agg(
+                    prediction_subquery.c.prediction_text
+                ).label("predictions"),
+                functions.array_agg(
+                    groundtruth_subquery.c.groundtruth_text
+                ).label("references"),
+            )
+            .select_from(groundtruth_subquery)
+            .join(
+                prediction_subquery,
+                groundtruth_subquery.c.datum_id
+                == prediction_subquery.c.datum_id,
+            )
+            .group_by(
+                groundtruth_subquery.c.datum_uid,
+                groundtruth_subquery.c.dataset_name,
+            )
+        )
+
+        results = db.execute(joint_subquery).all()
+        is_ROUGE_enabled = "ROUGE" in metrics_to_return
+        is_BLEU_enabled = "BLEU" in metrics_to_return
+
+        for datum_uid, dataset_name, predictions, references in results:
+            if is_ROUGE_enabled:
+                # TODO add other params like use_stemmer
+                # TODO fix names to match
+                rouge_metrics = _calculate_rouge_scores(
+                    prediction=predictions, references=references
+                )
+
+                output += [
+                    schemas.ROUGEMetric(
+                        value=metric["value"],
+                        parameters={
+                            "dataset": dataset_name,
+                            "datum_uid": datum_uid,
+                            "prediction": metric["prediction"],
+                        },
+                    )
+                    for metric in rouge_metrics
+                ]
+
+            if is_BLEU_enabled:
+                for i in range(len(predictions)):
+                    # TODO add params
+                    # TODO refactor this part?
+                    bleu_metrics = _calculate_sentence_bleu(
+                        prediction=predictions[i], references=references[i]
+                    )
+
+                    output += [
+                        schemas.BLEUMetric(
+                            value=bleu_metrics["value"],
+                            parameters={
+                                "dataset": dataset_name,
+                                "datum_uid": datum_uid,
+                                "prediction": bleu_metrics["prediction"],
+                            },
+                        )
+                    ]
+
     client = None
     if any(
         metric_name in LLM_GUIDED_METRICS for metric_name in metrics_to_return
@@ -240,8 +448,7 @@ def _compute_text_generation_metrics(
         client = setup_llm_client(llm_api_params)
 
     # TODO Implement the rest of the metrics.
-    ret = []
-    for row in res:
+    for datum_uid, dataset_name, _, prediction_text, _ in res:
         for metric_type in metrics_to_return:
             if metric_type == MetricType.AnswerCorrectness:
                 raise NotImplementedError
@@ -251,15 +458,15 @@ def _compute_text_generation_metrics(
                 raise NotImplementedError
             elif metric_type == MetricType.Coherence:
                 assert client
-                generated_text = row[3]
+                generated_text = prediction_text
                 response = client.coherence(text=generated_text)
-                ret.append(
+                output.append(
                     schemas.CoherenceMetric(
                         value=response,
                         parameters={
-                            "dataset": row[1],
-                            "datum_uid": row[0],
-                            "prediction": row[3],
+                            "dataset": dataset_name,
+                            "datum_uid": datum_uid,
+                            "prediction": prediction_text,
                         },
                     )
                 )
@@ -280,7 +487,7 @@ def _compute_text_generation_metrics(
             elif metric_type == MetricType.Toxicity:
                 raise NotImplementedError
 
-    return ret
+    return output
 
 
 @validate_computation
