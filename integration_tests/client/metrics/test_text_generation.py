@@ -2,6 +2,9 @@
 that is no auth
 """
 
+from typing import Dict, List, Optional, Union
+from unittest.mock import patch
+
 import pytest
 
 from valor import (  # Client,; Dataset,; Model,
@@ -15,9 +18,6 @@ from valor import (  # Client,; Dataset,; Model,
 )
 from valor.enums import EvaluationStatus, MetricType
 
-# from unittest.mock import patch
-
-
 PREDICTIONS = [
     """Based on the provided context, John Adams and Alexander Hamilton did not get along. John Adams, during his presidency, had grown independent of his cabinet, often making decisions despite opposition from it. Hamilton, who was accustomed to being regularly consulted by Washington, sent Adams a detailed letter with policy suggestions after his inauguration, which Adams dismissively ignored.\n""",
     """Yes, Lincoln won the election of 1860. He received the highest number of votes and a majority in the Electoral College, making him the 16th President of the United States. However, it's important to note that he won entirely due to his support in the North and West, as he did not receive any votes in 10 of the 15 Southern slave states.""",
@@ -25,28 +25,171 @@ PREDICTIONS = [
 ]
 
 
-# def mocked_connection(self):
-#     pass
+def mock_ClientConnection_evaluate(
+    self, request: dict, allow_retries: bool = False
+) -> List[dict]:
+    return [
+        {
+            "id": 4,
+            "dataset_names": ["test_dataset"],
+            "model_name": "test_model",
+            "filters": {
+                "datasets": None,
+                "models": None,
+                "datums": None,
+                "annotations": None,
+                "groundtruths": None,
+                "predictions": None,
+                "labels": None,
+                "embeddings": None,
+            },
+            "parameters": {
+                "task_type": "text-generation",
+                "metrics_to_return": ["Coherence"],
+                "label_map": None,
+                "metric_params": None,
+                "convert_annotations_to_type": None,
+                "iou_thresholds_to_compute": None,
+                "iou_thresholds_to_return": None,
+                "recall_score_threshold": 0.0,
+                "pr_curve_iou_threshold": 0.5,
+                "pr_curve_max_examples": 1,
+                "llm_api_params": {
+                    "data": {"model": "gpt-4o"},
+                    "client": "openai",
+                },
+            },
+            "status": "done",
+            "created_at": "2024-06-20T17:27:53.017348Z",
+            "meta": {"duration": 2.038157},
+            "metrics": [
+                {
+                    "type": "Coherence",
+                    "parameters": {
+                        "dataset": "test_dataset",
+                        "datum_uid": "uid0",
+                        "prediction": "Based on the provided context, John Adams and Alexander Hamilton did not get along. John Adams, during his presidency, had grown independent of his cabinet, often making decisions despite opposition from it. Hamilton, who was accustomed to being regularly consulted by Washington, sent Adams a detailed letter with policy suggestions after his inauguration, which Adams dismissively ignored.\n",
+                    },
+                    "value": 4.0,
+                    "label": None,
+                },
+                {
+                    "type": "Coherence",
+                    "parameters": {
+                        "dataset": "test_dataset",
+                        "datum_uid": "uid1",
+                        "prediction": "Yes, Lincoln won the election of 1860. He received the highest number of votes and a majority in the Electoral College, making him the 16th President of the United States. However, it's important to note that he won entirely due to his support in the North and West, as he did not receive any votes in 10 of the 15 Southern slave states.",
+                    },
+                    "value": 5.0,
+                    "label": None,
+                },
+                {
+                    "type": "Coherence",
+                    "parameters": {
+                        "dataset": "test_dataset",
+                        "datum_uid": "uid2",
+                        "prediction": "If a turtle egg was kept warm, it would likely hatch into a baby turtle. The sex of the baby turtle would be determined by the incubation temperature, assuming the species is one of those that determine sex thermally. This is because many turtle species have the ability to move around inside their eggs to select the best temperature for development, which can influence their sexual destiny.",
+                    },
+                    "value": 4.0,
+                    "label": None,
+                },
+            ],
+            "confusion_matrices": [],
+            "ignored_pred_labels": None,
+            "missing_pred_labels": None,
+        }
+    ]
 
 
-# def mocked_openai_coherence(self, text: str):
-#     if text in [PREDICTIONS[0], PREDICTIONS[2]]:
-#         ret = 4
-#     elif text in [PREDICTIONS[1]]:
-#         ret = 5
-#     else:
-#         raise ValueError(f"Test prediction has been modified: {text}")
-#     return ret
+def mock_ClientConnection_get_evaluations(
+    self,
+    *,
+    evaluation_ids: Optional[List[int]] = None,
+    models: Optional[List[str]] = None,
+    datasets: Optional[List[str]] = None,
+    metrics_to_sort_by: Optional[Dict[str, Union[Dict[str, str], str]]] = None,
+) -> List[dict]:
+    return [
+        {
+            "id": 4,
+            "dataset_names": ["test_dataset"],
+            "model_name": "test_model",
+            "filters": {
+                "datasets": None,
+                "models": None,
+                "datums": None,
+                "annotations": None,
+                "groundtruths": None,
+                "predictions": None,
+                "labels": None,
+                "embeddings": None,
+            },
+            "parameters": {
+                "task_type": "text-generation",
+                "metrics_to_return": ["Coherence"],
+                "label_map": None,
+                "metric_params": None,
+                "convert_annotations_to_type": None,
+                "iou_thresholds_to_compute": None,
+                "iou_thresholds_to_return": None,
+                "recall_score_threshold": 0.0,
+                "pr_curve_iou_threshold": 0.5,
+                "pr_curve_max_examples": 1,
+                "llm_api_params": {
+                    "data": {"model": "gpt-4o"},
+                    "client": "openai",
+                },
+            },
+            "status": "done",
+            "created_at": "2024-06-20T17:27:53.017348Z",
+            "meta": {"duration": 2.038157},
+            "metrics": [
+                {
+                    "type": "Coherence",
+                    "parameters": {
+                        "dataset": "test_dataset",
+                        "datum_uid": "uid0",
+                        "prediction": "Based on the provided context, John Adams and Alexander Hamilton did not get along. John Adams, during his presidency, had grown independent of his cabinet, often making decisions despite opposition from it. Hamilton, who was accustomed to being regularly consulted by Washington, sent Adams a detailed letter with policy suggestions after his inauguration, which Adams dismissively ignored.\n",
+                    },
+                    "value": 4.0,
+                    "label": None,
+                },
+                {
+                    "type": "Coherence",
+                    "parameters": {
+                        "dataset": "test_dataset",
+                        "datum_uid": "uid1",
+                        "prediction": "Yes, Lincoln won the election of 1860. He received the highest number of votes and a majority in the Electoral College, making him the 16th President of the United States. However, it's important to note that he won entirely due to his support in the North and West, as he did not receive any votes in 10 of the 15 Southern slave states.",
+                    },
+                    "value": 5.0,
+                    "label": None,
+                },
+                {
+                    "type": "Coherence",
+                    "parameters": {
+                        "dataset": "test_dataset",
+                        "datum_uid": "uid2",
+                        "prediction": "If a turtle egg was kept warm, it would likely hatch into a baby turtle. The sex of the baby turtle would be determined by the incubation temperature, assuming the species is one of those that determine sex thermally. This is because many turtle species have the ability to move around inside their eggs to select the best temperature for development, which can influence their sexual destiny.",
+                    },
+                    "value": 4.0,
+                    "label": None,
+                },
+            ],
+            "confusion_matrices": [],
+            "ignored_pred_labels": None,
+            "missing_pred_labels": None,
+        }
+    ]
 
 
-# @patch(
-#     "valor_api.backend.metrics.llm_call.OpenAIValorClient.connect",
-#     mocked_connection,
-# )
-# @patch(
-#     "valor_api.backend.metrics.llm_call.OpenAIValorClient.coherence",
-#     mocked_openai_coherence,
-# )
+@patch(
+    "valor.client.ClientConnection.evaluate",
+    mock_ClientConnection_evaluate,
+)
+@patch(
+    "valor.client.ClientConnection.get_evaluations",
+    mock_ClientConnection_get_evaluations,
+)
 def test_llm_evaluation(
     client: Client,
     gt_questions: list[GroundTruth],
@@ -114,77 +257,81 @@ def test_llm_evaluation(
     metrics = eval_job.metrics
     metadata = eval_job.meta
 
-    # TODO Don't use expected metrics if we can't mock.
-    # expected_metrics = [
-    #     # Coherence results
-    #     {
-    #         'parameters': {
-    #             'dataset': 'test_dataset',
-    #             'datum_uid': 'uid0',
-    #             'prediction': PREDICTIONS[0]
-    #         },
-    #         'type': 'Coherence',
-    #         'value': 4.0,
-    #     },
-    #     {
-    #         'parameters': {
-    #             'dataset': 'test_dataset',
-    #             'datum_uid': 'uid1',
-    #             'prediction': PREDICTIONS[1]
-    #         },
-    #         'type': 'Coherence',
-    #         'value': 5.0,
-    #     },
-    #     {
-    #         'parameters': {
-    #             'dataset': 'test_dataset',
-    #             'datum_uid': 'uid2',
-    #             'prediction': PREDICTIONS[2]
-    #         },
-    #         'type': 'Coherence',
-    #         'value': 4.0,
-    #     }
-    #     # { # TODO
-    #     #     "type": "Summarization",
-    #     # },
-    #     # {
-    #     #     "type": "Grammaticality",
-    #     # },
-    #     # {
-    #     #     "type": "Hallucination Rate",
-    #     # },
-    #     # {
-    #     #     "type": "Toxicity",
-    #     # },
-    #     # {
-    #     #     "type": "Bias",
-    #     # },
-    #     # {
-    #     #     "type": "Faithfulness",
-    #     # },
-    #     # {
-    #     #     "type": "Answer Relevance",
-    #     # },
-    #     # {
-    #     #     "type": "Answer Correctness",
-    #     # },
-    #     # {
-    #     #     "type": "Context Precision",
-    #     # },
-    #     # {
-    #     #     "type": "Context Relevance",
-    #     # },
-    #     # {
-    #     #     "type": "Context Recall",
-    #     # },
-    # ]
+    expected_metrics = [
+        # Coherence results
+        {
+            "parameters": {
+                "dataset": "test_dataset",
+                "datum_uid": "uid0",
+                "prediction": PREDICTIONS[0],
+            },
+            "type": "Coherence",
+            "value": 4.0,
+            "label": None,
+        },
+        {
+            "parameters": {
+                "dataset": "test_dataset",
+                "datum_uid": "uid1",
+                "prediction": PREDICTIONS[1],
+            },
+            "type": "Coherence",
+            "value": 5.0,
+            "label": None,
+        },
+        {
+            "parameters": {
+                "dataset": "test_dataset",
+                "datum_uid": "uid2",
+                "prediction": PREDICTIONS[2],
+            },
+            "type": "Coherence",
+            "value": 4.0,
+            "label": None,
+        }
+        #     # { # TODO
+        #     #     "type": "Summarization",
+        #     # },
+        #     # {
+        #     #     "type": "Grammaticality",
+        #     # },
+        #     # {
+        #     #     "type": "Hallucination Rate",
+        #     # },
+        #     # {
+        #     #     "type": "Toxicity",
+        #     # },
+        #     # {
+        #     #     "type": "Bias",
+        #     # },
+        #     # {
+        #     #     "type": "Faithfulness",
+        #     # },
+        #     # {
+        #     #     "type": "Answer Relevance",
+        #     # },
+        #     # {
+        #     #     "type": "Answer Correctness",
+        #     # },
+        #     # {
+        #     #     "type": "Context Precision",
+        #     # },
+        #     # {
+        #     #     "type": "Context Relevance",
+        #     # },
+        #     # {
+        #     #     "type": "Context Recall",
+        #     # },
+    ]
 
-    # TODO How should we do metric checking if we can't mock?
+    # Check that returned metrics have the right format.
     for m in metrics:
         if m["type"] == "Coherence":
             assert m["value"] in [1, 2, 3, 4, 5]
-    # for m in expected_metrics:
-    #     assert m in metrics
+
+    # Check that mocked metrics are in the returned metrics.
+    for m in expected_metrics:
+        assert m in metrics
 
     assert metadata["duration"] <= 15
 

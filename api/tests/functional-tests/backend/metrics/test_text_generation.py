@@ -9,8 +9,8 @@ from valor_api.backend import models
 from valor_api.backend.core import create_or_get_evaluations
 
 # from valor_api.backend.metrics.llm_call import (
-#     MistralValorClient,
-#     OpenAIValorClient,
+#     WrappedMistralClient,
+#     WrappedOpenAIClient,
 # )
 from valor_api.backend.metrics.text_generation import (
     _compute_text_generation_metrics,
@@ -176,11 +176,11 @@ def text_generation_test_data(db: Session, dataset_name: str, model_name: str):
 # # TODO Make this text work on the github checks. It currently works locally.
 # def test_openai_api_request():
 #     """
-#     Tests the OpenAIValorClient class.
+#     Tests the WrappedOpenAIClient class.
 
-#     Tests that an integer is correctly returned from an OpenAIValorClient.coherence call.
+#     Tests that an integer is correctly returned from an WrappedOpenAIClient.coherence call.
 #     """
-#     client = OpenAIValorClient(
+#     client = WrappedOpenAIClient(
 #         seed=2024,
 #     )
 #     client.connect()
@@ -197,11 +197,11 @@ def text_generation_test_data(db: Session, dataset_name: str, model_name: str):
 # # TODO Make this text work on the github checks. It currently works locally.
 # def test_mistral_api_request():
 #     """
-#     Tests the MistralValorClient class.
+#     Tests the WrappedMistralClient class.
 
-#     Tests that an integer is correctly returned from a MistralValorClient.coherence call.
+#     Tests that an integer is correctly returned from a WrappedMistralClient.coherence call.
 #     """
-#     client = MistralValorClient()
+#     client = WrappedMistralClient()
 #     client.connect()
 
 #     result = client.coherence(
@@ -214,11 +214,11 @@ def text_generation_test_data(db: Session, dataset_name: str, model_name: str):
 
 
 @patch(
-    "valor_api.backend.metrics.llm_call.OpenAIValorClient.connect",
+    "valor_api.backend.metrics.llm_call.WrappedOpenAIClient.connect",
     mocked_connection,
 )
 @patch(
-    "valor_api.backend.metrics.llm_call.OpenAIValorClient.coherence",
+    "valor_api.backend.metrics.llm_call.WrappedOpenAIClient.coherence",
     mocked_openai_coherence,
 )
 def test_compute_text_generation(
@@ -328,11 +328,11 @@ def test_compute_text_generation(
 
 
 @patch(
-    "valor_api.backend.metrics.llm_call.OpenAIValorClient.connect",
+    "valor_api.backend.metrics.llm_call.WrappedOpenAIClient.connect",
     mocked_connection,
 )
 @patch(
-    "valor_api.backend.metrics.llm_call.OpenAIValorClient.coherence",
+    "valor_api.backend.metrics.llm_call.WrappedOpenAIClient.coherence",
     mocked_openai_coherence,
 )
 def test_text_generation(

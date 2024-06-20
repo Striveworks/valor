@@ -101,7 +101,7 @@ class LLMClient:
         return ret
 
 
-class OpenAIValorClient(LLMClient):
+class WrappedOpenAIClient(LLMClient):
     """
     Wrapper for calls to OpenAI's API.
 
@@ -173,7 +173,7 @@ class OpenAIValorClient(LLMClient):
                 messages=processed_messages,
                 seed=self.seed,
             )
-        # TODO should we both catching this if we aren't going to do anything?
+        # TODO Should we catch this if we aren't going to do anything?
         except openai.BadRequestError as e:
             raise ValueError(f"OpenAI request failed with error: {e}")
 
@@ -194,7 +194,7 @@ class OpenAIValorClient(LLMClient):
         return response
 
 
-class MistralValorClient(LLMClient):
+class WrappedMistralClient(LLMClient):
     """
     Wrapper for calls to Mistral's API.
 
