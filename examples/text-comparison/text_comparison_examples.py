@@ -1,11 +1,6 @@
-# %%
-# required dependencies: absl-py, nltk, rouge_score, evaluate
 import evaluate
 import pytest
 from nltk.translate import bleu_score
-
-# %%
-# TODO test that we get an error if there is an import error
 
 
 def _calculate_rouge_scores(
@@ -15,19 +10,24 @@ def _calculate_rouge_scores(
     use_stemmer: bool = False,
 ) -> dict:
     """
-    Calculate ROUGE scores for a set of prediction-groundtruth pairs.
+    Calculate ROUGE scores for a prediction given some set of references.
 
     Parameters
     ----------
     predictions: str
         The prediction to score. Each prediction should be a string with tokens separated by spaces.
     references: list[str]
-        A list of reference for each prediction or a list of several references per prediction. Each reference should be a string with tokens separated by spaces.
+        A list of reference for a given prediction. Each reference should be a string with tokens separated by spaces.
     rouge_types: list[str]
-        A list of rouge types to calculate. Defaults to ['rouge1', 'rouge2', 'rougeL', 'rougeLsum'].
+        A list of rouge types to calculate. Defaults to ['rouge1', 'rouge2', 'rougeL', 'rougeLsum'], where `rouge1` is unigram-based scoring, `rouge2` is bigram-based scoring, `rougeL` is scoring based on sentences (i.e., splitting on "." and ignoring "\n"), and `rougeLsum` is scoring based on splitting the text using "\n".
     use_stemmer: bool
         If True, uses Porter stemmer to strip word suffixes. Defaults to False.
     """
+    if not prediction or not references or isinstance(references, str):
+        raise ValueError(
+            "Received incorrect inputs. predictions should be a string, references a list of strings, and weights a list/tuple of floats"
+        )
+
     rouge = evaluate.load("rouge")
 
     metrics = rouge.compute(
@@ -57,14 +57,6 @@ examples = [
         "rougeLsum": 1.0,
     },  # perfect match
     {
-        "prediction": "Mary loves Joe",
-        "references": ["Mary loves Joe"],
-        "rouge1": 1.0,
-        "rouge2": 1.0,
-        "rougeL": 1.0,
-        "rougeLsum": 1.0,
-    },  # perfect match, weights are a list
-    {
         "prediction": "MARY LOVES JOE",
         "references": ["Mary loves Joe"],
         "expected_value": 0,
@@ -84,19 +76,43 @@ examples = [
     {
         "prediction": "Mary loves Joe",
         "references": ["Mary loves Jane"],
-        "rouge1": 1.0,
-        "rouge2": 1.0,
-        "rougeL": 1.0,
-        "rougeLsum": 1.0,
+        "rouge1": 0.67,
+        "rouge2": 0.5,
+        "rougeL": 0.67,
+        "rougeLsum": 0.67,
     },  # off by one
     {
-        "prediction": "mary loves joe",
-        "references": ["MARY LOVES JOE"],
-        "rouge1": 1.0,
-        "rouge2": 1.0,
-        "rougeL": 1.0,
-        "rougeLsum": 1.0,
-    },  # different cases
+        "prediction": "flipping the roaring white dolphin",
+        "references": ["flip the roaring white dolphin"],
+        "rouge1": 0.8,
+        "rouge2": 0.75,
+        "rougeL": 0.8,
+        "rougeLsum": 0.8,
+        "use_stemmer": False,
+    },  # incorrect match without stemming
+    {
+        "prediction": "flipping the roaring white dolphin",
+        "references": ["flip the roaring white dolphin"],
+        "rouge1": 1,
+        "rouge2": 1,
+        "rougeL": 1,
+        "rougeLsum": 1,
+        "use_stemmer": True,
+    },  # correct match with stemming
+    {
+        "prediction": "flipping the roaring white dolphin",
+        "references": [
+            "some random sentence",
+            "some other sentence",
+            "some final reference",
+            "flip the roaring white dolphin",
+        ],
+        "rouge1": 1,
+        "rouge2": 1,
+        "rougeL": 1,
+        "rougeLsum": 1,
+        "use_stemmer": True,
+    },  # test multiple references
 ]
 
 expected_errors = [
@@ -118,18 +134,13 @@ expected_errors = [
         "weights": (1,),
         "error": ValueError,
     },  # references shouldn't be None
-    {
-        "prediction": "Mary loves Joe",
-        "references": ["Mary loves Joe"],
-        "weights": None,
-        "error": ValueError,
-    },  # weights shouldn't be None
 ]
 
 for example in examples:
     output = _calculate_rouge_scores(
         prediction=example["prediction"],
         references=example["references"],
+        use_stemmer=example.get("use_stemmer", False),
     )
     print(example, output)
     assert all(
@@ -138,6 +149,7 @@ for example in examples:
     ), f"Error for example {example} with output {output}."
 
 for example in expected_errors:
+    print(example)
     with pytest.raises(example["error"]):
         _calculate_rouge_scores(
             prediction=example["prediction"],
@@ -277,6 +289,17 @@ examples = [
         "weights": [0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
         "expected_value": 0,
     },  # different cases BLEU-10
+    {
+        "prediction": "flip the roaring white dolphin",
+        "references": [
+            "some random sentence",
+            "some other sentence",
+            "some final reference",
+            "flip the roaring white dolphin",
+        ],
+        "weights": [0, 1],
+        "expected_value": 1,
+    },  # test multiple references
 ]
 
 expected_errors = [
@@ -323,5 +346,3 @@ for example in expected_errors:
             references=example["references"],
             weights=example["weights"],
         )
-
-# %%
