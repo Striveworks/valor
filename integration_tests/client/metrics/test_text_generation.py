@@ -6,154 +6,187 @@ import pytest
 
 from valor import (  # Client,; Dataset,; Model,
     Annotation,
+    Client,
+    Dataset,
     Datum,
     GroundTruth,
+    Model,
     Prediction,
 )
+from valor.enums import EvaluationStatus, MetricType
 
-# from valor.enums import TaskType, EvaluationStatus, MetricType
+# from unittest.mock import patch
 
-# def test_llm_evaluation(
-#     client: Client,
-#     gt_questions: list[GroundTruth],
-#     pred_answers: list[Prediction],
-#     dataset_name: str,
-#     model_name: str,
-# ):
-#     dataset = Dataset.create(dataset_name)
-#     model = Model.create(model_name)
 
-#     for gt in gt_questions:
-#         dataset.add_groundtruth(gt)
+PREDICTIONS = [
+    """Based on the provided context, John Adams and Alexander Hamilton did not get along. John Adams, during his presidency, had grown independent of his cabinet, often making decisions despite opposition from it. Hamilton, who was accustomed to being regularly consulted by Washington, sent Adams a detailed letter with policy suggestions after his inauguration, which Adams dismissively ignored.\n""",
+    """Yes, Lincoln won the election of 1860. He received the highest number of votes and a majority in the Electoral College, making him the 16th President of the United States. However, it's important to note that he won entirely due to his support in the North and West, as he did not receive any votes in 10 of the 15 Southern slave states.""",
+    """If a turtle egg was kept warm, it would likely hatch into a baby turtle. The sex of the baby turtle would be determined by the incubation temperature, assuming the species is one of those that determine sex thermally. This is because many turtle species have the ability to move around inside their eggs to select the best temperature for development, which can influence their sexual destiny.""",
+]
 
-#     dataset.finalize()
 
-#     for pred in pred_answers:
-#         model.add_prediction(dataset, pred)
+# def mocked_connection(self):
+#     pass
 
-#     model.finalize_inferences(dataset)
 
-#     metrics_to_return = [
-#         # MetricType.AnswerCorrectness,
-#         # MetricType.AnswerRelevance,
-#         # MetricType.Bias,
-#         MetricType.Coherence,
-#         # MetricType.ContextPrecision,
-#         # MetricType.ContextRecall,
-#         # MetricType.ContextRelevance,
-#         # MetricType.Faithfulness,
-#         # MetricType.Grammaticality,
-#         # MetricType.Hallucination,
-#         # MetricType.Summarization,
-#         # MetricType.Toxicity,
-#     ]
+# def mocked_openai_coherence(self, text: str):
+#     if text in [PREDICTIONS[0], PREDICTIONS[2]]:
+#         ret = 4
+#     elif text in [PREDICTIONS[1]]:
+#         ret = 5
+#     else:
+#         raise ValueError(f"Test prediction has been modified: {text}")
+#     return ret
 
-#     eval_job = model.evaluate_text_generation(
-#         datasets=dataset,
-#         metrics_to_return=metrics_to_return,
-#         llm_api_params = {
-#             "client": "openai",
-#             # "api_url":"https://api.openai.com/v1/chat/completions",
-#             # TODO should be post request json payload for encryption
-#             # api_key=os.environ["OPENAI_API_KEY"], # If no key is specified, uses OPENAI_API_KEY environment variable for OpenAI API calls. Needs to be passed as bearer token?
-#             "data":{
-#                 "model":"gpt-4o",
-#             },
-#         },
-#         # TODO Add metric_params as another parameter of parameters.
-#         # metric_params={
-#         #     "SentenceBLEU_params": {
-#         #         "weights": [0.65,0.2,0.1,0.05],
-#         #         "smoothing_function": "method3",
-#         #     },
-#         # },
-#         # TODO Will we have support for evaluation metadata?
-#         # meta={
-#         #     "llm_api_service": "openai",
-#         #     "model": "gpt-4o",
-#         # },
-#     )
 
-#     assert eval_job.id
+# @patch(
+#     "valor_api.backend.metrics.llm_call.OpenAIValorClient.connect",
+#     mocked_connection,
+# )
+# @patch(
+#     "valor_api.backend.metrics.llm_call.OpenAIValorClient.coherence",
+#     mocked_openai_coherence,
+# )
+def test_llm_evaluation(
+    client: Client,
+    gt_questions: list[GroundTruth],
+    pred_answers: list[Prediction],
+    dataset_name: str,
+    model_name: str,
+):
+    dataset = Dataset.create(dataset_name)
+    model = Model.create(model_name)
 
-#     assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
+    for gt in gt_questions:
+        dataset.add_groundtruth(gt)
 
-#     metrics = eval_job.metrics
-#     metadata = eval_job.meta
+    dataset.finalize()
 
-#     expected_metrics = [
-#         {
-#             "type": "Coherence",  # TODO change these to be specific to the actual questions we are using.
-#             "value": 0.78,
-#             "label": {
-#                 "key": "question 1",
-#                 "value": "I can't answer that question with the context provided",
-#             },
-#             "parameters": {
-#                 "groundtruths": [
-#                     {"key": "question 1", "value": "After ending..."}
-#                 ],
-#                 "query": "Given the following context and question, give a score from 1-5 indicating how coherent you believe the following answer is...",
-#                 "context": ...,
-#             },
-#         },
-#         # { # TODO
-#         #     "type": "Summarization",
-#         # },
-#         # {
-#         #     "type": "Grammaticality",
-#         # },
-#         # {
-#         #     "type": "Hallucination Rate",
-#         # },
-#         # {
-#         #     "type": "Toxicity",
-#         # },
-#         # {
-#         #     "type": "Bias",
-#         # },
-#         # {
-#         #     "type": "Faithfulness",
-#         # },
-#         # {
-#         #     "type": "Answer Relevance",
-#         # },
-#         # {
-#         #     "type": "Answer Correctness",
-#         # },
-#         # {
-#         #     "type": "Context Precision",
-#         # },
-#         # {
-#         #     "type": "Context Relevance",
-#         # },
-#         # {
-#         #     "type": "Context Recall",
-#         # },
-#     ]
+    for pred in pred_answers:
+        model.add_prediction(dataset, pred)
 
-#     for m in metrics:
-#         assert m in expected_metrics
-#     for m in expected_metrics:
-#         assert m in metrics
+    model.finalize_inferences(dataset)
 
-#     assert metrics == expected_metrics
+    metrics_to_return = [
+        # MetricType.AnswerCorrectness,
+        # MetricType.AnswerRelevance,
+        # MetricType.Bias,
+        MetricType.Coherence,
+        # MetricType.ContextPrecision,
+        # MetricType.ContextRecall,
+        # MetricType.ContextRelevance,
+        # MetricType.Faithfulness,
+        # MetricType.Grammaticality,
+        # MetricType.Hallucination,
+        # MetricType.Summarization,
+        # MetricType.Toxicity,
+    ]
 
-#     # Test evaluation metadata. TODO put correct info here.
-#     expected_metadata = {
-#         "datums": 3,
-#         "labels": 0,
-#         "annotations": 6,
-#         "groundtruths": 3,
-#         "predictions": 3,
-#     }
+    eval_job = model.evaluate_text_generation(
+        datasets=dataset,
+        metrics_to_return=metrics_to_return,
+        llm_api_params={
+            "client": "openai",
+            # "api_url":"https://api.openai.com/v1/chat/completions",
+            # api_key=os.environ["OPENAI_API_KEY"], # If no key is specified, uses OPENAI_API_KEY environment variable for OpenAI API calls. Needs to be passed as bearer token?
+            "data": {
+                "model": "gpt-4o",
+            },
+        },
+        # TODO Add metric_params as another parameter of parameters.
+        # metric_params={
+        #     "SentenceBLEU_params": {
+        #         "weights": [0.65,0.2,0.1,0.05],
+        #         "smoothing_function": "method3",
+        #     },
+        # },
+        # TODO Will we have support for evaluation metadata?
+        # meta={
+        #     "llm_api_service": "openai",
+        #     "model": "gpt-4o",
+        # },
+    )
 
-#     for key, value in expected_metadata.items():
-#         assert metadata[key] == value
+    assert eval_job.id
 
-#     assert (
-#         metadata["duration"] <= 5
-#     )  # TODO Is this redundant with the timeout parameter in wait_for_completion above? Copied from test_classification.py
+    assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
+
+    metrics = eval_job.metrics
+    metadata = eval_job.meta
+
+    # TODO Don't use expected metrics if we can't mock.
+    # expected_metrics = [
+    #     # Coherence results
+    #     {
+    #         'parameters': {
+    #             'dataset': 'test_dataset',
+    #             'datum_uid': 'uid0',
+    #             'prediction': PREDICTIONS[0]
+    #         },
+    #         'type': 'Coherence',
+    #         'value': 4.0,
+    #     },
+    #     {
+    #         'parameters': {
+    #             'dataset': 'test_dataset',
+    #             'datum_uid': 'uid1',
+    #             'prediction': PREDICTIONS[1]
+    #         },
+    #         'type': 'Coherence',
+    #         'value': 5.0,
+    #     },
+    #     {
+    #         'parameters': {
+    #             'dataset': 'test_dataset',
+    #             'datum_uid': 'uid2',
+    #             'prediction': PREDICTIONS[2]
+    #         },
+    #         'type': 'Coherence',
+    #         'value': 4.0,
+    #     }
+    #     # { # TODO
+    #     #     "type": "Summarization",
+    #     # },
+    #     # {
+    #     #     "type": "Grammaticality",
+    #     # },
+    #     # {
+    #     #     "type": "Hallucination Rate",
+    #     # },
+    #     # {
+    #     #     "type": "Toxicity",
+    #     # },
+    #     # {
+    #     #     "type": "Bias",
+    #     # },
+    #     # {
+    #     #     "type": "Faithfulness",
+    #     # },
+    #     # {
+    #     #     "type": "Answer Relevance",
+    #     # },
+    #     # {
+    #     #     "type": "Answer Correctness",
+    #     # },
+    #     # {
+    #     #     "type": "Context Precision",
+    #     # },
+    #     # {
+    #     #     "type": "Context Relevance",
+    #     # },
+    #     # {
+    #     #     "type": "Context Recall",
+    #     # },
+    # ]
+
+    # TODO How should we do metric checking if we can't mock?
+    for m in metrics:
+        if m["type"] == "Coherence":
+            assert m["value"] in [1, 2, 3, 4, 5]
+    # for m in expected_metrics:
+    #     assert m in metrics
+
+    assert metadata["duration"] <= 15
 
 
 @pytest.fixture
@@ -222,7 +255,7 @@ def pred_answers(
             datum=q0,
             annotations=[
                 Annotation(
-                    text="""Based on the provided context, John Adams and Alexander Hamilton did not get along. John Adams, during his presidency, had grown independent of his cabinet, often making decisions despite opposition from it. Hamilton, who was accustomed to being regularly consulted by Washington, sent Adams a detailed letter with policy suggestions after his inauguration, which Adams dismissively ignored.\n""",
+                    text=PREDICTIONS[0],
                     context=[
                         """Although aware of Hamilton\'s influence, Adams was convinced that their retention ensured a smoother succession. Adams maintained the economic programs of Hamilton, who regularly consulted with key cabinet members, especially the powerful Treasury Secretary, Oliver Wolcott Jr. Adams was in other respects quite independent of his cabinet, often making decisions despite opposition from it. Hamilton had grown accustomed to being regularly consulted by Washington. Shortly after Adams was inaugurated, Hamilton sent him a detailed letter with policy suggestions. Adams dismissively ignored it.\n\nFailed peace commission and XYZ affair\nHistorian Joseph Ellis writes that "[t]he Adams presidency was destined to be dominated by a single question of American policy to an extent seldom if ever encountered by any succeeding occupant of the office." That question was whether to make war with France or find peace. Britain and France were at war as a result of the French Revolution. Hamilton and the Federalists strongly favored the British monarchy against what they denounced as the political radicalism and anti-religious frenzy of the French Revolution. Jefferson and the Republicans, with their firm opposition to monarchy, strongly supported the French overthrowing their king. The French had supported Jefferson for president in 1796 and became belligerent at his loss.""",
                         """Led by Revolutionary War veteran John Fries, rural German-speaking farmers protested what they saw as a threat to their liberties. They intimidated tax collectors, who often found themselves unable to go about their business. The disturbance was quickly ended with Hamilton leading the army to restore peace.Fries and two other leaders were arrested, found guilty of treason, and sentenced to hang. They appealed to Adams requesting a pardon. The cabinet unanimously advised Adams to refuse, but he instead granted the pardon, arguing the men had instigated a mere riot as opposed to a rebellion. In his pamphlet attacking Adams before the election, Hamilton wrote that \"it was impossible to commit a greater error.\"\n\nFederalist divisions and peace\nOn May 5, 1800, Adams's frustrations with the Hamilton wing of the party exploded during a meeting with McHenry, a Hamilton loyalist who was universally regarded, even by Hamilton, as an inept Secretary of War. Adams accused him of subservience to Hamilton and declared that he would rather serve as Jefferson's vice president or minister at The Hague than be beholden to Hamilton for the presidency. McHenry offered to resign at once, and Adams accepted. On May 10, he asked Pickering to resign.""",
@@ -236,7 +269,7 @@ def pred_answers(
             datum=q1,
             annotations=[
                 Annotation(
-                    text="""Yes, Lincoln won the election of 1860. He received the highest number of votes and a majority in the Electoral College, making him the 16th President of the United States. However, it's important to note that he won entirely due to his support in the North and West, as he did not receive any votes in 10 of the 15 Southern slave states.""",
+                    text=PREDICTIONS[1],
                     context=[
                         """Republican speakers focused first on the party platform, and second on Lincoln's life story, emphasizing his childhood poverty. The goal was to demonstrate the power of \"free labor\", which allowed a common farm boy to work his way to the top by his own efforts. The Republican Party's production of campaign literature dwarfed the combined opposition; a Chicago Tribune writer produced a pamphlet that detailed Lincoln's life and sold 100,000\u2013200,000 copies. Though he did not give public appearances, many sought to visit him and write him. In the runup to the election, he took an office in the Illinois state capitol to deal with the influx of attention. He also hired John George Nicolay as his personal secretary, who would remain in that role during the presidency.On November 6, 1860, Lincoln was elected the 16th president. He was the first Republican president and his victory was entirely due to his support in the North and West. No ballots were cast for him in 10 of the 15 Southern slave states, and he won only two of 996 counties in all the Southern states, an omen of the impending Civil War.""",
                         """Lincoln received 1,866,452 votes, or 39.8% of the total in a four-way race, carrying the free Northern states, as well as California and Oregon. His victory in the Electoral College was decisive: Lincoln had 180 votes to 123 for his opponents.\n\nPresidency (1861\u20131865)\nSecession and inauguration\nThe South was outraged by Lincoln's election, and in response secessionists implemented plans to leave the Union before he took office in March 1861. On December 20, 1860, South Carolina took the lead by adopting an ordinance of secession; by February 1, 1861, Florida, Mississippi, Alabama, Georgia, Louisiana, and Texas followed. Six of these states declared themselves to be a sovereign nation, the Confederate States of America, and adopted a constitution. The upper South and border states (Delaware, Maryland, Virginia, North Carolina, Tennessee, Kentucky, Missouri, and Arkansas) initially rejected the secessionist appeal. President Buchanan and President-elect Lincoln refused to recognize the Confederacy, declaring secession illegal.""",
@@ -250,7 +283,7 @@ def pred_answers(
             datum=q2,
             annotations=[
                 Annotation(
-                    text="""If a turtle egg was kept warm, it would likely hatch into a baby turtle. The sex of the baby turtle would be determined by the incubation temperature, assuming the species is one of those that determine sex thermally. This is because many turtle species have the ability to move around inside their eggs to select the best temperature for development, which can influence their sexual destiny.""",
+                    text=PREDICTIONS[2],
                     context=[
                         """There is experimental evidence that the embryos of Mauremys reevesii can move around inside their eggs to select the best temperature for development, thus influencing their sexual destiny. In other species, sex is determined genetically. The length of incubation for turtle eggs varies from two to three months for temperate species, and four months to over a year for tropical species. Species that live in warm temperate climates can delay their development.Hatching young turtles break out of the shell using an egg tooth, a sharp projection that exists temporarily on their upper beak. Hatchlings dig themselves out of the nest and find safety in vegetation or water. Some species stay in the nest for longer, be it for overwintering or to wait for the rain to loosen the soil for them to dig out. Young turtles are highly vulnerable to predators, both in the egg and as hatchlings. Mortality is high during this period but significantly decreases when they reach adulthood. Most species grow quickly during their early years and slow down when they are mature.\n\nLifespan\nTurtles can live long lives.""",
                         """Females usually dig a flask-like chamber in the substrate. Other species lay their eggs in vegetation or crevices. Females choose nesting locations based on environmental factors such as temperature and humidity, which are important for developing embryos. Depending on the species, the number of eggs laid varies from one to over 100. Larger females can lay eggs that are greater in number or bigger in size. Compared to freshwater turtles, tortoises deposit fewer but larger eggs. Females can lay multiple clutches throughout a season, particularly in species that experience unpredictable monsoons.\nMost mother turtles do no more in the way of parental care than covering their eggs and immediately leaving, though some species guard their nests for days or weeks. Eggs vary between rounded, oval, elongated, and between hard- and soft-shelled. Most species have their sex determined by temperature. In some species, higher temperatures produce females and lower ones produce males, while in others, milder temperatures produce males and both hot and cold extremes produce females.""",
