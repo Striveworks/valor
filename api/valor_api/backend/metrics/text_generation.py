@@ -2,6 +2,7 @@ from collections import defaultdict
 from typing import Sequence
 
 import evaluate
+from nltk.tokenize import word_tokenize
 from nltk.translate import bleu_score
 from sqlalchemy import Subquery
 from sqlalchemy.orm import Session
@@ -166,13 +167,13 @@ def _calculate_sentence_bleu(
     output = defaultdict(float)
     for pred, refs in zip(processed_predictions, processed_references):
 
-        split_prediction = pred.split()
-        split_references = [ref.split() for ref in refs]  # type: ignore
+        tokenized_prediction = word_tokenize(pred)
+        tokenized_references = [word_tokenize(ref) for ref in refs]  # type: ignore
 
         output[pred] = max(
             bleu_score.sentence_bleu(
-                references=split_references,
-                hypothesis=split_prediction,
+                references=tokenized_references,
+                hypothesis=tokenized_prediction,
                 weights=weights,
             ),  # type: ignore
             output[pred],

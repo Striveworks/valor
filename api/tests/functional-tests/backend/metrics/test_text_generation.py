@@ -434,7 +434,6 @@ def test__calculate_rouge_scores():
         {
             "prediction": "MARY LOVES JOE",
             "references": ["Mary loves Joe"],
-            "expected_value": 0,
             "rouge1": 1.0,
             "rouge2": 1.0,
             "rougeL": 1.0,
