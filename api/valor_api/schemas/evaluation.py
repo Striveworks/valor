@@ -137,6 +137,7 @@ class EvaluationParameters(BaseModel):
                             )
             case TaskType.TEXT_GENERATION:
                 # TODO Add other text comparison metrics as they are implemented.
+                # Note that AnswerCorrectness involves text comparison AND llm guided evaluation.
                 text_comparison_metrics = set(
                     [
                         "AnswerCorrectness",

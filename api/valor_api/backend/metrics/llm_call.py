@@ -56,7 +56,7 @@ class LLMClient:
         as needed for other models. This function takes in messages in the OpenAI standard format and converts
         them to the format required by the model.
         """
-        raise NotImplementedError
+        return messages
 
     def __call__(
         self,
@@ -72,7 +72,7 @@ class LLMClient:
         text: str,
     ) -> int:
         """
-        Computes coherence for a single piece of text.
+        Computes coherence, the collective quality of all sentences, for a single piece of text.
 
         Parameters
         ----------
@@ -82,7 +82,7 @@ class LLMClient:
         Returns
         -------
         int
-            The coherence score, which is an integer with 1 being the lowest coherence and 5 the highest coherence.
+            The coherence score will be evaluated as an integer, with 1 indicating the lowest coherence and 5 the highest coherence.
         """
         messages = [
             {"role": "system", "content": COHERENCE_INSTRUCTION},
@@ -147,17 +147,6 @@ class WrappedOpenAIClient(LLMClient):
             self.client = openai.OpenAI()
         else:
             self.client = openai.OpenAI(api_key=self.api_key)
-
-    def process_messages(
-        self,
-        messages: list[dict[str, str]],
-    ) -> Any:
-        """
-        All messages should be formatted according to the standard set by OpenAI, and should be modified
-        as needed for other models. This function takes in messages in the OpenAI standard format and converts
-        them to the format required by the model.
-        """
-        return messages
 
     def __call__(
         self,

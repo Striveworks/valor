@@ -51,8 +51,8 @@ def _generate_datum_query(
         models.Dataset.name.label("dataset_name"),
         models.Datum.text.label("datum_text"),
         db=db,
-        filters=datum_filter,
         label_source=models.Annotation,
+        filters=datum_filter,
     ).subquery()
 
 
@@ -144,7 +144,7 @@ def _compute_text_generation_metrics(
     | schemas.ToxicityMetric
 ]:
     """
-    Compute classification metrics.
+    Compute text generation metrics.
 
     Parameters
     ----------
@@ -162,7 +162,7 @@ def _compute_text_generation_metrics(
     Returns
     ----------
     Sequence[schemas.AnswerCorrectnessMetric | schemas.AnswerRelevanceMetric | schemas.BiasMetric | schemas.CoherenceMetric | schemas.ContextPrecisionMetric | schemas.ContextRecallMetric | schemas.ContextRelevanceMetric | schemas.FaithfulnessMetric | schemas.GrammaticalityMetric | schemas.HallucinationMetric | schemas.SummarizationMetric | schemas.ToxicityMetric]
-        A list of metrics.
+        A list of computed metrics.
     """
     datum_subquery = _generate_datum_query(db=db, datum_filter=datum_filter)
     prediction_subquery = _generate_prediction_query(
@@ -248,7 +248,7 @@ def compute_text_generation_metrics(
     evaluation_id: int,
 ) -> int:
     """
-    Create llm guided evaluation metrics. This function is intended to be run using FastAPI's `BackgroundTasks`.
+    Compute text generation metrics. This function is intended to be run using FastAPI's `BackgroundTasks`.
 
     Parameters
     ----------
