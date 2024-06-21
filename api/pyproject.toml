@@ -19,6 +19,8 @@ dependencies = [
     "pgvector",
     "openai",
     "mistralai",
+    "pyarrow >= 16.1.0",
+    "datasets >= 2.20.0",
     "absl-py",
     "nltk",
     "rouge_score",
