@@ -55,6 +55,4 @@ repos:
             "nltk",
             "rouge_score",
             "evaluate",
-            "pyarrow>=16.1.0",
-            "datasets>=2.20.0",
           ]
