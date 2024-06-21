@@ -2,6 +2,7 @@ from collections import defaultdict
 from typing import Sequence
 
 import evaluate
+import nltk
 from nltk.tokenize import word_tokenize
 from nltk.translate import bleu_score
 from sqlalchemy import Subquery
@@ -337,6 +338,9 @@ def _compute_text_generation_metrics(
     if any(
         [metric in TEXT_COMPARISON_METRICS for metric in metrics_to_return]
     ):
+        # check that the punkt tokenizer corpus has been probably downloaded
+        nltk.download("punkt")
+
         # get reference text to compare against from groundtruths
         # use array_agg since there can be multiple references for a given datum_uid
         groundtruth_subquery = (
