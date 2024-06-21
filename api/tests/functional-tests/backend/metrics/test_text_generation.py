@@ -304,7 +304,6 @@ def test__compute_text_generation(
         )
 
 
-
 @patch(
     "valor_api.backend.metrics.llm_call.WrappedOpenAIClient.connect",
     mocked_connection,
