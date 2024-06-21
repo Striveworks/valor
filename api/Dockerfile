@@ -13,6 +13,5 @@ RUN python -m pip install -U pip
 # git and put .git (which setuptools_scm needs to determine the version) in the container
 RUN SETUPTOOLS_SCM_PRETEND_VERSION=${VALOR_VERSION} python -m pip install .
 COPY ./valor_api /src/valor_api
-RUN apk del build-base
-USER 65532:65532
+
 CMD ["uvicorn", "valor_api.main:app", "--host", "0.0.0.0", "--log-level", "warning"]
