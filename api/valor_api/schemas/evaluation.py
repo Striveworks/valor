@@ -57,9 +57,7 @@ class EvaluationParameters(BaseModel):
     recall_score_threshold: float | None = 0
     pr_curve_iou_threshold: float = 0.5
     pr_curve_max_examples: int = 1
-    llm_api_params: dict[
-        str, str | dict
-    ] | None = None  # TODO More explicit typing here?
+    llm_api_params: dict[str, str | dict] | None = None
 
     # pydantic setting
     model_config = ConfigDict(extra="forbid")
@@ -138,6 +136,7 @@ class EvaluationParameters(BaseModel):
                                 "`iou_thresholds_to_return` must be a subset of `iou_thresholds_to_compute`"
                             )
             case TaskType.TEXT_GENERATION:
+
                 text_comparison_metrics = set(
                     ["AnswerCorrectness", "ROUGE", "BLEU"]
                 )

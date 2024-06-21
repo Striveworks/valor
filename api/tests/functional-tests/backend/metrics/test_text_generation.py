@@ -8,8 +8,8 @@ from valor_api.backend import models
 from valor_api.backend.core import create_or_get_evaluations
 
 # from valor_api.backend.metrics.llm_call import (
-#     MistralValorClient,
-#     OpenAIValorClient,
+#     WrappedMistralClient,
+#     WrappedOpenAIClient,
 # )
 from valor_api.backend.metrics.text_generation import (
     _calculate_rouge_scores,
@@ -162,10 +162,6 @@ def text_generation_test_data(db: Session, dataset_name: str, model_name: str):
             metadata={
                 "type": "text",
                 "hf_model_name": """mistralai/Mixtral-8x7B-Instruct-v0.1""",
-                # "quantization_kwargs": { # TODO appears that dictionaries are not supported in metadata in this format
-                #     "load_in_4bit": True,
-                #     "bnb_4bit_compute_dtype": "float16"
-                #     },
                 "raw_text_field": "context",
                 "input": """{context}\n{question}""",
                 "prompt": """Answer the following question with the provided context. The format will be first the context, second the question, third the answer.\n{input}\nAnswer:""",
@@ -185,52 +181,12 @@ def text_generation_test_data(db: Session, dataset_name: str, model_name: str):
     assert len(db.query(models.Prediction).all()) == 3
 
 
-# # TODO Make this text work on the github checks. It currently works locally.
-# def test_openai_api_request():
-#     """
-#     Tests the OpenAIValorClient class.
-
-#     Tests that an integer is correctly returned from an OpenAIValorClient.coherence call.
-#     """
-#     client = OpenAIValorClient(
-#         seed=2024,
-#     )
-#     client.connect()
-
-#     result = client.coherence(
-#         text="This is a test sentence.",
-#     )
-
-#     assert result
-#     assert type(result) == int
-#     assert result in [1, 2, 3, 4, 5]
-
-
-# # TODO Make this text work on the github checks. It currently works locally.
-# def test_mistral_api_request():
-#     """
-#     Tests the MistralValorClient class.
-
-#     Tests that an integer is correctly returned from a MistralValorClient.coherence call.
-#     """
-#     client = MistralValorClient()
-#     client.connect()
-
-#     result = client.coherence(
-#         text="This is a test sentence.",
-#     )
-
-#     assert result
-#     assert type(result) == int
-#     assert result in [1, 2, 3, 4, 5]
-
-
 @patch(
-    "valor_api.backend.metrics.llm_call.OpenAIValorClient.connect",
+    "valor_api.backend.metrics.llm_call.WrappedOpenAIClient.connect",
     mocked_connection,
 )
 @patch(
-    "valor_api.backend.metrics.llm_call.OpenAIValorClient.coherence",
+    "valor_api.backend.metrics.llm_call.WrappedOpenAIClient.coherence",
     mocked_openai_coherence,
 )
 def test__compute_text_generation(
@@ -271,7 +227,7 @@ def test__compute_text_generation(
     )
     prediction_filter = datum_filter.model_copy()
 
-    # TODO eventually get all working
+    # TODO Uncomment metrics as they are implemented.
     metrics_to_return = [
         # enums.MetricType.AnswerCorrectness,
         # enums.MetricType.AnswerRelevance,
@@ -289,7 +245,6 @@ def test__compute_text_generation(
         enums.MetricType.BLEU,
     ]
 
-    # TODO The llm_api_params need to be passed in to this as well.
     metrics = _compute_text_generation_metrics(
         db,
         datum_filter=datum_filter,
@@ -297,8 +252,6 @@ def test__compute_text_generation(
         metrics_to_return=metrics_to_return,
         llm_api_params={
             "client": "openai",
-            # "api_url": "https://api.openai.com/v1/chat/completions",
-            # api_key:None, # If no key is specified, uses OPENAI_API_KEY environment variable for OpenAI API calls.
             "data": {
                 "seed": 2024,
                 "model": "gpt-4o",
@@ -351,12 +304,13 @@ def test__compute_text_generation(
         )
 
 
+
 @patch(
-    "valor_api.backend.metrics.llm_call.OpenAIValorClient.connect",
+    "valor_api.backend.metrics.llm_call.WrappedOpenAIClient.connect",
     mocked_connection,
 )
 @patch(
-    "valor_api.backend.metrics.llm_call.OpenAIValorClient.coherence",
+    "valor_api.backend.metrics.llm_call.WrappedOpenAIClient.coherence",
     mocked_openai_coherence,
 )
 def test_text_generation(

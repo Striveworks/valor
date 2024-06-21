@@ -1029,12 +1029,8 @@ class Model(StaticCollection):
         datasets: Union[Dataset, List[Dataset]],
         metrics_to_return: List[MetricType],
         filters: Optional[Filter] = None,
-        metric_params: Optional[
-            Dict[str, dict]
-        ] = None,  # TODO More detailed typing?
-        llm_api_params: Optional[
-            Dict[str, Union[str, dict]]
-        ] = None,  # TODO Is this typing good?
+        metric_params: Optional[Dict[str, dict]] = None,
+        llm_api_params: Optional[Dict[str, Union[str, dict]]] = None,
     ) -> Evaluation:
         """
         Start a classification evaluation job.

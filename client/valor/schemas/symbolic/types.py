@@ -566,7 +566,7 @@ class String(Equatable):
 
     Parameters
     ----------
-    value : str, optional TODO this is currently not optional
+    value : str, optional
         A string value.
 
     Examples
@@ -1354,7 +1354,7 @@ class List(typing.Generic[T], Equatable):
 
             Parameters
             ----------
-            value : typing.List[T], optional # TODO I don't think this is actually treated as optional in the validation below.
+            value : typing.List[T], optional
                 A list of items with type T.
             """
 
@@ -2138,7 +2138,7 @@ class Text(String):
 
     Examples
     --------
-    >>> Text("hello world")
+    >>> Text("Did Lincoln win the election of 1860?")
     >>> Text(None)
     """
 
@@ -2155,7 +2155,9 @@ class Text(String):
 
 class Context(Equatable):
     """
-    TODO
+    Implementation of context as a Variable.
+
+    The context is a list of strings. None is a valid value.
 
     Parameters
     ----------
@@ -2164,8 +2166,8 @@ class Context(Equatable):
 
     Examples
     --------
-    >>> Text("hello world") TODO
-    >>> Text(None)
+    >>> Context(["Republican speakers focused first on...", "Lincoln received 1,866,452 votes...", ...])
+    >>> Context(None)
     """
 
     def __init__(self, value: typing.List[str]):

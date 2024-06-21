@@ -74,7 +74,7 @@ class GroundTruth(Base):
     )
     label_id: Mapped[int] = mapped_column(
         ForeignKey("label.id"),
-        nullable=True,  # TODO Check if it is okay to make this nullable for Text Generation.
+        nullable=True,
     )
     created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
 
@@ -101,7 +101,7 @@ class Prediction(Base):
     )
     label_id: Mapped[int] = mapped_column(
         ForeignKey("label.id"),
-        nullable=True,  # TODO Check if it is okay to make this nullable for Text Generation.
+        nullable=True,
     )
     score: Mapped[float] = mapped_column(nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
