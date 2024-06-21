@@ -36,7 +36,7 @@ repos:
           [
             "requests",
             "Pillow >= 9.1.0",
-            "numpy>=1.26.4",
+            "numpy",
             "pytest",
             "python-dotenv",
             "SQLAlchemy>=2.0",
@@ -55,4 +55,6 @@ repos:
             "nltk",
             "rouge_score",
             "evaluate",
+            "pyarrow>=16.1.0",
+            "datasets>=2.20.0",
           ]
