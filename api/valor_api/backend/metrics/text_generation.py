@@ -2,8 +2,7 @@ from collections import defaultdict
 from typing import Sequence
 
 import evaluate
-import nltk
-from nltk.tokenize import word_tokenize
+from nltk.tokenize import RegexpTokenizer
 from nltk.translate import bleu_score
 from sqlalchemy import Subquery
 from sqlalchemy.orm import Session
@@ -164,13 +163,17 @@ def _calculate_sentence_bleu(
             "prediction should be a str or list[str]. If prediction is a list[str], then references must be a list of lists."
         )
 
-    # find the max value for each prediction
     output = defaultdict(float)
+    tokenizer = RegexpTokenizer(
+        r"\w+|\$[\d]+|[^\s\.]+"
+    )  # regex tokenizer that ignores periods
+
     for pred, refs in zip(processed_predictions, processed_references):
 
-        tokenized_prediction = word_tokenize(pred)
-        tokenized_references = [word_tokenize(ref) for ref in refs]  # type: ignore
+        tokenized_prediction = tokenizer.tokenize(pred)
+        tokenized_references = [tokenizer.tokenize(ref) for ref in refs]  # type: ignore
 
+        # find the max value for each prediction
         output[pred] = max(
             bleu_score.sentence_bleu(
                 references=tokenized_references,
@@ -338,9 +341,6 @@ def _compute_text_generation_metrics(
     if any(
         [metric in TEXT_COMPARISON_METRICS for metric in metrics_to_return]
     ):
-        # check that the punkt tokenizer corpus has been probably downloaded
-        nltk.download("punkt")
-
         # get reference text to compare against from groundtruths
         # use array_agg since there can be multiple references for a given datum_uid
         groundtruth_subquery = (
