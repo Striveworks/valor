@@ -1,3 +1,4 @@
+from collections import defaultdict
 from typing import Sequence
 
 import evaluate
@@ -45,7 +46,7 @@ TEXT_COMPARISON_METRICS = {"BLEU", "ROUGE"}
 
 # TODO add docs?
 def _calculate_rouge_scores(
-    prediction: str,
+    predictions: str | list[str],
     references: list[str],
     rouge_types: list[str] = ["rouge1", "rouge2", "rougeL", "rougeLsum"],
     use_stemmer: bool = False,
@@ -69,7 +70,7 @@ def _calculate_rouge_scores(
     ValueError
         If prediction is neither a string nor a list.
     """
-    if not prediction or not references or isinstance(references, str):
+    if not predictions or not references or isinstance(references, str):
         raise ValueError(
             "Received incorrect inputs. predictions should be a string, references a list of strings, and weights a list/tuple of floats"
         )
@@ -77,14 +78,14 @@ def _calculate_rouge_scores(
     rouge = evaluate.load("rouge")
 
     # handle case where user passes in a single prediction
-    if isinstance(prediction, str):
-        processed_prediction = [prediction]
+    if isinstance(predictions, str):
+        processed_prediction = [predictions]
         processed_references = [references]
         # handle case where user passes multiple predictions
-    elif isinstance(prediction, list) and all(
+    elif isinstance(predictions, list) and all(
         [isinstance(lst, list) for lst in references]
     ):
-        processed_prediction = prediction
+        processed_prediction = predictions
         processed_references = references
     else:
         raise ValueError(
@@ -96,32 +97,37 @@ def _calculate_rouge_scores(
         references=processed_references,
         rouge_types=rouge_types,
         use_stemmer=use_stemmer,
-        use_aggregator=False,  # TODO do we want to use non-aggregate metrics in some way?
+        use_aggregator=False,  # aggregation gives us an average across all predicitons, which isn't what we want
     )
+
     assert metrics is not None  # handle type error
 
+    # find the max value for each prediction
+    output = defaultdict(lambda: defaultdict(float))
+    for i, prediction in enumerate(processed_prediction):
+        for type_ in rouge_types:
+            output[prediction][type_] = max(
+                metrics[type_][i], output[prediction][type_]
+            )
+
     return [
-        {
-            "prediction": processed_prediction[i],
-            "references": processed_references[i],
-            "value": {key: value[i] for key, value in metrics.items()},
-        }
-        for i in range(len(processed_prediction))
+        {"prediction": prediction, "value": dict(value)}
+        for prediction, value in output.items()
     ]
 
 
 def _calculate_sentence_bleu(
-    prediction: str,
-    references: list[str],
+    predictions: str | list[str],
+    references: list[str] | list[list[str]],
     weights: list[float] = [0.25, 0.25, 0.25, 0.25],
-) -> dict:
+) -> list[dict]:
     """
     Calculate sentence BLEU scores for a set of prediction-groundtruth pairs.
 
     Parameters
     ----------
-    prediction: str
-        The prediction to score. Each prediction should be a string with tokens separated by spaces.
+    predictions: str | list[str]
+        The predictions to score. Each prediction should be a string with tokens separated by spaces.
     references: list[str] | list[list[str]
         A list of reference for each prediction or a list of several references per prediction. Each reference should be a string with tokens separated by spaces.
     weights: list[float]
@@ -131,7 +137,7 @@ def _calculate_sentence_bleu(
         for up to 5-grams with uniform weights (this is called BLEU-5) use [1/5]*5
     """
     if (
-        not prediction
+        not predictions
         or not references
         or not weights
         or isinstance(references, str)
@@ -140,17 +146,41 @@ def _calculate_sentence_bleu(
         raise ValueError(
             "Received incorrect inputs. predictions should be a string, references a list of strings, and weights a list/tuple of floats"
         )
-    split_prediction = prediction.split()
-    split_references = [reference.split() for reference in references]
-    return {
-        "prediction": prediction,
-        "references": references,
-        "value": bleu_score.sentence_bleu(
-            references=split_references,
-            hypothesis=split_prediction,
-            weights=weights,
-        ),
-    }
+
+    # handle case where user passes in a single prediction
+    if isinstance(predictions, str):
+        processed_predictions = [predictions]
+        processed_references = [references]
+        # handle case where user passes multiple predictions
+    elif isinstance(predictions, list) and all(
+        [isinstance(lst, list) for lst in references]
+    ):
+        processed_predictions = predictions
+        processed_references = references
+    else:
+        raise ValueError(
+            "prediction should be a str or list[str]. If prediction is a list[str], then references must be a list of lists."
+        )
+
+    # find the max value for each prediction
+    output = defaultdict(float)
+    for pred, refs in zip(processed_predictions, processed_references):
+
+        split_prediction = pred.split()
+        split_references = [ref.split() for ref in refs]  # type: ignore
+
+        output[pred] = max(
+            bleu_score.sentence_bleu(
+                references=split_references,
+                hypothesis=split_prediction,
+                weights=weights,
+            ),  # type: ignore
+            output[pred],
+        )
+
+    return [
+        {"prediction": key, "value": value} for key, value in output.items()
+    ]
 
 
 # TODO update this for text comparison metrics
@@ -401,10 +431,11 @@ def _compute_text_generation_metrics(
 
         for datum_uid, dataset_name, predictions, references in results:
             if is_ROUGE_enabled:
-                # TODO add other params like use_stemmer
-                # TODO fix names to match
                 rouge_metrics = _calculate_rouge_scores(
-                    prediction=predictions, references=references
+                    predictions=predictions,
+                    references=references,
+                    rouge_types=llm_api_params.get("rouge_types", ["rouge1", "rouge2", "rougeL", "rougeLsum"]),  # type: ignore
+                    use_stemmer=llm_api_params.get("use_stemmer", False),  # type: ignore
                 )
 
                 output += [
@@ -421,21 +452,22 @@ def _compute_text_generation_metrics(
 
             if is_BLEU_enabled:
                 for i in range(len(predictions)):
-                    # TODO add params
-                    # TODO refactor this part?
                     bleu_metrics = _calculate_sentence_bleu(
-                        prediction=predictions[i], references=references[i]
+                        predictions=predictions,
+                        references=references,
+                        weights=llm_api_params.get("weights", [0.25, 0.25, 0.25, 0.25]),  # type: ignore
                     )
 
                     output += [
                         schemas.BLEUMetric(
-                            value=bleu_metrics["value"],
+                            value=metric["value"],
                             parameters={
                                 "dataset": dataset_name,
                                 "datum_uid": datum_uid,
-                                "prediction": bleu_metrics["prediction"],
+                                "prediction": metric["prediction"],
                             },
                         )
+                        for metric in bleu_metrics
                     ]
 
     client = None

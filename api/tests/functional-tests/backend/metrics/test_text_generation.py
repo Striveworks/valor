@@ -1,4 +1,3 @@
-import pdb
 from unittest.mock import patch
 
 import pytest
@@ -49,7 +48,6 @@ def mocked_openai_coherence(self, text: str):
 
 @pytest.fixture
 def text_generation_test_data(db: Session, dataset_name: str, model_name: str):
-    # TODO This test could also use groundtruths to test text comparison metrics.
     queries = [
         """Did John Adams get along with Alexander Hamilton?""",  # ground truth answer is "No."
         """Did Lincoln win the election of 1860?""",  # ground truth answer is "Yes"
@@ -116,13 +114,16 @@ def text_generation_test_data(db: Session, dataset_name: str, model_name: str):
     ]
 
     gts = []
-    # TODO: test if there are multiple references stored in separate annotations
     for i in range(len(datums)):
         gts.append(
             schemas.GroundTruth(
                 dataset_name=dataset_name,
                 datum=datums[i],
-                annotations=[schemas.Annotation(text=REFERENCES[i])],
+                annotations=[
+                    schemas.Annotation(text=REFERENCES[i]),
+                    schemas.Annotation(text="some other text"),
+                    schemas.Annotation(text="some final text"),
+                ],
             )
         )
 
@@ -176,9 +177,11 @@ def text_generation_test_data(db: Session, dataset_name: str, model_name: str):
     crud.finalize(db=db, dataset_name=dataset_name, model_name=model_name)
 
     assert len(db.query(models.Datum).all()) == 3
-    assert len(db.query(models.Annotation).all()) == 6
+    assert (
+        len(db.query(models.Annotation).all()) == 12
+    )  # 3 groundtruths with 3 annotations, 3 predictions with 1 annotation
     assert len(db.query(models.Label).all()) == 0
-    assert len(db.query(models.GroundTruth).all()) == 3
+    assert len(db.query(models.GroundTruth).all()) == 9
     assert len(db.query(models.Prediction).all()) == 3
 
 
@@ -303,44 +306,49 @@ def test__compute_text_generation(
         },
     )
 
+    expected_values = {
+        "uid0": {
+            schemas.CoherenceMetric: 4,
+            schemas.ROUGEMetric: {
+                "rouge1": 0.5925925925925926,
+                "rouge2": 0.5569620253164557,
+                "rougeL": 0.5925925925925926,
+                "rougeLsum": 0.5925925925925926,
+            },
+            schemas.BLEUMetric: 0.3619957166198924,
+        },
+        "uid1": {
+            schemas.CoherenceMetric: 5,
+            schemas.ROUGEMetric: {
+                "rouge1": 1.0,
+                "rouge2": 1.0,
+                "rougeL": 1.0,
+                "rougeLsum": 1.0,
+            },
+            schemas.BLEUMetric: 1.0,
+        },
+        "uid2": {
+            schemas.CoherenceMetric: 4,
+            schemas.ROUGEMetric: {
+                "rouge1": 0.18666666666666668,
+                "rouge2": 0.0821917808219178,
+                "rougeL": 0.18666666666666668,
+                "rougeLsum": 0.18666666666666668,
+            },
+            schemas.BLEUMetric: 0.038871769014757175,
+        },
+    }
+
     # TODO Add all metrics
     # TODO Should I match metric values based on the prediction as well as the dataset_id? The check I am doing below is not sufficient if there are datums with the same datum_uid across datasets or if there are multiple predictions per datum.
     assert metrics
     for metric in metrics:
-        if isinstance(metric, schemas.AnswerCorrectnessMetric):
-            pass
-        elif isinstance(metric, schemas.AnswerRelevanceMetric):
-            pass
-        elif isinstance(metric, schemas.BiasMetric):
-            pass
-        elif isinstance(metric, schemas.CoherenceMetric):
-            if metric.parameters.get("datum_uid") == "uid0":
-                assert metric.value == 4
-            elif metric.parameters.get("datum_uid") == "uid1":
-                assert metric.value == 5
-            elif metric.parameters.get("datum_uid") == "uid2":
-                assert metric.value == 4
-        elif isinstance(metric, schemas.ContextPrecisionMetric):
-            pass
-        elif isinstance(metric, schemas.ContextRecallMetric):
-            pass
-        elif isinstance(metric, schemas.ContextRelevanceMetric):
-            pass
-        elif isinstance(metric, schemas.FaithfulnessMetric):
-            pass
-        elif isinstance(metric, schemas.GrammaticalityMetric):
-            pass
-        elif isinstance(metric, schemas.HallucinationMetric):
-            pass
-        elif isinstance(metric, schemas.SummarizationMetric):
-            pass
-        elif isinstance(metric, schemas.ToxicityMetric):
-            pass
-        # TODO add real tests here
-        elif isinstance(metric, schemas.ROUGEMetric):
-            pass
-        elif isinstance(metric, schemas.BLEUMetric):
-            pass
+        assert isinstance(metric.parameters, dict)
+
+        assert (
+            expected_values[metric.parameters["datum_uid"]].get(type(metric))  # type: ignore
+            == metric.value
+        )
 
 
 @patch(
@@ -452,54 +460,10 @@ def test_text_generation(
     for metric in metrics:
         assert isinstance(metric.parameters, dict)
 
-        if metric.type == "AnswerCorrectness":
-            pdb.set_trace()
-            pass
-        elif metric.type == "AnswerRelevance":
-            pdb.set_trace()
-            pass
-        elif metric.type == "Bias":
-            pdb.set_trace()
-            pass
-        elif metric.type == "Coherence":
-            assert (
-                expected_values[metric.parameters["datum_uid"]]["Coherence"]
-                == metric.value
-            )
-        elif metric.type == "ContextPrecision":
-            pdb.set_trace()
-            pass
-        elif metric.type == "ContextRecall":
-            pdb.set_trace()
-            pass
-        elif metric.type == "ContextRelevance":
-            pdb.set_trace()
-            pass
-        elif metric.type == "Faithfulness":
-            pdb.set_trace()
-            pass
-        elif metric.type == "Grammaticality":
-            pdb.set_trace()
-            pass
-        elif metric.type == "Hallucination":
-            pdb.set_trace()
-            pass
-        elif metric.type == "Summarization":
-            pdb.set_trace()
-            pass
-        elif metric.type == "Toxicity":
-            pdb.set_trace()
-            pass
-        elif metric.type == "ROUGE":
-            assert (
-                expected_values[metric.parameters["datum_uid"]]["ROUGE"]
-                == metric.value
-            )
-        elif metric.type == "BLEU":
-            assert (
-                expected_values[metric.parameters["datum_uid"]]["BLEU"]
-                == metric.value
-            )
+        assert (
+            expected_values[metric.parameters["datum_uid"]][metric.type]
+            == metric.value
+        )
 
 
 def test__calculate_rouge_scores():
@@ -576,11 +540,13 @@ def test__calculate_rouge_scores():
     multiple_prediction_examples = [
         {
             "prediction": ["Mary loves Joe", "Mary loves Jack"],
-            "references": [["Mary loves June"], ["some other sentence"]],
+            "references": [
+                ["Mary loves June", "some other sentence"],
+                ["some other sentence", "the big fox hunts rabbits"],
+            ],
             "expected_value": [
                 {
                     "prediction": "Mary loves Joe",
-                    "references": ["Mary loves June"],
                     "value": {
                         "rouge1": 0.6666666666666666,
                         "rouge2": 0.5,
@@ -590,7 +556,6 @@ def test__calculate_rouge_scores():
                 },
                 {
                     "prediction": "Mary loves Jack",
-                    "references": ["some other sentence"],
                     "value": {
                         "rouge1": 0.0,
                         "rouge2": 0.0,
@@ -617,12 +582,6 @@ def test__calculate_rouge_scores():
             "expected_value": [
                 {
                     "prediction": "flipping the roaring white dolphin",
-                    "references": [
-                        "some random sentence",
-                        "some other sentence",
-                        "some final reference",
-                        "flip the roaring white dolphin",
-                    ],
                     "value": {
                         "rouge1": 1.0,
                         "rouge2": 1.0,
@@ -632,7 +591,6 @@ def test__calculate_rouge_scores():
                 },
                 {
                     "prediction": "Mary loves Joe",
-                    "references": ["beep bop", "Mary loves June"],
                     "value": {
                         "rouge1": 0.6666666666666666,
                         "rouge2": 0.5,
@@ -687,7 +645,7 @@ def test__calculate_rouge_scores():
     # test single prediction examples
     for example in examples:
         output = _calculate_rouge_scores(
-            prediction=example["prediction"],
+            predictions=example["prediction"],
             references=example["references"],
             use_stemmer=example.get("use_stemmer", False),
         )[0]
@@ -699,7 +657,7 @@ def test__calculate_rouge_scores():
     # test multiple prediction examples
     for example in multiple_prediction_examples:
         metrics = _calculate_rouge_scores(
-            prediction=example["prediction"],
+            predictions=example["prediction"],
             references=example["references"],
             use_stemmer=example.get("use_stemmer", False),
         )
@@ -708,152 +666,153 @@ def test__calculate_rouge_scores():
     for example in expected_errors:
         with pytest.raises(example["error"]):
             _calculate_rouge_scores(
-                prediction=example["prediction"],
+                predictions=example["prediction"],
                 references=example["references"],
             )
 
-    def test__calculate_bleu_scores():
-        examples = [
-            {
-                "prediction": "Mary loves Joe",
-                "references": ["Mary loves Joe"],
-                "weights": (1,),
-                "expected_value": 1.0,
-            },  # perfect match
-            {
-                "prediction": "Mary loves Joe",
-                "references": ["Mary loves Joe"],
-                "weights": [
-                    1,
-                ],
-                "expected_value": 1.0,
-            },  # perfect match, weights are a list
-            {
-                "prediction": "MARY LOVES JOE",
-                "references": ["Mary loves Joe"],
-                "weights": (1,),
-                "expected_value": 0,
-            },  # perfect match, case sensitive
-            {
-                "prediction": "Mary loves Joe",
-                "references": ["MARY LOVES JOE"],
-                "weights": (1,),
-                "expected_value": 0,
-            },  # perfect match, case sensitive
-            {
-                "prediction": "Mary loves Joe",
-                "references": ["MARY LOVES JOE"],
-                "weights": (0, 1),
-                "expected_value": 0,
-            },  # perfect match, case sensitive, BLEU-2
-            {
-                "prediction": "Mary loves Joe",
-                "references": ["Mary loves Joe"],
-                "weights": (0, 1),
-                "expected_value": 1.0,
-            },  # BLEU-2
-            {
-                "prediction": "Mary loves Joe",
-                "references": ["Mary loves Joe"],
-                "weights": [0.25] * 4,
-                "expected_value": 0,
-            },  # BLEU-4
-            {
-                "prediction": "Mary loves Joe",
-                "references": ["Mary loves Jane"],
-                "weights": (1,),
-                "expected_value": 0.67,
-            },  # off by one
-            {
-                "prediction": "Mary loves Joe",
-                "references": ["Mary loves Jane"],
-                "weights": (0, 1),
-                "expected_value": 0.5,
-            },  # off by one BLEU-2
-            {
-                "prediction": "Mary loves Joe",
-                "references": ["Mary loves Jane"],
-                "weights": (0, 0, 1),
-                "expected_value": 0,
-            },  # off by one BLEU-3
-            {
-                "prediction": "Mary loves Joe",
-                "references": ["Mary loves Jane"],
-                "weights": (0, 0, 0, 1),
-                "expected_value": 0,
-            },  # off by one BLEU-4
-            {
-                "prediction": "mary loves joe",
-                "references": ["MARY LOVES JOE"],
-                "weights": (1,),
-                "expected_value": 0,
-            },  # different cases
-            {
-                "prediction": "mary loves joe",
-                "references": ["MARY LOVES JOE"],
-                "weights": [0, 1],
-                "expected_value": 0,
-            },  # different cases BLEU-2
-            {
-                "prediction": "mary loves joe",
-                "references": ["MARY LOVES JOE"],
-                "weights": [0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-                "expected_value": 0,
-            },  # different cases BLEU-10
-            {
-                "prediction": "flip the roaring white dolphin",
-                "references": [
-                    "some random sentence",
-                    "some other sentence",
-                    "some final reference",
-                    "flip the roaring white dolphin",
-                ],
-                "weights": [0, 1],
-                "expected_value": 1,
-            },  # test multiple references
-        ]
 
-        expected_errors = [
-            {
-                "prediction": "Mary loves Joe",
-                "references": "Mary loves Joe",
-                "weights": (1,),
-                "error": ValueError,
-            },  # references isn't a list
-            {
-                "prediction": None,
-                "references": "Mary loves Joe",
-                "weights": (1,),
-                "error": ValueError,
-            },  # prediction shouldn't be None
-            {
-                "prediction": "Mary loves Joe",
-                "references": None,
-                "weights": (1,),
-                "error": ValueError,
-            },  # references shouldn't be None
-            {
-                "prediction": "Mary loves Joe",
-                "references": ["Mary loves Joe"],
-                "weights": None,
-                "error": ValueError,
-            },  # weights shouldn't be None
-        ]
+def test__calculate_bleu_scores():
+    examples = [
+        {
+            "prediction": "Mary loves Joe",
+            "references": ["Mary loves Joe"],
+            "weights": (1,),
+            "expected_value": 1.0,
+        },  # perfect match
+        {
+            "prediction": "Mary loves Joe",
+            "references": ["Mary loves Joe"],
+            "weights": [
+                1,
+            ],
+            "expected_value": 1.0,
+        },  # perfect match, weights are a list
+        {
+            "prediction": "MARY LOVES JOE",
+            "references": ["Mary loves Joe"],
+            "weights": (1,),
+            "expected_value": 0,
+        },  # perfect match, case sensitive
+        {
+            "prediction": "Mary loves Joe",
+            "references": ["MARY LOVES JOE"],
+            "weights": (1,),
+            "expected_value": 0,
+        },  # perfect match, case sensitive
+        {
+            "prediction": "Mary loves Joe",
+            "references": ["MARY LOVES JOE"],
+            "weights": (0, 1),
+            "expected_value": 0,
+        },  # perfect match, case sensitive, BLEU-2
+        {
+            "prediction": "Mary loves Joe",
+            "references": ["Mary loves Joe"],
+            "weights": (0, 1),
+            "expected_value": 1.0,
+        },  # BLEU-2
+        {
+            "prediction": "Mary loves Joe",
+            "references": ["Mary loves Joe"],
+            "weights": [0.25] * 4,
+            "expected_value": 0,
+        },  # BLEU-4
+        {
+            "prediction": "Mary loves Joe",
+            "references": ["Mary loves Jane"],
+            "weights": (1,),
+            "expected_value": 0.67,
+        },  # off by one
+        {
+            "prediction": "Mary loves Joe",
+            "references": ["Mary loves Jane"],
+            "weights": (0, 1),
+            "expected_value": 0.5,
+        },  # off by one BLEU-2
+        {
+            "prediction": "Mary loves Joe",
+            "references": ["Mary loves Jane"],
+            "weights": (0, 0, 1),
+            "expected_value": 0,
+        },  # off by one BLEU-3
+        {
+            "prediction": "Mary loves Joe",
+            "references": ["Mary loves Jane"],
+            "weights": (0, 0, 0, 1),
+            "expected_value": 0,
+        },  # off by one BLEU-4
+        {
+            "prediction": "mary loves joe",
+            "references": ["MARY LOVES JOE"],
+            "weights": (1,),
+            "expected_value": 0,
+        },  # different cases
+        {
+            "prediction": "mary loves joe",
+            "references": ["MARY LOVES JOE"],
+            "weights": [0, 1],
+            "expected_value": 0,
+        },  # different cases BLEU-2
+        {
+            "prediction": "mary loves joe",
+            "references": ["MARY LOVES JOE"],
+            "weights": [0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+            "expected_value": 0,
+        },  # different cases BLEU-10
+        {
+            "prediction": "flip the roaring white dolphin",
+            "references": [
+                "some random sentence",
+                "some other sentence",
+                "some final reference",
+                "flip the roaring white dolphin",
+            ],
+            "weights": [0, 1],
+            "expected_value": 1,
+        },  # test multiple references
+    ]
 
-        for example in examples:
-            output = _calculate_sentence_bleu(
-                prediction=example["prediction"],
+    expected_errors = [
+        {
+            "prediction": "Mary loves Joe",
+            "references": "Mary loves Joe",
+            "weights": (1,),
+            "error": ValueError,
+        },  # references isn't a list
+        {
+            "prediction": None,
+            "references": "Mary loves Joe",
+            "weights": (1,),
+            "error": ValueError,
+        },  # prediction shouldn't be None
+        {
+            "prediction": "Mary loves Joe",
+            "references": None,
+            "weights": (1,),
+            "error": ValueError,
+        },  # references shouldn't be None
+        {
+            "prediction": "Mary loves Joe",
+            "references": ["Mary loves Joe"],
+            "weights": None,
+            "error": ValueError,
+        },  # weights shouldn't be None
+    ]
+
+    for example in examples:
+        output = _calculate_sentence_bleu(
+            predictions=example["prediction"],
+            references=example["references"],
+            weights=example["weights"],
+        )
+        assert (
+            round(output[0]["value"], 2) == example["expected_value"]
+        ), f"Error for example {example} with output {output}."
+
+    for example in expected_errors:
+        with pytest.raises(example["error"]):
+            _calculate_sentence_bleu(
+                predictions=example["prediction"],
                 references=example["references"],
                 weights=example["weights"],
             )
-            assert (
-                round(output["value"], 2) == example["expected_value"]
-            ), f"Error for example {example} with output {output}."
-
-        for example in expected_errors:
-            with pytest.raises(example["error"]):
-                _calculate_sentence_bleu(
-                    prediction=example["prediction"],
-                    references=example["references"],
-                    weights=example["weights"],
-                )
