@@ -2,7 +2,7 @@ FROM python:3.10-slim
 
 ARG VALOR_VERSION="0.0.0-dev"
 
-RUN apk add --update --no-cache build-base libpq-dev gcc libffi-dev
+RUN apt-get update && apt-get install build-essential libpq-dev -y
 
 COPY ./pyproject.toml /src/
 
