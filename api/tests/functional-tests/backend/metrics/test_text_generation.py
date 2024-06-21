@@ -268,7 +268,7 @@ def test__compute_text_generation(
                 "rougeL": 0.5925925925925926,
                 "rougeLsum": 0.5925925925925926,
             },
-            schemas.BLEUMetric: 0.3619957166198924,
+            schemas.BLEUMetric: 0.3502270395690205,
         },
         "uid1": {
             schemas.CoherenceMetric: 5,
@@ -288,7 +288,7 @@ def test__compute_text_generation(
                 "rougeL": 0.18666666666666668,
                 "rougeLsum": 0.18666666666666668,
             },
-            schemas.BLEUMetric: 0.038871769014757175,
+            schemas.BLEUMetric: 0.05434912989707719,
         },
     }
 
@@ -384,7 +384,7 @@ def test_text_generation(
                 "rougeL": 0.5925925925925926,
                 "rougeLsum": 0.5925925925925926,
             },
-            "BLEU": 0.3619957166198924,
+            "BLEU": 0.3502270395690205,
         },
         "uid1": {
             "Coherence": 5,
@@ -404,7 +404,7 @@ def test_text_generation(
                 "rougeL": 0.18666666666666668,
                 "rougeLsum": 0.18666666666666668,
             },
-            "BLEU": 0.038871769014757175,
+            "BLEU": 0.05434912989707719,
         },
     }
 
