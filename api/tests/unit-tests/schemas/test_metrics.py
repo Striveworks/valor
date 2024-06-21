@@ -382,3 +382,127 @@ def test_mIOUMetric():
             for key in iou_metric.db_mapping(evaluation_id=1)
         ]
     )
+
+
+def test_ROUGEMetric():
+    metric = schemas.ROUGEMetric(
+        value={
+            "rouge1": 1.0,
+            "rouge2": 1.0,
+            "rougeL": 1.0,
+            "rougeLsum": 1.0,
+        },
+        parameters={
+            "dataset_uid": "01",
+            "dataset_name": "test_dataset",
+            "prediction": "some prediction",
+        },
+    )
+
+    with pytest.raises(ValidationError):
+        schemas.ROUGEMetric(
+            value=None,  # type: ignore
+            parameters={
+                "dataset_uid": "01",
+                "dataset_name": "test_dataset",
+                "prediction": "some prediction",
+            },
+        )
+
+    with pytest.raises(ValidationError):
+        schemas.ROUGEMetric(
+            value=0.24,  # type: ignore
+            parameters={
+                "dataset_uid": "01",
+                "dataset_name": "test_dataset",
+                "prediction": "some prediction",
+            },
+        )
+
+    with pytest.raises(ValidationError):
+        schemas.ROUGEMetric(
+            value={
+                "rouge1": 1.0,
+                "rouge2": 1.0,
+                "rougeL": 1.0,
+                "rougeLsum": 1.0,
+            },
+            parameters=None,  # type: ignore
+        )
+
+    with pytest.raises(ValidationError):
+        schemas.ROUGEMetric(
+            value={
+                "rouge1": 1.0,
+                "rouge2": 1.0,
+                "rougeL": 1.0,
+                "rougeLsum": 1.0,
+            },
+            parameters="not a valid parameter",  # type: ignore
+        )
+
+    assert all(
+        [
+            key in ["value", "type", "evaluation_id", "parameters"]
+            for key in metric.db_mapping(evaluation_id=1)
+        ]
+    )
+
+
+def test_BLEUMetric():
+    metric = schemas.BLEUMetric(
+        value=0.421,
+        parameters={
+            "dataset_uid": "01",
+            "dataset_name": "test_dataset",
+            "prediction": "some prediction",
+        },
+    )
+
+    with pytest.raises(ValidationError):
+        schemas.BLEUMetric(
+            value=None,  # type: ignore
+            parameters={
+                "dataset_uid": "01",
+                "dataset_name": "test_dataset",
+                "prediction": "some prediction",
+            },
+        )
+
+    with pytest.raises(ValidationError):
+        schemas.BLEUMetric(
+            value={"some": "dict"},  # type: ignore
+            parameters={
+                "dataset_uid": "01",
+                "dataset_name": "test_dataset",
+                "prediction": "some prediction",
+            },
+        )
+
+    with pytest.raises(ValidationError):
+        schemas.BLEUMetric(
+            value={
+                "rouge1": 1.0,
+                "rouge2": 1.0,
+                "rougeL": 1.0,
+                "rougeLsum": 1.0,
+            },  # type: ignore
+            parameters={
+                "dataset_uid": "01",
+                "dataset_name": "test_dataset",
+                "prediction": "some prediction",
+            },
+        )
+
+    with pytest.raises(ValidationError):
+        schemas.BLEUMetric(
+            value=0.42,  # type: ignore
+            parameters="not a valid parameter",  # type: ignore
+        )
+
+    assert all(
+        [
+            key in ["value", "type", "evaluation_id", "parameters"]
+            for key in metric.db_mapping(evaluation_id=1)
+        ]
+    )

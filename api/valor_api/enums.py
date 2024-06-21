@@ -144,3 +144,5 @@ class MetricType(str, Enum):
     Hallucination = "Hallucination"
     Summarization = "Summarization"
     Toxicity = "Toxicity"
+    ROUGE = "ROUGE"
+    BLEU = "BLEU"

@@ -19,6 +19,11 @@ dependencies = [
     "pgvector",
     "openai",
     "mistralai",
+    "datasets >= 2.20.0",
+    "absl-py",
+    "nltk",
+    "rouge_score",
+    "evaluate"
 ]
 
 [build-system]
