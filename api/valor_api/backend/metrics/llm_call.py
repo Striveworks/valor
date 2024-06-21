@@ -33,7 +33,7 @@ class LLMClient:
         model_name: str | None = None,
     ):
         """
-        TODO Should we use an __attrs_post_init__ instead?
+        Set the API key and model name (if provided).
         """
         self.api_key = api_key
         if model_name is not None:
@@ -129,7 +129,7 @@ class WrappedOpenAIClient(LLMClient):
         model_name: str | None = None,
     ):
         """
-        TODO should we use an __attrs_post_init__ instead?
+        Set the API key, seed and model name (if provided).
         """
         self.api_key = api_key
         if seed is not None:
@@ -207,7 +207,7 @@ class WrappedMistralClient(LLMClient):
         model_name: str | None = None,
     ):
         """
-        TODO should we use an __attrs_post_init__ instead?
+        Set the API key and model name (if provided).
         """
         self.api_key = api_key
         if model_name is not None:
