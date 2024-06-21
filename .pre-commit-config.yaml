@@ -51,7 +51,6 @@ repos:
             "GeoAlchemy2",
             "psycopg2-binary",
             "pgvector",
-            "pyarrow >= 16.1.0",
             "datasets >= 2.20.0",
             "absl-py",
             "nltk",
