@@ -840,6 +840,78 @@ class BiasMetric(BaseModel):
         raise NotImplementedError
 
 
+class ROUGEMetric(BaseModel):
+    """
+    Describes a ROUGE metric.
+
+    Attributes
+    ----------
+    value : dict[str, float]
+        A JSON containing individual ROUGE scores calculated in different ways. `rouge1` is unigram-based scoring, `rouge2` is bigram-based scoring, `rougeL` is scoring based on sentences (i.e., splitting on "." and ignoring "\n"), and `rougeLsum` is scoring based on splitting the text using "\n".
+    parameters : dict[str, str]
+        The parameters associated with the metric.
+    """
+
+    value: dict[str, float]
+    parameters: dict[str, str]
+
+    def db_mapping(self, evaluation_id: int) -> dict:
+        """
+        Creates a mapping for use when uploading the metric to the database.
+
+        Parameters
+        ----------
+        evaluation_id : int
+            The evaluation id.
+
+        Returns
+        ----------
+        A mapping dictionary.
+        """
+        return {
+            "value": self.value,
+            "parameters": self.parameters,
+            "type": "ROUGE",
+            "evaluation_id": evaluation_id,
+        }
+
+
+class BLEUMetric(BaseModel):
+    """
+    Describes a BLEU metric.
+
+    Attributes
+    ----------
+    value : float
+        The BLEU score for an individual datapoint, which is a JSON containing individual ROUGE scores calculated in different ways.
+    parameters : dict[str, str]
+        The parameters associated with the metric.
+    """
+
+    value: float
+    parameters: dict[str, str]
+
+    def db_mapping(self, evaluation_id: int) -> dict:
+        """
+        Creates a mapping for use when uploading the metric to the database.
+
+        Parameters
+        ----------
+        evaluation_id : int
+            The evaluation id.
+
+        Returns
+        ----------
+        A mapping dictionary.
+        """
+        return {
+            "value": self.value,
+            "parameters": self.parameters,
+            "type": "BLEU",
+            "evaluation_id": evaluation_id,
+        }
+
+
 class CoherenceMetric(BaseModel):
     """
     Describes a coherence metric.
