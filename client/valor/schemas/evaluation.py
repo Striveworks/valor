@@ -47,9 +47,7 @@ class EvaluationParameters:
     recall_score_threshold: float = 0
     pr_curve_iou_threshold: float = 0.5
     pr_curve_max_examples: int = 1
-    llm_api_params: Optional[
-        Dict[str, Union[str, dict]]
-    ] = None  # TODO More explicit typing here?
+    llm_api_params: Optional[Dict[str, Union[str, dict]]] = None
 
 
 @dataclass

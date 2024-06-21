@@ -1,7 +1,7 @@
 from typing import Any
 
 import openai
-from mistralai.client import MistralClient
+from mistralai.client import MistralAPIException, MistralClient
 from mistralai.models.chat_completion import ChatMessage
 
 COHERENCE_INSTRUCTION = """You are a helpful assistant. You will grade the user's text. Your task is to rate the text based on its coherence. Please make sure you read and understand these instructions carefully. Please keep this document open while reviewing, and refer to it as needed.
@@ -33,7 +33,7 @@ class LLMClient:
         model_name: str | None = None,
     ):
         """
-        TODO should we use an __attrs_post_init__ instead?
+        TODO Should we use an __attrs_post_init__ instead?
         """
         self.api_key = api_key
         if model_name is not None:
@@ -43,7 +43,7 @@ class LLMClient:
         self,
     ):
         """
-        TODO This is separated for now because I want to mock connecting to the LLM API.
+        Setup the connection to the API.
         """
         raise NotImplementedError
 
@@ -76,11 +76,13 @@ class LLMClient:
 
         Parameters
         ----------
-        text : TODO
+        text: str
+            The text to be evaluated.
 
         Returns
         -------
         int
+            The coherence score, which is an integer with 1 being the lowest coherence and 5 the highest coherence.
         """
         messages = [
             {"role": "system", "content": COHERENCE_INSTRUCTION},
@@ -139,7 +141,7 @@ class WrappedOpenAIClient(LLMClient):
         self,
     ):
         """
-        TODO This is separated for now because I want to mock connecting to the OpenAI API.
+        Setup the connection to the API.
         """
         if self.api_key is None:
             self.client = openai.OpenAI()
@@ -163,8 +165,6 @@ class WrappedOpenAIClient(LLMClient):
     ) -> Any:
         """
         Call to the API.
-
-        TODO possibly change this to a call with the API. This would remove the openai python dependence.
         """
         processed_messages = self.process_messages(messages)
         try:
@@ -175,13 +175,13 @@ class WrappedOpenAIClient(LLMClient):
             )
         # TODO Should we catch this if we aren't going to do anything?
         except openai.BadRequestError as e:
-            raise ValueError(f"OpenAI request failed with error: {e}")
+            raise ValueError(f"OpenAI API request failed with error: {e}")
 
-        # token_usage = openai_response.usage  # TODO Could report token usage to user. Could use token length to determine if input is too larger, although this would require us to know the model's context window size.
+        # token_usage = openai_response.usage  # TODO Should we report token usage to user?
         finish_reason = openai_response.choices[0].finish_reason
         response = openai_response.choices[0].message.content
 
-        # TODO Only keep these if we can test them.
+        # TODO These seem hard to test, so should we remove them?
         if finish_reason == "length":
             raise ValueError(
                 "OpenAI response reached max token limit. Resulting evaluation is likely invalid or of low quality."
@@ -228,7 +228,7 @@ class WrappedMistralClient(LLMClient):
         self,
     ):
         """
-        TODO This is separated for now because I want to mock connecting to the Mistral API.
+        Setup the connection to the API.
         """
         if self.api_key is None:
             self.client = MistralClient()
@@ -259,20 +259,19 @@ class WrappedMistralClient(LLMClient):
     ) -> Any:
         """
         Call to the API.
-
-        TODO possibly change this to a call with the API. This would remove the openai python dependence.
         """
         processed_messages = self.process_messages(messages)
-        mistral_response = self.client.chat(
-            model=self.model_name,
-            messages=processed_messages,
-        )
-        # TODO Are there any errors we should catch in a try except block?
+        try:
+            mistral_response = self.client.chat(
+                model=self.model_name,
+                messages=processed_messages,
+            )
+        # TODO Should we catch this if we aren't going to do anything?
+        except MistralAPIException as e:
+            raise ValueError(f"Mistral API request failed with error: {e}")
 
-        # token_usage = mistral_response.usage  # TODO Could report token usage to user. Could use token length to determine if input is too larger, although this would require us to know the model's context window size.
-        # finish_reason = mistral_response.choices[0].finish_reason
+        # token_usage = mistral_response.usage  # TODO Should we report token usage to the user?
+        # finish_reason = mistral_response.choices[0].finish_reason # TODO We could throw errors depending on finish reason. Only do this if we decide to do so for OpenAI.
         response = mistral_response.choices[0].message.content
-
-        # TODO Possibly add errors depending on the finish reason?
 
         return response

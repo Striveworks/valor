@@ -41,7 +41,6 @@ def mocked_openai_coherence(self, text: str):
 
 @pytest.fixture
 def text_generation_test_data(db: Session, dataset_name: str, model_name: str):
-    # TODO This test could also use groundtruths to test text comparison metrics.
     queries = [
         """Did John Adams get along with Alexander Hamilton?""",  # ground truth answer is "No."
         """Did Lincoln win the election of 1860?""",  # ground truth answer is "Yes"
@@ -152,10 +151,6 @@ def text_generation_test_data(db: Session, dataset_name: str, model_name: str):
             metadata={
                 "type": "text",
                 "hf_model_name": """mistralai/Mixtral-8x7B-Instruct-v0.1""",
-                # "quantization_kwargs": { # TODO appears that dictionaries are not supported in metadata in this format
-                #     "load_in_4bit": True,
-                #     "bnb_4bit_compute_dtype": "float16"
-                #     },
                 "raw_text_field": "context",
                 "input": """{context}\n{question}""",
                 "prompt": """Answer the following question with the provided context. The format will be first the context, second the question, third the answer.\n{input}\nAnswer:""",
@@ -171,46 +166,6 @@ def text_generation_test_data(db: Session, dataset_name: str, model_name: str):
     assert len(db.query(models.Label).all()) == 0
     assert len(db.query(models.GroundTruth).all()) == 3
     assert len(db.query(models.Prediction).all()) == 3
-
-
-# # TODO Make this text work on the github checks. It currently works locally.
-# def test_openai_api_request():
-#     """
-#     Tests the WrappedOpenAIClient class.
-
-#     Tests that an integer is correctly returned from an WrappedOpenAIClient.coherence call.
-#     """
-#     client = WrappedOpenAIClient(
-#         seed=2024,
-#     )
-#     client.connect()
-
-#     result = client.coherence(
-#         text="This is a test sentence.",
-#     )
-
-#     assert result
-#     assert type(result) == int
-#     assert result in [1, 2, 3, 4, 5]
-
-
-# # TODO Make this text work on the github checks. It currently works locally.
-# def test_mistral_api_request():
-#     """
-#     Tests the WrappedMistralClient class.
-
-#     Tests that an integer is correctly returned from a WrappedMistralClient.coherence call.
-#     """
-#     client = WrappedMistralClient()
-#     client.connect()
-
-#     result = client.coherence(
-#         text="This is a test sentence.",
-#     )
-
-#     assert result
-#     assert type(result) == int
-#     assert result in [1, 2, 3, 4, 5]
 
 
 @patch(
@@ -259,7 +214,7 @@ def test_compute_text_generation(
     )
     prediction_filter = datum_filter.model_copy()
 
-    # TODO eventually get all working
+    # TODO Uncomment metrics as they are implemented.
     metrics_to_return = [
         # enums.MetricType.AnswerCorrectness,
         # enums.MetricType.AnswerRelevance,
@@ -275,7 +230,6 @@ def test_compute_text_generation(
         # enums.MetricType.Toxicity,
     ]
 
-    # TODO The llm_api_params need to be passed in to this as well.
     metrics = _compute_text_generation_metrics(
         db,
         datum_filter=datum_filter,
@@ -283,8 +237,6 @@ def test_compute_text_generation(
         metrics_to_return=metrics_to_return,
         llm_api_params={
             "client": "openai",
-            # "api_url": "https://api.openai.com/v1/chat/completions",
-            # api_key:None, # If no key is specified, uses OPENAI_API_KEY environment variable for OpenAI API calls.
             "data": {
                 "seed": 2024,
                 "model": "gpt-4o",
@@ -292,8 +244,7 @@ def test_compute_text_generation(
         },
     )
 
-    # TODO Add all metrics
-    # TODO Should I match metric values based on the prediction as well as the dataset_id? The check I am doing below is not sufficient if there are datums with the same datum_uid across datasets or if there are multiple predictions per datum.
+    # TODO Add checks as metrics are implemented.
     assert metrics
     for metric in metrics:
         if isinstance(metric, schemas.AnswerCorrectnessMetric):
@@ -303,12 +254,13 @@ def test_compute_text_generation(
         elif isinstance(metric, schemas.BiasMetric):
             pass
         elif isinstance(metric, schemas.CoherenceMetric):
-            if metric.parameters.get("datum_uid") == "uid0":
+            if metric.parameters.get("prediction") in [
+                PREDICTIONS[0],
+                PREDICTIONS[2],
+            ]:
                 assert metric.value == 4
-            elif metric.parameters.get("datum_uid") == "uid1":
+            elif metric.parameters.get("prediction") == PREDICTIONS[1]:
                 assert metric.value == 5
-            elif metric.parameters.get("datum_uid") == "uid2":
-                assert metric.value == 4
         elif isinstance(metric, schemas.ContextPrecisionMetric):
             pass
         elif isinstance(metric, schemas.ContextRecallMetric):
@@ -396,10 +348,10 @@ def test_text_generation(
 
     metrics = evaluations[0].metrics
 
-    # TODO Implement other metrics.
-    # TODO Should I make this a dictionary of expected metrics, so that it looks cleaner?
+    # TODO Add checks as metrics are implemented.
     assert metrics
     for metric in metrics:
+        assert isinstance(metric.parameters, dict)
         if metric.type == "AnswerCorrectness":
             pdb.set_trace()
             pass
@@ -410,13 +362,13 @@ def test_text_generation(
             pdb.set_trace()
             pass
         elif metric.type == "Coherence":
-            assert isinstance(metric.parameters, dict)
-            if metric.parameters.get("datum_uid") == "uid0":
+            if metric.parameters.get("prediction") in [
+                PREDICTIONS[0],
+                PREDICTIONS[2],
+            ]:
                 assert metric.value == 4
-            elif metric.parameters.get("datum_uid") == "uid1":
+            elif metric.parameters.get("prediction") == PREDICTIONS[1]:
                 assert metric.value == 5
-            elif metric.parameters.get("datum_uid") == "uid2":
-                assert metric.value == 4
         elif metric.type == "ContextPrecision":
             pdb.set_trace()
             pass

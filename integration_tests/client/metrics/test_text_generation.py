@@ -236,14 +236,8 @@ def test_llm_evaluation(
                 "model": "gpt-4o",
             },
         },
-        # TODO Add metric_params as another parameter of parameters.
-        # metric_params={
-        #     "SentenceBLEU_params": {
-        #         "weights": [0.65,0.2,0.1,0.05],
-        #         "smoothing_function": "method3",
-        #     },
-        # },
-        # TODO Will we have support for evaluation metadata?
+        metric_params={},
+        # TODO Should we support evaluation metadata?
         # meta={
         #     "llm_api_service": "openai",
         #     "model": "gpt-4o",
@@ -257,6 +251,7 @@ def test_llm_evaluation(
     metrics = eval_job.metrics
     metadata = eval_job.meta
 
+    # TODO Add metric checks as metrics are implemented.
     expected_metrics = [
         # Coherence results
         {
@@ -288,40 +283,7 @@ def test_llm_evaluation(
             "type": "Coherence",
             "value": 4.0,
             "label": None,
-        }
-        #     # { # TODO
-        #     #     "type": "Summarization",
-        #     # },
-        #     # {
-        #     #     "type": "Grammaticality",
-        #     # },
-        #     # {
-        #     #     "type": "Hallucination Rate",
-        #     # },
-        #     # {
-        #     #     "type": "Toxicity",
-        #     # },
-        #     # {
-        #     #     "type": "Bias",
-        #     # },
-        #     # {
-        #     #     "type": "Faithfulness",
-        #     # },
-        #     # {
-        #     #     "type": "Answer Relevance",
-        #     # },
-        #     # {
-        #     #     "type": "Answer Correctness",
-        #     # },
-        #     # {
-        #     #     "type": "Context Precision",
-        #     # },
-        #     # {
-        #     #     "type": "Context Relevance",
-        #     # },
-        #     # {
-        #     #     "type": "Context Recall",
-        #     # },
+        },
     ]
 
     # Check that returned metrics have the right format.

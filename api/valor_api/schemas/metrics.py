@@ -749,14 +749,14 @@ class mIOUMetric(BaseModel):
 
 class AnswerCorrectnessMetric(BaseModel):
     """
-    Describes a TODO.
+    Describes an answer correctness metric.
 
     Attributes
     ----------
-    value : int
+    value : float
         TODO
     parameters : dict
-        TODO
+        Any parameters associated with the metric, as well as any datum or prediction parameters that are relevant to the metric.
     """
 
     value: float
@@ -780,14 +780,14 @@ class AnswerCorrectnessMetric(BaseModel):
 
 class AnswerRelevanceMetric(BaseModel):
     """
-    Describes a TODO.
+    Describes an answer relevance.
 
     Attributes
     ----------
-    value : int
+    value : float
         TODO
     parameters : dict
-        TODO
+        Any parameters associated with the metric, as well as any datum or prediction parameters that are relevant to the metric.
     """
 
     value: float
@@ -811,14 +811,14 @@ class AnswerRelevanceMetric(BaseModel):
 
 class BiasMetric(BaseModel):
     """
-    Describes a TODO.
+    Describes a bias metric.
 
     Attributes
     ----------
-    value : int
+    value : float
         TODO
     parameters : dict
-        TODO
+        Any parameters associated with the metric, as well as any datum or prediction parameters that are relevant to the metric.
     """
 
     value: float
@@ -847,9 +847,9 @@ class CoherenceMetric(BaseModel):
     Attributes
     ----------
     value : int
-        The coherence score for an individual datapoint, which is an integer between 1 and 5.
+        The coherence score for a datum. This is an integer with 1 being the lowest coherence and 5 the highest coherence.
     parameters : dict
-        TODO
+        Any parameters associated with the metric, as well as any datum or prediction parameters that are relevant to the metric.
     """
 
     value: float
@@ -878,14 +878,14 @@ class CoherenceMetric(BaseModel):
 
 class ContextPrecisionMetric(BaseModel):
     """
-    Describes a TODO.
+    Describes a context precision metric.
 
     Attributes
     ----------
-    value : int
+    value : float
         TODO
     parameters : dict
-        TODO
+        Any parameters associated with the metric, as well as any datum or prediction parameters that are relevant to the metric.
     """
 
     value: float
@@ -909,14 +909,14 @@ class ContextPrecisionMetric(BaseModel):
 
 class ContextRecallMetric(BaseModel):
     """
-    Describes a TODO.
+    Describes a context recall metric.
 
     Attributes
     ----------
-    value : int
+    value : float
         TODO
     parameters : dict
-        TODO
+        Any parameters associated with the metric, as well as any datum or prediction parameters that are relevant to the metric.
     """
 
     value: float
@@ -940,14 +940,14 @@ class ContextRecallMetric(BaseModel):
 
 class ContextRelevanceMetric(BaseModel):
     """
-    Describes a TODO.
+    Describes a context relevance.
 
     Attributes
     ----------
-    value : int
+    value : float
         TODO
     parameters : dict
-        TODO
+        Any parameters associated with the metric, as well as any datum or prediction parameters that are relevant to the metric.
     """
 
     value: float
@@ -971,14 +971,14 @@ class ContextRelevanceMetric(BaseModel):
 
 class FaithfulnessMetric(BaseModel):
     """
-    Describes a TODO.
+    Describes a faithfulness metric.
 
     Attributes
     ----------
-    value : int
+    value : float
         TODO
     parameters : dict
-        TODO
+        Any parameters associated with the metric, as well as any datum or prediction parameters that are relevant to the metric.
     """
 
     value: float
@@ -1002,17 +1002,17 @@ class FaithfulnessMetric(BaseModel):
 
 class GrammaticalityMetric(BaseModel):
     """
-    Describes a TODO.
+    Describes a grammaticality metric.
 
     Attributes
     ----------
     value : int
         TODO
     parameters : dict
-        TODO
+        Any parameters associated with the metric, as well as any datum or prediction parameters that are relevant to the metric.
     """
 
-    value: float
+    value: int
     parameters: dict
 
     def db_mapping(self, evaluation_id: int) -> dict:
@@ -1033,14 +1033,14 @@ class GrammaticalityMetric(BaseModel):
 
 class HallucinationMetric(BaseModel):
     """
-    Describes a TODO.
+    Describes a hallucination metric.
 
     Attributes
     ----------
-    value : int
+    value : float
         TODO
     parameters : dict
-        TODO
+        Any parameters associated with the metric, as well as any datum or prediction parameters that are relevant to the metric.
     """
 
     value: float
@@ -1064,14 +1064,14 @@ class HallucinationMetric(BaseModel):
 
 class SummarizationMetric(BaseModel):
     """
-    Describes a TODO.
+    Describes a summarization metric.
 
     Attributes
     ----------
-    value : int
+    value : float
         TODO
     parameters : dict
-        TODO
+        Any parameters associated with the metric, as well as any datum or prediction parameters that are relevant to the metric.
     """
 
     value: float
@@ -1095,14 +1095,14 @@ class SummarizationMetric(BaseModel):
 
 class ToxicityMetric(BaseModel):
     """
-    Describes a TODO.
+    Describes a toxicity metric.
 
     Attributes
     ----------
-    value : int
+    value : float
         TODO
     parameters : dict
-        TODO
+        Any parameters associated with the metric, as well as any datum or prediction parameters that are relevant to the metric.
     """
 
     value: float

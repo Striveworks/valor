@@ -268,8 +268,10 @@ class Annotation(StaticCollection):
         A boolean describing whether we should treat the Raster attached to an annotation as an instance segmentation or not. If set to true, then the Annotation will be validated for use in object detection tasks. If set to false, then the Annotation will be validated for use in semantic segmentation tasks.
     implied_task_types: list[str], optional
         The validated task types that are applicable to each Annotation. Doesn't need to bet set by the user.
-    text: TODO
-    context: TODO
+    text: str, optional
+        A piece of text to assign to the `Annotation`.
+    context: List[str], optional
+        A list of context strings associated with an `Annotation`.
 
     Examples
     --------
@@ -317,7 +319,11 @@ class Annotation(StaticCollection):
     ...     is_instance=False # or None
     ... )
 
-    # TODO text generation
+    Text Generation
+    >>> annotation = Annotation(
+    ...     text="Yes, Lincoln won the election of 1860. He received the highest number of votes...",
+    ...     context=["Republican speakers focused first on...", "Lincoln received 1,866,452 votes...", ...],
+    ... )
     """
 
     metadata: Dictionary = Dictionary.symbolic(
@@ -377,15 +383,13 @@ class Annotation(StaticCollection):
         implied_task_types: list[str], optional
             The validated task types that are applicable to each Annotation. Doesn't need to bet set by the user.
         text: str, optional
-            TODO
+            A text annotation.
         context: List[str], optional
-            TODO
+            A list of context associated to the annotation text. Not all text annotations will have context.
         """
         super().__init__(
             metadata=metadata if metadata else dict(),
-            labels=(
-                labels if labels else list()
-            ),  # TODO Will setting labels to an empty list cause issues for text generation?
+            labels=(labels if labels else list()),
             bounding_box=bounding_box,
             polygon=polygon,
             raster=raster,
@@ -418,7 +422,7 @@ class Datum(StaticCollection):
     uid : String
         The UID of the datum.
     text : Text
-        TODO
+        The text of the datum, if the datum is a piece of text, otherwise None.
     metadata : Dictionary
         A dictionary of metadata that describes the datum.
 
@@ -427,6 +431,7 @@ class Datum(StaticCollection):
     >>> Datum(uid="uid1")
     >>> Datum(uid="uid1", metadata={})
     >>> Datum(uid="uid1", metadata={"foo": "bar", "pi": 3.14})
+    >>> Datum(uid="uid2", text="Did Lincoln win the election of 1860?", metadata={"query_created_by": "Alice"})
     """
 
     uid: String = String.symbolic(owner="datum", name="uid")
@@ -448,7 +453,7 @@ class Datum(StaticCollection):
         uid : str
             The UID of the datum.
         text : str, optional
-            TODO
+            The text of the datum, if the datum is a piece of text, otherwise None.
         metadata : dict, optional
             A dictionary of metadata that describes the datum.
         """
