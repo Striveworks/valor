@@ -1,16 +1,8 @@
-import json
+from enum import Enum
 
-from pydantic import (
-    BaseModel,
-    ConfigDict,
-    create_model,
-    field_validator,
-    model_validator,
-)
+from pydantic import BaseModel, ConfigDict, model_validator
 
 from valor_api.enums import TaskType
-from valor_api.schemas.geometry import GeoJSON
-from valor_api.schemas.timestamp import Date, DateTime, Duration, Time
 from valor_api.schemas.validators import (
     validate_type_bool,
     validate_type_box,
@@ -30,55 +22,273 @@ from valor_api.schemas.validators import (
 )
 
 
-def validate_type_symbol(x):
-    if not isinstance(x, Symbol):
-        raise TypeError
+class SupportedType(str, Enum):
+    BOOLEAN = "boolean"
+    INTEGER = "integer"
+    FLOAT = "float"
+    STRING = "string"
+    TASK_TYPE = "tasktype"
+    DATETIME = "datetime"
+    DATE = "date"
+    TIME = "time"
+    DURATION = "duration"
+    POINT = "point"
+    MULTIPOINT = "multipoint"
+    LINESTRING = "linestring"
+    MULTILINESTRING = "multilinestring"
+    POLYGON = "polygon"
+    BOX = "box"
+    MULTIPOLYGON = "multipolygon"
+    RASTER = "raster"
+    GEOJSON = "geojson"
+    EMBEDDING = "embedding"
+    LABEL = "label"
 
 
-filterable_types_to_validator = {
-    "symbol": validate_type_symbol,
-    "bool": validate_type_bool,
-    "string": validate_type_string,
-    "integer": validate_type_integer,
-    "float": validate_type_float,
-    "datetime": validate_type_datetime,
-    "date": validate_type_date,
-    "time": validate_type_time,
-    "duration": validate_type_duration,
-    "point": validate_type_point,
-    "multipoint": validate_type_multipoint,
-    "linestring": validate_type_linestring,
-    "multilinestring": validate_type_multilinestring,
-    "polygon": validate_type_polygon,
-    "box": validate_type_box,
-    "multipolygon": validate_type_multipolygon,
-    "tasktypeenum": validate_type_string,
-    "label": None,
-    "embedding": None,
-    "raster": None,
+map_type_to_validator = {
+    SupportedType.BOOLEAN: validate_type_bool,
+    SupportedType.STRING: validate_type_string,
+    SupportedType.INTEGER: validate_type_integer,
+    SupportedType.FLOAT: validate_type_float,
+    SupportedType.DATETIME: validate_type_datetime,
+    SupportedType.DATE: validate_type_date,
+    SupportedType.TIME: validate_type_time,
+    SupportedType.DURATION: validate_type_duration,
+    SupportedType.POINT: validate_type_point,
+    SupportedType.MULTIPOINT: validate_type_multipoint,
+    SupportedType.LINESTRING: validate_type_linestring,
+    SupportedType.MULTILINESTRING: validate_type_multilinestring,
+    SupportedType.POLYGON: validate_type_polygon,
+    SupportedType.BOX: validate_type_box,
+    SupportedType.MULTIPOLYGON: validate_type_multipolygon,
+    SupportedType.TASK_TYPE: validate_type_string,
+    SupportedType.LABEL: None,
+    SupportedType.EMBEDDING: None,
+    SupportedType.RASTER: None,
 }
+
+
+class SupportedSymbol(str, Enum):
+    DATASET_NAME = "dataset.name"
+    DATASET_META = "dataset.metadata"
+    MODEL_NAME = "model.name"
+    MODEL_META = "model.metadata"
+    DATUM_UID = "datum.uid"
+    DATUM_META = "datum.metadata"
+    ANNOTATION_META = "annotation.metadata"
+    TASK_TYPE = "annotation.task_type"
+    BOX = "annotation.bounding_box"
+    POLYGON = "annotation.polygon"
+    RASTER = "annotation.raster"
+    EMBEDDING = "annotation.embedding"
+    LABELS = "annotation.labels"
+    LABEL_KEY = "label.key"
+    LABEL_VALUE = "label.value"
+    SCORE = "label.score"
+
+    # 'area' attribute
+    DATASET_META_AREA = "dataset.metadata.area"
+    MODEL_META_AREA = "dataset.metadata.area"
+    DATUM_META_AREA = "dataset.metadata.area"
+    ANNOTATION_META_AREA = "dataset.metadata.area"
+    BOX_AREA = "annotation.bounding_box.area"
+    POLYGON_AREA = "annotation.polygon.area"
+    RASTER_AREA = "annotation.raster.area"
+
+    # api-only attributes
+    DATASET_ID = "dataset.id"
+    MODEL_ID = "model.id"
+    DATUM_ID = "datum.id"
+    ANNOTATION_ID = "annotation.id"
+    GROUNDTRUTH_ID = "groundtruth.id"
+    PREDICTION_ID = "prediction.id"
+    LABEL_ID = "label.id"
+    EMBEDDING_ID = "embedding.id"
+
+
+class FilterOperator(str, Enum):
+    EQ = "eq"
+    NE = "ne"
+    GT = "gt"
+    GTE = "gte"
+    LT = "lt"
+    LTE = "lte"
+    INTERSECTS = "intersects"
+    INSIDE = "inside"
+    OUTSIDE = "outside"
+    CONTAINS = "contains"
+    ISNULL = "isnull"
+    ISNOTNULL = "isnotnull"
+
+
+map_type_to_operators = {
+    SupportedType.BOOLEAN: {FilterOperator.EQ, FilterOperator.NE},
+    SupportedType.STRING: {FilterOperator.EQ, FilterOperator.NE},
+    SupportedType.INTEGER: {
+        FilterOperator.EQ,
+        FilterOperator.NE,
+        FilterOperator.GT,
+        FilterOperator.GTE,
+        FilterOperator.LT,
+        FilterOperator.LTE,
+    },
+    SupportedType.FLOAT: {
+        FilterOperator.EQ,
+        FilterOperator.NE,
+        FilterOperator.GT,
+        FilterOperator.GTE,
+        FilterOperator.LT,
+        FilterOperator.LTE,
+    },
+    SupportedType.DATETIME: {
+        FilterOperator.EQ,
+        FilterOperator.NE,
+        FilterOperator.GT,
+        FilterOperator.GTE,
+        FilterOperator.LT,
+        FilterOperator.LTE,
+    },
+    SupportedType.DATE: {
+        FilterOperator.EQ,
+        FilterOperator.NE,
+        FilterOperator.GT,
+        FilterOperator.GTE,
+        FilterOperator.LT,
+        FilterOperator.LTE,
+    },
+    SupportedType.TIME: {
+        FilterOperator.EQ,
+        FilterOperator.NE,
+        FilterOperator.GT,
+        FilterOperator.GTE,
+        FilterOperator.LT,
+        FilterOperator.LTE,
+    },
+    SupportedType.DURATION: {
+        FilterOperator.EQ,
+        FilterOperator.NE,
+        FilterOperator.GT,
+        FilterOperator.GTE,
+        FilterOperator.LT,
+        FilterOperator.LTE,
+    },
+    SupportedType.POINT: {
+        FilterOperator.INTERSECTS,
+        FilterOperator.INSIDE,
+        FilterOperator.OUTSIDE,
+    },
+    SupportedType.MULTIPOINT: {
+        FilterOperator.INTERSECTS,
+        FilterOperator.INSIDE,
+        FilterOperator.OUTSIDE,
+    },
+    SupportedType.LINESTRING: {
+        FilterOperator.INTERSECTS,
+        FilterOperator.INSIDE,
+        FilterOperator.OUTSIDE,
+    },
+    SupportedType.MULTILINESTRING: {
+        FilterOperator.INTERSECTS,
+        FilterOperator.INSIDE,
+        FilterOperator.OUTSIDE,
+    },
+    SupportedType.POLYGON: {
+        FilterOperator.INTERSECTS,
+        FilterOperator.INSIDE,
+        FilterOperator.OUTSIDE,
+    },
+    SupportedType.BOX: {
+        FilterOperator.INTERSECTS,
+        FilterOperator.INSIDE,
+        FilterOperator.OUTSIDE,
+    },
+    SupportedType.MULTIPOLYGON: {
+        FilterOperator.INTERSECTS,
+        FilterOperator.INSIDE,
+        FilterOperator.OUTSIDE,
+    },
+    SupportedType.TASK_TYPE: {FilterOperator.EQ, FilterOperator.NE},
+    SupportedType.LABEL: {FilterOperator.CONTAINS},
+    SupportedType.EMBEDDING: {},
+    SupportedType.RASTER: {},
+}
+
+
+class LogicalOperator(str, Enum):
+    AND = "and"
+    OR = "or"
+    NOT = "not"
 
 
 class Symbol(BaseModel):
     """
-    A symbolic variable.
+    A symbolic value.
 
     Attributes
     ----------
-    type : str
-        The data type that this symbol represents.
     name : str
         The name of the symbol.
     key : str, optional
-        Optional key to define dictionary access of a value.
-    attribute : str, optional
-        Optional attribute that modifies the underlying value.
+        Optional dictionary key if the symbol is representing a dictionary value.
     """
 
-    type: str
-    name: str
+    name: SupportedSymbol
     key: str | None = None
-    attribute: str | None = None
+
+    @property
+    def type(self) -> SupportedType | None:
+        """
+        Get the type associated with a symbol.
+
+        Returns
+        -------
+        SupportedType
+            The supported type.
+
+        Raises
+        ------
+        NotImplementedError
+            If the symbol does not have a type defined.
+        """
+        map_symbol_to_type = {
+            SupportedSymbol.DATASET_NAME: SupportedType.STRING,
+            SupportedSymbol.MODEL_NAME: SupportedType.STRING,
+            SupportedSymbol.DATUM_UID: SupportedType.STRING,
+            SupportedSymbol.TASK_TYPE: SupportedType.TASK_TYPE,
+            SupportedSymbol.BOX: SupportedType.BOX,
+            SupportedSymbol.POLYGON: SupportedType.POLYGON,
+            SupportedSymbol.EMBEDDING: SupportedType.EMBEDDING,
+            SupportedSymbol.LABEL_KEY: SupportedType.STRING,
+            SupportedSymbol.LABEL_VALUE: SupportedType.STRING,
+            SupportedSymbol.SCORE: SupportedType.FLOAT,
+            # 'area' attribue
+            SupportedSymbol.DATASET_META_AREA: SupportedType.FLOAT,
+            SupportedSymbol.MODEL_META_AREA: SupportedType.FLOAT,
+            SupportedSymbol.DATUM_META_AREA: SupportedType.FLOAT,
+            SupportedSymbol.ANNOTATION_META_AREA: SupportedType.FLOAT,
+            SupportedSymbol.BOX_AREA: SupportedType.FLOAT,
+            SupportedSymbol.POLYGON_AREA: SupportedType.FLOAT,
+            SupportedSymbol.RASTER_AREA: SupportedType.FLOAT,
+            # api-only
+            SupportedSymbol.DATASET_ID: SupportedType.INTEGER,
+            SupportedSymbol.MODEL_ID: SupportedType.INTEGER,
+            SupportedSymbol.DATUM_ID: SupportedType.INTEGER,
+            SupportedSymbol.ANNOTATION_ID: SupportedType.INTEGER,
+            SupportedSymbol.GROUNDTRUTH_ID: SupportedType.INTEGER,
+            SupportedSymbol.PREDICTION_ID: SupportedType.INTEGER,
+            SupportedSymbol.LABEL_ID: SupportedType.INTEGER,
+            SupportedSymbol.EMBEDDING_ID: SupportedType.INTEGER,
+            # unsupported
+            SupportedSymbol.DATASET_META: None,
+            SupportedSymbol.MODEL_META: None,
+            SupportedSymbol.DATUM_META: None,
+            SupportedSymbol.ANNOTATION_META: None,
+            SupportedSymbol.RASTER: None,
+            SupportedSymbol.LABELS: None,
+        }
+        if self.name not in map_symbol_to_type:
+            raise NotImplementedError(f"{self.name} is does not have a type.")
+        return map_symbol_to_type[self.name]
 
 
 class Value(BaseModel):
@@ -87,462 +297,200 @@ class Value(BaseModel):
 
     Attributes
     ----------
-    type : str
+    type : SupportedType
         The type of the value.
     value : bool | int | float | str | list | dict
         The stored value.
     """
 
-    type: str
+    type: SupportedType
     value: bool | int | float | str | list | dict
     model_config = ConfigDict(extra="forbid")
 
+    @model_validator(mode="after")
+    def _validate_value(self):
+        if self.type not in map_type_to_validator:
+            raise TypeError(f"'{self.type}' is not a valid type.")
+        map_type_to_validator[self.type](self.value)
+        return self
 
-class Operands(BaseModel):
-    """
-    Function operands.
+    def supports_operator(self, op: FilterOperator):
+        """
+        Validates whether value type supports operator.
 
-    Attributes
-    ----------
-    lhs : Symbol
-        The symbol representing a table column this function should be applied to.
-    rhs : Value
-        A value to perform a comparison over.
-    """
+        Parameters
+        ----------
+        op : FilterOperator
+            The operator to validate.
 
+        Raises
+        ------
+        TypeError
+            If the type does not support this operation.
+        """
+        return
+
+    @classmethod
+    def infer(
+        cls,
+        value: bool | int | float | str | TaskType,
+    ):
+        type_ = type(value)
+        if type_ is bool:
+            return cls(type=SupportedType.BOOLEAN, value=value)
+        elif type_ is int:
+            return cls(type=SupportedType.INTEGER, value=value)
+        elif type_ is float:
+            return cls(type=SupportedType.FLOAT, value=value)
+        elif type_ is str:
+            return cls(type=SupportedType.STRING, value=value)
+        elif type_ is TaskType:
+            return cls(type=SupportedType.TASK_TYPE, value=value)
+        else:
+            raise TypeError(
+                f"Type inference is not supported for type '{type_}'."
+            )
+
+
+class Condition(BaseModel):
     lhs: Symbol
-    rhs: Value
+    rhs: Value | None = None
+    op: FilterOperator
     model_config = ConfigDict(extra="forbid")
 
+    @model_validator(mode="after")
+    def _validate_object(self):
 
-class And(BaseModel):
-    """
-    Logical function representing an AND operation.
+        # validate operator
+        match self.op:
+            case (
+                FilterOperator.EQ
+                | FilterOperator.NE
+                | FilterOperator.GT
+                | FilterOperator.GTE
+                | FilterOperator.LT
+                | FilterOperator.LTE
+                | FilterOperator.INTERSECTS
+                | FilterOperator.INSIDE
+                | FilterOperator.OUTSIDE
+                | FilterOperator.CONTAINS
+            ):
+                if self.rhs is None:
+                    raise ValueError(
+                        f"Operator '{self.op}' requires a rhs value."
+                    )
+                elif self.rhs.type not in map_type_to_operators:
+                    raise ValueError(
+                        f"Value type '{self.rhs.type}' does not support operator '{self.op}'."
+                    )
+            case (FilterOperator.ISNULL | FilterOperator.ISNOTNULL):
+                if self.rhs is not None:
+                    raise ValueError(
+                        f"Operator '{self.op}' does not support a rhs value."
+                    )
+            case _:
+                raise NotImplementedError(
+                    f"Filter operator '{self.op}' is not implemented."
+                )
 
-    Attributes
-    ----------
-    logical_and : list[FunctionType]
-        A list of functions to AND together.
-    """
+        return self
 
-    logical_and: list["FunctionType"]
+
+class LogicalFunction(BaseModel):
+    args: "Condition | LogicalFunction | list[Condition] | list[LogicalFunction] | list[Condition | LogicalFunction]"
+    op: LogicalOperator
     model_config = ConfigDict(extra="forbid")
 
-    @property
-    def op(self) -> str:
-        """Returns the operator name."""
-        return type(self).__name__.lower()
-
-    @property
-    def args(self) -> list["FunctionType"]:
-        """Returns the list of functional arguments."""
-        return self.logical_and
-
-
-class Or(BaseModel):
-    """
-    Logical function representing an OR operation.
-
-    Attributes
-    ----------
-    logical_or : list[FunctionType]
-        A list of functions to OR together.
-    """
-
-    logical_or: list["FunctionType"]
-    model_config = ConfigDict(extra="forbid")
-
-    @property
-    def op(self) -> str:
-        """Returns the operator name."""
-        return type(self).__name__.lower()
-
-    @property
-    def args(self):
-        """Returns the list of functional arguments."""
-        return self.logical_or
-
-
-class Not(BaseModel):
-    """
-    Logical function representing an OR operation.
-
-    Attributes
-    ----------
-    logical_not : FunctionType
-        A functions to logically negate.
-    """
-
-    logical_not: "FunctionType"
-    model_config = ConfigDict(extra="forbid")
-
-    @property
-    def op(self) -> str:
-        """Returns the operator name."""
-        return type(self).__name__.lower()
-
-    @property
-    def arg(self):
-        """Returns the functional argument."""
-        return self.logical_not
-
-
-class IsNull(BaseModel):
-    """
-    Checks if symbol represents a null value.
-
-    Attributes
-    ----------
-    isnull : Symbol
-        The symbolic argument.
-    """
-
-    isnull: Symbol
-    model_config = ConfigDict(extra="forbid")
-
-    @property
-    def op(self) -> str:
-        """Returns the operator name."""
-        return type(self).__name__.lower()
-
-    @property
-    def arg(self):
-        """Returns the symbolic argument."""
-        return self.isnull
-
-
-class IsNotNull(BaseModel):
-    """
-    Checks if symbol represents an existing value.
-
-    Attributes
-    ----------
-    isnotnull : Symbol
-        The symbolic argument.
-    """
-
-    isnotnull: Symbol
-    model_config = ConfigDict(extra="forbid")
-
-    @property
-    def op(self) -> str:
-        """Returns the operator name."""
-        return type(self).__name__.lower()
-
-    @property
-    def arg(self):
-        """Returns the symbolic argument."""
-        return self.isnotnull
-
-
-class Equal(BaseModel):
-    """
-    Checks if symbol is equal to a provided value.
-
-    Attributes
-    ----------
-    eq : Operands
-        The operands of the function.
-    """
-
-    eq: Operands
-    model_config = ConfigDict(extra="forbid")
-
-    @property
-    def op(self) -> str:
-        """Returns the operator name."""
-        return type(self).__name__.lower()
-
-    @property
-    def lhs(self):
-        """Returns the lhs operand."""
-        return self.eq.lhs
-
-    @property
-    def rhs(self):
-        """Returns the rhs operand."""
-        return self.eq.rhs
-
-
-class NotEqual(BaseModel):
-    """
-    Checks if symbol is not equal to a provided value.
-
-    Attributes
-    ----------
-    ne : Operands
-        The operands of the function.
-    """
-
-    ne: Operands
-    model_config = ConfigDict(extra="forbid")
-
-    @property
-    def op(self) -> str:
-        """Returns the operator name."""
-        return type(self).__name__.lower()
-
-    @property
-    def lhs(self):
-        """Returns the lhs operand."""
-        return self.ne.lhs
-
-    @property
-    def rhs(self):
-        """Returns the rhs operand."""
-        return self.ne.rhs
-
-
-class GreaterThan(BaseModel):
-    """
-    Checks if symbol is greater than a provided value.
-
-    Attributes
-    ----------
-    gt : Operands
-        The operands of the function.
-    """
-
-    gt: Operands
-    model_config = ConfigDict(extra="forbid")
-
-    @property
-    def op(self) -> str:
-        """Returns the operator name."""
-        return type(self).__name__.lower()
-
-    @property
-    def lhs(self):
-        """Returns the lhs operand."""
-        return self.gt.lhs
-
-    @property
-    def rhs(self):
-        """Returns the rhs operand."""
-        return self.gt.rhs
-
-
-class GreaterThanEqual(BaseModel):
-    """
-    Checks if symbol is greater than or equal to a provided value.
-
-    Attributes
-    ----------
-    ge : Operands
-        The operands of the function.
-    """
-
-    ge: Operands
-    model_config = ConfigDict(extra="forbid")
-
-    @property
-    def op(self) -> str:
-        """Returns the operator name."""
-        return type(self).__name__.lower()
-
-    @property
-    def lhs(self):
-        """Returns the lhs operand."""
-        return self.ge.lhs
-
-    @property
-    def rhs(self):
-        """Returns the rhs operand."""
-        return self.ge.rhs
-
-
-class LessThan(BaseModel):
-    """
-    Checks if symbol is less than a provided value.
-
-    Attributes
-    ----------
-    lt : Operands
-        The operands of the function.
-    """
-
-    lt: Operands
-    model_config = ConfigDict(extra="forbid")
-
-    @property
-    def op(self) -> str:
-        """Returns the operator name."""
-        return type(self).__name__.lower()
-
-    @property
-    def lhs(self):
-        """Returns the lhs operand."""
-        return self.lt.lhs
-
-    @property
-    def rhs(self):
-        """Returns the rhs operand."""
-        return self.lt.rhs
-
-
-class LessThanEqual(BaseModel):
-    """
-    Checks if symbol is less than or equal to a provided value.
-
-    Attributes
-    ----------
-    le : Operands
-        The operands of the function.
-    """
-
-    le: Operands
-    model_config = ConfigDict(extra="forbid")
-
-    @property
-    def op(self) -> str:
-        """Returns the operator name."""
-        return type(self).__name__.lower()
-
-    @property
-    def lhs(self):
-        """Returns the lhs operand."""
-        return self.le.lhs
-
-    @property
-    def rhs(self):
-        """Returns the rhs operand."""
-        return self.le.rhs
-
-
-class Intersects(BaseModel):
-    """
-    Checks if symbol intersects a provided value.
-
-    Attributes
-    ----------
-    intersects : Operands
-        The operands of the function.
-    """
-
-    intersects: Operands
-    model_config = ConfigDict(extra="forbid")
-
-    @property
-    def op(self) -> str:
-        """Returns the operator name."""
-        return type(self).__name__.lower()
-
-    @property
-    def lhs(self):
-        """Returns the lhs operand."""
-        return self.intersects.lhs
-
-    @property
-    def rhs(self):
-        """Returns the rhs operand."""
-        return self.intersects.rhs
-
-
-class Inside(BaseModel):
-    """
-    Checks if symbol is inside a provided value.
-
-    Attributes
-    ----------
-    inside : Operands
-        The operands of the function.
-    """
-
-    inside: Operands
-    model_config = ConfigDict(extra="forbid")
-
-    @property
-    def op(self) -> str:
-        """Returns the operator name."""
-        return type(self).__name__.lower()
-
-    @property
-    def lhs(self):
-        """Returns the lhs operand."""
-        return self.inside.lhs
-
-    @property
-    def rhs(self):
-        """Returns the rhs operand."""
-        return self.inside.rhs
-
-
-class Outside(BaseModel):
-    """
-    Checks if symbol is outside a provided value.
-
-    Attributes
-    ----------
-    outside : Operands
-        The operands of the function.
-    """
-
-    outside: Operands
-    model_config = ConfigDict(extra="forbid")
-
-    @property
-    def op(self) -> str:
-        """Returns the operator name."""
-        return type(self).__name__.lower()
-
-    @property
-    def lhs(self):
-        """Returns the lhs operand."""
-        return self.outside.lhs
-
-    @property
-    def rhs(self):
-        """Returns the rhs operand."""
-        return self.outside.rhs
-
-
-class Contains(BaseModel):
-    """
-    Checks if symbolic list contains a provided value.
-
-    Attributes
-    ----------
-    contains : Operands
-        The operands of the function.
-    """
-
-    contains: Operands
-    model_config = ConfigDict(extra="forbid")
-
-    @property
-    def op(self) -> str:
-        """Returns the operator name."""
-        return type(self).__name__.lower()
-
-    @property
-    def lhs(self):
-        """Returns the lhs operand."""
-        return self.contains.lhs
-
-    @property
-    def rhs(self):
-        """Returns the rhs operand."""
-        return self.contains.rhs
-
-
-NArgFunction = And | Or
-OneArgFunction = Not | IsNull | IsNotNull
-TwoArgFunction = (
-    Equal
-    | NotEqual
-    | GreaterThan
-    | GreaterThanEqual
-    | LessThan
-    | LessThanEqual
-    | Intersects
-    | Inside
-    | Outside
-    | Contains
-)
-FunctionType = OneArgFunction | TwoArgFunction | NArgFunction
-
-
-class AdvancedFilter(BaseModel):
+    @classmethod
+    def and_(
+        cls, *args: "Condition | LogicalFunction | None"
+    ) -> "Condition | LogicalFunction":
+        """
+        Performs an AND operation if more than one element exists.
+
+        This is useful when passing the results of a list comprehension.
+
+        Parameters
+        ----------
+        *args
+            Variable length argument list consiting of Condition, LogicalFunction or None type values.
+
+        Returns
+        -------
+        FunctionType
+        """
+        items = [condition for condition in args if condition is not None]
+        if len(items) > 1:
+            return cls(
+                args=items,
+                op=LogicalOperator.AND,
+            )
+        elif len(items) == 1:
+            return items[0]
+        else:
+            raise ValueError("Passed an empty list.")
+
+    @classmethod
+    def or_(
+        cls, *args: "Condition | LogicalFunction | None"
+    ) -> "Condition | LogicalFunction":
+        """
+        Performs an OR operation if more than one element exists.
+
+        This is useful when passing the results of a list comprehension.
+
+        Parameters
+        ----------
+        *args
+            Variable length argument list consiting of Condition, LogicalFunction or None type values.
+
+        Returns
+        -------
+        FunctionType
+        """
+        items = [condition for condition in args if condition is not None]
+        if len(items) > 1:
+            return cls(
+                args=items,
+                op=LogicalOperator.OR,
+            )
+        elif len(items) == 1:
+            return items[0]
+        else:
+            raise ValueError("Passed an empty list.")
+
+    @classmethod
+    def not_(
+        cls, arg: "Condition | LogicalFunction"
+    ) -> "Condition | LogicalFunction":
+        """
+        Performs an NOT operation over a function or condition.
+
+        If the passed argument is a NOT function, this will return the contents.
+
+        Parameters
+        ----------
+        arg : Condition | LogicalFunction
+            A condition or logical function to negate.
+
+        Returns
+        -------
+        FunctionType
+        """
+        if isinstance(arg, LogicalFunction) and arg.op == LogicalOperator.NOT:
+            if isinstance(arg.args, list):
+                raise RuntimeError("Pydantic should have caught this.")
+            return arg.args
+        return cls(
+            args=arg,
+            op=LogicalOperator.NOT,
+        )
+
+
+FunctionType = Condition | LogicalFunction
+
+
+class Filter(BaseModel):
     """
     Filter schema that stores filters as logical trees under tables.
 
@@ -557,935 +505,4 @@ class AdvancedFilter(BaseModel):
     predictions: FunctionType | None = None
     labels: FunctionType | None = None
     embeddings: FunctionType | None = None
-
-
-#
-
-
-class StringFilter(BaseModel):
-    """
-    Used to filter on string values that meet some user-defined condition.
-
-    Attributes
-    ----------
-    value : str
-        The value to compare the specific field against.
-    operator : str
-        The operator to use for comparison. Should be one of `["==", "!="]`.
-
-    Raises
-    ------
-    ValueError
-        If the `operator` doesn't match one of the allowed patterns.
-    """
-
-    value: str
-    operator: str = "=="
-
-    @field_validator("operator")
-    @classmethod
-    def _validate_comparison_operator(cls, op: str) -> str:
-        """Validate the operator."""
-        allowed_operators = ["==", "!="]
-        if op not in allowed_operators:
-            raise ValueError(
-                f"Invalid comparison operator '{op}'. Allowed operators are {', '.join(allowed_operators)}."
-            )
-        return op
-
     model_config = ConfigDict(extra="forbid")
-
-    def to_function(
-        self, name: str, key: str | None = None, attribute: str | None = None
-    ) -> FunctionType:
-        """
-        Converts the filter object into a function.
-
-        This is for backwards-compatibility.
-
-        Parameters
-        ----------
-        name : str
-            The symbol name.
-        key : str, optional
-            An optional key to access the symbol by.
-        attribute : str, optional
-            An optional attribute to modify the symbol with.
-
-        Returns
-        -------
-        FunctionType
-        """
-        operands = Operands(
-            lhs=Symbol(type="string", name=name, key=key, attribute=attribute),
-            rhs=Value(type="string", value=self.value),
-        )
-        match self.operator:
-            case "==":
-                return Equal(eq=operands)
-            case "!=":
-                return NotEqual(ne=operands)
-            case _:
-                raise NotImplementedError(self.operator)
-
-
-class NumericFilter(BaseModel):
-    """
-    Used to filter on numeric values that meet some user-defined condition.
-
-    Attributes
-    ----------
-    value : float
-        The value to compare the specific field against.
-    operator : str
-        The operator to use for comparison. Should be one of `[">", "<", ">=", "<=", "==", "!="]`.
-
-    Raises
-    ------
-    ValueError
-        If the `operator` doesn't match one of the allowed patterns.
-    """
-
-    value: float
-    operator: str = "=="
-
-    @field_validator("operator")
-    @classmethod
-    def _validate_comparison_operator(cls, op: str) -> str:
-        """Validate the operator."""
-        allowed_operators = [">", "<", ">=", "<=", "==", "!="]
-        if op not in allowed_operators:
-            raise ValueError(
-                f"Invalid comparison operator '{op}'. Allowed operators are {', '.join(allowed_operators)}."
-            )
-        return op
-
-    model_config = ConfigDict(extra="forbid")
-
-    def to_function(
-        self,
-        name: str,
-        key: str | None = None,
-        attribute: str | None = None,
-        type_str: str = "float",
-    ) -> FunctionType:
-        """
-        Converts the filter object into a function.
-
-        This is for backwards-compatibility.
-
-        Parameters
-        ----------
-        name : str
-            The symbol name.
-        key : str, optional
-            An optional key to access the symbol by.
-        attribute : str, optional
-            An optional attribute to modify the symbol with.
-        type_str: str, default="float"
-            An optional override for the symbolic type.
-
-        Returns
-        -------
-        FunctionType
-        """
-        operands = Operands(
-            lhs=Symbol(type=type_str, name=name, key=key, attribute=attribute),
-            rhs=Value(type="float", value=self.value),
-        )
-        match self.operator:
-            case "==":
-                return Equal(eq=operands)
-            case "!=":
-                return NotEqual(ne=operands)
-            case ">":
-                return GreaterThan(gt=operands)
-            case ">=":
-                return GreaterThanEqual(ge=operands)
-            case "<":
-                return LessThan(lt=operands)
-            case "<=":
-                return LessThanEqual(le=operands)
-            case _:
-                raise NotImplementedError(self.operator)
-
-
-class BooleanFilter(BaseModel):
-    """
-    Used to filter on boolean values that meet some user-defined condition.
-
-    Attributes
-    ----------
-    value : bool
-        The value to compare the specific field against.
-    operator : str
-        The operator to use for comparison. Should be one of `["==", "!="]`.
-
-    Raises
-    ------
-    ValueError
-        If the `operator` doesn't match one of the allowed patterns.
-    """
-
-    value: bool
-    operator: str = "=="
-    model_config = ConfigDict(extra="forbid")
-
-    @field_validator("operator")
-    @classmethod
-    def _validate_comparison_operator(cls, op: str) -> str:
-        """Validate the operator."""
-        allowed_operators = ["==", "!="]
-        if op not in allowed_operators:
-            raise ValueError(
-                f"Invalid comparison operator '{op}'. Allowed operators are {', '.join(allowed_operators)}."
-            )
-        return op
-
-    def to_function(
-        self, name: str, key: str | None = None, attribute: str | None = None
-    ) -> FunctionType:
-        """
-        Converts the filter object into a function.
-
-        This is for backwards-compatibility.
-
-        Parameters
-        ----------
-        name : str
-            The symbol name.
-        key : str, optional
-            An optional key to access the symbol by.
-        attribute : str, optional
-            An optional attribute to modify the symbol with.
-
-        Returns
-        -------
-        FunctionType
-        """
-        operands = Operands(
-            lhs=Symbol(
-                type="boolean", name=name, key=key, attribute=attribute
-            ),
-            rhs=Value(type="boolean", value=self.value),
-        )
-        match self.operator:
-            case "==":
-                return Equal(eq=operands)
-            case "!=":
-                return NotEqual(ne=operands)
-            case _:
-                raise NotImplementedError(self.operator)
-
-
-class GeospatialFilter(BaseModel):
-    """
-    Used to filter on geospatial coordinates.
-
-    Attributes
-    ----------
-    value : GeoJSON
-        A dictionary containing a Point, Polygon, or MultiPolygon. Mirrors `shapely's` `GeoJSON` format.
-    operator : str
-        The operator to use for comparison. Should be one of `intersect`, `inside`, or `outside`.
-
-    """
-
-    value: GeoJSON
-    operator: str = "intersect"
-    model_config = ConfigDict(extra="forbid")
-
-    @field_validator("operator")
-    @classmethod
-    def _validate_comparison_operator(cls, op: str) -> str:
-        """Validate the operator."""
-        allowed_operators = ["inside", "outside", "intersect"]
-        if op not in allowed_operators:
-            raise ValueError(
-                f"Invalid comparison operator '{op}'. Allowed operators are {', '.join(allowed_operators)}."
-            )
-        return op
-
-    def to_function(
-        self, name: str, key: str | None = None, attribute: str | None = None
-    ) -> FunctionType:
-        """
-        Converts the filter object into a function.
-
-        This is for backwards-compatibility.
-
-        Parameters
-        ----------
-        name : str
-            The symbol name.
-        key : str, optional
-            An optional key to access the symbol by.
-        attribute : str, optional
-            An optional attribute to modify the symbol with.
-
-        Returns
-        -------
-        FunctionType
-        """
-        operands = Operands(
-            lhs=Symbol(
-                type="geojson", name=name, key=key, attribute=attribute
-            ),
-            rhs=Value(type="geojson", value=self.value.geometry.to_json()),
-        )
-        match self.operator:
-            case "inside":
-                return Inside(inside=operands)
-            case "outside":
-                return Outside(outside=operands)
-            case "intersect":
-                return Intersects(intersects=operands)
-            case _:
-                raise NotImplementedError(self.operator)
-
-
-class DateTimeFilter(BaseModel):
-    """
-    Used to filter on datetime values that meet some user-defined condition.
-
-    Attributes
-    ----------
-    value : DateTime
-        The value to compare the specific field against.
-    operator : str
-        The operator to use for comparison. Should be one of `[">", "<", ">=", "<=", "==", "!="]`.
-
-    Raises
-    ------
-    ValueError
-        If the `operator` doesn't match one of the allowed patterns.
-    """
-
-    value: DateTime | Date | Time | Duration
-    operator: str = "=="
-
-    @model_validator(mode="before")
-    @classmethod
-    def _unpack_timestamp_value(cls, values):
-        # TODO - This will be addressed in Issue #526
-        if isinstance(values, dict) and (value := values.get("value")):
-            if isinstance(value, dict) and (
-                "datetime" in value
-                or "date" in value
-                or "time" in value
-                or "duration" in value
-            ):
-                k, v = list(value.items())[0]
-                types = {
-                    "datetime": DateTime,
-                    "date": Date,
-                    "time": Time,
-                    "duration": Duration,
-                }
-                values["value"] = types[k](value=v)
-        return values
-
-    @field_validator("operator")
-    @classmethod
-    def _validate_comparison_operator(cls, op: str) -> str:
-        """Validate the operator."""
-        allowed_operators = [">", "<", ">=", "<=", "==", "!="]
-        if op not in allowed_operators:
-            raise ValueError(
-                f"Invalid comparison operator '{op}'. Allowed operators are {', '.join(allowed_operators)}."
-            )
-        return op
-
-    model_config = ConfigDict(extra="forbid")
-
-    def to_function(
-        self, name: str, key: str | None = None, attribute: str | None = None
-    ) -> FunctionType:
-        """
-        Converts the filter object into a function.
-
-        This is for backwards-compatibility.
-
-        Parameters
-        ----------
-        name : str
-            The symbol name.
-        key : str, optional
-            An optional key to access the symbol by.
-        attribute : str, optional
-            An optional attribute to modify the symbol with.
-
-        Returns
-        -------
-        FunctionType
-        """
-        type_str = type(self.value).__name__.lower()
-        operands = Operands(
-            lhs=Symbol(type=type_str, name=name, key=key, attribute=attribute),
-            rhs=Value(type=type_str, value=self.value.value),
-        )
-        match self.operator:
-            case "==":
-                return Equal(eq=operands)
-            case "!=":
-                return NotEqual(ne=operands)
-            case ">":
-                return GreaterThan(gt=operands)
-            case ">=":
-                return GreaterThanEqual(ge=operands)
-            case "<":
-                return LessThan(lt=operands)
-            case "<=":
-                return LessThanEqual(le=operands)
-            case _:
-                raise NotImplementedError(self.operator)
-
-
-class Filter(BaseModel):
-    """
-    Used to filter Evaluations according to specific, user-defined criteria.
-
-    Attributes
-    ----------
-    dataset_names: List[str], default=None
-        A list of `Dataset` names to filter on.
-    dataset_metadata: Dict[str, list[StringFilter | NumericFilter | DateTimeFilter | BooleanFilter | GeospatialFilter]], default=None
-        A dictionary of `Dataset` metadata to filter on.
-    model_names: List[str], default=None
-        A list of `Model` names to filter on.
-    model_metadata: Dict[str, list[StringFilter | NumericFilter | DateTimeFilter | BooleanFilter | GeospatialFilter]], default=None
-        A dictionary of `Model` metadata to filter on.
-    datum_metadata: Dict[str, list[StringFilter | NumericFilter | DateTimeFilter | BooleanFilter | GeospatialFilter]], default=None
-        A dictionary of `Datum` metadata to filter on.
-    task_types: List[TaskType], default=None
-        A list of task types to filter on.
-    annotation_metadata: Dict[str, list[StringFilter | NumericFilter | DateTimeFilter | BooleanFilter | GeospatialFilter]], default=None
-        A dictionary of `Annotation` metadata to filter on.
-    require_bounding_box : bool, optional
-        A toggle for filtering by bounding boxes.
-    bounding_box_area : bool, optional
-        An optional constraint to filter by bounding box area.
-    require_polygon : bool, optional
-        A toggle for filtering by polygons.
-    polygon_area : bool, optional
-        An optional constraint to filter by polygon area.
-    require_raster : bool, optional
-        A toggle for filtering by rasters.
-    raster_area : bool, optional
-        An optional constraint to filter by raster area.
-    labels: List[Dict[str, str]], default=None
-        A dictionary of `Labels' to filter on.
-    label_ids: List[int], default=None
-        A list of `Label` IDs to filter on.
-    label_keys: List[str] = None, default=None
-        A list of `Label` keys to filter on.
-    label_scores: List[ValueFilter], default=None
-        A list of `ValueFilters` which are used to filter `Evaluations` according to the `Model`'s prediction scores.
-    """
-
-    # datasets
-    dataset_names: list[str] | None = None
-    dataset_metadata: (
-        dict[
-            str,
-            list[
-                StringFilter
-                | NumericFilter
-                | DateTimeFilter
-                | BooleanFilter
-                | GeospatialFilter
-            ],
-        ]
-        | None
-    ) = None
-
-    # models
-    model_names: list[str] | None = None
-    model_metadata: (
-        dict[
-            str,
-            list[
-                StringFilter
-                | NumericFilter
-                | DateTimeFilter
-                | BooleanFilter
-                | GeospatialFilter
-            ],
-        ]
-        | None
-    ) = None
-
-    # datums
-    datum_uids: list[str] | None = None
-    datum_metadata: (
-        dict[
-            str,
-            list[
-                StringFilter
-                | NumericFilter
-                | DateTimeFilter
-                | BooleanFilter
-                | GeospatialFilter
-            ],
-        ]
-        | None
-    ) = None
-
-    # annotations
-    task_types: list[TaskType] | None = None
-    annotation_metadata: (
-        dict[
-            str,
-            list[
-                StringFilter
-                | NumericFilter
-                | DateTimeFilter
-                | BooleanFilter
-                | GeospatialFilter
-            ],
-        ]
-        | None
-    ) = None
-    require_bounding_box: bool | None = None
-    bounding_box_area: list[NumericFilter] | None = None
-    require_polygon: bool | None = None
-    polygon_area: list[NumericFilter] | None = None
-    require_raster: bool | None = None
-    raster_area: list[NumericFilter] | None = None
-
-    # labels
-    labels: list[dict[str, str]] | None = None
-    label_ids: list[int] | None = None
-    label_keys: list[str] | None = None
-
-    # predictions
-    label_scores: list[NumericFilter] | None = None
-
-    # pydantic settings
-    model_config = ConfigDict(
-        extra="forbid",
-        protected_namespaces=("protected_",),
-    )
-
-    def to_advanced_filter(
-        self,
-        ignore_groundtruths: bool = False,
-        ignore_predictions: bool = False,
-    ) -> AdvancedFilter:
-        def filter_equatable(
-            name: str,
-            values: list[str] | list[TaskType] | list[int],
-            type_str: str = "string",
-        ) -> FunctionType | None:
-            if len(values) > 1:
-                return Or(
-                    logical_or=[
-                        Equal(
-                            eq=Operands(
-                                lhs=Symbol(type=type_str, name=name),
-                                rhs=Value(
-                                    type=type_str,
-                                    value=value.value
-                                    if isinstance(value, TaskType)
-                                    else value,
-                                ),
-                            )
-                        )
-                        for value in values
-                    ]
-                )
-            elif len(values) == 1:
-                value = (
-                    values[0].value
-                    if isinstance(values[0], TaskType)
-                    else values[0]
-                )
-                return Equal(
-                    eq=Operands(
-                        lhs=Symbol(type=type_str, name=name),
-                        rhs=Value(type=type_str, value=value),
-                    )
-                )
-            else:
-                return None
-
-        def filter_metadata(
-            name: str, values: dict[str, list]
-        ) -> FunctionType | None:
-            filter_expressions = [
-                f.to_function(name=name, key=key)
-                for key, filters in values.items()
-                for f in filters
-            ]
-            if len(filter_expressions) > 1:
-                return And(logical_and=filter_expressions)
-            elif len(filter_expressions) == 1:
-                return filter_expressions[0]
-            else:
-                return None
-
-        def annotation_geometry_exist(
-            type_str: str, name: str, exists: bool
-        ) -> IsNull | IsNotNull:
-            if exists:
-                return IsNotNull(isnotnull=Symbol(type=type_str, name=name))
-            else:
-                return IsNull(isnull=Symbol(type=type_str, name=name))
-
-        def filter_numerics(
-            type_str: str,
-            name: str,
-            values: list[NumericFilter],
-            attribute: str | None = None,
-        ) -> FunctionType | None:
-            expressions = [
-                f.to_function(
-                    name=name, attribute=attribute, type_str=type_str
-                )
-                for f in values
-            ]
-            if len(expressions) > 1:
-                return And(logical_and=expressions)
-            elif len(expressions) == 1:
-                return expressions[0]
-            else:
-                return None
-
-        def filter_labels(
-            values: list[dict[str, str]],
-        ) -> FunctionType | None:
-            if len(values) > 1:
-                return Or(
-                    logical_or=[
-                        And(
-                            logical_and=[
-                                Equal(
-                                    eq=Operands(
-                                        lhs=Symbol(
-                                            type="string", name="label.key"
-                                        ),
-                                        rhs=Value(type="string", value=key),
-                                    )
-                                ),
-                                Equal(
-                                    eq=Operands(
-                                        lhs=Symbol(
-                                            type="string", name="label.value"
-                                        ),
-                                        rhs=Value(type="string", value=value),
-                                    )
-                                ),
-                            ]
-                        )
-                        for label in values
-                        for key, value in label.items()
-                    ]
-                )
-            elif len(values) == 1:
-                key = list(values[0].keys())[0]
-                value = list(values[0].values())[0]
-                return And(
-                    logical_and=[
-                        Equal(
-                            eq=Operands(
-                                lhs=Symbol(type="string", name="label.key"),
-                                rhs=Value(type="string", value=key),
-                            )
-                        ),
-                        Equal(
-                            eq=Operands(
-                                lhs=Symbol(type="string", name="label.value"),
-                                rhs=Value(type="string", value=value),
-                            )
-                        ),
-                    ]
-                )
-            else:
-                return None
-
-        def filter_task_types(values: list[TaskType]):
-            if len(values) > 1:
-                return Or(
-                    logical_or=[
-                        Contains(
-                            contains=Operands(
-                                lhs=Symbol(
-                                    type="tasktype",
-                                    name="annotation.task_type",
-                                ),
-                                rhs=Value(
-                                    type="tasktype", value=task_type.value
-                                ),
-                            )
-                        )
-                        for task_type in values
-                    ]
-                )
-            elif len(values) == 1:
-                return Contains(
-                    contains=Operands(
-                        lhs=Symbol(
-                            type="tasktype", name="annotation.task_type"
-                        ),
-                        rhs=Value(type="tasktype", value=values[0].value),
-                    )
-                )
-
-        dataset_names = None
-        dataset_metadata = None
-        model_names = None
-        model_metadata = None
-        datum_uids = None
-        datum_metadata = None
-        annotation_task_types = None
-        annotation_metadata = None
-        annotation_box = None
-        annotation_box_area = None
-        annotation_polygon = None
-        annotation_polygon_area = None
-        annotation_raster = None
-        annotation_raster_area = None
-        labels = None
-        label_keys = None
-        label_scores = None
-        label_ids = None
-
-        if self.dataset_names:
-            dataset_names = filter_equatable(
-                name="dataset.name", values=self.dataset_names
-            )
-        if self.dataset_metadata:
-            dataset_metadata = filter_metadata(
-                name="dataset.metadata", values=self.dataset_metadata
-            )
-        if self.model_names:
-            model_names = filter_equatable(
-                name="model.name", values=self.model_names
-            )
-        if self.model_metadata:
-            model_metadata = filter_metadata(
-                name="model.metadata", values=self.model_metadata
-            )
-        if self.datum_uids:
-            datum_uids = filter_equatable(
-                name="datum.uid", values=self.datum_uids
-            )
-        if self.datum_metadata:
-            datum_metadata = filter_metadata(
-                name="datum.metadata", values=self.datum_metadata
-            )
-        if self.task_types:
-            annotation_task_types = filter_task_types(values=self.task_types)
-        if self.annotation_metadata:
-            annotation_metadata = filter_metadata(
-                name="annotation.metadata", values=self.annotation_metadata
-            )
-        if self.require_bounding_box is not None:
-            annotation_box = annotation_geometry_exist(
-                type_str="box",
-                name="annotation.bounding_box",
-                exists=self.require_bounding_box,
-            )
-        if self.bounding_box_area:
-            annotation_box_area = filter_numerics(
-                type_str="box",
-                name="annotation.bounding_box",
-                attribute="area",
-                values=self.bounding_box_area,
-            )
-        if self.require_polygon is not None:
-            annotation_polygon = annotation_geometry_exist(
-                type_str="polygon",
-                name="annotation.polygon",
-                exists=self.require_polygon,
-            )
-        if self.polygon_area:
-            annotation_polygon_area = filter_numerics(
-                type_str="polygon",
-                name="annotation.polygon",
-                attribute="area",
-                values=self.polygon_area,
-            )
-        if self.require_raster is not None:
-            annotation_raster = annotation_geometry_exist(
-                type_str="raster",
-                name="annotation.raster",
-                exists=self.require_raster,
-            )
-        if self.raster_area:
-            annotation_raster_area = filter_numerics(
-                type_str="raster",
-                name="annotation.raster",
-                attribute="area",
-                values=self.raster_area,
-            )
-        if self.labels:
-            labels = filter_labels(self.labels)
-        if self.label_keys:
-            label_keys = filter_equatable(
-                name="label.key", values=self.label_keys
-            )
-        if self.label_scores:
-            label_scores = filter_numerics(
-                type_str="float",
-                name="label.score",
-                values=self.label_scores,
-            )
-        if self.label_ids:
-            label_ids = filter_equatable(
-                name="label.id", values=self.label_ids, type_str="integer"
-            )
-
-        def and_if_list(values: list[FunctionType]) -> FunctionType | None:
-            if len(values) > 1:
-                return And(logical_and=values)
-            elif len(values) == 1:
-                return values[0]
-            else:
-                return None
-
-        groundtruth_filter = and_if_list(
-            [
-                expr
-                for expr in [
-                    dataset_names,
-                    dataset_metadata,
-                    datum_uids,
-                    datum_metadata,
-                    annotation_task_types,
-                    annotation_metadata,
-                    annotation_box,
-                    annotation_box_area,
-                    annotation_polygon,
-                    annotation_polygon_area,
-                    annotation_raster,
-                    annotation_raster_area,
-                    labels,
-                    label_keys,
-                    label_ids,
-                ]
-                if expr is not None
-            ]
-        )
-        prediction_filter = and_if_list(
-            [
-                expr
-                for expr in [
-                    dataset_names,
-                    dataset_metadata,
-                    datum_uids,
-                    datum_metadata,
-                    model_names,
-                    model_metadata,
-                    annotation_task_types,
-                    annotation_metadata,
-                    annotation_box,
-                    annotation_box_area,
-                    annotation_polygon,
-                    annotation_polygon_area,
-                    annotation_raster,
-                    annotation_raster_area,
-                    labels,
-                    label_keys,
-                    label_ids,
-                    label_scores,
-                ]
-                if expr is not None
-            ]
-        )
-        annotation_filter = and_if_list(
-            [
-                expr
-                for expr in [
-                    datum_uids,
-                    datum_metadata,
-                    annotation_task_types,
-                    annotation_metadata,
-                    annotation_box,
-                    annotation_box_area,
-                    annotation_polygon,
-                    annotation_polygon_area,
-                    annotation_raster,
-                    annotation_raster_area,
-                ]
-                if expr is not None
-            ]
-        )
-        label_filter = and_if_list(
-            [
-                expr
-                for expr in [
-                    labels,
-                    label_keys,
-                    label_ids,
-                    label_scores,
-                ]
-                if expr is not None
-            ]
-        )
-        dataset_filter = and_if_list(
-            [
-                expr
-                for expr in [
-                    dataset_names,
-                    dataset_metadata,
-                ]
-                if expr is not None
-            ]
-        )
-        model_filter = and_if_list(
-            [
-                expr
-                for expr in [
-                    model_names,
-                    model_metadata,
-                ]
-                if expr is not None
-            ]
-        )
-
-        f = AdvancedFilter()
-        if ignore_groundtruths:
-            f.predictions = prediction_filter
-        elif ignore_predictions:
-            f.groundtruths = groundtruth_filter
-        else:
-            f.annotations = annotation_filter
-            f.labels = label_filter
-            f.models = model_filter
-            f.datasets = dataset_filter
-
-        return f
-
-
-# we want to pass a Filter as a query parameters instead of a body
-# so we make a new model `FilterQueryParams` where every value is a JSON string
-model_fields = Filter.model_fields
-model_def_dict = {kwarg: (str | None, None) for kwarg in model_fields}
-FilterQueryParams = create_model(
-    "FilterQueryParams",
-    __config__=ConfigDict(extra="forbid"),
-    **model_def_dict,  # type: ignore
-)
-
-
-def convert_filter_query_params_to_filter_obj(filter_query_params) -> Filter:
-    """Converts a `FilterQueryParams` object to a `Filter` object by
-    loading from JSON strings.
-
-    Parameters
-    ----------
-    filter_query_params : FilterQueryParams
-        The `FilterQueryParams` object to convert.
-
-    Returns
-    -------
-    Filter
-        The converted `Filter` object.
-    """
-    return Filter(
-        **{
-            k: json.loads(v if v is not None else "null")
-            for k, v in filter_query_params.model_dump().items()
-        }
-    )

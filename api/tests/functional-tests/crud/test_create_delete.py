@@ -396,7 +396,7 @@ def test_create_and_get_datasets(
         db=db,
         dataset=schemas.Dataset(name="other_dataset"),
     )
-    datasets, _ = crud.get_datasets(db=db)
+    datasets, _ = crud.get_datasets(db=db, filters=schemas.Filter())
     assert len(datasets) == 2
     assert set([d.name for d in datasets]) == {dataset_name, "other_dataset"}
 
@@ -1099,30 +1099,36 @@ def test_create_detection_metrics(
         min_area: float | None = None,
         max_area: float | None = None,
     ):
-        geometric_filters = []
+        conditions = []
         if min_area:
-            geometric_filters.append(
-                schemas.NumericFilter(
-                    value=min_area,
-                    operator=">=",
+            conditions.append(
+                schemas.Condition(
+                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.BOX_AREA),
+                    rhs=schemas.Value.infer(float(min_area)),
+                    op=schemas.FilterOperator.GTE,
                 )
             )
         if max_area:
-            geometric_filters.append(
-                schemas.NumericFilter(
-                    value=max_area,
-                    operator="<=",
+            conditions.append(
+                schemas.Condition(
+                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.BOX_AREA),
+                    rhs=schemas.Value.infer(float(max_area)),
+                    op=schemas.FilterOperator.LTE,
                 )
             )
-        if not geometric_filters:
-            geometric_filters = None
 
         job_request = schemas.EvaluationRequest(
             dataset_names=["test_dataset"],
             model_names=["test_model"],
             filters=schemas.Filter(
-                label_keys=[label_key],
-                bounding_box_area=geometric_filters,
+                annotations=schemas.LogicalFunction.and_(*conditions)
+                if conditions
+                else None,
+                labels=schemas.Condition(
+                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
+                    rhs=schemas.Value.infer(label_key),
+                    op=schemas.FilterOperator.EQ,
+                ),
             ),
             parameters=schemas.EvaluationParameters(
                 task_type=enums.TaskType.OBJECT_DETECTION,
@@ -1285,7 +1291,13 @@ def test_create_detection_metrics(
     assert model_evals[1] == schemas.EvaluationResponse(
         dataset_names=[dataset_name],
         model_name=model_name,
-        filters=schemas.Filter(label_keys=["class"]),
+        filters=schemas.Filter(
+            labels=schemas.Condition(
+                lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
+                rhs=schemas.Value.infer("class"),
+                op=schemas.FilterOperator.EQ,
+            )
+        ),
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.OBJECT_DETECTION,
             convert_annotations_to_type=enums.AnnotationType.BOX,
@@ -1307,17 +1319,23 @@ def test_create_detection_metrics(
         dataset_names=[dataset_name],
         model_name=model_name,
         filters=schemas.Filter(
-            label_keys=["class"],
-            bounding_box_area=[
-                schemas.NumericFilter(
-                    value=min_area,
-                    operator=">=",
+            annotations=schemas.LogicalFunction.and_(
+                schemas.Condition(
+                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.BOX_AREA),
+                    rhs=schemas.Value.infer(float(min_area)),
+                    op=schemas.FilterOperator.GTE,
                 ),
-                schemas.NumericFilter(
-                    value=max_area,
-                    operator="<=",
+                schemas.Condition(
+                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.BOX_AREA),
+                    rhs=schemas.Value.infer(float(max_area)),
+                    op=schemas.FilterOperator.LTE,
                 ),
-            ],
+            ),
+            labels=schemas.Condition(
+                lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
+                rhs=schemas.Value.infer("class"),
+                op=schemas.FilterOperator.EQ,
+            ),
         ),
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.OBJECT_DETECTION,

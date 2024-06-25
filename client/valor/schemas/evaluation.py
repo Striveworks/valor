@@ -1,7 +1,7 @@
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from typing import List, Optional, Union
 
-from valor.enums import AnnotationType, TaskType
+from valor.enums import AnnotationType, MetricType, TaskType
 from valor.schemas.filters import Filter
 
 
@@ -34,7 +34,7 @@ class EvaluationParameters:
 
     task_type: TaskType
     label_map: Optional[List[List[List[str]]]] = None
-    metrics_to_return: Optional[List[str]] = None
+    metrics_to_return: Optional[List[MetricType]] = None
 
     convert_annotations_to_type: Optional[AnnotationType] = None
     iou_thresholds_to_compute: Optional[List[float]] = None
@@ -57,7 +57,7 @@ class EvaluationRequest:
         The list of datasets we want to evaluate by name.
     model_names : List[str]
         The list of models we want to evaluate by name.
-    filters : schemas.Filter
+    filters : dict
         The filter object used to define what the model(s) is evaluating against.
     parameters : EvaluationParameters
         Any parameters that are used to modify an evaluation method.
@@ -66,10 +66,24 @@ class EvaluationRequest:
     dataset_names: Union[str, List[str]]
     model_names: Union[str, List[str]]
     parameters: EvaluationParameters
-    filters: Optional[Filter] = field(default=None)
+    filters: Filter = field(default_factory=Filter)
 
     def __post_init__(self):
         if isinstance(self.filters, dict):
             self.filters = Filter(**self.filters)
+        elif self.filters is None:
+            self.filters = Filter()
+
         if isinstance(self.parameters, dict):
             self.parameters = EvaluationParameters(**self.parameters)
+
+    def to_dict(self) -> dict:
+        """
+        Converts the request into a JSON-compatible dictionary.
+        """
+        return {
+            "dataset_names": self.dataset_names,
+            "model_names": self.model_names,
+            "parameters": asdict(self.parameters),
+            "filters": self.filters.to_dict(),
+        }

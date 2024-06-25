@@ -3,7 +3,7 @@ from typing import Any, Dict, List, Optional, Union
 import numpy as np
 
 from valor.schemas.symbolic.types import (
-    Bool,
+    Boolean,
     Box,
     Dictionary,
     Embedding,
@@ -279,37 +279,38 @@ class Annotation(StaticCollection):
     ... )
 
     Object-Detection Box
-    >>> annotation = Annotation.create(
+    >>> annotation = Annotation(
     ...     labels=[Label(key="k1", value="v1")],
-    ...    bounding_box=box2,
+    ...     bounding_box=box2,
     ... )
 
     Object-Detection Polygon
-    >>> annotation = Annotation.create(
+    >>> annotation = Annotation(
     ...     labels=[Label(key="k1", value="v1")],
     ...     polygon=BoundingPolygon(...),
     ... )
 
-    Object-Detection Raster
-    >>> annotation = Annotation.create(
+     Raster
+    >>> annotation = Annotation(
     ...     labels=[Label(key="k1", value="v1")],
     ...     raster=Raster(...),
     ...     is_instance=True
     ... )
 
-    Semantic-Segmentation Raster
-    >>> annotation = Annotation.create(
-    ...     labels=[Label(key="k1", value="v1")],
-    ...     raster=Raster(...),
-    ...     is_instance=False # or None
-    ... )
-
-    Defining all supported annotation types is allowed!
-    >>> Annotation.create(
+    Object-Detection with all supported Geometries defined.
+    >>> Annotation(
     ...     labels=[Label(key="k1", value="v1")],
     ...     bounding_box=Box(...),
     ...     polygon=BoundingPolygon(...),
     ...     raster=Raster(...),
+    ...     is_instance=True,
+    ... )
+
+    Semantic-Segmentation Raster
+    >>> annotation = Annotation(
+    ...     labels=[Label(key="k1", value="v1")],
+    ...     raster=Raster(...),
+    ...     is_instance=False # or None
     ... )
     """
 
@@ -325,7 +326,9 @@ class Annotation(StaticCollection):
     embedding: Embedding = Embedding.symbolic(
         owner="annotation", name="embedding"
     )
-    is_instance: Bool = Bool.symbolic(owner="annotation", name="is_instance")
+    is_instance: Boolean = Boolean.symbolic(
+        owner="annotation", name="is_instance"
+    )
     implied_task_types: SymbolicList[String] = SymbolicList[String].symbolic(
         owner="annotation", name="implied_task_types"
     )
@@ -384,7 +387,7 @@ class Annotation(StaticCollection):
             "polygon": Polygon.nullable,
             "raster": Raster.nullable,
             "embedding": Embedding.nullable,
-            "is_instance": Bool.nullable,
+            "is_instance": Boolean.nullable,
             "implied_task_types": SymbolicList,
         }
 

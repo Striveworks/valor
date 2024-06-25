@@ -4,6 +4,8 @@ on:
   push:
     branches: [main]
     paths:
+      - api/valor_api/main.py
+      - client/**
       - docs/**
       - .github/workflows/publish-docs.yml
       - mkdocs.yml

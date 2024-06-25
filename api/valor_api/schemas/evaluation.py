@@ -2,9 +2,15 @@ import datetime
 
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
-from valor_api.enums import AnnotationType, EvaluationStatus, TaskType
+from valor_api.enums import (
+    AnnotationType,
+    EvaluationStatus,
+    MetricType,
+    TaskType,
+)
 from valor_api.schemas.filters import Filter
 from valor_api.schemas.metrics import ConfusionMatrixResponse, Metric
+from valor_api.schemas.migrations import DeprecatedFilter
 from valor_api.schemas.types import Label
 
 LabelMapType = list[list[list[str]]]
@@ -20,7 +26,7 @@ class EvaluationParameters(BaseModel):
         The task type of a given evaluation.
     label_map: Optional[List[List[List[str]]]]
         Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
-    metrics: List[str], optional
+    metrics_to_return: List[str], optional
         The list of metrics to compute, store, and return to the user.
     convert_annotations_to_type: AnnotationType | None = None
         The type to convert all annotations to.
@@ -37,7 +43,7 @@ class EvaluationParameters(BaseModel):
     """
 
     task_type: TaskType
-    metrics_to_return: list[str] | None = None
+    metrics_to_return: list[MetricType] | None = None
     label_map: LabelMapType | None = None
 
     convert_annotations_to_type: AnnotationType | None = None
@@ -60,23 +66,26 @@ class EvaluationParameters(BaseModel):
             match values.task_type:
                 case TaskType.CLASSIFICATION:
                     values.metrics_to_return = [
-                        "Accuracy",
-                        "Precision",
-                        "Recall",
-                        "F1",
-                        "ROCAUC",
+                        MetricType.Accuracy,
+                        MetricType.Precision,
+                        MetricType.Recall,
+                        MetricType.F1,
+                        MetricType.ROCAUC,
                     ]
                 case TaskType.OBJECT_DETECTION:
                     values.metrics_to_return = [
-                        "AP",
-                        "AR",
-                        "mAP",
-                        "APAveragedOverIOUs",
-                        "mAR",
-                        "mAPAveragedOverIOUs",
+                        MetricType.AP,
+                        MetricType.AR,
+                        MetricType.mAP,
+                        MetricType.APAveragedOverIOUs,
+                        MetricType.mAR,
+                        MetricType.mAPAveragedOverIOUs,
                     ]
                 case TaskType.SEMANTIC_SEGMENTATION:
-                    values.metrics_to_return = ["IOU", "mIOU"]
+                    values.metrics_to_return = [
+                        MetricType.IOU,
+                        MetricType.mIOU,
+                    ]
 
         match values.task_type:
             case TaskType.CLASSIFICATION | TaskType.SEMANTIC_SEGMENTATION:
@@ -195,7 +204,7 @@ class EvaluationResponse(BaseModel):
     id: int
     dataset_names: list[str]
     model_name: str
-    filters: Filter
+    filters: Filter | DeprecatedFilter
     parameters: EvaluationParameters
     status: EvaluationStatus
     created_at: datetime.datetime

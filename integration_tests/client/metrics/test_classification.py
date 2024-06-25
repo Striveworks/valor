@@ -12,12 +12,13 @@ from valor import (
     Client,
     Dataset,
     Datum,
+    Filter,
     GroundTruth,
     Label,
     Model,
     Prediction,
 )
-from valor.enums import EvaluationStatus
+from valor.enums import EvaluationStatus, MetricType
 from valor.exceptions import ClientException, EvaluationRequestError
 
 
@@ -196,12 +197,12 @@ def test_evaluate_image_clf(
     # check that metrics arg works correctly
     selected_metrics = random.sample(
         [
-            "Accuracy",
-            "ROCAUC",
-            "Precision",
-            "F1",
-            "Recall",
-            "PrecisionRecallCurve",
+            MetricType.Accuracy,
+            MetricType.ROCAUC,
+            MetricType.Precision,
+            MetricType.F1,
+            MetricType.Recall,
+            MetricType.PrecisionRecallCurve,
         ],
         2,
     )
@@ -511,9 +512,7 @@ def test_stratify_clf_metrics(
 
     eval_results_val2 = model.evaluate_classification(
         dataset,
-        filter_by=[
-            Datum.metadata["md1"] == "md1-val2",
-        ],
+        filters=Filter(datums=(Datum.metadata["md1"] == "md1-val2")),  # type: ignore - issue #605
     )
     assert (
         eval_results_val2.wait_for_completion(timeout=30)
@@ -524,10 +523,7 @@ def test_stratify_clf_metrics(
     # should get the same thing if we use the boolean filter
     eval_results_bool = model.evaluate_classification(
         dataset,
-        filter_by=[
-            Datum.metadata["md3"]
-            == True  # noqa: E712 - 'is' keyword is not overloadable, so we have to use 'symbol == True'
-        ],
+        filters=Filter(datums=(Datum.metadata["md3"] == True)),  # type: ignore - issue #605 # noqa: E712
     )
     assert (
         eval_results_bool.wait_for_completion(timeout=30)
@@ -660,9 +656,7 @@ def test_stratify_clf_metrics_by_time(
 
     eval_results_val2 = model.evaluate_classification(
         dataset,
-        filter_by=[
-            Datum.metadata["md1"] == date.fromisoformat("2002-01-01"),
-        ],
+        filters=Filter(datums=(Datum.metadata["md1"] == date.fromisoformat("2002-01-01"))),  # type: ignore - issue #605
     )
     assert (
         eval_results_val2.wait_for_completion(timeout=30)
@@ -1023,13 +1017,13 @@ def test_evaluate_classification_with_label_maps(
         label_map=label_mapping,
         pr_curve_max_examples=3,
         metrics_to_return=[
-            "Precision",
-            "Recall",
-            "F1",
-            "Accuracy",
-            "ROCAUC",
-            "PrecisionRecallCurve",
-            "DetailedPrecisionRecallCurve",
+            MetricType.Precision,
+            MetricType.Recall,
+            MetricType.F1,
+            MetricType.Accuracy,
+            MetricType.ROCAUC,
+            MetricType.PrecisionRecallCurve,
+            MetricType.DetailedPrecisionRecallCurve,
         ],
     )
     assert eval_job.id
@@ -1293,3 +1287,72 @@ def test_evaluate_classification_mismatched_label_keys(
     with pytest.raises(ClientException) as e:
         model.evaluate_classification(dataset)
     assert "label keys must match" in str(e)
+
+
+def test_evaluate_classification_model_with_no_predictions(
+    client: Client,
+    gt_clfs: list[GroundTruth],
+    dataset_name: str,
+    model_name: str,
+):
+    dataset = Dataset.create(dataset_name)
+    for gt in gt_clfs:
+        dataset.add_groundtruth(gt)
+    dataset.finalize()
+
+    model = Model.create(model_name)
+    for gt in gt_clfs:
+        pd = Prediction(datum=gt.datum, annotations=[])
+        model.add_prediction(dataset, pd)
+    model.finalize_inferences(dataset)
+
+    expected_metrics = [
+        {"type": "Accuracy", "parameters": {"label_key": "k5"}, "value": 0.0},
+        {"type": "ROCAUC", "parameters": {"label_key": "k5"}, "value": 0.0},
+        {
+            "type": "Precision",
+            "value": 0.0,
+            "label": {"key": "k5", "value": "v5"},
+        },
+        {
+            "type": "Recall",
+            "value": 0.0,
+            "label": {"key": "k5", "value": "v5"},
+        },
+        {"type": "F1", "value": 0.0, "label": {"key": "k5", "value": "v5"}},
+        {"type": "Accuracy", "parameters": {"label_key": "k4"}, "value": 0.0},
+        {"type": "ROCAUC", "parameters": {"label_key": "k4"}, "value": 0.0},
+        {
+            "type": "Precision",
+            "value": 0.0,
+            "label": {"key": "k4", "value": "v4"},
+        },
+        {
+            "type": "Recall",
+            "value": 0.0,
+            "label": {"key": "k4", "value": "v4"},
+        },
+        {"type": "F1", "value": 0.0, "label": {"key": "k4", "value": "v4"}},
+        {"type": "Accuracy", "parameters": {"label_key": "k3"}, "value": 0.0},
+        {"type": "ROCAUC", "parameters": {"label_key": "k3"}, "value": 0.0},
+        {
+            "type": "Precision",
+            "value": 0.0,
+            "label": {"key": "k3", "value": "v3"},
+        },
+        {
+            "type": "Recall",
+            "value": 0.0,
+            "label": {"key": "k3", "value": "v3"},
+        },
+        {"type": "F1", "value": 0.0, "label": {"key": "k3", "value": "v3"}},
+    ]
+
+    evaluation = model.evaluate_classification(dataset)
+    assert evaluation.wait_for_completion(timeout=30) == EvaluationStatus.DONE
+
+    computed_metrics = evaluation.metrics
+
+    assert all([metric["value"] == 0 for metric in computed_metrics])
+    assert all([metric in computed_metrics for metric in expected_metrics])
+    assert all([metric in expected_metrics for metric in computed_metrics])

@@ -4,9 +4,17 @@ that is no auth
 
 import pytest
 
-from valor import Client, Dataset, Datum, GroundTruth, Model, Prediction
+from valor import (
+    Client,
+    Dataset,
+    Datum,
+    Filter,
+    GroundTruth,
+    Model,
+    Prediction,
+)
 from valor.enums import EvaluationStatus
-from valor.schemas import Constraint, Polygon
+from valor.schemas import Polygon
 
 
 def test_set_and_get_geospatial(
@@ -94,12 +102,6 @@ def test_geospatial_filter(
             (125.2750725, 38.760525),
         ]
     ]
-    geodict = {
-        "type": "Polygon",
-        "coordinates": [
-            [list(point) for point in subpoly] for subpoly in coordinates
-        ],
-    }
 
     dataset = Dataset.create(
         name=dataset_name, metadata={"geospatial": Polygon(coordinates)}
@@ -122,16 +124,11 @@ def test_geospatial_filter(
         datasets=dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
-        filter_by={
-            "dataset_metadata": {
-                "geospatial": [
-                    {
-                        "operator": "intersect",
-                        "value": geodict,
-                    }
-                ],
-            }
-        },
+        filters=Filter(
+            datasets=Dataset.metadata["geospatial"].intersects(
+                Polygon(coordinates)
+            )
+        ),
     )
     assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
     assert len(eval_job.metrics) == 16
@@ -143,7 +140,7 @@ def test_geospatial_filter(
             dataset,
             iou_thresholds_to_compute=[0.1, 0.6],
             iou_thresholds_to_return=[0.1, 0.6],
-            filter_by=[geospatial_metadatum.inside({1234: {}})],
+            filters=Filter(datums=geospatial_metadatum.inside({1234: {}})),
         )
 
     # test datums
@@ -151,14 +148,11 @@ def test_geospatial_filter(
         dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
-        filter_by=[geospatial_metadatum.intersects(Polygon(coordinates))],
+        filters=Filter(
+            datums=geospatial_metadatum.intersects(Polygon(coordinates))
+        ),
     )
     assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
-
-    assert eval_job.filters.datum_metadata
-    assert eval_job.filters.datum_metadata["geospatial"] == [
-        Constraint(value=geodict, operator="intersect")
-    ]
     assert len(eval_job.metrics) == 16
 
     # filtering by model is allowed, this is the equivalent of requesting..
@@ -167,25 +161,20 @@ def test_geospatial_filter(
         dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
-        filter_by={
-            "model_metadata": {
-                "geospatial": [
-                    {
-                        "operator": "inside",
-                        "value": {
-                            "type": "polygon",
-                            "coordinates": [
-                                [
-                                    [124.0, 37.0],
-                                    [128.0, 37.0],
-                                    [128.0, 40.0],
-                                    [124.0, 40.0],
-                                ]
-                            ],
-                        },
-                    }
-                ],
-            }
-        },
+        filters=Filter(
+            models=Model.metadata["geospatial"].inside(
+                Polygon(
+                    [
+                        [
+                            (124.0, 37.0),
+                            (128.0, 37.0),
+                            (128.0, 40.0),
+                            (124.0, 40.0),
+                            (124.0, 37.0),
+                        ]
+                    ]
+                )
+            )
+        ),
     )
     assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE

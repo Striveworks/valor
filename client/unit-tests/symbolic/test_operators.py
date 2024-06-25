@@ -2,16 +2,7 @@ from typing import Tuple
 
 import pytest
 
-from valor.schemas.symbolic.operators import (
-    And,
-    AppendableFunction,
-    Function,
-    Negate,
-    OneArgumentFunction,
-    Or,
-    TwoArgumentFunction,
-    Xor,
-)
+from valor.schemas.symbolic.operators import And, Condition, Function, Not, Or
 from valor.schemas.symbolic.types import Float, Integer, String
 
 
@@ -48,17 +39,15 @@ def test_function(variables):
 
     # test stringify w/ operator
     assert issubclass(And, Function)
-    assert And._operator is not None
     assert (
         And(x, y, z).__repr__() == "And(Integer(1), String('2'), Float(0.3))"
     )
-    assert And(x, y, z).__str__() == "(Integer(1) & String('2') & Float(0.3))"
+    assert And(x, y, z).__str__() == "And(Integer(1), String('2'), Float(0.3))"
 
     # test logical operators
     assert type(Function(x) & Function(y)) is And
     assert type(Function(x) | Function(y)) is Or
-    assert type(Function(x) ^ Function(y)) is Xor
-    assert type(~Function(x)) is Negate
+    assert type(~Function(x)) is Not
 
     # test requirement that args must have a 'to_dict' method.
     with pytest.raises(ValueError):
@@ -70,24 +59,18 @@ def test_function(variables):
 
 
 def test_appendable_function(variables):
-    assert issubclass(AppendableFunction, Function)
 
     x, y, z = variables
 
-    # test case where too few args
-    with pytest.raises(TypeError):
-        AppendableFunction(x)  # type: ignore - testing
-
     # test that all appendable functions define a overloadable function
-    assert issubclass(And, AppendableFunction)
-    assert issubclass(Or, AppendableFunction)
-    assert issubclass(Xor, AppendableFunction)
+    assert issubclass(And, Function)
+    assert issubclass(Or, Function)
 
     # test append
-    f = AppendableFunction(x, y)
-    f.append(z)
+    f = Function(x, y)
+    f._args.append(z)
     assert f.to_dict() == {
-        "op": "appendablefunction",
+        "op": "function",
         "args": [
             {"type": "integer", "value": 1},
             {"type": "string", "value": "2"},
@@ -97,7 +80,7 @@ def test_appendable_function(variables):
 
     # continue append on the subclass 'And'
     f1 = And(x, y)
-    f1.append(z)
+    f1 &= z
     assert f1.to_dict() == {
         "op": "and",
         "args": [
@@ -129,39 +112,24 @@ def test_appendable_function(variables):
             {
                 "op": "eq",
                 "lhs": {
-                    "type": "symbol",
-                    "value": {
-                        "owner": None,
-                        "name": "integer",
-                        "key": None,
-                        "attribute": None,
-                    },
+                    "name": "integer",
+                    "key": None,
                 },
                 "rhs": {"type": "integer", "value": 1},
             },
             {
                 "op": "eq",
                 "lhs": {
-                    "type": "symbol",
-                    "value": {
-                        "owner": None,
-                        "name": "string",
-                        "key": None,
-                        "attribute": None,
-                    },
+                    "name": "string",
+                    "key": None,
                 },
                 "rhs": {"type": "string", "value": "2"},
             },
             {
                 "op": "eq",
                 "lhs": {
-                    "type": "symbol",
-                    "value": {
-                        "owner": None,
-                        "name": "float",
-                        "key": None,
-                        "attribute": None,
-                    },
+                    "name": "float",
+                    "key": None,
                 },
                 "rhs": {"type": "float", "value": 0.3},
             },
@@ -170,23 +138,22 @@ def test_appendable_function(variables):
 
 
 def test_one_arg_function(variables):
-    assert issubclass(OneArgumentFunction, Function)
 
     x, _, _ = variables
-    f = OneArgumentFunction(x)
+    f = Function(x)
 
     # test dictionary generation
     assert f.to_dict() == {
-        "op": "oneargumentfunction",
-        "arg": {"type": "integer", "value": 1},
+        "op": "function",
+        "args": {"type": "integer", "value": 1},
     }
 
 
-def test_two_arg_function(variables):
-    assert issubclass(TwoArgumentFunction, Function)
-
+def test_condition(variables):
     x, y, z = variables
-    f = TwoArgumentFunction(x, y)
+
+    with pytest.warns(RuntimeWarning):
+        f = Condition(x, y)
 
     # test memebers
     assert f.lhs == x
@@ -194,14 +161,20 @@ def test_two_arg_function(variables):
 
     # test dictionary generation
     assert f.to_dict() == {
-        "op": "twoargumentfunction",
+        "op": "condition",
         "lhs": {"type": "integer", "value": 1},
         "rhs": {"type": "string", "value": "2"},
     }
 
-    # test cases where too few args are provided
-    with pytest.raises(TypeError):
-        TwoArgumentFunction(x)  # type: ignore - testing
+    with pytest.warns(RuntimeWarning):
+        f = Condition(x)
+
+    assert f.to_dict() == {
+        "op": "condition",
+        "lhs": {"type": "integer", "value": 1},
+        "rhs": None,
+    }
+
     # test case where too many args are provided
     with pytest.raises(TypeError):
-        TwoArgumentFunction(x, y, z)  # type: ignore - testing
+        Condition(x, y, z)  # type: ignore - testing

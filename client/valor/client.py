@@ -2,7 +2,7 @@ import json
 import logging
 import os
 import time
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from typing import Callable, Dict, List, Optional, TypeVar, Union
 from urllib.parse import urlencode, urljoin
 
@@ -17,7 +17,6 @@ from valor.exceptions import (
     ClientNotConnectedError,
     raise_client_exception,
 )
-from valor.schemas import EvaluationRequest
 
 T = TypeVar("T")
 
@@ -404,7 +403,7 @@ class ClientConnection:
         """
         Gets all labels using an optional filter.
 
-        `GET` endpoint.
+        `POST` endpoint.
 
         Parameters
         ----------
@@ -414,12 +413,12 @@ class ClientConnection:
         Returns
         -------
         list[dict]
-            A list of labels.
+            A list of labels in JSON format.
         """
-        kwargs = {}
-        if filters:
-            kwargs["params"] = {k: json.dumps(v) for k, v in filters.items()}
-        return self._requests_get_rel_host("labels", **kwargs).json()
+        filters = filters if filters else dict()
+        return self._requests_post_rel_host(
+            "labels/filter", json=filters
+        ).json()
 
     def get_labels_from_dataset(self, name: str) -> List[dict]:
         """
@@ -474,7 +473,7 @@ class ClientConnection:
         """
         Get all datasets with option to filter.
 
-        `GET` endpoint.
+        `POST` endpoint.
 
         Parameters
         ----------
@@ -484,12 +483,12 @@ class ClientConnection:
         Returns
         ------
         List[dict]
-            A list of dictionaries describing all the datasets attributed to the `Client` object.
+            A list of datasets in JSON format.
         """
-        kwargs = {}
-        if filters:
-            kwargs["params"] = {k: json.dumps(v) for k, v in filters.items()}
-        return self._requests_get_rel_host("datasets", **kwargs).json()
+        filters = filters if filters else dict()
+        return self._requests_post_rel_host(
+            "datasets/filter", json=filters
+        ).json()
 
     def get_dataset(self, name: str) -> dict:
         """
@@ -576,7 +575,7 @@ class ClientConnection:
         """
         Get all datums using an optional filter.
 
-        `GET` endpoint.
+        `POST` endpoint.
 
         Parameters
         ----------
@@ -586,12 +585,10 @@ class ClientConnection:
         Returns
         -------
         List[dict]
-            A list of dictionaries describing all the datums of the specified dataset.
+            A list of datums in JSON format.
         """
-        kwargs = {}
-        if filters:
-            kwargs["params"] = {k: json.dumps(v) for k, v in filters.items()}
-        return self._requests_get_rel_host("data", **kwargs).json()
+        filters = filters if isinstance(filters, dict) else dict()
+        return self._requests_post_rel_host("data/filter", json=filters).json()
 
     def get_datum(
         self,
@@ -633,7 +630,7 @@ class ClientConnection:
         """
         Get all models using an optional filter.
 
-        `GET` endpoint.
+        `POST` endpoint.
 
         Parameters
         ----------
@@ -643,12 +640,12 @@ class ClientConnection:
         Returns
         ------
         List[dict]
-            A list of dictionaries describing all the models.
+            A list of models in JSON format.
         """
-        kwargs = {}
-        if filters:
-            kwargs["params"] = {k: json.dumps(v) for k, v in filters.items()}
-        return self._requests_get_rel_host("models", **kwargs).json()
+        filters = filters if filters else dict()
+        return self._requests_post_rel_host(
+            "models/filter", json=filters
+        ).json()
 
     def get_model(self, name: str) -> dict:
         """
@@ -752,7 +749,7 @@ class ClientConnection:
         self._requests_delete_rel_host(f"models/{name}")
 
     def evaluate(
-        self, request: EvaluationRequest, allow_retries: bool = False
+        self, request: dict, allow_retries: bool = False
     ) -> List[dict]:
         """
         Creates as many evaluations as necessary to fulfill the request.
@@ -761,7 +758,7 @@ class ClientConnection:
 
         Parameters
         ----------
-        request : schemas.EvaluationRequest
+        request : dict
             The requested evaluation parameters.
         allow_retries : bool, default = False
             Option to retry previously failed evaluations.
@@ -773,9 +770,7 @@ class ClientConnection:
         """
         query_str = urlencode({"allow_retries": allow_retries})
         endpoint = f"evaluations?{query_str}"
-        return self._requests_post_rel_host(
-            endpoint, json=asdict(request)
-        ).json()
+        return self._requests_post_rel_host(endpoint, json=request).json()
 
     def get_evaluations(
         self,
@@ -835,6 +830,19 @@ class ClientConnection:
         endpoint = f"evaluations?{query_str}"
 
         return self._requests_get_rel_host(endpoint).json()
+
+    def delete_evaluation(self, evaluation_id: int) -> None:
+        """
+        Deletes an evaluation.
+
+        `DELETE` endpoint.
+
+        Parameters
+        ----------
+        evaluation_id : int
+            The id of the evaluation to be deleted.
+        """
+        self._requests_delete_rel_host(f"evaluations/{evaluation_id}")
 
     def get_user(self) -> Union[str, None]:
         """
