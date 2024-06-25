@@ -1,3 +1,4 @@
+# 38-40, 48, 59, 68, 87-103, 146-149, 158-183, 212-214, 222-225, 236-243, 252-266
 from typing import Any
 
 import openai
@@ -44,7 +45,7 @@ class LLMClient:
         self,
     ):
         """
-        Setup the connection to the API.
+        Setup the connection to the API. Not implemented for parent class.
         """
         raise NotImplementedError
 
@@ -53,18 +54,16 @@ class LLMClient:
         messages: list[dict[str, str]],
     ) -> Any:
         """
-        All messages should be formatted according to the standard set by OpenAI, and should be modified
-        as needed for other models. This function takes in messages in the OpenAI standard format and converts
-        them to the format required by the model.
+        Process messages from the API. Not implemented for parent class.
         """
-        return messages
+        raise NotImplementedError
 
     def __call__(
         self,
         messages: list[dict[str, str]],
     ) -> Any:
         """
-        Call to the API.
+        Call to the API. Not implemented for parent class.
         """
         raise NotImplementedError
 
@@ -104,7 +103,7 @@ class LLMClient:
         return ret
 
 
-class WrappedOpenAIClient(LLMClient):
+class OpenAIClient(LLMClient):
     """
     Wrapper for calls to OpenAI's API.
 
@@ -184,7 +183,7 @@ class WrappedOpenAIClient(LLMClient):
         return response
 
 
-class WrappedMistralClient(LLMClient):
+class MistralAIClient(LLMClient):
     """
     Wrapper for calls to Mistral's API.
 
