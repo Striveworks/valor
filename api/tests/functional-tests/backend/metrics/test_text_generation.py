@@ -6,11 +6,6 @@ from sqlalchemy.orm import Session
 from valor_api import crud, enums, schemas
 from valor_api.backend import models
 from valor_api.backend.core import create_or_get_evaluations
-
-# from valor_api.backend.metrics.llm_call import (
-#     WrappedMistralClient,
-#     WrappedOpenAIClient,
-# )
 from valor_api.backend.metrics.text_generation import (
     _calculate_rouge_scores,
     _calculate_sentence_bleu,
@@ -182,11 +177,11 @@ def text_generation_test_data(db: Session, dataset_name: str, model_name: str):
 
 
 @patch(
-    "valor_api.backend.metrics.llm_call.WrappedOpenAIClient.connect",
+    "valor_api.backend.core.llm_clients.WrappedOpenAIClient.connect",
     mocked_connection,
 )
 @patch(
-    "valor_api.backend.metrics.llm_call.WrappedOpenAIClient.coherence",
+    "valor_api.backend.core.llm_clients.WrappedOpenAIClient.coherence",
     mocked_openai_coherence,
 )
 def test__compute_text_generation(
@@ -305,11 +300,11 @@ def test__compute_text_generation(
 
 
 @patch(
-    "valor_api.backend.metrics.llm_call.WrappedOpenAIClient.connect",
+    "valor_api.backend.core.llm_clients.WrappedOpenAIClient.connect",
     mocked_connection,
 )
 @patch(
-    "valor_api.backend.metrics.llm_call.WrappedOpenAIClient.coherence",
+    "valor_api.backend.core.llm_clients.WrappedOpenAIClient.coherence",
     mocked_openai_coherence,
 )
 def test_text_generation(

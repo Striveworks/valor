@@ -1,7 +1,8 @@
 from typing import Any
 
 import openai
-from mistralai.client import MistralAPIException, MistralClient
+from mistralai.client import MistralClient
+from mistralai.exceptions import MistralAPIException
 from mistralai.models.chat_completion import ChatMessage
 
 COHERENCE_INSTRUCTION = """You are a helpful assistant. You will grade the user's text. Your task is to rate the text based on its coherence. Please make sure you read and understand these instructions carefully. Please keep this document open while reviewing, and refer to it as needed.
