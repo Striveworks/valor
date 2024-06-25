@@ -10,41 +10,38 @@ DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant."
 def get_coherence_instruction(text: str):
     """
     This instruction was adapted from appendix A of Deepeval's paper G-EVAL: NLG Evaluation using GPT-4 with Better Human Alignment (https://arxiv.org/pdf/2303.16634).
-
     The main adaptation is a generalization of the metric to more task types. The example prompt in Deepeval was specific to summarization, but the below prompt could apply to any text generation task.
-
     Crucially, no context is used. Instead, the coherence of the source text is evaluated entirely based on the source text. This generalizes the prompt and also prevents the evaluation from being influenced by the quality of sentences in the context.
-
     Parameters
     ----------
     text: str
         The text to be evaluated.
-
     Returns
     -------
     str
         The instruction for the llm.
     """
-    return f"""You are a helpful assistant. You will grade the source text. Your task is to rate the source text based on its coherence. Please make sure you read and understand these instructions carefully. Please keep this document open while reviewing, and refer to it as needed.
+    return f"""
+    You are a helpful assistant. You will grade the source text. Your task is to rate the source text based on its coherence. Please make sure you read and understand these instructions carefully. Please keep this document open while reviewing, and refer to it as needed.
 
-Evaluation Criteria:
-Coherence (1-5) - the collective quality of all sentences. We align this dimension with the DUC quality question of structure and coherence whereby ”the summary should be well-structured and well-organized. The summary should not just be a heap of related information, but should build from sentence to sentence to a coherent body of information about a topic.”
+    Evaluation Criteria:
+    Coherence (1-5) - the collective quality of all sentences. We align this dimension with the DUC quality question of structure and coherence whereby ”the summary should be well-structured and well-organized. The summary should not just be a heap of related information, but should build from sentence to sentence to a coherent body of information about a topic.”
 
-Evaluation Steps:
-1. Read the source text carefully and identify the main topic and key points.
-2. Check if the source text presents the information in a clear and logical order. Examine the collective quality of the sentences.
-3. Assign a score for coherence on a scale of 1 to 5, where 1 is the lowest and 5 is the highest based on the Evaluation Criteria. Respond with just the number 1 to 5.
+    Evaluation Steps:
+    1. Read the source text carefully and identify the main topic and key points.
+    2. Check if the source text presents the information in a clear and logical order. Examine the collective quality of the sentences.
+    3. Assign a score for coherence on a scale of 1 to 5, where 1 is the lowest and 5 is the highest based on the Evaluation Criteria. Respond with just the number 1 to 5.
 
-Source Text:
-{text}
-"""
+    Source Text:
+    {text}
+    """
 
 
 class LLMClient:
     """
-    Wrapper for calls to an LLM API.
+    Parent class for all LLM clients.
 
-    Parameters
+    Attributes
     ----------
     api_key : str, optional
         The API key to use.
@@ -71,7 +68,7 @@ class LLMClient:
         self,
     ):
         """
-        Setup the connection to the API.
+        Setup the connection to the API. Not implemented for parent class.
         """
         raise NotImplementedError
 
@@ -99,7 +96,7 @@ class LLMClient:
         messages: list[dict[str, str]],
     ) -> Any:
         """
-        Call to the API.
+        Call to the API. Not implemented for parent class.
         """
         raise NotImplementedError
 
@@ -143,7 +140,7 @@ class WrappedOpenAIClient(LLMClient):
     """
     Wrapper for calls to OpenAI's API.
 
-    Parameters
+    Attributes
     ----------
     api_key : str, optional
         The OpenAI API key to use. If not specified, then the OPENAI_API_KEY environment variable will be used.
@@ -191,6 +188,7 @@ class WrappedOpenAIClient(LLMClient):
         Call to the API.
         """
         processed_messages = self.process_messages(messages)
+
         openai_response = self.client.chat.completions.create(
             model=self.model_name,
             messages=processed_messages,
@@ -200,6 +198,7 @@ class WrappedOpenAIClient(LLMClient):
         finish_reason = openai_response.choices[
             0
         ].finish_reason  # Enum: "stop" "length" "content_filter" "tool_calls" "function_call"
+
         response = openai_response.choices[0].message.content
 
         if finish_reason == "length":
@@ -214,11 +213,11 @@ class WrappedOpenAIClient(LLMClient):
         return response
 
 
-class WrappedMistralClient(LLMClient):
+class WrappedMistralAIClient(LLMClient):
     """
     Wrapper for calls to Mistral's API.
 
-    Parameters
+    Attributes
     ----------
     api_key : str, optional
         The Mistral API key to use. If not specified, then the MISTRAL_API_KEY environment variable will be used.
@@ -273,7 +272,8 @@ class WrappedMistralClient(LLMClient):
         for i in range(len(messages)):
             ret.append(
                 ChatMessage(
-                    role=messages[i]["role"], content=messages[i]["content"]
+                    role=messages[i]["role"],
+                    content=messages[i]["content"],
                 )
             )
         return ret
@@ -295,6 +295,12 @@ class WrappedMistralClient(LLMClient):
             0
         ].finish_reason  # Enum: "stop" "length" "model_length" "error" "tool_calls"
         response = mistral_response.choices[0].message.content
+        finish_reason = mistral_response.choices[0].finish_reason
+
+        if finish_reason == "length":
+            raise ValueError(
+                "MistralAI response reached max token limit. Resulting evaluation is likely invalid or of low quality."
+            )
 
         if finish_reason == "length":
             raise ValueError(

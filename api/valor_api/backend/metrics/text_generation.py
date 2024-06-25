@@ -13,7 +13,7 @@ from valor_api import schemas
 from valor_api.backend import core, models
 from valor_api.backend.core.llm_clients import (
     LLMClient,
-    WrappedMistralClient,
+    WrappedMistralAIClient,
     WrappedOpenAIClient,
 )
 from valor_api.backend.metrics.metric_utils import (  # log_evaluation_item_counts,
@@ -249,7 +249,7 @@ def setup_llm_client(
         if llm_api_params["client"] == "openai":
             client_cls = WrappedOpenAIClient
         elif llm_api_params["client"] == "mistral":
-            client_cls = WrappedMistralClient
+            client_cls = WrappedMistralAIClient
         else:
             raise ValueError(
                 f"Client {llm_api_params['client']} is not supported."
