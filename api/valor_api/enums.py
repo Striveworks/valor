@@ -132,3 +132,5 @@ class MetricType(str, Enum):
     mIOU = "mIOU"
     PrecisionRecallCurve = "PrecisionRecallCurve"
     DetailedPrecisionRecallCurve = "DetailedPrecisionRecallCurve"
+    CramerVonMises = "CramerVonMises"
+    KolmgorovSmirnov = "KolmgorovSmirnov"

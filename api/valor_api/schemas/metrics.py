@@ -1,6 +1,7 @@
 import numpy as np
 from pydantic import BaseModel, ConfigDict, field_validator
 
+from valor_api.enums import MetricType
 from valor_api.schemas.types import Label
 
 
@@ -20,7 +21,7 @@ class Metric(BaseModel):
         The `Label` for the metric.
     """
 
-    type: str
+    type: MetricType
     parameters: dict | None = None
     value: float | dict | None = None
     label: Label | None = None
@@ -745,3 +746,42 @@ class mIOUMetric(BaseModel):
             "evaluation_id": evaluation_id,
             "parameters": {"label_key": self.label_key},
         }
+
+
+class _EmbeddingMetric(BaseModel):
+    statistics: dict[str, dict[str, float]]
+    pvalues: dict[str, dict[str, float]]
+
+    def db_mapping(self, evaluation_id: int, type_name: str) -> dict:
+        """
+        Creates a mapping for use when uploading the metric to the database.
+
+        Parameters
+        ----------
+        evaluation_id : int
+            The evaluation id.
+
+        Returns
+        ----------
+        A mapping dictionary.
+        """
+        return {
+            "value": {
+                "statistics": self.statistics,
+                "pvalues": self.pvalues,
+            },
+            "type": type_name,
+            "evaluation_id": evaluation_id,
+        }
+
+
+class CramerVonMisesMetric(_EmbeddingMetric):
+    def db_mapping(self, evaluation_id: int, type_name: str) -> dict:
+        type_name = MetricType.CramerVonMises
+        return super().db_mapping(evaluation_id, type_name)
+
+
+class KolmgorovSmirnovMetric(_EmbeddingMetric):
+    def db_mapping(self, evaluation_id: int, type_name: str) -> dict:
+        type_name = MetricType.KolmgorovSmirnov
+        return super().db_mapping(evaluation_id, type_name)
