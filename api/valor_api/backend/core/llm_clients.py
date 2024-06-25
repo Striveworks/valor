@@ -4,20 +4,37 @@ import openai
 from mistralai.client import MistralClient
 from mistralai.models.chat_completion import ChatMessage
 
+DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant."
 
-def _get_instruction(metric: str):
-    """Fetch the instruction associated with a particular metric type."""
-    instruction_dict = {
-        "coherence": """You are a helpful assistant. You will grade the user's text. Your task is to rate the text based on its coherence. Please make sure you read and understand these instructions carefully. Please keep this document open while reviewing, and refer to it as needed.
-Evaluation Criteria:
-Coherence (1-5) - the collective quality of all sentences. We align this dimension with the DUC quality question of structure and coherence whereby ”the summary should be well-structured and well-organized. The summary should not just be a heap of related information, but should build from sentence to sentence to a coherent body of information about a topic.”
-Evaluation Steps:
-1. Read the text carefully and identify the main topic and key points.
-2. Assign a score for coherence on a scale of 1 to 5, where 1 is the lowest and 5 is the highest based on the Evaluation Criteria. Respond with just the number 1 to 5."""
-    }
+def get_coherence_instruction(text: str):
+    """
+    This instruction was adapted from appendix A of Deepeval's paper G-EVAL: NLG Evaluation using GPT-4 with Better Human Alignment (https://arxiv.org/pdf/2303.16634).
+    The main adaptation is a generalization of the metric to more task types. The example prompt in Deepeval was specific to summarization, but the below prompt could apply to any text generation task.
+    Crucially, no context is used. Instead, the coherence of the source text is evaluated entirely based on the source text. This generalizes the prompt and also prevents the evaluation from being influenced by the quality of sentences in the context.
+    Parameters
+    ----------
+    text: str
+        The text to be evaluated.
+    Returns
+    -------
+    str
+        The instruction for the llm.
+    """
+    return f"""
+    You are a helpful assistant. You will grade the source text. Your task is to rate the source text based on its coherence. Please make sure you read and understand these instructions carefully. Please keep this document open while reviewing, and refer to it as needed.
 
-    return instruction_dict[metric]
-
+    Evaluation Criteria:
+    Coherence (1-5) - the collective quality of all sentences. We align this dimension with the DUC quality question of structure and coherence whereby ”the summary should be well-structured and well-organized. The summary should not just be a heap of related information, but should build from sentence to sentence to a coherent body of information about a topic.”
+    
+    Evaluation Steps:
+    1. Read the source text carefully and identify the main topic and key points.
+    2. Check if the source text presents the information in a clear and logical order. Examine the collective quality of the sentences.
+    3. Assign a score for coherence on a scale of 1 to 5, where 1 is the lowest and 5 is the highest based on the Evaluation Criteria. Respond with just the number 1 to 5.
+    
+    Source Text:
+    {text}
+    """
+  
 
 class LLMClient:
     """
@@ -59,7 +76,17 @@ class LLMClient:
         messages: list[dict[str, str]],
     ) -> Any:
         """
-        Process messages from the API. By default, we don't do any processing and just return the inputted messages.
+        Format messages for the API.
+
+        Parameters
+        ----------
+        messages: list[dict[str, str]]
+            The messages formatted according to the OpenAI standard. Each message in messages is a dictionary with "role" and "content" keys.
+
+        Returns
+        -------
+        Any
+            The messages formatted for the API. By default, the messages are left in the OpenAI format.
         """
         return messages
 
@@ -90,8 +117,8 @@ class LLMClient:
             The coherence score will be evaluated as an integer, with 1 indicating the lowest coherence and 5 the highest coherence.
         """
         messages = [
-            {"role": "system", "content": _get_instruction("coherence")},
-            {"role": "user", "content": text},
+            {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
+            {"role": "user", "content": get_coherence_instruction(text)},
         ]
 
         response = self(messages)
@@ -99,7 +126,7 @@ class LLMClient:
         try:
             # Valid responses: "5", "\n5", "5\n", "5.", " 5", "5 {explanation}", etc.
             ret = int(response.strip()[0])
-            assert ret in [1, 2, 3, 4, 5]
+            assert ret in {1, 2, 3, 4, 5}
         except Exception:
             raise ValueError(
                 f"LLM response was not a valid coherence score: {response}"
@@ -124,7 +151,7 @@ class WrappedOpenAIClient(LLMClient):
 
     api_key: str | None = None
     seed: int | None = None
-    model_name: str = "gpt-3.5-turbo"  # gpt-3.5-turbo gpt-4-turbo gpt-4o
+    model_name: str = "gpt-3.5-turbo"
 
     def __init__(
         self,
@@ -160,16 +187,17 @@ class WrappedOpenAIClient(LLMClient):
         Call to the API.
         """
         processed_messages = self.process_messages(messages)
-        try:
-            openai_response = self.client.chat.completions.create(
-                model=self.model_name,
-                messages=processed_messages,
-                seed=self.seed,
-            )
-        except Exception as e:
-            raise ValueError(f"OpenAI API request failed with error: {e}")
 
-        finish_reason = openai_response.choices[0].finish_reason
+        openai_response = self.client.chat.completions.create(
+            model=self.model_name,
+            messages=processed_messages,
+            seed=self.seed,
+        )
+
+        finish_reason = openai_response.choices[
+            0
+        ].finish_reason  # Enum: "stop" "length" "content_filter" "tool_calls" "function_call"
+
         response = openai_response.choices[0].message.content
 
         if finish_reason == "length":
@@ -196,11 +224,8 @@ class WrappedMistralAIClient(LLMClient):
         The model to use. Defaults to "mistral-small-latest".
     """
 
-    # url: str
     api_key: str | None = None
-    model_name: str = (
-        "mistral-small-latest"  # mistral-small-latest mistral-large-latest
-    )
+    model_name: str = "mistral-small-latest"
 
     def __init__(
         self,
@@ -230,9 +255,17 @@ class WrappedMistralAIClient(LLMClient):
         messages: list[dict[str, str]],
     ) -> Any:
         """
-        All messages should be formatted according to the standard set by OpenAI, and should be modified
-        as needed for other models. This function takes in messages in the OpenAI standard format and converts
-        them to the format required by the model.
+        Format messages for Mistral's API.
+
+        Parameters
+        ----------
+        messages: list[dict[str, str]]
+            The messages formatted according to the OpenAI standard. Each message in messages is a dictionary with "role" and "content" keys.
+
+        Returns
+        -------
+        Any
+            The messages formatted for Mistral's API. Each message is converted to a mistralai.models.chat_completion.ChatMessage object.
         """
         ret = []
         for i in range(len(messages)):
@@ -252,20 +285,25 @@ class WrappedMistralAIClient(LLMClient):
         Call to the API.
         """
         processed_messages = self.process_messages(messages)
-        try:
-            mistral_response = self.client.chat(
-                model=self.model_name,
-                messages=processed_messages,
-            )
-        except Exception as e:
-            raise ValueError(f"Mistral API request failed with error: {e}")
+        mistral_response = self.client.chat(
+            model=self.model_name,
+            messages=processed_messages,
+        )
 
+        finish_reason = mistral_response.choices[
+            0
+        ].finish_reason  # Enum: "stop" "length" "model_length" "error" "tool_calls"
         response = mistral_response.choices[0].message.content
         finish_reason = mistral_response.choices[0].finish_reason
 
         if finish_reason == "length":
             raise ValueError(
                 "MistralAI response reached max token limit. Resulting evaluation is likely invalid or of low quality."
+            )
+
+        if finish_reason == "length":
+            raise ValueError(
+                "Mistral response reached max token limit. Resulting evaluation is likely invalid or of low quality."
             )
 
         return response

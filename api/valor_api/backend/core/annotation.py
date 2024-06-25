@@ -68,7 +68,6 @@ def _create_annotation(
     polygon = None
     raster = None
     embedding_id = None
-    text = None
     context = None
 
     if annotation.bounding_box:
@@ -79,8 +78,6 @@ def _create_annotation(
         raster = annotation.raster.to_psql()
     if annotation.embedding:
         embedding_id = _create_embedding(db=db, value=annotation.embedding)
-    if annotation.text:
-        text = annotation.text
     if annotation.context:
         if isinstance(annotation.context, str):
             context = [annotation.context]
@@ -96,7 +93,7 @@ def _create_annotation(
         "polygon": polygon,
         "raster": raster,
         "embedding_id": embedding_id,
-        "text": text,
+        "text": annotation.text,
         "context": context,
         "is_instance": annotation.is_instance,
         "implied_task_types": annotation.implied_task_types,
@@ -258,8 +255,6 @@ def get_annotation(
     polygon = None
     raster = None
     embedding = None
-    text = None
-    context = None
 
     # bounding box
     if annotation.box is not None:
@@ -293,14 +288,6 @@ def get_annotation(
             )
         )
 
-    # text
-    if annotation.text is not None:
-        text = annotation.text
-
-    # context
-    if annotation.context is not None:
-        context = annotation.context
-
     return schemas.Annotation(
         labels=labels,
         metadata=annotation.meta,
@@ -308,8 +295,8 @@ def get_annotation(
         polygon=polygon,
         raster=raster,
         embedding=embedding,
-        text=text,
-        context=context,
+        text=annotation.text,
+        context=annotation.context,
         is_instance=annotation.is_instance,
         implied_task_types=annotation.implied_task_types,
     )
