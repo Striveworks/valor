@@ -54,9 +54,9 @@ class LLMClient:
         messages: list[dict[str, str]],
     ) -> Any:
         """
-        Process messages from the API. Not implemented for parent class.
+        Process messages from the API. By default, we don't do any processing and just return the inputted messages.
         """
-        raise NotImplementedError
+        return messages
 
     def __call__(
         self,
@@ -162,15 +162,12 @@ class OpenAIClient(LLMClient):
                 messages=processed_messages,
                 seed=self.seed,
             )
-        # TODO Should we catch this if we aren't going to do anything?
         except openai.BadRequestError as e:
             raise ValueError(f"OpenAI API request failed with error: {e}")
 
-        # token_usage = openai_response.usage  # TODO Should we report token usage to user?
         finish_reason = openai_response.choices[0].finish_reason
         response = openai_response.choices[0].message.content
 
-        # TODO These seem hard to test, so should we remove them?
         if finish_reason == "length":
             raise ValueError(
                 "OpenAI response reached max token limit. Resulting evaluation is likely invalid or of low quality."
@@ -237,7 +234,8 @@ class MistralAIClient(LLMClient):
         for i in range(len(messages)):
             ret.append(
                 ChatMessage(
-                    role=messages[i]["role"], content=messages[i]["content"]
+                    role=messages[i]["role"],
+                    content=messages[i]["content"],
                 )
             )
         return ret

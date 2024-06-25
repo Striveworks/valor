@@ -1,6 +1,13 @@
+import openai
 import pytest
+from mistralai.exceptions import MistralException
+from mistralai.models.chat_completion import ChatMessage
 
-from valor_api.backend.core.llm_clients import LLMClient
+from valor_api.backend.core.llm_clients import (
+    LLMClient,
+    MistralAIClient,
+    OpenAIClient,
+)
 
 
 def test_LLMClient(monkeypatch):
@@ -19,8 +26,7 @@ def test_LLMClient(monkeypatch):
     with pytest.raises(NotImplementedError):
         client.connect()
 
-    with pytest.raises(NotImplementedError):
-        client.process_messages(fake_message)
+    fake_message = client.process_messages(fake_message)
 
     with pytest.raises(NotImplementedError):
         client(fake_message)
@@ -41,3 +47,34 @@ def test_LLMClient(monkeypatch):
 
     with pytest.raises(ValueError):
         client.coherence("some text")
+
+
+def test_OpenAIClient(monkeypatch):
+
+    client = OpenAIClient(api_key=None, model_name="model_name")
+
+    fake_message = [{"key": "value"}]
+
+    with pytest.raises(openai.OpenAIError):
+        client.connect()
+
+    assert fake_message == client.process_messages(fake_message)
+
+
+def test_MistralAIClient(monkeypatch):
+    client = MistralAIClient(api_key=None, model_name="model_name")
+
+    fake_message = [{"role": "role", "content": "content"}]
+
+    with pytest.raises(MistralException):
+        client.connect()
+
+    assert [
+        ChatMessage(
+            role="role",
+            content="content",
+            name=None,
+            tool_calls=None,
+            tool_call_id=None,
+        )
+    ] == client.process_messages(fake_message)
