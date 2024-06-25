@@ -25,7 +25,7 @@ connect("http://0.0.0.0:8000")
 client = Client()
 dset = Dataset.create(name="bird-identification")
 model = Model.create(name="some_model")
-PAIR_LIMIT = 10
+PAIR_LIMIT = 500
 
 
 def time_func(func):
@@ -42,20 +42,22 @@ def time_func(func):
 def write_results_to_file(write_path: str, result_dict: dict):
     current_datetime = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
 
-    with open(write_path, "a+") as f:
-        try:
-            result = json.load(f)
-        except json.JSONDecodeError:
-            result = {}
-        result[current_datetime] = result_dict
-        f.write(json.dumps(result))
+    with open(write_path, "a+") as file:
+        file.seek(0)
+        data = json.load(file)
+
+    data[current_datetime] = result_dict
+
+    with open(write_path, "w+") as file:
+        json.dump(data, file, indent=4)
 
 
-def ingest_groundtruths_and_predictions(raw: dict):
-    number_of_pairs = len(raw["groundtruth_prediction_pairs"])
+def ingest_groundtruths_and_predictions(raw: dict, pair_limit: int):
     groundtruths = []
     predictions = []
-    for groundtruth, prediction in raw["groundtruth_prediction_pairs"]:
+    for groundtruth, prediction in raw["groundtruth_prediction_pairs"][
+        :pair_limit
+    ]:
         groundtruths.append(
             GroundTruth(
                 datum=Datum(
@@ -100,11 +102,6 @@ def ingest_groundtruths_and_predictions(raw: dict):
             )
         )
 
-    assert (
-        len(predictions) == number_of_pairs
-        and len(groundtruths) == number_of_pairs
-    )
-
     for gt in groundtruths:
         dset.add_groundtruth(gt)
 
@@ -142,7 +139,7 @@ def time_functions():
 
     start_time = time()
 
-    ingest_groundtruths_and_predictions(raw=raw)
+    ingest_groundtruths_and_predictions(raw=raw, pair_limit=PAIR_LIMIT)
     ingest_time = f"{(time() - start_time):.4f}"
 
     run_base_evaluation(dset=dset, model=model)
