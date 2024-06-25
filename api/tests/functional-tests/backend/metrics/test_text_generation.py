@@ -162,11 +162,11 @@ def text_generation_test_data(db: Session, dataset_name: str, model_name: str):
 
 
 @patch(
-    "valor_api.backend.metrics.llm_call.WrappedOpenAIClient.connect",
+    "valor_api.backend.core.llm_clients.WrappedOpenAIClient.connect",
     mocked_connection,
 )
 @patch(
-    "valor_api.backend.metrics.llm_call.WrappedOpenAIClient.coherence",
+    "valor_api.backend.core.llm_clients.WrappedOpenAIClient.coherence",
     mocked_openai_coherence,
 )
 def test__compute_text_generation(
@@ -263,7 +263,6 @@ def test__compute_text_generation(
     assert metrics
     for metric in metrics:
         assert isinstance(metric.parameters, dict)
-
         assert (
             expected_values[metric.parameters["datum_uid"]].get(type(metric))  # type: ignore
             == metric.value
@@ -271,11 +270,11 @@ def test__compute_text_generation(
 
 
 @patch(
-    "valor_api.backend.metrics.llm_call.WrappedOpenAIClient.connect",
+    "valor_api.backend.core.llm_clients.WrappedOpenAIClient.connect",
     mocked_connection,
 )
 @patch(
-    "valor_api.backend.metrics.llm_call.WrappedOpenAIClient.coherence",
+    "valor_api.backend.core.llm_clients.WrappedOpenAIClient.coherence",
     mocked_openai_coherence,
 )
 def test_text_generation(
