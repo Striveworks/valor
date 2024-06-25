@@ -1,5 +1,6 @@
 # %%
 import json
+from datetime import datetime
 from time import time
 
 from valor import (
@@ -15,6 +16,7 @@ from valor import (
     enums,
 )
 
+write_path = "./results.json"
 path = "./pr-curve-oom-data.json"
 with open(path) as f:
     raw = json.load(f)
@@ -24,6 +26,7 @@ connect("http://0.0.0.0:8000")
 client = Client()
 dset = Dataset.create(name="bird-identification")
 model = Model.create(name="some_model")
+PAIR_LIMIT = 10
 
 
 # %%
@@ -38,7 +41,18 @@ def time_func(func):
     return wrap_func
 
 
-@time_func
+def write_results_to_file(write_path: str, result_dict: dict):
+    current_datetime = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+
+    with open(write_path, "a+") as f:
+        try:
+            result = json.load(f)
+        except json.JSONDecodeError:
+            result = {}
+        result[current_datetime] = result_dict
+        f.write(json.dumps(result))
+
+
 def ingest_groundtruths_and_predictions(raw: dict):
     number_of_pairs = len(raw["groundtruth_prediction_pairs"])
     groundtruths = []
@@ -103,14 +117,12 @@ def ingest_groundtruths_and_predictions(raw: dict):
     model.finalize_inferences(dataset=dset)
 
 
-@time_func
 def run_base_evaluation(dset, model):
     evaluation = model.evaluate_classification(dset)
     evaluation.wait_for_completion()
     return evaluation
 
 
-@time_func
 def run_pr_curve_evaluation(dset, model):
     evaluation = model.evaluate_classification(
         dset,
@@ -128,16 +140,30 @@ def run_pr_curve_evaluation(dset, model):
     return evaluation
 
 
+def time_functions():
+
+    start_time = time()
+
+    ingest_groundtruths_and_predictions(raw=raw)
+    ingest_time = f"{(time() - start_time):.4f}"
+
+    run_base_evaluation(dset=dset, model=model)
+    base_time = f"{(time() - start_time):.4f}"
+
+    run_pr_curve_evaluation(dset=dset, model=model)
+    pr_time = f"{(time() - start_time):.4f}"
+
+    results = {
+        "limit": PAIR_LIMIT,
+        "ingest": ingest_time,
+        "base": base_time,
+        "pr": pr_time,
+    }
+    write_results_to_file(write_path=write_path, result_dict=results)
+    return results
+
+
 # %%
-
-ingest_groundtruths_and_predictions(raw=raw)
-
-# %%
-run_base_evaluation(dset=dset, model=model)
-
+time_functions()
 
 # %%
-run_pr_curve_evaluation(dset=dset, model=model)
-
-# %%
-raw["class_labels"]
