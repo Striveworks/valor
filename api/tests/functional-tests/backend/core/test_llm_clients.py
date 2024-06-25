@@ -50,7 +50,7 @@ def test_LLMClient(monkeypatch):
 
     assert 5 == client.coherence("some text")
 
-    # patch __call__ with a valid response
+    # patch __call__ with an invalid response
     monkeypatch.setattr(
         "valor_api.backend.core.llm_clients.LLMClient.__call__",
         _return_invalid_response,
