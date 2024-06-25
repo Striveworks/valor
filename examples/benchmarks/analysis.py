@@ -21,7 +21,6 @@ path = "./pr-curve-oom-data.json"
 with open(path) as f:
     raw = json.load(f)
 
-# %%
 connect("http://0.0.0.0:8000")
 client = Client()
 dset = Dataset.create(name="bird-identification")
@@ -29,7 +28,6 @@ model = Model.create(name="some_model")
 PAIR_LIMIT = 10
 
 
-# %%
 def time_func(func):
     def wrap_func(*args, **kwargs):
         t1 = time()
