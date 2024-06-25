@@ -6,6 +6,7 @@ from mistralai.models.chat_completion import ChatMessage
 
 DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant."
 
+
 def get_coherence_instruction(text: str):
     """
     This instruction was adapted from appendix A of Deepeval's paper G-EVAL: NLG Evaluation using GPT-4 with Better Human Alignment (https://arxiv.org/pdf/2303.16634).
@@ -25,16 +26,16 @@ def get_coherence_instruction(text: str):
 
     Evaluation Criteria:
     Coherence (1-5) - the collective quality of all sentences. We align this dimension with the DUC quality question of structure and coherence whereby ”the summary should be well-structured and well-organized. The summary should not just be a heap of related information, but should build from sentence to sentence to a coherent body of information about a topic.”
-    
+
     Evaluation Steps:
     1. Read the source text carefully and identify the main topic and key points.
     2. Check if the source text presents the information in a clear and logical order. Examine the collective quality of the sentences.
     3. Assign a score for coherence on a scale of 1 to 5, where 1 is the lowest and 5 is the highest based on the Evaluation Criteria. Respond with just the number 1 to 5.
-    
+
     Source Text:
     {text}
     """
-  
+
 
 class LLMClient:
     """
