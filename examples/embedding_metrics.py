@@ -19,7 +19,9 @@ class EmbeddingMatrix:
 
 
 def compute_distances(
-    queries: list[np.ndarray], references: list[np.ndarray]
+    queries: list[np.ndarray],
+    references: list[np.ndarray],
+    method: str,
 ) -> np.ndarray:
     """
     Computes the distance of all embeddings in the query set
@@ -31,16 +33,23 @@ def compute_distances(
         A list of query embeddings.
     references : list[np.ndarray]
         A list of reference embeddings.
+    method : str
+        The method of calculating distance.
 
     Returns
     -------
     np.ndarray
         An unordered 1-D array of distances.
     """
-    return np.array([cdist(a, b) for a in queries for b in references])
+    return np.array(
+        [cdist(a, b, metric=method) for a in queries for b in references]
+    )
 
 
-def compute_self_distances(references: list[np.ndarray]) -> np.ndarray:
+def compute_self_distances(
+    references: list[np.ndarray],
+    method: str,
+) -> np.ndarray:
     """
     Computes the distance of all embeddings to other embeddings in the set.
 
@@ -48,6 +57,8 @@ def compute_self_distances(references: list[np.ndarray]) -> np.ndarray:
     ----------
     references : list[np.ndarray]
         A list of reference embeddings.
+    method : str
+        The method of calculating distance.
 
     Returns
     -------
@@ -56,7 +67,7 @@ def compute_self_distances(references: list[np.ndarray]) -> np.ndarray:
     """
     return np.array(
         [
-            cdist(a, b)
+            cdist(a, b, metric=method)
             for a_idx, a in enumerate(references)
             for b_idx, b in enumerate(references)
             if a_idx != b_idx
@@ -65,8 +76,10 @@ def compute_self_distances(references: list[np.ndarray]) -> np.ndarray:
 
 
 def _compute_metrics(
-    data: list[list[np.ndarray]],
+    queries: list[list[np.ndarray]],
+    references: list[list[np.ndarray]] | None,
     classes: list[str],
+    method: str,
     func: Callable,
 ) -> EmbeddingMatrix:
     """
@@ -74,10 +87,14 @@ def _compute_metrics(
 
     Parameters
     ----------
-    data : list[list[np.ndarray]]
-        A list of distances lists.
+    queries : list[list[np.ndarray]]
+        A list of query embedding lists.
+    references : list[list[np.ndarray]], optional
+        A list of reference embedding lists.
     classes : list[str]
         A list of labels mapped to the distance lists.
+    method : str
+        The method of calculating distance.
     func : Callable
         A scipy.stats function.
 
@@ -93,10 +110,15 @@ def _compute_metrics(
         x = float(x)
         return round(x, 3)
 
-    for i, query in enumerate(data):
-        for j, reference in enumerate(data):
-            reference_distance = compute_self_distances(reference)
-            if i == j:
+    queries_are_references = references is None
+    references = queries
+
+    for i, query in enumerate(queries):
+        for j, reference in enumerate(references):
+            reference_distance = compute_self_distances(
+                reference, method=method
+            )
+            if queries_are_references and i == j:
                 # split the set in two and measure how similarly distributed it is.
                 split_idx = len(reference_distance) // 2
                 metric = func(
@@ -104,7 +126,9 @@ def _compute_metrics(
                     reference_distance[split_idx:],
                 )
             else:
-                query_distance = compute_distances(reference, query)
+                query_distance = compute_distances(
+                    reference, query, method=method
+                )
                 metric = func(reference_distance, query_distance)
 
             label_i = classes[i]
@@ -116,45 +140,71 @@ def _compute_metrics(
 
 
 def compute_cvm(
-    data: list[list[np.ndarray]], classes: list[str]
+    queries: list[list[np.ndarray]],
+    classes: list[str],
+    references: list[list[np.ndarray]] | None = None,
+    method: str = "cosine",
 ) -> EmbeddingMatrix:
     """
     Computes metrics using the Cramer-Von Mises Test.
 
     Parameters
     ----------
-    data : list[list[np.ndarray]]
-        A list of distances lists.
+    queries : list[list[np.ndarray]]
+        A list of query embedding lists.
+    references : list[list[np.ndarray]], optional
+        A list of reference embedding lists.
     classes : list[str]
         A list of labels mapped to the distance lists.
+    method : str, default='cosine'
+        The method of calculating distance.
 
     Returns
     -------
     EmbeddingMatrix
         A metric containing a confusion matrix for both p-value and distance metric.
     """
-    return _compute_metrics(data, classes, func=cramervonmises_2samp)
+    return _compute_metrics(
+        queries=queries,
+        references=references,
+        classes=classes,
+        method=method,
+        func=cramervonmises_2samp,
+    )
 
 
 def compute_ks(
-    data: list[list[np.ndarray]], classes: list[str]
+    queries: list[list[np.ndarray]],
+    classes: list[str],
+    references: list[list[np.ndarray]] | None = None,
+    method: str = "cosine",
 ) -> EmbeddingMatrix:
     """
     Computes metrics using the Kolmgorov-Smirnov Test.
 
     Parameters
     ----------
-    data : list[list[np.ndarray]]
-        A list of distances lists.
+    queries : list[list[np.ndarray]]
+        A list of query embedding lists.
+    references : list[list[np.ndarray]], optional
+        A list of reference embedding lists.
     classes : list[str]
         A list of labels mapped to the distance lists.
+    method : str, default='cosine'
+        The method of calculating distance.
 
     Returns
     -------
     EmbeddingMatrix
         A metric containing a confusion matrix for both p-value and distance metric.
     """
-    return _compute_metrics(data, classes, func=ks_2samp)
+    return _compute_metrics(
+        queries=queries,
+        references=references,
+        classes=classes,
+        method=method,
+        func=ks_2samp,
+    )
 
 
 def create_dataframe(x: EmbeddingMatrix, labels: list[str]):
