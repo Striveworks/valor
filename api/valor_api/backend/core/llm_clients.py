@@ -1,24 +1,29 @@
-# 38-40, 48, 59, 68, 87-103, 146-149, 158-183, 212-214, 222-225, 236-243, 252-266
 from typing import Any
 
 import openai
 from mistralai.client import MistralClient
-from mistralai.exceptions import MistralAPIException
 from mistralai.models.chat_completion import ChatMessage
 
-COHERENCE_INSTRUCTION = """You are a helpful assistant. You will grade the user's text. Your task is to rate the text based on its coherence. Please make sure you read and understand these instructions carefully. Please keep this document open while reviewing, and refer to it as needed.
+
+def _get_instruction(metric: str):
+    """Fetch the instruction associated with a particular metric type."""
+    instruction_dict = {
+        "coherence": """You are a helpful assistant. You will grade the user's text. Your task is to rate the text based on its coherence. Please make sure you read and understand these instructions carefully. Please keep this document open while reviewing, and refer to it as needed.
 Evaluation Criteria:
 Coherence (1-5) - the collective quality of all sentences. We align this dimension with the DUC quality question of structure and coherence whereby ”the summary should be well-structured and well-organized. The summary should not just be a heap of related information, but should build from sentence to sentence to a coherent body of information about a topic.”
 Evaluation Steps:
 1. Read the text carefully and identify the main topic and key points.
 2. Assign a score for coherence on a scale of 1 to 5, where 1 is the lowest and 5 is the highest based on the Evaluation Criteria. Respond with just the number 1 to 5."""
+    }
+
+    return instruction_dict[metric]
 
 
 class LLMClient:
     """
-    Wrapper for calls to an LLM API.
+    Parent class for all LLM clients.
 
-    Parameters
+    Attributes
     ----------
     api_key : str, optional
         The API key to use.
@@ -85,7 +90,7 @@ class LLMClient:
             The coherence score will be evaluated as an integer, with 1 indicating the lowest coherence and 5 the highest coherence.
         """
         messages = [
-            {"role": "system", "content": COHERENCE_INSTRUCTION},
+            {"role": "system", "content": _get_instruction("coherence")},
             {"role": "user", "content": text},
         ]
 
@@ -103,11 +108,11 @@ class LLMClient:
         return ret
 
 
-class OpenAIClient(LLMClient):
+class WrappedOpenAIClient(LLMClient):
     """
     Wrapper for calls to OpenAI's API.
 
-    Parameters
+    Attributes
     ----------
     api_key : str, optional
         The OpenAI API key to use. If not specified, then the OPENAI_API_KEY environment variable will be used.
@@ -117,7 +122,6 @@ class OpenAIClient(LLMClient):
         The model to use. Defaults to "gpt-3.5-turbo".
     """
 
-    # url: str
     api_key: str | None = None
     seed: int | None = None
     model_name: str = "gpt-3.5-turbo"  # gpt-3.5-turbo gpt-4-turbo gpt-4o
@@ -162,7 +166,7 @@ class OpenAIClient(LLMClient):
                 messages=processed_messages,
                 seed=self.seed,
             )
-        except openai.BadRequestError as e:
+        except Exception as e:
             raise ValueError(f"OpenAI API request failed with error: {e}")
 
         finish_reason = openai_response.choices[0].finish_reason
@@ -180,11 +184,11 @@ class OpenAIClient(LLMClient):
         return response
 
 
-class MistralAIClient(LLMClient):
+class WrappedMistralAIClient(LLMClient):
     """
     Wrapper for calls to Mistral's API.
 
-    Parameters
+    Attributes
     ----------
     api_key : str, optional
         The Mistral API key to use. If not specified, then the MISTRAL_API_KEY environment variable will be used.
@@ -253,12 +257,15 @@ class MistralAIClient(LLMClient):
                 model=self.model_name,
                 messages=processed_messages,
             )
-        # TODO Should we catch this if we aren't going to do anything?
-        except MistralAPIException as e:
+        except Exception as e:
             raise ValueError(f"Mistral API request failed with error: {e}")
 
-        # token_usage = mistral_response.usage  # TODO Should we report token usage to the user?
-        # finish_reason = mistral_response.choices[0].finish_reason # TODO We could throw errors depending on finish reason. Only do this if we decide to do so for OpenAI.
         response = mistral_response.choices[0].message.content
+        finish_reason = mistral_response.choices[0].finish_reason
+
+        if finish_reason == "length":
+            raise ValueError(
+                "MistralAI response reached max token limit. Resulting evaluation is likely invalid or of low quality."
+            )
 
         return response

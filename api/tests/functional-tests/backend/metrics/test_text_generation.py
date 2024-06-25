@@ -177,11 +177,11 @@ def text_generation_test_data(db: Session, dataset_name: str, model_name: str):
 
 
 @patch(
-    "valor_api.backend.core.llm_clients.OpenAIClient.connect",
+    "valor_api.backend.core.llm_clients.WrappedOpenAIClient.connect",
     mocked_connection,
 )
 @patch(
-    "valor_api.backend.core.llm_clients.OpenAIClient.coherence",
+    "valor_api.backend.core.llm_clients.WrappedOpenAIClient.coherence",
     mocked_openai_coherence,
 )
 def test__compute_text_generation(
@@ -300,11 +300,11 @@ def test__compute_text_generation(
 
 
 @patch(
-    "valor_api.backend.core.llm_clients.OpenAIClient.connect",
+    "valor_api.backend.core.llm_clients.WrappedOpenAIClient.connect",
     mocked_connection,
 )
 @patch(
-    "valor_api.backend.core.llm_clients.OpenAIClient.coherence",
+    "valor_api.backend.core.llm_clients.WrappedOpenAIClient.coherence",
     mocked_openai_coherence,
 )
 def test_text_generation(
