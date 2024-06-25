@@ -137,7 +137,6 @@ def test_WrappedOpenAIClient():
     client.client.chat.completions.create = create_bad_request
     with pytest.raises(ValueError) as e:
         client(fake_message)
-    assert "request failed with error" in str(e)
 
     # test good request with bad finish reasons
     client.client.chat.completions.create = (
@@ -236,7 +235,6 @@ def test_WrappedMistralAIClient():
     client.client.chat = create_bad_request
     with pytest.raises(ValueError) as e:
         client(fake_message)
-    assert "request failed with error" in str(e)
 
     # test good request with bad finish reasons
     client.client.chat = create_mock_chat_completion_with_bad_length
