@@ -1,3 +1,4 @@
+import time
 from typing import Awaitable, Callable, Union
 
 import structlog
@@ -15,13 +16,16 @@ async def log_endpoint_middleware(
     request: Request,
     call_next: Callable[[Request], Awaitable[Union[Response, JSONResponse]]],
 ) -> Union[Response, JSONResponse]:
+    start_time = time.monotonic()
     response = await call_next(request)
+    duration_seconds = time.monotonic() - start_time
     logger.info(
         "Valor API Call",
         method=request.method,
         path=request.url.path,
         hostname=request.url.hostname,
         status=response.status_code,
+        duration_ms=duration_seconds * 1000,
     )
     return response
 
