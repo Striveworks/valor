@@ -11,7 +11,7 @@ from sqlalchemy.sql.selectable import NamedFromClause
 
 from valor_api import schemas
 from valor_api.backend import core, models
-from valor_api.backend.metrics.llm_call import (
+from valor_api.backend.metrics.llm_guided_metric_client import (
     LLMClient,
     WrappedMistralClient,
     WrappedOpenAIClient,
