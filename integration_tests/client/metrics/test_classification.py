@@ -12,13 +12,14 @@ from valor import (
     Client,
     Dataset,
     Datum,
+    Filter,
     GroundTruth,
     Label,
     Model,
     Prediction,
 )
-from valor.enums import EvaluationStatus
-from valor.exceptions import ClientException
+from valor.enums import EvaluationStatus, MetricType
+from valor.exceptions import ClientException, EvaluationRequestError
 
 
 def test_evaluate_image_clf(
@@ -166,7 +167,11 @@ def test_evaluate_image_clf(
     ]
 
     for m in metrics:
-        assert m in expected_metrics
+        if m["type"] not in [
+            "PrecisionRecallCurve",
+            "DetailedPrecisionRecallCurve",
+        ]:
+            assert m in expected_metrics
     for m in expected_metrics:
         assert m in metrics
 
@@ -184,21 +189,20 @@ def test_evaluate_image_clf(
     }
 
     for key, value in expected_metadata.items():
-        assert eval_job.meta[key] == value
+        assert eval_job.meta[key] == value  # type: ignore - issue #605
 
-    assert (
-        eval_job.meta["duration"] <= 5
-    )  # eval should definitely take less than 5 seconds, usually around .4
+    # eval should definitely take less than 5 seconds, usually around .4
+    assert eval_job.meta["duration"] <= 5  # type: ignore - issue #605
 
     # check that metrics arg works correctly
     selected_metrics = random.sample(
         [
-            "Accuracy",
-            "ROCAUC",
-            "Precision",
-            "F1",
-            "Recall",
-            "PrecisionRecallCurve",
+            MetricType.Accuracy,
+            MetricType.ROCAUC,
+            MetricType.Precision,
+            MetricType.F1,
+            MetricType.Recall,
+            MetricType.PrecisionRecallCurve,
         ],
         2,
     )
@@ -259,9 +263,9 @@ def test_evaluate_tabular_clf(
 
     # test dataset finalization
     model = Model.create(name=model_name)
-    with pytest.raises(ClientException) as exc_info:
+    with pytest.raises(EvaluationRequestError) as exc_info:
         model.evaluate_classification(dataset).wait_for_completion(timeout=30)
-    assert "not been finalized" in str(exc_info)
+    assert "DatasetNotFinalizedError" in str(exc_info)
 
     dataset.finalize()
 
@@ -283,9 +287,9 @@ def test_evaluate_tabular_clf(
         model.add_prediction(dataset, pd)
 
     # test model finalization
-    with pytest.raises(ClientException) as exc_info:
+    with pytest.raises(EvaluationRequestError) as exc_info:
         model.evaluate_classification(dataset)
-    assert "have not been finalized" in str(exc_info)
+    assert "ModelNotFinalizedError" in str(exc_info)
 
     # model is automatically finalized if all datums have a prediction
     model.add_prediction(dataset, pds[-1])
@@ -351,7 +355,11 @@ def test_evaluate_tabular_clf(
         },
     ]
     for m in metrics:
-        assert m in expected_metrics
+        if m["type"] not in [
+            "PrecisionRecallCurve",
+            "DetailedPrecisionRecallCurve",
+        ]:
+            assert m in expected_metrics
     for m in expected_metrics:
         assert m in metrics
 
@@ -373,7 +381,11 @@ def test_evaluate_tabular_clf(
 
     assert len(bulk_evals) == 1
     for metric in bulk_evals[0].metrics:
-        assert metric in expected_metrics
+        if metric["type"] not in [
+            "PrecisionRecallCurve",
+            "DetailedPrecisionRecallCurve",
+        ]:
+            assert metric in expected_metrics
     assert len(bulk_evals[0].confusion_matrices[0]) == len(
         expected_confusion_matrix
     )
@@ -403,9 +415,8 @@ def test_evaluate_tabular_clf(
     # check evaluation
     results = model.get_evaluations()
     assert len(results) == 1
-    assert results[0].datum_filter.dataset_names is not None
-    assert len(results[0].datum_filter.dataset_names) == 1
-    assert results[0].datum_filter.dataset_names[0] == dataset_name
+    assert len(results[0].dataset_names) == 1
+    assert results[0].dataset_names[0] == dataset_name
     assert results[0].model_name == model_name
     assert isinstance(results[0].created_at, datetime)
     # check created at is within a minute of the current time
@@ -416,7 +427,11 @@ def test_evaluate_tabular_clf(
     metrics_from_eval_settings_id = results[0].metrics
     assert len(metrics_from_eval_settings_id) == len(expected_metrics)
     for m in metrics_from_eval_settings_id:
-        assert m in expected_metrics
+        if m["type"] not in [
+            "PrecisionRecallCurve",
+            "DetailedPrecisionRecallCurve",
+        ]:
+            assert m in expected_metrics
     for m in expected_metrics:
         assert m in metrics_from_eval_settings_id
 
@@ -497,9 +512,7 @@ def test_stratify_clf_metrics(
 
     eval_results_val2 = model.evaluate_classification(
         dataset,
-        filter_by=[
-            Datum.metadata["md1"] == "md1-val2",
-        ],
+        filters=Filter(datums=(Datum.metadata["md1"] == "md1-val2")),  # type: ignore - issue #605
     )
     assert (
         eval_results_val2.wait_for_completion(timeout=30)
@@ -510,10 +523,7 @@ def test_stratify_clf_metrics(
     # should get the same thing if we use the boolean filter
     eval_results_bool = model.evaluate_classification(
         dataset,
-        filter_by=[
-            Datum.metadata["md3"]
-            == True  # noqa: E712 - 'is' keyword is not overloadable, so we have to use 'symbol == True'
-        ],
+        filters=Filter(datums=(Datum.metadata["md3"] == True)),  # type: ignore - issue #605 # noqa: E712
     )
     assert (
         eval_results_bool.wait_for_completion(timeout=30)
@@ -584,7 +594,11 @@ def test_stratify_clf_metrics(
     for metrics in [val2_metrics, val_bool_metrics]:
         assert len(metrics) == len(expected_metrics)
         for m in metrics:
-            assert m in expected_metrics
+            if m["type"] not in [
+                "PrecisionRecallCurve",
+                "DetailedPrecisionRecallCurve",
+            ]:
+                assert m in expected_metrics
         for m in expected_metrics:
             assert m in metrics
 
@@ -642,9 +656,7 @@ def test_stratify_clf_metrics_by_time(
 
     eval_results_val2 = model.evaluate_classification(
         dataset,
-        filter_by=[
-            Datum.metadata["md1"] == date.fromisoformat("2002-01-01"),
-        ],
+        filters=Filter(datums=(Datum.metadata["md1"] == date.fromisoformat("2002-01-01"))),  # type: ignore - issue #605
     )
     assert (
         eval_results_val2.wait_for_completion(timeout=30)
@@ -1003,24 +1015,30 @@ def test_evaluate_classification_with_label_maps(
     eval_job = model.evaluate_classification(
         dataset,
         label_map=label_mapping,
+        pr_curve_max_examples=3,
         metrics_to_return=[
-            "Precision",
-            "Recall",
-            "F1",
-            "Accuracy",
-            "ROCAUC",
-            "PrecisionRecallCurve",
+            MetricType.Precision,
+            MetricType.Recall,
+            MetricType.F1,
+            MetricType.Accuracy,
+            MetricType.ROCAUC,
+            MetricType.PrecisionRecallCurve,
+            MetricType.DetailedPrecisionRecallCurve,
         ],
     )
     assert eval_job.id
     assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
 
-    pr_expected_lengths = {
+    pr_expected_values = {
         # k3
         (0, "k3", "v1", "0.1", "fp"): 1,
         (0, "k3", "v1", "0.1", "tn"): 2,
         (0, "k3", "v3", "0.1", "fn"): 1,
         (0, "k3", "v3", "0.1", "tn"): 2,
+        (0, "k3", "v3", "0.1", "accuracy"): 2 / 3,
+        (0, "k3", "v3", "0.1", "precision"): -1,
+        (0, "k3", "v3", "0.1", "recall"): 0,
+        (0, "k3", "v3", "0.1", "f1_score"): -1,
         # k4
         (1, "k4", "v1", "0.1", "fp"): 1,
         (1, "k4", "v1", "0.1", "tn"): 2,
@@ -1048,42 +1066,33 @@ def test_evaluate_classification_with_label_maps(
             "0.1",
             "tn",
         ): 2,
+        (2, "k5", "v1", "0.1", "accuracy"): 2 / 3,
+        (2, "k5", "v1", "0.1", "precision"): 0,
+        (2, "k5", "v1", "0.1", "recall"): -1,
+        (2, "k5", "v1", "0.1", "f1_score"): -1,
+        # special_class
         (3, "special_class", "cat_type1", "0.1", "tp"): 3,
         (3, "special_class", "cat_type1", "0.1", "tn"): 0,
         (3, "special_class", "cat_type1", "0.95", "tp"): 3,
     }
 
-    pr_expected_metrics = {
-        # k3, v3
-        (0, "k3", "v3", "0.1", "accuracy"): 2 / 3,
-        (0, "k3", "v3", "0.1", "precision"): -1,
-        (0, "k3", "v3", "0.1", "recall"): 0,
-        (0, "k3", "v3", "0.1", "f1_score"): -1,
-        # k5, v1
-        (2, "k5", "v1", "0.1", "accuracy"): 2 / 3,
-        (2, "k5", "v1", "0.1", "precision"): 0,
-        (2, "k5", "v1", "0.1", "recall"): -1,
-        (2, "k5", "v1", "0.1", "f1_score"): -1,
-        # special_class, cat_type1
-        (3, "special_class", "cat_type1", "0.1", "accuracy"): 1,
-        (3, "special_class", "cat_type1", "0.1", "precision"): 1,
-        (3, "special_class", "cat_type1", "0.1", "recall"): 1,
-        (3, "special_class", "cat_type1", "0.1", "f1_score"): 1,
-    }
-
     metrics = eval_job.metrics
 
     pr_metrics = []
+    detailed_pr_metrics = []
     for m in metrics:
-        if m["type"] != "PrecisionRecallCurve":
-            assert m in cat_expected_metrics
-        else:
+        if m["type"] == "PrecisionRecallCurve":
             pr_metrics.append(m)
+        elif m["type"] == "DetailedPrecisionRecallCurve":
+            detailed_pr_metrics.append(m)
+        else:
+            assert m in cat_expected_metrics
 
     for m in cat_expected_metrics:
         assert m in metrics
 
     pr_metrics.sort(key=lambda x: x["parameters"]["label_key"])
+    detailed_pr_metrics.sort(key=lambda x: x["parameters"]["label_key"])
 
     for (
         index,
@@ -1091,30 +1100,79 @@ def test_evaluate_classification_with_label_maps(
         value,
         threshold,
         metric,
-    ), expected_length in pr_expected_lengths.items():
-        assert (
-            len(pr_metrics[index]["value"][value][threshold][metric])
-            == expected_length
-        )
-
-    for (
-        index,
-        key,
-        value,
-        threshold,
-        metric,
-    ), expected_length in pr_expected_metrics.items():
+    ), expected_value in pr_expected_values.items():
         assert (
             pr_metrics[index]["value"][value][threshold][metric]
-        ) == expected_length
+            == expected_value
+        )
 
-    confusion_matrix = eval_job.confusion_matrices
+    # check DetailedPrecisionRecallCurve
+    detailed_pr_expected_answers = {
+        # k3
+        (0, "v1", "0.1", "tp"): {"all": 0, "total": 0},
+        (0, "v1", "0.1", "fp"): {
+            "hallucinations": 0,
+            "misclassifications": 1,
+            "total": 1,
+        },
+        (0, "v1", "0.1", "tn"): {"all": 2, "total": 2},
+        (0, "v1", "0.1", "fn"): {
+            "missed_detections": 0,
+            "misclassifications": 0,
+            "total": 0,
+        },
+        # k4
+        (1, "v1", "0.1", "tp"): {"all": 0, "total": 0},
+        (1, "v1", "0.1", "fp"): {
+            "hallucinations": 0,
+            "misclassifications": 1,
+            "total": 1,
+        },
+        (1, "v1", "0.1", "tn"): {"all": 2, "total": 2},
+        (1, "v1", "0.1", "fn"): {
+            "missed_detections": 0,
+            "misclassifications": 0,
+            "total": 0,
+        },
+        (1, "v4", "0.1", "fn"): {
+            "missed_detections": 0,
+            "misclassifications": 1,
+            "total": 1,
+        },
+        (1, "v8", "0.1", "tn"): {"all": 2, "total": 2},
+    }
+
+    for (
+        index,
+        value,
+        threshold,
+        metric,
+    ), expected_output in detailed_pr_expected_answers.items():
+        model_output = detailed_pr_metrics[index]["value"][value][threshold][
+            metric
+        ]
+        assert isinstance(model_output, dict)
+        assert model_output["total"] == expected_output["total"]
+        assert all(
+            [
+                model_output["observations"][key]["count"]  # type: ignore - we know this element is a dict
+                == expected_output[key]
+                for key in [
+                    key
+                    for key in expected_output.keys()
+                    if key not in ["total"]
+                ]
+            ]
+        )
 
     # check metadata
     assert eval_job.meta["datums"] == 3
     assert eval_job.meta["labels"] == 13
     assert eval_job.meta["annotations"] == 6
     assert eval_job.meta["duration"] <= 10  # usually 2
+
+    # check confusion matrix
+    confusion_matrix = eval_job.confusion_matrices
 
     for row in confusion_matrix:
         if row["label_key"] == "special_class":
@@ -1229,3 +1287,72 @@ def test_evaluate_classification_mismatched_label_keys(
     with pytest.raises(ClientException) as e:
         model.evaluate_classification(dataset)
     assert "label keys must match" in str(e)
+
+
+def test_evaluate_classification_model_with_no_predictions(
+    client: Client,
+    gt_clfs: list[GroundTruth],
+    dataset_name: str,
+    model_name: str,
+):
+    dataset = Dataset.create(dataset_name)
+    for gt in gt_clfs:
+        dataset.add_groundtruth(gt)
+    dataset.finalize()
+
+    model = Model.create(model_name)
+    for gt in gt_clfs:
+        pd = Prediction(datum=gt.datum, annotations=[])
+        model.add_prediction(dataset, pd)
+    model.finalize_inferences(dataset)
+
+    expected_metrics = [
+        {"type": "Accuracy", "parameters": {"label_key": "k5"}, "value": 0.0},
+        {"type": "ROCAUC", "parameters": {"label_key": "k5"}, "value": 0.0},
+        {
+            "type": "Precision",
+            "value": 0.0,
+            "label": {"key": "k5", "value": "v5"},
+        },
+        {
+            "type": "Recall",
+            "value": 0.0,
+            "label": {"key": "k5", "value": "v5"},
+        },
+        {"type": "F1", "value": 0.0, "label": {"key": "k5", "value": "v5"}},
+        {"type": "Accuracy", "parameters": {"label_key": "k4"}, "value": 0.0},
+        {"type": "ROCAUC", "parameters": {"label_key": "k4"}, "value": 0.0},
+        {
+            "type": "Precision",
+            "value": 0.0,
+            "label": {"key": "k4", "value": "v4"},
+        },
+        {
+            "type": "Recall",
+            "value": 0.0,
+            "label": {"key": "k4", "value": "v4"},
+        },
+        {"type": "F1", "value": 0.0, "label": {"key": "k4", "value": "v4"}},
+        {"type": "Accuracy", "parameters": {"label_key": "k3"}, "value": 0.0},
+        {"type": "ROCAUC", "parameters": {"label_key": "k3"}, "value": 0.0},
+        {
+            "type": "Precision",
+            "value": 0.0,
+            "label": {"key": "k3", "value": "v3"},
+        },
+        {
+            "type": "Recall",
+            "value": 0.0,
+            "label": {"key": "k3", "value": "v3"},
+        },
+        {"type": "F1", "value": 0.0, "label": {"key": "k3", "value": "v3"}},
+    ]
+
+    evaluation = model.evaluate_classification(dataset)
+    assert evaluation.wait_for_completion(timeout=30) == EvaluationStatus.DONE
+
+    computed_metrics = evaluation.metrics
+
+    assert all([metric["value"] == 0 for metric in computed_metrics])
+    assert all([metric in computed_metrics for metric in expected_metrics])
+    assert all([metric in expected_metrics for metric in computed_metrics])

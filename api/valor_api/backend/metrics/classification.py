@@ -1,3 +1,4 @@
+import random
 from collections import defaultdict
 from typing import Sequence
 
@@ -15,6 +16,7 @@ from valor_api.backend.metrics.metric_utils import (
     get_or_create_row,
     log_evaluation_duration,
     log_evaluation_item_counts,
+    prepare_filter_for_evaluation,
     validate_computation,
 )
 from valor_api.backend.query import generate_query, generate_select
@@ -29,20 +31,9 @@ def _compute_curves(
     grouper_key: str,
     grouper_mappings: dict[str, dict[str, dict]],
     unique_datums: set[tuple[str, str]],
-) -> dict[
-    str,
-    dict[
-        float,
-        dict[
-            str,
-            int
-            | float
-            | list[tuple[str, str]]
-            | list[tuple[str, str, str]]
-            | None,
-        ],
-    ],
-]:
+    pr_curve_max_examples: int,
+    metrics_to_return: list[enums.MetricType],
+) -> list[schemas.PrecisionRecallCurve | schemas.DetailedPrecisionRecallCurve]:
     """
     Calculates precision-recall curves for each class.
 
@@ -60,14 +51,19 @@ def _compute_curves(
         A dictionary of mappings that connect groupers to their related labels.
     unique_datums: list[tuple[str, str]]
         All of the unique datums associated with the ground truth and prediction filters.
+    pr_curve_max_examples: int
+        The maximum number of datum examples to store per true positive, false negative, etc.
+    metrics_to_return: list[enums.MetricType]
+        The list of metrics requested by the user.
 
     Returns
     -------
-    dict[str,dict[float, dict[str, int | float | list[tuple[str, str]] | list[tuple[str, str, str]] | None]]
-        A nested dictionary where the first key is the class label, the second key is the confidence threshold (e.g., 0.05), the third key is the metric name (e.g., "precision"), and the final key is either the value itself (for precision, recall, etc.) or a list of tuples containing the (dataset_name, datum_id) for each observation.
+    list[schemas.PrecisionRecallCurve | schemas.DetailedPrecisionRecallCurve]
+        The PrecisionRecallCurve and/or DetailedPrecisionRecallCurve metrics.
     """
 
-    output = defaultdict(lambda: defaultdict(dict))
+    pr_output = defaultdict(lambda: defaultdict(dict))
+    detailed_pr_output = defaultdict(lambda: defaultdict(dict))
 
     for threshold in [x / 100 for x in range(5, 100, 5)]:
         # get predictions that are above the confidence threshold
@@ -150,10 +146,25 @@ def _compute_curves(
             key=lambda x: ((x[1] is None, x[0][0] != x[0][1], x[1], x[2]))
         )
 
+        # create sets of all datums for which there is a prediction / groundtruth
+        # used when separating hallucinations/misclassifications/missed_detections
+        gt_datums = set()
+        pd_datums = set()
+
+        for row in res:
+            (pd_datum_uid, pd_dataset_name, gt_datum_uid, gt_dataset_name,) = (
+                row[2],
+                row[3],
+                row[5],
+                row[6],
+            )
+            gt_datums.add((gt_dataset_name, gt_datum_uid))
+            pd_datums.add((pd_dataset_name, pd_datum_uid))
+
         for grouper_value in grouper_mappings["grouper_key_to_labels_mapping"][
             grouper_key
         ].keys():
-            tp, tn, fp, fn = [], [], [], []
+            tp, tn, fp, fn = [], [], defaultdict(list), defaultdict(list)
             seen_datums = set()
 
             for row in res:
@@ -177,26 +188,47 @@ def _compute_curves(
                     tp += [(pd_dataset_name, pd_datum_uid)]
                     seen_datums.add(gt_datum_uid)
                 elif predicted_label == grouper_value:
-                    fp += [(pd_dataset_name, pd_datum_uid)]
+                    # if there was a groundtruth for a given datum, then it was a misclassification
+                    if (pd_dataset_name, pd_datum_uid) in gt_datums:
+                        fp["misclassifications"].append(
+                            (pd_dataset_name, pd_datum_uid)
+                        )
+                    else:
+                        fp["hallucinations"].append(
+                            (pd_dataset_name, pd_datum_uid)
+                        )
                     seen_datums.add(gt_datum_uid)
                 elif (
                     actual_label == grouper_value
                     and gt_datum_uid not in seen_datums
                 ):
-                    fn += [(gt_dataset_name, gt_datum_uid)]
+                    # if there was a prediction for a given datum, then it was a misclassification
+                    if (gt_dataset_name, gt_datum_uid) in pd_datums:
+                        fn["misclassifications"].append(
+                            (gt_dataset_name, gt_datum_uid)
+                        )
+                    else:
+                        fn["missed_detections"].append(
+                            (gt_dataset_name, gt_datum_uid)
+                        )
                     seen_datums.add(gt_datum_uid)
 
             # calculate metrics
             tn = [
                 datum_uid_pair
                 for datum_uid_pair in unique_datums
-                if datum_uid_pair not in tp + fp + fn
+                if datum_uid_pair
+                not in tp
+                + fp["hallucinations"]
+                + fp["misclassifications"]
+                + fn["misclassifications"]
+                + fn["missed_detections"]
                 and None not in datum_uid_pair
             ]
             tp_cnt, fp_cnt, fn_cnt, tn_cnt = (
                 len(tp),
-                len(fp),
-                len(fn),
+                len(fp["hallucinations"]) + len(fp["misclassifications"]),
+                len(fn["missed_detections"]) + len(fn["misclassifications"]),
                 len(tn),
             )
 
@@ -217,18 +249,125 @@ def _compute_curves(
                 else -1
             )
 
-            output[grouper_value][threshold] = {
-                "tp": tp,
-                "fp": fp,
-                "fn": fn,
-                "tn": tn,
+            pr_output[grouper_value][threshold] = {
+                "tp": tp_cnt,
+                "fp": fp_cnt,
+                "fn": fn_cnt,
+                "tn": tn_cnt,
                 "accuracy": accuracy,
                 "precision": precision,
                 "recall": recall,
                 "f1_score": f1_score,
             }
 
-    return dict(output)
+            if (
+                enums.MetricType.DetailedPrecisionRecallCurve
+                in metrics_to_return
+            ):
+
+                detailed_pr_output[grouper_value][threshold] = {
+                    "tp": {
+                        "total": tp_cnt,
+                        "observations": {
+                            "all": {
+                                "count": tp_cnt,
+                                "examples": (
+                                    random.sample(tp, pr_curve_max_examples)
+                                    if len(tp) >= pr_curve_max_examples
+                                    else tp
+                                ),
+                            }
+                        },
+                    },
+                    "tn": {
+                        "total": tn_cnt,
+                        "observations": {
+                            "all": {
+                                "count": tn_cnt,
+                                "examples": (
+                                    random.sample(tn, pr_curve_max_examples)
+                                    if len(tn) >= pr_curve_max_examples
+                                    else tn
+                                ),
+                            }
+                        },
+                    },
+                    "fn": {
+                        "total": fn_cnt,
+                        "observations": {
+                            "misclassifications": {
+                                "count": len(fn["misclassifications"]),
+                                "examples": (
+                                    random.sample(
+                                        fn["misclassifications"],
+                                        pr_curve_max_examples,
+                                    )
+                                    if len(fn["misclassifications"])
+                                    >= pr_curve_max_examples
+                                    else fn["misclassifications"]
+                                ),
+                            },
+                            "missed_detections": {
+                                "count": len(fn["missed_detections"]),
+                                "examples": (
+                                    random.sample(
+                                        fn["missed_detections"],
+                                        pr_curve_max_examples,
+                                    )
+                                    if len(fn["missed_detections"])
+                                    >= pr_curve_max_examples
+                                    else fn["missed_detections"]
+                                ),
+                            },
+                        },
+                    },
+                    "fp": {
+                        "total": fp_cnt,
+                        "observations": {
+                            "misclassifications": {
+                                "count": len(fp["misclassifications"]),
+                                "examples": (
+                                    random.sample(
+                                        fp["misclassifications"],
+                                        pr_curve_max_examples,
+                                    )
+                                    if len(fp["misclassifications"])
+                                    >= pr_curve_max_examples
+                                    else fp["misclassifications"]
+                                ),
+                            },
+                            "hallucinations": {
+                                "count": len(fp["hallucinations"]),
+                                "examples": (
+                                    random.sample(
+                                        fp["hallucinations"],
+                                        pr_curve_max_examples,
+                                    )
+                                    if len(fp["hallucinations"])
+                                    >= pr_curve_max_examples
+                                    else fp["hallucinations"]
+                                ),
+                            },
+                        },
+                    },
+                }
+
+    output = []
+
+    output.append(
+        schemas.PrecisionRecallCurve(
+            label_key=grouper_key, value=dict(pr_output)
+        ),
+    )
+
+    if enums.MetricType.DetailedPrecisionRecallCurve in metrics_to_return:
+        output += [
+            schemas.DetailedPrecisionRecallCurve(
+                label_key=grouper_key, value=dict(detailed_pr_output)
+            )
+        ]
+
+    return output
 
 
 def _compute_binary_roc_auc(
@@ -258,22 +397,42 @@ def _compute_binary_roc_auc(
     """
     # query to get the datum_ids and label values of groundtruths that have the given label key
     gts_filter = groundtruth_filter.model_copy()
-    gts_filter.label_keys = [label.key]
+    gts_filter.labels = schemas.LogicalFunction.and_(
+        gts_filter.labels,
+        schemas.Condition(
+            lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
+            rhs=schemas.Value.infer(label.key),
+            op=schemas.FilterOperator.EQ,
+        ),
+    )
     gts_query = generate_select(
         models.Annotation.datum_id.label("datum_id"),
         models.Label.value.label("label_value"),
-        filter_=gts_filter,
+        filters=gts_filter,
         label_source=models.GroundTruth,
     ).subquery("groundtruth_subquery")
 
     # get the prediction scores for the given label (key and value)
     preds_filter = prediction_filter.model_copy()
-    preds_filter.labels = [{label.key: label.value}]
+    preds_filter.labels = schemas.LogicalFunction.and_(
+        preds_filter.labels,
+        schemas.Condition(
+            lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
+            rhs=schemas.Value.infer(label.key),
+            op=schemas.FilterOperator.EQ,
+        ),
+        schemas.Condition(
+            lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_VALUE),
+            rhs=schemas.Value.infer(label.value),
+            op=schemas.FilterOperator.EQ,
+        ),
+    )
+
     preds_query = generate_select(
         models.Annotation.datum_id.label("datum_id"),
         models.Prediction.score.label("score"),
         models.Label.value.label("label_value"),
-        filter_=preds_filter,
+        filters=preds_filter,
         label_source=models.Prediction,
     ).subquery("prediction_subquery")
 
@@ -399,7 +558,21 @@ def _compute_roc_auc(
 
     for grouper_value, labels in value_to_labels_mapping.items():
         label_filter = groundtruth_filter.model_copy()
-        label_filter.label_ids = [label.id for label in labels]
+        label_filter.labels = schemas.LogicalFunction.and_(
+            label_filter.labels,
+            schemas.LogicalFunction.or_(
+                *[
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.LABEL_ID
+                        ),
+                        rhs=schemas.Value.infer(label.id),
+                        op=schemas.FilterOperator.EQ,
+                    )
+                    for label in labels
+                ]
+            ),
+        )
 
         # some labels in the "labels" argument may be out-of-scope given our groundtruth_filter, so we fetch all labels that are within scope of the groundtruth_filter to make sure we don't calculate ROCAUC for inappropriate labels
         in_scope_labels = [
@@ -625,10 +798,11 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
     groundtruth_filter: schemas.Filter,
     grouper_key: str,
     grouper_mappings: dict[str, dict[str, dict]],
-    metrics_to_return: list[str],
+    pr_curve_max_examples: int,
+    metrics_to_return: list[enums.MetricType],
 ) -> (
     tuple[
-        schemas.ConfusionMatrix,
+        schemas.ConfusionMatrix | None,
         list[
             schemas.AccuracyMetric
             | schemas.ROCAUCMetric
@@ -637,7 +811,6 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
             | schemas.F1Metric
         ],
     ]
-    | None
 ):
     """
     Computes the confusion matrix and all metrics for a given label key.
@@ -652,7 +825,9 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
         The filter to be used to query groundtruths.
     grouper_mappings: dict[str, dict[str, dict]]
         A dictionary of mappings that connect groupers to their related labels.
-    metrics: list[str]
+    pr_curve_max_examples: int
+        The maximum number of datum examples to store per true positive, false negative, etc.
+    metrics_to_return: list[MetricType]
         The list of metrics to compute, store, and return to the user.
 
     Returns
@@ -664,22 +839,47 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
         matrix and the second a list of all metrics (accuracy, ROC AUC, precisions, recalls, and f1s).
     """
 
-    label_key_filter = list(
+    label_keys = list(
         grouper_mappings["grouper_key_to_label_keys_mapping"][grouper_key]
     )
 
-    # get groundtruths and predictions that conform to filters
+    # groundtruths filter
     gFilter = groundtruth_filter.model_copy()
-    gFilter.label_keys = label_key_filter
+    gFilter.labels = schemas.LogicalFunction.and_(
+        gFilter.labels,
+        schemas.LogicalFunction.or_(
+            *[
+                schemas.Condition(
+                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
+                    rhs=schemas.Value.infer(key),
+                    op=schemas.FilterOperator.EQ,
+                )
+                for key in label_keys
+            ]
+        ),
+    )
 
+    # predictions filter
     pFilter = prediction_filter.model_copy()
-    pFilter.label_keys = label_key_filter
+    pFilter.labels = schemas.LogicalFunction.and_(
+        pFilter.labels,
+        schemas.LogicalFunction.or_(
+            *[
+                schemas.Condition(
+                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
+                    rhs=schemas.Value.infer(key),
+                    op=schemas.FilterOperator.EQ,
+                )
+                for key in label_keys
+            ]
+        ),
+    )
 
     groundtruths = generate_select(
         models.GroundTruth,
         models.Annotation.datum_id.label("datum_id"),
         models.Dataset.name.label("dataset_name"),
-        filter_=gFilter,
+        filters=gFilter,
         label_source=models.GroundTruth,
     ).alias()
 
@@ -687,7 +887,7 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
         models.Prediction,
         models.Annotation.datum_id.label("datum_id"),
         models.Dataset.name.label("dataset_name"),
-        filter_=pFilter,
+        filters=pFilter,
         label_source=models.Prediction,
     ).alias()
 
@@ -698,43 +898,53 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
         grouper_key=grouper_key,
         grouper_mappings=grouper_mappings,
     )
-
-    if confusion_matrix is None:
-        return None
+    accuracy = (
+        _compute_accuracy_from_cm(confusion_matrix)
+        if confusion_matrix
+        else 0.0
+    )
+    rocauc = (
+        _compute_roc_auc(
+            db=db,
+            prediction_filter=prediction_filter,
+            groundtruth_filter=groundtruth_filter,
+            grouper_key=grouper_key,
+            grouper_mappings=grouper_mappings,
+        )
+        if confusion_matrix
+        else 0.0
+    )
 
     # aggregate metrics (over all label values)
-    metrics = [
+    output = [
         schemas.AccuracyMetric(
             label_key=grouper_key,
-            value=_compute_accuracy_from_cm(confusion_matrix),
+            value=accuracy,
         ),
         schemas.ROCAUCMetric(
             label_key=grouper_key,
-            value=_compute_roc_auc(
-                db=db,
-                prediction_filter=prediction_filter,
-                groundtruth_filter=groundtruth_filter,
-                grouper_key=grouper_key,
-                grouper_mappings=grouper_mappings,
-            ),
+            value=rocauc,
         ),
     ]
 
-    if "PrecisionRecallCurve" in metrics_to_return:
+    if (
+        enums.MetricType.PrecisionRecallCurve in metrics_to_return
+        or enums.MetricType.DetailedPrecisionRecallCurve in metrics_to_return
+    ):
         # calculate the number of unique datums
         # used to determine the number of true negatives
         gt_datums = generate_query(
             models.Dataset.name,
             models.Datum.uid,
             db=db,
-            filter_=groundtruth_filter,
+            filters=groundtruth_filter,
             label_source=models.GroundTruth,
         ).all()
         pd_datums = generate_query(
             models.Dataset.name,
             models.Datum.uid,
             db=db,
-            filter_=prediction_filter,
+            filters=prediction_filter,
             label_source=models.Prediction,
         ).all()
         unique_datums = set(gt_datums + pd_datums)
@@ -746,52 +956,55 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
             grouper_key=grouper_key,
             grouper_mappings=grouper_mappings,
             unique_datums=unique_datums,
+            pr_curve_max_examples=pr_curve_max_examples,
+            metrics_to_return=metrics_to_return,
         )
-        output = schemas.PrecisionRecallCurve(
-            label_key=grouper_key, value=pr_curves
-        )
-        metrics.append(output)
+        output += pr_curves
 
     # metrics that are per label
-    for grouper_value in grouper_mappings["grouper_key_to_labels_mapping"][
+    grouper_label_values = grouper_mappings["grouper_key_to_labels_mapping"][
         grouper_key
-    ].keys():
-        (
-            precision,
-            recall,
-            f1,
-        ) = _compute_precision_and_recall_f1_from_confusion_matrix(
-            confusion_matrix, grouper_value
-        )
+    ].keys()
+    for grouper_value in grouper_label_values:
+        if confusion_matrix:
+            (
+                precision,
+                recall,
+                f1,
+            ) = _compute_precision_and_recall_f1_from_confusion_matrix(
+                confusion_matrix, grouper_value
+            )
+        else:
+            precision = 0.0
+            recall = 0.0
+            f1 = 0.0
 
         pydantic_label = schemas.Label(key=grouper_key, value=grouper_value)
-        metrics.append(
+
+        output += [
             schemas.PrecisionMetric(
                 label=pydantic_label,
                 value=precision,
-            )
-        )
-        metrics.append(
+            ),
             schemas.RecallMetric(
                 label=pydantic_label,
                 value=recall,
-            )
-        )
-        metrics.append(
+            ),
             schemas.F1Metric(
                 label=pydantic_label,
                 value=f1,
-            )
-        )
+            ),
+        ]
 
-    return confusion_matrix, metrics
+    return confusion_matrix, output
 
 
 def _compute_clf_metrics(
     db: Session,
     prediction_filter: schemas.Filter,
     groundtruth_filter: schemas.Filter,
-    metrics_to_return: list[str],
+    pr_curve_max_examples: int,
+    metrics_to_return: list[enums.MetricType],
     label_map: LabelMapType | None = None,
 ) -> tuple[
     list[schemas.ConfusionMatrix],
@@ -815,10 +1028,13 @@ def _compute_clf_metrics(
         The filter to be used to query predictions.
     groundtruth_filter : schemas.Filter
         The filter to be used to query groundtruths.
-    metrics: list[str]
+    metrics_to_return: list[MetricType]
         The list of metrics to compute, store, and return to the user.
     label_map: LabelMapType, optional
         Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
+    pr_curve_max_examples: int
+        The maximum number of datum examples to store per true positive, false negative, etc.
+
 
     Returns
     ----------
@@ -828,8 +1044,8 @@ def _compute_clf_metrics(
 
     labels = core.fetch_union_of_labels(
         db=db,
-        rhs=prediction_filter,
         lhs=groundtruth_filter,
+        rhs=prediction_filter,
     )
 
     grouper_mappings = create_grouper_mappings(
@@ -839,23 +1055,24 @@ def _compute_clf_metrics(
     )
 
     # compute metrics and confusion matrix for each grouper id
-    confusion_matrices, metrics = [], []
+    confusion_matrices, metrics_to_output = [], []
     for grouper_key in grouper_mappings[
         "grouper_key_to_labels_mapping"
     ].keys():
-        cm_and_metrics = _compute_confusion_matrix_and_metrics_at_grouper_key(
+        cm, metrics = _compute_confusion_matrix_and_metrics_at_grouper_key(
             db=db,
             prediction_filter=prediction_filter,
             groundtruth_filter=groundtruth_filter,
             grouper_key=grouper_key,
             grouper_mappings=grouper_mappings,
+            pr_curve_max_examples=pr_curve_max_examples,
             metrics_to_return=metrics_to_return,
         )
-        if cm_and_metrics is not None:
-            confusion_matrices.append(cm_and_metrics[0])
-            metrics.extend(cm_and_metrics[1])
+        if cm is not None:
+            confusion_matrices.append(cm)
+        metrics_to_output.extend(metrics)
 
-    return confusion_matrices, metrics
+    return confusion_matrices, metrics_to_output
 
 
 @validate_computation
@@ -884,14 +1101,15 @@ def compute_clf_metrics(
     evaluation = core.fetch_evaluation_from_id(db, evaluation_id)
 
     # unpack filters and params
-    groundtruth_filter = schemas.Filter(**evaluation.datum_filter)
-    prediction_filter = groundtruth_filter.model_copy()
-    prediction_filter.model_names = [evaluation.model_name]
     parameters = schemas.EvaluationParameters(**evaluation.parameters)
-
-    # load task type into filters
-    groundtruth_filter.task_types = [parameters.task_type]
-    prediction_filter.task_types = [parameters.task_type]
+    groundtruth_filter, prediction_filter = prepare_filter_for_evaluation(
+        db=db,
+        filters=schemas.Filter(**evaluation.filters),
+        dataset_names=evaluation.dataset_names,
+        model_name=evaluation.model_name,
+        task_type=parameters.task_type,
+        label_map=parameters.label_map,
+    )
 
     log_evaluation_item_counts(
         db=db,
@@ -908,6 +1126,11 @@ def compute_clf_metrics(
         prediction_filter=prediction_filter,
         groundtruth_filter=groundtruth_filter,
         label_map=parameters.label_map,
+        pr_curve_max_examples=(
+            parameters.pr_curve_max_examples
+            if parameters.pr_curve_max_examples
+            else 0
+        ),
         metrics_to_return=parameters.metrics_to_return,
     )
 

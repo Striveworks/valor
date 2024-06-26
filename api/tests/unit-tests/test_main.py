@@ -733,13 +733,24 @@ def test_get_datasets(crud, client: TestClient):
     crud.get_datasets.assert_called_once()
 
 
+""" POST /datasets/filter """
+
+
+@patch("valor_api.main.crud")
+def test_get_filtered_datasets(crud, client: TestClient):
+    crud.get_datasets.return_value = ([], {"headers": "headers"})
+    resp = client.post("/datasets/filter", json=schemas.Filter().model_dump())
+    assert resp.status_code == 200
+    crud.get_datasets.assert_called_once()
+
+
 """ GET /datasets/{dataset_name} """
 
 
 @patch("valor_api.main.crud")
 def test_get_dataset_by_name(crud, client: TestClient):
     crud.get_dataset.return_value = schemas.Dataset(name="name", metadata={})
-    resp = client.get("/datasets/name")
+    resp = client.get("/datasets/filter")
     assert resp.status_code == 200
     crud.get_dataset.assert_called_once()
 
@@ -842,6 +853,17 @@ def test_get_models(crud, client: TestClient):
     crud.get_models.assert_called_once()
 
 
+""" POST /models/filter """
+
+
+@patch("valor_api.main.crud")
+def test_get_filtered_models(crud, client: TestClient):
+    crud.get_models.return_value = ([], {"headers": "headers"})
+    resp = client.post("/models/filter", json=schemas.Filter().model_dump())
+    assert resp.status_code == 200
+    crud.get_models.assert_called_once()
+
+
 """ GET /models/{model_name} """
 
 
@@ -894,109 +916,103 @@ def test_delete_model(crud, client: TestClient):
     assert crud.delete.call_count == 1
 
 
-""" POST /evaluations """
+""" GET /data """
 
 
-def test_post_detection_metrics(client: TestClient):
-    response = schemas.EvaluationResponse(
-        id=1,
-        model_name="modelname",
-        datum_filter=schemas.Filter(dataset_names=["dsetname"]),
-        parameters=schemas.EvaluationParameters(
-            task_type=TaskType.OBJECT_DETECTION
-        ),
-        status=EvaluationStatus.PENDING,
-        metrics=[],
-        confusion_matrices=[],
-        missing_pred_labels=[],
-        ignored_pred_labels=[],
-        meta={},
-        created_at=datetime.now(),
-    ).model_dump()
+@patch("valor_api.main.crud")
+def test_get_datums(crud, client: TestClient):
+    crud.get_datums.return_value = ([], {"headers": "headers"})
+    resp = client.get("/data")
+    assert resp.status_code == 200
+    crud.get_datums.assert_called_once()
 
-    example_json = schemas.EvaluationRequest(
-        model_names=["modelname"],
-        datum_filter=schemas.Filter(
-            dataset_names=["dsetname"],
-        ),
-        parameters=schemas.EvaluationParameters(
-            task_type=TaskType.OBJECT_DETECTION
-        ),
-    ).model_dump()
+    resp = client.post("/data")
+    assert resp.status_code == 405
 
-    _test_post_evaluation_endpoint(
-        client=client,
-        crud_method_name="create_or_get_evaluations",
-        endpoint="/evaluations",
-        response=[response],
-        example_json=example_json,
+
+""" POST /data/filter """
+
+
+@patch("valor_api.main.crud")
+def test_get_filtered_datums(crud, client: TestClient):
+    crud.get_datums.return_value = ([], {"headers": "headers"})
+    resp = client.post("/data/filter", json=schemas.Filter().model_dump())
+    assert resp.status_code == 200
+    crud.get_datums.assert_called_once()
+
+
+""" GET /data/dataset/{dataset_name} """
+
+
+@patch("valor_api.main.crud")
+def test_get_dataset_datums(crud, client: TestClient):
+    crud.get_datums.return_value = ([], {"headers": "headers"})
+    resp = client.get("/data")
+    assert resp.status_code == 200
+    crud.get_datums.assert_called_once()
+
+    with patch(
+        "valor_api.main.crud.get_datums",
+        side_effect=exceptions.DatasetDoesNotExistError(""),
+    ):
+        resp = client.get("/data")
+        assert resp.status_code == 404
+
+    resp = client.post("/data")
+    assert resp.status_code == 405
+
+
+""" GET /data/dataset/{dataset_name}/uid/{uid} """
+
+
+@patch("valor_api.main.crud")
+def test_get_datum_by_uid(crud, client: TestClient):
+    crud.get_datums.return_value = (
+        [schemas.Datum(uid="uid")],
+        {},
     )
 
+    resp = client.get("/data/dataset/dsetname/uid/uid")
+    assert resp.status_code == 200
+    crud.get_datums.assert_called_once()
 
-def test_post_clf_metrics(client: TestClient):
-    response = schemas.EvaluationResponse(
-        id=1,
-        model_name="modelname",
-        datum_filter=schemas.Filter(dataset_names=["dsetname"]),
-        parameters=schemas.EvaluationParameters(
-            task_type=TaskType.CLASSIFICATION
-        ),
-        status=EvaluationStatus.PENDING,
-        metrics=[],
-        confusion_matrices=[],
-        created_at=datetime.now(),
-        meta={},
-    ).model_dump()
+    with patch(
+        "valor_api.main.crud.get_datums",
+        side_effect=exceptions.DatasetDoesNotExistError(""),
+    ):
+        resp = client.get("/data/dataset/dsetname/uid/uid")
+        assert resp.status_code == 404
 
-    example_json = schemas.EvaluationRequest(
-        model_names=["modelname"],
-        datum_filter=schemas.Filter(dataset_names=["dsetname"]),
-        parameters=schemas.EvaluationParameters(
-            task_type=TaskType.CLASSIFICATION
-        ),
-    ).model_dump()
-
-    _test_post_evaluation_endpoint(
-        client=client,
-        crud_method_name="create_or_get_evaluations",
-        endpoint="/evaluations",
-        response=[response],
-        example_json=example_json,
-    )
+    resp = client.post("/data/dataset/dsetname/uid/uid")
+    assert resp.status_code == 405
 
 
-def test_post_semenatic_segmentation_metrics(client: TestClient):
-    response = schemas.EvaluationResponse(
-        id=1,
-        model_name="modelname",
-        datum_filter=schemas.Filter(dataset_names=["dsetname"]),
-        parameters=schemas.EvaluationParameters(
-            task_type=TaskType.SEMANTIC_SEGMENTATION
-        ),
-        status=EvaluationStatus.PENDING,
-        metrics=[],
-        confusion_matrices=[],
-        missing_pred_labels=[],
-        ignored_pred_labels=[],
-        created_at=datetime.now(),
-        meta={},
-    ).model_dump()
+""" GET /labels """
 
-    example_json = schemas.EvaluationRequest(
-        model_names=["modelname"],
-        datum_filter=schemas.Filter(dataset_names=["dsetname"]),
-        parameters=schemas.EvaluationParameters(
-            task_type=TaskType.SEMANTIC_SEGMENTATION
-        ),
-    ).model_dump()
 
-    _test_post_evaluation_endpoint(
-        client=client,
-        crud_method_name="create_or_get_evaluations",
-        endpoint="/evaluations",
-        response=[response],
-        example_json=example_json,
-    )
+@patch("valor_api.main.crud")
+def test_get_labels(crud, client: TestClient):
+    crud.get_labels.return_value = ([], {"headers": "headers"})
+    resp = client.get("/labels")
+    assert resp.status_code == 200
+    crud.get_labels.assert_called_once()
+
+    resp = client.post("/labels")
+    assert resp.status_code == 405
+
+
+""" POST /labels/filter """
+
+
+@patch("valor_api.main.crud")
+def test_get_filtered_labels(crud, client: TestClient):
+    crud.get_labels.return_value = ([], {"headers": "headers"})
+    resp = client.post("/labels/filter", json={})
+    assert resp.status_code == 200
+    crud.get_labels.assert_called_once()
+
+    resp = client.get("/labels")
+    assert resp.status_code == 200
 
 
 """ GET /labels/dataset/{dataset_name} """
@@ -1038,64 +1054,107 @@ def test_get_model_labels(crud, client: TestClient):
         assert resp.status_code == 404
 
 
-""" GET /data/dataset/{dataset_name} """
+""" POST /evaluations """
 
 
-@patch("valor_api.main.crud")
-def test_get_datums(crud, client: TestClient):
-    crud.get_datums.return_value = ([], {"headers": "headers"})
-    resp = client.get("/data")
-    assert resp.status_code == 200
-    crud.get_datums.assert_called_once()
+def test_post_detection_metrics(client: TestClient):
+    response = schemas.EvaluationResponse(
+        id=1,
+        dataset_names=["dsetname"],
+        model_name="modelname",
+        filters=schemas.Filter(),
+        parameters=schemas.EvaluationParameters(
+            task_type=TaskType.OBJECT_DETECTION,
+        ),
+        status=EvaluationStatus.PENDING,
+        metrics=[],
+        confusion_matrices=[],
+        missing_pred_labels=[],
+        ignored_pred_labels=[],
+        meta={},
+        created_at=datetime.now(),
+    ).model_dump()
 
-    with patch(
-        "valor_api.main.crud.get_datums",
-        side_effect=exceptions.DatasetDoesNotExistError(""),
-    ):
-        resp = client.get("/data")
-        assert resp.status_code == 404
+    example_json = schemas.EvaluationRequest(
+        dataset_names=["dsetname"],
+        model_names=["modelname"],
+        parameters=schemas.EvaluationParameters(
+            task_type=TaskType.OBJECT_DETECTION,
+        ),
+    ).model_dump()
 
-    resp = client.post("/data")
-    assert resp.status_code == 405
-
-
-""" GET /data/dataset/{dataset_name}/uid/{uid} """
-
-
-@patch("valor_api.main.crud")
-def test_get_datum(crud, client: TestClient):
-    crud.get_datums.return_value = (
-        [schemas.Datum(uid="uid")],
-        {},
+    _test_post_evaluation_endpoint(
+        client=client,
+        crud_method_name="create_or_get_evaluations",
+        endpoint="/evaluations",
+        response=[response],
+        example_json=example_json,
     )
 
-    resp = client.get("/data/dataset/dsetname/uid/uid")
-    assert resp.status_code == 200
-    crud.get_datums.assert_called_once()
 
-    with patch(
-        "valor_api.main.crud.get_datums",
-        side_effect=exceptions.DatasetDoesNotExistError(""),
-    ):
-        resp = client.get("/data/dataset/dsetname/uid/uid")
-        assert resp.status_code == 404
+def test_post_clf_metrics(client: TestClient):
+    response = schemas.EvaluationResponse(
+        id=1,
+        dataset_names=["dsetname"],
+        model_name="modelname",
+        filters=schemas.Filter(),
+        parameters=schemas.EvaluationParameters(
+            task_type=TaskType.CLASSIFICATION
+        ),
+        status=EvaluationStatus.PENDING,
+        metrics=[],
+        confusion_matrices=[],
+        created_at=datetime.now(),
+        meta={},
+    ).model_dump()
 
-    resp = client.post("/data/dataset/dsetname/uid/uid")
-    assert resp.status_code == 405
+    example_json = schemas.EvaluationRequest(
+        model_names=["modelname"],
+        dataset_names=["dsetname"],
+        parameters=schemas.EvaluationParameters(
+            task_type=TaskType.CLASSIFICATION,
+        ),
+    ).model_dump()
+
+    _test_post_evaluation_endpoint(
+        client=client,
+        crud_method_name="create_or_get_evaluations",
+        endpoint="/evaluations",
+        response=[response],
+        example_json=example_json,
+    )
 
 
-""" GET /labels """
+def test_post_semenatic_segmentation_metrics(client: TestClient):
+    response = schemas.EvaluationResponse(
+        id=1,
+        dataset_names=["dset_name"],
+        model_name="modelname",
+        filters=schemas.Filter(),
+        parameters=schemas.EvaluationParameters(
+            task_type=TaskType.SEMANTIC_SEGMENTATION,
+        ),
+        status=EvaluationStatus.PENDING,
+        metrics=[],
+        confusion_matrices=[],
+        missing_pred_labels=[],
+        ignored_pred_labels=[],
+        created_at=datetime.now(),
+        meta={},
+    ).model_dump()
 
+    example_json = schemas.EvaluationRequest(
+        model_names=["modelname"],
+        dataset_names=["dsetname"],
+        parameters=schemas.EvaluationParameters(
+            task_type=TaskType.SEMANTIC_SEGMENTATION,
+        ),
+    ).model_dump()
 
-@patch("valor_api.main.crud")
-def test_get_labels(crud, client: TestClient):
-    crud.get_labels.return_value = ([], {"headers": "headers"})
-    resp = client.get("/labels")
-    assert resp.status_code == 200
-    crud.get_labels.assert_called_once()
-
-    resp = client.post("/labels")
-    assert resp.status_code == 405
-
-
-""" GET /user """
+    _test_post_evaluation_endpoint(
+        client=client,
+        crud_method_name="create_or_get_evaluations",
+        endpoint="/evaluations",
+        response=[response],
+        example_json=example_json,
+    )

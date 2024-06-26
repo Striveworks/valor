@@ -6,12 +6,13 @@ from valor import (
     Client,
     Dataset,
     Datum,
+    Filter,
     GroundTruth,
     Label,
     Model,
     Prediction,
 )
-from valor.enums import EvaluationStatus
+from valor.enums import EvaluationStatus, MetricType
 from valor.exceptions import ClientException
 from valor_api import crud, enums, schemas
 from valor_api.backend import core
@@ -140,10 +141,7 @@ def test_get_sorted_evaluations(
 
     clf_eval_1 = model.evaluate_classification(
         dataset,
-        filter_by=[
-            Datum.metadata["md3"]
-            == True  # noqa: E712 - 'is' keyword is not overloadable, so we have to use 'symbol == True'
-        ],
+        filters=Filter(datums=(Datum.metadata["md3"] == True)),  # noqa: E712
     )
     assert clf_eval_1.wait_for_completion(timeout=30) == EvaluationStatus.DONE
 
@@ -154,9 +152,7 @@ def test_get_sorted_evaluations(
 
     clf_eval_3 = model.evaluate_classification(
         dataset,
-        filter_by=[
-            Datum.metadata["md1"] == "md1-val2",
-        ],
+        filters=Filter(datums=(Datum.metadata["md1"] == "md1-val2")),
     )
     assert clf_eval_3.wait_for_completion(timeout=30) == EvaluationStatus.DONE
 
@@ -440,10 +436,10 @@ def test_get_sorted_evaluations(
         evaluations = client.get_evaluations(
             datasets=["clf_dataset", "seg_dataset", "det_dataset"],
             metrics_to_sort_by=[
-                "mAPAveragedOverIOUs",
-                "Accuracy",
-                "mIOU",
-            ],
+                MetricType.mAPAveragedOverIOUs,
+                MetricType.Accuracy,
+                MetricType.mIOU,
+            ],  # type: ignore - testing
         )
 
     with pytest.raises(ClientException):

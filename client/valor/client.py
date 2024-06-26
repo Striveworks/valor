@@ -2,7 +2,7 @@ import json
 import logging
 import os
 import time
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from typing import Callable, Dict, List, Optional, TypeVar, Union
 from urllib.parse import urlencode, urljoin
 
@@ -17,7 +17,6 @@ from valor.exceptions import (
     ClientNotConnectedError,
     raise_client_exception,
 )
-from valor.schemas import EvaluationRequest
 
 T = TypeVar("T")
 
@@ -193,6 +192,9 @@ class ClientConnection:
         method_name: str,
         endpoint: str,
         ignore_auth: bool = False,
+        max_retries_on_timeout=2,
+        initial_timeout: float = 2,
+        exponential_backoff: int = 2,
         *args,
         **kwargs,
     ):
@@ -209,6 +211,12 @@ class ClientConnection:
             Option to ignore authentication when you know the endpoint does not
             require a bearer token. this is used by the `_get_access_token_from_username_and_password`
             to avoid infinite recursion.
+        max_retries_on_timeout: int
+            The maximum number of retries when the requests module returns a Timeout error.
+        initial_timeout : float
+            The initial timeout value between how often we'll retry request methods.
+        exponential_backoff : integer
+            The factor by which we multiple initial_timeout for each subsequent retry.
         """
         accepted_methods = ["get", "post", "put", "delete"]
         if method_name not in accepted_methods:
@@ -224,13 +232,29 @@ class ClientConnection:
         url = urljoin(self.host, endpoint)
         requests_method = getattr(requests, method_name)
 
+        timeout_retries = 0
         tried = False
         while True:
             if self.access_token is not None:
                 headers = {"Authorization": f"Bearer {self.access_token}"}
             else:
                 headers = None
-            resp = requests_method(url, headers=headers, *args, **kwargs)
+
+            try:
+                resp = requests_method(
+                    url, headers=headers, timeout=10, *args, **kwargs
+                )
+            except requests.exceptions.Timeout as e:
+                if timeout_retries < max_retries_on_timeout:
+                    time.sleep(
+                        initial_timeout
+                        * exponential_backoff**timeout_retries
+                    )
+                    timeout_retries += 1
+                    continue
+                else:
+                    raise TimeoutError(str(e))
+
             if not resp.ok:
                 # check if unauthorized and if using username and password, get a new
                 # token and try the request again
@@ -374,17 +398,27 @@ class ClientConnection:
 
     def get_labels(
         self,
-        filter_: Optional[dict] = None,
+        filters: Optional[dict] = None,
     ) -> List[dict]:
         """
         Gets all labels using an optional filter.
 
-        `GET` endpoint.
+        `POST` endpoint.
+
+        Parameters
+        ----------
+        filters : dict, optional
+            An optional filter.
+
+        Returns
+        -------
+        list[dict]
+            A list of labels in JSON format.
         """
-        kwargs = {}
-        if filter_:
-            kwargs["params"] = {k: json.dumps(v) for k, v in filter_.items()}
-        return self._requests_get_rel_host("labels", **kwargs).json()
+        filters = filters if filters else dict()
+        return self._requests_post_rel_host(
+            "labels/filter", json=filters
+        ).json()
 
     def get_labels_from_dataset(self, name: str) -> List[dict]:
         """
@@ -435,26 +469,26 @@ class ClientConnection:
         """
         self._requests_post_rel_host("datasets", json=dataset)
 
-    def get_datasets(self, filter_: Optional[dict] = None) -> List[dict]:
+    def get_datasets(self, filters: Optional[dict] = None) -> List[dict]:
         """
         Get all datasets with option to filter.
 
-        `GET` endpoint.
+        `POST` endpoint.
 
         Parameters
         ----------
-        filter_ : Filter, optional
-            Optional filter to constrain by.
+        filters : Filter, optional
+            An optional filter.
 
         Returns
         ------
         List[dict]
-            A list of dictionaries describing all the datasets attributed to the `Client` object.
+            A list of datasets in JSON format.
         """
-        kwargs = {}
-        if filter_:
-            kwargs["params"] = {k: json.dumps(v) for k, v in filter_.items()}
-        return self._requests_get_rel_host("datasets", **kwargs).json()
+        filters = filters if filters else dict()
+        return self._requests_post_rel_host(
+            "datasets/filter", json=filters
+        ).json()
 
     def get_dataset(self, name: str) -> dict:
         """
@@ -537,26 +571,24 @@ class ClientConnection:
         """
         self._requests_delete_rel_host(f"datasets/{name}")
 
-    def get_datums(self, filter_: Optional[dict] = None) -> List[dict]:
+    def get_datums(self, filters: Optional[dict] = None) -> List[dict]:
         """
         Get all datums using an optional filter.
 
-        `GET` endpoint.
+        `POST` endpoint.
 
         Parameters
         ----------
-        filter_ : dict, optional
-            Optional filter to constrain by.
+        filters : dict, optional
+            An optional filter.
 
         Returns
         -------
         List[dict]
-            A list of dictionaries describing all the datums of the specified dataset.
+            A list of datums in JSON format.
         """
-        kwargs = {}
-        if filter_:
-            kwargs["params"] = {k: json.dumps(v) for k, v in filter_.items()}
-        return self._requests_get_rel_host("data", **kwargs).json()
+        filters = filters if isinstance(filters, dict) else dict()
+        return self._requests_post_rel_host("data/filter", json=filters).json()
 
     def get_datum(
         self,
@@ -594,26 +626,26 @@ class ClientConnection:
         """
         self._requests_post_rel_host("models", json=model)
 
-    def get_models(self, filter_: Optional[dict] = None) -> List[dict]:
+    def get_models(self, filters: Optional[dict] = None) -> List[dict]:
         """
         Get all models using an optional filter.
 
-        `GET` endpoint.
+        `POST` endpoint.
 
         Parameters
         ----------
-        filter_ : Filter, optional
-            Optional filter to constrain by.
+        filters : Filter, optional
+            An optional filter.
 
         Returns
         ------
         List[dict]
-            A list of dictionaries describing all the models.
+            A list of models in JSON format.
         """
-        kwargs = {}
-        if filter_:
-            kwargs["params"] = {k: json.dumps(v) for k, v in filter_.items()}
-        return self._requests_get_rel_host("models", **kwargs).json()
+        filters = filters if filters else dict()
+        return self._requests_post_rel_host(
+            "models/filter", json=filters
+        ).json()
 
     def get_model(self, name: str) -> dict:
         """
@@ -717,7 +749,7 @@ class ClientConnection:
         self._requests_delete_rel_host(f"models/{name}")
 
     def evaluate(
-        self, request: EvaluationRequest, allow_retries: bool = False
+        self, request: dict, allow_retries: bool = False
     ) -> List[dict]:
         """
         Creates as many evaluations as necessary to fulfill the request.
@@ -726,7 +758,7 @@ class ClientConnection:
 
         Parameters
         ----------
-        request : schemas.EvaluationRequest
+        request : dict
             The requested evaluation parameters.
         allow_retries : bool, default = False
             Option to retry previously failed evaluations.
@@ -738,9 +770,7 @@ class ClientConnection:
         """
         query_str = urlencode({"allow_retries": allow_retries})
         endpoint = f"evaluations?{query_str}"
-        return self._requests_post_rel_host(
-            endpoint, json=asdict(request)
-        ).json()
+        return self._requests_post_rel_host(endpoint, json=request).json()
 
     def get_evaluations(
         self,
@@ -800,6 +830,19 @@ class ClientConnection:
         endpoint = f"evaluations?{query_str}"
 
         return self._requests_get_rel_host(endpoint).json()
+
+    def delete_evaluation(self, evaluation_id: int) -> None:
+        """
+        Deletes an evaluation.
+
+        `DELETE` endpoint.
+
+        Parameters
+        ----------
+        evaluation_id : int
+            The id of the evaluation to be deleted.
+        """
+        self._requests_delete_rel_host(f"evaluations/{evaluation_id}")
 
     def get_user(self) -> Union[str, None]:
         """

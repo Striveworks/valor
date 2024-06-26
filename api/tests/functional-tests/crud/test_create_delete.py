@@ -396,7 +396,7 @@ def test_create_and_get_datasets(
         db=db,
         dataset=schemas.Dataset(name="other_dataset"),
     )
-    datasets, _ = crud.get_datasets(db=db)
+    datasets, _ = crud.get_datasets(db=db, filters=schemas.Filter())
     assert len(datasets) == 2
     assert set([d.name for d in datasets]) == {dataset_name, "other_dataset"}
 
@@ -1099,30 +1099,36 @@ def test_create_detection_metrics(
         min_area: float | None = None,
         max_area: float | None = None,
     ):
-        geometric_filters = []
+        conditions = []
         if min_area:
-            geometric_filters.append(
-                schemas.NumericFilter(
-                    value=min_area,
-                    operator=">=",
+            conditions.append(
+                schemas.Condition(
+                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.BOX_AREA),
+                    rhs=schemas.Value.infer(float(min_area)),
+                    op=schemas.FilterOperator.GTE,
                 )
             )
         if max_area:
-            geometric_filters.append(
-                schemas.NumericFilter(
-                    value=max_area,
-                    operator="<=",
+            conditions.append(
+                schemas.Condition(
+                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.BOX_AREA),
+                    rhs=schemas.Value.infer(float(max_area)),
+                    op=schemas.FilterOperator.LTE,
                 )
             )
-        if not geometric_filters:
-            geometric_filters = None
 
         job_request = schemas.EvaluationRequest(
+            dataset_names=["test_dataset"],
             model_names=["test_model"],
-            datum_filter=schemas.Filter(
-                label_keys=[label_key],
-                dataset_names=["test_dataset"],
-                bounding_box_area=geometric_filters,
+            filters=schemas.Filter(
+                annotations=schemas.LogicalFunction.and_(*conditions)
+                if conditions
+                else None,
+                labels=schemas.Condition(
+                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
+                    rhs=schemas.Value.infer(label_key),
+                    op=schemas.FilterOperator.EQ,
+                ),
             ),
             parameters=schemas.EvaluationParameters(
                 task_type=enums.TaskType.OBJECT_DETECTION,
@@ -1236,6 +1242,8 @@ def test_create_detection_metrics(
             "mAR",
             "mAP",
             "mAPAveragedOverIOUs",
+            "PrecisionRecallCurve",
+            "DetailedPrecisionRecallCurve",
         }
 
     # test when min area and max area are specified
@@ -1261,6 +1269,8 @@ def test_create_detection_metrics(
             "mAR",
             "mAP",
             "mAPAveragedOverIOUs",
+            "PrecisionRecallCurve",
+            "DetailedPrecisionRecallCurve",
         }
 
     # check we have the right evaluations
@@ -1279,9 +1289,14 @@ def test_create_detection_metrics(
     model_evals[0].meta = {}
 
     assert model_evals[1] == schemas.EvaluationResponse(
+        dataset_names=[dataset_name],
         model_name=model_name,
-        datum_filter=schemas.Filter(
-            label_keys=["class"], dataset_names=[dataset_name]
+        filters=schemas.Filter(
+            labels=schemas.Condition(
+                lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
+                rhs=schemas.Value.infer("class"),
+                op=schemas.FilterOperator.EQ,
+            )
         ),
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.OBJECT_DETECTION,
@@ -1301,20 +1316,26 @@ def test_create_detection_metrics(
         meta={},
     )
     assert model_evals[0] == schemas.EvaluationResponse(
+        dataset_names=[dataset_name],
         model_name=model_name,
-        datum_filter=schemas.Filter(
-            dataset_names=[dataset_name],
-            label_keys=["class"],
-            bounding_box_area=[
-                schemas.NumericFilter(
-                    value=min_area,
-                    operator=">=",
+        filters=schemas.Filter(
+            annotations=schemas.LogicalFunction.and_(
+                schemas.Condition(
+                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.BOX_AREA),
+                    rhs=schemas.Value.infer(float(min_area)),
+                    op=schemas.FilterOperator.GTE,
                 ),
-                schemas.NumericFilter(
-                    value=max_area,
-                    operator="<=",
+                schemas.Condition(
+                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.BOX_AREA),
+                    rhs=schemas.Value.infer(float(max_area)),
+                    op=schemas.FilterOperator.LTE,
                 ),
-            ],
+            ),
+            labels=schemas.Condition(
+                lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
+                rhs=schemas.Value.infer("class"),
+                op=schemas.FilterOperator.EQ,
+            ),
         ),
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.OBJECT_DETECTION,
@@ -1357,10 +1378,10 @@ def test_create_clf_metrics(
     crud.finalize(db=db, model_name=model_name, dataset_name=dataset_name)
 
     job_request = schemas.EvaluationRequest(
+        dataset_names=[dataset_name],
         model_names=[model_name],
-        datum_filter=schemas.Filter(dataset_names=[dataset_name]),
         parameters=schemas.EvaluationParameters(
-            task_type=enums.TaskType.CLASSIFICATION
+            task_type=enums.TaskType.CLASSIFICATION,
         ),
     )
 
@@ -1464,7 +1485,7 @@ def test_create_clf_metrics(
     )
     assert query
     metrics = query.metrics
-    assert len(metrics) == 2 + 2 + 6 + 6 + 6
+    assert len(metrics) == 22
     confusion_matrices = db.scalars(
         select(models.ConfusionMatrix).where(
             models.ConfusionMatrix.evaluation_id == evaluation_id

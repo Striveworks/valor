@@ -4,10 +4,7 @@ import numpy as np
 import pytest
 
 from valor.schemas import Box, Embedding, Float, Raster, TaskTypeEnum
-from valor.schemas.symbolic.operators import (
-    AppendableFunction,
-    TwoArgumentFunction,
-)
+from valor.schemas.symbolic.operators import Condition, Eq, Function, Ne
 
 
 def get_function_name(fn: str) -> str:
@@ -18,9 +15,9 @@ def get_function_name(fn: str) -> str:
         "__or__": "or",
         "__xor__": "xor",
         "__gt__": "gt",
-        "__ge__": "ge",
+        "__ge__": "gte",
         "__lt__": "lt",
-        "__le__": "le",
+        "__le__": "lte",
         "is_none": "isnull",
         "is_not_none": "isnotnull",
         "intersects": "intersects",
@@ -51,13 +48,8 @@ def _test_to_dict(objcls, value, type_name: typing.Optional[str] = None):
     }
     # test symbolic
     assert objcls.symbolic().to_dict() == {
-        "type": "symbol",
-        "value": {
-            "owner": None,
-            "name": type_name,
-            "key": None,
-            "attribute": None,
-        },
+        "name": type_name,
+        "key": None,
     }
 
 
@@ -88,14 +80,19 @@ def _test_generic(
         # test functional dictionary generation
         expr = C.__getattribute__(op)(a)
         expr_dict = expr.to_dict()
-        if issubclass(type(expr), AppendableFunction):
+        if isinstance(expr, Ne):
+            # this is an edge case as the Ne operator is currently set to Not(Equal(A, B))
+            assert len(expr_dict) == 2
+            assert expr_dict["op"] == "not"
+            assert expr_dict["args"] == Eq(C, A).to_dict()
+        elif issubclass(type(expr), Function):
             assert len(expr_dict) == 2
             assert expr_dict["op"] == get_function_name(op)
             assert expr_dict["args"] == [
                 C.to_dict(),
                 A.to_dict(),
             ]
-        elif issubclass(type(expr), TwoArgumentFunction):
+        elif issubclass(type(expr), Condition):
             assert len(expr_dict) == 3
             assert expr_dict["op"] == get_function_name(op)
             assert expr_dict["lhs"] == C.to_dict()
@@ -392,13 +389,8 @@ def test_raster():
     # test property 'area'
     assert objcls.symbolic().area.is_symbolic
     assert objcls.symbolic().area.to_dict() == {
-        "type": "symbol",
-        "value": {
-            "owner": None,
-            "name": objcls.__name__.lower(),
-            "key": None,
-            "attribute": "area",
-        },
+        "name": f"{objcls.__name__.lower()}.area",
+        "key": None,
     }
 
     # test property 'area' is not available to values

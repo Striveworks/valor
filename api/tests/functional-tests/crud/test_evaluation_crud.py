@@ -1,9 +1,10 @@
 import pytest
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from valor_api import crud, enums, exceptions, schemas
-from valor_api.backend import core
+from valor_api.backend import core, models
 
 
 def test_evaluation_creation_exceptions(db: Session):
@@ -29,23 +30,23 @@ def test_evaluation_creation_exceptions(db: Session):
         core.create_or_get_evaluations(
             db=db,
             job_request=schemas.EvaluationRequest(
+                dataset_names=["does_not_exist"],
                 model_names=["mymodel"],
-                datum_filter=schemas.Filter(dataset_names=["does_not_exist"]),
                 parameters=schemas.EvaluationParameters(
                     task_type=enums.TaskType.CLASSIFICATION
                 ),
             ),
             allow_retries=False,
         )
-    assert "datasets" in str(e)
+    assert "DatasetDoesNotExist" in str(e)
 
     # test dataset not finalized
     with pytest.raises(exceptions.EvaluationRequestError) as e:
         core.create_or_get_evaluations(
             db=db,
             job_request=schemas.EvaluationRequest(
+                dataset_names=["mydataset"],
                 model_names=["mymodel"],
-                datum_filter=schemas.Filter(dataset_names=["mydataset"]),
                 parameters=schemas.EvaluationParameters(
                     task_type=enums.TaskType.CLASSIFICATION
                 ),
@@ -61,30 +62,30 @@ def test_evaluation_creation_exceptions(db: Session):
         core.create_or_get_evaluations(
             db=db,
             job_request=schemas.EvaluationRequest(
+                dataset_names=["mydataset"],
                 model_names=["does_not_exist"],
-                datum_filter=schemas.Filter(dataset_names=["mydataset"]),
                 parameters=schemas.EvaluationParameters(
                     task_type=enums.TaskType.CLASSIFICATION
                 ),
             ),
             allow_retries=False,
         )
-    assert "models" in str(e)
+    assert "ModelDoesNotExist" in str(e)
 
     # test model not finalized
     with pytest.raises(exceptions.EvaluationRequestError) as e:
         core.create_or_get_evaluations(
             db=db,
             job_request=schemas.EvaluationRequest(
+                dataset_names=["mydataset"],
                 model_names=["mymodel"],
-                datum_filter=schemas.Filter(dataset_names=["mydataset"]),
                 parameters=schemas.EvaluationParameters(
                     task_type=enums.TaskType.CLASSIFICATION
                 ),
             ),
             allow_retries=False,
         )
-    assert "mymodel" in str(e)
+    assert "ModelNotFinalized" in str(e)
 
     crud.create_predictions(
         db=db,
@@ -107,8 +108,8 @@ def test_evaluation_creation_exceptions(db: Session):
     evaluations = core.create_or_get_evaluations(
         db=db,
         job_request=schemas.EvaluationRequest(
+            dataset_names=["mydataset"],
             model_names=["mymodel"],
-            datum_filter=schemas.Filter(dataset_names=["mydataset"]),
             parameters=schemas.EvaluationParameters(
                 task_type=enums.TaskType.CLASSIFICATION
             ),
@@ -159,10 +160,10 @@ def test_restart_failed_evaluation(db: Session):
     evaluations1 = core.create_or_get_evaluations(
         db=db,
         job_request=schemas.EvaluationRequest(
+            dataset_names=["dataset"],
             model_names=["model"],
-            datum_filter=schemas.Filter(dataset_names=["dataset"]),
             parameters=schemas.EvaluationParameters(
-                task_type=enums.TaskType.CLASSIFICATION
+                task_type=enums.TaskType.CLASSIFICATION,
             ),
         ),
         allow_retries=False,
@@ -183,10 +184,10 @@ def test_restart_failed_evaluation(db: Session):
     evaluations2 = crud.create_or_get_evaluations(
         db=db,
         job_request=schemas.EvaluationRequest(
+            dataset_names=["dataset"],
             model_names=["model"],
-            datum_filter=schemas.Filter(dataset_names=["dataset"]),
             parameters=schemas.EvaluationParameters(
-                task_type=enums.TaskType.CLASSIFICATION
+                task_type=enums.TaskType.CLASSIFICATION,
             ),
         ),
         allow_retries=False,
@@ -199,10 +200,10 @@ def test_restart_failed_evaluation(db: Session):
     evaluations3 = crud.create_or_get_evaluations(
         db=db,
         job_request=schemas.EvaluationRequest(
+            dataset_names=["dataset"],
             model_names=["model"],
-            datum_filter=schemas.Filter(dataset_names=["dataset"]),
             parameters=schemas.EvaluationParameters(
-                task_type=enums.TaskType.CLASSIFICATION
+                task_type=enums.TaskType.CLASSIFICATION,
             ),
         ),
         allow_retries=True,
@@ -215,8 +216,8 @@ def test_restart_failed_evaluation(db: Session):
     evaluations4 = crud.create_or_get_evaluations(
         db=db,
         job_request=schemas.EvaluationRequest(
+            dataset_names=["dataset"],
             model_names=["model"],
-            datum_filter=schemas.Filter(dataset_names=["dataset"]),
             parameters=schemas.EvaluationParameters(
                 task_type=enums.TaskType.CLASSIFICATION
             ),
@@ -226,3 +227,175 @@ def test_restart_failed_evaluation(db: Session):
     assert len(evaluations4) == 1
     assert evaluations4[0].status == enums.EvaluationStatus.DONE
     assert evaluations4[0].id == evaluations1[0].id
+
+
+@pytest.fixture
+def create_evaluations(db: Session):
+
+    rows = [
+        models.Evaluation(
+            id=idx,
+            dataset_names=["1", "2"],
+            model_name=str(idx),
+            parameters=schemas.EvaluationParameters(
+                task_type=enums.TaskType.CLASSIFICATION
+            ).model_dump(),
+            filters=schemas.Filter().model_dump(),
+            status=status,
+        )
+        for idx, status in enumerate(enums.EvaluationStatus)
+    ]
+
+    try:
+        db.add_all(rows)
+        db.commit()
+    except IntegrityError as e:
+        db.rollback()
+        raise e
+
+    yield [(row.id, row.status) for row in rows]
+
+    for row in rows:
+        try:
+            db.delete(row)
+        except IntegrityError:
+            db.rollback()
+
+
+def test_delete_evaluation(db: Session, create_evaluations):
+
+    for idx, status in create_evaluations:
+        assert (
+            db.scalar(
+                select(func.count(models.Evaluation.id)).where(
+                    models.Evaluation.id == idx
+                )
+            )
+            == 1
+        )
+        if status in {
+            enums.EvaluationStatus.PENDING,
+            enums.EvaluationStatus.RUNNING,
+        }:
+            with pytest.raises(exceptions.EvaluationRunningError):
+                crud.delete_evaluation(db=db, evaluation_id=idx)
+            assert (
+                db.scalar(
+                    select(func.count(models.Evaluation.id)).where(
+                        models.Evaluation.id == idx
+                    )
+                )
+                == 1
+            )
+        elif status == enums.EvaluationStatus.DELETING:
+            with pytest.raises(exceptions.EvaluationDoesNotExistError):
+                crud.delete_evaluation(db=db, evaluation_id=idx)
+            assert (
+                db.scalar(
+                    select(func.count(models.Evaluation.id)).where(
+                        models.Evaluation.id == idx
+                    )
+                )
+                == 1
+            )
+        else:
+            crud.delete_evaluation(db=db, evaluation_id=idx)
+            assert (
+                db.scalar(
+                    select(func.count(models.Evaluation.id)).where(
+                        models.Evaluation.id == idx
+                    )
+                )
+                == 0
+            )
+
+    # check for id that doesnt exist
+    with pytest.raises(exceptions.EvaluationDoesNotExistError):
+        crud.delete_evaluation(db=db, evaluation_id=10000)
+
+
+@pytest.fixture
+def create_evaluation_with_metrics(db: Session):
+    evaluation_id = 0
+    number_of_metrics = 4
+
+    evaluation = models.Evaluation(
+        id=evaluation_id,
+        dataset_names=["1", "2"],
+        model_name="3",
+        parameters=schemas.EvaluationParameters(
+            task_type=enums.TaskType.CLASSIFICATION
+        ).model_dump(),
+        filters=schemas.Filter().model_dump(),
+        status=enums.EvaluationStatus.DONE,
+    )
+    metrics = [
+        models.Metric(
+            evaluation_id=evaluation_id,
+            label_id=None,
+            type="Precision",
+            value=float(i) / float(number_of_metrics),
+            parameters=dict(),
+        )
+        for i in range(number_of_metrics)
+    ]
+
+    try:
+        db.add(evaluation)
+        db.add_all(metrics)
+        db.commit()
+    except IntegrityError as e:
+        db.rollback()
+        raise e
+
+    yield (evaluation_id, number_of_metrics)
+
+    for row in [evaluation, *metrics]:
+        try:
+            db.delete(row)
+            db.commit()
+        except IntegrityError:
+            db.rollback()
+
+
+def test_delete_evaluation_with_metrics(
+    db: Session, create_evaluation_with_metrics
+):
+    row_id, num_metrics = create_evaluation_with_metrics
+
+    assert num_metrics == 4
+    assert (
+        db.scalar(
+            select(func.count(models.Evaluation.id)).where(
+                models.Evaluation.id == row_id
+            )
+        )
+        == 1
+    )
+    assert (
+        db.scalar(
+            select(func.count(models.Metric.id)).where(
+                models.Metric.evaluation_id == row_id
+            )
+        )
+        == num_metrics
+    )
+
+    crud.delete_evaluation(db=db, evaluation_id=row_id)
+
+    assert (
+        db.scalar(
+            select(func.count(models.Evaluation.id)).where(
+                models.Evaluation.id == row_id
+            )
+        )
+        == 0
+    )
+    assert (
+        db.scalar(
+            select(func.count(models.Metric.id)).where(
+                models.Metric.evaluation_id == row_id
+            )
+        )
+        == 0
+    )

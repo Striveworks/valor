@@ -20,6 +20,7 @@ def _create_detection_grouper_mappings(
     """Create grouper mappings for use when evaluating detections."""
 
     label_id_to_grouper_id_mapping = {}
+    label_id_to_grouper_key_mapping = {}
     grouper_id_to_grouper_label_mapping = {}
     grouper_id_to_label_ids_mapping = defaultdict(list)
 
@@ -29,8 +30,12 @@ def _create_detection_grouper_mappings(
         )
         # create an integer to track each group by
         grouper_id = hash((mapped_key, mapped_value))
+        # create a separate grouper_key_id which is used to cross-join labels that share a given key
+        # when computing IOUs for PrecisionRecallCurve
+        grouper_key_id = mapped_key
 
         label_id_to_grouper_id_mapping[label.id] = grouper_id
+        label_id_to_grouper_key_mapping[label.id] = grouper_key_id
         grouper_id_to_grouper_label_mapping[grouper_id] = schemas.Label(
             key=mapped_key, value=mapped_value
         )
@@ -38,6 +43,7 @@ def _create_detection_grouper_mappings(
 
     return {
         "label_id_to_grouper_id_mapping": label_id_to_grouper_id_mapping,
+        "label_id_to_grouper_key_mapping": label_id_to_grouper_key_mapping,
         "grouper_id_to_label_ids_mapping": grouper_id_to_label_ids_mapping,
         "grouper_id_to_grouper_label_mapping": grouper_id_to_grouper_label_mapping,
     }
@@ -208,6 +214,7 @@ def create_metric_mappings(
         | schemas.IOUMetric
         | schemas.mIOUMetric
         | schemas.PrecisionRecallCurve
+        | schemas.DetailedPrecisionRecallCurve
     ],
     evaluation_id: int,
 ) -> list[dict]:
@@ -323,7 +330,7 @@ def log_evaluation_item_counts(
     gt_subquery = generate_select(
         models.Datum.id.label("datum_id"),
         models.GroundTruth,
-        filter_=groundtruth_filter,
+        filters=groundtruth_filter,
         label_source=models.GroundTruth,
     ).alias()
 
@@ -344,7 +351,7 @@ def log_evaluation_item_counts(
     pd_subquery = generate_select(
         models.Datum.id.label("datum_id"),
         models.Prediction,
-        filter_=prediction_filter,
+        filters=prediction_filter,
         label_source=models.Prediction,
     ).alias()
 
@@ -434,3 +441,108 @@ def validate_computation(fn: Callable) -> Callable:
         return result
 
     return wrapper
+
+
+def prepare_filter_for_evaluation(
+    db: Session,
+    filters: schemas.Filter,
+    dataset_names: list[str],
+    model_name: str,
+    task_type: enums.TaskType,
+    label_map: LabelMapType | None = None,
+) -> tuple[schemas.Filter, schemas.Filter]:
+    """
+    Prepares the filter for use by an evaluation method.
+
+    This function will be expanded in a future PR.
+
+    Parameters
+    ----------
+    db : Session
+        The database session.
+    filters : Filter
+        The data filter.
+    dataset_names : list[str]
+        A list of dataset names to filter by.
+    model_name : str
+        A model name to filter by.
+    task_type : TaskType
+        A task type to filter by.
+    label_map : LabelMapType, optional
+        An optional label mapping.
+
+    Returns
+    -------
+    Filter
+        A filter ready for evaluation.
+    """
+
+    # create dataset constraint
+    dataset_conditions = schemas.LogicalFunction.or_(
+        *[
+            schemas.Condition(
+                lhs=schemas.Symbol(name=schemas.SupportedSymbol.DATASET_NAME),
+                rhs=schemas.Value.infer(name),
+                op=schemas.FilterOperator.EQ,
+            )
+            for name in dataset_names
+        ]
+    )
+
+    # create model constraint
+    model_condition = schemas.Condition(
+        lhs=schemas.Symbol(name=schemas.SupportedSymbol.MODEL_NAME),
+        rhs=schemas.Value.infer(model_name),
+        op=schemas.FilterOperator.EQ,
+    )
+
+    # create task type constraint
+    task_type_condition = schemas.Condition(
+        lhs=schemas.Symbol(name=schemas.SupportedSymbol.TASK_TYPE),
+        rhs=schemas.Value(
+            type=schemas.SupportedType.TASK_TYPE, value=task_type
+        ),
+        op=schemas.FilterOperator.CONTAINS,
+    )
+
+    # create new annotations filter
+    filters.annotations = (
+        schemas.LogicalFunction.and_(
+            filters.annotations,
+            task_type_condition,
+        )
+        if filters.annotations
+        else task_type_condition
+    )
+
+    # create new groundtruth filter
+    filters.groundtruths = (
+        schemas.LogicalFunction.and_(
+            filters.groundtruths,
+            dataset_conditions,
+        )
+        if filters.groundtruths
+        else dataset_conditions
+    )
+
+    # create new prediction filter
+    filters.predictions = (
+        schemas.LogicalFunction.and_(
+            filters.predictions,
+            dataset_conditions,
+            model_condition,
+        )
+        if filters.predictions
+        else schemas.LogicalFunction.and_(
+            dataset_conditions,
+            model_condition,
+        )
+    )
+
+    groundtruth_filter = filters.model_copy()
+    groundtruth_filter.predictions = None
+
+    predictions_filter = filters.model_copy()
+    predictions_filter.groundtruths = None
+
+    return (groundtruth_filter, predictions_filter)
