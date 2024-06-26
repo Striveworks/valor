@@ -1,4 +1,7 @@
-from sqlalchemy import alias, select
+from collections import defaultdict
+
+from scipy.stats import cramervonmises_2samp, ks_2samp
+from sqlalchemy import alias, and_, func, select
 from sqlalchemy.orm import Session
 
 from valor_api import enums, schemas
@@ -13,25 +16,268 @@ from valor_api.backend.metrics.metric_utils import (
 )
 
 
-def _compute_embedding_metrics(
+def _get_embeddings(
     db: Session,
+    dataset: models.Dataset,
+    model: models.Model,
+    label: models.Label,
+    limit: int,
 ):
-    queries = select(models.Embedding).where().subquery()
-    ref = select(models.Embedding).where().subquery()
-    ref_alias = alias(ref)
-
-    ref_dist = db.scalars(
-        select(ref.c.value.cosine_distance(ref_alias.c.value))
-        .select_from(ref)
-        .join(ref_alias, ref_alias.c.id != ref.c.id)
-    )
-    query_dist = db.scalars(
-        select(ref.c.value.cosine_distance(queries.c.value))
-        .select_from(ref)
+    datums = (
+        select(models.Datum.id.label("id"))
         .join(
-            queries,
-            isouter=True,
+            models.Annotation,
+            models.Annotation.datum_id == models.Datum.id,
         )
+        .join(
+            models.GroundTruth,
+            models.GroundTruth.annotation_id == models.Annotation.id,
+        )
+        .join(
+            models.Label,
+            and_(
+                models.Label.id == models.GroundTruth.label_id,
+                models.Label.key == label.key,
+                models.Label.value == label.value,
+            ),
+        )
+        .where(models.Datum.dataset_id == dataset.id)
+        .distinct()
+        .subquery()
+    )
+
+    n_datums = db.scalar(func.count(datums.c.id))
+
+    if limit > 0 and n_datums > limit:
+        return (
+            select(models.Embedding)
+            .join(
+                models.Annotation,
+                and_(
+                    models.Annotation.embedding_id == models.Embedding.id,
+                    models.Annotation.model_id == model.id,
+                ),
+            )
+            .join(datums, datums.c.id == models.Annotation.datum_id)
+            .order_by(func.random())
+            .limit(limit=limit)
+        )
+
+    return (
+        select(models.Embedding)
+        .join(
+            models.Annotation,
+            and_(
+                models.Annotation.embedding_id == models.Embedding.id,
+                models.Annotation.model_id == model.id,
+            ),
+        )
+        .join(datums, datums.c.id == models.Annotation.datum_id)
+        .order_by(func.random())
+    )
+
+
+def _compute_self_distances(
+    db: Session,
+    dataset: models.Dataset,
+    model: models.Model,
+    label: models.Label,
+    limit: int,
+):
+    embeddings = _get_embeddings(
+        db=db,
+        dataset=dataset,
+        model=model,
+        label=label,
+        limit=limit * 2,
+    ).cte()
+
+    split1 = select(embeddings).limit(limit).subquery()
+
+    split2 = select(embeddings).limit(limit).offset(limit).subquery()
+
+    return db.scalars(
+        select(split1.c.value.cosine_distance(split2.c.value))
+        .select_from(split1)
+        .join(split2, split2.c.id != split1.c.id)
+    ).all()
+
+
+def _compute_distances(
+    db: Session,
+    model: models.Model,
+    query_dataset: models.Dataset,
+    ref_label: models.Label,
+    reference_dataset: models.Dataset,
+    query_label: models.Label,
+    limit: int,
+):
+    reference_embeddings = _get_embeddings(
+        db=db,
+        dataset=reference_dataset,
+        model=model,
+        label=ref_label,
+        limit=limit,
+    ).cte()
+
+    query_embeddings = _get_embeddings(
+        db=db,
+        dataset=query_dataset,
+        model=model,
+        label=query_label,
+        limit=limit,
+    ).cte()
+
+    return db.scalars(
+        select(
+            reference_embeddings.c.value.cosine_distance(
+                query_embeddings.c.value
+            )
+        )
+        .select_from(reference_embeddings)
+        .join(
+            query_embeddings,
+            query_embeddings.c.id != reference_embeddings.c.id,
+        )
+    ).all()
+
+
+def _compute_query_metrics(
+    db: Session,
+    query_dataset: models.Dataset,
+    reference_dataset: models.Dataset,
+    model: models.Model,
+    labels: list[models.Label],
+    k: int,
+):
+    cvm_statistics = defaultdict(dict)
+    cvm_pvalues = defaultdict(dict)
+    ks_statistics = defaultdict(dict)
+    ks_pvalues = defaultdict(dict)
+
+    for ref_label in labels:
+
+        reference_embeddings = _get_embeddings(
+            db=db,
+            dataset=reference_dataset,
+            model=model,
+            label=ref_label,
+            limit=k,
+        ).subquery()
+        reference_embeddings_alias = alias(reference_embeddings)
+
+        reference_distances = db.scalars(
+            select(
+                reference_embeddings.c.value.cosine_distance(
+                    reference_embeddings_alias.c.value
+                )
+            )
+            .select_from(reference_embeddings)
+            .join(
+                reference_embeddings_alias,
+                reference_embeddings_alias.c.id != reference_embeddings.c.id,
+            )
+        )
+
+        for query_label in labels:
+
+            query_embeddings = _get_embeddings(
+                db=db,
+                dataset=query_dataset,
+                model=model,
+                label=query_label,
+                limit=k,
+            ).subquery()
+
+            query_distances = db.scalars(
+                select(
+                    reference_embeddings.c.value.cosine_distance(
+                        query_embeddings.c.value
+                    )
+                )
+                .select_from(reference_embeddings)
+                .join(query_embeddings, isouter=True)
+            )
+
+            cvm = cramervonmises_2samp(reference_distances, query_distances)
+            cvm_statistics[ref_label.value][query_label.value] = cvm.statistic
+            cvm_pvalues[ref_label.value][query_label.value] = cvm.pvalue
+
+            ks = ks_2samp(reference_distances, query_distances)
+            ks_statistics[ref_label.value][query_label.value] = ks.statistic
+            ks_pvalues[ref_label.value][query_label.value] = ks.pvalue
+
+
+def _compute_metrics(
+    db: Session,
+    query_dataset: models.Dataset,
+    reference_dataset: models.Dataset | None,
+    model: models.Model,
+    labels: list[models.Label],
+    k: int,
+):
+    cvm_statistics = defaultdict(dict)
+    cvm_pvalues = defaultdict(dict)
+    ks_statistics = defaultdict(dict)
+    ks_pvalues = defaultdict(dict)
+
+    no_references = reference_dataset is None
+    reference_dataset = query_dataset
+
+    for ref_label in labels:
+        reference_distances = _compute_self_distances(
+            db=db,
+            dataset=reference_dataset,
+            model=model,
+            label=ref_label,
+            limit=k,
+        )
+        for query_label in labels:
+            if ref_label == query_label and no_references:
+                self_distances = _compute_self_distances(
+                    db=db,
+                    dataset=reference_dataset,
+                    model=model,
+                    label=ref_label,
+                    limit=2 * k,
+                )
+                split_idx = len(self_distances) // 2
+                cvm = cramervonmises_2samp(
+                    self_distances[:split_idx], self_distances[split_idx:]
+                )
+                ks = ks_2samp(
+                    self_distances[:split_idx], self_distances[split_idx:]
+                )
+            else:
+                query_distances = _compute_distances(
+                    db=db,
+                    model=model,
+                    query_dataset=reference_dataset,
+                    query_label=query_label,
+                    reference_dataset=reference_dataset,
+                    ref_label=ref_label,
+                    limit=k,
+                )
+                cvm = cramervonmises_2samp(
+                    reference_distances,
+                    query_distances,
+                )
+                ks = ks_2samp(
+                    reference_distances,
+                    query_distances,
+                )
+
+            cvm_statistics[ref_label.value][query_label.value] = cvm.statistic
+            cvm_pvalues[ref_label.value][query_label.value] = cvm.pvalue
+
+            ks_statistics[ref_label.value][query_label.value] = ks.statistic
+            ks_pvalues[ref_label.value][query_label.value] = ks.pvalue
+
+    return (
+        cvm_statistics,
+        cvm_pvalues,
+        ks_statistics,
+        ks_pvalues,
     )
 
 

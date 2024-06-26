@@ -1,3 +1,4 @@
+import random
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import Callable
@@ -80,6 +81,7 @@ def _compute_metrics(
     references: list[list[np.ndarray]] | None,
     classes: list[str],
     method: str,
+    k: int,
     func: Callable,
 ) -> EmbeddingMatrix:
     """
@@ -113,19 +115,35 @@ def _compute_metrics(
     queries_are_references = references is None
     references = queries
 
-    for i, query in enumerate(queries):
-        for j, reference in enumerate(references):
-            reference_distance = compute_self_distances(
-                reference, method=method
-            )
+    for j, reference in enumerate(references):
+
+        if k > 0 and len(reference) > k:
+            random.shuffle(reference)
+            reference = reference[:k]
+
+        reference_distance = compute_self_distances(reference, method=method)
+
+        for i, query in enumerate(queries):
+
             if queries_are_references and i == j:
                 # split the set in two and measure how similarly distributed it is.
-                split_idx = len(reference_distance) // 2
+
+                if k > 0 and len(query) > 2 * k:
+                    random.shuffle(query)
+                    query = query[: 2 * k]
+
+                distances = compute_self_distances(query, method=method)
+
+                split_idx = len(query) // 2
                 metric = func(
-                    reference_distance[:split_idx],
-                    reference_distance[split_idx:],
+                    distances[:split_idx],
+                    distances[split_idx:],
                 )
             else:
+                if k > 0 and len(query) > k:
+                    random.shuffle(query)
+                    query = query[:k]
+
                 query_distance = compute_distances(
                     reference, query, method=method
                 )
@@ -143,6 +161,7 @@ def compute_cvm(
     queries: list[list[np.ndarray]],
     classes: list[str],
     references: list[list[np.ndarray]] | None = None,
+    k: int = -1,
     method: str = "cosine",
 ) -> EmbeddingMatrix:
     """
@@ -169,6 +188,7 @@ def compute_cvm(
         references=references,
         classes=classes,
         method=method,
+        k=k,
         func=cramervonmises_2samp,
     )
 
@@ -177,6 +197,7 @@ def compute_ks(
     queries: list[list[np.ndarray]],
     classes: list[str],
     references: list[list[np.ndarray]] | None = None,
+    k: int = -1,
     method: str = "cosine",
 ) -> EmbeddingMatrix:
     """
@@ -203,6 +224,7 @@ def compute_ks(
         references=references,
         classes=classes,
         method=method,
+        k=k,
         func=ks_2samp,
     )
 
