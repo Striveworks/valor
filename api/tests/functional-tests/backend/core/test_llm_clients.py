@@ -184,6 +184,7 @@ def test_WrappedOpenAIClient():
 
     with pytest.raises(OpenAIError):
         client.connect()
+        client(fake_message)
 
     assert fake_message == client.process_messages(fake_message)
 
@@ -276,6 +277,7 @@ def test_WrappedMistralAIClient():
 
     with pytest.raises(MistralException):
         client.connect()
+        client(fake_message)
 
     assert [
         ChatMessage(
