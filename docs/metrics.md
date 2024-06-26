@@ -297,31 +297,25 @@ print(detailed_evaluation)
 
 ## Text Generation Metrics
 
+## General Text Generation Metrics
+
+### Coherence
+
+Coherence is a measure, on a scale of 1 to 5, of the collective quality of all sentences for a piece of text, with 5 indicating the highest coherence. There coherence of a piece of text is evaluated soley based on the text, without any reference to the query or any context. Because of this, the coherence metric can be applied to any text generation task.
+
+Our implementation of the coherence metric uses an instruction that was adapted from appendix A of DeepEval's paper G-EVAL: NLG Evaluation using GPT-4 with Better Human Alignment (https://arxiv.org/pdf/2303.16634). While DeepEval's instruction and evaluation process was specific to summarization tasks, we generalized the instruction to apply to any text generation task. Most crucially, we removed the reference to the query in the instruction.
+
 ## Q&A Metrics
 
 ### Answer Relevance
 
-Ben TODO: I took this content from [this page](https://docs.ragas.io/en/latest/concepts/metrics/answer_relevance.html); feel free to edit.
+Answer relevance is the number of statements in the answer that are relevant to the query, divided by the total number of statements in the answer. This metric is used to evaluate the relevance of the answer to the query. The answer relevance metric can be applied to any text generation task, but it is particularly useful for evaluating question-answering tasks.
 
-To calculate the relevance of the answer to the given question, we follow two steps:
-
-- Step 1: Reverse-engineer ‘n’ variants of the question from the generated answer using a Large Language Model (LLM). For instance, for the first answer, the LLM might generate the following possible questions:
-
-    - Question 1: “In which part of Europe is France located?”
-
-    - Question 2: “What is the geographical location of France within Europe?”
-
-    - Question 3: “Can you identify the region of Europe where France is situated?”
-
-- Step 2: Calculate the mean cosine similarity between the generated questions and the actual question.
-
-The underlying concept is that if the answer correctly addresses the question, it is highly probable that the original question can be reconstructed solely from the answer.
+Our implementation closely follows DeepEval's implementation https://github.com/confident-ai/deepeval/tree/main/deepeval/metrics/answer_relevancy. We use the same two step prompting strategy and the same instructions.
 
 ## Summary Metrics
 
-### Coherence
-
-Ben TODO
+None implemented currently.
 
 ## Text Comparison Metrics
 
