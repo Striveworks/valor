@@ -1,10 +1,8 @@
 import datetime
 from unittest.mock import MagicMock
 
-# import openai
 import pytest
-
-# from mistralai.exceptions import MistralException
+from mistralai.exceptions import MistralException
 from mistralai.models.chat_completion import (
     ChatCompletionResponse,
     ChatCompletionResponseChoice,
@@ -12,6 +10,7 @@ from mistralai.models.chat_completion import (
     FinishReason,
 )
 from mistralai.models.common import UsageInfo
+from openai import OpenAIError
 from openai.types.chat import ChatCompletionMessage
 from openai.types.chat.chat_completion import ChatCompletion, Choice
 
@@ -177,12 +176,14 @@ def test_WrappedOpenAIClient():
             created=int(datetime.datetime.now().timestamp()),
         )
 
-    client = WrappedOpenAIClient(api_key=None, model_name="model_name")
+    client = WrappedOpenAIClient(
+        api_key="invalid_key", model_name="model_name"
+    )
 
     fake_message = [{"key": "value"}]
 
-    # with pytest.raises(openai.OpenAIError):
-    #     client.connect()
+    with pytest.raises(OpenAIError):
+        client.connect()
 
     assert fake_message == client.process_messages(fake_message)
 
@@ -267,12 +268,14 @@ def test_WrappedMistralAIClient():
             ),
         )
 
-    client = WrappedMistralAIClient(api_key=None, model_name="model_name")
+    client = WrappedMistralAIClient(
+        api_key="invalid_key", model_name="model_name"
+    )
 
     fake_message = [{"role": "role", "content": "content"}]
 
-    # with pytest.raises(MistralException):
-    #     client.connect()
+    with pytest.raises(MistralException):
+        client.connect()
 
     assert [
         ChatMessage(
