@@ -25,7 +25,7 @@ connect("http://0.0.0.0:8000")
 client = Client()
 dset = Dataset.create(name="bird-identification")
 model = Model.create(name="some_model")
-PAIR_LIMIT = 500
+PAIR_LIMIT = 100
 
 
 # %%
