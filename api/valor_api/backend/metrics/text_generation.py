@@ -268,7 +268,7 @@ def _compute_text_generation_metrics(
     prediction_filter: schemas.Filter,
     metrics_to_return: list[MetricType] = [],
     llm_api_params: dict[str, str | dict] | None = None,
-    metric_params: dict | None = None,
+    metric_params: dict = {},
 ) -> Sequence[schemas.AnswerRelevanceMetric | schemas.CoherenceMetric]:
     """
     Compute text generation metrics.
@@ -377,8 +377,11 @@ def _compute_text_generation_metrics(
                 rouge_metrics = _calculate_rouge_scores(
                     predictions=predictions,
                     references=references,
-                    rouge_types=metric_params.get("rouge_types", ["rouge1", "rouge2", "rougeL", "rougeLsum"]),  # type: ignore
-                    use_stemmer=metric_params.get("use_stemmer", False),  # type: ignore
+                    rouge_types=metric_params.get(
+                        "rouge_types",
+                        ["rouge1", "rouge2", "rougeL", "rougeLsum"],
+                    ),
+                    use_stemmer=metric_params.get("use_stemmer", False),
                 )
 
                 output += [
@@ -503,7 +506,11 @@ def compute_text_generation_metrics(
         prediction_filter=prediction_filter,
         metrics_to_return=parameters.metrics_to_return,
         llm_api_params=parameters.llm_api_params,
-        metric_params=parameters.metric_params,
+        metric_params=(
+            parameters.metric_params
+            if parameters.metric_params is not None
+            else {}
+        ),
     )
 
     metric_mappings = create_metric_mappings(
