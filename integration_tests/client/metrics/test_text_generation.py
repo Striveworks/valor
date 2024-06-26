@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 import pytest
 
-from valor import (  # Client,; Dataset,; Model,
+from valor import (
     Annotation,
     Client,
     Dataset,
@@ -271,18 +271,8 @@ def test_llm_evaluation(
     model.finalize_inferences(dataset)
 
     metrics_to_return = [
-        # MetricType.AnswerCorrectness,
         MetricType.AnswerRelevance,
-        # MetricType.Bias,
         MetricType.Coherence,
-        # MetricType.ContextPrecision,
-        # MetricType.ContextRecall,
-        # MetricType.ContextRelevance,
-        # MetricType.Faithfulness,
-        # MetricType.Grammaticality,
-        # MetricType.Hallucination,
-        # MetricType.Summarization,
-        # MetricType.Toxicity,
     ]
 
     eval_job = model.evaluate_text_generation(
@@ -290,18 +280,11 @@ def test_llm_evaluation(
         metrics_to_return=metrics_to_return,
         llm_api_params={
             "client": "openai",
-            # "api_url":"https://api.openai.com/v1/chat/completions",
-            # api_key=os.environ["OPENAI_API_KEY"], # If no key is specified, uses OPENAI_API_KEY environment variable for OpenAI API calls. Needs to be passed as bearer token?
             "data": {
                 "model": "gpt-4o",
             },
         },
         metric_params={},
-        # TODO Should we support evaluation metadata?
-        # meta={
-        #     "llm_api_service": "openai",
-        #     "model": "gpt-4o",
-        # },
     )
 
     assert eval_job.id
@@ -311,7 +294,6 @@ def test_llm_evaluation(
     metrics = eval_job.metrics
     metadata = eval_job.meta
 
-    # TODO Add metric checks as metrics are implemented.
     expected_metrics = [
         {
             "type": "AnswerRelevance",

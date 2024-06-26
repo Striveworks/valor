@@ -226,13 +226,11 @@ class LLMClient:
         ]
 
         response = self(messages)
-
         try:
             response = trim_and_load_json(response)
             assert type(response) == dict
             assert "statements" in response
-            statements = response.get("statements")
-            assert type(statements) == list[str]
+            statements = response["statements"]
         except Exception:
             raise ValueError(
                 f"LLM response was not a valid list of statements: {response}"
@@ -273,7 +271,7 @@ class LLMClient:
             response = trim_and_load_json(response)
             assert type(response) == dict
             assert "verdicts" in response
-            verdicts = response.get("verdicts")
+            verdicts = response["verdicts"]
             assert type(verdicts) == list
             assert len(verdicts) == len(statements)
             assert all(

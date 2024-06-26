@@ -216,18 +216,8 @@ def create_metric_mappings(
         | schemas.mIOUMetric
         | schemas.PrecisionRecallCurve
         | schemas.DetailedPrecisionRecallCurve
-        | schemas.AnswerCorrectnessMetric
         | schemas.AnswerRelevanceMetric
-        | schemas.BiasMetric
         | schemas.CoherenceMetric
-        | schemas.ContextPrecisionMetric
-        | schemas.ContextRecallMetric
-        | schemas.ContextRelevanceMetric
-        | schemas.FaithfulnessMetric
-        | schemas.GrammaticalityMetric
-        | schemas.HallucinationMetric
-        | schemas.SummarizationMetric
-        | schemas.ToxicityMetric
     ],
     evaluation_id: int,
 ) -> list[dict]:
