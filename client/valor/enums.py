@@ -52,7 +52,9 @@ class MetricType(str, Enum):
     PrecisionRecallCurve = "PrecisionRecallCurve"
     DetailedPrecisionRecallCurve = "DetailedPrecisionRecallCurve"
     AnswerRelevance = "AnswerRelevance"
+    BLEU = "BLEU"
     Coherence = "Coherence"
+    ROUGE = "ROUGE"
 
     @classmethod
     def classification(cls) -> Set["MetricType"]:
@@ -102,5 +104,7 @@ class MetricType(str, Enum):
         """
         return {
             cls.AnswerRelevance,
+            cls.BLEU,
             cls.Coherence,
+            cls.ROUGE,
         }

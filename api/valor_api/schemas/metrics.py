@@ -783,20 +783,20 @@ class AnswerRelevanceMetric(BaseModel):
         }
 
 
-class ROUGEMetric(BaseModel):
+class CoherenceMetric(BaseModel):
     """
-    Describes a ROUGE metric.
+    Describes a coherence metric.
 
     Attributes
     ----------
-    value : dict[str, float]
-        A JSON containing individual ROUGE scores calculated in different ways. `rouge1` is unigram-based scoring, `rouge2` is bigram-based scoring, `rougeL` is scoring based on sentences (i.e., splitting on "." and ignoring "\n"), and `rougeLsum` is scoring based on splitting the text using "\n".
-    parameters : dict[str, str]
-        The parameters associated with the metric.
+    value : int
+        The coherence score for a datum. This is an integer with 1 being the lowest coherence and 5 the highest coherence.
+    parameters : dict
+        Any parameters associated with the metric, as well as any datum or prediction parameters that are relevant to the metric.
     """
 
-    value: dict[str, float]
-    parameters: dict[str, str]
+    value: float
+    parameters: dict
 
     def db_mapping(self, evaluation_id: int) -> dict:
         """
@@ -814,7 +814,7 @@ class ROUGEMetric(BaseModel):
         return {
             "value": self.value,
             "parameters": self.parameters,
-            "type": "ROUGE",
+            "type": "Coherence",
             "evaluation_id": evaluation_id,
         }
 
@@ -855,20 +855,20 @@ class BLEUMetric(BaseModel):
         }
 
 
-class CoherenceMetric(BaseModel):
+class ROUGEMetric(BaseModel):
     """
-    Describes a coherence metric.
+    Describes a ROUGE metric.
 
     Attributes
     ----------
-    value : int
-        The coherence score for a datum. This is an integer with 1 being the lowest coherence and 5 the highest coherence.
-    parameters : dict
-        Any parameters associated with the metric, as well as any datum or prediction parameters that are relevant to the metric.
+    value : dict[str, float]
+        A JSON containing individual ROUGE scores calculated in different ways. `rouge1` is unigram-based scoring, `rouge2` is bigram-based scoring, `rougeL` is scoring based on sentences (i.e., splitting on "." and ignoring "\n"), and `rougeLsum` is scoring based on splitting the text using "\n".
+    parameters : dict[str, str]
+        The parameters associated with the metric.
     """
 
-    value: float
-    parameters: dict
+    value: dict[str, float]
+    parameters: dict[str, str]
 
     def db_mapping(self, evaluation_id: int) -> dict:
         """
@@ -886,6 +886,6 @@ class CoherenceMetric(BaseModel):
         return {
             "value": self.value,
             "parameters": self.parameters,
-            "type": "Coherence",
+            "type": "ROUGE",
             "evaluation_id": evaluation_id,
         }
