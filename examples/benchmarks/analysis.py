@@ -28,6 +28,7 @@ model = Model.create(name="some_model")
 PAIR_LIMIT = 500
 
 
+# %%
 def time_func(func):
     def wrap_func(*args, **kwargs):
         t1 = time()
