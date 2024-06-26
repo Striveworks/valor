@@ -1,5 +1,6 @@
+import json
 from collections import defaultdict
-from typing import Callable, Sequence
+from typing import Any, Callable, Sequence
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -558,3 +559,35 @@ def prepare_filter_for_evaluation(
     predictions_filter.groundtruths = None
 
     return (groundtruth_filter, predictions_filter)
+
+
+def trim_and_load_json(input_string: str) -> Any:
+    """
+    Trims and loads input_string as a json. Adapted from DeepEval https://github.com/confident-ai/deepeval/blob/dc117a5ea2160dbb61909c537908a41f7da4dfe7/deepeval/metrics/utils.py#L50
+
+    Parameters
+    ----------
+    input_string : str
+        The input string to trim and load as a json.
+
+    Returns
+    -------
+    Any
+        The json object.
+    """
+    start = input_string.find("{")
+    end = input_string.rfind("}") + 1
+
+    if end == 0 and start != -1:
+        input_string = input_string + "}"
+        end = len(input_string)
+
+    jsonStr = input_string[start:end] if start != -1 and end != 0 else ""
+
+    try:
+        return json.loads(jsonStr)
+    except json.JSONDecodeError:
+        error_str = "Evaluation LLM outputted an invalid JSON. Please use a better evaluation model."
+        raise ValueError(error_str)
+    except Exception as e:
+        raise Exception(f"An unexpected error occurred: {str(e)}")

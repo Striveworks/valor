@@ -780,12 +780,12 @@ class AnswerCorrectnessMetric(BaseModel):
 
 class AnswerRelevanceMetric(BaseModel):
     """
-    Describes an answer relevance.
+    Describes an answer relevance metric.
 
     Attributes
     ----------
     value : float
-        TODO
+        The number of statements in the answer that are relevant to the query divided by the total number of statements in the answer.
     parameters : dict
         Any parameters associated with the metric, as well as any datum or prediction parameters that are relevant to the metric.
     """
@@ -806,7 +806,12 @@ class AnswerRelevanceMetric(BaseModel):
         ----------
         A mapping dictionary.
         """
-        raise NotImplementedError
+        return {
+            "value": self.value,
+            "parameters": self.parameters,
+            "type": "AnswerRelevance",
+            "evaluation_id": evaluation_id,
+        }
 
 
 class BiasMetric(BaseModel):

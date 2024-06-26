@@ -31,6 +31,16 @@ def mocked_connection(self):
     pass
 
 
+def mocked_openai_answer_relevance(self, query: str, text: str):
+    if text in [PREDICTIONS[0]]:
+        ret = 0.6666666666666666
+    elif text in [PREDICTIONS[1], PREDICTIONS[2]]:
+        ret = 0.2
+    else:
+        raise ValueError(f"Test prediction has been modified: {text}")
+    return ret
+
+
 def mocked_openai_coherence(self, text: str):
     if text in [PREDICTIONS[0], PREDICTIONS[2]]:
         ret = 4
@@ -166,6 +176,10 @@ def text_generation_test_data(db: Session, dataset_name: str, model_name: str):
     mocked_connection,
 )
 @patch(
+    "valor_api.backend.core.llm_clients.WrappedOpenAIClient.answer_relevance",
+    mocked_openai_answer_relevance,
+)
+@patch(
     "valor_api.backend.core.llm_clients.WrappedOpenAIClient.coherence",
     mocked_openai_coherence,
 )
@@ -208,6 +222,7 @@ def test__compute_text_generation(
     prediction_filter = datum_filter.model_copy()
 
     metrics_to_return = [
+        enums.MetricType.AnswerRelevance,
         enums.MetricType.Coherence,
         enums.MetricType.ROUGE,
         enums.MetricType.BLEU,
@@ -222,13 +237,14 @@ def test__compute_text_generation(
             "client": "openai",
             "data": {
                 "seed": 2024,
-                "model": "gpt-4o",
+                "model": "gpt-4o-2024-05-13",
             },
         },
     )
 
     expected_values = {
         "uid0": {
+            schemas.AnswerRelevanceMetric: 0.6666666666666666,
             schemas.CoherenceMetric: 4,
             schemas.ROUGEMetric: {
                 "rouge1": 0.5925925925925926,
@@ -239,6 +255,7 @@ def test__compute_text_generation(
             schemas.BLEUMetric: 0.3502270395690205,
         },
         "uid1": {
+            schemas.AnswerRelevanceMetric: 0.2,
             schemas.CoherenceMetric: 5,
             schemas.ROUGEMetric: {
                 "rouge1": 1.0,
@@ -249,6 +266,7 @@ def test__compute_text_generation(
             schemas.BLEUMetric: 1.0,
         },
         "uid2": {
+            schemas.AnswerRelevanceMetric: 0.2,
             schemas.CoherenceMetric: 4,
             schemas.ROUGEMetric: {
                 "rouge1": 0.18666666666666668,
@@ -274,6 +292,10 @@ def test__compute_text_generation(
     mocked_connection,
 )
 @patch(
+    "valor_api.backend.core.llm_clients.WrappedOpenAIClient.answer_relevance",
+    mocked_openai_answer_relevance,
+)
+@patch(
     "valor_api.backend.core.llm_clients.WrappedOpenAIClient.coherence",
     mocked_openai_coherence,
 )
@@ -284,6 +306,7 @@ def test_text_generation(
     text_generation_test_data,
 ):
     metrics_to_return = [
+        enums.MetricType.AnswerRelevance,
         enums.MetricType.Coherence,
         enums.MetricType.ROUGE,
         enums.MetricType.BLEU,
@@ -300,7 +323,7 @@ def test_text_generation(
                 "client": "openai",
                 "data": {
                     "seed": 2024,
-                    "model": "gpt-4o",
+                    "model": "gpt-4o-2024-05-13",
                 },
             },
         ),
@@ -329,6 +352,7 @@ def test_text_generation(
 
     expected_values = {
         "uid0": {
+            "AnswerRelevance": 0.6666666666666666,
             "Coherence": 4,
             "ROUGE": {
                 "rouge1": 0.5925925925925926,
@@ -339,6 +363,7 @@ def test_text_generation(
             "BLEU": 0.3502270395690205,
         },
         "uid1": {
+            "AnswerRelevance": 0.2,
             "Coherence": 5,
             "ROUGE": {
                 "rouge1": 1.0,
@@ -349,6 +374,7 @@ def test_text_generation(
             "BLEU": 1.0,
         },
         "uid2": {
+            "AnswerRelevance": 0.2,
             "Coherence": 4,
             "ROUGE": {
                 "rouge1": 0.18666666666666668,
@@ -360,7 +386,6 @@ def test_text_generation(
         },
     }
 
-    # TODO Implement other metrics.
     assert metrics
     for metric in metrics:
         assert isinstance(metric.parameters, dict)

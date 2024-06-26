@@ -442,13 +442,25 @@ def _compute_text_generation_metrics(
         ), f"llm_api_params must be provided for the following metrics: {[metric for metric in metrics_to_return if metric in LLM_GUIDED_METRICS]}."
         client = setup_llm_client(llm_api_params)
 
-    # TODO Implement the rest of the metrics.
-    for datum_uid, dataset_name, _, prediction_text, _ in res:
+    for datum_uid, dataset_name, datum_text, prediction_text, _ in res:
         for metric_type in metrics_to_return:
             if metric_type == MetricType.AnswerCorrectness:
                 raise NotImplementedError
             elif metric_type == MetricType.AnswerRelevance:
-                raise NotImplementedError
+                assert client
+                response = client.answer_relevance(
+                    query=datum_text, text=prediction_text
+                )
+                output.append(
+                    schemas.AnswerRelevanceMetric(
+                        value=response,
+                        parameters={
+                            "dataset": dataset_name,
+                            "datum_uid": datum_uid,
+                            "prediction": prediction_text,
+                        },
+                    )
+                )
             elif metric_type == MetricType.Bias:
                 raise NotImplementedError
             elif metric_type == MetricType.Coherence:
