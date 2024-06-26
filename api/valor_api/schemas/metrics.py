@@ -748,11 +748,11 @@ class mIOUMetric(BaseModel):
         }
 
 
-class _EmbeddingMetric(BaseModel):
+class CramerVonMisesMetric(BaseModel):
     statistics: dict[str, dict[str, float]]
     pvalues: dict[str, dict[str, float]]
 
-    def db_mapping(self, evaluation_id: int, type_name: str) -> dict:
+    def db_mapping(self, evaluation_id: int) -> dict:
         """
         Creates a mapping for use when uploading the metric to the database.
 
@@ -770,18 +770,33 @@ class _EmbeddingMetric(BaseModel):
                 "statistics": self.statistics,
                 "pvalues": self.pvalues,
             },
-            "type": type_name,
+            "type": MetricType.CramerVonMises,
             "evaluation_id": evaluation_id,
         }
 
 
-class CramerVonMisesMetric(_EmbeddingMetric):
-    def db_mapping(self, evaluation_id: int, type_name: str) -> dict:
-        type_name = MetricType.CramerVonMises
-        return super().db_mapping(evaluation_id, type_name)
+class KolmgorovSmirnovMetric(BaseModel):
+    statistics: dict[str, dict[str, float]]
+    pvalues: dict[str, dict[str, float]]
 
+    def db_mapping(self, evaluation_id: int) -> dict:
+        """
+        Creates a mapping for use when uploading the metric to the database.
 
-class KolmgorovSmirnovMetric(_EmbeddingMetric):
-    def db_mapping(self, evaluation_id: int, type_name: str) -> dict:
-        type_name = MetricType.KolmgorovSmirnov
-        return super().db_mapping(evaluation_id, type_name)
+        Parameters
+        ----------
+        evaluation_id : int
+            The evaluation id.
+
+        Returns
+        ----------
+        A mapping dictionary.
+        """
+        return {
+            "value": {
+                "statistics": self.statistics,
+                "pvalues": self.pvalues,
+            },
+            "type": MetricType.KolmgorovSmirnov,
+            "evaluation_id": evaluation_id,
+        }

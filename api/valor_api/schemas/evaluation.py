@@ -52,6 +52,7 @@ class EvaluationParameters(BaseModel):
     recall_score_threshold: float | None = 0
     pr_curve_iou_threshold: float = 0.5
     pr_curve_max_examples: int = 1
+    limit: int = -1
 
     # pydantic setting
     model_config = ConfigDict(extra="forbid")
@@ -86,6 +87,11 @@ class EvaluationParameters(BaseModel):
                         MetricType.IOU,
                         MetricType.mIOU,
                     ]
+                case TaskType.EMBEDDING:
+                    values.metrics_to_return = [
+                        MetricType.CramerVonMises,
+                        MetricType.KolmgorovSmirnov,
+                    ]
 
         match values.task_type:
             case TaskType.CLASSIFICATION | TaskType.SEMANTIC_SEGMENTATION:
@@ -116,6 +122,8 @@ class EvaluationParameters(BaseModel):
                             raise ValueError(
                                 "`iou_thresholds_to_return` must be a subset of `iou_thresholds_to_compute`"
                             )
+            case TaskType.EMBEDDING:
+                pass
             case _:
                 raise NotImplementedError(
                     f"Task type `{values.task_type}` is unsupported."

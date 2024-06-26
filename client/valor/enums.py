@@ -50,6 +50,8 @@ class MetricType(str, Enum):
     mIOU = "mIOU"
     PrecisionRecallCurve = "PrecisionRecallCurve"
     DetailedPrecisionRecallCurve = "DetailedPrecisionRecallCurve"
+    CramerVonMises = "CramerVonMises"
+    KolmgorovSmirnov = "KolmgorovSmirnov"
 
     @classmethod
     def classification(cls) -> Set["MetricType"]:
@@ -90,4 +92,14 @@ class MetricType(str, Enum):
         return {
             cls.IOU,
             cls.mIOU,
+        }
+
+    @classmethod
+    def embedding(cls) -> Set["MetricType"]:
+        """
+        MetricTypes for embedding tasks.
+        """
+        return {
+            cls.CramerVonMises,
+            cls.KolmgorovSmirnov,
         }

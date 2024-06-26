@@ -149,7 +149,7 @@ def _convert_db_metric_to_pydantic_metric(
     )
 
     return schemas.Metric(
-        type=metric.type,
+        type=enums.MetricType(metric.type),
         value=metric.value,
         label=label,
         parameters=metric.parameters,
@@ -386,8 +386,6 @@ def _create_responses(
             prediction_filter.groundtruths = None
 
             match parameters.task_type:
-                case enums.TaskType.CLASSIFICATION:
-                    kwargs = {}
                 case (
                     enums.TaskType.OBJECT_DETECTION
                     | enums.TaskType.SEMANTIC_SEGMENTATION
@@ -406,7 +404,7 @@ def _create_responses(
                         "ignored_pred_labels": ignored_pred_labels,
                     }
                 case _:
-                    raise NotImplementedError
+                    kwargs = {}
         except ValidationError as e:
             try:
                 migrations.DeprecatedFilter(**evaluation.filters)

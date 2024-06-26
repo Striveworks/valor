@@ -30,6 +30,8 @@ class EvaluationParameters:
             The IOU threshold to use when calculating precision-recall curves for object detection tasks. Defaults to 0.5.
     pr_curve_max_examples: int
         The maximum number of datum examples to store when calculating PR curves.
+    limit: int, default=-1
+        The maximum number of samples per label.
     """
 
     task_type: TaskType
@@ -42,6 +44,7 @@ class EvaluationParameters:
     recall_score_threshold: float = 0
     pr_curve_iou_threshold: float = 0.5
     pr_curve_max_examples: int = 1
+    limit: int = -1
 
 
 @dataclass
