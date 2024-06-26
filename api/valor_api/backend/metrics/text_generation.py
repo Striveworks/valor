@@ -16,7 +16,7 @@ from valor_api.backend.core.llm_clients import (
     WrappedMistralAIClient,
     WrappedOpenAIClient,
 )
-from valor_api.backend.metrics.metric_utils import (  # log_evaluation_item_counts,
+from valor_api.backend.metrics.metric_utils import (
     create_metric_mappings,
     get_or_create_row,
     log_evaluation_duration,
@@ -45,7 +45,6 @@ LLM_GUIDED_METRICS = {
 TEXT_COMPARISON_METRICS = {"BLEU", "ROUGE"}
 
 
-# TODO add docs?
 def _calculate_rouge_scores(
     predictions: str | list[str],
     references: list[str],
@@ -278,6 +277,7 @@ def _compute_text_generation_metrics(
     prediction_filter: schemas.Filter,
     metrics_to_return: list[MetricType] = [],
     llm_api_params: dict[str, str | dict] | None = None,
+    metric_params: dict | None = None,
 ) -> Sequence[
     schemas.AnswerCorrectnessMetric
     | schemas.AnswerRelevanceMetric
@@ -307,6 +307,8 @@ def _compute_text_generation_metrics(
         The list of metrics to compute, store, and return to the user.
     llm_api_params: dict[str, str | dict], optional
         A dictionary of parameters for the LLM API.
+    metric_params: dict
+        A dictionary of optional parameters to pass in to specific metrics.
 
     Returns
     ----------
@@ -397,8 +399,8 @@ def _compute_text_generation_metrics(
                 rouge_metrics = _calculate_rouge_scores(
                     predictions=predictions,
                     references=references,
-                    rouge_types=llm_api_params.get("rouge_types", ["rouge1", "rouge2", "rougeL", "rougeLsum"]),  # type: ignore
-                    use_stemmer=llm_api_params.get("use_stemmer", False),  # type: ignore
+                    rouge_types=metric_params.get("rouge_types", ["rouge1", "rouge2", "rougeL", "rougeLsum"]),  # type: ignore
+                    use_stemmer=metric_params.get("use_stemmer", False),  # type: ignore
                 )
 
                 output += [
@@ -418,7 +420,7 @@ def _compute_text_generation_metrics(
                     bleu_metrics = _calculate_sentence_bleu(
                         predictions=predictions,
                         references=references,
-                        weights=llm_api_params.get("weights", [0.25, 0.25, 0.25, 0.25]),  # type: ignore
+                        weights=metric_params.get("weights", [0.25, 0.25, 0.25, 0.25]),  # type: ignore
                     )
 
                     output += [
@@ -527,17 +529,6 @@ def compute_text_generation_metrics(
     prediction_filter = datum_filter.model_copy()
     parameters = schemas.EvaluationParameters(**evaluation.parameters)
 
-    # get llm api params
-    llm_api_params = parameters.llm_api_params
-
-    # TODO Should we log evaluation item counts?
-    # log_evaluation_item_counts(
-    #     db=db,
-    #     evaluation=evaluation,
-    #     prediction_filter=prediction_filter,
-    #     groundtruth_filter=groundtruth_filter,
-    # )
-
     assert parameters.metrics_to_return
 
     metrics = _compute_text_generation_metrics(
@@ -545,7 +536,8 @@ def compute_text_generation_metrics(
         datum_filter=datum_filter,
         prediction_filter=prediction_filter,
         metrics_to_return=parameters.metrics_to_return,
-        llm_api_params=llm_api_params,
+        llm_api_params=parameters.llm_api_params,
+        metric_params=parameters.metric_params,
     )
 
     metric_mappings = create_metric_mappings(

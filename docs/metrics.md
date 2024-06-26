@@ -37,6 +37,17 @@ If we're missing an important metric for your particular use case, please [write
 | Intersection Over Union (IOU) | A ratio between the groundtruth and predicted regions of an image, measured as a percentage, grouped by class. |$\dfrac{area( prediction \cap groundtruth )}{area( prediction \cup groundtruth )}$ |
 | Mean IOU 	| The average of IOU across labels, grouped by label key. | $\dfrac{1}{\text{number of labels}} \sum\limits_{label \in labels} IOU_{c}$ |
 
+
+## Text Generation Metrics
+
+| Name | Description | Equation |
+| :- | :- | :- |
+| Answer Relevance 	| The number of statements in the answer that are relevant to the query, divided by the total number of statements in the answer | See [appendix](#answer-relevance) for details. |
+| Coherence | Rates the coherence of a textual summary relative to some source text using a score from 1 to 5, where 5 means "This summary is extremely coherent based on the information provided in the source text". | See [appendix](#coherence) for details. |
+| ROUGE | A score between 0 and 1 indicating how often the words in the ground truth string appeared in the predicted string (i.e., measuring recall). | See [appendix](#rouge) for details. |
+| BLEU | A score between 0 and 1 indicating how much the predicted string matches the ground truth string (i.e., measuring precision), with a penalty for brevity. | See [appendix](#bleu) for details. |
+
+
 # Appendix: Metric Calculations
 
 ## Binary ROC AUC
@@ -283,3 +294,57 @@ print(detailed_evaluation)
     }
 }]
 ```
+
+## Text Generation Metrics
+
+## Q&A Metrics
+
+### Answer Relevance
+
+Ben TODO: I took this content from [this page](https://docs.ragas.io/en/latest/concepts/metrics/answer_relevance.html); feel free to edit.
+
+To calculate the relevance of the answer to the given question, we follow two steps:
+
+- Step 1: Reverse-engineer ‘n’ variants of the question from the generated answer using a Large Language Model (LLM). For instance, for the first answer, the LLM might generate the following possible questions:
+
+    - Question 1: “In which part of Europe is France located?”
+
+    - Question 2: “What is the geographical location of France within Europe?”
+
+    - Question 3: “Can you identify the region of Europe where France is situated?”
+
+- Step 2: Calculate the mean cosine similarity between the generated questions and the actual question.
+
+The underlying concept is that if the answer correctly addresses the question, it is highly probable that the original question can be reconstructed solely from the answer.
+
+## Summary Metrics
+
+### Coherence
+
+Ben TODO
+
+## Text Comparison Metrics
+
+### ROUGE
+
+ROUGE, or Recall-Oriented Understudy for Gisting Evaluation, is a set of metrics used for evaluating automatic summarization and machine translation software in natural language processing. The metrics compare an automatically produced summary or translation against a reference or a set of references (human-produced) summary or translation. ROUGE metrics range between 0 and 1, with higher scores indicating higher similarity between the automatically produced summary and the reference.
+
+In Valor, the ROUGE output value is a dictionary containing the following elements:
+
+```python
+{
+    "rouge1": 0.18, # unigram-based similarity scoring
+    "rouge2": 0.08, # bigram-based similarity scoring
+    "rougeL": 0.18, # similarity scoring based on sentences (i.e., splitting on "." and ignoring "\n")
+    "rougeLsum": 0.18, # similarity scoring based on splitting the text using "\n"
+}
+```
+
+Behind the scenes, we use [Hugging Face's `evaluate` package](https://huggingface.co/spaces/evaluate-metric/rouge) to calculate these scores. Users can pass `rouge_types` and `use_stemmer` as keys to `metric_params` in order to gain access to additional functionality from this package.
+
+
+### BLEU
+
+BLEU (bilingual evaluation understudy) is an algorithm for evaluating automatic summarization and machine translation software in natural language processing. BLEU's output is always a number between 0 and 1, where a score near 1 indicates that the hypothesis text is very similar to one or more of the reference texts.
+
+Behind the scenes, we use [nltk.translate.bleu_score](https://www.nltk.org/_modules/nltk/translate/bleu_score.html) to calculate these scores. The default BLEU metric calculates a score for up to 4-grams using uniform weights (i.e., `weights=[.25, .25, .25, .25]`; also called BLEU-4). Users can pass their own `weights` to `metric_params` in order to change this default behavior and calculate other BLEU scores.
