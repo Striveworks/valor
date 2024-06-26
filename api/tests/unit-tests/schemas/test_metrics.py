@@ -2,21 +2,22 @@ import pytest
 from pydantic import ValidationError
 
 from valor_api import schemas
+from valor_api.enums import MetricType
 
 
 def test_Metric():
     schemas.Metric(
-        type="detection",
+        type=MetricType.Accuracy,
         parameters={},
         value=0.2,
         label=schemas.Label(key="k1", value="v1"),
     )
 
-    schemas.Metric(type="detection")
+    schemas.Metric(type=MetricType.Accuracy)
 
     with pytest.raises(ValidationError):
         schemas.Metric(
-            type="detection",
+            type=MetricType.Accuracy,
             parameters=123,  # type: ignore - purposefully throwing error
             value=0.2,
             label=schemas.Label(key="k1", value="v1"),
