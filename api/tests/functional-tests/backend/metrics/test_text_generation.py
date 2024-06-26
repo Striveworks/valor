@@ -31,7 +31,7 @@ def mocked_connection(self):
     pass
 
 
-def mocked_openai_answer_relevance(self, query: str, text: str):
+def mocked_answer_relevance(self, query: str, text: str):
     if text in [PREDICTIONS[0]]:
         ret = 0.6666666666666666
     elif text in [PREDICTIONS[1], PREDICTIONS[2]]:
@@ -41,7 +41,7 @@ def mocked_openai_answer_relevance(self, query: str, text: str):
     return ret
 
 
-def mocked_openai_coherence(self, text: str):
+def mocked_coherence(self, text: str):
     if text in [PREDICTIONS[0], PREDICTIONS[2]]:
         ret = 4
     elif text in [PREDICTIONS[1]]:
@@ -177,11 +177,15 @@ def text_generation_test_data(db: Session, dataset_name: str, model_name: str):
 )
 @patch(
     "valor_api.backend.core.llm_clients.WrappedOpenAIClient.answer_relevance",
-    mocked_openai_answer_relevance,
+    mocked_answer_relevance,
 )
 @patch(
     "valor_api.backend.core.llm_clients.WrappedOpenAIClient.coherence",
-    mocked_openai_coherence,
+    mocked_coherence,
+)
+@patch(
+    "valor_api.backend.core.llm_clients.WrappedMistralAIClient.answer_relevance",
+    mocked_answer_relevance,
 )
 def test__compute_text_generation(
     db: Session,
@@ -286,6 +290,36 @@ def test__compute_text_generation(
             == metric.value
         )
 
+    # Test that mistral is accepted as a valid client.
+    metrics_to_return = [enums.MetricType.AnswerRelevance]
+
+    _ = _compute_text_generation_metrics(
+        db,
+        datum_filter=datum_filter,
+        prediction_filter=prediction_filter,
+        metrics_to_return=metrics_to_return,
+        llm_api_params={
+            "client": "mistral",
+            "data": {
+                "model": "mistral-small-latest",
+            },
+        },
+    )
+
+    with pytest.raises(ValueError):
+        _compute_text_generation_metrics(
+            db,
+            datum_filter=datum_filter,
+            prediction_filter=prediction_filter,
+            metrics_to_return=metrics_to_return,
+            llm_api_params={
+                "client": "invalid_client",
+                "data": {
+                    "model": "model",
+                },
+            },
+        )
+
 
 @patch(
     "valor_api.backend.core.llm_clients.WrappedOpenAIClient.connect",
@@ -293,11 +327,11 @@ def test__compute_text_generation(
 )
 @patch(
     "valor_api.backend.core.llm_clients.WrappedOpenAIClient.answer_relevance",
-    mocked_openai_answer_relevance,
+    mocked_answer_relevance,
 )
 @patch(
     "valor_api.backend.core.llm_clients.WrappedOpenAIClient.coherence",
-    mocked_openai_coherence,
+    mocked_coherence,
 )
 def test_text_generation(
     db: Session,
