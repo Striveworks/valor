@@ -45,7 +45,7 @@ def mock_ClientConnection_evaluate(
             },
             "parameters": {
                 "task_type": "text-generation",
-                "metrics_to_return": ["Coherence"],
+                "metrics_to_return": ["AnswerRelevance", "Coherence"],
                 "label_map": None,
                 "metric_params": None,
                 "convert_annotations_to_type": None,
@@ -64,6 +64,16 @@ def mock_ClientConnection_evaluate(
             "meta": {"duration": 2.038157},
             "metrics": [
                 {
+                    "type": "AnswerRelevance",
+                    "parameters": {
+                        "dataset": "test_dataset",
+                        "datum_uid": "uid0",
+                        "prediction": "Based on the provided context, John Adams and Alexander Hamilton did not get along. John Adams, during his presidency, had grown independent of his cabinet, often making decisions despite opposition from it. Hamilton, who was accustomed to being regularly consulted by Washington, sent Adams a detailed letter with policy suggestions after his inauguration, which Adams dismissively ignored.\n",
+                    },
+                    "value": 0.6666666666666666,
+                    "label": None,
+                },
+                {
                     "type": "Coherence",
                     "parameters": {
                         "dataset": "test_dataset",
@@ -74,6 +84,16 @@ def mock_ClientConnection_evaluate(
                     "label": None,
                 },
                 {
+                    "type": "AnswerRelevance",
+                    "parameters": {
+                        "dataset": "test_dataset",
+                        "datum_uid": "uid1",
+                        "prediction": "Yes, Lincoln won the election of 1860. He received the highest number of votes and a majority in the Electoral College, making him the 16th President of the United States. However, it's important to note that he won entirely due to his support in the North and West, as he did not receive any votes in 10 of the 15 Southern slave states.",
+                    },
+                    "value": 0.2,
+                    "label": None,
+                },
+                {
                     "type": "Coherence",
                     "parameters": {
                         "dataset": "test_dataset",
@@ -81,6 +101,16 @@ def mock_ClientConnection_evaluate(
                         "prediction": "Yes, Lincoln won the election of 1860. He received the highest number of votes and a majority in the Electoral College, making him the 16th President of the United States. However, it's important to note that he won entirely due to his support in the North and West, as he did not receive any votes in 10 of the 15 Southern slave states.",
                     },
                     "value": 5.0,
+                    "label": None,
+                },
+                {
+                    "type": "AnswerRelevance",
+                    "parameters": {
+                        "dataset": "test_dataset",
+                        "datum_uid": "uid2",
+                        "prediction": "If a turtle egg was kept warm, it would likely hatch into a baby turtle. The sex of the baby turtle would be determined by the incubation temperature, assuming the species is one of those that determine sex thermally. This is because many turtle species have the ability to move around inside their eggs to select the best temperature for development, which can influence their sexual destiny.",
+                    },
+                    "value": 0.2,
                     "label": None,
                 },
                 {
@@ -126,7 +156,7 @@ def mock_ClientConnection_get_evaluations(
             },
             "parameters": {
                 "task_type": "text-generation",
-                "metrics_to_return": ["Coherence"],
+                "metrics_to_return": ["AnswerRelevance", "Coherence"],
                 "label_map": None,
                 "metric_params": None,
                 "convert_annotations_to_type": None,
@@ -145,6 +175,16 @@ def mock_ClientConnection_get_evaluations(
             "meta": {"duration": 2.038157},
             "metrics": [
                 {
+                    "type": "AnswerRelevance",
+                    "parameters": {
+                        "dataset": "test_dataset",
+                        "datum_uid": "uid0",
+                        "prediction": "Based on the provided context, John Adams and Alexander Hamilton did not get along. John Adams, during his presidency, had grown independent of his cabinet, often making decisions despite opposition from it. Hamilton, who was accustomed to being regularly consulted by Washington, sent Adams a detailed letter with policy suggestions after his inauguration, which Adams dismissively ignored.\n",
+                    },
+                    "value": 0.6666666666666666,
+                    "label": None,
+                },
+                {
                     "type": "Coherence",
                     "parameters": {
                         "dataset": "test_dataset",
@@ -155,6 +195,16 @@ def mock_ClientConnection_get_evaluations(
                     "label": None,
                 },
                 {
+                    "type": "AnswerRelevance",
+                    "parameters": {
+                        "dataset": "test_dataset",
+                        "datum_uid": "uid1",
+                        "prediction": "Yes, Lincoln won the election of 1860. He received the highest number of votes and a majority in the Electoral College, making him the 16th President of the United States. However, it's important to note that he won entirely due to his support in the North and West, as he did not receive any votes in 10 of the 15 Southern slave states.",
+                    },
+                    "value": 0.2,
+                    "label": None,
+                },
+                {
                     "type": "Coherence",
                     "parameters": {
                         "dataset": "test_dataset",
@@ -162,6 +212,16 @@ def mock_ClientConnection_get_evaluations(
                         "prediction": "Yes, Lincoln won the election of 1860. He received the highest number of votes and a majority in the Electoral College, making him the 16th President of the United States. However, it's important to note that he won entirely due to his support in the North and West, as he did not receive any votes in 10 of the 15 Southern slave states.",
                     },
                     "value": 5.0,
+                    "label": None,
+                },
+                {
+                    "type": "AnswerRelevance",
+                    "parameters": {
+                        "dataset": "test_dataset",
+                        "datum_uid": "uid2",
+                        "prediction": "If a turtle egg was kept warm, it would likely hatch into a baby turtle. The sex of the baby turtle would be determined by the incubation temperature, assuming the species is one of those that determine sex thermally. This is because many turtle species have the ability to move around inside their eggs to select the best temperature for development, which can influence their sexual destiny.",
+                    },
+                    "value": 0.2,
                     "label": None,
                 },
                 {
@@ -212,7 +272,7 @@ def test_llm_evaluation(
 
     metrics_to_return = [
         # MetricType.AnswerCorrectness,
-        # MetricType.AnswerRelevance,
+        MetricType.AnswerRelevance,
         # MetricType.Bias,
         MetricType.Coherence,
         # MetricType.ContextPrecision,
@@ -253,34 +313,63 @@ def test_llm_evaluation(
 
     # TODO Add metric checks as metrics are implemented.
     expected_metrics = [
-        # Coherence results
         {
+            "type": "AnswerRelevance",
             "parameters": {
                 "dataset": "test_dataset",
                 "datum_uid": "uid0",
-                "prediction": PREDICTIONS[0],
+                "prediction": "Based on the provided context, John Adams and Alexander Hamilton did not get along. John Adams, during his presidency, had grown independent of his cabinet, often making decisions despite opposition from it. Hamilton, who was accustomed to being regularly consulted by Washington, sent Adams a detailed letter with policy suggestions after his inauguration, which Adams dismissively ignored.\n",
             },
+            "value": 0.6666666666666666,
+            "label": None,
+        },
+        {
             "type": "Coherence",
+            "parameters": {
+                "dataset": "test_dataset",
+                "datum_uid": "uid0",
+                "prediction": "Based on the provided context, John Adams and Alexander Hamilton did not get along. John Adams, during his presidency, had grown independent of his cabinet, often making decisions despite opposition from it. Hamilton, who was accustomed to being regularly consulted by Washington, sent Adams a detailed letter with policy suggestions after his inauguration, which Adams dismissively ignored.\n",
+            },
             "value": 4.0,
             "label": None,
         },
         {
+            "type": "AnswerRelevance",
             "parameters": {
                 "dataset": "test_dataset",
                 "datum_uid": "uid1",
-                "prediction": PREDICTIONS[1],
+                "prediction": "Yes, Lincoln won the election of 1860. He received the highest number of votes and a majority in the Electoral College, making him the 16th President of the United States. However, it's important to note that he won entirely due to his support in the North and West, as he did not receive any votes in 10 of the 15 Southern slave states.",
             },
+            "value": 0.2,
+            "label": None,
+        },
+        {
             "type": "Coherence",
+            "parameters": {
+                "dataset": "test_dataset",
+                "datum_uid": "uid1",
+                "prediction": "Yes, Lincoln won the election of 1860. He received the highest number of votes and a majority in the Electoral College, making him the 16th President of the United States. However, it's important to note that he won entirely due to his support in the North and West, as he did not receive any votes in 10 of the 15 Southern slave states.",
+            },
             "value": 5.0,
             "label": None,
         },
         {
+            "type": "AnswerRelevance",
             "parameters": {
                 "dataset": "test_dataset",
                 "datum_uid": "uid2",
-                "prediction": PREDICTIONS[2],
+                "prediction": "If a turtle egg was kept warm, it would likely hatch into a baby turtle. The sex of the baby turtle would be determined by the incubation temperature, assuming the species is one of those that determine sex thermally. This is because many turtle species have the ability to move around inside their eggs to select the best temperature for development, which can influence their sexual destiny.",
             },
+            "value": 0.2,
+            "label": None,
+        },
+        {
             "type": "Coherence",
+            "parameters": {
+                "dataset": "test_dataset",
+                "datum_uid": "uid2",
+                "prediction": "If a turtle egg was kept warm, it would likely hatch into a baby turtle. The sex of the baby turtle would be determined by the incubation temperature, assuming the species is one of those that determine sex thermally. This is because many turtle species have the ability to move around inside their eggs to select the best temperature for development, which can influence their sexual destiny.",
+            },
             "value": 4.0,
             "label": None,
         },
@@ -288,6 +377,8 @@ def test_llm_evaluation(
 
     # Check that returned metrics have the right format.
     for m in metrics:
+        if m["type"] == "AnswerRelevance":
+            assert 0 <= m["value"] <= 1
         if m["type"] == "Coherence":
             assert m["value"] in [1, 2, 3, 4, 5]
 
