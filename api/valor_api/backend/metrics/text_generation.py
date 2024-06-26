@@ -161,7 +161,7 @@ def _calculate_sentence_bleu(
     for pred, refs in zip(processed_predictions, processed_references):
 
         tokenized_prediction = tokenizer.tokenize(pred)
-        tokenized_references = [tokenizer.tokenize(ref) for ref in refs]  # type: ignore
+        tokenized_references = [tokenizer.tokenize(ref) for ref in refs]
 
         # find the max value for each prediction
         output[pred] = max(
@@ -401,7 +401,9 @@ def _compute_text_generation_metrics(
                     bleu_metrics = _calculate_sentence_bleu(
                         predictions=predictions,
                         references=references,
-                        weights=metric_params.get("weights", [0.25, 0.25, 0.25, 0.25]),  # type: ignore
+                        weights=metric_params.get(
+                            "weights", [0.25, 0.25, 0.25, 0.25]
+                        ),
                     )
 
                     output += [
