@@ -105,7 +105,6 @@ class EvaluationParameters(BaseModel):
                 "The metrics specified in `metric_params` must be a subset of `metrics_to_return`."
             )
 
-        # TODO Validate metric_params based on task type.
         match values.task_type:
             case TaskType.CLASSIFICATION | TaskType.SEMANTIC_SEGMENTATION:
                 if values.convert_annotations_to_type is not None:
@@ -162,6 +161,23 @@ class EvaluationParameters(BaseModel):
                         raise ValueError(
                             "`llm_api_params` must be provided for LLM guided evaluations."
                         )
+
+                # Metric specific validation
+                if values.metric_params is None:
+                    return values
+
+                if "AnswerRelevance" in values.metric_params:
+                    if values.metric_params["AnswerRelevance"] != {}:
+                        raise ValueError(
+                            "AnswerRelevance metric should not have any parameters."
+                        )
+
+                if "Coherence" in values.metric_params:
+                    if values.metric_params["Coherence"] != {}:
+                        raise ValueError(
+                            "Coherence metric should not have any parameters."
+                        )
+
             case _:
                 raise NotImplementedError(
                     f"Task type `{values.task_type}` is unsupported."

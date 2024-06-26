@@ -44,7 +44,7 @@ JSON:
 """
 
 
-def _generate_verdicts_instruction(
+def _generate_anwswer_relevance_verdicts_instruction(
     query: str, statements: str | list[str]
 ) -> str:
     """
@@ -107,9 +107,9 @@ JSON:
 
 def _get_coherence_instruction(text: str) -> str:
     """
-    This instruction was adapted from appendix A of Deepeval's paper G-EVAL: NLG Evaluation using GPT-4 with Better Human Alignment (https://arxiv.org/pdf/2303.16634).
-    The main adaptation is a generalization of the metric to more task types. The example prompt in Deepeval was specific to summarization, but the below prompt could apply to any text generation task.
-    Crucially, no context is used. Instead, the coherence of the source text is evaluated entirely based on the source text. This generalizes the prompt and also prevents the evaluation from being influenced by the quality of sentences in the context.
+    This instruction was adapted from appendix A of DeepEval's paper G-EVAL: NLG Evaluation using GPT-4 with Better Human Alignment (https://arxiv.org/pdf/2303.16634).
+    The main adaptation is a generalization of the metric to more task types. The example prompt in DeepEval was specific to summarization, but the below prompt could apply to any text generation task.
+    Crucially, unlike DeepEval, no context is used. Instead, the coherence of the text is evaluated entirely based on the text. This generalizes the prompt and also prevents the evaluation from being influenced by the quality of sentences in the context.
     Parameters
     ----------
     text: str
@@ -120,17 +120,17 @@ def _get_coherence_instruction(text: str) -> str:
         The instruction for the llm.
     """
     return f"""
-    You are a helpful assistant. You will grade the source text. Your task is to rate the source text based on its coherence. Please make sure you read and understand these instructions carefully. Please keep this document open while reviewing, and refer to it as needed.
+    You are a helpful assistant. You will grade the text. Your task is to rate the text based on its coherence. Please make sure you read and understand these instructions carefully. Please keep this document open while reviewing, and refer to it as needed.
 
     Evaluation Criteria:
     Coherence (1-5) - the collective quality of all sentences. We align this dimension with the DUC quality question of structure and coherence whereby ”the summary should be well-structured and well-organized. The summary should not just be a heap of related information, but should build from sentence to sentence to a coherent body of information about a topic.”
 
     Evaluation Steps:
-    1. Read the source text carefully and identify the main topic and key points.
-    2. Check if the source text presents the information in a clear and logical order. Examine the collective quality of all sentences.
+    1. Read the text carefully and identify the main topic and key points.
+    2. Check if the text presents the information in a clear and logical order. Examine the collective quality of all sentences.
     3. Assign a score for coherence on a scale of 1 to 5, where 1 is the lowest and 5 is the highest based on the Evaluation Criteria. Respond with just the number 1 to 5.
 
-    Source Text:
+    Text to Evaluate:
     {text}
 
     Coherence Score (1-5):
@@ -237,11 +237,11 @@ class LLMClient:
             )
         return statements
 
-    def _generate_verdicts(
+    def _generate_anwswer_relevance_verdicts(
         self,
         query: str,
         statements: list[str],
-    ) -> list:
+    ) -> list[dict[str, str]]:
         """
         Generates a list of answer relevance verdicts for a list of statements, using a call to the LLM API.
 
@@ -261,7 +261,9 @@ class LLMClient:
             {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
             {
                 "role": "user",
-                "content": _generate_verdicts_instruction(query, statements),
+                "content": _generate_anwswer_relevance_verdicts_instruction(
+                    query, statements
+                ),
             },
         ]
 
@@ -306,7 +308,7 @@ class LLMClient:
             The answer relevance score will be evaluated as a float between 0 and 1, with 1 indicating that all statements are relevant to the query.
         """
         statements = self._generate_statements(text)
-        verdicts = self._generate_verdicts(query, statements)
+        verdicts = self._generate_anwswer_relevance_verdicts(query, statements)
         return sum(
             1 for verdict in verdicts if verdict["verdict"] == "yes"
         ) / len(verdicts)
@@ -507,11 +509,6 @@ class WrappedMistralAIClient(LLMClient):
         ].finish_reason  # Enum: "stop" "length" "model_length" "error" "tool_calls"
         response = mistral_response.choices[0].message.content
         finish_reason = mistral_response.choices[0].finish_reason
-
-        if finish_reason == "length":
-            raise ValueError(
-                "MistralAI response reached max token limit. Resulting evaluation is likely invalid or of low quality."
-            )
 
         if finish_reason == "length":
             raise ValueError(

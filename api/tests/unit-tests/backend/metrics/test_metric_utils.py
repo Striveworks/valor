@@ -43,3 +43,12 @@ def test_trim_and_load_json():
     # Missing a comma
     with pytest.raises(ValueError):
         trim_and_load_json(input)
+
+    input = """
+    "sentence": "Hello, world!",
+    "value": 3
+}"""
+
+    # Missing starting bracket
+    with pytest.raises(ValueError):
+        trim_and_load_json(input)

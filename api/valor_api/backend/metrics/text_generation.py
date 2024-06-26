@@ -4,10 +4,8 @@ from typing import Sequence
 import evaluate
 from nltk.tokenize import RegexpTokenizer
 from nltk.translate import bleu_score
-from sqlalchemy import Subquery
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import functions, select
-from sqlalchemy.sql.selectable import NamedFromClause
 
 from valor_api import schemas
 from valor_api.backend import core, models
@@ -178,40 +176,6 @@ def _calculate_sentence_bleu(
     ]
 
 
-def _generate_datum_query(
-    db: Session,
-    datum_filter: schemas.Filter,
-) -> NamedFromClause | Subquery:
-    """Generate a sqlalchemy query to fetch datums."""
-    return generate_query(
-        models.Datum,
-        models.Datum.id.label("datum_id"),
-        models.Datum.uid.label("datum_uid"),
-        models.Dataset.name.label("dataset_name"),
-        models.Datum.text.label("datum_text"),
-        db=db,
-        label_source=models.Annotation,
-        filters=datum_filter,
-    ).subquery()
-
-
-def _generate_prediction_query(
-    db: Session,
-    prediction_filter: schemas.Filter,
-) -> NamedFromClause | Subquery:
-    """Generate a sqlalchemy query to fetch a prediction."""
-
-    return generate_query(
-        models.Prediction,
-        models.Annotation.datum_id.label("datum_id"),
-        models.Annotation.text.label("prediction_text"),
-        models.Annotation.context.label("prediction_context"),
-        db=db,
-        label_source=models.Prediction,
-        filters=prediction_filter,
-    ).subquery()
-
-
 def _setup_llm_client(
     llm_api_params: dict[str, str | dict],
 ) -> LLMClient:
@@ -269,7 +233,12 @@ def _compute_text_generation_metrics(
     metrics_to_return: list[MetricType] = [],
     llm_api_params: dict[str, str | dict] | None = None,
     metric_params: dict = {},
-) -> Sequence[schemas.AnswerRelevanceMetric | schemas.CoherenceMetric]:
+) -> Sequence[
+    schemas.AnswerRelevanceMetric
+    | schemas.BLEUMetric
+    | schemas.CoherenceMetric
+    | schemas.ROUGEMetric
+]:
     """
     Compute text generation metrics.
 
@@ -290,32 +259,29 @@ def _compute_text_generation_metrics(
 
     Returns
     ----------
-    Sequence[schemas.AnswerRelevanceMetric | schemas.CoherenceMetric]
+    Sequence[schemas.AnswerRelevanceMetric | schemas.BLEUMetric | schemas.CoherenceMetric | schemas.ROUGEMetric]
         A list of computed metrics.
     """
-    datum_subquery = _generate_datum_query(db=db, datum_filter=datum_filter)
-    prediction_subquery = _generate_prediction_query(
-        db=db, prediction_filter=prediction_filter
-    )
+    datum_subquery = generate_query(
+        models.Datum,
+        models.Datum.id.label("datum_id"),
+        models.Datum.uid.label("datum_uid"),
+        models.Dataset.name.label("dataset_name"),
+        models.Datum.text.label("datum_text"),
+        db=db,
+        label_source=models.Annotation,
+        filters=datum_filter,
+    ).subquery()
 
-    total_query = (
-        select(
-            datum_subquery.c.datum_uid.label("datum_uid"),
-            datum_subquery.c.dataset_name.label("dataset_name"),
-            datum_subquery.c.datum_text.label("datum_text"),
-            prediction_subquery.c.prediction_text.label("prediction_text"),
-            prediction_subquery.c.prediction_context.label(
-                "prediction_context"
-            ),
-        )
-        .select_from(datum_subquery)
-        .join(
-            prediction_subquery,
-            datum_subquery.c.datum_id == prediction_subquery.c.datum_id,
-        )
-    )
-
-    res = db.execute(total_query).all()
+    prediction_subquery = generate_query(
+        models.Prediction,
+        models.Annotation.datum_id.label("datum_id"),
+        models.Annotation.text.label("prediction_text"),
+        models.Annotation.context.label("prediction_context"),
+        db=db,
+        label_source=models.Prediction,
+        filters=prediction_filter,
+    ).subquery()
 
     output = []
     if any(
@@ -369,10 +335,30 @@ def _compute_text_generation_metrics(
         )
 
         results = db.execute(joint_subquery).all()
-        is_ROUGE_enabled = "ROUGE" in metrics_to_return
         is_BLEU_enabled = "BLEU" in metrics_to_return
+        is_ROUGE_enabled = "ROUGE" in metrics_to_return
 
         for datum_uid, dataset_name, predictions, references in results:
+            if is_BLEU_enabled:
+                bleu_metrics = _calculate_sentence_bleu(
+                    predictions=predictions,
+                    references=references,
+                    weights=metric_params.get(
+                        "weights", [0.25, 0.25, 0.25, 0.25]
+                    ),
+                )
+
+                output += [
+                    schemas.BLEUMetric(
+                        value=metric["value"],
+                        parameters={
+                            "dataset": dataset_name,
+                            "datum_uid": datum_uid,
+                            "prediction": metric["prediction"],
+                        },
+                    )
+                    for metric in bleu_metrics
+                ]
             if is_ROUGE_enabled:
                 rouge_metrics = _calculate_rouge_scores(
                     predictions=predictions,
@@ -396,68 +382,68 @@ def _compute_text_generation_metrics(
                     for metric in rouge_metrics
                 ]
 
-            if is_BLEU_enabled:
-                for i in range(len(predictions)):
-                    bleu_metrics = _calculate_sentence_bleu(
-                        predictions=predictions,
-                        references=references,
-                        weights=metric_params.get(
-                            "weights", [0.25, 0.25, 0.25, 0.25]
-                        ),
-                    )
-
-                    output += [
-                        schemas.BLEUMetric(
-                            value=metric["value"],
-                            parameters={
-                                "dataset": dataset_name,
-                                "datum_uid": datum_uid,
-                                "prediction": metric["prediction"],
-                            },
-                        )
-                        for metric in bleu_metrics
-                    ]
-
     client = None
     if any(
-        metric_name in LLM_GUIDED_METRICS for metric_name in metrics_to_return
+        [
+            metric_name in LLM_GUIDED_METRICS
+            for metric_name in metrics_to_return
+        ]
     ):
         assert (
             llm_api_params is not None
         ), f"llm_api_params must be provided for the following metrics: {[metric for metric in metrics_to_return if metric in LLM_GUIDED_METRICS]}."
         client = _setup_llm_client(llm_api_params)
+        assert client
 
-    for datum_uid, dataset_name, datum_text, prediction_text, _ in res:
-        for metric_type in metrics_to_return:
-            if metric_type == MetricType.AnswerRelevance:
-                assert client
-                response = client.answer_relevance(
+        total_query = (
+            select(
+                datum_subquery.c.datum_uid.label("datum_uid"),
+                datum_subquery.c.dataset_name.label("dataset_name"),
+                datum_subquery.c.datum_text.label("datum_text"),
+                prediction_subquery.c.prediction_text.label("prediction_text"),
+                prediction_subquery.c.prediction_context.label(
+                    "prediction_context"
+                ),
+            )
+            .select_from(datum_subquery)
+            .join(
+                prediction_subquery,
+                datum_subquery.c.datum_id == prediction_subquery.c.datum_id,
+            )
+        )
+
+        results = db.execute(total_query).all()
+        is_AnswerRelevance_enabled = "AnswerRelevance" in metrics_to_return
+        is_Coherence_enabled = "Coherence" in metrics_to_return
+
+        for datum_uid, dataset_name, datum_text, prediction_text, _ in results:
+            if is_AnswerRelevance_enabled:
+                score = client.answer_relevance(
                     query=datum_text, text=prediction_text
                 )
-                output.append(
+                output += [
                     schemas.AnswerRelevanceMetric(
-                        value=response,
+                        value=score,
                         parameters={
                             "dataset": dataset_name,
                             "datum_uid": datum_uid,
                             "prediction": prediction_text,
                         },
                     )
-                )
-            elif metric_type == MetricType.Coherence:
-                assert client
+                ]
+            if is_Coherence_enabled:
                 generated_text = prediction_text
-                response = client.coherence(text=generated_text)
-                output.append(
+                score = client.coherence(text=generated_text)
+                output += [
                     schemas.CoherenceMetric(
-                        value=response,
+                        value=score,
                         parameters={
                             "dataset": dataset_name,
                             "datum_uid": datum_uid,
                             "prediction": prediction_text,
                         },
                     )
-                )
+                ]
 
     return output
 

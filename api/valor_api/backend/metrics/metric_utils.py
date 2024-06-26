@@ -217,7 +217,9 @@ def create_metric_mappings(
         | schemas.PrecisionRecallCurve
         | schemas.DetailedPrecisionRecallCurve
         | schemas.AnswerRelevanceMetric
+        | schemas.BLEUMetric
         | schemas.CoherenceMetric
+        | schemas.ROUGEMetric
     ],
     evaluation_id: int,
 ) -> list[dict]:

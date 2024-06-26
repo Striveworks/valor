@@ -310,6 +310,7 @@ def test__compute_text_generation(
         },
     )
 
+    # Test that an invalid client raises an error.
     with pytest.raises(ValueError):
         _compute_text_generation_metrics(
             db,
@@ -427,7 +428,6 @@ def test_text_generation(
     assert metrics
     for metric in metrics:
         assert isinstance(metric.parameters, dict)
-
         assert (
             expected_values[metric.parameters["datum_uid"]][metric.type]
             == metric.value
