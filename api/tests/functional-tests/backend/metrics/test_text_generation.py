@@ -290,7 +290,7 @@ def test__compute_text_generation(
     for metric in metrics:
         assert isinstance(metric.parameters, dict)
         assert (
-            expected_values[metric.parameters["datum_uid"]].get(type(metric))  # type: ignore
+            expected_values[metric.parameters["datum_uid"]].get(type(metric))
             == metric.value
         )
 
@@ -617,7 +617,7 @@ def test__calculate_rouge_scores():
             use_stemmer=example.get("use_stemmer", False),
         )[0]
         assert all(
-            round(output["value"][key], 2) == example[key]  # type: ignore
+            round(output["value"][key], 2) == example[key]
             for key in ["rouge1", "rouge2", "rougeL", "rougeLsum"]
         ), f"Error for example {example} with output {output}."
 
