@@ -184,6 +184,10 @@ def text_generation_test_data(db: Session, dataset_name: str, model_name: str):
     mocked_coherence,
 )
 @patch(
+    "valor_api.backend.core.llm_clients.WrappedMistralAIClient.connect",
+    mocked_connection,
+)
+@patch(
     "valor_api.backend.core.llm_clients.WrappedMistralAIClient.answer_relevance",
     mocked_answer_relevance,
 )

@@ -16,10 +16,11 @@ from valor_api.backend.core.llm_clients import (
     WrappedMistralAIClient,
     WrappedOpenAIClient,
 )
-from valor_api.backend.metrics.metric_utils import (  # log_evaluation_item_counts,
+from valor_api.backend.metrics.metric_utils import (
     create_metric_mappings,
     get_or_create_row,
     log_evaluation_duration,
+    log_evaluation_item_counts,
     validate_computation,
 )
 from valor_api.backend.query import generate_query
@@ -29,17 +30,7 @@ LabelMapType = list[list[list[str]]]
 
 LLM_GUIDED_METRICS = {
     "AnswerRelevance",
-    "AnswerCorrectness",
-    "Bias",
     "Coherence",
-    "ContextPrecision",
-    "ContextRecall",
-    "ContextRelevance",
-    "Faithfulness",
-    "Grammaticality",
-    "Hallucination",
-    "Summarization",
-    "Toxicity",
 }
 
 TEXT_COMPARISON_METRICS = {"BLEU", "ROUGE"}
@@ -222,7 +213,7 @@ def _generate_prediction_query(
     ).subquery()
 
 
-def setup_llm_client(
+def _setup_llm_client(
     llm_api_params: dict[str, str | dict],
 ) -> LLMClient:
     """
@@ -278,20 +269,7 @@ def _compute_text_generation_metrics(
     prediction_filter: schemas.Filter,
     metrics_to_return: list[MetricType] = [],
     llm_api_params: dict[str, str | dict] | None = None,
-) -> Sequence[
-    schemas.AnswerCorrectnessMetric
-    | schemas.AnswerRelevanceMetric
-    | schemas.BiasMetric
-    | schemas.CoherenceMetric
-    | schemas.ContextPrecisionMetric
-    | schemas.ContextRecallMetric
-    | schemas.ContextRelevanceMetric
-    | schemas.FaithfulnessMetric
-    | schemas.GrammaticalityMetric
-    | schemas.HallucinationMetric
-    | schemas.SummarizationMetric
-    | schemas.ToxicityMetric
-]:
+) -> Sequence[schemas.AnswerRelevanceMetric | schemas.CoherenceMetric]:
     """
     Compute text generation metrics.
 
@@ -310,7 +288,7 @@ def _compute_text_generation_metrics(
 
     Returns
     ----------
-    Sequence[schemas.AnswerCorrectnessMetric | schemas.AnswerRelevanceMetric | schemas.BiasMetric | schemas.CoherenceMetric | schemas.ContextPrecisionMetric | schemas.ContextRecallMetric | schemas.ContextRelevanceMetric | schemas.FaithfulnessMetric | schemas.GrammaticalityMetric | schemas.HallucinationMetric | schemas.SummarizationMetric | schemas.ToxicityMetric]
+    Sequence[schemas.AnswerRelevanceMetric | schemas.CoherenceMetric]
         A list of computed metrics.
     """
     datum_subquery = _generate_datum_query(db=db, datum_filter=datum_filter)
@@ -440,13 +418,11 @@ def _compute_text_generation_metrics(
         assert (
             llm_api_params is not None
         ), f"llm_api_params must be provided for the following metrics: {[metric for metric in metrics_to_return if metric in LLM_GUIDED_METRICS]}."
-        client = setup_llm_client(llm_api_params)
+        client = _setup_llm_client(llm_api_params)
 
     for datum_uid, dataset_name, datum_text, prediction_text, _ in res:
         for metric_type in metrics_to_return:
-            if metric_type == MetricType.AnswerCorrectness:
-                raise NotImplementedError
-            elif metric_type == MetricType.AnswerRelevance:
+            if metric_type == MetricType.AnswerRelevance:
                 assert client
                 response = client.answer_relevance(
                     query=datum_text, text=prediction_text
@@ -461,8 +437,6 @@ def _compute_text_generation_metrics(
                         },
                     )
                 )
-            elif metric_type == MetricType.Bias:
-                raise NotImplementedError
             elif metric_type == MetricType.Coherence:
                 assert client
                 generated_text = prediction_text
@@ -477,22 +451,6 @@ def _compute_text_generation_metrics(
                         },
                     )
                 )
-            elif metric_type == MetricType.ContextPrecision:
-                raise NotImplementedError
-            elif metric_type == MetricType.ContextRecall:
-                raise NotImplementedError
-            elif metric_type == MetricType.ContextRelevance:
-                raise NotImplementedError
-            elif metric_type == MetricType.Faithfulness:
-                raise NotImplementedError
-            elif metric_type == MetricType.Grammaticality:
-                raise NotImplementedError
-            elif metric_type == MetricType.Hallucination:
-                raise NotImplementedError
-            elif metric_type == MetricType.Summarization:
-                raise NotImplementedError
-            elif metric_type == MetricType.Toxicity:
-                raise NotImplementedError
 
     return output
 
@@ -525,18 +483,18 @@ def compute_text_generation_metrics(
     # unpack filters and params
     datum_filter = schemas.Filter(**evaluation.filters)
     prediction_filter = datum_filter.model_copy()
+    groundtruth_filter = datum_filter.model_copy()
     parameters = schemas.EvaluationParameters(**evaluation.parameters)
 
     # get llm api params
     llm_api_params = parameters.llm_api_params
 
-    # TODO Should we log evaluation item counts?
-    # log_evaluation_item_counts(
-    #     db=db,
-    #     evaluation=evaluation,
-    #     prediction_filter=prediction_filter,
-    #     groundtruth_filter=groundtruth_filter,
-    # )
+    log_evaluation_item_counts(
+        db=db,
+        evaluation=evaluation,
+        prediction_filter=prediction_filter,
+        groundtruth_filter=groundtruth_filter,
+    )
 
     assert parameters.metrics_to_return
 

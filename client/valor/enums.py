@@ -51,18 +51,8 @@ class MetricType(str, Enum):
     mIOU = "mIOU"
     PrecisionRecallCurve = "PrecisionRecallCurve"
     DetailedPrecisionRecallCurve = "DetailedPrecisionRecallCurve"
-    AnswerCorrectness = "AnswerCorrectness"
     AnswerRelevance = "AnswerRelevance"
-    Bias = "Bias"
     Coherence = "Coherence"
-    ContextPrecision = "ContextPrecision"
-    ContextRecall = "ContextRecall"
-    ContextRelevance = "ContextRelevance"
-    Faithfulness = "Faithfulness"
-    Grammaticality = "Grammaticality"
-    Hallucination = "Hallucination"
-    Summarization = "Summarization"
-    Toxicity = "Toxicity"
 
     @classmethod
     def classification(cls) -> Set["MetricType"]:
@@ -111,16 +101,6 @@ class MetricType(str, Enum):
         MetricTypes for text-generation tasks.
         """
         return {
-            cls.AnswerCorrectness,
             cls.AnswerRelevance,
-            cls.Bias,
             cls.Coherence,
-            cls.ContextPrecision,
-            cls.ContextRecall,
-            cls.ContextRelevance,
-            cls.Faithfulness,
-            cls.Grammaticality,
-            cls.Hallucination,
-            cls.Summarization,
-            cls.Toxicity,
         }
