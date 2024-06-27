@@ -4,14 +4,21 @@ dynamic = ["version"]
 description = "Python client for the Valor evaluation store"
 readme = "README.md"
 requires-python = ">=3.7"
-license = {file = "LICENSE"}
-dependencies = ["requests", "Pillow >= 9.1.0", "numpy", "importlib_metadata; python_version < '3.8'", "tqdm"]
+license = { file = "LICENSE" }
+dependencies = [
+    "requests",
+    "Pillow >= 9.1.0",
+    "numpy",
+    "importlib_metadata; python_version < '3.8'",
+    "tqdm",
+    "packaging",
+]
 
 [project.urls]
 homepage = "https://www.striveworks.com"
 
 [build-system]
-requires =  ["setuptools>=61.0", "setuptools_scm[toml]>=6.2"]
+requires = ["setuptools>=61.0", "setuptools_scm[toml]>=6.2"]
 build-backend = "setuptools.build_meta"
 
 [project.optional-dependencies]
