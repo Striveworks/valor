@@ -37,7 +37,7 @@ jobs:
       - name: print results
         run: |
           echo "Classification Benchmark Results":
-          export BENCHMARK_RESULTS=$(python -c "import os;import json;print(json.dumps(json.load(open("./results.json", "r")), indent=4));")
+          export BENCHMARK_RESULTS=$(python -c "import os;import json;print(json.dumps(json.load(open("results.json", "r")), indent=4));")
           echo BENCHMARK_RESULTS
         working-directory: ./integration_tests/benchmarks/classification
       - run: make stop-env
