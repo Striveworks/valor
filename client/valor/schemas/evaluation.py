@@ -44,7 +44,10 @@ class EvaluationParameters:
     recall_score_threshold: float = 0
     pr_curve_iou_threshold: float = 0.5
     pr_curve_max_examples: int = 1
+
     limit: int = -1
+    queries: Filter = Filter()
+    references: Filter = Filter()
 
 
 @dataclass
