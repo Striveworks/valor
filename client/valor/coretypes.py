@@ -1024,6 +1024,72 @@ class Model(StaticCollection):
             raise RuntimeError
         return evaluation[0]
 
+    def evaluate_embeddings(
+        self,
+        datasets: Union[Dataset, List[Dataset]],
+        filters: Optional[Filter] = None,
+        limit: int = -1,
+        label_map: Optional[Dict[Label, Label]] = None,
+        metrics_to_return: Optional[List[MetricType]] = None,
+        allow_retries: bool = False,
+    ) -> Evaluation:
+        """
+        Start a classification evaluation job.
+
+        Parameters
+        ----------
+        datasets : Union[Dataset, List[Dataset]], optional
+            The dataset or list of datasets to evaluate against.
+        filters : Filter, optional
+            Optional set of constraints to filter evaluation by.
+        limit : int, default=-1
+            Maximum number of embeddings per label.
+        label_map : Dict[Label, Label], optional
+            Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
+        metrics_to_return: List[MetricType], optional
+            The list of metrics to compute, store, and return to the user.
+        allow_retries : bool, default = False
+            Option to retry previously failed evaluations.
+
+        Returns
+        -------
+        Evaluation
+            A job object that can be used to track the status of the job and get the metrics of it upon completion.
+        """
+        if not datasets and not filters:
+            raise ValueError(
+                "Evaluation requires the definition of either datasets, dataset filters or both."
+            )
+        elif metrics_to_return and not set(metrics_to_return).issubset(
+            MetricType.embedding()
+        ):
+            raise ValueError(
+                f"The following metrics are not supported for classification: '{set(metrics_to_return) - MetricType.embedding()}'"
+            )
+
+        # format request
+        datasets = datasets if isinstance(datasets, list) else [datasets]
+        filters = filters if filters else Filter()
+        request = EvaluationRequest(
+            dataset_names=[dataset.name for dataset in datasets],  # type: ignore - issue #604
+            model_names=[self.name],  # type: ignore - issue #604
+            filters=filters,
+            parameters=EvaluationParameters(
+                task_type=TaskType.EMBEDDING,
+                label_map=self._create_label_map(label_map=label_map),
+                metrics_to_return=metrics_to_return,
+                limit=limit,
+            ),
+        )
+
+        # create evaluation
+        evaluation = Client(self.conn).evaluate(
+            request, allow_retries=allow_retries
+        )
+        if len(evaluation) != 1:
+            raise RuntimeError
+        return evaluation[0]
+
     def delete(self, timeout: int = 0):
         """
         Delete the `Model` object from the back end.

@@ -1,6 +1,7 @@
 import numpy as np
 from pydantic import BaseModel, ConfigDict, field_validator
 
+from valor_api.enums import MetricType
 from valor_api.schemas.types import Label
 
 
@@ -20,7 +21,7 @@ class Metric(BaseModel):
         The `Label` for the metric.
     """
 
-    type: str
+    type: MetricType
     parameters: dict | None = None
     value: float | dict | None = None
     label: Label | None = None
@@ -744,4 +745,58 @@ class mIOUMetric(BaseModel):
             "type": "mIOU",
             "evaluation_id": evaluation_id,
             "parameters": {"label_key": self.label_key},
+        }
+
+
+class CramerVonMisesMetric(BaseModel):
+    statistics: dict[str, dict[str, float]]
+    pvalues: dict[str, dict[str, float]]
+
+    def db_mapping(self, evaluation_id: int) -> dict:
+        """
+        Creates a mapping for use when uploading the metric to the database.
+
+        Parameters
+        ----------
+        evaluation_id : int
+            The evaluation id.
+
+        Returns
+        ----------
+        A mapping dictionary.
+        """
+        return {
+            "value": {
+                "statistics": self.statistics,
+                "pvalues": self.pvalues,
+            },
+            "type": MetricType.CramerVonMises,
+            "evaluation_id": evaluation_id,
+        }
+
+
+class KolmgorovSmirnovMetric(BaseModel):
+    statistics: dict[str, dict[str, float]]
+    pvalues: dict[str, dict[str, float]]
+
+    def db_mapping(self, evaluation_id: int) -> dict:
+        """
+        Creates a mapping for use when uploading the metric to the database.
+
+        Parameters
+        ----------
+        evaluation_id : int
+            The evaluation id.
+
+        Returns
+        ----------
+        A mapping dictionary.
+        """
+        return {
+            "value": {
+                "statistics": self.statistics,
+                "pvalues": self.pvalues,
+            },
+            "type": MetricType.KolmgorovSmirnov,
+            "evaluation_id": evaluation_id,
         }

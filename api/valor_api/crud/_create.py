@@ -131,6 +131,8 @@ def create_or_get_evaluations(
                     compute_func = (
                         backend.compute_semantic_segmentation_metrics
                     )
+                case enums.TaskType.EMBEDDING:
+                    compute_func = backend.compute_embedding_metrics
                 case _:
                     raise RuntimeError
 
