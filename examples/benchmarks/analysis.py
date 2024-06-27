@@ -54,9 +54,12 @@ def ingest_groundtruths_and_predictions(
 ):
     groundtruths = []
     predictions = []
-    for groundtruth, prediction in raw["groundtruth_prediction_pairs"][
-        :pair_limit
-    ]:
+    slice_ = (
+        raw["groundtruth_prediction_pairs"][:pair_limit]
+        if pair_limit != -1
+        else raw["groundtruth_prediction_pairs"]
+    )
+    for groundtruth, prediction in slice_:
         groundtruths.append(
             GroundTruth(
                 datum=Datum(
@@ -152,7 +155,7 @@ def run_detailed_pr_curve_evaluation(dset, model):
 
 def time_functions():
 
-    for i, limit in enumerate([10, 100, 100, 500, 500]):
+    for i, limit in enumerate([-1, -1, -1]):
 
         dset = Dataset.create(name=f"bird-identification{i}")
         model = Model.create(name=f"some_model{i}")
