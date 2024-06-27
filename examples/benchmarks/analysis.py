@@ -152,7 +152,7 @@ def run_detailed_pr_curve_evaluation(dset, model):
 
 def time_functions():
 
-    for i, limit in enumerate([500, 500]):
+    for i, limit in enumerate([10, 100, 100, 500, 500]):
 
         dset = Dataset.create(name=f"bird-identification{i}")
         model = Model.create(name=f"some_model{i}")
