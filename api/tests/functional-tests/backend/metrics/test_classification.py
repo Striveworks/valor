@@ -219,12 +219,12 @@ def test_compute_confusion_matrix_at_grouper_key(
         models.Annotation.datum_id.label("datum_id"),
         filters=gFilter,
         label_source=models.GroundTruth,
-    ).alias()
+    ).cte()
     predictions = generate_select(
         models.Prediction,
         filters=pFilter,
         label_source=models.Prediction,
-    ).alias()
+    ).cte()
 
     cm = _compute_confusion_matrix_at_grouper_key(
         db=db,
@@ -294,12 +294,12 @@ def test_compute_confusion_matrix_at_grouper_key(
         models.Annotation.datum_id.label("datum_id"),
         filters=gFilter,
         label_source=models.GroundTruth,
-    ).alias()
+    ).cte()
     predictions = generate_select(
         models.Prediction,
         filters=pFilter,
         label_source=models.Prediction,
-    ).alias()
+    ).cte()
 
     cm = _compute_confusion_matrix_at_grouper_key(
         db=db,
@@ -445,12 +445,12 @@ def test_compute_confusion_matrix_at_grouper_key_and_filter(
         models.Annotation.datum_id.label("datum_id"),
         filters=gFilter,
         label_source=models.GroundTruth,
-    ).alias()
+    ).cte()
     predictions = generate_select(
         models.Prediction,
         filters=pFilter,
         label_source=models.Prediction,
-    ).alias()
+    ).cte()
 
     cm = _compute_confusion_matrix_at_grouper_key(
         db,
@@ -595,12 +595,12 @@ def test_compute_confusion_matrix_at_grouper_key_using_label_map(
         models.Annotation.datum_id.label("datum_id"),
         filters=gFilter,
         label_source=models.GroundTruth,
-    ).alias()
+    ).cte()
     predictions = generate_select(
         models.Prediction,
         filters=pFilter,
         label_source=models.Prediction,
-    ).alias()
+    ).cte()
 
     cm = _compute_confusion_matrix_at_grouper_key(
         db,
@@ -1256,13 +1256,14 @@ def test__compute_curves(
         models.Dataset.name.label("dataset_name"),
         filters=gFilter,
         label_source=models.GroundTruth,
-    ).alias()
+    ).cte()
     predictions = generate_select(
         models.Prediction,
+        models.Annotation.datum_id.label("datum_id"),
         models.Dataset.name.label("dataset_name"),
         filters=pFilter,
         label_source=models.Prediction,
-    ).alias()
+    ).cte()
 
     # calculate the number of unique datums
     # used to determine the number of true negatives
@@ -1393,6 +1394,7 @@ def test__compute_curves(
         metric,
     ), expected_output in detailed_pr_expected_answers.items():
         model_output = curves[1].value[value][threshold][metric]
+        print(value, threshold, metric, expected_output, model_output)
         assert isinstance(model_output, dict)
         assert model_output["total"] == expected_output["total"]
         assert all(

@@ -3,10 +3,9 @@ from collections import defaultdict
 from typing import Sequence
 
 import numpy as np
-from sqlalchemy import Integer, Subquery
+from sqlalchemy import CTE, Integer
 from sqlalchemy.orm import Bundle, Session
 from sqlalchemy.sql import and_, case, func, select
-from sqlalchemy.sql.selectable import NamedFromClause
 
 from valor_api import enums, schemas
 from valor_api.backend import core, models
@@ -26,8 +25,8 @@ LabelMapType = list[list[list[str]]]
 
 def _compute_curves(
     db: Session,
-    predictions: Subquery | NamedFromClause,
-    groundtruths: Subquery | NamedFromClause,
+    predictions: CTE,
+    groundtruths: CTE,
     grouper_key: str,
     grouper_mappings: dict[str, dict[str, dict]],
     unique_datums: set[tuple[str, str]],
@@ -41,10 +40,10 @@ def _compute_curves(
     ----------
     db: Session
         The database Session to query against.
-    prediction_filter: schemas.Filter
-        The filter to be used to query predictions.
-    groundtruth_filter: schemas.Filter
-        The filter to be used to query groundtruths.
+    predictions: CTE
+        A CTE defining a set of predictions.
+    groundtruths: CTE
+        A CTE defining a set of ground truths.
     grouper_key: str
         The key of the grouper used to calculate the PR curves.
     grouper_mappings: dict[str, dict[str, dict]]
@@ -65,166 +64,151 @@ def _compute_curves(
     pr_output = defaultdict(lambda: defaultdict(dict))
     detailed_pr_output = defaultdict(lambda: defaultdict(dict))
 
-    for threshold in [x / 100 for x in range(5, 100, 5)]:
-        # get predictions that are above the confidence threshold
-        predictions_that_meet_criteria = (
-            select(
-                models.Label.value.label("pd_label_value"),
-                models.Annotation.datum_id.label("datum_id"),
-                models.Datum.uid.label("datum_uid"),
-                predictions.c.dataset_name,
-                predictions.c.score,
-            )
-            .select_from(predictions)
-            .join(
-                models.Annotation,
-                models.Annotation.id == predictions.c.annotation_id,
-            )
-            .join(
-                models.Label,
-                models.Label.id == predictions.c.label_id,
-            )
-            .join(
-                models.Datum,
-                models.Datum.id == models.Annotation.datum_id,
-            )
-            .where(predictions.c.score >= threshold)
-            .alias()
-        )
+    # predictions = generate_select(
+    #     models.Prediction,
+    #     models.Annotation.datum_id.label("datum_id"),
+    #     models.Dataset.name.label("dataset_name"),
+    #     filters=pFilter,
+    #     label_source=models.Prediction,
+    # ).cte()
 
-        b = Bundle(
-            "cols",
+    filtered_predictions = (
+        select(
+            models.Label.value.label("pd_label_value"),
+            predictions.c.datum_id.label("datum_id"),
+            predictions.c.dataset_name.label("dataset_name"),
+            predictions.c.score.label("score"),
+        )
+        .select_from(models.Annotation)
+        .join(
+            predictions,
+            and_(
+                predictions.c.annotation_id == models.Annotation.id,
+                predictions.c.score >= 0.05,
+            ),
+        )
+        .join(
+            models.Label,
+            models.Label.id == predictions.c.label_id,
+        )
+        .subquery()
+    )
+
+    # groundtruths = generate_select(
+    #     models.GroundTruth,
+    #     models.Annotation.datum_id.label("datum_id"),
+    #     models.Dataset.name.label("dataset_name"),
+    #     filters=gFilter,
+    #     label_source=models.GroundTruth,
+    # ).cte()
+
+    total_query = (
+        select(
             case(
                 grouper_mappings["label_value_to_grouper_value"],
-                value=predictions_that_meet_criteria.c.pd_label_value,
-            ),
+                value=filtered_predictions.c.pd_label_value,
+            ).label("gt_label_value"),
             case(
                 grouper_mappings["label_value_to_grouper_value"],
                 value=models.Label.value,
-            ),
+            ).label("pd_label_value"),
+            filtered_predictions.c.datum_id,
+            groundtruths.c.datum_id,
+            models.Datum.uid.label("datum_uid"),
+            groundtruths.c.dataset_name,
+            filtered_predictions.c.score,
         )
+        .select_from(groundtruths)
+        .join(
+            models.Datum,
+            models.Datum.id == groundtruths.c.datum_id,
+        )
+        .join(
+            models.Label,
+            models.Label.id == groundtruths.c.label_id,
+        )
+        .join(
+            filtered_predictions,
+            filtered_predictions.c.datum_id == groundtruths.c.datum_id,
+            isouter=True,
+        )
+        .subquery()
+    )
 
-        total_query = (
-            select(
-                b,
-                predictions_that_meet_criteria.c.datum_id,
-                predictions_that_meet_criteria.c.datum_uid,
-                predictions_that_meet_criteria.c.dataset_name,
-                groundtruths.c.datum_id,
-                models.Datum.uid,
-                groundtruths.c.dataset_name,
-            )
-            .select_from(groundtruths)
-            .join(
-                predictions_that_meet_criteria,
-                groundtruths.c.datum_id
-                == predictions_that_meet_criteria.c.datum_id,
-                isouter=True,
-            )
-            .join(
-                models.Label,
-                models.Label.id == groundtruths.c.label_id,
-            )
-            .join(
-                models.Datum,
-                models.Datum.id == groundtruths.c.datum_id,
-            )
-            .group_by(
-                b,  # type: ignore - SQLAlchemy Bundle typing issue
-                predictions_that_meet_criteria.c.datum_id,
-                predictions_that_meet_criteria.c.datum_uid,
-                predictions_that_meet_criteria.c.dataset_name,
-                groundtruths.c.datum_id,
-                models.Datum.uid,
-                groundtruths.c.dataset_name,
-            )
-        )
-        res = list(db.execute(total_query).all())
+    sorted_query = select(total_query).order_by(
+        total_query.c.gt_label_value != total_query.c.pd_label_value,
+        -total_query.c.score,
+    )
+    print("======= QUERY START =========")
+    res = db.query(sorted_query.subquery()).all()
+    print("======= QUERY END ======")
+
+    for threshold in [x / 100 for x in range(5, 100, 5)]:
+
         # handle edge case where there were multiple prediction labels for a single datum
         # first we sort, then we only increment fn below if the datum_id wasn't counted as a tp or fp
-        res.sort(
-            key=lambda x: ((x[1] is None, x[0][0] != x[0][1], x[1], x[2]))
-        )
+        # res.sort(
+        #     key=lambda x: ((x[1] is None, x[0][0] != x[0][1], x[1], x[2]))
+        # )
 
         # create sets of all datums for which there is a prediction / groundtruth
         # used when separating hallucinations/misclassifications/missed_detections
-        gt_datums = set()
-        pd_datums = set()
+        gt_datums = dict()
+        pd_datum_ids = set()
+
+        # a, b,
+        # filtered_predictions.c.datum_id, 2
+        # groundtruths.c.datum_id, 3
+        # models.Datum.uid.label("datum_uid"), 4
+        # groundtruths.c.dataset_name, 5
+        # filtered_predictions.c.score, 6
 
         for row in res:
-            (pd_datum_uid, pd_dataset_name, gt_datum_uid, gt_dataset_name,) = (
-                row[2],
-                row[3],
-                row[5],
-                row[6],
-            )
-            gt_datums.add((gt_dataset_name, gt_datum_uid))
-            pd_datums.add((pd_dataset_name, pd_datum_uid))
+            pd_datum_id = row[2]
+            gt_datum_id = row[3]
+            datum_uid = row[4]
+            dataset_name = row[5]
+            gt_datums[gt_datum_id] = (dataset_name, datum_uid)
+            if pd_datum_id is not None:  # if prediction exists
+                pd_datum_ids.add(pd_datum_id)
 
         for grouper_value in grouper_mappings["grouper_key_to_labels_mapping"][
             grouper_key
         ].keys():
-            tp, tn, fp, fn = [], [], defaultdict(list), defaultdict(list)
-            seen_datums = set()
+            tp, tn, fp, fn = set(), set(), defaultdict(set), defaultdict(set)
+            seen_datum_ids = set()
 
             for row in res:
                 (
                     predicted_label,
                     actual_label,
-                    pd_datum_uid,
-                    pd_dataset_name,
-                    gt_datum_uid,
-                    gt_dataset_name,
-                ) = (
-                    row[0][0],
-                    row[0][1],
-                    row[2],
-                    row[3],
-                    row[5],
-                    row[6],
-                )
+                    pd_datum_id,
+                    gt_datum_id,
+                    datum_uid,
+                    dataset_name,
+                    score,
+                ) = (row[0], row[1], row[2], row[3], row[4], row[5], row[6])
 
-                if predicted_label == grouper_value == actual_label:
-                    tp += [(pd_dataset_name, pd_datum_uid)]
-                    seen_datums.add(gt_datum_uid)
-                elif predicted_label == grouper_value:
-                    # if there was a groundtruth for a given datum, then it was a misclassification
-                    if (pd_dataset_name, pd_datum_uid) in gt_datums:
-                        fp["misclassifications"].append(
-                            (pd_dataset_name, pd_datum_uid)
-                        )
-                    else:
-                        fp["hallucinations"].append(
-                            (pd_dataset_name, pd_datum_uid)
-                        )
-                    seen_datums.add(gt_datum_uid)
-                elif (
-                    actual_label == grouper_value
-                    and gt_datum_uid not in seen_datums
-                ):
-                    # if there was a prediction for a given datum, then it was a misclassification
-                    if (gt_dataset_name, gt_datum_uid) in pd_datums:
-                        fn["misclassifications"].append(
-                            (gt_dataset_name, gt_datum_uid)
-                        )
-                    else:
-                        fn["missed_detections"].append(
-                            (gt_dataset_name, gt_datum_uid)
-                        )
-                    seen_datums.add(gt_datum_uid)
+                if gt_datum_id not in seen_datum_ids:
+                    if score >= threshold:
+                        if (
+                            predicted_label == grouper_value
+                            and actual_label == grouper_value
+                        ):
+                            tp.add(gt_datum_id)
+                            seen_datum_ids.add(gt_datum_id)
+                        elif predicted_label == grouper_value:
+                            fp["misclassifications"].add(gt_datum_id)
+                            seen_datum_ids.add(gt_datum_id)
+                    elif actual_label == grouper_value:
+                        if gt_datum_id in pd_datum_ids:
+                            fn["misclassifications"].add(gt_datum_id)
+                        else:
+                            fn["missed_detections"].add(gt_datum_id)
+                        seen_datum_ids.add(gt_datum_id)
 
             # calculate metrics
-            tn = [
-                datum_uid_pair
-                for datum_uid_pair in unique_datums
-                if datum_uid_pair
-                not in tp
-                + fp["hallucinations"]
-                + fp["misclassifications"]
-                + fn["misclassifications"]
-                + fn["missed_detections"]
-                and None not in datum_uid_pair
-            ]
+            tn = set(gt_datums.keys()) - seen_datum_ids
             tp_cnt, fp_cnt, fn_cnt, tn_cnt = (
                 len(tp),
                 len(fp["hallucinations"]) + len(fp["misclassifications"]),
@@ -264,7 +248,16 @@ def _compute_curves(
                 enums.MetricType.DetailedPrecisionRecallCurve
                 in metrics_to_return
             ):
-
+                tp = [gt_datums[datum_id] for datum_id in tp]
+                tn = [gt_datums[datum_id] for datum_id in tn]
+                fp = {
+                    key: [gt_datums[datum_id] for datum_id in fp[key]]
+                    for key in fp
+                }
+                fn = {
+                    key: [gt_datums[datum_id] for datum_id in fn[key]]
+                    for key in fn
+                }
                 detailed_pr_output[grouper_value][threshold] = {
                     "tp": {
                         "total": tp_cnt,
@@ -616,8 +609,8 @@ def _compute_roc_auc(
 
 def _compute_confusion_matrix_at_grouper_key(
     db: Session,
-    predictions: Subquery | NamedFromClause,
-    groundtruths: Subquery | NamedFromClause,
+    predictions: CTE,
+    groundtruths: CTE,
     grouper_key: str,
     grouper_mappings: dict[str, dict[str, dict]],
 ) -> schemas.ConfusionMatrix | None:
@@ -628,10 +621,10 @@ def _compute_confusion_matrix_at_grouper_key(
     ----------
     db : Session
         The database Session to query against.
-    prediction_filter : schemas.Filter
-        The filter to be used to query predictions.
-    groundtruth_filter : schemas.Filter
-        The filter to be used to query groundtruths.
+    predictions: CTE
+        A CTE defining a set of predictions.
+    groundtruths: CTE
+        A CTE defining a set of ground truths.
     grouper_key: str
         The key of the grouper used to calculate the confusion matrix.
     grouper_mappings: dict[str, dict[str, dict]]
