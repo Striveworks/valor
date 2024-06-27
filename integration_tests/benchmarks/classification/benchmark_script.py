@@ -147,7 +147,7 @@ def run_detailed_pr_curve_evaluation(dset: Dataset, model: Model):
 
 
 def run_benchmarking_analysis(
-    limits_to_test: list[int] = [10],
+    limits_to_test: list[int] = [100, 100, 100],
     results_file: str = "results.json",
     data_file: str = "data.json",
 ):
@@ -173,7 +173,7 @@ def run_benchmarking_analysis(
         ingest_and_evaluation = time() - start_time
 
         results = {
-            "limit": limit,
+            "number_of_datums": limit,
             "ingest_runtime": f"{(ingest_time):.1f} seconds",
             "ingest_and_evaluation_runtime": f"{(ingest_and_evaluation):.1f} seconds",
         }
