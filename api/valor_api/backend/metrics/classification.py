@@ -396,44 +396,56 @@ def _compute_binary_roc_auc(
         The binary ROC AUC score.
     """
     # query to get the datum_ids and label values of groundtruths that have the given label key
-    gts_filter = groundtruth_filter.model_copy()
-    gts_filter.labels = schemas.LogicalFunction.and_(
-        gts_filter.labels,
-        schemas.Condition(
-            lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
-            rhs=schemas.Value.infer(label.key),
-            op=schemas.FilterOperator.EQ,
-        ),
-    )
-    gts_query = generate_select(
-        models.Annotation.datum_id.label("datum_id"),
-        models.Label.value.label("label_value"),
-        filters=gts_filter,
+
+    filtered_groundtruths = generate_select(
+        models.GroundTruth,
+        filters=groundtruth_filter,
         label_source=models.GroundTruth,
+    ).subquery()
+    gts_query = (
+        select(
+            models.Annotation.datum_id.label("datum_id"),
+            models.Label.value.label("label_value"),
+        )
+        .select_from(models.Annotation)
+        .join(
+            filtered_groundtruths,
+            filtered_groundtruths.c.annotation_id == models.Annotation.id,
+        )
+        .join(
+            models.Label,
+            and_(
+                models.Label.id == filtered_groundtruths.c.label_id,
+                models.Label.key == label.key,
+            ),
+        )
     ).subquery("groundtruth_subquery")
 
     # get the prediction scores for the given label (key and value)
-    preds_filter = prediction_filter.model_copy()
-    preds_filter.labels = schemas.LogicalFunction.and_(
-        preds_filter.labels,
-        schemas.Condition(
-            lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
-            rhs=schemas.Value.infer(label.key),
-            op=schemas.FilterOperator.EQ,
-        ),
-        schemas.Condition(
-            lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_VALUE),
-            rhs=schemas.Value.infer(label.value),
-            op=schemas.FilterOperator.EQ,
-        ),
-    )
-
-    preds_query = generate_select(
-        models.Annotation.datum_id.label("datum_id"),
-        models.Prediction.score.label("score"),
-        models.Label.value.label("label_value"),
-        filters=preds_filter,
+    filtered_predictions = generate_select(
+        models.Prediction,
+        filters=prediction_filter,
         label_source=models.Prediction,
+    ).subquery()
+    preds_query = (
+        select(
+            models.Annotation.datum_id.label("datum_id"),
+            filtered_predictions.c.score.label("score"),
+            models.Label.value.label("label_value"),
+        )
+        .select_from(models.Annotation)
+        .join(
+            filtered_predictions,
+            filtered_predictions.c.annotation_id == models.Annotation.id,
+        )
+        .join(
+            models.Label,
+            and_(
+                models.Label.id == filtered_predictions.c.label_id,
+                models.Label.key == label.key,
+                models.Label.value == label.value,
+            ),
+        )
     ).subquery("prediction_subquery")
 
     # number of ground truth labels that match the given label value
@@ -644,7 +656,7 @@ def _compute_confusion_matrix_at_grouper_key(
             models.Annotation.id == predictions.c.annotation_id,
         )
         .group_by(models.Annotation.datum_id)
-        .alias()
+        .subquery()
     )
 
     # 2. Remove duplicate scores per datum
@@ -669,7 +681,7 @@ def _compute_confusion_matrix_at_grouper_key(
             ),
         )
         .group_by(models.Annotation.datum_id)
-        .alias()
+        .subquery()
     )
 
     # 3. Get labels for hard predictions, organize per datum
@@ -687,7 +699,7 @@ def _compute_confusion_matrix_at_grouper_key(
             models.Label,
             models.Label.id == models.Prediction.label_id,
         )
-        .alias()
+        .subquery()
     )
 
     # 4. Link each label value to its corresponding grouper value
@@ -881,7 +893,7 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
         models.Dataset.name.label("dataset_name"),
         filters=gFilter,
         label_source=models.GroundTruth,
-    ).alias()
+    ).cte()
 
     predictions = generate_select(
         models.Prediction,
@@ -889,7 +901,7 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
         models.Dataset.name.label("dataset_name"),
         filters=pFilter,
         label_source=models.Prediction,
-    ).alias()
+    ).cte()
 
     confusion_matrix = _compute_confusion_matrix_at_grouper_key(
         db=db,
