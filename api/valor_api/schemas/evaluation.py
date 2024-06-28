@@ -162,7 +162,7 @@ class EvaluationParameters(BaseModel):
                             "`llm_api_params` must be provided for LLM guided evaluations."
                         )
 
-                # Metric specific validation
+                # Metric parameter validation
                 if values.metric_params is None:
                     return values
 
@@ -171,6 +171,31 @@ class EvaluationParameters(BaseModel):
                         raise ValueError(
                             "AnswerRelevance metric should not have any parameters."
                         )
+
+                if "BLEU" in values.metric_params:
+                    bleu_params = ["weights"]
+                    if not all(
+                        param in bleu_params
+                        for param in values.metric_params["BLEU"].keys()
+                    ):
+                        raise ValueError(
+                            f"BLEU metric parameters must be a subset of {bleu_params}."
+                        )
+
+                    if "weights" in values.metric_params["BLEU"]:
+                        if not all(
+                            isinstance(weight, (int, float)) and 0 <= weight
+                            for weight in values.metric_params["BLEU"][
+                                "weights"
+                            ]
+                        ):
+                            raise ValueError(
+                                "BLEU metric weights must be a list of non-negative integers or floats."
+                            )
+                        if sum(values.metric_params["BLEU"]["weights"]) != 1:
+                            raise ValueError(
+                                "BLEU metric weights must sum to 1."
+                            )
 
                 if "Coherence" in values.metric_params:
                     if values.metric_params["Coherence"] != {}:

@@ -586,7 +586,6 @@ def test__calculate_rouge_scores():
             "prediction": "Mary loves Joe",
             "references": "Mary loves Joe",
             "weights": (1,),
-            "weights": (1,),
             "error": ValueError,
         },  # references isn't a list
         {

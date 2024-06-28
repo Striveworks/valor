@@ -15,19 +15,13 @@ from openai.types.chat import ChatCompletionMessage
 from openai.types.chat.chat_completion import ChatCompletion, Choice
 
 from valor_api.backend.core.llm_clients import (
+    InvalidLLMResponseError,
     LLMClient,
     WrappedMistralAIClient,
     WrappedOpenAIClient,
 )
 
-
-def test_LLMClient(monkeypatch):
-    """Check that this parent class mostly throws NotImplementedErrors, since its methods are intended to be overridden by its children."""
-
-    def _return_valid_answer_relevance_response(*args, **kwargs):
-
-        if "generate a list of statements" in args[1][1]["content"]:
-            return """```json
+ANSWER_RELEVANCE_VALID_STATEMENTS = """```json
 {
     "statements": [
         "statement 1",
@@ -36,13 +30,73 @@ def test_LLMClient(monkeypatch):
         "statement 4"
     ]
 }```"""
+
+ANSWER_RELEVANCE_VALID_VERDICTS = """```json
+{
+    "verdicts": [
+        {
+            "verdict": "no",
+            "reason": "The statement has nothing to do with the query."
+        },
+        {
+            "verdict": "yes"
+        },
+        {
+            "verdict": "idk"
+        },
+        {
+            "verdict": "yes"
+        }
+    ]
+}```"""
+
+
+def test_LLMClient(monkeypatch):
+    """Check that this parent class mostly throws NotImplementedErrors, since its methods are intended to be overridden by its children."""
+
+    def _return_valid_answer_relevance_response(*args, **kwargs):
+        if "generate a list of statements" in args[1][1]["content"]:
+            return ANSWER_RELEVANCE_VALID_STATEMENTS
+        elif (
+            "determine whether each statement is relevant to address the input"
+            in args[1][1]["content"]
+        ):
+            return ANSWER_RELEVANCE_VALID_VERDICTS
+        else:
+            raise ValueError
+
+    def _return_invalid1_answer_relevance_response(*args, **kwargs):
+        return """```json
+{
+    "list": [
+        "statement 1",
+        "statement 2",
+        "statement 3",
+        "statement 4"
+    ]
+}```"""
+
+    def _return_invalid2_answer_relevance_response(*args, **kwargs):
+        return """```json
+{
+    "statements": [
+        "statement 1",
+        5,
+        "statement 3",
+        "statement 4"
+    ]
+}```"""
+
+    def _return_invalid3_answer_relevance_response(*args, **kwargs):
+        if "generate a list of statements" in args[1][1]["content"]:
+            return ANSWER_RELEVANCE_VALID_STATEMENTS
         elif (
             "determine whether each statement is relevant to address the input"
             in args[1][1]["content"]
         ):
             return """```json
 {
-    "verdicts": [
+    "list": [
         {
             "verdict": "no",
             "reason": "The statement has nothing to do with the query."
@@ -61,6 +115,34 @@ def test_LLMClient(monkeypatch):
         else:
             raise ValueError
 
+    def _return_invalid4_answer_relevance_response(*args, **kwargs):
+        if "generate a list of statements" in args[1][1]["content"]:
+            return ANSWER_RELEVANCE_VALID_STATEMENTS
+        elif (
+            "determine whether each statement is relevant to address the input"
+            in args[1][1]["content"]
+        ):
+            return """```json
+{
+    "verdicts": [
+        {
+            "verdict": "no",
+            "reason": "The statement has nothing to do with the query."
+        },
+        {
+            "verdict": "yes"
+        },
+        {
+            "verdict": "idk"
+        },
+        {
+            "verdict": "unsure"
+        }
+    ]
+}```"""
+        else:
+            raise ValueError
+
     def _return_valid_coherence_response(*args, **kwargs):
         return "5"
 
@@ -70,12 +152,10 @@ def test_LLMClient(monkeypatch):
     client = LLMClient(api_key=None, model_name="model_name")
 
     fake_message = [{"key": "value"}]
-
     with pytest.raises(NotImplementedError):
         client.connect()
 
     fake_message = client.process_messages(fake_message)
-
     with pytest.raises(NotImplementedError):
         client(fake_message)
 
@@ -84,16 +164,38 @@ def test_LLMClient(monkeypatch):
         "valor_api.backend.core.llm_clients.LLMClient.__call__",
         _return_valid_answer_relevance_response,
     )
-
     assert 0.5 == client.answer_relevance("some query", "some answer")
 
-    # patch __call__ with an invalid response
+    # Needs to have 'statements' key.
     monkeypatch.setattr(
         "valor_api.backend.core.llm_clients.LLMClient.__call__",
-        _return_invalid_response,
+        _return_invalid1_answer_relevance_response,
     )
+    with pytest.raises(InvalidLLMResponseError):
+        client.answer_relevance("some query", "some text")
 
-    with pytest.raises(ValueError):
+    # Statements must be strings.
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_invalid2_answer_relevance_response,
+    )
+    with pytest.raises(InvalidLLMResponseError):
+        client.answer_relevance("some query", "some text")
+
+    # Needs to have 'verdicts' key.
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_invalid3_answer_relevance_response,
+    )
+    with pytest.raises(InvalidLLMResponseError):
+        client.answer_relevance("some query", "some text")
+
+    # Invalid verdict.
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_invalid4_answer_relevance_response,
+    )
+    with pytest.raises(InvalidLLMResponseError):
         client.answer_relevance("some query", "some text")
 
     # patch __call__ with a valid response
@@ -101,7 +203,6 @@ def test_LLMClient(monkeypatch):
         "valor_api.backend.core.llm_clients.LLMClient.__call__",
         _return_valid_coherence_response,
     )
-
     assert 5 == client.coherence("some text")
 
     # patch __call__ with an invalid response
@@ -109,8 +210,7 @@ def test_LLMClient(monkeypatch):
         "valor_api.backend.core.llm_clients.LLMClient.__call__",
         _return_invalid_response,
     )
-
-    with pytest.raises(ValueError):
+    with pytest.raises(InvalidLLMResponseError):
         client.coherence("some text")
 
 

@@ -9,6 +9,14 @@ from valor_api.backend.metrics.metric_utils import trim_and_load_json
 DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant."
 
 
+class InvalidLLMResponseError(Exception):
+    """
+    Raised when the response from the LLM is invalid for a given metric computation.
+    """
+
+    pass
+
+
 def _generate_statements_instruction(text: str) -> str:
     """
     Instruction template was copied from DeepEval's codebase https://github.com/confident-ai/deepeval/blob/main/deepeval/metrics/answer_relevancy/template.py.
@@ -226,13 +234,16 @@ class LLMClient:
         ]
 
         response = self(messages)
-        try:
-            response = trim_and_load_json(response)
-            assert type(response) == dict
-            assert "statements" in response
-            statements = response["statements"]
-        except Exception:
-            raise ValueError(
+        response = trim_and_load_json(response)
+        if type(response) != dict or "statements" not in response:
+            raise InvalidLLMResponseError(
+                f"LLM response was not a dictionary or 'statements' was not in response: {response}"
+            )
+        statements = response["statements"]
+        if type(statements) != list or not all(
+            type(statement) == str for statement in statements
+        ):
+            raise InvalidLLMResponseError(
                 f"LLM response was not a valid list of statements: {response}"
             )
         return statements
@@ -268,20 +279,22 @@ class LLMClient:
         ]
 
         response = self(messages)
+        response = trim_and_load_json(response)
+        if type(response) != dict or "verdicts" not in response:
+            raise InvalidLLMResponseError(
+                f"LLM response was not a valid list of verdicts: {response}"
+            )
 
-        try:
-            response = trim_and_load_json(response)
-            assert type(response) == dict
-            assert "verdicts" in response
-            verdicts = response["verdicts"]
-            assert type(verdicts) == list
-            assert len(verdicts) == len(statements)
-            assert all(
+        verdicts = response["verdicts"]
+        if (
+            type(verdicts) != list
+            or len(verdicts) != len(statements)
+            or not all(
                 verdict["verdict"] in ["yes", "no", "idk"]
                 for verdict in verdicts
             )
-        except Exception:
-            raise ValueError(
+        ):
+            raise InvalidLLMResponseError(
                 f"LLM response was not a valid list of verdicts: {response}"
             )
 
@@ -342,7 +355,7 @@ class LLMClient:
             ret = int(response.strip()[0])
             assert ret in {1, 2, 3, 4, 5}
         except Exception:
-            raise ValueError(
+            raise InvalidLLMResponseError(
                 f"LLM response was not a valid coherence score: {response}"
             )
 
