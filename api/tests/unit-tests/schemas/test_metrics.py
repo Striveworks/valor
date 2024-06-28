@@ -384,14 +384,9 @@ def test_mIOUMetric():
     )
 
 
-def test_ROUGEMetric():
-    metric = schemas.ROUGEMetric(
-        value={
-            "rouge1": 1.0,
-            "rouge2": 1.0,
-            "rougeL": 1.0,
-            "rougeLsum": 1.0,
-        },
+def test_AnswerRelevanceMetric():
+    metric = schemas.AnswerRelevanceMetric(
+        value=0.421,
         parameters={
             "dataset_uid": "01",
             "dataset_name": "test_dataset",
@@ -400,7 +395,7 @@ def test_ROUGEMetric():
     )
 
     with pytest.raises(ValidationError):
-        schemas.ROUGEMetric(
+        schemas.AnswerRelevanceMetric(
             value=None,  # type: ignore
             parameters={
                 "dataset_uid": "01",
@@ -410,8 +405,8 @@ def test_ROUGEMetric():
         )
 
     with pytest.raises(ValidationError):
-        schemas.ROUGEMetric(
-            value=0.24,  # type: ignore
+        schemas.AnswerRelevanceMetric(
+            value={"key": 0.6},  # type: ignore
             parameters={
                 "dataset_uid": "01",
                 "dataset_name": "test_dataset",
@@ -420,24 +415,8 @@ def test_ROUGEMetric():
         )
 
     with pytest.raises(ValidationError):
-        schemas.ROUGEMetric(
-            value={
-                "rouge1": 1.0,
-                "rouge2": 1.0,
-                "rougeL": 1.0,
-                "rougeLsum": 1.0,
-            },
-            parameters=None,  # type: ignore
-        )
-
-    with pytest.raises(ValidationError):
-        schemas.ROUGEMetric(
-            value={
-                "rouge1": 1.0,
-                "rouge2": 1.0,
-                "rougeL": 1.0,
-                "rougeLsum": 1.0,
-            },
+        schemas.AnswerRelevanceMetric(
+            value=0.42,  # type: ignore
             parameters="not a valid parameter",  # type: ignore
         )
 
@@ -497,6 +476,125 @@ def test_BLEUMetric():
     with pytest.raises(ValidationError):
         schemas.BLEUMetric(
             value=0.42,  # type: ignore
+            parameters="not a valid parameter",  # type: ignore
+        )
+
+    assert all(
+        [
+            key in ["value", "type", "evaluation_id", "parameters"]
+            for key in metric.db_mapping(evaluation_id=1)
+        ]
+    )
+
+
+def test_CoherenceMetric():
+    metric = schemas.CoherenceMetric(
+        value=3,
+        parameters={
+            "dataset_uid": "01",
+            "dataset_name": "test_dataset",
+            "prediction": "some prediction",
+        },
+    )
+
+    with pytest.raises(ValidationError):
+        schemas.CoherenceMetric(
+            value=None,  # type: ignore
+            parameters={
+                "dataset_uid": "01",
+                "dataset_name": "test_dataset",
+                "prediction": "some prediction",
+            },
+        )
+
+    with pytest.raises(ValidationError):
+        schemas.CoherenceMetric(
+            value=2.5,  # type: ignore
+            parameters={
+                "dataset_uid": "01",
+                "dataset_name": "test_dataset",
+                "prediction": "some prediction",
+            },
+        )
+
+    with pytest.raises(ValidationError):
+        schemas.CoherenceMetric(
+            value={"key": 4},  # type: ignore
+            parameters={
+                "dataset_uid": "01",
+                "dataset_name": "test_dataset",
+                "prediction": "some prediction",
+            },
+        )
+
+    with pytest.raises(ValidationError):
+        schemas.CoherenceMetric(
+            value=5,  # type: ignore
+            parameters="not a valid parameter",  # type: ignore
+        )
+
+    assert all(
+        [
+            key in ["value", "type", "evaluation_id", "parameters"]
+            for key in metric.db_mapping(evaluation_id=1)
+        ]
+    )
+
+
+def test_ROUGEMetric():
+    metric = schemas.ROUGEMetric(
+        value={
+            "rouge1": 1.0,
+            "rouge2": 1.0,
+            "rougeL": 1.0,
+            "rougeLsum": 1.0,
+        },
+        parameters={
+            "dataset_uid": "01",
+            "dataset_name": "test_dataset",
+            "prediction": "some prediction",
+        },
+    )
+
+    with pytest.raises(ValidationError):
+        schemas.ROUGEMetric(
+            value=None,  # type: ignore
+            parameters={
+                "dataset_uid": "01",
+                "dataset_name": "test_dataset",
+                "prediction": "some prediction",
+            },
+        )
+
+    with pytest.raises(ValidationError):
+        schemas.ROUGEMetric(
+            value=0.24,  # type: ignore
+            parameters={
+                "dataset_uid": "01",
+                "dataset_name": "test_dataset",
+                "prediction": "some prediction",
+            },
+        )
+
+    with pytest.raises(ValidationError):
+        schemas.ROUGEMetric(
+            value={
+                "rouge1": 1.0,
+                "rouge2": 1.0,
+                "rougeL": 1.0,
+                "rougeLsum": 1.0,
+            },
+            parameters=None,  # type: ignore
+        )
+
+    with pytest.raises(ValidationError):
+        schemas.ROUGEMetric(
+            value={
+                "rouge1": 1.0,
+                "rouge2": 1.0,
+                "rougeL": 1.0,
+                "rougeLsum": 1.0,
+            },
             parameters="not a valid parameter",  # type: ignore
         )
 

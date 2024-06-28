@@ -783,42 +783,6 @@ class AnswerRelevanceMetric(BaseModel):
         }
 
 
-class CoherenceMetric(BaseModel):
-    """
-    Describes a coherence metric.
-
-    Attributes
-    ----------
-    value : int
-        The coherence score for a datum. This is an integer with 1 being the lowest coherence and 5 the highest coherence.
-    parameters : dict
-        Any parameters associated with the metric, as well as any datum or prediction parameters that are relevant to the metric.
-    """
-
-    value: float
-    parameters: dict
-
-    def db_mapping(self, evaluation_id: int) -> dict:
-        """
-        Creates a mapping for use when uploading the metric to the database.
-
-        Parameters
-        ----------
-        evaluation_id : int
-            The evaluation id.
-
-        Returns
-        ----------
-        A mapping dictionary.
-        """
-        return {
-            "value": self.value,
-            "parameters": self.parameters,
-            "type": "Coherence",
-            "evaluation_id": evaluation_id,
-        }
-
-
 class BLEUMetric(BaseModel):
     """
     Describes a BLEU metric.
@@ -851,6 +815,42 @@ class BLEUMetric(BaseModel):
             "value": self.value,
             "parameters": self.parameters,
             "type": "BLEU",
+            "evaluation_id": evaluation_id,
+        }
+
+
+class CoherenceMetric(BaseModel):
+    """
+    Describes a coherence metric.
+
+    Attributes
+    ----------
+    value : int
+        The coherence score for a datum. This is an integer with 1 being the lowest coherence and 5 the highest coherence.
+    parameters : dict
+        Any parameters associated with the metric, as well as any datum or prediction parameters that are relevant to the metric.
+    """
+
+    value: int
+    parameters: dict
+
+    def db_mapping(self, evaluation_id: int) -> dict:
+        """
+        Creates a mapping for use when uploading the metric to the database.
+
+        Parameters
+        ----------
+        evaluation_id : int
+            The evaluation id.
+
+        Returns
+        ----------
+        A mapping dictionary.
+        """
+        return {
+            "value": self.value,
+            "parameters": self.parameters,
+            "type": "Coherence",
             "evaluation_id": evaluation_id,
         }
 
