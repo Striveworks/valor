@@ -143,6 +143,12 @@ def test_LLMClient(monkeypatch):
         else:
             raise ValueError
 
+    def _return_invalid1_coherence_response(*args, **kwargs):
+        return "2.5"
+
+    def _return_invalid2_coherence_response(*args, **kwargs):
+        return "0"
+
     def _return_valid_coherence_response(*args, **kwargs):
         return "5"
 
@@ -205,10 +211,18 @@ def test_LLMClient(monkeypatch):
     )
     assert 5 == client.coherence("some text")
 
-    # patch __call__ with an invalid response
+    # Coherence score was not an integer
     monkeypatch.setattr(
         "valor_api.backend.core.llm_clients.LLMClient.__call__",
         _return_invalid_response,
+    )
+    with pytest.raises(InvalidLLMResponseError):
+        client.coherence("some text")
+
+    # Coherence score was 0, which is not in {1,2,3,4,5}
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_invalid2_coherence_response,
     )
     with pytest.raises(InvalidLLMResponseError):
         client.coherence("some text")

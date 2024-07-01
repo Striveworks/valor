@@ -82,7 +82,6 @@ def _create_annotation(
         if isinstance(annotation.context, str):
             context = [annotation.context]
         else:
-            assert isinstance(annotation.context, list)
             context = annotation.context
 
     mapping = {

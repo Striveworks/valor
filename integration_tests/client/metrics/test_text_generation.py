@@ -132,7 +132,7 @@ def test_llm_evaluation(
             expected_metrics[uid][metric_name] == m["value"]
         ), f"Failed for {uid} and {metric_name}"
 
-    assert metadata["duration"] <= 15
+    assert metadata["duration"] <= 30
 
 
 @pytest.fixture

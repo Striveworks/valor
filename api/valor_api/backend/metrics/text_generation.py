@@ -90,7 +90,8 @@ def _calculate_rouge_scores(
         use_aggregator=False,  # aggregation gives us an average across all predicitons, which isn't what we want
     )
 
-    assert metrics is not None  # handle type error
+    if not metrics:
+        raise ValueError("No metrics were returned.")
 
     # find the max value for each prediction
     output = defaultdict(lambda: defaultdict(float))
@@ -193,12 +194,10 @@ def _setup_llm_client(
     LLMClient
         A wrapper for other LLM API clients.
     """
-    assert (
-        "client" in llm_api_params or "api_url" in llm_api_params
-    ), "Need to specify the client or api_url."
-    assert not (
-        "client" in llm_api_params and "api_url" in llm_api_params
-    ), "Cannot specify both client and api_url."
+    if not ("client" in llm_api_params or "api_url" in llm_api_params):
+        raise ValueError("Need to specify the client or api_url.")
+    if "client" in llm_api_params and "api_url" in llm_api_params:
+        raise ValueError("Cannot specify both client and api_url.")
 
     if llm_api_params.get("client") is not None:
         if llm_api_params["client"] == "openai":
@@ -218,7 +217,8 @@ def _setup_llm_client(
 
     client_kwargs = {}
     if "data" in llm_api_params:
-        assert isinstance(llm_api_params["data"], dict)
+        if not isinstance(llm_api_params["data"], dict):
+            raise ValueError("data must be a dictionary.")
         if "model" in llm_api_params["data"]:
             client_kwargs["model_name"] = llm_api_params["data"]["model"]
         if "seed" in llm_api_params["data"]:
@@ -344,7 +344,8 @@ def _compute_text_generation_metrics(
         for datum_uid, dataset_name, predictions, references in results:
             if is_BLEU_enabled:
                 bleu_params = metric_params.get("BLEU", {})
-                assert type(bleu_params) == dict
+                if not isinstance(bleu_params, dict):
+                    raise ValueError("BLEU parameters must be a dictionary.")
                 weights = bleu_params.get("weights", [0.25, 0.25, 0.25, 0.25])
                 bleu_metrics = _calculate_sentence_bleu(
                     predictions=predictions,
@@ -366,7 +367,8 @@ def _compute_text_generation_metrics(
                 ]
             if is_ROUGE_enabled:
                 rouge_params = metric_params.get("ROUGE", {})
-                assert type(rouge_params) == dict
+                if not isinstance(rouge_params, dict):
+                    raise ValueError("ROUGE parameters must be a dictionary.")
                 rouge_types = rouge_params.get(
                     "rouge_types", ["rouge1", "rouge2", "rougeL", "rougeLsum"]
                 )
@@ -399,11 +401,11 @@ def _compute_text_generation_metrics(
             for metric_name in metrics_to_return
         ]
     ):
-        assert (
-            llm_api_params is not None
-        ), f"llm_api_params must be provided for the following metrics: {[metric for metric in metrics_to_return if metric in LLM_GUIDED_METRICS]}."
+        if llm_api_params is None:
+            raise ValueError(
+                f"llm_api_params must be provided for the following metrics: {[metric for metric in metrics_to_return if metric in LLM_GUIDED_METRICS]}."
+            )
         client = _setup_llm_client(llm_api_params)
-        assert client
 
         total_query = (
             select(
@@ -489,14 +491,15 @@ def compute_text_generation_metrics(
     groundtruth_filter = datum_filter.model_copy()
     parameters = schemas.EvaluationParameters(**evaluation.parameters)
 
+    if parameters.metrics_to_return is None:
+        raise ValueError("metrics_to_return must be provided.")
+
     log_evaluation_item_counts(
         db=db,
         evaluation=evaluation,
         prediction_filter=prediction_filter,
         groundtruth_filter=groundtruth_filter,
     )
-
-    assert parameters.metrics_to_return
 
     metric_params = {}
     if parameters.bleu_weights is not None:

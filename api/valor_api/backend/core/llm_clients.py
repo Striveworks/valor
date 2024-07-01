@@ -363,10 +363,14 @@ class LLMClient:
         try:
             # Valid responses: "5", "\n5", "5\n", "5.", " 5", "5 {explanation}", etc.
             ret = int(response.strip()[0])
-            assert ret in {1, 2, 3, 4, 5}
         except Exception:
             raise InvalidLLMResponseError(
                 f"LLM response was not a valid coherence score: {response}"
+            )
+
+        if ret not in {1, 2, 3, 4, 5}:
+            raise InvalidLLMResponseError(
+                f"Coherence score was not an integer between 1 and 5: {ret}"
             )
 
         return ret
