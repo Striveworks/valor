@@ -9,7 +9,7 @@ from valor_api.backend import core, models
 def _check_if_datum_has_prediction(
     db: Session, datum: schemas.Datum, model_name: str, dataset_name: str
 ) -> None:
-    print(dataset_name, model_name, datum.uid)
+    """Checks to see if datum has existing annotations."""
     if db.query(
         select(models.Annotation.id)
         .select_from(models.Annotation)

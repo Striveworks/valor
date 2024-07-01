@@ -190,13 +190,6 @@ def _compute_curves(
                     if pd_datum_id in gt_datum_ids:
                         fp["misclassifications"].add(pd_datum_id)
                     else:
-                        print(
-                            threshold,
-                            grouper_key,
-                            groundtruth_label,
-                            predicted_label,
-                            unique_datums[pd_datum_id],
-                        )
                         fp["hallucinations"].add(pd_datum_id)
                     seen_datum_ids.add(pd_datum_id)
                 elif (
