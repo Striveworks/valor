@@ -32,6 +32,10 @@ class EvaluationParameters:
         The maximum number of datum examples to store when calculating PR curves.
     bleu_weights: list[float], optional
         The weights to use when calculating BLEU scores.
+    rouge_types: list[str]
+        A list of rouge types to calculate. Options are ['rouge1', 'rouge2', 'rougeL', 'rougeLsum'], where `rouge1` is unigram-based scoring, `rouge2` is bigram-based scoring, `rougeL` is scoring based on sentences (i.e., splitting on "." and ignoring "\n"), and `rougeLsum` is scoring based on splitting the text using "\n".
+    rouge_use_stemmer: bool
+        If True, uses Porter stemmer to strip word suffixes.
     llm_api_params: Dict[str, str | dict], optional
         A dictionary of parameters for the LLM API.
     """
@@ -46,7 +50,9 @@ class EvaluationParameters:
     recall_score_threshold: float = 0
     pr_curve_iou_threshold: float = 0.5
     pr_curve_max_examples: int = 1
-    bleu_weights: Optional[list[float]] = None
+    bleu_weights: Optional[List[float]] = None
+    rouge_types: Optional[List[str]] = None
+    rouge_use_stemmer: Optional[bool] = None
     llm_api_params: Optional[Dict[str, Union[str, dict]]] = None
 
 

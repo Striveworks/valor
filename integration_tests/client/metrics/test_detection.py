@@ -168,6 +168,8 @@ def test_evaluate_detection(
             "pr_curve_iou_threshold": 0.5,
             "pr_curve_max_examples": 1,
             "bleu_weights": None,
+            "rouge_types": None,
+            "rouge_use_stemmer": None,
             "llm_api_params": None,
         },
         "status": EvaluationStatus.DONE.value,
@@ -329,6 +331,8 @@ def test_evaluate_detection(
             "pr_curve_iou_threshold": 0.5,
             "pr_curve_max_examples": 1,
             "bleu_weights": None,
+            "rouge_types": None,
+            "rouge_use_stemmer": None,
             "llm_api_params": None,
         },
         "status": EvaluationStatus.DONE.value,
@@ -409,6 +413,8 @@ def test_evaluate_detection(
             "pr_curve_iou_threshold": 0.5,
             "pr_curve_max_examples": 1,
             "bleu_weights": None,
+            "rouge_types": None,
+            "rouge_use_stemmer": None,
             "llm_api_params": None,
         },
         # check metrics below
@@ -521,6 +527,8 @@ def test_evaluate_detection(
             "pr_curve_iou_threshold": 0.5,
             "pr_curve_max_examples": 1,
             "bleu_weights": None,
+            "rouge_types": None,
+            "rouge_use_stemmer": None,
             "llm_api_params": None,
         },
         # check metrics below
@@ -747,6 +755,8 @@ def test_evaluate_detection_with_json_filters(
             "pr_curve_iou_threshold": 0.5,
             "pr_curve_max_examples": 1,
             "bleu_weights": None,
+            "rouge_types": None,
+            "rouge_use_stemmer": None,
             "llm_api_params": None,
         },
         # check metrics below
@@ -2032,6 +2042,8 @@ def test_evaluate_detection_with_label_maps(
         "pr_curve_iou_threshold": 0.5,
         "pr_curve_max_examples": 1,
         "bleu_weights": None,
+        "rouge_types": None,
+        "rouge_use_stemmer": None,
         "llm_api_params": None,
     }
 

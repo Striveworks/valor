@@ -359,6 +359,7 @@ def _compute_text_generation_metrics(
                             "dataset": dataset_name,
                             "datum_uid": datum_uid,
                             "prediction": metric["prediction"],
+                            "weights": weights,
                         },
                     )
                     for metric in bleu_metrics
@@ -384,6 +385,8 @@ def _compute_text_generation_metrics(
                             "dataset": dataset_name,
                             "datum_uid": datum_uid,
                             "prediction": metric["prediction"],
+                            "rouge_types": rouge_types,
+                            "use_stemmer": use_stemmer,
                         },
                     )
                     for metric in rouge_metrics
@@ -500,14 +503,16 @@ def compute_text_generation_metrics(
         if "BLEU" not in metric_params:
             metric_params["BLEU"] = {}
         metric_params["BLEU"]["weights"] = parameters.bleu_weights
-    # if parameters.rouge_types is not None:
-    #     if "ROUGE" not in metric_params:
-    #         metric_params["ROUGE"] = {}
-    #     metric_params["ROUGE"]["rouge_types"] = parameters.rouge_types
-    # if parameters.rouge_use_stemmer is not None:
-    #     if "ROUGE" not in metric_params:
-    #         metric_params["ROUGE"] = {}
-    #     metric_params["ROUGE"]["rouge_use_stemmer"] = parameters.rouge_use_stemmer
+    if parameters.rouge_types is not None:
+        if "ROUGE" not in metric_params:
+            metric_params["ROUGE"] = {}
+        metric_params["ROUGE"]["rouge_types"] = parameters.rouge_types
+    if parameters.rouge_use_stemmer is not None:
+        if "ROUGE" not in metric_params:
+            metric_params["ROUGE"] = {}
+        metric_params["ROUGE"][
+            "rouge_use_stemmer"
+        ] = parameters.rouge_use_stemmer
 
     metrics = _compute_text_generation_metrics(
         db=db,

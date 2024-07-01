@@ -75,6 +75,8 @@ def test_EvaluationParameters():
         ],
         llm_api_params=LLM_API_PARAMS,
         bleu_weights=[0.5, 0.25, 0.25, 0],
+        rouge_types=["rouge1", "rouge2", "rougeL"],
+        rouge_use_stemmer=True,
     )
 
     with pytest.raises(ValidationError):
@@ -164,6 +166,20 @@ def test_EvaluationParameters():
             ],
             llm_api_params=LLM_API_PARAMS,
             bleu_weights=[0.5, 0.25, 0.25, 0.25],
+        )
+
+    # ROUGE types must be in the following list of valid types: ["rouge1", "rouge2", "rougeL", "rougeLsum"].
+    with pytest.raises(ValidationError):
+        schemas.EvaluationParameters(
+            task_type=enums.TaskType.TEXT_GENERATION,
+            metrics_to_return=[
+                MetricType.AnswerRelevance,
+                MetricType.BLEU,
+                MetricType.Coherence,
+                MetricType.ROUGE,
+            ],
+            llm_api_params=LLM_API_PARAMS,
+            rouge_types=["rouge1", "rouge2", "rouge3"],
         )
 
 

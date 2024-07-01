@@ -42,6 +42,10 @@ class EvaluationParameters(BaseModel):
         The maximum number of datum examples to store when calculating PR curves.
     bleu_weights: list[float], optional
         The weights to use when calculating BLEU scores.
+    rouge_types: list[str]
+        A list of rouge types to calculate. Options are ['rouge1', 'rouge2', 'rougeL', 'rougeLsum'], where `rouge1` is unigram-based scoring, `rouge2` is bigram-based scoring, `rougeL` is scoring based on sentences (i.e., splitting on "." and ignoring "\n"), and `rougeLsum` is scoring based on splitting the text using "\n".
+    rouge_use_stemmer: bool
+        If True, uses Porter stemmer to strip word suffixes.
     llm_api_params: dict[str, str | dict], optional
         A dictionary of parameters for the LLM API.
     """
@@ -57,6 +61,8 @@ class EvaluationParameters(BaseModel):
     pr_curve_iou_threshold: float = 0.5
     pr_curve_max_examples: int = 1
     bleu_weights: list[float] | None = None
+    rouge_types: list[str] | None = None
+    rouge_use_stemmer: bool | None = None
     llm_api_params: dict[str, str | dict] | None = None
 
     # pydantic setting
@@ -164,6 +170,16 @@ class EvaluationParameters(BaseModel):
                         )
                     if sum(values.bleu_weights) != 1:
                         raise ValueError("BLEU metric weights must sum to 1.")
+
+                if values.rouge_types is not None:
+                    if not all(
+                        rouge_type
+                        in ["rouge1", "rouge2", "rougeL", "rougeLsum"]
+                        for rouge_type in values.rouge_types
+                    ):
+                        raise ValueError(
+                            "ROUGE types must be a subset of ['rouge1', 'rouge2', 'rougeL', 'rougeLsum']."
+                        )
 
             case _:
                 raise NotImplementedError(
