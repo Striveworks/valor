@@ -1262,7 +1262,6 @@ def finalize_inferences(
         The name of the dataset.
     model_name : str
         The name of the model.
-
     background_tasks: BackgroundTasks
         A FastAPI `BackgroundTasks` object to process the creation asynchronously. This parameter is a FastAPI dependency and shouldn't be submitted by the user.
     db : Session
