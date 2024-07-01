@@ -46,12 +46,16 @@ def write_results_to_file(write_path: str, result_dict: dict):
 
 def ingest_groundtruths_and_predictions(
     dset: Dataset, model: Model, raw: list, pair_limit: int
-) -> tuple[int, int]:
-    """Ingest the data into Valor. Returns the number of groundtruths and predictions."""
+) -> int:
+    """Ingest the data into Valor. Returns the number of processed annotations."""
     groundtruths = []
     predictions = []
 
+    number_of_annotations = 0
     for datum_id, data in raw[:pair_limit]:
+        number_of_annotations += len(data["groundtruth_annotations"]) + len(
+            data["predictions_annotations"]
+        )
         datum = Datum(
             uid=str(datum_id),
             metadata=data["datum_metadata"],
@@ -174,7 +178,7 @@ def ingest_groundtruths_and_predictions(
     dset.finalize()
     model.finalize_inferences(dataset=dset)
 
-    return (len(groundtruths), len(predictions))
+    return number_of_annotations
 
 
 def run_base_evaluation(dset: Dataset, model: Model):
@@ -244,7 +248,7 @@ def run_benchmarking_analysis(
 
         start_time = time()
 
-        len_gt, len_pd = ingest_groundtruths_and_predictions(
+        number_of_annotations = ingest_groundtruths_and_predictions(
             dset=dset, model=model, raw=raw_data_tuple, pair_limit=limit
         )
         ingest_time = time() - start_time
@@ -254,8 +258,7 @@ def run_benchmarking_analysis(
 
         results = {
             "number_of_datums": limit,
-            "number_of_groundtruths": len_gt,
-            "number_of_predictions": len_pd,
+            "number_of_annotations": number_of_annotations,
             "ingest_runtime": f"{(ingest_time):.1f} seconds",
             "ingest_and_evaluation_runtime": f"{(ingest_and_evaluation):.1f} seconds",
         }
