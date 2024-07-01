@@ -265,7 +265,7 @@ def _validate_evaluation_filter(
 
     # unpack filters and params
     filters = schemas.Filter(**evaluation.filters)
-    parameters = schemas.EvaluationParameters(**evaluation.parameters)
+    # parameters = schemas.EvaluationParameters(**evaluation.parameters)
 
     groundtruth_filter = filters.model_copy()
     groundtruth_filter.predictions = None

@@ -211,10 +211,8 @@ def _compute_curves(
                     gt_datum_id,
                     predicted_label,
                     pd_datum_id,
-                    dataset_name,
-                    datum_uid,
                     score,
-                ) = (row[0], row[1], row[2], row[3], row[4], row[5], row[6])
+                ) = (row[0], row[1], row[2], row[3], row[6])
 
                 if (
                     groundtruth_label == grouper_value
