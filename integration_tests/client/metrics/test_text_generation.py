@@ -2,9 +2,6 @@
 that is no auth
 """
 
-from typing import Dict, List, Optional, Union
-from unittest.mock import patch
-
 import pytest
 
 from valor import (
@@ -25,381 +22,13 @@ PREDICTIONS = [
 ]
 
 
-def mock_ClientConnection_evaluate(
-    self, request: dict, allow_retries: bool = False
-) -> List[dict]:
-    return [
-        {
-            "id": 4,
-            "dataset_names": ["test_dataset"],
-            "model_name": "test_model",
-            "filters": {
-                "datasets": None,
-                "models": None,
-                "datums": None,
-                "annotations": None,
-                "groundtruths": None,
-                "predictions": None,
-                "labels": None,
-                "embeddings": None,
-            },
-            "parameters": {
-                "task_type": "text-generation",
-                "metrics_to_return": ["AnswerRelevance", "Coherence"],
-                "label_map": None,
-                "metric_params": None,
-                "convert_annotations_to_type": None,
-                "iou_thresholds_to_compute": None,
-                "iou_thresholds_to_return": None,
-                "recall_score_threshold": 0.0,
-                "pr_curve_iou_threshold": 0.5,
-                "pr_curve_max_examples": 1,
-                "llm_api_params": {
-                    "data": {"model": "gpt-4o"},
-                    "client": "openai",
-                },
-            },
-            "status": "done",
-            "created_at": "2024-06-20T17:27:53.017348Z",
-            "meta": {"duration": 2.038157},
-            "metrics": [
-                {
-                    "type": "AnswerRelevance",
-                    "parameters": {
-                        "dataset": "test_dataset",
-                        "datum_uid": "uid0",
-                        "prediction": "Based on the provided context, John Adams and Alexander Hamilton did not get along. John Adams, during his presidency, had grown independent of his cabinet, often making decisions despite opposition from it. Hamilton, who was accustomed to being regularly consulted by Washington, sent Adams a detailed letter with policy suggestions after his inauguration, which Adams dismissively ignored.\n",
-                    },
-                    "value": 0.6666666666666666,
-                    "label": None,
-                },
-                {
-                    "type": "BLEU",
-                    "parameters": {
-                        "dataset": "test_dataset",
-                        "datum_uid": "uid0",
-                        "prediction": "Based on the provided context, John Adams and Alexander Hamilton did not get along. John Adams, during his presidency, had grown independent of his cabinet, often making decisions despite opposition from it. Hamilton, who was accustomed to being regularly consulted by Washington, sent Adams a detailed letter with policy suggestions after his inauguration, which Adams dismissively ignored.\n",
-                    },
-                    "value": 0.3502270395690205,
-                    "label": None,
-                },
-                {
-                    "type": "Coherence",
-                    "parameters": {
-                        "dataset": "test_dataset",
-                        "datum_uid": "uid0",
-                        "prediction": "Based on the provided context, John Adams and Alexander Hamilton did not get along. John Adams, during his presidency, had grown independent of his cabinet, often making decisions despite opposition from it. Hamilton, who was accustomed to being regularly consulted by Washington, sent Adams a detailed letter with policy suggestions after his inauguration, which Adams dismissively ignored.\n",
-                    },
-                    "value": 4.0,
-                    "label": None,
-                },
-                {
-                    "type": "ROUGE",
-                    "parameters": {
-                        "dataset": "test_dataset",
-                        "datum_uid": "uid0",
-                        "prediction": "Based on the provided context, John Adams and Alexander Hamilton did not get along. John Adams, during his presidency, had grown independent of his cabinet, often making decisions despite opposition from it. Hamilton, who was accustomed to being regularly consulted by Washington, sent Adams a detailed letter with policy suggestions after his inauguration, which Adams dismissively ignored.\n",
-                    },
-                    "value": {
-                        "rouge1": 0.5925925925925926,
-                        "rouge2": 0.5569620253164557,
-                        "rougeL": 0.5925925925925926,
-                        "rougeLsum": 0.5925925925925926,
-                    },
-                    "label": None,
-                },
-                {
-                    "type": "AnswerRelevance",
-                    "parameters": {
-                        "dataset": "test_dataset",
-                        "datum_uid": "uid1",
-                        "prediction": "Yes, Lincoln won the election of 1860. He received the highest number of votes and a majority in the Electoral College, making him the 16th President of the United States. However, it's important to note that he won entirely due to his support in the North and West, as he did not receive any votes in 10 of the 15 Southern slave states.",
-                    },
-                    "value": 0.2,
-                    "label": None,
-                },
-                {
-                    "type": "BLEU",
-                    "parameters": {
-                        "dataset": "test_dataset",
-                        "datum_uid": "uid1",
-                        "prediction": "Yes, Lincoln won the election of 1860. He received the highest number of votes and a majority in the Electoral College, making him the 16th President of the United States. However, it's important to note that he won entirely due to his support in the North and West, as he did not receive any votes in 10 of the 15 Southern slave states.",
-                    },
-                    "value": 1.0,
-                    "label": None,
-                },
-                {
-                    "type": "Coherence",
-                    "parameters": {
-                        "dataset": "test_dataset",
-                        "datum_uid": "uid1",
-                        "prediction": "Yes, Lincoln won the election of 1860. He received the highest number of votes and a majority in the Electoral College, making him the 16th President of the United States. However, it's important to note that he won entirely due to his support in the North and West, as he did not receive any votes in 10 of the 15 Southern slave states.",
-                    },
-                    "value": 5.0,
-                    "label": None,
-                },
-                {
-                    "type": "ROUGE",
-                    "parameters": {
-                        "dataset": "test_dataset",
-                        "datum_uid": "uid1",
-                        "prediction": "Yes, Lincoln won the election of 1860. He received the highest number of votes and a majority in the Electoral College, making him the 16th President of the United States. However, it's important to note that he won entirely due to his support in the North and West, as he did not receive any votes in 10 of the 15 Southern slave states.",
-                    },
-                    "value": {
-                        "rouge1": 1.0,
-                        "rouge2": 1.0,
-                        "rougeL": 1.0,
-                        "rougeLsum": 1.0,
-                    },
-                    "label": None,
-                },
-                {
-                    "type": "AnswerRelevance",
-                    "parameters": {
-                        "dataset": "test_dataset",
-                        "datum_uid": "uid2",
-                        "prediction": "If a turtle egg was kept warm, it would likely hatch into a baby turtle. The sex of the baby turtle would be determined by the incubation temperature, assuming the species is one of those that determine sex thermally. This is because many turtle species have the ability to move around inside their eggs to select the best temperature for development, which can influence their sexual destiny.",
-                    },
-                    "value": 0.2,
-                    "label": None,
-                },
-                {
-                    "type": "BLEU",
-                    "parameters": {
-                        "dataset": "test_dataset",
-                        "datum_uid": "uid2",
-                        "prediction": "If a turtle egg was kept warm, it would likely hatch into a baby turtle. The sex of the baby turtle would be determined by the incubation temperature, assuming the species is one of those that determine sex thermally. This is because many turtle species have the ability to move around inside their eggs to select the best temperature for development, which can influence their sexual destiny.",
-                    },
-                    "value": 0.05434912989707719,
-                    "label": None,
-                },
-                {
-                    "type": "Coherence",
-                    "parameters": {
-                        "dataset": "test_dataset",
-                        "datum_uid": "uid2",
-                        "prediction": "If a turtle egg was kept warm, it would likely hatch into a baby turtle. The sex of the baby turtle would be determined by the incubation temperature, assuming the species is one of those that determine sex thermally. This is because many turtle species have the ability to move around inside their eggs to select the best temperature for development, which can influence their sexual destiny.",
-                    },
-                    "value": 4.0,
-                    "label": None,
-                },
-                {
-                    "type": "ROUGE",
-                    "parameters": {
-                        "dataset": "test_dataset",
-                        "datum_uid": "uid2",
-                        "prediction": "If a turtle egg was kept warm, it would likely hatch into a baby turtle. The sex of the baby turtle would be determined by the incubation temperature, assuming the species is one of those that determine sex thermally. This is because many turtle species have the ability to move around inside their eggs to select the best temperature for development, which can influence their sexual destiny.",
-                    },
-                    "value": {
-                        "rouge1": 0.18666666666666668,
-                        "rouge2": 0.0821917808219178,
-                        "rougeL": 0.18666666666666668,
-                        "rougeLsum": 0.18666666666666668,
-                    },
-                    "label": None,
-                },
-            ],
-            "confusion_matrices": [],
-            "ignored_pred_labels": None,
-            "missing_pred_labels": None,
-        }
-    ]
+REFERENCES = [
+    """John Adams and Alexander Hamilton did not get along. John Adams had grown independent of his cabinet, often making decisions despite opposition from it.\n""",  # same as prediction with some strings deleted
+    """Yes, Lincoln won the election of 1860. He received the highest number of votes and a majority in the Electoral College, making him the 16th President of the United States. However, it's important to note that he won entirely due to his support in the North and West, as he did not receive any votes in 10 of the 15 Southern slave states.""",  # same as prediction
+    """If kept warm, it would hatch a coyote.""",  # very different than prediction
+]
 
 
-def mock_ClientConnection_get_evaluations(
-    self,
-    *,
-    evaluation_ids: Optional[List[int]] = None,
-    models: Optional[List[str]] = None,
-    datasets: Optional[List[str]] = None,
-    metrics_to_sort_by: Optional[Dict[str, Union[Dict[str, str], str]]] = None,
-) -> List[dict]:
-    return [
-        {
-            "id": 4,
-            "dataset_names": ["test_dataset"],
-            "model_name": "test_model",
-            "filters": {
-                "datasets": None,
-                "models": None,
-                "datums": None,
-                "annotations": None,
-                "groundtruths": None,
-                "predictions": None,
-                "labels": None,
-                "embeddings": None,
-            },
-            "parameters": {
-                "task_type": "text-generation",
-                "metrics_to_return": ["AnswerRelevance", "Coherence"],
-                "label_map": None,
-                "metric_params": None,
-                "convert_annotations_to_type": None,
-                "iou_thresholds_to_compute": None,
-                "iou_thresholds_to_return": None,
-                "recall_score_threshold": 0.0,
-                "pr_curve_iou_threshold": 0.5,
-                "pr_curve_max_examples": 1,
-                "llm_api_params": {
-                    "data": {"model": "gpt-4o"},
-                    "client": "openai",
-                },
-            },
-            "status": "done",
-            "created_at": "2024-06-20T17:27:53.017348Z",
-            "meta": {"duration": 2.038157},
-            "metrics": [
-                {
-                    "type": "AnswerRelevance",
-                    "parameters": {
-                        "dataset": "test_dataset",
-                        "datum_uid": "uid0",
-                        "prediction": "Based on the provided context, John Adams and Alexander Hamilton did not get along. John Adams, during his presidency, had grown independent of his cabinet, often making decisions despite opposition from it. Hamilton, who was accustomed to being regularly consulted by Washington, sent Adams a detailed letter with policy suggestions after his inauguration, which Adams dismissively ignored.\n",
-                    },
-                    "value": 0.6666666666666666,
-                    "label": None,
-                },
-                {
-                    "type": "BLEU",
-                    "parameters": {
-                        "dataset": "test_dataset",
-                        "datum_uid": "uid0",
-                        "prediction": "Based on the provided context, John Adams and Alexander Hamilton did not get along. John Adams, during his presidency, had grown independent of his cabinet, often making decisions despite opposition from it. Hamilton, who was accustomed to being regularly consulted by Washington, sent Adams a detailed letter with policy suggestions after his inauguration, which Adams dismissively ignored.\n",
-                    },
-                    "value": 0.3502270395690205,
-                    "label": None,
-                },
-                {
-                    "type": "Coherence",
-                    "parameters": {
-                        "dataset": "test_dataset",
-                        "datum_uid": "uid0",
-                        "prediction": "Based on the provided context, John Adams and Alexander Hamilton did not get along. John Adams, during his presidency, had grown independent of his cabinet, often making decisions despite opposition from it. Hamilton, who was accustomed to being regularly consulted by Washington, sent Adams a detailed letter with policy suggestions after his inauguration, which Adams dismissively ignored.\n",
-                    },
-                    "value": 4.0,
-                    "label": None,
-                },
-                {
-                    "type": "ROUGE",
-                    "parameters": {
-                        "dataset": "test_dataset",
-                        "datum_uid": "uid0",
-                        "prediction": "Based on the provided context, John Adams and Alexander Hamilton did not get along. John Adams, during his presidency, had grown independent of his cabinet, often making decisions despite opposition from it. Hamilton, who was accustomed to being regularly consulted by Washington, sent Adams a detailed letter with policy suggestions after his inauguration, which Adams dismissively ignored.\n",
-                    },
-                    "value": {
-                        "rouge1": 0.5925925925925926,
-                        "rouge2": 0.5569620253164557,
-                        "rougeL": 0.5925925925925926,
-                        "rougeLsum": 0.5925925925925926,
-                    },
-                    "label": None,
-                },
-                {
-                    "type": "AnswerRelevance",
-                    "parameters": {
-                        "dataset": "test_dataset",
-                        "datum_uid": "uid1",
-                        "prediction": "Yes, Lincoln won the election of 1860. He received the highest number of votes and a majority in the Electoral College, making him the 16th President of the United States. However, it's important to note that he won entirely due to his support in the North and West, as he did not receive any votes in 10 of the 15 Southern slave states.",
-                    },
-                    "value": 0.2,
-                    "label": None,
-                },
-                {
-                    "type": "BLEU",
-                    "parameters": {
-                        "dataset": "test_dataset",
-                        "datum_uid": "uid1",
-                        "prediction": "Yes, Lincoln won the election of 1860. He received the highest number of votes and a majority in the Electoral College, making him the 16th President of the United States. However, it's important to note that he won entirely due to his support in the North and West, as he did not receive any votes in 10 of the 15 Southern slave states.",
-                    },
-                    "value": 1.0,
-                    "label": None,
-                },
-                {
-                    "type": "Coherence",
-                    "parameters": {
-                        "dataset": "test_dataset",
-                        "datum_uid": "uid1",
-                        "prediction": "Yes, Lincoln won the election of 1860. He received the highest number of votes and a majority in the Electoral College, making him the 16th President of the United States. However, it's important to note that he won entirely due to his support in the North and West, as he did not receive any votes in 10 of the 15 Southern slave states.",
-                    },
-                    "value": 5.0,
-                    "label": None,
-                },
-                {
-                    "type": "ROUGE",
-                    "parameters": {
-                        "dataset": "test_dataset",
-                        "datum_uid": "uid1",
-                        "prediction": "Yes, Lincoln won the election of 1860. He received the highest number of votes and a majority in the Electoral College, making him the 16th President of the United States. However, it's important to note that he won entirely due to his support in the North and West, as he did not receive any votes in 10 of the 15 Southern slave states.",
-                    },
-                    "value": {
-                        "rouge1": 1.0,
-                        "rouge2": 1.0,
-                        "rougeL": 1.0,
-                        "rougeLsum": 1.0,
-                    },
-                    "label": None,
-                },
-                {
-                    "type": "AnswerRelevance",
-                    "parameters": {
-                        "dataset": "test_dataset",
-                        "datum_uid": "uid2",
-                        "prediction": "If a turtle egg was kept warm, it would likely hatch into a baby turtle. The sex of the baby turtle would be determined by the incubation temperature, assuming the species is one of those that determine sex thermally. This is because many turtle species have the ability to move around inside their eggs to select the best temperature for development, which can influence their sexual destiny.",
-                    },
-                    "value": 0.2,
-                    "label": None,
-                },
-                {
-                    "type": "BLEU",
-                    "parameters": {
-                        "dataset": "test_dataset",
-                        "datum_uid": "uid2",
-                        "prediction": "If a turtle egg was kept warm, it would likely hatch into a baby turtle. The sex of the baby turtle would be determined by the incubation temperature, assuming the species is one of those that determine sex thermally. This is because many turtle species have the ability to move around inside their eggs to select the best temperature for development, which can influence their sexual destiny.",
-                    },
-                    "value": 0.05434912989707719,
-                    "label": None,
-                },
-                {
-                    "type": "Coherence",
-                    "parameters": {
-                        "dataset": "test_dataset",
-                        "datum_uid": "uid2",
-                        "prediction": "If a turtle egg was kept warm, it would likely hatch into a baby turtle. The sex of the baby turtle would be determined by the incubation temperature, assuming the species is one of those that determine sex thermally. This is because many turtle species have the ability to move around inside their eggs to select the best temperature for development, which can influence their sexual destiny.",
-                    },
-                    "value": 4.0,
-                    "label": None,
-                },
-                {
-                    "type": "ROUGE",
-                    "parameters": {
-                        "dataset": "test_dataset",
-                        "datum_uid": "uid2",
-                        "prediction": "If a turtle egg was kept warm, it would likely hatch into a baby turtle. The sex of the baby turtle would be determined by the incubation temperature, assuming the species is one of those that determine sex thermally. This is because many turtle species have the ability to move around inside their eggs to select the best temperature for development, which can influence their sexual destiny.",
-                    },
-                    "value": {
-                        "rouge1": 0.18666666666666668,
-                        "rouge2": 0.0821917808219178,
-                        "rougeL": 0.18666666666666668,
-                        "rougeLsum": 0.18666666666666668,
-                    },
-                    "label": None,
-                },
-            ],
-            "confusion_matrices": [],
-            "ignored_pred_labels": None,
-            "missing_pred_labels": None,
-        }
-    ]
-
-
-@patch(
-    "valor.client.ClientConnection.evaluate",
-    mock_ClientConnection_evaluate,
-)
-@patch(
-    "valor.client.ClientConnection.get_evaluations",
-    mock_ClientConnection_get_evaluations,
-)
 def test_llm_evaluation(
     client: Client,
     gt_questions: list[GroundTruth],
@@ -431,160 +60,62 @@ def test_llm_evaluation(
         datasets=dataset,
         metrics_to_return=metrics_to_return,
         llm_api_params={
-            "client": "openai",
+            "client": "mock",
             "data": {
-                "model": "gpt-4o",
+                "model": "model",
             },
         },
         metric_params={},
     )
 
     assert eval_job.id
+    eval_job.wait_for_completion(timeout=30)
 
     assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
 
     metrics = eval_job.metrics
     metadata = eval_job.meta
 
-    expected_metrics = [
-        {
-            "type": "AnswerRelevance",
-            "parameters": {
-                "dataset": "test_dataset",
-                "datum_uid": "uid0",
-                "prediction": "Based on the provided context, John Adams and Alexander Hamilton did not get along. John Adams, during his presidency, had grown independent of his cabinet, often making decisions despite opposition from it. Hamilton, who was accustomed to being regularly consulted by Washington, sent Adams a detailed letter with policy suggestions after his inauguration, which Adams dismissively ignored.\n",
-            },
-            "value": 0.6666666666666666,
-            "label": None,
-        },
-        {
-            "type": "BLEU",
-            "parameters": {
-                "dataset": "test_dataset",
-                "datum_uid": "uid0",
-                "prediction": "Based on the provided context, John Adams and Alexander Hamilton did not get along. John Adams, during his presidency, had grown independent of his cabinet, often making decisions despite opposition from it. Hamilton, who was accustomed to being regularly consulted by Washington, sent Adams a detailed letter with policy suggestions after his inauguration, which Adams dismissively ignored.\n",
-            },
-            "value": 0.3502270395690205,
-            "label": None,
-        },
-        {
-            "type": "Coherence",
-            "parameters": {
-                "dataset": "test_dataset",
-                "datum_uid": "uid0",
-                "prediction": "Based on the provided context, John Adams and Alexander Hamilton did not get along. John Adams, during his presidency, had grown independent of his cabinet, often making decisions despite opposition from it. Hamilton, who was accustomed to being regularly consulted by Washington, sent Adams a detailed letter with policy suggestions after his inauguration, which Adams dismissively ignored.\n",
-            },
-            "value": 4.0,
-            "label": None,
-        },
-        {
-            "type": "ROUGE",
-            "parameters": {
-                "dataset": "test_dataset",
-                "datum_uid": "uid0",
-                "prediction": "Based on the provided context, John Adams and Alexander Hamilton did not get along. John Adams, during his presidency, had grown independent of his cabinet, often making decisions despite opposition from it. Hamilton, who was accustomed to being regularly consulted by Washington, sent Adams a detailed letter with policy suggestions after his inauguration, which Adams dismissively ignored.\n",
-            },
-            "value": {
+    expected_metrics = {
+        "uid0": {
+            "AnswerRelevance": 0.5,
+            "BLEU": 0.3502270395690205,
+            "Coherence": 4,
+            "ROUGE": {
                 "rouge1": 0.5925925925925926,
                 "rouge2": 0.5569620253164557,
                 "rougeL": 0.5925925925925926,
                 "rougeLsum": 0.5925925925925926,
             },
-            "label": None,
         },
-        {
-            "type": "AnswerRelevance",
-            "parameters": {
-                "dataset": "test_dataset",
-                "datum_uid": "uid1",
-                "prediction": "Yes, Lincoln won the election of 1860. He received the highest number of votes and a majority in the Electoral College, making him the 16th President of the United States. However, it's important to note that he won entirely due to his support in the North and West, as he did not receive any votes in 10 of the 15 Southern slave states.",
-            },
-            "value": 0.2,
-            "label": None,
-        },
-        {
-            "type": "BLEU",
-            "parameters": {
-                "dataset": "test_dataset",
-                "datum_uid": "uid1",
-                "prediction": "Yes, Lincoln won the election of 1860. He received the highest number of votes and a majority in the Electoral College, making him the 16th President of the United States. However, it's important to note that he won entirely due to his support in the North and West, as he did not receive any votes in 10 of the 15 Southern slave states.",
-            },
-            "value": 1.0,
-            "label": None,
-        },
-        {
-            "type": "Coherence",
-            "parameters": {
-                "dataset": "test_dataset",
-                "datum_uid": "uid1",
-                "prediction": "Yes, Lincoln won the election of 1860. He received the highest number of votes and a majority in the Electoral College, making him the 16th President of the United States. However, it's important to note that he won entirely due to his support in the North and West, as he did not receive any votes in 10 of the 15 Southern slave states.",
-            },
-            "value": 5.0,
-            "label": None,
-        },
-        {
-            "type": "ROUGE",
-            "parameters": {
-                "dataset": "test_dataset",
-                "datum_uid": "uid1",
-                "prediction": "Yes, Lincoln won the election of 1860. He received the highest number of votes and a majority in the Electoral College, making him the 16th President of the United States. However, it's important to note that he won entirely due to his support in the North and West, as he did not receive any votes in 10 of the 15 Southern slave states.",
-            },
-            "value": {
+        "uid1": {
+            "AnswerRelevance": 0.5,
+            "BLEU": 1.0,
+            "Coherence": 4,
+            "ROUGE": {
                 "rouge1": 1.0,
                 "rouge2": 1.0,
                 "rougeL": 1.0,
                 "rougeLsum": 1.0,
             },
-            "label": None,
         },
-        {
-            "type": "AnswerRelevance",
-            "parameters": {
-                "dataset": "test_dataset",
-                "datum_uid": "uid2",
-                "prediction": "If a turtle egg was kept warm, it would likely hatch into a baby turtle. The sex of the baby turtle would be determined by the incubation temperature, assuming the species is one of those that determine sex thermally. This is because many turtle species have the ability to move around inside their eggs to select the best temperature for development, which can influence their sexual destiny.",
-            },
-            "value": 0.2,
-            "label": None,
-        },
-        {
-            "type": "BLEU",
-            "parameters": {
-                "dataset": "test_dataset",
-                "datum_uid": "uid2",
-                "prediction": "If a turtle egg was kept warm, it would likely hatch into a baby turtle. The sex of the baby turtle would be determined by the incubation temperature, assuming the species is one of those that determine sex thermally. This is because many turtle species have the ability to move around inside their eggs to select the best temperature for development, which can influence their sexual destiny.",
-            },
-            "value": 0.05434912989707719,
-            "label": None,
-        },
-        {
-            "type": "Coherence",
-            "parameters": {
-                "dataset": "test_dataset",
-                "datum_uid": "uid2",
-                "prediction": "If a turtle egg was kept warm, it would likely hatch into a baby turtle. The sex of the baby turtle would be determined by the incubation temperature, assuming the species is one of those that determine sex thermally. This is because many turtle species have the ability to move around inside their eggs to select the best temperature for development, which can influence their sexual destiny.",
-            },
-            "value": 4.0,
-            "label": None,
-        },
-        {
-            "type": "ROUGE",
-            "parameters": {
-                "dataset": "test_dataset",
-                "datum_uid": "uid2",
-                "prediction": "If a turtle egg was kept warm, it would likely hatch into a baby turtle. The sex of the baby turtle would be determined by the incubation temperature, assuming the species is one of those that determine sex thermally. This is because many turtle species have the ability to move around inside their eggs to select the best temperature for development, which can influence their sexual destiny.",
-            },
-            "value": {
+        "uid2": {
+            "AnswerRelevance": 0.5,
+            "BLEU": 0.05434912989707719,
+            "Coherence": 4,
+            "ROUGE": {
                 "rouge1": 0.18666666666666668,
                 "rouge2": 0.0821917808219178,
                 "rougeL": 0.18666666666666668,
                 "rougeLsum": 0.18666666666666668,
             },
-            "label": None,
         },
-    ]
+    }
 
-    # Check that returned metrics have the right format.
+    # Check that the right number of metrics are returned.
+    assert len(metrics) == len(pred_answers) * len(metrics_to_return)
+
+    # Check that the returned metrics have the right format.
     for m in metrics:
         if m["type"] in ["AnswerRelevance", "BLEU"]:
             assert 0 <= m["value"] <= 1
@@ -595,8 +126,12 @@ def test_llm_evaluation(
             assert all(0 <= v <= 1 for v in m["value"].values())
 
     # Check that mocked metrics are in the returned metrics.
-    for m in expected_metrics:
-        assert m in metrics
+    for m in metrics:
+        uid = m["parameters"]["datum_uid"]
+        metric_name = m["type"]
+        assert (
+            expected_metrics[uid][metric_name] == m["value"]
+        ), f"Failed for {uid} and {metric_name}"
 
     assert metadata["duration"] <= 15
 
@@ -643,15 +178,27 @@ def gt_questions(
     return [
         GroundTruth(
             datum=q0,
-            annotations=[],
+            annotations=[
+                Annotation(text=REFERENCES[0]),
+                Annotation(text="some other text"),
+                Annotation(text="some final text"),
+            ],
         ),
         GroundTruth(
             datum=q1,
-            annotations=[],
+            annotations=[
+                Annotation(text=REFERENCES[1]),
+                Annotation(text="some other text"),
+                Annotation(text="some final text"),
+            ],
         ),
         GroundTruth(
             datum=q2,
-            annotations=[],
+            annotations=[
+                Annotation(text=REFERENCES[2]),
+                Annotation(text="some other text"),
+                Annotation(text="some final text"),
+            ],
         ),
     ]
 

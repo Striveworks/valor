@@ -11,6 +11,7 @@ from valor_api import schemas
 from valor_api.backend import core, models
 from valor_api.backend.core.llm_clients import (
     LLMClient,
+    MockLLMClient,
     WrappedMistralAIClient,
     WrappedOpenAIClient,
 )
@@ -204,6 +205,8 @@ def _setup_llm_client(
             client_cls = WrappedOpenAIClient
         elif llm_api_params["client"] == "mistral":
             client_cls = WrappedMistralAIClient
+        elif llm_api_params["client"] == "mock":
+            client_cls = MockLLMClient
         else:
             raise ValueError(
                 f"Client {llm_api_params['client']} is not supported."

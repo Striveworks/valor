@@ -205,6 +205,16 @@ class LLMClient:
     ) -> Any:
         """
         Call to the API. Not implemented for parent class.
+
+        Parameters
+        ----------
+        messages: list[dict[str, str]]
+            The messages formatted according to the OpenAI standard. Each message in messages is a dictionary with "role" and "content" keys.
+
+        Returns
+        -------
+        Any
+            The response from the API.
         """
         raise NotImplementedError
 
@@ -412,6 +422,16 @@ class WrappedOpenAIClient(LLMClient):
     ) -> Any:
         """
         Call to the API.
+
+        Parameters
+        ----------
+        messages: list[dict[str, str]]
+            The messages formatted according to the OpenAI standard. Each message in messages is a dictionary with "role" and "content" keys.
+
+        Returns
+        -------
+        Any
+            The response from the API.
         """
         processed_messages = self.process_messages(messages)
 
@@ -510,6 +530,16 @@ class WrappedMistralAIClient(LLMClient):
     ) -> Any:
         """
         Call to the API.
+
+        Parameters
+        ----------
+        messages: list[dict[str, str]]
+            The messages formatted according to the OpenAI standard. Each message in messages is a dictionary with "role" and "content" keys.
+
+        Returns
+        -------
+        Any
+            The response from the API.
         """
         processed_messages = self.process_messages(messages)
         mistral_response = self.client.chat(
@@ -529,3 +559,83 @@ class WrappedMistralAIClient(LLMClient):
             )
 
         return response
+
+
+class MockLLMClient(LLMClient):
+    """
+    A mocked LLM client for testing purposes.
+
+    Attributes
+    ----------
+    api_key : str, optional
+        The API key to use.
+    model_name : str
+        The model to use. A model_name is not required for testing purposes.
+    """
+
+    def __init__(
+        self,
+        **kwargs,
+    ):
+        """
+        Neither the api_key nor model_name are required for the mock client.
+        """
+        pass
+
+    def connect(
+        self,
+    ):
+        """
+        No connection is required for the mock client.
+        """
+        pass
+
+    def __call__(
+        self,
+        messages: list[dict[str, str]],
+    ) -> Any:
+        """
+        Call to the API. Returns "" by default, or metric specific mock responses.
+
+        Parameters
+        ----------
+        messages: list[dict[str, str]]
+            The messages formatted according to the OpenAI standard. Each message in messages is a dictionary with "role" and "content" keys.
+
+        Returns
+        -------
+        Any
+            The response from the API.
+        """
+        if "generate a list of statements" in messages[1]["content"]:
+            return """```json
+{
+    "statements": [
+        "The capital of the UK is London.",
+        "London is the largest city in the UK by population and GDP."
+    ]
+}```"""
+
+        elif (
+            "determine whether each statement is relevant to address the input"
+            in messages[1]["content"]
+        ):
+            return """```json
+{
+    "verdicts": [
+        {
+            "verdict": "yes"
+        },
+        {
+            "verdict": "no",
+            "reason": "The detail in this statement is not necessary for answering the question."
+        }
+    ]
+}```"""
+        elif (
+            "Coherence (1-5) - the collective quality of all sentences."
+            in messages[1]["content"]
+        ):
+            return "4"
+        else:
+            return ""
