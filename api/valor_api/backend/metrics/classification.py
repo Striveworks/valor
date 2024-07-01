@@ -29,7 +29,7 @@ def _compute_curves(
     groundtruths: CTE,
     grouper_key: str,
     grouper_mappings: dict[str, dict[str, dict]],
-    unique_datums: set[tuple[str, str]],
+    unique_datums: dict[str, tuple[str, str]],
     pr_curve_max_examples: int,
     metrics_to_return: list[enums.MetricType],
 ) -> list[schemas.PrecisionRecallCurve | schemas.DetailedPrecisionRecallCurve]:
@@ -48,7 +48,7 @@ def _compute_curves(
         The key of the grouper used to calculate the PR curves.
     grouper_mappings: dict[str, dict[str, dict]]
         A dictionary of mappings that connect groupers to their related labels.
-    unique_datums: list[tuple[str, str]]
+    unique_datums: dict[str, tuple[str, str]]
         All of the unique datums associated with the ground truth and prediction filters.
     pr_curve_max_examples: int
         The maximum number of datum examples to store per true positive, false negative, etc.
@@ -70,14 +70,10 @@ def _compute_curves(
 
     # create sets of all datums for which there is a prediction / groundtruth
     # used when separating hallucinations/misclassifications/missed_detections
-    gt_datums = {
-        datum_id: (dataset_name, datum_uid)
-        for datum_id, dataset_name, datum_uid in (
-            db.query(
-                groundtruths.c.datum_id,
-                groundtruths.c.dataset_name,
-                models.Datum.uid,
-            )
+    gt_datum_ids = {
+        datum_id
+        for datum_id in db.scalars(
+            select(groundtruths.c.datum_id)
             .select_from(groundtruths)
             .join(models.Datum, models.Datum.id == groundtruths.c.datum_id)
             .join(
@@ -87,17 +83,14 @@ def _compute_curves(
                     models.Label.key.in_(label_keys),
                 ),
             )
-            .all()
-        )
+            .distinct()
+        ).all()
     }
-    pd_datums = {
-        datum_id: (dataset_name, datum_uid)
-        for datum_id, dataset_name, datum_uid in (
-            db.query(
-                predictions.c.datum_id,
-                predictions.c.dataset_name,
-                models.Datum.uid,
-            )
+
+    pd_datum_ids = {
+        datum_id
+        for datum_id in db.scalars(
+            select(predictions.c.datum_id)
             .select_from(predictions)
             .join(models.Datum, models.Datum.id == predictions.c.datum_id)
             .join(
@@ -107,8 +100,8 @@ def _compute_curves(
                     models.Label.key.in_(label_keys),
                 ),
             )
-            .all()
-        )
+            .distinct()
+        ).all()
     }
 
     groundtruth_labels = alias(models.Label)
@@ -194,9 +187,16 @@ def _compute_curves(
                     seen_datum_ids.add(pd_datum_id)
                 elif predicted_label == grouper_value and score >= threshold:
                     # if there was a groundtruth for a given datum, then it was a misclassification
-                    if pd_datum_id in gt_datums:
+                    if pd_datum_id in gt_datum_ids:
                         fp["misclassifications"].add(pd_datum_id)
                     else:
+                        print(
+                            threshold,
+                            grouper_key,
+                            groundtruth_label,
+                            predicted_label,
+                            unique_datums[pd_datum_id],
+                        )
                         fp["hallucinations"].add(pd_datum_id)
                     seen_datum_ids.add(pd_datum_id)
                 elif (
@@ -204,14 +204,13 @@ def _compute_curves(
                     and gt_datum_id not in seen_datum_ids
                 ):
                     # if there was a prediction for a given datum, then it was a misclassification
-                    if gt_datum_id in pd_datums:
+                    if gt_datum_id in pd_datum_ids:
                         fn["misclassifications"].add(gt_datum_id)
                     else:
                         fn["missed_detections"].add(gt_datum_id)
                     seen_datum_ids.add(gt_datum_id)
 
-            # calculate metrics
-            tn = set(gt_datums.keys()) - seen_datum_ids
+            tn = set(unique_datums.keys()) - seen_datum_ids
             tp_cnt, fp_cnt, fn_cnt, tn_cnt = (
                 len(tp),
                 len(fp["hallucinations"]) + len(fp["misclassifications"]),
@@ -251,14 +250,14 @@ def _compute_curves(
                 enums.MetricType.DetailedPrecisionRecallCurve
                 in metrics_to_return
             ):
-                tp = [pd_datums[datum_id] for datum_id in tp]
+                tp = [unique_datums[datum_id] for datum_id in tp]
                 fp = {
-                    key: [pd_datums[datum_id] for datum_id in fp[key]]
+                    key: [unique_datums[datum_id] for datum_id in fp[key]]
                     for key in fp
                 }
-                tn = [gt_datums[datum_id] for datum_id in tn]
+                tn = [unique_datums[datum_id] for datum_id in tn]
                 fn = {
-                    key: [gt_datums[datum_id] for datum_id in fn[key]]
+                    key: [unique_datums[datum_id] for datum_id in fn[key]]
                     for key in fn
                 }
 
@@ -943,6 +942,7 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
         # calculate the number of unique datums
         # used to determine the number of true negatives
         gt_datums = generate_query(
+            models.Datum.id,
             models.Dataset.name,
             models.Datum.uid,
             db=db,
@@ -950,13 +950,23 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
             label_source=models.GroundTruth,
         ).all()
         pd_datums = generate_query(
+            models.Datum.id,
             models.Dataset.name,
             models.Datum.uid,
             db=db,
             filters=prediction_filter,
             label_source=models.Prediction,
         ).all()
-        unique_datums = set(gt_datums + pd_datums)
+        unique_datums = {
+            datum_id: (dataset_name, datum_uid)
+            for datum_id, dataset_name, datum_uid in gt_datums
+        }
+        unique_datums.update(
+            {
+                datum_id: (dataset_name, datum_uid)
+                for datum_id, dataset_name, datum_uid in pd_datums
+            }
+        )
 
         pr_curves = _compute_curves(
             db=db,
