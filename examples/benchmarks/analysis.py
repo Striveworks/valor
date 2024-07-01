@@ -101,7 +101,13 @@ def ingest_groundtruths_and_predictions(
             )
         )
 
-    factor = 200
+    factors = {
+        10: 1,
+        100: 100,
+        1000: 250,
+        5000: 500,
+    }
+    factor = factors[len(groundtruths)]
     for i in range(len(groundtruths) // factor):
         dset.add_groundtruths(groundtruths[i * factor : (i + 1) * factor])
     for i in range(len(predictions) // factor):
@@ -155,17 +161,13 @@ def run_detailed_pr_curve_evaluation(dset, model):
 
 def time_functions():
 
-    datasets = []
-    models = []
-
-    for i, limit in enumerate([1000, 1000, 5000, 5000]):
+    for i, limit in enumerate(
+        [10, 10]
+    ):  # , 100, 100, 1000, 1000, 5000, 5000]):
 
         run_timestamp = int(time())
         dset = Dataset.create(name=f"bird-identification{i}_{run_timestamp}")
         model = Model.create(name=f"some_model{i}_{run_timestamp}")
-
-        datasets.append(dset)
-        models.append(model)
 
         start_time = time()
         ingest_groundtruths_and_predictions(
@@ -195,10 +197,8 @@ def time_functions():
         write_results_to_file(write_path=write_path, result_dict=results)
         print(results)
 
-    for model in models:
-        model.delete()
-    for dset in datasets:
         dset.delete()
+        model.delete()
 
 
 # %%
