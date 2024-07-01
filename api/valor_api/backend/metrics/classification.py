@@ -64,14 +64,6 @@ def _compute_curves(
     pr_output = defaultdict(lambda: defaultdict(dict))
     detailed_pr_output = defaultdict(lambda: defaultdict(dict))
 
-    # predictions = generate_select(
-    #     models.Prediction,
-    #     models.Annotation.datum_id.label("datum_id"),
-    #     models.Dataset.name.label("dataset_name"),
-    #     filters=pFilter,
-    #     label_source=models.Prediction,
-    # ).cte()
-
     label_keys = grouper_mappings["grouper_key_to_label_keys_mapping"][
         grouper_key
     ]
@@ -118,14 +110,6 @@ def _compute_curves(
             .all()
         )
     }
-
-    # groundtruths = generate_select(
-    #     models.GroundTruth,
-    #     models.Annotation.datum_id.label("datum_id"),
-    #     models.Dataset.name.label("dataset_name"),
-    #     filters=gFilter,
-    #     label_source=models.GroundTruth,
-    # ).cte()
 
     groundtruth_labels = alias(models.Label)
     prediction_labels = alias(models.Label)
@@ -185,19 +169,6 @@ def _compute_curves(
     res = db.query(sorted_query.subquery()).all()
 
     for threshold in [x / 100 for x in range(5, 100, 5)]:
-
-        # handle edge case where there were multiple prediction labels for a single datum
-        # first we sort, then we only increment fn below if the datum_id wasn't counted as a tp or fp
-        # res.sort(
-        #     key=lambda x: ((x[1] is None, x[0][0] != x[0][1], x[1], x[2]))
-        # )
-
-        # a, b,
-        # filtered_predictions.c.datum_id, 2
-        # groundtruths.c.datum_id, 3
-        # models.Datum.uid.label("datum_uid"), 4
-        # groundtruths.c.dataset_name, 5
-        # filtered_predictions.c.score, 6
 
         for grouper_value in grouper_mappings["grouper_key_to_labels_mapping"][
             grouper_key

@@ -290,6 +290,7 @@ def _validate_evaluation_filter(
             msg="No datasets were found that met the filter criteria."
         )
 
+    # TODO Fix validate_matching_label_keys
     # check that prediction label keys match ground truth label keys
     # if parameters.task_type == enums.TaskType.CLASSIFICATION:
     #     gt_filter = groundtruth_filter.model_copy()
