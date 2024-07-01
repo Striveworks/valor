@@ -46,27 +46,12 @@ def write_results_to_file(write_path: str, result_dict: dict):
 
 def ingest_groundtruths_and_predictions(
     dset: Dataset, model: Model, raw: list, pair_limit: int
-) -> int:
+):
     """Ingest the data into Valor."""
-    labels = set()
     groundtruths = []
     predictions = []
 
     for datum_id, data in raw[:pair_limit]:
-        labels.update(
-            (
-                (label["key"], label["value"])
-                for ann in data["groundtruth_annotations"]
-                for label in ann["labels"]
-            )
-        )
-        labels.update(
-            (
-                (label["key"], label["value"])
-                for ann in data["prediction_annotations"]
-                for label in ann["labels"]
-            )
-        )
         datum = Datum(
             uid=str(datum_id),
             metadata=data["datum_metadata"],
@@ -189,8 +174,6 @@ def ingest_groundtruths_and_predictions(
     dset.finalize()
     model.finalize_inferences(dataset=dset)
 
-    return len(labels)
-
 
 def run_base_evaluation(dset: Dataset, model: Model):
     """Run a base evaluation (with no PR curves)."""
@@ -259,20 +242,21 @@ def run_benchmarking_analysis(
 
         start_time = time()
 
-        number_of_labels = ingest_groundtruths_and_predictions(
+        ingest_groundtruths_and_predictions(
             dset=dset, model=model, raw=raw_data_tuple, pair_limit=limit
         )
         ingest_time = time() - start_time
 
-        run_base_evaluation(dset=dset, model=model)
-        ingest_and_evaluation = time() - start_time
+        eval_ = run_base_evaluation(dset=dset, model=model)
 
         results = {
             "number_of_datums": limit,
-            "number_of_unique_labels": number_of_labels,
+            "number_of_unique_labels": eval_.meta["labels"],
+            "number_of_annotations": eval_.meta["labels"],
             "ingest_runtime": f"{(ingest_time):.1f} seconds",
-            "ingest_and_evaluation_runtime": f"{(ingest_and_evaluation):.1f} seconds",
+            "eval_runtime": f"{(eval_.meta['duration']):.1f} seconds",
         }
+
         write_results_to_file(write_path=write_path, result_dict=results)
 
         client.delete_dataset(dset.name, timeout=30)

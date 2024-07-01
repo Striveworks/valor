@@ -38,33 +38,17 @@ def write_results_to_file(write_path: str, result_dict: dict):
 
 def ingest_groundtruths_and_predictions(
     dset: Dataset, model: Model, raw: dict, pair_limit: int
-) -> int:
+):
     """Ingest the data into Valor."""
 
     groundtruths = []
     predictions = []
-    labels = set()
     slice_ = (
         raw["groundtruth_prediction_pairs"][:pair_limit]
         if pair_limit != -1
         else raw["groundtruth_prediction_pairs"]
     )
     for groundtruth, prediction in slice_:
-        labels.update(
-            (
-                (label["key"], label["value"])
-                for annotation in groundtruth["value"]["annotations"]
-                for label in annotation["labels"]
-            )
-        )
-        labels.update(
-            (
-                (label["key"], label["value"])
-                for annotation in prediction["value"]["annotations"]
-                for label in annotation["labels"]
-            )
-        )
-
         groundtruths.append(
             GroundTruth(
                 datum=Datum(
@@ -117,8 +101,6 @@ def ingest_groundtruths_and_predictions(
 
     dset.finalize()
     model.finalize_inferences(dataset=dset)
-
-    return len(labels)
 
 
 def run_base_evaluation(dset: Dataset, model: Model):
@@ -182,19 +164,19 @@ def run_benchmarking_analysis(
 
         start_time = time()
 
-        number_of_labels = ingest_groundtruths_and_predictions(
+        ingest_groundtruths_and_predictions(
             dset=dset, model=model, raw=raw_data, pair_limit=limit
         )
         ingest_time = time() - start_time
 
-        run_base_evaluation(dset=dset, model=model)
-        ingest_and_evaluation = time() - start_time
+        eval_ = run_base_evaluation(dset=dset, model=model)
 
         results = {
             "number_of_datums": limit,
-            "number_of_unique_labels": number_of_labels,
+            "number_of_unique_labels": eval_.meta["labels"],
+            "number_of_annotations": eval_.meta["labels"],
             "ingest_runtime": f"{(ingest_time):.1f} seconds",
-            "ingest_and_evaluation_runtime": f"{(ingest_and_evaluation):.1f} seconds",
+            "eval_runtime": f"{(eval_.meta['duration']):.1f} seconds",
         }
         write_results_to_file(write_path=write_path, result_dict=results)
 
