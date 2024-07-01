@@ -192,10 +192,9 @@ class ClientConnection:
         method_name: str,
         endpoint: str,
         ignore_auth: bool = False,
-        max_retries_on_timeout=2,
-        initial_timeout: float = 60,
+        timeout: Optional[float] = 2,
+        max_retries=2,
         exponential_backoff: int = 2,
-        *args,
         **kwargs,
     ):
         """
@@ -211,10 +210,10 @@ class ClientConnection:
             Option to ignore authentication when you know the endpoint does not
             require a bearer token. this is used by the `_get_access_token_from_username_and_password`
             to avoid infinite recursion.
-        max_retries_on_timeout: int
-            The maximum number of retries when the requests module returns a Timeout error.
-        initial_timeout : float
+        timeout : float, optional
             The initial timeout value between how often we'll retry request methods.
+        max_retries: int
+            The maximum number of retries when the requests module returns a Timeout error.
         exponential_backoff : integer
             The factor by which we multiple initial_timeout for each subsequent retry.
         """
@@ -244,15 +243,13 @@ class ClientConnection:
                 resp = requests_method(
                     url,
                     headers=headers,
-                    timeout=60,
-                    *args,
-                    **kwargs,  # TODO Change timeout
+                    timeout=timeout,
+                    **kwargs,
                 )
             except requests.exceptions.Timeout as e:
-                if timeout_retries < max_retries_on_timeout:
+                if timeout is not None and timeout_retries < max_retries:
                     time.sleep(
-                        initial_timeout
-                        * exponential_backoff**timeout_retries
+                        timeout * exponential_backoff**timeout_retries
                     )
                     timeout_retries += 1
                     continue
@@ -277,12 +274,22 @@ class ClientConnection:
 
         return resp
 
-    def _requests_post_rel_host(self, endpoint: str, *args, **kwargs):
+    def _requests_post_rel_host(
+        self,
+        endpoint: str,
+        timeout: Optional[float] = 2,
+        max_retries: int = 0,
+        **kwargs,
+    ):
         """
         Helper for handling POST requests.
         """
         return self._requests_wrapper(
-            method_name="post", endpoint=endpoint, *args, **kwargs
+            method_name="post",
+            endpoint=endpoint,
+            max_retries=max_retries,
+            timeout=timeout,
+            **kwargs,
         )
 
     def _requests_get_rel_host(self, endpoint: str, *args, **kwargs):
@@ -310,7 +317,10 @@ class ClientConnection:
         )
 
     def create_groundtruths(
-        self, groundtruths: List[dict], ignore_existing_datums: bool = False
+        self,
+        groundtruths: List[dict],
+        timeout: Optional[float],
+        ignore_existing_datums: bool = False,
     ) -> None:
         """
         Creates ground truths.
@@ -321,13 +331,16 @@ class ClientConnection:
         ----------
         groundtruths : List[dict]
             The ground truths to be created.
+        timeout: float, optional
+            The number of seconds the client should wait until raising a timeout.
         ignore_existing_datums : bool, default=False
             If True, will ignore datums that already exist in the backend.
             If False, will raise an error if any datums already exist.
             Default is False.
         """
         self._requests_post_rel_host(
-            "groundtruths",
+            endpoint="groundtruths",
+            timeout=timeout,
             json=groundtruths,
             params={"ignore_existing_datums": ignore_existing_datums},
         )
@@ -358,7 +371,11 @@ class ClientConnection:
             f"groundtruths/dataset/{dataset_name}/datum/{datum_uid}"
         ).json()
 
-    def create_predictions(self, predictions: List[dict]) -> None:
+    def create_predictions(
+        self,
+        predictions: List[dict],
+        timeout: Optional[float],
+    ) -> None:
         """
         Creates predictions.
 
@@ -368,10 +385,11 @@ class ClientConnection:
         ----------
         predictions : List[dict]
             The predictions to be created.
+        timeout: float, optional
+            The number of seconds the client should wait until raising a timeout.
         """
         self._requests_post_rel_host(
-            "predictions",
-            json=predictions,
+            endpoint="predictions", timeout=timeout, json=predictions
         )
 
     def get_prediction(
