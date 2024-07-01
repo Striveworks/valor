@@ -195,7 +195,6 @@ class ClientConnection:
         timeout: Optional[float] = 2,
         max_retries=2,
         exponential_backoff: int = 2,
-        *args,
         **kwargs,
     ):
         """
@@ -245,7 +244,6 @@ class ClientConnection:
                     url,
                     headers=headers,
                     timeout=timeout,
-                    *args,
                     **kwargs,
                 )
             except requests.exceptions.Timeout as e:
@@ -281,7 +279,6 @@ class ClientConnection:
         endpoint: str,
         timeout: Optional[float] = 2,
         max_retries: int = 0,
-        *args,
         **kwargs,
     ):
         """
@@ -290,10 +287,9 @@ class ClientConnection:
         return self._requests_wrapper(
             method_name="post",
             endpoint=endpoint,
-            max_retries_on_timeout=max_retries,
-            initial_timeout=timeout,
-            *args,
-            *kwargs,
+            max_retries=max_retries,
+            timeout=timeout,
+            **kwargs,
         )
 
     def _requests_get_rel_host(self, endpoint: str, *args, **kwargs):
