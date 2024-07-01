@@ -34,6 +34,10 @@ def vacuum_analyze():
         pcur = pconn.cursor()
         pconn.autocommit = True
         pcur.execute("VACUUM ANALYZE;")
+    except psycopg2.OperationalError:
+        logger.debug(
+            "Could not connect to postgresql instance to perform vacuum analyze."
+        )
     finally:
         if pcur is not None:
             pcur.close()
