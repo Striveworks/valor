@@ -83,7 +83,8 @@ def _create_classification_grouper_mappings(
     """Create grouper mappings for use when evaluating classifications."""
 
     # define mappers to connect groupers with labels
-    label_value_to_grouper_value = {}
+    label_key_to_grouper_key = dict()
+    label_value_to_grouper_value = dict()
     grouper_key_to_labels_mapping = defaultdict(lambda: defaultdict(set))
     grouper_key_to_label_keys_mapping = defaultdict(set)
 

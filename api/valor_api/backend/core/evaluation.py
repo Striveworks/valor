@@ -291,13 +291,37 @@ def _validate_evaluation_filter(
         )
 
     # check that prediction label keys match ground truth label keys
-    if parameters.task_type == enums.TaskType.CLASSIFICATION:
-        core.validate_matching_label_keys(
-            db=db,
-            label_map=parameters.label_map,
-            groundtruth_filter=groundtruth_filter,
-            prediction_filter=predictions_filter,
-        )
+    # if parameters.task_type == enums.TaskType.CLASSIFICATION:
+    #     gt_filter = groundtruth_filter.model_copy()
+    #     gt_filter.datasets = schemas.LogicalFunction.and_(
+    #         gt_filter.datasets,
+    #         schemas.LogicalFunction.or_(
+    #             *[
+    #                 schemas.Condition(
+    #                     lhs=schemas.Symbol(name=schemas.SupportedSymbol.DATASET_NAME),
+    #                     rhs=schemas.Value.infer(dataset[0]),
+    #                     op=schemas.FilterOperator.EQ,
+    #                 )
+    #                 for dataset in datasets
+    #             ]
+    #         )
+    #     )
+    #     pd_filter = gt_filter.model_copy()
+    #     pd_filter.models = schemas.LogicalFunction.and_(
+    #         pd_filter.models,
+    #         schemas.Condition(
+    #             lhs=schemas.Symbol(name=schemas.SupportedSymbol.MODEL_NAME),
+    #             rhs=schemas.Value.infer(evaluation.model_name),
+    #             op=schemas.FilterOperator.EQ,
+    #         )
+    #     )
+
+    #     core.validate_matching_label_keys(
+    #         db=db,
+    #         label_map=parameters.label_map,
+    #         groundtruth_filter=gt_filter,
+    #         prediction_filter=pd_filter,
+    #     )
 
 
 def _create_response(

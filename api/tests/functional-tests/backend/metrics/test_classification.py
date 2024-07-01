@@ -1224,6 +1224,10 @@ def test__compute_curves(
         grouper_mappings["grouper_key_to_label_keys_mapping"]["animal"]
     )
 
+    print("==============")
+    for label in grouper_mappings["grouper_key_to_labels_mapping"]["animal"]:
+        print(label)
+
     # groundtruths filter
     gFilter = groundtruth_filter.model_copy()
     gFilter.labels = schemas.LogicalFunction.or_(
@@ -1369,8 +1373,8 @@ def test__compute_curves(
         },
         ("dog", 0.05, "tn"): {"all": 1, "total": 1},
         ("dog", 0.8, "fn"): {
-            "missed_detections": 1,
-            "misclassifications": 1,
+            "missed_detections": 0,  # TODO - add a test for missing detections
+            "misclassifications": 2,
             "total": 2,
         },
         # cat

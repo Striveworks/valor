@@ -101,11 +101,14 @@ def ingest_groundtruths_and_predictions(
             )
         )
 
-    for gt in groundtruths:
-        dset.add_groundtruth(gt)
+    factor = 200
+    for i in range(len(groundtruths) // factor):
+        dset.add_groundtruths(groundtruths[i * factor : (i + 1) * factor])
+    for i in range(len(predictions) // factor):
+        model.add_predictions(dset, predictions[i * factor : (i + 1) * factor])
 
-    for pred in predictions:
-        model.add_prediction(dset, pred)
+    # for prediction in predictions:
+    #     model.add_prediction(dset, prediction)
 
     dset.finalize()
     model.finalize_inferences(dataset=dset)
@@ -152,36 +155,50 @@ def run_detailed_pr_curve_evaluation(dset, model):
 
 def time_functions():
 
-    for i, limit in enumerate([10, 10, 100, 100, 500, 500]):
+    datasets = []
+    models = []
 
-        dset = Dataset.create(name=f"bird-identification{i}")
-        model = Model.create(name=f"some_model{i}")
+    for i, limit in enumerate([1000, 1000, 5000, 5000]):
+
+        run_timestamp = int(time())
+        dset = Dataset.create(name=f"bird-identification{i}_{run_timestamp}")
+        model = Model.create(name=f"some_model{i}_{run_timestamp}")
+
+        datasets.append(dset)
+        models.append(model)
 
         start_time = time()
-
         ingest_groundtruths_and_predictions(
             dset=dset, model=model, raw=raw, pair_limit=limit
         )
         ingest_time = f"{(time() - start_time):.4f}"
 
+        start_time = time()
         run_base_evaluation(dset=dset, model=model)
         base_time = f"{(time() - start_time):.4f}"
 
+        start_time = time()
         run_pr_curve_evaluation(dset=dset, model=model)
         pr_time = f"{(time() - start_time):.4f}"
 
-        # run_detailed_pr_curve_evaluation(dset=dset, model=model)
-        # detailed_pr_time = f"{(time() - start_time):.4f}"
+        start_time = time()
+        run_detailed_pr_curve_evaluation(dset=dset, model=model)
+        detailed_pr_time = f"{(time() - start_time):.4f}"
 
         results = {
             "limit": limit,
             "ingest": ingest_time,
             "base": base_time,
-            "pr": pr_time,
-            # "detailed pr": detailed_pr_time,
+            "base+pr": pr_time,
+            "base+pr+detailed pr": detailed_pr_time,
         }
         write_results_to_file(write_path=write_path, result_dict=results)
         print(results)
+
+    for model in models:
+        model.delete()
+    for dset in datasets:
+        dset.delete()
 
 
 # %%

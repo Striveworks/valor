@@ -117,6 +117,9 @@ def create_or_get_evaluations(
     list[schemas.EvaluatationResponse]
         A list of evaluations in response format.
     """
+    print("========TEST GET STATUS========= ")
+    print(backend.get_dataset_status(db=db, name=job_request.dataset_names[0]))
+    print("=======EVALUATION SETUP=========")
     evaluations = backend.create_or_get_evaluations(
         db=db, job_request=job_request, allow_retries=allow_retries
     )
@@ -133,7 +136,7 @@ def create_or_get_evaluations(
                     )
                 case _:
                     raise RuntimeError
-
+            print("=========ATTEMPTING COMPUTATION==========")
             if task_handler:
                 task_handler.add_task(
                     compute_func,

@@ -26,6 +26,21 @@ logger.debug(
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
 
 
+def vacuum_analyze():
+    pconn = None
+    pcur = None
+    try:
+        pconn = psycopg2.connect(SQLALCHEMY_DATABASE_URL)
+        pcur = pconn.cursor()
+        pconn.autocommit = True
+        pcur.execute("VACUUM ANALYZE;")
+    finally:
+        if pcur is not None:
+            pcur.close()
+        if pconn is not None:
+            pconn.close()
+
+
 def try_to_enable_gdal_drivers(db: Session) -> None:
     """Tries to enable the GDAL drivers for the database. However in some cases
     the application may not have permission to and so that must be taken care of

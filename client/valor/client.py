@@ -193,7 +193,7 @@ class ClientConnection:
         endpoint: str,
         ignore_auth: bool = False,
         max_retries_on_timeout=2,
-        initial_timeout: float = 2,
+        initial_timeout: float = 60,
         exponential_backoff: int = 2,
         *args,
         **kwargs,
@@ -242,7 +242,11 @@ class ClientConnection:
 
             try:
                 resp = requests_method(
-                    url, headers=headers, timeout=10, *args, **kwargs
+                    url,
+                    headers=headers,
+                    timeout=60,
+                    *args,
+                    **kwargs,  # TODO Change timeout
                 )
             except requests.exceptions.Timeout as e:
                 if timeout_retries < max_retries_on_timeout:
@@ -365,7 +369,10 @@ class ClientConnection:
         predictions : List[dict]
             The predictions to be created.
         """
-        self._requests_post_rel_host("predictions", json=predictions)
+        self._requests_post_rel_host(
+            "predictions",
+            json=predictions,
+        )
 
     def get_prediction(
         self,

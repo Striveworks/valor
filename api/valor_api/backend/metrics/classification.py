@@ -3,9 +3,9 @@ from collections import defaultdict
 from typing import Sequence
 
 import numpy as np
-from sqlalchemy import CTE, Integer
+from sqlalchemy import CTE, Integer, alias
 from sqlalchemy.orm import Bundle, Session
-from sqlalchemy.sql import and_, case, func, select
+from sqlalchemy.sql import and_, case, func, or_, select
 
 from valor_api import enums, schemas
 from valor_api.backend import core, models
@@ -72,27 +72,52 @@ def _compute_curves(
     #     label_source=models.Prediction,
     # ).cte()
 
-    filtered_predictions = (
-        select(
-            models.Label.value.label("pd_label_value"),
-            predictions.c.datum_id.label("datum_id"),
-            predictions.c.dataset_name.label("dataset_name"),
-            predictions.c.score.label("score"),
+    label_keys = grouper_mappings["grouper_key_to_label_keys_mapping"][
+        grouper_key
+    ]
+
+    # create sets of all datums for which there is a prediction / groundtruth
+    # used when separating hallucinations/misclassifications/missed_detections
+    gt_datums = {
+        datum_id: (dataset_name, datum_uid)
+        for datum_id, dataset_name, datum_uid in (
+            db.query(
+                groundtruths.c.datum_id,
+                groundtruths.c.dataset_name,
+                models.Datum.uid,
+            )
+            .select_from(groundtruths)
+            .join(models.Datum, models.Datum.id == groundtruths.c.datum_id)
+            .join(
+                models.Label,
+                and_(
+                    models.Label.id == groundtruths.c.label_id,
+                    models.Label.key.in_(label_keys),
+                ),
+            )
+            .all()
         )
-        .select_from(models.Annotation)
-        .join(
-            predictions,
-            and_(
-                predictions.c.annotation_id == models.Annotation.id,
-                predictions.c.score >= 0.05,
-            ),
+    }
+    pd_datums = {
+        datum_id: (dataset_name, datum_uid)
+        for datum_id, dataset_name, datum_uid in (
+            db.query(
+                predictions.c.datum_id,
+                predictions.c.dataset_name,
+                models.Datum.uid,
+            )
+            .select_from(predictions)
+            .join(models.Datum, models.Datum.id == predictions.c.datum_id)
+            .join(
+                models.Label,
+                and_(
+                    models.Label.id == predictions.c.label_id,
+                    models.Label.key.in_(label_keys),
+                ),
+            )
+            .all()
         )
-        .join(
-            models.Label,
-            models.Label.id == predictions.c.label_id,
-        )
-        .subquery()
-    )
+    }
 
     # groundtruths = generate_select(
     #     models.GroundTruth,
@@ -102,35 +127,53 @@ def _compute_curves(
     #     label_source=models.GroundTruth,
     # ).cte()
 
+    groundtruth_labels = alias(models.Label)
+    prediction_labels = alias(models.Label)
+
     total_query = (
         select(
             case(
                 grouper_mappings["label_value_to_grouper_value"],
-                value=filtered_predictions.c.pd_label_value,
+                value=groundtruth_labels.c.value,
+                else_=None,
             ).label("gt_label_value"),
+            groundtruths.c.datum_id,
             case(
                 grouper_mappings["label_value_to_grouper_value"],
-                value=models.Label.value,
+                value=prediction_labels.c.value,
+                else_=None,
             ).label("pd_label_value"),
-            filtered_predictions.c.datum_id,
-            groundtruths.c.datum_id,
-            models.Datum.uid.label("datum_uid"),
+            predictions.c.datum_id,
             groundtruths.c.dataset_name,
-            filtered_predictions.c.score,
+            models.Datum.uid.label("datum_uid"),
+            predictions.c.score,
         )
         .select_from(groundtruths)
         .join(
+            predictions,
+            predictions.c.datum_id == groundtruths.c.datum_id,
+            full=True,
+        )
+        .join(
             models.Datum,
-            models.Datum.id == groundtruths.c.datum_id,
+            or_(
+                models.Datum.id == groundtruths.c.datum_id,
+                models.Datum.id == predictions.c.datum_id,
+            ),
         )
         .join(
-            models.Label,
-            models.Label.id == groundtruths.c.label_id,
+            groundtruth_labels,
+            and_(
+                groundtruth_labels.c.id == groundtruths.c.label_id,
+                groundtruth_labels.c.key.in_(label_keys),
+            ),
         )
         .join(
-            filtered_predictions,
-            filtered_predictions.c.datum_id == groundtruths.c.datum_id,
-            isouter=True,
+            prediction_labels,
+            and_(
+                prediction_labels.c.id == predictions.c.label_id,
+                prediction_labels.c.key.in_(label_keys),
+            ),
         )
         .subquery()
     )
@@ -139,9 +182,7 @@ def _compute_curves(
         total_query.c.gt_label_value != total_query.c.pd_label_value,
         -total_query.c.score,
     )
-    print("======= QUERY START =========")
     res = db.query(sorted_query.subquery()).all()
-    print("======= QUERY END ======")
 
     for threshold in [x / 100 for x in range(5, 100, 5)]:
 
@@ -151,26 +192,12 @@ def _compute_curves(
         #     key=lambda x: ((x[1] is None, x[0][0] != x[0][1], x[1], x[2]))
         # )
 
-        # create sets of all datums for which there is a prediction / groundtruth
-        # used when separating hallucinations/misclassifications/missed_detections
-        gt_datums = dict()
-        pd_datum_ids = set()
-
         # a, b,
         # filtered_predictions.c.datum_id, 2
         # groundtruths.c.datum_id, 3
         # models.Datum.uid.label("datum_uid"), 4
         # groundtruths.c.dataset_name, 5
         # filtered_predictions.c.score, 6
-
-        for row in res:
-            pd_datum_id = row[2]
-            gt_datum_id = row[3]
-            datum_uid = row[4]
-            dataset_name = row[5]
-            gt_datums[gt_datum_id] = (dataset_name, datum_uid)
-            if pd_datum_id is not None:  # if prediction exists
-                pd_datum_ids.add(pd_datum_id)
 
         for grouper_value in grouper_mappings["grouper_key_to_labels_mapping"][
             grouper_key
@@ -180,32 +207,39 @@ def _compute_curves(
 
             for row in res:
                 (
-                    predicted_label,
-                    actual_label,
-                    pd_datum_id,
+                    groundtruth_label,
                     gt_datum_id,
-                    datum_uid,
+                    predicted_label,
+                    pd_datum_id,
                     dataset_name,
+                    datum_uid,
                     score,
                 ) = (row[0], row[1], row[2], row[3], row[4], row[5], row[6])
 
-                if gt_datum_id not in seen_datum_ids:
-                    if score >= threshold:
-                        if (
-                            predicted_label == grouper_value
-                            and actual_label == grouper_value
-                        ):
-                            tp.add(gt_datum_id)
-                            seen_datum_ids.add(gt_datum_id)
-                        elif predicted_label == grouper_value:
-                            fp["misclassifications"].add(gt_datum_id)
-                            seen_datum_ids.add(gt_datum_id)
-                    elif actual_label == grouper_value:
-                        if gt_datum_id in pd_datum_ids:
-                            fn["misclassifications"].add(gt_datum_id)
-                        else:
-                            fn["missed_detections"].add(gt_datum_id)
-                        seen_datum_ids.add(gt_datum_id)
+                if (
+                    groundtruth_label == grouper_value
+                    and predicted_label == grouper_value
+                    and score >= threshold
+                ):
+                    tp.add(pd_datum_id)
+                    seen_datum_ids.add(pd_datum_id)
+                elif predicted_label == grouper_value and score >= threshold:
+                    # if there was a groundtruth for a given datum, then it was a misclassification
+                    if pd_datum_id in gt_datums:
+                        fp["misclassifications"].add(pd_datum_id)
+                    else:
+                        fp["hallucinations"].add(pd_datum_id)
+                    seen_datum_ids.add(pd_datum_id)
+                elif (
+                    groundtruth_label == grouper_value
+                    and gt_datum_id not in seen_datum_ids
+                ):
+                    # if there was a prediction for a given datum, then it was a misclassification
+                    if gt_datum_id in pd_datums:
+                        fn["misclassifications"].add(gt_datum_id)
+                    else:
+                        fn["missed_detections"].add(gt_datum_id)
+                    seen_datum_ids.add(gt_datum_id)
 
             # calculate metrics
             tn = set(gt_datums.keys()) - seen_datum_ids
@@ -248,16 +282,17 @@ def _compute_curves(
                 enums.MetricType.DetailedPrecisionRecallCurve
                 in metrics_to_return
             ):
-                tp = [gt_datums[datum_id] for datum_id in tp]
-                tn = [gt_datums[datum_id] for datum_id in tn]
+                tp = [pd_datums[datum_id] for datum_id in tp]
                 fp = {
-                    key: [gt_datums[datum_id] for datum_id in fp[key]]
+                    key: [pd_datums[datum_id] for datum_id in fp[key]]
                     for key in fp
                 }
+                tn = [gt_datums[datum_id] for datum_id in tn]
                 fn = {
                     key: [gt_datums[datum_id] for datum_id in fn[key]]
                     for key in fn
                 }
+
                 detailed_pr_output[grouper_value][threshold] = {
                     "tp": {
                         "total": tp_cnt,
