@@ -289,6 +289,7 @@ def test__compute_text_generation(
     assert metrics
     for metric in metrics:
         assert isinstance(metric.parameters, dict)
+        assert isinstance(metric.parameters["datum_uid"], str)
         assert (
             expected_values[metric.parameters["datum_uid"]].get(type(metric))
             == metric.value
