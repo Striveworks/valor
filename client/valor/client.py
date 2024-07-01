@@ -192,7 +192,7 @@ class ClientConnection:
         method_name: str,
         endpoint: str,
         ignore_auth: bool = False,
-        timeout: float | None = 2,
+        timeout: Optional[float] = 2,
         max_retries=2,
         exponential_backoff: int = 2,
         *args,
@@ -279,7 +279,7 @@ class ClientConnection:
     def _requests_post_rel_host(
         self,
         endpoint: str,
-        timeout: float | None = 2,
+        timeout: Optional[float] = 2,
         max_retries: int = 0,
         *args,
         **kwargs,
@@ -323,7 +323,7 @@ class ClientConnection:
     def create_groundtruths(
         self,
         groundtruths: List[dict],
-        timeout: float | None,
+        timeout: Optional[float],
         ignore_existing_datums: bool = False,
     ) -> None:
         """
@@ -378,7 +378,7 @@ class ClientConnection:
     def create_predictions(
         self,
         predictions: List[dict],
-        timeout: float | None,
+        timeout: Optional[float],
     ) -> None:
         """
         Creates predictions.
