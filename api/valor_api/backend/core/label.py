@@ -7,7 +7,7 @@ from sqlalchemy.orm import InstrumentedAttribute, Query, Session
 
 from valor_api import api_utils, schemas
 from valor_api.backend import models
-from valor_api.backend.query import generate_query, generate_select
+from valor_api.backend.query import generate_query
 from valor_api.backend.query.types import TableTypeAlias
 
 LabelMapType = list[list[list[str]]]
@@ -15,9 +15,9 @@ LabelMapType = list[list[list[str]]]
 
 def validate_matching_label_keys(
     db: Session,
+    dataset_names: list[str],
+    model_name: str,
     label_map: LabelMapType | None,
-    prediction_filter: schemas.Filter,
-    groundtruth_filter: schemas.Filter,
 ) -> None:
     """
     Validates that every datum has the same set of label keys for both ground truths and predictions. This check is only needed for classification tasks.
@@ -26,13 +26,12 @@ def validate_matching_label_keys(
     ----------
     db : Session
         The database Session to query against.
-    prediction_filter : schemas.Filter
-        The filter to be used to query predictions.
-    groundtruth_filter : schemas.Filter
-        The filter to be used to query groundtruths.
+    dataset_names : list[str]
+        The list of required datasets by name.
+    model_name : str
+        The required model by name.
     label_map: LabelMapType, optional
         Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
-
 
     Raises
     -------
@@ -40,57 +39,82 @@ def validate_matching_label_keys(
         If the distinct ground truth label keys don't match the distinct prediction label keys for any datum.
     """
 
-    gts = generate_select(
-        models.Annotation.datum_id.label("datum_id"),
-        models.Label.key.label("label_key"),
-        models.Label.value.label("label_value"),
-        filters=groundtruth_filter,
-        label_source=models.GroundTruth,
-    ).alias()
-
-    gt_label_keys_by_datum = (
+    gt_labels_by_datum = (
         select(
-            gts.c.datum_id,
-            func.array_agg(gts.c.label_key + ", " + gts.c.label_value).label(
+            models.Datum.id.label("datum_id"),
+            func.array_agg(models.Label.key + ", " + models.Label.value).label(
                 "gt_labels"
             ),
         )
-        .select_from(gts)
-        .group_by(gts.c.datum_id)
+        .select_from(models.Datum)
+        .join(
+            models.Dataset,
+            and_(
+                models.Dataset.id == models.Datum.dataset_id,
+                models.Dataset.name.in_(dataset_names),
+            ),
+        )
+        .join(
+            models.Annotation,
+            and_(
+                models.Annotation.datum_id == models.Datum.id,
+                models.Annotation.model_id.is_(None),
+            ),
+        )
+        .join(
+            models.GroundTruth,
+            models.GroundTruth.annotation_id == models.Annotation.id,
+        )
+        .join(models.Label, models.Label.id == models.GroundTruth.label_id)
+        .group_by(models.Datum.id)
         .subquery()
     )
 
-    preds = generate_select(
-        models.Annotation.datum_id.label("datum_id"),
-        models.Label.key.label("label_key"),
-        models.Label.value.label("label_value"),
-        filters=prediction_filter,
-        label_source=models.Prediction,
-    ).alias()
-
-    preds_label_keys_by_datum = (
+    pred_labels_by_datum = (
         select(
-            preds.c.datum_id,
-            func.array_agg(
-                preds.c.label_key + ", " + preds.c.label_value
-            ).label("pred_labels"),
+            models.Datum.id.label("datum_id"),
+            func.array_agg(models.Label.key + ", " + models.Label.value).label(
+                "pred_labels"
+            ),
         )
-        .select_from(preds)
-        .group_by(preds.c.datum_id)
+        .select_from(models.Datum)
+        .join(
+            models.Dataset,
+            and_(
+                models.Dataset.id == models.Datum.dataset_id,
+                models.Dataset.name.in_(dataset_names),
+            ),
+        )
+        .join(
+            models.Annotation,
+            models.Annotation.datum_id == models.Datum.id,
+        )
+        .join(
+            models.Model,
+            and_(
+                models.Model.id == models.Annotation.model_id,
+                models.Model.name == model_name,
+            ),
+        )
+        .join(
+            models.Prediction,
+            models.Prediction.annotation_id == models.Annotation.id,
+        )
+        .join(models.Label, models.Label.id == models.Prediction.label_id)
+        .group_by(models.Datum.id)
         .subquery()
     )
 
     joined = (
         select(
-            preds_label_keys_by_datum.c.datum_id,
-            preds_label_keys_by_datum.c.pred_labels,
-            gt_label_keys_by_datum.c.gt_labels,
+            pred_labels_by_datum.c.datum_id,
+            pred_labels_by_datum.c.pred_labels,
+            gt_labels_by_datum.c.gt_labels,
         )
-        .select_from(preds_label_keys_by_datum)
+        .select_from(gt_labels_by_datum)
         .join(
-            gt_label_keys_by_datum,
-            gt_label_keys_by_datum.c.datum_id
-            == preds_label_keys_by_datum.c.datum_id,
+            pred_labels_by_datum,
+            pred_labels_by_datum.c.datum_id == gt_labels_by_datum.c.datum_id,
         )
         .subquery()
     )

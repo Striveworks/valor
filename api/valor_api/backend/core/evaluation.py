@@ -294,9 +294,9 @@ def _validate_evaluation_filter(
     if parameters.task_type == enums.TaskType.CLASSIFICATION:
         core.validate_matching_label_keys(
             db=db,
+            dataset_names=evaluation.dataset_names,
+            model_name=evaluation.model_name,
             label_map=parameters.label_map,
-            groundtruth_filter=groundtruth_filter,
-            prediction_filter=predictions_filter,
         )
 
 
