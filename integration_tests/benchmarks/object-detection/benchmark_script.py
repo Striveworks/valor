@@ -54,7 +54,7 @@ def ingest_groundtruths_and_predictions(
     number_of_annotations = 0
     for datum_id, data in raw[:pair_limit]:
         number_of_annotations += len(data["groundtruth_annotations"]) + len(
-            data["predictions_annotations"]
+            data["prediction_annotations"]
         )
         datum = Datum(
             uid=str(datum_id),
@@ -227,7 +227,7 @@ def run_detailed_pr_curve_evaluation(dset: Dataset, model: Model):
 
 
 def run_benchmarking_analysis(
-    limits_to_test: list[int] = [1, 1, 1],
+    limits_to_test: list[int] = [2, 3, 3],
     results_file: str = "results.json",
     data_file: str = "data.json",
 ):
