@@ -1224,10 +1224,6 @@ def test__compute_curves(
         grouper_mappings["grouper_key_to_label_keys_mapping"]["animal"]
     )
 
-    print("==============")
-    for label in grouper_mappings["grouper_key_to_labels_mapping"]["animal"]:
-        print(label)
-
     # groundtruths filter
     gFilter = groundtruth_filter.model_copy()
     gFilter.labels = schemas.LogicalFunction.or_(
@@ -1273,6 +1269,7 @@ def test__compute_curves(
     # used to determine the number of true negatives
 
     gt_datums = generate_query(
+        models.Datum.id,
         models.Dataset.name,
         models.Datum.uid,
         db=db,
@@ -1280,13 +1277,23 @@ def test__compute_curves(
         label_source=models.GroundTruth,
     ).all()
     pd_datums = generate_query(
+        models.Datum.id,
         models.Dataset.name,
         models.Datum.uid,
         db=db,
         filters=prediction_filter,
         label_source=models.Prediction,
     ).all()
-    unique_datums = set(pd_datums + gt_datums)
+    unique_datums = {
+        datum_id: (dataset_name, datum_uid)
+        for datum_id, dataset_name, datum_uid in gt_datums
+    }
+    unique_datums.update(
+        {
+            datum_id: (dataset_name, datum_uid)
+            for datum_id, dataset_name, datum_uid in pd_datums
+        }
+    )
 
     curves = _compute_curves(
         db=db,
@@ -1398,7 +1405,6 @@ def test__compute_curves(
         metric,
     ), expected_output in detailed_pr_expected_answers.items():
         model_output = curves[1].value[value][threshold][metric]
-        print(value, threshold, metric, expected_output, model_output)
         assert isinstance(model_output, dict)
         assert model_output["total"] == expected_output["total"]
         assert all(
