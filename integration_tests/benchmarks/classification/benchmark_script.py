@@ -1,3 +1,4 @@
+# %%
 import json
 import os
 from datetime import datetime
@@ -38,7 +39,7 @@ def write_results_to_file(write_path: str, result_dict: dict):
 
 def ingest_groundtruths_and_predictions(
     dset: Dataset, model: Model, raw: dict, pair_limit: int
-):
+) -> tuple[int, int]:
     """Ingest the data into Valor."""
 
     groundtruths = []
@@ -102,6 +103,8 @@ def ingest_groundtruths_and_predictions(
     dset.finalize()
     model.finalize_inferences(dataset=dset)
 
+    return (len(groundtruths), len(predictions))
+
 
 def run_base_evaluation(dset: Dataset, model: Model):
     """Run a base evaluation (with no PR curves)."""
@@ -164,7 +167,7 @@ def run_benchmarking_analysis(
 
         start_time = time()
 
-        ingest_groundtruths_and_predictions(
+        len_gt, len_pd = ingest_groundtruths_and_predictions(
             dset=dset, model=model, raw=raw_data, pair_limit=limit
         )
         ingest_time = time() - start_time
@@ -174,6 +177,8 @@ def run_benchmarking_analysis(
 
         results = {
             "number_of_datums": limit,
+            "number_of_groundtruths": len_gt,
+            "number_of_predictions": len_pd,
             "ingest_runtime": f"{(ingest_time):.1f} seconds",
             "ingest_and_evaluation_runtime": f"{(ingest_and_evaluation):.1f} seconds",
         }

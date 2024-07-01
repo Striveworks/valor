@@ -1,4 +1,3 @@
-# %%
 import json
 import os
 from datetime import datetime
@@ -47,8 +46,8 @@ def write_results_to_file(write_path: str, result_dict: dict):
 
 def ingest_groundtruths_and_predictions(
     dset: Dataset, model: Model, raw: list, pair_limit: int
-):
-    """Ingest the data into Valor."""
+) -> tuple[int, int]:
+    """Ingest the data into Valor. Returns the number of groundtruths and predictions."""
     groundtruths = []
     predictions = []
 
@@ -175,6 +174,8 @@ def ingest_groundtruths_and_predictions(
     dset.finalize()
     model.finalize_inferences(dataset=dset)
 
+    return (len(groundtruths), len(predictions))
+
 
 def run_base_evaluation(dset: Dataset, model: Model):
     """Run a base evaluation (with no PR curves)."""
@@ -183,17 +184,17 @@ def run_base_evaluation(dset: Dataset, model: Model):
     return evaluation
 
 
-# TODO fix metrics
 def run_pr_curve_evaluation(dset: Dataset, model: Model):
     """Run a base evaluation with PrecisionRecallCurve included."""
     evaluation = model.evaluate_detection(
         dset,
         metrics_to_return=[
-            "Accuracy",
-            "Precision",
-            "Recall",
-            "F1",
-            "ROCAUC",
+            "AP",
+            "AR",
+            "mAP",
+            "APAveragedOverIOUs",
+            "mAR",
+            "mAPAveragedOverIOUs",
             "PrecisionRecallCurve",
         ],
     )
@@ -201,18 +202,18 @@ def run_pr_curve_evaluation(dset: Dataset, model: Model):
     return evaluation
 
 
-# TODO fix metrics
 def run_detailed_pr_curve_evaluation(dset: Dataset, model: Model):
     """Run a base evaluation with PrecisionRecallCurve and DetailedPrecisionRecallCurve included."""
 
     evaluation = model.evaluate_detection(
         dset,
         metrics_to_return=[
-            "Accuracy",
-            "Precision",
-            "Recall",
-            "F1",
-            "ROCAUC",
+            "AP",
+            "AR",
+            "mAP",
+            "APAveragedOverIOUs",
+            "mAR",
+            "mAPAveragedOverIOUs",
             "PrecisionRecallCurve",
             "DetailedPrecisionRecallCurve",
         ],
@@ -222,9 +223,9 @@ def run_detailed_pr_curve_evaluation(dset: Dataset, model: Model):
 
 
 def run_benchmarking_analysis(
-    limits_to_test: list[int] = [1, 100, 100, 500, 500],  # TODO
+    limits_to_test: list[int] = [10, 10, 10],
     results_file: str = "results.json",
-    data_file: str = "data_500_datums.json",
+    data_file: str = "data.json",
 ):
     """Time various function calls and export the results."""
     current_directory = os.path.dirname(os.path.realpath(__file__))
@@ -234,15 +235,16 @@ def run_benchmarking_analysis(
         dset = Dataset.create(name="coco-dataset")
         model = Model.create(name="coco-model")
 
-        with open(read_path) as f:
-            raw_data = json.load(f)
+        with open(read_path) as file:
+            file.seek(0)
+            raw_data = json.load(file)
 
         # convert dict into list of tuples so we can slice it
         raw_data_tuple = [(key, value) for key, value in raw_data.items()]
 
         start_time = time()
 
-        ingest_groundtruths_and_predictions(
+        len_gt, len_pd = ingest_groundtruths_and_predictions(
             dset=dset, model=model, raw=raw_data_tuple, pair_limit=limit
         )
         ingest_time = time() - start_time
@@ -252,6 +254,8 @@ def run_benchmarking_analysis(
 
         results = {
             "number_of_datums": limit,
+            "number_of_groundtruths": len_gt,
+            "number_of_predictions": len_pd,
             "ingest_runtime": f"{(ingest_time):.1f} seconds",
             "ingest_and_evaluation_runtime": f"{(ingest_and_evaluation):.1f} seconds",
         }
@@ -263,5 +267,3 @@ def run_benchmarking_analysis(
 
 if __name__ == "__main__":
     run_benchmarking_analysis()
-
-# %%
