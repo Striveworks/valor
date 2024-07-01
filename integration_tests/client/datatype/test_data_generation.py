@@ -404,7 +404,6 @@ def test_generate_prediction_data(client: Client):
         },
         "parameters": {
             "task_type": TaskType.OBJECT_DETECTION.value,
-            "metric_params": None,
             "convert_annotations_to_type": AnnotationType.BOX.value,
             "iou_thresholds_to_compute": [0.1, 0.9],
             "iou_thresholds_to_return": [0.1, 0.9],
@@ -420,6 +419,7 @@ def test_generate_prediction_data(client: Client):
             ],
             "pr_curve_iou_threshold": 0.5,
             "pr_curve_max_examples": 1,
+            "bleu_weights": None,
             "llm_api_params": None,
         },
         "meta": {},

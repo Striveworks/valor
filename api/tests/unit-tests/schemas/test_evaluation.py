@@ -74,7 +74,7 @@ def test_EvaluationParameters():
             MetricType.ROUGE,
         ],
         llm_api_params=LLM_API_PARAMS,
-        metric_params={MetricType.BLEU: {"weights": [0.5, 0.25, 0.25, 0]}},
+        bleu_weights=[0.5, 0.25, 0.25, 0],
     )
 
     with pytest.raises(ValidationError):
@@ -138,36 +138,6 @@ def test_EvaluationParameters():
             ],
         )
 
-    # All metrics in metric_params need to be in metrics_to_return.
-    with pytest.raises(ValidationError):
-        schemas.EvaluationParameters(
-            task_type=enums.TaskType.TEXT_GENERATION,
-            metrics_to_return=[
-                MetricType.AnswerRelevance,
-                MetricType.Coherence,
-                MetricType.ROUGE,
-            ],
-            metric_params={MetricType.BLEU: {"weights": [0.5, 0.25, 0.25, 0]}},
-        )
-
-    # Invalid params for BLEU.
-    with pytest.raises(ValidationError):
-        schemas.EvaluationParameters(
-            task_type=enums.TaskType.TEXT_GENERATION,
-            metrics_to_return=[
-                MetricType.AnswerRelevance,
-                MetricType.BLEU,
-                MetricType.Coherence,
-                MetricType.ROUGE,
-            ],
-            metric_params={
-                MetricType.BLEU: {
-                    "weights": [0.5, 0.25, 0.25, 0.25],
-                    "invalid_param": "value",
-                }
-            },
-        )
-
     # BLEU weights must be 0 <= weight <= 1.
     with pytest.raises(ValidationError):
         schemas.EvaluationParameters(
@@ -178,9 +148,8 @@ def test_EvaluationParameters():
                 MetricType.Coherence,
                 MetricType.ROUGE,
             ],
-            metric_params={
-                MetricType.BLEU: {"weights": [1.1, 0.3, -0.5, 0.1]}
-            },
+            llm_api_params=LLM_API_PARAMS,
+            bleu_weights=[1.1, 0.3, -0.5, 0.1],
         )
 
     # BLEU weights must sum to 1.
@@ -193,9 +162,8 @@ def test_EvaluationParameters():
                 MetricType.Coherence,
                 MetricType.ROUGE,
             ],
-            metric_params={
-                MetricType.BLEU: {"weights": [0.5, 0.25, 0.25, 0.25]}
-            },
+            llm_api_params=LLM_API_PARAMS,
+            bleu_weights=[0.5, 0.25, 0.25, 0.25],
         )
 
 

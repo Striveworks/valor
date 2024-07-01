@@ -334,11 +334,11 @@ In Valor, the ROUGE output value is a dictionary containing the following elemen
 }
 ```
 
-Behind the scenes, we use [Hugging Face's `evaluate` package](https://huggingface.co/spaces/evaluate-metric/rouge) to calculate these scores. Users can pass `rouge_types` and `use_stemmer` as keys to `metric_params` in order to gain access to additional functionality from this package.
+Behind the scenes, we use [Hugging Face's `evaluate` package](https://huggingface.co/spaces/evaluate-metric/rouge) to calculate these scores. Users can pass `rouge_types` and `use_stemmer` to EvaluationParameters in order to gain access to additional functionality from this package.
 
 
 ### BLEU
 
 BLEU (bilingual evaluation understudy) is an algorithm for evaluating automatic summarization and machine translation software in natural language processing. BLEU's output is always a number between 0 and 1, where a score near 1 indicates that the hypothesis text is very similar to one or more of the reference texts.
 
-Behind the scenes, we use [nltk.translate.bleu_score](https://www.nltk.org/_modules/nltk/translate/bleu_score.html) to calculate these scores. The default BLEU metric calculates a score for up to 4-grams using uniform weights (i.e., `weights=[.25, .25, .25, .25]`; also called BLEU-4). Users can pass their own `weights` to `metric_params` in order to change this default behavior and calculate other BLEU scores.
+Behind the scenes, we use [nltk.translate.bleu_score](https://www.nltk.org/_modules/nltk/translate/bleu_score.html) to calculate these scores. The default BLEU metric calculates a score for up to 4-grams using uniform weights (i.e., `weights=[.25, .25, .25, .25]`; also called BLEU-4). Users can pass their own `bleu_weights` to EvaluationParameters in order to change this default behavior and calculate other BLEU scores.

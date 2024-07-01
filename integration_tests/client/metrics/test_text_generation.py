@@ -65,7 +65,6 @@ def test_llm_evaluation(
                 "model": "model",
             },
         },
-        metric_params={},
     )
 
     assert eval_job.id

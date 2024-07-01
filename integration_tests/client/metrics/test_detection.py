@@ -152,7 +152,6 @@ def test_evaluate_detection(
         },
         "parameters": {
             "task_type": TaskType.OBJECT_DETECTION.value,
-            "metric_params": None,
             "convert_annotations_to_type": AnnotationType.BOX.value,
             "iou_thresholds_to_compute": [0.1, 0.6],
             "iou_thresholds_to_return": [0.1, 0.6],
@@ -168,6 +167,7 @@ def test_evaluate_detection(
             ],
             "pr_curve_iou_threshold": 0.5,
             "pr_curve_max_examples": 1,
+            "bleu_weights": None,
             "llm_api_params": None,
         },
         "status": EvaluationStatus.DONE.value,
@@ -313,7 +313,6 @@ def test_evaluate_detection(
         },
         "parameters": {
             "task_type": TaskType.OBJECT_DETECTION.value,
-            "metric_params": None,
             "convert_annotations_to_type": AnnotationType.BOX.value,
             "iou_thresholds_to_compute": [0.1, 0.6],
             "iou_thresholds_to_return": [0.1, 0.6],
@@ -329,6 +328,7 @@ def test_evaluate_detection(
             ],
             "pr_curve_iou_threshold": 0.5,
             "pr_curve_max_examples": 1,
+            "bleu_weights": None,
             "llm_api_params": None,
         },
         "status": EvaluationStatus.DONE.value,
@@ -393,7 +393,6 @@ def test_evaluate_detection(
         },
         "parameters": {
             "task_type": TaskType.OBJECT_DETECTION.value,
-            "metric_params": None,
             "convert_annotations_to_type": AnnotationType.BOX.value,
             "iou_thresholds_to_compute": [0.1, 0.6],
             "iou_thresholds_to_return": [0.1, 0.6],
@@ -409,6 +408,7 @@ def test_evaluate_detection(
             ],
             "pr_curve_iou_threshold": 0.5,
             "pr_curve_max_examples": 1,
+            "bleu_weights": None,
             "llm_api_params": None,
         },
         # check metrics below
@@ -505,7 +505,6 @@ def test_evaluate_detection(
         },
         "parameters": {
             "task_type": TaskType.OBJECT_DETECTION.value,
-            "metric_params": None,
             "convert_annotations_to_type": AnnotationType.BOX.value,
             "iou_thresholds_to_compute": [0.1, 0.6],
             "iou_thresholds_to_return": [0.1, 0.6],
@@ -521,6 +520,7 @@ def test_evaluate_detection(
             ],
             "pr_curve_iou_threshold": 0.5,
             "pr_curve_max_examples": 1,
+            "bleu_weights": None,
             "llm_api_params": None,
         },
         # check metrics below
@@ -731,7 +731,6 @@ def test_evaluate_detection_with_json_filters(
         },
         "parameters": {
             "task_type": TaskType.OBJECT_DETECTION.value,
-            "metric_params": None,
             "convert_annotations_to_type": AnnotationType.BOX.value,
             "iou_thresholds_to_compute": [0.1, 0.6],
             "iou_thresholds_to_return": [0.1, 0.6],
@@ -747,6 +746,7 @@ def test_evaluate_detection_with_json_filters(
             ],
             "pr_curve_iou_threshold": 0.5,
             "pr_curve_max_examples": 1,
+            "bleu_weights": None,
             "llm_api_params": None,
         },
         # check metrics below
@@ -2009,7 +2009,6 @@ def test_evaluate_detection_with_label_maps(
 
     assert eval_job.to_dict()["parameters"] == {
         "task_type": "object-detection",
-        "metric_params": None,
         "convert_annotations_to_type": None,
         "iou_thresholds_to_compute": [0.1, 0.6],
         "iou_thresholds_to_return": [0.1, 0.6],
@@ -2032,6 +2031,7 @@ def test_evaluate_detection_with_label_maps(
         ],
         "pr_curve_iou_threshold": 0.5,
         "pr_curve_max_examples": 1,
+        "bleu_weights": None,
         "llm_api_params": None,
     }
 

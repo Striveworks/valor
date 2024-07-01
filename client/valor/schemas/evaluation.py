@@ -18,8 +18,6 @@ class EvaluationParameters:
         Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
     metrics_to_return: List[MetricType], optional
         The list of metrics to compute, store, and return to the user.
-    metric_params: Dict[str, dict], optional
-        A dictionary of parameters for each metric. The key is the metric name and the value is a dictionary of parameters for that metric (e.g., `{"SentenceBLEU": {"weights": [0.65,0.2,0.1,0.05], "smoothing_function": "method3"}}`).
     convert_annotations_to_type: AnnotationType | None = None
         The type to convert all annotations to.
     iou_thresholds_to_compute: List[float], optional
@@ -32,6 +30,8 @@ class EvaluationParameters:
         The IOU threshold to use when calculating precision-recall curves for object detection tasks. Defaults to 0.5.
     pr_curve_max_examples: int
         The maximum number of datum examples to store when calculating PR curves.
+    bleu_weights: list[float], optional
+        The weights to use when calculating BLEU scores.
     llm_api_params: Dict[str, str | dict], optional
         A dictionary of parameters for the LLM API.
     """
@@ -39,7 +39,6 @@ class EvaluationParameters:
     task_type: TaskType
     label_map: Optional[List[List[List[str]]]] = None
     metrics_to_return: Optional[List[MetricType]] = None
-    metric_params: Optional[Dict[str, dict]] = None
 
     convert_annotations_to_type: Optional[AnnotationType] = None
     iou_thresholds_to_compute: Optional[List[float]] = None
@@ -47,6 +46,7 @@ class EvaluationParameters:
     recall_score_threshold: float = 0
     pr_curve_iou_threshold: float = 0.5
     pr_curve_max_examples: int = 1
+    bleu_weights: Optional[list[float]] = None
     llm_api_params: Optional[Dict[str, Union[str, dict]]] = None
 
 

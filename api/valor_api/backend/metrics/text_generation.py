@@ -257,7 +257,7 @@ def _compute_text_generation_metrics(
         The list of metrics to compute, store, and return to the user.
     llm_api_params: dict[str, str | dict], optional
         A dictionary of parameters for the LLM API.
-    metric_params: dict
+    metric_params: dict, optional
         A dictionary of optional parameters to pass in to specific metrics.
 
     Returns
@@ -343,12 +343,13 @@ def _compute_text_generation_metrics(
 
         for datum_uid, dataset_name, predictions, references in results:
             if is_BLEU_enabled:
+                bleu_params = metric_params.get("BLEU", {})
+                assert type(bleu_params) == dict
+                weights = bleu_params.get("weights", [0.25, 0.25, 0.25, 0.25])
                 bleu_metrics = _calculate_sentence_bleu(
                     predictions=predictions,
                     references=references,
-                    weights=metric_params.get(
-                        "weights", [0.25, 0.25, 0.25, 0.25]
-                    ),
+                    weights=weights,
                 )
 
                 output += [
@@ -363,14 +364,17 @@ def _compute_text_generation_metrics(
                     for metric in bleu_metrics
                 ]
             if is_ROUGE_enabled:
+                rouge_params = metric_params.get("ROUGE", {})
+                assert type(rouge_params) == dict
+                rouge_types = rouge_params.get(
+                    "rouge_types", ["rouge1", "rouge2", "rougeL", "rougeLsum"]
+                )
+                use_stemmer = rouge_params.get("rouge_use_stemmer", False)
                 rouge_metrics = _calculate_rouge_scores(
                     predictions=predictions,
                     references=references,
-                    rouge_types=metric_params.get(
-                        "rouge_types",
-                        ["rouge1", "rouge2", "rougeL", "rougeLsum"],
-                    ),
-                    use_stemmer=metric_params.get("use_stemmer", False),
+                    rouge_types=rouge_types,
+                    use_stemmer=use_stemmer,
                 )
 
                 output += [
@@ -491,17 +495,27 @@ def compute_text_generation_metrics(
 
     assert parameters.metrics_to_return
 
+    metric_params = {}
+    if parameters.bleu_weights is not None:
+        if "BLEU" not in metric_params:
+            metric_params["BLEU"] = {}
+        metric_params["BLEU"]["weights"] = parameters.bleu_weights
+    # if parameters.rouge_types is not None:
+    #     if "ROUGE" not in metric_params:
+    #         metric_params["ROUGE"] = {}
+    #     metric_params["ROUGE"]["rouge_types"] = parameters.rouge_types
+    # if parameters.rouge_use_stemmer is not None:
+    #     if "ROUGE" not in metric_params:
+    #         metric_params["ROUGE"] = {}
+    #     metric_params["ROUGE"]["rouge_use_stemmer"] = parameters.rouge_use_stemmer
+
     metrics = _compute_text_generation_metrics(
         db=db,
         datum_filter=datum_filter,
         prediction_filter=prediction_filter,
         metrics_to_return=parameters.metrics_to_return,
         llm_api_params=parameters.llm_api_params,
-        metric_params=(
-            parameters.metric_params
-            if parameters.metric_params is not None
-            else {}
-        ),
+        metric_params=metric_params,
     )
 
     metric_mappings = create_metric_mappings(

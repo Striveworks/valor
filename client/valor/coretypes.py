@@ -1029,7 +1029,7 @@ class Model(StaticCollection):
         datasets: Union[Dataset, List[Dataset]],
         metrics_to_return: List[MetricType],
         filters: Optional[Filter] = None,
-        metric_params: Optional[Dict[str, dict]] = None,
+        bleu_weights: Optional[list[float]] = None,
         llm_api_params: Optional[Dict[str, Union[str, dict]]] = None,
     ) -> Evaluation:
         """
@@ -1043,8 +1043,8 @@ class Model(StaticCollection):
             The list of metrics to compute, store, and return to the user. This is not optional for text generation evaluations.
         filters : Filter, optional
             Optional set of constraints to filter evaluation by.
-        metric_params: Dict[str, dict], optional
-            A dictionary of parameters for each metric. The key is the metric name and the value is a dictionary of parameters for that metric (e.g., `{"SentenceBLEU": {"weights": [0.65,0.2,0.1,0.05], "smoothing_function": "method3"}}`).
+        bleu_weights: list[float], optional
+            The weights to use when calculating BLEU scores.
         llm_api_params: Dict[str, Union[str,dict]], optional
             A dictionary of parameters for the LLM API.
 
@@ -1074,7 +1074,7 @@ class Model(StaticCollection):
             parameters=EvaluationParameters(
                 task_type=TaskType.TEXT_GENERATION,
                 metrics_to_return=metrics_to_return,
-                metric_params=metric_params,
+                bleu_weights=bleu_weights,
                 llm_api_params=llm_api_params,
             ),
         )

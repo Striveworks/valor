@@ -28,8 +28,6 @@ class EvaluationParameters(BaseModel):
         Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
     metrics_to_return: List[MetricType], optional
         The list of metrics to compute, store, and return to the user.
-    metric_params: dict[MetricType, dict], optional
-        A dictionary of parameters for each metric. The key is the metric type and the value is a dictionary of parameters for that metric (e.g., `{MetricType.SentenceBleu: {"weights": [0.65,0.2,0.1,0.05], "smoothing_function": "method3"}}`).
     convert_annotations_to_type: AnnotationType | None = None
         The type to convert all annotations to.
     iou_thresholds_to_compute: List[float], optional
@@ -42,6 +40,8 @@ class EvaluationParameters(BaseModel):
           The IOU threshold to use when calculating precision-recall curves for object detection tasks. Defaults to 0.5.
     pr_curve_max_examples: int
         The maximum number of datum examples to store when calculating PR curves.
+    bleu_weights: list[float], optional
+        The weights to use when calculating BLEU scores.
     llm_api_params: dict[str, str | dict], optional
         A dictionary of parameters for the LLM API.
     """
@@ -49,7 +49,6 @@ class EvaluationParameters(BaseModel):
     task_type: TaskType
     metrics_to_return: list[MetricType] | None = None
     label_map: LabelMapType | None = None
-    metric_params: dict[MetricType, dict] | None = None
 
     convert_annotations_to_type: AnnotationType | None = None
     iou_thresholds_to_compute: list[float] | None = None
@@ -57,6 +56,7 @@ class EvaluationParameters(BaseModel):
     recall_score_threshold: float | None = 0
     pr_curve_iou_threshold: float = 0.5
     pr_curve_max_examples: int = 1
+    bleu_weights: list[float] | None = None
     llm_api_params: dict[str, str | dict] | None = None
 
     # pydantic setting
@@ -96,14 +96,6 @@ class EvaluationParameters(BaseModel):
                     raise ValueError(
                         "Text generation does not have default metrics. Please specify metrics_to_return."
                     )
-
-        if values.metric_params is not None and any(
-            metric not in values.metrics_to_return
-            for metric in values.metric_params.keys()
-        ):
-            raise ValueError(
-                "The metrics specified in `metric_params` must be a subset of `metrics_to_return`."
-            )
 
         match values.task_type:
             case TaskType.CLASSIFICATION | TaskType.SEMANTIC_SEGMENTATION:
@@ -162,46 +154,16 @@ class EvaluationParameters(BaseModel):
                             "`llm_api_params` must be provided for LLM guided evaluations."
                         )
 
-                # Metric parameter validation
-                if values.metric_params is None:
-                    return values
-
-                if "AnswerRelevance" in values.metric_params:
-                    if values.metric_params["AnswerRelevance"] != {}:
-                        raise ValueError(
-                            "AnswerRelevance metric should not have any parameters."
-                        )
-
-                if "BLEU" in values.metric_params:
-                    bleu_params = ["weights"]
+                if values.bleu_weights is not None:
                     if not all(
-                        param in bleu_params
-                        for param in values.metric_params["BLEU"].keys()
+                        isinstance(weight, (int, float)) and 0 <= weight
+                        for weight in values.bleu_weights
                     ):
                         raise ValueError(
-                            f"BLEU metric parameters must be a subset of {bleu_params}."
+                            "BLEU metric weights must be a list of non-negative integers or floats."
                         )
-
-                    if "weights" in values.metric_params["BLEU"]:
-                        if not all(
-                            isinstance(weight, (int, float)) and 0 <= weight
-                            for weight in values.metric_params["BLEU"][
-                                "weights"
-                            ]
-                        ):
-                            raise ValueError(
-                                "BLEU metric weights must be a list of non-negative integers or floats."
-                            )
-                        if sum(values.metric_params["BLEU"]["weights"]) != 1:
-                            raise ValueError(
-                                "BLEU metric weights must sum to 1."
-                            )
-
-                if "Coherence" in values.metric_params:
-                    if values.metric_params["Coherence"] != {}:
-                        raise ValueError(
-                            "Coherence metric should not have any parameters."
-                        )
+                    if sum(values.bleu_weights) != 1:
+                        raise ValueError("BLEU metric weights must sum to 1.")
 
             case _:
                 raise NotImplementedError(
