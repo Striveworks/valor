@@ -1,4 +1,3 @@
-# %%
 import json
 import os
 from datetime import datetime
@@ -44,16 +43,28 @@ def ingest_groundtruths_and_predictions(
 
     groundtruths = []
     predictions = []
-    number_of_annotations = 0
+    labels = set()
     slice_ = (
         raw["groundtruth_prediction_pairs"][:pair_limit]
         if pair_limit != -1
         else raw["groundtruth_prediction_pairs"]
     )
     for groundtruth, prediction in slice_:
-        number_of_annotations = len(groundtruth["value"]["annotations"]) + len(
-            prediction["value"]["annotations"]
+        labels.update(
+            (
+                (label["key"], label["value"])
+                for annotation in groundtruth["value"]["annotations"]
+                for label in annotation["labels"]
+            )
         )
+        labels.update(
+            (
+                (label["key"], label["value"])
+                for annotation in prediction["value"]["annotations"]
+                for label in annotation["labels"]
+            )
+        )
+
         groundtruths.append(
             GroundTruth(
                 datum=Datum(
@@ -107,7 +118,7 @@ def ingest_groundtruths_and_predictions(
     dset.finalize()
     model.finalize_inferences(dataset=dset)
 
-    return number_of_annotations
+    return len(labels)
 
 
 def run_base_evaluation(dset: Dataset, model: Model):
@@ -154,7 +165,7 @@ def run_detailed_pr_curve_evaluation(dset: Dataset, model: Model):
 
 
 def run_benchmarking_analysis(
-    limits_to_test: list[int] = [100, 100, 100],
+    limits_to_test: list[int] = [100, 500],
     results_file: str = "results.json",
     data_file: str = "data.json",
 ):
@@ -171,7 +182,7 @@ def run_benchmarking_analysis(
 
         start_time = time()
 
-        number_of_annotations = ingest_groundtruths_and_predictions(
+        number_of_labels = ingest_groundtruths_and_predictions(
             dset=dset, model=model, raw=raw_data, pair_limit=limit
         )
         ingest_time = time() - start_time
@@ -181,7 +192,7 @@ def run_benchmarking_analysis(
 
         results = {
             "number_of_datums": limit,
-            "number_of_annotations": number_of_annotations,
+            "number_of_unique_labels": number_of_labels,
             "ingest_runtime": f"{(ingest_time):.1f} seconds",
             "ingest_and_evaluation_runtime": f"{(ingest_and_evaluation):.1f} seconds",
         }
