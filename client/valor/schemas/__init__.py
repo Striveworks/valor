@@ -20,7 +20,6 @@ from .symbolic.operators import (
 from .symbolic.types import (
     Boolean,
     Box,
-    Context,
     Date,
     DateTime,
     Dictionary,
@@ -42,7 +41,6 @@ from .symbolic.types import (
     String,
     Symbol,
     TaskTypeEnum,
-    Text,
     Time,
     Variable,
 )
@@ -94,6 +92,4 @@ __all__ = [
     "Label",
     "Annotation",
     "Datum",
-    "Context",
-    "Text",
 ]

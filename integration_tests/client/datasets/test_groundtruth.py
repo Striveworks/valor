@@ -111,10 +111,10 @@ def test_create_gt_detections_as_bbox_or_poly(
                     "polygon": None,
                     "raster": None,
                     "embedding": None,
+                    "text": None,
+                    "context": [],
                     "is_instance": True,
                     "implied_task_types": ["object-detection"],
-                    "text": None,
-                    "context": None,
                 },
             }
         else:
@@ -135,10 +135,10 @@ def test_create_gt_detections_as_bbox_or_poly(
                     ],
                     "raster": None,
                     "embedding": None,
+                    "text": None,
+                    "context": [],
                     "is_instance": True,
                     "implied_task_types": ["object-detection"],
-                    "text": None,
-                    "context": None,
                 },
             }
 

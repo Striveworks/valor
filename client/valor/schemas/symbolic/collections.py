@@ -5,7 +5,6 @@ import numpy as np
 from valor.schemas.symbolic.types import (
     Boolean,
     Box,
-    Context,
     Dictionary,
     Embedding,
     Equatable,
@@ -16,7 +15,6 @@ from valor.schemas.symbolic.types import (
     Polygon,
     Raster,
     String,
-    Text,
     Variable,
     _convert_simple_variables_to_standard_types,
     get_type_by_name,
@@ -264,14 +262,14 @@ class Annotation(StaticCollection):
         A raster to assign to the `Annotation`.
     embedding: List[float]
         An embedding, described by a list of values with type float and a maximum length of 16,000.
-    is_instance: bool, optional
-        A boolean describing whether we should treat the Raster attached to an annotation as an instance segmentation or not. If set to true, then the Annotation will be validated for use in object detection tasks. If set to false, then the Annotation will be validated for use in semantic segmentation tasks.
-    implied_task_types: list[str], optional
-        The validated task types that are applicable to each Annotation. Doesn't need to bet set by the user.
     text: str, optional
         A piece of text to assign to the `Annotation`.
     context: List[str], optional
         A list of context strings associated with an `Annotation`.
+    is_instance: bool, optional
+        A boolean describing whether we should treat the Raster attached to an annotation as an instance segmentation or not. If set to true, then the Annotation will be validated for use in object detection tasks. If set to false, then the Annotation will be validated for use in semantic segmentation tasks.
+    implied_task_types: list[str], optional
+        The validated task types that are applicable to each Annotation. Doesn't need to bet set by the user.
 
     Examples
     --------
@@ -338,14 +336,16 @@ class Annotation(StaticCollection):
     embedding: Embedding = Embedding.symbolic(
         owner="annotation", name="embedding"
     )
+    text: String = String.symbolic(owner="annotation", name="text")
+    context: SymbolicList[String] = SymbolicList[String].symbolic(
+        owner="annotation", name="context"
+    )
     is_instance: Boolean = Boolean.symbolic(
         owner="annotation", name="is_instance"
     )
     implied_task_types: SymbolicList[String] = SymbolicList[String].symbolic(
         owner="annotation", name="implied_task_types"
     )
-    text: Text = Text.symbolic(owner="annotation", name="text")
-    context: Context = Context.symbolic(owner="annotation", name="context")
 
     def __init__(
         self,
@@ -356,10 +356,10 @@ class Annotation(StaticCollection):
         polygon: Optional[Polygon] = None,
         raster: Optional[Raster] = None,
         embedding: Optional[Embedding] = None,
-        is_instance: Optional[bool] = None,
-        implied_task_types: Optional[List[String]] = None,
         text: Optional[str] = None,
         context: Optional[List[str]] = None,
+        is_instance: Optional[bool] = None,
+        implied_task_types: Optional[List[String]] = None,
     ):
         """
         Constructs an annotation.
@@ -378,14 +378,14 @@ class Annotation(StaticCollection):
             A raster annotation.
         embedding: List[float], optional
             An embedding, described by a list of values with type float and a maximum length of 16,000.
-        is_instance: bool, optional
-            A boolean describing whether we should treat the Raster attached to an annotation as an instance segmentation or not. If set to true, then the Annotation will be validated for use in object detection tasks. If set to false, then the Annotation will be validated for use in semantic segmentation tasks.
-        implied_task_types: list[str], optional
-            The validated task types that are applicable to each Annotation. Doesn't need to bet set by the user.
         text: str, optional
             A text annotation.
         context: List[str], optional
             A list of context associated to the annotation text. Not all text annotations will have context.
+        is_instance: bool, optional
+            A boolean describing whether we should treat the Raster attached to an annotation as an instance segmentation or not. If set to true, then the Annotation will be validated for use in object detection tasks. If set to false, then the Annotation will be validated for use in semantic segmentation tasks.
+        implied_task_types: list[str], optional
+            The validated task types that are applicable to each Annotation. Doesn't need to bet set by the user.
         """
         super().__init__(
             metadata=metadata if metadata else dict(),
@@ -394,10 +394,10 @@ class Annotation(StaticCollection):
             polygon=polygon,
             raster=raster,
             embedding=embedding,
-            is_instance=is_instance,
-            implied_task_types=implied_task_types,
             text=text,
             context=context,
+            is_instance=is_instance,
+            implied_task_types=implied_task_types,
         )
 
     @staticmethod
@@ -408,6 +408,8 @@ class Annotation(StaticCollection):
             "polygon": Polygon.nullable,
             "raster": Raster.nullable,
             "embedding": Embedding.nullable,
+            "text": String.nullable,
+            "context": SymbolicList[String].nullable,
             "is_instance": Boolean.nullable,
             "implied_task_types": SymbolicList,
         }
@@ -421,7 +423,7 @@ class Datum(StaticCollection):
     ----------
     uid : String
         The UID of the datum.
-    text : Text
+    text : String, optional
         The text of the datum, if the datum is a piece of text, otherwise None.
     metadata : Dictionary
         A dictionary of metadata that describes the datum.
@@ -435,7 +437,7 @@ class Datum(StaticCollection):
     """
 
     uid: String = String.symbolic(owner="datum", name="uid")
-    text: Text = Text.symbolic(owner="datum", name="text")
+    text: String = String.symbolic(owner="datum", name="text")
     metadata: Dictionary = Dictionary.symbolic(owner="datum", name="metadata")
 
     def __init__(
@@ -460,3 +462,10 @@ class Datum(StaticCollection):
         super().__init__(
             uid=uid, text=text, metadata=metadata if metadata else dict()
         )
+
+    @staticmethod
+    def formatting() -> Dict[str, Any]:
+        """Attribute format mapping."""
+        return {
+            "text": String.nullable,
+        }
