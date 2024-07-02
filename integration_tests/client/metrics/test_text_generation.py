@@ -135,6 +135,65 @@ def test_llm_evaluation(
     assert metadata["duration"] <= 30
 
 
+def test_llm_evaluation_with_openai(
+    client: Client,
+    gt_questions: list[GroundTruth],
+    pred_answers: list[Prediction],
+    dataset_name: str,
+    model_name: str,
+):
+    dataset = Dataset.create(dataset_name)
+    model = Model.create(model_name)
+
+    for gt in gt_questions:
+        dataset.add_groundtruth(gt)
+
+    dataset.finalize()
+
+    for pred in pred_answers:
+        model.add_prediction(dataset, pred)
+
+    model.finalize_inferences(dataset)
+
+    metrics_to_return = [
+        MetricType.AnswerRelevance,
+        MetricType.BLEU,
+        MetricType.Coherence,
+        MetricType.ROUGE,
+    ]
+
+    eval_job = model.evaluate_text_generation(
+        datasets=dataset,
+        metrics_to_return=metrics_to_return,
+        llm_api_params={
+            "client": "openai",
+            "data": {
+                "model": "gpt-4o",
+            },
+        },
+    )
+
+    assert eval_job.id
+    eval_job.wait_for_completion(timeout=90)
+
+    assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
+
+    metrics = eval_job.metrics
+
+    # Check that the right number of metrics are returned.
+    assert len(metrics) == len(pred_answers) * len(metrics_to_return)
+
+    # Check that the returned metrics have the right format.
+    for m in metrics:
+        if m["type"] in ["AnswerRelevance", "BLEU"]:
+            assert 0 <= m["value"] <= 1
+        if m["type"] == "Coherence":
+            assert m["value"] in {1, 2, 3, 4, 5}
+        if m["type"] == "ROUGE":
+            assert isinstance(m["value"], dict)
+            assert all(0 <= v <= 1 for v in m["value"].values())
+
+
 @pytest.fixture
 def q0() -> Datum:
     return Datum(

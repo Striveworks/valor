@@ -71,7 +71,7 @@ jobs:
             coverage run --source="api/valor_api,client/valor" -m pytest -v integration_tests/external/*
           fi
         env:
-          OPENAI_API_KEY: ${{ '' }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
       - name: run integration tests
         run: coverage run --source="api/valor_api,client/valor" -m pytest -v integration_tests/client/*
