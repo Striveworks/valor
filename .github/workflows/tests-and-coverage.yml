@@ -67,8 +67,7 @@ jobs:
         working-directory: ./client
       - name: run external integration tests
         run: |
-          if ${{ github.ref == 'refs/heads/add_llm_guided_metrics' }}; then
-            echo "run external integration tests"
+          if ${{ github.ref == 'refs/heads/main' }}; then
             coverage run --source="api/valor_api,client/valor" -m pytest -v integration_tests/external/*
           fi
       - name: run integration tests
