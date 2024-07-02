@@ -165,15 +165,19 @@ def test_version_mismatch_warning(caplog):
 
 def test__requests_wrapper(client: Client):
     with pytest.raises(ValueError):
-        client.conn._requests_wrapper("get", "/datasets/fake_dataset/status")
+        client.conn._requests_wrapper(
+            method_name="get", endpoint="/datasets/fake_dataset/status"
+        )
 
     with pytest.raises(ValueError):
         client.conn._requests_wrapper(
-            "bad_method", "datasets/fake_dataset/status"
+            method_name="bad_method", endpoint="datasets/fake_dataset/status"
         )
 
     with pytest.raises(ClientException):
-        client.conn._requests_wrapper("get", "not_an_endpoint")
+        client.conn._requests_wrapper(
+            method_name="get", endpoint="not_an_endpoint"
+        )
 
 
 @patch("time.sleep")
@@ -189,6 +193,7 @@ def test__requests_wrapper_retries(mock_requests, client: Client, monkeypatch):
 
     monkeypatch.setattr("requests.get", _return_mock_response)
 
+    assert mock_requests.call_count == 0
     for max_retries in range(1, 3):
         with pytest.raises(TimeoutError):
             client.conn._requests_wrapper(
@@ -200,6 +205,7 @@ def test__requests_wrapper_retries(mock_requests, client: Client, monkeypatch):
                 exponential_backoff=1,
             )
 
+    assert mock_requests.call_count == 3
     for max_retries in range(4, 8):
         client.conn._requests_wrapper(
             method_name="get",
@@ -210,6 +216,67 @@ def test__requests_wrapper_retries(mock_requests, client: Client, monkeypatch):
             exponential_backoff=1,
         )
         assert mock_requests.call_count == 4
+
+
+@patch("requests.get")
+def test__requests_wrapper_retries_without_timeout(mock_get, client: Client):
+
+    mock_get.side_effect = requests.exceptions.Timeout
+
+    # set max retries
+    max_retries = 2
+
+    # show that retrying is disabled if timeout=None
+    assert mock_get.call_count == 0
+    with pytest.raises(TimeoutError):
+        client.conn._requests_wrapper(
+            method_name="get",
+            endpoint="test",
+            ignore_auth=False,
+            timeout=None,
+            max_retries=max_retries,
+            exponential_backoff=1,
+        )
+    assert mock_get.call_count == 1
+
+    # show that retrying is enabled if timeout>0
+    assert mock_get.call_count == 1
+    with pytest.raises(TimeoutError):
+        client.conn._requests_wrapper(
+            method_name="get",
+            endpoint="test",
+            ignore_auth=False,
+            timeout=0.1,
+            max_retries=max_retries,
+            exponential_backoff=1,
+        )
+    assert mock_get.call_count == 2 + max_retries
+
+
+def test_request_timeout(client: Client):
+
+    client.conn._requests_wrapper(
+        method_name="get",
+        endpoint="labels",
+        ignore_auth=False,
+        timeout=None,
+        max_retries=0,
+        exponential_backoff=1,
+    )
+
+    with pytest.raises(ValueError) as e:
+        client.conn._requests_wrapper(
+            method_name="get",
+            endpoint="labels",
+            ignore_auth=False,
+            timeout=0,
+            max_retries=0,
+            exponential_backoff=1,
+        )
+    assert (
+        "Attempted to set connect timeout to 0, but the timeout cannot be set to a value less than or equal to 0."
+        in str(e)
+    )
 
 
 def test_get_labels(

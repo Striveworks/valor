@@ -189,6 +189,7 @@ class ClientConnection:
 
     def _requests_wrapper(
         self,
+        *_,
         method_name: str,
         endpoint: str,
         ignore_auth: bool = False,
@@ -222,6 +223,8 @@ class ClientConnection:
             raise ValueError(
                 f"method_name should be one of {accepted_methods}"
             )
+        elif method_name == "post" and max_retries != 0:
+            raise ValueError("POST requests cannot be automatically retried.")
 
         if endpoint[0] == "/":
             raise ValueError(
