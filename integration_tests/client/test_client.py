@@ -253,30 +253,17 @@ def test__requests_wrapper_retries_without_timeout(mock_get, client: Client):
     assert mock_get.call_count == 2 + max_retries
 
 
-def test_request_timeout(client: Client):
-
-    client.conn._requests_wrapper(
-        method_name="get",
-        endpoint="labels",
-        ignore_auth=False,
-        timeout=None,
-        max_retries=0,
-        exponential_backoff=1,
-    )
-
+def test__requests_wrapper_post_cannot_retry(client: Client):
     with pytest.raises(ValueError) as e:
         client.conn._requests_wrapper(
-            method_name="get",
-            endpoint="labels",
+            method_name="post",
+            endpoint="test",
             ignore_auth=False,
-            timeout=0,
-            max_retries=0,
+            timeout=0.1,
+            max_retries=2,
             exponential_backoff=1,
         )
-    assert (
-        "Attempted to set connect timeout to 0, but the timeout cannot be set to a value less than or equal to 0."
-        in str(e)
-    )
+    assert "POST requests cannot be automatically retried." in str(e)
 
 
 def test_get_labels(
