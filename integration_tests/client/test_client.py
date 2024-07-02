@@ -195,8 +195,8 @@ def test__requests_wrapper_retries(mock_requests, client: Client, monkeypatch):
                 method_name="get",
                 endpoint="test",
                 ignore_auth=False,
-                max_retries_on_timeout=max_retries,
-                initial_timeout=0.1,
+                timeout=0.1,
+                max_retries=max_retries,
                 exponential_backoff=1,
             )
 
@@ -205,8 +205,8 @@ def test__requests_wrapper_retries(mock_requests, client: Client, monkeypatch):
             method_name="get",
             endpoint="test",
             ignore_auth=False,
-            max_retries_on_timeout=max_retries,
-            initial_timeout=0.1,
+            timeout=0.1,
+            max_retries=max_retries,
             exponential_backoff=1,
         )
         assert mock_requests.call_count == 4
