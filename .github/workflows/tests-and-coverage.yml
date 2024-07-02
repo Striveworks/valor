@@ -66,9 +66,9 @@ jobs:
         run: pip install -e ".[test]"
         working-directory: ./client
       - run: coverage run --source="api/valor_api,client/valor" -m pytest -v integration_tests/client/*
-      - run:
-          if ${{ github.ref == 'refs/heads/add_llm_guided_metrics' }}
-          coverage run --source="api/valor_api,client/valor" -m pytest -v integration_tests/external/*
+      - run: |
+          if ${{ github.ref == 'refs/heads/add_llm_guided_metrics' }}; then
+            coverage run --source="api/valor_api,client/valor" -m pytest -v integration_tests/external/*
           fi
       - run: coverage report
       - name: upload coverage report as artifact
