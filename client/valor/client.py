@@ -273,36 +273,36 @@ class ClientConnection:
 
         return resp
 
-    def _requests_post_rel_host(self, endpoint: str, *args, **kwargs):
+    def _requests_post_rel_host(self, endpoint: str, *_, **kwargs):
         """
         Helper for handling POST requests.
         """
         return self._requests_wrapper(
-            method_name="post", endpoint=endpoint, *args, **kwargs
+            method_name="post", endpoint=endpoint, **kwargs
         )
 
-    def _requests_get_rel_host(self, endpoint: str, *args, **kwargs):
+    def _requests_get_rel_host(self, endpoint: str, *_, **kwargs):
         """
         Helper for handling GET requests.
         """
         return self._requests_wrapper(
-            method_name="get", endpoint=endpoint, *args, **kwargs
+            method_name="get", endpoint=endpoint, **kwargs
         )
 
-    def _requests_put_rel_host(self, endpoint: str, *args, **kwargs):
+    def _requests_put_rel_host(self, endpoint: str, *_, **kwargs):
         """
         Helper for handling PUT requests.
         """
         return self._requests_wrapper(
-            method_name="put", endpoint=endpoint, *args, **kwargs
+            method_name="put", endpoint=endpoint, **kwargs
         )
 
-    def _requests_delete_rel_host(self, endpoint: str, *args, **kwargs):
+    def _requests_delete_rel_host(self, endpoint: str, *_, **kwargs):
         """
         Helper for handling DELETE requests.
         """
         return self._requests_wrapper(
-            method_name="delete", endpoint=endpoint, *args, **kwargs
+            method_name="delete", endpoint=endpoint, **kwargs
         )
 
     def create_groundtruths(
