@@ -121,7 +121,7 @@ def test_llm_evaluation_with_mistral(
         llm_api_params={
             "client": "mistral",
             "data": {
-                "model": "mistral-large-latest",
+                "model": "mistral-large-2402",
             },
         },
     )

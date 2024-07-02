@@ -199,12 +199,13 @@ def _setup_llm_client(
     if "client" in llm_api_params and "api_url" in llm_api_params:
         raise ValueError("Cannot specify both client and api_url.")
 
-    if llm_api_params.get("client") is not None:
-        if llm_api_params["client"] == "openai":
+    client = llm_api_params.get("client")
+    if client is not None:
+        if client == "openai":
             client_cls = WrappedOpenAIClient
-        elif llm_api_params["client"] == "mistral":
+        elif client == "mistral":
             client_cls = WrappedMistralAIClient
-        elif llm_api_params["client"] == "mock":
+        elif client == "mock":
             client_cls = MockLLMClient
         else:
             raise ValueError(
@@ -216,6 +217,8 @@ def _setup_llm_client(
         )
 
     client_kwargs = {}
+    if "api_key" in llm_api_params:
+        client_kwargs["api_key"] = llm_api_params["api_key"]
     if "data" in llm_api_params:
         if not isinstance(llm_api_params["data"], dict):
             raise ValueError("data must be a dictionary.")

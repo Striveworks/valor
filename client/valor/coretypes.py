@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import datetime
 import json
+import os
 import time
 from dataclasses import asdict, dataclass
 from typing import Any, Dict, List, Optional, Tuple, Union
@@ -1063,6 +1064,28 @@ class Model(StaticCollection):
             raise ValueError(
                 f"The following metrics are not supported for text generation: '{set(metrics_to_return) - MetricType.text_generation()}'"
             )
+
+        # If no api_key is provided, check the environment variables for an api key.
+        if llm_api_params is not None:
+            if "api_key" not in llm_api_params:
+                if "client" not in llm_api_params:
+                    raise ValueError(
+                        "The client must be specified in the llm_api_params."
+                    )
+
+                if llm_api_params["client"] == "openai":
+                    api_key = os.getenv("OPENAI_API_KEY", None)
+                elif llm_api_params["client"] == "mistral":
+                    api_key = os.getenv("MISTRAL_API_KEY", None)
+                elif llm_api_params["client"] == "mock":
+                    api_key = ""
+                else:
+                    raise ValueError(
+                        "The client specified in llm_api_params is not supported."
+                    )
+
+                if api_key is not None:
+                    llm_api_params["api_key"] = api_key
 
         # format request
         datasets = datasets if isinstance(datasets, list) else [datasets]
