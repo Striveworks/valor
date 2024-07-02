@@ -28,6 +28,10 @@ def test_trim_and_load_json():
 
     assert trim_and_load_json(input) == expected
 
+    # This function should add an } if none are present.
+    input = """{"field": "value" """
+    trim_and_load_json(input)
+
     input = """{
     "verdicts": [
         {

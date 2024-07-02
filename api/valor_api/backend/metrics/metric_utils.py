@@ -578,8 +578,8 @@ def trim_and_load_json(input_string: str) -> Any:
 
     try:
         return json.loads(jsonStr)
-    except json.JSONDecodeError:
-        error_str = "Evaluation LLM outputted an invalid JSON. Please use a better evaluation model."
-        raise ValueError(error_str)
-    except Exception as e:
-        raise Exception(f"An unexpected error occurred: {str(e)}")
+    except json.JSONDecodeError as e:
+        raise ValueError(
+            "Evaluation LLM outputted an invalid JSON. Please use a better evaluation model. JSONDecodeError: "
+            + str(e)
+        )

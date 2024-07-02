@@ -5,16 +5,9 @@ from mistralai.client import MistralClient
 from mistralai.models.chat_completion import ChatMessage
 
 from valor_api.backend.metrics.metric_utils import trim_and_load_json
+from valor_api.exceptions import InvalidLLMResponseError
 
 DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant."
-
-
-class InvalidLLMResponseError(Exception):
-    """
-    Raised when the response from the LLM is invalid for a given metric computation.
-    """
-
-    pass
 
 
 def _generate_statements_instruction(text: str) -> str:
