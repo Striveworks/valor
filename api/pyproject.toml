@@ -17,6 +17,12 @@ dependencies = [
     "pydantic-settings",
     "structlog",
     "pgvector",
+    "openai",
+    "mistralai",
+    "absl-py",
+    "nltk",
+    "rouge_score",
+    "evaluate"
 ]
 
 [build-system]

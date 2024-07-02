@@ -4,6 +4,15 @@ import pytest
 from pydantic import ValidationError
 
 from valor_api import enums, schemas
+from valor_api.enums import MetricType
+
+LLM_API_PARAMS = {
+    "client": "openai",
+    "data": {
+        "seed": 2024,
+        "model": "gpt-4o-2024-05-13",
+    },
+}
 
 
 def test_EvaluationParameters():
@@ -32,6 +41,42 @@ def test_EvaluationParameters():
             [["class", "siamese cat"], ["class", "cat"]],
             [["class", "british shorthair"], ["class", "cat"]],
         ],
+    )
+
+    # If no llm-guided metrics are requested, then llm_api_params is not required.
+    schemas.EvaluationParameters(
+        task_type=enums.TaskType.TEXT_GENERATION,
+        metrics_to_return=[
+            MetricType.BLEU,
+            MetricType.ROUGE,
+        ],
+    )
+
+    # If llm-guided metrics are requested, then llm_api_params is required.
+    schemas.EvaluationParameters(
+        task_type=enums.TaskType.TEXT_GENERATION,
+        metrics_to_return=[
+            MetricType.AnswerRelevance,
+            MetricType.BLEU,
+            MetricType.Coherence,
+            MetricType.ROUGE,
+        ],
+        llm_api_params=LLM_API_PARAMS,
+    )
+
+    # Test with metric parameters
+    schemas.EvaluationParameters(
+        task_type=enums.TaskType.TEXT_GENERATION,
+        metrics_to_return=[
+            MetricType.AnswerRelevance,
+            MetricType.BLEU,
+            MetricType.Coherence,
+            MetricType.ROUGE,
+        ],
+        llm_api_params=LLM_API_PARAMS,
+        bleu_weights=[0.5, 0.25, 0.25, 0],
+        rouge_types=["rouge1", "rouge2", "rougeL"],
+        rouge_use_stemmer=True,
     )
 
     with pytest.raises(ValidationError):
@@ -75,6 +120,66 @@ def test_EvaluationParameters():
             iou_thresholds_to_compute=[0.2, "test"],  # type: ignore - purposefully throwing error
             iou_thresholds_to_return=[],
             label_map={"not a": "valid grouper"},  # type: ignore - purposefully throwing error
+        )
+
+    # For TaskType.TEXT_GENERATION, metrics_to_return must be provided.
+    with pytest.raises(ValidationError):
+        schemas.EvaluationParameters(
+            task_type=enums.TaskType.TEXT_GENERATION,
+        )
+
+    # If any llm-guided metrics are requested, then llm_api_params must be provided.
+    with pytest.raises(ValidationError):
+        schemas.EvaluationParameters(
+            task_type=enums.TaskType.TEXT_GENERATION,
+            metrics_to_return=[
+                MetricType.AnswerRelevance,
+                MetricType.BLEU,
+                MetricType.Coherence,
+                MetricType.ROUGE,
+            ],
+        )
+
+    # BLEU weights must be 0 <= weight <= 1.
+    with pytest.raises(ValidationError):
+        schemas.EvaluationParameters(
+            task_type=enums.TaskType.TEXT_GENERATION,
+            metrics_to_return=[
+                MetricType.AnswerRelevance,
+                MetricType.BLEU,
+                MetricType.Coherence,
+                MetricType.ROUGE,
+            ],
+            llm_api_params=LLM_API_PARAMS,
+            bleu_weights=[1.1, 0.3, -0.5, 0.1],
+        )
+
+    # BLEU weights must sum to 1.
+    with pytest.raises(ValidationError):
+        schemas.EvaluationParameters(
+            task_type=enums.TaskType.TEXT_GENERATION,
+            metrics_to_return=[
+                MetricType.AnswerRelevance,
+                MetricType.BLEU,
+                MetricType.Coherence,
+                MetricType.ROUGE,
+            ],
+            llm_api_params=LLM_API_PARAMS,
+            bleu_weights=[0.5, 0.25, 0.25, 0.25],
+        )
+
+    # ROUGE types must be in the following list of valid types: ["rouge1", "rouge2", "rougeL", "rougeLsum"].
+    with pytest.raises(ValidationError):
+        schemas.EvaluationParameters(
+            task_type=enums.TaskType.TEXT_GENERATION,
+            metrics_to_return=[
+                MetricType.AnswerRelevance,
+                MetricType.BLEU,
+                MetricType.Coherence,
+                MetricType.ROUGE,
+            ],
+            llm_api_params=LLM_API_PARAMS,
+            rouge_types=["rouge1", "rouge2", "rouge3"],
         )
 
 

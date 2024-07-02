@@ -25,7 +25,13 @@ GeometryType = Union[
 GeoJSONType = dict[str, str | GeometryType]
 DateTimeType = str | float
 MetadataType = dict[
-    str, bool | int | float | str | dict[str, DateTimeType | GeoJSONType]
+    str,
+    bool
+    | int
+    | float
+    | str
+    | dict[str, DateTimeType | GeoJSONType]
+    | list[str],
 ]
 
 
@@ -45,7 +51,6 @@ def _match_annotation_to_implied_task_type(
     ValueError
         If the contents of the annotation do not match an expected pattern.
     """
-
     implied_type = None
     # classification annotations have labels, but not anything else
     if (
@@ -54,6 +59,8 @@ def _match_annotation_to_implied_task_type(
         and annotation.polygon is None
         and annotation.raster is None
         and annotation.embedding is None
+        and annotation.text is None
+        and annotation.context is None
     ):
         implied_type = ["classification"]
     # object detection annotations have bounding boxes, polygons, and/or rasters
@@ -66,6 +73,8 @@ def _match_annotation_to_implied_task_type(
         )
         and annotation.is_instance is True
         and annotation.embedding is None
+        and annotation.text is None
+        and annotation.context is None
     ):
         implied_type = ["object-detection"]
     # semantic segmentation tasks only support rasters
@@ -76,6 +85,8 @@ def _match_annotation_to_implied_task_type(
         and annotation.bounding_box is None
         and annotation.polygon is None
         and annotation.embedding is None
+        and annotation.text is None
+        and annotation.context is None
     ):
         implied_type = ["semantic-segmentation"]
     # embedding tasks only support enbeddings
@@ -85,8 +96,20 @@ def _match_annotation_to_implied_task_type(
         and annotation.bounding_box is None
         and annotation.polygon is None
         and annotation.raster is None
+        and annotation.text is None
+        and annotation.context is None
     ):
         implied_type = ["embedding"]
+    # text generation tasks only support text and optionally context
+    elif (
+        annotation.text is not None
+        and not annotation.labels
+        and annotation.bounding_box is None
+        and annotation.polygon is None
+        and annotation.raster is None
+        and annotation.embedding is None
+    ):
+        implied_type = ["text-generation"]
     # empty annotations shouldn't contain anything
     elif (
         not annotation.labels
@@ -94,11 +117,13 @@ def _match_annotation_to_implied_task_type(
         and annotation.bounding_box is None
         and annotation.polygon is None
         and annotation.raster is None
+        and annotation.text is None
+        and annotation.context is None
     ):
         implied_type = ["empty"]
     else:
         raise ValueError(
-            "Input didn't match any known patterns. Classification tasks should only contain labels. Object detection tasks should contain labels and polygons, bounding boxes, or rasters with is_instance == True. Segmentation tasks should contain labels and rasters with is_instance != True."
+            "Input didn't match any known patterns. Classification tasks should only contain labels. Object detection tasks should contain labels and polygons, bounding boxes, or rasters with is_instance == True. Segmentation tasks should contain labels and rasters with is_instance != True. Text Generation tasks should only contain text and optionally context."
         )
 
     return implied_type
@@ -199,6 +224,9 @@ def _validate_prediction_annotations(annotations: list["Annotation"]) -> None:
                 labels.append(label)
                 indices[label] = index
 
+        elif "text-generation" in annotation.implied_task_types:
+            pass
+
 
 class Label(BaseModel):
     """
@@ -288,7 +316,12 @@ class Annotation(BaseModel):
     is_instance: bool, optional
         A boolean describing whether we should treat the Raster attached to an annotation as an instance segmentation or not. If set to true, then the Annotation will be validated for use in object detection tasks. If set to false, then the Annotation will be validated for use in semantic segmentation tasks.
     implied_task_types: list[str], optional
-        The validated task types that are applicable to each Annotation. Doesn't need to bet set by the user.
+        The validated task types that are applicable to each Annotation. Doesn't need to be set by the user.
+    text: str, optional
+        A piece of text to assign to the 'Annotation'.
+    context: list[str], optional
+        A list of context to assign to the 'Annotation'.
+
     """
 
     metadata: MetadataType = dict()
@@ -300,6 +333,8 @@ class Annotation(BaseModel):
     is_instance: bool | None = None
     model_config = ConfigDict(extra="forbid")
     implied_task_types: list[str] | None = None
+    text: str | None = None
+    context: list[str] | None = None
 
     @field_validator("implied_task_types")
     @classmethod
@@ -315,6 +350,7 @@ class Annotation(BaseModel):
                     "semantic-segmentation",
                     "object-detection",
                     "embedding",
+                    "text-generation",
                     "empty",
                 ]
                 for x in implied_task_types
@@ -386,11 +422,14 @@ class Datum(BaseModel):
     ----------
     uid : str
         The UID of the datum.
+    text : str
+        If the datum is a piece of text, then this field should contain the text.
     metadata : dict, optional
         A dictionary of metadata that describes the datum.
     """
 
     uid: str
+    text: str | None = None
     metadata: MetadataType = dict()
     model_config = ConfigDict(extra="forbid")
 

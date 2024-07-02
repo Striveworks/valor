@@ -39,9 +39,9 @@ class GroundTruth(StaticCollection):
 
     Attributes
     ----------
-    datum : Datum
+    datum: Datum
         The datum associated with the groundtruth.
-    annotations : List[Annotation]
+    annotations: List[Annotation]
         The list of annotations associated with the groundtruth.
 
     Examples
@@ -72,9 +72,9 @@ class GroundTruth(StaticCollection):
 
         Parameters
         ----------
-        datum : Datum
+        datum: Datum
             The datum that the ground truth is operating over.
-        annotations : List[Annotation]
+        annotations: List[Annotation]
             The list of ground truth annotations.
         """
         super().__init__(datum=datum, annotations=annotations)
@@ -93,9 +93,9 @@ class Prediction(StaticCollection):
 
     Attributes
     ----------
-    datum : Datum
+    datum: Datum
         The datum associated with the prediction.
-    annotations : List[Annotation]
+    annotations: List[Annotation]
         The list of annotations associated with the prediction.
 
     Examples
@@ -129,9 +129,9 @@ class Prediction(StaticCollection):
 
         Parameters
         ----------
-        datum : Datum
+        datum: Datum
             The datum that the prediction is operating over.
-        annotations : List[Annotation]
+        annotations: List[Annotation]
             The list of predicted annotations.
         """
         super().__init__(datum=datum, annotations=annotations)
@@ -150,19 +150,19 @@ class Evaluation:
 
         Attributes
         ----------
-        id : int
+        id: int
             The ID of the evaluation.
-        dataset_names : list[str]
+        dataset_names: list[str]
             The names of the datasets the model was evaluated over.
-        model_name : str
+        model_name: str
             The name of the evaluated model.
         filters : dict
             The filter used to select data partitions for evaluation.
-        status : EvaluationStatus
+        status: EvaluationStatus
             The status of the evaluation.
-        metrics : List[dict]
+        metrics: List[dict]
             A list of metric dictionaries returned by the job.
-        confusion_matrices : List[dict]
+        confusion_matrices: List[dict]
             A list of confusion matrix dictionaries returned by the job.
         meta: dict[str, str | float | dict], optional
             A dictionary of metadata describing the evaluation run.
@@ -243,9 +243,9 @@ class Evaluation:
 
         Parameters
         ----------
-        timeout : int, optional
+        timeout: int, optional
             Length of timeout in seconds.
-        interval : float, default=1.0
+        interval: float, default=1.0
             Polling interval in seconds.
         """
         t_start = time.time()
@@ -359,9 +359,9 @@ class Dataset(StaticCollection):
 
     Attributes
     ----------
-    name : String
+    name: String
         The name of the dataset.
-    metadata : Dictionary
+    metadata: Dictionary
         A dictionary of metadata that describes the dataset.
 
     Examples
@@ -390,11 +390,11 @@ class Dataset(StaticCollection):
 
         Parameters
         ----------
-        name : str
+        name: str
             The name of the dataset.
-        metadata : dict, optional
+        metadata: dict, optional
             A dictionary of metadata that describes the dataset.
-        connection : ClientConnection, optional
+        connection: ClientConnection, optional
             An initialized client connection.
         """
         self.conn = connection
@@ -412,11 +412,11 @@ class Dataset(StaticCollection):
 
         Parameters
         ----------
-        name : str
+        name: str
             The name of the dataset.
-        metadata : dict, optional
+        metadata: dict, optional
             A dictionary of metadata that describes the dataset.
-        connection : ClientConnection, optional
+        connection: ClientConnection, optional
             An initialized client connection.
         """
         dataset = cls(name=name, metadata=metadata, connection=connection)
@@ -434,7 +434,7 @@ class Dataset(StaticCollection):
 
         Parameters
         ----------
-        name : str
+        name: str
             The name of the dataset.
 
         Returns
@@ -453,7 +453,7 @@ class Dataset(StaticCollection):
 
         Parameters
         ----------
-        groundtruth : GroundTruth
+        groundtruth: GroundTruth
             The ground truth to create.
         """
         Client(self.conn).create_groundtruths(
@@ -471,9 +471,9 @@ class Dataset(StaticCollection):
 
         Parameters
         ----------
-        groundtruths : List[GroundTruth]
+        groundtruths: List[GroundTruth]
             The ground truths to create.
-        ignore_existing_datums : bool, default=False
+        ignore_existing_datums: bool, default=False
             If True, will ignore datums that already exist in the backend.
             If False, will raise an error if any datums already exist.
             Default is False.
@@ -607,7 +607,7 @@ class Dataset(StaticCollection):
 
         Parameters
         ----------
-        timeout : int, default=0
+        timeout: int, default=0
             Sets a timeout in seconds.
         """
         Client(self.conn).delete_dataset(self.name, timeout)  # type: ignore
@@ -619,9 +619,9 @@ class Model(StaticCollection):
 
     Attributes
     ----------
-    name : String
+    name: String
         The name of the model.
-    metadata : Dictionary
+    metadata: Dictionary
         A dictionary of metadata that describes the model.
 
     Examples
@@ -648,11 +648,11 @@ class Model(StaticCollection):
 
         Parameters
         ----------
-        name : String
+        name: String
             The name of the model.
-        metadata : Dictionary
+        metadata: Dictionary
             A dictionary of metadata that describes the model.
-        connection : ClientConnection, optional
+        connection: ClientConnection, optional
             An initialized client connection.
         """
         self.conn = connection
@@ -671,11 +671,11 @@ class Model(StaticCollection):
 
         Parameters
         ----------
-        name : str
+        name: str
             The name of the model.
-        metadata : dict, optional
+        metadata: dict, optional
             A dictionary of metadata that describes the model.
-        connection : ClientConnection, optional
+        connection: ClientConnection, optional
             An initialized client connection.
         """
         model = cls(name=name, metadata=metadata, connection=connection)
@@ -693,9 +693,9 @@ class Model(StaticCollection):
 
         Parameters
         ----------
-        name : str
+        name: str
             The name of the model.
-        connection : ClientConnnetion, optional
+        connection: ClientConnnetion, optional
             An optional Valor client object for interacting with the API.
 
         Returns
@@ -715,9 +715,9 @@ class Model(StaticCollection):
 
         Parameters
         ----------
-        dataset : valor.Dataset
+        dataset: valor.Dataset
             The dataset that is being operated over.
-        prediction : valor.Prediction
+        prediction: valor.Prediction
             The prediction to create.
         """
         Client(self.conn).create_predictions(
@@ -736,9 +736,9 @@ class Model(StaticCollection):
 
         Parameters
         ----------
-        dataset : valor.Dataset
+        dataset: valor.Dataset
             The dataset that is being operated over.
-        predictions : List[valor.Prediction]
+        predictions: List[valor.Prediction]
             The predictions to create.
         """
         Client(self.conn).create_predictions(
@@ -826,15 +826,15 @@ class Model(StaticCollection):
 
         Parameters
         ----------
-        datasets : Union[Dataset, List[Dataset]], optional
+        datasets: Union[Dataset, List[Dataset]], optional
             The dataset or list of datasets to evaluate against.
         filters : Filter, optional
             Optional set of constraints to filter evaluation by.
-        label_map : Dict[Label, Label], optional
+        label_map: Dict[Label, Label], optional
             Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
         metrics_to_return: List[MetricType], optional
             The list of metrics to compute, store, and return to the user.
-        allow_retries : bool, default = False
+        allow_retries: bool, default = False
             Option to retry previously failed evaluations.
 
         Returns
@@ -895,17 +895,17 @@ class Model(StaticCollection):
 
         Parameters
         ----------
-        datasets : Union[Dataset, List[Dataset]], optional
+        datasets: Union[Dataset, List[Dataset]], optional
             The dataset or list of datasets to evaluate against.
         filters : Filter, optional
             Optional set of constraints to filter evaluation by.
-        convert_annotations_to_type : enums.AnnotationType, optional
+        convert_annotations_to_type: enums.AnnotationType, optional
             Forces the object detection evaluation to compute over this type.
-        iou_thresholds_to_compute : List[float], optional
+        iou_thresholds_to_compute: List[float], optional
             Thresholds to compute mAP against.
-        iou_thresholds_to_return : List[float], optional
+        iou_thresholds_to_return: List[float], optional
             Thresholds to return AP for. Must be subset of `iou_thresholds_to_compute`.
-        label_map : Dict[Label, Label], optional
+        label_map: Dict[Label, Label], optional
             Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
         recall_score_threshold: float, default=0
             The confidence score threshold for use when determining whether to count a prediction as a true positive or not while calculating Average Recall.
@@ -915,7 +915,7 @@ class Model(StaticCollection):
             The IOU threshold to use when calculating precision-recall curves. Defaults to 0.5.
         pr_curve_max_examples: int, optional
             The maximum number of datum examples to store when calculating PR curves.
-        allow_retries : bool, default = False
+        allow_retries: bool, default = False
             Option to retry previously failed evaluations.
 
         Returns
@@ -979,15 +979,15 @@ class Model(StaticCollection):
 
         Parameters
         ----------
-        datasets : Union[Dataset, List[Dataset]], optional
+        datasets: Union[Dataset, List[Dataset]], optional
             The dataset or list of datasets to evaluate against.
         filters : Filter, optional
             Optional set of constraints to filter evaluation by.
-        label_map : Dict[Label, Label], optional
+        label_map: Dict[Label, Label], optional
             Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
         metrics_to_return: List[MetricType], optional
             The list of metrics to compute, store, and return to the user.
-        allow_retries : bool, default = False
+        allow_retries: bool, default = False
             Option to retry previously failed evaluations.
 
         Returns
@@ -1024,13 +1024,74 @@ class Model(StaticCollection):
             raise RuntimeError
         return evaluation[0]
 
+    def evaluate_text_generation(
+        self,
+        datasets: Union[Dataset, List[Dataset]],
+        metrics_to_return: List[MetricType],
+        filters: Optional[Filter] = None,
+        bleu_weights: Optional[list[float]] = None,
+        llm_api_params: Optional[Dict[str, Union[str, dict]]] = None,
+    ) -> Evaluation:
+        """
+        Start a classification evaluation job.
+
+        Parameters
+        ----------
+        datasets: Union[Dataset, List[Dataset]], optional
+            The dataset or list of datasets to evaluate against.
+        metrics_to_return: List[MetricType]
+            The list of metrics to compute, store, and return to the user. This is not optional for text generation evaluations.
+        filters : Filter, optional
+            Optional set of constraints to filter evaluation by.
+        bleu_weights: list[float], optional
+            The weights to use when calculating BLEU scores.
+        llm_api_params: Dict[str, Union[str,dict]], optional
+            A dictionary of parameters for the LLM API.
+
+        Returns
+        -------
+        Evaluation
+            A job object that can be used to track the status of the job and get the metrics of it upon completion.
+        """
+        if not datasets and not filters:
+            raise ValueError(
+                "Evaluation requires the definition of either datasets, dataset filters or both."
+            )
+        if metrics_to_return and not set(metrics_to_return).issubset(
+            MetricType.text_generation()
+        ):
+            raise ValueError(
+                f"The following metrics are not supported for text generation: '{set(metrics_to_return) - MetricType.text_generation()}'"
+            )
+
+        # format request
+        datasets = datasets if isinstance(datasets, list) else [datasets]
+        filters = filters if filters else Filter()
+        request = EvaluationRequest(
+            dataset_names=[dataset.name for dataset in datasets],  # type: ignore - issue #604
+            model_names=[self.name],  # type: ignore - issue #604
+            filters=filters,
+            parameters=EvaluationParameters(
+                task_type=TaskType.TEXT_GENERATION,
+                metrics_to_return=metrics_to_return,
+                bleu_weights=bleu_weights,
+                llm_api_params=llm_api_params,
+            ),
+        )
+
+        # create evaluation
+        evaluation = Client(self.conn).evaluate(request)
+        if len(evaluation) != 1:
+            raise RuntimeError
+        return evaluation[0]
+
     def delete(self, timeout: int = 0):
         """
         Delete the `Model` object from the back end.
 
         Parameters
         ----------
-        timeout : int, default=0
+        timeout: int, default=0
             Sets a timeout in seconds.
         """
         Client(self.conn).delete_model(self.name, timeout)  # type: ignore
@@ -1079,7 +1140,7 @@ class Client:
 
     Parameters
     ----------
-    connection : ClientConnection, optional
+    connection: ClientConnection, optional
         Option to use an existing connection object.
     """
 
@@ -1100,9 +1161,9 @@ class Client:
 
         Parameters
         ----------
-        host : str
+        host: str
             The host to connect to. Should start with "http://" or "https://".
-        access_token : str
+        access_token: str
             The access token for the host (if the host requires authentication).
         """
         connect(host=host, access_token=access_token, reconnect=reconnect)
@@ -1138,7 +1199,7 @@ class Client:
 
         Parameters
         ----------
-        dataset : valor.Dataset
+        dataset: valor.Dataset
             The dataset to search by.
 
         Returns
@@ -1160,7 +1221,7 @@ class Client:
 
         Parameters
         ----------
-        model : valor.Model
+        model: valor.Model
             The model to search by.
 
         Returns
@@ -1183,7 +1244,7 @@ class Client:
 
         Parameters
         ----------
-        dataset : valor.Dataset
+        dataset: valor.Dataset
             The dataset to create.
         """
         if isinstance(dataset, Dataset):
@@ -1202,11 +1263,11 @@ class Client:
         Parameters
         ----------
 
-        dataset : valor.Dataset
+        dataset: valor.Dataset
             The dataset to create the ground truth for.
-        groundtruths : List[valor.GroundTruth]
+        groundtruths: List[valor.GroundTruth]
             The ground truths to create.
-        ignore_existing_datums : bool, default=False
+        ignore_existing_datums: bool, default=False
             If True, will ignore datums that already exist in the backend.
             If False, will raise an error if any datums already exist.
             Default is False.
@@ -1267,7 +1328,7 @@ class Client:
 
         Parameters
         ----------
-        dataset : str
+        dataset: str
             The dataset to be finalized.
         """
         dataset_name = (
@@ -1284,7 +1345,7 @@ class Client:
 
         Parameters
         ----------
-        name : str
+        name: str
             The name of the dataset to fetch.
 
         Returns
@@ -1358,9 +1419,9 @@ class Client:
         `GET` endpoint.
         Parameters
         ----------
-        dataset : valor.Dataset
+        dataset: valor.Dataset
             The dataset the datum belongs to.
-        uid : str
+        uid: str
             The UID of the datum.
         Returns
         -------
@@ -1382,7 +1443,7 @@ class Client:
 
         Parameters
         ----------
-        name : str
+        name: str
             The name of the dataset we want to fetch the state of.
 
         Returns
@@ -1403,7 +1464,7 @@ class Client:
 
         Parameters
         ----------
-        name : str
+        name: str
             The name of the dataset to create a summary for.
 
         Returns
@@ -1419,9 +1480,9 @@ class Client:
 
         Parameters
         ----------
-        name : str
+        name: str
             The name of the dataset to be deleted.
-        timeout : int
+        timeout: int
             The number of seconds to wait in order to confirm that the dataset was deleted.
         """
         self.conn.delete_dataset(name)
@@ -1446,7 +1507,7 @@ class Client:
 
         Parameters
         ----------
-        model : valor.Model
+        model: valor.Model
             The model to create.
         """
         if isinstance(model, Model):
@@ -1464,11 +1525,11 @@ class Client:
 
         Parameters
         ----------
-        dataset : valor.Dataset
+        dataset: valor.Dataset
             The dataset that is being operated over.
-        model : valor.Model
+        model: valor.Model
             The model making the prediction.
-        predictions : List[valor.Prediction]
+        predictions: List[valor.Prediction]
             The predictions to create.
         """
         predictions_json = []
@@ -1547,7 +1608,7 @@ class Client:
 
         Parameters
         ----------
-        name : str
+        name: str
             The name of the model to fetch.
 
         Returns
@@ -1596,9 +1657,9 @@ class Client:
 
         Parameters
         ----------
-        dataset_name : str
+        dataset_name: str
             The name of the dataset that the model is operating over.
-        model_name : str
+        model_name: str
             The name of the model we want to fetch the state of.
 
         Returns
@@ -1625,7 +1686,7 @@ class Client:
 
         Parameters
         ----------
-        model : str
+        model: str
             The model to search by.
 
         Returns
@@ -1645,9 +1706,9 @@ class Client:
 
         Parameters
         ----------
-        name : str
+        name: str
             The name of the model to be deleted.
-        timeout : int
+        timeout: int
             The number of seconds to wait in order to confirm that the model was deleted.
         """
         self.conn.delete_model(name)
@@ -1678,11 +1739,11 @@ class Client:
 
         Parameters
         ----------
-        evaluation_ids : List[int], optional.
+        evaluation_ids: List[int], optional.
             A list of job IDs to return metrics for.
-        models : Union[List[valor.Model], List[str]], optional
+        models: Union[List[valor.Model], List[str]], optional
             A list of model names that we want to return metrics for.
-        datasets : Union[List[valor.Dataset], List[str]], optional
+        datasets: Union[List[valor.Dataset], List[str]], optional
             A list of dataset names that we want to return metrics for.
         metrics_to_sort_by: dict[str, str | dict[str, str]], optional
             An optional dict of metric types to sort the evaluations by.
@@ -1720,9 +1781,9 @@ class Client:
 
         Parameters
         ----------
-        request : schemas.EvaluationRequest
+        request: schemas.EvaluationRequest
             The requested evaluation parameters.
-        allow_retries : bool, default = False
+        allow_retries: bool, default = False
             Option to retry previously failed evaluations.
 
         Returns
@@ -1743,9 +1804,9 @@ class Client:
 
         Parameters
         ----------
-        evaluation_id : int
+        evaluation_id: int
             The id of the evaluation to be deleted.
-        timeout : int
+        timeout: int
             The number of seconds to wait in order to confirm that the model was deleted.
         """
         self.conn.delete_evaluation(evaluation_id)

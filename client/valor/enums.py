@@ -17,6 +17,7 @@ class TaskType(str, Enum):
     OBJECT_DETECTION = "object-detection"
     SEMANTIC_SEGMENTATION = "semantic-segmentation"
     EMBEDDING = "embedding"
+    TEXT_GENERATION = "text-generation"
 
 
 class TableStatus(str, Enum):
@@ -50,6 +51,10 @@ class MetricType(str, Enum):
     mIOU = "mIOU"
     PrecisionRecallCurve = "PrecisionRecallCurve"
     DetailedPrecisionRecallCurve = "DetailedPrecisionRecallCurve"
+    AnswerRelevance = "AnswerRelevance"
+    BLEU = "BLEU"
+    Coherence = "Coherence"
+    ROUGE = "ROUGE"
 
     @classmethod
     def classification(cls) -> Set["MetricType"]:
@@ -90,4 +95,16 @@ class MetricType(str, Enum):
         return {
             cls.IOU,
             cls.mIOU,
+        }
+
+    @classmethod
+    def text_generation(cls) -> Set["MetricType"]:
+        """
+        MetricTypes for text-generation tasks.
+        """
+        return {
+            cls.AnswerRelevance,
+            cls.BLEU,
+            cls.Coherence,
+            cls.ROUGE,
         }

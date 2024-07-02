@@ -37,6 +37,17 @@ If we're missing an important metric for your particular use case, please [write
 | Intersection Over Union (IOU) | A ratio between the groundtruth and predicted regions of an image, measured as a percentage, grouped by class. |$\dfrac{area( prediction \cap groundtruth )}{area( prediction \cup groundtruth )}$ |
 | Mean IOU 	| The average of IOU across labels, grouped by label key. | $\dfrac{1}{\text{number of labels}} \sum\limits_{label \in labels} IOU_{c}$ |
 
+
+## Text Generation Metrics
+
+| Name | Description | Equation |
+| :- | :- | :- |
+| Answer Relevance 	| The number of statements in the answer that are relevant to the query, divided by the total number of statements in the answer | See [appendix](#answer-relevance) for details. |
+| Coherence | Rates the coherence of a textual summary relative to some source text using a score from 1 to 5, where 5 means "This summary is extremely coherent based on the information provided in the source text". | See [appendix](#coherence) for details. |
+| ROUGE | A score between 0 and 1 indicating how often the words in the ground truth string appeared in the predicted string (i.e., measuring recall). | See [appendix](#rouge) for details. |
+| BLEU | A score between 0 and 1 indicating how much the predicted string matches the ground truth string (i.e., measuring precision), with a penalty for brevity. | See [appendix](#bleu) for details. |
+
+
 # Appendix: Metric Calculations
 
 ## Binary ROC AUC
@@ -283,3 +294,51 @@ print(detailed_evaluation)
     }
 }]
 ```
+
+## Text Generation Metrics
+
+## General Text Generation Metrics
+
+### Coherence
+
+Coherence is a measure, on a scale of 1 to 5, of the collective quality of all sentences for a piece of text, with 5 indicating the highest coherence. There coherence of a piece of text is evaluated soley based on the text, without any reference to the query or any context. Because of this, the coherence metric can be applied to any text generation task.
+
+Our implementation of the coherence metric uses an instruction that was adapted from appendix A of DeepEval's paper G-EVAL: NLG Evaluation using GPT-4 with Better Human Alignment (https://arxiv.org/pdf/2303.16634). While DeepEval's instruction and evaluation process was specific to summarization tasks, we generalized the instruction to apply to any text generation task. Most crucially, we removed the reference to the query in the instruction.
+
+## Q&A Metrics
+
+### Answer Relevance
+
+Answer relevance is the number of statements in the answer that are relevant to the query, divided by the total number of statements in the answer. This metric is used to evaluate the relevance of the answer to the query. The answer relevance metric can be applied to any text generation task, but it is particularly useful for evaluating question-answering tasks.
+
+Our implementation closely follows DeepEval's implementation https://github.com/confident-ai/deepeval/tree/main/deepeval/metrics/answer_relevancy. We use the same two step prompting strategy and the same instructions.
+
+## Summary Metrics
+
+None implemented currently.
+
+## Text Comparison Metrics
+
+### ROUGE
+
+ROUGE, or Recall-Oriented Understudy for Gisting Evaluation, is a set of metrics used for evaluating automatic summarization and machine translation software in natural language processing. The metrics compare an automatically produced summary or translation against a reference or a set of references (human-produced) summary or translation. ROUGE metrics range between 0 and 1, with higher scores indicating higher similarity between the automatically produced summary and the reference.
+
+In Valor, the ROUGE output value is a dictionary containing the following elements:
+
+```python
+{
+    "rouge1": 0.18, # unigram-based similarity scoring
+    "rouge2": 0.08, # bigram-based similarity scoring
+    "rougeL": 0.18, # similarity scoring based on sentences (i.e., splitting on "." and ignoring "\n")
+    "rougeLsum": 0.18, # similarity scoring based on splitting the text using "\n"
+}
+```
+
+Behind the scenes, we use [Hugging Face's `evaluate` package](https://huggingface.co/spaces/evaluate-metric/rouge) to calculate these scores. Users can pass `rouge_types` and `use_stemmer` to EvaluationParameters in order to gain access to additional functionality from this package.
+
+
+### BLEU
+
+BLEU (bilingual evaluation understudy) is an algorithm for evaluating automatic summarization and machine translation software in natural language processing. BLEU's output is always a number between 0 and 1, where a score near 1 indicates that the hypothesis text is very similar to one or more of the reference texts.
+
+Behind the scenes, we use [nltk.translate.bleu_score](https://www.nltk.org/_modules/nltk/translate/bleu_score.html) to calculate these scores. The default BLEU metric calculates a score for up to 4-grams using uniform weights (i.e., `weights=[.25, .25, .25, .25]`; also called BLEU-4). Users can pass their own `bleu_weights` to EvaluationParameters in order to change this default behavior and calculate other BLEU scores.

@@ -28,9 +28,12 @@ from .geometry import (
 from .info import APIVersion
 from .metrics import (
     AccuracyMetric,
+    AnswerRelevanceMetric,
     APMetric,
     APMetricAveragedOverIOUs,
     ARMetric,
+    BLEUMetric,
+    CoherenceMetric,
     ConfusionMatrix,
     ConfusionMatrixEntry,
     ConfusionMatrixResponse,
@@ -42,6 +45,7 @@ from .metrics import (
     PrecisionRecallCurve,
     RecallMetric,
     ROCAUCMetric,
+    ROUGEMetric,
     mAPMetric,
     mAPMetricAveragedOverIOUs,
     mARMetric,
@@ -115,5 +119,9 @@ __all__ = [
     "SupportedSymbol",
     "Health",
     "Readiness",
+    "ROUGEMetric",
+    "BLEUMetric",
     "DatasetSummary",
+    "AnswerRelevanceMetric",
+    "CoherenceMetric",
 ]

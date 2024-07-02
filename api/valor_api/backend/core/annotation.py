@@ -68,6 +68,7 @@ def _create_annotation(
     polygon = None
     raster = None
     embedding_id = None
+    context = None
 
     if annotation.bounding_box:
         box = annotation.bounding_box.to_wkt()
@@ -77,6 +78,11 @@ def _create_annotation(
         raster = annotation.raster.to_psql()
     if annotation.embedding:
         embedding_id = _create_embedding(db=db, value=annotation.embedding)
+    if annotation.context:
+        if isinstance(annotation.context, str):
+            context = [annotation.context]
+        else:
+            context = annotation.context
 
     mapping = {
         "datum_id": datum.id,
@@ -86,6 +92,8 @@ def _create_annotation(
         "polygon": polygon,
         "raster": raster,
         "embedding_id": embedding_id,
+        "text": annotation.text,
+        "context": context,
         "is_instance": annotation.is_instance,
         "implied_task_types": annotation.implied_task_types,
     }
@@ -286,6 +294,8 @@ def get_annotation(
         polygon=polygon,
         raster=raster,
         embedding=embedding,
+        text=annotation.text,
+        context=annotation.context,
         is_instance=annotation.is_instance,
         implied_task_types=annotation.implied_task_types,
     )

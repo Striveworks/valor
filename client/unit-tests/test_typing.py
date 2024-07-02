@@ -10,6 +10,7 @@ from valor import (
     Prediction,
 )
 from valor.schemas import Box, Dictionary, Float, List, Polygon, Raster, String
+from valor.schemas.symbolic.types import List as SymbolicList
 
 
 def test_label_typing():
@@ -39,6 +40,8 @@ def test_annotation_typing():
     assert type(Annotation.bounding_box) is Box
     assert type(Annotation.polygon) is Polygon
     assert type(Annotation.raster) is Raster
+    assert type(Annotation.text) is String
+    assert type(Annotation.context) is SymbolicList[String]
 
     annotation = Annotation(
         labels=[],
@@ -48,6 +51,8 @@ def test_annotation_typing():
     assert annotation.bounding_box is None
     assert annotation.polygon is None
     assert annotation.raster is None
+    assert annotation.text is None
+    assert annotation.context is None
 
     bbox = Box.from_extrema(0, 1, 0, 1)
     polygon = Polygon([bbox.boundary])
@@ -64,19 +69,41 @@ def test_annotation_typing():
     assert type(annotation.bounding_box) is Box
     assert type(annotation.polygon) is Polygon
     assert type(annotation.raster) is Raster
+    assert annotation.text is None
+    assert annotation.context is None
+
+    text = "Example text."
+    context = ["context 1", "context 2"]
+    annotation = Annotation(
+        metadata={},
+        text=text,
+        context=context,
+    )
+
+    assert type(annotation.labels) is List[Label]
+    assert type(annotation.metadata) is Dictionary
+    assert annotation.bounding_box is None
+    assert annotation.polygon is None
+    assert annotation.raster is None
+    assert type(annotation.text) is str
+    assert type(annotation.context) is SymbolicList[String]
 
 
 def test_datum_typing():
     assert type(Datum.uid) is String
     assert type(Datum.metadata) is Dictionary
+    assert type(Datum.text) is String
 
     datum = Datum(uid="test")
     assert type(datum.uid) is str
     assert type(datum.metadata) is Dictionary
+    assert datum.text is None
 
-    datum = Datum(uid="test", metadata={})
+    text = "Example text."
+    datum = Datum(uid="test", text=text, metadata={})
     assert type(datum.uid) is str
     assert type(datum.metadata) is Dictionary
+    assert type(datum.text) is str
 
 
 def test_groundtruth_typing():

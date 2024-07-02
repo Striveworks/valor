@@ -55,6 +55,7 @@ class TaskType(str, Enum):
     OBJECT_DETECTION = "object-detection"
     SEMANTIC_SEGMENTATION = "semantic-segmentation"
     EMBEDDING = "embedding"
+    TEXT_GENERATION = "text-generation"
 
 
 class TableStatus(str, Enum):
@@ -116,7 +117,6 @@ class EvaluationStatus(str, Enum):
 
 
 class MetricType(str, Enum):
-
     Accuracy = ("Accuracy",)
     Precision = ("Precision",)
     Recall = ("Recall",)
@@ -132,3 +132,7 @@ class MetricType(str, Enum):
     mIOU = "mIOU"
     PrecisionRecallCurve = "PrecisionRecallCurve"
     DetailedPrecisionRecallCurve = "DetailedPrecisionRecallCurve"
+    AnswerRelevance = "AnswerRelevance"
+    Coherence = "Coherence"
+    ROUGE = "ROUGE"
+    BLEU = "BLEU"

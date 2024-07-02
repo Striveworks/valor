@@ -80,11 +80,19 @@ def create_groundtruths(
         groundtruths, annotation_ids
     ):
         for i, annotation in enumerate(groundtruth.annotations):
-            for label in annotation.labels:
+            if annotation.labels:
+                for label in annotation.labels:
+                    groundtruth_mappings.append(
+                        {
+                            "annotation_id": annotation_ids_per_groundtruth[i],
+                            "label_id": label_dict[(label.key, label.value)],
+                        }
+                    )
+            else:
                 groundtruth_mappings.append(
                     {
                         "annotation_id": annotation_ids_per_groundtruth[i],
-                        "label_id": label_dict[(label.key, label.value)],
+                        "label_id": None,
                     }
                 )
 
