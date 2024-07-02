@@ -511,6 +511,9 @@ def test_text_generation(
                     "model": "gpt-4o-2024-05-13",
                 },
             },
+            bleu_weights=[0.25, 0.25, 0.25, 0.25],
+            rouge_types=["rouge1", "rouge2", "rougeL", "rougeLsum"],
+            rouge_use_stemmer=False,
         ),
     )
 
