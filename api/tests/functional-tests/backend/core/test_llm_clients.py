@@ -143,9 +143,6 @@ def test_LLMClient(monkeypatch):
         else:
             raise ValueError
 
-    def _return_invalid1_coherence_response(*args, **kwargs):
-        return "2.5"
-
     def _return_invalid2_coherence_response(*args, **kwargs):
         return "0"
 

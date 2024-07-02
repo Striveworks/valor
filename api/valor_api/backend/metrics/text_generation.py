@@ -62,7 +62,7 @@ def _calculate_rouge_scores(
     """
     if not predictions or not references or isinstance(references, str):
         raise ValueError(
-            "Received incorrect inputs. predictions should be a string, references a list of strings, and weights a list/tuple of floats"
+            "Received incorrect inputs. predictions should be a string and references a list of strings"
         )
 
     rouge = evaluate.load("rouge")
@@ -494,8 +494,9 @@ def compute_text_generation_metrics(
     groundtruth_filter = datum_filter.model_copy()
     parameters = schemas.EvaluationParameters(**evaluation.parameters)
 
-    if parameters.metrics_to_return is None:
-        raise ValueError("metrics_to_return must be provided.")
+    assert (
+        parameters.metrics_to_return
+    ), "This will never be None. EvaluationParameters sets metrics_to_return during validation if it is None."
 
     log_evaluation_item_counts(
         db=db,

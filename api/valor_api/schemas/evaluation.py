@@ -102,6 +102,10 @@ class EvaluationParameters(BaseModel):
                     raise ValueError(
                         "Text generation does not have default metrics. Please specify metrics_to_return."
                     )
+                case _:
+                    raise NotImplementedError(
+                        f"Task type `{values.task_type}` is unsupported."
+                    )
 
         match values.task_type:
             case TaskType.CLASSIFICATION | TaskType.SEMANTIC_SEGMENTATION:

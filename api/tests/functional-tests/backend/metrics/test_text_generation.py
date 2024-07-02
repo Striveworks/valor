@@ -296,20 +296,105 @@ def test__compute_text_generation(
         )
 
     # Test that mistral is accepted as a valid client.
-    metrics_to_return = [enums.MetricType.AnswerRelevance]
-
     _ = _compute_text_generation_metrics(
         db,
         datum_filter=datum_filter,
         prediction_filter=prediction_filter,
-        metrics_to_return=metrics_to_return,
+        metrics_to_return=[enums.MetricType.AnswerRelevance],
         llm_api_params={
             "client": "mistral",
             "data": {
                 "model": "mistral-small-latest",
             },
         },
+        metric_params={
+            "BLEU": {
+                "weights": [0.5, 0.25, 0.25, 0],
+            },
+            "ROUGE": {
+                "rouge_types": ["rouge1", "rouge2", "rougeL"],
+                "use_stemmer": True,
+            },
+        },
     )
+
+    # Test that manually specifying the api key works.
+    _ = _compute_text_generation_metrics(
+        db,
+        datum_filter=datum_filter,
+        prediction_filter=prediction_filter,
+        metrics_to_return=metrics_to_return,
+        llm_api_params={
+            "client": "openai",
+            "api_key": "test_key",
+            "data": {
+                "seed": 2024,
+                "model": "gpt-4o-2024-05-13",
+            },
+        },
+    )
+
+    # Test the mock client.
+    _ = _compute_text_generation_metrics(
+        db,
+        datum_filter=datum_filter,
+        prediction_filter=prediction_filter,
+        metrics_to_return=metrics_to_return,
+        llm_api_params={
+            "client": "mock",
+            "data": {
+                "model": "some model",
+            },
+        },
+    )
+
+    # Need to specify the client or api_url (api_url has not been implemented)
+    with pytest.raises(ValueError):
+        _compute_text_generation_metrics(
+            db,
+            datum_filter=datum_filter,
+            prediction_filter=prediction_filter,
+            metrics_to_return=metrics_to_return,
+            llm_api_params={
+                "data": {
+                    "seed": 2024,
+                    "model": "gpt-4o-2024-05-13",
+                },
+            },
+        )
+
+    # Cannot specify both a client and api_url.
+    with pytest.raises(ValueError):
+        _compute_text_generation_metrics(
+            db,
+            datum_filter=datum_filter,
+            prediction_filter=prediction_filter,
+            metrics_to_return=metrics_to_return,
+            llm_api_params={
+                "client": "openai",
+                "api_url": "openai.com",
+                "data": {
+                    "seed": 2024,
+                    "model": "gpt-4o-2024-05-13",
+                },
+            },
+        )
+
+    # Support is not implemented for api_url.
+    with pytest.raises(NotImplementedError):
+        _compute_text_generation_metrics(
+            db,
+            datum_filter=datum_filter,
+            prediction_filter=prediction_filter,
+            metrics_to_return=metrics_to_return,
+            llm_api_params={
+                "api_url": "openai.com",
+                "data": {
+                    "seed": 2024,
+                    "model": "gpt-4o-2024-05-13",
+                },
+            },
+        )
 
     # Test that an invalid client raises an error.
     with pytest.raises(ValueError):
@@ -324,6 +409,66 @@ def test__compute_text_generation(
                     "model": "model",
                 },
             },
+        )
+
+    # data should be a dictionary.
+    with pytest.raises(ValueError):
+        _compute_text_generation_metrics(
+            db,
+            datum_filter=datum_filter,
+            prediction_filter=prediction_filter,
+            metrics_to_return=metrics_to_return,
+            llm_api_params={
+                "client": "openai",
+                "data": "gpt-4o-2024-05-13",
+            },
+        )
+
+    # BLEU metric parameters should be a dictionary.
+    with pytest.raises(ValueError):
+        _compute_text_generation_metrics(
+            db,
+            datum_filter=datum_filter,
+            prediction_filter=prediction_filter,
+            metrics_to_return=metrics_to_return,
+            llm_api_params={
+                "client": "openai",
+                "data": {
+                    "seed": 2024,
+                    "model": "gpt-4o-2024-05-13",
+                },
+            },
+            metric_params={
+                "BLEU": [0.25, 0.25, 0.25, 0.25],
+            },
+        )
+
+    # ROUGE metric parameters should be a dictionary.
+    with pytest.raises(ValueError):
+        _compute_text_generation_metrics(
+            db,
+            datum_filter=datum_filter,
+            prediction_filter=prediction_filter,
+            metrics_to_return=metrics_to_return,
+            llm_api_params={
+                "client": "openai",
+                "data": {
+                    "seed": 2024,
+                    "model": "gpt-4o-2024-05-13",
+                },
+            },
+            metric_params={
+                "ROUGE": ["use_stemmer"],
+            },
+        )
+
+    # If an llm-guided metric is requested, then llm_api_params must be specified.
+    with pytest.raises(ValueError):
+        _compute_text_generation_metrics(
+            db,
+            datum_filter=datum_filter,
+            prediction_filter=prediction_filter,
+            metrics_to_return=metrics_to_return,
         )
 
 
@@ -764,6 +909,12 @@ def test__calculate_bleu_scores():
             "weights": None,
             "error": ValueError,
         },  # weights shouldn't be None
+        {
+            "prediction": 0.3,
+            "references": ["Mary loves Joe"],
+            "weights": (1,),
+            "error": ValueError,
+        },  # prediction should be a string or list of strings
     ]
 
     for example in examples:
