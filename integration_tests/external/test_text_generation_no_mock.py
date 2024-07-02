@@ -36,7 +36,6 @@ def test_llm_evaluation_with_openai(
     dataset_name: str,
     model_name: str,
 ):
-    raise NotImplementedError
     dataset = Dataset.create(dataset_name)
     model = Model.create(model_name)
 
