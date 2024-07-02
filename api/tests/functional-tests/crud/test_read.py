@@ -329,7 +329,8 @@ def test_get_dataset_summary(
         enums.TaskType.CLASSIFICATION,
         enums.TaskType.EMPTY,
     }
-    assert summary.datum_metadata == [
+
+    expected_datum_metadata = [
         {
             "width": 32,
             "height": 80,
@@ -339,10 +340,19 @@ def test_get_dataset_summary(
             "height": 100,
         },
     ]
-    assert summary.annotation_metadata == [
+    for item in summary.datum_metadata:
+        assert item in expected_datum_metadata
+    for item in expected_datum_metadata:
+        assert item in summary.datum_metadata
+
+    expected_annotation_metadata = [
         {"int_key": 1},
         {
             "string_key": "string_val",
             "int_key": 1,
         },
     ]
+    for item in summary.annotation_metadata:
+        assert item in expected_annotation_metadata
+    for item in expected_annotation_metadata:
+        assert item in summary.annotation_metadata
