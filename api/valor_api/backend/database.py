@@ -27,6 +27,13 @@ engine = create_engine(SQLALCHEMY_DATABASE_URL)
 
 
 def vacuum_analyze():
+    """
+    Performs a `VACUUM ANALYZE` on the PostgreSQL database.
+
+    This command is used to clean up and optimize the database by reclaiming
+    storage and updating statistics used by the query planner to improve
+    query performance.
+    """
     pconn = None
     pcur = None
     try:
