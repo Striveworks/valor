@@ -65,9 +65,12 @@ jobs:
       - name: install client
         run: pip install -e ".[test]"
         working-directory: ./client
-      - run: coverage run --source="api/valor_api,client/valor" -m pytest -v integration_tests/client/*
-      - run: |
+      - name: run integration tests
+        run: coverage run --source="api/valor_api,client/valor" -m pytest -v integration_tests/client/*
+      - name: run external integration tests
+        run: |
           if ${{ github.ref == 'refs/heads/add_llm_guided_metrics' }}; then
+            echo "run external integration tests"
             coverage run --source="api/valor_api,client/valor" -m pytest -v integration_tests/external/*
           fi
       - run: coverage report
