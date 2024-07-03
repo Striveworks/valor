@@ -772,13 +772,34 @@
 <p>Valor also includes a more detailed version of <code>PrecisionRecallCurve</code> which can be useful for debugging your model's false positives and false negatives. When calculating <code>DetailedPrecisionCurve</code>, Valor will classify false positives as either <code>hallucinations</code> or <code>misclassifications</code> and your false negatives as either <code>missed_detections</code> or <code>misclassifications</code> using the following logic:</p>
 <h4 id="classification-tasks_1">Classification Tasks</h4>
 <ul>
-<li>A <strong>false positive</strong> is a <code>misclassification</code> if there is a qualified prediction (with <code>score &gt;= score_threshold</code>) with the same <code>Label.key</code> as the groundtruth on the datum, but the <code>Label.value</code> is incorrect. For example: if there's a photo with one groundtruth label on it (e.g., <code>Label(key='animal', value='dog')</code>), and we predicted another label value (e.g., <code>Label(key='animal', value='cat')</code>) on that datum, we'd say it's a <code>misclassification</code> since the key was correct but the value was not. Any false positives that do not meet this criteria are considered to be <code>hallucinations</code>.</li>
-<li>Similarly, a <strong>false negative</strong> is a <code>misclassification</code> if there is a prediction with the same <code>Label.key</code> as the groundtruth on the datum, but the <code>Label.value</code> is incorrect. Any false negatives that do not meet this criteria are considered to be <code>missed_detections</code>.</li>
+<li>A <strong>false positive</strong> occurs when there is a qualified prediction (with <code>score &gt;= score_threshold</code>) with the same <code>Label.key</code> as the groundtruth on the datum, but the <code>Label.value</code> is incorrect.<ul>
+<li><strong>Example</strong>: if there's a photo with one groundtruth label on it (e.g., <code>Label(key='animal', value='dog')</code>), and we predicted another label value (e.g., <code>Label(key='animal', value='cat')</code>) on that datum, we'd say it's a <code>misclassification</code> since the key was correct but the value was not.</li>
+</ul>
+</li>
+<li>Similarly, a <strong>false negative</strong> occurs when there is a prediction with the same <code>Label.key</code> as the groundtruth on the datum, but the <code>Label.value</code> is incorrect.<ul>
+<li>Stratifications of False Negatives:<ul>
+<li><code>misclassification</code>: Occurs when a different label value passes the score threshold.</li>
+<li><code>no_predictions</code>: Occurs when no label passes the score threshold.</li>
+</ul>
+</li>
+</ul>
+</li>
 </ul>
 <h4 id="object-detection-tasks">Object Detection Tasks</h4>
 <ul>
-<li>A <strong>false positive</strong> is a <code>misclassification</code> if a) there is a qualified prediction with the same <code>Label.key</code> as the groundtruth on the datum, but the <code>Label.value</code> is incorrect, and b) the qualified prediction and groundtruth have an IOU &gt;= <code>pr_curve_iou_threshold</code>. For example: if there's a photo with one groundtruth label on it (e.g., <code>Label(key='animal', value='dog')</code>), and we predicted another bounding box directly over that same object (e.g., <code>Label(key='animal', value='cat')</code>), we'd say it's a <code>misclassification</code>. Any false positives that do not meet this criteria are considered to be <code>hallucinations</code>.</li>
-<li>A <strong>false negative</strong> is determined to be a <code>misclassification</code> if the two criteria above are met: a) there is a qualified prediction with the same <code>Label.key</code> as the groundtruth on the datum, but the <code>Label.value</code> is incorrect, and b) the qualified prediction and groundtruth have an IOU &gt;= <code>pr_curve_iou_threshold</code>. Any false negatives that do not meet this criteria are considered to be <code>missed_detections</code>.</li>
+<li>A <strong>false positive</strong> is a <code>misclassification</code> if the following conditions are met:<ol>
+<li>There is a qualified prediction with the same <code>Label.key</code> as the groundtruth on the datum, but the <code>Label.value</code> is incorrect</li>
+<li>The qualified prediction and groundtruth have an IOU &gt;= <code>pr_curve_iou_threshold</code>.</li>
+</ol>
+</li>
+<li>A <strong>false positive</strong> that does not meet the <code>misclassification</code> criteria is considered to be a part of the <code>hallucinations</code> set.</li>
+<li>A <strong>false negative</strong> is determined to be a <code>misclassification</code> if the following criteria are met:<ol>
+<li>There is a qualified prediction with the same <code>Label.key</code> as the groundtruth on the datum, but the <code>Label.value</code> is incorrect.</li>
+<li>The qualified prediction and groundtruth have an IOU &gt;= <code>pr_curve_iou_threshold</code>.</li>
+</ol>
+</li>
+<li>For a <strong>false negative</strong> that does not meet this criteria, we consider it to have <code>no_predictions</code>.</li>
+<li><strong>Example</strong>: if there's a photo with one groundtruth label on it (e.g., <code>Label(key='animal', value='dog')</code>), and we predicted another bounding box directly over that same object (e.g., <code>Label(key='animal', value='cat')</code>), we'd say it's a <code>misclassification</code>.</li>
 </ul>
 <p>The <code>DetailedPrecisionRecallOutput</code> also includes up to <code>n</code> examples of each type of error, where <code>n</code> is set using <code>pr_curve_max_examples</code>. An example output is as follows:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a href="#__codelineno-3-1" id="__codelineno-3-1" name="__codelineno-3-1"></a><span class="c1"># To retrieve more detailed examples for each `fn`, `fp`, and `tp`, look at the `DetailedPrecisionRecallCurve` metric</span>
