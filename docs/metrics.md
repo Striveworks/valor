@@ -226,15 +226,15 @@ Valor also includes a more detailed version of `PrecisionRecallCurve` which can 
         - `no_predictions`: Occurs when no label passes the score threshold.
 
 #### Object Detection Tasks
-    - A **false positive** is a `misclassification` if the following conditions are met:
-        1. There is a qualified prediction with the same `Label.key` as the groundtruth on the datum, but the `Label.value` is incorrect
-        2. The qualified prediction and groundtruth have an IOU >= `pr_curve_iou_threshold`.
-        - For example: if there's a photo with one groundtruth label on it (e.g., `Label(key='animal', value='dog')`), and we predicted another bounding box directly over that same object (e.g., `Label(key='animal', value='cat')`), we'd say it's a `misclassification`.
-    - Any false positives that do not meet this criteria are considered to be `hallucinations`.
-    - A **false negative** is determined to be a `misclassification` if the following criteria are met:
-        1. There is a qualified prediction with the same `Label.key` as the groundtruth on the datum, but the `Label.value` is incorrect.
-        2. The qualified prediction and groundtruth have an IOU >= `pr_curve_iou_threshold`.
-    - For false negatives that do not meet this criteria, we consider these datums to have `no_predictions`.
+  - A **false positive** is a `misclassification` if the following conditions are met:
+    1. There is a qualified prediction with the same `Label.key` as the groundtruth on the datum, but the `Label.value` is incorrect
+    2. The qualified prediction and groundtruth have an IOU >= `pr_curve_iou_threshold`.
+  - A **false positive** that does not meet the `misclassification` criteria is considered to be a part of the `hallucinations` set.
+  - A **false negative** is determined to be a `misclassification` if the following criteria are met:
+    1. There is a qualified prediction with the same `Label.key` as the groundtruth on the datum, but the `Label.value` is incorrect.
+    2. The qualified prediction and groundtruth have an IOU >= `pr_curve_iou_threshold`.
+  - For a **false negative** that does not meet this criteria, we consider it to have `no_predictions`.
+  - **Example**: if there's a photo with one groundtruth label on it (e.g., `Label(key='animal', value='dog')`), and we predicted another bounding box directly over that same object (e.g., `Label(key='animal', value='cat')`), we'd say it's a `misclassification`.
 
 The `DetailedPrecisionRecallOutput` also includes up to `n` examples of each type of error, where `n` is set using `pr_curve_max_examples`. An example output is as follows:
 
