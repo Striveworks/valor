@@ -95,3 +95,33 @@ def test_label_equality():
     eq3 = label1 == label4
     assert type(eq3) == bool
     assert not eq3
+
+
+def test_label_score():
+    label1 = Label(key="test", value="value", score=0.5)
+    label2 = Label(key="test", value="value", score=0.5)
+    label3 = Label(key="test", value="value", score=0.1)
+
+    b1 = label1.score == label2.score
+    assert type(b1) == bool
+    assert b1
+
+    b2 = label1.score > label3.score
+    assert type(b2) == bool
+    assert b2
+
+    b3 = label1.score < label3.score
+    assert type(b3) == bool
+    assert not b3
+
+    b4 = label1.score >= label2.score
+    assert type(b4) == bool
+    assert b4
+
+    b5 = label1.score != label3.score
+    assert type(b5) == bool
+    assert b5
+
+    b6 = label1.score != label2.score
+    assert type(b6) == bool
+    assert not b6
