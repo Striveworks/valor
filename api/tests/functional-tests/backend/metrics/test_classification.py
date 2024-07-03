@@ -1354,7 +1354,7 @@ def test__compute_curves(
         },
         ("bird", 0.05, "tn"): {"all": 2, "total": 2},
         ("bird", 0.05, "fn"): {
-            "null_prediction": 0,
+            "no_prediction": 0,
             "misclassifications": 0,
             "total": 0,
         },
@@ -1366,7 +1366,7 @@ def test__compute_curves(
         },
         ("dog", 0.05, "tn"): {"all": 1, "total": 1},
         ("dog", 0.8, "fn"): {
-            "null_prediction": 1,
+            "no_prediction": 1,
             "misclassifications": 1,
             "total": 2,
         },
@@ -1378,7 +1378,7 @@ def test__compute_curves(
         },
         ("cat", 0.05, "tn"): {"all": 0, "total": 0},
         ("cat", 0.8, "fn"): {
-            "null_prediction": 0,
+            "no_prediction": 0,
             "misclassifications": 0,
             "total": 0,
         },

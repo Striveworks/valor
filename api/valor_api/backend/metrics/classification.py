@@ -147,7 +147,7 @@ def _compute_curves(
         )
 
         # create sets of all datums for which there is a prediction / groundtruth
-        # used when separating misclassifications/null_prediction
+        # used when separating misclassifications/no_prediction
         gt_datums = set()
         pd_datums = set()
 
@@ -203,7 +203,7 @@ def _compute_curves(
                             (gt_dataset_name, gt_datum_uid)
                         )
                     else:
-                        fn["null_prediction"].append(
+                        fn["no_prediction"].append(
                             (gt_dataset_name, gt_datum_uid)
                         )
                     seen_datums.add(gt_datum_uid)
@@ -216,13 +216,13 @@ def _compute_curves(
                 not in tp
                 + fp["misclassifications"]
                 + fn["misclassifications"]
-                + fn["null_prediction"]
+                + fn["no_prediction"]
                 and None not in datum_uid_pair
             ]
             tp_cnt, fp_cnt, fn_cnt, tn_cnt = (
                 len(tp),
                 len(fp["misclassifications"]),
-                len(fn["null_prediction"]) + len(fn["misclassifications"]),
+                len(fn["no_prediction"]) + len(fn["misclassifications"]),
                 len(tn),
             )
 
@@ -301,16 +301,16 @@ def _compute_curves(
                                     else fn["misclassifications"]
                                 ),
                             },
-                            "null_prediction": {
-                                "count": len(fn["null_prediction"]),
+                            "no_prediction": {
+                                "count": len(fn["no_prediction"]),
                                 "examples": (
                                     random.sample(
-                                        fn["null_prediction"],
+                                        fn["no_prediction"],
                                         pr_curve_max_examples,
                                     )
-                                    if len(fn["null_prediction"])
+                                    if len(fn["no_prediction"])
                                     >= pr_curve_max_examples
-                                    else fn["null_prediction"]
+                                    else fn["no_prediction"]
                                 ),
                             },
                         },

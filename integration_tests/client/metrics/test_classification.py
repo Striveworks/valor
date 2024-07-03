@@ -1116,7 +1116,7 @@ def test_evaluate_classification_with_label_maps(
         },
         (0, "v1", "0.1", "tn"): {"all": 2, "total": 2},
         (0, "v1", "0.1", "fn"): {
-            "null_predictions": 0,
+            "no_predictions": 0,
             "misclassifications": 0,
             "total": 0,
         },
@@ -1128,12 +1128,12 @@ def test_evaluate_classification_with_label_maps(
         },
         (1, "v1", "0.1", "tn"): {"all": 2, "total": 2},
         (1, "v1", "0.1", "fn"): {
-            "null_predictions": 0,
+            "no_predictions": 0,
             "misclassifications": 0,
             "total": 0,
         },
         (1, "v4", "0.1", "fn"): {
-            "null_predictions": 0,
+            "no_predictions": 0,
             "misclassifications": 1,
             "total": 1,
         },
