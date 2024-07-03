@@ -275,7 +275,7 @@ class ClientConnection:
             An optional kwarg to pass to the request.
         ignore_auth : bool, default=False
             Option to ignore authentication when you know the endpoint does not
-            require a bearer token. this is used by the `_get_access_token_from_username_and_password`
+            require a bearer token. This is used by the `_get_access_token_from_username_and_password`
             to avoid infinite recursion.
         timeout : float | None, default=10
             An optional request timeout in seconds.
