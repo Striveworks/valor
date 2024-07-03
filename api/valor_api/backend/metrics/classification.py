@@ -203,7 +203,7 @@ def _compute_curves(
                             (gt_dataset_name, gt_datum_uid)
                         )
                     else:
-                        fn["no_prediction"].append(
+                        fn["no_predictions"].append(
                             (gt_dataset_name, gt_datum_uid)
                         )
                     seen_datums.add(gt_datum_uid)
@@ -216,13 +216,13 @@ def _compute_curves(
                 not in tp
                 + fp["misclassifications"]
                 + fn["misclassifications"]
-                + fn["no_prediction"]
+                + fn["no_predictions"]
                 and None not in datum_uid_pair
             ]
             tp_cnt, fp_cnt, fn_cnt, tn_cnt = (
                 len(tp),
                 len(fp["misclassifications"]),
-                len(fn["no_prediction"]) + len(fn["misclassifications"]),
+                len(fn["no_predictions"]) + len(fn["misclassifications"]),
                 len(tn),
             )
 
@@ -301,16 +301,16 @@ def _compute_curves(
                                     else fn["misclassifications"]
                                 ),
                             },
-                            "no_prediction": {
-                                "count": len(fn["no_prediction"]),
+                            "no_predictions": {
+                                "count": len(fn["no_predictions"]),
                                 "examples": (
                                     random.sample(
-                                        fn["no_prediction"],
+                                        fn["no_predictions"],
                                         pr_curve_max_examples,
                                     )
-                                    if len(fn["no_prediction"])
+                                    if len(fn["no_predictions"])
                                     >= pr_curve_max_examples
-                                    else fn["no_prediction"]
+                                    else fn["no_predictions"]
                                 ),
                             },
                         },
