@@ -1,3 +1,4 @@
+import time
 from collections import defaultdict
 from typing import Callable, Sequence
 
@@ -274,38 +275,6 @@ def create_metric_mappings(
     return ret
 
 
-def log_evaluation_duration(
-    db: Session,
-    evaluation: models.Evaluation,
-):
-    """
-    Store analytics regarding the evaluation's runtime in the metadata field of the evaluation table.
-
-    Parameters
-    ----------
-    db : Session
-        The database Session to query against.
-    evaluation : models.Evaluation
-        The evaluation to log to.
-    prediction_filter : schemas.Filter
-        The filter to be used to query predictions.
-    groundtruth_filter : schemas.Filter
-        The filter to be used to query groundtruths.
-    """
-
-    server_time = db.execute(func.now()).scalar().replace(tzinfo=None)  # type: ignore - guaranteed to return server time if psql is running
-    duration = (server_time - evaluation.created_at).total_seconds()
-
-    try:
-        metadata = dict(evaluation.meta) if evaluation.meta else {}
-        metadata.update({"duration": duration})
-        evaluation.meta = metadata
-        db.commit()
-    except IntegrityError as e:
-        db.rollback()
-        raise e
-
-
 def log_evaluation_item_counts(
     db: Session,
     evaluation: models.Evaluation,
@@ -438,6 +407,22 @@ def validate_computation(fn: Callable) -> Callable:
         core.set_evaluation_status(
             db, evaluation_id, enums.EvaluationStatus.DONE
         )
+
+        # log duration of the evaluation job
+        evaluation = core.fetch_evaluation_from_id(
+            db=db, evaluation_id=evaluation_id
+        )
+        server_time = db.scalar(func.now()).replace(tzinfo=None)
+        duration = (server_time - evaluation.created_at).total_seconds()
+        try:
+            metadata = dict(evaluation.meta) if evaluation.meta else {}
+            metadata.update({"duration": duration})
+            evaluation.meta = metadata
+            db.commit()
+        except IntegrityError as e:
+            db.rollback()
+            raise e
+
         return result
 
     return wrapper
@@ -546,3 +531,59 @@ def prepare_filter_for_evaluation(
     predictions_filter.groundtruths = None
 
     return (groundtruth_filter, predictions_filter)
+
+
+def profile(fn: Callable) -> Callable:
+    """
+    Computation decorator that validates that a computation can proceed.
+    """
+
+    def wrapper(
+        *args, event_log: list[tuple[str, float]] | None = None, **kwargs
+    ):
+
+        if event_log is None:
+            event_log = list()
+
+        # db = kwargs.get("db", None)
+        # if not isinstance(db, Session):
+        #     raise RuntimeError(
+        #         "This decorator requires `db` to be explicitly defined in kwargs."
+        #     )
+
+        # evaluation = kwargs.get("evaluation", None)
+        # if not isinstance(evaluation, models.Evaluation):
+        #     raise RuntimeError(
+        #         "This decorator requires `evaluation` to be explicitly defined in kwargs."
+        #     )
+
+        try:
+            before = time.time()
+            result = profile(fn)(*args, event_log=event_log, **kwargs)
+            elapsed_time = round(time.time() - before, 3)
+        except Exception as e:
+            raise e
+
+        event_log.append((fn.__name__, elapsed_time))
+
+        print(event_log)
+
+        # print(evaluation.meta)
+
+        # if "events" not in evaluation.meta:
+        #     evaluation.meta["events"] = [event_log]
+        # else:
+        #     evaluation.meta["events"].append(event_log)
+
+        # print(evaluation.meta)
+
+        # try:
+        #     db.flush()
+        #     db.commit()
+        # except IntegrityError as e:
+        #     db.rollback()
+        #     raise e
+
+        return result
+
+    return wrapper

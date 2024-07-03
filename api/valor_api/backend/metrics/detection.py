@@ -16,9 +16,9 @@ from valor_api.backend.metrics.metric_utils import (
     create_grouper_mappings,
     create_metric_mappings,
     get_or_create_row,
-    log_evaluation_duration,
     log_evaluation_item_counts,
     prepare_filter_for_evaluation,
+    profile,
     validate_computation,
 )
 from valor_api.backend.query import generate_query
@@ -1730,30 +1730,36 @@ def compute_detection_metrics(*_, db: Session, evaluation_id: int):
         ),
     )
 
+    event_log = list()
+
     if (
         parameters.metrics_to_return
         and enums.MetricType.DetailedPrecisionRecallCurve
         in parameters.metrics_to_return
     ):
         # this function is more computationally expensive since it calculates IOUs for every groundtruth-prediction pair that shares a label key
-        metrics = (
-            _compute_detection_metrics_with_detailed_precision_recall_curve(
-                db=db,
-                parameters=parameters,
-                prediction_filter=prediction_filter,
-                groundtruth_filter=groundtruth_filter,
-                target_type=target_type,
-            )
-        )
-    else:
-        # this function is much faster since it only calculates IOUs for every groundtruth-prediction pair that shares a label id
-        metrics = _compute_detection_metrics(
+        metrics = profile(
+            _compute_detection_metrics_with_detailed_precision_recall_curve
+        )(
             db=db,
             parameters=parameters,
             prediction_filter=prediction_filter,
             groundtruth_filter=groundtruth_filter,
             target_type=target_type,
+            event_log=event_log,
         )
+    else:
+        # this function is much faster since it only calculates IOUs for every groundtruth-prediction pair that shares a label id
+        metrics = profile(_compute_detection_metrics)(
+            db=db,
+            parameters=parameters,
+            prediction_filter=prediction_filter,
+            groundtruth_filter=groundtruth_filter,
+            target_type=target_type,
+            event_log=event_log,
+        )
+
+    print(event_log)
 
     metric_mappings = create_metric_mappings(
         db=db,
@@ -1770,10 +1776,5 @@ def compute_detection_metrics(*_, db: Session, evaluation_id: int):
             db, models.Metric, mapping, columns_to_ignore=["value"]
         )
     db.commit()
-
-    log_evaluation_duration(
-        evaluation=evaluation,
-        db=db,
-    )
 
     return evaluation_id
