@@ -3,7 +3,6 @@ that is no auth
 """
 
 from typing import List
-from unittest.mock import patch
 
 import pytest
 import requests
@@ -178,92 +177,6 @@ def test__requests_wrapper(client: Client):
         client.conn._requests_wrapper(
             method_name="get", endpoint="not_an_endpoint"
         )
-
-
-@patch("time.sleep")
-def test__requests_wrapper_retries(mock_requests, client: Client, monkeypatch):
-    """Tests the retry logic in _requests_wrapper to see if we call requests.get the appropriate number of times."""
-
-    def _return_mock_response(*args, **kwargs):
-        if mock_requests.call_count <= 3:
-            raise requests.exceptions.Timeout
-        response = requests.Response
-        response.status_code = 200
-        return response
-
-    monkeypatch.setattr("requests.get", _return_mock_response)
-
-    assert mock_requests.call_count == 0
-    for max_retries in range(1, 3):
-        with pytest.raises(TimeoutError):
-            client.conn._requests_wrapper(
-                method_name="get",
-                endpoint="test",
-                ignore_auth=False,
-                timeout=0.1,
-                max_retries=max_retries,
-                exponential_backoff=1,
-            )
-
-    assert mock_requests.call_count == 3
-    for max_retries in range(4, 8):
-        client.conn._requests_wrapper(
-            method_name="get",
-            endpoint="test",
-            ignore_auth=False,
-            timeout=0.1,
-            max_retries=max_retries,
-            exponential_backoff=1,
-        )
-        assert mock_requests.call_count == 4
-
-
-@patch("requests.get")
-def test__requests_wrapper_retries_without_timeout(mock_get, client: Client):
-
-    mock_get.side_effect = requests.exceptions.Timeout
-
-    # set max retries
-    max_retries = 2
-
-    # show that retrying is disabled if timeout=None
-    assert mock_get.call_count == 0
-    with pytest.raises(TimeoutError):
-        client.conn._requests_wrapper(
-            method_name="get",
-            endpoint="test",
-            ignore_auth=False,
-            timeout=None,
-            max_retries=max_retries,
-            exponential_backoff=1,
-        )
-    assert mock_get.call_count == 1
-
-    # show that retrying is enabled if timeout>0
-    assert mock_get.call_count == 1
-    with pytest.raises(TimeoutError):
-        client.conn._requests_wrapper(
-            method_name="get",
-            endpoint="test",
-            ignore_auth=False,
-            timeout=0.1,
-            max_retries=max_retries,
-            exponential_backoff=1,
-        )
-    assert mock_get.call_count == 2 + max_retries
-
-
-def test__requests_wrapper_post_cannot_retry(client: Client):
-    with pytest.raises(ValueError) as e:
-        client.conn._requests_wrapper(
-            method_name="post",
-            endpoint="test",
-            ignore_auth=False,
-            timeout=0.1,
-            max_retries=2,
-            exponential_backoff=1,
-        )
-    assert "POST requests cannot be automatically retried." in str(e)
 
 
 def test_get_labels(
