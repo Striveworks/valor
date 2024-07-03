@@ -159,7 +159,7 @@ def run_detailed_pr_curve_evaluation(dset: Dataset, model: Model):
 
 
 def run_benchmarking_analysis(
-    limits_to_test: list[int] = [500, 500],
+    limits_to_test: list[int] = [1000, 1000],
     results_file: str = "results.json",
     data_file: str = "data.json",
 ):
@@ -188,7 +188,12 @@ def run_benchmarking_analysis(
         )
         ingest_time = time() - start_time
 
-        eval_ = run_base_evaluation(dset=dset, model=model)
+        try:
+            eval_ = run_base_evaluation(dset=dset, model=model)
+        except TimeoutError:
+            raise TimeoutError(
+                f"Evaluation timed out when processing {limit} datums."
+            )
 
         results = {
             "number_of_datums": limit,
