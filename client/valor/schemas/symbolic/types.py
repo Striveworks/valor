@@ -5,7 +5,7 @@ import typing
 import warnings
 from base64 import b64decode, b64encode
 from collections.abc import MutableMapping
-from typing import Iterator
+from typing import Iterator, Optional
 
 import numpy as np
 import PIL.Image
@@ -14,19 +14,18 @@ from valor.enums import TaskType
 from valor.schemas.symbolic.operators import (
     And,
     Eq,
-    Ge,
     Gt,
+    Gte,
     Inside,
     Intersects,
     IsNotNull,
     IsNull,
-    Le,
     Lt,
+    Lte,
     Ne,
-    Negate,
+    Not,
     Or,
     Outside,
-    Xor,
 )
 
 
@@ -58,46 +57,29 @@ class Symbol:
         self,
         name: str,
         key: typing.Optional[str] = None,
-        attribute: typing.Optional[str] = None,
-        owner: typing.Optional[str] = None,
     ):
-        self._owner = owner.lower() if owner else None
         self._name = name.lower()
         self._key = key.lower() if key else None
-        self._attribute = attribute.lower() if attribute else None
 
     def __repr__(self):
         ret = f"{type(self).__name__}("
-        if self._owner:
-            ret += f"owner='{self._owner}', "
         ret += f"name='{self._name}'"
         if self._key:
             ret += f", key='{self._key}'"
-        if self._attribute:
-            ret += f", attribute='{self._attribute}'"
         ret += ")"
         return ret
 
     def __str__(self):
         ret = ""
-        if self._owner:
-            ret += f"{self._owner}."
         ret += self._name
         if self._key is not None:
             ret += f"['{self._key}']"
-        if self._attribute:
-            ret += f".{self._attribute}"
         return ret
 
     def __eq__(self, other):
         if not isinstance(other, Symbol):
             return False
-        return (
-            self._owner == other._owner
-            and self._name == other._name
-            and self._key == other._key
-            and self._attribute == other._attribute
-        )
+        return self._name == other._name and self._key == other._key
 
     def __ne__(self, other):
         return not (self == other)
@@ -105,15 +87,18 @@ class Symbol:
     def __hash__(self) -> int:
         return hash(self.__repr__())
 
-    def to_dict(self):
+    @property
+    def name(self) -> str:
+        return self._name
+
+    @property
+    def key(self) -> Optional[str]:
+        return self._key
+
+    def to_dict(self) -> dict:
         return {
-            "type": "symbol",
-            "value": {
-                "owner": self._owner,
-                "name": self._name,
-                "key": self._key,
-                "attribute": self._attribute,
-            },
+            "name": self._name,
+            "key": self._key,
         }
 
 
@@ -191,11 +176,12 @@ class Variable:
             An optional name describing the class that owns this symbol.
         """
         name = cls.__name__.lower() if not name else name
+        symbol_name = ".".join(
+            [value for value in [owner, name, attribute] if value is not None]
+        )
         symbol = Symbol(
-            name=name,
+            name=symbol_name,
             key=key,
-            attribute=attribute,
-            owner=owner,
         )
         obj = cls.__new__(cls)
         obj._value = symbol
@@ -224,8 +210,6 @@ class Variable:
             return cls.symbolic(
                 name=value._name,
                 key=value._key,
-                attribute=value._attribute,
-                owner=value._owner,
             )
         elif cls.supports(value):
             #
@@ -354,7 +338,7 @@ class Variable:
             f"'{type(self).__name__}' object has no attribute '__gt__'"
         )
 
-    def __ge__(self, value: typing.Any) -> typing.Union[bool, Ge]:
+    def __ge__(self, value: typing.Any) -> typing.Union[bool, Gte]:
         raise AttributeError(
             f"'{type(self).__name__}' object has no attribute '__ge__'"
         )
@@ -364,13 +348,13 @@ class Variable:
             f"'{type(self).__name__}' object has no attribute '__lt__'"
         )
 
-    def __le__(self, value: typing.Any) -> typing.Union[bool, Le]:
+    def __le__(self, value: typing.Any) -> typing.Union[bool, Lte]:
         raise AttributeError(
             f"'{type(self).__name__}' object has no attribute '__le__'"
         )
 
 
-class Bool(Variable):
+class Boolean(Variable):
     """
     Implementation of the built-in type 'bool' as a Variable.
 
@@ -381,7 +365,7 @@ class Bool(Variable):
 
     Examples
     --------
-    >>> Bool(True)
+    >>> Boolean(True)
     """
 
     def __init__(self, value: bool):
@@ -431,16 +415,10 @@ class Bool(Variable):
             return self.get_value() or other.get_value()
         return Or(self, other)
 
-    def __xor__(self, value: typing.Any) -> typing.Union[bool, Xor]:
-        other = self.preprocess(value)
-        if self.is_value and other.is_value:
-            return self != value
-        return Xor(self, other)
-
-    def __invert__(self) -> typing.Union[bool, Negate]:
+    def __invert__(self) -> typing.Union[bool, Not]:
         if self.is_value:
             return not self.get_value()
-        return Negate(self)
+        return Not(self)
 
 
 class Equatable(Variable):
@@ -495,11 +473,11 @@ class Quantifiable(Equatable):
             return self.get_value() > other.get_value()
         return Gt(self, other)
 
-    def __ge__(self, value: typing.Any) -> typing.Union[bool, Ge]:
+    def __ge__(self, value: typing.Any) -> typing.Union[bool, Gte]:
         other = self.preprocess(value)
         if self.is_value and other.is_value:
             return self.get_value() >= other.get_value()
-        return Ge(self, other)
+        return Gte(self, other)
 
     def __lt__(self, value: typing.Any) -> typing.Union[bool, Lt]:
         other = self.preprocess(value)
@@ -507,11 +485,11 @@ class Quantifiable(Equatable):
             return self.get_value() < other.get_value()
         return Lt(self, other)
 
-    def __le__(self, value: typing.Any) -> typing.Union[bool, Le]:
+    def __le__(self, value: typing.Any) -> typing.Union[bool, Lte]:
         other = self.preprocess(value)
         if self.is_value and other.is_value:
             return self.get_value() <= other.get_value()
-        return Le(self, other)
+        return Lte(self, other)
 
 
 class Spatial(Variable):
@@ -1054,7 +1032,6 @@ class Polygon(Spatial):
         if not isinstance(self._value, Symbol):
             raise ValueError
         return Float.symbolic(
-            owner=self._value._owner,
             name=self._value._name,
             key=self._value._key,
             attribute="area",
@@ -1333,7 +1310,6 @@ class MultiPolygon(Spatial):
                 "attribute 'area' is reserved for symbolic variables."
             )
         return Float.symbolic(
-            owner=self._value._owner,
             name=self._value._name,
             key=self._value._key,
             attribute="area",
@@ -1502,13 +1478,9 @@ class DictionaryValue(Variable):
             raise ValueError(
                 "DictionaryValue should only be initialized as a symbol."
             )
-        if symbol._attribute:
-            raise ValueError(
-                "DictionaryValue symbol should not contain attribute."
-            )
         if not symbol._key:
             raise ValueError("DictionaryValue symbol should contain key.")
-        super().symbolic(name=symbol._name, owner=symbol._owner)
+        super().symbolic(name=symbol._name)
 
     @classmethod
     def nullable(cls, value: typing.Any):
@@ -1552,7 +1524,6 @@ class DictionaryValue(Variable):
         """Returns area attribute."""
         symbol = self.get_symbol()
         return Float.symbolic(
-            owner=symbol._owner,
             name=symbol._name,
             key=symbol._key,
             attribute="area",
@@ -1566,9 +1537,7 @@ class DictionaryValue(Variable):
             obj = _get_type_by_value(other)
         symbol = self.get_symbol()
         sym = obj.symbolic(
-            owner=symbol._owner,
             name=symbol._name,
-            attribute=symbol._attribute,
             key=symbol._key,
         )
         return sym.__getattribute__(fn)(other)
@@ -1678,7 +1647,7 @@ class Dictionary(Equatable, MutableMapping):
             elif isinstance(
                 v,
                 (
-                    Bool,
+                    Boolean,
                     Integer,
                     Float,
                     String,
@@ -1695,9 +1664,7 @@ class Dictionary(Equatable, MutableMapping):
         if self.is_symbolic:
             symbol = self.get_symbol()
             return DictionaryValue.symbolic(
-                owner=symbol._owner,
                 name=symbol._name,
-                attribute=None,
                 key=__key,
             )
         else:
@@ -1968,7 +1935,6 @@ class Raster(Spatial):
         if not isinstance(self._value, Symbol):
             raise ValueError
         return Float.symbolic(
-            owner=self._value._owner,
             name=self._value._name,
             key=self._value._key,
             attribute="area",
@@ -2076,8 +2042,8 @@ def _get_type_by_value(other: typing.Any):
 
     Order of checking is very important as certain types are subsets of others.
     """
-    if Bool.supports(other):
-        return Bool
+    if Boolean.supports(other):
+        return Boolean
     elif String.supports(other):
         return String
     elif Integer.supports(other):
@@ -2121,7 +2087,7 @@ def get_type_by_name(
 ):
     """Retrieves variable type by name."""
     types_ = {
-        "bool": Bool,
+        "boolean": Boolean,
         "string": String,
         "integer": Integer,
         "float": Float,

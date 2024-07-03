@@ -5,7 +5,7 @@ from ._create import (
     create_or_get_evaluations,
     create_predictions,
 )
-from ._delete import delete
+from ._delete import delete, delete_evaluation
 from ._read import (
     get_dataset,
     get_dataset_summary,
@@ -44,4 +44,5 @@ __all__ = [
     "get_prediction",
     "finalize",
     "get_evaluations",
+    "delete_evaluation",
 ]

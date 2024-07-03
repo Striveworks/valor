@@ -44,7 +44,7 @@ def validate_matching_label_keys(
         models.Annotation.datum_id.label("datum_id"),
         models.Label.key.label("label_key"),
         models.Label.value.label("label_value"),
-        filter_=groundtruth_filter,
+        filters=groundtruth_filter,
         label_source=models.GroundTruth,
     ).alias()
 
@@ -64,7 +64,7 @@ def validate_matching_label_keys(
         models.Annotation.datum_id.label("datum_id"),
         models.Label.key.label("label_key"),
         models.Label.value.label("label_value"),
-        filter_=prediction_filter,
+        filters=prediction_filter,
         label_source=models.Prediction,
     ).alias()
 
@@ -242,21 +242,21 @@ def _getter_query(
         return generate_query(
             selection,
             db=db,
-            filter_=filters,
+            filters=filters,
             label_source=models.GroundTruth,
         )
     elif ignore_groundtruths and not ignore_predictions:
         return generate_query(
             selection,
             db=db,
-            filter_=filters,
+            filters=filters,
             label_source=models.Prediction,
         )
     else:
         return generate_query(
             selection,
             db=db,
-            filter_=filters,
+            filters=filters,
         )
 
 
@@ -548,7 +548,7 @@ def get_disjoint_keys(
 
 def fetch_labels(
     db: Session,
-    filter_: schemas.Filter,
+    filters: schemas.Filter,
     ignore_groundtruths: bool = False,
     ignore_predictions: bool = False,
 ) -> set[models.Label]:
@@ -559,7 +559,7 @@ def fetch_labels(
     ----------
     db : Session
         SQLAlchemy ORM session.
-    filter_ : schemas.Filter
+    filters : schemas.Filter
         Filter to constrain results by.
 
     Returns
@@ -569,7 +569,7 @@ def fetch_labels(
     query = _getter_query(
         db=db,
         selection=models.Label,
-        filters=filter_,
+        filters=filters,
         ignore_groundtruths=ignore_groundtruths,
         ignore_predictions=ignore_predictions,
     )
@@ -598,6 +598,6 @@ def fetch_union_of_labels(
     list[models.Label]
         A list of labels.
     """
-    lhs_labels = fetch_labels(db, filter_=lhs, ignore_predictions=True)
-    rhs_labels = fetch_labels(db, filter_=rhs, ignore_groundtruths=True)
+    lhs_labels = fetch_labels(db, filters=lhs, ignore_predictions=True)
+    rhs_labels = fetch_labels(db, filters=rhs, ignore_groundtruths=True)
     return list(lhs_labels.union(rhs_labels))

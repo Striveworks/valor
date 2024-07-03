@@ -2,7 +2,7 @@ import pytest
 
 from valor.schemas import List as SymbolicList
 from valor.schemas.symbolic.collections import StaticCollection
-from valor.schemas.symbolic.types import Bool, Float, Integer, String
+from valor.schemas.symbolic.types import Boolean, Float, Integer, String
 
 
 def test_static_collection_init():
@@ -10,7 +10,7 @@ def test_static_collection_init():
         w: Integer
         x: Float
         y: String
-        z: Bool
+        z: Boolean
 
     # test that kwargs are required
     with pytest.raises(ValueError):
@@ -22,7 +22,7 @@ def test_static_collection_symbol():
         w: Integer
         x: Float
         y: String
-        z: Bool
+        z: Boolean
 
     # test that the 'symbolic' classmethod is the same as passing a symbol
     symA = A.symbolic()
@@ -30,51 +30,26 @@ def test_static_collection_symbol():
 
     # test symbolic usage
     assert symA.to_dict() == {
-        "type": "symbol",
-        "value": {
-            "owner": None,
-            "name": "a",
-            "key": None,
-            "attribute": None,
-        },
+        "name": "a",
+        "key": None,
     }
 
     # test that members are also symbolic
     assert symA.w.to_dict() == {
-        "type": "symbol",
-        "value": {
-            "owner": "a",
-            "name": "w",
-            "key": None,
-            "attribute": None,
-        },
+        "name": "a.w",
+        "key": None,
     }
     assert symA.x.to_dict() == {
-        "type": "symbol",
-        "value": {
-            "owner": "a",
-            "name": "x",
-            "key": None,
-            "attribute": None,
-        },
+        "name": "a.x",
+        "key": None,
     }
     assert symA.y.to_dict() == {
-        "type": "symbol",
-        "value": {
-            "owner": "a",
-            "name": "y",
-            "key": None,
-            "attribute": None,
-        },
+        "name": "a.y",
+        "key": None,
     }
     assert symA.z.to_dict() == {
-        "type": "symbol",
-        "value": {
-            "owner": "a",
-            "name": "z",
-            "key": None,
-            "attribute": None,
-        },
+        "name": "a.z",
+        "key": None,
     }
 
 
@@ -83,13 +58,13 @@ def test_static_collection_value():
         w: Integer
         x: Float
         y: String
-        z: Bool
+        z: Boolean
 
     encoding = {"w": 101, "x": 0.123, "y": "foobar", "z": True}
 
     # test that casting to symbolics is implicit
     v1 = A(w=101, x=0.123, y="foobar", z=True)
-    v2 = A(w=Integer(101), x=Float(0.123), y=String("foobar"), z=Bool(True))
+    v2 = A(w=Integer(101), x=Float(0.123), y=String("foobar"), z=Boolean(True))
     v3 = A(w=101, x=Float(0.123), y=String("foobar"), z=True)
     assert v1.to_dict() == v2.to_dict()
     assert v1.to_dict() == v3.to_dict()
@@ -125,14 +100,14 @@ def test__get_static_types():
         w: Integer
         x: "Float"
         y: "String"
-        z: Bool
+        z: Boolean
 
     # test parsing of forward references
     assert A._get_static_types() == {
         "w": Integer,
         "x": Float,
         "y": String,
-        "z": Bool,
+        "z": Boolean,
     }
 
     # test lists of variables (note: these are not directly comparable)
@@ -140,10 +115,10 @@ def test__get_static_types():
         w: SymbolicList[Integer]
         x: SymbolicList[Float]
         y: SymbolicList[String]
-        z: SymbolicList[Bool]
+        z: SymbolicList[Boolean]
 
     types_ = B._get_static_types()
     assert types_["w"].get_element_type() == Integer
     assert types_["x"].get_element_type() == Float
     assert types_["y"].get_element_type() == String
-    assert types_["z"].get_element_type() == Bool
+    assert types_["z"].get_element_type() == Boolean

@@ -4,8 +4,17 @@ that is no auth
 
 import random
 
-from valor import Client, Dataset, Datum, GroundTruth, Label, Model, Prediction
-from valor.enums import EvaluationStatus
+from valor import (
+    Client,
+    Dataset,
+    Datum,
+    Filter,
+    GroundTruth,
+    Label,
+    Model,
+    Prediction,
+)
+from valor.enums import EvaluationStatus, MetricType
 
 
 def test_evaluate_segmentation(
@@ -55,7 +64,7 @@ def test_evaluate_segmentation(
 
     # check that metrics arg works correctly
     selected_metrics = random.sample(
-        ["IOU", "mIOU"],
+        [MetricType.IOU, MetricType.mIOU],
         1,
     )
     eval_job_random_metrics = model.evaluate_segmentation(
@@ -107,9 +116,7 @@ def test_evaluate_segmentation_with_filter(
     color = Datum.metadata["color"]
     eval_job = model.evaluate_segmentation(
         dataset,
-        filter_by=[
-            color == "red",
-        ],
+        filters=Filter(datums=(color == "red")),
     )
     assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
 
@@ -213,7 +220,7 @@ def test_evaluate_segmentation_with_label_maps(
     # test only passing in one metric or the other
     eval_job = model.evaluate_segmentation(
         dataset,
-        metrics_to_return=["IOU"],
+        metrics_to_return=[MetricType.IOU],
         label_map={
             Label(key=f"k{i}", value=f"v{i}"): Label(key="foo", value="bar")
             for i in range(1, 4)
@@ -225,7 +232,7 @@ def test_evaluate_segmentation_with_label_maps(
 
     eval_job = model.evaluate_segmentation(
         dataset,
-        metrics_to_return=["mIOU"],
+        metrics_to_return=[MetricType.mIOU],
         label_map={
             Label(key=f"k{i}", value=f"v{i}"): Label(key="foo", value="bar")
             for i in range(1, 4)
@@ -233,4 +240,39 @@ def test_evaluate_segmentation_with_label_maps(
     )
 
     assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
-    assert set([m["type"] for m in eval_job.metrics]) == set(["mIOU"])
+    assert set([m["type"] for m in eval_job.metrics]) == set([MetricType.mIOU])
+
+
+def test_evaluate_segmentation_model_with_no_predictions(
+    client: Client,
+    gt_semantic_segs1: list[GroundTruth],
+    gt_semantic_segs2: list[GroundTruth],
+    dataset_name: str,
+    model_name: str,
+):
+    dataset = Dataset.create(dataset_name)
+    for gt in gt_semantic_segs1 + gt_semantic_segs2:
+        dataset.add_groundtruth(gt)
+    dataset.finalize()
+
+    model = Model.create(model_name)
+    for gt in gt_semantic_segs1 + gt_semantic_segs2:
+        pd = Prediction(datum=gt.datum, annotations=[])
+        model.add_prediction(dataset, pd)
+    model.finalize_inferences(dataset)
+
+    expected_metrics = [
+        {"type": "IOU", "value": 0.0, "label": {"key": "k2", "value": "v2"}},
+        {"type": "IOU", "value": 0.0, "label": {"key": "k3", "value": "v3"}},
+        {"type": "mIOU", "parameters": {"label_key": "k2"}, "value": 0.0},
+        {"type": "mIOU", "parameters": {"label_key": "k3"}, "value": 0.0},
+    ]
+
+    evaluation = model.evaluate_segmentation(dataset)
+    assert evaluation.wait_for_completion(timeout=30) == EvaluationStatus.DONE
+
+    computed_metrics = evaluation.metrics
+
+    assert all([metric["value"] == 0 for metric in computed_metrics])
+    assert all([metric in computed_metrics for metric in expected_metrics])
+    assert all([metric in expected_metrics for metric in computed_metrics])

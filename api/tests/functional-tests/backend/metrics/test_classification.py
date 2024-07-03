@@ -134,12 +134,42 @@ def test_compute_confusion_matrix_at_grouper_key(
     classification_test_data,
 ):
     prediction_filter = schemas.Filter(
-        model_names=[model_name],
-        task_types=[enums.TaskType.CLASSIFICATION],
+        predictions=schemas.LogicalFunction(
+            args=[
+                schemas.Condition(
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.MODEL_NAME
+                    ),
+                    rhs=schemas.Value.infer(model_name),
+                    op=schemas.FilterOperator.EQ,
+                ),
+                schemas.Condition(
+                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.TASK_TYPE),
+                    rhs=schemas.Value.infer(enums.TaskType.CLASSIFICATION),
+                    op=schemas.FilterOperator.CONTAINS,
+                ),
+            ],
+            op=schemas.LogicalOperator.AND,
+        )
     )
     groundtruth_filter = schemas.Filter(
-        dataset_names=[dataset_name],
-        task_types=[enums.TaskType.CLASSIFICATION],
+        groundtruths=schemas.LogicalFunction(
+            args=[
+                schemas.Condition(
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.DATASET_NAME
+                    ),
+                    rhs=schemas.Value.infer(dataset_name),
+                    op=schemas.FilterOperator.EQ,
+                ),
+                schemas.Condition(
+                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.TASK_TYPE),
+                    rhs=schemas.Value.infer(enums.TaskType.CLASSIFICATION),
+                    op=schemas.FilterOperator.CONTAINS,
+                ),
+            ],
+            op=schemas.LogicalOperator.AND,
+        )
     )
 
     labels = fetch_union_of_labels(
@@ -160,21 +190,39 @@ def test_compute_confusion_matrix_at_grouper_key(
 
     # groundtruths filter
     gFilter = groundtruth_filter.model_copy()
-    gFilter.label_keys = label_key_filter
+    gFilter.labels = schemas.LogicalFunction.or_(
+        *[
+            schemas.Condition(
+                lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
+                rhs=schemas.Value.infer(key),
+                op=schemas.FilterOperator.EQ,
+            )
+            for key in label_key_filter
+        ]
+    )
 
     # predictions filter
     pFilter = prediction_filter.model_copy()
-    pFilter.label_keys = label_key_filter
+    pFilter.labels = schemas.LogicalFunction.or_(
+        *[
+            schemas.Condition(
+                lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
+                rhs=schemas.Value.infer(key),
+                op=schemas.FilterOperator.EQ,
+            )
+            for key in label_key_filter
+        ]
+    )
 
     groundtruths = generate_select(
         models.GroundTruth,
         models.Annotation.datum_id.label("datum_id"),
-        filter_=gFilter,
+        filters=gFilter,
         label_source=models.GroundTruth,
     ).alias()
     predictions = generate_select(
         models.Prediction,
-        filter_=pFilter,
+        filters=pFilter,
         label_source=models.Prediction,
     ).alias()
 
@@ -217,21 +265,39 @@ def test_compute_confusion_matrix_at_grouper_key(
 
     # groundtruths filter
     gFilter = groundtruth_filter.model_copy()
-    gFilter.label_keys = label_key_filter
+    gFilter.labels = schemas.LogicalFunction.or_(
+        *[
+            schemas.Condition(
+                lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
+                rhs=schemas.Value.infer(key),
+                op=schemas.FilterOperator.EQ,
+            )
+            for key in label_key_filter
+        ]
+    )
 
     # predictions filter
     pFilter = prediction_filter.model_copy()
-    pFilter.label_keys = label_key_filter
+    pFilter.labels = schemas.LogicalFunction.or_(
+        *[
+            schemas.Condition(
+                lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
+                rhs=schemas.Value.infer(key),
+                op=schemas.FilterOperator.EQ,
+            )
+            for key in label_key_filter
+        ]
+    )
 
     groundtruths = generate_select(
         models.GroundTruth,
         models.Annotation.datum_id.label("datum_id"),
-        filter_=gFilter,
+        filters=gFilter,
         label_source=models.GroundTruth,
     ).alias()
     predictions = generate_select(
         models.Prediction,
-        filter_=pFilter,
+        filters=pFilter,
         label_source=models.Prediction,
     ).alias()
 
@@ -277,16 +343,59 @@ def test_compute_confusion_matrix_at_grouper_key_and_filter(
     """
     Test filtering by metadata (md1: md1-val0).
     """
-
     prediction_filter = schemas.Filter(
-        dataset_names=[dataset_name],
-        model_names=[model_name],
+        predictions=schemas.LogicalFunction(
+            args=[
+                schemas.Condition(
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.DATASET_NAME
+                    ),
+                    rhs=schemas.Value.infer(dataset_name),
+                    op=schemas.FilterOperator.EQ,
+                ),
+                schemas.Condition(
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.MODEL_NAME
+                    ),
+                    rhs=schemas.Value.infer(model_name),
+                    op=schemas.FilterOperator.EQ,
+                ),
+            ],
+            op=schemas.LogicalOperator.AND,
+        )
     )
     groundtruth_filter = schemas.Filter(
-        dataset_names=[dataset_name],
-        model_names=[model_name],
-        task_types=[enums.TaskType.CLASSIFICATION],
-        datum_metadata={"md1": [schemas.StringFilter(value="md1-val0")]},
+        groundtruths=schemas.LogicalFunction(
+            args=[
+                schemas.Condition(
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.DATASET_NAME
+                    ),
+                    rhs=schemas.Value.infer(dataset_name),
+                    op=schemas.FilterOperator.EQ,
+                ),
+                schemas.Condition(
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.MODEL_NAME
+                    ),
+                    rhs=schemas.Value.infer(model_name),
+                    op=schemas.FilterOperator.EQ,
+                ),
+                schemas.Condition(
+                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.TASK_TYPE),
+                    rhs=schemas.Value.infer(enums.TaskType.CLASSIFICATION),
+                    op=schemas.FilterOperator.CONTAINS,
+                ),
+                schemas.Condition(
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.DATUM_META, key="md1"
+                    ),
+                    rhs=schemas.Value.infer("md1-val0"),
+                    op=schemas.FilterOperator.EQ,
+                ),
+            ],
+            op=schemas.LogicalOperator.AND,
+        )
     )
 
     labels = fetch_union_of_labels(
@@ -307,21 +416,39 @@ def test_compute_confusion_matrix_at_grouper_key_and_filter(
 
     # groundtruths filter
     gFilter = groundtruth_filter.model_copy()
-    gFilter.label_keys = label_key_filter
+    gFilter.labels = schemas.LogicalFunction.or_(
+        *[
+            schemas.Condition(
+                lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
+                rhs=schemas.Value.infer(key),
+                op=schemas.FilterOperator.EQ,
+            )
+            for key in label_key_filter
+        ]
+    )
 
     # predictions filter
     pFilter = prediction_filter.model_copy()
-    pFilter.label_keys = label_key_filter
+    pFilter.labels = schemas.LogicalFunction.or_(
+        *[
+            schemas.Condition(
+                lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
+                rhs=schemas.Value.infer(key),
+                op=schemas.FilterOperator.EQ,
+            )
+            for key in label_key_filter
+        ]
+    )
 
     groundtruths = generate_select(
         models.GroundTruth,
         models.Annotation.datum_id.label("datum_id"),
-        filter_=gFilter,
+        filters=gFilter,
         label_source=models.GroundTruth,
     ).alias()
     predictions = generate_select(
         models.Prediction,
-        filter_=pFilter,
+        filters=pFilter,
         label_source=models.Prediction,
     ).alias()
 
@@ -366,16 +493,59 @@ def test_compute_confusion_matrix_at_grouper_key_using_label_map(
     """
     Test grouping using the label_map
     """
-
     prediction_filter = schemas.Filter(
-        dataset_names=[dataset_name],
-        model_names=[model_name],
+        predictions=schemas.LogicalFunction(
+            args=[
+                schemas.Condition(
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.DATASET_NAME
+                    ),
+                    rhs=schemas.Value.infer(dataset_name),
+                    op=schemas.FilterOperator.EQ,
+                ),
+                schemas.Condition(
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.MODEL_NAME
+                    ),
+                    rhs=schemas.Value.infer(model_name),
+                    op=schemas.FilterOperator.EQ,
+                ),
+            ],
+            op=schemas.LogicalOperator.AND,
+        )
     )
     groundtruth_filter = schemas.Filter(
-        dataset_names=[dataset_name],
-        model_names=[model_name],
-        task_types=[enums.TaskType.CLASSIFICATION],
-        datum_metadata={"md1": [schemas.StringFilter(value="md1-val0")]},
+        groundtruths=schemas.LogicalFunction(
+            args=[
+                schemas.Condition(
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.DATASET_NAME
+                    ),
+                    rhs=schemas.Value.infer(dataset_name),
+                    op=schemas.FilterOperator.EQ,
+                ),
+                schemas.Condition(
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.MODEL_NAME
+                    ),
+                    rhs=schemas.Value.infer(model_name),
+                    op=schemas.FilterOperator.EQ,
+                ),
+                schemas.Condition(
+                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.TASK_TYPE),
+                    rhs=schemas.Value.infer(enums.TaskType.CLASSIFICATION),
+                    op=schemas.FilterOperator.CONTAINS,
+                ),
+                schemas.Condition(
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.DATUM_META, key="md1"
+                    ),
+                    rhs=schemas.Value.infer("md1-val0"),
+                    op=schemas.FilterOperator.EQ,
+                ),
+            ],
+            op=schemas.LogicalOperator.AND,
+        )
     )
 
     labels = fetch_union_of_labels(
@@ -396,21 +566,39 @@ def test_compute_confusion_matrix_at_grouper_key_using_label_map(
 
     # groundtruths filter
     gFilter = groundtruth_filter.model_copy()
-    gFilter.label_keys = label_key_filter
+    gFilter.labels = schemas.LogicalFunction.or_(
+        *[
+            schemas.Condition(
+                lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
+                rhs=schemas.Value.infer(key),
+                op=schemas.FilterOperator.EQ,
+            )
+            for key in label_key_filter
+        ]
+    )
 
     # predictions filter
     pFilter = prediction_filter.model_copy()
-    pFilter.label_keys = label_key_filter
+    pFilter.labels = schemas.LogicalFunction.or_(
+        *[
+            schemas.Condition(
+                lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
+                rhs=schemas.Value.infer(key),
+                op=schemas.FilterOperator.EQ,
+            )
+            for key in label_key_filter
+        ]
+    )
 
     groundtruths = generate_select(
         models.GroundTruth,
         models.Annotation.datum_id.label("datum_id"),
-        filter_=gFilter,
+        filters=gFilter,
         label_source=models.GroundTruth,
     ).alias()
     predictions = generate_select(
         models.Prediction,
-        filter_=pFilter,
+        filters=pFilter,
         label_source=models.Prediction,
     ).alias()
 
@@ -485,12 +673,42 @@ def test_compute_roc_auc(
     ```
     """
     prediction_filter = schemas.Filter(
-        model_names=[model_name],
-        task_types=[enums.TaskType.CLASSIFICATION],
+        predictions=schemas.LogicalFunction(
+            args=[
+                schemas.Condition(
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.MODEL_NAME
+                    ),
+                    rhs=schemas.Value.infer(model_name),
+                    op=schemas.FilterOperator.EQ,
+                ),
+                schemas.Condition(
+                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.TASK_TYPE),
+                    rhs=schemas.Value.infer(enums.TaskType.CLASSIFICATION),
+                    op=schemas.FilterOperator.CONTAINS,
+                ),
+            ],
+            op=schemas.LogicalOperator.AND,
+        )
     )
     groundtruth_filter = schemas.Filter(
-        dataset_names=[dataset_name],
-        task_types=[enums.TaskType.CLASSIFICATION],
+        groundtruths=schemas.LogicalFunction(
+            args=[
+                schemas.Condition(
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.DATASET_NAME
+                    ),
+                    rhs=schemas.Value.infer(dataset_name),
+                    op=schemas.FilterOperator.EQ,
+                ),
+                schemas.Condition(
+                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.TASK_TYPE),
+                    rhs=schemas.Value.infer(enums.TaskType.CLASSIFICATION),
+                    op=schemas.FilterOperator.CONTAINS,
+                ),
+            ],
+            op=schemas.LogicalOperator.AND,
+        )
     )
 
     labels = fetch_union_of_labels(
@@ -568,13 +786,39 @@ def test_compute_roc_auc_groupby_metadata(
 
     which gives 2/3. So we expect our implementation to give the average of 0.5 and 2/3
     """
+
     prediction_filter = schemas.Filter(
-        model_names=[model_name],
+        predictions=schemas.Condition(
+            lhs=schemas.Symbol(name=schemas.SupportedSymbol.MODEL_NAME),
+            rhs=schemas.Value.infer(model_name),
+            op=schemas.FilterOperator.EQ,
+        ),
     )
     groundtruth_filter = schemas.Filter(
-        dataset_names=[dataset_name],
-        task_types=[enums.TaskType.CLASSIFICATION],
-        datum_metadata={"md1": [schemas.StringFilter(value="md1-val0")]},
+        groundtruths=schemas.LogicalFunction(
+            args=[
+                schemas.Condition(
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.DATASET_NAME
+                    ),
+                    rhs=schemas.Value.infer(dataset_name),
+                    op=schemas.FilterOperator.EQ,
+                ),
+                schemas.Condition(
+                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.TASK_TYPE),
+                    rhs=schemas.Value.infer(enums.TaskType.CLASSIFICATION),
+                    op=schemas.FilterOperator.CONTAINS,
+                ),
+                schemas.Condition(
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.DATUM_META, key="md1"
+                    ),
+                    rhs=schemas.Value.infer("md1-val0"),
+                    op=schemas.FilterOperator.EQ,
+                ),
+            ],
+            op=schemas.LogicalOperator.AND,
+        )
     )
 
     labels = fetch_union_of_labels(
@@ -630,14 +874,43 @@ def test_compute_roc_auc_with_label_map(
     assert score == 0.7777777777777778
 
     """
-
     prediction_filter = schemas.Filter(
-        model_names=[model_name],
-        task_types=[enums.TaskType.CLASSIFICATION],
+        predictions=schemas.LogicalFunction(
+            args=[
+                schemas.Condition(
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.MODEL_NAME
+                    ),
+                    rhs=schemas.Value.infer(model_name),
+                    op=schemas.FilterOperator.EQ,
+                ),
+                schemas.Condition(
+                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.TASK_TYPE),
+                    rhs=schemas.Value.infer(enums.TaskType.CLASSIFICATION),
+                    op=schemas.FilterOperator.CONTAINS,
+                ),
+            ],
+            op=schemas.LogicalOperator.AND,
+        )
     )
     groundtruth_filter = schemas.Filter(
-        dataset_names=[dataset_name],
-        task_types=[enums.TaskType.CLASSIFICATION],
+        groundtruths=schemas.LogicalFunction(
+            args=[
+                schemas.Condition(
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.DATASET_NAME
+                    ),
+                    rhs=schemas.Value.infer(dataset_name),
+                    op=schemas.FilterOperator.EQ,
+                ),
+                schemas.Condition(
+                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.TASK_TYPE),
+                    rhs=schemas.Value.infer(enums.TaskType.CLASSIFICATION),
+                    op=schemas.FilterOperator.CONTAINS,
+                ),
+            ],
+            op=schemas.LogicalOperator.AND,
+        )
     )
 
     labels = fetch_union_of_labels(
@@ -672,27 +945,68 @@ def test_compute_classification(
     """
     Tests the _compute_classification function.
     """
-    model_filter = schemas.Filter(
-        dataset_names=[dataset_name], model_names=[model_name]
+
+    prediction_filter = schemas.Filter(
+        predictions=schemas.LogicalFunction(
+            args=[
+                schemas.Condition(
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.DATASET_NAME
+                    ),
+                    rhs=schemas.Value.infer(dataset_name),
+                    op=schemas.FilterOperator.EQ,
+                ),
+                schemas.Condition(
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.MODEL_NAME
+                    ),
+                    rhs=schemas.Value.infer(model_name),
+                    op=schemas.FilterOperator.EQ,
+                ),
+            ],
+            op=schemas.LogicalOperator.AND,
+        )
     )
-    datum_filter = schemas.Filter(
-        dataset_names=[dataset_name],
-        model_names=[model_name],
-        task_types=[enums.TaskType.CLASSIFICATION],
+    groundtruth_filter = schemas.Filter(
+        groundtruths=schemas.LogicalFunction(
+            args=[
+                schemas.Condition(
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.DATASET_NAME
+                    ),
+                    rhs=schemas.Value.infer(dataset_name),
+                    op=schemas.FilterOperator.EQ,
+                ),
+                schemas.Condition(
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.MODEL_NAME
+                    ),
+                    rhs=schemas.Value.infer(model_name),
+                    op=schemas.FilterOperator.EQ,
+                ),
+                schemas.Condition(
+                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.TASK_TYPE),
+                    rhs=schemas.Value.infer(enums.TaskType.CLASSIFICATION),
+                    op=schemas.FilterOperator.CONTAINS,
+                ),
+            ],
+            op=schemas.LogicalOperator.AND,
+        )
     )
 
     confusion, metrics = _compute_clf_metrics(
         db,
-        model_filter,
-        datum_filter,
+        prediction_filter=prediction_filter,
+        groundtruth_filter=groundtruth_filter,
         label_map=None,
+        pr_curve_max_examples=0,
         metrics_to_return=[
-            "Precision",
-            "Recall",
-            "F1",
-            "Accuracy",
-            "ROCAUC",
-            "PrecisionRecallCurve",
+            enums.MetricType.Precision,
+            enums.MetricType.Recall,
+            enums.MetricType.F1,
+            enums.MetricType.Accuracy,
+            enums.MetricType.ROCAUC,
+            enums.MetricType.PrecisionRecallCurve,
         ],
     )
 
@@ -760,8 +1074,8 @@ def test_classification(
 ):
     # default request
     job_request = schemas.EvaluationRequest(
+        dataset_names=[dataset_name],
         model_names=[model_name],
-        datum_filter=schemas.Filter(dataset_names=[dataset_name]),
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.CLASSIFICATION,
         ),
@@ -856,12 +1170,42 @@ def test__compute_curves(
     """Test that _compute_curves correctly returns precision-recall curves for our animal ground truths."""
 
     prediction_filter = schemas.Filter(
-        model_names=[model_name],
-        task_types=[enums.TaskType.CLASSIFICATION],
+        predictions=schemas.LogicalFunction(
+            args=[
+                schemas.Condition(
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.MODEL_NAME
+                    ),
+                    rhs=schemas.Value.infer(model_name),
+                    op=schemas.FilterOperator.EQ,
+                ),
+                schemas.Condition(
+                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.TASK_TYPE),
+                    rhs=schemas.Value.infer(enums.TaskType.CLASSIFICATION),
+                    op=schemas.FilterOperator.CONTAINS,
+                ),
+            ],
+            op=schemas.LogicalOperator.AND,
+        )
     )
     groundtruth_filter = schemas.Filter(
-        dataset_names=[dataset_name],
-        task_types=[enums.TaskType.CLASSIFICATION],
+        groundtruths=schemas.LogicalFunction(
+            args=[
+                schemas.Condition(
+                    lhs=schemas.Symbol(
+                        name=schemas.SupportedSymbol.DATASET_NAME
+                    ),
+                    rhs=schemas.Value.infer(dataset_name),
+                    op=schemas.FilterOperator.EQ,
+                ),
+                schemas.Condition(
+                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.TASK_TYPE),
+                    rhs=schemas.Value.infer(enums.TaskType.CLASSIFICATION),
+                    op=schemas.FilterOperator.CONTAINS,
+                ),
+            ],
+            op=schemas.LogicalOperator.AND,
+        )
     )
 
     labels = fetch_union_of_labels(
@@ -882,23 +1226,41 @@ def test__compute_curves(
 
     # groundtruths filter
     gFilter = groundtruth_filter.model_copy()
-    gFilter.label_keys = label_key_filter
+    gFilter.labels = schemas.LogicalFunction.or_(
+        *[
+            schemas.Condition(
+                lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
+                rhs=schemas.Value.infer(key),
+                op=schemas.FilterOperator.EQ,
+            )
+            for key in label_key_filter
+        ]
+    )
 
     # predictions filter
     pFilter = prediction_filter.model_copy()
-    pFilter.label_keys = label_key_filter
+    pFilter.labels = schemas.LogicalFunction.or_(
+        *[
+            schemas.Condition(
+                lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
+                rhs=schemas.Value.infer(key),
+                op=schemas.FilterOperator.EQ,
+            )
+            for key in label_key_filter
+        ]
+    )
 
     groundtruths = generate_select(
         models.GroundTruth,
         models.Annotation.datum_id.label("datum_id"),
         models.Dataset.name.label("dataset_name"),
-        filter_=gFilter,
+        filters=gFilter,
         label_source=models.GroundTruth,
     ).alias()
     predictions = generate_select(
         models.Prediction,
         models.Dataset.name.label("dataset_name"),
-        filter_=pFilter,
+        filters=pFilter,
         label_source=models.Prediction,
     ).alias()
 
@@ -909,14 +1271,14 @@ def test__compute_curves(
         models.Dataset.name,
         models.Datum.uid,
         db=db,
-        filter_=groundtruth_filter,
+        filters=groundtruth_filter,
         label_source=models.GroundTruth,
     ).all()
     pd_datums = generate_query(
         models.Dataset.name,
         models.Datum.uid,
         db=db,
-        filter_=prediction_filter,
+        filters=prediction_filter,
         label_source=models.Prediction,
     ).all()
     unique_datums = set(pd_datums + gt_datums)
@@ -928,8 +1290,14 @@ def test__compute_curves(
         grouper_key="animal",
         grouper_mappings=grouper_mappings,
         unique_datums=unique_datums,
+        pr_curve_max_examples=1,
+        metrics_to_return=[
+            enums.MetricType.PrecisionRecallCurve,
+            enums.MetricType.DetailedPrecisionRecallCurve,
+        ],
     )
 
+    # check PrecisionRecallCurve
     pr_expected_answers = {
         # bird
         ("bird", 0.05, "tp"): 3,
@@ -973,6 +1341,196 @@ def test__compute_curves(
         threshold,
         metric,
     ), expected_length in pr_expected_answers.items():
-        list_of_datums = curves[value][threshold][metric]
-        assert isinstance(list_of_datums, list)
-        assert len(list_of_datums) == expected_length
+        classification = curves[0].value[value][threshold][metric]
+        assert classification == expected_length
+
+    # check DetailedPrecisionRecallCurve
+    detailed_pr_expected_answers = {
+        # bird
+        ("bird", 0.05, "tp"): {"all": 3, "total": 3},
+        ("bird", 0.05, "fp"): {
+            "hallucinations": 0,
+            "misclassifications": 1,
+            "total": 1,
+        },
+        ("bird", 0.05, "tn"): {"all": 2, "total": 2},
+        ("bird", 0.05, "fn"): {
+            "missed_detections": 0,
+            "misclassifications": 0,
+            "total": 0,
+        },
+        # dog
+        ("dog", 0.05, "tp"): {"all": 2, "total": 2},
+        ("dog", 0.05, "fp"): {
+            "hallucinations": 0,
+            "misclassifications": 3,
+            "total": 3,
+        },
+        ("dog", 0.05, "tn"): {"all": 1, "total": 1},
+        ("dog", 0.8, "fn"): {
+            "missed_detections": 1,
+            "misclassifications": 1,
+            "total": 2,
+        },
+        # cat
+        ("cat", 0.05, "tp"): {"all": 1, "total": 1},
+        ("cat", 0.05, "fp"): {
+            "hallucinations": 0,
+            "misclassifications": 5,
+            "total": 5,
+        },
+        ("cat", 0.05, "tn"): {"all": 0, "total": 0},
+        ("cat", 0.8, "fn"): {
+            "missed_detections": 0,
+            "misclassifications": 0,
+            "total": 0,
+        },
+    }
+
+    for (
+        value,
+        threshold,
+        metric,
+    ), expected_output in detailed_pr_expected_answers.items():
+        model_output = curves[1].value[value][threshold][metric]
+        assert isinstance(model_output, dict)
+        assert model_output["total"] == expected_output["total"]
+        assert all(
+            [
+                model_output["observations"][key]["count"]  # type: ignore - we know this element is a dict
+                == expected_output[key]
+                for key in [
+                    key
+                    for key in expected_output.keys()
+                    if key not in ["total"]
+                ]
+            ]
+        )
+
+    # spot check number of examples
+    assert (
+        len(
+            curves[1].value["bird"][0.05]["tp"]["observations"]["all"][  # type: ignore - we know this element is a dict
+                "examples"
+            ]
+        )
+        == 1
+    )
+    assert (
+        len(
+            curves[1].value["bird"][0.05]["tn"]["observations"]["all"][  # type: ignore - we know this element is a dict
+                "examples"
+            ]
+        )
+        == 1
+    )
+
+    # repeat the above, but with a higher pr_max_curves_example
+    curves = _compute_curves(
+        db=db,
+        predictions=predictions,
+        groundtruths=groundtruths,
+        grouper_key="animal",
+        grouper_mappings=grouper_mappings,
+        unique_datums=unique_datums,
+        pr_curve_max_examples=3,
+        metrics_to_return=[
+            enums.MetricType.PrecisionRecallCurve,
+            enums.MetricType.DetailedPrecisionRecallCurve,
+        ],
+    )
+
+    # these outputs shouldn't have changed
+    for (
+        value,
+        threshold,
+        metric,
+    ), expected_output in detailed_pr_expected_answers.items():
+        model_output = curves[1].value[value][threshold][metric]
+        assert isinstance(model_output, dict)
+        assert model_output["total"] == expected_output["total"]
+        assert all(
+            [
+                model_output["observations"][key]["count"]  # type: ignore - we know this element is a dict
+                == expected_output[key]
+                for key in [
+                    key
+                    for key in expected_output.keys()
+                    if key not in ["total"]
+                ]
+            ]
+        )
+
+    assert (
+        len(
+            curves[1].value["bird"][0.05]["tp"]["observations"]["all"][  # type: ignore - we know this element is a dict
+                "examples"
+            ]
+        )
+        == 3
+    )
+    assert (
+        len(
+            (
+                curves[1].value["bird"][0.05]["tn"]["observations"]["all"][  # type: ignore - we know this element is a dict
+                    "examples"
+                ]
+            )
+        )
+        == 2  # only two examples exist
+    )
+
+    # test behavior if pr_curve_max_examples == 0
+    curves = _compute_curves(
+        db=db,
+        predictions=predictions,
+        groundtruths=groundtruths,
+        grouper_key="animal",
+        grouper_mappings=grouper_mappings,
+        unique_datums=unique_datums,
+        pr_curve_max_examples=0,
+        metrics_to_return=[
+            enums.MetricType.PrecisionRecallCurve,
+            enums.MetricType.DetailedPrecisionRecallCurve,
+        ],
+    )
+
+    # these outputs shouldn't have changed
+    for (
+        value,
+        threshold,
+        metric,
+    ), expected_output in detailed_pr_expected_answers.items():
+        model_output = curves[1].value[value][threshold][metric]
+        assert isinstance(model_output, dict)
+        assert model_output["total"] == expected_output["total"]
+        assert all(
+            [
+                model_output["observations"][key]["count"]  # type: ignore - we know this element is a dict
+                == expected_output[key]
+                for key in [
+                    key
+                    for key in expected_output.keys()
+                    if key not in ["total"]
+                ]
+            ]
+        )
+
+    assert (
+        len(
+            curves[1].value["bird"][0.05]["tp"]["observations"]["all"][  # type: ignore - we know this element is a dict
+                "examples"
+            ]
+        )
+        == 0
+    )
+    assert (
+        len(
+            (
+                curves[1].value["bird"][0.05]["tn"]["observations"]["all"][  # type: ignore - we know this element is a dict
+                    "examples"
+                ]
+            )
+        )
+        == 0
+    )

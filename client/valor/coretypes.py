@@ -7,10 +7,17 @@ from dataclasses import asdict, dataclass
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 from valor.client import ClientConnection, connect, get_connection
-from valor.enums import AnnotationType, EvaluationStatus, TableStatus, TaskType
+from valor.enums import (
+    AnnotationType,
+    EvaluationStatus,
+    MetricType,
+    TableStatus,
+    TaskType,
+)
 from valor.exceptions import (
     ClientException,
     DatasetDoesNotExistError,
+    EvaluationDoesNotExist,
     ModelDoesNotExistError,
 )
 from valor.schemas import (
@@ -24,33 +31,6 @@ from valor.schemas import (
 )
 from valor.schemas import List as SymbolicList
 from valor.schemas import StaticCollection, String
-
-FilterType = Union[list, dict, Filter]  # TODO - Remove this
-
-
-def _format_filter(filter_by: Optional[FilterType]) -> Filter:
-    """
-    Formats the various filter or constraint representations into a 'schemas.Filter' object.
-
-    Parameters
-    ----------
-    filter_by : FilterType, optional
-        The reference filter.
-
-    Returns
-    -------
-    valor.schemas.Filter
-        A properly formatted 'schemas.Filter' object.
-    """
-    if isinstance(filter_by, Filter):
-        return filter_by
-    elif isinstance(filter_by, list) or filter_by is None:
-        filter_by = filter_by if filter_by else []
-        return Filter.create(filter_by)
-    elif isinstance(filter_by, dict):
-        return Filter(**filter_by)
-    else:
-        raise TypeError
 
 
 class GroundTruth(StaticCollection):
@@ -172,10 +152,12 @@ class Evaluation:
         ----------
         id : int
             The ID of the evaluation.
+        dataset_names : list[str]
+            The names of the datasets the model was evaluated over.
         model_name : str
             The name of the evaluated model.
-        datum_filter : schemas.Filter
-            The filter used to select the datums for evaluation.
+        filters : dict
+            The filter used to select data partitions for evaluation.
         status : EvaluationStatus
             The status of the evaluation.
         metrics : List[dict]
@@ -194,8 +176,9 @@ class Evaluation:
         self,
         *_,
         id: int,
+        dataset_names: list[str],
         model_name: str,
-        datum_filter: Filter,
+        filters: dict,
         parameters: EvaluationParameters,
         status: EvaluationStatus,
         metrics: List[Dict],
@@ -205,12 +188,9 @@ class Evaluation:
         **kwargs,
     ):
         self.id = id
+        self.dataset_names = dataset_names
         self.model_name = model_name
-        self.datum_filter = (
-            Filter(**datum_filter)
-            if isinstance(datum_filter, dict)
-            else datum_filter
-        )
+        self.filters = filters
         self.parameters = (
             EvaluationParameters(**parameters)
             if isinstance(parameters, dict)
@@ -248,7 +228,7 @@ class Evaluation:
         """
         response = self.conn.get_evaluations(evaluation_ids=[self.id])
         if not response:
-            raise ClientException("Not Found")
+            raise EvaluationDoesNotExist(self.id)
         self.update(**response[0])
         return self.status
 
@@ -293,8 +273,9 @@ class Evaluation:
         """
         return {
             "id": self.id,
+            "dataset_names": self.dataset_names,
             "model_name": self.model_name,
-            "datum_filter": asdict(self.datum_filter),
+            "filters": self.filters,
             "parameters": asdict(self.parameters),
             "status": self.status.value,
             "metrics": self.metrics,
@@ -484,6 +465,7 @@ class Dataset(StaticCollection):
         self,
         groundtruths: List[GroundTruth],
         ignore_existing_datums: bool = False,
+        timeout: Optional[float] = 10.0,
     ) -> None:
         """
         Add multiple ground truths to the dataset.
@@ -496,11 +478,14 @@ class Dataset(StaticCollection):
             If True, will ignore datums that already exist in the backend.
             If False, will raise an error if any datums already exist.
             Default is False.
+        timeout: float, optional
+            The number of seconds the client should wait until raising a timeout.
         """
         Client(self.conn).create_groundtruths(
             dataset=self,
             groundtruths=groundtruths,
             ignore_existing_datums=ignore_existing_datums,
+            timeout=timeout,
         )
 
     def get_groundtruth(
@@ -535,32 +520,24 @@ class Dataset(StaticCollection):
         """
         return Client(self.conn).get_labels_from_dataset(self)
 
-    def get_datums(
-        self, filter_by: Optional[FilterType] = None
-    ) -> List[Datum]:
+    def get_datums(self, filters: Optional[Filter] = None) -> List[Datum]:
         """
         Get all datums associated with a given dataset.
 
         Parameters
         ----------
-        filter_by
-            Optional constraints to filter by.
+        filters : Filter, optional
+            An optional datum filter.
 
         Returns
         ----------
         List[Datum]
             A list of `Datums` associated with the dataset.
         """
-        filter_ = _format_filter(filter_by)
-        if isinstance(filter_, Filter):
-            filter_ = asdict(filter_)
-
-        if filter_.get("dataset_names"):
-            raise ValueError(
-                "Cannot filter by dataset_names when calling `Dataset.get_datums`."
-            )
-        filter_["dataset_names"] = [self.name]  # type: ignore
-        return Client(self.conn).get_datums(filter_by=filter_)
+        if filters is None:
+            filters = Filter()
+        filters.datasets = Dataset.name == self.name  # type: ignore - #issue 605
+        return Client(self.conn).get_datums(filters=filters)
 
     def get_evaluations(
         self,
@@ -757,6 +734,7 @@ class Model(StaticCollection):
         self,
         dataset: Dataset,
         predictions: List[Prediction],
+        timeout: Optional[float] = 10.0,
     ) -> None:
         """
         Add multiple predictions to the model.
@@ -767,11 +745,14 @@ class Model(StaticCollection):
             The dataset that is being operated over.
         predictions : List[valor.Prediction]
             The predictions to create.
+        timeout: float, optional
+            The number of seconds the client should wait until raising a timeout.
         """
         Client(self.conn).create_predictions(
             dataset=dataset,
             model=self,
             predictions=predictions,
+            timeout=timeout,
         )
 
     def get_prediction(
@@ -803,33 +784,6 @@ class Model(StaticCollection):
         return Client(self.conn).finalize_inferences(
             dataset=dataset, model=self
         )
-
-    def _format_constraints(
-        self,
-        datasets: Optional[Union[Dataset, List[Dataset]]] = None,
-        filter_by: Optional[FilterType] = None,
-    ) -> Filter:
-        """Formats the 'datum_filter' for any evaluation requests."""
-
-        # get list of dataset names
-        dataset_names_from_obj = []
-        if isinstance(datasets, list):
-            dataset_names_from_obj = [dataset.name for dataset in datasets]
-        elif isinstance(datasets, Dataset):
-            dataset_names_from_obj = [datasets.name]
-
-        # create a 'schemas.Filter' object from the constraints.
-        filter_ = _format_filter(filter_by)
-
-        # reset model name
-        filter_.model_names = None
-        filter_.model_metadata = None
-
-        # set dataset names
-        if not filter_.dataset_names:
-            filter_.dataset_names = []
-        filter_.dataset_names.extend(dataset_names_from_obj)  # type: ignore
-        return filter_
 
     def _create_label_map(
         self,
@@ -868,10 +822,11 @@ class Model(StaticCollection):
 
     def evaluate_classification(
         self,
-        datasets: Optional[Union[Dataset, List[Dataset]]] = None,
-        filter_by: Optional[FilterType] = None,
+        datasets: Union[Dataset, List[Dataset]],
+        filters: Optional[Filter] = None,
         label_map: Optional[Dict[Label, Label]] = None,
-        metrics_to_return: Optional[List[str]] = None,
+        pr_curve_max_examples: int = 1,
+        metrics_to_return: Optional[List[MetricType]] = None,
         allow_retries: bool = False,
     ) -> Evaluation:
         """
@@ -881,11 +836,11 @@ class Model(StaticCollection):
         ----------
         datasets : Union[Dataset, List[Dataset]], optional
             The dataset or list of datasets to evaluate against.
-        filter_by : FilterType, optional
+        filters : Filter, optional
             Optional set of constraints to filter evaluation by.
         label_map : Dict[Label, Label], optional
             Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
-        metrics: List[str], optional
+        metrics_to_return: List[MetricType], optional
             The list of metrics to compute, store, and return to the user.
         allow_retries : bool, default = False
             Option to retry previously failed evaluations.
@@ -895,19 +850,28 @@ class Model(StaticCollection):
         Evaluation
             A job object that can be used to track the status of the job and get the metrics of it upon completion.
         """
-        if not datasets and not filter_by:
+        if not datasets and not filters:
             raise ValueError(
                 "Evaluation requires the definition of either datasets, dataset filters or both."
             )
+        elif metrics_to_return and not set(metrics_to_return).issubset(
+            MetricType.classification()
+        ):
+            raise ValueError(
+                f"The following metrics are not supported for classification: '{set(metrics_to_return) - MetricType.classification()}'"
+            )
 
         # format request
-        datum_filter = self._format_constraints(datasets, filter_by)
+        datasets = datasets if isinstance(datasets, list) else [datasets]
+        filters = filters if filters else Filter()
         request = EvaluationRequest(
-            model_names=[self.name],  # type: ignore
-            datum_filter=datum_filter,
+            dataset_names=[dataset.name for dataset in datasets],  # type: ignore - issue #604
+            model_names=[self.name],  # type: ignore - issue #604
+            filters=filters,
             parameters=EvaluationParameters(
                 task_type=TaskType.CLASSIFICATION,
                 label_map=self._create_label_map(label_map=label_map),
+                pr_curve_max_examples=pr_curve_max_examples,
                 metrics_to_return=metrics_to_return,
             ),
         )
@@ -922,15 +886,16 @@ class Model(StaticCollection):
 
     def evaluate_detection(
         self,
-        datasets: Optional[Union[Dataset, List[Dataset]]] = None,
-        filter_by: Optional[FilterType] = None,
+        datasets: Union[Dataset, List[Dataset]],
+        filters: Optional[Filter] = None,
         convert_annotations_to_type: Optional[AnnotationType] = None,
         iou_thresholds_to_compute: Optional[List[float]] = None,
         iou_thresholds_to_return: Optional[List[float]] = None,
         label_map: Optional[Dict[Label, Label]] = None,
         recall_score_threshold: float = 0,
-        metrics_to_return: Optional[List[str]] = None,
+        metrics_to_return: Optional[List[MetricType]] = None,
         pr_curve_iou_threshold: float = 0.5,
+        pr_curve_max_examples: int = 1,
         allow_retries: bool = False,
     ) -> Evaluation:
         """
@@ -940,7 +905,7 @@ class Model(StaticCollection):
         ----------
         datasets : Union[Dataset, List[Dataset]], optional
             The dataset or list of datasets to evaluate against.
-        filter_by : FilterType, optional
+        filters : Filter, optional
             Optional set of constraints to filter evaluation by.
         convert_annotations_to_type : enums.AnnotationType, optional
             Forces the object detection evaluation to compute over this type.
@@ -952,19 +917,27 @@ class Model(StaticCollection):
             Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
         recall_score_threshold: float, default=0
             The confidence score threshold for use when determining whether to count a prediction as a true positive or not while calculating Average Recall.
-        metrics: List[str], optional
+        metrics_to_return: List[MetricType], optional
             The list of metrics to compute, store, and return to the user.
         pr_curve_iou_threshold: float, optional
             The IOU threshold to use when calculating precision-recall curves. Defaults to 0.5.
+        pr_curve_max_examples: int, optional
+            The maximum number of datum examples to store when calculating PR curves.
         allow_retries : bool, default = False
             Option to retry previously failed evaluations.
-
 
         Returns
         -------
         Evaluation
             A job object that can be used to track the status of the job and get the metrics of it upon completion.
         """
+        if metrics_to_return and not set(metrics_to_return).issubset(
+            MetricType.object_detection()
+        ):
+            raise ValueError(
+                f"The following metrics are not supported for object detection: '{set(metrics_to_return) - MetricType.object_detection()}'"
+            )
+
         if iou_thresholds_to_compute is None:
             iou_thresholds_to_compute = [
                 round(0.5 + 0.05 * i, 2) for i in range(10)
@@ -982,11 +955,14 @@ class Model(StaticCollection):
             recall_score_threshold=recall_score_threshold,
             metrics_to_return=metrics_to_return,
             pr_curve_iou_threshold=pr_curve_iou_threshold,
+            pr_curve_max_examples=pr_curve_max_examples,
         )
-        datum_filter = self._format_constraints(datasets, filter_by)
+        datasets = datasets if isinstance(datasets, list) else [datasets]
+        filters = filters if filters else Filter()
         request = EvaluationRequest(
-            model_names=[self.name],  # type: ignore
-            datum_filter=datum_filter,
+            dataset_names=[dataset.name for dataset in datasets],  # type: ignore - issue #604
+            model_names=[self.name],  # type: ignore - issue #604
+            filters=filters,
             parameters=parameters,
         )
 
@@ -1000,10 +976,10 @@ class Model(StaticCollection):
 
     def evaluate_segmentation(
         self,
-        datasets: Optional[Union[Dataset, List[Dataset]]] = None,
-        filter_by: Optional[FilterType] = None,
+        datasets: Union[Dataset, List[Dataset]],
+        filters: Optional[Filter] = None,
         label_map: Optional[Dict[Label, Label]] = None,
-        metrics_to_return: Optional[List[str]] = None,
+        metrics_to_return: Optional[List[MetricType]] = None,
         allow_retries: bool = False,
     ) -> Evaluation:
         """
@@ -1013,11 +989,11 @@ class Model(StaticCollection):
         ----------
         datasets : Union[Dataset, List[Dataset]], optional
             The dataset or list of datasets to evaluate against.
-        filter_by : FilterType, optional
+        filters : Filter, optional
             Optional set of constraints to filter evaluation by.
         label_map : Dict[Label, Label], optional
             Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
-        metrics: List[str], optional
+        metrics_to_return: List[MetricType], optional
             The list of metrics to compute, store, and return to the user.
         allow_retries : bool, default = False
             Option to retry previously failed evaluations.
@@ -1027,11 +1003,20 @@ class Model(StaticCollection):
         Evaluation
             A job object that can be used to track the status of the job and get the metrics of it upon completion
         """
+        if metrics_to_return and not set(metrics_to_return).issubset(
+            MetricType.semantic_segmentation()
+        ):
+            raise ValueError(
+                f"The following metrics are not supported for semantic segmentation: '{set(metrics_to_return) - MetricType.semantic_segmentation()}'"
+            )
+
         # format request
-        datum_filter = self._format_constraints(datasets, filter_by)
+        datasets = datasets if isinstance(datasets, list) else [datasets]
+        filters = filters if filters else Filter()
         request = EvaluationRequest(
-            model_names=[self.name],  # type: ignore
-            datum_filter=datum_filter,
+            dataset_names=[dataset.name for dataset in datasets],  # type: ignore - issue #604
+            model_names=[self.name],  # type: ignore - issue #604
+            filters=filters,
             parameters=EvaluationParameters(
                 task_type=TaskType.SEMANTIC_SEGMENTATION,
                 label_map=self._create_label_map(label_map=label_map),
@@ -1133,14 +1118,14 @@ class Client:
 
     def get_labels(
         self,
-        filter_by: Optional[FilterType] = None,
+        filters: Optional[Filter] = None,
     ) -> List[Label]:
         """
         Gets all labels using an optional filter.
 
         Parameters
         ----------
-        filter_by : FilterType, optional
+        filters : Filter, optional
             Optional constraints to filter by.
 
         Returns
@@ -1148,9 +1133,10 @@ class Client:
         List[valor.Label]
             A list of labels.
         """
-        filter_ = _format_filter(filter_by)
-        filter_ = asdict(filter_)
-        return [Label(**label) for label in self.conn.get_labels(filter_)]
+        filters = filters if filters is not None else Filter()
+        return [
+            Label(**label) for label in self.conn.get_labels(filters.to_dict())
+        ]
 
     def get_labels_from_dataset(
         self, dataset: Union[Dataset, str]
@@ -1217,6 +1203,7 @@ class Client:
         dataset: Dataset,
         groundtruths: List[GroundTruth],
         ignore_existing_datums: bool = False,
+        timeout: Optional[float] = 10,
     ):
         """
         Creates ground truths.
@@ -1228,6 +1215,8 @@ class Client:
             The dataset to create the ground truth for.
         groundtruths : List[valor.GroundTruth]
             The ground truths to create.
+        timeout: float, optional
+            The number of seconds the client should wait until raising a timeout.
         ignore_existing_datums : bool, default=False
             If True, will ignore datums that already exist in the backend.
             If False, will raise an error if any datums already exist.
@@ -1245,7 +1234,9 @@ class Client:
             groundtruth_dict["dataset_name"] = dataset.name
             groundtruths_json.append(groundtruth_dict)
         self.conn.create_groundtruths(
-            groundtruths_json, ignore_existing_datums=ignore_existing_datums
+            groundtruths_json,
+            timeout=timeout,
+            ignore_existing_datums=ignore_existing_datums,
         )
 
     def get_groundtruth(
@@ -1324,14 +1315,14 @@ class Client:
 
     def get_datasets(
         self,
-        filter_by: Optional[FilterType] = None,
+        filters: Optional[Filter] = None,
     ) -> List[Dataset]:
         """
         Get all datasets, with an option to filter results according to some user-defined parameters.
 
         Parameters
         ----------
-        filter_by : FilterType, optional
+        filters : Filter, optional
             Optional constraints to filter by.
 
         Returns
@@ -1339,25 +1330,23 @@ class Client:
         List[valor.Dataset]
             A list of datasets.
         """
-        filter_ = _format_filter(filter_by)
-        if isinstance(filter_, Filter):
-            filter_ = asdict(filter_)
         dataset_list = []
-        for kwargs in self.conn.get_datasets(filter_):
+        filters = filters if filters is not None else Filter()
+        for kwargs in self.conn.get_datasets(filters.to_dict()):
             dataset = Dataset.decode_value({**kwargs, "connection": self.conn})
             dataset_list.append(dataset)
         return dataset_list
 
     def get_datums(
         self,
-        filter_by: Optional[FilterType] = None,
+        filters: Optional[Filter] = None,
     ) -> List[Datum]:
         """
         Get all datums using an optional filter.
 
         Parameters
         ----------
-        filter_by : FilterType, optional
+        filters : Filter, optional
             Optional constraints to filter by.
 
         Returns
@@ -1365,12 +1354,11 @@ class Client:
         List[valor.Datum]
             A list datums.
         """
-        filter_ = _format_filter(filter_by)
-        if isinstance(filter_, Filter):
-            filter_ = asdict(filter_)
+
+        filters = filters if filters is not None else Filter()
         return [
             Datum.decode_value(datum)
-            for datum in self.conn.get_datums(filter_)
+            for datum in self.conn.get_datums(filters.to_dict())
         ]
 
     def get_datum(
@@ -1483,6 +1471,7 @@ class Client:
         dataset: Dataset,
         model: Model,
         predictions: List[Prediction],
+        timeout: Optional[float] = 10,
     ) -> None:
         """
         Creates predictions.
@@ -1495,6 +1484,8 @@ class Client:
             The model making the prediction.
         predictions : List[valor.Prediction]
             The predictions to create.
+        timeout: float, optional
+            The number of seconds the client should wait until raising a timeout.
         """
         predictions_json = []
         for prediction in predictions:
@@ -1508,7 +1499,7 @@ class Client:
             prediction_dict["dataset_name"] = dataset.name
             prediction_dict["model_name"] = model.name
             predictions_json.append(prediction_dict)
-        self.conn.create_predictions(predictions_json)
+        self.conn.create_predictions(predictions_json, timeout=timeout)
 
     def get_prediction(
         self,
@@ -1589,14 +1580,14 @@ class Client:
 
     def get_models(
         self,
-        filter_by: Optional[FilterType] = None,
+        filters: Optional[Filter] = None,
     ) -> List[Model]:
         """
         Get all models using an optional filter.
 
         Parameters
         ----------
-        filter_by : FilterType, optional
+        filters : Filter, optional
             Optional constraints to filter by.
 
         Returns
@@ -1604,11 +1595,9 @@ class Client:
         List[valor.Model]
             A list of models.
         """
-        filter_ = _format_filter(filter_by)
-        if isinstance(filter_, Filter):
-            filter_ = asdict(filter_)
         model_list = []
-        for kwargs in self.conn.get_models(filter_):
+        filters = filters if filters is not None else Filter()
+        for kwargs in self.conn.get_models(filters.to_dict()):
             model = Model.decode_value({**kwargs, "connection": self.conn})
             model_list.append(model)
         return model_list
@@ -1760,6 +1749,30 @@ class Client:
         return [
             Evaluation(**evaluation)
             for evaluation in self.conn.evaluate(
-                request, allow_retries=allow_retries
+                request.to_dict(), allow_retries=allow_retries
             )
         ]
+
+    def delete_evaluation(self, evaluation_id: int, timeout: int = 0) -> None:
+        """
+        Deletes an evaluation.
+
+        Parameters
+        ----------
+        evaluation_id : int
+            The id of the evaluation to be deleted.
+        timeout : int
+            The number of seconds to wait in order to confirm that the model was deleted.
+        """
+        self.conn.delete_evaluation(evaluation_id)
+        if timeout:
+            for _ in range(timeout):
+                try:
+                    self.get_evaluations(evaluation_ids=[evaluation_id])
+                except EvaluationDoesNotExist:
+                    break
+                time.sleep(1)
+            else:
+                raise TimeoutError(
+                    "Evaluation wasn't deleted within timeout interval"
+                )

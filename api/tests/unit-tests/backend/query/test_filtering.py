@@ -3,40 +3,74 @@ import pytest
 from valor_api.backend import models
 from valor_api.backend.query.filtering import (
     _recursive_search_logic_tree,
-    create_cte,
+    create_where_expression,
     generate_logical_expression,
     map_filter_to_tables,
+    map_keyed_symbol_to_resources,
+    map_opstr_to_operator,
+    map_symbol_to_resources,
+    map_type_to_jsonb_type_cast,
+    map_type_to_type_cast,
 )
-from valor_api.schemas.filters import AdvancedFilter as Filter
 from valor_api.schemas.filters import (
-    And,
-    Equal,
-    IsNull,
-    Not,
-    Operands,
+    Condition,
+    Filter,
+    FilterOperator,
+    LogicalFunction,
+    LogicalOperator,
+    SupportedSymbol,
+    SupportedType,
     Symbol,
     Value,
 )
 
 
-def test_create_cte_validation():
+def test_map_to_resources():
+    for symbol in SupportedSymbol:
+        # test that there is a singular mapping for each symbol
+        assert (symbol in map_symbol_to_resources) != (
+            symbol in map_keyed_symbol_to_resources
+        )
+
+
+def test_map_to_operator():
+    for op in FilterOperator:
+        # test that each op has an associated function
+        assert op in map_opstr_to_operator
+
+
+def test_map_to_type_cast():
+    for type_ in SupportedType:
+        # value type cast
+        assert type_ in map_type_to_type_cast
+        # jsonb type cast
+        assert type_ in map_type_to_jsonb_type_cast
+
+
+def test_create_where_expression_validation():
     with pytest.raises(ValueError):
-        create_cte(
-            opstr="eq",
-            symbol="symbol",  # type: ignore - testing
-            value=Value(type="string", value="some_name"),
+        create_where_expression(
+            Condition(
+                lhs="symbol",  # type: ignore - testing
+                rhs=Value(type=SupportedType.STRING, value="some_name"),
+                op=FilterOperator.EQ,
+            )
         )
     with pytest.raises(ValueError):
-        create_cte(
-            opstr="eq",
-            symbol=Symbol(type="string", name="dataset.name"),
-            value="value",  # type: ignore - testing
+        create_where_expression(
+            Condition(
+                lhs=Symbol(name=SupportedSymbol.DATASET_NAME),
+                rhs="value",  # type: ignore - testing
+                op=FilterOperator.EQ,
+            )
         )
     with pytest.raises(TypeError):
-        create_cte(
-            opstr="eq",
-            symbol=Symbol(type="string", name="dataset.name"),
-            value=Value(type="integer", value=1),
+        create_where_expression(
+            Condition(
+                lhs=Symbol(name=SupportedSymbol.DATASET_NAME),
+                rhs=Value(type=SupportedType.INTEGER, value=1),
+                op=FilterOperator.EQ,
+            )
         )
 
 
@@ -48,10 +82,12 @@ def test__recursive_search_logic_tree():
 
     # test one arg function
     tree, _, tables = _recursive_search_logic_tree(
-        func=Not(
-            logical_not=IsNull(
-                isnull=Symbol(type="box", name="annotation.bounding_box")
-            )
+        func=LogicalFunction(
+            args=Condition(
+                lhs=Symbol(name=SupportedSymbol.BOX),
+                op=FilterOperator.ISNULL,
+            ),
+            op=LogicalOperator.NOT,
         )
     )
     assert tables == [models.Annotation]
@@ -59,11 +95,10 @@ def test__recursive_search_logic_tree():
 
     # test two arg function
     tree, _, tables = _recursive_search_logic_tree(
-        func=Equal(
-            eq=Operands(
-                lhs=Symbol(type="string", name="dataset.name"),
-                rhs=Value(type="string", value="some_name"),
-            )
+        func=Condition(
+            lhs=Symbol(name=SupportedSymbol.DATASET_NAME),
+            rhs=Value.infer("some_name"),
+            op=FilterOperator.EQ,
         )
     )
     assert tables == [models.Dataset]
@@ -71,18 +106,19 @@ def test__recursive_search_logic_tree():
 
     # test n arg function
     tree, _, tables = _recursive_search_logic_tree(
-        func=And(
-            logical_and=[
-                IsNull(
-                    isnull=Symbol(type="box", name="annotation.bounding_box")
+        func=LogicalFunction(
+            args=[
+                Condition(
+                    lhs=Symbol(name=SupportedSymbol.BOX),
+                    op=FilterOperator.ISNULL,
                 ),
-                Equal(
-                    eq=Operands(
-                        lhs=Symbol(type="string", name="dataset.name"),
-                        rhs=Value(type="string", value="some_name"),
-                    )
+                Condition(
+                    lhs=Symbol(name=SupportedSymbol.DATASET_NAME),
+                    rhs=Value(type=SupportedType.STRING, value="some_name"),
+                    op=FilterOperator.EQ,
                 ),
-            ]
+            ],
+            op=LogicalOperator.AND,
         )
     )
     assert tables == [models.Annotation, models.Dataset]
@@ -91,9 +127,12 @@ def test__recursive_search_logic_tree():
 
 def test_map_filter_to_labels():
 
-    fn = IsNull(isnull=Symbol(type="box", name="annotation.bounding_box"))
+    fn = Condition(
+        lhs=Symbol(name=SupportedSymbol.BOX),
+        op=FilterOperator.ISNULL,
+    )
 
-    filter_ = Filter(
+    filters = Filter(
         datasets=fn,
         models=fn,
         datums=fn,
@@ -104,7 +143,7 @@ def test_map_filter_to_labels():
         embeddings=fn,
     )
 
-    assert map_filter_to_tables(filter_, label_source=models.Annotation) == {
+    assert map_filter_to_tables(filters, label_source=models.Annotation) == {
         models.Dataset,
         models.Model,
         models.Datum,
@@ -114,7 +153,7 @@ def test_map_filter_to_labels():
         models.Label,
         models.Embedding,
     }
-    assert map_filter_to_tables(filter_, label_source=models.GroundTruth) == {
+    assert map_filter_to_tables(filters, label_source=models.GroundTruth) == {
         models.Dataset,
         models.Model,
         models.Datum,
@@ -123,7 +162,7 @@ def test_map_filter_to_labels():
         models.Label,
         models.Embedding,
     }
-    assert map_filter_to_tables(filter_, label_source=models.Prediction) == {
+    assert map_filter_to_tables(filters, label_source=models.Prediction) == {
         models.Dataset,
         models.Model,
         models.Datum,
@@ -140,13 +179,16 @@ def test_generate_logical_expression_validation():
     # tree should be an int or a dict
     with pytest.raises(ValueError):
         generate_logical_expression(
-            root=select(models.Label.id).cte(),
+            ordered_ctes=[
+                select(models.Label.id).cte(),
+                select(models.Label.id).cte(),
+            ],
             tree=[0, 1],  # type: ignore - testing
-            prefix="cte",
         )
 
     # n-arg expressions should be represented by a list
     with pytest.raises(ValueError):
         generate_logical_expression(
-            root=select(models.Label.id).cte(), tree={"and": 0}, prefix="cte"
+            ordered_ctes=[select(models.Label.id).cte()],
+            tree={"and": 0},
         )

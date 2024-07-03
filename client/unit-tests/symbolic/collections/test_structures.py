@@ -3,7 +3,7 @@ import datetime
 import pytest
 
 from valor.schemas import (
-    Bool,
+    Boolean,
     Date,
     DateTime,
     Duration,
@@ -21,10 +21,7 @@ from valor.schemas import (
     Time,
     Variable,
 )
-from valor.schemas.symbolic.operators import (
-    AppendableFunction,
-    TwoArgumentFunction,
-)
+from valor.schemas.symbolic.operators import Condition, Eq, Function, Ne
 from valor.schemas.symbolic.types import (
     Dictionary,
     DictionaryValue,
@@ -34,7 +31,7 @@ from valor.schemas.symbolic.types import (
 
 
 def test__get_type_by_value():
-    assert _get_type_by_value(True) is Bool
+    assert _get_type_by_value(True) is Boolean
     assert _get_type_by_value("hello world") is String
     assert _get_type_by_value(int(1)) is Integer
     assert _get_type_by_value(float(3.14)) is Float
@@ -63,7 +60,7 @@ def test__get_type_by_value():
 
 def test_get_type_by_name():
     types_ = [
-        Bool,
+        Boolean,
         String,
         Integer,
         Float,
@@ -121,13 +118,8 @@ def _test_to_dict(objcls, value):
     }
     # test symbolic
     assert objcls.symbolic().to_dict() == {
-        "type": "symbol",
-        "value": {
-            "owner": None,
-            "name": objcls.__name__.lower(),
-            "key": None,
-            "attribute": None,
-        },
+        "name": objcls.__name__.lower(),
+        "key": None,
     }
 
 
@@ -156,14 +148,19 @@ def _test_generic(objcls, permutations, op):
         # test functional dictionary generation
         expr = C.__getattribute__(op)(a)
         expr_dict = expr.to_dict()
-        if issubclass(type(expr), AppendableFunction):
+        if isinstance(expr, Ne):
+            # this is an edge case as the Ne operator is currently set to Not(Equal(A, B))
+            assert len(expr_dict) == 2
+            assert expr_dict["op"] == "not"
+            assert expr_dict["args"] == Eq(C, A).to_dict()
+        elif issubclass(type(expr), Function):
             assert len(expr_dict) == 2
             assert expr_dict["op"] == get_function_name(op)
             assert expr_dict["args"] == [
                 C.to_dict(),
                 A.to_dict(),
             ]
-        elif issubclass(type(expr), TwoArgumentFunction):
+        elif issubclass(type(expr), Condition):
             assert len(expr_dict) == 3
             assert expr_dict["op"] == get_function_name(op)
             assert expr_dict["lhs"] == C.to_dict()
@@ -188,13 +185,8 @@ def test_list():
     symbol = List[Float].symbolic()
     assert symbol.__str__() == "list[float]"
     assert symbol.to_dict() == {
-        "type": "symbol",
-        "value": {
-            "owner": None,
-            "name": "list[float]",
-            "key": None,
-            "attribute": None,
-        },
+        "name": "list[float]",
+        "key": None,
     }
 
     # test creating valued lists
@@ -218,13 +210,8 @@ def test_list():
     assert (symbol == [0.1, 0.2, 0.3]).to_dict() == {
         "op": "eq",
         "lhs": {
-            "type": "symbol",
-            "value": {
-                "owner": None,
-                "name": "list[float]",
-                "key": None,
-                "attribute": None,
-            },
+            "name": "list[float]",
+            "key": None,
         },
         "rhs": {"type": "list[float]", "value": [0.1, 0.2, 0.3]},
     }
@@ -233,19 +220,16 @@ def test_list():
     assert (symbol == variable).to_dict() == {
         "op": "eq",
         "lhs": {
-            "type": "symbol",
-            "value": {
-                "owner": None,
-                "name": "list[float]",
-                "key": None,
-                "attribute": None,
-            },
+            "name": "list[float]",
+            "key": None,
         },
         "rhs": {"type": "list[float]", "value": [0.1, 0.2, 0.3]},
     }
 
     # test decode from json dict
-    assert List[Float].decode_value([0.1, 0.2, 0.3]).get_value() == [  # type: ignore - issue #604
+    assert List[Float].decode_value(
+        [0.1, 0.2, 0.3]
+    ).get_value() == [  # type: ignore - issue #604
         0.1,
         0.2,
         0.3,
@@ -272,17 +256,10 @@ def test_dictionary_value():
     with pytest.raises(ValueError):
         DictionaryValue(1)  # type: ignore - testing
 
-    # test symbol cannot already attribute
-    with pytest.raises(ValueError) as e:
-        DictionaryValue(
-            symbol=Symbol(name="a", attribute="c", owner="d", key="b"),
-        )
-    assert "attribute" in str(e)
-
     # test symbol must have key
     with pytest.raises(ValueError) as e:
         DictionaryValue(
-            symbol=Symbol(name="a", owner="d"),
+            symbol=Symbol(name="a"),
         )
     assert "key" in str(e)
 
@@ -292,13 +269,16 @@ def test_dictionary_value():
     ] == "eq"
     assert (DictionaryValue.symbolic(name="a", key="b") != 0).to_dict()[
         "op"
-    ] == "ne"
+    ] == "not"
+    assert (DictionaryValue.symbolic(name="a", key="b") != 0).to_dict()[
+        "args"
+    ]["op"] == "eq"
     assert (DictionaryValue.symbolic(name="a", key="b") >= 0).to_dict()[
         "op"
-    ] == "ge"
+    ] == "gte"
     assert (DictionaryValue.symbolic(name="a", key="b") <= 0).to_dict()[
         "op"
-    ] == "le"
+    ] == "lte"
     assert (DictionaryValue.symbolic(name="a", key="b") > 0).to_dict()[
         "op"
     ] == "gt"

@@ -170,7 +170,7 @@ def get_dataset(
 def get_datasets(
     *,
     db: Session,
-    filters: schemas.Filter | None = None,
+    filters: schemas.Filter,
     offset: int = 0,
     limit: int = -1,
 ) -> tuple[list[schemas.Dataset], dict[str, str]]:
@@ -183,11 +183,11 @@ def get_datasets(
     ----------
     db : Session
         The database Session to query against.
-    filters : schemas.Filter, optional
-        An optional filter to apply.
-    offset : int, optional
+    filters : schemas.Filter
+        A filter object to constrain the results by.
+    offset : int
         The start index of the items to return.
-    limit : int, optional
+    limit : int
         The number of items to return. Returns all items when set to -1.
 
 

@@ -165,10 +165,9 @@ def get_paginated_datasets(
             "Offset should be an int greater than or equal to zero. Limit should be an int greater than or equal to -1."
         )
 
-    advanced_filter = filters.to_advanced_filter() if filters else None
     datasets_subquery = generate_select(
         models.Dataset.id.label("id"),
-        filter_=advanced_filter,
+        filters=filters,
         label_source=models.GroundTruth,
     ).subquery()
 
@@ -465,7 +464,13 @@ def get_unique_groundtruth_annotation_metadata_in_dataset(
 def get_dataset_summary(db: Session, name: str) -> schemas.DatasetSummary:
     gt_labels = core.get_labels(
         db,
-        schemas.Filter(dataset_names=[name]),
+        schemas.Filter(
+            datasets=schemas.Condition(
+                lhs=schemas.Symbol(name=schemas.SupportedSymbol.DATASET_NAME),
+                rhs=schemas.Value.infer(name),
+                op=schemas.FilterOperator.EQ,
+            )
+        ),
         ignore_predictions=True,
     )
     return schemas.DatasetSummary(

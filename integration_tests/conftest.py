@@ -291,6 +291,18 @@ def rect4() -> list[tuple[float, float]]:
     ]
 
 
+@pytest.fixture
+def rect5() -> list[tuple[float, float]]:
+    """Box with partial overlap to rect3."""
+    return [
+        (87, 10),
+        (158, 10),
+        (158, 400),
+        (87, 400),
+        (87, 10),
+    ]
+
+
 """GroundTruths"""
 
 

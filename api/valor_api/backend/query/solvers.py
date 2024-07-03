@@ -1,6 +1,6 @@
 from typing import Any, Callable
 
-from sqlalchemy import Select, Subquery, alias, case, or_, select
+from sqlalchemy import CTE, Select, alias, or_, select
 from sqlalchemy.orm import InstrumentedAttribute, Query
 from sqlalchemy.sql.elements import UnaryExpression
 
@@ -21,8 +21,7 @@ from valor_api.backend.query.filtering import (
 )
 from valor_api.backend.query.mapping import map_arguments_to_tables
 from valor_api.backend.query.types import LabelSourceAlias, TableTypeAlias
-from valor_api.schemas.filters import AdvancedFilter as Filter
-from valor_api.schemas.filters import FunctionType
+from valor_api.schemas.filters import Filter, FunctionType
 
 
 def _join_label_to_annotation(selection: Select) -> Select[Any]:
@@ -308,9 +307,9 @@ map_label_source_to_neighbor_tables = {
     },
     GroundTruth: {
         Dataset: {Datum},
-        Model: {Annotation},
-        Datum: {Dataset, Annotation, Prediction},
-        Annotation: {Datum, Model, GroundTruth, Embedding},
+        Model: {Datum},
+        Datum: {Dataset, Model, Annotation, Prediction},
+        Annotation: {Datum, GroundTruth, Embedding},
         Embedding: {Annotation},
         GroundTruth: {Annotation, Label},
         Prediction: {Datum},
@@ -423,7 +422,7 @@ def generate_query(
     args: tuple[TableTypeAlias | InstrumentedAttribute | UnaryExpression],
     select_from: TableTypeAlias,
     label_source: LabelSourceAlias,
-    filter_: Filter | None = None,
+    filters: Filter | None = None,
 ) -> Select[Any] | Query[Any]:
     """
     Generates the main query.
@@ -440,7 +439,7 @@ def generate_query(
         The table to center the query over.
     label_source : LabelSourceAlias
         The table to use as a source of labels.
-    filter_ : Filter, optional
+    filters : Filter, optional
         An optional filter to apply to the query.
 
     Returns
@@ -452,7 +451,7 @@ def generate_query(
         raise ValueError(f"Invalid label source '{label_source}'.")
 
     arg_tables = map_arguments_to_tables(*args)
-    filter_tables = map_filter_to_tables(filter_, label_source)
+    filter_tables = map_filter_to_tables(filters, label_source)
 
     tables = arg_tables.union(filter_tables)
     tables.discard(select_from)
@@ -469,10 +468,9 @@ def generate_filter_subquery(
     conditions: FunctionType,
     select_from: TableTypeAlias,
     label_source: LabelSourceAlias,
-    prefix: str,
-) -> Subquery[Any]:
+) -> CTE:
     """
-    Generates the filtering subquery.
+    Generates the filtering CTE.
 
     Parameters
     ----------
@@ -482,61 +480,52 @@ def generate_filter_subquery(
         The table to center the query over.
     label_source : LabelSourceAlias
         The table to use as a source of labels.
-    prefix : str
-        The prefix to use in naming the CTE queries.
 
     Returns
     -------
-    Subquery[Any]
-        A filtering subquery.
+    CTE
+        A filtering CTE.
     """
     if label_source not in {Annotation, GroundTruth, Prediction}:
         raise ValueError(f"Invalid label source '{label_source}'.")
 
-    tree, ordered_ctes, ordered_tables = generate_dependencies(conditions)
+    tree, ordered_expressions, ordered_tables = generate_dependencies(
+        conditions
+    )
     if tree is None:
         raise ValueError(f"Invalid function given as input. '{conditions}'")
 
     tables = set(ordered_tables)
     tables.discard(select_from)
-    ordered_joins = _solve_graph(
-        select_from=select_from,
-        label_source=label_source,
-        tables=tables,
-    )
 
-    expressions = [
-        (table.id == cte.c.id)
-        for table, cte in zip(ordered_tables, ordered_ctes)
-    ]
+    ordered_ctes = []
+    for table, expression in zip(ordered_tables, ordered_expressions):
+        ordered_cte_joins = _solve_graph(
+            select_from=select_from, label_source=label_source, tables={table}
+        )
+
+        # define cte
+        cte_query = select(
+            select_from.id.label("id"),
+        )
+        for join in ordered_cte_joins:
+            cte_query = join(cte_query)
+        cte_query = cte_query.where(expression).distinct().cte()
+        ordered_ctes.append(cte_query)
 
     # construct query
-    query = select(
-        select_from.id.label("id"),
-        *[
-            case((expr, 1), else_=0).label(f"{prefix}{idx}")
-            for idx, expr in enumerate(expressions)
-        ],
-    )
+    query = select(select_from.id.label("id"))
     query = query.select_from(select_from)
-    for join in ordered_joins:
-        query = join(query)
-    for table, cte in zip(ordered_tables, ordered_ctes):
-        query = query.join(cte, cte.c.id == table.id, isouter=True)
-    query = query.distinct().cte()
-
-    return (
-        select(query.c.id.label("id"))
-        .select_from(query)
-        .where(generate_logical_expression(query, tree, prefix=prefix))
-        .subquery()
-    )
+    for cte in ordered_ctes:
+        query = query.join(cte, cte.c.id == select_from.id, isouter=True)
+    query = query.where(generate_logical_expression(ordered_ctes, tree))
+    return query.cte()
 
 
 def generate_filter_queries(
-    filter_: Filter,
+    filters: Filter,
     label_source: LabelSourceAlias,
-) -> list[tuple[Subquery[Any], TableTypeAlias]]:
+) -> list[tuple[CTE, TableTypeAlias]]:
     """
     Generates the filtering subqueries.
 
@@ -544,14 +533,14 @@ def generate_filter_queries(
 
     Parameters
     ----------
-    filter_ : Filter
+    filters : Filter
         The filter to apply.
     label_source : LabelSourceAlias
         The table to use as a source of labels.
 
     Returns
     -------
-    list[tuple[Subquery[Any], TableTypeAlias]]
+    list[tuple[CTE, TableTypeAlias]]
         A list of tuples containing a filtering subquery and the table to join it on.
     """
 
@@ -559,103 +548,83 @@ def generate_filter_queries(
         conditions: FunctionType,
         select_from: TableTypeAlias,
         label_source: LabelSourceAlias,
-        prefix: str,
-    ):
-        return generate_filter_subquery(
+    ) -> tuple[CTE, TableTypeAlias]:
+        cte = generate_filter_subquery(
             conditions=conditions,
             select_from=select_from,
             label_source=label_source,
-            prefix=f"{prefix}_cte",
         )
+        return (cte, select_from)
 
     queries = list()
-    if filter_.datasets:
-        conditions = filter_.datasets
-        select_from = Dataset
-        prefix = "ds"
-        queries.append(
-            (
-                _generator(conditions, select_from, label_source, prefix),
-                select_from,
-            )
+    if filters.datasets:
+        result = _generator(
+            conditions=filters.datasets,
+            select_from=Dataset,
+            label_source=GroundTruth,
         )
-    if filter_.models:
-        conditions = filter_.models
-        select_from = Model
-        prefix = "md"
-        queries.append(
-            (
-                _generator(conditions, select_from, label_source, prefix),
-                select_from,
-            )
+        queries.append(result)
+    if filters.models:
+        result = _generator(
+            conditions=filters.models,
+            select_from=Model,
+            label_source=Prediction,
         )
-    if filter_.datums:
-        conditions = filter_.datums
-        select_from = Datum
-        prefix = "dt"
-        queries.append(
-            (
-                _generator(conditions, select_from, label_source, prefix),
-                select_from,
-            )
+        queries.append(result)
+    if filters.datums:
+        result = _generator(
+            conditions=filters.datums,
+            select_from=Datum,
+            label_source=GroundTruth,
         )
-    if filter_.annotations:
-        conditions = filter_.annotations
-        select_from = Annotation
-        prefix = "an"
-        queries.append(
-            (
-                _generator(conditions, select_from, label_source, prefix),
-                select_from,
-            )
+        queries.append(result)
+    if filters.annotations:
+        result = _generator(
+            conditions=filters.annotations,
+            select_from=Annotation,
+            label_source=label_source,
         )
-    if filter_.groundtruths:
-        conditions = filter_.groundtruths
-        select_from = GroundTruth if label_source is not Prediction else Datum
-        prefix = "gt"
-        queries.append(
-            (
-                _generator(conditions, select_from, GroundTruth, prefix),
-                select_from,
-            )
+        queries.append(result)
+    if filters.groundtruths:
+        result = _generator(
+            conditions=filters.groundtruths,
+            select_from=GroundTruth
+            if label_source is not Prediction
+            else Datum,
+            label_source=GroundTruth,
         )
-    if filter_.predictions:
-        conditions = filter_.predictions
-        select_from = Prediction if label_source is not GroundTruth else Datum
-        prefix = "pd"
-        queries.append(
-            (
-                _generator(conditions, select_from, Prediction, prefix),
-                select_from,
-            )
+        queries.append(result)
+    if filters.predictions:
+        result = _generator(
+            conditions=filters.predictions,
+            select_from=Prediction
+            if label_source is not GroundTruth
+            else Datum,
+            label_source=Prediction,
         )
-    if filter_.labels:
-        conditions = filter_.labels
-        select_from = Label
-        prefix = "lb"
-        queries.append(
-            (
-                _generator(conditions, select_from, label_source, prefix),
-                select_from,
-            )
+        queries.append(result)
+    if filters.labels:
+        result = _generator(
+            conditions=filters.labels,
+            select_from=Label,
+            label_source=label_source,
         )
-    if filter_.embeddings:
-        conditions = filter_.embeddings
-        select_from = Embedding
-        prefix = "em"
-        queries.append(
-            (
-                _generator(conditions, select_from, label_source, prefix),
-                select_from,
-            )
+        queries.append(result)
+    if filters.embeddings:
+        result = _generator(
+            conditions=filters.embeddings,
+            select_from=Embedding,
+            label_source=label_source,
         )
+        queries.append(result)
+
     return queries
 
 
 def solver(
     *args,
     stmt: Select[Any] | Query[Any],
-    filter_: Filter | None,
+    filters: Filter | None,
     label_source: LabelSourceAlias,
 ) -> Select[Any] | Query[Any]:
     """
@@ -688,7 +657,7 @@ def solver(
         A list of select statement arguments.
     stmt : Select[Any] | Query[Any]
         A selection or query using the provided args.
-    filter_ : Filter, optional
+    filters : Filter, optional
         An optional filter.
     label_source : LabelSourceAlias
         The table to use as a source of labels.
@@ -707,12 +676,12 @@ def solver(
         args=args,
         select_from=select_from,
         label_source=label_source,
-        filter_=filter_,
+        filters=filters,
     )
-    if filter_ is not None:
-        filter_subqueries = generate_filter_queries(
-            filter_=filter_, label_source=label_source
+    if filters is not None:
+        filter_ctes = generate_filter_queries(
+            filters=filters, label_source=label_source
         )
-        for subquery, selected_from in filter_subqueries:
+        for subquery, selected_from in filter_ctes:
             query = query.join(subquery, subquery.c.id == selected_from.id)
     return query

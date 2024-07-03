@@ -6,27 +6,12 @@ from sqlalchemy.orm import Query, Session
 from valor_api.backend.models import Annotation, GroundTruth, Prediction
 from valor_api.backend.query.solvers import solver
 from valor_api.backend.query.types import LabelSourceAlias
-from valor_api.schemas.filters import AdvancedFilter, Filter
-
-
-def _format_filter_to_advanced_filter(
-    f: Filter | AdvancedFilter | None, label_source: LabelSourceAlias
-) -> AdvancedFilter | None:
-    if f is None:
-        return None
-    elif isinstance(f, AdvancedFilter):
-        return f
-    elif label_source is GroundTruth:
-        return f.to_advanced_filter(ignore_predictions=True)
-    elif label_source is Prediction:
-        return f.to_advanced_filter(ignore_groundtruths=True)
-    else:
-        return f.to_advanced_filter()
+from valor_api.schemas.filters import Filter
 
 
 def generate_select(
     *args: Any,
-    filter_: Filter | AdvancedFilter | None = None,
+    filters: Filter | None = None,
     label_source: LabelSourceAlias = Annotation,
 ) -> Select[Any]:
     """
@@ -38,7 +23,7 @@ def generate_select(
     ----------
     *args : Any
         A variable list of models or model attributes. (e.g. Label or Label.key)
-    filter_ : Filter | AdvancedFilter, optional
+    filters : Filter, optional
         An optional filter.
     label_source : LabelSourceAlias, default=Annotation
         The table to source labels from. This determines graph structure.
@@ -62,7 +47,7 @@ def generate_select(
     query = solver(
         *args,
         stmt=select(*args),
-        filter_=_format_filter_to_advanced_filter(filter_, label_source),
+        filters=filters,
         label_source=label_source,
     )
     if not isinstance(query, Select):
@@ -75,7 +60,7 @@ def generate_select(
 def generate_query(
     *args: Any,
     db: Session,
-    filter_: Filter | AdvancedFilter | None = None,
+    filters: Filter | None = None,
     label_source: LabelSourceAlias = Annotation,
 ) -> Query[Any]:
     """
@@ -89,7 +74,7 @@ def generate_query(
         A variable list of models or model attributes. (e.g. Label or Label.key)
     db : Session
         The database session to call query against.
-    filter_ : Filter | AdvancedFilter, optional
+    filters : Filter, optional
         An optional filter.
     label_source : LabelSourceAlias, default=Annotation
         The table to source labels from. This determines graph structure.
@@ -113,7 +98,7 @@ def generate_query(
     query = solver(
         *args,
         stmt=db.query(*args),
-        filter_=_format_filter_to_advanced_filter(filter_, label_source),
+        filters=filters,
         label_source=label_source,
     )
     if not isinstance(query, Query):

@@ -19,7 +19,7 @@ from valor import (
 )
 from valor.client import connect
 from valor.exceptions import ClientException
-from valor.schemas import Constraint, Filter
+from valor.schemas import And, Filter
 
 
 @pytest.fixture
@@ -164,15 +164,19 @@ def test_version_mismatch_warning(caplog):
 
 def test__requests_wrapper(client: Client):
     with pytest.raises(ValueError):
-        client.conn._requests_wrapper("get", "/datasets/fake_dataset/status")
+        client.conn._requests_wrapper(
+            method_name="get", endpoint="/datasets/fake_dataset/status"
+        )
 
     with pytest.raises(ValueError):
         client.conn._requests_wrapper(
-            "bad_method", "datasets/fake_dataset/status"
+            method_name="bad_method", endpoint="datasets/fake_dataset/status"
         )
 
     with pytest.raises(ClientException):
-        client.conn._requests_wrapper("get", "not_an_endpoint")
+        client.conn._requests_wrapper(
+            method_name="get", endpoint="not_an_endpoint"
+        )
 
 
 def test_get_labels(
@@ -186,14 +190,18 @@ def test_get_labels(
     assert len(all_labels) == 10
 
     high_score_labels = client.get_labels(
-        Filter(label_scores=[Constraint(value=0.5, operator=">")])
+        Filter(
+            predictions=(Label.score > 0.5),
+        )
     )
     assert len(high_score_labels) == 5
     for label in high_score_labels:
         assert int(label.value) % 2 == 1
 
     low_score_labels = client.get_labels(
-        Filter(label_scores=[Constraint(value=0.5, operator="<")])
+        Filter(
+            predictions=(Label.score < 0.5),
+        )
     )
     assert len(low_score_labels) == 5
     for label in low_score_labels:
@@ -216,11 +224,15 @@ def test_get_datasets(
     assert len(all_datasets) == 1
     assert all_datasets[0].name == created_dataset.name
 
-    pos_query = client.get_datasets(Filter(labels=[{"class0": "1"}]))
+    pos_query = client.get_datasets(
+        Filter(labels=And(Label.key == "class0", Label.value == "1"))
+    )
     assert len(pos_query) == 1
     assert pos_query[0].name == created_dataset.name
 
-    neg_query = client.get_datasets(Filter(labels=[{"some_other_class": "1"}]))
+    neg_query = client.get_datasets(
+        Filter(labels=And(Label.key == "some_other_class", Label.value == "1"))
+    )
     assert len(neg_query) == 0
 
     # check that the content-range header exists on the raw response
@@ -240,11 +252,15 @@ def test_get_models(
     assert len(all_models) == 1
     assert all_models[0].name == created_model.name
 
-    pos_query = client.get_models(Filter(labels=[{"class0": "1"}]))
+    pos_query = client.get_models(
+        Filter(labels=And(Label.key == "class0", Label.value == "1"))
+    )
     assert len(pos_query) == 1
     assert pos_query[0].name == created_model.name
 
-    neg_query = client.get_models(Filter(labels=[{"some_other_class": "1"}]))
+    neg_query = client.get_models(
+        Filter(labels=And(Label.key == "some_other_class", Label.value == "1"))
+    )
     assert len(neg_query) == 0
 
     # check that the content-range header exists on the raw response
@@ -264,11 +280,15 @@ def test_get_datums(
     assert len(all_datums) == 1
     assert all_datums[0].uid == "1"
 
-    pos_query = client.get_datums(Filter(labels=[{"class0": "1"}]))
+    pos_query = client.get_datums(
+        Filter(labels=And(Label.key == "class0", Label.value == "1"))
+    )
     assert len(pos_query) == 1
     assert pos_query[0].uid == "1"
 
-    neg_query = client.get_datums(Filter(labels=[{"some_other_class": "1"}]))
+    neg_query = client.get_datums(
+        Filter(labels=And(Label.key == "some_other_class", Label.value == "1"))
+    )
     assert len(neg_query) == 0
 
     # check that the content-range header exists on the raw response

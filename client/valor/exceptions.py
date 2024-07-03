@@ -4,7 +4,7 @@ from requests import Response, exceptions
 
 
 class ClientException(Exception):
-    def __init__(self, resp):
+    def __init__(self, resp: Response):
         self.status_code = resp.status_code
         self.detail = resp.json()["detail"]
         super().__init__(str(self.detail))
@@ -137,6 +137,29 @@ class PredictionDoesNotExistError(ClientException):
     """
 
     pass
+
+
+class EvaluationRequestError(ClientException):
+    """
+    Raises an exception if an evaluation request fails validation.
+    """
+
+    def __init__(self, resp: Response):
+        self.status_code = resp.status_code
+        details = json.loads(json.loads(resp.json()["detail"])["detail"])
+        self.detail = details["description"]
+        self.errors = details["errors"]
+        error_types = {error["name"] for error in self.errors}
+        Exception.__init__(self, str(self.detail), str(error_types))
+
+
+class EvaluationDoesNotExist(Exception):
+    """
+    Raises an exception if an evaluation does not exist.
+    """
+
+    def __init__(self, evaluation_id: int):
+        super().__init__(f"Evaluation '{evaluation_id}' does not exist.")
 
 
 def raise_client_exception(resp: Response):

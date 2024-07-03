@@ -59,7 +59,11 @@ def test_get_labels_from_dataset(
     ds1, headers = crud.get_labels(
         db=db,
         filters=schemas.Filter(
-            dataset_names=[dataset_name],
+            labels=schemas.Condition(
+                lhs=schemas.Symbol(name=schemas.SupportedSymbol.DATASET_NAME),
+                rhs=schemas.Value.infer(dataset_name),
+                op=schemas.FilterOperator.EQ,
+            ),
         ),
         ignore_prediction_labels=True,
     )
@@ -69,25 +73,77 @@ def test_get_labels_from_dataset(
     assert headers == {"content-range": "items 0-1/2"}
 
     # NEGATIVE - Test filter by task type
+    # This should be same result as previous b/c dataset only has Obj Dets
     ds1, _ = crud.get_labels(
         db=db,
         filters=schemas.Filter(
-            dataset_names=[dataset_name],
-            task_types=[
-                enums.TaskType.CLASSIFICATION,
-                enums.TaskType.SEMANTIC_SEGMENTATION,
-            ],
+            groundtruths=schemas.LogicalFunction(
+                args=[
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.DATASET_NAME
+                        ),
+                        rhs=schemas.Value.infer(dataset_name),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                    schemas.LogicalFunction(
+                        args=[
+                            schemas.Condition(
+                                lhs=schemas.Symbol(
+                                    name=schemas.SupportedSymbol.TASK_TYPE
+                                ),
+                                rhs=schemas.Value.infer(
+                                    enums.TaskType.OBJECT_DETECTION
+                                ),
+                                op=schemas.FilterOperator.CONTAINS,
+                            ),
+                            schemas.Condition(
+                                lhs=schemas.Symbol(
+                                    name=schemas.SupportedSymbol.TASK_TYPE
+                                ),
+                                rhs=schemas.Value.infer(
+                                    enums.TaskType.SEMANTIC_SEGMENTATION
+                                ),
+                                op=schemas.FilterOperator.CONTAINS,
+                            ),
+                        ],
+                        op=schemas.LogicalOperator.OR,
+                    ),
+                ],
+                op=schemas.LogicalOperator.AND,
+            )
         ),
         ignore_prediction_labels=True,
     )
-    assert ds1 == {schemas.Label(key="k2", value="v2")}
+    assert len(ds1) == 2
+    assert schemas.Label(key="k1", value="v1") in ds1
+    assert schemas.Label(key="k2", value="v2") in ds1
 
     # POSITIVE - Test filter by task type
     ds1, _ = crud.get_labels(
         db=db,
         filters=schemas.Filter(
-            dataset_names=[dataset_name],
-            task_types=[enums.TaskType.OBJECT_DETECTION],
+            labels=schemas.LogicalFunction(
+                args=[
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.DATASET_NAME
+                        ),
+                        rhs=schemas.Value.infer(dataset_name),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.TASK_TYPE
+                        ),
+                        rhs=schemas.Value.infer(
+                            enums.TaskType.OBJECT_DETECTION
+                        ),
+                        op=schemas.FilterOperator.CONTAINS,
+                    ),
+                ],
+                op=schemas.LogicalOperator.AND,
+            )
         ),
         ignore_prediction_labels=True,
     )
@@ -99,7 +155,22 @@ def test_get_labels_from_dataset(
     ds1, _ = crud.get_labels(
         db=db,
         filters=schemas.Filter(
-            dataset_names=[dataset_name], require_bounding_box=False
+            labels=schemas.LogicalFunction(
+                args=[
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.DATASET_NAME
+                        ),
+                        rhs=schemas.Value.infer(dataset_name),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol(name=schemas.SupportedSymbol.BOX),
+                        op=schemas.FilterOperator.ISNULL,
+                    ),
+                ],
+                op=schemas.LogicalOperator.AND,
+            )
         ),
         ignore_prediction_labels=True,
     )
@@ -110,7 +181,24 @@ def test_get_labels_from_dataset(
     ds1, _ = crud.get_labels(
         db=db,
         filters=schemas.Filter(
-            dataset_names=[dataset_name], require_polygon=True
+            labels=schemas.LogicalFunction(
+                args=[
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.DATASET_NAME
+                        ),
+                        rhs=schemas.Value.infer(dataset_name),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.POLYGON
+                        ),
+                        op=schemas.FilterOperator.ISNOTNULL,
+                    ),
+                ],
+                op=schemas.LogicalOperator.AND,
+            )
         ),
         ignore_prediction_labels=True,
     )
@@ -121,8 +209,22 @@ def test_get_labels_from_dataset(
     ds1, _ = crud.get_labels(
         db=db,
         filters=schemas.Filter(
-            dataset_names=[dataset_name],
-            require_bounding_box=True,
+            labels=schemas.LogicalFunction(
+                args=[
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.DATASET_NAME
+                        ),
+                        rhs=schemas.Value.infer(dataset_name),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol(name=schemas.SupportedSymbol.BOX),
+                        op=schemas.FilterOperator.ISNOTNULL,
+                    ),
+                ],
+                op=schemas.LogicalOperator.AND,
+            )
         ),
         ignore_prediction_labels=True,
     )
@@ -140,7 +242,11 @@ def test_get_labels_from_model(
     md1, _ = crud.get_labels(
         db=db,
         filters=schemas.Filter(
-            model_names=[model_name],
+            labels=schemas.Condition(
+                lhs=schemas.Symbol(name=schemas.SupportedSymbol.MODEL_NAME),
+                rhs=schemas.Value.infer(model_name),
+                op=schemas.FilterOperator.EQ,
+            )
         ),
         ignore_groundtruth_labels=True,
     )
@@ -154,8 +260,25 @@ def test_get_labels_from_model(
     md1, _ = crud.get_labels(
         db=db,
         filters=schemas.Filter(
-            model_names=[model_name],
-            task_types=[enums.TaskType.CLASSIFICATION],
+            labels=schemas.LogicalFunction(
+                args=[
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.MODEL_NAME
+                        ),
+                        rhs=schemas.Value.infer(model_name),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.TASK_TYPE
+                        ),
+                        rhs=schemas.Value.infer(enums.TaskType.CLASSIFICATION),
+                        op=schemas.FilterOperator.CONTAINS,
+                    ),
+                ],
+                op=schemas.LogicalOperator.AND,
+            )
         ),
         ignore_groundtruth_labels=True,
     )
@@ -165,8 +288,22 @@ def test_get_labels_from_model(
     md1, _ = crud.get_labels(
         db=db,
         filters=schemas.Filter(
-            model_names=[model_name],
-            require_bounding_box=True,
+            labels=schemas.LogicalFunction(
+                args=[
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.MODEL_NAME
+                        ),
+                        rhs=schemas.Value.infer(model_name),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol(name=schemas.SupportedSymbol.BOX),
+                        op=schemas.FilterOperator.ISNOTNULL,
+                    ),
+                ],
+                op=schemas.LogicalOperator.AND,
+            )
         ),
         ignore_groundtruth_labels=True,
     )
@@ -192,7 +329,8 @@ def test_get_dataset_summary(
         enums.TaskType.CLASSIFICATION,
         enums.TaskType.EMPTY,
     }
-    assert summary.datum_metadata == [
+
+    expected_datum_metadata = [
         {
             "width": 32,
             "height": 80,
@@ -202,10 +340,19 @@ def test_get_dataset_summary(
             "height": 100,
         },
     ]
-    assert summary.annotation_metadata == [
+    for item in summary.datum_metadata:
+        assert item in expected_datum_metadata
+    for item in expected_datum_metadata:
+        assert item in summary.datum_metadata
+
+    expected_annotation_metadata = [
         {"int_key": 1},
         {
             "string_key": "string_val",
             "int_key": 1,
         },
     ]
+    for item in summary.annotation_metadata:
+        assert item in expected_annotation_metadata
+    for item in expected_annotation_metadata:
+        assert item in summary.annotation_metadata

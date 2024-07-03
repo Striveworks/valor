@@ -2,7 +2,7 @@ import json
 import logging
 import os
 import time
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from typing import Callable, Dict, List, Optional, TypeVar, Union
 from urllib.parse import urlencode, urljoin
 
@@ -17,7 +17,6 @@ from valor.exceptions import (
     ClientNotConnectedError,
     raise_client_exception,
 )
-from valor.schemas import EvaluationRequest
 
 T = TypeVar("T")
 
@@ -139,6 +138,11 @@ class ClientConnection:
         else:
             self._using_username_password = False
 
+        if self.access_token or self._using_username_password:
+            self._using_auth = True
+        else:
+            self._using_auth = False
+
         # check the connection by getting the api version number
         try:
             api_version = self.get_api_version()
@@ -190,10 +194,11 @@ class ClientConnection:
 
     def _requests_wrapper(
         self,
+        *_,
         method_name: str,
         endpoint: str,
         ignore_auth: bool = False,
-        *args,
+        timeout: Optional[float] = 10,
         **kwargs,
     ):
         """
@@ -209,6 +214,8 @@ class ClientConnection:
             Option to ignore authentication when you know the endpoint does not
             require a bearer token. this is used by the `_get_access_token_from_username_and_password`
             to avoid infinite recursion.
+        timeout : float, optional
+            An optional request timeout in seconds.
         """
         accepted_methods = ["get", "post", "put", "delete"]
         if method_name not in accepted_methods:
@@ -224,65 +231,124 @@ class ClientConnection:
         url = urljoin(self.host, endpoint)
         requests_method = getattr(requests, method_name)
 
-        tried = False
-        while True:
-            if self.access_token is not None:
-                headers = {"Authorization": f"Bearer {self.access_token}"}
-            else:
-                headers = None
-            resp = requests_method(url, headers=headers, *args, **kwargs)
-            if not resp.ok:
-                # check if unauthorized and if using username and password, get a new
-                # token and try the request again
-                if (
-                    resp.status_code in [401, 403]
-                    and self._using_username_password
-                    and not tried
-                    and not ignore_auth
-                ):
-                    self._get_access_token_from_username_and_password()
-                else:
-                    raise_client_exception(resp)
-            else:
-                break
-            tried = True
+        if not ignore_auth and self._using_auth:
+            # get a new token
+            if self._using_username_password:
+                self._get_access_token_from_username_and_password()
+            headers = {"Authorization": f"Bearer {self.access_token}"}
+        else:
+            headers = None
+
+        resp = requests_method(
+            url,
+            headers=headers,
+            timeout=timeout,
+            **kwargs,
+        )
+        if not resp.ok:
+            raise_client_exception(resp)
 
         return resp
 
-    def _requests_post_rel_host(self, endpoint: str, *args, **kwargs):
+    def _requests_post_rel_host(
+        self,
+        endpoint: str,
+        *_,
+        json: Union[dict, list, None] = None,
+        params: Union[dict, list, None] = None,
+        data: Optional[dict] = None,
+        ignore_auth: bool = False,
+        timeout: Optional[float] = 10,
+    ):
         """
         Helper for handling POST requests.
+
+        Parameters
+        ----------
+        endpoint : str
+            The endpoint to send the request to.
+        json : dict | list, optional
+            An optional kwarg to pass to the request.
+        params : dict, optional
+            An optional kwarg to pass to the request.
+        data : dict, optional
+            An optional kwarg to pass to the request.
+        ignore_auth : bool, default=False
+            Option to ignore authentication when you know the endpoint does not
+            require a bearer token. This is used by the `_get_access_token_from_username_and_password`
+            to avoid infinite recursion.
+        timeout : float | None, default=10
+            An optional request timeout in seconds.
         """
         return self._requests_wrapper(
-            method_name="post", endpoint=endpoint, *args, **kwargs
+            method_name="post",
+            endpoint=endpoint,
+            json=json,
+            params=params,
+            data=data,
+            ignore_auth=ignore_auth,
+            timeout=timeout,
         )
 
-    def _requests_get_rel_host(self, endpoint: str, *args, **kwargs):
+    def _requests_get_rel_host(
+        self,
+        endpoint: str,
+        *_,
+        timeout: Optional[float] = 10,
+    ):
         """
         Helper for handling GET requests.
-        """
-        return self._requests_wrapper(
-            method_name="get", endpoint=endpoint, *args, **kwargs
-        )
 
-    def _requests_put_rel_host(self, endpoint: str, *args, **kwargs):
+        Parameters
+        ----------
+        endpoint : str
+            The endpoint to send the request to.
+        timeout : float | None, default=10
+            An optional request timeout in seconds.
+        """
+        return self._requests_wrapper(method_name="get", endpoint=endpoint)
+
+    def _requests_put_rel_host(
+        self,
+        endpoint: str,
+        *_,
+        timeout: Optional[float] = 10,
+    ):
         """
         Helper for handling PUT requests.
-        """
-        return self._requests_wrapper(
-            method_name="put", endpoint=endpoint, *args, **kwargs
-        )
 
-    def _requests_delete_rel_host(self, endpoint: str, *args, **kwargs):
+        Parameters
+        ----------
+        endpoint : str
+            The endpoint to send the request to.
+        timeout : float | None, default=10
+            An optional request timeout in seconds.
+        """
+        return self._requests_wrapper(method_name="put", endpoint=endpoint)
+
+    def _requests_delete_rel_host(
+        self,
+        endpoint: str,
+        *_,
+        timeout: Optional[float] = 10,
+    ):
         """
         Helper for handling DELETE requests.
+
+        Parameters
+        ----------
+        endpoint : str
+            The endpoint to send the request to.
+        timeout : float | None, default=10
+            An optional request timeout in seconds.
         """
-        return self._requests_wrapper(
-            method_name="delete", endpoint=endpoint, *args, **kwargs
-        )
+        return self._requests_wrapper(method_name="delete", endpoint=endpoint)
 
     def create_groundtruths(
-        self, groundtruths: List[dict], ignore_existing_datums: bool = False
+        self,
+        groundtruths: List[dict],
+        timeout: Optional[float],
+        ignore_existing_datums: bool = False,
     ) -> None:
         """
         Creates ground truths.
@@ -293,13 +359,16 @@ class ClientConnection:
         ----------
         groundtruths : List[dict]
             The ground truths to be created.
+        timeout: float, optional
+            The number of seconds the client should wait until raising a timeout.
         ignore_existing_datums : bool, default=False
             If True, will ignore datums that already exist in the backend.
             If False, will raise an error if any datums already exist.
             Default is False.
         """
         self._requests_post_rel_host(
-            "groundtruths",
+            endpoint="groundtruths",
+            timeout=timeout,
             json=groundtruths,
             params={"ignore_existing_datums": ignore_existing_datums},
         )
@@ -330,7 +399,11 @@ class ClientConnection:
             f"groundtruths/dataset/{dataset_name}/datum/{datum_uid}"
         ).json()
 
-    def create_predictions(self, predictions: List[dict]) -> None:
+    def create_predictions(
+        self,
+        predictions: List[dict],
+        timeout: Optional[float],
+    ) -> None:
         """
         Creates predictions.
 
@@ -340,8 +413,12 @@ class ClientConnection:
         ----------
         predictions : List[dict]
             The predictions to be created.
+        timeout: float, optional
+            The number of seconds the client should wait until raising a timeout.
         """
-        self._requests_post_rel_host("predictions", json=predictions)
+        self._requests_post_rel_host(
+            endpoint="predictions", timeout=timeout, json=predictions
+        )
 
     def get_prediction(
         self,
@@ -374,17 +451,27 @@ class ClientConnection:
 
     def get_labels(
         self,
-        filter_: Optional[dict] = None,
+        filters: Optional[dict] = None,
     ) -> List[dict]:
         """
         Gets all labels using an optional filter.
 
-        `GET` endpoint.
+        `POST` endpoint.
+
+        Parameters
+        ----------
+        filters : dict, optional
+            An optional filter.
+
+        Returns
+        -------
+        list[dict]
+            A list of labels in JSON format.
         """
-        kwargs = {}
-        if filter_:
-            kwargs["params"] = {k: json.dumps(v) for k, v in filter_.items()}
-        return self._requests_get_rel_host("labels", **kwargs).json()
+        filters = filters if filters else dict()
+        return self._requests_post_rel_host(
+            "labels/filter", json=filters
+        ).json()
 
     def get_labels_from_dataset(self, name: str) -> List[dict]:
         """
@@ -435,26 +522,26 @@ class ClientConnection:
         """
         self._requests_post_rel_host("datasets", json=dataset)
 
-    def get_datasets(self, filter_: Optional[dict] = None) -> List[dict]:
+    def get_datasets(self, filters: Optional[dict] = None) -> List[dict]:
         """
         Get all datasets with option to filter.
 
-        `GET` endpoint.
+        `POST` endpoint.
 
         Parameters
         ----------
-        filter_ : Filter, optional
-            Optional filter to constrain by.
+        filters : Filter, optional
+            An optional filter.
 
         Returns
         ------
         List[dict]
-            A list of dictionaries describing all the datasets attributed to the `Client` object.
+            A list of datasets in JSON format.
         """
-        kwargs = {}
-        if filter_:
-            kwargs["params"] = {k: json.dumps(v) for k, v in filter_.items()}
-        return self._requests_get_rel_host("datasets", **kwargs).json()
+        filters = filters if filters else dict()
+        return self._requests_post_rel_host(
+            "datasets/filter", json=filters
+        ).json()
 
     def get_dataset(self, name: str) -> dict:
         """
@@ -537,26 +624,24 @@ class ClientConnection:
         """
         self._requests_delete_rel_host(f"datasets/{name}")
 
-    def get_datums(self, filter_: Optional[dict] = None) -> List[dict]:
+    def get_datums(self, filters: Optional[dict] = None) -> List[dict]:
         """
         Get all datums using an optional filter.
 
-        `GET` endpoint.
+        `POST` endpoint.
 
         Parameters
         ----------
-        filter_ : dict, optional
-            Optional filter to constrain by.
+        filters : dict, optional
+            An optional filter.
 
         Returns
         -------
         List[dict]
-            A list of dictionaries describing all the datums of the specified dataset.
+            A list of datums in JSON format.
         """
-        kwargs = {}
-        if filter_:
-            kwargs["params"] = {k: json.dumps(v) for k, v in filter_.items()}
-        return self._requests_get_rel_host("data", **kwargs).json()
+        filters = filters if isinstance(filters, dict) else dict()
+        return self._requests_post_rel_host("data/filter", json=filters).json()
 
     def get_datum(
         self,
@@ -594,26 +679,26 @@ class ClientConnection:
         """
         self._requests_post_rel_host("models", json=model)
 
-    def get_models(self, filter_: Optional[dict] = None) -> List[dict]:
+    def get_models(self, filters: Optional[dict] = None) -> List[dict]:
         """
         Get all models using an optional filter.
 
-        `GET` endpoint.
+        `POST` endpoint.
 
         Parameters
         ----------
-        filter_ : Filter, optional
-            Optional filter to constrain by.
+        filters : Filter, optional
+            An optional filter.
 
         Returns
         ------
         List[dict]
-            A list of dictionaries describing all the models.
+            A list of models in JSON format.
         """
-        kwargs = {}
-        if filter_:
-            kwargs["params"] = {k: json.dumps(v) for k, v in filter_.items()}
-        return self._requests_get_rel_host("models", **kwargs).json()
+        filters = filters if filters else dict()
+        return self._requests_post_rel_host(
+            "models/filter", json=filters
+        ).json()
 
     def get_model(self, name: str) -> dict:
         """
@@ -717,7 +802,7 @@ class ClientConnection:
         self._requests_delete_rel_host(f"models/{name}")
 
     def evaluate(
-        self, request: EvaluationRequest, allow_retries: bool = False
+        self, request: dict, allow_retries: bool = False
     ) -> List[dict]:
         """
         Creates as many evaluations as necessary to fulfill the request.
@@ -726,7 +811,7 @@ class ClientConnection:
 
         Parameters
         ----------
-        request : schemas.EvaluationRequest
+        request : dict
             The requested evaluation parameters.
         allow_retries : bool, default = False
             Option to retry previously failed evaluations.
@@ -738,9 +823,7 @@ class ClientConnection:
         """
         query_str = urlencode({"allow_retries": allow_retries})
         endpoint = f"evaluations?{query_str}"
-        return self._requests_post_rel_host(
-            endpoint, json=asdict(request)
-        ).json()
+        return self._requests_post_rel_host(endpoint, json=request).json()
 
     def get_evaluations(
         self,
@@ -800,6 +883,19 @@ class ClientConnection:
         endpoint = f"evaluations?{query_str}"
 
         return self._requests_get_rel_host(endpoint).json()
+
+    def delete_evaluation(self, evaluation_id: int) -> None:
+        """
+        Deletes an evaluation.
+
+        `DELETE` endpoint.
+
+        Parameters
+        ----------
+        evaluation_id : int
+            The id of the evaluation to be deleted.
+        """
+        self._requests_delete_rel_host(f"evaluations/{evaluation_id}")
 
     def get_user(self) -> Union[str, None]:
         """
