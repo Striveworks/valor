@@ -51,21 +51,21 @@ def test_scored_label():
     assert l1.value == "value"
 
     # test member fn `__eq__`
-    assert s1 == s2  # type: ignore - resolved to 'Bool' as both sides are values
-    assert s1 == s6  # type: ignore - resolved to 'Bool' as both sides are values
-    assert not (s1 == s3)  # type: ignore - resolved to 'Bool' as both sides are values
-    assert not (s1 == s4)  # type: ignore - resolved to 'Bool' as both sides are values
-    assert not (s1 == s5)  # type: ignore - resolved to 'Bool' as both sides are values
+    assert s1 == s2
+    assert s1 == s6
+    assert not (s1 == s3)
+    assert not (s1 == s4)
+    assert not (s1 == s5)
     with pytest.raises(TypeError):
         assert s1 == 123
     with pytest.raises(TypeError):
         assert s1 == "123"
 
     # test member fn `__ne__`
-    assert not (s1 != s2)  # type: ignore - resolved to 'Bool' as both sides are values
-    assert s1 != s3  # type: ignore - resolved to 'Bool' as both sides are values
-    assert s1 != s4  # type: ignore - resolved to 'Bool' as both sides are values
-    assert s1 != s5  # type: ignore - resolved to 'Bool' as both sides are values
+    assert not (s1 != s2)
+    assert s1 != s3
+    assert s1 != s4
+    assert s1 != s5
     with pytest.raises(TypeError):
         assert s1 != 123
     with pytest.raises(TypeError):
