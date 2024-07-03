@@ -69,7 +69,7 @@ def _compute_curves(
     ]
 
     # create sets of all datums for which there is a prediction / groundtruth
-    # used when separating misclassifications/missed_detections
+    # used when separating misclassifications/no_predictions
     pd_datum_ids_to_high_score = {
         datum_id: high_score
         for datum_id, high_score in db.query(
@@ -185,7 +185,7 @@ def _compute_curves(
                     ):
                         fn["misclassifications"].add(gt_datum_id)
                     else:
-                        fn["missed_detections"].add(gt_datum_id)
+                        fn["no_predictions"].add(gt_datum_id)
                     seen_datum_ids.add(gt_datum_id)
 
             tn = set(unique_datums.keys()) - seen_datum_ids

@@ -364,7 +364,7 @@ def _compute_detailed_curves(
 
     # transform sorted_ranked_pairs into two sets (groundtruths and predictions)
     # we'll use these dictionaries to look up the IOU overlap between specific groundtruths and predictions
-    # to separate misclassifications from hallucinations/missed_detections
+    # to separate misclassifications
     pd_datums = defaultdict(lambda: defaultdict(list))
     gt_datums = defaultdict(lambda: defaultdict(list))
 
