@@ -266,7 +266,6 @@ def test_create_tabular_dataset_and_add_groundtruth(
         dataset.add_groundtruth(gt)
 
     assert len(db.scalars(select(models.GroundTruth)).all()) == 3
-
     # check we have two Datums and they have the correct uids
     data = db.scalars(select(models.Datum)).all()
     assert len(data) == 2
