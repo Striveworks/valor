@@ -1349,39 +1349,36 @@ def test__compute_curves(
         # bird
         ("bird", 0.05, "tp"): {"all": 3, "total": 3},
         ("bird", 0.05, "fp"): {
-            "hallucinations": 0,
             "misclassifications": 1,
             "total": 1,
         },
         ("bird", 0.05, "tn"): {"all": 2, "total": 2},
         ("bird", 0.05, "fn"): {
-            "missed_detections": 0,
+            "null_prediction": 0,
             "misclassifications": 0,
             "total": 0,
         },
         # dog
         ("dog", 0.05, "tp"): {"all": 2, "total": 2},
         ("dog", 0.05, "fp"): {
-            "hallucinations": 0,
             "misclassifications": 3,
             "total": 3,
         },
         ("dog", 0.05, "tn"): {"all": 1, "total": 1},
         ("dog", 0.8, "fn"): {
-            "missed_detections": 1,
+            "null_prediction": 1,
             "misclassifications": 1,
             "total": 2,
         },
         # cat
         ("cat", 0.05, "tp"): {"all": 1, "total": 1},
         ("cat", 0.05, "fp"): {
-            "hallucinations": 0,
             "misclassifications": 5,
             "total": 5,
         },
         ("cat", 0.05, "tn"): {"all": 0, "total": 0},
         ("cat", 0.8, "fn"): {
-            "missed_detections": 0,
+            "null_prediction": 0,
             "misclassifications": 0,
             "total": 0,
         },
