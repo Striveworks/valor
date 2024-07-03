@@ -736,7 +736,11 @@ def get_dataset_summary(
     dependencies=[Depends(token_auth_scheme)],
     tags=["Datasets"],
 )
-def finalize_dataset(dataset_name: str, db: Session = Depends(get_db)):
+def finalize_dataset(
+    dataset_name: str,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+):
     """
     Finalizes a dataset for evaluation.
 
@@ -746,6 +750,8 @@ def finalize_dataset(dataset_name: str, db: Session = Depends(get_db)):
     ----------
     dataset_name : str
         The name of the dataset.
+    background_tasks: BackgroundTasks
+        A FastAPI `BackgroundTasks` object to process the creation asynchronously. This parameter is a FastAPI dependency and shouldn't be submitted by the user.
     db : Session
         The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
 
@@ -758,7 +764,9 @@ def finalize_dataset(dataset_name: str, db: Session = Depends(get_db)):
 
     """
     try:
-        crud.finalize(db=db, dataset_name=dataset_name)
+        crud.finalize(
+            db=db, dataset_name=dataset_name, task_handler=background_tasks
+        )
     except Exception as e:
         raise exceptions.create_http_error(e)
 
@@ -783,7 +791,7 @@ def delete_dataset(
     dataset_name : str
         The name of the dataset.
     background_tasks: BackgroundTasks
-        A FastAPI `BackgroundTasks` object to process the deletion asyncronously. This parameter is a FastAPI dependency and shouldn't be submitted by the user.
+        A FastAPI `BackgroundTasks` object to process the deletion asynchronously. This parameter is a FastAPI dependency and shouldn't be submitted by the user.
     db : Session
         The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
 
@@ -1238,7 +1246,10 @@ def get_model_status(
     tags=["Models"],
 )
 def finalize_inferences(
-    dataset_name: str, model_name: str, db: Session = Depends(get_db)
+    dataset_name: str,
+    model_name: str,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
 ):
     """
     Finalize a model prior to evaluation.
@@ -1251,6 +1262,8 @@ def finalize_inferences(
         The name of the dataset.
     model_name : str
         The name of the model.
+    background_tasks: BackgroundTasks
+        A FastAPI `BackgroundTasks` object to process the creation asynchronously. This parameter is a FastAPI dependency and shouldn't be submitted by the user.
     db : Session
         The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
 
@@ -1267,6 +1280,7 @@ def finalize_inferences(
             db=db,
             model_name=model_name,
             dataset_name=dataset_name,
+            task_handler=background_tasks,
         )
     except Exception as e:
         raise exceptions.create_http_error(e)
@@ -1335,7 +1349,7 @@ def create_or_get_evaluations(
     job_request: schemas.EvaluationJob
         The job request for the evaluation.
     background_tasks: BackgroundTasks
-        A FastAPI `BackgroundTasks` object to process the creation asyncronously. This parameter is a FastAPI dependency and shouldn't be submitted by the user.
+        A FastAPI `BackgroundTasks` object to process the creation asynchronously. This parameter is a FastAPI dependency and shouldn't be submitted by the user.
     allow_retries: bool, default = False
         Determines whether failed evaluations are restarted.
     db : Session
