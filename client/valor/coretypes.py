@@ -465,7 +465,6 @@ class Dataset(StaticCollection):
         self,
         groundtruths: List[GroundTruth],
         ignore_existing_datums: bool = False,
-        timeout: Optional[float] = 10.0,
     ) -> None:
         """
         Add multiple ground truths to the dataset.
@@ -478,14 +477,11 @@ class Dataset(StaticCollection):
             If True, will ignore datums that already exist in the backend.
             If False, will raise an error if any datums already exist.
             Default is False.
-        timeout: float, optional
-            The number of seconds the client should wait until raising a timeout.
         """
         Client(self.conn).create_groundtruths(
             dataset=self,
             groundtruths=groundtruths,
             ignore_existing_datums=ignore_existing_datums,
-            timeout=timeout,
         )
 
     def get_groundtruth(
@@ -734,7 +730,6 @@ class Model(StaticCollection):
         self,
         dataset: Dataset,
         predictions: List[Prediction],
-        timeout: Optional[float] = 10.0,
     ) -> None:
         """
         Add multiple predictions to the model.
@@ -745,14 +740,11 @@ class Model(StaticCollection):
             The dataset that is being operated over.
         predictions : List[valor.Prediction]
             The predictions to create.
-        timeout: float, optional
-            The number of seconds the client should wait until raising a timeout.
         """
         Client(self.conn).create_predictions(
             dataset=dataset,
             model=self,
             predictions=predictions,
-            timeout=timeout,
         )
 
     def get_prediction(
@@ -1203,7 +1195,6 @@ class Client:
         dataset: Dataset,
         groundtruths: List[GroundTruth],
         ignore_existing_datums: bool = False,
-        timeout: Optional[float] = None,
     ):
         """
         Creates ground truths.
@@ -1215,8 +1206,6 @@ class Client:
             The dataset to create the ground truth for.
         groundtruths : List[valor.GroundTruth]
             The ground truths to create.
-        timeout: float, optional
-            The number of seconds the client should wait until raising a timeout.
         ignore_existing_datums : bool, default=False
             If True, will ignore datums that already exist in the backend.
             If False, will raise an error if any datums already exist.
@@ -1234,9 +1223,7 @@ class Client:
             groundtruth_dict["dataset_name"] = dataset.name
             groundtruths_json.append(groundtruth_dict)
         self.conn.create_groundtruths(
-            groundtruths_json,
-            timeout=timeout,
-            ignore_existing_datums=ignore_existing_datums,
+            groundtruths_json, ignore_existing_datums=ignore_existing_datums
         )
 
     def get_groundtruth(
@@ -1471,7 +1458,6 @@ class Client:
         dataset: Dataset,
         model: Model,
         predictions: List[Prediction],
-        timeout: Optional[float] = None,
     ) -> None:
         """
         Creates predictions.
@@ -1484,8 +1470,6 @@ class Client:
             The model making the prediction.
         predictions : List[valor.Prediction]
             The predictions to create.
-        timeout: float, optional
-            The number of seconds the client should wait until raising a timeout.
         """
         predictions_json = []
         for prediction in predictions:
@@ -1499,7 +1483,7 @@ class Client:
             prediction_dict["dataset_name"] = dataset.name
             prediction_dict["model_name"] = model.name
             predictions_json.append(prediction_dict)
-        self.conn.create_predictions(predictions_json, timeout=timeout)
+        self.conn.create_predictions(predictions_json)
 
     def get_prediction(
         self,

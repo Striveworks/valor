@@ -219,12 +219,12 @@ def test_compute_confusion_matrix_at_grouper_key(
         models.Annotation.datum_id.label("datum_id"),
         filters=gFilter,
         label_source=models.GroundTruth,
-    ).cte()
+    ).alias()
     predictions = generate_select(
         models.Prediction,
         filters=pFilter,
         label_source=models.Prediction,
-    ).cte()
+    ).alias()
 
     cm = _compute_confusion_matrix_at_grouper_key(
         db=db,
@@ -294,12 +294,12 @@ def test_compute_confusion_matrix_at_grouper_key(
         models.Annotation.datum_id.label("datum_id"),
         filters=gFilter,
         label_source=models.GroundTruth,
-    ).cte()
+    ).alias()
     predictions = generate_select(
         models.Prediction,
         filters=pFilter,
         label_source=models.Prediction,
-    ).cte()
+    ).alias()
 
     cm = _compute_confusion_matrix_at_grouper_key(
         db=db,
@@ -445,12 +445,12 @@ def test_compute_confusion_matrix_at_grouper_key_and_filter(
         models.Annotation.datum_id.label("datum_id"),
         filters=gFilter,
         label_source=models.GroundTruth,
-    ).cte()
+    ).alias()
     predictions = generate_select(
         models.Prediction,
         filters=pFilter,
         label_source=models.Prediction,
-    ).cte()
+    ).alias()
 
     cm = _compute_confusion_matrix_at_grouper_key(
         db,
@@ -595,12 +595,12 @@ def test_compute_confusion_matrix_at_grouper_key_using_label_map(
         models.Annotation.datum_id.label("datum_id"),
         filters=gFilter,
         label_source=models.GroundTruth,
-    ).cte()
+    ).alias()
     predictions = generate_select(
         models.Prediction,
         filters=pFilter,
         label_source=models.Prediction,
-    ).cte()
+    ).alias()
 
     cm = _compute_confusion_matrix_at_grouper_key(
         db,
@@ -1256,20 +1256,18 @@ def test__compute_curves(
         models.Dataset.name.label("dataset_name"),
         filters=gFilter,
         label_source=models.GroundTruth,
-    ).cte()
+    ).alias()
     predictions = generate_select(
         models.Prediction,
-        models.Annotation.datum_id.label("datum_id"),
         models.Dataset.name.label("dataset_name"),
         filters=pFilter,
         label_source=models.Prediction,
-    ).cte()
+    ).alias()
 
     # calculate the number of unique datums
     # used to determine the number of true negatives
 
     gt_datums = generate_query(
-        models.Datum.id,
         models.Dataset.name,
         models.Datum.uid,
         db=db,
@@ -1277,23 +1275,13 @@ def test__compute_curves(
         label_source=models.GroundTruth,
     ).all()
     pd_datums = generate_query(
-        models.Datum.id,
         models.Dataset.name,
         models.Datum.uid,
         db=db,
         filters=prediction_filter,
         label_source=models.Prediction,
     ).all()
-    unique_datums = {
-        datum_id: (dataset_name, datum_uid)
-        for datum_id, dataset_name, datum_uid in gt_datums
-    }
-    unique_datums.update(
-        {
-            datum_id: (dataset_name, datum_uid)
-            for datum_id, dataset_name, datum_uid in pd_datums
-        }
-    )
+    unique_datums = set(pd_datums + gt_datums)
 
     curves = _compute_curves(
         db=db,
@@ -1366,7 +1354,7 @@ def test__compute_curves(
         },
         ("bird", 0.05, "tn"): {"all": 2, "total": 2},
         ("bird", 0.05, "fn"): {
-            "null_predictions": 0,
+            "null_prediction": 0,
             "misclassifications": 0,
             "total": 0,
         },
@@ -1378,7 +1366,7 @@ def test__compute_curves(
         },
         ("dog", 0.05, "tn"): {"all": 1, "total": 1},
         ("dog", 0.8, "fn"): {
-            "null_predictions": 1,
+            "null_prediction": 1,
             "misclassifications": 1,
             "total": 2,
         },
@@ -1390,7 +1378,7 @@ def test__compute_curves(
         },
         ("cat", 0.05, "tn"): {"all": 0, "total": 0},
         ("cat", 0.8, "fn"): {
-            "null_predictions": 0,
+            "null_prediction": 0,
             "misclassifications": 0,
             "total": 0,
         },

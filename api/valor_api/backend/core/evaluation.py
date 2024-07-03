@@ -267,19 +267,11 @@ def _validate_evaluation_filter(
     filters = schemas.Filter(**evaluation.filters)
     parameters = schemas.EvaluationParameters(**evaluation.parameters)
 
-    # generate filters
-    from valor_api.backend.metrics.metric_utils import (
-        prepare_filter_for_evaluation,
-    )
+    groundtruth_filter = filters.model_copy()
+    groundtruth_filter.predictions = None
 
-    groundtruth_filter, prediction_filter = prepare_filter_for_evaluation(
-        db=db,
-        filters=filters,
-        dataset_names=evaluation.dataset_names,
-        model_name=evaluation.model_name,
-        task_type=parameters.task_type,
-        label_map=parameters.label_map,
-    )
+    predictions_filter = filters.model_copy()
+    predictions_filter.groundtruths = None
 
     datasets = (
         generate_query(
@@ -292,7 +284,7 @@ def _validate_evaluation_filter(
         .all()
     )
 
-    # verify datasets have data for this evaluation
+    # verify model and datasets have data for this evaluation
     if not datasets:
         raise exceptions.EvaluationRequestError(
             msg="No datasets were found that met the filter criteria."
@@ -302,9 +294,9 @@ def _validate_evaluation_filter(
     if parameters.task_type == enums.TaskType.CLASSIFICATION:
         core.validate_matching_label_keys(
             db=db,
-            groundtruth_filter=groundtruth_filter,
-            prediction_filter=prediction_filter,
             label_map=parameters.label_map,
+            groundtruth_filter=groundtruth_filter,
+            prediction_filter=predictions_filter,
         )
 
 
