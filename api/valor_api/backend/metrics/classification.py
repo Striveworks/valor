@@ -69,24 +69,7 @@ def _compute_curves(
     ]
 
     # create sets of all datums for which there is a prediction / groundtruth
-    # used when separating hallucinations/misclassifications/missed_detections
-    gt_datum_ids = {
-        datum_id
-        for datum_id in db.scalars(
-            select(groundtruths.c.datum_id)
-            .select_from(groundtruths)
-            .join(models.Datum, models.Datum.id == groundtruths.c.datum_id)
-            .join(
-                models.Label,
-                and_(
-                    models.Label.id == groundtruths.c.label_id,
-                    models.Label.key.in_(label_keys),
-                ),
-            )
-            .distinct()
-        ).all()
-    }
-
+    # used when separating misclassifications/no_predictions
     pd_datum_ids_to_high_score = {
         datum_id: high_score
         for datum_id, high_score in db.query(
@@ -188,10 +171,7 @@ def _compute_curves(
                     seen_datum_ids.add(pd_datum_id)
                 elif predicted_label == grouper_value and score >= threshold:
                     # if there was a groundtruth for a given datum, then it was a misclassification
-                    if pd_datum_id in gt_datum_ids:
-                        fp["misclassifications"].add(pd_datum_id)
-                    else:
-                        fp["hallucinations"].add(pd_datum_id)
+                    fp["misclassifications"].add(pd_datum_id)
                     seen_datum_ids.add(pd_datum_id)
                 elif (
                     groundtruth_label == grouper_value
@@ -205,14 +185,14 @@ def _compute_curves(
                     ):
                         fn["misclassifications"].add(gt_datum_id)
                     else:
-                        fn["missed_detections"].add(gt_datum_id)
+                        fn["no_predictions"].add(gt_datum_id)
                     seen_datum_ids.add(gt_datum_id)
 
             tn = set(unique_datums.keys()) - seen_datum_ids
             tp_cnt, fp_cnt, fn_cnt, tn_cnt = (
                 len(tp),
-                len(fp["hallucinations"]) + len(fp["misclassifications"]),
-                len(fn["missed_detections"]) + len(fn["misclassifications"]),
+                len(fp["misclassifications"]),
+                len(fn["no_predictions"]) + len(fn["misclassifications"]),
                 len(tn),
             )
 
@@ -301,16 +281,16 @@ def _compute_curves(
                                     else fn["misclassifications"]
                                 ),
                             },
-                            "missed_detections": {
-                                "count": len(fn["missed_detections"]),
+                            "no_predictions": {
+                                "count": len(fn["no_predictions"]),
                                 "examples": (
                                     random.sample(
-                                        fn["missed_detections"],
+                                        fn["no_predictions"],
                                         pr_curve_max_examples,
                                     )
-                                    if len(fn["missed_detections"])
+                                    if len(fn["no_predictions"])
                                     >= pr_curve_max_examples
-                                    else fn["missed_detections"]
+                                    else fn["no_predictions"]
                                 ),
                             },
                         },
@@ -328,18 +308,6 @@ def _compute_curves(
                                     if len(fp["misclassifications"])
                                     >= pr_curve_max_examples
                                     else fp["misclassifications"]
-                                ),
-                            },
-                            "hallucinations": {
-                                "count": len(fp["hallucinations"]),
-                                "examples": (
-                                    random.sample(
-                                        fp["hallucinations"],
-                                        pr_curve_max_examples,
-                                    )
-                                    if len(fp["hallucinations"])
-                                    >= pr_curve_max_examples
-                                    else fp["hallucinations"]
                                 ),
                             },
                         },

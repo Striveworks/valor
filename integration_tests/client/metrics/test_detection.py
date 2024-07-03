@@ -1349,7 +1349,7 @@ def test_evaluate_detection_with_label_maps(
             "total": 0,
         },
         (0, "british shorthair", "0.1", "fn"): {
-            "missed_detections": 1,
+            "no_predictions": 1,
             "misclassifications": 0,
             "total": 1,
         },
@@ -1360,25 +1360,25 @@ def test_evaluate_detection_with_label_maps(
             "total": 1,
         },
         (1, "maine coon cat", "0.1", "fn"): {
-            "missed_detections": 1,
+            "no_predictions": 1,
             "misclassifications": 0,
             "total": 1,
         },
         # k1
         (2, "v1", "0.1", "fn"): {
-            "missed_detections": 1,
+            "no_predictions": 1,
             "misclassifications": 0,
             "total": 1,
         },
         (2, "v1", "0.4", "fn"): {
-            "missed_detections": 2,
+            "no_predictions": 2,
             "misclassifications": 0,
             "total": 2,
         },
         (2, "v1", "0.1", "tp"): {"all": 1, "total": 1},
         # k2
         (3, "v2", "0.1", "fn"): {
-            "missed_detections": 1,
+            "no_predictions": 1,
             "misclassifications": 0,
             "total": 1,
         },
@@ -1423,7 +1423,7 @@ def test_evaluate_detection_with_label_maps(
     )
     assert (
         len(
-            detailed_pr_metrics[2]["value"]["v1"]["0.4"]["fn"]["observations"]["missed_detections"][  # type: ignore - we know this element is a dict
+            detailed_pr_metrics[2]["value"]["v1"]["0.4"]["fn"]["observations"]["no_predictions"][  # type: ignore - we know this element is a dict
                 "examples"
             ]
         )
@@ -2669,7 +2669,7 @@ def test_detailed_precision_recall_curve(
     assert eval_job.metrics[0]["value"]["v1"]["0.55"]["fn"]["total"] == 1
     assert (
         eval_job.metrics[0]["value"]["v1"]["0.55"]["fn"]["observations"][
-            "missed_detections"
+            "no_predictions"
         ]["count"]
         == 1
     )
@@ -2680,13 +2680,13 @@ def test_detailed_precision_recall_curve(
     assert (
         eval_job.metrics[0]["value"]["missed_detection"]["0.05"]["fn"][
             "observations"
-        ]["missed_detections"]["count"]
+        ]["no_predictions"]["count"]
         == 1
     )
     assert (
         eval_job.metrics[0]["value"]["missed_detection"]["0.95"]["fn"][
             "observations"
-        ]["missed_detections"]["count"]
+        ]["no_predictions"]["count"]
         == 1
     )
     assert (
@@ -2701,13 +2701,13 @@ def test_detailed_precision_recall_curve(
     # one fn missed_dection that becomes a misclassification when pr_curve_iou_threshold <= .48 and score threshold <= .3
     assert (
         eval_job.metrics[0]["value"]["v2"]["0.3"]["fn"]["observations"][
-            "missed_detections"
+            "no_predictions"
         ]["count"]
         == 1
     )
     assert (
         eval_job.metrics[0]["value"]["v2"]["0.35"]["fn"]["observations"][
-            "missed_detections"
+            "no_predictions"
         ]["count"]
         == 1
     )
@@ -2755,13 +2755,13 @@ def test_detailed_precision_recall_curve(
     # one missed detection and one hallucination due to low iou overlap
     assert (
         eval_job.metrics[0]["value"]["low_iou"]["0.3"]["fn"]["observations"][
-            "missed_detections"
+            "no_predictions"
         ]["count"]
         == 1
     )
     assert (
         eval_job.metrics[0]["value"]["low_iou"]["0.95"]["fn"]["observations"][
-            "missed_detections"
+            "no_predictions"
         ]["count"]
         == 1
     )
@@ -2795,7 +2795,7 @@ def test_detailed_precision_recall_curve(
     assert eval_job.metrics[0]["value"]["v1"]["0.55"]["fn"]["total"] == 1
     assert (
         eval_job.metrics[0]["value"]["v1"]["0.55"]["fn"]["observations"][
-            "missed_detections"
+            "no_predictions"
         ]["count"]
         == 1
     )
@@ -2806,13 +2806,13 @@ def test_detailed_precision_recall_curve(
     assert (
         eval_job.metrics[0]["value"]["missed_detection"]["0.05"]["fn"][
             "observations"
-        ]["missed_detections"]["count"]
+        ]["no_predictions"]["count"]
         == 1
     )
     assert (
         eval_job.metrics[0]["value"]["missed_detection"]["0.95"]["fn"][
             "observations"
-        ]["missed_detections"]["count"]
+        ]["no_predictions"]["count"]
         == 1
     )
     assert (
@@ -2834,7 +2834,7 @@ def test_detailed_precision_recall_curve(
     assert (
         eval_job_low_iou_threshold.metrics[0]["value"]["v2"]["0.3"]["fn"][
             "observations"
-        ]["missed_detections"]["count"]
+        ]["no_predictions"]["count"]
         == 0
     )
     assert (
@@ -2846,7 +2846,7 @@ def test_detailed_precision_recall_curve(
     assert (
         eval_job_low_iou_threshold.metrics[0]["value"]["v2"]["0.35"]["fn"][
             "observations"
-        ]["missed_detections"]["count"]
+        ]["no_predictions"]["count"]
         == 1
     )
     assert (
@@ -2913,13 +2913,13 @@ def test_detailed_precision_recall_curve(
     # one missed detection and one hallucination due to low iou overlap
     assert (
         eval_job.metrics[0]["value"]["low_iou"]["0.3"]["fn"]["observations"][
-            "missed_detections"
+            "no_predictions"
         ]["count"]
         == 1
     )
     assert (
         eval_job.metrics[0]["value"]["low_iou"]["0.95"]["fn"]["observations"][
-            "missed_detections"
+            "no_predictions"
         ]["count"]
         == 1
     )
