@@ -222,8 +222,8 @@ Valor also includes a more detailed version of `PrecisionRecallCurve` which can 
     - **Example**: if there's a photo with one groundtruth label on it (e.g., `Label(key='animal', value='dog')`), and we predicted another label value (e.g., `Label(key='animal', value='cat')`) on that datum, we'd say it's a `misclassification` since the key was correct but the value was not.
   - Similarly, a **false negative** occurs when there is a prediction with the same `Label.key` as the groundtruth on the datum, but the `Label.value` is incorrect.
     - Stratifications of False Negatives:
-        - **Misclassification**: Occurs when a different label value passes the score threshold.
-        - **Null Prediction**: Occurs when no label passes the score threshold.
+        - `misclassification`: Occurs when a different label value passes the score threshold.
+        - `no_prediction`: Occurs when no label passes the score threshold.
 
 #### Object Detection Tasks
   - A **false positive** is a `misclassification` if a) there is a qualified prediction with the same `Label.key` as the groundtruth on the datum, but the `Label.value` is incorrect, and b) the qualified prediction and groundtruth have an IOU >= `pr_curve_iou_threshold`. For example: if there's a photo with one groundtruth label on it (e.g., `Label(key='animal', value='dog')`), and we predicted another bounding box directly over that same object (e.g., `Label(key='animal', value='cat')`), we'd say it's a `misclassification`. Any false positives that do not meet this criteria are considered to be `hallucinations`.
