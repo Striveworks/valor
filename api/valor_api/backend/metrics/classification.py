@@ -87,10 +87,10 @@ def _compute_curves(
         ).all()
     }
 
-    pd_datum_ids = {
-        datum_id
-        for datum_id in db.scalars(
-            select(predictions.c.datum_id)
+    pd_datum_ids_to_high_score = {
+        datum_id: high_score
+        for datum_id, high_score in db.query(
+            select(predictions.c.datum_id, func.max(predictions.c.score))
             .select_from(predictions)
             .join(models.Datum, models.Datum.id == predictions.c.datum_id)
             .join(
@@ -100,7 +100,8 @@ def _compute_curves(
                     models.Label.key.in_(label_keys),
                 ),
             )
-            .distinct()
+            .group_by(predictions.c.datum_id)
+            .subquery()
         ).all()
     }
 
@@ -197,7 +198,11 @@ def _compute_curves(
                     and gt_datum_id not in seen_datum_ids
                 ):
                     # if there was a prediction for a given datum, then it was a misclassification
-                    if gt_datum_id in pd_datum_ids:
+                    if (
+                        gt_datum_id in pd_datum_ids_to_high_score
+                        and pd_datum_ids_to_high_score[gt_datum_id]
+                        >= threshold
+                    ):
                         fn["misclassifications"].add(gt_datum_id)
                     else:
                         fn["missed_detections"].add(gt_datum_id)

@@ -1380,8 +1380,8 @@ def test__compute_curves(
         },
         ("dog", 0.05, "tn"): {"all": 1, "total": 1},
         ("dog", 0.8, "fn"): {
-            "missed_detections": 0,
-            "misclassifications": 2,
+            "missed_detections": 1,
+            "misclassifications": 1,
             "total": 2,
         },
         # cat
