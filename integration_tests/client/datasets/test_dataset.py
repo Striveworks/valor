@@ -279,6 +279,8 @@ def test_create_tabular_dataset_and_add_groundtruth(
         elif "metadatum2" in datum.meta and "metadatum3" in datum.meta:
             assert len(datum.meta) == 2
             assert datum.meta == md23
+        else:
+            assert False
 
     # check that we can add data with specified uids
     new_gts = [
