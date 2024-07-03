@@ -233,7 +233,7 @@ def run_detailed_pr_curve_evaluation(dset: Dataset, model: Model):
 
 
 def run_benchmarking_analysis(
-    limits_to_test: list[int] = [1, 2, 3, 4],
+    limits_to_test: list[int] = [4, 4],
     results_file: str = "results.json",
     data_file: str = "data.json",
 ):
