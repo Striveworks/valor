@@ -275,8 +275,10 @@ def test_create_tabular_dataset_and_add_groundtruth(
     # check metadata is there
     for datum in data:
         if "metadatum1" in datum.meta:
+            assert len(datum.meta) == 1
             assert datum.meta == md1
         elif "metadatum2" in datum.meta and "metadatum3" in datum.meta:
+            assert len(datum.meta) == 2
             assert datum.meta == md23
         else:
             assert False
