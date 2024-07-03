@@ -37,6 +37,7 @@ repos:
             "requests",
             "Pillow >= 9.1.0",
             "numpy",
+            "pandas",
             "pytest",
             "python-dotenv",
             "SQLAlchemy>=2.0",

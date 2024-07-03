@@ -13,6 +13,7 @@ dependencies = [
     "SQLAlchemy>=2.0",
     "Pillow >= 9.1.0",
     "numpy",
+    "pandas",
     "python-dotenv",
     "pydantic-settings",
     "structlog",

@@ -173,7 +173,9 @@ def test_evaluate_image_clf(
         ]:
             assert m in expected_metrics
     for m in expected_metrics:
-        assert m in metrics
+        assert (
+            m in metrics
+        )  # TODO (k4, v5) only appears in predictions and should return -1
 
     confusion_matrices = eval_job.confusion_matrices
     for m in confusion_matrices:
@@ -341,7 +343,7 @@ def test_evaluate_tabular_clf(
         {
             "type": "Precision",
             "value": 0.5,
-            "label": {"key": "class", "value": "0"},
+            "label": {"key": "class", "value": "0"},  # TODO got .1666
         },
         {
             "type": "Recall",

@@ -83,7 +83,9 @@ def _create_classification_grouper_mappings(
     """Create grouper mappings for use when evaluating classifications."""
 
     # define mappers to connect groupers with labels
+    # TODO are all these still used?
     label_value_to_grouper_value = {}
+    label_to_grouper_key_mapping = {}
     grouper_key_to_labels_mapping = defaultdict(lambda: defaultdict(set))
     grouper_key_to_label_keys_mapping = defaultdict(set)
 
@@ -94,11 +96,14 @@ def _create_classification_grouper_mappings(
         )
 
         label_value_to_grouper_value[label.value] = grouper_value
+        label_to_grouper_key_mapping[(label.key, label.value)] = grouper_key
+
         grouper_key_to_label_keys_mapping[grouper_key].add(label.key)
         grouper_key_to_labels_mapping[grouper_key][grouper_value].add(label)
 
     return {
         "label_value_to_grouper_value": label_value_to_grouper_value,
+        "label_to_grouper_key_mapping": label_to_grouper_key_mapping,
         "grouper_key_to_labels_mapping": grouper_key_to_labels_mapping,
         "grouper_key_to_label_keys_mapping": grouper_key_to_label_keys_mapping,
     }

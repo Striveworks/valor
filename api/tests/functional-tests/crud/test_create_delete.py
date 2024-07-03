@@ -1121,9 +1121,11 @@ def test_create_detection_metrics(
             dataset_names=["test_dataset"],
             model_names=["test_model"],
             filters=schemas.Filter(
-                annotations=schemas.LogicalFunction.and_(*conditions)
-                if conditions
-                else None,
+                annotations=(
+                    schemas.LogicalFunction.and_(*conditions)
+                    if conditions
+                    else None
+                ),
                 labels=schemas.Condition(
                     lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
                     rhs=schemas.Value.infer(label_key),
@@ -1424,12 +1426,12 @@ def test_create_clf_metrics(
         ms = [m for m in metrics if m.type == t]
         assert len(ms) == 6
         assert set([(m.label.key, m.label.value) for m in ms]) == {
-            ("k1", "v1"),
-            ("k2", "v0"),
-            ("k2", "v3"),
-            ("k2", "v2"),
-            ("k1", "v2"),
-            ("k2", "v4"),
+            ("k1", "v1"),  #
+            ("k2", "v0"),  # missing?
+            ("k2", "v3"),  #
+            ("k2", "v2"),  #
+            ("k1", "v2"),  #
+            ("k2", "v4"),  # check
         }
 
     confusion_matrices = db.scalars(
