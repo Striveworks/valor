@@ -364,7 +364,7 @@ def _compute_detailed_curves(
 
     # transform sorted_ranked_pairs into two sets (groundtruths and predictions)
     # we'll use these dictionaries to look up the IOU overlap between specific groundtruths and predictions
-    # to separate misclassifications from hallucinations/missed_detections
+    # to separate misclassifications
     pd_datums = defaultdict(lambda: defaultdict(list))
     gt_datums = defaultdict(lambda: defaultdict(list))
 
@@ -466,7 +466,7 @@ def _compute_detailed_curves(
                                 (dataset_name, datum_uid, gt_geojson)
                             )
                         else:
-                            fn["missed_detections"].append(
+                            fn["no_predictions"].append(
                                 (dataset_name, datum_uid, gt_geojson)
                             )
 
@@ -521,7 +521,7 @@ def _compute_detailed_curves(
             tp_cnt, fp_cnt, fn_cnt = (
                 len(tp),
                 len(fp["hallucinations"]) + len(fp["misclassifications"]),
-                len(fn["missed_detections"]) + len(fn["misclassifications"]),
+                len(fn["no_predictions"]) + len(fn["misclassifications"]),
             )
             precision = (
                 tp_cnt / (tp_cnt + fp_cnt) if (tp_cnt + fp_cnt) > 0 else -1
@@ -575,16 +575,16 @@ def _compute_detailed_curves(
                                 else fn["misclassifications"]
                             ),
                         },
-                        "missed_detections": {
-                            "count": len(fn["missed_detections"]),
+                        "no_predictions": {
+                            "count": len(fn["no_predictions"]),
                             "examples": (
                                 random.sample(
-                                    fn["missed_detections"],
+                                    fn["no_predictions"],
                                     pr_curve_max_examples,
                                 )
-                                if len(fn["missed_detections"])
+                                if len(fn["no_predictions"])
                                 >= pr_curve_max_examples
-                                else fn["missed_detections"]
+                                else fn["no_predictions"]
                             ),
                         },
                     },
