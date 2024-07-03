@@ -189,13 +189,13 @@ class ClientConnection:
 
     def _requests_wrapper(
         self,
-        *_,
         method_name: str,
         endpoint: str,
         ignore_auth: bool = False,
         max_retries_on_timeout=2,
         initial_timeout: float = 2,
         exponential_backoff: int = 2,
+        *args,
         **kwargs,
     ):
         """
@@ -242,7 +242,7 @@ class ClientConnection:
 
             try:
                 resp = requests_method(
-                    url, headers=headers, timeout=10, **kwargs
+                    url, headers=headers, timeout=10, *args, **kwargs
                 )
             except requests.exceptions.Timeout as e:
                 if timeout_retries < max_retries_on_timeout:
@@ -273,36 +273,36 @@ class ClientConnection:
 
         return resp
 
-    def _requests_post_rel_host(self, endpoint: str, *_, **kwargs):
+    def _requests_post_rel_host(self, endpoint: str, *args, **kwargs):
         """
         Helper for handling POST requests.
         """
         return self._requests_wrapper(
-            method_name="post", endpoint=endpoint, **kwargs
+            method_name="post", endpoint=endpoint, *args, **kwargs
         )
 
-    def _requests_get_rel_host(self, endpoint: str, *_, **kwargs):
+    def _requests_get_rel_host(self, endpoint: str, *args, **kwargs):
         """
         Helper for handling GET requests.
         """
         return self._requests_wrapper(
-            method_name="get", endpoint=endpoint, **kwargs
+            method_name="get", endpoint=endpoint, *args, **kwargs
         )
 
-    def _requests_put_rel_host(self, endpoint: str, *_, **kwargs):
+    def _requests_put_rel_host(self, endpoint: str, *args, **kwargs):
         """
         Helper for handling PUT requests.
         """
         return self._requests_wrapper(
-            method_name="put", endpoint=endpoint, **kwargs
+            method_name="put", endpoint=endpoint, *args, **kwargs
         )
 
-    def _requests_delete_rel_host(self, endpoint: str, *_, **kwargs):
+    def _requests_delete_rel_host(self, endpoint: str, *args, **kwargs):
         """
         Helper for handling DELETE requests.
         """
         return self._requests_wrapper(
-            method_name="delete", endpoint=endpoint, **kwargs
+            method_name="delete", endpoint=endpoint, *args, **kwargs
         )
 
     def create_groundtruths(
