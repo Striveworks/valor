@@ -276,7 +276,7 @@ def test_create_tabular_dataset_and_add_groundtruth(
     for datum in data:
         if "metadatum1" in datum.meta:
             assert datum.meta == md1
-        elif "metadata2" in datum.meta and "metadata3" in datum.meta:
+        elif "metadatum2" in datum.meta and "metadatum3" in datum.meta:
             assert datum.meta == md23
         else:
             assert False
