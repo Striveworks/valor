@@ -207,7 +207,9 @@ def test_list():
     assert variable[0].get_value() == 0.1
 
     # test comparison symbol -> value
-    assert (symbol == [0.1, 0.2, 0.3]).to_dict() == {
+    eq = symbol == [0.1, 0.2, 0.3]
+    assert isinstance(eq, Eq)
+    assert eq.to_dict() == {
         "op": "eq",
         "lhs": {
             "name": "list[float]",
@@ -217,7 +219,9 @@ def test_list():
     }
 
     # test comparison symbol -> valued variable
-    assert (symbol == variable).to_dict() == {
+    eq = symbol == variable
+    assert isinstance(eq, Eq)
+    assert eq.to_dict() == {
         "op": "eq",
         "lhs": {
             "name": "list[float]",
@@ -300,9 +304,9 @@ def test_dictionary_value():
     assert (
         DictionaryValue.symbolic(name="a", key="b").is_not_none()
     ).to_dict()["op"] == "isnotnull"
-    assert (DictionaryValue.symbolic(name="a", key="b").area == 0).to_dict()[
-        "op"
-    ] == "eq"
+    eq = DictionaryValue.symbolic(name="a", key="b") == 0
+    assert isinstance(eq, Eq)
+    assert eq.to_dict()["op"] == "eq"
 
     # test router with Variable type
     assert (DictionaryValue.symbolic(name="a", key="b") == Float(0)).to_dict()[
