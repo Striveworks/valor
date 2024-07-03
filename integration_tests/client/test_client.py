@@ -3,7 +3,6 @@ that is no auth
 """
 
 from typing import List
-from unittest.mock import patch
 
 import pytest
 import requests
@@ -165,51 +164,19 @@ def test_version_mismatch_warning(caplog):
 
 def test__requests_wrapper(client: Client):
     with pytest.raises(ValueError):
-        client.conn._requests_wrapper("get", "/datasets/fake_dataset/status")
+        client.conn._requests_wrapper(
+            method_name="get", endpoint="/datasets/fake_dataset/status"
+        )
 
     with pytest.raises(ValueError):
         client.conn._requests_wrapper(
-            "bad_method", "datasets/fake_dataset/status"
+            method_name="bad_method", endpoint="datasets/fake_dataset/status"
         )
 
     with pytest.raises(ClientException):
-        client.conn._requests_wrapper("get", "not_an_endpoint")
-
-
-@patch("time.sleep")
-def test__requests_wrapper_retries(mock_requests, client: Client, monkeypatch):
-    """Tests the retry logic in _requests_wrapper to see if we call requests.get the appropriate number of times."""
-
-    def _return_mock_response(*args, **kwargs):
-        if mock_requests.call_count <= 3:
-            raise requests.exceptions.Timeout
-        response = requests.Response
-        response.status_code = 200
-        return response
-
-    monkeypatch.setattr("requests.get", _return_mock_response)
-
-    for max_retries in range(1, 3):
-        with pytest.raises(TimeoutError):
-            client.conn._requests_wrapper(
-                method_name="get",
-                endpoint="test",
-                ignore_auth=False,
-                timeout=0.1,
-                max_retries=max_retries,
-                exponential_backoff=1,
-            )
-
-    for max_retries in range(4, 8):
         client.conn._requests_wrapper(
-            method_name="get",
-            endpoint="test",
-            ignore_auth=False,
-            timeout=0.1,
-            max_retries=max_retries,
-            exponential_backoff=1,
+            method_name="get", endpoint="not_an_endpoint"
         )
-        assert mock_requests.call_count == 4
 
 
 def test_get_labels(

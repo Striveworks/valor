@@ -138,6 +138,11 @@ class ClientConnection:
         else:
             self._using_username_password = False
 
+        if self.access_token or self._using_username_password:
+            self._using_auth = True
+        else:
+            self._using_auth = False
+
         # check the connection by getting the api version number
         try:
             api_version = self.get_api_version()
@@ -189,12 +194,11 @@ class ClientConnection:
 
     def _requests_wrapper(
         self,
+        *_,
         method_name: str,
         endpoint: str,
         ignore_auth: bool = False,
-        timeout: Optional[float] = 2,
-        max_retries=2,
-        exponential_backoff: int = 2,
+        timeout: Optional[float] = 10,
         **kwargs,
     ):
         """
@@ -211,11 +215,7 @@ class ClientConnection:
             require a bearer token. this is used by the `_get_access_token_from_username_and_password`
             to avoid infinite recursion.
         timeout : float, optional
-            The initial timeout value between how often we'll retry request methods.
-        max_retries: int
-            The maximum number of retries when the requests module returns a Timeout error.
-        exponential_backoff : integer
-            The factor by which we multiple initial_timeout for each subsequent retry.
+            An optional request timeout in seconds.
         """
         accepted_methods = ["get", "post", "put", "delete"]
         if method_name not in accepted_methods:
@@ -231,90 +231,118 @@ class ClientConnection:
         url = urljoin(self.host, endpoint)
         requests_method = getattr(requests, method_name)
 
-        timeout_retries = 0
-        tried = False
-        while True:
-            if self.access_token is not None:
-                headers = {"Authorization": f"Bearer {self.access_token}"}
-            else:
-                headers = None
+        if not ignore_auth and self._using_auth:
+            # get a new token
+            if self._using_username_password:
+                self._get_access_token_from_username_and_password()
+            headers = {"Authorization": f"Bearer {self.access_token}"}
+        else:
+            headers = None
 
-            try:
-                resp = requests_method(
-                    url,
-                    headers=headers,
-                    timeout=timeout,
-                    **kwargs,
-                )
-            except requests.exceptions.Timeout as e:
-                if timeout is not None and timeout_retries < max_retries:
-                    time.sleep(
-                        timeout * exponential_backoff**timeout_retries
-                    )
-                    timeout_retries += 1
-                    continue
-                else:
-                    raise TimeoutError(str(e))
-
-            if not resp.ok:
-                # check if unauthorized and if using username and password, get a new
-                # token and try the request again
-                if (
-                    resp.status_code in [401, 403]
-                    and self._using_username_password
-                    and not tried
-                    and not ignore_auth
-                ):
-                    self._get_access_token_from_username_and_password()
-                else:
-                    raise_client_exception(resp)
-            else:
-                break
-            tried = True
+        resp = requests_method(
+            url,
+            headers=headers,
+            timeout=timeout,
+            **kwargs,
+        )
+        if not resp.ok:
+            raise_client_exception(resp)
 
         return resp
 
     def _requests_post_rel_host(
         self,
         endpoint: str,
-        timeout: Optional[float] = 2,
-        max_retries: int = 0,
-        **kwargs,
+        *_,
+        json: Union[dict, list, None] = None,
+        params: Union[dict, list, None] = None,
+        data: Optional[dict] = None,
+        ignore_auth: bool = False,
+        timeout: Optional[float] = 10,
     ):
         """
         Helper for handling POST requests.
+
+        Parameters
+        ----------
+        endpoint : str
+            The endpoint to send the request to.
+        json : dict | list, optional
+            An optional kwarg to pass to the request.
+        params : dict, optional
+            An optional kwarg to pass to the request.
+        data : dict, optional
+            An optional kwarg to pass to the request.
+        ignore_auth : bool, default=False
+            Option to ignore authentication when you know the endpoint does not
+            require a bearer token. This is used by the `_get_access_token_from_username_and_password`
+            to avoid infinite recursion.
+        timeout : float | None, default=10
+            An optional request timeout in seconds.
         """
         return self._requests_wrapper(
             method_name="post",
             endpoint=endpoint,
-            max_retries=max_retries,
+            json=json,
+            params=params,
+            data=data,
+            ignore_auth=ignore_auth,
             timeout=timeout,
-            **kwargs,
         )
 
-    def _requests_get_rel_host(self, endpoint: str, *args, **kwargs):
+    def _requests_get_rel_host(
+        self,
+        endpoint: str,
+        *_,
+        timeout: Optional[float] = 10,
+    ):
         """
         Helper for handling GET requests.
-        """
-        return self._requests_wrapper(
-            method_name="get", endpoint=endpoint, *args, **kwargs
-        )
 
-    def _requests_put_rel_host(self, endpoint: str, *args, **kwargs):
+        Parameters
+        ----------
+        endpoint : str
+            The endpoint to send the request to.
+        timeout : float | None, default=10
+            An optional request timeout in seconds.
+        """
+        return self._requests_wrapper(method_name="get", endpoint=endpoint)
+
+    def _requests_put_rel_host(
+        self,
+        endpoint: str,
+        *_,
+        timeout: Optional[float] = 10,
+    ):
         """
         Helper for handling PUT requests.
-        """
-        return self._requests_wrapper(
-            method_name="put", endpoint=endpoint, *args, **kwargs
-        )
 
-    def _requests_delete_rel_host(self, endpoint: str, *args, **kwargs):
+        Parameters
+        ----------
+        endpoint : str
+            The endpoint to send the request to.
+        timeout : float | None, default=10
+            An optional request timeout in seconds.
+        """
+        return self._requests_wrapper(method_name="put", endpoint=endpoint)
+
+    def _requests_delete_rel_host(
+        self,
+        endpoint: str,
+        *_,
+        timeout: Optional[float] = 10,
+    ):
         """
         Helper for handling DELETE requests.
+
+        Parameters
+        ----------
+        endpoint : str
+            The endpoint to send the request to.
+        timeout : float | None, default=10
+            An optional request timeout in seconds.
         """
-        return self._requests_wrapper(
-            method_name="delete", endpoint=endpoint, *args, **kwargs
-        )
+        return self._requests_wrapper(method_name="delete", endpoint=endpoint)
 
     def create_groundtruths(
         self,

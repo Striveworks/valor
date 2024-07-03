@@ -1203,7 +1203,7 @@ class Client:
         dataset: Dataset,
         groundtruths: List[GroundTruth],
         ignore_existing_datums: bool = False,
-        timeout: Optional[float] = None,
+        timeout: Optional[float] = 10,
     ):
         """
         Creates ground truths.
@@ -1471,7 +1471,7 @@ class Client:
         dataset: Dataset,
         model: Model,
         predictions: List[Prediction],
-        timeout: Optional[float] = None,
+        timeout: Optional[float] = 10,
     ) -> None:
         """
         Creates predictions.
