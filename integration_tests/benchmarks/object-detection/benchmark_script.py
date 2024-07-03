@@ -3,6 +3,8 @@ import os
 from datetime import datetime
 from time import time
 
+import requests
+
 from valor import (
     Annotation,
     Client,
@@ -18,6 +20,16 @@ from valor.schemas import MultiPolygon, Polygon, Raster
 
 connect("http://0.0.0.0:8000")
 client = Client()
+
+
+def download_data_if_not_exists(file_path: str, file_url: str):
+    """Download the data from a public bucket if it doesn't exist in the repo."""
+    if os.path.exists(file_path):
+        return
+
+    response = json.loads(requests.get(file_url).text)
+    with open(file_path, "w+") as file:
+        json.dump(response, file, indent=4)
 
 
 def _convert_wkt_to_coordinates(wkt: str) -> list[list[tuple]]:
@@ -178,7 +190,7 @@ def ingest_groundtruths_and_predictions(
 def run_base_evaluation(dset: Dataset, model: Model):
     """Run a base evaluation (with no PR curves)."""
     evaluation = model.evaluate_detection(dset)
-    evaluation.wait_for_completion()
+    evaluation.wait_for_completion(timeout=30)
     return evaluation
 
 
@@ -221,21 +233,27 @@ def run_detailed_pr_curve_evaluation(dset: Dataset, model: Model):
 
 
 def run_benchmarking_analysis(
-    limits_to_test: list[int] = [1, 2],
+    limits_to_test: list[int] = [7, 7],
     results_file: str = "results.json",
     data_file: str = "data.json",
 ):
     """Time various function calls and export the results."""
     current_directory = os.path.dirname(os.path.realpath(__file__))
     write_path = f"{current_directory}/{results_file}"
-    read_path = f"{current_directory}/{data_file}"
+    data_path = f"{current_directory}/{data_file}"
+
+    download_data_if_not_exists(
+        file_path=data_path,
+        file_url="https://pub-fae71003f78140bdaedf32a7c8d331d2.r2.dev/detection_data.json",
+    )
+
+    with open(data_path) as file:
+        file.seek(0)
+        raw_data = json.load(file)
+
     for limit in limits_to_test:
         dset = Dataset.create(name="coco-dataset")
         model = Model.create(name="coco-model")
-
-        with open(read_path) as file:
-            file.seek(0)
-            raw_data = json.load(file)
 
         # convert dict into list of tuples so we can slice it
         raw_data_tuple = [(key, value) for key, value in raw_data.items()]
