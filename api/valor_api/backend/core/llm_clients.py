@@ -3,11 +3,21 @@ from typing import Any
 import openai
 from mistralai.client import MistralClient
 from mistralai.models.chat_completion import ChatMessage
+from pydantic import BaseModel
 
 from valor_api.backend.metrics.metric_utils import trim_and_load_json
 from valor_api.exceptions import InvalidLLMResponseError
 
 DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant."
+
+
+class Message(BaseModel):
+    role: str
+    content: str
+
+
+class Messages(BaseModel):
+    messages: list[Message]
 
 
 def _generate_statements_instruction(text: str) -> str:
@@ -190,6 +200,9 @@ class LLMClient:
         Any
             The messages formatted for the API. By default, the messages are left in the OpenAI format.
         """
+        # Validate that the input is a list of dictionaries with "role" and "content" keys.
+        _ = Messages(messages=messages)  # type: ignore
+
         return messages
 
     def __call__(
@@ -511,6 +524,9 @@ class WrappedMistralAIClient(LLMClient):
         Any
             The messages formatted for Mistral's API. Each message is converted to a mistralai.models.chat_completion.ChatMessage object.
         """
+        # Validate that the input is a list of dictionaries with "role" and "content" keys.
+        _ = Messages(messages=messages)  # type: ignore
+
         ret = []
         for i in range(len(messages)):
             ret.append(
@@ -604,7 +620,8 @@ class MockLLMClient(LLMClient):
         Any
             The response from the API.
         """
-        if "generate a list of statements" in messages[1]["content"]:
+        processed_messages = self.process_messages(messages)
+        if "generate a list of statements" in processed_messages[1]["content"]:
             return """```json
 {
     "statements": [
@@ -615,7 +632,7 @@ class MockLLMClient(LLMClient):
 
         elif (
             "determine whether each statement is relevant to address the input"
-            in messages[1]["content"]
+            in processed_messages[1]["content"]
         ):
             return """```json
 {
@@ -631,7 +648,7 @@ class MockLLMClient(LLMClient):
 }```"""
         elif (
             "Coherence (1-5) - the collective quality of all sentences."
-            in messages[1]["content"]
+            in processed_messages[1]["content"]
         ):
             return "4"
         else:

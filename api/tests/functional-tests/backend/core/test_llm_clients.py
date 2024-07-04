@@ -154,10 +154,14 @@ def test_LLMClient(monkeypatch):
 
     client = LLMClient(api_key=None, model_name="model_name")
 
-    fake_message = [{"key": "value"}]
+    # connect() is not implemented for the parent class.
+    fake_message = [
+        {"role": "system", "content": "You are a helpful assistant."}
+    ]
     with pytest.raises(NotImplementedError):
         client.connect()
 
+    # process_messages() is not implemented for the parent class.
     fake_message = client.process_messages(fake_message)
     with pytest.raises(NotImplementedError):
         client(fake_message)
@@ -287,16 +291,18 @@ def test_WrappedOpenAIClient():
             created=int(datetime.datetime.now().timestamp()),
         )
 
+    # OpenAI client call should fail as the API key is invalid.
     client = WrappedOpenAIClient(
         api_key="invalid_key", model_name="model_name"
     )
-
-    fake_message = [{"key": "value"}]
-
+    fake_message = [
+        {"role": "system", "content": "You are a helpful assistant."}
+    ]
     with pytest.raises(OpenAIError):
         client.connect()
         client(fake_message)
 
+    # Check that the WrappedOpenAIClient does not alter the messages.
     assert fake_message == client.process_messages(fake_message)
 
     client.client = MagicMock()
@@ -380,12 +386,11 @@ def test_WrappedMistralAIClient():
             ),
         )
 
+    # Mistral client call should fail as the API key is invalid.
     client = WrappedMistralAIClient(
         api_key="invalid_key", model_name="model_name"
     )
-
     fake_message = [{"role": "role", "content": "content"}]
-
     with pytest.raises(MistralException):
         client.connect()
         client(fake_message)
