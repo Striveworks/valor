@@ -9,20 +9,30 @@ from valor_api.backend import core, models
 def _check_if_datum_has_prediction(
     db: Session, datum: schemas.Datum, model_name: str, dataset_name: str
 ) -> None:
+    """Checks to see if datum has existing annotations."""
     if db.query(
         select(models.Annotation.id)
-        .join(models.Model)
-        .join(models.Datum)
-        .join(models.Dataset)
-        .where(
+        .select_from(models.Annotation)
+        .join(
+            models.Model,
             and_(
-                models.Dataset.name == dataset_name,
-                models.Datum.dataset_id == models.Dataset.id,
-                models.Datum.uid == datum.uid,
+                models.Model.id == models.Annotation.model_id,
                 models.Model.name == model_name,
-                models.Annotation.datum_id == models.Datum.id,
-                models.Annotation.model_id == models.Model.id,
-            )
+            ),
+        )
+        .join(
+            models.Datum,
+            and_(
+                models.Datum.id == models.Annotation.datum_id,
+                models.Datum.uid == datum.uid,
+            ),
+        )
+        .join(
+            models.Dataset,
+            and_(
+                models.Dataset.id == models.Datum.dataset_id,
+                models.Dataset.name == dataset_name,
+            ),
         )
         .subquery()
     ).all():
@@ -120,23 +130,22 @@ def create_predictions(
             if annotation.labels:
                 for label in annotation.labels:
                     prediction_mappings.append(
-                        {
-                            "annotation_id": annotation_ids_per_prediction[i],
-                            "label_id": label_dict[(label.key, label.value)],
-                            "score": label.score,
-                        }
+                        models.Prediction(
+                            annotation_id=annotation_ids_per_prediction[i],
+                            label_id=label_dict[(label.key, label.value)],
+                            score=label.score,
+                        )
                     )
             else:
                 prediction_mappings.append(
-                    {
-                        "annotation_id": annotation_ids_per_prediction[i],
-                        "label_id": None,
-                        "score": None,
-                    }
+                    models.Prediction(
+                        annotation_id=annotation_ids_per_prediction[i],
+                        label_id=None,
+                        score=None,
+                    )
                 )
-
     try:
-        db.bulk_insert_mappings(models.Prediction, prediction_mappings)
+        db.add_all(prediction_mappings)
         db.commit()
     except IntegrityError as e:
         db.rollback()

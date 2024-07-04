@@ -135,7 +135,6 @@ def create_or_get_evaluations(
                     compute_func = backend.compute_text_generation_metrics
                 case _:
                     raise RuntimeError
-
             if task_handler:
                 task_handler.add_task(
                     compute_func,
