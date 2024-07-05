@@ -312,15 +312,15 @@ print(detailed_evaluation)
 
 ### Coherence
 
-Coherence is a measure, on a scale of 1 to 5, of the collective quality of all sentences for a piece of text, with 5 indicating the highest coherence. There coherence of a piece of text is evaluated soley based on the text, without any reference to the query or any context. Because of this, the coherence metric can be applied to any text generation task.
+Coherence is a measure, on a scale of 1 to 5, of the collective quality of all sentences for a piece of text, with 5 indicating the highest coherence. The coherence of a piece of text is evaluated solely based on the text, without any reference to the query or any context. Because of this, the coherence metric can be applied to any text generation task.
 
-Our implementation of the coherence metric uses an instruction that was adapted from appendix A of DeepEval's paper G-EVAL: NLG Evaluation using GPT-4 with Better Human Alignment (https://arxiv.org/pdf/2303.16634). While DeepEval's instruction and evaluation process was specific to summarization tasks, we generalized the instruction to apply to any text generation task. Most crucially, we removed the reference to the query in the instruction.
+Valor's implementation of the coherence metric uses an instruction that was adapted from appendix A of DeepEval's paper G-EVAL: NLG Evaluation using GPT-4 with Better Human Alignment (https://arxiv.org/pdf/2303.16634). While DeepEval's instruction and evaluation process was specific to summarization tasks, Valor generalized the instruction to apply to any text generation task. Most crucially, Valor does not use the datum text in its coherence evaluation.
 
 ## Q&A Metrics
 
 ### Answer Relevance
 
-Answer relevance is the number of statements in the answer that are relevant to the query, divided by the total number of statements in the answer. This metric is used to evaluate the relevance of the answer to the query. The answer relevance metric can be applied to any text generation task, but it is particularly useful for evaluating question-answering tasks.
+Answer relevance is the number of statements in the answer that are relevant to the query, divided by the total number of statements in the answer. This metric is used to evaluate the relevance of the answer to the query. The answer relevance metric is particularly useful for evaluating question-answering tasks, but might apply to some other text generation tasks.
 
 Our implementation closely follows DeepEval's implementation https://github.com/confident-ai/deepeval/tree/main/deepeval/metrics/answer_relevancy. We use the same two step prompting strategy and the same instructions.
 
