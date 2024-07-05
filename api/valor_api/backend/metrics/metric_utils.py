@@ -10,6 +10,7 @@ from sqlalchemy.sql import func
 from valor_api import enums, logger, schemas
 from valor_api.backend import core, models
 from valor_api.backend.query import generate_select
+from valor_api.exceptions import InvalidLLMResponseError
 
 LabelMapType = list[list[list[str]]]
 
@@ -579,7 +580,7 @@ def trim_and_load_json(input_string: str) -> Any:
     try:
         return json.loads(jsonStr)
     except json.JSONDecodeError as e:
-        raise ValueError(
+        raise InvalidLLMResponseError(
             "Evaluation LLM outputted an invalid JSON. Please use a better evaluation model. JSONDecodeError: "
             + str(e)
         )

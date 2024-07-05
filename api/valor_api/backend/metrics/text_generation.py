@@ -268,17 +268,6 @@ def _compute_text_generation_metrics(
     Sequence[schemas.AnswerRelevanceMetric | schemas.BLEUMetric | schemas.CoherenceMetric | schemas.ROUGEMetric]
         A list of computed metrics.
     """
-    datum_subquery = generate_query(
-        models.Datum,
-        models.Datum.id.label("datum_id"),
-        models.Datum.uid.label("datum_uid"),
-        models.Dataset.name.label("dataset_name"),
-        models.Datum.text.label("datum_text"),
-        db=db,
-        label_source=models.Annotation,
-        filters=datum_filter,
-    ).subquery()
-
     prediction_subquery = generate_query(
         models.Prediction,
         models.Annotation.datum_id.label("datum_id"),
@@ -410,7 +399,18 @@ def _compute_text_generation_metrics(
             )
         client = _setup_llm_client(llm_api_params)
 
-        total_query = (
+        datum_subquery = generate_query(
+            models.Datum,
+            models.Datum.id.label("datum_id"),
+            models.Datum.uid.label("datum_uid"),
+            models.Dataset.name.label("dataset_name"),
+            models.Datum.text.label("datum_text"),
+            db=db,
+            label_source=models.Annotation,
+            filters=datum_filter,
+        ).subquery()
+
+        joint_subquery = (
             select(
                 datum_subquery.c.datum_uid.label("datum_uid"),
                 datum_subquery.c.dataset_name.label("dataset_name"),
@@ -427,7 +427,7 @@ def _compute_text_generation_metrics(
             )
         )
 
-        results = db.execute(total_query).all()
+        results = db.execute(joint_subquery).all()
         is_AnswerRelevance_enabled = "AnswerRelevance" in metrics_to_return
         is_Coherence_enabled = "Coherence" in metrics_to_return
 

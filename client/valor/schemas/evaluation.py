@@ -18,6 +18,8 @@ class EvaluationParameters:
         Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
     metrics_to_return: List[MetricType], optional
         The list of metrics to compute, store, and return to the user.
+    llm_api_params: Dict[str, str | dict], optional
+        A dictionary of parameters for the LLM API.
     convert_annotations_to_type: AnnotationType | None = None
         The type to convert all annotations to.
     iou_thresholds_to_compute: List[float], optional
@@ -36,13 +38,12 @@ class EvaluationParameters:
         A list of rouge types to calculate. Options are ['rouge1', 'rouge2', 'rougeL', 'rougeLsum'], where `rouge1` is unigram-based scoring, `rouge2` is bigram-based scoring, `rougeL` is scoring based on sentences (i.e., splitting on "." and ignoring "\n"), and `rougeLsum` is scoring based on splitting the text using "\n".
     rouge_use_stemmer: bool
         If True, uses Porter stemmer to strip word suffixes.
-    llm_api_params: Dict[str, str | dict], optional
-        A dictionary of parameters for the LLM API.
     """
 
     task_type: TaskType
     label_map: Optional[List[List[List[str]]]] = None
     metrics_to_return: Optional[List[MetricType]] = None
+    llm_api_params: Optional[Dict[str, Union[str, dict]]] = None
 
     convert_annotations_to_type: Optional[AnnotationType] = None
     iou_thresholds_to_compute: Optional[List[float]] = None
@@ -53,7 +54,6 @@ class EvaluationParameters:
     bleu_weights: Optional[List[float]] = None
     rouge_types: Optional[List[str]] = None
     rouge_use_stemmer: Optional[bool] = None
-    llm_api_params: Optional[Dict[str, Union[str, dict]]] = None
 
 
 @dataclass

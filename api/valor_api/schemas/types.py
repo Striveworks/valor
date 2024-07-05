@@ -25,13 +25,7 @@ GeometryType = Union[
 GeoJSONType = dict[str, str | GeometryType]
 DateTimeType = str | float
 MetadataType = dict[
-    str,
-    bool
-    | int
-    | float
-    | str
-    | dict[str, DateTimeType | GeoJSONType]
-    | list[str],
+    str, bool | int | float | str | dict[str, DateTimeType | GeoJSONType]
 ]
 
 

@@ -582,6 +582,24 @@ def test_text_generation(
             == metric.value
         )
 
+    # Check that specifying rouge_use_stemmer still works even if rouge_types is not supplied.
+    job_request = schemas.EvaluationRequest(
+        dataset_names=[dataset_name],
+        model_names=[model_name],
+        parameters=schemas.EvaluationParameters(
+            task_type=enums.TaskType.TEXT_GENERATION,
+            metrics_to_return=[enums.MetricType.ROUGE],
+            rouge_use_stemmer=True,
+        ),
+    )
+    evaluations = create_or_get_evaluations(db=db, job_request=job_request)
+    assert len(evaluations) == 1
+    assert evaluations[0].status == enums.EvaluationStatus.PENDING
+    _ = compute_text_generation_metrics(
+        db=db,
+        evaluation_id=evaluations[0].id,
+    )
+
 
 def test__calculate_rouge_scores():
     examples = [

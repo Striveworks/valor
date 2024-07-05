@@ -65,6 +65,15 @@ def test_llm_evaluation_with_mock_client(
                 "model": "model",
             },
         },
+        metric_params={
+            MetricType.BLEU: {
+                "weights": [0.25, 0.25, 0.25, 0.25],
+            },
+            MetricType.ROUGE: {
+                "rouge_types": ["rouge1", "rouge2", "rougeL", "rougeLsum"],
+                "use_stemmer": False,
+            },
+        },
     )
 
     assert eval_job.id

@@ -13,13 +13,15 @@ from mistralai.models.common import UsageInfo
 from openai import OpenAIError
 from openai.types.chat import ChatCompletionMessage
 from openai.types.chat.chat_completion import ChatCompletion, Choice
+from pydantic import ValidationError
 
 from valor_api.backend.core.llm_clients import (
-    InvalidLLMResponseError,
     LLMClient,
+    MockLLMClient,
     WrappedMistralAIClient,
     WrappedOpenAIClient,
 )
+from valor_api.exceptions import InvalidLLMResponseError
 
 ANSWER_RELEVANCE_VALID_STATEMENTS = """```json
 {
@@ -305,6 +307,9 @@ def test_WrappedOpenAIClient():
     # Check that the WrappedOpenAIClient does not alter the messages.
     assert fake_message == client.process_messages(fake_message)
 
+    # Test connecting to OpenAI client without specifying an API key.
+    client = WrappedOpenAIClient(model_name="model_name")
+
     client.client = MagicMock()
 
     # test bad request
@@ -405,6 +410,9 @@ def test_WrappedMistralAIClient():
         )
     ] == client.process_messages(fake_message)
 
+    # Test connecting to Mistral client without specifying an API key.
+    client = WrappedMistralAIClient(model_name="model_name")
+
     client.client = MagicMock()
 
     # test bad request
@@ -421,3 +429,60 @@ def test_WrappedMistralAIClient():
     # test good request
     client.client.chat = create_mock_chat_completion
     assert client(fake_message) == "some response"
+
+
+def test_MockLLMClient():
+    client = MockLLMClient()
+
+    # Check that the MockLLMClient does not alter the messages.
+    messages = [{"role": "system", "content": "You are a helpful assistant."}]
+    assert messages == client.process_messages(messages)
+
+    # Check that the MockLLMClient returns nothing by default.
+    assert "" == client(messages)
+
+
+def test_process_message():
+    # The messages should pass the validation in process_messages.
+    messages = [
+        {
+            "role": "system",
+            "content": "You are a helpful assistant.",
+        },
+        {
+            "role": "user",
+            "content": "What is the weather like today?",
+        },
+        {
+            "role": "assistant",
+            "content": "The weather is sunny.",
+        },
+    ]
+    LLMClient().process_messages(messages=messages)
+    WrappedOpenAIClient().process_messages(messages=messages)
+    WrappedMistralAIClient().process_messages(messages=messages)
+    MockLLMClient().process_messages(messages=messages)
+
+    # Missing "content" in the second message, so it should raise a ValidationError.
+    messages = [
+        {
+            "role": "system",
+            "content": "You are a helpful assistant.",
+        },
+        {
+            "role": "user",
+            "value": "What is the weather like today?",
+        },
+        {
+            "role": "assistant",
+            "content": "The weather is sunny.",
+        },
+    ]
+    with pytest.raises(ValidationError):
+        LLMClient().process_messages(messages=messages)
+    with pytest.raises(ValidationError):
+        WrappedOpenAIClient().process_messages(messages=messages)
+    with pytest.raises(ValidationError):
+        WrappedMistralAIClient().process_messages(messages=messages)
+    with pytest.raises(ValidationError):
+        MockLLMClient().process_messages(messages=messages)

@@ -1038,8 +1038,8 @@ class Model(StaticCollection):
         datasets: Union[Dataset, List[Dataset]],
         metrics_to_return: List[MetricType],
         filters: Optional[Filter] = None,
-        bleu_weights: Optional[list[float]] = None,
         llm_api_params: Optional[Dict[str, Union[str, dict]]] = None,
+        metric_params: Optional[Dict[MetricType, Dict[str, Any]]] = None,
     ) -> Evaluation:
         """
         Start a classification evaluation job.
@@ -1052,10 +1052,10 @@ class Model(StaticCollection):
             The list of metrics to compute, store, and return to the user. This is not optional for text generation evaluations.
         filters : Filter, optional
             Optional set of constraints to filter evaluation by.
-        bleu_weights: list[float], optional
-            The weights to use when calculating BLEU scores.
         llm_api_params: Dict[str, Union[str,dict]], optional
             A dictionary of parameters for the LLM API.
+        metric_params: Dict[MetricType, Dict[str,Any]], optional
+            A dictionary of parameters for the metrics used in the evaluation. The keys should be the metrics and the values should be dictionaries of parameters for those metrics.
 
         Returns
         -------
@@ -1095,6 +1095,28 @@ class Model(StaticCollection):
                 if api_key is not None:
                     llm_api_params["api_key"] = api_key
 
+        bleu_weights = None
+        rouge_types = None
+        rouge_use_stemmer = None
+        if metric_params is not None:
+            if not all(
+                metric in metrics_to_return for metric in metric_params.keys()
+            ):
+                raise ValueError(
+                    "All metrics in metric_params must be in metrics_to_return."
+                )
+
+            if MetricType.BLEU in metric_params:
+                bleu_weights = metric_params[MetricType.BLEU].get("weights")
+
+            if MetricType.ROUGE in metric_params:
+                rouge_types = metric_params[MetricType.ROUGE].get(
+                    "rouge_types"
+                )
+                rouge_use_stemmer = metric_params[MetricType.ROUGE].get(
+                    "use_stemmer"
+                )
+
         # format request
         datasets = datasets if isinstance(datasets, list) else [datasets]
         filters = filters if filters else Filter()
@@ -1105,8 +1127,10 @@ class Model(StaticCollection):
             parameters=EvaluationParameters(
                 task_type=TaskType.TEXT_GENERATION,
                 metrics_to_return=metrics_to_return,
-                bleu_weights=bleu_weights,
                 llm_api_params=llm_api_params,
+                bleu_weights=bleu_weights,
+                rouge_types=rouge_types,
+                rouge_use_stemmer=rouge_use_stemmer,
             ),
         )
 

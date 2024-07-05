@@ -1,6 +1,7 @@
 import pytest
 
 from valor_api.backend.metrics.metric_utils import trim_and_load_json
+from valor_api.exceptions import InvalidLLMResponseError
 
 
 def test_trim_and_load_json():
@@ -45,7 +46,7 @@ def test_trim_and_load_json():
 }"""
 
     # Missing a comma
-    with pytest.raises(ValueError):
+    with pytest.raises(InvalidLLMResponseError):
         trim_and_load_json(input)
 
     input = """
@@ -54,5 +55,5 @@ def test_trim_and_load_json():
 }"""
 
     # Missing starting bracket
-    with pytest.raises(ValueError):
+    with pytest.raises(InvalidLLMResponseError):
         trim_and_load_json(input)

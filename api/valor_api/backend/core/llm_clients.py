@@ -260,7 +260,7 @@ class LLMClient:
             type(statement) == str for statement in statements
         ):
             raise InvalidLLMResponseError(
-                f"LLM response was not a valid list of statements: {response}"
+                f"LLM response was not a valid list of statements (list[str]): {response}"
             )
         return statements
 
@@ -621,35 +621,39 @@ class MockLLMClient(LLMClient):
             The response from the API.
         """
         processed_messages = self.process_messages(messages)
-        if "generate a list of statements" in processed_messages[1]["content"]:
-            return """```json
-{
-    "statements": [
-        "The capital of the UK is London.",
-        "London is the largest city in the UK by population and GDP."
-    ]
-}```"""
+        if len(processed_messages) >= 2:
+            if (
+                "generate a list of statements"
+                in processed_messages[1]["content"]
+            ):
+                return """```json
+    {
+        "statements": [
+            "The capital of the UK is London.",
+            "London is the largest city in the UK by population and GDP."
+        ]
+    }```"""
 
-        elif (
-            "determine whether each statement is relevant to address the input"
-            in processed_messages[1]["content"]
-        ):
-            return """```json
-{
-    "verdicts": [
-        {
-            "verdict": "yes"
-        },
-        {
-            "verdict": "no",
-            "reason": "The detail in this statement is not necessary for answering the question."
-        }
-    ]
-}```"""
-        elif (
-            "Coherence (1-5) - the collective quality of all sentences."
-            in processed_messages[1]["content"]
-        ):
-            return "4"
-        else:
-            return ""
+            elif (
+                "determine whether each statement is relevant to address the input"
+                in processed_messages[1]["content"]
+            ):
+                return """```json
+    {
+        "verdicts": [
+            {
+                "verdict": "yes"
+            },
+            {
+                "verdict": "no",
+                "reason": "The detail in this statement is not necessary for answering the question."
+            }
+        ]
+    }```"""
+            elif (
+                "Coherence (1-5) - the collective quality of all sentences."
+                in processed_messages[1]["content"]
+            ):
+                return "4"
+
+        return ""
