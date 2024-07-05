@@ -184,6 +184,113 @@ def test_and_function(variables):
     assert and_(conditional, conditional, False) is False
 
     # test function output
+    assert and_(conditional, conditional, True, conditional).to_dict() == {
+        'args': [
+            {
+                'lhs': {
+                    'key': None,
+                    'name': 'integer',
+                },
+                'op': 'eq',
+                'rhs': {
+                    'type': 'integer',
+                    'value': 1,
+                },
+            },
+            {
+                'lhs': {
+                    'key': None,
+                    'name': 'integer',
+                },
+                'op': 'eq',
+                'rhs': {
+                    'type': 'integer',
+                    'value': 1,
+                },
+            },
+            {
+                'lhs': {
+                    'key': None,
+                    'name': 'integer',
+                },
+                'op': 'eq',
+                'rhs': {
+                    'type': 'integer',
+                    'value': 1,
+                },
+            },
+        ],
+        'op': 'and',
+    }
+
+
+def test_or_function(variables):
+
+    conditional = Integer.symbolic() == 1
+
+    # test required number of args > 2
+    with pytest.raises(ValueError):
+        and_()
+    with pytest.raises(ValueError):
+        and_(True)
+
+    # test bool evaluation
+    assert and_(True, True) is True
+    assert and_(False, True) is True
+    assert and_(True, False) is False
+    assert and_(False, False) is False
+    assert and_(True, True, True) is True
+    assert and_(True, True, False) is False
+    assert and_(False, False, False) is False
+
+    # test mixed evaluation
+    assert and_(conditional, True) == conditional
+    assert and_(conditional, False) is False
+    assert (
+        and_(conditional, conditional, True).to_dict()
+        == and_(conditional, conditional).to_dict()
+    )
+    assert and_(conditional, conditional, False) is False
+
+    # test function output
+    assert and_(conditional, conditional, True, conditional).to_dict() == {
+        'args': [
+            {
+                'lhs': {
+                    'key': None,
+                    'name': 'integer',
+                },
+                'op': 'eq',
+                'rhs': {
+                    'type': 'integer',
+                    'value': 1,
+                },
+            },
+            {
+                'lhs': {
+                    'key': None,
+                    'name': 'integer',
+                },
+                'op': 'eq',
+                'rhs': {
+                    'type': 'integer',
+                    'value': 1,
+                },
+            },
+            {
+                'lhs': {
+                    'key': None,
+                    'name': 'integer',
+                },
+                'op': 'eq',
+                'rhs': {
+                    'type': 'integer',
+                    'value': 1,
+                },
+            },
+        ],
+        'op': 'and',
+    }
 
 
 def test_condition(variables):
