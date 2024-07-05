@@ -86,7 +86,7 @@ def _create_classification_grouper_mappings(
     # TODO are all these still used?
     label_value_to_grouper_value = dict()
     label_to_grouper_key_mapping = dict()
-    
+
     grouper_key_to_labels_mapping = defaultdict(lambda: defaultdict(set))
     grouper_key_to_label_keys_mapping = defaultdict(set)
 

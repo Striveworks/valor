@@ -4,9 +4,9 @@ from typing import Sequence
 
 import numpy as np
 import pandas as pd
-from sqlalchemy import Integer, Subquery, alias, CTE
+from sqlalchemy import CTE, Integer, Subquery, alias
 from sqlalchemy.orm import Bundle, Session
-from sqlalchemy.sql import and_, case, func, select, or_
+from sqlalchemy.sql import and_, case, func, or_, select
 from sqlalchemy.sql.selectable import NamedFromClause
 
 from valor_api import enums, schemas
@@ -1048,13 +1048,15 @@ def _compute_clf_metrics(
                                 cm_counts["gt_grouper_value"]
                                 == row["grouper_value"]
                             )
-                            & (cm_counts["grouper_key"] == row["grouper_key"]),
+                            & (cm_counts["grouper_key"] == row["grouper_key"])
+                            & (cm_counts["true_positive_flag"]),
                             "size",
                         ]
                     ),
                     axis=1,
                 )
             )
+            # ['grouper_key', 'pd_grouper_value', 'gt_grouper_value', 'size', 'true_positive_flag', 'number_of_predictions', 'number_of_groundtruths', 'true_positives_per_pd_grouper_value', 'true_positives_per_gt_grouper_value', 'true_positives_per_grouper_key']
             .assign(
                 number_of_groundtruths=unique_grouper_values_per_grouper_key.apply(
                     lambda row: sum(
@@ -1100,11 +1102,14 @@ def _compute_clf_metrics(
         )
 
         # TODO precision for value=1 should be .666, not 2.
-
+        # ['grouper_key', 'grouper_value', 'number_true_positives', 'number_of_groundtruths', 'number_of_predictions', 'precision', 'recall', 'f1']
         # replace nulls and infinities
-        metrics_per_grouper_key_and_grouper_value.fillna(0, inplace=True)
-        metrics_per_grouper_key_and_grouper_value.replace(
-            [np.inf, -np.inf], 0, inplace=True
+        metrics_per_grouper_key_and_grouper_value[
+            ["precision", "recall", "f1"]
+        ] = metrics_per_grouper_key_and_grouper_value.loc[
+            :, ["precision", "recall", "f1"]
+        ].replace(
+            [np.inf, -np.inf, np.nan], 0
         )
 
         # replace values of labels that only exist in predictions (not groundtruths) with -1
@@ -1129,9 +1134,12 @@ def _compute_clf_metrics(
         # create metric objects
         output = []
 
-        for row in metrics_per_grouper_key_and_grouper_value.to_dict(
-            orient="records"
-        ):
+        for row in metrics_per_grouper_key_and_grouper_value.loc[
+            ~metrics_per_grouper_key_and_grouper_value[
+                "grouper_value"
+            ].isnull(),
+            ["grouper_key", "grouper_value", "precision", "recall", "f1"],
+        ].to_dict(orient="records"):
             pydantic_label = schemas.Label(
                 key=row["grouper_key"], value=row["grouper_value"]
             )
@@ -1154,19 +1162,60 @@ def _compute_clf_metrics(
 
     def _calculate_accuracy_metrics(cm_counts):
         # TODO consider whether we use assign or not
+        # TODO Check that all columns in the cm_counts df are actually used
+        # ['grouper_key', 'pd_grouper_value', 'gt_grouper_value', 'size', 'true_positive_flag', 'number_of_predictions', 'number_of_groundtruths', 'true_positives_per_pd_grouper_value', 'true_positives_per_gt_grouper_value', 'true_positives_per_grouper_key']
+        # true_positives_per_grouper_key = (
+        #     cm_counts.loc[
+        #         cm_counts["gt_grouper_value"].notnull()
+        #         # & cm_counts["true_positive_flag"],
+        #         ["grouper_key", "size"],
+        #     ]
+        #     # .groupby("grouper_key", as_index=False)
+        #     # .sum()
+        #     # .rename(columns={"size": "true_positive_cnt"})
+        # )
+
+        # total_observations_per_grouper_key = (
+        #     cm_counts.loc[
+        #         cm_counts["gt_grouper_value"].notnull()["grouper_key", "size"],
+        #     ]
+        #     .groupby("grouper_key", as_index=False)
+        #     .sum()
+        #     .rename(columns={"size": "total_observation_cnt"})
+        # )
+
         accuracy_calculations = (
             cm_counts.loc[
-                cm_counts["gt_grouper_value"].notnull(),
-                ["grouper_key", "true_positives_per_grouper_key", "size"],
+                (
+                    cm_counts["gt_grouper_value"].notnull()
+                    & cm_counts["true_positive_flag"]
+                ),
+                ["grouper_key", "size"],
             ]
             .groupby(["grouper_key"], as_index=False)
-            .agg({"true_positives_per_grouper_key": "max", "size": "sum"})
+            .sum()
+            .rename(columns={"size": "true_positives_per_grouper_key"})
+        ).merge(
+            cm_counts.loc[
+                (cm_counts["gt_grouper_value"].notnull()),
+                ["grouper_key", "size"],
+            ]
+            .groupby(["grouper_key"], as_index=False)
+            .sum()
+            .rename(columns={"size": "observations_per_grouper_key"}),
+            on="grouper_key",
+            how="outer",
         )
 
         accuracy_calculations["accuracy"] = (
             accuracy_calculations["true_positives_per_grouper_key"]
-            / accuracy_calculations["size"]
+            / accuracy_calculations["observations_per_grouper_key"]
         )
+
+        # some elements may be np.nan if a given grouper key has no true positives
+        # replace those accuracy scores with 0
+
+        accuracy_calculations["accuracy"].fillna(value=0, inplace=True)
 
         return [
             schemas.AccuracyMetric(

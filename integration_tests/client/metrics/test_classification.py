@@ -173,9 +173,7 @@ def test_evaluate_image_clf(
         ]:
             assert m in expected_metrics
     for m in expected_metrics:
-        assert (
-            m in metrics
-        )  # TODO (k4, v5) only appears in predictions and should return -1
+        assert m in metrics
 
     confusion_matrices = eval_job.confusion_matrices
     for m in confusion_matrices:
