@@ -390,6 +390,10 @@ def test_add_prediction(
     # test get predictions
     pred = model.get_prediction(dataset, img1)
     assert pred
+
+    # set imnplied task type since these are federated by the backend
+    for ann in pred_dets[0].annotations:
+        ann.implied_task_types = ["object-detection"]
     assert pred.annotations == pred_dets[0].annotations
 
     client.delete_dataset(dataset_name, timeout=30)

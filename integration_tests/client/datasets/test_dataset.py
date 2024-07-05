@@ -139,6 +139,11 @@ def test_create_image_dataset_with_detections(
         elif gt.datum.uid == "uid2":
             gt_dets_uid2.extend(gt.annotations)
     assert dets1 and dets2
+
+    # set imnplied task type since these are federated by the backend
+    for ann in gt_dets_uid1 + gt_dets_uid2:
+        ann.implied_task_types = ["object-detection"]
+
     assert dets1.annotations == gt_dets_uid1
     assert dets2.annotations == gt_dets_uid2
 
