@@ -185,42 +185,42 @@ def test_and_function(variables):
 
     # test function output
     assert and_(conditional, conditional, True, conditional).to_dict() == {
-        'args': [
+        "args": [
             {
-                'lhs': {
-                    'key': None,
-                    'name': 'integer',
+                "lhs": {
+                    "key": None,
+                    "name": "integer",
                 },
-                'op': 'eq',
-                'rhs': {
-                    'type': 'integer',
-                    'value': 1,
+                "op": "eq",
+                "rhs": {
+                    "type": "integer",
+                    "value": 1,
                 },
             },
             {
-                'lhs': {
-                    'key': None,
-                    'name': 'integer',
+                "lhs": {
+                    "key": None,
+                    "name": "integer",
                 },
-                'op': 'eq',
-                'rhs': {
-                    'type': 'integer',
-                    'value': 1,
+                "op": "eq",
+                "rhs": {
+                    "type": "integer",
+                    "value": 1,
                 },
             },
             {
-                'lhs': {
-                    'key': None,
-                    'name': 'integer',
+                "lhs": {
+                    "key": None,
+                    "name": "integer",
                 },
-                'op': 'eq',
-                'rhs': {
-                    'type': 'integer',
-                    'value': 1,
+                "op": "eq",
+                "rhs": {
+                    "type": "integer",
+                    "value": 1,
                 },
             },
         ],
-        'op': 'and',
+        "op": "and",
     }
 
 
@@ -254,42 +254,42 @@ def test_or_function(variables):
 
     # test function output
     assert and_(conditional, conditional, True, conditional).to_dict() == {
-        'args': [
+        "args": [
             {
-                'lhs': {
-                    'key': None,
-                    'name': 'integer',
+                "lhs": {
+                    "key": None,
+                    "name": "integer",
                 },
-                'op': 'eq',
-                'rhs': {
-                    'type': 'integer',
-                    'value': 1,
+                "op": "eq",
+                "rhs": {
+                    "type": "integer",
+                    "value": 1,
                 },
             },
             {
-                'lhs': {
-                    'key': None,
-                    'name': 'integer',
+                "lhs": {
+                    "key": None,
+                    "name": "integer",
                 },
-                'op': 'eq',
-                'rhs': {
-                    'type': 'integer',
-                    'value': 1,
+                "op": "eq",
+                "rhs": {
+                    "type": "integer",
+                    "value": 1,
                 },
             },
             {
-                'lhs': {
-                    'key': None,
-                    'name': 'integer',
+                "lhs": {
+                    "key": None,
+                    "name": "integer",
                 },
-                'op': 'eq',
-                'rhs': {
-                    'type': 'integer',
-                    'value': 1,
+                "op": "eq",
+                "rhs": {
+                    "type": "integer",
+                    "value": 1,
                 },
             },
         ],
-        'op': 'and',
+        "op": "and",
     }
 
 
