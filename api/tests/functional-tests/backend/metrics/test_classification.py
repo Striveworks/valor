@@ -29,29 +29,14 @@ def label_map():
 
 @pytest.fixture
 def classification_test_data(db: Session, dataset_name: str, model_name: str):
-    animal_gts = [
-        "bird",
-        "dog",
-        "bird",
-        "bird",
-        "cat",
-        "dog",
-    ]  # two dog groundtruths that could lead to false negatives
+    animal_gts = ["bird", "dog", "bird", "bird", "cat", "dog"]
     animal_preds = [
         {"bird": 0.6, "dog": 0.2, "cat": 0.2},
-        {
-            "cat": 0.9,
-            "dog": 0.1,
-            "bird": 0.0,
-        },  # misclassification since the cat prediction has a confidence score > .8
+        {"cat": 0.9, "dog": 0.1, "bird": 0.0},
         {"cat": 0.8, "dog": 0.05, "bird": 0.15},
         {"dog": 0.75, "cat": 0.1, "bird": 0.15},
         {"cat": 1.0, "dog": 0.0, "bird": 0.0},
-        {
-            "cat": 0.4,
-            "dog": 0.4,
-            "bird": 0.2,
-        },  # missed detection since all of the predictions have a threshold < .8
+        {"cat": 0.4, "dog": 0.4, "bird": 0.2},
     ]
 
     color_gts = ["white", "white", "red", "blue", "black", "red"]
@@ -1013,6 +998,7 @@ def test_compute_classification(
         db,
         prediction_filter=prediction_filter,
         groundtruth_filter=groundtruth_filter,
+        label_map=None,
         pr_curve_max_examples=0,
         metrics_to_return=[
             enums.MetricType.Precision,
@@ -1022,7 +1008,6 @@ def test_compute_classification(
             enums.MetricType.ROCAUC,
             enums.MetricType.PrecisionRecallCurve,
         ],
-        label_map=None,
     )
 
     # Make matrices accessible by label_key
