@@ -2,9 +2,9 @@ from dataclasses import asdict, dataclass
 from typing import Optional, Union
 
 from valor.schemas.symbolic.operators import (
-    And,
     Contains,
     Eq,
+    Function,
     FunctionType,
     Gt,
     Gte,
@@ -15,15 +15,11 @@ from valor.schemas.symbolic.operators import (
     Lt,
     Lte,
     Ne,
-    Not,
-    Or,
     Outside,
 )
 
 FunctionTypeTuple = (
-    And,
-    Or,
-    Not,
+    Function,
     IsNull,
     IsNotNull,
     Eq,

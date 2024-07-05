@@ -16,6 +16,9 @@ from .symbolic.operators import (
     Not,
     Or,
     Outside,
+    and_,
+    not_,
+    or_,
 )
 from .symbolic.types import (
     Boolean,
@@ -46,10 +49,13 @@ from .symbolic.types import (
 )
 
 __all__ = [
+    "And",
+    "Or",
+    "Not",
     "EvaluationRequest",
     "EvaluationParameters",
     "Filter",
-    "And",
+    "and_",
     "Eq",
     "Gte",
     "Gt",
@@ -60,8 +66,8 @@ __all__ = [
     "Lte",
     "Lt",
     "Ne",
-    "Not",
-    "Or",
+    "not_",
+    "or_",
     "Outside",
     "Symbol",
     "Variable",
