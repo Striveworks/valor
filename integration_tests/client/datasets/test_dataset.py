@@ -139,6 +139,11 @@ def test_create_image_dataset_with_detections(
         elif gt.datum.uid == "uid2":
             gt_dets_uid2.extend(gt.annotations)
     assert dets1 and dets2
+
+    # set imnplied task type since these are federated by the backend
+    for ann in gt_dets_uid1 + gt_dets_uid2:
+        ann.implied_task_types = ["object-detection"]
+
     assert dets1.annotations == gt_dets_uid1
     assert dets2.annotations == gt_dets_uid2
 
@@ -272,17 +277,15 @@ def test_create_tabular_dataset_and_add_groundtruth(
     assert set(d.uid for d in data) == {"uid1", "uid2"}
 
     # check metadata is there
-    metadata_links = data[0].meta
-    assert len(metadata_links) == 1
-    assert "metadatum1" in metadata_links
-    assert metadata_links["metadatum1"] == "temporary"
-
-    metadata_links = data[1].meta
-    assert len(metadata_links) == 2
-    assert "metadatum2" in metadata_links
-    assert metadata_links["metadatum2"] == "a string"
-    assert "metadatum3" in metadata_links
-    assert metadata_links["metadatum3"] == 0.45
+    for datum in data:
+        if "metadatum1" in datum.meta:
+            assert len(datum.meta) == 1
+            assert datum.meta == md1
+        elif "metadatum2" in datum.meta and "metadatum3" in datum.meta:
+            assert len(datum.meta) == 2
+            assert datum.meta == md23
+        else:
+            assert False
 
     # check that we can add data with specified uids
     new_gts = [

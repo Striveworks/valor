@@ -3,6 +3,8 @@ import os
 from datetime import datetime
 from time import time
 
+import requests
+
 from valor import (
     Annotation,
     Client,
@@ -17,6 +19,16 @@ from valor import (
 
 connect("http://0.0.0.0:8000")
 client = Client()
+
+
+def download_data_if_not_exists(file_path: str, file_url: str):
+    """Download the data from a public bucket if it doesn't exist in the repo."""
+    if os.path.exists(file_path):
+        return
+
+    response = json.loads(requests.get(file_url).text)
+    with open(file_path, "w+") as file:
+        json.dump(response, file, indent=4)
 
 
 def write_results_to_file(write_path: str, result_dict: dict):
@@ -106,7 +118,7 @@ def ingest_groundtruths_and_predictions(
 def run_base_evaluation(dset: Dataset, model: Model):
     """Run a base evaluation (with no PR curves)."""
     evaluation = model.evaluate_classification(dset)
-    evaluation.wait_for_completion()
+    evaluation.wait_for_completion(timeout=30)
     return evaluation
 
 
@@ -147,20 +159,27 @@ def run_detailed_pr_curve_evaluation(dset: Dataset, model: Model):
 
 
 def run_benchmarking_analysis(
-    limits_to_test: list[int] = [100, 500],
+    limits_to_test: list[int] = [1000, 1000],
     results_file: str = "results.json",
     data_file: str = "data.json",
 ):
     """Time various function calls and export the results."""
     current_directory = os.path.dirname(os.path.realpath(__file__))
     write_path = f"{current_directory}/{results_file}"
-    read_path = f"{current_directory}/{data_file}"
+    data_path = f"{current_directory}/{data_file}"
+
+    download_data_if_not_exists(
+        file_path=data_path,
+        file_url="https://pub-fae71003f78140bdaedf32a7c8d331d2.r2.dev/classification_data.json",
+    )
+
+    with open(data_path) as file:
+        file.seek(0)
+        raw_data = json.load(file)
+
     for limit in limits_to_test:
         dset = Dataset.create(name="bird-identification")
         model = Model.create(name="some_model")
-
-        with open(read_path) as f:
-            raw_data = json.load(f)
 
         start_time = time()
 
@@ -169,7 +188,12 @@ def run_benchmarking_analysis(
         )
         ingest_time = time() - start_time
 
-        eval_ = run_base_evaluation(dset=dset, model=model)
+        try:
+            eval_ = run_base_evaluation(dset=dset, model=model)
+        except TimeoutError:
+            raise TimeoutError(
+                f"Evaluation timed out when processing {limit} datums."
+            )
 
         results = {
             "number_of_datums": limit,

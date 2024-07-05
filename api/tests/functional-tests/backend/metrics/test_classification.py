@@ -234,12 +234,12 @@ def test_compute_confusion_matrix_at_grouper_key(
         models.Annotation.datum_id.label("datum_id"),
         filters=gFilter,
         label_source=models.GroundTruth,
-    ).alias()
+    ).cte()
     predictions = generate_select(
         models.Prediction,
         filters=pFilter,
         label_source=models.Prediction,
-    ).alias()
+    ).cte()
 
     cm = _compute_confusion_matrix_at_grouper_key(
         db=db,
@@ -309,12 +309,12 @@ def test_compute_confusion_matrix_at_grouper_key(
         models.Annotation.datum_id.label("datum_id"),
         filters=gFilter,
         label_source=models.GroundTruth,
-    ).alias()
+    ).cte()
     predictions = generate_select(
         models.Prediction,
         filters=pFilter,
         label_source=models.Prediction,
-    ).alias()
+    ).cte()
 
     cm = _compute_confusion_matrix_at_grouper_key(
         db=db,
@@ -460,12 +460,12 @@ def test_compute_confusion_matrix_at_grouper_key_and_filter(
         models.Annotation.datum_id.label("datum_id"),
         filters=gFilter,
         label_source=models.GroundTruth,
-    ).alias()
+    ).cte()
     predictions = generate_select(
         models.Prediction,
         filters=pFilter,
         label_source=models.Prediction,
-    ).alias()
+    ).cte()
 
     cm = _compute_confusion_matrix_at_grouper_key(
         db,
@@ -610,12 +610,12 @@ def test_compute_confusion_matrix_at_grouper_key_using_label_map(
         models.Annotation.datum_id.label("datum_id"),
         filters=gFilter,
         label_source=models.GroundTruth,
-    ).alias()
+    ).cte()
     predictions = generate_select(
         models.Prediction,
         filters=pFilter,
         label_source=models.Prediction,
-    ).alias()
+    ).cte()
 
     cm = _compute_confusion_matrix_at_grouper_key(
         db,
@@ -1271,18 +1271,20 @@ def test__compute_curves(
         models.Dataset.name.label("dataset_name"),
         filters=gFilter,
         label_source=models.GroundTruth,
-    ).alias()
+    ).cte()
     predictions = generate_select(
         models.Prediction,
+        models.Annotation.datum_id.label("datum_id"),
         models.Dataset.name.label("dataset_name"),
         filters=pFilter,
         label_source=models.Prediction,
-    ).alias()
+    ).cte()
 
     # calculate the number of unique datums
     # used to determine the number of true negatives
 
     gt_datums = generate_query(
+        models.Datum.id,
         models.Dataset.name,
         models.Datum.uid,
         db=db,
@@ -1290,13 +1292,23 @@ def test__compute_curves(
         label_source=models.GroundTruth,
     ).all()
     pd_datums = generate_query(
+        models.Datum.id,
         models.Dataset.name,
         models.Datum.uid,
         db=db,
         filters=prediction_filter,
         label_source=models.Prediction,
     ).all()
-    unique_datums = set(pd_datums + gt_datums)
+    unique_datums = {
+        datum_id: (dataset_name, datum_uid)
+        for datum_id, dataset_name, datum_uid in gt_datums
+    }
+    unique_datums.update(
+        {
+            datum_id: (dataset_name, datum_uid)
+            for datum_id, dataset_name, datum_uid in pd_datums
+        }
+    )
 
     curves = _compute_curves(
         db=db,
@@ -1364,39 +1376,36 @@ def test__compute_curves(
         # bird
         ("bird", 0.05, "tp"): {"all": 3, "total": 3},
         ("bird", 0.05, "fp"): {
-            "hallucinations": 0,
             "misclassifications": 1,
             "total": 1,
         },
         ("bird", 0.05, "tn"): {"all": 2, "total": 2},
         ("bird", 0.05, "fn"): {
-            "missed_detections": 0,
+            "no_predictions": 0,
             "misclassifications": 0,
             "total": 0,
         },
         # dog
         ("dog", 0.05, "tp"): {"all": 2, "total": 2},
         ("dog", 0.05, "fp"): {
-            "hallucinations": 0,
             "misclassifications": 3,
             "total": 3,
         },
         ("dog", 0.05, "tn"): {"all": 1, "total": 1},
         ("dog", 0.8, "fn"): {
-            "missed_detections": 1,
+            "no_predictions": 1,
             "misclassifications": 1,
             "total": 2,
         },
         # cat
         ("cat", 0.05, "tp"): {"all": 1, "total": 1},
         ("cat", 0.05, "fp"): {
-            "hallucinations": 0,
             "misclassifications": 5,
             "total": 5,
         },
         ("cat", 0.05, "tn"): {"all": 0, "total": 0},
         ("cat", 0.8, "fn"): {
-            "missed_detections": 0,
+            "no_predictions": 0,
             "misclassifications": 0,
             "total": 0,
         },

@@ -1113,31 +1113,29 @@ def test_evaluate_classification_with_label_maps(
         # k3
         (0, "v1", "0.1", "tp"): {"all": 0, "total": 0},
         (0, "v1", "0.1", "fp"): {
-            "hallucinations": 0,
             "misclassifications": 1,
             "total": 1,
         },
         (0, "v1", "0.1", "tn"): {"all": 2, "total": 2},
         (0, "v1", "0.1", "fn"): {
-            "missed_detections": 0,
+            "no_predictions": 0,
             "misclassifications": 0,
             "total": 0,
         },
         # k4
         (1, "v1", "0.1", "tp"): {"all": 0, "total": 0},
         (1, "v1", "0.1", "fp"): {
-            "hallucinations": 0,
             "misclassifications": 1,
             "total": 1,
         },
         (1, "v1", "0.1", "tn"): {"all": 2, "total": 2},
         (1, "v1", "0.1", "fn"): {
-            "missed_detections": 0,
+            "no_predictions": 0,
             "misclassifications": 0,
             "total": 0,
         },
         (1, "v4", "0.1", "fn"): {
-            "missed_detections": 0,
+            "no_predictions": 0,
             "misclassifications": 1,
             "total": 1,
         },

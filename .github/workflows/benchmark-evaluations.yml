@@ -1,0 +1,46 @@
+name: Run benchmarks on pre-existing data
+
+on:
+  push:
+    branches: "**"
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  run-benchmarks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: build postgres
+        run: |
+          docker build ./database -t pgvalor
+      - name: setup back end test env
+        run: docker compose -p valor -f docker-compose.yml -f docker-compose.cicd-override.yml --env-file ./api/.env.testing up --build -d
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+      - name: install api
+        run: pip install -e ".[test]"
+        working-directory: ./api
+      - name: install client
+        run: pip install -e ".[test]"
+        working-directory: ./client
+      - name: run classification benchmarks
+        run: python benchmark_script.py
+        working-directory: ./integration_tests/benchmarks/classification
+      - name: print classification results
+        run: |
+          export BENCHMARK_RESULTS=$(python -c "import os;import json;print(json.dumps(json.load(open('results.json', 'r')), indent=4));")
+          echo "$BENCHMARK_RESULTS"
+        working-directory: ./integration_tests/benchmarks/classification
+      - name: run object detection benchmarks
+        run: python benchmark_script.py
+        working-directory: ./integration_tests/benchmarks/object-detection
+      - name: print object detection results
+        run: |
+          export BENCHMARK_RESULTS=$(python -c "import os;import json;print(json.dumps(json.load(open('results.json', 'r')), indent=4));")
+          echo "$BENCHMARK_RESULTS"
+        working-directory: ./integration_tests/benchmarks/object-detection
+      - run: make stop-env
