@@ -51,21 +51,21 @@ def test_scored_label():
     assert l1.value == "value"
 
     # test member fn `__eq__`
-    assert (s1 == s2).get_value()  # type: ignore - resolved to 'Bool' as both sides are values
-    assert (s1 == s6).get_value()  # type: ignore - resolved to 'Bool' as both sides are values
-    assert not (s1 == s3).get_value()  # type: ignore - resolved to 'Bool' as both sides are values
-    assert not (s1 == s4).get_value()  # type: ignore - resolved to 'Bool' as both sides are values
-    assert not (s1 == s5).get_value()  # type: ignore - resolved to 'Bool' as both sides are values
+    assert s1 == s2
+    assert s1 == s6
+    assert not (s1 == s3)
+    assert not (s1 == s4)
+    assert not (s1 == s5)
     with pytest.raises(TypeError):
         assert s1 == 123
     with pytest.raises(TypeError):
         assert s1 == "123"
 
     # test member fn `__ne__`
-    assert not (s1 != s2).get_value()  # type: ignore - resolved to 'Bool' as both sides are values
-    assert (s1 != s3).get_value()  # type: ignore - resolved to 'Bool' as both sides are values
-    assert (s1 != s4).get_value()  # type: ignore - resolved to 'Bool' as both sides are values
-    assert (s1 != s5).get_value()  # type: ignore - resolved to 'Bool' as both sides are values
+    assert not (s1 != s2)
+    assert s1 != s3
+    assert s1 != s4
+    assert s1 != s5
     with pytest.raises(TypeError):
         assert s1 != 123
     with pytest.raises(TypeError):
@@ -76,3 +76,52 @@ def test_scored_label():
     assert s1.__hash__() != s3.__hash__()
     assert s1.__hash__() != s4.__hash__()
     assert s1.__hash__() != s5.__hash__()
+
+
+def test_label_equality():
+    label1 = Label(key="test", value="value")
+    label2 = Label(key="test", value="value")
+    label3 = Label(key="test", value="other")
+    label4 = Label(key="other", value="value")
+
+    eq1 = label1 == label2
+    assert type(eq1) == bool
+    assert eq1
+
+    eq2 = label1 == label3
+    assert type(eq2) == bool
+    assert not eq2
+
+    eq3 = label1 == label4
+    assert type(eq3) == bool
+    assert not eq3
+
+
+def test_label_score():
+    label1 = Label(key="test", value="value", score=0.5)
+    label2 = Label(key="test", value="value", score=0.5)
+    label3 = Label(key="test", value="value", score=0.1)
+
+    b1 = label1.score == label2.score
+    assert type(b1) == bool
+    assert b1
+
+    b2 = label1.score > label3.score
+    assert type(b2) == bool
+    assert b2
+
+    b3 = label1.score < label3.score
+    assert type(b3) == bool
+    assert not b3
+
+    b4 = label1.score >= label2.score
+    assert type(b4) == bool
+    assert b4
+
+    b5 = label1.score != label3.score
+    assert type(b5) == bool
+    assert b5
+
+    b6 = label1.score != label2.score
+    assert type(b6) == bool
+    assert not b6

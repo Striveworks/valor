@@ -115,9 +115,9 @@ def _test_resolvable(
         truth = a.__getattribute__(op)(b)
 
         # test variable -> builtin against truth
-        assert A.__getattribute__(op)(b).get_value() is truth
+        assert A.__getattribute__(op)(b) is truth
         # test variable -> variable against truth
-        assert A.__getattribute__(op)(B).get_value() is truth
+        assert A.__getattribute__(op)(B) is truth
         # test dictionary generation
         dictA = A.to_dict()
         assert A.get_value() == a
@@ -166,12 +166,12 @@ def test_score():
     # test nullable
     v1 = objcls.nullable(None)
     assert v1.get_value() is None
-    assert v1.is_none().get_value() is True  # type: ignore - issue #604
-    assert v1.is_not_none().get_value() is False  # type: ignore - issue #604
+    assert v1.is_none() is True
+    assert v1.is_not_none() is False
     v2 = objcls.nullable(permutations[0][0])
     assert v2.get_value() is not None
-    assert v2.is_none().get_value() is False  # type: ignore - issue #604
-    assert v2.is_not_none().get_value() is True  # type: ignore - issue #604
+    assert v2.is_none() is False
+    assert v2.is_not_none() is True
 
     # test unsupported methods
     for op in [
@@ -221,12 +221,12 @@ def test_tasktypeenum():
     # test nullable
     v1 = objcls.nullable(None)
     assert v1.get_value() is None
-    assert v1.is_none().get_value() is True  # type: ignore - issue #604
-    assert v1.is_not_none().get_value() is False  # type: ignore - issue #604
+    assert v1.is_none() is True
+    assert v1.is_not_none() is False
     v2 = objcls.nullable(permutations[0][0])
     assert v2.get_value() is not None
-    assert v2.is_none().get_value() is False  # type: ignore - issue #604
-    assert v2.is_not_none().get_value() is True  # type: ignore - issue #604
+    assert v2.is_none() is False
+    assert v2.is_not_none() is True
 
     # test encoding
     _test_encoding(
@@ -273,12 +273,12 @@ def test_box():
     # test nullable
     v1 = objcls.nullable(None)
     assert v1.get_value() is None
-    assert v1.is_none().get_value() is True  # type: ignore - issue #604
-    assert v1.is_not_none().get_value() is False  # type: ignore - issue #604
+    assert v1.is_none() is True
+    assert v1.is_not_none() is False
     v2 = objcls.nullable(permutations[0][0])
     assert v2.get_value() is not None
-    assert v2.is_none().get_value() is False  # type: ignore - issue #604
-    assert v2.is_not_none().get_value() is True  # type: ignore - issue #604
+    assert v2.is_none() is False
+    assert v2.is_not_none() is True
 
     # test unsupported methods
     for op in [
@@ -338,12 +338,12 @@ def test_raster():
     # test nullable
     v1 = objcls.nullable(None)
     assert v1.get_value() is None
-    assert v1.is_none().get_value() is True  # type: ignore - issue #604
-    assert v1.is_not_none().get_value() is False  # type: ignore - issue #604
+    assert v1.is_none() is True
+    assert v1.is_not_none() is False
     v2 = objcls.nullable(permutations[0][0])
     assert v2.get_value() is not None
-    assert v2.is_none().get_value() is False  # type: ignore - issue #604
-    assert v2.is_not_none().get_value() is True  # type: ignore - issue #604
+    assert v2.is_none() is False
+    assert v2.is_not_none() is True
 
     # test 'from_numpy' classmethod
     assert Raster.from_numpy(bitmask1).to_dict() == Raster(value).to_dict()
@@ -420,12 +420,12 @@ def test_embedding():
     # test nullable
     v1 = objcls.nullable(None)
     assert v1.get_value() is None
-    assert v1.is_none().get_value() is True  # type: ignore - issue #604
-    assert v1.is_not_none().get_value() is False  # type: ignore - issue #604
+    assert v1.is_none() is True
+    assert v1.is_not_none() is False
     v2 = objcls.nullable(permutations[0][0])
     assert v2.get_value() is not None
-    assert v2.is_none().get_value() is False  # type: ignore - issue #604
-    assert v2.is_not_none().get_value() is True  # type: ignore - issue #604
+    assert v2.is_none() is False
+    assert v2.is_not_none() is True
 
     # test unsupported methods
     for op in [

@@ -4,7 +4,7 @@ from typing import Dict, List, Tuple, Union
 import pytest
 
 from valor import Annotation, Dataset, Filter, Label, Model
-from valor.schemas import And, Polygon
+from valor.schemas import And, Eq, Gt, Lt, Polygon
 
 
 @pytest.fixture
@@ -36,14 +36,22 @@ def test_complex_filter(
     geojson: Dict[str, Union[str, List[List[Tuple[float, float]]]]],
     polygon: Polygon,
 ):
+    # check expression types (this also makes pyright pass)
+    model_name_eq_x = Model.name == "x"
+    assert isinstance(model_name_eq_x, Eq)
+    annotation_raster_area_gt = Annotation.raster.area > 100
+    assert isinstance(annotation_raster_area_gt, Gt)
+    annotation_raster_area_lt = Annotation.raster.area < 500
+    assert isinstance(annotation_raster_area_lt, Lt)
+
     filter_from_constraints = Filter(
         annotations=And(
             Dataset.name.in_(["a", "b", "c"]),
-            (Model.name == "x") | Model.name.in_(["y", "z"]),
+            model_name_eq_x | Model.name.in_(["y", "z"]),
             Label.score > 0.75,
             Annotation.polygon.area > 1000,
             Annotation.polygon.area < 5000,
-            (Annotation.raster.area > 100) & (Annotation.raster.area < 500),
+            annotation_raster_area_gt & annotation_raster_area_lt,
             Dataset.metadata["some_str"] == "foobar",
             Dataset.metadata["some_float"] >= 0.123,
             Dataset.metadata["some_datetime"] > datetime.timedelta(days=1),
