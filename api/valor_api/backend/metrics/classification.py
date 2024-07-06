@@ -481,6 +481,7 @@ def _compute_binary_roc_auc(
     return float(ret)
 
 
+# TODO copy function notes to include helpful details
 def _compute_roc_auc(
     db: Session,
     prediction_filter: schemas.Filter,
@@ -813,101 +814,9 @@ def _compute_clf_metrics(
         )
 
     def _calculate_confusion_matrix_df(
-        pd_df: pd.DataFrame, gt_df: pd.DataFrame
+        merged_groundtruths_and_predictions: pd.DataFrame,
     ):
         """Calculate our confusion matrix dataframe."""
-
-        max_scores_by_grouper_key_and_datum_id = (
-            pd_df[["grouper_key", "datum_id", "score"]]
-            .groupby(
-                [
-                    "grouper_key",
-                    "datum_id",
-                ],
-                as_index=False,
-            )
-            .max()
-        )
-
-        # TODO try adding set_index for these merges? (k1, v1), (k2, v3), (k2, v0)
-        # get the id of the prediction with the maximum score for each grouper_key
-        # we use min(id) in case there are multiple predictions that have the same max(score)
-        # predictions_ids_with_max_score = predictions.where(score)
-        best_prediction_id_per_grouper_key_and_datum_id = (
-            pd.merge(
-                pd_df,
-                max_scores_by_grouper_key_and_datum_id,
-                on=["grouper_key", "datum_id", "score"],
-                how="inner",
-            )[["grouper_key", "datum_id", "id"]]
-            .groupby(["grouper_key", "datum_id"], as_index=False)
-            .min()
-        )
-
-        # TODO redo names, should they all end in _df?
-        best_prediction_label_for_each_grouper_key_and_datum = pd.merge(
-            pd_df,
-            best_prediction_id_per_grouper_key_and_datum_id,
-            on=["grouper_key", "datum_id", "id"],
-            how="inner",
-        )[["grouper_key", "datum_id", "grouper_value"]]
-
-        # count the number of matches for each (pd_label_value, gt_label_value) for each grouper_key
-        merged_groundtruths_and_predictions = pd.merge(
-            gt_df[["datum_id", "grouper_key", "grouper_value"]].rename(
-                columns={"grouper_value": "gt_grouper_value"}
-            ),
-            best_prediction_label_for_each_grouper_key_and_datum.rename(
-                columns={"grouper_value": "pd_grouper_value"}
-            ),
-            on=["datum_id", "grouper_key"],
-            how="left",
-        )
-
-        # add back any labels that appear in predictions but not groundtruths
-        missing_grouper_labels_from_predictions = list(
-            set(
-                zip(
-                    [None] * len(pd_df),
-                    pd_df["grouper_key"],
-                    [None] * len(pd_df),
-                    pd_df["grouper_value"],
-                )
-            ).difference(
-                set(
-                    zip(
-                        [None] * len(merged_groundtruths_and_predictions),
-                        merged_groundtruths_and_predictions["grouper_key"],
-                        [None] * len(merged_groundtruths_and_predictions),
-                        merged_groundtruths_and_predictions[
-                            "pd_grouper_value"
-                        ],
-                    )
-                ).union(
-                    set(
-                        zip(
-                            [None] * len(merged_groundtruths_and_predictions),
-                            merged_groundtruths_and_predictions["grouper_key"],
-                            [None] * len(merged_groundtruths_and_predictions),
-                            merged_groundtruths_and_predictions[
-                                "gt_grouper_value"
-                            ],
-                        )
-                    )
-                )
-            )
-        )
-
-        merged_groundtruths_and_predictions = pd.concat(
-            [
-                merged_groundtruths_and_predictions,
-                pd.DataFrame(
-                    missing_grouper_labels_from_predictions,
-                    columns=merged_groundtruths_and_predictions.columns,
-                ),
-            ],
-            ignore_index=True,
-        )
 
         # TODO probably don't use assign here
         cm_counts = (
@@ -1021,9 +930,7 @@ def _compute_clf_metrics(
 
         return cm_counts, confusion_matrices
 
-    def _calculate_precision_recall_f1_metrics(cm_counts):
-        # TODO better arg names and docstrings
-
+    def _calculate_metrics_at_grouper_value_level(cm_counts):
         # create base dataframe that's unique at the (grouper key, grouper value level)
         unique_grouper_values_per_grouper_key = pd.DataFrame(
             np.concatenate(
@@ -1131,6 +1038,13 @@ def _compute_clf_metrics(
                 ["precision", "recall", "f1"],
             ] = -1
 
+        return metrics_per_grouper_key_and_grouper_value
+
+    def _calculate_precision_recall_f1_metrics(
+        metrics_per_grouper_key_and_grouper_value,
+    ):
+        # TODO better arg names and docstrings
+
         # create metric objects
         output = []
 
@@ -1163,26 +1077,6 @@ def _compute_clf_metrics(
     def _calculate_accuracy_metrics(cm_counts):
         # TODO consider whether we use assign or not
         # TODO Check that all columns in the cm_counts df are actually used
-        # ['grouper_key', 'pd_grouper_value', 'gt_grouper_value', 'size', 'true_positive_flag', 'number_of_predictions', 'number_of_groundtruths', 'true_positives_per_pd_grouper_value', 'true_positives_per_gt_grouper_value', 'true_positives_per_grouper_key']
-        # true_positives_per_grouper_key = (
-        #     cm_counts.loc[
-        #         cm_counts["gt_grouper_value"].notnull()
-        #         # & cm_counts["true_positive_flag"],
-        #         ["grouper_key", "size"],
-        #     ]
-        #     # .groupby("grouper_key", as_index=False)
-        #     # .sum()
-        #     # .rename(columns={"size": "true_positive_cnt"})
-        # )
-
-        # total_observations_per_grouper_key = (
-        #     cm_counts.loc[
-        #         cm_counts["gt_grouper_value"].notnull()["grouper_key", "size"],
-        #     ]
-        #     .groupby("grouper_key", as_index=False)
-        #     .sum()
-        #     .rename(columns={"size": "total_observation_cnt"})
-        # )
 
         accuracy_calculations = (
             cm_counts.loc[
@@ -1228,6 +1122,105 @@ def _compute_clf_metrics(
             for grouper_key in accuracy_calculations.loc[:, "grouper_key"]
         ]
 
+    def _get_merged_dataframe(pd_df: pd.DataFrame, gt_df: pd.DataFrame):
+        max_scores_by_grouper_key_and_datum_id = (
+            pd_df[["grouper_key", "datum_id", "score"]]
+            .groupby(
+                [
+                    "grouper_key",
+                    "datum_id",
+                ],
+                as_index=False,
+            )
+            .max()
+        )
+
+        # TODO should we repeat this step?
+        # get the id of the prediction with the maximum score for each grouper_key
+        # we use min(id) in case there are multiple predictions that have the same max(score)
+        # predictions_ids_with_max_score = predictions.where(score)
+        best_prediction_id_per_grouper_key_and_datum_id = (
+            pd.merge(
+                pd_df,
+                max_scores_by_grouper_key_and_datum_id,
+                on=["grouper_key", "datum_id", "score"],
+                how="inner",
+            )[["grouper_key", "datum_id", "id", "score"]]
+            .groupby(["grouper_key", "datum_id"], as_index=False)
+            .min()
+            .rename(columns={"score": "best_score"})
+        )
+
+        # TODO redo names, should they all end in _df?
+        best_prediction_label_for_each_grouper_key_and_datum = pd.merge(
+            pd_df[["grouper_key", "grouper_value", "datum_id", "id"]],
+            best_prediction_id_per_grouper_key_and_datum_id,
+            on=["grouper_key", "datum_id", "id"],
+            how="inner",
+        )[["grouper_key", "datum_id", "grouper_value", "best_score"]]
+
+        # count the number of matches for each (pd_label_value, gt_label_value) for each grouper_key
+        merged_groundtruths_and_predictions = pd.merge(
+            gt_df[["datum_id", "grouper_key", "grouper_value"]].rename(
+                columns={"grouper_value": "gt_grouper_value"}
+            ),
+            best_prediction_label_for_each_grouper_key_and_datum.rename(
+                columns={"grouper_value": "pd_grouper_value"}
+            ),
+            on=["datum_id", "grouper_key"],
+            how="left",
+        )
+
+        # add back any labels that appear in predictions but not groundtruths
+        missing_grouper_labels_from_predictions = list(
+            set(
+                zip(
+                    [None] * len(pd_df),
+                    pd_df["grouper_key"],
+                    [None] * len(pd_df),
+                    pd_df["grouper_value"],
+                    [None] * len(pd_df),
+                )
+            ).difference(
+                set(
+                    zip(
+                        [None] * len(merged_groundtruths_and_predictions),
+                        merged_groundtruths_and_predictions["grouper_key"],
+                        [None] * len(merged_groundtruths_and_predictions),
+                        merged_groundtruths_and_predictions[
+                            "pd_grouper_value"
+                        ],
+                        [None] * len(pd_df),
+                    )
+                ).union(
+                    set(
+                        zip(
+                            [None] * len(merged_groundtruths_and_predictions),
+                            merged_groundtruths_and_predictions["grouper_key"],
+                            [None] * len(merged_groundtruths_and_predictions),
+                            merged_groundtruths_and_predictions[
+                                "gt_grouper_value"
+                            ],
+                            [None] * len(pd_df),
+                        )
+                    )
+                )
+            )
+        )
+
+        merged_groundtruths_and_predictions = pd.concat(
+            [
+                merged_groundtruths_and_predictions,
+                pd.DataFrame(
+                    missing_grouper_labels_from_predictions,
+                    columns=merged_groundtruths_and_predictions.columns,
+                ),
+            ],
+            ignore_index=True,
+        )
+
+        return merged_groundtruths_and_predictions
+
     labels = core.fetch_union_of_labels(
         db=db,
         lhs=groundtruth_filter,
@@ -1270,40 +1263,162 @@ def _compute_clf_metrics(
     _add_columns_to_groundtruth_and_prediction_table(df=gt_df)
     _add_columns_to_groundtruth_and_prediction_table(df=pd_df)
 
-    cm_counts, confusion_matrices = _calculate_confusion_matrix_df(
+    merged_groundtruths_and_predictions = _get_merged_dataframe(
         pd_df=pd_df, gt_df=gt_df
     )
 
+    cm_counts, confusion_matrices = _calculate_confusion_matrix_df(
+        merged_groundtruths_and_predictions=merged_groundtruths_and_predictions
+    )
+
+    metrics_per_grouper_key_and_grouper_value = (
+        _calculate_metrics_at_grouper_value_level(cm_counts=cm_counts)
+    )
+
     metrics_to_output += _calculate_precision_recall_f1_metrics(
-        cm_counts=cm_counts
+        metrics_per_grouper_key_and_grouper_value=metrics_per_grouper_key_and_grouper_value
     )
 
     metrics_to_output += _calculate_accuracy_metrics(cm_counts=cm_counts)
+
+    # 1 find all of the in-scope labels for each grouper key and grouper value, and count the number of groundtruths for each
+
+    blah = (
+        pd_df[["datum_id", "grouper_key", "grouper_value", "score"]]
+        .merge(
+            gt_df[["datum_id", "grouper_key", "grouper_value"]].rename(
+                columns={
+                    "grouper_value": "gt_grouper_value",
+                }
+            ),
+            on=["datum_id", "grouper_key"],
+            how="left",
+        )
+        .assign(
+            is_true_positive=lambda row: row["grouper_value"]
+            == row["gt_grouper_value"],
+        )
+        .assign(
+            is_false_positive=lambda row: row["grouper_value"]
+            != row["gt_grouper_value"],
+        )
+    ).sort_values(
+        by=["score", "grouper_key", "gt_grouper_value"],
+        ascending=[False, False, True],
+    )
+
+    # count the number of observations and true positives for each grouper key
+    total_observations_per_grouper_key_and_grouper_value = (
+        blah.groupby(["grouper_key", "grouper_value"], as_index=False)[
+            "gt_grouper_value"
+        ]
+        .size()
+        .rename(columns={"size": "n"})
+    )
+
+    total_true_postiives_per_grouper_keyy_and_grouper_value = (
+        blah.loc[blah["is_true_positive"], :]
+        .groupby(["grouper_key", "grouper_value"], as_index=False)[
+            "gt_grouper_value"
+        ]
+        .size()
+        .rename(columns={"size": "n_true_positives"})
+    )
+
+    merged_counts = blah.merge(
+        total_observations_per_grouper_key_and_grouper_value,
+        on=["grouper_key", "grouper_value"],
+    ).merge(
+        total_true_postiives_per_grouper_keyy_and_grouper_value,
+        on=["grouper_key", "grouper_value"],
+    )
+
+    cumulative_sums = (
+        merged_counts[
+            [
+                "grouper_key",
+                "grouper_value",
+                "is_true_positive",
+                "is_false_positive",
+            ]
+        ]
+        .groupby(["grouper_key", "grouper_value"], as_index=False)
+        .cumsum()
+    ).rename(
+        columns={
+            "is_true_positive": "cum_true_positive_cnt",
+            "is_false_positive": "cum_false_positive_cnt",
+        }
+    )
+
+    rates = pd.concat([merged_counts, cumulative_sums], axis=1)
+
+    # correct cumulative sums to be the max value for a given datum_id / grouper_key / grouper_value (this logic brings pandas' cumsum logic in line with psql's sum().over())
+    # then calculate tpr and fpr
+
+    max_cum_sums = (
+        rates.groupby(
+            ["grouper_key", "grouper_value", "score"], as_index=False
+        )[["cum_true_positive_cnt", "cum_false_positive_cnt"]]
+        .max()
+        .rename(
+            columns={
+                "cum_true_positive_cnt": "max_cum_true_positive_cnt",
+                "cum_false_positive_cnt": "max_cum_false_positive_cnt",
+            }
+        )
+    )
+    rates = rates.merge(
+        max_cum_sums, on=["grouper_key", "grouper_value", "score"]
+    )
+    rates["cum_true_positive_cnt"] = rates[
+        ["cum_true_positive_cnt", "max_cum_true_positive_cnt"]
+    ].max(axis=1)
+    rates["cum_false_positive_cnt"] = rates[
+        ["cum_false_positive_cnt", "max_cum_false_positive_cnt"]
+    ].max(axis=1)
+
+    rates = rates.assign(
+        tpr=lambda row: row["cum_true_positive_cnt"] / row["n_true_positives"]
+    ).assign(
+        fpr=lambda row: row["cum_false_positive_cnt"]
+        / (row["n"] - row["n_true_positives"])
+    )
+
+    trap_areas_per_grouper_value = pd.concat(
+        [
+            rates[["grouper_key", "grouper_value", "tpr", "fpr"]],
+            rates.groupby(["grouper_key", "grouper_value"], as_index=False)[
+                ["tpr", "fpr"]
+            ]
+            .shift(1)
+            .rename(columns={"tpr": "lagged_tpr", "fpr": "lagged_fpr"}),
+        ],
+        axis=1,
+    ).assign(
+        trap_area=lambda row: 0.5
+        * ((row["tpr"] + row["lagged_tpr"]) * (row["fpr"] - row["lagged_fpr"]))
+    )
+
+    summed_trap_areas_per_grouper_value = trap_areas_per_grouper_value.groupby(
+        ["grouper_key", "grouper_value"], as_index=False
+    )["trap_area"].sum()
+
+    average_across_grouper_keys = summed_trap_areas_per_grouper_value.groupby(
+        "grouper_key", as_index=False
+    )["trap_area"].mean()
+
+    metrics_to_output += [
+        schemas.ROCAUCMetric(
+            label_key=row["grouper_key"], value=row["trap_area"]
+        )
+        for row in average_across_grouper_keys.to_dict(orient="records")
+    ]
 
     # TODO move these over
     for grouper_key in grouper_mappings[
         "grouper_key_to_labels_mapping"
     ].keys():
-
-        rocauc = (
-            _compute_roc_auc(
-                db=db,
-                prediction_filter=prediction_filter,
-                groundtruth_filter=groundtruth_filter,
-                grouper_key=grouper_key,
-                grouper_mappings=grouper_mappings,
-            )
-            # if confusion_matrix
-            # else 0.0
-        )
-
-        # aggregate metrics (over all label values)
-        metrics_to_output += [
-            schemas.ROCAUCMetric(
-                label_key=grouper_key,
-                value=rocauc,
-            ),
-        ]
 
         if (
             enums.MetricType.PrecisionRecallCurve in metrics_to_return
