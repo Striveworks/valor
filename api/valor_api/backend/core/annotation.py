@@ -365,23 +365,6 @@ def delete_dataset_annotations(
         .subquery()
     )
 
-    # delete embeddings (if they exist)
-    # embedding_ids = (
-    #     select(annotations_to_delete.c.embedding_id.label("id"))
-    #     .where(annotations_to_delete.c.embedding_id.isnot(None))
-    #     .subquery()
-    # )
-    # try:
-    #     db.execute(
-    #         delete(models.Embedding).where(
-    #             models.Embedding.id == embedding_ids.c.id
-    #         )
-    #     )
-    #     db.commit()
-    # except IntegrityError as e:
-    #     db.rollback()
-    #     raise e
-
     # delete annotations
     try:
         db.execute(
@@ -425,23 +408,6 @@ def delete_model_annotations(
         .where(models.Annotation.model_id == model.id)
         .subquery()
     )
-
-    # # delete embeddings (if they exist)
-    # embedding_ids = (
-    #     select(annotations_to_delete.c.embedding_id.label("id"))
-    #     .where(annotations_to_delete.c.embedding_id.isnot(None))
-    #     .subquery()
-    # )
-    # try:
-    #     db.execute(
-    #         delete(models.Embedding).where(
-    #             models.Embedding.id == embedding_ids.c.id
-    #         )
-    #     )
-    #     db.commit()
-    # except IntegrityError as e:
-    #     db.rollback()
-    #     raise e
 
     # delete annotations
     try:
