@@ -89,6 +89,32 @@ def get_json_size(json_obj: object, encoding: str = "utf-8") -> int:
     )
 
 
+def _format_request_timeout(
+    timeout: Optional[float], default: float
+) -> Optional[float]:
+    """
+    Converts user-requested timeout into requests library format.
+
+    Parameters
+    ----------
+    timeout : float, optional
+        The user requested timeout in seconds. Timeout <= 0 disables the timeout.
+    default : float
+        The default timeout in seconds. Used when user timeout is None.
+
+    Returns
+    -------
+    float | None
+        The validated request timeout.
+    """
+    if timeout is None:
+        return default
+    elif timeout <= 0:
+        return None
+    else:
+        return timeout
+
+
 @dataclass
 class ClientConnection:
     """
@@ -197,8 +223,8 @@ class ClientConnection:
         *_,
         method_name: str,
         endpoint: str,
+        timeout: Optional[float],
         ignore_auth: bool = False,
-        timeout: Optional[float] = 10,
         **kwargs,
     ):
         """
@@ -239,12 +265,21 @@ class ClientConnection:
         else:
             headers = None
 
-        resp = requests_method(
-            url,
-            headers=headers,
-            timeout=timeout,
-            **kwargs,
-        )
+        try:
+            resp = requests_method(
+                url,
+                headers=headers,
+                timeout=timeout,
+                **kwargs,
+            )
+        except requests.exceptions.ReadTimeout as e:
+            if timeout:
+                raise TimeoutError(
+                    f"Client request timed out at {timeout} seconds."
+                )
+            else:
+                raise e
+
         if not resp.ok:
             raise_client_exception(resp)
 
@@ -258,7 +293,7 @@ class ClientConnection:
         params: Union[dict, list, None] = None,
         data: Optional[dict] = None,
         ignore_auth: bool = False,
-        timeout: Optional[float] = 10,
+        timeout: Optional[float] = None,
     ):
         """
         Helper for handling POST requests.
@@ -277,9 +312,10 @@ class ClientConnection:
             Option to ignore authentication when you know the endpoint does not
             require a bearer token. This is used by the `_get_access_token_from_username_and_password`
             to avoid infinite recursion.
-        timeout : float | None, default=10
+        timeout : float, optional
             An optional request timeout in seconds.
         """
+        timeout = _format_request_timeout(timeout=timeout, default=10)
         return self._requests_wrapper(
             method_name="post",
             endpoint=endpoint,
@@ -294,7 +330,7 @@ class ClientConnection:
         self,
         endpoint: str,
         *_,
-        timeout: Optional[float] = 10,
+        timeout: Optional[float] = None,
     ):
         """
         Helper for handling GET requests.
@@ -303,16 +339,19 @@ class ClientConnection:
         ----------
         endpoint : str
             The endpoint to send the request to.
-        timeout : float | None, default=10
+        timeout : float, optional
             An optional request timeout in seconds.
         """
-        return self._requests_wrapper(method_name="get", endpoint=endpoint)
+        timeout = _format_request_timeout(timeout=timeout, default=10)
+        return self._requests_wrapper(
+            method_name="get", endpoint=endpoint, timeout=timeout
+        )
 
     def _requests_put_rel_host(
         self,
         endpoint: str,
         *_,
-        timeout: Optional[float] = 10,
+        timeout: Optional[float] = None,
     ):
         """
         Helper for handling PUT requests.
@@ -321,16 +360,19 @@ class ClientConnection:
         ----------
         endpoint : str
             The endpoint to send the request to.
-        timeout : float | None, default=10
+        timeout : float, optional
             An optional request timeout in seconds.
         """
-        return self._requests_wrapper(method_name="put", endpoint=endpoint)
+        timeout = _format_request_timeout(timeout=timeout, default=10)
+        return self._requests_wrapper(
+            method_name="put", endpoint=endpoint, timeout=timeout
+        )
 
     def _requests_delete_rel_host(
         self,
         endpoint: str,
         *_,
-        timeout: Optional[float] = 10,
+        timeout: Optional[float] = None,
     ):
         """
         Helper for handling DELETE requests.
@@ -339,16 +381,20 @@ class ClientConnection:
         ----------
         endpoint : str
             The endpoint to send the request to.
-        timeout : float | None, default=10
+        timeout : float, optional
             An optional request timeout in seconds.
         """
-        return self._requests_wrapper(method_name="delete", endpoint=endpoint)
+        timeout = _format_request_timeout(timeout=timeout, default=10)
+        return self._requests_wrapper(
+            method_name="delete", endpoint=endpoint, timeout=timeout
+        )
 
     def create_groundtruths(
         self,
         groundtruths: List[dict],
-        timeout: Optional[float],
+        *_,
         ignore_existing_datums: bool = False,
+        timeout: Optional[float] = None,
     ) -> None:
         """
         Creates ground truths.
@@ -359,24 +405,26 @@ class ClientConnection:
         ----------
         groundtruths : List[dict]
             The ground truths to be created.
-        timeout: float, optional
-            The number of seconds the client should wait until raising a timeout.
         ignore_existing_datums : bool, default=False
             If True, will ignore datums that already exist in the backend.
             If False, will raise an error if any datums already exist.
             Default is False.
+        timeout : float, optional
+            The number of seconds the client should wait until raising a timeout.
         """
         self._requests_post_rel_host(
             endpoint="groundtruths",
-            timeout=timeout,
             json=groundtruths,
             params={"ignore_existing_datums": ignore_existing_datums},
+            timeout=timeout,
         )
 
     def get_groundtruth(
         self,
         dataset_name: str,
         datum_uid: str,
+        *_,
+        timeout: Optional[float] = None,
     ) -> dict:
         """
         Get a particular ground truth.
@@ -389,6 +437,8 @@ class ClientConnection:
             The name of the dataset the datum belongs to.
         datum_uid : str
             The uid of the desired datum.
+        timeout : float, optional
+            The number of seconds the client should wait until raising a timeout.
 
         Returns
         ----------
@@ -396,13 +446,15 @@ class ClientConnection:
             The requested ground truth.
         """
         return self._requests_get_rel_host(
-            f"groundtruths/dataset/{dataset_name}/datum/{datum_uid}"
+            f"groundtruths/dataset/{dataset_name}/datum/{datum_uid}",
+            timeout=timeout,
         ).json()
 
     def create_predictions(
         self,
         predictions: List[dict],
-        timeout: Optional[float],
+        *_,
+        timeout: Optional[float] = None,
     ) -> None:
         """
         Creates predictions.
@@ -413,11 +465,13 @@ class ClientConnection:
         ----------
         predictions : List[dict]
             The predictions to be created.
-        timeout: float, optional
+        timeout : float, optional
             The number of seconds the client should wait until raising a timeout.
         """
         self._requests_post_rel_host(
-            endpoint="predictions", timeout=timeout, json=predictions
+            endpoint="predictions",
+            json=predictions,
+            timeout=timeout,
         )
 
     def get_prediction(
@@ -425,6 +479,8 @@ class ClientConnection:
         dataset_name: str,
         model_name: str,
         datum_uid: str,
+        *_,
+        timeout: Optional[float] = None,
     ) -> dict:
         """
         Get a particular prediction.
@@ -439,6 +495,8 @@ class ClientConnection:
             The name of the model that made the prediction.
         datum_uid : str
             The uid of the desired datum.
+        timeout : float, optional
+            The number of seconds the client should wait until raising a timeout.
 
         Returns
         ----------
@@ -447,11 +505,14 @@ class ClientConnection:
         """
         return self._requests_get_rel_host(
             f"predictions/model/{model_name}/dataset/{dataset_name}/datum/{datum_uid}",
+            timeout=timeout,
         ).json()
 
     def get_labels(
         self,
-        filters: Optional[dict] = None,
+        filters: Optional[dict],
+        *_,
+        timeout: Optional[float] = None,
     ) -> List[dict]:
         """
         Gets all labels using an optional filter.
@@ -462,6 +523,8 @@ class ClientConnection:
         ----------
         filters : dict, optional
             An optional filter.
+        timeout : float, optional
+            The number of seconds the client should wait until raising a timeout.
 
         Returns
         -------
@@ -470,10 +533,17 @@ class ClientConnection:
         """
         filters = filters if filters else dict()
         return self._requests_post_rel_host(
-            "labels/filter", json=filters
+            "labels/filter",
+            json=filters,
+            timeout=timeout,
         ).json()
 
-    def get_labels_from_dataset(self, name: str) -> List[dict]:
+    def get_labels_from_dataset(
+        self,
+        name: str,
+        *_,
+        timeout: Optional[float] = None,
+    ) -> List[dict]:
         """
         Get all labels associated with a dataset's ground truths.
 
@@ -483,15 +553,25 @@ class ClientConnection:
         ----------
         name : str
             The name of the dataset to search by.
+        timeout : float, optional
+            The number of seconds the client should wait until raising a timeout.
 
         Returns
         ------
         List[dict]
             A list of labels.
         """
-        return self._requests_get_rel_host(f"labels/dataset/{name}").json()
+        return self._requests_get_rel_host(
+            f"labels/dataset/{name}",
+            timeout=timeout,
+        ).json()
 
-    def get_labels_from_model(self, name: str) -> List[dict]:
+    def get_labels_from_model(
+        self,
+        name: str,
+        *_,
+        timeout: Optional[float] = None,
+    ) -> List[dict]:
         """
         Get all labels associated with a model's predictions.
 
@@ -501,15 +581,24 @@ class ClientConnection:
         ----------
         name : str
             The name of the model to search by.
+        timeout : float, optional
+            The number of seconds the client should wait until raising a timeout.
 
         Returns
         ------
         List[dict]
             A list of labels.
         """
-        return self._requests_get_rel_host(f"labels/model/{name}").json()
+        return self._requests_get_rel_host(
+            f"labels/model/{name}", timeout=timeout
+        ).json()
 
-    def create_dataset(self, dataset: dict):
+    def create_dataset(
+        self,
+        dataset: dict,
+        *_,
+        timeout: Optional[float] = None,
+    ):
         """
         Creates a dataset.
 
@@ -519,10 +608,17 @@ class ClientConnection:
         ----------
         dataset : dict
             A dictionary describing dataset attributes. See `valor.coretypes.Dataset` for reference.
+        timeout : float, optional
+            The number of seconds the client should wait until raising a timeout.
         """
-        self._requests_post_rel_host("datasets", json=dataset)
+        self._requests_post_rel_host("datasets", json=dataset, timeout=timeout)
 
-    def get_datasets(self, filters: Optional[dict] = None) -> List[dict]:
+    def get_datasets(
+        self,
+        filters: Optional[dict],
+        *_,
+        timeout: Optional[float] = None,
+    ) -> List[dict]:
         """
         Get all datasets with option to filter.
 
@@ -532,6 +628,8 @@ class ClientConnection:
         ----------
         filters : Filter, optional
             An optional filter.
+        timeout : float, optional
+            The number of seconds the client should wait until raising a timeout.
 
         Returns
         ------
@@ -540,10 +638,17 @@ class ClientConnection:
         """
         filters = filters if filters else dict()
         return self._requests_post_rel_host(
-            "datasets/filter", json=filters
+            "datasets/filter",
+            json=filters,
+            timeout=timeout,
         ).json()
 
-    def get_dataset(self, name: str) -> dict:
+    def get_dataset(
+        self,
+        name: str,
+        *_,
+        timeout: Optional[float] = None,
+    ) -> dict:
         """
         Gets a dataset by name.
 
@@ -553,15 +658,24 @@ class ClientConnection:
         ----------
         name : str
             The name of the dataset to fetch.
+        timeout : float, optional
+            The number of seconds the client should wait until raising a timeout.
 
         Returns
         -------
         dict
             A dictionary containing all of the associated dataset attributes.
         """
-        return self._requests_get_rel_host(f"datasets/{name}").json()
+        return self._requests_get_rel_host(
+            f"datasets/{name}", timeout=timeout
+        ).json()
 
-    def get_dataset_status(self, name: str) -> TableStatus:
+    def get_dataset_status(
+        self,
+        name: str,
+        *_,
+        timeout: Optional[float] = None,
+    ) -> TableStatus:
         """
         Get the state of a given dataset.
 
@@ -571,16 +685,25 @@ class ClientConnection:
         ----------
         name : str
             The name of the dataset we want to fetch the state of.
+        timeout : float, optional
+            The number of seconds the client should wait until raising a timeout.
 
         Returns
         ------
         TableStatus
             The state of the dataset.
         """
-        resp = self._requests_get_rel_host(f"datasets/{name}/status").json()
+        resp = self._requests_get_rel_host(
+            f"datasets/{name}/status", timeout=timeout
+        ).json()
         return TableStatus(resp)
 
-    def get_dataset_summary(self, name: str) -> dict:
+    def get_dataset_summary(
+        self,
+        name: str,
+        *_,
+        timeout: Optional[float] = None,
+    ) -> dict:
         """
         Gets the summary of a dataset.
 
@@ -590,15 +713,24 @@ class ClientConnection:
         ----------
         name : str
             The name of the dataset to create a summary for.
+        timeout : float, optional
+            The number of seconds the client should wait until raising a timeout.
 
         Returns
         -------
         dict
             A dictionary containing the dataset summary.
         """
-        return self._requests_get_rel_host(f"datasets/{name}/summary").json()
+        return self._requests_get_rel_host(
+            f"datasets/{name}/summary", timeout=timeout
+        ).json()
 
-    def finalize_dataset(self, name: str) -> None:
+    def finalize_dataset(
+        self,
+        name: str,
+        *_,
+        timeout: Optional[float] = None,
+    ) -> None:
         """
         Finalizes a dataset such that new ground truths cannot be added to it.
 
@@ -608,10 +740,16 @@ class ClientConnection:
         ----------
         name : str
             The name of the dataset.
+        timeout : float, optional
+            The number of seconds the client should wait until raising a timeout.
         """
-        return self._requests_put_rel_host(f"datasets/{name}/finalize")
+        return self._requests_put_rel_host(
+            f"datasets/{name}/finalize", timeout=timeout
+        )
 
-    def delete_dataset(self, name: str) -> None:
+    def delete_dataset(
+        self, name: str, *_, timeout: Optional[float] = None
+    ) -> None:
         """
         Deletes a dataset.
 
@@ -621,10 +759,17 @@ class ClientConnection:
         ----------
         name : str
             The name of the dataset to be deleted.
+        timeout : float, optional
+            The number of seconds the client should wait until raising a timeout.
         """
-        self._requests_delete_rel_host(f"datasets/{name}")
+        self._requests_delete_rel_host(f"datasets/{name}", timeout=timeout)
 
-    def get_datums(self, filters: Optional[dict] = None) -> List[dict]:
+    def get_datums(
+        self,
+        filters: Optional[dict],
+        *_,
+        timeout: Optional[float] = None,
+    ) -> List[dict]:
         """
         Get all datums using an optional filter.
 
@@ -634,6 +779,8 @@ class ClientConnection:
         ----------
         filters : dict, optional
             An optional filter.
+        timeout : float, optional
+            The number of seconds the client should wait until raising a timeout.
 
         Returns
         -------
@@ -641,12 +788,16 @@ class ClientConnection:
             A list of datums in JSON format.
         """
         filters = filters if isinstance(filters, dict) else dict()
-        return self._requests_post_rel_host("data/filter", json=filters).json()
+        return self._requests_post_rel_host(
+            "data/filter", json=filters, timeout=timeout
+        ).json()
 
     def get_datum(
         self,
         dataset_name: str,
         uid: str,
+        *_,
+        timeout: Optional[float] = None,
     ) -> dict:
         """
         Get datum.
@@ -657,16 +808,25 @@ class ClientConnection:
             The dataset the datum belongs to.
         uid : str
             The UID of the datum.
+        timeout : float, optional
+            The number of seconds the client should wait until raising a timeout.
+
         Returns
         -------
         dict
             A dictionary describing a datum.
         """
         return self._requests_get_rel_host(
-            f"data/dataset/{dataset_name}/uid/{uid}"
+            f"data/dataset/{dataset_name}/uid/{uid}",
+            timeout=timeout,
         ).json()
 
-    def create_model(self, model: dict) -> None:
+    def create_model(
+        self,
+        model: dict,
+        *_,
+        timeout: Optional[float] = None,
+    ) -> None:
         """
         Creates a model.
 
@@ -676,10 +836,17 @@ class ClientConnection:
         ----------
         model : dict
             A dictionary describing model attributes. See `valor.coretypes.Model` for reference.
+        timeout : float, optional
+            The number of seconds the client should wait until raising a timeout.
         """
-        self._requests_post_rel_host("models", json=model)
+        self._requests_post_rel_host("models", json=model, timeout=timeout)
 
-    def get_models(self, filters: Optional[dict] = None) -> List[dict]:
+    def get_models(
+        self,
+        filters: Optional[dict],
+        *_,
+        timeout: Optional[float] = None,
+    ) -> List[dict]:
         """
         Get all models using an optional filter.
 
@@ -689,6 +856,8 @@ class ClientConnection:
         ----------
         filters : Filter, optional
             An optional filter.
+        timeout : float, optional
+            The number of seconds the client should wait until raising a timeout.
 
         Returns
         ------
@@ -697,10 +866,17 @@ class ClientConnection:
         """
         filters = filters if filters else dict()
         return self._requests_post_rel_host(
-            "models/filter", json=filters
+            "models/filter",
+            json=filters,
+            timeout=timeout,
         ).json()
 
-    def get_model(self, name: str) -> dict:
+    def get_model(
+        self,
+        name: str,
+        *_,
+        timeout: Optional[float] = None,
+    ) -> dict:
         """
         Gets a model by name.
 
@@ -710,15 +886,24 @@ class ClientConnection:
         ----------
         name : str
             The name of the model to fetch.
+        timeout : float, optional
+            The number of seconds the client should wait until raising a timeout.
 
         Returns
         -------
         dict
             A dictionary containing all of the associated model attributes.
         """
-        return self._requests_get_rel_host(f"models/{name}").json()
+        return self._requests_get_rel_host(
+            f"models/{name}", timeout=timeout
+        ).json()
 
-    def get_model_eval_requests(self, name: str) -> List[dict]:
+    def get_model_eval_requests(
+        self,
+        name: str,
+        *_,
+        timeout: Optional[float] = None,
+    ) -> List[dict]:
         """
         Get all evaluations that have been created for a model.
 
@@ -730,6 +915,8 @@ class ClientConnection:
         ----------
         name : str
             The name of the model.
+        timeout : float, optional
+            The number of seconds the client should wait until raising a timeout.
 
         Returns
         -------
@@ -737,13 +924,16 @@ class ClientConnection:
             A list of evaluations.
         """
         return self._requests_get_rel_host(
-            f"/models/{name}/eval-requests"
+            f"/models/{name}/eval-requests",
+            timeout=timeout,
         ).json()
 
     def get_model_status(
         self,
         dataset_name: str,
         model_name: str,
+        *_,
+        timeout: Optional[float] = None,
     ) -> TableStatus:
         """
         Get the state of a given model over a dataset.
@@ -756,6 +946,8 @@ class ClientConnection:
             The name of the dataset that the model is operating over.
         model_name : str
             The name of the model we want to fetch the state of.
+        timeout : float, optional
+            The number of seconds the client should wait until raising a timeout.
 
         Returns
         ------
@@ -763,7 +955,8 @@ class ClientConnection:
             The state of the `Model`.
         """
         resp = self._requests_get_rel_host(
-            f"models/{model_name}/dataset/{dataset_name}/status"
+            f"models/{model_name}/dataset/{dataset_name}/status",
+            timeout=timeout,
         ).json()
         return TableStatus(resp)
 
@@ -771,6 +964,8 @@ class ClientConnection:
         self,
         dataset_name: str,
         model_name: str,
+        *_,
+        timeout: Optional[float] = None,
     ) -> None:
         """
         Finalizes a model-dataset pairing such that new predictions cannot be added to it.
@@ -783,12 +978,20 @@ class ClientConnection:
             The name of the dataset.
         model_name : str
             The name of the model.
+        timeout : float, optional
+            The number of seconds the client should wait until raising a timeout.
         """
         return self._requests_put_rel_host(
-            f"models/{model_name}/datasets/{dataset_name}/finalize"
+            f"models/{model_name}/datasets/{dataset_name}/finalize",
+            timeout=timeout,
         ).json()
 
-    def delete_model(self, name: str) -> None:
+    def delete_model(
+        self,
+        name: str,
+        *_,
+        timeout: Optional[float] = None,
+    ) -> None:
         """
         Deletes a model.
 
@@ -798,11 +1001,17 @@ class ClientConnection:
         ----------
         name : str
             The name of the model to be deleted.
+        timeout : float, optional
+            The number of seconds the client should wait until raising a timeout.
         """
-        self._requests_delete_rel_host(f"models/{name}")
+        self._requests_delete_rel_host(f"models/{name}", timeout=timeout)
 
     def evaluate(
-        self, request: dict, allow_retries: bool = False
+        self,
+        request: dict,
+        *_,
+        allow_retries: bool = False,
+        timeout: Optional[float] = None,
     ) -> List[dict]:
         """
         Creates as many evaluations as necessary to fulfill the request.
@@ -815,6 +1024,8 @@ class ClientConnection:
             The requested evaluation parameters.
         allow_retries : bool, default = False
             Option to retry previously failed evaluations.
+        timeout : float, optional
+            The number of seconds the client should wait until raising a timeout.
 
         Returns
         -------
@@ -823,17 +1034,18 @@ class ClientConnection:
         """
         query_str = urlencode({"allow_retries": allow_retries})
         endpoint = f"evaluations?{query_str}"
-        return self._requests_post_rel_host(endpoint, json=request).json()
+        return self._requests_post_rel_host(
+            endpoint, json=request, timeout=timeout
+        ).json()
 
     def get_evaluations(
         self,
         *,
-        evaluation_ids: Optional[List[int]] = None,
-        models: Optional[List[str]] = None,
-        datasets: Optional[List[str]] = None,
-        metrics_to_sort_by: Optional[
-            Dict[str, Union[Dict[str, str], str]]
-        ] = None,
+        evaluation_ids: Optional[List[int]],
+        models: Optional[List[str]],
+        datasets: Optional[List[str]],
+        metrics_to_sort_by: Optional[Dict[str, Union[Dict[str, str], str]]],
+        timeout: Optional[float] = None,
     ) -> List[dict]:
         """
         Returns all evaluations associated with user-supplied dataset and/or model names.
@@ -850,6 +1062,8 @@ class ClientConnection:
             A list of dataset names that we want to return metrics for.
         metrics_to_sort_by: dict[str, str | dict[str, str]], optional
             An optional dict of metric types to sort the evaluations by.
+        timeout : float, optional
+            The number of seconds the client should wait until raising a timeout.
 
         Returns
         -------
@@ -882,9 +1096,14 @@ class ClientConnection:
         query_str = urlencode(params)
         endpoint = f"evaluations?{query_str}"
 
-        return self._requests_get_rel_host(endpoint).json()
+        return self._requests_get_rel_host(endpoint, timeout=timeout).json()
 
-    def delete_evaluation(self, evaluation_id: int) -> None:
+    def delete_evaluation(
+        self,
+        evaluation_id: int,
+        *_,
+        timeout: Optional[float] = None,
+    ) -> None:
         """
         Deletes an evaluation.
 
@@ -894,54 +1113,92 @@ class ClientConnection:
         ----------
         evaluation_id : int
             The id of the evaluation to be deleted.
+        timeout : float, optional
+            The number of seconds the client should wait until raising a timeout.
         """
-        self._requests_delete_rel_host(f"evaluations/{evaluation_id}")
+        self._requests_delete_rel_host(
+            f"evaluations/{evaluation_id}", timeout=timeout
+        )
 
-    def get_user(self) -> Union[str, None]:
+    def get_user(
+        self,
+        *_,
+        timeout: Optional[float] = None,
+    ) -> Union[str, None]:
         """
         Gets the users e-mail address (in the case when auth is enabled)
         or returns None in the case of a no-auth back end.
 
         `GET` endpoint.
 
+        Parameters
+        ----------
+        timeout : float, optional
+            The number of seconds the client should wait until raising a timeout.
+
         Returns
         -------
         Union[str, None]
             The user's email address or `None` if it doesn't exist.
         """
-        resp = self._requests_get_rel_host("user").json()
+        resp = self._requests_get_rel_host("user", timeout=timeout).json()
         return resp["email"]
 
-    def get_api_version(self) -> str:
+    def get_api_version(
+        self,
+        *_,
+        timeout: Optional[float] = None,
+    ) -> str:
         """
         Gets the version number of the API.
 
         `GET` endpoint.
+
+        Parameters
+        ----------
+        timeout : float, optional
+            The number of seconds the client should wait until raising a timeout.
 
         Returns
         -------
         Union[str, None]
             The api version or `None` if it doesn't exist.
         """
-        resp = self._requests_get_rel_host("api-version").json()
+        resp = self._requests_get_rel_host(
+            "api-version", timeout=timeout
+        ).json()
         return resp["api_version"]
 
-    def health(self) -> str:
+    def health(
+        self,
+        *_,
+        timeout: Optional[float] = None,
+    ) -> str:
         """
         Checks if service is healthy.
 
         `GET` endpoint.
+
+        Parameters
+        ----------
+        timeout : float, optional
+            The number of seconds the client should wait until raising a timeout.
         """
-        resp = self._requests_get_rel_host("user").json()
+        resp = self._requests_get_rel_host("user", timeout=timeout).json()
         return resp["status"]
 
-    def ready(self) -> str:
+    def ready(self, *_, timeout: Optional[float] = None) -> str:
         """
         Checks if service is ready.
 
         `GET` endpoint.
+
+        Parameters
+        ----------
+        timeout : float, optional
+            The number of seconds the client should wait until raising a timeout.
         """
-        resp = self._requests_get_rel_host("user").json()
+        resp = self._requests_get_rel_host("user", timeout=timeout).json()
         return resp["status"]
 
 

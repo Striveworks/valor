@@ -366,6 +366,7 @@ def get_evaluations(
         A tuple containing the evaluations and response headers to return to the user.
     """
     # get evaluations that conform to input args
+    print("ENTERING CRUD")
     return backend.get_paginated_evaluations(
         db=db,
         evaluation_ids=evaluation_ids,

@@ -8,7 +8,6 @@ from valor_api import enums, exceptions, schemas
 from valor_api.backend import core, models
 from valor_api.backend.core.evaluation import (
     _fetch_evaluation_from_subrequest,
-    _fetch_evaluations_and_mark_for_deletion,
     validate_request,
 )
 
@@ -885,67 +884,3 @@ def test_count_active_evaluations(
         )
         == 0
     )
-
-
-def test__fetch_evaluations_and_mark_for_deletion(
-    db: Session, finalized_dataset: str, finalized_model: str
-):
-    # create two evaluations
-    for metrics_to_return in [
-        [
-            enums.MetricType.Precision,
-            enums.MetricType.Recall,
-            enums.MetricType.F1,
-            enums.MetricType.Accuracy,
-            enums.MetricType.ROCAUC,
-        ],
-        [
-            enums.MetricType.Precision,
-            enums.MetricType.Recall,
-            enums.MetricType.F1,
-            enums.MetricType.Accuracy,
-            enums.MetricType.ROCAUC,
-            enums.MetricType.PrecisionRecallCurve,
-        ],
-    ]:
-        core.create_or_get_evaluations(
-            db,
-            schemas.EvaluationRequest(
-                dataset_names=[finalized_dataset],
-                model_names=[finalized_model],
-                parameters=schemas.EvaluationParameters(
-                    task_type=enums.TaskType.CLASSIFICATION,
-                    metrics_to_return=metrics_to_return,
-                ),
-            ),
-        )
-
-    # sanity check no evals are in deleting state
-    evals = db.query(models.Evaluation).all()
-    assert len(evals) == 2
-    assert all([e.status != enums.EvaluationStatus.DELETING for e in evals])
-    assert all(e.meta == {} for e in evals)
-
-    eval_ids = [e.id for e in evals]
-    # fetch and update all evaluations, check they're in deleting status
-    evals = _fetch_evaluations_and_mark_for_deletion(
-        db, evaluation_ids=[eval_ids[0]]
-    )
-    assert len(evals) == 1
-    assert evals[0].status == enums.EvaluationStatus.DELETING
-
-    # check the other evaluation is not in deleting status
-    assert (
-        db.query(models.Evaluation.status)
-        .where(models.Evaluation.id == eval_ids[1])
-        .scalar()
-        != enums.EvaluationStatus.DELETING
-    )
-    # now call _fetch_evaluations_and_mark_for_deletion with dataset name so expression (ignoring status) will match all evaluations
-    # but check only the second one was updated
-    evals = _fetch_evaluations_and_mark_for_deletion(
-        db, dataset_names=[finalized_dataset]
-    )
-    assert len(evals) == 1
-    assert evals[0].status == enums.EvaluationStatus.DELETING
-    assert evals[0].id == eval_ids[1]

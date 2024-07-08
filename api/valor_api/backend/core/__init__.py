@@ -26,6 +26,7 @@ from .dataset import (
 from .datum import (
     create_datum,
     create_datums,
+    delete_datums,
     fetch_datum,
     get_paginated_datums,
 )
@@ -84,6 +85,7 @@ __all__ = [
     "get_annotations",
     "create_dataset",
     "delete_dataset",
+    "delete_datums",
     "fetch_dataset",
     "get_dataset",
     "get_paginated_datasets",
