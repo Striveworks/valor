@@ -22,6 +22,9 @@ from sqlalchemy.sql.elements import BinaryExpression
 
 from valor_api import api_utils, enums, exceptions, schemas
 from valor_api.backend import core, models
+from valor_api.backend.metrics.metric_utils import (
+    prepare_filter_for_evaluation,
+)
 from valor_api.backend.query import generate_query
 from valor_api.schemas import migrations
 
@@ -125,35 +128,6 @@ def _create_bulk_expression(
     if evaluation_ids:
         expr.append(_create_eval_expr_from_list(evaluation_ids))
     return expr
-
-
-def _convert_db_metric_to_pydantic_metric(
-    db: Session,
-    metric: models.Metric,
-) -> schemas.Metric:
-    """Apply schemas.Metric to a metric from the database"""
-
-    label_row = (
-        db.query(
-            select(models.Label)
-            .where(models.Label.id == metric.label_id)
-            .subquery()
-        ).one_or_none()
-        if metric.label_id
-        else None
-    )
-    label = (
-        schemas.Label(key=label_row.key, value=label_row.value)
-        if label_row
-        else None
-    )
-
-    return schemas.Metric(
-        type=metric.type,
-        value=metric.value,
-        label=label,
-        parameters=metric.parameters,
-    )
 
 
 def validate_request(
@@ -268,10 +242,6 @@ def _validate_evaluation_filter(
     parameters = schemas.EvaluationParameters(**evaluation.parameters)
 
     # generate filters
-    from valor_api.backend.metrics.metric_utils import (
-        prepare_filter_for_evaluation,
-    )
-
     groundtruth_filter, prediction_filter = prepare_filter_for_evaluation(
         db=db,
         filters=filters,
@@ -314,23 +284,58 @@ def _create_response(
     **kwargs,
 ) -> schemas.EvaluationResponse:
     """Converts a evaluation row into a response schema."""
-    metrics = db.query(
-        select(models.Metric)
-        .where(
-            and_(
-                models.Metric.evaluation_id == evaluation.id,
-                models.Metric.type.in_(
-                    evaluation.parameters["metrics_to_return"]
-                ),
-            )
+
+    metrics = [
+        schemas.Metric(
+            type=mtype,
+            value=mvalue,
+            label=(
+                schemas.Label(key=lkey, value=lvalue)
+                if lkey and lvalue
+                else None
+            ),
+            parameters=mparam,
         )
-        .subquery()
-    ).all()
-    confusion_matrices = db.query(
-        select(models.ConfusionMatrix)
-        .where(models.ConfusionMatrix.evaluation_id == evaluation.id)
-        .subquery()
-    ).all()
+        for mtype, mvalue, mparam, lkey, lvalue in (
+            db.query(
+                models.Metric.type,
+                models.Metric.value,
+                models.Metric.parameters,
+                models.Label.key,
+                models.Label.value,
+            )
+            .select_from(models.Metric)
+            .join(
+                models.Label,
+                models.Label.id == models.Metric.label_id,
+                isouter=True,
+            )
+            .where(
+                and_(
+                    models.Metric.evaluation_id == evaluation.id,
+                    models.Metric.type.in_(
+                        evaluation.parameters["metrics_to_return"]
+                    ),
+                )
+            )
+            .all()
+        )
+    ]
+
+    confusion_matrices = [
+        schemas.ConfusionMatrixResponse(
+            label_key=matrix.label_key,
+            entries=[
+                schemas.ConfusionMatrixEntry(**entry) for entry in matrix.value
+            ],
+        )
+        for matrix in (
+            db.query(models.ConfusionMatrix)
+            .where(models.ConfusionMatrix.evaluation_id == evaluation.id)
+            .all()
+        )
+    ]
+
     return schemas.EvaluationResponse(
         id=evaluation.id,
         dataset_names=evaluation.dataset_names,
@@ -338,20 +343,8 @@ def _create_response(
         filters=evaluation.filters,
         parameters=evaluation.parameters,
         status=enums.EvaluationStatus(evaluation.status),
-        metrics=[
-            _convert_db_metric_to_pydantic_metric(db, metric)
-            for metric in metrics
-        ],
-        confusion_matrices=[
-            schemas.ConfusionMatrixResponse(
-                label_key=matrix.label_key,
-                entries=[
-                    schemas.ConfusionMatrixEntry(**entry)
-                    for entry in matrix.value
-                ],
-            )
-            for matrix in confusion_matrices
-        ],
+        metrics=metrics,
+        confusion_matrices=confusion_matrices,
         created_at=evaluation.created_at.replace(tzinfo=timezone.utc),
         meta=evaluation.meta,
         **kwargs,
@@ -695,6 +688,7 @@ def get_paginated_evaluations(
 
         for i, (metric_type, label) in enumerate(metrics_to_sort_by.items()):
             # if the value represents a label_key
+
             if isinstance(label, str):
                 order_case.append(
                     (
