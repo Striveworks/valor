@@ -2,14 +2,86 @@ import datetime
 
 import pytest
 from pydantic import ValidationError
+from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from valor_api import enums, exceptions, schemas
+from valor_api import crud, enums, exceptions, schemas
 from valor_api.backend import core, models
 from valor_api.backend.core.evaluation import (
     _fetch_evaluation_from_subrequest,
     validate_request,
 )
+
+
+@pytest.fixture
+def gt_clfs_create(
+    dataset_name: str,
+    img1: schemas.Datum,
+    img2: schemas.Datum,
+) -> list[schemas.GroundTruth]:
+    return [
+        schemas.GroundTruth(
+            dataset_name=dataset_name,
+            datum=img1,
+            annotations=[
+                schemas.Annotation(
+                    labels=[
+                        schemas.Label(key="k1", value="v1"),
+                        schemas.Label(key="k2", value="v2"),
+                    ],
+                ),
+            ],
+        ),
+        schemas.GroundTruth(
+            dataset_name=dataset_name,
+            datum=img2,
+            annotations=[
+                schemas.Annotation(
+                    labels=[schemas.Label(key="k2", value="v3")],
+                ),
+            ],
+        ),
+    ]
+
+
+@pytest.fixture
+def pred_clfs_create(
+    dataset_name: str,
+    model_name: str,
+    img1: schemas.Datum,
+    img2: schemas.Datum,
+) -> list[schemas.Prediction]:
+    return [
+        schemas.Prediction(
+            dataset_name=dataset_name,
+            model_name=model_name,
+            datum=img1,
+            annotations=[
+                schemas.Annotation(
+                    labels=[
+                        schemas.Label(key="k1", value="v1", score=0.2),
+                        schemas.Label(key="k1", value="v2", score=0.8),
+                        schemas.Label(key="k2", value="v4", score=1.0),
+                    ],
+                ),
+            ],
+        ),
+        schemas.Prediction(
+            dataset_name=dataset_name,
+            model_name=model_name,
+            datum=img2,
+            annotations=[
+                schemas.Annotation(
+                    labels=[
+                        schemas.Label(key="k2", value="v2", score=0.8),
+                        schemas.Label(key="k2", value="v3", score=0.1),
+                        schemas.Label(key="k2", value="v0", score=0.1),
+                    ],
+                ),
+            ],
+        ),
+    ]
 
 
 @pytest.fixture
@@ -884,3 +956,134 @@ def test_count_active_evaluations(
         )
         == 0
     )
+
+
+def test_delete_evaluations(
+    db: Session,
+    dataset_name: str,
+    model_name: str,
+    gt_clfs_create: list[schemas.GroundTruth],
+    pred_clfs_create: list[schemas.Prediction],
+):
+    crud.create_dataset(
+        db=db,
+        dataset=schemas.Dataset(name=dataset_name),
+    )
+    for gt in gt_clfs_create:
+        gt.dataset_name = dataset_name
+        crud.create_groundtruths(db=db, groundtruths=[gt])
+    crud.finalize(db=db, dataset_name=dataset_name)
+
+    crud.create_model(db=db, model=schemas.Model(name=model_name))
+    for pd in pred_clfs_create:
+        pd.dataset_name = dataset_name
+        pd.model_name = model_name
+        crud.create_predictions(db=db, predictions=[pd])
+    crud.finalize(db=db, model_name=model_name, dataset_name=dataset_name)
+
+    job_request = schemas.EvaluationRequest(
+        dataset_names=[dataset_name],
+        model_names=[model_name],
+        parameters=schemas.EvaluationParameters(
+            task_type=enums.TaskType.CLASSIFICATION,
+        ),
+    )
+
+    # create clf evaluation
+    resp = crud.create_or_get_evaluations(
+        db=db,
+        job_request=job_request,
+    )
+    assert len(resp) == 1
+    evaluation = db.query(models.Evaluation).one_or_none()
+    assert evaluation
+
+    for status in [
+        enums.EvaluationStatus.PENDING,
+        enums.EvaluationStatus.RUNNING,
+    ]:
+
+        # set status
+        try:
+            evaluation.status = status
+            db.commit()
+        except IntegrityError as e:
+            db.rollback()
+            raise e
+
+        # check quantities
+        assert db.scalar(func.count(models.Evaluation.id)) == 1
+        assert db.scalar(func.count(models.Metric.id)) == 22
+        assert db.scalar(func.count(models.ConfusionMatrix.id)) == 2
+
+        # attempt to delete evaluation with PENDING status
+        with pytest.raises(exceptions.EvaluationRunningError):
+            core.delete_evaluations(db=db, evaluation_ids=[evaluation.id])
+
+    # check quantities
+    assert db.scalar(func.count(models.Evaluation.id)) == 1
+    assert db.scalar(func.count(models.Metric.id)) == 22
+    assert db.scalar(func.count(models.ConfusionMatrix.id)) == 2
+
+    # set status to deleting
+    try:
+        evaluation.status = enums.EvaluationStatus.DELETING
+        db.commit()
+    except IntegrityError as e:
+        db.rollback()
+        raise e
+
+    # attempt to delete evaluation with DELETING status
+    # should do nothing as another worker is handling it.
+    core.delete_evaluations(db=db, evaluation_ids=[evaluation.id])
+
+    # check quantities
+    assert db.scalar(func.count(models.Evaluation.id)) == 1
+    assert db.scalar(func.count(models.Metric.id)) == 22
+    assert db.scalar(func.count(models.ConfusionMatrix.id)) == 2
+
+    # set status to done
+    try:
+        evaluation.status = enums.EvaluationStatus.DONE
+        db.commit()
+    except IntegrityError as e:
+        db.rollback()
+        raise e
+
+    # attempt to delete evaluation with DONE status
+    core.delete_evaluations(db=db, evaluation_ids=[evaluation.id])
+
+    # check quantities
+    assert db.scalar(func.count(models.Evaluation.id)) == 0
+    assert db.scalar(func.count(models.Metric.id)) == 0
+    assert db.scalar(func.count(models.ConfusionMatrix.id)) == 0
+
+    # create clf evaluation (again)
+    resp = crud.create_or_get_evaluations(
+        db=db,
+        job_request=job_request,
+    )
+    assert len(resp) == 1
+    evaluation = db.query(models.Evaluation).one_or_none()
+    assert evaluation
+
+    # set status to failed
+    try:
+        evaluation.status = enums.EvaluationStatus.FAILED
+        db.commit()
+    except IntegrityError as e:
+        db.rollback()
+        raise e
+
+    # check quantities
+    assert db.scalar(func.count(models.Evaluation.id)) == 1
+    assert db.scalar(func.count(models.Metric.id)) == 22
+    assert db.scalar(func.count(models.ConfusionMatrix.id)) == 2
+
+    # attempt to delete evaluation with DONE status
+    core.delete_evaluations(db=db, evaluation_ids=[evaluation.id])
+
+    # check quantities
+    assert db.scalar(func.count(models.Evaluation.id)) == 0
+    assert db.scalar(func.count(models.Metric.id)) == 0
+    assert db.scalar(func.count(models.ConfusionMatrix.id)) == 0
