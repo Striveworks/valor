@@ -421,7 +421,7 @@ def delete_model_annotations(
         )
 
     annotations_to_delete = (
-        select(models.Annotation.id.label("id"))
+        select(models.Annotation)
         .where(models.Annotation.model_id == model.id)
         .subquery()
     )
