@@ -1,4 +1,4 @@
-from sqlalchemy import and_, delete, desc, func, select
+from sqlalchemy import and_, desc, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -392,8 +392,8 @@ def delete_model(
     core.delete_model_annotations(db=db, model=model)
 
     try:
-        db.execute(delete(models.Model).where(models.Model.id == model.id))
+        db.delete(model)
         db.commit()
-    except IntegrityError as e:
+    except IntegrityError:
         db.rollback()
-        raise e
+        raise RuntimeError

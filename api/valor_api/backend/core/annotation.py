@@ -358,37 +358,18 @@ def delete_dataset_annotations(
             f"Attempted to delete annotations from dataset `{dataset.name}` which has status `{dataset.status}`"
         )
 
-    annotations_to_delete = (
-        select(models.Annotation)
+    subquery = (
+        select(models.Annotation.id.label("id"))
         .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
         .where(models.Datum.dataset_id == dataset.id)
         .subquery()
     )
-
-    # delete embeddings (if they exist)
-    embedding_ids = (
-        select(annotations_to_delete.c.embedding_id)
-        .where(annotations_to_delete.c.embedding_id.isnot(None))
-        .subquery()
+    delete_stmt = delete(models.Annotation).where(
+        models.Annotation.id == subquery.c.id
     )
-    try:
-        db.execute(
-            delete(models.Embedding).where(
-                models.Embedding.id == embedding_ids.c.id
-            )
-        )
-        db.commit()
-    except IntegrityError as e:
-        db.rollback()
-        raise e
 
-    # delete annotations
     try:
-        db.execute(
-            delete(models.Annotation).where(
-                models.Annotation.id == annotations_to_delete.c.id
-            )
-        )
+        db.execute(delete_stmt)
         db.commit()
     except IntegrityError as e:
         db.rollback()
@@ -420,36 +401,17 @@ def delete_model_annotations(
             f"Attempted to delete annotations from dataset `{model.name}` which is not being deleted."
         )
 
-    annotations_to_delete = (
+    subquery = (
         select(models.Annotation.id.label("id"))
         .where(models.Annotation.model_id == model.id)
         .subquery()
     )
-
-    # delete embeddings (if they exist)
-    embedding_ids = (
-        select(annotations_to_delete.c.embedding_id)
-        .where(annotations_to_delete.c.embedding_id.isnot(None))
-        .subquery()
+    delete_stmt = delete(models.Annotation).where(
+        models.Annotation.id == subquery.c.id
     )
-    try:
-        db.execute(
-            delete(models.Embedding).where(
-                models.Embedding.id == embedding_ids.c.id
-            )
-        )
-        db.commit()
-    except IntegrityError as e:
-        db.rollback()
-        raise e
 
-    # delete annotations
     try:
-        db.execute(
-            delete(models.Annotation).where(
-                models.Annotation.id == annotations_to_delete.c.id
-            )
-        )
+        db.execute(delete_stmt)
         db.commit()
     except IntegrityError as e:
         db.rollback()
