@@ -366,21 +366,21 @@ def delete_dataset_annotations(
     )
 
     # delete embeddings (if they exist)
-    embedding_ids = (
-        select(annotations_to_delete.c.embedding_id.label("id"))
-        .where(annotations_to_delete.c.embedding_id.isnot(None))
-        .subquery()
-    )
-    try:
-        db.execute(
-            delete(models.Embedding).where(
-                models.Embedding.id == embedding_ids.c.id
-            )
-        )
-        db.commit()
-    except IntegrityError as e:
-        db.rollback()
-        raise e
+    # embedding_ids = (
+    #     select(annotations_to_delete.c.embedding_id.label("id"))
+    #     .where(annotations_to_delete.c.embedding_id.isnot(None))
+    #     .subquery()
+    # )
+    # try:
+    #     db.execute(
+    #         delete(models.Embedding).where(
+    #             models.Embedding.id == embedding_ids.c.id
+    #         )
+    #     )
+    #     db.commit()
+    # except IntegrityError as e:
+    #     db.rollback()
+    #     raise e
 
     # delete annotations
     try:
@@ -426,22 +426,22 @@ def delete_model_annotations(
         .subquery()
     )
 
-    # delete embeddings (if they exist)
-    embedding_ids = (
-        select(annotations_to_delete.c.embedding_id.label("id"))
-        .where(annotations_to_delete.c.embedding_id.isnot(None))
-        .subquery()
-    )
-    try:
-        db.execute(
-            delete(models.Embedding).where(
-                models.Embedding.id == embedding_ids.c.id
-            )
-        )
-        db.commit()
-    except IntegrityError as e:
-        db.rollback()
-        raise e
+    # # delete embeddings (if they exist)
+    # embedding_ids = (
+    #     select(annotations_to_delete.c.embedding_id.label("id"))
+    #     .where(annotations_to_delete.c.embedding_id.isnot(None))
+    #     .subquery()
+    # )
+    # try:
+    #     db.execute(
+    #         delete(models.Embedding).where(
+    #             models.Embedding.id == embedding_ids.c.id
+    #         )
+    #     )
+    #     db.commit()
+    # except IntegrityError as e:
+    #     db.rollback()
+    #     raise e
 
     # delete annotations
     try:

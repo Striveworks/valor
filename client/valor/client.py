@@ -315,7 +315,7 @@ class ClientConnection:
         timeout : float, optional
             An optional request timeout in seconds.
         """
-        timeout = _format_request_timeout(timeout=timeout, default=10)
+        timeout = _format_request_timeout(timeout=timeout, default=30)
         return self._requests_wrapper(
             method_name="post",
             endpoint=endpoint,
@@ -342,7 +342,7 @@ class ClientConnection:
         timeout : float, optional
             An optional request timeout in seconds.
         """
-        timeout = _format_request_timeout(timeout=timeout, default=10)
+        timeout = _format_request_timeout(timeout=timeout, default=30)
         return self._requests_wrapper(
             method_name="get", endpoint=endpoint, timeout=timeout
         )
@@ -363,7 +363,7 @@ class ClientConnection:
         timeout : float, optional
             An optional request timeout in seconds.
         """
-        timeout = _format_request_timeout(timeout=timeout, default=10)
+        timeout = _format_request_timeout(timeout=timeout, default=30)
         return self._requests_wrapper(
             method_name="put", endpoint=endpoint, timeout=timeout
         )
@@ -384,7 +384,7 @@ class ClientConnection:
         timeout : float, optional
             An optional request timeout in seconds.
         """
-        timeout = _format_request_timeout(timeout=timeout, default=10)
+        timeout = _format_request_timeout(timeout=timeout, default=30)
         return self._requests_wrapper(
             method_name="delete", endpoint=endpoint, timeout=timeout
         )
