@@ -165,17 +165,23 @@ def test_version_mismatch_warning(caplog):
 def test__requests_wrapper(client: Client):
     with pytest.raises(ValueError):
         client.conn._requests_wrapper(
-            method_name="get", endpoint="/datasets/fake_dataset/status"
+            method_name="get",
+            endpoint="/datasets/fake_dataset/status",
+            timeout=30,
         )
 
     with pytest.raises(ValueError):
         client.conn._requests_wrapper(
-            method_name="bad_method", endpoint="datasets/fake_dataset/status"
+            method_name="bad_method",
+            endpoint="datasets/fake_dataset/status",
+            timeout=30,
         )
 
     with pytest.raises(ClientException):
         client.conn._requests_wrapper(
-            method_name="get", endpoint="not_an_endpoint"
+            method_name="get",
+            endpoint="not_an_endpoint",
+            timeout=30,
         )
 
 
