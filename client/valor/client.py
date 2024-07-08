@@ -93,7 +93,7 @@ def _format_request_timeout(
     timeout: Optional[float], default: float
 ) -> Optional[float]:
     """
-    Converts user-requested timeout into requests library format.
+    Converts user-requested timeout into requests library format to avoid issues with passing `None` to `requests.timeout`.
 
     Parameters
     ----------
