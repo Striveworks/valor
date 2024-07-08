@@ -318,7 +318,7 @@ def test_evaluate_tabular_clf(
         {
             "type": "ROCAUC",
             "parameters": {"label_key": "class"},
-            "value": 0.7685185185185186,
+            "value": 0.7685185185185185,
         },
         {
             "type": "Precision",
@@ -931,7 +931,7 @@ def test_evaluate_classification_with_label_maps(
         {
             "type": "ROCAUC",
             "parameters": {"label_key": "special_class"},
-            "value": -1.0,
+            "value": 1.0,
         },
         {
             "type": "Precision",
