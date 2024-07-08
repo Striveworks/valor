@@ -993,7 +993,7 @@ def delete_evaluations(
         model_names=model_names,
     )
 
-    # mark jobs for deletion
+    # mark evaluations for deletion
     mark_for_deletion = (
         update(models.Evaluation)
         .returning(models.Evaluation.id)
@@ -1039,7 +1039,11 @@ def delete_evaluations(
 
     # delete evaluations
     try:
-        db.execute(delete(models.Evaluation).where(*expr))
+        db.execute(
+            delete(models.Evaluation).where(
+                models.Evaluation.id.in_(marked_evaluation_ids)
+            )
+        )
         db.commit()
     except IntegrityError as e:
         db.rollback()
