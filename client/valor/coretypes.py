@@ -1815,7 +1815,7 @@ class Client:
         ----------
         evaluation_id : int
             The id of the evaluation to be deleted.
-        timeout : int, default = 1
+        timeout : int, default=0
             The number of seconds to wait in order to confirm that the model was deleted.
         """
         self.conn.delete_evaluation(evaluation_id)

@@ -93,7 +93,7 @@ def _format_request_timeout(
     timeout: Optional[float], default: float
 ) -> Optional[float]:
     """
-    Converts user-requested timeout into requests library format.
+    Converts user-requested timeout into requests library format to avoid issues with passing `None` to `requests.timeout`.
 
     Parameters
     ----------
@@ -510,7 +510,7 @@ class ClientConnection:
 
     def get_labels(
         self,
-        filters: Optional[dict],
+        filters: Optional[dict] = None,
         *_,
         timeout: Optional[float] = None,
     ) -> List[dict]:
@@ -615,7 +615,7 @@ class ClientConnection:
 
     def get_datasets(
         self,
-        filters: Optional[dict],
+        filters: Optional[dict] = None,
         *_,
         timeout: Optional[float] = None,
     ) -> List[dict]:
@@ -766,7 +766,7 @@ class ClientConnection:
 
     def get_datums(
         self,
-        filters: Optional[dict],
+        filters: Optional[dict] = None,
         *_,
         timeout: Optional[float] = None,
     ) -> List[dict]:
@@ -843,7 +843,7 @@ class ClientConnection:
 
     def get_models(
         self,
-        filters: Optional[dict],
+        filters: Optional[dict] = None,
         *_,
         timeout: Optional[float] = None,
     ) -> List[dict]:
