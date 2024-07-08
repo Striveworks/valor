@@ -1316,6 +1316,7 @@ def _compute_clf_metrics(
         .rename(columns={"size": "n"})
     )
 
+    # TODO typo with two y's
     total_true_postiives_per_grouper_keyy_and_grouper_value = (
         blah.loc[blah["is_true_positive"], :]
         .groupby(["grouper_key", "grouper_value"], as_index=False)[
@@ -1328,9 +1329,11 @@ def _compute_clf_metrics(
     merged_counts = blah.merge(
         total_observations_per_grouper_key_and_grouper_value,
         on=["grouper_key", "grouper_value"],
+        how="left",
     ).merge(
         total_true_postiives_per_grouper_keyy_and_grouper_value,
         on=["grouper_key", "grouper_value"],
+        how="left",
     )
 
     cumulative_sums = (
@@ -1403,6 +1406,24 @@ def _compute_clf_metrics(
     summed_trap_areas_per_grouper_value = trap_areas_per_grouper_value.groupby(
         ["grouper_key", "grouper_value"], as_index=False
     )["trap_area"].sum()
+
+    # for each grouper_key / grouper_value, replace the value with one if n - n_pos == 0
+    summed_trap_areas_per_grouper_value = (
+        summed_trap_areas_per_grouper_value.merge(
+            rates[["grouper_key", "grouper_value", "n", "n_true_positives"]],
+            on=["grouper_key", "grouper_value"],
+        )
+    ).assign(
+        trap_area=lambda row: np.select(
+            [
+                row["n_true_positives"] == 0,
+                ((row["n"] - row["n_true_positives"]) == 0)
+                | (row["n_true_positives"].isnull()),
+            ],
+            [0, 1],
+            default=row["trap_area"],
+        )
+    )
 
     average_across_grouper_keys = summed_trap_areas_per_grouper_value.groupby(
         "grouper_key", as_index=False
