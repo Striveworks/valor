@@ -2,12 +2,25 @@ from unittest.mock import patch
 
 import pytest
 
-from valor.client import connect, get_connection, reset_connection
+from valor.client import (
+    _format_request_timeout,
+    connect,
+    get_connection,
+    reset_connection,
+)
 from valor.exceptions import (
     ClientAlreadyConnectedError,
     ClientConnectionFailed,
     ClientNotConnectedError,
 )
+
+
+def test__format_request_timeout():
+    assert _format_request_timeout(timeout=None, default=30) == 30
+    assert _format_request_timeout(timeout=60, default=30) == 60
+    assert _format_request_timeout(timeout=-1, default=30) is None
+    assert _format_request_timeout(timeout=0, default=30) is None
+    assert _format_request_timeout(timeout=-0.1, default=30) is None
 
 
 @patch("valor.client.ClientConnection")

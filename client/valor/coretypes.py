@@ -227,7 +227,12 @@ class Evaluation:
         ClientException
             If an Evaluation with the given `evaluation_id` is not found.
         """
-        response = self.conn.get_evaluations(evaluation_ids=[self.id])
+        response = self.conn.get_evaluations(
+            evaluation_ids=[self.id],
+            models=None,
+            datasets=None,
+            metrics_to_sort_by=None,
+        )
         if not response:
             raise EvaluationDoesNotExist(self.id)
         self.update(**response[0])
@@ -479,7 +484,7 @@ class Dataset(StaticCollection):
             If True, will ignore datums that already exist in the backend.
             If False, will raise an error if any datums already exist.
             Default is False.
-        timeout: float, optional
+        timeout : float, optional
             The number of seconds the client should wait until raising a timeout.
         """
         Client(self.conn).create_groundtruths(
@@ -545,6 +550,8 @@ class Dataset(StaticCollection):
         metrics_to_sort_by: Optional[
             Dict[str, Union[Dict[str, str], str]]
         ] = None,
+        *_,
+        timeout: Optional[float] = None,
     ) -> List[Evaluation]:
         """
         Get all evaluations associated with a given dataset.
@@ -553,6 +560,8 @@ class Dataset(StaticCollection):
         ----------
         metrics_to_sort_by: dict[str, str | dict[str, str]], optional
             An optional dict of metric types to sort the evaluations by.
+        timeout : float, optional
+            The number of seconds the client should wait until raising a timeout.
 
         Returns
         ----------
@@ -560,12 +569,21 @@ class Dataset(StaticCollection):
             A list of `Evaluations` associated with the dataset.
         """
         return Client(self.conn).get_evaluations(
-            datasets=[self], metrics_to_sort_by=metrics_to_sort_by
+            datasets=[self],
+            metrics_to_sort_by=metrics_to_sort_by,
+            timeout=timeout,
         )
 
-    def get_summary(self) -> DatasetSummary:
+    def get_summary(
+        self, *_, timeout: Optional[float] = None
+    ) -> DatasetSummary:
         """
         Get the summary of a given dataset.
+
+        Parameters
+        ----------
+        timeout : float, optional
+            The number of seconds the client should wait until raising a timeout.
 
         Returns
         -------
@@ -593,7 +611,7 @@ class Dataset(StaticCollection):
             groundtruth_annotation_metadata: list of the unique metadata dictionaries in the dataset that are
             associated to annotations
         """
-        return Client(self.conn).get_dataset_summary(self.name)  # type: ignore
+        return Client(self.conn).get_dataset_summary(self.name, timeout=timeout)  # type: ignore
 
     def finalize(
         self,
@@ -746,7 +764,7 @@ class Model(StaticCollection):
             The dataset that is being operated over.
         predictions: List[valor.Prediction]
             The predictions to create.
-        timeout: float, optional
+        timeout : float, optional
             The number of seconds the client should wait until raising a timeout.
         """
         Client(self.conn).create_predictions(
@@ -828,7 +846,9 @@ class Model(StaticCollection):
         label_map: Optional[Dict[Label, Label]] = None,
         pr_curve_max_examples: int = 1,
         metrics_to_return: Optional[List[MetricType]] = None,
+        *_,
         allow_retries: bool = False,
+        timeout: Optional[float] = None,
     ) -> Evaluation:
         """
         Start a classification evaluation job.
@@ -845,6 +865,8 @@ class Model(StaticCollection):
             The list of metrics to compute, store, and return to the user.
         allow_retries: bool, default = False
             Option to retry previously failed evaluations.
+        timeout : float, optional
+            The number of seconds the client should wait until raising a timeout.
 
         Returns
         -------
@@ -879,7 +901,7 @@ class Model(StaticCollection):
 
         # create evaluation
         evaluation = Client(self.conn).evaluate(
-            request, allow_retries=allow_retries
+            request, allow_retries=allow_retries, timeout=timeout
         )
         if len(evaluation) != 1:
             raise RuntimeError
@@ -897,7 +919,9 @@ class Model(StaticCollection):
         metrics_to_return: Optional[List[MetricType]] = None,
         pr_curve_iou_threshold: float = 0.5,
         pr_curve_max_examples: int = 1,
+        *_,
         allow_retries: bool = False,
+        timeout: Optional[float] = None,
     ) -> Evaluation:
         """
         Start an object-detection evaluation job.
@@ -926,6 +950,8 @@ class Model(StaticCollection):
             The maximum number of datum examples to store when calculating PR curves.
         allow_retries: bool, default = False
             Option to retry previously failed evaluations.
+        timeout : float, optional
+            The number of seconds the client should wait until raising a timeout.
 
         Returns
         -------
@@ -969,7 +995,7 @@ class Model(StaticCollection):
 
         # create evaluation
         evaluation = Client(self.conn).evaluate(
-            request, allow_retries=allow_retries
+            request, allow_retries=allow_retries, timeout=timeout
         )
         if len(evaluation) != 1:
             raise RuntimeError
@@ -981,7 +1007,9 @@ class Model(StaticCollection):
         filters: Optional[Filter] = None,
         label_map: Optional[Dict[Label, Label]] = None,
         metrics_to_return: Optional[List[MetricType]] = None,
+        *_,
         allow_retries: bool = False,
+        timeout: Optional[float] = None,
     ) -> Evaluation:
         """
         Start a semantic-segmentation evaluation job.
@@ -998,6 +1026,8 @@ class Model(StaticCollection):
             The list of metrics to compute, store, and return to the user.
         allow_retries: bool, default = False
             Option to retry previously failed evaluations.
+        timeout : float, optional
+            The number of seconds the client should wait until raising a timeout.
 
         Returns
         -------
@@ -1027,7 +1057,7 @@ class Model(StaticCollection):
 
         # create evaluation
         evaluation = Client(self.conn).evaluate(
-            request, allow_retries=allow_retries
+            request, allow_retries=allow_retries, timeout=timeout
         )
         if len(evaluation) != 1:
             raise RuntimeError
@@ -1169,6 +1199,8 @@ class Model(StaticCollection):
         metrics_to_sort_by: Optional[
             Dict[str, Union[Dict[str, str], str]]
         ] = None,
+        *_,
+        timeout: Optional[float] = None,
     ) -> List[Evaluation]:
         """
         Get all evaluations associated with a given model.
@@ -1177,7 +1209,8 @@ class Model(StaticCollection):
         ----------
         metrics_to_sort_by: dict[str, str | dict[str, str]], optional
             An optional dict of metric types to sort the evaluations by.
-
+        timeout : float, optional
+            The number of seconds the client should wait until raising a timeout.
 
         Returns
         ----------
@@ -1185,7 +1218,9 @@ class Model(StaticCollection):
             A list of `Evaluations` associated with the model.
         """
         return Client(self.conn).get_evaluations(
-            models=[self], metrics_to_sort_by=metrics_to_sort_by
+            models=[self],
+            metrics_to_sort_by=metrics_to_sort_by,
+            timeout=timeout,
         )
 
 
@@ -1311,7 +1346,7 @@ class Client:
         dataset: Dataset,
         groundtruths: List[GroundTruth],
         ignore_existing_datums: bool = False,
-        timeout: Optional[float] = 10,
+        timeout: Optional[float] = None,
     ):
         """
         Creates ground truths.
@@ -1323,7 +1358,7 @@ class Client:
             The dataset to create the ground truth for.
         groundtruths: List[valor.GroundTruth]
             The ground truths to create.
-        timeout: float, optional
+        timeout : float, optional
             The number of seconds the client should wait until raising a timeout.
         ignore_existing_datums : bool, default=False
             If True, will ignore datums that already exist in the backend.
@@ -1518,7 +1553,12 @@ class Client:
                 return None
             raise e
 
-    def get_dataset_summary(self, name: str) -> DatasetSummary:
+    def get_dataset_summary(
+        self,
+        name: str,
+        *_,
+        timeout: Optional[float] = None,
+    ) -> DatasetSummary:
         """
         Gets the summary of a dataset.
 
@@ -1532,7 +1572,9 @@ class Client:
         DatasetSummary
             A dataclass containing the dataset summary.
         """
-        return DatasetSummary(**self.conn.get_dataset_summary(name))
+        return DatasetSummary(
+            **self.conn.get_dataset_summary(name, timeout=timeout)
+        )
 
     def delete_dataset(self, name: str, timeout: int = 0) -> None:
         """
@@ -1579,7 +1621,7 @@ class Client:
         dataset: Dataset,
         model: Model,
         predictions: List[Prediction],
-        timeout: Optional[float] = 10,
+        timeout: Optional[float] = None,
     ) -> None:
         """
         Creates predictions.
@@ -1592,7 +1634,7 @@ class Client:
             The model making the prediction.
         predictions: List[valor.Prediction]
             The predictions to create.
-        timeout: float, optional
+        timeout : float, optional
             The number of seconds the client should wait until raising a timeout.
         """
         predictions_json = []
@@ -1796,6 +1838,7 @@ class Client:
         metrics_to_sort_by: Optional[
             Dict[str, Union[Dict[str, str], str]]
         ] = None,
+        timeout: Optional[float] = None,
     ) -> List[Evaluation]:
         """
         Returns all evaluations associated with user-supplied dataset and/or model names.
@@ -1810,6 +1853,8 @@ class Client:
             A list of dataset names that we want to return metrics for.
         metrics_to_sort_by: dict[str, str | dict[str, str]], optional
             An optional dict of metric types to sort the evaluations by.
+        timeout : float, optional
+            The number of seconds the client should wait until raising a timeout.
 
         Returns
         -------
@@ -1833,11 +1878,16 @@ class Client:
                 models=models,  # type: ignore
                 datasets=datasets,  # type: ignore
                 metrics_to_sort_by=metrics_to_sort_by,
+                timeout=timeout,
             )
         ]
 
     def evaluate(
-        self, request: EvaluationRequest, allow_retries: bool = False
+        self,
+        request: EvaluationRequest,
+        *_,
+        allow_retries: bool = False,
+        timeout: Optional[float] = None,
     ) -> List[Evaluation]:
         """
         Creates as many evaluations as necessary to fulfill the request.
@@ -1848,6 +1898,8 @@ class Client:
             The requested evaluation parameters.
         allow_retries: bool, default = False
             Option to retry previously failed evaluations.
+        timeout : float, optional
+            The number of seconds the client should wait until raising a timeout.
 
         Returns
         -------
@@ -1857,7 +1909,9 @@ class Client:
         return [
             Evaluation(**evaluation)
             for evaluation in self.conn.evaluate(
-                request.to_dict(), allow_retries=allow_retries
+                request.to_dict(),
+                allow_retries=allow_retries,
+                timeout=timeout,
             )
         ]
 
@@ -1869,7 +1923,7 @@ class Client:
         ----------
         evaluation_id: int
             The id of the evaluation to be deleted.
-        timeout: int
+        timeout : int, default=0
             The number of seconds to wait in order to confirm that the model was deleted.
         """
         self.conn.delete_evaluation(evaluation_id)
