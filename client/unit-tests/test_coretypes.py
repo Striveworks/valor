@@ -5,8 +5,9 @@ import pytest
 from valor import Client
 
 
+@patch("time.sleep")
 @patch("valor.Client")
-def test_timeouts(mock_client):
+def test_timeouts(mock_sleep, mock_client):
 
     with pytest.raises(TimeoutError):
         Client.delete_dataset(mock_client, name="some_dataset", timeout=1)
