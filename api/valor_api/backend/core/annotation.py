@@ -367,7 +367,7 @@ def delete_dataset_annotations(
 
     # delete embeddings (if they exist)
     embedding_ids = (
-        select(annotations_to_delete.c.embedding_id)
+        select(annotations_to_delete.c.embedding_id.label("id"))
         .where(annotations_to_delete.c.embedding_id.isnot(None))
         .subquery()
     )
@@ -428,7 +428,7 @@ def delete_model_annotations(
 
     # delete embeddings (if they exist)
     embedding_ids = (
-        select(annotations_to_delete.c.embedding_id)
+        select(annotations_to_delete.c.embedding_id.label("id"))
         .where(annotations_to_delete.c.embedding_id.isnot(None))
         .subquery()
     )
