@@ -510,7 +510,7 @@ class ClientConnection:
 
     def get_labels(
         self,
-        filters: Optional[dict],
+        filters: Optional[dict] = None,
         *_,
         timeout: Optional[float] = None,
     ) -> List[dict]:
@@ -615,7 +615,7 @@ class ClientConnection:
 
     def get_datasets(
         self,
-        filters: Optional[dict],
+        filters: Optional[dict] = None,
         *_,
         timeout: Optional[float] = None,
     ) -> List[dict]:
@@ -766,7 +766,7 @@ class ClientConnection:
 
     def get_datums(
         self,
-        filters: Optional[dict],
+        filters: Optional[dict] = None,
         *_,
         timeout: Optional[float] = None,
     ) -> List[dict]:
@@ -843,7 +843,7 @@ class ClientConnection:
 
     def get_models(
         self,
-        filters: Optional[dict],
+        filters: Optional[dict] = None,
         *_,
         timeout: Optional[float] = None,
     ) -> List[dict]:
