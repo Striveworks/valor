@@ -508,17 +508,11 @@ def delete_dataset(
     dataset = fetch_dataset(db, name=name)
     set_dataset_status(db, name, enums.TableStatus.DELETING)
 
-    print("DELETE EVALS")
     core.delete_evaluations(db=db, dataset_names=[name])
-    print("DELETE PREDICTIONS")
     core.delete_dataset_predictions(db, dataset)
-    print("DELETE GROUNDTRUTHS")
     core.delete_groundtruths(db, dataset)
-    print("DELETE ANNOTATIONS")
     core.delete_dataset_annotations(db, dataset)
-    print("DELETE DATUMS")
     core.delete_datums(db, dataset)
-    print("DELETE DATASET")
 
     try:
         db.execute(
@@ -528,5 +522,3 @@ def delete_dataset(
     except IntegrityError as e:
         db.rollback()
         raise e
-
-    print("DONE DELETING")
