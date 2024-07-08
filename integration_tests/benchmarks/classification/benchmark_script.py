@@ -105,8 +105,8 @@ def ingest_groundtruths_and_predictions(
             )
         )
 
-    dset.add_groundtruths(groundtruths, timeout=-1)
-    model.add_predictions(dset, predictions, timeout=-1)
+    dset.add_groundtruths(groundtruths, timeout=150)
+    model.add_predictions(dset, predictions, timeout=150)
 
     dset.finalize()
     model.finalize_inferences(dataset=dset)
@@ -207,7 +207,6 @@ def run_benchmarking_analysis(
             "del_runtime": f"{(deletion_time):.1f} seconds",
         }
         write_results_to_file(write_path=write_path, result_dict=results)
-        print(results)
 
 
 if __name__ == "__main__":
