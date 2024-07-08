@@ -688,7 +688,6 @@ def get_paginated_evaluations(
 
         for i, (metric_type, label) in enumerate(metrics_to_sort_by.items()):
             # if the value represents a label_key
-
             if isinstance(label, str):
                 order_case.append(
                     (
