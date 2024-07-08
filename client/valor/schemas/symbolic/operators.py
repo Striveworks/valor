@@ -59,44 +59,36 @@ class Function:
         if len(args) == 0:
             raise ValueError("Expected at least one argument.")
 
-        self._args = []
-        for arg in args:
-            if not hasattr(arg, "to_dict"):
-                raise ValueError(
-                    f"Arguments should be symbolic or functional. Received '{arg}'."
-                )
-            if isinstance(arg, type(self)):
-                self._args.extend(arg._args)
-            else:
-                self._args.append(arg)
-        self._args = self._args if len(self._args) > 1 else self._args[0]
+        if any([not isinstance(arg, (Condition, Function)) for arg in args]):
+            raise ValueError(
+                f"Arguments should contain either Conditions or other Functions."
+            )
+
+        self.op = type(self).__name__.lower()
+        self.args = list(args)
 
     def __repr__(self):
-        args = ", ".join([arg.__repr__() for arg in self._args])
+        args = ", ".join([arg.__repr__() for arg in self.args])
         return f"{type(self).__name__}({args})"
 
     def __str__(self):
-        values = [arg.__repr__() for arg in self._args]
+        values = [arg.__repr__() for arg in self.args]
         args = ", ".join(values)
         return f"{type(self).__name__}({args})"
 
     def __and__(self, other: Any):
-        return And(self, other)
+        return and_(self, other)
 
     def __or__(self, other: Any):
-        return Or(self, other)
+        return or_(self, other)
 
     def __invert__(self):
-        return Not(self)
+        return not_(self)
 
     def to_dict(self):
         """Encode to a JSON-compatible dictionary."""
-        args = (
-            [arg.to_dict() for arg in self._args]
-            if isinstance(self._args, list)
-            else self._args.to_dict()
-        )
-        return {"op": type(self).__name__.lower(), "args": args}
+        arg_dict = [arg.to_dict() for arg in self.args]
+        return {"op": self.op, "args": arg_dict}
 
 
 class And(Function):
@@ -109,9 +101,9 @@ class And(Function):
 
     def __and__(self, other: Any):
         if isinstance(other, And):
-            self._args.extend(other._args)
+            self.args.extend(other.args)
         else:
-            self._args.append(other)
+            self.args.append(other)
         return self
 
 
@@ -125,27 +117,94 @@ class Or(Function):
 
     def __or__(self, other: Any):
         if isinstance(other, Or):
-            self._args.extend(other._args)
+            self.args.extend(other.args)
         else:
-            self._args.append(other)
+            self.args.append(other)
         return self
 
 
 class Not(Function):
     """Implementation of logical negation (~)."""
 
-    def __init__(self, *args):
-        if len(args) != 1:
-            raise ValueError("Negation only takes one argument.")
-        elif isinstance(args[0], Not):
-            return args[0]._args
-        super().__init__(*args)
+    def __init__(self, arg: Union[Condition, Function]):
+        super().__init__(arg)
 
     def __invert__(self):
         """Inverts negation so return contents."""
-        if isinstance(self._args, list):
-            raise ValueError("Negation only takes one argument.")
-        return self._args
+        return self.args[0]
+
+
+def and_(*args) -> Any:
+
+    if len(args) < 2:
+        raise ValueError("Expected at least two arguments.")
+
+    valid_args = list()
+    for arg in args:
+        if isinstance(arg, (Condition, Function)):
+            valid_args.append(arg)
+        elif isinstance(arg, bool):
+            if arg is False:
+                return False
+        else:
+            raise TypeError(
+                f"Type `{type(arg)}` is not a supported function argument. Arguments should be a Condition or another Function."
+            )
+
+    # condition where and_(True, True)
+    if len(valid_args) == 0:
+        return True
+
+    # condition where and_(Dataset.name == "x", True)
+    elif len(valid_args) == 1:
+        return valid_args[0]
+
+    # otherwise, we have enough conditions to form an and-expression
+    else:
+        return And(*valid_args)
+
+
+def or_(*args) -> Any:
+
+    if len(args) < 2:
+        raise ValueError("Expected at least two arguments.")
+
+    valid_args = list()
+    for arg in args:
+        if isinstance(arg, (Condition, Function)):
+            valid_args.append(arg)
+        elif isinstance(arg, bool):
+            if arg is True:
+                return True
+        else:
+            raise TypeError(
+                f"Type `{type(arg)}` is not a supported function argument. Arguments should be a Condition or another Function."
+            )
+
+    # condition where or_(False, False)
+    if len(valid_args) == 0:
+        return False
+
+    # condition where or_(Dataset.name == "x", False)
+    elif len(valid_args) == 1:
+        return valid_args[0]
+
+    # otherwise, we have enough conditions to form an or-expression
+    else:
+        return Or(*valid_args)
+
+
+def not_(_arg: Union[bool, Condition, Function]) -> Any:
+    if isinstance(_arg, bool):
+        return not _arg
+    elif isinstance(_arg, Function) and _arg.op == "not":
+        return _arg.args
+    elif isinstance(_arg, (Condition, Function)):
+        return Not(_arg)
+    else:
+        raise TypeError(
+            f"Type `{type(_arg)}` is not a supported function argument. Arguments should be a Condition or another Function."
+        )
 
 
 class IsNull(Condition):
@@ -222,9 +281,7 @@ class Contains(Condition):
 
 
 FunctionType = Union[
-    And,
-    Or,
-    Not,
+    Function,
     IsNull,
     IsNotNull,
     Eq,

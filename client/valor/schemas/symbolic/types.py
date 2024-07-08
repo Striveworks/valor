@@ -14,6 +14,7 @@ from valor.enums import TaskType
 from valor.schemas.symbolic.operators import (
     And,
     Eq,
+    Function,
     Gt,
     Gte,
     Inside,
@@ -23,9 +24,10 @@ from valor.schemas.symbolic.operators import (
     Lt,
     Lte,
     Ne,
-    Not,
     Or,
     Outside,
+    and_,
+    or_,
 )
 
 
@@ -407,18 +409,18 @@ class Boolean(Variable):
         other = self.preprocess(value)
         if self.is_value and other.is_value:
             return self.get_value() and other.get_value()
-        return And(self, other)
+        return and_(self, other)
 
     def __or__(self, value: typing.Any) -> typing.Union[bool, Or]:
         other = self.preprocess(value)
         if self.is_value and other.is_value:
             return self.get_value() or other.get_value()
-        return Or(self, other)
+        return or_(self, other)
 
-    def __invert__(self) -> typing.Union[bool, Not]:
+    def __invert__(self) -> typing.Union[bool, Eq]:
         if self.is_value:
             return not self.get_value()
-        return Not(self)
+        return Eq(self, Boolean(False))
 
 
 class Equatable(Variable):
@@ -452,9 +454,9 @@ class Equatable(Variable):
                 return lhs != rhs
         return Ne(self, other)
 
-    def in_(self, vlist: typing.List[typing.Any]) -> Or:
+    def in_(self, vlist: typing.List[typing.Any]) -> Function:
         """Returns Or(*[(self == v) for v in vlist])"""
-        return Or(*[(self == v) for v in vlist])
+        return or_(*[(self == v) for v in vlist])
 
     def __hash__(self):
         if self.is_symbolic:
