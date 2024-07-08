@@ -9,8 +9,16 @@ from valor import (
     Model,
     Prediction,
 )
-from valor.schemas import Box, Dictionary, Float, List, Polygon, Raster, String
-from valor.schemas.symbolic.types import List as SymbolicList
+from valor.schemas import (
+    Box,
+    Context,
+    Dictionary,
+    Float,
+    List,
+    Polygon,
+    Raster,
+    String,
+)
 
 
 def test_label_typing():
@@ -41,7 +49,7 @@ def test_annotation_typing():
     assert type(Annotation.polygon) is Polygon
     assert type(Annotation.raster) is Raster
     assert type(Annotation.text) is String
-    assert type(Annotation.context) is SymbolicList[String]
+    assert type(Annotation.context) is Context
 
     annotation = Annotation(
         labels=[],
@@ -86,7 +94,7 @@ def test_annotation_typing():
     assert annotation.polygon is None
     assert annotation.raster is None
     assert type(annotation.text) is str
-    assert type(annotation.context) is SymbolicList[String]
+    assert type(annotation.context) is Context
 
 
 def test_datum_typing():

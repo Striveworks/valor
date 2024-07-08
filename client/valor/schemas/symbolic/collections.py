@@ -5,6 +5,7 @@ import numpy as np
 from valor.schemas.symbolic.types import (
     Boolean,
     Box,
+    Context,
     Dictionary,
     Embedding,
     Equatable,
@@ -337,9 +338,7 @@ class Annotation(StaticCollection):
         owner="annotation", name="embedding"
     )
     text: String = String.symbolic(owner="annotation", name="text")
-    context: SymbolicList[String] = SymbolicList[String].symbolic(
-        owner="annotation", name="context"
-    )
+    context: Context = Context.symbolic(owner="annotation", name="context")
     is_instance: Boolean = Boolean.symbolic(
         owner="annotation", name="is_instance"
     )
@@ -409,7 +408,7 @@ class Annotation(StaticCollection):
             "raster": Raster.nullable,
             "embedding": Embedding.nullable,
             "text": String.nullable,
-            "context": SymbolicList[String].nullable,
+            "context": Context.nullable,
             "is_instance": Boolean.nullable,
             "implied_task_types": SymbolicList,
         }
