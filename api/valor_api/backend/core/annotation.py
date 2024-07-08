@@ -377,6 +377,21 @@ def delete_dataset_annotations(
         db.rollback()
         raise e
 
+    # delete embeddings (if they exist)
+    existing_ids = select(models.Annotation.embedding_id).where(
+        models.Annotation.embedding_id.isnot(None)
+    )
+    try:
+        db.execute(
+            delete(models.Embedding).where(
+                models.Embedding.id.not_in(existing_ids)
+            )
+        )
+        db.commit()
+    except IntegrityError as e:
+        db.rollback()
+        raise e
+
 
 def delete_model_annotations(
     db: Session,
@@ -403,17 +418,31 @@ def delete_model_annotations(
             f"Attempted to delete annotations from dataset `{model.name}` which is not being deleted."
         )
 
+    # delete annotations
     annotations_to_delete = (
         select(models.Annotation)
         .where(models.Annotation.model_id == model.id)
         .subquery()
     )
-
-    # delete annotations
     try:
         db.execute(
             delete(models.Annotation).where(
                 models.Annotation.id == annotations_to_delete.c.id
+            )
+        )
+        db.commit()
+    except IntegrityError as e:
+        db.rollback()
+        raise e
+
+    # delete embeddings (if they exist)
+    existing_ids = select(models.Annotation.embedding_id).where(
+        models.Annotation.embedding_id.isnot(None)
+    )
+    try:
+        db.execute(
+            delete(models.Embedding).where(
+                models.Embedding.id.not_in(existing_ids)
             )
         )
         db.commit()

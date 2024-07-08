@@ -1353,6 +1353,15 @@ def test_create_detection_metrics(
         meta={},
     )
 
+    # test evaluation deletion
+    assert db.scalar(func.count(models.Evaluation.id)) == 2
+    assert db.scalar(func.count(models.Metric.id)) == 28
+    assert db.scalar(func.count(models.ConfusionMatrix.id)) == 0
+    crud.delete(db=db, dataset_name=dataset_name)
+    assert db.scalar(func.count(models.Evaluation.id)) == 0
+    assert db.scalar(func.count(models.Metric.id)) == 0
+    assert db.scalar(func.count(models.ConfusionMatrix.id)) == 0
+
 
 def test_create_clf_metrics(
     db: Session,
@@ -1492,3 +1501,12 @@ def test_create_clf_metrics(
         )
     ).all()
     assert len(confusion_matrices) == 2
+
+    # test evaluation deletion
+    assert db.scalar(func.count(models.Evaluation.id)) == 1
+    assert db.scalar(func.count(models.Metric.id)) == 22
+    assert db.scalar(func.count(models.ConfusionMatrix.id)) == 2
+    crud.delete(db=db, dataset_name=dataset_name)
+    assert db.scalar(func.count(models.Evaluation.id)) == 0
+    assert db.scalar(func.count(models.Metric.id)) == 0
+    assert db.scalar(func.count(models.ConfusionMatrix.id)) == 0
