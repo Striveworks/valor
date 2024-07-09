@@ -273,3 +273,59 @@ def test_llm_evaluation_with_mock_client(
         ), f"Failed for {uid} and {metric_name}"
 
     assert metadata["duration"] <= 30
+
+    # Must only specify text generation metrics.
+    with pytest.raises(ValueError):
+        eval_job = model.evaluate_text_generation(
+            datasets=dataset,
+            metrics_to_return=[MetricType.IOU],
+            llm_api_params={
+                "client": "mock",
+                "data": {
+                    "model": "model",
+                },
+            },
+        )
+
+    # Must specify a client or api_url.
+    with pytest.raises(ValueError):
+        eval_job = model.evaluate_text_generation(
+            datasets=dataset,
+            metrics_to_return=metrics_to_return,
+            llm_api_params={
+                "data": {
+                    "model": "model",
+                },
+            },
+        )
+
+    # The client in llm_api_params must be openai, mistral or mock.
+    with pytest.raises(ValueError):
+        eval_job = model.evaluate_text_generation(
+            datasets=dataset,
+            metrics_to_return=metrics_to_return,
+            llm_api_params={
+                "client": "invalid_client",
+                "data": {
+                    "model": "model",
+                },
+            },
+        )
+
+    # Any metric specified in metric_params must be in metrics_to_return.
+    with pytest.raises(ValueError):
+        eval_job = model.evaluate_text_generation(
+            datasets=dataset,
+            metrics_to_return=[MetricType.ROUGE],
+            llm_api_params={
+                "client": "mock",
+                "data": {
+                    "model": "model",
+                },
+            },
+            metric_params={
+                MetricType.BLEU: {
+                    "weights": [0.5, 0.5, 0, 0],
+                },
+            },
+        )

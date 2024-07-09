@@ -16,16 +16,40 @@ from valor_api.enums import EvaluationStatus, MetricType, ROUGEType, TaskType
 
 
 @pytest.fixture
-def queries():
-    return [
-        """Did John Adams get along with Alexander Hamilton?""",  # ground truth answer is "No."
-        """Did Lincoln win the election of 1860?""",  # ground truth answer is "Yes"
-        """If a turtle egg was kept warm, what would likely hatch?""",  # ground truth answer is "A female turtle."
-    ]
+def rag_q0() -> schemas.Datum:
+    return schemas.Datum(
+        uid="uid0",
+        text="""Did John Adams get along with Alexander Hamilton?""",
+        metadata={
+            "category": "history",
+        },
+    )
 
 
 @pytest.fixture
-def references():
+def rag_q1() -> schemas.Datum:
+    return schemas.Datum(
+        uid="uid1",
+        text="""Did Lincoln win the election of 1860?""",
+        metadata={
+            "category": "history",
+        },
+    )
+
+
+@pytest.fixture
+def rag_q2() -> schemas.Datum:
+    return schemas.Datum(
+        uid="uid2",
+        text="""If a turtle egg was kept warm, what would likely hatch?""",
+        metadata={
+            "category": "science",
+        },
+    )
+
+
+@pytest.fixture
+def rag_references():
     return [
         """John Adams and Alexander Hamilton did not get along. John Adams had grown independent of his cabinet, often making decisions despite opposition from it.\n""",  # same as prediction with some strings deleted
         """Yes, Lincoln won the election of 1860. He received the highest number of votes and a majority in the Electoral College, making him the 16th President of the United States. However, it's important to note that he won entirely due to his support in the North and West, as he did not receive any votes in 10 of the 15 Southern slave states.""",  # same as prediction
@@ -34,7 +58,7 @@ def references():
 
 
 # TODO remove
-PREDICTIONS = [
+RAG_PREDICTIONS = [
     """Based on the provided context, John Adams and Alexander Hamilton did not get along. John Adams, during his presidency, had grown independent of his cabinet, often making decisions despite opposition from it. Hamilton, who was accustomed to being regularly consulted by Washington, sent Adams a detailed letter with policy suggestions after his inauguration, which Adams dismissively ignored.\n""",
     """Yes, Lincoln won the election of 1860. He received the highest number of votes and a majority in the Electoral College, making him the 16th President of the United States. However, it's important to note that he won entirely due to his support in the North and West, as he did not receive any votes in 10 of the 15 Southern slave states.""",
     """If a turtle egg was kept warm, it would likely hatch into a baby turtle. The sex of the baby turtle would be determined by the incubation temperature, assuming the species is one of those that determine sex thermally. This is because many turtle species have the ability to move around inside their eggs to select the best temperature for development, which can influence their sexual destiny.""",
@@ -42,7 +66,7 @@ PREDICTIONS = [
 
 
 @pytest.fixture
-def predictions():
+def rag_predictions():
     return [
         """Based on the provided context, John Adams and Alexander Hamilton did not get along. John Adams, during his presidency, had grown independent of his cabinet, often making decisions despite opposition from it. Hamilton, who was accustomed to being regularly consulted by Washington, sent Adams a detailed letter with policy suggestions after his inauguration, which Adams dismissively ignored.\n""",
         """Yes, Lincoln won the election of 1860. He received the highest number of votes and a majority in the Electoral College, making him the 16th President of the United States. However, it's important to note that he won entirely due to his support in the North and West, as he did not receive any votes in 10 of the 15 Southern slave states.""",
@@ -51,7 +75,7 @@ def predictions():
 
 
 @pytest.fixture
-def context_per_prediction():
+def rag_context_per_prediction():
     return [
         [
             """Although aware of Hamilton\'s influence, Adams was convinced that their retention ensured a smoother succession. Adams maintained the economic programs of Hamilton, who regularly consulted with key cabinet members, especially the powerful Treasury Secretary, Oliver Wolcott Jr. Adams was in other respects quite independent of his cabinet, often making decisions despite opposition from it. Hamilton had grown accustomed to being regularly consulted by Washington. Shortly after Adams was inaugurated, Hamilton sent him a detailed letter with policy suggestions. Adams dismissively ignored it.\n\nFailed peace commission and XYZ affair\nHistorian Joseph Ellis writes that "[t]he Adams presidency was destined to be dominated by a single question of American policy to an extent seldom if ever encountered by any succeeding occupant of the office." That question was whether to make war with France or find peace. Britain and France were at war as a result of the French Revolution. Hamilton and the Federalists strongly favored the British monarchy against what they denounced as the political radicalism and anti-religious frenzy of the French Revolution. Jefferson and the Republicans, with their firm opposition to monarchy, strongly supported the French overthrowing their king. The French had supported Jefferson for president in 1796 and became belligerent at his loss.""",
@@ -75,38 +99,18 @@ def context_per_prediction():
 
 
 @pytest.fixture
-def text_generation_test_data(
+def rag_test_data(
     db: Session,
     dataset_name: str,
     model_name: str,
-    queries: list[str],
-    references: list[str],
-    predictions: list[str],
-    context_per_prediction: list[list[str]],
+    rag_q0: schemas.Datum,
+    rag_q1: schemas.Datum,
+    rag_q2: schemas.Datum,
+    rag_references: list[str],
+    rag_predictions: list[str],
+    rag_context_per_prediction: list[list[str]],
 ):
-    datums = [
-        schemas.Datum(
-            uid="uid0",
-            text=queries[0],
-            metadata={
-                "category": "history",
-            },
-        ),
-        schemas.Datum(
-            uid="uid1",
-            text=queries[1],
-            metadata={
-                "category": "history",
-            },
-        ),
-        schemas.Datum(
-            uid="uid2",
-            text=queries[2],
-            metadata={
-                "category": "science",
-            },
-        ),
-    ]
+    datums = [rag_q0, rag_q1, rag_q2]
 
     gts = []
     for i in range(len(datums)):
@@ -115,7 +119,7 @@ def text_generation_test_data(
                 dataset_name=dataset_name,
                 datum=datums[i],
                 annotations=[
-                    schemas.Annotation(text=references[i]),
+                    schemas.Annotation(text=rag_references[i]),
                     schemas.Annotation(text="some other text"),
                     schemas.Annotation(text="some final text"),
                 ],
@@ -131,8 +135,8 @@ def text_generation_test_data(
                 datum=datums[i],
                 annotations=[
                     schemas.Annotation(
-                        text=predictions[i],
-                        context=context_per_prediction[i],
+                        text=rag_predictions[i],
+                        context=rag_context_per_prediction[i],
                     )
                 ],
             )
@@ -175,6 +179,122 @@ def text_generation_test_data(
     assert len(db.query(models.Prediction).all()) == 3
 
 
+@pytest.fixture
+def content_gen_q0() -> schemas.Datum:
+    return schemas.Datum(
+        uid="uid0",
+        text="""Write about a haunted house from the perspective of the ghost.""",
+        metadata={
+            "request_type": "creative",
+        },
+    )
+
+
+@pytest.fixture
+def content_gen_q1() -> schemas.Datum:
+    return schemas.Datum(
+        uid="uid1",
+        text="""Explain to an elementary school student how to do long multiplication with the example 43 times 22. The resulting answer should be 946.""",
+        metadata={
+            "request_type": "educational",
+        },
+    )
+
+
+@pytest.fixture
+def content_gen_q2() -> schemas.Datum:
+    return schemas.Datum(
+        uid="uid2",
+        text="""Draft an email to a coworker explaining a project delay. Explain that the delay is due to funding cuts, which resulted in multiple employees being moved to different projects. Inform the coworker that the project deadline will have to be pushed back. Be apologetic and professional. Express eagerness to still complete the project as efficiently as possible.""",
+        metadata={
+            "request_type": "professional",
+        },
+    )
+
+
+CONTENT_GEN_PREDICTIONS = [
+    """As a ghost haunting the old, decrepit house on Elm Street, I am trapped in a state of perpetual torment and longing. I drift through the dusty halls, my translucent figure flickering in and out of existence as I relive the memories of my past life.\n\nMy presence is felt by those who dare to enter the house, their hairs standing on end as they sense the chill in the air and the whispers that echo through the rooms. I watch as fear grips their hearts, knowing that I am the reason for their unease.\n\nI am bound to this house by unfinished business, a deep-rooted need for closure that eludes me even in death. I long to reach out to the living, to make them understand the pain and sorrow that consume me, but my ethereal form cannot touch them.\n\nYet, despite the fear and dread that my presence evokes, there is a part of me that yearns for connection, for someone to see beyond the horror and recognize the lost soul that I am. But until that day comes, I remain a ghost trapped within the walls of the haunted house on Elm Street, my existence a haunting reminder of the past that refuses to fade away.""",
+    """Sure! To multiply 43 by 22, you need to follow these steps:\n\n1. Write down the numbers vertically, with one on top of the other:\n\t\n```\t\n   43\t\nx 22\t\n-----\t\n```\n\n2. Start by multiplying the rightmost digit of the bottom number (2) by each digit in the top number. Write down each result below the line, leaving a space for the next step:\n\t\n```\t\n   43\t\nx 22\t\n-----\t\n   86\t\n```\n\n3. Next, move to the left and multiply the left digit of the bottom number (2) by each digit in the top number. Write down each result with one position shifted to the left from the previous step. Add any results from previous steps that overlap:\n\t\n```\t\n  43\t\nx 22\t\n-----\t\n  86\t\n+86\t\n-----\t\n946\t\n```\n\nSo, 43 times 22 is equal to 946.""",
+    """Subject: Project Delay Due to Funding Cuts\n\nDear [Coworker's Name],\n\nI hope this message finds you well. I am writing to update you on the status of our project and unfortunately, convey some disappointing news.\n\nDue to recent funding cuts within our department, we have had to make some adjustments to project assignments. As a result, multiple employees, including key team members for our current project, have been moved to different projects to accommodate the changes. This unexpected shift has impacted our project timeline.\n\nI regret to inform you that our project deadline will need to be pushed back in light of these developments. I understand the inconvenience this may cause and I sincerely apologize for any disruption this may cause to your schedule or other commitments.\n\nPlease rest assured that despite these unforeseen circumstances, I am fully committed to completing the project efficiently and effectively. I will work closely with the team to develop a revised timeline and ensure that we deliver quality work that meets our objectives.\n\nThank you for your understanding and continued support during this challenging period. I value your collaboration and look forward to working together to overcome this setback and achieve our project goals.\n\nIf you have any questions or concerns, please feel free to reach out to me. I appreciate your patience as we navigate through this situation together.\n\nBest regards,\n\n[Your Name]""",
+]
+
+
+@pytest.fixture
+def content_gen_predictions():
+    return [
+        """As a ghost haunting the old, decrepit house on Elm Street, I am trapped in a state of perpetual torment and longing. I drift through the dusty halls, my translucent figure flickering in and out of existence as I relive the memories of my past life.\n\nMy presence is felt by those who dare to enter the house, their hairs standing on end as they sense the chill in the air and the whispers that echo through the rooms. I watch as fear grips their hearts, knowing that I am the reason for their unease.\n\nI am bound to this house by unfinished business, a deep-rooted need for closure that eludes me even in death. I long to reach out to the living, to make them understand the pain and sorrow that consume me, but my ethereal form cannot touch them.\n\nYet, despite the fear and dread that my presence evokes, there is a part of me that yearns for connection, for someone to see beyond the horror and recognize the lost soul that I am. But until that day comes, I remain a ghost trapped within the walls of the haunted house on Elm Street, my existence a haunting reminder of the past that refuses to fade away.""",
+        """Sure! To multiply 43 by 22, you need to follow these steps:\n\n1. Write down the numbers vertically, with one on top of the other:\n\t\n```\t\n   43\t\nx 22\t\n-----\t\n```\n\n2. Start by multiplying the rightmost digit of the bottom number (2) by each digit in the top number. Write down each result below the line, leaving a space for the next step:\n\t\n```\t\n   43\t\nx 22\t\n-----\t\n   86\t\n```\n\n3. Next, move to the left and multiply the left digit of the bottom number (2) by each digit in the top number. Write down each result with one position shifted to the left from the previous step. Add any results from previous steps that overlap:\n\t\n```\t\n  43\t\nx 22\t\n-----\t\n  86\t\n+86\t\n-----\t\n946\t\n```\n\nSo, 43 times 22 is equal to 946.""",
+        """Subject: Project Delay Due to Funding Cuts\n\nDear [Coworker's Name],\n\nI hope this message finds you well. I am writing to update you on the status of our project and unfortunately, convey some disappointing news.\n\nDue to recent funding cuts within our department, we have had to make some adjustments to project assignments. As a result, multiple employees, including key team members for our current project, have been moved to different projects to accommodate the changes. This unexpected shift has impacted our project timeline.\n\nI regret to inform you that our project deadline will need to be pushed back in light of these developments. I understand the inconvenience this may cause and I sincerely apologize for any disruption this may cause to your schedule or other commitments.\n\nPlease rest assured that despite these unforeseen circumstances, I am fully committed to completing the project efficiently and effectively. I will work closely with the team to develop a revised timeline and ensure that we deliver quality work that meets our objectives.\n\nThank you for your understanding and continued support during this challenging period. I value your collaboration and look forward to working together to overcome this setback and achieve our project goals.\n\nIf you have any questions or concerns, please feel free to reach out to me. I appreciate your patience as we navigate through this situation together.\n\nBest regards,\n\n[Your Name]""",
+    ]
+
+
+@pytest.fixture
+def content_gen_test_data(
+    db: Session,
+    dataset_name: str,
+    model_name: str,
+    content_gen_q0: schemas.Datum,
+    content_gen_q1: schemas.Datum,
+    content_gen_q2: schemas.Datum,
+    content_gen_predictions: list[str],
+):
+    datums = [content_gen_q0, content_gen_q1, content_gen_q2]
+
+    gts = []
+    for i in range(len(datums)):
+        gts.append(
+            schemas.GroundTruth(
+                dataset_name=dataset_name,
+                datum=datums[i],
+                annotations=[],
+            )
+        )
+
+    preds = []
+    for i in range(len(datums)):
+        preds.append(
+            schemas.Prediction(
+                dataset_name=dataset_name,
+                model_name=model_name,
+                datum=datums[i],
+                annotations=[
+                    schemas.Annotation(
+                        text=content_gen_predictions[i],
+                    )
+                ],
+            )
+        )
+
+    crud.create_dataset(
+        db=db,
+        dataset=schemas.Dataset(
+            name=dataset_name,
+            metadata={"type": "text"},
+        ),
+    )
+
+    crud.create_groundtruths(db=db, groundtruths=gts)
+    crud.finalize(db=db, dataset_name=dataset_name)
+
+    crud.create_model(
+        db=db,
+        model=schemas.Model(
+            name=model_name,
+            metadata={
+                "type": "text",
+            },
+        ),
+    )
+    crud.create_predictions(db=db, predictions=preds)
+    crud.finalize(db=db, dataset_name=dataset_name, model_name=model_name)
+
+    assert len(db.query(models.Datum).all()) == 3
+    assert len(db.query(models.Annotation).all()) == 6
+    assert len(db.query(models.Label).all()) == 0
+    assert len(db.query(models.GroundTruth).all()) == 3
+    assert len(db.query(models.Prediction).all()) == 3
+
+
 def mocked_connection(self):
     pass
 
@@ -185,9 +305,9 @@ def mocked_answer_relevance(
     text: str,
 ):
     ret_dict = {
-        PREDICTIONS[0]: 0.6666666666666666,
-        PREDICTIONS[1]: 0.2,
-        PREDICTIONS[2]: 0.2,
+        RAG_PREDICTIONS[0]: 0.6666666666666666,
+        RAG_PREDICTIONS[1]: 0.2,
+        RAG_PREDICTIONS[2]: 0.2,
     }
     return ret_dict[text]
 
@@ -197,9 +317,12 @@ def mocked_coherence(
     text: str,
 ):
     ret_dict = {
-        PREDICTIONS[0]: 4,
-        PREDICTIONS[1]: 5,
-        PREDICTIONS[2]: 4,
+        RAG_PREDICTIONS[0]: 4,
+        RAG_PREDICTIONS[1]: 5,
+        RAG_PREDICTIONS[2]: 4,
+        CONTENT_GEN_PREDICTIONS[0]: 5,
+        CONTENT_GEN_PREDICTIONS[1]: 5,
+        CONTENT_GEN_PREDICTIONS[2]: 5,
     }
     return ret_dict[text]
 
@@ -235,7 +358,7 @@ def test__compute_text_generation(
     db: Session,
     dataset_name: str,
     model_name: str,
-    text_generation_test_data,
+    rag_test_data,
 ):
     """
     Tests the _compute_text_generation function.
@@ -528,11 +651,11 @@ def test__compute_text_generation(
     "valor_api.backend.core.llm_clients.WrappedOpenAIClient.coherence",
     mocked_coherence,
 )
-def test_text_generation(
+def test_text_generation_rag(
     db: Session,
     dataset_name: str,
     model_name: str,
-    text_generation_test_data,
+    rag_test_data,
 ):
     metrics_to_return = [
         MetricType.AnswerRelevance,
@@ -648,6 +771,87 @@ def test_text_generation(
         db=db,
         evaluation_id=evaluations[0].id,
     )
+
+
+@patch(
+    "valor_api.backend.core.llm_clients.WrappedOpenAIClient.connect",
+    mocked_connection,
+)
+@patch(
+    "valor_api.backend.core.llm_clients.WrappedOpenAIClient.answer_relevance",
+    mocked_answer_relevance,
+)
+@patch(
+    "valor_api.backend.core.llm_clients.WrappedOpenAIClient.coherence",
+    mocked_coherence,
+)
+def test_text_generation_content_gen(
+    db: Session,
+    dataset_name: str,
+    model_name: str,
+    content_gen_test_data,
+):
+    metrics_to_return = [
+        MetricType.Coherence,
+    ]
+
+    # default request
+    job_request = schemas.EvaluationRequest(
+        dataset_names=[dataset_name],
+        model_names=[model_name],
+        parameters=schemas.EvaluationParameters(
+            task_type=TaskType.TEXT_GENERATION,
+            metrics_to_return=metrics_to_return,
+            llm_api_params={
+                "client": "openai",
+                "data": {
+                    "seed": 2024,
+                    "model": "gpt-4o-2024-05-13",
+                },
+            },
+        ),
+    )
+
+    # creates evaluation job
+    evaluations = create_or_get_evaluations(db=db, job_request=job_request)
+    assert len(evaluations) == 1
+    assert evaluations[0].status == EvaluationStatus.PENDING
+
+    # computation, normally run as background task
+    _ = compute_text_generation_metrics(
+        db=db,
+        evaluation_id=evaluations[0].id,
+    )
+
+    # get evaluations
+    evaluations = create_or_get_evaluations(db=db, job_request=job_request)
+    assert len(evaluations) == 1
+    assert evaluations[0].status in {
+        EvaluationStatus.RUNNING,
+        EvaluationStatus.DONE,
+    }
+
+    metrics = evaluations[0].metrics
+
+    expected_values = {
+        "uid0": {
+            "Coherence": 5,
+        },
+        "uid1": {
+            "Coherence": 5,
+        },
+        "uid2": {
+            "Coherence": 5,
+        },
+    }
+
+    assert metrics
+    for metric in metrics:
+        assert isinstance(metric.parameters, dict)
+        assert (
+            expected_values[metric.parameters["datum_uid"]][metric.type]
+            == metric.value
+        )
 
 
 def test__calculate_rouge_scores():
