@@ -1,7 +1,7 @@
 from dataclasses import asdict, dataclass, field
 from typing import Dict, List, Optional, Union
 
-from valor.enums import AnnotationType, MetricType, TaskType
+from valor.enums import AnnotationType, MetricType, ROUGEType, TaskType
 from valor.schemas.filters import Filter
 
 
@@ -34,7 +34,7 @@ class EvaluationParameters:
         The maximum number of datum examples to store when calculating PR curves.
     bleu_weights: list[float], optional
         The weights to use when calculating BLEU scores.
-    rouge_types: list[str]
+    rouge_types: list[ROUGEType]
         A list of rouge types to calculate. Options are ['rouge1', 'rouge2', 'rougeL', 'rougeLsum'], where `rouge1` is unigram-based scoring, `rouge2` is bigram-based scoring, `rougeL` is scoring based on sentences (i.e., splitting on "." and ignoring "\n"), and `rougeLsum` is scoring based on splitting the text using "\n".
     rouge_use_stemmer: bool
         If True, uses Porter stemmer to strip word suffixes.
@@ -52,7 +52,7 @@ class EvaluationParameters:
     pr_curve_iou_threshold: float = 0.5
     pr_curve_max_examples: int = 1
     bleu_weights: Optional[List[float]] = None
-    rouge_types: Optional[List[str]] = None
+    rouge_types: Optional[List[ROUGEType]] = None
     rouge_use_stemmer: Optional[bool] = None
 
 

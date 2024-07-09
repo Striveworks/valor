@@ -3,7 +3,7 @@ from unittest.mock import patch
 import pytest
 from sqlalchemy.orm import Session
 
-from valor_api import crud, enums, schemas
+from valor_api import crud, schemas
 from valor_api.backend import models
 from valor_api.backend.core import create_or_get_evaluations
 from valor_api.backend.metrics.text_generation import (
@@ -12,54 +12,47 @@ from valor_api.backend.metrics.text_generation import (
     _compute_text_generation_metrics,
     compute_text_generation_metrics,
 )
+from valor_api.enums import EvaluationStatus, MetricType, ROUGEType, TaskType
 
-# Moved PREDICTIONS here so that they are accessible by mock functions.
+
+@pytest.fixture
+def queries():
+    return [
+        """Did John Adams get along with Alexander Hamilton?""",  # ground truth answer is "No."
+        """Did Lincoln win the election of 1860?""",  # ground truth answer is "Yes"
+        """If a turtle egg was kept warm, what would likely hatch?""",  # ground truth answer is "A female turtle."
+    ]
+
+
+@pytest.fixture
+def references():
+    return [
+        """John Adams and Alexander Hamilton did not get along. John Adams had grown independent of his cabinet, often making decisions despite opposition from it.\n""",  # same as prediction with some strings deleted
+        """Yes, Lincoln won the election of 1860. He received the highest number of votes and a majority in the Electoral College, making him the 16th President of the United States. However, it's important to note that he won entirely due to his support in the North and West, as he did not receive any votes in 10 of the 15 Southern slave states.""",  # same as prediction
+        """If kept warm, it would hatch a coyote.""",  # very different than prediction
+    ]
+
+
+# TODO remove
 PREDICTIONS = [
     """Based on the provided context, John Adams and Alexander Hamilton did not get along. John Adams, during his presidency, had grown independent of his cabinet, often making decisions despite opposition from it. Hamilton, who was accustomed to being regularly consulted by Washington, sent Adams a detailed letter with policy suggestions after his inauguration, which Adams dismissively ignored.\n""",
     """Yes, Lincoln won the election of 1860. He received the highest number of votes and a majority in the Electoral College, making him the 16th President of the United States. However, it's important to note that he won entirely due to his support in the North and West, as he did not receive any votes in 10 of the 15 Southern slave states.""",
     """If a turtle egg was kept warm, it would likely hatch into a baby turtle. The sex of the baby turtle would be determined by the incubation temperature, assuming the species is one of those that determine sex thermally. This is because many turtle species have the ability to move around inside their eggs to select the best temperature for development, which can influence their sexual destiny.""",
 ]
 
-REFERENCES = [
-    """John Adams and Alexander Hamilton did not get along. John Adams had grown independent of his cabinet, often making decisions despite opposition from it.\n""",  # same as prediction with some strings deleted
-    """Yes, Lincoln won the election of 1860. He received the highest number of votes and a majority in the Electoral College, making him the 16th President of the United States. However, it's important to note that he won entirely due to his support in the North and West, as he did not receive any votes in 10 of the 15 Southern slave states.""",  # same as prediction
-    """If kept warm, it would hatch a coyote.""",  # very different than prediction
-]
 
-
-def mocked_connection(self):
-    pass
-
-
-def mocked_answer_relevance(self, query: str, text: str):
-    if text in [PREDICTIONS[0]]:
-        ret = 0.6666666666666666
-    elif text in [PREDICTIONS[1], PREDICTIONS[2]]:
-        ret = 0.2
-    else:
-        raise ValueError(f"Test prediction has been modified: {text}")
-    return ret
-
-
-def mocked_coherence(self, text: str):
-    if text in [PREDICTIONS[0], PREDICTIONS[2]]:
-        ret = 4
-    elif text in [PREDICTIONS[1]]:
-        ret = 5
-    else:
-        raise ValueError(f"Test prediction has been modified: {text}")
-    return ret
+@pytest.fixture
+def predictions():
+    return [
+        """Based on the provided context, John Adams and Alexander Hamilton did not get along. John Adams, during his presidency, had grown independent of his cabinet, often making decisions despite opposition from it. Hamilton, who was accustomed to being regularly consulted by Washington, sent Adams a detailed letter with policy suggestions after his inauguration, which Adams dismissively ignored.\n""",
+        """Yes, Lincoln won the election of 1860. He received the highest number of votes and a majority in the Electoral College, making him the 16th President of the United States. However, it's important to note that he won entirely due to his support in the North and West, as he did not receive any votes in 10 of the 15 Southern slave states.""",
+        """If a turtle egg was kept warm, it would likely hatch into a baby turtle. The sex of the baby turtle would be determined by the incubation temperature, assuming the species is one of those that determine sex thermally. This is because many turtle species have the ability to move around inside their eggs to select the best temperature for development, which can influence their sexual destiny.""",
+    ]
 
 
 @pytest.fixture
-def text_generation_test_data(db: Session, dataset_name: str, model_name: str):
-    queries = [
-        """Did John Adams get along with Alexander Hamilton?""",  # ground truth answer is "No."
-        """Did Lincoln win the election of 1860?""",  # ground truth answer is "Yes"
-        """If a turtle egg was kept warm, what would likely hatch?""",  # ground truth answer is "A female turtle."
-    ]
-    predictions = PREDICTIONS
-    context_per_prediction = [
+def context_per_prediction():
+    return [
         [
             """Although aware of Hamilton\'s influence, Adams was convinced that their retention ensured a smoother succession. Adams maintained the economic programs of Hamilton, who regularly consulted with key cabinet members, especially the powerful Treasury Secretary, Oliver Wolcott Jr. Adams was in other respects quite independent of his cabinet, often making decisions despite opposition from it. Hamilton had grown accustomed to being regularly consulted by Washington. Shortly after Adams was inaugurated, Hamilton sent him a detailed letter with policy suggestions. Adams dismissively ignored it.\n\nFailed peace commission and XYZ affair\nHistorian Joseph Ellis writes that "[t]he Adams presidency was destined to be dominated by a single question of American policy to an extent seldom if ever encountered by any succeeding occupant of the office." That question was whether to make war with France or find peace. Britain and France were at war as a result of the French Revolution. Hamilton and the Federalists strongly favored the British monarchy against what they denounced as the political radicalism and anti-religious frenzy of the French Revolution. Jefferson and the Republicans, with their firm opposition to monarchy, strongly supported the French overthrowing their king. The French had supported Jefferson for president in 1796 and became belligerent at his loss.""",
             """Led by Revolutionary War veteran John Fries, rural German-speaking farmers protested what they saw as a threat to their liberties. They intimidated tax collectors, who often found themselves unable to go about their business. The disturbance was quickly ended with Hamilton leading the army to restore peace.Fries and two other leaders were arrested, found guilty of treason, and sentenced to hang. They appealed to Adams requesting a pardon. The cabinet unanimously advised Adams to refuse, but he instead granted the pardon, arguing the men had instigated a mere riot as opposed to a rebellion. In his pamphlet attacking Adams before the election, Hamilton wrote that \"it was impossible to commit a greater error.\"\n\nFederalist divisions and peace\nOn May 5, 1800, Adams's frustrations with the Hamilton wing of the party exploded during a meeting with McHenry, a Hamilton loyalist who was universally regarded, even by Hamilton, as an inept Secretary of War. Adams accused him of subservience to Hamilton and declared that he would rather serve as Jefferson's vice president or minister at The Hague than be beholden to Hamilton for the presidency. McHenry offered to resign at once, and Adams accepted. On May 10, he asked Pickering to resign.""",
@@ -80,6 +73,17 @@ def text_generation_test_data(db: Session, dataset_name: str, model_name: str):
         ],
     ]
 
+
+@pytest.fixture
+def text_generation_test_data(
+    db: Session,
+    dataset_name: str,
+    model_name: str,
+    queries: list[str],
+    references: list[str],
+    predictions: list[str],
+    context_per_prediction: list[list[str]],
+):
     datums = [
         schemas.Datum(
             uid="uid0",
@@ -111,7 +115,7 @@ def text_generation_test_data(db: Session, dataset_name: str, model_name: str):
                 dataset_name=dataset_name,
                 datum=datums[i],
                 annotations=[
-                    schemas.Annotation(text=REFERENCES[i]),
+                    schemas.Annotation(text=references[i]),
                     schemas.Annotation(text="some other text"),
                     schemas.Annotation(text="some final text"),
                 ],
@@ -169,6 +173,42 @@ def text_generation_test_data(db: Session, dataset_name: str, model_name: str):
     assert len(db.query(models.Label).all()) == 0
     assert len(db.query(models.GroundTruth).all()) == 9
     assert len(db.query(models.Prediction).all()) == 3
+
+
+def mocked_connection(self):
+    pass
+
+
+def mocked_answer_relevance(
+    self,
+    query: str,
+    text: str,
+):
+    ret_dict = {
+        PREDICTIONS[0]: 0.6666666666666666,
+        PREDICTIONS[1]: 0.2,
+        PREDICTIONS[2]: 0.2,
+    }
+    return ret_dict[text]
+
+
+def mocked_coherence(
+    self,
+    text: str,
+):
+    ret_dict = {
+        PREDICTIONS[0]: 4,
+        PREDICTIONS[1]: 5,
+        PREDICTIONS[2]: 4,
+    }
+    return ret_dict[text]
+
+
+def mocked_compute_rouge_none(*args, **kwargs):
+    """
+    Dummy docstring
+    """
+    return None
 
 
 @patch(
@@ -230,10 +270,10 @@ def test__compute_text_generation(
     prediction_filter = datum_filter.model_copy()
 
     metrics_to_return = [
-        enums.MetricType.AnswerRelevance,
-        enums.MetricType.Coherence,
-        enums.MetricType.ROUGE,
-        enums.MetricType.BLEU,
+        MetricType.AnswerRelevance,
+        MetricType.Coherence,
+        MetricType.ROUGE,
+        MetricType.BLEU,
     ]
 
     metrics = _compute_text_generation_metrics(
@@ -300,7 +340,7 @@ def test__compute_text_generation(
         db,
         datum_filter=datum_filter,
         prediction_filter=prediction_filter,
-        metrics_to_return=[enums.MetricType.AnswerRelevance],
+        metrics_to_return=[MetricType.AnswerRelevance],
         llm_api_params={
             "client": "mistral",
             "data": {
@@ -312,7 +352,11 @@ def test__compute_text_generation(
                 "weights": [0.5, 0.25, 0.25, 0],
             },
             "ROUGE": {
-                "rouge_types": ["rouge1", "rouge2", "rougeL"],
+                "rouge_types": [
+                    ROUGEType.ROUGE1,
+                    ROUGEType.ROUGE2,
+                    ROUGEType.ROUGEL,
+                ],
                 "use_stemmer": True,
             },
         },
@@ -491,10 +535,10 @@ def test_text_generation(
     text_generation_test_data,
 ):
     metrics_to_return = [
-        enums.MetricType.AnswerRelevance,
-        enums.MetricType.Coherence,
-        enums.MetricType.ROUGE,
-        enums.MetricType.BLEU,
+        MetricType.AnswerRelevance,
+        MetricType.Coherence,
+        MetricType.ROUGE,
+        MetricType.BLEU,
     ]
 
     # default request
@@ -502,7 +546,7 @@ def test_text_generation(
         dataset_names=[dataset_name],
         model_names=[model_name],
         parameters=schemas.EvaluationParameters(
-            task_type=enums.TaskType.TEXT_GENERATION,
+            task_type=TaskType.TEXT_GENERATION,
             metrics_to_return=metrics_to_return,
             llm_api_params={
                 "client": "openai",
@@ -512,7 +556,12 @@ def test_text_generation(
                 },
             },
             bleu_weights=[0.25, 0.25, 0.25, 0.25],
-            rouge_types=["rouge1", "rouge2", "rougeL", "rougeLsum"],
+            rouge_types=[
+                ROUGEType.ROUGE1,
+                ROUGEType.ROUGE2,
+                ROUGEType.ROUGEL,
+                ROUGEType.ROUGELSUM,
+            ],
             rouge_use_stemmer=False,
         ),
     )
@@ -520,7 +569,7 @@ def test_text_generation(
     # creates evaluation job
     evaluations = create_or_get_evaluations(db=db, job_request=job_request)
     assert len(evaluations) == 1
-    assert evaluations[0].status == enums.EvaluationStatus.PENDING
+    assert evaluations[0].status == EvaluationStatus.PENDING
 
     # computation, normally run as background task
     _ = compute_text_generation_metrics(
@@ -532,8 +581,8 @@ def test_text_generation(
     evaluations = create_or_get_evaluations(db=db, job_request=job_request)
     assert len(evaluations) == 1
     assert evaluations[0].status in {
-        enums.EvaluationStatus.RUNNING,
-        enums.EvaluationStatus.DONE,
+        EvaluationStatus.RUNNING,
+        EvaluationStatus.DONE,
     }
 
     metrics = evaluations[0].metrics
@@ -587,14 +636,14 @@ def test_text_generation(
         dataset_names=[dataset_name],
         model_names=[model_name],
         parameters=schemas.EvaluationParameters(
-            task_type=enums.TaskType.TEXT_GENERATION,
-            metrics_to_return=[enums.MetricType.ROUGE],
+            task_type=TaskType.TEXT_GENERATION,
+            metrics_to_return=[MetricType.ROUGE],
             rouge_use_stemmer=True,
         ),
     )
     evaluations = create_or_get_evaluations(db=db, job_request=job_request)
     assert len(evaluations) == 1
-    assert evaluations[0].status == enums.EvaluationStatus.PENDING
+    assert evaluations[0].status == EvaluationStatus.PENDING
     _ = compute_text_generation_metrics(
         db=db,
         evaluation_id=evaluations[0].id,
@@ -802,6 +851,21 @@ def test__calculate_rouge_scores():
                 predictions=example["prediction"],
                 references=example["references"],
             )
+
+
+@patch(
+    "evaluate.EvaluationModule.compute",
+    mocked_compute_rouge_none,
+)
+def test__calculate_rouge_scores_with_none():
+    prediction = "Mary loves Joe"
+    references = ["Mary loves Joe"]
+
+    with pytest.raises(ValueError):
+        _calculate_rouge_scores(
+            predictions=prediction,
+            references=references,
+        )
 
 
 def test__calculate_bleu_scores():

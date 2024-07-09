@@ -1,8 +1,14 @@
 from typing import Any
 
-import openai
 from mistralai.client import MistralClient
 from mistralai.models.chat_completion import ChatMessage
+from openai import OpenAI as OpenAIClient
+from openai.types.chat import (
+    ChatCompletionAssistantMessageParam,
+    ChatCompletionMessageParam,
+    ChatCompletionSystemMessageParam,
+    ChatCompletionUserMessageParam,
+)
 from pydantic import BaseModel
 
 from valor_api.backend.metrics.metric_utils import trim_and_load_json
@@ -121,10 +127,12 @@ def _get_coherence_instruction(text: str) -> str:
     This instruction was adapted from appendix A of DeepEval's paper G-EVAL: NLG Evaluation using GPT-4 with Better Human Alignment (https://arxiv.org/pdf/2303.16634).
     The main adaptation is a generalization of the metric to more task types. The example prompt in DeepEval was specific to summarization, but the below prompt could apply to any text generation task.
     Crucially, unlike DeepEval, no context is used. Instead, the coherence of the text is evaluated entirely based on the text. This generalizes the prompt and also prevents the evaluation from being influenced by the quality of sentences in the context.
+
     Parameters
     ----------
     text: str
         The text to be evaluated.
+
     Returns
     -------
     str
@@ -183,7 +191,7 @@ class LLMClient:
         """
         raise NotImplementedError
 
-    def process_messages(
+    def _process_messages(
         self,
         messages: list[dict[str, str]],
     ) -> Any:
@@ -198,17 +206,17 @@ class LLMClient:
         Returns
         -------
         Any
-            The messages formatted for the API. By default, the messages are left in the OpenAI format.
+            The messages formatted for the API.
         """
         # Validate that the input is a list of dictionaries with "role" and "content" keys.
         _ = Messages(messages=messages)  # type: ignore
 
-        return messages
+        raise NotImplementedError
 
     def __call__(
         self,
         messages: list[dict[str, str]],
-    ) -> Any:
+    ) -> str:
         """
         Call to the API. Not implemented for parent class.
 
@@ -219,7 +227,7 @@ class LLMClient:
 
         Returns
         -------
-        Any
+        str
             The response from the API.
         """
         raise NotImplementedError
@@ -422,14 +430,63 @@ class WrappedOpenAIClient(LLMClient):
         Setup the connection to the API.
         """
         if self.api_key is None:
-            self.client = openai.OpenAI()
+            self.client = OpenAIClient()
         else:
-            self.client = openai.OpenAI(api_key=self.api_key)
+            self.client = OpenAIClient(api_key=self.api_key)
+
+    def _process_messages(
+        self,
+        messages: list[dict[str, str]],
+    ) -> list[ChatCompletionMessageParam]:
+        """
+        Format messages for the API.
+
+        Parameters
+        ----------
+        messages: list[dict[str, str]]
+            The messages formatted according to the OpenAI standard. Each message in messages is a dictionary with "role" and "content" keys.
+
+        Returns
+        -------
+        list[ChatCompletionMessageParam]
+            The messages converted to the OpenAI client message objects.
+        """
+        # Validate that the input is a list of dictionaries with "role" and "content" keys.
+        _ = Messages(messages=messages)  # type: ignore
+
+        ret = []
+        for i in range(len(messages)):
+            if messages[i]["role"] == "system":
+                ret.append(
+                    ChatCompletionSystemMessageParam(
+                        content=messages[i]["content"],
+                        role="system",
+                    )
+                )
+            elif messages[i]["role"] == "user":
+                ret.append(
+                    ChatCompletionUserMessageParam(
+                        content=messages[i]["content"],
+                        role="user",
+                    )
+                )
+            elif messages[i]["role"] == "assistant":
+                ret.append(
+                    ChatCompletionAssistantMessageParam(
+                        content=messages[i]["content"],
+                        role="assistant",
+                    )
+                )
+            else:
+                raise ValueError(
+                    f"Role {messages[i]['role']} is not supported by OpenAI."
+                )
+        return ret
 
     def __call__(
         self,
         messages: list[dict[str, str]],
-    ) -> Any:
+    ) -> str:
         """
         Call to the API.
 
@@ -440,11 +497,10 @@ class WrappedOpenAIClient(LLMClient):
 
         Returns
         -------
-        Any
+        str
             The response from the API.
         """
-        processed_messages = self.process_messages(messages)
-
+        processed_messages = self._process_messages(messages)
         openai_response = self.client.chat.completions.create(
             model=self.model_name,
             messages=processed_messages,
@@ -466,6 +522,8 @@ class WrappedOpenAIClient(LLMClient):
                 "OpenAI response was flagged by content filter. Resulting evaluation is likely invalid or of low quality."
             )
 
+        if response is None:
+            return ""
         return response
 
 
@@ -507,7 +565,7 @@ class WrappedMistralAIClient(LLMClient):
         else:
             self.client = MistralClient(api_key=self.api_key)
 
-    def process_messages(
+    def _process_messages(
         self,
         messages: list[dict[str, str]],
     ) -> Any:
@@ -540,7 +598,7 @@ class WrappedMistralAIClient(LLMClient):
     def __call__(
         self,
         messages: list[dict[str, str]],
-    ) -> Any:
+    ) -> str:
         """
         Call to the API.
 
@@ -551,10 +609,10 @@ class WrappedMistralAIClient(LLMClient):
 
         Returns
         -------
-        Any
+        str
             The response from the API.
         """
-        processed_messages = self.process_messages(messages)
+        processed_messages = self._process_messages(messages)
         mistral_response = self.client.chat(
             model=self.model_name,
             messages=processed_messages,
@@ -603,10 +661,32 @@ class MockLLMClient(LLMClient):
         """
         pass
 
+    def _process_messages(
+        self,
+        messages: list[dict[str, str]],
+    ) -> list[dict[str, str]]:
+        """
+        Format messages for the API.
+
+        Parameters
+        ----------
+        messages: list[dict[str, str]]
+            The messages formatted according to the OpenAI standard. Each message in messages is a dictionary with "role" and "content" keys.
+
+        Returns
+        -------
+        list[dict[str, str]]
+            The messages are left in the OpenAI format.
+        """
+        # Validate that the input is a list of dictionaries with "role" and "content" keys.
+        _ = Messages(messages=messages)  # type: ignore
+
+        return messages
+
     def __call__(
         self,
         messages: list[dict[str, str]],
-    ) -> Any:
+    ) -> str:
         """
         Call to the API. Returns "" by default, or metric specific mock responses.
 
@@ -617,10 +697,10 @@ class MockLLMClient(LLMClient):
 
         Returns
         -------
-        Any
+        str
             The response from the API.
         """
-        processed_messages = self.process_messages(messages)
+        processed_messages = self._process_messages(messages)
         if len(processed_messages) >= 2:
             if (
                 "generate a list of statements"

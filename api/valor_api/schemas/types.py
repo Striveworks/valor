@@ -117,7 +117,7 @@ def _match_annotation_to_implied_task_type(
         implied_type = ["empty"]
     else:
         raise ValueError(
-            "Input didn't match any known patterns. Classification tasks should only contain labels. Object detection tasks should contain labels and polygons, bounding boxes, or rasters with is_instance == True. Segmentation tasks should contain labels and rasters with is_instance != True. Text Generation tasks should only contain text and optionally context."
+            "Input didn't match any known patterns. Classification tasks should only contain labels. Object detection tasks should contain labels and polygons, bounding boxes, or rasters with is_instance == True. Segmentation tasks should contain labels and rasters with is_instance != True. Text generation tasks should only contain text and optionally context."
         )
 
     return implied_type
@@ -416,7 +416,7 @@ class Datum(BaseModel):
     ----------
     uid : str
         The UID of the datum.
-    text : str
+    text : str, optional
         If the datum is a piece of text, then this field should contain the text.
     metadata : dict, optional
         A dictionary of metadata that describes the datum.

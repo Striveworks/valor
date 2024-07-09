@@ -4,18 +4,21 @@ import pytest
 from pydantic import ValidationError
 
 from valor_api import enums, schemas
-from valor_api.enums import MetricType
-
-LLM_API_PARAMS = {
-    "client": "openai",
-    "data": {
-        "seed": 2024,
-        "model": "gpt-4o-2024-05-13",
-    },
-}
+from valor_api.enums import MetricType, ROUGEType
 
 
-def test_EvaluationParameters():
+@pytest.fixture
+def llm_api_params():
+    return {
+        "client": "openai",
+        "data": {
+            "seed": 2024,
+            "model": "gpt-4o-2024-05-13",
+        },
+    }
+
+
+def test_EvaluationParameters(llm_api_params):
     schemas.EvaluationParameters(
         task_type=enums.TaskType.CLASSIFICATION,
     )
@@ -61,7 +64,7 @@ def test_EvaluationParameters():
             MetricType.Coherence,
             MetricType.ROUGE,
         ],
-        llm_api_params=LLM_API_PARAMS,
+        llm_api_params=llm_api_params,
     )
 
     # Test with metric parameters
@@ -73,9 +76,9 @@ def test_EvaluationParameters():
             MetricType.Coherence,
             MetricType.ROUGE,
         ],
-        llm_api_params=LLM_API_PARAMS,
+        llm_api_params=llm_api_params,
         bleu_weights=[0.5, 0.25, 0.25, 0],
-        rouge_types=["rouge1", "rouge2", "rougeL"],
+        rouge_types=[ROUGEType.ROUGE1, ROUGEType.ROUGELSUM],
         rouge_use_stemmer=True,
     )
 
@@ -150,7 +153,7 @@ def test_EvaluationParameters():
                 MetricType.Coherence,
                 MetricType.ROUGE,
             ],
-            llm_api_params=LLM_API_PARAMS,
+            llm_api_params=llm_api_params,
             bleu_weights=[1.1, 0.3, -0.5, 0.1],
         )
 
@@ -164,22 +167,8 @@ def test_EvaluationParameters():
                 MetricType.Coherence,
                 MetricType.ROUGE,
             ],
-            llm_api_params=LLM_API_PARAMS,
+            llm_api_params=llm_api_params,
             bleu_weights=[0.5, 0.25, 0.25, 0.25],
-        )
-
-    # ROUGE types must be in the following list of valid types: ["rouge1", "rouge2", "rougeL", "rougeLsum"].
-    with pytest.raises(ValidationError):
-        schemas.EvaluationParameters(
-            task_type=enums.TaskType.TEXT_GENERATION,
-            metrics_to_return=[
-                MetricType.AnswerRelevance,
-                MetricType.BLEU,
-                MetricType.Coherence,
-                MetricType.ROUGE,
-            ],
-            llm_api_params=LLM_API_PARAMS,
-            rouge_types=["rouge1", "rouge2", "rouge3"],
         )
 
 

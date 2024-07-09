@@ -136,3 +136,10 @@ class MetricType(str, Enum):
     Coherence = "Coherence"
     ROUGE = "ROUGE"
     BLEU = "BLEU"
+
+
+class ROUGEType(str, Enum):
+    ROUGE1 = "rouge1"
+    ROUGE2 = "rouge2"
+    ROUGEL = "rougeL"
+    ROUGELSUM = "rougeLsum"

@@ -163,12 +163,15 @@ def test_LLMClient(monkeypatch):
     with pytest.raises(NotImplementedError):
         client.connect()
 
-    # process_messages() is not implemented for the parent class.
-    fake_message = client.process_messages(fake_message)
+    # _process_messages() is not implemented for the parent class.
+    with pytest.raises(NotImplementedError):
+        client._process_messages(fake_message)
+
+    # __call__() is not implemented for the parent class.
     with pytest.raises(NotImplementedError):
         client(fake_message)
 
-    # patch __call__ with a valid response
+    # Patch __call__ with a valid response.
     monkeypatch.setattr(
         "valor_api.backend.core.llm_clients.LLMClient.__call__",
         _return_valid_answer_relevance_response,
@@ -199,7 +202,7 @@ def test_LLMClient(monkeypatch):
     with pytest.raises(InvalidLLMResponseError):
         client.answer_relevance("some query", "some text")
 
-    # Invalid verdict.
+    # Invalid verdict, all verdicts must be yes, no or idk.
     monkeypatch.setattr(
         "valor_api.backend.core.llm_clients.LLMClient.__call__",
         _return_invalid4_answer_relevance_response,
@@ -207,14 +210,14 @@ def test_LLMClient(monkeypatch):
     with pytest.raises(InvalidLLMResponseError):
         client.answer_relevance("some query", "some text")
 
-    # patch __call__ with a valid response
+    # Patch __call__ with a valid response.
     monkeypatch.setattr(
         "valor_api.backend.core.llm_clients.LLMClient.__call__",
         _return_valid_coherence_response,
     )
     assert 5 == client.coherence("some text")
 
-    # Coherence score was not an integer
+    # Coherence score is not an integer.
     monkeypatch.setattr(
         "valor_api.backend.core.llm_clients.LLMClient.__call__",
         _return_invalid_response,
@@ -222,7 +225,7 @@ def test_LLMClient(monkeypatch):
     with pytest.raises(InvalidLLMResponseError):
         client.coherence("some text")
 
-    # Coherence score was 0, which is not in {1,2,3,4,5}
+    # Coherence score is 0, which is not in {1,2,3,4,5}.
     monkeypatch.setattr(
         "valor_api.backend.core.llm_clients.LLMClient.__call__",
         _return_invalid2_coherence_response,
@@ -232,10 +235,10 @@ def test_LLMClient(monkeypatch):
 
 
 def test_WrappedOpenAIClient():
-    def create_bad_request(model, messages, seed) -> ChatCompletion:
+    def _create_bad_request(model, messages, seed) -> ChatCompletion:
         raise ValueError
 
-    def create_mock_chat_completion_with_bad_length(
+    def _create_mock_chat_completion_with_bad_length(
         model, messages, seed
     ) -> ChatCompletion:
         return ChatCompletion(
@@ -255,7 +258,7 @@ def test_WrappedOpenAIClient():
             created=int(datetime.datetime.now().timestamp()),
         )
 
-    def create_mock_chat_completion_with_content_filter(
+    def _create_mock_chat_completion_with_content_filter(
         model, messages, seed
     ) -> ChatCompletion:
         return ChatCompletion(
@@ -275,7 +278,7 @@ def test_WrappedOpenAIClient():
             created=int(datetime.datetime.now().timestamp()),
         )
 
-    def create_mock_chat_completion(model, messages, seed) -> ChatCompletion:
+    def _create_mock_chat_completion(model, messages, seed) -> ChatCompletion:
         return ChatCompletion(
             id="foo",
             model="gpt-3.5-turbo",
@@ -286,6 +289,26 @@ def test_WrappedOpenAIClient():
                     index=0,
                     message=ChatCompletionMessage(
                         content="some response",
+                        role="assistant",
+                    ),
+                )
+            ],
+            created=int(datetime.datetime.now().timestamp()),
+        )
+
+    def _create_mock_chat_completion_none_content(
+        model, messages, seed
+    ) -> ChatCompletion:
+        return ChatCompletion(
+            id="foo",
+            model="gpt-3.5-turbo",
+            object="chat.completion",
+            choices=[
+                Choice(
+                    finish_reason="stop",
+                    index=0,
+                    message=ChatCompletionMessage(
+                        content=None,
                         role="assistant",
                     ),
                 )
@@ -305,44 +328,52 @@ def test_WrappedOpenAIClient():
         client(fake_message)
 
     # Check that the WrappedOpenAIClient does not alter the messages.
-    assert fake_message == client.process_messages(fake_message)
+    assert fake_message == client._process_messages(fake_message)
 
-    # Test connecting to OpenAI client without specifying an API key.
+    # The OpenAI Client should be able to connect if the API key is set as the environment variable.
     client = WrappedOpenAIClient(model_name="model_name")
 
     client.client = MagicMock()
 
-    # test bad request
-    client.client.chat.completions.create = create_bad_request
+    # A bad request should raise a ValueError.
+    client.client.chat.completions.create = _create_bad_request
     with pytest.raises(ValueError) as e:
         client(fake_message)
 
-    # test good request with bad finish reasons
+    # The metric computation should fail when the finish reason is bad length.
     client.client.chat.completions.create = (
-        create_mock_chat_completion_with_bad_length
+        _create_mock_chat_completion_with_bad_length
     )
     with pytest.raises(ValueError) as e:
         client(fake_message)
     assert "reached max token limit" in str(e)
 
+    # The metric computation should fail when the finish reason is content filter.
     client.client.chat.completions.create = (
-        create_mock_chat_completion_with_content_filter
+        _create_mock_chat_completion_with_content_filter
     )
     with pytest.raises(ValueError) as e:
         client(fake_message)
     assert "flagged by content filter" in str(e)
 
-    # test good request
-    client.client.chat.completions.create = create_mock_chat_completion
+    # Should run successfully when the finish reason is stop.
+    client.client.chat.completions.create = _create_mock_chat_completion
     assert client(fake_message) == "some response"
+
+    # Should run successfully even when the response content is None.
+    client.client.chat.completions.create = (
+        _create_mock_chat_completion_none_content
+    )
+    assert client(fake_message) == ""
 
 
 def test_WrappedMistralAIClient():
-    def create_bad_request(model, messages) -> ChatCompletion:
+    def _create_bad_request(model, messages) -> ChatCompletion:
         raise ValueError
 
-    def create_mock_chat_completion_with_bad_length(
-        model, messages
+    def _create_mock_chat_completion_with_bad_length(
+        model,
+        messages,
     ) -> ChatCompletionResponse:
         return ChatCompletionResponse(
             id="foo",
@@ -367,7 +398,9 @@ def test_WrappedMistralAIClient():
             ),
         )
 
-    def create_mock_chat_completion(model, messages) -> ChatCompletionResponse:
+    def _create_mock_chat_completion(
+        model, messages
+    ) -> ChatCompletionResponse:
         return ChatCompletionResponse(
             id="foo",
             model="gpt-3.5-turbo",
@@ -408,42 +441,42 @@ def test_WrappedMistralAIClient():
             tool_calls=None,
             tool_call_id=None,
         )
-    ] == client.process_messages(fake_message)
+    ] == client._process_messages(fake_message)
 
-    # Test connecting to Mistral client without specifying an API key.
+    # The Mistral Client should be able to connect if the API key is set as the environment variable.
     client = WrappedMistralAIClient(model_name="model_name")
 
     client.client = MagicMock()
 
-    # test bad request
-    client.client.chat = create_bad_request
+    # The metric computation should fail if the request fails.
+    client.client.chat = _create_bad_request
     with pytest.raises(ValueError) as e:
         client(fake_message)
 
-    # test good request with bad finish reasons
-    client.client.chat = create_mock_chat_completion_with_bad_length
+    # The metric computation should fail when the finish reason is bad length.
+    client.client.chat = _create_mock_chat_completion_with_bad_length
     with pytest.raises(ValueError) as e:
         client(fake_message)
     assert "reached max token limit" in str(e)
 
-    # test good request
-    client.client.chat = create_mock_chat_completion
+    # The metric computation should run successfully when the finish reason is stop.
+    client.client.chat = _create_mock_chat_completion
     assert client(fake_message) == "some response"
 
 
 def test_MockLLMClient():
     client = MockLLMClient()
 
-    # Check that the MockLLMClient does not alter the messages.
+    # The MockLLMClient should not alter the messages.
     messages = [{"role": "system", "content": "You are a helpful assistant."}]
-    assert messages == client.process_messages(messages)
+    assert messages == client._process_messages(messages)
 
-    # Check that the MockLLMClient returns nothing by default.
+    # The MockLLMClient should return nothing by default.
     assert "" == client(messages)
 
 
 def test_process_message():
-    # The messages should pass the validation in process_messages.
+    # The messages should pass the validation in _process_messages.
     messages = [
         {
             "role": "system",
@@ -458,12 +491,11 @@ def test_process_message():
             "content": "The weather is sunny.",
         },
     ]
-    LLMClient().process_messages(messages=messages)
-    WrappedOpenAIClient().process_messages(messages=messages)
-    WrappedMistralAIClient().process_messages(messages=messages)
-    MockLLMClient().process_messages(messages=messages)
+    WrappedOpenAIClient()._process_messages(messages=messages)
+    WrappedMistralAIClient()._process_messages(messages=messages)
+    MockLLMClient()._process_messages(messages=messages)
 
-    # Missing "content" in the second message, so it should raise a ValidationError.
+    # The clients should raise a ValidationError because "content" is missing in the second message.
     messages = [
         {
             "role": "system",
@@ -479,10 +511,8 @@ def test_process_message():
         },
     ]
     with pytest.raises(ValidationError):
-        LLMClient().process_messages(messages=messages)
+        WrappedOpenAIClient()._process_messages(messages=messages)
     with pytest.raises(ValidationError):
-        WrappedOpenAIClient().process_messages(messages=messages)
+        WrappedMistralAIClient()._process_messages(messages=messages)
     with pytest.raises(ValidationError):
-        WrappedMistralAIClient().process_messages(messages=messages)
-    with pytest.raises(ValidationError):
-        MockLLMClient().process_messages(messages=messages)
+        MockLLMClient()._process_messages(messages=messages)

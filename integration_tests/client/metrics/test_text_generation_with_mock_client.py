@@ -13,7 +13,7 @@ from valor import (
     Model,
     Prediction,
 )
-from valor.enums import EvaluationStatus, MetricType
+from valor.enums import EvaluationStatus, MetricType, ROUGEType
 
 PREDICTIONS = [
     """Based on the provided context, John Adams and Alexander Hamilton did not get along. John Adams, during his presidency, had grown independent of his cabinet, often making decisions despite opposition from it. Hamilton, who was accustomed to being regularly consulted by Washington, sent Adams a detailed letter with policy suggestions after his inauguration, which Adams dismissively ignored.\n""",
@@ -70,7 +70,12 @@ def test_llm_evaluation_with_mock_client(
                 "weights": [0.25, 0.25, 0.25, 0.25],
             },
             MetricType.ROUGE: {
-                "rouge_types": ["rouge1", "rouge2", "rougeL", "rougeLsum"],
+                "rouge_types": [
+                    ROUGEType.ROUGE1,
+                    ROUGEType.ROUGE2,
+                    ROUGEType.ROUGEL,
+                    ROUGEType.ROUGELSUM,
+                ],
                 "use_stemmer": False,
             },
         },

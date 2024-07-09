@@ -108,3 +108,10 @@ class MetricType(str, Enum):
             cls.Coherence,
             cls.ROUGE,
         }
+
+
+class ROUGEType(str, Enum):
+    ROUGE1 = "rouge1"
+    ROUGE2 = "rouge2"
+    ROUGEL = "rougeL"
+    ROUGELSUM = "rougeLsum"

@@ -324,10 +324,6 @@ Answer relevance is the number of statements in the answer that are relevant to 
 
 Our implementation closely follows DeepEval's implementation https://github.com/confident-ai/deepeval/tree/main/deepeval/metrics/answer_relevancy. We use the same two step prompting strategy and the same instructions.
 
-## Summary Metrics
-
-None implemented currently.
-
 ## Text Comparison Metrics
 
 ### ROUGE

@@ -23,7 +23,7 @@ from valor_api.backend.metrics.metric_utils import (
     validate_computation,
 )
 from valor_api.backend.query import generate_query
-from valor_api.enums import MetricType
+from valor_api.enums import MetricType, ROUGEType
 
 LabelMapType = list[list[list[str]]]
 
@@ -38,7 +38,7 @@ TEXT_COMPARISON_METRICS = {"BLEU", "ROUGE"}
 def _calculate_rouge_scores(
     predictions: str | list[str],
     references: list[str],
-    rouge_types: list[str] = ["rouge1", "rouge2", "rougeL", "rougeLsum"],
+    rouge_types: list[ROUGEType] | None = None,
     use_stemmer: bool = False,
 ) -> list[dict]:
     """
@@ -50,7 +50,7 @@ def _calculate_rouge_scores(
         The prediction (or list of predictions) to score. Each prediction should be a string with tokens separated by spaces.
     references: list[str] | list[list[str]]
         A list of reference for a given prediction. Each reference should be a string with tokens separated by spaces.
-    rouge_types: list[str]
+    rouge_types: list[ROUGEType]
         A list of rouge types to calculate. Defaults to ['rouge1', 'rouge2', 'rougeL', 'rougeLsum'], where `rouge1` is unigram-based scoring, `rouge2` is bigram-based scoring, `rougeL` is scoring based on sentences (i.e., splitting on "." and ignoring "\n"), and `rougeLsum` is scoring based on splitting the text using "\n".
     use_stemmer: bool
         If True, uses Porter stemmer to strip word suffixes. Defaults to False.
@@ -64,6 +64,14 @@ def _calculate_rouge_scores(
         raise ValueError(
             "Received incorrect inputs. predictions should be a string and references a list of strings"
         )
+
+    if rouge_types is None:
+        rouge_types = [
+            ROUGEType.ROUGE1,
+            ROUGEType.ROUGE2,
+            ROUGEType.ROUGEL,
+            ROUGEType.ROUGELSUM,
+        ]
 
     rouge = evaluate.load("rouge")
 
@@ -362,7 +370,13 @@ def _compute_text_generation_metrics(
                 if not isinstance(rouge_params, dict):
                     raise ValueError("ROUGE parameters must be a dictionary.")
                 rouge_types = rouge_params.get(
-                    "rouge_types", ["rouge1", "rouge2", "rougeL", "rougeLsum"]
+                    "rouge_types",
+                    [
+                        ROUGEType.ROUGE1,
+                        ROUGEType.ROUGE2,
+                        ROUGEType.ROUGEL,
+                        ROUGEType.ROUGELSUM,
+                    ],
                 )
                 use_stemmer = rouge_params.get("rouge_use_stemmer", False)
                 rouge_metrics = _calculate_rouge_scores(
