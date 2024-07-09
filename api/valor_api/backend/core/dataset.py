@@ -1,4 +1,4 @@
-from sqlalchemy import and_, desc, func, select
+from sqlalchemy import and_, delete, desc, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -512,9 +512,12 @@ def delete_dataset(
     core.delete_dataset_predictions(db, dataset)
     core.delete_groundtruths(db, dataset)
     core.delete_dataset_annotations(db, dataset)
+    core.delete_datums(db, dataset)
 
     try:
-        db.delete(dataset)
+        db.execute(
+            delete(models.Dataset).where(models.Dataset.id == dataset.id)
+        )
         db.commit()
     except IntegrityError as e:
         db.rollback()

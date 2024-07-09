@@ -1,4 +1,4 @@
-from sqlalchemy import and_, desc, func
+from sqlalchemy import and_, delete, desc, func
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from valor_api import api_utils, exceptions, schemas
 from valor_api.backend import models
 from valor_api.backend.query import generate_select
+from valor_api.enums import TableStatus
 
 
 def create_datums(
@@ -255,3 +256,38 @@ def get_paginated_datums(
     )
 
     return (content, headers)
+
+
+def delete_datums(
+    db: Session,
+    dataset: models.Dataset,
+):
+    """
+    Delete all datums from a dataset.
+
+    Parameters
+    ----------
+    db : Session
+        The database session.
+    dataset : models.Dataset
+        The dataset row that is being deleted.
+
+    Raises
+    ------
+    RuntimeError
+        If dataset is not in deletion state.
+    """
+
+    if dataset.status != TableStatus.DELETING:
+        raise RuntimeError(
+            f"Attempted to delete datums from dataset `{dataset.name}` which has status `{dataset.status}`"
+        )
+
+    try:
+        db.execute(
+            delete(models.Datum).where(models.Datum.dataset_id == dataset.id)
+        )
+        db.commit()
+    except IntegrityError as e:
+        db.rollback()
+        raise e

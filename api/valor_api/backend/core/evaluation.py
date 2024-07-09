@@ -1,6 +1,5 @@
 import warnings
 from datetime import timezone
-from typing import Sequence
 
 from pydantic import ValidationError
 from sqlalchemy import (
@@ -8,6 +7,7 @@ from sqlalchemy import (
     and_,
     asc,
     case,
+    delete,
     desc,
     func,
     nulls_last,
@@ -690,6 +690,7 @@ def get_paginated_evaluations(
 
         for i, (metric_type, label) in enumerate(metrics_to_sort_by.items()):
             # if the value represents a label_key
+
             if isinstance(label, str):
                 order_case.append(
                     (
@@ -958,54 +959,6 @@ def count_active_evaluations(
     return retval
 
 
-def _fetch_evaluations_and_mark_for_deletion(
-    db: Session,
-    evaluation_ids: list[int] | None = None,
-    dataset_names: list[str] | None = None,
-    model_names: list[str] | None = None,
-) -> Sequence[models.Evaluation]:
-    """
-    Gets all evaluations that conform to user-supplied constraints and that are not already marked
-    for deletion. Then marks them for deletion and returns them.
-
-    Parameters
-    ----------
-    db : Session
-        The database Session to query against.
-    evaluation_ids : list[int], optional
-        A list of evaluation job id constraints.
-    dataset_names : list[str], optional
-        A list of dataset names to constrain by.
-    model_names : list[str], optional
-        A list of model names to constrain by.
-
-    Returns
-    ----------
-    list[models.Evaluation]
-        A list of evaluations.
-    """
-    expr = _create_bulk_expression(
-        evaluation_ids=evaluation_ids,
-        dataset_names=dataset_names,
-        model_names=model_names,
-    )
-
-    stmt = (
-        update(models.Evaluation)
-        .returning(models.Evaluation)
-        .where(
-            and_(
-                *expr,
-                models.Evaluation.status != enums.EvaluationStatus.DELETING,
-            )
-        )
-        .values(status=enums.EvaluationStatus.DELETING)
-        .execution_options(synchronize_session="fetch")
-    )
-
-    return db.execute(stmt).scalars().all()
-
-
 def delete_evaluations(
     db: Session,
     evaluation_ids: list[int] | None = None,
@@ -1026,6 +979,8 @@ def delete_evaluations(
     model_names : list[str], optional
         A list of model names to constrain by.
     """
+
+    # verify no active evaluations
     if count_active_evaluations(
         db=db,
         evaluation_ids=evaluation_ids,
@@ -1034,16 +989,64 @@ def delete_evaluations(
     ):
         raise exceptions.EvaluationRunningError
 
-    evaluations = _fetch_evaluations_and_mark_for_deletion(
-        db=db,
+    expr = _create_bulk_expression(
         evaluation_ids=evaluation_ids,
         dataset_names=dataset_names,
         model_names=model_names,
     )
+
+    # mark evaluations for deletion
+    mark_for_deletion = (
+        update(models.Evaluation)
+        .returning(models.Evaluation.id)
+        .where(
+            and_(
+                *expr,
+                models.Evaluation.status != enums.EvaluationStatus.DELETING,
+            )
+        )
+        .values(status=enums.EvaluationStatus.DELETING)
+        .execution_options(synchronize_session="fetch")
+    )
     try:
-        for evaluation in evaluations:
-            db.delete(evaluation)
-            db.commit()
+        marked_evaluation_ids = db.execute(mark_for_deletion).scalars().all()
+        db.commit()
+    except IntegrityError as e:
+        db.rollback()
+        raise e
+
+    # delete metrics
+    try:
+        db.execute(
+            delete(models.Metric).where(
+                models.Metric.evaluation_id.in_(marked_evaluation_ids)
+            )
+        )
+        db.commit()
+    except IntegrityError as e:
+        db.rollback()
+        raise e
+
+    # delete confusion matrices
+    try:
+        db.execute(
+            delete(models.ConfusionMatrix).where(
+                models.ConfusionMatrix.evaluation_id.in_(marked_evaluation_ids)
+            )
+        )
+        db.commit()
+    except IntegrityError as e:
+        db.rollback()
+        raise e
+
+    # delete evaluations
+    try:
+        db.execute(
+            delete(models.Evaluation).where(
+                models.Evaluation.id.in_(marked_evaluation_ids)
+            )
+        )
+        db.commit()
     except IntegrityError as e:
         db.rollback()
         raise e
