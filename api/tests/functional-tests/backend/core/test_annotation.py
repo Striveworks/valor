@@ -77,7 +77,7 @@ def test_create_annotation_already_exists_error(
     core.create_predictions(db, empty_predictions)
     with pytest.raises(exceptions.DatumsAlreadyExistError):
         core.create_groundtruths(db, empty_groundtruths[0:1])
-    with pytest.raises(exceptions.AnnotationAlreadyExistsError):
+    with pytest.raises(exceptions.PredictionAlreadyExistsError):
         core.create_predictions(db, empty_predictions[0:1])
 
 
