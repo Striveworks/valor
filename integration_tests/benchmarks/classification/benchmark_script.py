@@ -105,8 +105,8 @@ def ingest_groundtruths_and_predictions(
             )
         )
 
-    dset.add_groundtruths(groundtruths, timeout=15)
-    model.add_predictions(dset, predictions, timeout=15)
+    dset.add_groundtruths(groundtruths, timeout=3000)
+    model.add_predictions(dset, predictions, timeout=3000)
 
     dset.finalize()
     model.finalize_inferences(dataset=dset)
@@ -115,7 +115,7 @@ def ingest_groundtruths_and_predictions(
 def run_base_evaluation(dset: Dataset, model: Model):
     """Run a base evaluation (with no PR curves)."""
     evaluation = model.evaluate_classification(dset)
-    evaluation.wait_for_completion(timeout=30)
+    evaluation.wait_for_completion(timeout=3000)
     return evaluation
 
 
@@ -201,8 +201,8 @@ def run_benchmarking_analysis(
         }
         write_results_to_file(write_path=write_path, result_dict=results)
 
-        client.delete_dataset(dset.name, timeout=30)
-        client.delete_model(model.name, timeout=30)
+        client.delete_dataset(dset.name, timeout=3000)
+        client.delete_model(model.name, timeout=3000)
 
 
 if __name__ == "__main__":
