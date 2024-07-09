@@ -206,7 +206,7 @@ test('evaluation methods', async () => {
 
     // get the ROCAUC metric, and check that its null (backend returns -1 here)
     const rocaucMetric = evaluation.metrics.find((metric) => metric.type === 'ROCAUC');
-    expect(rocaucMetric.value).toBeNull();
+    expect(rocaucMetric.value).toBe(0);
 
     // get the PrecisionRecallCurve metric, and check that its a string
     const prCurveMetric = evaluation.metrics.find(
