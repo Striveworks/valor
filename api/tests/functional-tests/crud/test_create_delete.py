@@ -1426,12 +1426,12 @@ def test_create_clf_metrics(
         ms = [m for m in metrics if m.type == t]
         assert len(ms) == 6
         assert set([(m.label.key, m.label.value) for m in ms]) == {
-            ("k1", "v1"),  #
-            ("k2", "v0"),  # missing?
-            ("k2", "v3"),  #
-            ("k2", "v2"),  #
-            ("k1", "v2"),  #
-            ("k2", "v4"),  # check
+            ("k1", "v1"),
+            ("k2", "v0"),
+            ("k2", "v3"),
+            ("k2", "v2"),
+            ("k1", "v2"),
+            ("k2", "v4"),
         }
 
     confusion_matrices = db.scalars(

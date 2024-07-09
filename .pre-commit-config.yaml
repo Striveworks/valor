@@ -45,7 +45,7 @@ repos:
             "importlib_metadata; python_version < '3.8'",
             "pydantic-settings",
             "tqdm",
-            "pandas",
+            "pandas >= 2.2.2",
             "packaging",
             "PyJWT[crypto]",
             "structlog",

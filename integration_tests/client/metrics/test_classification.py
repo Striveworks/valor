@@ -53,7 +53,7 @@ def test_evaluate_image_clf(
             "type": "ROCAUC",
             "parameters": {"label_key": "k4"},
             "value": 1.0,
-        },  # TODO should be one but we're returning zeroexit
+        },
         {
             "type": "Precision",
             "value": 1.0,  # no false predictions
@@ -107,7 +107,7 @@ def test_evaluate_image_clf(
             "type": "ROCAUC",
             "parameters": {"label_key": "k5"},
             "value": 1.0,
-        },  # TODO this parameter is missing from the output
+        },
         {
             "type": "Precision",
             "value": 0.0,
@@ -349,7 +349,7 @@ def test_evaluate_tabular_clf(
         {
             "type": "Precision",
             "value": 0.5,
-            "label": {"key": "class", "value": "0"},  # TODO got .1666
+            "label": {"key": "class", "value": "0"},
         },
         {
             "type": "Recall",

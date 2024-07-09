@@ -22,7 +22,6 @@ connect("http://0.0.0.0:8000")
 client = Client()
 
 
-
 def download_data_if_not_exists(file_path: str, file_url: str):
     """Download the data from a public bucket if it doesn't exist in the repo."""
     if os.path.exists(file_path):

@@ -83,7 +83,6 @@ def _create_classification_grouper_mappings(
     """Create grouper mappings for use when evaluating classifications."""
 
     # define mappers to connect groupers with labels
-    # TODO are all these still used?
     label_value_to_grouper_value = dict()
     label_to_grouper_key_mapping = dict()
 

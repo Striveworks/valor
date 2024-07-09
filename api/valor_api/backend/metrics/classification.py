@@ -1030,8 +1030,6 @@ def _compute_clf_metrics(
             )
         )
 
-        # TODO precision for value=1 should be .666, not 2.
-        # ['grouper_key', 'grouper_value', 'number_true_positives', 'number_of_groundtruths', 'number_of_predictions', 'precision', 'recall', 'f1']
         # replace nulls and infinities
         metrics_per_grouper_key_and_grouper_value[
             ["precision", "recall", "f1"]
@@ -1495,7 +1493,6 @@ def _compute_clf_metrics(
 
     metrics_to_output += _calculate_rocauc(pd_df=pd_df, gt_df=gt_df)
 
-    # TODO move these over
     for grouper_key in grouper_mappings[
         "grouper_key_to_labels_mapping"
     ].keys():
