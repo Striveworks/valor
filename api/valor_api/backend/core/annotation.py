@@ -247,7 +247,6 @@ def get_annotation(
         datum = db.scalar(
             select(models.Datum).where(models.Datum.id == annotation.datum_id)
         )
-
         if datum is None:
             raise RuntimeError(
                 "psql unexpectedly returned None instead of a Datum."
