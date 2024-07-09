@@ -855,7 +855,7 @@ class Model(StaticCollection):
 
         Parameters
         ----------
-        datasets: Union[Dataset, List[Dataset]], optional
+        datasets: Union[Dataset, List[Dataset]]
             The dataset or list of datasets to evaluate against.
         filters : Filter, optional
             Optional set of constraints to filter evaluation by.
@@ -873,11 +873,7 @@ class Model(StaticCollection):
         Evaluation
             A job object that can be used to track the status of the job and get the metrics of it upon completion.
         """
-        if not datasets and not filters:
-            raise ValueError(
-                "Evaluation requires the definition of either datasets, dataset filters or both."
-            )
-        elif metrics_to_return and not set(metrics_to_return).issubset(
+        if metrics_to_return and not set(metrics_to_return).issubset(
             MetricType.classification()
         ):
             raise ValueError(
@@ -928,7 +924,7 @@ class Model(StaticCollection):
 
         Parameters
         ----------
-        datasets: Union[Dataset, List[Dataset]], optional
+        datasets: Union[Dataset, List[Dataset]]
             The dataset or list of datasets to evaluate against.
         filters : Filter, optional
             Optional set of constraints to filter evaluation by.
@@ -1016,7 +1012,7 @@ class Model(StaticCollection):
 
         Parameters
         ----------
-        datasets: Union[Dataset, List[Dataset]], optional
+        datasets: Union[Dataset, List[Dataset]]
             The dataset or list of datasets to evaluate against.
         filters : Filter, optional
             Optional set of constraints to filter evaluation by.
@@ -1076,7 +1072,7 @@ class Model(StaticCollection):
 
         Parameters
         ----------
-        datasets: Union[Dataset, List[Dataset]], optional
+        datasets: Union[Dataset, List[Dataset]]
             The dataset or list of datasets to evaluate against.
         metrics_to_return: List[MetricType]
             The list of metrics to compute, store, and return to the user. This is not optional for text generation evaluations.
@@ -1092,13 +1088,7 @@ class Model(StaticCollection):
         Evaluation
             A job object that can be used to track the status of the job and get the metrics of it upon completion.
         """
-        if not datasets and not filters:
-            raise ValueError(
-                "Evaluation requires the definition of either datasets, dataset filters or both."
-            )
-        if metrics_to_return and not set(metrics_to_return).issubset(
-            MetricType.text_generation()
-        ):
+        if not set(metrics_to_return).issubset(MetricType.text_generation()):
             raise ValueError(
                 f"The following metrics are not supported for text generation: '{set(metrics_to_return) - MetricType.text_generation()}'"
             )
