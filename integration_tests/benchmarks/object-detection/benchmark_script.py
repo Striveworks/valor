@@ -277,7 +277,7 @@ def run_benchmarking_analysis(
         results = {
             "number_of_datums": limit,
             "number_of_unique_labels": eval_.meta["labels"],
-            "number_of_annotations": eval_.meta["labels"],
+            "number_of_annotations": eval_.meta["annotations"],
             "ingest_runtime": f"{(ingest_time):.1f} seconds",
             "eval_runtime": f"{(eval_.meta['duration']):.1f} seconds",
         }
