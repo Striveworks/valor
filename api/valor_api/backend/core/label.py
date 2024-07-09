@@ -208,7 +208,7 @@ def create_labels(
         db.commit()
     except IntegrityError as e:
         db.rollback()
-        raise e  # this should never be called
+        raise e
 
     # get label rows and match output order to users request
     label_rows = db.query(

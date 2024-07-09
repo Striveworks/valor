@@ -14,66 +14,62 @@ def create_datums(
     datums: list[schemas.Datum],
     datasets: list[models.Dataset],
     ignore_existing_datums: bool,
-) -> list[models.Datum]:
+) -> dict[tuple[int, str], int]:
     """Creates datums in bulk
 
     Parameters
     ----------
-    db
+    db : Session
         The database Session you want to query against.
-    datums
+    datums : list[schemas.Datum]
         The datums to add to the database.
-    datasets
+    datasets : list[models.Dataset]
         The datasets to link to the datums. This list should be the same length as the datums list.
-    ignore_existing_datums
+    ignore_existing_datums : bool
         If True, will ignore datums that already exist in the database.
         If False, will raise an error if any datums already exist.
         Default is False.
 
     Returns
     -------
-    list[models.Datum]
-        The datums that were created.
+    dict[tuple[int, str], int]
+        A mapping of (dataset_id, datum_uid) to a datum's row id.
     """
-    rows = [
-        models.Datum(
-            uid=datum.uid,
-            dataset_id=dataset.id,
-            meta=datum.metadata,
-        )
+
+    values = [
+        {
+            "uid": datum.uid,
+            "dataset_id": dataset.id,
+            "meta": datum.metadata,
+        }
         for datum, dataset in zip(datums, datasets)
     ]
 
     try:
-        if not ignore_existing_datums:
-            db.add_all(rows)
-            db.commit()
-            return rows
+        if ignore_existing_datums:
+            insert_stmt = (
+                insert(models.Datum)
+                .values(values)
+                .on_conflict_do_nothing(index_elements=["dataset_id", "uid"])
+                .returning(
+                    models.Datum.id, models.Datum.dataset_id, models.Datum.uid
+                )
+            )
+        else:
+            insert_stmt = (
+                insert(models.Datum)
+                .values(values)
+                .returning(
+                    models.Datum.id, models.Datum.dataset_id, models.Datum.uid
+                )
+            )
 
-        values = [
-            {
-                "uid": row.uid,
-                "dataset_id": row.dataset_id,
-                "meta": row.meta,
-            }
-            for row in rows
-        ]
-        insert_stmt = (
-            insert(models.Datum)
-            .values(values)
-            .on_conflict_do_nothing(index_elements=["dataset_id", "uid"])
-            .returning(models.Datum.id, models.Datum.uid)
-        )
-
-        ids_uids = db.execute(insert_stmt)
+        datum_row_info = db.execute(insert_stmt).all()
         db.commit()
-        uid_to_id = {uid: id_ for id_, uid in ids_uids}
-        new_rows = []
-        for row in rows:
-            if row.uid in uid_to_id:
-                row.id = uid_to_id[row.uid]
-                new_rows.append(row)
-        return new_rows
+        return {
+            (dataset_id, datum_uid): datum_id
+            for datum_id, dataset_id, datum_uid in datum_row_info
+        }
 
     except IntegrityError as e:
         db.rollback()
