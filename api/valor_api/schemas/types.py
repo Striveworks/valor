@@ -218,9 +218,6 @@ def _validate_prediction_annotations(annotations: list["Annotation"]) -> None:
                 labels.append(label)
                 indices[label] = index
 
-        elif "text-generation" in annotation.implied_task_types:
-            pass
-
 
 class Label(BaseModel):
     """
