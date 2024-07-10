@@ -381,11 +381,9 @@ def delete_model(
         raise exceptions.EvaluationRunningError(model_name=name)
 
     model = (
-        db.query(models.Model)
-        .where(models.Model.name == name)
-        .one_or_none()
+        db.query(models.Model).where(models.Model.name == name).one_or_none()
     )
-    if not model:        
+    if not model:
         raise exceptions.ModelDoesNotExistError(name)
 
     try:

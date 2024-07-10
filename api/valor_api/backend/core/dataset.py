@@ -70,7 +70,6 @@ def create_dataset(
         return row
     except IntegrityError:
         db.rollback()
-        print("==== Found existing dataset. ====")
         raise exceptions.DatasetAlreadyExistsError(dataset.name)
 
 
@@ -509,7 +508,13 @@ def delete_dataset(
     if core.count_active_evaluations(db=db, dataset_names=[name]):
         raise exceptions.EvaluationRunningError(dataset_name=name)
 
-    print("=== ENTERING DELETE ===")
+    dataset = (
+        db.query(models.Dataset)
+        .where(models.Dataset.name == name)
+        .one_or_none()
+    )
+    if not dataset:
+        raise exceptions.DatasetDoesNotExistError(name)
 
     dataset = (
         db.query(models.Dataset)
@@ -517,9 +522,8 @@ def delete_dataset(
         .one_or_none()
     )
     if not dataset:
-        print(f"==== Couldn't find dataset with name {name} ====")
         raise exceptions.DatasetDoesNotExistError(name)
-    
+
     try:
         dataset.status = enums.TableStatus.DELETING
         db.commit()
