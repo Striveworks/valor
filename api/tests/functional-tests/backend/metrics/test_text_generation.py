@@ -95,7 +95,7 @@ def rag_context_per_prediction():
 
 
 @pytest.fixture
-def rag_test_data(
+def rag_data(
     db: Session,
     dataset_name: str,
     model_name: str,
@@ -208,7 +208,7 @@ def content_gen_q2() -> schemas.Datum:
 
 
 @pytest.fixture
-def content_gen_test_data(
+def content_gen_data(
     db: Session,
     dataset_name: str,
     model_name: str,
@@ -332,11 +332,11 @@ def mocked_compute_rouge_none(*args, **kwargs):
     "valor_api.backend.core.llm_clients.WrappedMistralAIClient.answer_relevance",
     mocked_answer_relevance,
 )
-def test__compute_text_generation(
+def test__compute_text_generation_rag(
     db: Session,
     dataset_name: str,
     model_name: str,
-    rag_test_data,
+    rag_data,
 ):
     """
     Tests the _compute_text_generation function.
@@ -633,7 +633,7 @@ def test_text_generation_rag(
     db: Session,
     dataset_name: str,
     model_name: str,
-    rag_test_data,
+    rag_data,
 ):
     metrics_to_return = [
         MetricType.AnswerRelevance,
@@ -767,7 +767,7 @@ def test_text_generation_content_gen(
     db: Session,
     dataset_name: str,
     model_name: str,
-    content_gen_test_data,
+    content_gen_data,
 ):
     metrics_to_return = [
         MetricType.Coherence,
