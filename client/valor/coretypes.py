@@ -459,7 +459,7 @@ class Dataset(StaticCollection):
 
         Parameters
         ----------
-        groundtruth: GroundTruth
+        groundtruth : GroundTruth
             The ground truth to create.
         """
         Client(self.conn).create_groundtruths(

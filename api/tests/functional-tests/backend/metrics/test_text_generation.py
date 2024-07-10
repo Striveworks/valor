@@ -29,6 +29,16 @@ CONTENT_GEN_PREDICTIONS = [
 
 
 @pytest.fixture
+def rag_dataset_name() -> str:
+    return "rag_test_dataset"
+
+
+@pytest.fixture
+def rag_model_name() -> str:
+    return "rag_test_model"
+
+
+@pytest.fixture
 def rag_q0() -> schemas.Datum:
     return schemas.Datum(
         uid="uid0",
@@ -97,8 +107,8 @@ def rag_context_per_prediction():
 @pytest.fixture
 def rag_data(
     db: Session,
-    dataset_name: str,
-    model_name: str,
+    rag_dataset_name: str,
+    rag_model_name: str,
     rag_q0: schemas.Datum,
     rag_q1: schemas.Datum,
     rag_q2: schemas.Datum,
@@ -111,7 +121,7 @@ def rag_data(
     for i in range(len(datums)):
         gts.append(
             schemas.GroundTruth(
-                dataset_name=dataset_name,
+                dataset_name=rag_dataset_name,
                 datum=datums[i],
                 annotations=[
                     schemas.Annotation(text=rag_references[i]),
@@ -125,8 +135,8 @@ def rag_data(
     for i in range(len(datums)):
         preds.append(
             schemas.Prediction(
-                dataset_name=dataset_name,
-                model_name=model_name,
+                dataset_name=rag_dataset_name,
+                model_name=rag_model_name,
                 datum=datums[i],
                 annotations=[
                     schemas.Annotation(
@@ -140,18 +150,18 @@ def rag_data(
     crud.create_dataset(
         db=db,
         dataset=schemas.Dataset(
-            name=dataset_name,
+            name=rag_dataset_name,
             metadata={"type": "text"},
         ),
     )
 
     crud.create_groundtruths(db=db, groundtruths=gts)
-    crud.finalize(db=db, dataset_name=dataset_name)
+    crud.finalize(db=db, dataset_name=rag_dataset_name)
 
     crud.create_model(
         db=db,
         model=schemas.Model(
-            name=model_name,
+            name=rag_model_name,
             metadata={
                 "type": "text",
                 "hf_model_name": """mistralai/Mixtral-8x7B-Instruct-v0.1""",
@@ -163,7 +173,9 @@ def rag_data(
         ),
     )
     crud.create_predictions(db=db, predictions=preds)
-    crud.finalize(db=db, dataset_name=dataset_name, model_name=model_name)
+    crud.finalize(
+        db=db, dataset_name=rag_dataset_name, model_name=rag_model_name
+    )
 
     assert len(db.query(models.Datum).all()) == 3
     assert (
@@ -172,6 +184,16 @@ def rag_data(
     assert len(db.query(models.Label).all()) == 0
     assert len(db.query(models.GroundTruth).all()) == 9
     assert len(db.query(models.Prediction).all()) == 3
+
+
+@pytest.fixture
+def content_gen_dataset_name() -> str:
+    return "content_gen_test_dataset"
+
+
+@pytest.fixture
+def content_gen_model_name() -> str:
+    return "content_gen_test_model"
 
 
 @pytest.fixture
@@ -210,8 +232,8 @@ def content_gen_q2() -> schemas.Datum:
 @pytest.fixture
 def content_gen_data(
     db: Session,
-    dataset_name: str,
-    model_name: str,
+    content_gen_dataset_name: str,
+    content_gen_model_name: str,
     content_gen_q0: schemas.Datum,
     content_gen_q1: schemas.Datum,
     content_gen_q2: schemas.Datum,
@@ -222,7 +244,7 @@ def content_gen_data(
     for i in range(len(datums)):
         gts.append(
             schemas.GroundTruth(
-                dataset_name=dataset_name,
+                dataset_name=content_gen_dataset_name,
                 datum=datums[i],
                 annotations=[],
             )
@@ -232,8 +254,8 @@ def content_gen_data(
     for i in range(len(datums)):
         preds.append(
             schemas.Prediction(
-                dataset_name=dataset_name,
-                model_name=model_name,
+                dataset_name=content_gen_dataset_name,
+                model_name=content_gen_model_name,
                 datum=datums[i],
                 annotations=[
                     schemas.Annotation(
@@ -246,25 +268,29 @@ def content_gen_data(
     crud.create_dataset(
         db=db,
         dataset=schemas.Dataset(
-            name=dataset_name,
+            name=content_gen_dataset_name,
             metadata={"type": "text"},
         ),
     )
 
     crud.create_groundtruths(db=db, groundtruths=gts)
-    crud.finalize(db=db, dataset_name=dataset_name)
+    crud.finalize(db=db, dataset_name=content_gen_dataset_name)
 
     crud.create_model(
         db=db,
         model=schemas.Model(
-            name=model_name,
+            name=content_gen_model_name,
             metadata={
                 "type": "text",
             },
         ),
     )
     crud.create_predictions(db=db, predictions=preds)
-    crud.finalize(db=db, dataset_name=dataset_name, model_name=model_name)
+    crud.finalize(
+        db=db,
+        dataset_name=content_gen_dataset_name,
+        model_name=content_gen_model_name,
+    )
 
     assert len(db.query(models.Datum).all()) == 3
     assert len(db.query(models.Annotation).all()) == 6
@@ -334,8 +360,8 @@ def mocked_compute_rouge_none(*args, **kwargs):
 )
 def test__compute_text_generation_rag(
     db: Session,
-    dataset_name: str,
-    model_name: str,
+    rag_dataset_name: str,
+    rag_model_name: str,
     rag_data,
 ):
     """
@@ -349,7 +375,7 @@ def test__compute_text_generation_rag(
                     lhs=schemas.Symbol(
                         name=schemas.SupportedSymbol.DATASET_NAME,
                     ),
-                    rhs=schemas.Value.infer(dataset_name),
+                    rhs=schemas.Value.infer(rag_dataset_name),
                     op=schemas.FilterOperator.EQ,
                 ),
             ],
@@ -361,7 +387,7 @@ def test__compute_text_generation_rag(
                     lhs=schemas.Symbol(
                         name=schemas.SupportedSymbol.MODEL_NAME,
                     ),
-                    rhs=schemas.Value.infer(model_name),
+                    rhs=schemas.Value.infer(rag_model_name),
                     op=schemas.FilterOperator.EQ,
                 ),
             ],
@@ -631,8 +657,8 @@ def test__compute_text_generation_rag(
 )
 def test_text_generation_rag(
     db: Session,
-    dataset_name: str,
-    model_name: str,
+    rag_dataset_name: str,
+    rag_model_name: str,
     rag_data,
 ):
     metrics_to_return = [
@@ -644,8 +670,8 @@ def test_text_generation_rag(
 
     # default request
     job_request = schemas.EvaluationRequest(
-        dataset_names=[dataset_name],
-        model_names=[model_name],
+        dataset_names=[rag_dataset_name],
+        model_names=[rag_model_name],
         parameters=schemas.EvaluationParameters(
             task_type=TaskType.TEXT_GENERATION,
             metrics_to_return=metrics_to_return,
@@ -734,8 +760,8 @@ def test_text_generation_rag(
 
     # Check that specifying rouge_use_stemmer still works even if rouge_types is not supplied.
     job_request = schemas.EvaluationRequest(
-        dataset_names=[dataset_name],
-        model_names=[model_name],
+        dataset_names=[rag_dataset_name],
+        model_names=[rag_model_name],
         parameters=schemas.EvaluationParameters(
             task_type=TaskType.TEXT_GENERATION,
             metrics_to_return=[MetricType.ROUGE],
@@ -765,8 +791,8 @@ def test_text_generation_rag(
 )
 def test_text_generation_content_gen(
     db: Session,
-    dataset_name: str,
-    model_name: str,
+    content_gen_dataset_name: str,
+    content_gen_model_name: str,
     content_gen_data,
 ):
     metrics_to_return = [
@@ -775,8 +801,8 @@ def test_text_generation_content_gen(
 
     # default request
     job_request = schemas.EvaluationRequest(
-        dataset_names=[dataset_name],
-        model_names=[model_name],
+        dataset_names=[content_gen_dataset_name],
+        model_names=[content_gen_model_name],
         parameters=schemas.EvaluationParameters(
             task_type=TaskType.TEXT_GENERATION,
             metrics_to_return=metrics_to_return,
