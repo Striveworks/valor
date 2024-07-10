@@ -1,42 +1,11 @@
-from sqlalchemy import and_, delete, select
+from collections import defaultdict
+
+from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from valor_api import enums, exceptions, schemas
 from valor_api.backend import core, models
-
-
-def _check_if_datum_has_prediction(
-    db: Session, datum: schemas.Datum, model_name: str, dataset_name: str
-) -> None:
-    """Checks to see if datum has existing annotations."""
-    if db.query(
-        select(models.Annotation.id)
-        .select_from(models.Annotation)
-        .join(
-            models.Model,
-            and_(
-                models.Model.id == models.Annotation.model_id,
-                models.Model.name == model_name,
-            ),
-        )
-        .join(
-            models.Datum,
-            and_(
-                models.Datum.id == models.Annotation.datum_id,
-                models.Datum.uid == datum.uid,
-            ),
-        )
-        .join(
-            models.Dataset,
-            and_(
-                models.Dataset.id == models.Datum.dataset_id,
-                models.Dataset.name == dataset_name,
-            ),
-        )
-        .subquery()
-    ).all():
-        raise exceptions.AnnotationAlreadyExistsError(datum.uid)
 
 
 def create_predictions(
@@ -53,6 +22,7 @@ def create_predictions(
     predictions
         The predictions to create.
     """
+
     # check model status
     dataset_and_model_names = set(
         [
@@ -73,34 +43,94 @@ def create_predictions(
             )
 
     # check no predictions have already been added
+    map_dataset_model_to_datum = defaultdict(list)
     for prediction in predictions:
-        _check_if_datum_has_prediction(
-            db,
-            prediction.datum,
-            prediction.model_name,
-            prediction.dataset_name,
-        )
+        map_dataset_model_to_datum[
+            (prediction.dataset_name, prediction.model_name)
+        ].append(prediction.datum.uid)
 
-    dataset_names = set([dm[0] for dm in dataset_and_model_names])
+    if (
+        db.scalar(
+            select(func.count(models.Annotation.id))
+            .join(
+                models.Datum,
+                models.Datum.id == models.Annotation.datum_id,
+            )
+            .join(
+                models.Dataset,
+                models.Dataset.id == models.Datum.dataset_id,
+            )
+            .join(
+                models.Model,
+                models.Model.id == models.Annotation.model_id,
+            )
+            .where(
+                or_(
+                    *[
+                        and_(
+                            models.Dataset.name == dataset_name,
+                            models.Model.name == model_name,
+                            models.Datum.uid.in_(datum_uids),
+                        )
+                        for (
+                            dataset_name,
+                            model_name,
+                        ), datum_uids in map_dataset_model_to_datum.items()
+                    ]
+                )
+            )
+        )
+        != 0
+    ):
+        raise exceptions.PredictionAlreadyExistsError
+
     model_names = set([dm[1] for dm in dataset_and_model_names])
-    dataset_name_to_dataset = {
-        dataset_name: core.fetch_dataset(db=db, name=dataset_name)
-        for dataset_name in dataset_names
-    }
     model_name_to_model = {
         model_name: core.fetch_model(db=db, name=model_name)
         for model_name in model_names
     }
 
-    # possible to speed this up by doing a single query?
-    datums = [
-        core.fetch_datum(
-            db,
-            dataset_id=dataset_name_to_dataset[prediction.dataset_name].id,
-            uid=prediction.datum.uid,
+    # retrieve datum ids
+    dataset_to_datum_uids = defaultdict(list)
+    for prediction in predictions:
+        dataset_to_datum_uids[prediction.dataset_name].append(
+            prediction.datum.uid
         )
-        for prediction in predictions
-    ]
+    dataset_datum_to_datum_id = {
+        (dataset_name, datum_uid): datum_id
+        for datum_id, dataset_name, datum_uid in (
+            db.query(
+                models.Datum.id,
+                models.Dataset.name,
+                models.Datum.uid,
+            )
+            .join(
+                models.Dataset,
+                models.Dataset.id == models.Datum.dataset_id,
+            )
+            .where(
+                or_(
+                    *[
+                        and_(
+                            models.Dataset.name == dataset_name,
+                            models.Datum.uid.in_(datum_uids),
+                        )
+                        for dataset_name, datum_uids in dataset_to_datum_uids.items()
+                    ]
+                )
+            )
+            .all()
+        )
+    }
+    try:
+        datum_ids = [
+            dataset_datum_to_datum_id[
+                (prediction.dataset_name, prediction.datum.uid)
+            ]
+            for prediction in predictions
+        ]
+    except KeyError as e:
+        raise exceptions.DatumDoesNotExistError(e.args[0])
 
     # create labels
     all_labels = [
@@ -115,13 +145,14 @@ def create_predictions(
     annotation_ids = core.create_annotations(
         db=db,
         annotations=[prediction.annotations for prediction in predictions],
-        datums=datums,
+        datum_ids=datum_ids,
         models_=[
             model_name_to_model[prediction.model_name]
             for prediction in predictions
         ],
     )
 
+    # create predictions
     prediction_mappings = []
     for prediction, annotation_ids_per_prediction in zip(
         predictions, annotation_ids

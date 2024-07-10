@@ -139,6 +139,14 @@ class PredictionDoesNotExistError(ClientException):
     pass
 
 
+class PredictionAlreadyExistsError(ClientException):
+    """
+    Raises an exception if a prediction already exists for a given model, dataset, and datum
+    """
+
+    pass
+
+
 class EvaluationRequestError(ClientException):
     """
     Raises an exception if an evaluation request fails validation.

@@ -28,7 +28,7 @@ def create_groundtruths(
     -------
     None
     """
-    # check dataset statuses
+    # check status of dataset(s)
     dataset_names = set(
         [groundtruth.dataset_name for groundtruth in groundtruths]
     )
@@ -40,6 +40,7 @@ def create_groundtruths(
         if dataset.status != enums.TableStatus.CREATING:
             raise exceptions.DatasetFinalizedError(dataset.name)
 
+    # create datums
     datums = core.create_datums(
         db,
         [groundtruth.datum for groundtruth in groundtruths],
@@ -49,16 +50,25 @@ def create_groundtruths(
         ],
         ignore_existing_datums=ignore_existing_datums,
     )
-
     if ignore_existing_datums:
         # datums only contains the newly created ones, so we need to filter out
         # the ones that already existed
         groundtruths = [
             gt
             for gt in groundtruths
-            if gt.datum.uid in [datum.uid for datum in datums]
+            if (dataset_name_to_dataset[gt.dataset_name].id, gt.datum.uid)
+            in datums
         ]
 
+    # retrieve datum ids
+    datum_ids = [
+        datums[(dataset_name_to_dataset[gt.dataset_name].id, gt.datum.uid)]
+        for gt in groundtruths
+        if (dataset_name_to_dataset[gt.dataset_name].id, gt.datum.uid)
+        in datums
+    ]
+
+    # create labels
     all_labels = [
         label
         for groundtruth in groundtruths
@@ -71,33 +81,33 @@ def create_groundtruths(
     annotation_ids = core.create_annotations(
         db=db,
         annotations=[groundtruth.annotations for groundtruth in groundtruths],
-        datums=datums,
+        datum_ids=datum_ids,
         models_=None,
     )
 
-    groundtruth_mappings = []
+    # create groundtruths
+    groundtruth_rows = []
     for groundtruth, annotation_ids_per_groundtruth in zip(
         groundtruths, annotation_ids
     ):
         for i, annotation in enumerate(groundtruth.annotations):
             if annotation.labels:
                 for label in annotation.labels:
-                    groundtruth_mappings.append(
-                        {
-                            "annotation_id": annotation_ids_per_groundtruth[i],
-                            "label_id": label_dict[(label.key, label.value)],
-                        }
+                    groundtruth_rows.append(
+                        models.GroundTruth(
+                            annotation_id=annotation_ids_per_groundtruth[i],
+                            label_id=label_dict[(label.key, label.value)],
+                        )
                     )
             else:
-                groundtruth_mappings.append(
-                    {
-                        "annotation_id": annotation_ids_per_groundtruth[i],
-                        "label_id": None,
-                    }
+                groundtruth_rows.append(
+                    models.GroundTruth(
+                        annotation_id=annotation_ids_per_groundtruth[i],
+                        label_id=None,
+                    )
                 )
-
     try:
-        db.bulk_insert_mappings(models.GroundTruth, groundtruth_mappings)
+        db.add_all(groundtruth_rows)
         db.commit()
     except IntegrityError as e:
         db.rollback()
