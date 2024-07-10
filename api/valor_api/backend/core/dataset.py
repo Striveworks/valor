@@ -516,14 +516,6 @@ def delete_dataset(
     if not dataset:
         raise exceptions.DatasetDoesNotExistError(name)
 
-    dataset = (
-        db.query(models.Dataset)
-        .where(models.Dataset.name == name)
-        .one_or_none()
-    )
-    if not dataset:
-        raise exceptions.DatasetDoesNotExistError(name)
-
     try:
         dataset.status = enums.TableStatus.DELETING
         db.commit()
