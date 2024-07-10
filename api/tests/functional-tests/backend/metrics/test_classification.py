@@ -711,6 +711,22 @@ def test_compute_roc_auc(
         )
     )
 
+    groundtruths = generate_select(
+        models.GroundTruth,
+        models.Annotation.datum_id.label("datum_id"),
+        models.Dataset.name.label("dataset_name"),
+        filters=groundtruth_filter,
+        label_source=models.GroundTruth,
+    ).cte()
+
+    predictions = generate_select(
+        models.Prediction,
+        models.Annotation.datum_id.label("datum_id"),
+        models.Dataset.name.label("dataset_name"),
+        filters=prediction_filter,
+        label_source=models.Prediction,
+    ).cte()
+
     labels = fetch_union_of_labels(
         db=db,
         rhs=prediction_filter,
@@ -726,8 +742,8 @@ def test_compute_roc_auc(
     assert (
         _compute_roc_auc(
             db=db,
-            prediction_filter=prediction_filter,
-            groundtruth_filter=groundtruth_filter,
+            groundtruths=groundtruths,
+            predictions=predictions,
             grouper_key="animal",
             grouper_mappings=grouper_mappings,
         )
@@ -736,19 +752,18 @@ def test_compute_roc_auc(
     assert (
         _compute_roc_auc(
             db=db,
-            prediction_filter=prediction_filter,
-            groundtruth_filter=groundtruth_filter,
+            groundtruths=groundtruths,
+            predictions=predictions,
             grouper_key="color",
             grouper_mappings=grouper_mappings,
         )
         == 0.43125
     )
-
     assert (
         _compute_roc_auc(
             db=db,
-            prediction_filter=prediction_filter,
-            groundtruth_filter=groundtruth_filter,
+            groundtruths=groundtruths,
+            predictions=predictions,
             grouper_key="not a key",
             grouper_mappings=grouper_mappings,
         )
@@ -833,11 +848,27 @@ def test_compute_roc_auc_groupby_metadata(
         evaluation_type=enums.TaskType.CLASSIFICATION,
     )
 
+    groundtruths = generate_select(
+        models.GroundTruth,
+        models.Annotation.datum_id.label("datum_id"),
+        models.Dataset.name.label("dataset_name"),
+        filters=groundtruth_filter,
+        label_source=models.GroundTruth,
+    ).cte()
+
+    predictions = generate_select(
+        models.Prediction,
+        models.Annotation.datum_id.label("datum_id"),
+        models.Dataset.name.label("dataset_name"),
+        filters=prediction_filter,
+        label_source=models.Prediction,
+    ).cte()
+
     assert (
         _compute_roc_auc(
             db,
-            prediction_filter=prediction_filter,
-            groundtruth_filter=groundtruth_filter,
+            groundtruths=groundtruths,
+            predictions=predictions,
             grouper_key="animal",
             grouper_mappings=grouper_mappings,
         )
@@ -925,10 +956,26 @@ def test_compute_roc_auc_with_label_map(
         evaluation_type=enums.TaskType.CLASSIFICATION,
     )
 
+    groundtruths = generate_select(
+        models.GroundTruth,
+        models.Annotation.datum_id.label("datum_id"),
+        models.Dataset.name.label("dataset_name"),
+        filters=groundtruth_filter,
+        label_source=models.GroundTruth,
+    ).cte()
+
+    predictions = generate_select(
+        models.Prediction,
+        models.Annotation.datum_id.label("datum_id"),
+        models.Dataset.name.label("dataset_name"),
+        filters=prediction_filter,
+        label_source=models.Prediction,
+    ).cte()
+
     roc_auc = _compute_roc_auc(
         db=db,
-        prediction_filter=prediction_filter,
-        groundtruth_filter=groundtruth_filter,
+        groundtruths=groundtruths,
+        predictions=predictions,
         grouper_key="animal",
         grouper_mappings=grouper_mappings,
     )
