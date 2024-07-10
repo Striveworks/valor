@@ -11,7 +11,6 @@ from valor_api.backend.metrics.metric_utils import (
     create_grouper_mappings,
     create_metric_mappings,
     get_or_create_row,
-    log_evaluation_duration,
     log_evaluation_item_counts,
     prepare_filter_for_evaluation,
     validate_computation,
@@ -304,10 +303,5 @@ def compute_semantic_segmentation_metrics(
             mapping,
             columns_to_ignore=["value"],
         )
-
-    log_evaluation_duration(
-        evaluation=evaluation,
-        db=db,
-    )
 
     return evaluation_id
