@@ -402,7 +402,6 @@ def _compute_roc_auc(
 
     basic_counts_query = (
         select(
-            groundtruths.c.datum_id,
             predictions.c.score,
             (groundtruth_labels.c.value == prediction_labels.c.value)
             .cast(Integer)
@@ -411,7 +410,6 @@ def _compute_roc_auc(
             .cast(Integer)
             .label("is_false_positive"),
             groundtruth_labels.c.key.label("label_key"),
-            groundtruth_labels.c.value.label("groundtruth_label_value"),
             prediction_labels.c.value.label("prediction_label_value"),
         )
         .select_from(predictions)
@@ -449,39 +447,13 @@ def _compute_roc_auc(
         order_by=basic_counts_query.c.score.desc(),
     )
 
-    tpr_fpr_cumulative = (
-        select(
-            basic_counts_query.c.score,
-            cumulative_tp.label("cumulative_tp"),
-            cumulative_fp.label("cumulative_fp"),
-            basic_counts_query.c.label_key,
-            basic_counts_query.c.groundtruth_label_value,
-            basic_counts_query.c.prediction_label_value,
-            groundtruths_per_label_key_query.c.gt_counts_per_key,
-            groundtruths_per_label_kv_query.c.gt_counts_per_label,
-        )
-        .join(
-            groundtruths_per_label_key_query,
-            groundtruths_per_label_key_query.c.key
-            == basic_counts_query.c.label_key,
-        )
-        .join(
-            groundtruths_per_label_kv_query,
-            and_(
-                groundtruths_per_label_kv_query.c.key
-                == basic_counts_query.c.label_key,
-                groundtruths_per_label_kv_query.c.value
-                == basic_counts_query.c.groundtruth_label_value,
-                groundtruths_per_label_kv_query.c.gt_counts_per_label > 0,
-                (
-                    groundtruths_per_label_key_query.c.gt_counts_per_key
-                    - groundtruths_per_label_kv_query.c.gt_counts_per_label
-                )
-                > 0,
-            ),
-        )
-        .subquery("tpr_fpr_cumulative")
-    )
+    tpr_fpr_cumulative = select(
+        basic_counts_query.c.score,
+        cumulative_tp.label("cumulative_tp"),
+        cumulative_fp.label("cumulative_fp"),
+        basic_counts_query.c.label_key,
+        basic_counts_query.c.prediction_label_value,
+    ).subquery("tpr_fpr_cumulative")
 
     tpr_fpr_rates = (
         select(
@@ -498,7 +470,6 @@ def _compute_roc_auc(
                 )
             ).label("fpr"),
             tpr_fpr_cumulative.c.label_key,
-            tpr_fpr_cumulative.c.groundtruth_label_value,
             tpr_fpr_cumulative.c.prediction_label_value,
         )
         .join(
