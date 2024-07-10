@@ -1,12 +1,18 @@
 import bisect
 import heapq
+import json
 import math
+import pdb
 import random
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import Sequence, Tuple
 
+import numpy as np
+import pandas
+import rasterio
 from geoalchemy2 import functions as gfunc
+from rasterio.features import rasterize
 from sqlalchemy import and_, case, func, or_, select
 from sqlalchemy.orm import Session, aliased
 
@@ -21,7 +27,7 @@ from valor_api.backend.metrics.metric_utils import (
     prepare_filter_for_evaluation,
     validate_computation,
 )
-from valor_api.backend.query import generate_query
+from valor_api.backend.query import generate_query, generate_select
 from valor_api.enums import AnnotationType
 
 
@@ -732,6 +738,14 @@ def _compute_detection_metrics(
             "recall_score_threshold should exist in the range 0 <= threshold <= 1."
         )
 
+    if (
+        parameters.pr_curve_iou_threshold <= 0
+        or parameters.pr_curve_iou_threshold > 1.0
+    ):
+        raise ValueError(
+            "IOU thresholds should exist in the range 0 < threshold <= 1."
+        )
+
     labels = core.fetch_union_of_labels(
         db=db,
         rhs=prediction_filter,
@@ -744,7 +758,7 @@ def _compute_detection_metrics(
         evaluation_type=enums.TaskType.OBJECT_DETECTION,
     )
 
-    gt = generate_query(
+    gt = generate_select(
         models.Dataset.name.label("dataset_name"),
         models.GroundTruth.id.label("id"),
         models.GroundTruth.annotation_id.label("annotation_id"),
@@ -757,12 +771,11 @@ def _compute_detection_metrics(
         _annotation_type_to_geojson(target_type, models.Annotation).label(
             "geojson"
         ),
-        db=db,
         filters=groundtruth_filter,
         label_source=models.GroundTruth,
-    ).subquery("groundtruths")
+    )
 
-    pd = generate_query(
+    pd = generate_select(
         models.Dataset.name.label("dataset_name"),
         models.Prediction.id.label("id"),
         models.Prediction.annotation_id.label("annotation_id"),
@@ -776,215 +789,319 @@ def _compute_detection_metrics(
         _annotation_type_to_geojson(target_type, models.Annotation).label(
             "geojson"
         ),
-        db=db,
         filters=prediction_filter,
         label_source=models.Prediction,
-    ).subquery("predictions")
-
-    joint = (
-        select(
-            func.coalesce(pd.c.dataset_name, gt.c.dataset_name).label(
-                "dataset_name"
-            ),
-            gt.c.datum_uid.label("gt_datum_uid"),
-            pd.c.datum_uid.label("pd_datum_uid"),
-            gt.c.geojson.label("gt_geojson"),
-            gt.c.id.label("gt_id"),
-            pd.c.id.label("pd_id"),
-            gt.c.label_id_grouper.label("gt_label_id_grouper"),
-            pd.c.label_id_grouper.label("pd_label_id_grouper"),
-            gt.c.annotation_id.label("gt_ann_id"),
-            pd.c.annotation_id.label("pd_ann_id"),
-            pd.c.score.label("score"),
-        )
-        .select_from(pd)
-        .outerjoin(
-            gt,
-            and_(
-                pd.c.datum_id == gt.c.datum_id,
-                pd.c.label_id_grouper == gt.c.label_id_grouper,
-            ),
-        )
-        .subquery()
     )
 
-    # Alias the annotation table (required for joining twice)
-    gt_annotation = aliased(models.Annotation)
-    pd_annotation = aliased(models.Annotation)
+    gt_df = pandas.read_sql(gt, db.bind)  # type: ignore - pandas typing error.
+    pd_df = pandas.read_sql(pd, db.bind)  # type: ignore - pandas typing error.
+
+    joint_df = pandas.merge(
+        gt_df,
+        pd_df,
+        on=["datum_id", "label_id_grouper"],
+        how="outer",
+        suffixes=("_gt", "_pd"),
+    )
 
     # IOU Computation Block
     if target_type == AnnotationType.RASTER:
-        gintersection = gfunc.ST_Count(
-            gfunc.ST_Intersection(gt_annotation.raster, pd_annotation.raster)
-        )
-        gunion_gt = gfunc.ST_Count(gt_annotation.raster)
-        gunion_pd = gfunc.ST_Count(pd_annotation.raster)
-        gunion = gunion_gt + gunion_pd - gintersection
-        iou_computation = gintersection / gunion
-    else:
-        gt_geom = _annotation_type_to_column(target_type, gt_annotation)
-        pd_geom = _annotation_type_to_column(target_type, pd_annotation)
-        gintersection = gfunc.ST_Intersection(gt_geom, pd_geom)
-        gunion = gfunc.ST_Union(gt_geom, pd_geom)
-        iou_computation = gfunc.ST_Area(gintersection) / gfunc.ST_Area(gunion)
 
-    ious = (
-        select(
-            joint.c.dataset_name,
-            joint.c.pd_datum_uid,
-            joint.c.gt_datum_uid,
-            joint.c.gt_id.label("gt_id"),
-            joint.c.pd_id.label("pd_id"),
-            joint.c.gt_label_id_grouper,
-            joint.c.score,
-            func.coalesce(iou_computation, 0).label("iou"),
-            joint.c.gt_geojson,
-        )
-        .select_from(joint)
-        .join(gt_annotation, gt_annotation.id == joint.c.gt_ann_id)
-        .join(pd_annotation, pd_annotation.id == joint.c.pd_ann_id)
-        .subquery()
-    )
+        def wkt_to_raster(wkt_data, out_shape=(512, 512), transform=None):
+            geom = json.loads(wkt_data)
 
-    ordered_ious = (
-        db.query(ious).order_by(-ious.c.score, -ious.c.iou, ious.c.gt_id).all()
-    )
+            if transform is None:
+                transform = rasterio.transform.from_bounds(
+                    0,
+                    0,
+                    out_shape[1],
+                    out_shape[0],
+                    out_shape[1],
+                    out_shape[0],
+                )
+            # TODO not used?
+            raster = np.zeros(out_shape, dtype=rasterio.uint8)
+            rasterized_geom = rasterize(
+                [geom],
+                out_shape=out_shape,
+                transform=transform,
+                fill=0,
+                dtype=rasterio.uint8,
+            )
+            return rasterized_geom
 
-    matched_pd_set = set()
-    matched_sorted_ranked_pairs = defaultdict(list)
-
-    for row in ordered_ious:
-        (
-            dataset_name,
-            pd_datum_uid,
-            gt_datum_uid,
-            gt_id,
-            pd_id,
-            gt_label_id_grouper,
-            score,
-            iou,
-            gt_geojson,
-        ) = row
-
-        if pd_id not in matched_pd_set:
-            matched_pd_set.add(pd_id)
-            matched_sorted_ranked_pairs[gt_label_id_grouper].append(
-                RankedPair(
-                    dataset_name=dataset_name,
-                    pd_datum_uid=pd_datum_uid,
-                    gt_datum_uid=gt_datum_uid,
-                    gt_geojson=gt_geojson,
-                    gt_id=gt_id,
-                    pd_id=pd_id,
-                    score=score,
-                    iou=iou,
-                    is_match=True,  # we're joining on grouper IDs, so only matches are included in matched_sorted_ranked_pairs
+        iou_calculation_df = (
+            joint_df.loc[
+                ~joint_df["geojson_gt"].isnull()
+                & ~joint_df["geojson_pd"].isnull(),
+                ["geojson_gt", "geojson_pd"],
+            ]
+            .applymap(wkt_to_raster)  # type: ignore - pandas typing issue
+            .assign(
+                intersection=lambda chain_df: chain_df.apply(
+                    lambda row: np.logical_and(
+                        row["geojson_gt"], row["geojson_pd"]
+                    ).sum(),
+                    axis=1,
                 )
             )
+            .assign(
+                union_=lambda chain_df: chain_df["geojson_gt"].apply(np.sum)
+                + chain_df["geojson_pd"].apply(np.sum)
+                - chain_df["intersection"]
+            )
+            .assign(
+                iou_=lambda chain_df: chain_df["intersection"]
+                / chain_df["union_"]
+            )
+        )
+        joint_df = joint_df.join(iou_calculation_df["iou_"])
+    else:
+
+        def wkt_to_array(wkt_data):
+            coordinates = json.loads(wkt_data)["coordinates"][0]
+            return np.array(coordinates)
+
+        def bbox_intersection(bbox1, bbox2):
+            # Calculate intersection coordinates
+            xmin_inter = max(bbox1[:, 0].min(), bbox2[:, 0].min())
+            ymin_inter = max(bbox1[:, 1].min(), bbox2[:, 1].min())
+            xmax_inter = min(bbox1[:, 0].max(), bbox2[:, 0].max())
+            ymax_inter = min(bbox1[:, 1].max(), bbox2[:, 1].max())
+
+            # Calculate width and height of intersection area
+            width = max(0, xmax_inter - xmin_inter)
+            height = max(0, ymax_inter - ymin_inter)
+
+            # Calculate intersection area
+            intersection_area = width * height
+            return intersection_area
+
+        # Function to calculate union area of two bounding boxes
+        def bbox_union(bbox1, bbox2):
+            area1 = (bbox1[:, 0].max() - bbox1[:, 0].min()) * (
+                bbox1[:, 1].max() - bbox1[:, 1].min()
+            )
+            area2 = (bbox2[:, 0].max() - bbox2[:, 0].min()) * (
+                bbox2[:, 1].max() - bbox2[:, 1].min()
+            )
+            union_area = area1 + area2 - bbox_intersection(bbox1, bbox2)
+            return union_area
+
+        # Function to calculate IoU of two bounding boxes
+        def bbox_iou(bbox1, bbox2):
+            intersection = bbox_intersection(bbox1, bbox2)
+            union = bbox_union(bbox1, bbox2)
+            iou = intersection / union
+            return iou
+
+        iou_calculation_df = (
+            joint_df.loc[
+                ~joint_df["geojson_gt"].isnull()
+                & ~joint_df["geojson_pd"].isnull(),
+                ["geojson_gt", "geojson_pd"],
+            ]
+            .applymap(wkt_to_array)  # type: ignore - pandas typing issue
+            .apply(
+                lambda row: bbox_iou(row["geojson_gt"], row["geojson_pd"]),
+                axis=1,
+            )
+        ).rename("iou_")
+
+        joint_df = joint_df.join(iou_calculation_df)
+
+    joint_df["iou_"] = joint_df["iou_"].fillna(0)
+
+    # filter out null groundtruths and sort by score and iou so that idxmax returns the best row for each prediction
+    joint_df = joint_df[~joint_df["id_gt"].isnull()].sort_values(
+        by=["score", "iou_"], ascending=[False, False]
+    )
+
+    # get the best prediction (in terms of score and iou) for each groundtruth
+    prediction_has_best_score = joint_df.groupby(["id_pd"])["score"].idxmax()
+
+    # TODO remove unnecessary columns here like geojson_pd/gt
+    filtered_joint_df = joint_df.loc[prediction_has_best_score]
 
     # get predictions that didn't make it into matched_sorted_ranked_pairs
     # because they didn't have a corresponding groundtruth to pair with
-    predictions_not_in_sorted_ranked_pairs = (
-        db.query(
-            pd.c.id,
-            pd.c.score,
-            pd.c.dataset_name,
-            pd.c.datum_uid,
-            pd.c.label_id_grouper,
-        )
-        .filter(pd.c.id.notin_(matched_pd_set))
-        .all()
+    # TODO is this used?
+    predictions_not_in_sorted_ranked_pairs_df = joint_df.drop(
+        prediction_has_best_score, axis=0
     )
 
-    for (
-        pd_id,
-        score,
-        dataset_name,
-        pd_datum_uid,
-        grouper_id,
-    ) in predictions_not_in_sorted_ranked_pairs:
-        if (
-            grouper_id in matched_sorted_ranked_pairs
-            and pd_id not in matched_pd_set
-        ):
-            # add to sorted_ranked_pairs in sorted order
-            bisect.insort(  # type: ignore - bisect type issue
-                matched_sorted_ranked_pairs[grouper_id],
-                RankedPair(
-                    dataset_name=dataset_name,
-                    pd_datum_uid=pd_datum_uid,
-                    gt_datum_uid=None,
-                    gt_geojson=None,
-                    gt_id=None,
-                    pd_id=pd_id,
-                    score=score,
-                    iou=0,
-                    is_match=False,
-                ),
-                key=lambda rp: -rp.score,  # bisect assumes decreasing order
-            )
-
-    groundtruths_per_grouper = defaultdict(list)
-    number_of_groundtruths_per_grouper = defaultdict(int)
-
-    groundtruths = db.query(
-        gt.c.id,
-        gt.c.label_id_grouper,
-        gt.c.datum_uid,
-        gt.c.dataset_name,
+    # get the number of groundtruth observations per grouper key
+    number_of_groundtruths_per_grouper_df = (
+        gt_df.groupby("label_id_grouper", as_index=False)["id"]
+        .nunique()
+        .rename(columns={"id": "gts_per_grouper"})
     )
 
-    for gt_id, grouper_id, datum_uid, dset_name in groundtruths:
-        groundtruths_per_grouper[grouper_id].append(
-            (dset_name, datum_uid, gt_id)
-        )
-        number_of_groundtruths_per_grouper[grouper_id] += 1
-
-    if (
-        parameters.metrics_to_return
-        and enums.MetricType.PrecisionRecallCurve
-        in parameters.metrics_to_return
-    ):
-        false_positive_entries = db.query(
-            select(
-                joint.c.dataset_name,
-                joint.c.gt_datum_uid,
-                joint.c.pd_datum_uid,
-                joint.c.gt_label_id_grouper,
-                joint.c.pd_label_id_grouper,
-                joint.c.score.label("score"),
-            )
-            .select_from(joint)
-            .where(
-                or_(
-                    joint.c.gt_id.is_(None),
-                    joint.c.pd_id.is_(None),
-                )
-            )
-            .subquery()
-        ).all()
-
-        pr_curves = _compute_curves(
-            sorted_ranked_pairs=matched_sorted_ranked_pairs,
-            grouper_mappings=grouper_mappings,
-            groundtruths_per_grouper=groundtruths_per_grouper,
-            false_positive_entries=false_positive_entries,
-            iou_threshold=parameters.pr_curve_iou_threshold,
-        )
-    else:
-        pr_curves = []
-
-    ap_ar_output = []
-
-    ap_metrics, ar_metrics = _calculate_ap_and_ar(
-        sorted_ranked_pairs=matched_sorted_ranked_pairs,
-        number_of_groundtruths_per_grouper=number_of_groundtruths_per_grouper,
-        iou_thresholds=parameters.iou_thresholds_to_compute,
-        grouper_mappings=grouper_mappings,
-        recall_score_threshold=parameters.recall_score_threshold,
+    # for each parameters.iou_thresholds_to_compute and grouper_key, get all the matches in filtered_joint_df
+    # sum the true positives and true negatives where iou > threshold and score > score threshold
+    calculation_df = pandas.concat(
+        [
+            filtered_joint_df.assign(iou_threshold=threshold)
+            for threshold in parameters.iou_thresholds_to_compute
+        ],
+        ignore_index=True,
+    ).sort_values(
+        by=["label_id_grouper", "iou_threshold", "score", "iou_"],
+        ascending=False,
     )
 
-    ap_ar_output += [
+    calculation_df["recall_true_positive_flag"] = (
+        (calculation_df["iou_"] >= calculation_df["iou_threshold"])
+        & (calculation_df["score"] >= parameters.recall_score_threshold)
+        & (
+            calculation_df.groupby(
+                ["label_id_grouper", "iou_threshold", "id_gt"]
+            ).cumcount()
+            == 0
+        )  # only the first gt_id in this sorted list should be considered a true positive
+    )
+    calculation_df["precision_true_positive_flag"] = (
+        (calculation_df["iou_"] >= calculation_df["iou_threshold"])
+        & (calculation_df["score"] > 0)
+        & (
+            calculation_df.groupby(
+                ["label_id_grouper", "iou_threshold", "id_gt"]
+            ).cumcount()
+            == 0
+        )
+    )
+
+    calculation_df["recall_false_positive_flag"] = ~calculation_df[
+        "recall_true_positive_flag"
+    ]
+    calculation_df["precision_false_positive_flag"] = ~calculation_df[
+        "precision_true_positive_flag"
+    ]
+
+    # TODO delete this
+    calculation_df["delete"] = calculation_df["label_id_grouper"].map(
+        grouper_mappings["grouper_id_to_grouper_label_mapping"]
+    )
+
+    # calculate true and false positives
+    calculation_df = (
+        calculation_df.join(
+            calculation_df.groupby(
+                ["label_id_grouper", "iou_threshold"], as_index=False
+            )["recall_true_positive_flag"]
+            .cumsum()
+            .rename("rolling_recall_tp")
+        )
+        .join(
+            calculation_df.groupby(
+                ["label_id_grouper", "iou_threshold"], as_index=False
+            )["recall_false_positive_flag"]
+            .cumsum()
+            .rename("rolling_recall_fp")
+        )
+        .join(
+            calculation_df.groupby(
+                ["label_id_grouper", "iou_threshold"], as_index=False
+            )["precision_true_positive_flag"]
+            .cumsum()
+            .rename("rolling_precision_tp")
+        )
+        .join(
+            calculation_df.groupby(
+                ["label_id_grouper", "iou_threshold"], as_index=False
+            )["precision_false_positive_flag"]
+            .cumsum()
+            .rename("rolling_precision_fp")
+        )
+    )
+
+    # calculate false negatives, then precision / recall
+    calculation_df = (
+        calculation_df.merge(
+            number_of_groundtruths_per_grouper_df, on="label_id_grouper"
+        )
+        .assign(
+            rolling_recall_fn=lambda chain_df: chain_df["gts_per_grouper"]
+            - chain_df["rolling_recall_tp"]
+        )
+        .assign(
+            rolling_precision_fn=lambda chain_df: chain_df["gts_per_grouper"]
+            - chain_df["rolling_precision_tp"]
+        )
+        .assign(
+            precision=lambda chain_df: chain_df["rolling_precision_tp"]
+            / (
+                chain_df["rolling_precision_tp"]
+                + chain_df["rolling_precision_fp"]
+            )
+        )
+        .assign(
+            recall=lambda chain_df: chain_df["rolling_recall_tp"]
+            / (chain_df["rolling_recall_tp"] + chain_df["rolling_recall_fn"])
+        )
+    )
+
+    pdb.set_trace
+
+    ap_metrics_df = (
+        calculation_df[
+            ["label_id_grouper", "iou_threshold", "precision", "recall"]
+        ]
+        .groupby(["label_id_grouper", "iou_threshold"], as_index=False)
+        .apply(
+            lambda x: _calculate_101_pt_interp(
+                x["precision"].tolist(), x["recall"].tolist()
+            )
+        )
+    )
+
+    ap_metrics_df.columns = [
+        "label_id_grouper",
+        "iou_threshold",
+        "calculated_precision",
+    ]
+
+    ap_metrics_df["grouper_label"] = ap_metrics_df["label_id_grouper"].map(
+        grouper_mappings["grouper_id_to_grouper_label_mapping"]
+    )
+
+    ap_metrics = [
+        schemas.APMetric(
+            iou=row["iou_threshold"],
+            value=row["calculated_precision"],
+            label=row["grouper_label"],
+        )
+        for row in ap_metrics_df.to_dict(orient="records")
+    ]
+
+    # for AR, we just take the last cumulative row such that we're only considering recall across all predictions
+    ar_metrics_df = (
+        calculation_df.loc[
+            calculation_df.groupby(
+                ["label_id_grouper", "iou_threshold"]
+            ).cumcount(ascending=False)
+            == 0,
+            :,
+        ]
+        .groupby("label_id_grouper", as_index=False)["recall"]
+        .mean()
+    )
+
+    ious_ = set(parameters.iou_thresholds_to_compute)
+    ar_metrics = [
+        schemas.ARMetric(
+            ious=ious_,
+            value=row["recall"],
+            label=grouper_mappings["grouper_id_to_grouper_label_mapping"][
+                row["label_id_grouper"]
+            ],
+        )
+        for row in ar_metrics_df.to_dict(orient="records")
+    ]
+
+    pdb.set_trace()
+
+    ap_ar_output = [
         m for m in ap_metrics if m.iou in parameters.iou_thresholds_to_return
     ]
     ap_ar_output += ar_metrics
@@ -1011,7 +1128,41 @@ def _compute_detection_metrics(
     )
     ap_ar_output += mean_ap_metrics_ave_over_ious
 
-    return ap_ar_output + pr_curves
+    # if (
+    #     parameters.metrics_to_return
+    #     and enums.MetricType.PrecisionRecallCurve
+    #     in parameters.metrics_to_return
+    # ):
+    #     false_positive_entries = db.query(
+    #         select(
+    #             joint.c.dataset_name,
+    #             joint.c.gt_datum_uid,
+    #             joint.c.pd_datum_uid,
+    #             joint.c.gt_label_id_grouper,
+    #             joint.c.pd_label_id_grouper,
+    #             joint.c.score.label("score"),
+    #         )
+    #         .select_from(joint)
+    #         .where(
+    #             or_(
+    #                 joint.c.gt_id.is_(None),
+    #                 joint.c.pd_id.is_(None),
+    #             )
+    #         )
+    #         .subquery()
+    #     ).all()
+
+    #     pr_curves = _compute_curves(
+    #         sorted_ranked_pairs=matched_sorted_ranked_pairs,
+    #         grouper_mappings=grouper_mappings,
+    #         groundtruths_per_grouper=groundtruths_per_grouper,
+    #         false_positive_entries=false_positive_entries,
+    #         iou_threshold=parameters.pr_curve_iou_threshold,
+    #     )
+    # else:
+    #     pr_curves = []
+
+    return ap_ar_output
 
 
 def _compute_detection_metrics_with_detailed_precision_recall_curve(
