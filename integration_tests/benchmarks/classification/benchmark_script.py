@@ -197,7 +197,7 @@ def run_benchmarking_analysis(
             eval_pr = run_pr_curve_evaluation(dset=dset, model=model)
         except TimeoutError:
             raise TimeoutError(
-                f"Evaluation timed out when processing {limit} datums."
+                f"PR Evaluation timed out when processing {limit} datums."
             )
 
         try:
@@ -206,7 +206,7 @@ def run_benchmarking_analysis(
             )
         except TimeoutError:
             raise TimeoutError(
-                f"Evaluation timed out when processing {limit} datums."
+                f"Detailed PR Evaluation timed out when processing {limit} datums."
             )
 
         start = time.time()
@@ -221,7 +221,7 @@ def run_benchmarking_analysis(
             "ingest_runtime": f"{(ingest_time):.1f} seconds",
             "eval_runtime": f"{(eval_.meta['duration']):.1f} seconds",
             "eval_pr_runtime": f"{(eval_pr.meta['duration']):.1f} seconds",
-            "eval_pr_detail_runtime": f"{(eval_pr_detail.meta['duration']):.1f} seconds",
+            "eval_detailed_pr_runtime": f"{(eval_pr_detail.meta['duration']):.1f} seconds",
             "del_runtime": f"{(deletion_time):.1f} seconds",
         }
         write_results_to_file(write_path=write_path, result_dict=results)

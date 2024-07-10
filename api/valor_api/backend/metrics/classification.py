@@ -557,7 +557,9 @@ def _compute_roc_auc(
                 label not in label_to_count
                 or label.key not in label_key_to_count
             ):
-                raise RuntimeError("ROCAUC computation failed.")
+                raise RuntimeError(
+                    f"ROC AUC computation failed as the label `{label}` could not be found."
+                )
 
             if label_to_count[label] == 0:
                 ret = 0.0
