@@ -70,6 +70,7 @@ def create_dataset(
         return row
     except IntegrityError:
         db.rollback()
+        print("==== Found existing dataset. ====")
         raise exceptions.DatasetAlreadyExistsError(dataset.name)
 
 
@@ -505,16 +506,30 @@ def delete_dataset(
     name : str
         The name of the dataset.
     """
-    dataset = fetch_dataset(db, name=name)
-    set_dataset_status(db, name, enums.TableStatus.DELETING)
+    if core.count_active_evaluations(db=db, dataset_names=[name]):
+        raise exceptions.EvaluationRunningError(dataset_name=name)
 
-    core.delete_evaluations(db=db, dataset_names=[name])
-    core.delete_dataset_predictions(db, dataset)
-    core.delete_groundtruths(db, dataset)
-    core.delete_dataset_annotations(db, dataset)
-    core.delete_datums(db, dataset)
+    print("=== ENTERING DELETE ===")
 
+    dataset = (
+        db.query(models.Dataset)
+        .where(models.Dataset.name == name)
+        .one_or_none()
+    )
+    if not dataset:
+        print(f"==== Couldn't find dataset with name {name} ====")
+        raise exceptions.DatasetDoesNotExistError(name)
+    
     try:
+        dataset.status = enums.TableStatus.DELETING
+        db.commit()
+
+        core.delete_evaluations(db=db, dataset_names=[name])
+        core.delete_dataset_predictions(db, dataset)
+        core.delete_groundtruths(db, dataset)
+        core.delete_dataset_annotations(db, dataset)
+        core.delete_datums(db, dataset)
+
         db.execute(
             delete(models.Dataset).where(models.Dataset.id == dataset.id)
         )

@@ -470,7 +470,7 @@ class Dataset(StaticCollection):
         self,
         groundtruths: List[GroundTruth],
         ignore_existing_datums: bool = False,
-        timeout: Optional[float] = 10.0,
+        timeout: Optional[float] = None,
     ) -> None:
         """
         Add multiple ground truths to the dataset.
@@ -752,7 +752,7 @@ class Model(StaticCollection):
         self,
         dataset: Dataset,
         predictions: List[Prediction],
-        timeout: Optional[float] = 10.0,
+        timeout: Optional[float] = None,
     ) -> None:
         """
         Add multiple predictions to the model.
