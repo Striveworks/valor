@@ -10,9 +10,8 @@ from sqlalchemy.sql import and_, case, func, or_, select
 from valor_api import enums, schemas
 from valor_api.backend import core, models
 from valor_api.backend.metrics.metric_utils import (
+    commit_results,
     create_grouper_mappings,
-    create_metric_mappings,
-    get_or_create_row,
     log_evaluation_duration,
     log_evaluation_item_counts,
     prepare_filter_for_evaluation,
@@ -1035,6 +1034,7 @@ def _compute_clf_metrics(
     )
 
     grouper_mappings = create_grouper_mappings(
+        db=db,
         labels=labels,
         label_map=label_map,
         evaluation_type=enums.TaskType.CLASSIFICATION,
@@ -1089,12 +1089,10 @@ def compute_clf_metrics(
     # unpack filters and params
     parameters = schemas.EvaluationParameters(**evaluation.parameters)
     groundtruth_filter, prediction_filter = prepare_filter_for_evaluation(
-        db=db,
         filters=schemas.Filter(**evaluation.filters),
         dataset_names=evaluation.dataset_names,
         model_name=evaluation.model_name,
         task_type=parameters.task_type,
-        label_map=parameters.label_map,
     )
 
     log_evaluation_item_counts(
@@ -1120,35 +1118,19 @@ def compute_clf_metrics(
         metrics_to_return=parameters.metrics_to_return,
     )
 
-    confusion_matrices_mappings = create_metric_mappings(
+    # add confusion matrices to database
+    commit_results(
         db=db,
         metrics=confusion_matrices,
         evaluation_id=evaluation.id,
     )
 
-    for mapping in confusion_matrices_mappings:
-        get_or_create_row(
-            db,
-            models.ConfusionMatrix,
-            mapping,
-        )
-
-    metric_mappings = create_metric_mappings(
+    # add metrics to database
+    commit_results(
         db=db,
         metrics=metrics,
         evaluation_id=evaluation.id,
     )
-
-    for mapping in metric_mappings:
-        # ignore value since the other columns are unique identifiers
-        # and have empirically noticed value can slightly change due to floating
-        # point errors
-        get_or_create_row(
-            db,
-            models.Metric,
-            mapping,
-            columns_to_ignore=["value"],
-        )
 
     log_evaluation_duration(
         evaluation=evaluation,
