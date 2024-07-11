@@ -929,6 +929,11 @@ def _compute_detection_metrics(
     predictions_not_in_sorted_ranked_pairs_df = joint_df.drop(
         prediction_has_best_score, axis=0
     )
+    # predictions_not_in_sorted_ranked_pairs_df["label"] = (
+    #     predictions_not_in_sorted_ranked_pairs_df["label_id_grouper"].map(
+    #         grouper_mappings["grouper_id_to_grouper_label_mapping"]
+    #     )
+    # )
 
     # get the number of groundtruth observations per grouper key
     number_of_groundtruths_per_grouper_df = (
@@ -1041,8 +1046,6 @@ def _compute_detection_metrics(
         )
     )
 
-    pdb.set_trace
-
     ap_metrics_df = (
         calculation_df[
             ["label_id_grouper", "iou_threshold", "precision", "recall"]
@@ -1099,7 +1102,25 @@ def _compute_detection_metrics(
         for row in ar_metrics_df.to_dict(orient="records")
     ]
 
-    pdb.set_trace()
+    # add any groundtruth labels that didn't have a qualifying prediction
+    missing_prediction_labels = pandas.DataFrame(
+        pd_df[
+            ~pd_df["label_id_grouper"].isin(ar_metrics_df["label_id_grouper"])
+        ]["label_id_grouper"].drop_duplicates()
+    ).assign(
+        label=lambda chain_df: chain_df["label_id_grouper"].map(
+            grouper_mappings["grouper_id_to_grouper_label_mapping"]
+        )
+    )
+
+    ar_metrics += [
+        schemas.ARMetric(
+            ious=ious_,
+            value=-1,
+            label=label,
+        )
+        for label in missing_prediction_labels["label"]
+    ]
 
     ap_ar_output = [
         m for m in ap_metrics if m.iou in parameters.iou_thresholds_to_return
@@ -1128,39 +1149,132 @@ def _compute_detection_metrics(
     )
     ap_ar_output += mean_ap_metrics_ave_over_ious
 
-    # if (
-    #     parameters.metrics_to_return
-    #     and enums.MetricType.PrecisionRecallCurve
-    #     in parameters.metrics_to_return
-    # ):
-    #     false_positive_entries = db.query(
-    #         select(
-    #             joint.c.dataset_name,
-    #             joint.c.gt_datum_uid,
-    #             joint.c.pd_datum_uid,
-    #             joint.c.gt_label_id_grouper,
-    #             joint.c.pd_label_id_grouper,
-    #             joint.c.score.label("score"),
-    #         )
-    #         .select_from(joint)
-    #         .where(
-    #             or_(
-    #                 joint.c.gt_id.is_(None),
-    #                 joint.c.pd_id.is_(None),
-    #             )
-    #         )
-    #         .subquery()
-    #     ).all()
+    if (
+        parameters.metrics_to_return
+        and enums.MetricType.PrecisionRecallCurve
+        in parameters.metrics_to_return
+    ):
+        confidence_thresholds = [x / 100 for x in range(5, 100, 5)]
+        pr_calculation_df = pandas.concat(
+            [
+                filtered_joint_df.assign(confidence_threshold=threshold)
+                for threshold in confidence_thresholds
+            ],
+            ignore_index=True,
+        ).sort_values(
+            by=["label_id_grouper", "confidence_threshold", "score", "iou_"],
+            ascending=False,
+        )
 
-    #     pr_curves = _compute_curves(
-    #         sorted_ranked_pairs=matched_sorted_ranked_pairs,
-    #         grouper_mappings=grouper_mappings,
-    #         groundtruths_per_grouper=groundtruths_per_grouper,
-    #         false_positive_entries=false_positive_entries,
-    #         iou_threshold=parameters.pr_curve_iou_threshold,
-    #     )
-    # else:
-    #     pr_curves = []
+        # TODO run code through GPT?
+        pr_calculation_df["true_positive_flag"] = (
+            (pr_calculation_df["iou_"] >= parameters.pr_curve_iou_threshold)
+            & (
+                pr_calculation_df["score"]
+                >= pr_calculation_df["confidence_threshold"]
+            )
+            & (
+                pr_calculation_df.groupby(
+                    ["label_id_grouper", "confidence_threshold", "id_gt"]
+                ).cumcount()
+                == 0
+            )  # only the first gt_id in this sorted list should be considered a true positive
+        )
+
+        pr_calculation_df["false_positive_flag"] = ~pr_calculation_df[
+            "true_positive_flag"
+        ]
+
+        pr_metrics_df = (
+            pr_calculation_df.groupby(
+                ["label_id_grouper", "confidence_threshold"], as_index=False
+            )["true_positive_flag"]
+            .sum()
+            .merge(
+                pr_calculation_df.groupby(
+                    ["label_id_grouper", "confidence_threshold"],
+                    as_index=False,
+                )["false_positive_flag"].sum(),
+                on=["label_id_grouper", "confidence_threshold"],
+            )
+            .rename(
+                columns={
+                    "true_positive_flag": "true_positives",
+                    "false_positive_flag": "false_positives",
+                }
+            )
+            .merge(
+                number_of_groundtruths_per_grouper_df, on="label_id_grouper"
+            )
+            .assign(
+                false_negatives=lambda chain_df: chain_df["gts_per_grouper"]
+                - chain_df["true_positives"]
+            )
+            .assign(
+                precision=lambda chain_df: chain_df["true_positives"]
+                / (chain_df["true_positives"] + chain_df["false_positives"])
+            )
+            .assign(
+                recall=lambda chain_df: chain_df["true_positives"]
+                / (chain_df["true_positives"] + chain_df["false_negatives"])
+            )
+            .assign(
+                f1_score=lambda chain_df: (
+                    2 * chain_df["precision"] * chain_df["recall"]
+                )
+                / (chain_df["precision"] + chain_df["recall"])
+            )
+            .assign(
+                label=lambda chain_df: chain_df["label_id_grouper"].map(
+                    grouper_mappings["grouper_id_to_grouper_label_mapping"]
+                )
+            )
+        )
+
+        curves = defaultdict(lambda: defaultdict(lambda: defaultdict(dict)))
+
+        for row in pr_metrics_df.to_dict(orient="records"):
+            curves[row["label"].key][row["label"].value][
+                row["confidence_threshold"]
+            ] = {
+                "tp": row["true_positives"],
+                "fp": row["false_positives"],
+                "fn": row["false_negatives"],
+                "tn": None,  # tn and accuracy aren't applicable to detection tasks because there's an infinite number of true negatives
+                "precision": row["precision"],
+                "recall": row["recall"],
+                "accuracy": None,
+                "f1_score": row["f1_score"],
+            }
+
+        for grouper_id, label in missing_prediction_labels.values:
+            for confidence_threshold in confidence_thresholds:
+                curves[label.key][label.value][confidence_threshold] = {
+                    "tp": 0,
+                    "fp": pd_df.loc[
+                        pd_df["label_id_grouper"] == grouper_id, "id"
+                    ].count(),
+                    "fn": number_of_groundtruths_per_grouper_df.loc[
+                        number_of_groundtruths_per_grouper_df[
+                            "label_id_grouper"
+                        ]
+                        == grouper_id,
+                        "gts_per_grouper",
+                    ].sum(),
+                    "tn": None,  # tn and accuracy aren't applicable to detection tasks because there's an infinite number of true negatives
+                    "precision": 0,
+                    "recall": 0,
+                    "accuracy": None,
+                    "f1_score": 0,
+                }
+        ap_ar_output += [
+            schemas.PrecisionRecallCurve(
+                label_key=key,
+                value=value,
+                pr_curve_iou_threshold=parameters.pr_curve_iou_threshold,
+            )
+            for key, value in curves.items()
+        ]
 
     return ap_ar_output
 
