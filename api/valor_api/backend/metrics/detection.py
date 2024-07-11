@@ -13,9 +13,8 @@ from sqlalchemy.orm import Session, aliased
 from valor_api import enums, schemas
 from valor_api.backend import core, models
 from valor_api.backend.metrics.metric_utils import (
+    commit_results,
     create_grouper_mappings,
-    create_metric_mappings,
-    get_or_create_row,
     log_evaluation_duration,
     log_evaluation_item_counts,
     prepare_filter_for_evaluation,
@@ -739,6 +738,7 @@ def _compute_detection_metrics(
     )
 
     grouper_mappings = create_grouper_mappings(
+        db=db,
         labels=labels,
         label_map=parameters.label_map,
         evaluation_type=enums.TaskType.OBJECT_DETECTION,
@@ -1108,6 +1108,7 @@ def _compute_detection_metrics_with_detailed_precision_recall_curve(
     )
 
     grouper_mappings = create_grouper_mappings(
+        db=db,
         labels=labels,
         label_map=parameters.label_map,
         evaluation_type=enums.TaskType.OBJECT_DETECTION,
@@ -1755,21 +1756,12 @@ def compute_detection_metrics(*_, db: Session, evaluation_id: int):
             target_type=target_type,
         )
 
-    metric_mappings = create_metric_mappings(
+    # add metrics to database
+    commit_results(
         db=db,
         metrics=metrics,
         evaluation_id=evaluation_id,
     )
-
-    for mapping in metric_mappings:
-        # ignore value since the other columns are unique identifiers
-        # and have empircally noticed value can slightly change due to floating
-        # point errors
-
-        get_or_create_row(
-            db, models.Metric, mapping, columns_to_ignore=["value"]
-        )
-    db.commit()
 
     log_evaluation_duration(
         evaluation=evaluation,

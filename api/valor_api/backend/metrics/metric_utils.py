@@ -1,7 +1,8 @@
+import time
 from collections import defaultdict
 from typing import Callable, Sequence
 
-from sqlalchemy import select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import func
@@ -11,6 +12,18 @@ from valor_api.backend import core, models
 from valor_api.backend.query import generate_select
 
 LabelMapType = list[list[list[str]]]
+
+
+def profiler(fn):
+    def wrapper(*args, **kwargs):
+        print("===== entering", fn.__name__, "=====")
+        start = time.time()
+        results = fn(*args, **kwargs)
+        elapsed_time = round(time.time() - start, 1)
+        print("^^^^^ exiting", fn.__name__, elapsed_time, "^^^^^")
+        return results
+
+    return wrapper
 
 
 def _create_detection_grouper_mappings(
@@ -104,7 +117,9 @@ def _create_classification_grouper_mappings(
     }
 
 
+@profiler
 def create_grouper_mappings(
+    db: Session,
     labels: list,
     label_map: LabelMapType | None,
     evaluation_type: enums.TaskType,
@@ -139,64 +154,47 @@ def create_grouper_mappings(
         )
 
     # create a map of labels to groupers; will be empty if the user didn't pass a label_map
-    mapping_dict = (
-        {tuple(label): tuple(grouper) for label, grouper in label_map}
-        if label_map
-        else {}
-    )
+    grouper_key_to_value = defaultdict(list)
+    mapping_dict = dict()
+    if label_map:
+        for label, grouper in label_map:
+            mapping_dict[tuple(label)] = tuple(grouper)
+            grouper_key_to_value[grouper[0]].append(grouper[1])
+
+        # add grouper labels to database (if they don't exist)
+        grouper_labels = set(mapping_dict.values())
+        existing_labels = {
+            (row.key, row.value)
+            for row in (
+                db.query(models.Label)
+                .where(
+                    or_(
+                        *[
+                            and_(
+                                models.Label.key == key,
+                                models.Label.value.in_(values),
+                            )
+                            for key, values in grouper_key_to_value.items()
+                        ]
+                    )
+                )
+                .all()
+            )
+        }
+        labels_to_create = list(grouper_labels - existing_labels)
+        core.create_labels(
+            db=db,
+            labels=[
+                schemas.Label(key=key, value=value)
+                for key, value in labels_to_create
+            ],
+        )
 
     return mapping_functions[evaluation_type](mapping_dict, labels)
 
 
-def get_or_create_row(
-    db: Session,
-    model_class: type,
-    mapping: dict,
-    columns_to_ignore: list[str] | None = None,
-):
-    """
-    Tries to get the row defined by mapping. If that exists then its mapped object is returned. Otherwise a row is created by `mapping` and the newly created object is returned.
-
-    Parameters
-    ----------
-    db : Session
-        The database Session to query against.
-    model_class : type
-        The type of model.
-    mapping : dict
-        The mapping to use when creating the row.
-    columns_to_ignore : List[str]
-        Specifies any columns to ignore in forming the WHERE expression. This can be used for numerical columns that might slightly differ but are essentially the same.
-
-    Returns
-    ----------
-    any
-        A model class object.
-    """
-    columns_to_ignore = columns_to_ignore or []
-
-    # create the query from the mapping
-    where_expressions = [
-        (getattr(model_class, k) == v)
-        for k, v in mapping.items()
-        if k not in columns_to_ignore
-    ]
-    where_expression = where_expressions[0]
-    for exp in where_expressions[1:]:
-        where_expression = where_expression & exp
-
-    db_element = db.scalar(select(model_class).where(where_expression))
-
-    if not db_element:
-        db_element = model_class(**mapping)
-        db.add(db_element)
-        db.flush()
-        db.commit()
-
-    return db_element
-
-
-def create_metric_mappings(
+@profiler
+def commit_results(
     db: Session,
     metrics: Sequence[
         schemas.APMetric
@@ -217,7 +215,7 @@ def create_metric_mappings(
         | schemas.DetailedPrecisionRecallCurve
     ],
     evaluation_id: int,
-) -> list[dict]:
+):
     """
     Create metric mappings from a list of metrics.
 
@@ -229,13 +227,10 @@ def create_metric_mappings(
         A list of metrics to create mappings for.
     evaluation_id : int
         The id of the evaluation job.
-
-    Returns
-    ----------
-    List[Dict]
-        A list of metric mappings.
     """
-    ret = []
+
+    # cache labels for metrics that use them
+    cached_labels = defaultdict(list)
     for metric in metrics:
         if isinstance(
             metric,
@@ -249,31 +244,72 @@ def create_metric_mappings(
                 schemas.IOUMetric,
             ),
         ):
-            label = core.fetch_label(
-                db=db,
-                label=metric.label,
+            cached_labels[metric.label.key].append(metric.label.value)
+    cached_label_to_id = {
+        schemas.Label(key=row.key, value=row.value): row.id
+        for row in (
+            db.query(models.Label)
+            .where(
+                or_(
+                    *[
+                        and_(
+                            models.Label.key == key,
+                            models.Label.value.in_(values),
+                        )
+                        for key, values in cached_labels.items()
+                    ]
+                )
             )
+            .all()
+        )
+    }
 
-            # create the label in the database if it doesn't exist
-            # this is useful if the user maps existing labels to a non-existant grouping label
-            if not label:
-                label_map = core.create_labels(db=db, labels=[metric.label])
-                label_id = list(label_map.values())[0]
-            else:
-                label_id = label.id
-
-            ret.append(
-                metric.db_mapping(
-                    label_id=label_id,
-                    evaluation_id=evaluation_id,
+    metric_rows = []
+    confusion_rows = []
+    for metric in metrics:
+        if isinstance(
+            metric,
+            (
+                schemas.APMetric,
+                schemas.ARMetric,
+                schemas.APMetricAveragedOverIOUs,
+                schemas.PrecisionMetric,
+                schemas.RecallMetric,
+                schemas.F1Metric,
+                schemas.IOUMetric,
+            ),
+        ):
+            metric_rows.append(
+                models.Metric(
+                    **metric.db_mapping(
+                        label_id=cached_label_to_id[metric.label],
+                        evaluation_id=evaluation_id,
+                    )
+                )
+            )
+        elif isinstance(metric, schemas.ConfusionMatrix):
+            confusion_rows.append(
+                models.ConfusionMatrix(
+                    **metric.db_mapping(evaluation_id=evaluation_id)
                 )
             )
         else:
-            ret.append(metric.db_mapping(evaluation_id=evaluation_id))
+            metric_rows.append(
+                models.Metric(**metric.db_mapping(evaluation_id=evaluation_id))
+            )
 
-    return ret
+    try:
+        if metric_rows:
+            db.add_all(metric_rows)
+        if confusion_rows:
+            db.add_all(confusion_rows)
+        db.commit()
+    except IntegrityError as e:
+        db.rollback()
+        raise e
 
 
+@profiler
 def log_evaluation_duration(
     db: Session,
     evaluation: models.Evaluation,
@@ -306,6 +342,7 @@ def log_evaluation_duration(
         raise e
 
 
+@profiler
 def log_evaluation_item_counts(
     db: Session,
     evaluation: models.Evaluation,
@@ -388,6 +425,7 @@ def log_evaluation_item_counts(
         raise e
 
 
+@profiler
 def validate_computation(fn: Callable) -> Callable:
     """
     Computation decorator that validates that a computation can proceed.
@@ -443,6 +481,7 @@ def validate_computation(fn: Callable) -> Callable:
     return wrapper
 
 
+@profiler
 def prepare_filter_for_evaluation(
     db: Session,
     filters: schemas.Filter,
