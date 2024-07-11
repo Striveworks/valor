@@ -901,9 +901,13 @@ def _compute_detection_metrics(
                 lambda row: bbox_iou(row["geojson_gt"], row["geojson_pd"]),
                 axis=1,
             )
-        ).rename("iou_")
+        )
 
-        joint_df = joint_df.join(iou_calculation_df)
+        if not iou_calculation_df.empty:
+            iou_calculation_df = iou_calculation_df.rename("iou_")
+            joint_df = joint_df.join(iou_calculation_df)
+        else:
+            joint_df["iou_"] = 0
 
     joint_df["iou_"] = joint_df["iou_"].fillna(0)
 
@@ -973,10 +977,10 @@ def _compute_detection_metrics(
 
     calculation_df["recall_false_positive_flag"] = ~calculation_df[
         "recall_true_positive_flag"
-    ]
+    ] & (calculation_df["score"] >= parameters.recall_score_threshold)
     calculation_df["precision_false_positive_flag"] = ~calculation_df[
         "precision_true_positive_flag"
-    ]
+    ] & (calculation_df["score"] > 0)
 
     # TODO delete this
     calculation_df["delete"] = calculation_df["label_id_grouper"].map(
@@ -1016,6 +1020,9 @@ def _compute_detection_metrics(
     )
 
     # calculate false negatives, then precision / recall
+    if calculation_df.empty:
+        return []
+
     calculation_df = (
         calculation_df.merge(
             number_of_groundtruths_per_grouper_df, on="label_id_grouper"
@@ -1188,7 +1195,10 @@ def _compute_detection_metrics(
 
         pr_calculation_df["false_positive_flag"] = ~pr_calculation_df[
             "true_positive_flag"
-        ]
+        ] & (
+            pr_calculation_df["score"]
+            >= pr_calculation_df["confidence_threshold"]
+        )
 
         pr_metrics_df = (
             pr_calculation_df.groupby(
