@@ -425,7 +425,6 @@ def log_evaluation_item_counts(
         raise e
 
 
-@profiler
 def validate_computation(fn: Callable) -> Callable:
     """
     Computation decorator that validates that a computation can proceed.
@@ -462,7 +461,7 @@ def validate_computation(fn: Callable) -> Callable:
             db, evaluation_id, enums.EvaluationStatus.RUNNING
         )
         try:
-            result = fn(*args, **kwargs)
+            result = profiler(fn)(*args, **kwargs)
         except Exception as e:
             core.set_evaluation_status(
                 db, evaluation_id, enums.EvaluationStatus.FAILED
