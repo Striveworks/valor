@@ -16,6 +16,7 @@ from valor import (
     Prediction,
     connect,
 )
+from valor.enums import MetricType
 from valor.schemas import MultiPolygon, Polygon, Raster
 
 connect("http://0.0.0.0:8000")
@@ -199,13 +200,13 @@ def run_pr_curve_evaluation(dset: Dataset, model: Model):
     evaluation = model.evaluate_detection(
         dset,
         metrics_to_return=[
-            "AP",
-            "AR",
-            "mAP",
-            "APAveragedOverIOUs",
-            "mAR",
-            "mAPAveragedOverIOUs",
-            "PrecisionRecallCurve",
+            MetricType.AP,
+            MetricType.AR,
+            MetricType.mAP,
+            MetricType.APAveragedOverIOUs,
+            MetricType.mAR,
+            MetricType.mAPAveragedOverIOUs,
+            MetricType.PrecisionRecallCurve,
         ],
     )
     evaluation.wait_for_completion()
@@ -218,14 +219,14 @@ def run_detailed_pr_curve_evaluation(dset: Dataset, model: Model):
     evaluation = model.evaluate_detection(
         dset,
         metrics_to_return=[
-            "AP",
-            "AR",
-            "mAP",
-            "APAveragedOverIOUs",
-            "mAR",
-            "mAPAveragedOverIOUs",
-            "PrecisionRecallCurve",
-            "DetailedPrecisionRecallCurve",
+            MetricType.AP,
+            MetricType.AR,
+            MetricType.mAP,
+            MetricType.APAveragedOverIOUs,
+            MetricType.mAR,
+            MetricType.mAPAveragedOverIOUs,
+            MetricType.PrecisionRecallCurve,
+            MetricType.DetailedPrecisionRecallCurve,
         ],
     )
     evaluation.wait_for_completion()
