@@ -16,6 +16,7 @@ from valor import (
     Prediction,
     connect,
 )
+from valor.enums import MetricType
 
 connect("http://0.0.0.0:8000")
 client = Client()
@@ -124,12 +125,12 @@ def run_pr_curve_evaluation(dset: Dataset, model: Model):
     evaluation = model.evaluate_classification(
         dset,
         metrics_to_return=[
-            "Accuracy",
-            "Precision",
-            "Recall",
-            "F1",
-            "ROCAUC",
-            "PrecisionRecallCurve",
+            MetricType.Accuracy,
+            MetricType.Precision,
+            MetricType.Recall,
+            MetricType.F1,
+            MetricType.ROCAUC,
+            MetricType.PrecisionRecallCurve,
         ],
     )
     evaluation.wait_for_completion()
@@ -142,13 +143,13 @@ def run_detailed_pr_curve_evaluation(dset: Dataset, model: Model):
     evaluation = model.evaluate_classification(
         dset,
         metrics_to_return=[
-            "Accuracy",
-            "Precision",
-            "Recall",
-            "F1",
-            "ROCAUC",
-            "PrecisionRecallCurve",
-            "DetailedPrecisionRecallCurve",
+            MetricType.Accuracy,
+            MetricType.Precision,
+            MetricType.Recall,
+            MetricType.F1,
+            MetricType.ROCAUC,
+            MetricType.PrecisionRecallCurve,
+            MetricType.DetailedPrecisionRecallCurve,
         ],
     )
     evaluation.wait_for_completion()
@@ -187,7 +188,7 @@ def run_benchmarking_analysis(
         ingest_time = time.time() - start_time
 
         try:
-            eval_ = run_base_evaluation(dset=dset, model=model)
+            eval_base = run_base_evaluation(dset=dset, model=model)
         except TimeoutError:
             raise TimeoutError(
                 f"Evaluation timed out when processing {limit} datums."
@@ -216,10 +217,10 @@ def run_benchmarking_analysis(
 
         results = {
             "number_of_datums": limit,
-            "number_of_unique_labels": eval_.meta["labels"],
-            "number_of_annotations": eval_.meta["annotations"],
+            "number_of_unique_labels": eval_base.meta["labels"],
+            "number_of_annotations": eval_base.meta["annotations"],
             "ingest_runtime": f"{(ingest_time):.1f} seconds",
-            "eval_runtime": f"{(eval_.meta['duration']):.1f} seconds",
+            "eval_runtime": f"{(eval_base.meta['duration']):.1f} seconds",
             "eval_pr_runtime": f"{(eval_pr.meta['duration']):.1f} seconds",
             "eval_detailed_pr_runtime": f"{(eval_pr_detail.meta['duration']):.1f} seconds",
             "del_runtime": f"{(deletion_time):.1f} seconds",
