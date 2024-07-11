@@ -1,9 +1,11 @@
 import bisect
 import heapq
+import io
 import json
 import math
 import pdb
 import random
+from base64 import b64encode
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import Sequence, Tuple
@@ -12,6 +14,7 @@ import numpy as np
 import pandas
 import rasterio
 from geoalchemy2 import functions as gfunc
+from PIL import Image
 from rasterio.features import rasterize
 from sqlalchemy import and_, case, func, or_, select
 from sqlalchemy.orm import Session, aliased
@@ -771,6 +774,7 @@ def _compute_detection_metrics(
         _annotation_type_to_geojson(target_type, models.Annotation).label(
             "geojson"
         ),
+        gfunc.ST_AsPNG(models.Annotation.raster).label("raster"),
         filters=groundtruth_filter,
         label_source=models.GroundTruth,
     )
@@ -789,6 +793,7 @@ def _compute_detection_metrics(
         _annotation_type_to_geojson(target_type, models.Annotation).label(
             "geojson"
         ),
+        gfunc.ST_AsPNG(models.Annotation.raster).label("raster"),
         filters=prediction_filter,
         label_source=models.Prediction,
     )
@@ -807,47 +812,32 @@ def _compute_detection_metrics(
     # IOU Computation Block
     if target_type == AnnotationType.RASTER:
 
-        def wkt_to_raster(wkt_data, out_shape=(512, 512), transform=None):
-            geom = json.loads(wkt_data)
+        # filter out rows with null rasters
+        joint_df = joint_df.loc[
+            ~joint_df["raster_pd"].isnull() & ~joint_df["raster_gt"].isnull(),
+            :,
+        ]
 
-            if transform is None:
-                transform = rasterio.transform.from_bounds(
-                    0,
-                    0,
-                    out_shape[1],
-                    out_shape[0],
-                    out_shape[1],
-                    out_shape[0],
-                )
-            # TODO not used?
-            raster = np.zeros(out_shape, dtype=rasterio.uint8)
-            rasterized_geom = rasterize(
-                [geom],
-                out_shape=out_shape,
-                transform=transform,
-                fill=0,
-                dtype=rasterio.uint8,
-            )
-            return rasterized_geom
+        # convert the raster into a numpy array
+        joint_df[["raster_pd", "raster_gt"]] = (
+            joint_df[["raster_pd", "raster_gt"]]
+            .applymap(io.BytesIO)
+            .applymap(Image.open)
+            .applymap(np.array)
+        )
 
         iou_calculation_df = (
-            joint_df.loc[
-                ~joint_df["geojson_gt"].isnull()
-                & ~joint_df["geojson_pd"].isnull(),
-                ["geojson_gt", "geojson_pd"],
-            ]
-            .applymap(wkt_to_raster)  # type: ignore - pandas typing issue
-            .assign(
+            joint_df.assign(
                 intersection=lambda chain_df: chain_df.apply(
                     lambda row: np.logical_and(
-                        row["geojson_gt"], row["geojson_pd"]
+                        row["raster_pd"], row["raster_gt"]
                     ).sum(),
                     axis=1,
                 )
             )
             .assign(
-                union_=lambda chain_df: chain_df["geojson_gt"].apply(np.sum)
-                + chain_df["geojson_pd"].apply(np.sum)
+                union_=lambda chain_df: chain_df["raster_gt"].apply(np.sum)
+                + chain_df["raster_pd"].apply(np.sum)
                 - chain_df["intersection"]
             )
             .assign(
@@ -855,9 +845,14 @@ def _compute_detection_metrics(
                 / chain_df["union_"]
             )
         )
-        joint_df = joint_df.join(iou_calculation_df["iou_"])
-    else:
 
+        joint_df = joint_df.join(iou_calculation_df["iou_"])
+        joint_df["delete"] = joint_df["label_id_grouper"].map(
+            grouper_mappings["grouper_id_to_grouper_label_mapping"]
+        )
+
+    else:
+        # TODO there's probably a better way to do this without the wkt
         def wkt_to_array(wkt_data):
             coordinates = json.loads(wkt_data)["coordinates"][0]
             return np.array(coordinates)
@@ -1112,6 +1107,16 @@ def _compute_detection_metrics(
             grouper_mappings["grouper_id_to_grouper_label_mapping"]
         )
     )
+
+    # ap_metrics += [
+    #     schemas.APMetric(
+    #         iou=iou,
+    #         value=0,
+    #         label=label,
+    #     )
+    #     for label in missing_prediction_labels["label"]
+    #     for iou in parameters.iou_thresholds_to_return
+    # ]
 
     ar_metrics += [
         schemas.ARMetric(
