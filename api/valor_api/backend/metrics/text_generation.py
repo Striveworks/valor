@@ -20,6 +20,7 @@ from valor_api.backend.metrics.metric_utils import (
     get_or_create_row,
     log_evaluation_duration,
     log_evaluation_item_counts,
+    prepare_filter_for_evaluation,
     validate_computation,
 )
 from valor_api.backend.query import generate_query
@@ -503,10 +504,18 @@ def compute_text_generation_metrics(
     evaluation = core.fetch_evaluation_from_id(db, evaluation_id)
 
     # unpack filters and params
-    datum_filter = schemas.Filter(**evaluation.filters)
-    prediction_filter = datum_filter.model_copy()
-    groundtruth_filter = datum_filter.model_copy()
     parameters = schemas.EvaluationParameters(**evaluation.parameters)
+    (
+        datum_filter,
+        groundtruth_filter,
+        prediction_filter,
+    ) = prepare_filter_for_evaluation(
+        db=db,
+        filters=schemas.Filter(**evaluation.filters),
+        dataset_names=evaluation.dataset_names,
+        model_name=evaluation.model_name,
+        task_type=parameters.task_type,
+    )
 
     assert (
         parameters.metrics_to_return

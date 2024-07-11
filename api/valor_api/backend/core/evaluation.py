@@ -242,7 +242,7 @@ def _validate_evaluation_filter(
     parameters = schemas.EvaluationParameters(**evaluation.parameters)
 
     # generate filters
-    groundtruth_filter, prediction_filter = prepare_filter_for_evaluation(
+    _, groundtruth_filter, prediction_filter = prepare_filter_for_evaluation(
         db=db,
         filters=filters,
         dataset_names=evaluation.dataset_names,

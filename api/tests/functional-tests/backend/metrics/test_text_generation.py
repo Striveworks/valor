@@ -299,6 +299,147 @@ def content_gen_data(
     assert len(db.query(models.Prediction).all()) == 3
 
 
+@pytest.fixture
+def two_text_generation_datasets(
+    db: Session,
+    rag_dataset_name: str,
+    rag_model_name: str,
+    rag_q0: schemas.Datum,
+    rag_q1: schemas.Datum,
+    rag_q2: schemas.Datum,
+    rag_references: list[str],
+    rag_context_per_prediction: list[list[str]],
+    content_gen_dataset_name: str,
+    content_gen_model_name: str,
+    content_gen_q0: schemas.Datum,
+    content_gen_q1: schemas.Datum,
+    content_gen_q2: schemas.Datum,
+):
+    # RAG dataset and model
+    datums = [rag_q0, rag_q1, rag_q2]
+
+    gts = []
+    for i in range(len(datums)):
+        gts.append(
+            schemas.GroundTruth(
+                dataset_name=rag_dataset_name,
+                datum=datums[i],
+                annotations=[
+                    schemas.Annotation(text=rag_references[i]),
+                    schemas.Annotation(text="some other text"),
+                    schemas.Annotation(text="some final text"),
+                ],
+            )
+        )
+
+    preds = []
+    for i in range(len(datums)):
+        preds.append(
+            schemas.Prediction(
+                dataset_name=rag_dataset_name,
+                model_name=rag_model_name,
+                datum=datums[i],
+                annotations=[
+                    schemas.Annotation(
+                        text=RAG_PREDICTIONS[i],
+                        context=rag_context_per_prediction[i],
+                    )
+                ],
+            )
+        )
+
+    crud.create_dataset(
+        db=db,
+        dataset=schemas.Dataset(
+            name=rag_dataset_name,
+            metadata={"type": "text"},
+        ),
+    )
+
+    crud.create_groundtruths(db=db, groundtruths=gts)
+    crud.finalize(db=db, dataset_name=rag_dataset_name)
+
+    crud.create_model(
+        db=db,
+        model=schemas.Model(
+            name=rag_model_name,
+            metadata={
+                "type": "text",
+                "hf_model_name": """mistralai/Mixtral-8x7B-Instruct-v0.1""",
+                "raw_text_field": "context",
+                "input": """{context}\n{question}""",
+                "prompt": """Answer the following question with the provided context. The format will be first the context, second the question, third the answer.\n{input}\nAnswer:""",
+                "max_new_tokens": 100,
+            },
+        ),
+    )
+    crud.create_predictions(db=db, predictions=preds)
+    crud.finalize(
+        db=db, dataset_name=rag_dataset_name, model_name=rag_model_name
+    )
+
+    # Content generation dataset and model
+    datums = [content_gen_q0, content_gen_q1, content_gen_q2]
+
+    gts = []
+    for i in range(len(datums)):
+        gts.append(
+            schemas.GroundTruth(
+                dataset_name=content_gen_dataset_name,
+                datum=datums[i],
+                annotations=[],
+            )
+        )
+
+    preds = []
+    for i in range(len(datums)):
+        preds.append(
+            schemas.Prediction(
+                dataset_name=content_gen_dataset_name,
+                model_name=content_gen_model_name,
+                datum=datums[i],
+                annotations=[
+                    schemas.Annotation(
+                        text=CONTENT_GEN_PREDICTIONS[i],
+                    )
+                ],
+            )
+        )
+
+    crud.create_dataset(
+        db=db,
+        dataset=schemas.Dataset(
+            name=content_gen_dataset_name,
+            metadata={"type": "text"},
+        ),
+    )
+
+    crud.create_groundtruths(db=db, groundtruths=gts)
+    crud.finalize(db=db, dataset_name=content_gen_dataset_name)
+
+    crud.create_model(
+        db=db,
+        model=schemas.Model(
+            name=content_gen_model_name,
+            metadata={
+                "type": "text",
+            },
+        ),
+    )
+    crud.create_predictions(db=db, predictions=preds)
+    crud.finalize(
+        db=db,
+        dataset_name=content_gen_dataset_name,
+        model_name=content_gen_model_name,
+    )
+
+    assert len(db.query(models.Datum).all()) == 6
+    assert len(db.query(models.Annotation).all()) == 18
+    assert len(db.query(models.Label).all()) == 0
+    assert len(db.query(models.GroundTruth).all()) == 12
+    assert len(db.query(models.Prediction).all()) == 6
+
+
 def mocked_connection(self):
     pass
 
@@ -412,7 +553,7 @@ def test__compute_text_generation_rag(
             "client": "openai",
             "data": {
                 "seed": 2024,
-                "model": "gpt-4o-2024-05-13",
+                "model": "gpt-4o",
             },
         },
     )
@@ -500,7 +641,7 @@ def test__compute_text_generation_rag(
             "api_key": "test_key",
             "data": {
                 "seed": 2024,
-                "model": "gpt-4o-2024-05-13",
+                "model": "gpt-4o",
             },
         },
     )
@@ -529,7 +670,7 @@ def test__compute_text_generation_rag(
             llm_api_params={
                 "data": {
                     "seed": 2024,
-                    "model": "gpt-4o-2024-05-13",
+                    "model": "gpt-4o",
                 },
             },
         )
@@ -546,7 +687,7 @@ def test__compute_text_generation_rag(
                 "api_url": "openai.com",
                 "data": {
                     "seed": 2024,
-                    "model": "gpt-4o-2024-05-13",
+                    "model": "gpt-4o",
                 },
             },
         )
@@ -562,7 +703,7 @@ def test__compute_text_generation_rag(
                 "api_url": "openai.com",
                 "data": {
                     "seed": 2024,
-                    "model": "gpt-4o-2024-05-13",
+                    "model": "gpt-4o",
                 },
             },
         )
@@ -591,7 +732,7 @@ def test__compute_text_generation_rag(
             metrics_to_return=metrics_to_return,
             llm_api_params={
                 "client": "openai",
-                "data": "gpt-4o-2024-05-13",
+                "data": "gpt-4o",
             },
         )
 
@@ -606,7 +747,7 @@ def test__compute_text_generation_rag(
                 "client": "openai",
                 "data": {
                     "seed": 2024,
-                    "model": "gpt-4o-2024-05-13",
+                    "model": "gpt-4o",
                 },
             },
             metric_params={
@@ -625,7 +766,7 @@ def test__compute_text_generation_rag(
                 "client": "openai",
                 "data": {
                     "seed": 2024,
-                    "model": "gpt-4o-2024-05-13",
+                    "model": "gpt-4o",
                 },
             },
             metric_params={
@@ -679,7 +820,7 @@ def test_text_generation_rag(
                 "client": "openai",
                 "data": {
                     "seed": 2024,
-                    "model": "gpt-4o-2024-05-13",
+                    "model": "gpt-4o",
                 },
             },
             bleu_weights=[0.25, 0.25, 0.25, 0.25],
@@ -810,7 +951,189 @@ def test_text_generation_content_gen(
                 "client": "openai",
                 "data": {
                     "seed": 2024,
-                    "model": "gpt-4o-2024-05-13",
+                    "model": "gpt-4o",
+                },
+            },
+        ),
+    )
+
+    # creates evaluation job
+    evaluations = create_or_get_evaluations(db=db, job_request=job_request)
+    assert len(evaluations) == 1
+    assert evaluations[0].status == EvaluationStatus.PENDING
+
+    # computation, normally run as background task
+    _ = compute_text_generation_metrics(
+        db=db,
+        evaluation_id=evaluations[0].id,
+    )
+
+    # get evaluations
+    evaluations = create_or_get_evaluations(db=db, job_request=job_request)
+    assert len(evaluations) == 1
+    assert evaluations[0].status in {
+        EvaluationStatus.RUNNING,
+        EvaluationStatus.DONE,
+    }
+
+    metrics = evaluations[0].metrics
+
+    expected_values = {
+        "uid0": {
+            "Coherence": 5,
+        },
+        "uid1": {
+            "Coherence": 5,
+        },
+        "uid2": {
+            "Coherence": 5,
+        },
+    }
+
+    assert metrics
+    for metric in metrics:
+        assert isinstance(metric.parameters, dict)
+        assert (
+            expected_values[metric.parameters["datum_uid"]][metric.type]
+            == metric.value
+        )
+
+
+@patch(
+    "valor_api.backend.core.llm_clients.WrappedOpenAIClient.connect",
+    mocked_connection,
+)
+@patch(
+    "valor_api.backend.core.llm_clients.WrappedOpenAIClient.answer_relevance",
+    mocked_answer_relevance,
+)
+@patch(
+    "valor_api.backend.core.llm_clients.WrappedOpenAIClient.coherence",
+    mocked_coherence,
+)
+def test_text_generation_two_datasets(
+    db: Session,
+    rag_dataset_name: str,
+    rag_model_name: str,
+    content_gen_dataset_name: str,
+    content_gen_model_name: str,
+    two_text_generation_datasets,
+):
+    # test with a RAG dataset
+    metrics_to_return = [
+        MetricType.AnswerRelevance,
+        MetricType.Coherence,
+        MetricType.ROUGE,
+        MetricType.BLEU,
+    ]
+
+    # default request
+    job_request = schemas.EvaluationRequest(
+        dataset_names=[rag_dataset_name],
+        model_names=[rag_model_name],
+        parameters=schemas.EvaluationParameters(
+            task_type=TaskType.TEXT_GENERATION,
+            metrics_to_return=metrics_to_return,
+            llm_api_params={
+                "client": "openai",
+                "data": {
+                    "seed": 2024,
+                    "model": "gpt-4o",
+                },
+            },
+            bleu_weights=[0.25, 0.25, 0.25, 0.25],
+            rouge_types=[
+                ROUGEType.ROUGE1,
+                ROUGEType.ROUGE2,
+                ROUGEType.ROUGEL,
+                ROUGEType.ROUGELSUM,
+            ],
+            rouge_use_stemmer=False,
+        ),
+    )
+
+    # creates evaluation job
+    evaluations = create_or_get_evaluations(db=db, job_request=job_request)
+    assert len(evaluations) == 1
+    assert evaluations[0].status == EvaluationStatus.PENDING
+
+    # computation, normally run as background task
+    _ = compute_text_generation_metrics(
+        db=db,
+        evaluation_id=evaluations[0].id,
+    )
+
+    # get evaluations
+    evaluations = create_or_get_evaluations(db=db, job_request=job_request)
+    assert len(evaluations) == 1
+    assert evaluations[0].status in {
+        EvaluationStatus.RUNNING,
+        EvaluationStatus.DONE,
+    }
+
+    metrics = evaluations[0].metrics
+
+    expected_values = {
+        "uid0": {
+            "AnswerRelevance": 0.6666666666666666,
+            "Coherence": 4,
+            "ROUGE": {
+                "rouge1": 0.5925925925925926,
+                "rouge2": 0.5569620253164557,
+                "rougeL": 0.5925925925925926,
+                "rougeLsum": 0.5925925925925926,
+            },
+            "BLEU": 0.3502270395690205,
+        },
+        "uid1": {
+            "AnswerRelevance": 0.2,
+            "Coherence": 5,
+            "ROUGE": {
+                "rouge1": 1.0,
+                "rouge2": 1.0,
+                "rougeL": 1.0,
+                "rougeLsum": 1.0,
+            },
+            "BLEU": 1.0,
+        },
+        "uid2": {
+            "AnswerRelevance": 0.2,
+            "Coherence": 4,
+            "ROUGE": {
+                "rouge1": 0.18666666666666668,
+                "rouge2": 0.0821917808219178,
+                "rougeL": 0.18666666666666668,
+                "rougeLsum": 0.18666666666666668,
+            },
+            "BLEU": 0.05434912989707719,
+        },
+    }
+
+    assert metrics
+    for metric in metrics:
+        assert isinstance(metric.parameters, dict)
+        assert (
+            expected_values[metric.parameters["datum_uid"]][metric.type]
+            == metric.value
+        )
+
+    # test with a content generation dataset
+    metrics_to_return = [
+        MetricType.Coherence,
+    ]
+
+    # default request
+    job_request = schemas.EvaluationRequest(
+        dataset_names=[content_gen_dataset_name],
+        model_names=[content_gen_model_name],
+        parameters=schemas.EvaluationParameters(
+            task_type=TaskType.TEXT_GENERATION,
+            metrics_to_return=metrics_to_return,
+            llm_api_params={
+                "client": "openai",
+                "data": {
+                    "seed": 2024,
+                    "model": "gpt-4o",
                 },
             },
         ),

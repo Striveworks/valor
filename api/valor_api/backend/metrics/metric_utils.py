@@ -456,7 +456,7 @@ def prepare_filter_for_evaluation(
     model_name: str,
     task_type: enums.TaskType,
     label_map: LabelMapType | None = None,
-) -> tuple[schemas.Filter, schemas.Filter]:
+) -> tuple[schemas.Filter, schemas.Filter, schemas.Filter]:
     """
     Prepares the filter for use by an evaluation method.
 
@@ -521,6 +521,16 @@ def prepare_filter_for_evaluation(
         else task_type_condition
     )
 
+    # create new datums filter
+    filters.datums = (
+        schemas.LogicalFunction.and_(
+            filters.datums,
+            dataset_conditions,
+        )
+        if filters.datums
+        else dataset_conditions
+    )
+
     # create new groundtruth filter
     filters.groundtruths = (
         schemas.LogicalFunction.and_(
@@ -545,13 +555,17 @@ def prepare_filter_for_evaluation(
         )
     )
 
+    datum_filter = filters.model_copy()
+    datum_filter.groundtruths = None
+    datum_filter.predictions = None
+
     groundtruth_filter = filters.model_copy()
     groundtruth_filter.predictions = None
 
     predictions_filter = filters.model_copy()
     predictions_filter.groundtruths = None
 
-    return (groundtruth_filter, predictions_filter)
+    return (datum_filter, groundtruth_filter, predictions_filter)
 
 
 def trim_and_load_json(input_string: str) -> Any:
