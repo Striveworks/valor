@@ -156,7 +156,7 @@ def run_detailed_pr_curve_evaluation(dset: Dataset, model: Model):
 
 
 def run_benchmarking_analysis(
-    limits_to_test: list[int] = [5000],
+    limits_to_test: list[int] = [5000, 5000],
     results_file: str = "results.json",
     data_file: str = "data.json",
 ):
@@ -194,19 +194,19 @@ def run_benchmarking_analysis(
             )
 
         try:
-            eval_pr_ = run_pr_curve_evaluation(dset=dset, model=model)
+            eval_pr = run_pr_curve_evaluation(dset=dset, model=model)
         except TimeoutError:
             raise TimeoutError(
-                f"Evaluation timed out when processing {limit} datums."
+                f"PR Evaluation timed out when processing {limit} datums."
             )
 
         try:
-            eval_det_ = run_detailed_pr_curve_evaluation(
+            eval_pr_detail = run_detailed_pr_curve_evaluation(
                 dset=dset, model=model
             )
         except TimeoutError:
             raise TimeoutError(
-                f"Evaluation timed out when processing {limit} datums."
+                f"Detailed PR Evaluation timed out when processing {limit} datums."
             )
 
         start = time.time()
@@ -219,9 +219,9 @@ def run_benchmarking_analysis(
             "number_of_unique_labels": eval_.meta["labels"],
             "number_of_annotations": eval_.meta["annotations"],
             "ingest_runtime": f"{(ingest_time):.1f} seconds",
-            "eval_base_runtime": f"{(eval_.meta['duration']):.1f} seconds",
-            "eval_pr_runtime": f"{(eval_pr_.meta['duration']):.1f} seconds",
-            "eval_pr_detailed_runtime": f"{(eval_det_.meta['duration']):.1f} seconds",
+            "eval_runtime": f"{(eval_.meta['duration']):.1f} seconds",
+            "eval_pr_runtime": f"{(eval_pr.meta['duration']):.1f} seconds",
+            "eval_detailed_pr_runtime": f"{(eval_pr_detail.meta['duration']):.1f} seconds",
             "del_runtime": f"{(deletion_time):.1f} seconds",
         }
         write_results_to_file(write_path=write_path, result_dict=results)
