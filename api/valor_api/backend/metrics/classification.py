@@ -10,9 +10,8 @@ from sqlalchemy.sql import and_, case, func, or_, select
 from valor_api import enums, schemas
 from valor_api.backend import core, models
 from valor_api.backend.metrics.metric_utils import (
+    commit_results,
     create_grouper_mappings,
-    create_metric_mappings,
-    get_or_create_row,
     log_evaluation_duration,
     log_evaluation_item_counts,
     prepare_filter_for_evaluation,
@@ -332,169 +331,10 @@ def _compute_curves(
     return output
 
 
-def _compute_binary_roc_auc(
-    db: Session,
-    prediction_filter: schemas.Filter,
-    groundtruth_filter: schemas.Filter,
-    label: schemas.Label,
-) -> float:
-    """
-    Computes the binary ROC AUC score of a dataset and label.
-
-    Parameters
-    ----------
-    db : Session
-        The database Session to query against.
-    prediction_filter : schemas.Filter
-        The filter to be used to query predictions.
-    groundtruth_filter : schemas.Filter
-        The filter to be used to query groundtruths.
-    label : schemas.Label
-        The label to compute the score for.
-
-    Returns
-    -------
-    float
-        The binary ROC AUC score.
-    """
-    # query to get the datum_ids and label values of groundtruths that have the given label key
-
-    filtered_groundtruths = generate_select(
-        models.GroundTruth,
-        filters=groundtruth_filter,
-        label_source=models.GroundTruth,
-    ).subquery()
-    gts_query = (
-        select(
-            models.Annotation.datum_id.label("datum_id"),
-            models.Label.value.label("label_value"),
-        )
-        .select_from(models.Annotation)
-        .join(
-            filtered_groundtruths,
-            filtered_groundtruths.c.annotation_id == models.Annotation.id,
-        )
-        .join(
-            models.Label,
-            and_(
-                models.Label.id == filtered_groundtruths.c.label_id,
-                models.Label.key == label.key,
-            ),
-        )
-    ).subquery("groundtruth_subquery")
-
-    # get the prediction scores for the given label (key and value)
-    filtered_predictions = generate_select(
-        models.Prediction,
-        filters=prediction_filter,
-        label_source=models.Prediction,
-    ).subquery()
-    preds_query = (
-        select(
-            models.Annotation.datum_id.label("datum_id"),
-            filtered_predictions.c.score.label("score"),
-            models.Label.value.label("label_value"),
-        )
-        .select_from(models.Annotation)
-        .join(
-            filtered_predictions,
-            filtered_predictions.c.annotation_id == models.Annotation.id,
-        )
-        .join(
-            models.Label,
-            and_(
-                models.Label.id == filtered_predictions.c.label_id,
-                models.Label.key == label.key,
-                models.Label.value == label.value,
-            ),
-        )
-    ).subquery("prediction_subquery")
-
-    # number of ground truth labels that match the given label value
-    n_pos = db.scalar(
-        select(func.count(gts_query.c.label_value)).where(
-            gts_query.c.label_value == label.value
-        )
-    )
-    # total number of groundtruths
-    n = db.scalar(select(func.count(gts_query.c.label_value)))
-
-    if n is None or n_pos is None:
-        raise RuntimeError(
-            "ROCAUC computation failed; db.scalar returned None for mathematical variables."
-        )
-
-    if n_pos == 0:
-        return 0
-
-    if n - n_pos == 0:
-        return 1.0
-
-    basic_counts_query = (
-        select(
-            preds_query.c.datum_id,
-            preds_query.c.score,
-            (gts_query.c.label_value == label.value)
-            .cast(Integer)
-            .label("is_true_positive"),
-            (gts_query.c.label_value != label.value)
-            .cast(Integer)
-            .label("is_false_positive"),
-        )
-        .select_from(
-            preds_query.join(
-                gts_query, preds_query.c.datum_id == gts_query.c.datum_id
-            )
-        )
-        .alias("basic_counts")
-    )
-
-    tpr_fpr_cumulative = select(
-        basic_counts_query.c.score,
-        func.sum(basic_counts_query.c.is_true_positive)
-        .over(order_by=basic_counts_query.c.score.desc())
-        .label("cumulative_tp"),
-        func.sum(basic_counts_query.c.is_false_positive)
-        .over(order_by=basic_counts_query.c.score.desc())
-        .label("cumulative_fp"),
-    ).alias("tpr_fpr_cumulative")
-
-    tpr_fpr_rates = select(
-        tpr_fpr_cumulative.c.score,
-        (tpr_fpr_cumulative.c.cumulative_tp / n_pos).label("tpr"),
-        (tpr_fpr_cumulative.c.cumulative_fp / (n - n_pos)).label("fpr"),
-    ).alias("tpr_fpr_rates")
-
-    trap_areas = select(
-        (
-            0.5
-            * (
-                tpr_fpr_rates.c.tpr
-                + func.lag(tpr_fpr_rates.c.tpr).over(
-                    order_by=tpr_fpr_rates.c.score.desc()
-                )
-            )
-            * (
-                tpr_fpr_rates.c.fpr
-                - func.lag(tpr_fpr_rates.c.fpr).over(
-                    order_by=tpr_fpr_rates.c.score.desc()
-                )
-            )
-        ).label("trap_area")
-    ).subquery()
-
-    ret = db.scalar(func.sum(trap_areas.c.trap_area))
-
-    if ret is None:
-        return np.nan
-
-    return float(ret)
-
-
 def _compute_roc_auc(
     db: Session,
-    prediction_filter: schemas.Filter,
-    groundtruth_filter: schemas.Filter,
+    groundtruths: CTE,
+    predictions: CTE,
     grouper_key: str,
     grouper_mappings: dict[str, dict[str, dict]],
 ) -> float | None:
@@ -507,10 +347,10 @@ def _compute_roc_auc(
     ----------
     db : Session
         The database Session to query against.
-    prediction_filter : schemas.Filter
-        The filter to be used to query predictions.
-    groundtruth_filter : schemas.Filter
-        The filter to be used to query groundtruths.
+    groundtruths : CTE
+        A cte returning ground truths.
+    predictions : CTE
+        A cte returning predictions.
     grouper_key : str
         The key of the grouper to calculate the ROCAUC for.
     grouper_mappings: dict[str, dict[str, dict]]
@@ -522,6 +362,181 @@ def _compute_roc_auc(
         The ROC AUC. Returns None if no labels exist for that label_key.
     """
 
+    groundtruths_per_label_kv_query = (
+        select(
+            models.Label.key,
+            models.Label.value,
+            func.count(groundtruths.c.id).label("gt_counts_per_label"),
+        )
+        .select_from(models.Label)
+        .join(groundtruths, groundtruths.c.label_id == models.Label.id)
+        .group_by(
+            models.Label.key,
+            models.Label.value,
+        )
+        .cte("gt_counts")
+    )
+
+    label_key_to_count = defaultdict(int)
+    label_to_count = dict()
+    filtered_label_set = set()
+    for key, value, count in db.query(groundtruths_per_label_kv_query).all():
+        label_key_to_count[key] += count
+        label_to_count[schemas.Label(key=key, value=value)] = count
+        filtered_label_set.add(schemas.Label(key=key, value=value))
+
+    groundtruths_per_label_key_query = (
+        select(
+            groundtruths_per_label_kv_query.c.key,
+            func.sum(groundtruths_per_label_kv_query.c.gt_counts_per_label)
+            .cast(Integer)
+            .label("gt_counts_per_key"),
+        )
+        .group_by(groundtruths_per_label_kv_query.c.key)
+        .subquery()
+    )
+
+    groundtruth_labels = alias(models.Label)
+    prediction_labels = alias(models.Label)
+
+    basic_counts_query = (
+        select(
+            predictions.c.score,
+            (groundtruth_labels.c.value == prediction_labels.c.value)
+            .cast(Integer)
+            .label("is_true_positive"),
+            (groundtruth_labels.c.value != prediction_labels.c.value)
+            .cast(Integer)
+            .label("is_false_positive"),
+            groundtruth_labels.c.key.label("label_key"),
+            prediction_labels.c.value.label("prediction_label_value"),
+        )
+        .select_from(predictions)
+        .join(
+            groundtruths,
+            groundtruths.c.datum_id == predictions.c.datum_id,
+        )
+        .join(
+            groundtruth_labels,
+            groundtruth_labels.c.id == groundtruths.c.label_id,
+        )
+        .join(
+            prediction_labels,
+            and_(
+                prediction_labels.c.id == predictions.c.label_id,
+                prediction_labels.c.key == groundtruth_labels.c.key,
+            ),
+        )
+        .subquery("basic_counts")
+    )
+
+    cumulative_tp = func.sum(basic_counts_query.c.is_true_positive).over(
+        partition_by=[
+            basic_counts_query.c.label_key,
+            basic_counts_query.c.prediction_label_value,
+        ],
+        order_by=basic_counts_query.c.score.desc(),
+    )
+
+    cumulative_fp = func.sum(basic_counts_query.c.is_false_positive).over(
+        partition_by=[
+            basic_counts_query.c.label_key,
+            basic_counts_query.c.prediction_label_value,
+        ],
+        order_by=basic_counts_query.c.score.desc(),
+    )
+
+    tpr_fpr_cumulative = select(
+        basic_counts_query.c.score,
+        cumulative_tp.label("cumulative_tp"),
+        cumulative_fp.label("cumulative_fp"),
+        basic_counts_query.c.label_key,
+        basic_counts_query.c.prediction_label_value,
+    ).subquery("tpr_fpr_cumulative")
+
+    tpr_fpr_rates = (
+        select(
+            tpr_fpr_cumulative.c.score,
+            (
+                tpr_fpr_cumulative.c.cumulative_tp
+                / groundtruths_per_label_kv_query.c.gt_counts_per_label
+            ).label("tpr"),
+            (
+                tpr_fpr_cumulative.c.cumulative_fp
+                / (
+                    groundtruths_per_label_key_query.c.gt_counts_per_key
+                    - groundtruths_per_label_kv_query.c.gt_counts_per_label
+                )
+            ).label("fpr"),
+            tpr_fpr_cumulative.c.label_key,
+            tpr_fpr_cumulative.c.prediction_label_value,
+        )
+        .join(
+            groundtruths_per_label_key_query,
+            groundtruths_per_label_key_query.c.key
+            == tpr_fpr_cumulative.c.label_key,
+        )
+        .join(
+            groundtruths_per_label_kv_query,
+            and_(
+                groundtruths_per_label_kv_query.c.key
+                == tpr_fpr_cumulative.c.label_key,
+                groundtruths_per_label_kv_query.c.value
+                == tpr_fpr_cumulative.c.prediction_label_value,
+                groundtruths_per_label_kv_query.c.gt_counts_per_label > 0,
+                (
+                    groundtruths_per_label_key_query.c.gt_counts_per_key
+                    - groundtruths_per_label_kv_query.c.gt_counts_per_label
+                )
+                > 0,
+            ),
+        )
+        .subquery("tpr_fpr_rates")
+    )
+
+    lagging_tpr = func.lag(tpr_fpr_rates.c.tpr).over(
+        partition_by=[
+            tpr_fpr_rates.c.label_key,
+            tpr_fpr_rates.c.prediction_label_value,
+        ],
+        order_by=tpr_fpr_rates.c.score.desc(),
+    )
+
+    lagging_fpr = func.lag(tpr_fpr_rates.c.fpr).over(
+        partition_by=[
+            tpr_fpr_rates.c.label_key,
+            tpr_fpr_rates.c.prediction_label_value,
+        ],
+        order_by=tpr_fpr_rates.c.score.desc(),
+    )
+
+    trap_areas = select(
+        (
+            0.5
+            * (tpr_fpr_rates.c.tpr + lagging_tpr)
+            * (tpr_fpr_rates.c.fpr - lagging_fpr)
+        ).label("trap_area"),
+        tpr_fpr_rates.c.label_key,
+        tpr_fpr_rates.c.prediction_label_value,
+    ).subquery()
+
+    results = (
+        select(
+            trap_areas.c.label_key,
+            trap_areas.c.prediction_label_value,
+            func.sum(trap_areas.c.trap_area),
+        )
+        .group_by(
+            trap_areas.c.label_key,
+            trap_areas.c.prediction_label_value,
+        )
+        .subquery()
+    )
+    map_label_to_result = {
+        schemas.Label(key=key, value=value): rocauc
+        for key, value, rocauc in db.query(results).all()
+    }
+
     # get all of the labels associated with the grouper
     value_to_labels_mapping = grouper_mappings[
         "grouper_key_to_labels_mapping"
@@ -529,48 +544,33 @@ def _compute_roc_auc(
 
     sum_roc_aucs = 0
     label_count = 0
+    for _, label_rows in value_to_labels_mapping.items():
+        for label_row in label_rows:
 
-    for grouper_value, labels in value_to_labels_mapping.items():
-        label_filter = groundtruth_filter.model_copy()
-        label_filter.labels = schemas.LogicalFunction.and_(
-            label_filter.labels,
-            schemas.LogicalFunction.or_(
-                *[
-                    schemas.Condition(
-                        lhs=schemas.Symbol(
-                            name=schemas.SupportedSymbol.LABEL_ID
-                        ),
-                        rhs=schemas.Value.infer(label.id),
-                        op=schemas.FilterOperator.EQ,
-                    )
-                    for label in labels
-                ]
-            ),
-        )
+            label = schemas.Label(key=label_row.key, value=label_row.value)
 
-        # some labels in the "labels" argument may be out-of-scope given our groundtruth_filter, so we fetch all labels that are within scope of the groundtruth_filter to make sure we don't calculate ROCAUC for inappropriate labels
-        in_scope_labels = [
-            label
-            for label in labels
-            if schemas.Label(key=label.key, value=label.value)
-            in core.get_labels(
-                db=db, filters=label_filter, ignore_predictions=True
-            )
-        ]
+            # some labels in the "labels" argument may be out-of-scope given our groundtruth_filter, so we fetch all labels that are within scope of the groundtruth_filter to make sure we don't calculate ROCAUC for inappropriate labels
+            if label not in filtered_label_set:
+                continue
+            elif (
+                label not in label_to_count
+                or label.key not in label_key_to_count
+            ):
+                raise RuntimeError(
+                    f"ROC AUC computation failed as the label `{label}` could not be found."
+                )
 
-        if not in_scope_labels:
-            continue
+            if label_to_count[label] == 0:
+                ret = 0.0
+            elif (
+                label_key_to_count[label_row.key] - label_to_count[label] == 0
+            ):
+                ret = 1.0
+            else:
+                ret = map_label_to_result.get(label, np.nan)
 
-        for label in labels:
-            bin_roc = _compute_binary_roc_auc(
-                db=db,
-                prediction_filter=prediction_filter,
-                groundtruth_filter=groundtruth_filter,
-                label=schemas.Label(key=label.key, value=label.value),
-            )
-
-            if bin_roc is not None:
-                sum_roc_aucs += bin_roc
+            if ret is not None:
+                sum_roc_aucs += float(ret)
                 label_count += 1
 
     return sum_roc_aucs / label_count if label_count else None
@@ -880,8 +880,8 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
     rocauc = (
         _compute_roc_auc(
             db=db,
-            prediction_filter=prediction_filter,
-            groundtruth_filter=groundtruth_filter,
+            groundtruths=groundtruths,
+            predictions=predictions,
             grouper_key=grouper_key,
             grouper_mappings=grouper_mappings,
         )
@@ -1034,6 +1034,7 @@ def _compute_clf_metrics(
     )
 
     grouper_mappings = create_grouper_mappings(
+        db=db,
         labels=labels,
         label_map=label_map,
         evaluation_type=enums.TaskType.CLASSIFICATION,
@@ -1088,12 +1089,10 @@ def compute_clf_metrics(
     # unpack filters and params
     parameters = schemas.EvaluationParameters(**evaluation.parameters)
     _, groundtruth_filter, prediction_filter = prepare_filter_for_evaluation(
-        db=db,
         filters=schemas.Filter(**evaluation.filters),
         dataset_names=evaluation.dataset_names,
         model_name=evaluation.model_name,
         task_type=parameters.task_type,
-        label_map=parameters.label_map,
     )
 
     log_evaluation_item_counts(
@@ -1119,35 +1118,19 @@ def compute_clf_metrics(
         metrics_to_return=parameters.metrics_to_return,
     )
 
-    confusion_matrices_mappings = create_metric_mappings(
+    # add confusion matrices to database
+    commit_results(
         db=db,
         metrics=confusion_matrices,
         evaluation_id=evaluation.id,
     )
 
-    for mapping in confusion_matrices_mappings:
-        get_or_create_row(
-            db,
-            models.ConfusionMatrix,
-            mapping,
-        )
-
-    metric_mappings = create_metric_mappings(
+    # add metrics to database
+    commit_results(
         db=db,
         metrics=metrics,
         evaluation_id=evaluation.id,
     )
-
-    for mapping in metric_mappings:
-        # ignore value since the other columns are unique identifiers
-        # and have empirically noticed value can slightly change due to floating
-        # point errors
-        get_or_create_row(
-            db,
-            models.Metric,
-            mapping,
-            columns_to_ignore=["value"],
-        )
 
     log_evaluation_duration(
         evaluation=evaluation,

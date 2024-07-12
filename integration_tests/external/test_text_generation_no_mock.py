@@ -245,7 +245,7 @@ def test_llm_evaluation_rag_with_openai(
         },
     }
 
-    # Check that the returned metrics have the right format.
+    # Check that the returned metrics match the expected values.
     for m in metrics:
         uid = m["parameters"]["datum_uid"]
         metric_name = m["type"]

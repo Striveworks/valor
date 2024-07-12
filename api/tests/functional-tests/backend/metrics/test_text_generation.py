@@ -535,6 +535,7 @@ def test__compute_text_generation_rag(
             op=schemas.LogicalOperator.AND,
         ),
     )
+    groundtruth_filter = datum_filter.model_copy()
     prediction_filter = datum_filter.model_copy()
 
     metrics_to_return = [
@@ -547,6 +548,7 @@ def test__compute_text_generation_rag(
     metrics = _compute_text_generation_metrics(
         db,
         datum_filter=datum_filter,
+        groundtruth_filter=groundtruth_filter,
         prediction_filter=prediction_filter,
         metrics_to_return=metrics_to_return,
         llm_api_params={
@@ -607,6 +609,7 @@ def test__compute_text_generation_rag(
     _ = _compute_text_generation_metrics(
         db,
         datum_filter=datum_filter,
+        groundtruth_filter=groundtruth_filter,
         prediction_filter=prediction_filter,
         metrics_to_return=[MetricType.AnswerRelevance],
         llm_api_params={
@@ -634,6 +637,7 @@ def test__compute_text_generation_rag(
     _ = _compute_text_generation_metrics(
         db,
         datum_filter=datum_filter,
+        groundtruth_filter=groundtruth_filter,
         prediction_filter=prediction_filter,
         metrics_to_return=metrics_to_return,
         llm_api_params={
@@ -650,6 +654,7 @@ def test__compute_text_generation_rag(
     _ = _compute_text_generation_metrics(
         db,
         datum_filter=datum_filter,
+        groundtruth_filter=groundtruth_filter,
         prediction_filter=prediction_filter,
         metrics_to_return=metrics_to_return,
         llm_api_params={
@@ -665,6 +670,7 @@ def test__compute_text_generation_rag(
         _compute_text_generation_metrics(
             db,
             datum_filter=datum_filter,
+            groundtruth_filter=groundtruth_filter,
             prediction_filter=prediction_filter,
             metrics_to_return=metrics_to_return,
             llm_api_params={
@@ -680,6 +686,7 @@ def test__compute_text_generation_rag(
         _compute_text_generation_metrics(
             db,
             datum_filter=datum_filter,
+            groundtruth_filter=groundtruth_filter,
             prediction_filter=prediction_filter,
             metrics_to_return=metrics_to_return,
             llm_api_params={
@@ -697,6 +704,7 @@ def test__compute_text_generation_rag(
         _compute_text_generation_metrics(
             db,
             datum_filter=datum_filter,
+            groundtruth_filter=groundtruth_filter,
             prediction_filter=prediction_filter,
             metrics_to_return=metrics_to_return,
             llm_api_params={
@@ -713,6 +721,7 @@ def test__compute_text_generation_rag(
         _compute_text_generation_metrics(
             db,
             datum_filter=datum_filter,
+            groundtruth_filter=groundtruth_filter,
             prediction_filter=prediction_filter,
             metrics_to_return=metrics_to_return,
             llm_api_params={
@@ -728,6 +737,7 @@ def test__compute_text_generation_rag(
         _compute_text_generation_metrics(
             db,
             datum_filter=datum_filter,
+            groundtruth_filter=groundtruth_filter,
             prediction_filter=prediction_filter,
             metrics_to_return=metrics_to_return,
             llm_api_params={
@@ -741,6 +751,7 @@ def test__compute_text_generation_rag(
         _compute_text_generation_metrics(
             db,
             datum_filter=datum_filter,
+            groundtruth_filter=groundtruth_filter,
             prediction_filter=prediction_filter,
             metrics_to_return=metrics_to_return,
             llm_api_params={
@@ -760,6 +771,7 @@ def test__compute_text_generation_rag(
         _compute_text_generation_metrics(
             db,
             datum_filter=datum_filter,
+            groundtruth_filter=groundtruth_filter,
             prediction_filter=prediction_filter,
             metrics_to_return=metrics_to_return,
             llm_api_params={
@@ -779,6 +791,7 @@ def test__compute_text_generation_rag(
         _compute_text_generation_metrics(
             db,
             datum_filter=datum_filter,
+            groundtruth_filter=groundtruth_filter,
             prediction_filter=prediction_filter,
             metrics_to_return=metrics_to_return,
         )

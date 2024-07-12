@@ -62,7 +62,7 @@ JSON:
 
 
 def _generate_anwswer_relevance_verdicts_instruction(
-    query: str, statements: str | list[str]
+    query: str, statements: list[str]
 ) -> str:
     """
     Instruction template was copied from DeepEval's codebase https://github.com/confident-ai/deepeval/blob/main/deepeval/metrics/answer_relevancy/template.py.
@@ -297,7 +297,8 @@ class LLMClient:
             {
                 "role": "user",
                 "content": _generate_anwswer_relevance_verdicts_instruction(
-                    query, statements
+                    query,
+                    statements,
                 ),
             },
         ]

@@ -105,6 +105,7 @@ def rag_gt_questions(
     rag_datums: list[Datum],
     rag_references: list[str],
 ) -> list[GroundTruth]:
+    assert len(rag_datums) == len(rag_references)
     return [
         GroundTruth(
             datum=rag_datums[i],
@@ -114,7 +115,7 @@ def rag_gt_questions(
                 Annotation(text="some final text"),
             ],
         )
-        for i in range(3)
+        for i in range(len(rag_datums))
     ]
 
 
@@ -124,6 +125,7 @@ def rag_pred_answers(
     rag_predictions: list[str],
     rag_context: list[list[str]],
 ) -> list[GroundTruth]:
+    assert len(rag_datums) == len(rag_predictions) == len(rag_context)
     return [
         Prediction(
             datum=rag_datums[i],
@@ -134,7 +136,7 @@ def rag_pred_answers(
                 )
             ],
         )
-        for i in range(3)
+        for i in range(len(rag_datums))
     ]
 
 
@@ -197,6 +199,9 @@ def test_llm_evaluation_rag_with_mock_client(
 
     metrics = eval_job.metrics
 
+    # Check that the right number of metrics are returned.
+    assert len(metrics) == len(rag_pred_answers) * len(metrics_to_return)
+
     expected_metrics = {
         "uid0": {
             "AnswerRelevance": 0.5,
@@ -232,9 +237,6 @@ def test_llm_evaluation_rag_with_mock_client(
             },
         },
     }
-
-    # Check that the right number of metrics are returned.
-    assert len(metrics) == len(rag_pred_answers) * len(metrics_to_return)
 
     # Check that the returned metrics have the right format.
     for m in metrics:

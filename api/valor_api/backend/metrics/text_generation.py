@@ -16,8 +16,7 @@ from valor_api.backend.core.llm_clients import (
     WrappedOpenAIClient,
 )
 from valor_api.backend.metrics.metric_utils import (
-    create_metric_mappings,
-    get_or_create_row,
+    commit_results,
     log_evaluation_duration,
     log_evaluation_item_counts,
     prepare_filter_for_evaluation,
@@ -244,6 +243,7 @@ def _setup_llm_client(
 def _compute_text_generation_metrics(
     db: Session,
     datum_filter: schemas.Filter,
+    groundtruth_filter: schemas.Filter,
     prediction_filter: schemas.Filter,
     metrics_to_return: list[MetricType] = [],
     llm_api_params: dict[str, str | dict] | None = None,
@@ -263,6 +263,8 @@ def _compute_text_generation_metrics(
         The database Session to query against.
     datum_filter : schemas.Filter
         The filter to be used to query datums.
+    groundtruth_filter : schemas.Filter
+        The filter to be used to query groundtruths.
     prediction_filter : schemas.Filter
         The filter to be used to query predictions.
     metrics_to_return: list[MetricType]
@@ -278,7 +280,6 @@ def _compute_text_generation_metrics(
         A list of computed metrics.
     """
     prediction_subquery = generate_query(
-        models.Prediction,
         models.Annotation.datum_id.label("datum_id"),
         models.Annotation.text.label("prediction_text"),
         models.Annotation.context.label("prediction_context"),
@@ -304,7 +305,7 @@ def _compute_text_generation_metrics(
                 ),
                 db=db,
                 label_source=models.GroundTruth,
-                filters=datum_filter,
+                filters=groundtruth_filter,
             )
             .group_by(
                 models.GroundTruth.id,
@@ -414,15 +415,11 @@ def _compute_text_generation_metrics(
             )
         client = _setup_llm_client(llm_api_params)
 
-        datum_subquery = generate_query(
-            models.Datum,
+        datum_subquery = select(
             models.Datum.id.label("datum_id"),
             models.Datum.uid.label("datum_uid"),
             models.Dataset.name.label("dataset_name"),
             models.Datum.text.label("datum_text"),
-            db=db,
-            label_source=models.Annotation,
-            filters=datum_filter,
         ).subquery()
 
         joint_subquery = (
@@ -510,7 +507,6 @@ def compute_text_generation_metrics(
         groundtruth_filter,
         prediction_filter,
     ) = prepare_filter_for_evaluation(
-        db=db,
         filters=schemas.Filter(**evaluation.filters),
         dataset_names=evaluation.dataset_names,
         model_name=evaluation.model_name,
@@ -547,28 +543,15 @@ def compute_text_generation_metrics(
     metrics = _compute_text_generation_metrics(
         db=db,
         datum_filter=datum_filter,
+        groundtruth_filter=groundtruth_filter,
         prediction_filter=prediction_filter,
         metrics_to_return=parameters.metrics_to_return,
         llm_api_params=parameters.llm_api_params,
         metric_params=metric_params,
     )
 
-    metric_mappings = create_metric_mappings(
-        db=db,
-        metrics=metrics,
-        evaluation_id=evaluation.id,
-    )
-
-    for mapping in metric_mappings:
-        # ignore value since the other columns are unique identifiers
-        # and have empirically noticed value can slightly change due to floating
-        # point errors
-        get_or_create_row(
-            db,
-            models.Metric,
-            mapping,
-            columns_to_ignore=["value"],
-        )
+    # add metrics to database
+    commit_results(db, metrics, evaluation_id)
 
     log_evaluation_duration(
         evaluation=evaluation,
