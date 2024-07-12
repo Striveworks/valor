@@ -1105,33 +1105,58 @@ def _compute_detection_metrics(
     ]
 
     # add any groundtruth labels that didn't have a qualifying prediction
-    missing_prediction_labels = pandas.DataFrame(
+    groundtruths_with_no_predictions = pandas.DataFrame(
+        gt_df[
+            ~gt_df["label_id_grouper"].isin(ar_metrics_df["label_id_grouper"])
+        ]["label_id_grouper"].drop_duplicates()
+    ).assign(  # TODO might as well move this mapping up into gt_df and pd_df
+        label=lambda chain_df: chain_df["label_id_grouper"].map(
+            grouper_mappings["grouper_id_to_grouper_label_mapping"]
+        )
+    )
+    predictions_with_no_groundtruths = pandas.DataFrame(
         pd_df[
-            ~pd_df["label_id_grouper"].isin(ar_metrics_df["label_id_grouper"])
+            (
+                ~pd_df["label_id_grouper"].isin(
+                    ar_metrics_df["label_id_grouper"]
+                )
+            )
+            & (
+                ~pd_df["label_id_grouper"].isin(
+                    groundtruths_with_no_predictions["label_id_grouper"]
+                )
+            )
         ]["label_id_grouper"].drop_duplicates()
     ).assign(
         label=lambda chain_df: chain_df["label_id_grouper"].map(
             grouper_mappings["grouper_id_to_grouper_label_mapping"]
         )
     )
-
-    # ap_metrics += [
-    #     schemas.APMetric(
-    #         iou=iou,
-    #         value=0,
-    #         label=label,
-    #     )
-    #     for label in missing_prediction_labels["label"]
-    #     for iou in parameters.iou_thresholds_to_return
-    # ]
-
+    ar_metrics += [
+        schemas.ARMetric(
+            ious=ious_,
+            value=0,
+            label=label,
+        )
+        for label in groundtruths_with_no_predictions["label"]
+    ]
     ar_metrics += [
         schemas.ARMetric(
             ious=ious_,
             value=-1,
             label=label,
         )
-        for label in missing_prediction_labels["label"]
+        for label in predictions_with_no_groundtruths["label"]
+    ]
+
+    ap_metrics += [
+        schemas.APMetric(
+            iou=iou,
+            value=0,
+            label=label,
+        )
+        for label in groundtruths_with_no_predictions["label"]
+        for iou in parameters.iou_thresholds_to_return
     ]
 
     ap_ar_output = [
@@ -1262,7 +1287,7 @@ def _compute_detection_metrics(
                 "f1_score": row["f1_score"],
             }
 
-        for grouper_id, label in missing_prediction_labels.values:
+        for grouper_id, label in groundtruths_with_no_predictions.values:
             for confidence_threshold in confidence_thresholds:
                 curves[label.key][label.value][confidence_threshold] = {
                     "tp": 0,
