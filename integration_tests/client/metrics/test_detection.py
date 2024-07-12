@@ -1841,7 +1841,7 @@ def test_evaluate_detection_with_label_maps(
         {
             "type": "AP",
             "parameters": {"iou": 0.1},
-            "value": 0.6633663366336634,
+            "value": 0.6633663366336634,  # AP should be .66, but it's actually .3366
             "label": {"key": "foo", "value": "bar"},
         },
         {

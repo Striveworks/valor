@@ -1244,7 +1244,8 @@ def _compute_detection_metrics(
                 }
             )
             .merge(
-                number_of_groundtruths_per_grouper_df, on="label_id_grouper"
+                number_of_groundtruths_per_grouper_df,
+                on="label_id_grouper",
             )
             .assign(
                 false_negatives=lambda chain_df: chain_df["gts_per_grouper"]
@@ -1271,6 +1272,14 @@ def _compute_detection_metrics(
             )
         )
 
+        # TODO fill precision and F1
+        pr_metrics_df.fillna(-1, inplace=True)
+
+        # TODO delete this line
+        pr_calculation_df["delete"] = pr_calculation_df[
+            "label_id_grouper"
+        ].map(grouper_mappings["grouper_id_to_grouper_label_mapping"])
+
         curves = defaultdict(lambda: defaultdict(lambda: defaultdict(dict)))
 
         for row in pr_metrics_df.to_dict(orient="records"):
@@ -1287,8 +1296,14 @@ def _compute_detection_metrics(
                 "f1_score": row["f1_score"],
             }
 
-        for grouper_id, label in groundtruths_with_no_predictions.values:
-            for confidence_threshold in confidence_thresholds:
+        # add back independent groundtruths and predictions
+        for confidence_threshold in confidence_thresholds:
+            for grouper_id, label in pandas.concat(
+                [
+                    groundtruths_with_no_predictions,
+                    predictions_with_no_groundtruths,
+                ]
+            ).values:
                 curves[label.key][label.value][confidence_threshold] = {
                     "tp": 0,
                     "fp": pd_df.loc[
@@ -1307,6 +1322,7 @@ def _compute_detection_metrics(
                     "accuracy": None,
                     "f1_score": 0,
                 }
+
         ap_ar_output += [
             schemas.PrecisionRecallCurve(
                 label_key=key,
@@ -1316,6 +1332,7 @@ def _compute_detection_metrics(
             for key, value in curves.items()
         ]
 
+    # TODO change to just output
     return ap_ar_output
 
 
