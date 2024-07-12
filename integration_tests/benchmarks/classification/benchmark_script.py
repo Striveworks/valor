@@ -1,7 +1,7 @@
 import json
 import os
+import time
 from datetime import datetime
-from time import time
 
 import requests
 
@@ -108,6 +108,7 @@ def ingest_groundtruths_and_predictions(
     dset.add_groundtruths(groundtruths, timeout=3000)
     model.add_predictions(dset, predictions, timeout=3000)
 
+
     dset.finalize()
     model.finalize_inferences(dataset=dset)
 
@@ -115,7 +116,7 @@ def ingest_groundtruths_and_predictions(
 def run_base_evaluation(dset: Dataset, model: Model):
     """Run a base evaluation (with no PR curves)."""
     evaluation = model.evaluate_classification(dset)
-    evaluation.wait_for_completion(timeout=3000)
+    evaluation.wait_for_completion()
     return evaluation
 
 
@@ -175,15 +176,16 @@ def run_benchmarking_analysis(
         raw_data = json.load(file)
 
     for limit in limits_to_test:
-        dset = Dataset.create(name="bird-identification")
-        model = Model.create(name="some_model")
 
-        start_time = time()
+        dset = Dataset.create(name=f"bird-identification-{time.time()}")
+        model = Model.create(name=f"some_model-{time.time()}")
+
+        start_time = time.time()
 
         ingest_groundtruths_and_predictions(
             dset=dset, model=model, raw=raw_data, pair_limit=limit
         )
-        ingest_time = time() - start_time
+        ingest_time = time.time() - start_time
 
         try:
             eval_ = run_base_evaluation(dset=dset, model=model)
@@ -192,17 +194,42 @@ def run_benchmarking_analysis(
                 f"Evaluation timed out when processing {limit} datums."
             )
 
+        try:
+            eval_pr = run_pr_curve_evaluation(dset=dset, model=model)
+        except TimeoutError:
+            raise TimeoutError(
+                f"PR Evaluation timed out when processing {limit} datums."
+            )
+
+        try:
+            eval_pr_detail = run_detailed_pr_curve_evaluation(
+                dset=dset, model=model
+            )
+        except TimeoutError:
+            raise TimeoutError(
+                f"Detailed PR Evaluation timed out when processing {limit} datums."
+            )
+
+        start = time.time()
+        client.delete_dataset(dset.name, timeout=30)
+        client.delete_model(model.name, timeout=30)
+        deletion_time = time.time() - start
+
         results = {
             "number_of_datums": limit,
             "number_of_unique_labels": eval_.meta["labels"],
             "number_of_annotations": eval_.meta["annotations"],
             "ingest_runtime": f"{(ingest_time):.1f} seconds",
             "eval_runtime": f"{(eval_.meta['duration']):.1f} seconds",
+            "eval_pr_runtime": f"{(eval_pr.meta['duration']):.1f} seconds",
+            "eval_detailed_pr_runtime": f"{(eval_pr_detail.meta['duration']):.1f} seconds",
+            "del_runtime": f"{(deletion_time):.1f} seconds",
         }
         write_results_to_file(write_path=write_path, result_dict=results)
 
         client.delete_dataset(dset.name, timeout=3000)
         client.delete_model(model.name, timeout=3000)
+
 
 
 if __name__ == "__main__":

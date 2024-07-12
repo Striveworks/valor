@@ -6,6 +6,7 @@ from typing import List
 
 import pytest
 import requests
+from sqlalchemy.orm import Session
 
 from valor import (
     Annotation,
@@ -18,7 +19,11 @@ from valor import (
     Prediction,
 )
 from valor.client import connect
-from valor.exceptions import ClientException
+from valor.exceptions import (
+    ClientException,
+    DatasetAlreadyExistsError,
+    ModelAlreadyExistsError,
+)
 from valor.schemas import And, Filter
 
 
@@ -301,3 +306,55 @@ def test_get_datums(
     requests_method = getattr(requests, "get")
     resp = requests_method("http://localhost:8000/data")
     assert resp.headers["content-range"] == "items 0-0/1"
+
+
+def test_delete_zombie_dataset(
+    db: Session, client: Client, created_dataset: Dataset
+):
+
+    dataset_name = created_dataset.name
+    assert isinstance(dataset_name, str)
+
+    # set deletion status in row (this simulates the zombie deletion)
+    from valor_api import enums as backend_enums
+    from valor_api.backend import models
+
+    row = (
+        db.query(models.Dataset)
+        .where(models.Dataset.name == dataset_name)
+        .one_or_none()
+    )
+    assert row
+    row.status = backend_enums.TableStatus.DELETING
+    db.commit()
+
+    with pytest.raises(DatasetAlreadyExistsError):
+        Dataset.create(name=dataset_name)
+
+    client.delete_dataset(name=dataset_name)
+
+
+def test_delete_zombie_model(
+    db: Session, client: Client, created_model: Model
+):
+
+    model_name = created_model.name
+    assert isinstance(model_name, str)
+
+    # set deletion status in row (this simulates the zombie deletion)
+    from valor_api import enums as backend_enums
+    from valor_api.backend import models
+
+    row = (
+        db.query(models.Model)
+        .where(models.Model.name == model_name)
+        .one_or_none()
+    )
+    assert row
+    row.status = backend_enums.ModelStatus.DELETING
+    db.commit()
+
+    with pytest.raises(ModelAlreadyExistsError):
+        Model.create(name=model_name)
+
+    client.delete_model(name=model_name)

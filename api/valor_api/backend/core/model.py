@@ -1,4 +1,4 @@
-from sqlalchemy import and_, desc, func, select
+from sqlalchemy import and_, delete, desc, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -377,23 +377,26 @@ def delete_model(
     name : str
         The name of the model.
     """
-    model = fetch_model(db, name=name)
+    if core.count_active_evaluations(db=db, model_names=[name]):
+        raise exceptions.EvaluationRunningError(model_name=name)
 
-    # set status
+    model = (
+        db.query(models.Model).where(models.Model.name == name).one_or_none()
+    )
+    if not model:
+        raise exceptions.ModelDoesNotExistError(name)
+
     try:
+        # set status
         model.status = ModelStatus.DELETING
         db.commit()
-    except Exception as e:
+
+        core.delete_evaluations(db=db, model_names=[name])
+        core.delete_model_predictions(db=db, model=model)
+        core.delete_model_annotations(db=db, model=model)
+
+        db.execute(delete(models.Model).where(models.Model.id == model.id))
+        db.commit()
+    except IntegrityError as e:
         db.rollback()
         raise e
-
-    core.delete_evaluations(db=db, model_names=[name])
-    core.delete_model_predictions(db=db, model=model)
-    core.delete_model_annotations(db=db, model=model)
-
-    try:
-        db.delete(model)
-        db.commit()
-    except IntegrityError:
-        db.rollback()
-        raise RuntimeError

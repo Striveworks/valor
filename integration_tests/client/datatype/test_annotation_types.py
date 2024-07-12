@@ -1,3 +1,6 @@
+from sqlalchemy import func
+from sqlalchemy.orm import Session
+
 from valor import (
     Annotation,
     Client,
@@ -8,10 +11,11 @@ from valor import (
     Model,
     Prediction,
 )
+from valor_api.backend import models
 
 
 def test_create_read_embedding_annotation(
-    client: Client, dataset_name: str, model_name: str
+    db: Session, client: Client, dataset_name: str, model_name: str
 ):
     dataset = Dataset.create(name=dataset_name)
     dataset.add_groundtruth(
@@ -41,3 +45,7 @@ def test_create_read_embedding_annotation(
     predictions = model.get_prediction(dataset=dataset, datum="uid123")
     assert predictions
     assert predictions.annotations[0].embedding.get_value() == [1, 2, 3, 4, 5]
+
+    # test embedding deletion
+    model.delete(timeout=30)
+    assert db.scalar(func.count(models.Embedding.id)) == 0

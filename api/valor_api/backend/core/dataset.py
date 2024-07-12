@@ -1,4 +1,4 @@
-from sqlalchemy import and_, desc, func, select
+from sqlalchemy import and_, delete, desc, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -505,16 +505,30 @@ def delete_dataset(
     name : str
         The name of the dataset.
     """
-    dataset = fetch_dataset(db, name=name)
-    set_dataset_status(db, name, enums.TableStatus.DELETING)
+    if core.count_active_evaluations(db=db, dataset_names=[name]):
+        raise exceptions.EvaluationRunningError(dataset_name=name)
 
-    core.delete_evaluations(db=db, dataset_names=[name])
-    core.delete_dataset_predictions(db, dataset)
-    core.delete_groundtruths(db, dataset)
-    core.delete_dataset_annotations(db, dataset)
+    dataset = (
+        db.query(models.Dataset)
+        .where(models.Dataset.name == name)
+        .one_or_none()
+    )
+    if not dataset:
+        raise exceptions.DatasetDoesNotExistError(name)
 
     try:
-        db.delete(dataset)
+        dataset.status = enums.TableStatus.DELETING
+        db.commit()
+
+        core.delete_evaluations(db=db, dataset_names=[name])
+        core.delete_dataset_predictions(db, dataset)
+        core.delete_groundtruths(db, dataset)
+        core.delete_dataset_annotations(db, dataset)
+        core.delete_datums(db, dataset)
+
+        db.execute(
+            delete(models.Dataset).where(models.Dataset.id == dataset.id)
+        )
         db.commit()
     except IntegrityError as e:
         db.rollback()

@@ -120,7 +120,7 @@ def test_annotation_exceptions(
         ),
     )
 
-    with pytest.raises(exceptions.AnnotationAlreadyExistsError):
+    with pytest.raises(exceptions.PredictionAlreadyExistsError):
         model.add_prediction(
             dset,
             Prediction(datum=Datum(uid="uid"), annotations=[]),
