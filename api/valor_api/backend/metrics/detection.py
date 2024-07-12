@@ -32,6 +32,9 @@ from valor_api.backend.metrics.metric_utils import (
 from valor_api.backend.query import generate_query, generate_select
 from valor_api.enums import AnnotationType
 
+# TODO delete
+pandas.set_option("display.max_columns", None)
+
 
 @dataclass
 class RankedPair:
@@ -954,25 +957,30 @@ def _compute_detection_metrics(
         ascending=False,
     )
 
+    def _only_keep_first_true_positive(series):
+        return series & (series.shift(fill_value=0) == 0)
+
     calculation_df["recall_true_positive_flag"] = (
-        (calculation_df["iou_"] >= calculation_df["iou_threshold"])
-        & (calculation_df["score"] >= parameters.recall_score_threshold)
-        & (
-            calculation_df.groupby(
-                ["label_id_grouper", "iou_threshold", "id_gt"]
-            ).cumcount()
-            == 0
-        )  # only the first gt_id in this sorted list should be considered a true positive
+        calculation_df["iou_"] >= calculation_df["iou_threshold"]
+    ) & (calculation_df["score"] >= parameters.recall_score_threshold)
+    # only consider the highest scoring true positive as an actual true positive
+    calculation_df["recall_true_positive_flag"] = calculation_df[
+        "recall_true_positive_flag"
+    ] & (
+        ~calculation_df.groupby(
+            ["label_id_grouper", "iou_threshold", "id_gt"], as_index=False
+        )["recall_true_positive_flag"].shift(1, fill_value=False)
     )
+
     calculation_df["precision_true_positive_flag"] = (
-        (calculation_df["iou_"] >= calculation_df["iou_threshold"])
-        & (calculation_df["score"] > 0)
-        & (
-            calculation_df.groupby(
-                ["label_id_grouper", "iou_threshold", "id_gt"]
-            ).cumcount()
-            == 0
-        )
+        calculation_df["iou_"] >= calculation_df["iou_threshold"]
+    ) & (calculation_df["score"] > 0)
+    calculation_df["precision_true_positive_flag"] = calculation_df[
+        "precision_true_positive_flag"
+    ] & (
+        ~calculation_df.groupby(
+            ["label_id_grouper", "iou_threshold", "id_gt"], as_index=False
+        )["precision_true_positive_flag"].shift(1, fill_value=False)
     )
 
     calculation_df["recall_false_positive_flag"] = ~calculation_df[
@@ -1043,19 +1051,26 @@ def _compute_detection_metrics(
             )
         )
         .assign(
-            recall=lambda chain_df: chain_df["rolling_recall_tp"]
+            recall_for_AP=lambda chain_df: chain_df["rolling_precision_tp"]
+            / (
+                chain_df["rolling_precision_tp"]
+                + chain_df["rolling_precision_fn"]
+            )
+        )
+        .assign(
+            recall_for_AR=lambda chain_df: chain_df["rolling_recall_tp"]
             / (chain_df["rolling_recall_tp"] + chain_df["rolling_recall_fn"])
         )
     )
 
     ap_metrics_df = (
         calculation_df[
-            ["label_id_grouper", "iou_threshold", "precision", "recall"]
+            ["label_id_grouper", "iou_threshold", "precision", "recall_for_AP"]
         ]
         .groupby(["label_id_grouper", "iou_threshold"], as_index=False)
         .apply(
             lambda x: _calculate_101_pt_interp(
-                x["precision"].tolist(), x["recall"].tolist()
+                x["precision"].tolist(), x["recall_for_AP"].tolist()
             )
         )
     )
@@ -1088,7 +1103,7 @@ def _compute_detection_metrics(
             == 0,
             :,
         ]
-        .groupby("label_id_grouper", as_index=False)["recall"]
+        .groupby("label_id_grouper", as_index=False)["recall_for_AR"]
         .mean()
     )
 
@@ -1096,7 +1111,7 @@ def _compute_detection_metrics(
     ar_metrics = [
         schemas.ARMetric(
             ious=ious_,
-            value=row["recall"],
+            value=row["recall_for_AR"],
             label=grouper_mappings["grouper_id_to_grouper_label_mapping"][
                 row["label_id_grouper"]
             ],
