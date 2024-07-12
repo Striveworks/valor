@@ -27,10 +27,12 @@ from valor_api.enums import MetricType, ROUGEType
 
 LabelMapType = list[list[list[str]]]
 
+
 LLM_GUIDED_METRICS = {
     "AnswerRelevance",
     "Coherence",
 }
+
 
 TEXT_COMPARISON_METRICS = {"BLEU", "ROUGE"}
 
@@ -415,12 +417,19 @@ def _compute_text_generation_metrics(
             )
         client = _setup_llm_client(llm_api_params)
 
-        datum_subquery = select(
-            models.Datum.id.label("datum_id"),
-            models.Datum.uid.label("datum_uid"),
-            models.Dataset.name.label("dataset_name"),
-            models.Datum.text.label("datum_text"),
-        ).subquery()
+        datum_subquery = (
+            generate_query(
+                models.Datum.id.label("datum_id"),
+                models.Datum.uid.label("datum_uid"),
+                models.Dataset.name.label("dataset_name"),
+                models.Datum.text.label("datum_text"),
+                db=db,
+                label_source=models.Annotation,
+                filters=datum_filter,
+            )
+            .distinct()
+            .subquery()
+        )
 
         joint_subquery = (
             select(
