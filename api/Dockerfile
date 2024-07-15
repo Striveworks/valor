@@ -1,8 +1,8 @@
-FROM python:3.10-slim
+FROM python:3.10-alpine
 
 ARG VERSION="0.0.0-dev"
 
-RUN apt-get update && apt-get install build-essential libpq-dev -y
+RUN apk add --update --no-cache build-base libpq-dev gcc libffi-dev
 
 COPY ./pyproject.toml /src/
 
@@ -13,5 +13,7 @@ RUN python -m pip install -U pip
 # git and put .git (which setuptools_scm needs to determine the version) in the container
 RUN SETUPTOOLS_SCM_PRETEND_VERSION=${VERSION} python -m pip install .
 COPY ./valor_api /src/valor_api
+RUN apk del build-base
+USER 65532:65532
 
 CMD ["uvicorn", "valor_api.main:app", "--host", "0.0.0.0", "--log-level", "warning"]

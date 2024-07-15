@@ -388,7 +388,7 @@ class Annotation(StaticCollection):
         """
         super().__init__(
             metadata=metadata if metadata else dict(),
-            labels=(labels if labels else list()),
+            labels=labels if labels else list(),
             bounding_box=bounding_box,
             polygon=polygon,
             raster=raster,
