@@ -191,8 +191,8 @@ def run(
     *_,
     label_mapping: None = None,
 ):
-    dataset_name = "benchmark_dataset"
-    model_name = "benchmark_model"
+    dataset_name = f"benchmark_dataset_{time.time()}"
+    model_name = f"benchmark_model_{time.time()}"
 
     gts, pds = create_classifications(
         n_datums=n_datums, n_keys=n_label_keys, n_values=n_label_values
@@ -257,8 +257,8 @@ if __name__ == "__main__":
     print()
 
     number_of_datums_trials = [1000]
-    number_of_label_keys_trials = [3]
-    number_of_label_values_trials = [3]
+    number_of_label_keys_trials = [20]
+    number_of_label_values_trials = [20]
     number_of_trials = 1
 
     for n_datums in number_of_datums_trials:
