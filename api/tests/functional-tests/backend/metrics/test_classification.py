@@ -179,6 +179,7 @@ def test_compute_confusion_matrix_at_grouper_key(
     )
 
     grouper_mappings = create_grouper_mappings(
+        db=db,
         labels=labels,
         label_map=None,
         evaluation_type=enums.TaskType.CLASSIFICATION,
@@ -405,6 +406,7 @@ def test_compute_confusion_matrix_at_grouper_key_and_filter(
     )
 
     grouper_mappings = create_grouper_mappings(
+        db=db,
         labels=labels,
         label_map=None,
         evaluation_type=enums.TaskType.CLASSIFICATION,
@@ -555,6 +557,7 @@ def test_compute_confusion_matrix_at_grouper_key_using_label_map(
     )
 
     grouper_mappings = create_grouper_mappings(
+        db=db,
         labels=labels,
         label_map=label_map,
         evaluation_type=enums.TaskType.CLASSIFICATION,
@@ -734,6 +737,7 @@ def test_compute_roc_auc(
     )
 
     grouper_mappings = create_grouper_mappings(
+        db=db,
         labels=labels,
         label_map=None,
         evaluation_type=enums.TaskType.CLASSIFICATION,
@@ -843,6 +847,7 @@ def test_compute_roc_auc_groupby_metadata(
     )
 
     grouper_mappings = create_grouper_mappings(
+        db=db,
         labels=labels,
         label_map=None,
         evaluation_type=enums.TaskType.CLASSIFICATION,
@@ -951,6 +956,7 @@ def test_compute_roc_auc_with_label_map(
     )
 
     grouper_mappings = create_grouper_mappings(
+        db=db,
         labels=labels,
         label_map=label_map,
         evaluation_type=enums.TaskType.CLASSIFICATION,
@@ -1262,6 +1268,7 @@ def test__compute_curves(
     )
 
     grouper_mappings = create_grouper_mappings(
+        db=db,
         labels=labels,
         label_map=None,
         evaluation_type=enums.TaskType.CLASSIFICATION,

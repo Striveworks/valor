@@ -272,12 +272,10 @@ def compute_semantic_segmentation_metrics(
     # unpack filters and params
     parameters = schemas.EvaluationParameters(**evaluation.parameters)
     groundtruth_filter, prediction_filter = prepare_filter_for_evaluation(
-        db=db,
         filters=schemas.Filter(**evaluation.filters),
         dataset_names=evaluation.dataset_names,
         model_name=evaluation.model_name,
         task_type=parameters.task_type,
-        label_map=parameters.label_map,
     )
 
     log_evaluation_item_counts(

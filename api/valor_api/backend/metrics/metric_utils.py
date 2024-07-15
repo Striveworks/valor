@@ -482,12 +482,10 @@ def validate_computation(fn: Callable) -> Callable:
 
 @profiler
 def prepare_filter_for_evaluation(
-    db: Session,
     filters: schemas.Filter,
     dataset_names: list[str],
     model_name: str,
     task_type: enums.TaskType,
-    label_map: LabelMapType | None = None,
 ) -> tuple[schemas.Filter, schemas.Filter]:
     """
     Prepares the filter for use by an evaluation method.
@@ -496,8 +494,6 @@ def prepare_filter_for_evaluation(
 
     Parameters
     ----------
-    db : Session
-        The database session.
     filters : Filter
         The data filter.
     dataset_names : list[str]
@@ -506,8 +502,6 @@ def prepare_filter_for_evaluation(
         A model name to filter by.
     task_type : TaskType
         A task type to filter by.
-    label_map : LabelMapType, optional
-        An optional label mapping.
 
     Returns
     -------
