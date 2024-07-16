@@ -8,22 +8,21 @@ from valor_api.backend.core import (
     fetch_union_of_labels,
 )
 from valor_api.backend.metrics.classification import (
+    _aggregate_data,
     _compute_accuracy_from_cm,
     _compute_clf_metrics,
-    _compute_confusion_matrix_at_grouper_key,
+    _compute_confusion_matrices,
     _compute_curves,
     _compute_roc_auc,
     compute_clf_metrics,
 )
-from valor_api.backend.metrics.metric_utils import create_grouper_mappings
-from valor_api.backend.query import generate_query, generate_select
 
 
 @pytest.fixture
 def label_map():
     return [
-        [["animal", "dog"], ["class", "mammal"]],
-        [["animal", "cat"], ["class", "mammal"]],
+        [["animal", "dog"], ["animal", "mammal"]],
+        [["animal", "cat"], ["animal", "mammal"]],
     ]
 
 
@@ -127,7 +126,7 @@ def classification_test_data(db: Session, dataset_name: str, model_name: str):
     assert len(db.query(models.Prediction).all()) == 6 * 7
 
 
-def test_compute_confusion_matrix_at_grouper_key(
+def test_compute_confusion_matrices(
     db: Session,
     dataset_name: str,
     model_name: str,
@@ -172,68 +171,21 @@ def test_compute_confusion_matrix_at_grouper_key(
         )
     )
 
-    labels = fetch_union_of_labels(
+    groundtruths, predictions, labels = _aggregate_data(
         db=db,
-        rhs=prediction_filter,
-        lhs=groundtruth_filter,
-    )
-
-    grouper_mappings = create_grouper_mappings(
-        db=db,
-        labels=labels,
+        groundtruth_filter=groundtruth_filter,
+        prediction_filter=prediction_filter,
         label_map=None,
-        evaluation_type=enums.TaskType.CLASSIFICATION,
     )
 
-    label_key_filter = list(
-        grouper_mappings["grouper_key_to_label_keys_mapping"]["animal"]
-    )
-
-    # groundtruths filter
-    gFilter = groundtruth_filter.model_copy()
-    gFilter.labels = schemas.LogicalFunction.or_(
-        *[
-            schemas.Condition(
-                lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
-                rhs=schemas.Value.infer(key),
-                op=schemas.FilterOperator.EQ,
-            )
-            for key in label_key_filter
-        ]
-    )
-
-    # predictions filter
-    pFilter = prediction_filter.model_copy()
-    pFilter.labels = schemas.LogicalFunction.or_(
-        *[
-            schemas.Condition(
-                lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
-                rhs=schemas.Value.infer(key),
-                op=schemas.FilterOperator.EQ,
-            )
-            for key in label_key_filter
-        ]
-    )
-
-    groundtruths = generate_select(
-        models.GroundTruth,
-        models.Annotation.datum_id.label("datum_id"),
-        filters=gFilter,
-        label_source=models.GroundTruth,
-    ).cte()
-    predictions = generate_select(
-        models.Prediction,
-        filters=pFilter,
-        label_source=models.Prediction,
-    ).cte()
-
-    cm = _compute_confusion_matrix_at_grouper_key(
+    confusion_matrices = _compute_confusion_matrices(
         db=db,
         predictions=predictions,
         groundtruths=groundtruths,
-        grouper_key="animal",
-        grouper_mappings=grouper_mappings,
+        labels=labels,
     )
+
+    cm = confusion_matrices["animal"]
     expected_entries = [
         schemas.ConfusionMatrixEntry(
             prediction="bird", groundtruth="bird", count=1
@@ -260,55 +212,7 @@ def test_compute_confusion_matrix_at_grouper_key(
     assert _compute_accuracy_from_cm(cm) == 2 / 6
 
     # test for color
-    label_key_filter = list(
-        grouper_mappings["grouper_key_to_label_keys_mapping"]["color"]
-    )
-
-    # groundtruths filter
-    gFilter = groundtruth_filter.model_copy()
-    gFilter.labels = schemas.LogicalFunction.or_(
-        *[
-            schemas.Condition(
-                lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
-                rhs=schemas.Value.infer(key),
-                op=schemas.FilterOperator.EQ,
-            )
-            for key in label_key_filter
-        ]
-    )
-
-    # predictions filter
-    pFilter = prediction_filter.model_copy()
-    pFilter.labels = schemas.LogicalFunction.or_(
-        *[
-            schemas.Condition(
-                lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
-                rhs=schemas.Value.infer(key),
-                op=schemas.FilterOperator.EQ,
-            )
-            for key in label_key_filter
-        ]
-    )
-
-    groundtruths = generate_select(
-        models.GroundTruth,
-        models.Annotation.datum_id.label("datum_id"),
-        filters=gFilter,
-        label_source=models.GroundTruth,
-    ).cte()
-    predictions = generate_select(
-        models.Prediction,
-        filters=pFilter,
-        label_source=models.Prediction,
-    ).cte()
-
-    cm = _compute_confusion_matrix_at_grouper_key(
-        db=db,
-        predictions=predictions,
-        groundtruths=groundtruths,
-        grouper_key="color",
-        grouper_mappings=grouper_mappings,
-    )
+    cm = confusion_matrices["color"]
     expected_entries = [
         schemas.ConfusionMatrixEntry(
             prediction="white", groundtruth="white", count=1
@@ -335,7 +239,7 @@ def test_compute_confusion_matrix_at_grouper_key(
     assert _compute_accuracy_from_cm(cm) == 3 / 6
 
 
-def test_compute_confusion_matrix_at_grouper_key_and_filter(
+def test_compute_confusion_matrices_and_filter(
     db: Session,
     dataset_name: str,
     model_name: str,
@@ -405,66 +309,24 @@ def test_compute_confusion_matrix_at_grouper_key_and_filter(
         lhs=groundtruth_filter,
     )
 
-    grouper_mappings = create_grouper_mappings(
+    groundtruths, predictions, labels = _aggregate_data(
         db=db,
-        labels=labels,
+        groundtruth_filter=groundtruth_filter,
+        prediction_filter=prediction_filter,
         label_map=None,
-        evaluation_type=enums.TaskType.CLASSIFICATION,
     )
 
-    label_key_filter = list(
-        grouper_mappings["grouper_key_to_label_keys_mapping"]["animal"]
-    )
-
-    # groundtruths filter
-    gFilter = groundtruth_filter.model_copy()
-    gFilter.labels = schemas.LogicalFunction.or_(
-        *[
-            schemas.Condition(
-                lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
-                rhs=schemas.Value.infer(key),
-                op=schemas.FilterOperator.EQ,
-            )
-            for key in label_key_filter
-        ]
-    )
-
-    # predictions filter
-    pFilter = prediction_filter.model_copy()
-    pFilter.labels = schemas.LogicalFunction.or_(
-        *[
-            schemas.Condition(
-                lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
-                rhs=schemas.Value.infer(key),
-                op=schemas.FilterOperator.EQ,
-            )
-            for key in label_key_filter
-        ]
-    )
-
-    groundtruths = generate_select(
-        models.GroundTruth,
-        models.Annotation.datum_id.label("datum_id"),
-        filters=gFilter,
-        label_source=models.GroundTruth,
-    ).cte()
-    predictions = generate_select(
-        models.Prediction,
-        filters=pFilter,
-        label_source=models.Prediction,
-    ).cte()
-
-    cm = _compute_confusion_matrix_at_grouper_key(
-        db,
+    confusion_matrices = _compute_confusion_matrices(
+        db=db,
         predictions=predictions,
         groundtruths=groundtruths,
-        grouper_key="animal",
-        grouper_mappings=grouper_mappings,
+        labels=labels,
     )
 
     # for this metadatum and label id we have the gts
     # ["bird", "dog", "bird", "bird", "dog"] and the preds
     # ["bird", "cat", "cat", "dog", "cat"]
+    cm = confusion_matrices["animal"]
     expected_entries = [
         schemas.ConfusionMatrixEntry(
             groundtruth="bird", prediction="bird", count=1
@@ -485,7 +347,7 @@ def test_compute_confusion_matrix_at_grouper_key_and_filter(
         assert e in cm.entries
 
 
-def test_compute_confusion_matrix_at_grouper_key_using_label_map(
+def test_compute_confusion_matrices_using_label_map(
     db: Session,
     dataset_name: str,
     model_name: str,
@@ -550,69 +412,21 @@ def test_compute_confusion_matrix_at_grouper_key_using_label_map(
         )
     )
 
-    labels = fetch_union_of_labels(
+    groundtruths, predictions, labels = _aggregate_data(
         db=db,
-        rhs=prediction_filter,
-        lhs=groundtruth_filter,
+        groundtruth_filter=groundtruth_filter,
+        prediction_filter=prediction_filter,
+        label_map=None,
     )
 
-    grouper_mappings = create_grouper_mappings(
+    confusion_matrices = _compute_confusion_matrices(
         db=db,
-        labels=labels,
-        label_map=label_map,
-        evaluation_type=enums.TaskType.CLASSIFICATION,
-    )
-
-    label_key_filter = list(
-        grouper_mappings["grouper_key_to_label_keys_mapping"]["animal"]
-    )
-
-    # groundtruths filter
-    gFilter = groundtruth_filter.model_copy()
-    gFilter.labels = schemas.LogicalFunction.or_(
-        *[
-            schemas.Condition(
-                lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
-                rhs=schemas.Value.infer(key),
-                op=schemas.FilterOperator.EQ,
-            )
-            for key in label_key_filter
-        ]
-    )
-
-    # predictions filter
-    pFilter = prediction_filter.model_copy()
-    pFilter.labels = schemas.LogicalFunction.or_(
-        *[
-            schemas.Condition(
-                lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
-                rhs=schemas.Value.infer(key),
-                op=schemas.FilterOperator.EQ,
-            )
-            for key in label_key_filter
-        ]
-    )
-
-    groundtruths = generate_select(
-        models.GroundTruth,
-        models.Annotation.datum_id.label("datum_id"),
-        filters=gFilter,
-        label_source=models.GroundTruth,
-    ).cte()
-    predictions = generate_select(
-        models.Prediction,
-        filters=pFilter,
-        label_source=models.Prediction,
-    ).cte()
-
-    cm = _compute_confusion_matrix_at_grouper_key(
-        db,
         predictions=predictions,
         groundtruths=groundtruths,
-        grouper_key="animal",
-        grouper_mappings=grouper_mappings,
+        labels=labels,
     )
 
+    cm = confusion_matrices["animal"]
     expected_entries = [
         schemas.ConfusionMatrixEntry(
             groundtruth="bird", prediction="bird", count=1
@@ -714,65 +528,24 @@ def test_compute_roc_auc(
         )
     )
 
-    groundtruths = generate_select(
-        models.GroundTruth,
-        models.Annotation.datum_id.label("datum_id"),
-        models.Dataset.name.label("dataset_name"),
-        filters=groundtruth_filter,
-        label_source=models.GroundTruth,
-    ).cte()
-
-    predictions = generate_select(
-        models.Prediction,
-        models.Annotation.datum_id.label("datum_id"),
-        models.Dataset.name.label("dataset_name"),
-        filters=prediction_filter,
-        label_source=models.Prediction,
-    ).cte()
-
-    labels = fetch_union_of_labels(
+    groundtruths, predictions, labels = _aggregate_data(
         db=db,
-        rhs=prediction_filter,
-        lhs=groundtruth_filter,
-    )
-
-    grouper_mappings = create_grouper_mappings(
-        db=db,
-        labels=labels,
+        groundtruth_filter=groundtruth_filter,
+        prediction_filter=prediction_filter,
         label_map=None,
-        evaluation_type=enums.TaskType.CLASSIFICATION,
     )
 
-    assert (
-        _compute_roc_auc(
-            db=db,
-            groundtruths=groundtruths,
-            predictions=predictions,
-            grouper_key="animal",
-            grouper_mappings=grouper_mappings,
-        )
-        == 0.8009259259259259
+    rocaucs = _compute_roc_auc(
+        db=db,
+        groundtruths=groundtruths,
+        predictions=predictions,
+        labels=labels,
     )
-    assert (
-        _compute_roc_auc(
-            db=db,
-            groundtruths=groundtruths,
-            predictions=predictions,
-            grouper_key="color",
-            grouper_mappings=grouper_mappings,
-        )
-        == 0.43125
-    )
-    assert (
-        _compute_roc_auc(
-            db=db,
-            groundtruths=groundtruths,
-            predictions=predictions,
-            grouper_key="not a key",
-            grouper_mappings=grouper_mappings,
-        )
-        is None
-    )
+
+    results = {rocauc.label_key: rocauc.value for rocauc in rocaucs}
+    assert len(results) == 2
+    assert results["animal"] == 0.8009259259259259
+    assert results["color"] == 0.43125
 
 
 def test_compute_roc_auc_groupby_metadata(
@@ -840,45 +613,23 @@ def test_compute_roc_auc_groupby_metadata(
         )
     )
 
-    labels = fetch_union_of_labels(
+    groundtruths, predictions, labels = _aggregate_data(
         db=db,
-        rhs=prediction_filter,
-        lhs=groundtruth_filter,
-    )
-
-    grouper_mappings = create_grouper_mappings(
-        db=db,
-        labels=labels,
+        groundtruth_filter=groundtruth_filter,
+        prediction_filter=prediction_filter,
         label_map=None,
-        evaluation_type=enums.TaskType.CLASSIFICATION,
     )
 
-    groundtruths = generate_select(
-        models.GroundTruth,
-        models.Annotation.datum_id.label("datum_id"),
-        models.Dataset.name.label("dataset_name"),
-        filters=groundtruth_filter,
-        label_source=models.GroundTruth,
-    ).cte()
-
-    predictions = generate_select(
-        models.Prediction,
-        models.Annotation.datum_id.label("datum_id"),
-        models.Dataset.name.label("dataset_name"),
-        filters=prediction_filter,
-        label_source=models.Prediction,
-    ).cte()
-
-    assert (
-        _compute_roc_auc(
-            db,
-            groundtruths=groundtruths,
-            predictions=predictions,
-            grouper_key="animal",
-            grouper_mappings=grouper_mappings,
-        )
-        == (0.5 + 2 / 3) / 2
+    rocaucs = _compute_roc_auc(
+        db=db,
+        groundtruths=groundtruths,
+        predictions=predictions,
+        labels=labels,
     )
+
+    results = {rocauc.label_key: rocauc.value for rocauc in rocaucs}
+    assert len(results) == 2
+    assert results["animal"] == (0.5 + 2 / 3) / 2
 
 
 def test_compute_roc_auc_with_label_map(
@@ -949,44 +700,25 @@ def test_compute_roc_auc_with_label_map(
         )
     )
 
-    labels = fetch_union_of_labels(
+    groundtruths, predictions, labels = _aggregate_data(
         db=db,
-        rhs=prediction_filter,
-        lhs=groundtruth_filter,
-    )
-
-    grouper_mappings = create_grouper_mappings(
-        db=db,
-        labels=labels,
+        groundtruth_filter=groundtruth_filter,
+        prediction_filter=prediction_filter,
         label_map=label_map,
-        evaluation_type=enums.TaskType.CLASSIFICATION,
     )
 
-    groundtruths = generate_select(
-        models.GroundTruth,
-        models.Annotation.datum_id.label("datum_id"),
-        models.Dataset.name.label("dataset_name"),
-        filters=groundtruth_filter,
-        label_source=models.GroundTruth,
-    ).cte()
-
-    predictions = generate_select(
-        models.Prediction,
-        models.Annotation.datum_id.label("datum_id"),
-        models.Dataset.name.label("dataset_name"),
-        filters=prediction_filter,
-        label_source=models.Prediction,
-    ).cte()
-
-    roc_auc = _compute_roc_auc(
+    rocaucs = _compute_roc_auc(
         db=db,
         groundtruths=groundtruths,
         predictions=predictions,
-        grouper_key="animal",
-        grouper_mappings=grouper_mappings,
+        labels=labels,
     )
-    assert roc_auc is not None
-    assert abs(roc_auc - 0.7777777777777779) < 1e-6
+
+    results = {
+        rocauc.label_key: rocauc.value for rocauc in rocaucs if rocauc.value
+    }
+    assert len(results) == 2
+    assert (results["animal"] - 0.7777777777777779) < 1e-6
 
 
 def test_compute_classification(
@@ -1047,7 +779,7 @@ def test_compute_classification(
         )
     )
 
-    confusion, metrics = _compute_clf_metrics(
+    metrics = _compute_clf_metrics(
         db,
         prediction_filter=prediction_filter,
         groundtruth_filter=groundtruth_filter,
@@ -1062,6 +794,17 @@ def test_compute_classification(
             enums.MetricType.PrecisionRecallCurve,
         ],
     )
+
+    confusion = [
+        metric
+        for metric in metrics
+        if isinstance(metric, schemas.ConfusionMatrix)
+    ]
+    metrics = [
+        metric
+        for metric in metrics
+        if not isinstance(metric, schemas.ConfusionMatrix)
+    ]
 
     # Make matrices accessible by label_key
     confusion = {matrix.label_key: matrix for matrix in confusion}
@@ -1261,83 +1004,34 @@ def test__compute_curves(
         )
     )
 
-    labels = fetch_union_of_labels(
+    groundtruths, predictions, labels = _aggregate_data(
         db=db,
-        rhs=prediction_filter,
-        lhs=groundtruth_filter,
-    )
-
-    grouper_mappings = create_grouper_mappings(
-        db=db,
-        labels=labels,
+        groundtruth_filter=groundtruth_filter,
+        prediction_filter=prediction_filter,
         label_map=None,
-        evaluation_type=enums.TaskType.CLASSIFICATION,
     )
-
-    label_key_filter = list(
-        grouper_mappings["grouper_key_to_label_keys_mapping"]["animal"]
-    )
-
-    # groundtruths filter
-    gFilter = groundtruth_filter.model_copy()
-    gFilter.labels = schemas.LogicalFunction.or_(
-        *[
-            schemas.Condition(
-                lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
-                rhs=schemas.Value.infer(key),
-                op=schemas.FilterOperator.EQ,
-            )
-            for key in label_key_filter
-        ]
-    )
-
-    # predictions filter
-    pFilter = prediction_filter.model_copy()
-    pFilter.labels = schemas.LogicalFunction.or_(
-        *[
-            schemas.Condition(
-                lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
-                rhs=schemas.Value.infer(key),
-                op=schemas.FilterOperator.EQ,
-            )
-            for key in label_key_filter
-        ]
-    )
-
-    groundtruths = generate_select(
-        models.GroundTruth,
-        models.Annotation.datum_id.label("datum_id"),
-        models.Dataset.name.label("dataset_name"),
-        filters=gFilter,
-        label_source=models.GroundTruth,
-    ).cte()
-    predictions = generate_select(
-        models.Prediction,
-        models.Annotation.datum_id.label("datum_id"),
-        models.Dataset.name.label("dataset_name"),
-        filters=pFilter,
-        label_source=models.Prediction,
-    ).cte()
 
     # calculate the number of unique datums
     # used to determine the number of true negatives
+    gt_datums = (
+        db.query(
+            groundtruths.c.datum_id,
+            groundtruths.c.dataset_name,
+            groundtruths.c.datum_uid,
+        )
+        .distinct()
+        .all()
+    )
+    pd_datums = (
+        db.query(
+            predictions.c.datum_id,
+            predictions.c.dataset_name,
+            predictions.c.datum_uid,
+        )
+        .distinct()
+        .all()
+    )
 
-    gt_datums = generate_query(
-        models.Datum.id,
-        models.Dataset.name,
-        models.Datum.uid,
-        db=db,
-        filters=groundtruth_filter,
-        label_source=models.GroundTruth,
-    ).all()
-    pd_datums = generate_query(
-        models.Datum.id,
-        models.Dataset.name,
-        models.Datum.uid,
-        db=db,
-        filters=prediction_filter,
-        label_source=models.Prediction,
-    ).all()
     unique_datums = {
         datum_id: (dataset_name, datum_uid)
         for datum_id, dataset_name, datum_uid in gt_datums
@@ -1353,8 +1047,7 @@ def test__compute_curves(
         db=db,
         predictions=predictions,
         groundtruths=groundtruths,
-        grouper_key="animal",
-        grouper_mappings=grouper_mappings,
+        labels=labels,
         unique_datums=unique_datums,
         pr_curve_max_examples=1,
         metrics_to_return=[
@@ -1362,6 +1055,18 @@ def test__compute_curves(
             enums.MetricType.DetailedPrecisionRecallCurve,
         ],
     )
+
+    assert len(curves) == 4
+    pr_curves = {
+        curve.label_key: curve
+        for curve in curves
+        if isinstance(curve, schemas.PrecisionRecallCurve)
+    }
+    detailed_pr_curves = {
+        curve.label_key: curve
+        for curve in curves
+        if isinstance(curve, schemas.DetailedPrecisionRecallCurve)
+    }
 
     # check PrecisionRecallCurve
     pr_expected_answers = {
@@ -1407,7 +1112,7 @@ def test__compute_curves(
         threshold,
         metric,
     ), expected_length in pr_expected_answers.items():
-        classification = curves[0].value[value][threshold][metric]
+        classification = pr_curves["animal"].value[value][threshold][metric]
         assert classification == expected_length
 
     # check DetailedPrecisionRecallCurve
@@ -1455,7 +1160,9 @@ def test__compute_curves(
         threshold,
         metric,
     ), expected_output in detailed_pr_expected_answers.items():
-        model_output = curves[1].value[value][threshold][metric]
+        model_output = detailed_pr_curves["animal"].value[value][threshold][
+            metric
+        ]
         assert isinstance(model_output, dict)
         assert model_output["total"] == expected_output["total"]
         assert all(
@@ -1473,7 +1180,7 @@ def test__compute_curves(
     # spot check number of examples
     assert (
         len(
-            curves[1].value["bird"][0.05]["tp"]["observations"]["all"][  # type: ignore - we know this element is a dict
+            detailed_pr_curves["animal"].value["bird"][0.05]["tp"]["observations"]["all"][  # type: ignore - we know this element is a dict
                 "examples"
             ]
         )
@@ -1481,7 +1188,7 @@ def test__compute_curves(
     )
     assert (
         len(
-            curves[1].value["bird"][0.05]["tn"]["observations"]["all"][  # type: ignore - we know this element is a dict
+            detailed_pr_curves["animal"].value["bird"][0.05]["tn"]["observations"]["all"][  # type: ignore - we know this element is a dict
                 "examples"
             ]
         )
@@ -1493,8 +1200,7 @@ def test__compute_curves(
         db=db,
         predictions=predictions,
         groundtruths=groundtruths,
-        grouper_key="animal",
-        grouper_mappings=grouper_mappings,
+        labels=labels,
         unique_datums=unique_datums,
         pr_curve_max_examples=3,
         metrics_to_return=[
@@ -1503,13 +1209,27 @@ def test__compute_curves(
         ],
     )
 
+    assert len(curves) == 4
+    pr_curves = {
+        curve.label_key: curve
+        for curve in curves
+        if isinstance(curve, schemas.PrecisionRecallCurve)
+    }
+    detailed_pr_curves = {
+        curve.label_key: curve
+        for curve in curves
+        if isinstance(curve, schemas.DetailedPrecisionRecallCurve)
+    }
+
     # these outputs shouldn't have changed
     for (
         value,
         threshold,
         metric,
     ), expected_output in detailed_pr_expected_answers.items():
-        model_output = curves[1].value[value][threshold][metric]
+        model_output = detailed_pr_curves["animal"].value[value][threshold][
+            metric
+        ]
         assert isinstance(model_output, dict)
         assert model_output["total"] == expected_output["total"]
         assert all(
@@ -1526,7 +1246,7 @@ def test__compute_curves(
 
     assert (
         len(
-            curves[1].value["bird"][0.05]["tp"]["observations"]["all"][  # type: ignore - we know this element is a dict
+            detailed_pr_curves["animal"].value["bird"][0.05]["tp"]["observations"]["all"][  # type: ignore - we know this element is a dict
                 "examples"
             ]
         )
@@ -1535,7 +1255,7 @@ def test__compute_curves(
     assert (
         len(
             (
-                curves[1].value["bird"][0.05]["tn"]["observations"]["all"][  # type: ignore - we know this element is a dict
+                detailed_pr_curves["animal"].value["bird"][0.05]["tn"]["observations"]["all"][  # type: ignore - we know this element is a dict
                     "examples"
                 ]
             )
@@ -1548,8 +1268,7 @@ def test__compute_curves(
         db=db,
         predictions=predictions,
         groundtruths=groundtruths,
-        grouper_key="animal",
-        grouper_mappings=grouper_mappings,
+        labels=labels,
         unique_datums=unique_datums,
         pr_curve_max_examples=0,
         metrics_to_return=[
@@ -1558,13 +1277,27 @@ def test__compute_curves(
         ],
     )
 
+    assert len(curves) == 4
+    pr_curves = {
+        curve.label_key: curve
+        for curve in curves
+        if isinstance(curve, schemas.PrecisionRecallCurve)
+    }
+    detailed_pr_curves = {
+        curve.label_key: curve
+        for curve in curves
+        if isinstance(curve, schemas.DetailedPrecisionRecallCurve)
+    }
+
     # these outputs shouldn't have changed
     for (
         value,
         threshold,
         metric,
     ), expected_output in detailed_pr_expected_answers.items():
-        model_output = curves[1].value[value][threshold][metric]
+        model_output = detailed_pr_curves["animal"].value[value][threshold][
+            metric
+        ]
         assert isinstance(model_output, dict)
         assert model_output["total"] == expected_output["total"]
         assert all(
@@ -1581,7 +1314,7 @@ def test__compute_curves(
 
     assert (
         len(
-            curves[1].value["bird"][0.05]["tp"]["observations"]["all"][  # type: ignore - we know this element is a dict
+            detailed_pr_curves["animal"].value["bird"][0.05]["tp"]["observations"]["all"][  # type: ignore - we know this element is a dict
                 "examples"
             ]
         )
@@ -1590,7 +1323,7 @@ def test__compute_curves(
     assert (
         len(
             (
-                curves[1].value["bird"][0.05]["tn"]["observations"]["all"][  # type: ignore - we know this element is a dict
+                detailed_pr_curves["animal"].value["bird"][0.05]["tn"]["observations"]["all"][  # type: ignore - we know this element is a dict
                     "examples"
                 ]
             )

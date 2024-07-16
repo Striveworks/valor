@@ -2,7 +2,7 @@ import time
 from collections import defaultdict
 from typing import Callable, Sequence
 
-from sqlalchemy import and_, or_, select
+from sqlalchemy import ColumnElement, and_, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import func
@@ -90,31 +90,77 @@ def _create_segmentation_grouper_mappings(
 
 
 def _create_classification_grouper_mappings(
-    mapping_dict: dict[tuple[str, ...], tuple[str, ...]],
+    db: Session,
     labels: list[models.Label],
-) -> dict[str, dict]:
-    """Create grouper mappings for use when evaluating classifications."""
+    label_map: LabelMapType,
+    evaluation_type: enums.TaskType,
+) -> list[tuple[ColumnElement[bool], int]]:
+    """
+    Creates a dictionary of mappings that connect each label with a "grouper" (i.e., a unique ID-key-value combination that can represent one or more labels).
+    These mappings enable Valor to group multiple labels together using the label_map argument in each evaluation function.
 
-    # define mappers to connect groupers with labels
-    label_value_to_grouper_value = dict()
-    grouper_key_to_labels_mapping = defaultdict(lambda: defaultdict(set))
-    grouper_key_to_label_keys_mapping = defaultdict(set)
+    Parameters
+    ----------
+    label_map: LabelMapType, optional
+        An optional label map to use when grouping labels. If None is passed, this function will still create the appropriate mappings using individual labels.
+    evaluation_type : str
+        The type of evaluation to create mappings for.
 
-    for label in labels:
-        # the grouper should equal the (label.key, label.value) if it wasn't mapped by the user
-        grouper_key, grouper_value = mapping_dict.get(
-            (label.key, label.value), (label.key, label.value)
+    Returns
+    ----------
+    list[tuple[ColumnElement[bool], int]]
+        A list of mappings that are used at evaluation time to group multiple labels together.
+    """
+
+    mapping_functions = {
+        enums.TaskType.CLASSIFICATION: _create_classification_grouper_mappings,
+        enums.TaskType.OBJECT_DETECTION: _create_detection_grouper_mappings,
+        enums.TaskType.SEMANTIC_SEGMENTATION: _create_segmentation_grouper_mappings,
+    }
+    if evaluation_type not in mapping_functions.keys():
+        raise KeyError(
+            f"evaluation_type must be one of {mapping_functions.keys()}"
         )
 
-        label_value_to_grouper_value[label.value] = grouper_value
-        grouper_key_to_label_keys_mapping[grouper_key].add(label.key)
-        grouper_key_to_labels_mapping[grouper_key][grouper_value].add(label)
-
-    return {
-        "label_value_to_grouper_value": label_value_to_grouper_value,
-        "grouper_key_to_labels_mapping": grouper_key_to_labels_mapping,
-        "grouper_key_to_label_keys_mapping": grouper_key_to_label_keys_mapping,
+    # add grouper labels to database (if they don't exist)
+    existing_labels = {(label.key, label.value) for label in labels}
+    mapping_dict = {
+        tuple(label): tuple(grouper) for label, grouper in label_map
     }
+    grouper_labels = set(mapping_dict.values())
+    missing_grouper_labels = grouper_labels - existing_labels
+    core.create_labels(
+        db=db,
+        labels=[
+            schemas.Label(key=key, value=value)
+            for key, value in missing_grouper_labels
+        ],
+    )
+
+    # cache label ids
+    all_labels = grouper_labels.union(existing_labels)
+    map_label_to_id = {
+        (label.key, label.value): label.id
+        for label in db.query(models.Label)
+        .where(
+            or_(
+                *[
+                    and_(
+                        models.Label.key == label[0],
+                        models.Label.value == label[1],
+                    )
+                    for label in all_labels
+                ]
+            )
+        )
+        .all()
+    }
+
+    # create label id mapping
+    return [
+        (models.Label.id == map_label_to_id[label], map_label_to_id[grouper])
+        for label, grouper in mapping_dict.items()
+    ]
 
 
 @profiler
