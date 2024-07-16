@@ -277,15 +277,19 @@ def _compute_text_generation_metrics(
     Sequence[schemas.AnswerRelevanceMetric | schemas.BLEUMetric | schemas.CoherenceMetric | schemas.ROUGEMetric]
         A list of computed metrics.
     """
-    prediction_subquery = generate_query(
-        models.Prediction,
-        models.Annotation.datum_id.label("datum_id"),
-        models.Annotation.text.label("prediction_text"),
-        models.Annotation.context.label("prediction_context"),
-        db=db,
-        label_source=models.Prediction,
-        filters=prediction_filter,
-    ).subquery()
+    prediction_subquery = (
+        generate_query(
+            models.Prediction,
+            models.Annotation.datum_id.label("datum_id"),
+            models.Annotation.text.label("prediction_text"),
+            models.Annotation.context.label("prediction_context"),
+            db=db,
+            label_source=models.Prediction,
+            filters=prediction_filter,
+        )
+        .distinct()
+        .subquery()
+    )
 
     output = []
     if any(
@@ -414,16 +418,20 @@ def _compute_text_generation_metrics(
             )
         client = _setup_llm_client(llm_api_params)
 
-        datum_subquery = generate_query(
-            models.Datum,
-            models.Datum.id.label("datum_id"),
-            models.Datum.uid.label("datum_uid"),
-            models.Dataset.name.label("dataset_name"),
-            models.Datum.text.label("datum_text"),
-            db=db,
-            label_source=models.Annotation,
-            filters=datum_filter,
-        ).subquery()
+        datum_subquery = (
+            generate_query(
+                models.Datum,
+                models.Datum.id.label("datum_id"),
+                models.Datum.uid.label("datum_uid"),
+                models.Dataset.name.label("dataset_name"),
+                models.Datum.text.label("datum_text"),
+                db=db,
+                label_source=models.Annotation,
+                filters=datum_filter,
+            )
+            .distinct()
+            .subquery()
+        )
 
         joint_subquery = (
             select(
