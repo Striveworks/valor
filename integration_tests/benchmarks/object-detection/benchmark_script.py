@@ -190,7 +190,7 @@ def ingest_groundtruths_and_predictions(
 def run_base_evaluation(dset: Dataset, model: Model):
     """Run a base evaluation (with no PR curves)."""
     evaluation = model.evaluate_detection(dset)
-    evaluation.wait_for_completion(timeout=3000)
+    evaluation.wait_for_completion(timeout=300)
     return evaluation
 
 
@@ -233,7 +233,7 @@ def run_detailed_pr_curve_evaluation(dset: Dataset, model: Model):
 
 
 def run_benchmarking_analysis(
-    limits_to_test: list[int] = [7, 7, 7],
+    limits_to_test: list[int] = [3, 7, 10, 45, 60],
     results_file: str = "results.json",
     data_file: str = "data.json",
 ):
@@ -274,8 +274,8 @@ def run_benchmarking_analysis(
         #     )
 
         start = time()
-        client.delete_dataset(dset.name, timeout=3000)
-        client.delete_model(model.name, timeout=3000)
+        client.delete_dataset(dset.name, timeout=300)
+        client.delete_model(model.name, timeout=300)
         deletion_time = time() - start
 
         results = {
@@ -288,8 +288,8 @@ def run_benchmarking_analysis(
         }
         write_results_to_file(write_path=write_path, result_dict=results)
 
-        client.delete_dataset(dset.name, timeout=3000)
-        client.delete_model(model.name, timeout=3000)
+        # client.delete_dataset(dset.name, timeout=300)
+        # client.delete_model(model.name, timeout=300)
 
 
 if __name__ == "__main__":

@@ -105,8 +105,8 @@ def ingest_groundtruths_and_predictions(
             )
         )
 
-    dset.add_groundtruths(groundtruths, timeout=3000)
-    model.add_predictions(dset, predictions, timeout=3000)
+    dset.add_groundtruths(groundtruths, timeout=300)
+    model.add_predictions(dset, predictions, timeout=300)
 
     dset.finalize()
     model.finalize_inferences(dataset=dset)
@@ -226,8 +226,8 @@ def run_benchmarking_analysis(
         }
         write_results_to_file(write_path=write_path, result_dict=results)
 
-        client.delete_dataset(dset.name, timeout=3000)
-        client.delete_model(model.name, timeout=3000)
+        client.delete_dataset(dset.name, timeout=300)
+        client.delete_model(model.name, timeout=300)
 
 
 if __name__ == "__main__":

@@ -28,6 +28,8 @@ from valor_api.backend.metrics.metric_utils import (
 from valor_api.backend.query import generate_query, generate_select
 from valor_api.enums import AnnotationType
 
+pandas.set_option("display.max_columns", None)
+
 
 @dataclass
 class RankedPair:
@@ -657,6 +659,7 @@ def _annotation_type_to_geojson(
     annotation_type: AnnotationType,
     table,
 ):
+    """Get the appropriate column for calculating IOUs from models.Annotation."""
     match annotation_type:
         case AnnotationType.BOX:
             box = table.box
@@ -669,13 +672,15 @@ def _annotation_type_to_geojson(
     return gfunc.ST_AsGeoJSON(box)
 
 
-# TODO there's probably a better way to do this without the wkt
-def wkt_to_array(wkt_data):
+def wkt_to_array(wkt_data) -> np.ndarray:
+    """Convert a WKT string to an array of coordinates."""
     coordinates = json.loads(wkt_data)["coordinates"][0]
     return np.array(coordinates)
 
 
-def bbox_intersection(bbox1, bbox2):
+def _calculate_bbox_intersection(bbox1, bbox2) -> float:
+    """Calculate the intersection between two bounding boxes."""
+
     # Calculate intersection coordinates
     xmin_inter = max(bbox1[:, 0].min(), bbox2[:, 0].min())
     ymin_inter = max(bbox1[:, 1].min(), bbox2[:, 1].min())
@@ -691,24 +696,572 @@ def bbox_intersection(bbox1, bbox2):
     return intersection_area
 
 
-# Function to calculate union area of two bounding boxes
-def bbox_union(bbox1, bbox2):
+def _calculate_bbox_union(bbox1, bbox2) -> float:
+    """Calculate the union area between two bounding boxes."""
     area1 = (bbox1[:, 0].max() - bbox1[:, 0].min()) * (
         bbox1[:, 1].max() - bbox1[:, 1].min()
     )
     area2 = (bbox2[:, 0].max() - bbox2[:, 0].min()) * (
         bbox2[:, 1].max() - bbox2[:, 1].min()
     )
-    union_area = area1 + area2 - bbox_intersection(bbox1, bbox2)
+    union_area = area1 + area2 - _calculate_bbox_intersection(bbox1, bbox2)
     return union_area
 
 
-# Function to calculate IoU of two bounding boxes
-def bbox_iou(bbox1, bbox2):
-    intersection = bbox_intersection(bbox1, bbox2)
-    union = bbox_union(bbox1, bbox2)
+def _calculate_bbox_iou(bbox1, bbox2) -> float:
+    """Calculate the IOU between two bounding boxes."""
+    intersection = _calculate_bbox_intersection(bbox1, bbox2)
+    union = _calculate_bbox_union(bbox1, bbox2)
     iou = intersection / union
     return iou
+
+
+def _get_joint_df(
+    db: Session,
+    groundtruth_filter: schemas.Filter,
+    prediction_filter: schemas.Filter,
+    grouper_mappings: dict,
+    annotation_type: AnnotationType,
+) -> pandas.DataFrame:
+    """Create a joint dataframe of groundtruths and predictions"""
+
+    gt = generate_select(
+        models.Dataset.name.label("dataset_name"),
+        models.GroundTruth.id.label("id"),
+        models.GroundTruth.annotation_id.label("annotation_id"),
+        models.Annotation.datum_id.label("datum_id"),
+        models.Datum.uid.label("datum_uid"),
+        case(
+            grouper_mappings["label_id_to_grouper_id_mapping"],
+            value=models.GroundTruth.label_id,
+        ).label("label_id_grouper"),
+        _annotation_type_to_geojson(annotation_type, models.Annotation).label(
+            "geojson"
+        ),
+        gfunc.ST_AsPNG(models.Annotation.raster).label("raster"),
+        filters=groundtruth_filter,
+        label_source=models.GroundTruth,
+    )
+
+    pd = generate_select(
+        models.Dataset.name.label("dataset_name"),
+        models.Prediction.id.label("id"),
+        models.Prediction.annotation_id.label("annotation_id"),
+        models.Prediction.score.label("score"),
+        models.Annotation.datum_id.label("datum_id"),
+        models.Datum.uid.label("datum_uid"),
+        case(
+            grouper_mappings["label_id_to_grouper_id_mapping"],
+            value=models.Prediction.label_id,
+        ).label("label_id_grouper"),
+        _annotation_type_to_geojson(annotation_type, models.Annotation).label(
+            "geojson"
+        ),
+        gfunc.ST_AsPNG(models.Annotation.raster).label("raster"),
+        filters=prediction_filter,
+        label_source=models.Prediction,
+    )
+
+    gt_df = pandas.read_sql(gt, db.bind)  # type: ignore - pandas typing error.
+    pd_df = pandas.read_sql(pd, db.bind)  # type: ignore - pandas typing error.
+
+    # add the number of groundtruth observations per grouper key
+    number_of_groundtruths_per_grouper_df = (
+        gt_df.groupby("label_id_grouper", as_index=False)["id"]
+        .nunique()
+        .rename({"id": "gts_per_grouper"}, axis=1)
+    )
+
+    joint_df = pandas.merge(
+        gt_df,
+        pd_df,
+        on=["datum_id", "label_id_grouper"],
+        how="outer",
+        suffixes=("_gt", "_pd"),
+    )
+
+    joint_df = pandas.merge(
+        joint_df,
+        number_of_groundtruths_per_grouper_df,
+        on="label_id_grouper",
+        how="outer",
+    ).assign(
+        label=lambda chain_df: chain_df["label_id_grouper"].map(
+            grouper_mappings["grouper_id_to_grouper_label_mapping"]
+        )
+    )
+
+    return joint_df
+
+
+def _calculate_iou(
+    joint_df: pandas.DataFrame, annotation_type: AnnotationType
+):
+    """Calculate the IOUs between predictions and groundtruths in a joint dataframe"""
+    if annotation_type == AnnotationType.RASTER:
+
+        # filter out rows with null rasters
+        joint_df = joint_df.loc[
+            ~joint_df["raster_pd"].isnull() & ~joint_df["raster_gt"].isnull(),
+            :,
+        ]
+
+        # convert the raster into a numpy array
+        joint_df[["raster_pd", "raster_gt"]] = (
+            joint_df[["raster_pd", "raster_gt"]]
+            .map(io.BytesIO)  # type: ignore pandas typing error
+            .map(Image.open)
+            .map(np.array)
+        )
+
+        iou_calculation_df = (
+            joint_df.assign(
+                intersection=lambda chain_df: chain_df.apply(
+                    lambda row: np.logical_and(
+                        row["raster_pd"], row["raster_gt"]
+                    ).sum(),
+                    axis=1,
+                )
+            )
+            .assign(
+                union_=lambda chain_df: chain_df["raster_gt"].apply(np.sum)
+                + chain_df["raster_pd"].apply(np.sum)
+                - chain_df["intersection"]
+            )
+            .assign(
+                iou_=lambda chain_df: chain_df["intersection"]
+                / chain_df["union_"]
+            )
+        )
+
+        joint_df = joint_df.join(iou_calculation_df["iou_"])
+
+    else:
+        iou_calculation_df = (
+            joint_df.loc[
+                ~joint_df["geojson_gt"].isnull()
+                & ~joint_df["geojson_pd"].isnull(),
+                ["geojson_gt", "geojson_pd"],
+            ]
+            .map(wkt_to_array)  # type: ignore - pandas typing issue
+            .apply(
+                lambda row: _calculate_bbox_iou(
+                    row["geojson_gt"], row["geojson_pd"]
+                ),
+                axis=1,
+            )
+        )
+
+        if not iou_calculation_df.empty:
+            iou_calculation_df = iou_calculation_df.rename("iou_")
+            joint_df = joint_df.join(iou_calculation_df)
+        else:
+            joint_df["iou_"] = 0
+
+    return joint_df
+
+
+def _calculate_grouper_id_level_metrics(
+    calculation_df: pandas.DataFrame, parameters: schemas.EvaluationParameters
+):
+    """Calculate the flags and metrics needed to compute AP, AR, and PR curves."""
+
+    # create flags where predictions meet the score and IOU criteria
+    calculation_df["recall_true_positive_flag"] = (
+        calculation_df["iou_"] >= calculation_df["iou_threshold"]
+    ) & (calculation_df["score"] >= parameters.recall_score_threshold)
+    # only consider the highest scoring true positive as an actual true positive
+    calculation_df["recall_true_positive_flag"] = calculation_df[
+        "recall_true_positive_flag"
+    ] & (
+        ~calculation_df.groupby(
+            ["label_id_grouper", "iou_threshold", "id_gt"], as_index=False
+        )["recall_true_positive_flag"].shift(1, fill_value=False)
+    )
+
+    calculation_df["precision_true_positive_flag"] = (
+        calculation_df["iou_"] >= calculation_df["iou_threshold"]
+    ) & (calculation_df["score"] > 0)
+    calculation_df["precision_true_positive_flag"] = calculation_df[
+        "precision_true_positive_flag"
+    ] & (
+        ~calculation_df.groupby(
+            ["label_id_grouper", "iou_threshold", "id_gt"], as_index=False
+        )["precision_true_positive_flag"].shift(1, fill_value=False)
+    )
+
+    calculation_df["recall_false_positive_flag"] = ~calculation_df[
+        "recall_true_positive_flag"
+    ] & (calculation_df["score"] >= parameters.recall_score_threshold)
+    calculation_df["precision_false_positive_flag"] = ~calculation_df[
+        "precision_true_positive_flag"
+    ] & (calculation_df["score"] > 0)
+
+    # calculate true and false positives
+    calculation_df = (
+        calculation_df.join(
+            calculation_df.groupby(
+                ["label_id_grouper", "iou_threshold"], as_index=False
+            )["recall_true_positive_flag"]
+            .cumsum()
+            .rename("rolling_recall_tp")
+        )
+        .join(
+            calculation_df.groupby(
+                ["label_id_grouper", "iou_threshold"], as_index=False
+            )["recall_false_positive_flag"]
+            .cumsum()
+            .rename("rolling_recall_fp")
+        )
+        .join(
+            calculation_df.groupby(
+                ["label_id_grouper", "iou_threshold"], as_index=False
+            )["precision_true_positive_flag"]
+            .cumsum()
+            .rename("rolling_precision_tp")
+        )
+        .join(
+            calculation_df.groupby(
+                ["label_id_grouper", "iou_threshold"], as_index=False
+            )["precision_false_positive_flag"]
+            .cumsum()
+            .rename("rolling_precision_fp")
+        )
+    )
+
+    # calculate false negatives, then precision / recall
+    calculation_df = (
+        calculation_df.assign(
+            rolling_recall_fn=lambda chain_df: chain_df["gts_per_grouper"]
+            - chain_df["rolling_recall_tp"]
+        )
+        .assign(
+            rolling_precision_fn=lambda chain_df: chain_df["gts_per_grouper"]
+            - chain_df["rolling_precision_tp"]
+        )
+        .assign(
+            precision=lambda chain_df: chain_df["rolling_precision_tp"]
+            / (
+                chain_df["rolling_precision_tp"]
+                + chain_df["rolling_precision_fp"]
+            )
+        )
+        .assign(
+            recall_for_AP=lambda chain_df: chain_df["rolling_precision_tp"]
+            / (
+                chain_df["rolling_precision_tp"]
+                + chain_df["rolling_precision_fn"]
+            )
+        )
+        .assign(
+            recall_for_AR=lambda chain_df: chain_df["rolling_recall_tp"]
+            / (chain_df["rolling_recall_tp"] + chain_df["rolling_recall_fn"])
+        )
+    )
+
+    # fill any predictions that are missing groundtruths with -1
+    # leave any groundtruths that are missing predictions with 0
+    calculation_df.loc[
+        calculation_df["id_gt"].isnull(),
+        ["precision", "recall_for_AP", "recall_for_AR"],
+    ] = -1
+
+    calculation_df.loc[
+        calculation_df["id_pd"].isnull(),
+        ["precision", "recall_for_AP", "recall_for_AR"],
+    ] = 0
+
+    return calculation_df
+
+
+def _calculate_ap_metrics(
+    calculation_df: pandas.DataFrame,
+    grouper_mappings: dict,
+    parameters: schemas.EvaluationParameters,
+) -> list[
+    schemas.APMetric
+    | schemas.APMetricAveragedOverIOUs
+    | schemas.mAPMetric
+    | schemas.mAPMetricAveragedOverIOUs
+]:
+    """Calculates all AP metrics, including aggregated metrics like mAP."""
+
+    ap_metrics_df = (
+        calculation_df.loc[
+            ~calculation_df[
+                "id_gt"
+            ].isnull(),  # for AP, we don't include any predictions without groundtruths
+            [
+                "label_id_grouper",
+                "iou_threshold",
+                "precision",
+                "recall_for_AP",
+            ],
+        ]
+        .groupby(["label_id_grouper", "iou_threshold"], as_index=False)
+        .apply(
+            lambda x: pandas.Series(
+                {
+                    "calculated_precision": _calculate_101_pt_interp(
+                        x["precision"].tolist(),
+                        x["recall_for_AP"].tolist(),
+                    )
+                }
+            )
+        )
+    )
+
+    # add back "label" after grouping operations are complete
+    ap_metrics_df["label"] = ap_metrics_df["label_id_grouper"].map(
+        grouper_mappings["grouper_id_to_grouper_label_mapping"]
+    )
+
+    ap_metrics = [
+        schemas.APMetric(
+            iou=row["iou_threshold"],
+            value=row["calculated_precision"],
+            label=row["label"],
+        )
+        for row in ap_metrics_df.to_dict(orient="records")
+    ]
+
+    # calculate mean AP metrics
+    ap_metrics_df["label_key"] = ap_metrics_df["label"].apply(lambda x: x.key)
+
+    ap_over_ious_df = (
+        ap_metrics_df.groupby(["label_id_grouper"], as_index=False)[
+            "calculated_precision"
+        ].apply(_mean_ignoring_negative_one)
+    ).assign(
+        label=lambda chained_df: chained_df["label_id_grouper"].map(
+            grouper_mappings["grouper_id_to_grouper_label_mapping"]
+        )
+    )
+
+    ap_over_ious = [
+        schemas.APMetricAveragedOverIOUs(
+            ious=set(parameters.iou_thresholds_to_compute),
+            value=row["calculated_precision"],
+            label=row["label"],
+        )
+        for row in ap_over_ious_df.to_dict(orient="records")
+    ]
+
+    map_metrics_df = ap_metrics_df.groupby(
+        ["iou_threshold", "label_key"], as_index=False
+    )["calculated_precision"].apply(_mean_ignoring_negative_one)
+
+    map_metrics = [
+        schemas.mAPMetric(
+            iou=row["iou_threshold"],
+            value=row["calculated_precision"],
+            label_key=row["label_key"],
+        )
+        for row in map_metrics_df.to_dict(orient="records")
+    ]
+
+    map_over_ious_df = ap_metrics_df.groupby(["label_key"], as_index=False)[
+        "calculated_precision"
+    ].apply(_mean_ignoring_negative_one)
+
+    map_over_ious = [
+        schemas.mAPMetricAveragedOverIOUs(
+            ious=set(parameters.iou_thresholds_to_compute),
+            value=row["calculated_precision"],
+            label_key=row["label_key"],
+        )
+        for row in map_over_ious_df.to_dict(orient="records")
+    ]
+
+    return (
+        [m for m in ap_metrics if m.iou in parameters.iou_thresholds_to_return]
+        + [
+            m
+            for m in map_metrics
+            if m.iou in parameters.iou_thresholds_to_return
+        ]
+        + ap_over_ious
+        + map_over_ious
+    )
+
+
+def _calculate_ar_metrics(
+    calculation_df: pandas.DataFrame,
+    grouper_mappings: dict,
+    parameters: schemas.EvaluationParameters,
+) -> list[schemas.ARMetric | schemas.mARMetric]:
+    """Calculates all AR metrics, including aggregated metrics like mAR."""
+
+    # get the max recall_for_AR for each threshold, then take the mean across thresholds
+    ar_metrics_df = (
+        calculation_df.groupby(
+            ["label_id_grouper", "iou_threshold"], as_index=False
+        )["recall_for_AR"]
+        .max()
+        .groupby("label_id_grouper", as_index=False)["recall_for_AR"]
+        .mean()
+    )
+
+    # add back "label" after grouping operations are complete
+    ar_metrics_df["label"] = ar_metrics_df["label_id_grouper"].map(
+        grouper_mappings["grouper_id_to_grouper_label_mapping"]
+    )
+
+    ious_ = set(parameters.iou_thresholds_to_compute)
+    ar_metrics = [
+        schemas.ARMetric(
+            ious=ious_,
+            value=row["recall_for_AR"],
+            label=row["label"],
+        )
+        for row in ar_metrics_df.to_dict(orient="records")
+    ]
+
+    # calculate mAR
+    ar_metrics_df["label_key"] = ar_metrics_df["label"].apply(lambda x: x.key)
+    mar_metrics_df = ar_metrics_df.groupby(["label_key"], as_index=False)[
+        "recall_for_AR"
+    ].apply(_mean_ignoring_negative_one)
+
+    mar_metrics = [
+        schemas.mARMetric(
+            ious=ious_,
+            value=row["recall_for_AR"],
+            label_key=row["label_key"],
+        )
+        for row in mar_metrics_df.to_dict(orient="records")
+    ]
+
+    return ar_metrics + mar_metrics
+
+
+def _calculate_pr_metrics(
+    joint_df: pandas.DataFrame,
+    grouper_mappings: dict,
+    parameters: schemas.EvaluationParameters,
+) -> list[schemas.PrecisionRecallCurve]:
+    """Calculates all PrecisionRecallCurves."""
+
+    if not (
+        parameters.metrics_to_return
+        and enums.MetricType.PrecisionRecallCurve
+        in parameters.metrics_to_return
+    ):
+        return []
+
+    confidence_thresholds = [x / 100 for x in range(5, 100, 5)]
+    pr_calculation_df = pandas.concat(
+        [
+            joint_df.assign(confidence_threshold=threshold)
+            for threshold in confidence_thresholds
+        ],
+        ignore_index=True,
+    ).sort_values(
+        by=[
+            "label_id_grouper",
+            "confidence_threshold",
+            "score",
+            "iou_",
+        ],
+        ascending=False,
+    )
+
+    # TODO run code through GPT?
+    pr_calculation_df["true_positive_flag"] = (
+        (pr_calculation_df["iou_"] >= parameters.pr_curve_iou_threshold)
+        & (
+            pr_calculation_df["score"]
+            >= pr_calculation_df["confidence_threshold"]
+        )
+        & (
+            pr_calculation_df.groupby(
+                ["label_id_grouper", "confidence_threshold", "id_gt"]
+            ).cumcount()
+            == 0
+        )  # only the first gt_id in this sorted list should be considered a true positive
+    )
+
+    pr_calculation_df["false_positive_flag"] = ~pr_calculation_df[
+        "true_positive_flag"
+    ] & (
+        pr_calculation_df["score"] >= pr_calculation_df["confidence_threshold"]
+    )
+
+    pr_metrics_df = (
+        pr_calculation_df.groupby(
+            [
+                "label_id_grouper",
+                "confidence_threshold",
+                "gts_per_grouper",
+            ],
+            as_index=False,
+        )["true_positive_flag"]
+        .sum()
+        .merge(
+            pr_calculation_df.groupby(
+                ["label_id_grouper", "confidence_threshold"],
+                as_index=False,
+            )["false_positive_flag"].sum(),
+            on=["label_id_grouper", "confidence_threshold"],
+            how="outer",
+        )
+        .rename(
+            columns={
+                "true_positive_flag": "true_positives",
+                "false_positive_flag": "false_positives",
+            }
+        )
+        .assign(
+            false_negatives=lambda chain_df: chain_df["gts_per_grouper"]
+            - chain_df["true_positives"]
+        )
+        .assign(
+            precision=lambda chain_df: chain_df["true_positives"]
+            / (chain_df["true_positives"] + chain_df["false_positives"])
+        )
+        .assign(
+            recall=lambda chain_df: chain_df["true_positives"]
+            / (chain_df["true_positives"] + chain_df["false_negatives"])
+        )
+        .assign(
+            f1_score=lambda chain_df: (
+                2 * chain_df["precision"] * chain_df["recall"]
+            )
+            / (chain_df["precision"] + chain_df["recall"])
+        )
+    )
+
+    # add back "label" after grouping operations are complete
+    pr_metrics_df["label"] = pr_metrics_df["label_id_grouper"].map(
+        grouper_mappings["grouper_id_to_grouper_label_mapping"]
+    )
+
+    pr_metrics_df.fillna(0, inplace=True)
+
+    curves = defaultdict(lambda: defaultdict(lambda: defaultdict(dict)))
+
+    for row in pr_metrics_df.to_dict(orient="records"):
+        curves[row["label"].key][row["label"].value][
+            row["confidence_threshold"]
+        ] = {
+            "tp": row["true_positives"],
+            "fp": row["false_positives"],
+            "fn": row["false_negatives"],
+            "tn": None,  # tn and accuracy aren't applicable to detection tasks because there's an infinite number of true negatives
+            "precision": row["precision"],
+            "recall": row["recall"],
+            "accuracy": None,
+            "f1_score": row["f1_score"],
+        }
+
+    return [
+        schemas.PrecisionRecallCurve(
+            label_key=key,
+            value=value,  # type: ignore - defaultdict doesn't have strict typing
+            pr_curve_iou_threshold=parameters.pr_curve_iou_threshold,
+        )
+        for key, value in curves.items()
+    ]
 
 
 def _compute_detection_metrics(
@@ -789,56 +1342,12 @@ def _compute_detection_metrics(
         evaluation_type=enums.TaskType.OBJECT_DETECTION,
     )
 
-    gt = generate_select(
-        models.Dataset.name.label("dataset_name"),
-        models.GroundTruth.id.label("id"),
-        models.GroundTruth.annotation_id.label("annotation_id"),
-        models.Annotation.datum_id.label("datum_id"),
-        models.Datum.uid.label("datum_uid"),
-        case(
-            grouper_mappings["label_id_to_grouper_id_mapping"],
-            value=models.GroundTruth.label_id,
-        ).label("label_id_grouper"),
-        _annotation_type_to_geojson(target_type, models.Annotation).label(
-            "geojson"
-        ),
-        gfunc.ST_AsPNG(models.Annotation.raster).label("raster"),
-        filters=groundtruth_filter,
-        label_source=models.GroundTruth,
-    )
-
-    pd = generate_select(
-        models.Dataset.name.label("dataset_name"),
-        models.Prediction.id.label("id"),
-        models.Prediction.annotation_id.label("annotation_id"),
-        models.Prediction.score.label("score"),
-        models.Annotation.datum_id.label("datum_id"),
-        models.Datum.uid.label("datum_uid"),
-        case(
-            grouper_mappings["label_id_to_grouper_id_mapping"],
-            value=models.Prediction.label_id,
-        ).label("label_id_grouper"),
-        _annotation_type_to_geojson(target_type, models.Annotation).label(
-            "geojson"
-        ),
-        gfunc.ST_AsPNG(models.Annotation.raster).label("raster"),
-        filters=prediction_filter,
-        label_source=models.Prediction,
-    )
-
-    gt_df = pandas.read_sql(gt, db.bind)  # type: ignore - pandas typing error.
-    pd_df = pandas.read_sql(pd, db.bind)  # type: ignore - pandas typing error.
-
-    joint_df = pandas.merge(
-        gt_df,
-        pd_df,
-        on=["datum_id", "label_id_grouper"],
-        how="outer",
-        suffixes=("_gt", "_pd"),
-    ).assign(
-        label=lambda chain_df: chain_df["label_id_grouper"].map(
-            grouper_mappings["grouper_id_to_grouper_label_mapping"]
-        )
+    joint_df = _get_joint_df(
+        db=db,
+        annotation_type=target_type,
+        groundtruth_filter=groundtruth_filter,
+        prediction_filter=prediction_filter,
+        grouper_mappings=grouper_mappings,
     )
 
     # store solo groundtruths and predictions such that we can add them back after we calculate IOU
@@ -849,64 +1358,7 @@ def _compute_detection_metrics(
         joint_df["id_pd"].isnull()
     ].assign(iou_=0)
 
-    # IOU Computation Block
-    if target_type == AnnotationType.RASTER:
-
-        # filter out rows with null rasters
-        joint_df = joint_df.loc[
-            ~joint_df["raster_pd"].isnull() & ~joint_df["raster_gt"].isnull(),
-            :,
-        ]
-
-        # convert the raster into a numpy array
-        joint_df[["raster_pd", "raster_gt"]] = (
-            joint_df[["raster_pd", "raster_gt"]]
-            .applymap(io.BytesIO)  # type: ignore pandas typing error
-            .applymap(Image.open)
-            .applymap(np.array)
-        )
-
-        iou_calculation_df = (
-            joint_df.assign(
-                intersection=lambda chain_df: chain_df.apply(
-                    lambda row: np.logical_and(
-                        row["raster_pd"], row["raster_gt"]
-                    ).sum(),
-                    axis=1,
-                )
-            )
-            .assign(
-                union_=lambda chain_df: chain_df["raster_gt"].apply(np.sum)
-                + chain_df["raster_pd"].apply(np.sum)
-                - chain_df["intersection"]
-            )
-            .assign(
-                iou_=lambda chain_df: chain_df["intersection"]
-                / chain_df["union_"]
-            )
-        )
-
-        joint_df = joint_df.join(iou_calculation_df["iou_"])
-
-    else:
-        iou_calculation_df = (
-            joint_df.loc[
-                ~joint_df["geojson_gt"].isnull()
-                & ~joint_df["geojson_pd"].isnull(),
-                ["geojson_gt", "geojson_pd"],
-            ]
-            .applymap(wkt_to_array)  # type: ignore - pandas typing issue
-            .apply(
-                lambda row: bbox_iou(row["geojson_gt"], row["geojson_pd"]),
-                axis=1,
-            )
-        )
-
-        if not iou_calculation_df.empty:
-            iou_calculation_df = iou_calculation_df.rename("iou_")
-            joint_df = joint_df.join(iou_calculation_df)
-        else:
-            joint_df["iou_"] = 0
+    joint_df = _calculate_iou(joint_df=joint_df, annotation_type=target_type)
 
     # filter out null groundtruths and sort by score and iou so that idxmax returns the best row for each prediction
     joint_df = joint_df[~joint_df["id_gt"].isnull()].sort_values(
@@ -916,15 +1368,7 @@ def _compute_detection_metrics(
     # get the best prediction (in terms of score and iou) for each groundtruth
     prediction_has_best_score = joint_df.groupby(["id_pd"])["score"].idxmax()
 
-    # TODO remove unnecessary columns here like geojson_pd/gt
     joint_df = joint_df.loc[prediction_has_best_score]
-
-    # get the number of groundtruth observations per grouper key
-    number_of_groundtruths_per_grouper_df = (
-        gt_df.groupby("label_id_grouper", as_index=False)["id"]
-        .nunique()
-        .rename({"id": "gts_per_grouper"}, axis=1)
-    )
 
     # add back missing predictions and groundtruths
     joint_df = pandas.concat(
@@ -936,8 +1380,7 @@ def _compute_detection_metrics(
         axis=0,
     )
 
-    # for each parameters.iou_thresholds_to_compute and grouper_key, get all the matches in joint_df
-    # sum the true positives and true negatives where iou > threshold and score > score threshold
+    # add iou_threshold to the dataframe and sort
     calculation_df = pandas.concat(
         [
             joint_df.assign(iou_threshold=threshold)
@@ -949,323 +1392,29 @@ def _compute_detection_metrics(
         ascending=False,
     )
 
-    calculation_df["recall_true_positive_flag"] = (
-        calculation_df["iou_"] >= calculation_df["iou_threshold"]
-    ) & (calculation_df["score"] >= parameters.recall_score_threshold)
-    # only consider the highest scoring true positive as an actual true positive
-    calculation_df["recall_true_positive_flag"] = calculation_df[
-        "recall_true_positive_flag"
-    ] & (
-        ~calculation_df.groupby(
-            ["label_id_grouper", "iou_threshold", "id_gt"], as_index=False
-        )["recall_true_positive_flag"].shift(1, fill_value=False)
+    calculation_df = _calculate_grouper_id_level_metrics(
+        calculation_df=calculation_df, parameters=parameters
     )
 
-    calculation_df["precision_true_positive_flag"] = (
-        calculation_df["iou_"] >= calculation_df["iou_threshold"]
-    ) & (calculation_df["score"] > 0)
-    calculation_df["precision_true_positive_flag"] = calculation_df[
-        "precision_true_positive_flag"
-    ] & (
-        ~calculation_df.groupby(
-            ["label_id_grouper", "iou_threshold", "id_gt"], as_index=False
-        )["precision_true_positive_flag"].shift(1, fill_value=False)
+    ap_metrics = _calculate_ap_metrics(
+        calculation_df=calculation_df,
+        grouper_mappings=grouper_mappings,
+        parameters=parameters,
     )
 
-    calculation_df["recall_false_positive_flag"] = ~calculation_df[
-        "recall_true_positive_flag"
-    ] & (calculation_df["score"] >= parameters.recall_score_threshold)
-    calculation_df["precision_false_positive_flag"] = ~calculation_df[
-        "precision_true_positive_flag"
-    ] & (calculation_df["score"] > 0)
-
-    # calculate true and false positives
-    calculation_df = (
-        calculation_df.join(
-            calculation_df.groupby(
-                ["label_id_grouper", "iou_threshold"], as_index=False
-            )["recall_true_positive_flag"]
-            .cumsum()
-            .rename("rolling_recall_tp")
-        )
-        .join(
-            calculation_df.groupby(
-                ["label_id_grouper", "iou_threshold"], as_index=False
-            )["recall_false_positive_flag"]
-            .cumsum()
-            .rename("rolling_recall_fp")
-        )
-        .join(
-            calculation_df.groupby(
-                ["label_id_grouper", "iou_threshold"], as_index=False
-            )["precision_true_positive_flag"]
-            .cumsum()
-            .rename("rolling_precision_tp")
-        )
-        .join(
-            calculation_df.groupby(
-                ["label_id_grouper", "iou_threshold"], as_index=False
-            )["precision_false_positive_flag"]
-            .cumsum()
-            .rename("rolling_precision_fp")
-        )
+    ar_metrics = _calculate_ar_metrics(
+        calculation_df=calculation_df,
+        grouper_mappings=grouper_mappings,
+        parameters=parameters,
     )
 
-    # calculate false negatives, then precision / recall
-    if calculation_df.empty:
-        return []
-
-    calculation_df = (
-        calculation_df.merge(
-            number_of_groundtruths_per_grouper_df,
-            on="label_id_grouper",
-            how="outer",
-        )
-        .assign(
-            rolling_recall_fn=lambda chain_df: chain_df["gts_per_grouper"]
-            - chain_df["rolling_recall_tp"]
-        )
-        .assign(
-            rolling_precision_fn=lambda chain_df: chain_df["gts_per_grouper"]
-            - chain_df["rolling_precision_tp"]
-        )
-        .assign(
-            precision=lambda chain_df: chain_df["rolling_precision_tp"]
-            / (
-                chain_df["rolling_precision_tp"]
-                + chain_df["rolling_precision_fp"]
-            )
-        )
-        .assign(
-            recall_for_AP=lambda chain_df: chain_df["rolling_precision_tp"]
-            / (
-                chain_df["rolling_precision_tp"]
-                + chain_df["rolling_precision_fn"]
-            )
-        )
-        .assign(
-            recall_for_AR=lambda chain_df: chain_df["rolling_recall_tp"]
-            / (chain_df["rolling_recall_tp"] + chain_df["rolling_recall_fn"])
-        )
+    pr_metrics = _calculate_pr_metrics(
+        joint_df=joint_df,
+        grouper_mappings=grouper_mappings,
+        parameters=parameters,
     )
 
-    # fill any predictions that are missing groundtruths with -1
-    # leave any groundtruths that are missing predictions with 0
-    calculation_df.loc[
-        calculation_df["id_gt"].isnull(),
-        ["precision", "recall_for_AP", "recall_for_AR"],
-    ] = -1
-
-    calculation_df.loc[
-        calculation_df["id_pd"].isnull(),
-        ["precision", "recall_for_AP", "recall_for_AR"],
-    ] = 0
-
-    ap_metrics_df = (
-        calculation_df.loc[
-            ~calculation_df[
-                "id_gt"
-            ].isnull(),  # for AP, we don't include any predictions without groundtruths
-            [
-                "label_id_grouper",
-                "iou_threshold",
-                "precision",
-                "recall_for_AP",
-            ],
-        ]  # note that we don't want to return AP metrics for any predictions without a matching groundtruth
-        .groupby(["label_id_grouper", "iou_threshold"], as_index=False)
-        .apply(
-            lambda x: pandas.Series(
-                {
-                    "calculated_precision": _calculate_101_pt_interp(
-                        x["precision"].tolist(), x["recall_for_AP"].tolist()
-                    )
-                }
-            )
-        )
-    )
-
-    # add back "label" after grouping operations are complete
-    ap_metrics_df["label"] = ap_metrics_df["label_id_grouper"].map(
-        grouper_mappings["grouper_id_to_grouper_label_mapping"]
-    )
-
-    ap_metrics = [
-        schemas.APMetric(
-            iou=row["iou_threshold"],
-            value=row["calculated_precision"],
-            label=row["label"],
-        )
-        for row in ap_metrics_df.to_dict(orient="records")
-    ]
-
-    # get the max recall_for_AR for each threshold, then take the mean across thresholds
-    ar_metrics_df = (
-        calculation_df.groupby(
-            ["label_id_grouper", "iou_threshold"], as_index=False
-        )["recall_for_AR"]
-        .max()
-        .groupby("label_id_grouper", as_index=False)["recall_for_AR"]
-        .mean()
-    )
-
-    # add back "label" after grouping operations are complete
-    ar_metrics_df["label"] = ar_metrics_df["label_id_grouper"].map(
-        grouper_mappings["grouper_id_to_grouper_label_mapping"]
-    )
-
-    ious_ = set(parameters.iou_thresholds_to_compute)
-    ar_metrics = [
-        schemas.ARMetric(
-            ious=ious_,
-            value=row["recall_for_AR"],
-            label=row["label"],
-        )
-        for row in ar_metrics_df.to_dict(orient="records")
-    ]
-
-    output = [
-        m for m in ap_metrics if m.iou in parameters.iou_thresholds_to_return
-    ]
-    output += ar_metrics
-
-    # calculate averaged metrics
-    mean_ap_metrics = _compute_mean_detection_metrics_from_aps(ap_metrics)
-    mean_ar_metrics = _compute_mean_ar_metrics(ar_metrics)
-
-    ap_metrics_ave_over_ious = list(
-        _compute_detection_metrics_averaged_over_ious_from_aps(ap_metrics)
-    )
-
-    output += [
-        m
-        for m in mean_ap_metrics
-        if isinstance(m, schemas.mAPMetric)
-        and m.iou in parameters.iou_thresholds_to_return
-    ]
-    output += mean_ar_metrics
-    output += ap_metrics_ave_over_ious
-
-    mean_ap_metrics_ave_over_ious = list(
-        _compute_mean_detection_metrics_from_aps(ap_metrics_ave_over_ious)
-    )
-    output += mean_ap_metrics_ave_over_ious
-
-    if (
-        parameters.metrics_to_return
-        and enums.MetricType.PrecisionRecallCurve
-        in parameters.metrics_to_return
-    ):
-        confidence_thresholds = [x / 100 for x in range(5, 100, 5)]
-        pr_calculation_df = pandas.concat(
-            [
-                joint_df.assign(confidence_threshold=threshold)
-                for threshold in confidence_thresholds
-            ],
-            ignore_index=True,
-        ).sort_values(
-            by=["label_id_grouper", "confidence_threshold", "score", "iou_"],
-            ascending=False,
-        )
-
-        # TODO run code through GPT?
-        pr_calculation_df["true_positive_flag"] = (
-            (pr_calculation_df["iou_"] >= parameters.pr_curve_iou_threshold)
-            & (
-                pr_calculation_df["score"]
-                >= pr_calculation_df["confidence_threshold"]
-            )
-            & (
-                pr_calculation_df.groupby(
-                    ["label_id_grouper", "confidence_threshold", "id_gt"]
-                ).cumcount()
-                == 0
-            )  # only the first gt_id in this sorted list should be considered a true positive
-        )
-
-        pr_calculation_df["false_positive_flag"] = ~pr_calculation_df[
-            "true_positive_flag"
-        ] & (
-            pr_calculation_df["score"]
-            >= pr_calculation_df["confidence_threshold"]
-        )
-
-        pr_metrics_df = (
-            pr_calculation_df.groupby(
-                ["label_id_grouper", "confidence_threshold"], as_index=False
-            )["true_positive_flag"]
-            .sum()
-            .merge(
-                pr_calculation_df.groupby(
-                    ["label_id_grouper", "confidence_threshold"],
-                    as_index=False,
-                )["false_positive_flag"].sum(),
-                on=["label_id_grouper", "confidence_threshold"],
-            )
-            .rename(
-                columns={
-                    "true_positive_flag": "true_positives",
-                    "false_positive_flag": "false_positives",
-                }
-            )
-            .merge(
-                number_of_groundtruths_per_grouper_df,
-                on="label_id_grouper",
-                how="outer",
-            )
-            .assign(
-                false_negatives=lambda chain_df: chain_df["gts_per_grouper"]
-                - chain_df["true_positives"]
-            )
-            .assign(
-                precision=lambda chain_df: chain_df["true_positives"]
-                / (chain_df["true_positives"] + chain_df["false_positives"])
-            )
-            .assign(
-                recall=lambda chain_df: chain_df["true_positives"]
-                / (chain_df["true_positives"] + chain_df["false_negatives"])
-            )
-            .assign(
-                f1_score=lambda chain_df: (
-                    2 * chain_df["precision"] * chain_df["recall"]
-                )
-                / (chain_df["precision"] + chain_df["recall"])
-            )
-        )
-
-        # add back "label" after grouping operations are complete
-        pr_metrics_df["label"] = pr_metrics_df["label_id_grouper"].map(
-            grouper_mappings["grouper_id_to_grouper_label_mapping"]
-        )
-
-        pr_metrics_df.fillna(-1, inplace=True)
-
-        curves = defaultdict(lambda: defaultdict(lambda: defaultdict(dict)))
-
-        for row in pr_metrics_df.to_dict(orient="records"):
-            curves[row["label"].key][row["label"].value][
-                row["confidence_threshold"]
-            ] = {
-                "tp": row["true_positives"],
-                "fp": row["false_positives"],
-                "fn": row["false_negatives"],
-                "tn": None,  # tn and accuracy aren't applicable to detection tasks because there's an infinite number of true negatives
-                "precision": row["precision"],
-                "recall": row["recall"],
-                "accuracy": None,
-                "f1_score": row["f1_score"],
-            }
-
-        output += [
-            schemas.PrecisionRecallCurve(
-                label_key=key,
-                value=value,  # type: ignore - defaultdict doesn't have strict typing
-                pr_curve_iou_threshold=parameters.pr_curve_iou_threshold,
-            )
-            for key, value in curves.items()
-        ]
-
-    return output
+    return ar_metrics + ap_metrics + pr_metrics
 
 
 def _compute_detection_metrics_with_detailed_precision_recall_curve(
@@ -1726,6 +1875,11 @@ def _compute_detection_metrics_averaged_over_ious_from_aps(
         )
 
     return ret
+
+
+def _mean_ignoring_negative_one(series: pandas.Series) -> float:
+    filtered = series[series != -1]
+    return filtered.mean() if not filtered.empty else -1.0
 
 
 def _average_ignore_minus_one(a):
