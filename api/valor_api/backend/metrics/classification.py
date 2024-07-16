@@ -858,7 +858,7 @@ def _compute_clf_metrics(
                 dropna=False,
             )
             .size()
-            .rename(columns={"size": "number_of_predictions"}),  # type: ignore - pandas typing error. .rename is used correctly here, but the interpreter is confused since we're chaining operations; see docs: https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.rename.html
+            .rename({"size": "number_of_predictions"}, axis=1),
             on=["grouper_key", "pd_grouper_value"],
         )
 
@@ -870,8 +870,7 @@ def _compute_clf_metrics(
                 dropna=False,
             )
             .size()
-            .rename(columns={"size": "number_of_groundtruths"}),  # type: ignore - pandas typing error. .rename is used correctly here, but the interpreter is confused since we're chaining operations; see docs: https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.rename.html
-            on=["grouper_key", "gt_grouper_value"],
+            .rename({"size": "number_of_groundtruths"}, axis=1),
         )
 
         cm_counts = cm_counts.merge(
@@ -1119,7 +1118,7 @@ def _compute_clf_metrics(
             ]
             .groupby(["grouper_key"], as_index=False)
             .sum()
-            .rename(columns={"size": "true_positives_per_grouper_key"})
+            .rename({"size": "true_positives_per_grouper_key"}, axis=1)
         ).merge(
             cm_counts.loc[
                 (cm_counts["gt_grouper_value"].notnull()),
@@ -1127,7 +1126,7 @@ def _compute_clf_metrics(
             ]
             .groupby(["grouper_key"], as_index=False)
             .sum()
-            .rename(columns={"size": "observations_per_grouper_key"}),
+            .rename({"size": "observations_per_grouper_key"}, axis=1),
             on="grouper_key",
             how="outer",
         )
@@ -1302,7 +1301,7 @@ def _compute_clf_metrics(
                 ["grouper_key", "grouper_value"], as_index=False
             )["gt_grouper_value"]
             .size()
-            .rename(columns={"size": "n"})  # type: ignore - pandas typing error. .rename is used correctly here, but the interpreter is confused since we're chaining operations; see docs: https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.rename.html
+            .rename({"size": "n"}, axis=1)
         )
 
         total_true_positves_per_grouper_key_and_grouper_value = (
@@ -1313,7 +1312,7 @@ def _compute_clf_metrics(
                 "gt_grouper_value"
             ]
             .size()
-            .rename(columns={"size": "n_true_positives"})  # type: ignore - pandas typing error. .rename is used correctly here, but the interpreter is confused since we're chaining operations; see docs: https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.rename.html
+            .rename({"size": "n_true_positives"}, axis=1)
         )
 
         merged_counts = merged_predictions_and_groundtruths.merge(

@@ -3,20 +3,16 @@ import heapq
 import io
 import json
 import math
-import pdb
 import random
-from base64 import b64encode
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import Sequence, Tuple
 
 import numpy as np
 import pandas
-import rasterio
 from geoalchemy2 import functions as gfunc
 from PIL import Image
-from rasterio.features import rasterize
-from sqlalchemy import and_, case, func, or_, select
+from sqlalchemy import and_, case, func, select
 from sqlalchemy.orm import Session, aliased
 
 from valor_api import enums, schemas
@@ -31,9 +27,6 @@ from valor_api.backend.metrics.metric_utils import (
 )
 from valor_api.backend.query import generate_query, generate_select
 from valor_api.enums import AnnotationType
-
-# TODO delete
-pandas.set_option("display.max_columns", None)
 
 
 @dataclass
@@ -51,10 +44,13 @@ class RankedPair:
 
 def _calculate_101_pt_interp(precisions, recalls) -> float:
     """Use the 101 point interpolation method (following torchmetrics)"""
-
     assert len(precisions) == len(recalls)
+
     if len(precisions) == 0:
         return 0
+
+    if all([x == -1 for x in precisions + recalls]):
+        return -1
 
     data = list(zip(precisions, recalls))
     data.sort(key=lambda x: x[1])
@@ -657,6 +653,64 @@ def _compute_detailed_curves(
     return output
 
 
+def _annotation_type_to_geojson(
+    annotation_type: AnnotationType,
+    table,
+):
+    match annotation_type:
+        case AnnotationType.BOX:
+            box = table.box
+        case AnnotationType.POLYGON:
+            box = gfunc.ST_Envelope(table.polygon)
+        case AnnotationType.RASTER:
+            box = gfunc.ST_Envelope(gfunc.ST_MinConvexHull(table.raster))
+        case _:
+            raise RuntimeError
+    return gfunc.ST_AsGeoJSON(box)
+
+
+# TODO there's probably a better way to do this without the wkt
+def wkt_to_array(wkt_data):
+    coordinates = json.loads(wkt_data)["coordinates"][0]
+    return np.array(coordinates)
+
+
+def bbox_intersection(bbox1, bbox2):
+    # Calculate intersection coordinates
+    xmin_inter = max(bbox1[:, 0].min(), bbox2[:, 0].min())
+    ymin_inter = max(bbox1[:, 1].min(), bbox2[:, 1].min())
+    xmax_inter = min(bbox1[:, 0].max(), bbox2[:, 0].max())
+    ymax_inter = min(bbox1[:, 1].max(), bbox2[:, 1].max())
+
+    # Calculate width and height of intersection area
+    width = max(0, xmax_inter - xmin_inter)
+    height = max(0, ymax_inter - ymin_inter)
+
+    # Calculate intersection area
+    intersection_area = width * height
+    return intersection_area
+
+
+# Function to calculate union area of two bounding boxes
+def bbox_union(bbox1, bbox2):
+    area1 = (bbox1[:, 0].max() - bbox1[:, 0].min()) * (
+        bbox1[:, 1].max() - bbox1[:, 1].min()
+    )
+    area2 = (bbox2[:, 0].max() - bbox2[:, 0].min()) * (
+        bbox2[:, 1].max() - bbox2[:, 1].min()
+    )
+    union_area = area1 + area2 - bbox_intersection(bbox1, bbox2)
+    return union_area
+
+
+# Function to calculate IoU of two bounding boxes
+def bbox_iou(bbox1, bbox2):
+    intersection = bbox_intersection(bbox1, bbox2)
+    union = bbox_union(bbox1, bbox2)
+    iou = intersection / union
+    return iou
+
+
 def _compute_detection_metrics(
     db: Session,
     parameters: schemas.EvaluationParameters,
@@ -695,35 +749,6 @@ def _compute_detection_metrics(
         A list of metrics to return to the user.
 
     """
-
-    def _annotation_type_to_column(
-        annotation_type: AnnotationType,
-        table,
-    ):
-        match annotation_type:
-            case AnnotationType.BOX:
-                return table.box
-            case AnnotationType.POLYGON:
-                return table.polygon
-            case AnnotationType.RASTER:
-                return table.raster
-            case _:
-                raise RuntimeError
-
-    def _annotation_type_to_geojson(
-        annotation_type: AnnotationType,
-        table,
-    ):
-        match annotation_type:
-            case AnnotationType.BOX:
-                box = table.box
-            case AnnotationType.POLYGON:
-                box = gfunc.ST_Envelope(table.polygon)
-            case AnnotationType.RASTER:
-                box = gfunc.ST_Envelope(gfunc.ST_MinConvexHull(table.raster))
-            case _:
-                raise RuntimeError
-        return gfunc.ST_AsGeoJSON(box)
 
     if (
         parameters.iou_thresholds_to_return is None
@@ -810,7 +835,19 @@ def _compute_detection_metrics(
         on=["datum_id", "label_id_grouper"],
         how="outer",
         suffixes=("_gt", "_pd"),
+    ).assign(
+        label=lambda chain_df: chain_df["label_id_grouper"].map(
+            grouper_mappings["grouper_id_to_grouper_label_mapping"]
+        )
     )
+
+    # store solo groundtruths and predictions such that we can add them back after we calculate IOU
+    predictions_missing_groundtruths = joint_df[
+        joint_df["id_gt"].isnull()
+    ].assign(iou_=0)
+    groundtruths_missing_predictions = joint_df[
+        joint_df["id_pd"].isnull()
+    ].assign(iou_=0)
 
     # IOU Computation Block
     if target_type == AnnotationType.RASTER:
@@ -824,7 +861,7 @@ def _compute_detection_metrics(
         # convert the raster into a numpy array
         joint_df[["raster_pd", "raster_gt"]] = (
             joint_df[["raster_pd", "raster_gt"]]
-            .applymap(io.BytesIO)
+            .applymap(io.BytesIO)  # type: ignore pandas typing error
             .applymap(Image.open)
             .applymap(np.array)
         )
@@ -850,49 +887,8 @@ def _compute_detection_metrics(
         )
 
         joint_df = joint_df.join(iou_calculation_df["iou_"])
-        joint_df["delete"] = joint_df["label_id_grouper"].map(
-            grouper_mappings["grouper_id_to_grouper_label_mapping"]
-        )
 
     else:
-        # TODO there's probably a better way to do this without the wkt
-        def wkt_to_array(wkt_data):
-            coordinates = json.loads(wkt_data)["coordinates"][0]
-            return np.array(coordinates)
-
-        def bbox_intersection(bbox1, bbox2):
-            # Calculate intersection coordinates
-            xmin_inter = max(bbox1[:, 0].min(), bbox2[:, 0].min())
-            ymin_inter = max(bbox1[:, 1].min(), bbox2[:, 1].min())
-            xmax_inter = min(bbox1[:, 0].max(), bbox2[:, 0].max())
-            ymax_inter = min(bbox1[:, 1].max(), bbox2[:, 1].max())
-
-            # Calculate width and height of intersection area
-            width = max(0, xmax_inter - xmin_inter)
-            height = max(0, ymax_inter - ymin_inter)
-
-            # Calculate intersection area
-            intersection_area = width * height
-            return intersection_area
-
-        # Function to calculate union area of two bounding boxes
-        def bbox_union(bbox1, bbox2):
-            area1 = (bbox1[:, 0].max() - bbox1[:, 0].min()) * (
-                bbox1[:, 1].max() - bbox1[:, 1].min()
-            )
-            area2 = (bbox2[:, 0].max() - bbox2[:, 0].min()) * (
-                bbox2[:, 1].max() - bbox2[:, 1].min()
-            )
-            union_area = area1 + area2 - bbox_intersection(bbox1, bbox2)
-            return union_area
-
-        # Function to calculate IoU of two bounding boxes
-        def bbox_iou(bbox1, bbox2):
-            intersection = bbox_intersection(bbox1, bbox2)
-            union = bbox_union(bbox1, bbox2)
-            iou = intersection / union
-            return iou
-
         iou_calculation_df = (
             joint_df.loc[
                 ~joint_df["geojson_gt"].isnull()
@@ -912,8 +908,6 @@ def _compute_detection_metrics(
         else:
             joint_df["iou_"] = 0
 
-    joint_df["iou_"] = joint_df["iou_"].fillna(0)
-
     # filter out null groundtruths and sort by score and iou so that idxmax returns the best row for each prediction
     joint_df = joint_df[~joint_df["id_gt"].isnull()].sort_values(
         by=["score", "iou_"], ascending=[False, False]
@@ -923,32 +917,30 @@ def _compute_detection_metrics(
     prediction_has_best_score = joint_df.groupby(["id_pd"])["score"].idxmax()
 
     # TODO remove unnecessary columns here like geojson_pd/gt
-    filtered_joint_df = joint_df.loc[prediction_has_best_score]
-
-    # get predictions that didn't make it into matched_sorted_ranked_pairs
-    # because they didn't have a corresponding groundtruth to pair with
-    # TODO is this used?
-    predictions_not_in_sorted_ranked_pairs_df = joint_df.drop(
-        prediction_has_best_score, axis=0
-    )
-    # predictions_not_in_sorted_ranked_pairs_df["label"] = (
-    #     predictions_not_in_sorted_ranked_pairs_df["label_id_grouper"].map(
-    #         grouper_mappings["grouper_id_to_grouper_label_mapping"]
-    #     )
-    # )
+    joint_df = joint_df.loc[prediction_has_best_score]
 
     # get the number of groundtruth observations per grouper key
     number_of_groundtruths_per_grouper_df = (
         gt_df.groupby("label_id_grouper", as_index=False)["id"]
         .nunique()
-        .rename(columns={"id": "gts_per_grouper"})
+        .rename({"id": "gts_per_grouper"}, axis=1)
     )
 
-    # for each parameters.iou_thresholds_to_compute and grouper_key, get all the matches in filtered_joint_df
+    # add back missing predictions and groundtruths
+    joint_df = pandas.concat(
+        [
+            joint_df,
+            predictions_missing_groundtruths,
+            groundtruths_missing_predictions,
+        ],
+        axis=0,
+    )
+
+    # for each parameters.iou_thresholds_to_compute and grouper_key, get all the matches in joint_df
     # sum the true positives and true negatives where iou > threshold and score > score threshold
     calculation_df = pandas.concat(
         [
-            filtered_joint_df.assign(iou_threshold=threshold)
+            joint_df.assign(iou_threshold=threshold)
             for threshold in parameters.iou_thresholds_to_compute
         ],
         ignore_index=True,
@@ -956,9 +948,6 @@ def _compute_detection_metrics(
         by=["label_id_grouper", "iou_threshold", "score", "iou_"],
         ascending=False,
     )
-
-    def _only_keep_first_true_positive(series):
-        return series & (series.shift(fill_value=0) == 0)
 
     calculation_df["recall_true_positive_flag"] = (
         calculation_df["iou_"] >= calculation_df["iou_threshold"]
@@ -989,11 +978,6 @@ def _compute_detection_metrics(
     calculation_df["precision_false_positive_flag"] = ~calculation_df[
         "precision_true_positive_flag"
     ] & (calculation_df["score"] > 0)
-
-    # TODO delete this
-    calculation_df["delete"] = calculation_df["label_id_grouper"].map(
-        grouper_mappings["grouper_id_to_grouper_label_mapping"]
-    )
 
     # calculate true and false positives
     calculation_df = (
@@ -1033,7 +1017,9 @@ def _compute_detection_metrics(
 
     calculation_df = (
         calculation_df.merge(
-            number_of_groundtruths_per_grouper_df, on="label_id_grouper"
+            number_of_groundtruths_per_grouper_df,
+            on="label_id_grouper",
+            how="outer",
         )
         .assign(
             rolling_recall_fn=lambda chain_df: chain_df["gts_per_grouper"]
@@ -1063,25 +1049,44 @@ def _compute_detection_metrics(
         )
     )
 
+    # fill any predictions that are missing groundtruths with -1
+    # leave any groundtruths that are missing predictions with 0
+    calculation_df.loc[
+        calculation_df["id_gt"].isnull(),
+        ["precision", "recall_for_AP", "recall_for_AR"],
+    ] = -1
+
+    calculation_df.loc[
+        calculation_df["id_pd"].isnull(),
+        ["precision", "recall_for_AP", "recall_for_AR"],
+    ] = 0
+
     ap_metrics_df = (
-        calculation_df[
-            ["label_id_grouper", "iou_threshold", "precision", "recall_for_AP"]
-        ]
+        calculation_df.loc[
+            ~calculation_df[
+                "id_gt"
+            ].isnull(),  # for AP, we don't include any predictions without groundtruths
+            [
+                "label_id_grouper",
+                "iou_threshold",
+                "precision",
+                "recall_for_AP",
+            ],
+        ]  # note that we don't want to return AP metrics for any predictions without a matching groundtruth
         .groupby(["label_id_grouper", "iou_threshold"], as_index=False)
         .apply(
-            lambda x: _calculate_101_pt_interp(
-                x["precision"].tolist(), x["recall_for_AP"].tolist()
+            lambda x: pandas.Series(
+                {
+                    "calculated_precision": _calculate_101_pt_interp(
+                        x["precision"].tolist(), x["recall_for_AP"].tolist()
+                    )
+                }
             )
         )
     )
 
-    ap_metrics_df.columns = [
-        "label_id_grouper",
-        "iou_threshold",
-        "calculated_precision",
-    ]
-
-    ap_metrics_df["grouper_label"] = ap_metrics_df["label_id_grouper"].map(
+    # add back "label" after grouping operations are complete
+    ap_metrics_df["label"] = ap_metrics_df["label_id_grouper"].map(
         grouper_mappings["grouper_id_to_grouper_label_mapping"]
     )
 
@@ -1089,22 +1094,24 @@ def _compute_detection_metrics(
         schemas.APMetric(
             iou=row["iou_threshold"],
             value=row["calculated_precision"],
-            label=row["grouper_label"],
+            label=row["label"],
         )
         for row in ap_metrics_df.to_dict(orient="records")
     ]
 
-    # for AR, we just take the last cumulative row such that we're only considering recall across all predictions
+    # get the max recall_for_AR for each threshold, then take the mean across thresholds
     ar_metrics_df = (
-        calculation_df.loc[
-            calculation_df.groupby(
-                ["label_id_grouper", "iou_threshold"]
-            ).cumcount(ascending=False)
-            == 0,
-            :,
-        ]
+        calculation_df.groupby(
+            ["label_id_grouper", "iou_threshold"], as_index=False
+        )["recall_for_AR"]
+        .max()
         .groupby("label_id_grouper", as_index=False)["recall_for_AR"]
         .mean()
+    )
+
+    # add back "label" after grouping operations are complete
+    ar_metrics_df["label"] = ar_metrics_df["label_id_grouper"].map(
+        grouper_mappings["grouper_id_to_grouper_label_mapping"]
     )
 
     ious_ = set(parameters.iou_thresholds_to_compute)
@@ -1112,72 +1119,15 @@ def _compute_detection_metrics(
         schemas.ARMetric(
             ious=ious_,
             value=row["recall_for_AR"],
-            label=grouper_mappings["grouper_id_to_grouper_label_mapping"][
-                row["label_id_grouper"]
-            ],
+            label=row["label"],
         )
         for row in ar_metrics_df.to_dict(orient="records")
     ]
 
-    # add any groundtruth labels that didn't have a qualifying prediction
-    groundtruths_with_no_predictions = pandas.DataFrame(
-        gt_df[
-            ~gt_df["label_id_grouper"].isin(ar_metrics_df["label_id_grouper"])
-        ]["label_id_grouper"].drop_duplicates()
-    ).assign(  # TODO might as well move this mapping up into gt_df and pd_df
-        label=lambda chain_df: chain_df["label_id_grouper"].map(
-            grouper_mappings["grouper_id_to_grouper_label_mapping"]
-        )
-    )
-    predictions_with_no_groundtruths = pandas.DataFrame(
-        pd_df[
-            (
-                ~pd_df["label_id_grouper"].isin(
-                    ar_metrics_df["label_id_grouper"]
-                )
-            )
-            & (
-                ~pd_df["label_id_grouper"].isin(
-                    groundtruths_with_no_predictions["label_id_grouper"]
-                )
-            )
-        ]["label_id_grouper"].drop_duplicates()
-    ).assign(
-        label=lambda chain_df: chain_df["label_id_grouper"].map(
-            grouper_mappings["grouper_id_to_grouper_label_mapping"]
-        )
-    )
-    ar_metrics += [
-        schemas.ARMetric(
-            ious=ious_,
-            value=0,
-            label=label,
-        )
-        for label in groundtruths_with_no_predictions["label"]
-    ]
-    ar_metrics += [
-        schemas.ARMetric(
-            ious=ious_,
-            value=-1,
-            label=label,
-        )
-        for label in predictions_with_no_groundtruths["label"]
-    ]
-
-    ap_metrics += [
-        schemas.APMetric(
-            iou=iou,
-            value=0,
-            label=label,
-        )
-        for label in groundtruths_with_no_predictions["label"]
-        for iou in parameters.iou_thresholds_to_return
-    ]
-
-    ap_ar_output = [
+    output = [
         m for m in ap_metrics if m.iou in parameters.iou_thresholds_to_return
     ]
-    ap_ar_output += ar_metrics
+    output += ar_metrics
 
     # calculate averaged metrics
     mean_ap_metrics = _compute_mean_detection_metrics_from_aps(ap_metrics)
@@ -1187,19 +1137,19 @@ def _compute_detection_metrics(
         _compute_detection_metrics_averaged_over_ious_from_aps(ap_metrics)
     )
 
-    ap_ar_output += [
+    output += [
         m
         for m in mean_ap_metrics
         if isinstance(m, schemas.mAPMetric)
         and m.iou in parameters.iou_thresholds_to_return
     ]
-    ap_ar_output += mean_ar_metrics
-    ap_ar_output += ap_metrics_ave_over_ious
+    output += mean_ar_metrics
+    output += ap_metrics_ave_over_ious
 
     mean_ap_metrics_ave_over_ious = list(
         _compute_mean_detection_metrics_from_aps(ap_metrics_ave_over_ious)
     )
-    ap_ar_output += mean_ap_metrics_ave_over_ious
+    output += mean_ap_metrics_ave_over_ious
 
     if (
         parameters.metrics_to_return
@@ -1209,7 +1159,7 @@ def _compute_detection_metrics(
         confidence_thresholds = [x / 100 for x in range(5, 100, 5)]
         pr_calculation_df = pandas.concat(
             [
-                filtered_joint_df.assign(confidence_threshold=threshold)
+                joint_df.assign(confidence_threshold=threshold)
                 for threshold in confidence_thresholds
             ],
             ignore_index=True,
@@ -1261,6 +1211,7 @@ def _compute_detection_metrics(
             .merge(
                 number_of_groundtruths_per_grouper_df,
                 on="label_id_grouper",
+                how="outer",
             )
             .assign(
                 false_negatives=lambda chain_df: chain_df["gts_per_grouper"]
@@ -1280,20 +1231,14 @@ def _compute_detection_metrics(
                 )
                 / (chain_df["precision"] + chain_df["recall"])
             )
-            .assign(
-                label=lambda chain_df: chain_df["label_id_grouper"].map(
-                    grouper_mappings["grouper_id_to_grouper_label_mapping"]
-                )
-            )
         )
 
-        # TODO fill precision and F1
-        pr_metrics_df.fillna(-1, inplace=True)
+        # add back "label" after grouping operations are complete
+        pr_metrics_df["label"] = pr_metrics_df["label_id_grouper"].map(
+            grouper_mappings["grouper_id_to_grouper_label_mapping"]
+        )
 
-        # TODO delete this line
-        pr_calculation_df["delete"] = pr_calculation_df[
-            "label_id_grouper"
-        ].map(grouper_mappings["grouper_id_to_grouper_label_mapping"])
+        pr_metrics_df.fillna(-1, inplace=True)
 
         curves = defaultdict(lambda: defaultdict(lambda: defaultdict(dict)))
 
@@ -1311,44 +1256,16 @@ def _compute_detection_metrics(
                 "f1_score": row["f1_score"],
             }
 
-        # add back independent groundtruths and predictions
-        for confidence_threshold in confidence_thresholds:
-            for grouper_id, label in pandas.concat(
-                [
-                    groundtruths_with_no_predictions,
-                    predictions_with_no_groundtruths,
-                ]
-            ).values:
-                curves[label.key][label.value][confidence_threshold] = {
-                    "tp": 0,
-                    "fp": pd_df.loc[
-                        pd_df["label_id_grouper"] == grouper_id, "id"
-                    ].count(),
-                    "fn": number_of_groundtruths_per_grouper_df.loc[
-                        number_of_groundtruths_per_grouper_df[
-                            "label_id_grouper"
-                        ]
-                        == grouper_id,
-                        "gts_per_grouper",
-                    ].sum(),
-                    "tn": None,  # tn and accuracy aren't applicable to detection tasks because there's an infinite number of true negatives
-                    "precision": 0,
-                    "recall": 0,
-                    "accuracy": None,
-                    "f1_score": 0,
-                }
-
-        ap_ar_output += [
+        output += [
             schemas.PrecisionRecallCurve(
                 label_key=key,
-                value=value,
+                value=value,  # type: ignore - defaultdict doesn't have strict typing
                 pr_curve_iou_threshold=parameters.pr_curve_iou_threshold,
             )
             for key, value in curves.items()
         ]
 
-    # TODO change to just output
-    return ap_ar_output
+    return output
 
 
 def _compute_detection_metrics_with_detailed_precision_recall_curve(

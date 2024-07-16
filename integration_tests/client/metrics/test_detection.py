@@ -1477,7 +1477,7 @@ def test_evaluate_detection_with_label_maps(
         {
             "type": "AR",
             "parameters": {"ious": [0.1, 0.6]},
-            "value": 0.3333333333333333,
+            "value": 0.3333333333333333,  #
             "label": {"key": "class", "value": "cat"},
         },
         {
@@ -1841,7 +1841,7 @@ def test_evaluate_detection_with_label_maps(
         {
             "type": "AP",
             "parameters": {"iou": 0.1},
-            "value": 0.6633663366336634,  # AP should be .66, but it's actually .3366
+            "value": 0.6633663366336634,
             "label": {"key": "foo", "value": "bar"},
         },
         {
