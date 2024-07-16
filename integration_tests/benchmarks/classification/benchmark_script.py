@@ -108,7 +108,6 @@ def ingest_groundtruths_and_predictions(
     dset.add_groundtruths(groundtruths, timeout=3000)
     model.add_predictions(dset, predictions, timeout=3000)
 
-
     dset.finalize()
     model.finalize_inferences(dataset=dset)
 
@@ -229,7 +228,6 @@ def run_benchmarking_analysis(
 
         client.delete_dataset(dset.name, timeout=3000)
         client.delete_model(model.name, timeout=3000)
-
 
 
 if __name__ == "__main__":

@@ -266,16 +266,16 @@ def run_benchmarking_analysis(
         )
         ingest_time = time() - start_time
 
-        try:
-            eval_ = run_base_evaluation(dset=dset, model=model)
-        except TimeoutError:
-            raise TimeoutError(
-                f"Evaluation timed out when processing {limit} datums."
-            )
+        # try:
+        eval_ = run_base_evaluation(dset=dset, model=model)
+        # except TimeoutError:
+        #     raise TimeoutError(
+        #         f"Evaluation timed out when processing {limit} datums."
+        #     )
 
         start = time()
-        client.delete_dataset(dset.name, timeout=30)
-        client.delete_model(model.name, timeout=30)
+        client.delete_dataset(dset.name, timeout=3000)
+        client.delete_model(model.name, timeout=3000)
         deletion_time = time() - start
 
         results = {
