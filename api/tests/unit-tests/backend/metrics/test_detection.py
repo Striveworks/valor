@@ -26,7 +26,7 @@ def test__compute_mean_detection_metrics_from_aps():
 def test__calculate_ap_and_ar():
 
     pairs = {
-        "0": [
+        0: [
             RankedPair(
                 dataset_name="test_dataset",
                 gt_datum_uid="1",
@@ -61,7 +61,7 @@ def test__calculate_ap_and_ar():
                 is_match=True,
             ),
         ],
-        "1": [
+        1: [
             RankedPair(
                 dataset_name="test_dataset",
                 gt_datum_uid="1",
@@ -85,7 +85,7 @@ def test__calculate_ap_and_ar():
                 is_match=True,
             ),
         ],
-        "2": [
+        2: [
             RankedPair(
                 dataset_name="test_dataset",
                 gt_datum_uid="1",
@@ -107,9 +107,9 @@ def test__calculate_ap_and_ar():
     }
 
     number_of_groundtruths_per_label = {
-        "0": 3,
-        "1": 2,
-        "2": 4,
+        0: 3,
+        1: 2,
+        2: 4,
     }
 
     iou_thresholds = [0.5, 0.75, 0.9]

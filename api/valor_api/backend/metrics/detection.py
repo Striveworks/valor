@@ -66,9 +66,9 @@ def _calculate_101_pt_interp(precisions, recalls) -> float:
 
 
 def _calculate_ap_and_ar(
-    sorted_ranked_pairs: dict[str, list[RankedPair]],
+    sorted_ranked_pairs: dict[int, list[RankedPair]],
     labels: dict[int, tuple[str, str]],
-    number_of_groundtruths_per_label: dict[str, int],
+    number_of_groundtruths_per_label: dict[int, int],
     iou_thresholds: list[float],
     recall_score_threshold: float,
 ) -> Tuple[list[schemas.APMetric], list[schemas.ARMetric]]:
