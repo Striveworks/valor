@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from valor_api import crud, enums, schemas
 from valor_api.backend.core import create_or_get_evaluations
 from valor_api.backend.metrics.segmentation import (
+    _aggregate_data,
     _compute_segmentation_metrics,
     _count_groundtruths,
     _count_predictions,
@@ -352,15 +353,25 @@ def test__count_true_positives(
             op=schemas.FilterOperator.EQ,
         )
 
-        tps = _count_true_positives(
+        groundtruths, predictions, _ = _aggregate_data(
             db=db,
-            groundtruth_subquery=_generate_groundtruth_query(
-                groundtruth_filter
-            ),
-            prediction_subquery=_generate_prediction_query(prediction_filter),
+            groundtruth_filter=groundtruth_filter,
+            prediction_filter=prediction_filter,
+            label_map=None,
         )
 
-        assert expected == tps
+        tps = _count_true_positives(
+            groundtruths=groundtruths,
+            predictions=predictions,
+        )
+
+        tp_counts = db.query(tps).all()
+        if expected == 0:
+            assert len(tp_counts) == 0
+            continue
+        assert len(tp_counts) == 1
+        assert tp_counts[0][0] == label_id
+        assert int(tp_counts[0][1]) == expected
 
 
 def _help_count_groundtruths(
@@ -429,26 +440,34 @@ def test_count_groundtruths(
             rhs=schemas.Value.infer(label_id),
             op=schemas.FilterOperator.EQ,
         )
-        assert (
-            _count_groundtruths(
-                db,
-                _generate_groundtruth_query(groundtruth_filter),
-            )
-            == expected
+
+        groundtruths, _, _ = _aggregate_data(
+            db=db,
+            groundtruth_filter=groundtruth_filter,
+            prediction_filter=groundtruth_filter,
+            label_map=None,
         )
+
+        gt_counts = db.query(
+            _count_groundtruths(groundtruths=groundtruths)
+        ).all()
+        assert len(gt_counts) == 1
+        assert gt_counts[0][0] == label_id
+        assert int(gt_counts[0][1]) == expected
 
     groundtruth_filter.labels = schemas.Condition(
         lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_ID),
         rhs=schemas.Value.infer(1000000),
         op=schemas.FilterOperator.EQ,
     )
-    assert (
-        _count_groundtruths(
-            db,
-            _generate_groundtruth_query(groundtruth_filter),
-        )
-        == 0
+
+    groundtruths, _, _ = _aggregate_data(
+        db=db,
+        groundtruth_filter=groundtruth_filter,
+        prediction_filter=groundtruth_filter,
+        label_map=None,
     )
+    assert not db.query(_count_groundtruths(groundtruths=groundtruths)).all()
 
 
 def _help_count_predictions(
@@ -530,23 +549,35 @@ def test_count_predictions(
             rhs=schemas.Value.infer(label_id),
             op=schemas.FilterOperator.EQ,
         )
-        assert (
-            _count_predictions(
-                db,
-                _generate_prediction_query(prediction_filter),
-            )
-            == expected
+
+        _, predictions, _ = _aggregate_data(
+            db=db,
+            groundtruth_filter=prediction_filter,
+            prediction_filter=prediction_filter,
+            label_map=None,
         )
+
+        pd_counts = db.query(_count_predictions(predictions=predictions)).all()
+        if expected == 0:
+            assert len(pd_counts) == 0
+            continue
+        assert len(pd_counts) == 1
+        assert pd_counts[0][0] == label_id
+        assert int(pd_counts[0][1]) == expected
 
     prediction_filter.labels = schemas.Condition(
         lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_ID),
         rhs=schemas.Value.infer(1000000),
         op=schemas.FilterOperator.EQ,
     )
-    assert (
-        _count_predictions(db, _generate_prediction_query(prediction_filter))
-        == 0
+    _, predictions, _ = _aggregate_data(
+        db=db,
+        groundtruth_filter=prediction_filter,
+        prediction_filter=prediction_filter,
+        label_map=None,
     )
+
+    assert not db.query(_count_predictions(predictions=predictions)).all()
 
 
 def test__compute_segmentation_metrics(

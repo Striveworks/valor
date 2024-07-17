@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import Sequence, Tuple
 
 from geoalchemy2 import functions as gfunc
-from sqlalchemy import CTE, and_, case, func, or_, select
+from sqlalchemy import CTE, and_, func, or_, select
 from sqlalchemy.orm import Session, aliased
 
 from valor_api import enums, schemas
@@ -331,7 +331,7 @@ def _compute_detailed_curves(
     sorted_ranked_pairs: dict[int, list[RankedPair]],
     labels: dict[int, tuple[str, str]],
     groundtruths_per_label: dict[int, list],
-    predictions_per_grouper: dict[int, list],
+    predictions_per_label: dict[int, list],
     pr_curve_iou_threshold: float,
     pr_curve_max_examples: int,
 ) -> list[schemas.PrecisionRecallCurve | schemas.DetailedPrecisionRecallCurve]:
@@ -346,7 +346,7 @@ def _compute_detailed_curves(
         A dictionary mapping label id to key-value tuple.
     groundtruths_per_label: dict[int, int]
         A dictionary containing the (dataset_name, datum_id, gt_id) for all groundtruths associated with a grouper.
-    predictions_per_grouper: dict[int, int]
+    predictions_per_label: dict[int, int]
         A dictionary containing the (dataset_name, datum_id, gt_id) for all predictions associated with a grouper.
     pr_curve_iou_threshold: float
         The IOU threshold to use as a cut-off for our predictions.
@@ -460,13 +460,13 @@ def _compute_detailed_curves(
                                 (dataset_name, datum_uid, gt_geojson)
                             )
 
-            if label_id in predictions_per_grouper:
+            if label_id in predictions_per_label:
                 for (
                     dataset_name,
                     datum_uid,
                     pd_id,
                     pd_geojson,
-                ) in predictions_per_grouper[int(label_id)]:
+                ) in predictions_per_label[int(label_id)]:
                     if pd_id not in seen_pds:
                         label_id_key = hash(
                             (
@@ -886,6 +886,7 @@ def _aggregate_data(
             groundtruths_subquery.c.dataset_name,
             groundtruths_subquery.c.annotation_id,
             groundtruths_subquery.c.groundtruth_id,
+            groundtruths_subquery.c.geojson,
             models.Label.id.label("label_id"),
             models.Label.key,
             models.Label.value,
@@ -921,6 +922,7 @@ def _aggregate_data(
             predictions_subquery.c.annotation_id,
             predictions_subquery.c.prediction_id,
             predictions_subquery.c.score,
+            predictions_subquery.c.geojson,
             models.Label.id.label("label_id"),
             models.Label.key,
             models.Label.value,
@@ -1369,12 +1371,12 @@ def _compute_detection_metrics_with_detailed_precision_recall_curve(
             gt.c.datum_uid.label("gt_datum_uid"),
             pd.c.datum_uid.label("pd_datum_uid"),
             gt.c.geojson.label("gt_geojson"),
-            gt.c.id.label("gt_id"),
+            gt.c.groundtruth_id.label("gt_id"),
             pd.c.prediction_id.label("pd_id"),
             gt.c.label_id.label("gt_label_id"),
             pd.c.label_id.label("pd_label_id"),
-            gt.c.label_key_grouper.label("gt_label_key_grouper"),
-            pd.c.label_key_grouper.label("pd_label_key_grouper"),
+            gt.c.key.label("gt_label_key"),
+            pd.c.key.label("pd_label_key"),
             gt.c.annotation_id.label("gt_ann_id"),
             pd.c.annotation_id.label("pd_ann_id"),
             pd.c.score.label("score"),
@@ -1384,7 +1386,7 @@ def _compute_detection_metrics_with_detailed_precision_recall_curve(
             gt,
             and_(
                 pd.c.datum_id == gt.c.datum_id,
-                pd.c.label_key_grouper == gt.c.label_key_grouper,
+                pd.c.key == gt.c.key,
             ),
         )
         .subquery()
@@ -1560,7 +1562,7 @@ def _compute_detection_metrics_with_detailed_precision_recall_curve(
 
     # Get all groundtruths per label_id
     groundtruths_per_label = defaultdict(list)
-    predictions_per_grouper = defaultdict(list)
+    predictions_per_label = defaultdict(list)
     number_of_groundtruths_per_label = defaultdict(int)
 
     groundtruths = db.query(
@@ -1587,7 +1589,7 @@ def _compute_detection_metrics_with_detailed_precision_recall_curve(
         number_of_groundtruths_per_label[label_id] += 1
 
     for pd_id, label_id, datum_uid, dset_name, pd_geojson in predictions:
-        predictions_per_grouper[label_id].append(
+        predictions_per_label[label_id].append(
             (dset_name, datum_uid, pd_id, pd_geojson)
         )
     if parameters.metrics_to_return is None:
@@ -1597,7 +1599,7 @@ def _compute_detection_metrics_with_detailed_precision_recall_curve(
         sorted_ranked_pairs=sorted_ranked_pairs,
         labels=labels,
         groundtruths_per_label=groundtruths_per_label,
-        predictions_per_grouper=predictions_per_grouper,
+        predictions_per_label=predictions_per_label,
         pr_curve_iou_threshold=parameters.pr_curve_iou_threshold,
         pr_curve_max_examples=(
             parameters.pr_curve_max_examples

@@ -923,7 +923,7 @@ def test_evaluate_classification_with_label_maps(
         {
             "type": "ROCAUC",
             "parameters": {"label_key": "special_class"},
-            "value": -1.0,
+            "value": 1.0,
         },
         {
             "type": "Precision",

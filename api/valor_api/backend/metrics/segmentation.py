@@ -3,9 +3,9 @@ from typing import Any
 
 from geoalchemy2.functions import ST_Count, ST_MapAlgebra
 from sqlalchemy import CTE, Subquery, and_, case, func, select
-from sqlalchemy.orm import Session, aliased
+from sqlalchemy.orm import Session
 
-from valor_api import enums, schemas
+from valor_api import schemas
 from valor_api.backend import core, models
 from valor_api.backend.metrics.metric_utils import (
     LabelMapType,
@@ -25,16 +25,14 @@ def _count_true_positives(
     predictions: CTE,
 ) -> Subquery[Any]:
     """Computes the pixelwise true positives for the given dataset, model, and label"""
-    gt_annotation = aliased(models.Annotation)
-    pd_annotation = aliased(models.Annotation)
     return (
         select(
             groundtruths.c.label_id,
             func.sum(
                 ST_Count(
                     ST_MapAlgebra(
-                        gt_annotation.raster,
-                        pd_annotation.raster,
+                        groundtruths.c.raster,
+                        predictions.c.raster,
                         "[rast1]*[rast2]",  # https://postgis.net/docs/RT_ST_MapAlgebra_expr.html
                     )
                 )
@@ -48,14 +46,6 @@ def _count_true_positives(
                 predictions.c.label_id == groundtruths.c.label_id,
             ),
         )
-        .join(
-            gt_annotation,
-            gt_annotation.id == groundtruths.c.annotation_id,
-        )
-        .join(
-            pd_annotation,
-            pd_annotation.id == predictions.c.annotation_id,
-        )
         .group_by(groundtruths.c.label_id)
         .subquery()
     )
@@ -68,12 +58,7 @@ def _count_groundtruths(
     return (
         select(
             groundtruths.c.label_id,
-            func.sum(ST_Count(models.Annotation.raster)).label("count"),
-        )
-        .select_from(groundtruths)
-        .join(
-            models.Annotation,
-            models.Annotation.id == groundtruths.c.annotation_id,
+            func.sum(ST_Count(groundtruths.c.raster)).label("count"),
         )
         .group_by(groundtruths.c.label_id)
         .subquery()
@@ -87,13 +72,9 @@ def _count_predictions(
     return (
         select(
             predictions.c.label_id,
-            func.sum(ST_Count(models.Annotation.raster)).label("count"),
+            func.sum(ST_Count(predictions.c.raster)).label("count"),
         )
         .select_from(predictions)
-        .join(
-            models.Annotation,
-            models.Annotation.id == predictions.c.annotation_id,
-        )
         .group_by(predictions.c.label_id)
         .subquery()
     )
@@ -107,9 +88,11 @@ def _compute_iou(
 ) -> list[schemas.IOUMetric | schemas.mIOUMetric]:
     """Computes the pixelwise intersection over union for the given dataset, model, and label"""
 
-    tp_count = _count_true_positives(groundtruths, predictions)
+    tp_count = _count_true_positives(
+        groundtruths=groundtruths, predictions=predictions
+    )
     gt_count = _count_groundtruths(groundtruths=groundtruths)
-    pd_count = _count_predictions(predictions)
+    pd_count = _count_predictions(predictions=predictions)
 
     ious = (
         db.query(
@@ -128,12 +111,20 @@ def _compute_iou(
         .join(tp_count, tp_count.c.label_id == gt_count.c.label_id)
         .all()
     )
+    label_id_to_iou = {label_id: iou for label_id, iou in ious}
+
+    groundtruth_label_ids = db.scalars(
+        select(groundtruths.c.label_id).distinct()
+    ).all()
 
     metrics = list()
     ious_per_key = defaultdict(list)
-    for label_id, iou in ious:
+    for label_id in groundtruth_label_ids:
+
         label_key, label_value = labels[label_id]
         label = schemas.Label(key=label_key, value=label_value)
+
+        iou = label_id_to_iou.get(label_id, 0.0)
 
         if iou is None:
             continue
@@ -201,8 +192,11 @@ def _aggregate_data(
     )
 
     groundtruths_subquery = generate_select(
+        models.Dataset.name.label("dataset_name"),
+        models.Datum.id.label("datum_id"),
+        models.Datum.uid.label("datum_uid"),
         models.Annotation.id.label("annotation_id"),
-        models.Annotation.datum_id.label("datum_id"),
+        models.Annotation.raster.label("raster"),
         models.GroundTruth.id.label("groundtruth_id"),
         models.Label.id,
         label_mapping,
@@ -211,27 +205,40 @@ def _aggregate_data(
     ).subquery()
     groundtruths_cte = (
         select(
+            groundtruths_subquery.c.dataset_name,
             groundtruths_subquery.c.datum_id,
             groundtruths_subquery.c.datum_uid,
-            groundtruths_subquery.c.dataset_name,
             groundtruths_subquery.c.annotation_id,
             groundtruths_subquery.c.groundtruth_id,
             models.Label.id.label("label_id"),
             models.Label.key,
             models.Label.value,
+            func.ST_Union(groundtruths_subquery.c.raster).label("raster"),
         )
         .select_from(groundtruths_subquery)
         .join(
             models.Label,
             models.Label.id == groundtruths_subquery.c.label_id,
         )
+        .group_by(
+            groundtruths_subquery.c.dataset_name,
+            groundtruths_subquery.c.datum_id,
+            groundtruths_subquery.c.datum_uid,
+            groundtruths_subquery.c.annotation_id,
+            groundtruths_subquery.c.groundtruth_id,
+            models.Label.id.label("label_id"),
+            models.Label.key,
+            models.Label.value,
+        )
         .cte()
     )
 
     predictions_subquery = generate_select(
+        models.Dataset.name.label("dataset_name"),
+        models.Datum.id.label("datum_id"),
+        models.Datum.uid.label("datum_uid"),
         models.Annotation.id.label("annotation_id"),
-        models.Annotation.datum_id.label("datum_id"),
-        models.Prediction.annotation_id.label("annotation_id"),
+        models.Annotation.raster.label("raster"),
         models.Prediction.id.label("prediction_id"),
         models.Prediction.score.label("score"),
         models.Label.id,
@@ -245,16 +252,28 @@ def _aggregate_data(
             predictions_subquery.c.datum_uid,
             predictions_subquery.c.dataset_name,
             predictions_subquery.c.annotation_id,
-            predictions_subquery.c.prediction_id,
-            predictions_subquery.c.score,
             models.Label.id.label("label_id"),
             models.Label.key,
             models.Label.value,
+            func.min(predictions_subquery.c.prediction_id).label(
+                "prediction_id"
+            ),
+            func.max(predictions_subquery.c.score).label("score"),
+            func.ST_UNION(predictions_subquery.c.raster).label("raster"),
         )
         .select_from(predictions_subquery)
         .join(
             models.Label,
             models.Label.id == predictions_subquery.c.label_id,
+        )
+        .group_by(
+            predictions_subquery.c.datum_id,
+            predictions_subquery.c.datum_uid,
+            predictions_subquery.c.dataset_name,
+            predictions_subquery.c.annotation_id,
+            models.Label.id.label("label_id"),
+            models.Label.key,
+            models.Label.value,
         )
         .cte()
     )
