@@ -327,6 +327,10 @@ def _compute_roc_auc(
         The ROC AUC. Returns None if no labels exist for that label_key.
     """
 
+    predictions_label_keys = {
+        key for key in (db.scalars(select(predictions.c.key).distinct()).all())
+    }
+
     groundtruths_per_label_kv_query = (
         select(
             groundtruths.c.key,
@@ -341,18 +345,13 @@ def _compute_roc_auc(
         .cte("gt_counts")
     )
 
-    print("groundtruths_per_label_kv_query")
-    for x, y, z in db.query(groundtruths_per_label_kv_query).all():
-        print(x, y, z)
-    print()
-
     label_key_to_count = defaultdict(int)
     label_to_count = dict()
-    filtered_label_set = set()
+    groundtruth_labels = set()
     for key, value, count in db.query(groundtruths_per_label_kv_query).all():
         label_key_to_count[key] += count
         label_to_count[(key, value)] = count
-        filtered_label_set.add((key, value))
+        groundtruth_labels.add((key, value))
 
     groundtruths_per_label_key_query = (
         select(
@@ -364,11 +363,6 @@ def _compute_roc_auc(
         .group_by(groundtruths_per_label_kv_query.c.key)
         .subquery()
     )
-
-    print("groundtruths_per_label_key_query")
-    for x, y in db.query(groundtruths_per_label_key_query).all():
-        print(x, y)
-    print()
 
     basic_counts_query = (
         select(
@@ -394,10 +388,6 @@ def _compute_roc_auc(
         .subquery("basic_counts")
     )
 
-    print("basic_counts_query")
-    for x in db.query(basic_counts_query).all():
-        print(x)
-
     cumulative_tp = func.sum(basic_counts_query.c.is_true_positive).over(
         partition_by=[
             basic_counts_query.c.label_key,
@@ -421,11 +411,6 @@ def _compute_roc_auc(
         basic_counts_query.c.prediction_label_value,
         basic_counts_query.c.score,
     ).subquery("tpr_fpr_cumulative")
-
-    print("tpr_fpr_cumulative")
-    for b, c, d, e, a in db.query(tpr_fpr_cumulative).all():
-        print(float(b), float(c), d, e, float(a))
-    print()
 
     tpr_fpr_rates = (
         select(
@@ -467,10 +452,6 @@ def _compute_roc_auc(
         .subquery("tpr_fpr_rates")
     )
 
-    for b, c, d, e, a in db.query(tpr_fpr_rates).all():
-        print(float(b), float(c), d, e, float(a))
-    print()
-
     lagging_tpr = func.lag(tpr_fpr_rates.c.tpr).over(
         partition_by=[
             tpr_fpr_rates.c.label_key,
@@ -497,11 +478,6 @@ def _compute_roc_auc(
         tpr_fpr_rates.c.prediction_label_value,
     ).subquery()
 
-    print("trap areas")
-    for x in db.query(trap_areas).all():
-        print(x)
-    print()
-
     results = (
         db.query(
             trap_areas.c.label_key,
@@ -516,33 +492,40 @@ def _compute_roc_auc(
     )
 
     map_label_to_rocauc = {
-        (key, value): rocauc for key, value, rocauc in results
+        (key, value): rocauc
+        for key, value, rocauc in results
+        if rocauc is not None
     }
 
     label_key_to_rocauc = defaultdict(list)
-    for label in labels:
-        key, _ = label
-
-        if label not in filtered_label_set:
+    for key, value in labels:
+        label = (key, value)
+        if label not in groundtruth_labels:
             continue
         elif label_to_count[label] == 0:
             label_key_to_rocauc[key].append(0.0)
         elif label_key_to_count[key] - label_to_count[label] == 0:
             label_key_to_rocauc[key].append(1.0)
-        elif label in map_label_to_rocauc:
-            rocauc = map_label_to_rocauc[label]
-            label_key_to_rocauc[key].append(float(rocauc))
         else:
-            label_key_to_rocauc[key].append(float(np.nan))
+            rocauc = map_label_to_rocauc.get(label, np.nan)
+            label_key_to_rocauc[key].append(float(rocauc))
 
-    print(label_key_to_rocauc)
-
+    label_keys = {key for key, _ in labels}
     return [
         schemas.ROCAUCMetric(
-            label_key=label_key,
-            value=(float(np.mean(rocaucs)) if len(rocaucs) >= 1 else None),
+            label_key=key,
+            value=(
+                float(np.mean(label_key_to_rocauc[key]))
+                if len(label_key_to_rocauc[key]) >= 1
+                else None
+            ),
         )
-        for label_key, rocaucs in label_key_to_rocauc.items()
+        if (key in label_key_to_rocauc and key in predictions_label_keys)
+        else schemas.ROCAUCMetric(
+            label_key=key,
+            value=0.0,
+        )
+        for key in label_keys
     ]
 
 
@@ -1043,10 +1026,6 @@ def _aggregate_data(
         )
         .cte()
     )
-
-    for x in db.query(predictions_cte).all():
-        print(x)
-    print()
 
     # get all labels
     groundtruth_labels = {

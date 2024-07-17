@@ -416,7 +416,7 @@ def test_compute_confusion_matrices_using_label_map(
         db=db,
         groundtruth_filter=groundtruth_filter,
         prediction_filter=prediction_filter,
-        label_map=None,
+        label_map=label_map,
     )
 
     confusion_matrices = _compute_confusion_matrices(

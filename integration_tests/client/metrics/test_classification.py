@@ -775,6 +775,27 @@ def gt_clfs_with_label_maps(
     ]
 
 
+label_mapping = {
+    # map the ground truths
+    Label(key="class", value="tabby cat"): Label(
+        key="special_class", value="cat_type1"
+    ),
+    Label(key="class", value="siamese cat"): Label(
+        key="special_class", value="cat_type1"
+    ),
+    Label(key="class", value="british shorthair"): Label(
+        key="special_class", value="cat_type1"
+    ),
+    # map the predictions
+    Label(key="class", value="cat"): Label(
+        key="special_class", value="cat_type1"
+    ),
+    Label(key="class_name", value="cat"): Label(
+        key="special_class", value="cat_type1"
+    ),
+}
+
+
 @pytest.fixture
 def pred_clfs_with_label_maps(
     model_name: str,
