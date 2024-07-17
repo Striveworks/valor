@@ -243,12 +243,10 @@ def _validate_evaluation_filter(
 
     # generate filters
     _, groundtruth_filter, prediction_filter = prepare_filter_for_evaluation(
-        db=db,
         filters=filters,
         dataset_names=evaluation.dataset_names,
         model_name=evaluation.model_name,
         task_type=parameters.task_type,
-        label_map=parameters.label_map,
     )
 
     if parameters.task_type == enums.TaskType.TEXT_GENERATION:

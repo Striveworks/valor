@@ -16,8 +16,7 @@ from valor_api.backend.core.llm_clients import (
     WrappedOpenAIClient,
 )
 from valor_api.backend.metrics.metric_utils import (
-    create_metric_mappings,
-    get_or_create_row,
+    commit_results,
     log_evaluation_duration,
     log_evaluation_item_counts,
     prepare_filter_for_evaluation,
@@ -518,7 +517,6 @@ def compute_text_generation_metrics(
         groundtruth_filter,
         prediction_filter,
     ) = prepare_filter_for_evaluation(
-        db=db,
         filters=schemas.Filter(**evaluation.filters),
         dataset_names=evaluation.dataset_names,
         model_name=evaluation.model_name,
@@ -561,22 +559,12 @@ def compute_text_generation_metrics(
         metric_params=metric_params,
     )
 
-    metric_mappings = create_metric_mappings(
+    # add metrics to database
+    commit_results(
         db=db,
         metrics=metrics,
         evaluation_id=evaluation.id,
     )
-
-    for mapping in metric_mappings:
-        # ignore value since the other columns are unique identifiers
-        # and have empirically noticed value can slightly change due to floating
-        # point errors
-        get_or_create_row(
-            db,
-            models.Metric,
-            mapping,
-            columns_to_ignore=["value"],
-        )
 
     log_evaluation_duration(
         evaluation=evaluation,
