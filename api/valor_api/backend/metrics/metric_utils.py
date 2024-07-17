@@ -1,4 +1,3 @@
-import time
 from collections import defaultdict
 from typing import Callable, Sequence
 
@@ -76,8 +75,8 @@ def create_label_mapping(
         # create label id mapping
         label_mapping = [
             (
-                models.Label.id == map_label_to_id[label],
-                map_label_to_id[grouper],
+                models.Label.id == map_label_to_id[label],  # type: ignore - pyright doesnt see tuple[str, str]
+                map_label_to_id[grouper],  # type: ignore - pyright doesnt see tuple[str, str]
             )
             for label, grouper in mapping_dict.items()
         ]

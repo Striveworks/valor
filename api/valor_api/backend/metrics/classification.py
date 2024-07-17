@@ -4,7 +4,7 @@ from collections import defaultdict
 import numpy as np
 from sqlalchemy import CTE, Integer
 from sqlalchemy.orm import Session
-from sqlalchemy.sql import and_, case, func, select
+from sqlalchemy.sql import and_, func, select
 
 from valor_api import enums, schemas
 from valor_api.backend import core, models

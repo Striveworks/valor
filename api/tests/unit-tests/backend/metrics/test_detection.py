@@ -100,15 +100,13 @@ def test__calculate_ap_and_ar():
         ],
     }
 
-    grouper_mappings = {
-        "grouper_id_to_grouper_label_mapping": {
-            "0": schemas.Label(key="name", value="car"),
-            "1": schemas.Label(key="name", value="dog"),
-            "2": schemas.Label(key="name", value="person"),
-        }
+    labels = {
+        0: ("name", "car"),
+        1: ("name", "dog"),
+        2: ("name", "person"),
     }
 
-    number_of_groundtruths_per_grouper = {
+    number_of_groundtruths_per_label = {
         "0": 3,
         "1": 2,
         "2": 4,
@@ -185,8 +183,8 @@ def test__calculate_ap_and_ar():
 
     ap_metrics, ar_metrics = _calculate_ap_and_ar(
         sorted_ranked_pairs=pairs,
-        number_of_groundtruths_per_grouper=number_of_groundtruths_per_grouper,
-        grouper_mappings=grouper_mappings,
+        labels=labels,
+        number_of_groundtruths_per_label=number_of_groundtruths_per_label,
         iou_thresholds=iou_thresholds,
         recall_score_threshold=0.0,
     )
@@ -207,8 +205,8 @@ def test__calculate_ap_and_ar():
         with pytest.raises(ValueError):
             _calculate_ap_and_ar(
                 sorted_ranked_pairs=pairs,
-                number_of_groundtruths_per_grouper=number_of_groundtruths_per_grouper,
-                grouper_mappings=grouper_mappings,
+                labels=labels,
+                number_of_groundtruths_per_label=number_of_groundtruths_per_label,
                 iou_thresholds=iou_thresholds + [0],
                 recall_score_threshold=0.0,
             )
@@ -218,8 +216,8 @@ def test__calculate_ap_and_ar():
         with pytest.raises(ValueError):
             _calculate_ap_and_ar(
                 sorted_ranked_pairs=pairs,
-                number_of_groundtruths_per_grouper=number_of_groundtruths_per_grouper,
-                grouper_mappings=grouper_mappings,
+                labels=labels,
+                number_of_groundtruths_per_label=number_of_groundtruths_per_label,
                 iou_thresholds=iou_thresholds,
                 recall_score_threshold=illegal_thresh,
             )
