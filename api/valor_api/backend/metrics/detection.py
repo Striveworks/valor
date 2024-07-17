@@ -1322,21 +1322,6 @@ def _compute_detection_metrics_with_detailed_precision_recall_curve(
             case _:
                 raise RuntimeError
 
-    def _annotation_type_to_geojson(
-        annotation_type: AnnotationType,
-        table,
-    ):
-        match annotation_type:
-            case AnnotationType.BOX:
-                box = table.box
-            case AnnotationType.POLYGON:
-                box = gfunc.ST_Envelope(table.polygon)
-            case AnnotationType.RASTER:
-                box = gfunc.ST_Envelope(gfunc.ST_MinConvexHull(table.raster))
-            case _:
-                raise RuntimeError
-        return gfunc.ST_AsGeoJSON(box)
-
     if (
         parameters.iou_thresholds_to_return is None
         or parameters.iou_thresholds_to_compute is None
