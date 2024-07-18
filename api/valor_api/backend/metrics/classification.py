@@ -73,6 +73,7 @@ def _compute_curves(
             )
             .subquery()
         ).all()
+
     high_scores = _high_scores()
 
     label_key_to_datum_high_score = defaultdict(dict)
@@ -95,7 +96,7 @@ def _compute_curves(
 
     total_query = (
         select(
-            func.coalesce(                
+            func.coalesce(
                 groundtruths.c.datum_id,
                 predictions.c.datum_id,
             ).label("datum_id"),
@@ -119,10 +120,9 @@ def _compute_curves(
         .subquery()
     )
 
-    thresholds_cte = (
-        select(func.generate_series(0.95, 0.05, -0.05).label("threshold"))
-        .cte()
-    )
+    thresholds_cte = select(
+        func.generate_series(0.95, 0.05, -0.05).label("threshold")
+    ).cte()
 
     next_query = (
         select(
@@ -152,14 +152,17 @@ def _compute_curves(
                 and_(
                     (total_query.c.gt_value != total_query.c.pd_value),
                     (total_query.c.score < thresholds_cte.c.threshold),
-                    (high_score_subquery.c.score >= thresholds_cte.c.threshold)
+                    (
+                        high_score_subquery.c.score
+                        >= thresholds_cte.c.threshold
+                    ),
                 )
             ).label("fn_misclassifications"),
             (
                 and_(
                     (total_query.c.gt_value != total_query.c.pd_value),
                     (total_query.c.score < thresholds_cte.c.threshold),
-                    (high_score_subquery.c.score < thresholds_cte.c.threshold)
+                    (high_score_subquery.c.score < thresholds_cte.c.threshold),
                 )
             ).label("fn_missing_predictions"),
         )
@@ -169,7 +172,7 @@ def _compute_curves(
             and_(
                 high_score_subquery.c.datum_id == total_query.c.datum_id,
                 high_score_subquery.c.label_key == total_query.c.label_key,
-            )
+            ),
         )
         .cte()
     )
@@ -267,8 +270,12 @@ def _compute_curves(
             func.sum(next_query.c.tp.cast(Integer)).label("tp"),
             func.sum(next_query.c.fp.cast(Integer)).label("fp"),
             func.sum(next_query.c.tn.cast(Integer)).label("tn"),
-            func.sum(next_query.c.fn_misclassifications.cast(Integer)).label("fn_misclassifications"),
-            func.sum(next_query.c.fn_missing_predictions.cast(Integer)).label("fn_missing_predictions"),
+            func.sum(next_query.c.fn_misclassifications.cast(Integer)).label(
+                "fn_misclassifications"
+            ),
+            func.sum(next_query.c.fn_missing_predictions.cast(Integer)).label(
+                "fn_missing_predictions"
+            ),
             tp_datums.c.datum_ids,
             fp_datums.c.datum_ids,
             tn_datums.c.datum_ids,
@@ -282,7 +289,7 @@ def _compute_curves(
                 tp_datums.c.label_key == next_query.c.label_key,
                 tp_datums.c.gt_value == next_query.c.gt_value,
                 tp_datums.c.threshold == next_query.c.threshold,
-            ) 
+            ),
         )
         .join(
             fp_datums,
@@ -290,7 +297,7 @@ def _compute_curves(
                 fp_datums.c.label_key == next_query.c.label_key,
                 fp_datums.c.gt_value == next_query.c.gt_value,
                 fp_datums.c.threshold == next_query.c.threshold,
-            ) 
+            ),
         )
         .join(
             tn_datums,
@@ -298,23 +305,29 @@ def _compute_curves(
                 tn_datums.c.label_key == next_query.c.label_key,
                 tn_datums.c.gt_value == next_query.c.gt_value,
                 tn_datums.c.threshold == next_query.c.threshold,
-            ) 
+            ),
         )
         .join(
             fn_misclassification_datums,
             and_(
-                fn_misclassification_datums.c.label_key == next_query.c.label_key,
-                fn_misclassification_datums.c.gt_value == next_query.c.gt_value,
-                fn_misclassification_datums.c.threshold == next_query.c.threshold,
-            ) 
+                fn_misclassification_datums.c.label_key
+                == next_query.c.label_key,
+                fn_misclassification_datums.c.gt_value
+                == next_query.c.gt_value,
+                fn_misclassification_datums.c.threshold
+                == next_query.c.threshold,
+            ),
         )
         .join(
             fn_missing_prediction_datums,
             and_(
-                fn_missing_prediction_datums.c.label_key == next_query.c.label_key,
-                fn_missing_prediction_datums.c.gt_value == next_query.c.gt_value,
-                fn_missing_prediction_datums.c.threshold == next_query.c.threshold,
-            ) 
+                fn_missing_prediction_datums.c.label_key
+                == next_query.c.label_key,
+                fn_missing_prediction_datums.c.gt_value
+                == next_query.c.gt_value,
+                fn_missing_prediction_datums.c.threshold
+                == next_query.c.threshold,
+            ),
         )
         .group_by(
             next_query.c.label_key,
@@ -327,7 +340,7 @@ def _compute_curves(
     @profiler
     def _res():
         return db.query(pr_counts).all()
-    
+
     res = _res()
 
     print("========CURVE ", len(res))
@@ -1209,7 +1222,7 @@ def _aggregate_data(
             func.min(predictions_subquery.c.prediction_id).label(
                 "prediction_id"
             ),
-            func.max(predictions_subquery.c.score).label("score")
+            func.max(predictions_subquery.c.score).label("score"),
         )
         .select_from(predictions_subquery)
         .join(
@@ -1229,27 +1242,28 @@ def _aggregate_data(
 
     print("post-gen")
 
-
     @profiler
     def groundtruth_label_query():
-        return db.query(
-            groundtruths_cte.c.key, groundtruths_cte.c.value
-        ).distinct().all()
-    
+        return (
+            db.query(groundtruths_cte.c.key, groundtruths_cte.c.value)
+            .distinct()
+            .all()
+        )
+
     @profiler
     def prediction_label_query():
-        return db.query(
-            predictions_cte.c.key, predictions_cte.c.value
-        ).distinct().all()
+        return (
+            db.query(predictions_cte.c.key, predictions_cte.c.value)
+            .distinct()
+            .all()
+        )
 
     # get all labels
     groundtruth_labels = {
-        (key, value)
-        for key, value in groundtruth_label_query()
+        (key, value) for key, value in groundtruth_label_query()
     }
     prediction_labels = {
-        (key, value)
-        for key, value in prediction_label_query()
+        (key, value) for key, value in prediction_label_query()
     }
     labels = groundtruth_labels.union(prediction_labels)
 
