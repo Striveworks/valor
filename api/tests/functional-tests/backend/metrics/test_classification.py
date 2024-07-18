@@ -1056,9 +1056,6 @@ def test__compute_curves(
         ],
     )
 
-    print(curves)
-    print(curves[0].value["bird"].keys())
-
     assert len(curves) == 4
     pr_curves = {
         curve.label_key: curve
