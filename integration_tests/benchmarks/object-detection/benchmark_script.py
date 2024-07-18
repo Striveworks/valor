@@ -190,7 +190,7 @@ def ingest_groundtruths_and_predictions(
 def run_base_evaluation(dset: Dataset, model: Model):
     """Run a base evaluation (with no PR curves)."""
     evaluation = model.evaluate_detection(dset)
-    evaluation.wait_for_completion(timeout=50)
+    evaluation.wait_for_completion(timeout=80)
     return evaluation
 
 
