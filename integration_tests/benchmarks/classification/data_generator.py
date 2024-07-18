@@ -216,9 +216,9 @@ def run(
 
     dataset.finalize()
 
-    eval_base = run_base_evaluation(dataset, model)
     eval_base_pr = run_pr_curve_evaluation(dataset, model)
-    eval_base_pr_detailed = run_detailed_pr_curve_evaluation(dataset, model)
+    # eval_base = run_base_evaluation(dataset, model)
+    # eval_base_pr_detailed = run_detailed_pr_curve_evaluation(dataset, model)
 
     start = time.time()
     client.delete_dataset(dataset_name)

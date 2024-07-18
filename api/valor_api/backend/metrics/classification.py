@@ -4,13 +4,13 @@ from collections import defaultdict
 import numpy as np
 from sqlalchemy import CTE, Integer
 from sqlalchemy.orm import Session
-from sqlalchemy.sql import and_, case, func, select
+from sqlalchemy.sql import and_, func, select
 
 from valor_api import enums, schemas
 from valor_api.backend import core, models
 from valor_api.backend.metrics.metric_utils import (
-    _create_classification_grouper_mappings,
     commit_results,
+    create_label_mapping,
     log_evaluation_duration,
     log_evaluation_item_counts,
     prepare_filter_for_evaluation,
@@ -58,11 +58,32 @@ def _compute_curves(
 
     # create sets of all datums for which there is a prediction / groundtruth
     # used when separating misclassifications/no_predictions
-    high_scores = db.query(
+    @profiler
+    def _high_scores():
+        return db.query(
+            select(
+                predictions.c.key,
+                predictions.c.datum_id,
+                func.max(predictions.c.score),
+            )
+            .select_from(predictions)
+            .group_by(
+                predictions.c.key,
+                predictions.c.datum_id,
+            )
+            .subquery()
+        ).all()
+    high_scores = _high_scores()
+
+    label_key_to_datum_high_score = defaultdict(dict)
+    for label_key, datum_id, high_score in high_scores:
+        label_key_to_datum_high_score[label_key][datum_id] = high_score
+
+    high_score_subquery = (
         select(
-            predictions.c.key,
+            predictions.c.key.label("label_key"),
             predictions.c.datum_id,
-            func.max(predictions.c.score),
+            func.max(predictions.c.score).label("score"),
         )
         .select_from(predictions)
         .group_by(
@@ -70,20 +91,20 @@ def _compute_curves(
             predictions.c.datum_id,
         )
         .subquery()
-    ).all()
-
-    label_key_to_datum_high_score = defaultdict(dict)
-    for label_key, datum_id, high_score in high_scores:
-        label_key_to_datum_high_score[label_key][datum_id] = high_score
+    )
 
     total_query = (
         select(
-            groundtruths.c.key,
+            func.coalesce(                
+                groundtruths.c.datum_id,
+                predictions.c.datum_id,
+            ).label("datum_id"),
+            func.coalesce(
+                groundtruths.c.key,
+                predictions.c.key,
+            ).label("label_key"),
             groundtruths.c.value.label("gt_value"),
-            groundtruths.c.datum_id,
-            predictions.c.key,
             predictions.c.value.label("pd_value"),
-            predictions.c.datum_id,
             predictions.c.score,
         )
         .select_from(groundtruths)
@@ -98,11 +119,222 @@ def _compute_curves(
         .subquery()
     )
 
-    sorted_query = select(total_query).order_by(
-        total_query.c.gt_value != total_query.c.pd_value,
-        -total_query.c.score,
+    thresholds_cte = (
+        select(func.generate_series(0.95, 0.05, -0.05).label("threshold"))
+        .cte()
     )
-    res = db.query(sorted_query.subquery()).all()
+
+    next_query = (
+        select(
+            total_query.c.datum_id,
+            total_query.c.label_key,
+            total_query.c.gt_value,
+            thresholds_cte.c.threshold,
+            (
+                and_(
+                    (total_query.c.gt_value == total_query.c.pd_value),
+                    (total_query.c.score >= thresholds_cte.c.threshold),
+                )
+            ).label("tp"),
+            (
+                and_(
+                    (total_query.c.gt_value != total_query.c.pd_value),
+                    (total_query.c.score >= thresholds_cte.c.threshold),
+                )
+            ).label("fp"),
+            (
+                and_(
+                    (total_query.c.gt_value != total_query.c.pd_value),
+                    (total_query.c.score < thresholds_cte.c.threshold),
+                )
+            ).label("tn"),
+            (
+                and_(
+                    (total_query.c.gt_value != total_query.c.pd_value),
+                    (total_query.c.score < thresholds_cte.c.threshold),
+                    (high_score_subquery.c.score >= thresholds_cte.c.threshold)
+                )
+            ).label("fn_misclassifications"),
+            (
+                and_(
+                    (total_query.c.gt_value != total_query.c.pd_value),
+                    (total_query.c.score < thresholds_cte.c.threshold),
+                    (high_score_subquery.c.score < thresholds_cte.c.threshold)
+                )
+            ).label("fn_missing_predictions"),
+        )
+        .select_from(total_query)
+        .join(
+            high_score_subquery,
+            and_(
+                high_score_subquery.c.datum_id == total_query.c.datum_id,
+                high_score_subquery.c.label_key == total_query.c.label_key,
+            )
+        )
+        .cte()
+    )
+
+    tp_datums = (
+        select(
+            next_query.c.label_key,
+            next_query.c.gt_value,
+            next_query.c.threshold,
+            func.array_agg(next_query.c.datum_id).label("datum_ids"),
+        )
+        .where(next_query.c.tp)
+        .group_by(
+            next_query.c.label_key,
+            next_query.c.gt_value,
+            next_query.c.threshold,
+        )
+        .limit(pr_curve_max_examples)
+        .cte()
+    )
+
+    fp_datums = (
+        select(
+            next_query.c.label_key,
+            next_query.c.gt_value,
+            next_query.c.threshold,
+            func.array_agg(next_query.c.datum_id).label("datum_ids"),
+        )
+        .where(next_query.c.fp)
+        .group_by(
+            next_query.c.label_key,
+            next_query.c.gt_value,
+            next_query.c.threshold,
+        )
+        .limit(pr_curve_max_examples)
+        .cte()
+    )
+
+    tn_datums = (
+        select(
+            next_query.c.label_key,
+            next_query.c.gt_value,
+            next_query.c.threshold,
+            func.array_agg(next_query.c.datum_id).label("datum_ids"),
+        )
+        .where(next_query.c.tn)
+        .group_by(
+            next_query.c.label_key,
+            next_query.c.gt_value,
+            next_query.c.threshold,
+        )
+        .limit(pr_curve_max_examples)
+        .cte()
+    )
+
+    fn_misclassification_datums = (
+        select(
+            next_query.c.label_key,
+            next_query.c.gt_value,
+            next_query.c.threshold,
+            func.array_agg(next_query.c.datum_id).label("datum_ids"),
+        )
+        .where(next_query.c.fn_misclassifications)
+        .group_by(
+            next_query.c.label_key,
+            next_query.c.gt_value,
+            next_query.c.threshold,
+        )
+        .limit(pr_curve_max_examples)
+        .cte()
+    )
+
+    fn_missing_prediction_datums = (
+        select(
+            next_query.c.label_key,
+            next_query.c.gt_value,
+            next_query.c.threshold,
+            func.array_agg(next_query.c.datum_id).label("datum_ids"),
+        )
+        .where(next_query.c.fn_missing_predictions)
+        .group_by(
+            next_query.c.label_key,
+            next_query.c.gt_value,
+            next_query.c.threshold,
+        )
+        .limit(pr_curve_max_examples)
+        .cte()
+    )
+
+    pr_counts = (
+        select(
+            next_query.c.label_key,
+            next_query.c.gt_value,
+            next_query.c.threshold,
+            func.sum(next_query.c.tp.cast(Integer)).label("tp"),
+            func.sum(next_query.c.fp.cast(Integer)).label("fp"),
+            func.sum(next_query.c.tn.cast(Integer)).label("tn"),
+            func.sum(next_query.c.fn_misclassifications.cast(Integer)).label("fn_misclassifications"),
+            func.sum(next_query.c.fn_missing_predictions.cast(Integer)).label("fn_missing_predictions"),
+            tp_datums.c.datum_ids,
+            fp_datums.c.datum_ids,
+            tn_datums.c.datum_ids,
+            fn_misclassification_datums.c.datum_ids,
+            fn_missing_prediction_datums.c.datum_ids,
+        )
+        .select_from(next_query)
+        .join(
+            tp_datums,
+            and_(
+                tp_datums.c.label_key == next_query.c.label_key,
+                tp_datums.c.gt_value == next_query.c.gt_value,
+                tp_datums.c.threshold == next_query.c.threshold,
+            ) 
+        )
+        .join(
+            fp_datums,
+            and_(
+                fp_datums.c.label_key == next_query.c.label_key,
+                fp_datums.c.gt_value == next_query.c.gt_value,
+                fp_datums.c.threshold == next_query.c.threshold,
+            ) 
+        )
+        .join(
+            tn_datums,
+            and_(
+                tn_datums.c.label_key == next_query.c.label_key,
+                tn_datums.c.gt_value == next_query.c.gt_value,
+                tn_datums.c.threshold == next_query.c.threshold,
+            ) 
+        )
+        .join(
+            fn_misclassification_datums,
+            and_(
+                fn_misclassification_datums.c.label_key == next_query.c.label_key,
+                fn_misclassification_datums.c.gt_value == next_query.c.gt_value,
+                fn_misclassification_datums.c.threshold == next_query.c.threshold,
+            ) 
+        )
+        .join(
+            fn_missing_prediction_datums,
+            and_(
+                fn_missing_prediction_datums.c.label_key == next_query.c.label_key,
+                fn_missing_prediction_datums.c.gt_value == next_query.c.gt_value,
+                fn_missing_prediction_datums.c.threshold == next_query.c.threshold,
+            ) 
+        )
+        .group_by(
+            next_query.c.label_key,
+            next_query.c.gt_value,
+            next_query.c.threshold,
+        )
+        .subquery()
+    )
+
+    @profiler
+    def _res():
+        return db.query(pr_counts).all()
+    
+    res = _res()
+
+    print("========CURVE ", len(res))
+    for r in res:
+        print(r)
+
+    raise RuntimeError
 
     pr_output = defaultdict(lambda: defaultdict((lambda: defaultdict(dict))))
     detailed_pr_output = defaultdict(
@@ -920,26 +1152,20 @@ def _aggregate_data(
         rhs=prediction_filter,
     )
 
-    if label_map:
-        label_mapping = _create_classification_grouper_mappings(
-            db=db,
-            labels=labels,
-            label_map=label_map,
-            evaluation_type=enums.TaskType.CLASSIFICATION,
-        )
-        label_id = case(
-            *label_mapping,
-            else_=models.Label.id,
-        ).label("label_id")
-    else:
-        label_id = models.Label.id.label("label_id")
+    label_mapping = create_label_mapping(
+        db=db,
+        labels=labels,
+        label_map=label_map,
+    )
+
+    print("Pre-gen")
 
     groundtruths_subquery = generate_select(
         models.Datum.id.label("datum_id"),
         models.Datum.uid.label("datum_uid"),
         models.Dataset.name.label("dataset_name"),
         models.Label.id,
-        label_id,
+        label_mapping,
         filters=groundtruth_filter,
         label_source=models.GroundTruth,
     ).subquery()
@@ -968,81 +1194,62 @@ def _aggregate_data(
         models.Prediction.id.label("prediction_id"),
         models.Prediction.score,
         models.Label.id,
-        label_id,
+        label_mapping,
         filters=prediction_filter,
         label_source=models.Prediction,
     ).subquery()
-    predictions_high_scores = (
-        select(
-            predictions_subquery.c.datum_id,
-            predictions_subquery.c.model_name,
-            predictions_subquery.c.label_id,
-            func.max(predictions_subquery.c.score).label("score"),
-        )
-        .group_by(
-            predictions_subquery.c.datum_id,
-            predictions_subquery.c.model_name,
-            predictions_subquery.c.label_id,
-        )
-        .subquery()
-    )
     predictions_cte = (
         select(
-            predictions_subquery.c.datum_uid,
             predictions_subquery.c.dataset_name,
+            predictions_subquery.c.model_name,
+            predictions_subquery.c.datum_id,
+            predictions_subquery.c.datum_uid,
+            models.Label.key,
+            models.Label.value,
             func.min(predictions_subquery.c.prediction_id).label(
                 "prediction_id"
             ),
-            predictions_high_scores.c.datum_id,
-            predictions_high_scores.c.model_name,
-            predictions_high_scores.c.score,
-            models.Label.key,
-            models.Label.value,
+            func.max(predictions_subquery.c.score).label("score")
         )
         .select_from(predictions_subquery)
-        .join(
-            predictions_high_scores,
-            and_(
-                predictions_high_scores.c.datum_id
-                == predictions_subquery.c.datum_id,
-                predictions_high_scores.c.model_name
-                == predictions_subquery.c.model_name,
-                predictions_high_scores.c.score
-                == predictions_subquery.c.score,
-            ),
-        )
         .join(
             models.Label,
             models.Label.id == predictions_subquery.c.label_id,
         )
         .group_by(
-            predictions_subquery.c.datum_uid,
             predictions_subquery.c.dataset_name,
-            predictions_high_scores.c.datum_id,
-            predictions_high_scores.c.model_name,
-            predictions_high_scores.c.score,
+            predictions_subquery.c.model_name,
+            predictions_subquery.c.datum_id,
+            predictions_subquery.c.datum_uid,
             models.Label.key,
             models.Label.value,
         )
         .cte()
     )
 
+    print("post-gen")
+
+
+    @profiler
+    def groundtruth_label_query():
+        return db.query(
+            groundtruths_cte.c.key, groundtruths_cte.c.value
+        ).distinct().all()
+    
+    @profiler
+    def prediction_label_query():
+        return db.query(
+            predictions_cte.c.key, predictions_cte.c.value
+        ).distinct().all()
+
     # get all labels
     groundtruth_labels = {
         (key, value)
-        for key, value in db.query(
-            groundtruths_cte.c.key, groundtruths_cte.c.value
-        )
-        .distinct()
-        .all()
+        for key, value in groundtruth_label_query()
     }
     prediction_labels = {
         (key, value)
-        for key, value in db.query(
-            predictions_cte.c.key, predictions_cte.c.value
-        )
-        .distinct()
-        .all()
+        for key, value in prediction_label_query()
     }
     labels = groundtruth_labels.union(prediction_labels)
 
