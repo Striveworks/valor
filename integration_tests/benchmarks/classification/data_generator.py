@@ -216,9 +216,9 @@ def run(
 
     dataset.finalize()
 
+    eval_base = run_base_evaluation(dataset, model)
     eval_base_pr = run_pr_curve_evaluation(dataset, model)
-    # eval_base = run_base_evaluation(dataset, model)
-    # eval_base_pr_detailed = run_detailed_pr_curve_evaluation(dataset, model)
+    eval_base_pr_detailed = run_detailed_pr_curve_evaluation(dataset, model)
 
     start = time.time()
     client.delete_dataset(dataset_name)
@@ -256,9 +256,9 @@ if __name__ == "__main__":
     print("=== Data Generation Benchmark ===")
     print()
 
-    number_of_datums_trials = [1000]
-    number_of_label_keys_trials = [20]
-    number_of_label_values_trials = [20]
+    number_of_datums_trials = [10000]
+    number_of_label_keys_trials = [2]
+    number_of_label_values_trials = [10]
     number_of_trials = 1
 
     for n_datums in number_of_datums_trials:
