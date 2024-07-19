@@ -86,18 +86,27 @@ def _compute_curves(
             isouter=True,
         )
         .where(models.Datum.id.in_(unique_datums.keys()))
-        .cte()
+        .subquery()
     )
+
+    thresholds_cte = select(
+        func.generate_series(0.95, 0.05, -0.05).label("threshold")
+    ).subquery()
 
     joint_query = (
         select(
             base_query.c.datum_id,
             base_query.c.key,
             base_query.c.value,
+            thresholds_cte.c.threshold,
             (groundtruths.c.key.isnot(None)).label("gt_exists"),
             (predictions.c.key.isnot(None)).label("pd_exists"),
-            predictions.c.score,
-            base_query.c.high_score,
+            (predictions.c.score >= thresholds_cte.c.threshold).label(
+                "is_positive"
+            ),
+            (base_query.c.high_score >= thresholds_cte.c.threshold).label(
+                "positive_exists"
+            ),
         )
         .select_from(base_query)
         .join(
@@ -118,6 +127,7 @@ def _compute_curves(
             ),
             isouter=True,
         )
+        .join(thresholds_cte, literal(True))
         .order_by(
             base_query.c.key,
             base_query.c.value,
@@ -126,37 +136,33 @@ def _compute_curves(
         .subquery()
     )
 
-    thresholds_cte = select(
-        func.generate_series(0.95, 0.05, -0.05).label("threshold")
-    ).cte()
-
     # define pr curve query
 
     pr_counts = (
         select(
             joint_query.c.key,
             joint_query.c.value,
-            thresholds_cte.c.threshold,
+            joint_query.c.threshold,
             func.sum(
                 and_(
                     joint_query.c.gt_exists,
                     joint_query.c.pd_exists,
-                    joint_query.c.score >= thresholds_cte.c.threshold,
+                    joint_query.c.is_positive,
                 ).cast(Integer)
             ).label("tp"),
             func.sum(
                 and_(
                     not_(joint_query.c.gt_exists),
                     joint_query.c.pd_exists,
-                    joint_query.c.score >= thresholds_cte.c.threshold,
+                    joint_query.c.is_positive,
                 ).cast(Integer)
             ).label("fp"),
             func.sum(
                 and_(
-                    joint_query.c.gt_exists.is_(False),
+                    not_(joint_query.c.gt_exists),
                     or_(
-                        joint_query.c.pd_exists.is_(False),
-                        joint_query.c.score < thresholds_cte.c.threshold,
+                        not_(joint_query.c.pd_exists),
+                        not_(joint_query.c.is_positive),
                     ),
                 ).cast(Integer)
             ).label("tn"),
@@ -166,7 +172,7 @@ def _compute_curves(
                     or_(
                         and_(
                             joint_query.c.pd_exists,
-                            joint_query.c.score < thresholds_cte.c.threshold,
+                            not_(joint_query.c.is_positive),
                         ),
                         not_(joint_query.c.pd_exists),
                     ),
@@ -174,120 +180,37 @@ def _compute_curves(
             ).label("fn"),
         )
         .select_from(joint_query)
-        .join(thresholds_cte, literal(True))
         .group_by(
             joint_query.c.key,
             joint_query.c.value,
-            thresholds_cte.c.threshold,
+            joint_query.c.threshold,
         )
         .subquery()
     )
 
     # define detailed pr curve query
 
-    pr_counts_base = (
-        select(
-            joint_query.c.key,
-            joint_query.c.value,
-            thresholds_cte.c.threshold,
-            func.sum(
-                and_(
-                    joint_query.c.gt_exists,
-                    joint_query.c.pd_exists,
-                    joint_query.c.score >= thresholds_cte.c.threshold,
-                ).cast(Integer)
-            ).label("tp"),
-            func.sum(
-                and_(
-                    not_(joint_query.c.gt_exists),
-                    joint_query.c.pd_exists,
-                    joint_query.c.score >= thresholds_cte.c.threshold,
-                ).cast(Integer)
-            ).label("fp"),
-            func.sum(
-                and_(
-                    joint_query.c.gt_exists.is_(False),
-                    or_(
-                        joint_query.c.pd_exists.is_(False),
-                        joint_query.c.score < thresholds_cte.c.threshold,
-                    ),
-                ).cast(Integer)
-            ).label("tn"),
-            func.sum(
-                and_(
-                    joint_query.c.gt_exists,
-                    or_(
-                        and_(
-                            joint_query.c.pd_exists,
-                            joint_query.c.score < thresholds_cte.c.threshold,
-                        ),
-                        not_(joint_query.c.pd_exists),
-                    ),
-                    high_score_subquery.c.score >= thresholds_cte.c.threshold,
-                ).cast(Integer)
-            ).label("fn_misclf"),
-            func.sum(
-                and_(
-                    joint_query.c.gt_exists,
-                    or_(
-                        and_(
-                            joint_query.c.pd_exists,
-                            joint_query.c.score < thresholds_cte.c.threshold,
-                        ),
-                        not_(joint_query.c.pd_exists),
-                    ),
-                    or_(
-                        high_score_subquery.c.score
-                        < thresholds_cte.c.threshold,
-                        high_score_subquery.c.score.is_(None),
-                    ),
-                ).cast(Integer)
-            ).label("fn_misprd"),
-        )
-        .select_from(joint_query)
-        .join(
-            high_score_subquery,
-            and_(
-                high_score_subquery.c.datum_id == joint_query.c.datum_id,
-                high_score_subquery.c.key == joint_query.c.key,
-            ),
-            isouter=True,
-        )
-        .join(thresholds_cte, literal(True))
-        .group_by(
-            joint_query.c.key,
-            joint_query.c.value,
-            thresholds_cte.c.threshold,
-        )
-        .order_by(
-            joint_query.c.key,
-            joint_query.c.value,
-            thresholds_cte.c.threshold,
-        )
-        .cte()
-    )
-
     detailed_pr_datums = (
         select(
             joint_query.c.datum_id,
             joint_query.c.key,
             joint_query.c.value,
-            thresholds_cte.c.threshold,
+            joint_query.c.threshold,
             and_(
                 joint_query.c.gt_exists,
                 joint_query.c.pd_exists,
-                joint_query.c.score >= thresholds_cte.c.threshold,
+                joint_query.c.is_positive,
             ).label("tp"),
             and_(
-                joint_query.c.gt_exists.isnot(True),
+                not_(joint_query.c.gt_exists),
                 joint_query.c.pd_exists,
-                joint_query.c.score >= thresholds_cte.c.threshold,
+                joint_query.c.is_positive,
             ).label("fp"),
             and_(
-                joint_query.c.gt_exists.isnot(True),
+                not_(joint_query.c.gt_exists),
                 or_(
-                    joint_query.c.pd_exists.isnot(True),
-                    joint_query.c.score < thresholds_cte.c.threshold,
+                    not_(joint_query.c.pd_exists),
+                    not_(joint_query.c.is_positive),
                 ),
             ).label("tn"),
             and_(
@@ -295,36 +218,38 @@ def _compute_curves(
                 or_(
                     and_(
                         joint_query.c.pd_exists,
-                        joint_query.c.score < thresholds_cte.c.threshold,
+                        not_(joint_query.c.is_positive),
                     ),
-                    joint_query.c.pd_exists.isnot(True),
+                    not_(joint_query.c.pd_exists),
                 ),
-                joint_query.c.high_score >= thresholds_cte.c.threshold,
+                joint_query.c.positive_exists,
             ).label("fn_misclf"),
             and_(
                 joint_query.c.gt_exists,
                 or_(
                     and_(
                         joint_query.c.pd_exists,
-                        joint_query.c.score < thresholds_cte.c.threshold,
+                        not_(joint_query.c.is_positive),
                     ),
-                    joint_query.c.pd_exists.isnot(True),
+                    not_(joint_query.c.pd_exists),
                 ),
-                joint_query.c.high_score < thresholds_cte.c.threshold,
+                or_(
+                    not_(joint_query.c.is_positive),
+                    not_(joint_query.c.positive_exists),
+                ),
             ).label("fn_misprd"),
         )
         .select_from(joint_query)
-        .join(thresholds_cte, literal(True))
         .cte()
     )
 
     def search_datums(condition: ColumnElement[bool]):
         search_datums = (
             select(
+                detailed_pr_datums.c.datum_id,
                 detailed_pr_datums.c.key,
                 detailed_pr_datums.c.value,
                 detailed_pr_datums.c.threshold,
-                detailed_pr_datums.c.datum_id,
                 func.row_number()
                 .over(
                     partition_by=[
@@ -371,14 +296,14 @@ def _compute_curves(
 
     detailed_pr_counts = (
         select(
-            pr_counts_base.c.key,
-            pr_counts_base.c.value,
-            pr_counts_base.c.threshold,
-            pr_counts_base.c.tp,
-            pr_counts_base.c.fp,
-            pr_counts_base.c.tn,
-            pr_counts_base.c.fn_misclf,
-            pr_counts_base.c.fn_misprd,
+            detailed_pr_datums.c.key,
+            detailed_pr_datums.c.value,
+            detailed_pr_datums.c.threshold,
+            func.sum(detailed_pr_datums.c.tp.cast(Integer)),
+            func.sum(detailed_pr_datums.c.fp.cast(Integer)),
+            func.sum(detailed_pr_datums.c.tn.cast(Integer)),
+            func.sum(detailed_pr_datums.c.fn_misclf.cast(Integer)),
+            func.sum(detailed_pr_datums.c.fn_misprd.cast(Integer)),
             tp_examples.c.datum_ids.label("tp_examples"),
             fp_examples.c.datum_ids.label("fp_examples"),
             tn_examples.c.datum_ids.label("tn_examples"),
@@ -389,57 +314,69 @@ def _compute_curves(
                 "fn_misprd_examples"
             ),
         )
-        .select_from(pr_counts_base)
+        .select_from(detailed_pr_datums)
         .join(
             tp_examples,
             and_(
-                tp_examples.c.key == pr_counts_base.c.key,
-                tp_examples.c.value == pr_counts_base.c.value,
-                tp_examples.c.threshold == pr_counts_base.c.threshold,
+                tp_examples.c.key == detailed_pr_datums.c.key,
+                tp_examples.c.value == detailed_pr_datums.c.value,
+                tp_examples.c.threshold == detailed_pr_datums.c.threshold,
             ),
             isouter=True,
         )
         .join(
             fp_examples,
             and_(
-                fp_examples.c.key == pr_counts_base.c.key,
-                fp_examples.c.value == pr_counts_base.c.value,
-                fp_examples.c.threshold == pr_counts_base.c.threshold,
+                fp_examples.c.key == detailed_pr_datums.c.key,
+                fp_examples.c.value == detailed_pr_datums.c.value,
+                fp_examples.c.threshold == detailed_pr_datums.c.threshold,
             ),
             isouter=True,
         )
         .join(
             tn_examples,
             and_(
-                tn_examples.c.key == pr_counts_base.c.key,
-                tn_examples.c.value == pr_counts_base.c.value,
-                tn_examples.c.threshold == pr_counts_base.c.threshold,
+                tn_examples.c.key == detailed_pr_datums.c.key,
+                tn_examples.c.value == detailed_pr_datums.c.value,
+                tn_examples.c.threshold == detailed_pr_datums.c.threshold,
             ),
             isouter=True,
         )
         .join(
             fn_misclassification_examples,
             and_(
-                fn_misclassification_examples.c.key == pr_counts_base.c.key,
+                fn_misclassification_examples.c.key
+                == detailed_pr_datums.c.key,
                 fn_misclassification_examples.c.value
-                == pr_counts_base.c.value,
+                == detailed_pr_datums.c.value,
                 fn_misclassification_examples.c.threshold
-                == pr_counts_base.c.threshold,
+                == detailed_pr_datums.c.threshold,
             ),
             isouter=True,
         )
         .join(
             fn_missing_prediction_examples,
             and_(
-                fn_missing_prediction_examples.c.key == pr_counts_base.c.key,
+                fn_missing_prediction_examples.c.key
+                == detailed_pr_datums.c.key,
                 fn_missing_prediction_examples.c.value
-                == pr_counts_base.c.value,
+                == detailed_pr_datums.c.value,
                 fn_missing_prediction_examples.c.threshold
-                == pr_counts_base.c.threshold,
+                == detailed_pr_datums.c.threshold,
             ),
             isouter=True,
         )
-        .order_by(pr_counts_base.c.threshold)
+        .group_by(
+            detailed_pr_datums.c.key,
+            detailed_pr_datums.c.value,
+            detailed_pr_datums.c.threshold,
+            tp_examples.c.datum_ids,
+            fp_examples.c.datum_ids,
+            tn_examples.c.datum_ids,
+            fn_misclassification_examples.c.datum_ids,
+            fn_missing_prediction_examples.c.datum_ids,
+        )
+        .order_by(detailed_pr_datums.c.threshold)
         .subquery()
     )
 
@@ -474,7 +411,6 @@ def _compute_curves(
             )
 
     else:
-        label_to_results = defaultdict(lambda: defaultdict(dict))
         for (
             label_key,
             label_value,
