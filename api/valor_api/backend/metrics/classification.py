@@ -126,12 +126,6 @@ def _compute_curves(
         .subquery()
     )
 
-    print()
-    print("JOINT QUERY")
-    for x in db.query(joint_query).all():
-        print(x)
-    print()
-
     thresholds_cte = select(
         func.generate_series(0.95, 0.05, -0.05).label("threshold")
     ).cte()
@@ -273,12 +267,6 @@ def _compute_curves(
         .cte()
     )
 
-    print()
-    print("PR COUNTS")
-    for x in db.query(pr_counts_base).all():
-        print(x)
-    print()
-
     detailed_pr_datums = (
         select(
             joint_query.c.datum_id,
@@ -330,11 +318,6 @@ def _compute_curves(
         .cte()
     )
 
-    # print("DETAILED DATUMS")
-    # for x in db.query(detailed_pr_datums).all():
-    #     print(x)
-    # print()
-
     def search_datums(condition: ColumnElement[bool]):
         search_datums = (
             select(
@@ -385,11 +368,6 @@ def _compute_curves(
     fn_missing_prediction_examples = search_datums(
         detailed_pr_datums.c.fn_misprd
     )
-
-    # print("TP DATUMS")
-    # for x in db.query(tp_examples).all():
-    #     print(x)
-    # print()
 
     detailed_pr_counts = (
         select(
@@ -464,16 +442,6 @@ def _compute_curves(
         .order_by(pr_counts_base.c.threshold)
         .subquery()
     )
-
-    # print("GROUNDTRUTHS")
-    # for x in db.query(groundtruths).all():
-    #     print(x)
-    # print()
-
-    # print("DETAILED PR COUNTS")
-    # for x in db.query(detailed_pr_counts).all():
-    #     print(x)
-    # print()
 
     label_to_results = defaultdict(lambda: defaultdict(dict))
     if enums.MetricType.DetailedPrecisionRecallCurve in metrics_to_return:
