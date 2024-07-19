@@ -1,4 +1,5 @@
 import datetime
+import os
 from unittest.mock import MagicMock
 
 import pytest
@@ -507,6 +508,7 @@ def test_WrappedOpenAIClient():
         client._process_messages(invalid_message)
 
     # The OpenAI Client should be able to connect if the API key is set as the environment variable.
+    os.environ["OPENAI_API_KEY"] = "dummy_key"
     client = WrappedOpenAIClient(model_name="model_name")
     client.connect()
 
@@ -621,6 +623,7 @@ def test_WrappedMistralAIClient():
     ] == client._process_messages(fake_message)
 
     # The Mistral Client should be able to connect if the API key is set as the environment variable.
+    os.environ["MISTRAL_API_KEY"] = "dummy_key"
     client = WrappedMistralAIClient(model_name="model_name")
     client.connect()
 
