@@ -925,3 +925,39 @@ class ROUGEMetric(BaseModel):
             "type": "ROUGE",
             "evaluation_id": evaluation_id,
         }
+
+
+class ToxicityMetric(BaseModel):
+    """
+    Describes a toxicity metric.
+
+    Attributes
+    ----------
+    value : float
+        The toxicity score for a datum. This is a float between 0 and 1, with 1 indicating that all opinions in the datum text are toxic and 0 indicating that there is no toxicity.
+    parameters : dict
+        Any parameters associated with the metric, as well as any datum or prediction parameters that are relevant to the metric.
+    """
+
+    value: float
+    parameters: dict
+
+    def db_mapping(self, evaluation_id: int) -> dict:
+        """
+        Creates a mapping for use when uploading the metric to the database.
+
+        Parameters
+        ----------
+        evaluation_id : int
+            The evaluation id.
+
+        Returns
+        ----------
+        A mapping dictionary.
+        """
+        return {
+            "value": self.value,
+            "parameters": self.parameters,
+            "type": "Toxicity",
+            "evaluation_id": evaluation_id,
+        }

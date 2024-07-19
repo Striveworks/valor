@@ -166,6 +166,7 @@ def test_llm_evaluation_rag_with_mock_client(
         MetricType.BLEU,
         MetricType.Coherence,
         MetricType.ROUGE,
+        MetricType.Toxicity,
     ]
 
     eval_job = model.evaluate_text_generation(
@@ -215,6 +216,7 @@ def test_llm_evaluation_rag_with_mock_client(
                 "rougeL": 0.5925925925925926,
                 "rougeLsum": 0.5925925925925926,
             },
+            "Toxicity": 0.0,
         },
         "uid1": {
             "AnswerRelevance": 0.5,
@@ -227,6 +229,7 @@ def test_llm_evaluation_rag_with_mock_client(
                 "rougeL": 1.0,
                 "rougeLsum": 1.0,
             },
+            "Toxicity": 0.0,
         },
         "uid2": {
             "AnswerRelevance": 0.5,
@@ -239,12 +242,13 @@ def test_llm_evaluation_rag_with_mock_client(
                 "rougeL": 0.18666666666666668,
                 "rougeLsum": 0.18666666666666668,
             },
+            "Toxicity": 0.0,
         },
     }
 
     # Check that the returned metrics have the right format.
     for m in metrics:
-        if m["type"] in ["AnswerRelevance", "Bias", "BLEU"]:
+        if m["type"] in ["AnswerRelevance", "Bias", "BLEU", "Toxicity"]:
             assert 0 <= m["value"] <= 1
         if m["type"] == "Coherence":
             assert m["value"] in [1, 2, 3, 4, 5]

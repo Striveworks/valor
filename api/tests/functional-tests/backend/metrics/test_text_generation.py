@@ -487,6 +487,21 @@ def mocked_coherence(
     return ret_dict[text]
 
 
+def mocked_toxicity(
+    self,
+    text: str,
+):
+    ret_dict = {
+        RAG_PREDICTIONS[0]: 0.0,
+        RAG_PREDICTIONS[1]: 0.0,
+        RAG_PREDICTIONS[2]: 0.0,
+        CONTENT_GEN_PREDICTIONS[0]: 0.4,
+        CONTENT_GEN_PREDICTIONS[1]: 0.0,
+        CONTENT_GEN_PREDICTIONS[2]: 0.0,
+    }
+    return ret_dict[text]
+
+
 def mocked_compute_rouge_none(*args, **kwargs):
     """
     Dummy docstring
@@ -509,6 +524,10 @@ def mocked_compute_rouge_none(*args, **kwargs):
 @patch(
     "valor_api.backend.core.llm_clients.WrappedOpenAIClient.coherence",
     mocked_coherence,
+)
+@patch(
+    "valor_api.backend.core.llm_clients.WrappedOpenAIClient.toxicity",
+    mocked_toxicity,
 )
 @patch(
     "valor_api.backend.core.llm_clients.WrappedMistralAIClient.connect",
@@ -560,9 +579,10 @@ def test__compute_text_generation_rag(
     metrics_to_return = [
         MetricType.AnswerRelevance,
         MetricType.Bias,
+        MetricType.BLEU,
         MetricType.Coherence,
         MetricType.ROUGE,
-        MetricType.BLEU,
+        MetricType.Toxicity,
     ]
 
     metrics = _compute_text_generation_metrics(
@@ -584,6 +604,7 @@ def test__compute_text_generation_rag(
         "uid0": {
             schemas.AnswerRelevanceMetric: 0.6666666666666666,
             schemas.BiasMetric: 0.0,
+            schemas.BLEUMetric: 0.3502270395690205,
             schemas.CoherenceMetric: 4,
             schemas.ROUGEMetric: {
                 "rouge1": 0.5925925925925926,
@@ -591,11 +612,12 @@ def test__compute_text_generation_rag(
                 "rougeL": 0.5925925925925926,
                 "rougeLsum": 0.5925925925925926,
             },
-            schemas.BLEUMetric: 0.3502270395690205,
+            schemas.ToxicityMetric: 0.0,
         },
         "uid1": {
             schemas.AnswerRelevanceMetric: 0.2,
             schemas.BiasMetric: 0.0,
+            schemas.BLEUMetric: 1.0,
             schemas.CoherenceMetric: 5,
             schemas.ROUGEMetric: {
                 "rouge1": 1.0,
@@ -603,11 +625,12 @@ def test__compute_text_generation_rag(
                 "rougeL": 1.0,
                 "rougeLsum": 1.0,
             },
-            schemas.BLEUMetric: 1.0,
+            schemas.ToxicityMetric: 0.0,
         },
         "uid2": {
             schemas.AnswerRelevanceMetric: 0.2,
             schemas.BiasMetric: 0.0,
+            schemas.BLEUMetric: 0.05434912989707719,
             schemas.CoherenceMetric: 4,
             schemas.ROUGEMetric: {
                 "rouge1": 0.18666666666666668,
@@ -615,7 +638,7 @@ def test__compute_text_generation_rag(
                 "rougeL": 0.18666666666666668,
                 "rougeLsum": 0.18666666666666668,
             },
-            schemas.BLEUMetric: 0.05434912989707719,
+            schemas.ToxicityMetric: 0.0,
         },
     }
 
@@ -836,6 +859,10 @@ def test__compute_text_generation_rag(
     "valor_api.backend.core.llm_clients.WrappedOpenAIClient.coherence",
     mocked_coherence,
 )
+@patch(
+    "valor_api.backend.core.llm_clients.WrappedOpenAIClient.toxicity",
+    mocked_toxicity,
+)
 def test_text_generation_rag(
     db: Session,
     rag_dataset_name: str,
@@ -845,9 +872,10 @@ def test_text_generation_rag(
     metrics_to_return = [
         MetricType.AnswerRelevance,
         MetricType.Bias,
+        MetricType.BLEU,
         MetricType.Coherence,
         MetricType.ROUGE,
-        MetricType.BLEU,
+        MetricType.Toxicity,
     ]
 
     # default request
@@ -900,6 +928,7 @@ def test_text_generation_rag(
         "uid0": {
             "AnswerRelevance": 0.6666666666666666,
             "Bias": 0.0,
+            "BLEU": 0.3502270395690205,
             "Coherence": 4,
             "ROUGE": {
                 "rouge1": 0.5925925925925926,
@@ -907,11 +936,12 @@ def test_text_generation_rag(
                 "rougeL": 0.5925925925925926,
                 "rougeLsum": 0.5925925925925926,
             },
-            "BLEU": 0.3502270395690205,
+            "Toxicity": 0.0,
         },
         "uid1": {
             "AnswerRelevance": 0.2,
             "Bias": 0.0,
+            "BLEU": 1.0,
             "Coherence": 5,
             "ROUGE": {
                 "rouge1": 1.0,
@@ -919,11 +949,12 @@ def test_text_generation_rag(
                 "rougeL": 1.0,
                 "rougeLsum": 1.0,
             },
-            "BLEU": 1.0,
+            "Toxicity": 0.0,
         },
         "uid2": {
             "AnswerRelevance": 0.2,
             "Bias": 0.0,
+            "BLEU": 0.05434912989707719,
             "Coherence": 4,
             "ROUGE": {
                 "rouge1": 0.18666666666666668,
@@ -931,7 +962,7 @@ def test_text_generation_rag(
                 "rougeL": 0.18666666666666668,
                 "rougeLsum": 0.18666666666666668,
             },
-            "BLEU": 0.05434912989707719,
+            "Toxicity": 0.0,
         },
     }
 
@@ -978,6 +1009,10 @@ def test_text_generation_rag(
     "valor_api.backend.core.llm_clients.WrappedOpenAIClient.coherence",
     mocked_coherence,
 )
+@patch(
+    "valor_api.backend.core.llm_clients.WrappedOpenAIClient.toxicity",
+    mocked_toxicity,
+)
 def test_text_generation_content_gen(
     db: Session,
     content_gen_dataset_name: str,
@@ -987,6 +1022,7 @@ def test_text_generation_content_gen(
     metrics_to_return = [
         MetricType.Bias,
         MetricType.Coherence,
+        MetricType.Toxicity,
     ]
 
     # default request
@@ -1031,14 +1067,17 @@ def test_text_generation_content_gen(
         "uid0": {
             "Bias": 0.2,
             "Coherence": 5,
+            "Toxicity": 0.4,
         },
         "uid1": {
             "Bias": 0.0,
             "Coherence": 5,
+            "Toxicity": 0.0,
         },
         "uid2": {
             "Bias": 0.0,
             "Coherence": 5,
+            "Toxicity": 0.0,
         },
     }
 
@@ -1067,6 +1106,10 @@ def test_text_generation_content_gen(
     "valor_api.backend.core.llm_clients.WrappedOpenAIClient.coherence",
     mocked_coherence,
 )
+@patch(
+    "valor_api.backend.core.llm_clients.WrappedOpenAIClient.toxicity",
+    mocked_toxicity,
+)
 def test_text_generation_two_datasets(
     db: Session,
     rag_dataset_name: str,
@@ -1079,9 +1122,10 @@ def test_text_generation_two_datasets(
     metrics_to_return = [
         MetricType.AnswerRelevance,
         MetricType.Bias,
+        MetricType.BLEU,
         MetricType.Coherence,
         MetricType.ROUGE,
-        MetricType.BLEU,
+        MetricType.Toxicity,
     ]
 
     # default request
@@ -1134,6 +1178,7 @@ def test_text_generation_two_datasets(
         "uid0": {
             "AnswerRelevance": 0.6666666666666666,
             "Bias": 0.0,
+            "BLEU": 0.3502270395690205,
             "Coherence": 4,
             "ROUGE": {
                 "rouge1": 0.5925925925925926,
@@ -1141,11 +1186,12 @@ def test_text_generation_two_datasets(
                 "rougeL": 0.5925925925925926,
                 "rougeLsum": 0.5925925925925926,
             },
-            "BLEU": 0.3502270395690205,
+            "Toxicity": 0.0,
         },
         "uid1": {
             "AnswerRelevance": 0.2,
             "Bias": 0.0,
+            "BLEU": 1.0,
             "Coherence": 5,
             "ROUGE": {
                 "rouge1": 1.0,
@@ -1153,11 +1199,12 @@ def test_text_generation_two_datasets(
                 "rougeL": 1.0,
                 "rougeLsum": 1.0,
             },
-            "BLEU": 1.0,
+            "Toxicity": 0.0,
         },
         "uid2": {
             "AnswerRelevance": 0.2,
             "Bias": 0.0,
+            "BLEU": 0.05434912989707719,
             "Coherence": 4,
             "ROUGE": {
                 "rouge1": 0.18666666666666668,
@@ -1165,7 +1212,7 @@ def test_text_generation_two_datasets(
                 "rougeL": 0.18666666666666668,
                 "rougeLsum": 0.18666666666666668,
             },
-            "BLEU": 0.05434912989707719,
+            "Toxicity": 0.0,
         },
     }
 
@@ -1181,6 +1228,7 @@ def test_text_generation_two_datasets(
     metrics_to_return = [
         MetricType.Bias,
         MetricType.Coherence,
+        MetricType.Toxicity,
     ]
 
     # default request
@@ -1225,14 +1273,17 @@ def test_text_generation_two_datasets(
         "uid0": {
             "Bias": 0.2,
             "Coherence": 5,
+            "Toxicity": 0.4,
         },
         "uid1": {
             "Bias": 0.0,
             "Coherence": 5,
+            "Toxicity": 0.0,
         },
         "uid2": {
             "Bias": 0.0,
             "Coherence": 5,
+            "Toxicity": 0.0,
         },
     }
 

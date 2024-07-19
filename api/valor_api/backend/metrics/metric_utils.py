@@ -205,6 +205,7 @@ def commit_results(
         | schemas.BLEUMetric
         | schemas.CoherenceMetric
         | schemas.ROUGEMetric
+        | schemas.ToxicityMetric
     ],
     evaluation_id: int,
 ):

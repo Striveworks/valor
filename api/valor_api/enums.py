@@ -134,9 +134,10 @@ class MetricType(str, Enum):
     DetailedPrecisionRecallCurve = "DetailedPrecisionRecallCurve"
     AnswerRelevance = "AnswerRelevance"
     Bias = "Bias"
+    BLEU = "BLEU"
     Coherence = "Coherence"
     ROUGE = "ROUGE"
-    BLEU = "BLEU"
+    Toxicity = "Toxicity"
 
 
 class ROUGEType(str, Enum):

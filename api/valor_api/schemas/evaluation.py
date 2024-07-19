@@ -144,6 +144,7 @@ class EvaluationParameters(BaseModel):
                         "AnswerRelevance",
                         "Bias",
                         "Coherence",
+                        "Toxicity",
                     ]
                 )
                 allowed_metrics = text_comparison_metrics.union(

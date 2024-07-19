@@ -47,6 +47,7 @@ from .metrics import (
     RecallMetric,
     ROCAUCMetric,
     ROUGEMetric,
+    ToxicityMetric,
     mAPMetric,
     mAPMetricAveragedOverIOUs,
     mARMetric,
@@ -126,4 +127,5 @@ __all__ = [
     "BLEUMetric",
     "CoherenceMetric",
     "ROUGEMetric",
+    "ToxicityMetric",
 ]

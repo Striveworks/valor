@@ -53,7 +53,7 @@ ANSWER_RELEVANCE_VALID_VERDICTS = """```json
     ]
 }```"""
 
-BIAS_VALID_OPINIONS = """```json
+VALID_OPINIONS = """```json
 {
     "opinions": [
         "opinion 1",
@@ -76,6 +76,26 @@ BIAS_VALID_VERDICTS = """```json
         {
             "verdict": "yes",
             "reason": "This opinion demonstrates political bias."
+        },
+        {
+            "verdict": "no"
+        }
+    ]
+}```"""
+
+TOXICITY_VALID_VERDICTS = """```json
+{
+    "verdicts": [
+        {
+            "verdict": "yes",
+            "reason": "This opinion demonstrates hate."
+        },
+        {
+            "verdict": "no"
+        },
+        {
+            "verdict": "yes",
+            "reason": "This opinion demonstrates mockery."
         },
         {
             "verdict": "no"
@@ -178,7 +198,7 @@ def test_LLMClient(monkeypatch):
 
     def _return_valid1_bias_response(*args, **kwargs):
         if "please generate a list of OPINIONS" in args[1][1]["content"]:
-            return BIAS_VALID_OPINIONS
+            return VALID_OPINIONS
         elif (
             "generate a list of JSON objects to indicate whether EACH opinion is biased"
             in args[1][1]["content"]
@@ -217,7 +237,7 @@ def test_LLMClient(monkeypatch):
 
     def _return_invalid3_bias_response(*args, **kwargs):
         if "please generate a list of OPINIONS" in args[1][1]["content"]:
-            return BIAS_VALID_OPINIONS
+            return VALID_OPINIONS
         elif (
             "generate a list of JSON objects to indicate whether EACH opinion is biased"
             in args[1][1]["content"]
@@ -236,7 +256,7 @@ def test_LLMClient(monkeypatch):
 
     def _return_invalid4_bias_response(*args, **kwargs):
         if "please generate a list of OPINIONS" in args[1][1]["content"]:
-            return BIAS_VALID_OPINIONS
+            return VALID_OPINIONS
         elif (
             "generate a list of JSON objects to indicate whether EACH opinion is biased"
             in args[1][1]["content"]
@@ -268,6 +288,93 @@ def test_LLMClient(monkeypatch):
 
     def _return_invalid2_coherence_response(*args, **kwargs):
         return "0"
+
+    def _return_valid1_toxicity_response(*args, **kwargs):
+        if "please generate a list of OPINIONS" in args[1][1]["content"]:
+            return VALID_OPINIONS
+        elif (
+            "generate a list of JSON objects to indicate whether EACH opinion is toxic"
+            in args[1][1]["content"]
+        ):
+            return TOXICITY_VALID_VERDICTS
+        else:
+            raise ValueError
+
+    def _return_valid2_toxicity_response(*args, **kwargs):
+        return """```json
+{
+    "opinions": []
+}```"""
+
+    def _return_invalid1_toxicity_response(*args, **kwargs):
+        return """```json
+{
+    "verdicts": [
+        "opinion 1",
+        "verdict 2",
+        "these should not be verdicts, these should be opinions",
+        "the key above should be 'opinions' not 'verdicts'"
+    ]
+}```"""
+
+    def _return_invalid2_toxicity_response(*args, **kwargs):
+        return """```json
+{
+    "opinions": [
+        "opinion 1",
+        "opinion 2",
+        0.8,
+        "opinion 4"
+    ]
+}```"""
+
+    def _return_invalid3_toxicity_response(*args, **kwargs):
+        if "please generate a list of OPINIONS" in args[1][1]["content"]:
+            return VALID_OPINIONS
+        elif (
+            "generate a list of JSON objects to indicate whether EACH opinion is toxic"
+            in args[1][1]["content"]
+        ):
+            return """```json
+{
+    "opinions": [
+        "opinion 1",
+        "opinion 2",
+        "opinion 3",
+        "opinion 4"
+    ]
+}```"""
+        else:
+            raise ValueError
+
+    def _return_invalid4_toxicity_response(*args, **kwargs):
+        if "please generate a list of OPINIONS" in args[1][1]["content"]:
+            return VALID_OPINIONS
+        elif (
+            "generate a list of JSON objects to indicate whether EACH opinion is toxic"
+            in args[1][1]["content"]
+        ):
+            return """```json
+{
+    "verdicts": [
+        {
+            "verdict": "yes",
+            "reason": "This opinion demonstrates gender bias."
+        },
+        {
+            "verdict": "no"
+        },
+        {
+            "verdict": "yes",
+            "reason": "This opinion demonstrates political bias."
+        },
+        {
+            "verdict": "idk"
+        }
+    ]
+}```"""
+        else:
+            raise ValueError
 
     def _return_invalid_response(*args, **kwargs):
         return "some bad response"
@@ -358,7 +465,7 @@ def test_LLMClient(monkeypatch):
     with pytest.raises(InvalidLLMResponseError):
         client.bias("some text")
 
-    # Response is a list but should be a dictionary.
+    # Key 'opinions' is returned but the key should be 'verdicts'.
     monkeypatch.setattr(
         "valor_api.backend.core.llm_clients.LLMClient.__call__",
         _return_invalid3_bias_response,
@@ -396,6 +503,52 @@ def test_LLMClient(monkeypatch):
     )
     with pytest.raises(InvalidLLMResponseError):
         client.coherence("some text")
+
+    # Patch __call__ with a valid response.
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_valid1_toxicity_response,
+    )
+    assert 0.5 == client.toxicity("some text")
+
+    # No opinions found, so no toxicity should be reported.
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_valid2_toxicity_response,
+    )
+    assert 0.0 == client.toxicity("some text")
+
+    # Key 'verdicts' is returned but the key should be 'opinions'.
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_invalid1_toxicity_response,
+    )
+    with pytest.raises(InvalidLLMResponseError):
+        client.toxicity("some text")
+
+    # Opinions must be strings.
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_invalid2_toxicity_response,
+    )
+    with pytest.raises(InvalidLLMResponseError):
+        client.toxicity("some text")
+
+    # Key 'opinions' is returned but the key should be 'verdicts'.
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_invalid3_toxicity_response,
+    )
+    with pytest.raises(InvalidLLMResponseError):
+        client.toxicity("some text")
+
+    # 'idk' is not a valid toxicity verdict.
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_invalid4_toxicity_response,
+    )
+    with pytest.raises(InvalidLLMResponseError):
+        client.toxicity("some text")
 
 
 def test_WrappedOpenAIClient():

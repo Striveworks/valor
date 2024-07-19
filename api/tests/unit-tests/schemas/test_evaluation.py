@@ -64,6 +64,7 @@ def test_EvaluationParameters(llm_api_params):
             MetricType.BLEU,
             MetricType.Coherence,
             MetricType.ROUGE,
+            MetricType.Toxicity,
         ],
         llm_api_params=llm_api_params,
     )
@@ -77,6 +78,7 @@ def test_EvaluationParameters(llm_api_params):
             MetricType.BLEU,
             MetricType.Coherence,
             MetricType.ROUGE,
+            MetricType.Toxicity,
         ],
         llm_api_params=llm_api_params,
         bleu_weights=[0.5, 0.25, 0.25, 0],
@@ -143,6 +145,7 @@ def test_EvaluationParameters(llm_api_params):
                 MetricType.BLEU,
                 MetricType.Coherence,
                 MetricType.ROUGE,
+                MetricType.Toxicity,
             ],
         )
 
@@ -156,6 +159,7 @@ def test_EvaluationParameters(llm_api_params):
                 MetricType.BLEU,
                 MetricType.Coherence,
                 MetricType.ROUGE,
+                MetricType.Toxicity,
             ],
             llm_api_params=llm_api_params,
             bleu_weights=[1.1, 0.3, -0.5, 0.1],
@@ -171,6 +175,7 @@ def test_EvaluationParameters(llm_api_params):
                 MetricType.BLEU,
                 MetricType.Coherence,
                 MetricType.ROUGE,
+                MetricType.Toxicity,
             ],
             llm_api_params=llm_api_params,
             bleu_weights=[0.5, 0.25, 0.25, 0.25],

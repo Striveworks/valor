@@ -32,6 +32,7 @@ LLM_GUIDED_METRICS = {
     "AnswerRelevance",
     "Bias",
     "Coherence",
+    "Toxicity",
 }
 
 
@@ -257,6 +258,7 @@ def _compute_text_generation_metrics(
     | schemas.BLEUMetric
     | schemas.CoherenceMetric
     | schemas.ROUGEMetric
+    | schemas.ToxicityMetric
 ]:
     """
     Compute text generation metrics.
@@ -280,7 +282,7 @@ def _compute_text_generation_metrics(
 
     Returns
     ----------
-    Sequence[schemas.AnswerRelevanceMetric | schemas.BiasMetric | schemas.BLEUMetric | schemas.CoherenceMetric | schemas.ROUGEMetric]
+    Sequence[schemas.AnswerRelevanceMetric | schemas.BiasMetric | schemas.BLEUMetric | schemas.CoherenceMetric | schemas.ROUGEMetric | schemas.ToxicityMetric]
         A list of computed metrics.
     """
     prediction_subquery = generate_query(
@@ -454,6 +456,7 @@ def _compute_text_generation_metrics(
         is_AnswerRelevance_enabled = "AnswerRelevance" in metrics_to_return
         is_Bias_enabled = "Bias" in metrics_to_return
         is_Coherence_enabled = "Coherence" in metrics_to_return
+        is_Toxicity_enabled = "Toxicity" in metrics_to_return
 
         for datum_uid, dataset_name, datum_text, prediction_text, _ in results:
             if is_AnswerRelevance_enabled:
@@ -487,6 +490,19 @@ def _compute_text_generation_metrics(
                 score = client.coherence(text=prediction_text)
                 output += [
                     schemas.CoherenceMetric(
+                        value=score,
+                        parameters={
+                            "dataset": dataset_name,
+                            "datum_uid": datum_uid,
+                            "prediction": prediction_text,
+                        },
+                    )
+                ]
+
+            if is_Toxicity_enabled:
+                score = client.toxicity(text=prediction_text)
+                output += [
+                    schemas.ToxicityMetric(
                         value=score,
                         parameters={
                             "dataset": dataset_name,

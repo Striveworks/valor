@@ -56,6 +56,7 @@ class MetricType(str, Enum):
     BLEU = "BLEU"
     Coherence = "Coherence"
     ROUGE = "ROUGE"
+    Toxicity = "Toxicity"
 
     @classmethod
     def classification(cls) -> Set["MetricType"]:
@@ -109,6 +110,7 @@ class MetricType(str, Enum):
             cls.BLEU,
             cls.Coherence,
             cls.ROUGE,
+            cls.Toxicity,
         }
 
 
