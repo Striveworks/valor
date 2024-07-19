@@ -539,7 +539,7 @@ def test_compute_roc_auc(
         db=db,
         groundtruths=groundtruths,
         predictions=predictions,
-        labels=labels,
+        labels=set(labels.values()),
     )
 
     results = {rocauc.label_key: rocauc.value for rocauc in rocaucs}
@@ -624,7 +624,7 @@ def test_compute_roc_auc_groupby_metadata(
         db=db,
         groundtruths=groundtruths,
         predictions=predictions,
-        labels=labels,
+        labels=set(labels.values()),
     )
 
     results = {rocauc.label_key: rocauc.value for rocauc in rocaucs}
@@ -711,7 +711,7 @@ def test_compute_roc_auc_with_label_map(
         db=db,
         groundtruths=groundtruths,
         predictions=predictions,
-        labels=labels,
+        labels=set(labels.values()),
     )
 
     results = {

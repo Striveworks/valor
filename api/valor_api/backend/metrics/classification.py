@@ -1,11 +1,10 @@
 import random
 from collections import defaultdict
-from typing import Any
 
 import numpy as np
-from sqlalchemy import CTE, ColumnElement, Integer, Subquery
+from sqlalchemy import CTE, ColumnElement, Integer, literal
 from sqlalchemy.orm import Session
-from sqlalchemy.sql import and_, func, select
+from sqlalchemy.sql import and_, func, not_, or_, select
 
 from valor_api import enums, schemas
 from valor_api.backend import core, models
@@ -28,8 +27,8 @@ def _compute_curves(
     db: Session,
     predictions: CTE,
     groundtruths: CTE,
-    labels: set[tuple[str, str]],
-    unique_datums: dict[str, tuple[str, str]],
+    labels: dict[int, tuple[str, str]],
+    unique_datums: dict[int, tuple[str, str]],
     pr_curve_max_examples: int,
     metrics_to_return: list[enums.MetricType],
 ) -> list[schemas.PrecisionRecallCurve | schemas.DetailedPrecisionRecallCurve]:
@@ -44,7 +43,7 @@ def _compute_curves(
         A CTE defining a set of predictions.
     groundtruths: CTE
         A CTE defining a set of ground truths.
-    unique_datums: dict[str, tuple[str, str]]
+    unique_datums: dict[int, tuple[str, str]]
         All of the unique datums associated with the ground truth and prediction filters.
     pr_curve_max_examples: int
         The maximum number of datum examples to store per true positive, false negative, etc.
@@ -57,33 +56,9 @@ def _compute_curves(
         The PrecisionRecallCurve and/or DetailedPrecisionRecallCurve metrics.
     """
 
-    # create sets of all datums for which there is a prediction / groundtruth
-    # used when separating misclassifications/no_predictions
-    @profiler
-    def _high_scores():
-        return db.query(
-            select(
-                predictions.c.key,
-                predictions.c.datum_id,
-                func.max(predictions.c.score),
-            )
-            .select_from(predictions)
-            .group_by(
-                predictions.c.key,
-                predictions.c.datum_id,
-            )
-            .subquery()
-        ).all()
-
-    high_scores = _high_scores()
-
-    label_key_to_datum_high_score = defaultdict(dict)
-    for label_key, datum_id, high_score in high_scores:
-        label_key_to_datum_high_score[label_key][datum_id] = high_score
-
     high_score_subquery = (
         select(
-            predictions.c.key.label("label_key"),
+            predictions.c.key,
             predictions.c.datum_id,
             func.max(predictions.c.score).label("score"),
         )
@@ -95,355 +70,564 @@ def _compute_curves(
         .subquery()
     )
 
-    total_query = (
+    base_query = (
         select(
-            func.coalesce(
-                groundtruths.c.datum_id,
-                predictions.c.datum_id,
-            ).label("datum_id"),
-            func.coalesce(
-                groundtruths.c.key,
-                predictions.c.key,
-            ).label("label_key"),
-            groundtruths.c.value.label("gt_value"),
-            predictions.c.value.label("pd_value"),
-            predictions.c.score,
+            models.Datum.id.label("datum_id"),
+            models.Label.key,
+            models.Label.value,
+            high_score_subquery.c.score.label("high_score"),
         )
-        .select_from(groundtruths)
+        .select_from(models.Datum)
+        .join(models.Label, models.Label.id.in_(labels.keys()), full=True)
         .join(
-            predictions,
+            high_score_subquery,
             and_(
-                predictions.c.datum_id == groundtruths.c.datum_id,
-                predictions.c.key == groundtruths.c.key,
+                high_score_subquery.c.datum_id == models.Datum.id,
+                high_score_subquery.c.key == models.Label.key,
             ),
-            full=True,
+            isouter=True,
         )
+        .where(models.Datum.id.in_(unique_datums.keys()))
         .subquery()
     )
 
     thresholds_cte = select(
         func.generate_series(0.95, 0.05, -0.05).label("threshold")
-    ).cte()
+    ).subquery()
 
-    next_query = (
+    joint_query = (
         select(
-            total_query.c.datum_id,
-            total_query.c.label_key,
-            total_query.c.gt_value,
+            base_query.c.datum_id,
+            base_query.c.key,
+            base_query.c.value,
             thresholds_cte.c.threshold,
-            (
-                and_(
-                    (total_query.c.gt_value == total_query.c.pd_value),
-                    (total_query.c.score >= thresholds_cte.c.threshold),
-                )
-            ).label("tp"),
-            (
-                and_(
-                    (total_query.c.gt_value != total_query.c.pd_value),
-                    (total_query.c.score >= thresholds_cte.c.threshold),
-                )
-            ).label("fp"),
-            (
-                and_(
-                    (total_query.c.gt_value != total_query.c.pd_value),
-                    (total_query.c.score < thresholds_cte.c.threshold),
-                )
-            ).label("tn"),
-            (
-                and_(
-                    (total_query.c.gt_value != total_query.c.pd_value),
-                    (total_query.c.score < thresholds_cte.c.threshold),
-                )
-            ).label("fn"),
-            (high_score_subquery.c.score < thresholds_cte.c.threshold).label(
-                "prediction_exists"
+            (groundtruths.c.key.isnot(None)).label("gt_exists"),
+            (predictions.c.key.isnot(None)).label("pd_exists"),
+            (predictions.c.score >= thresholds_cte.c.threshold).label(
+                "is_positive"
+            ),
+            (base_query.c.high_score >= thresholds_cte.c.threshold).label(
+                "positive_exists"
             ),
         )
-        .select_from(total_query)
+        .select_from(base_query)
         .join(
-            high_score_subquery,
+            groundtruths,
             and_(
-                high_score_subquery.c.datum_id == total_query.c.datum_id,
-                high_score_subquery.c.label_key == total_query.c.label_key,
+                groundtruths.c.datum_id == base_query.c.datum_id,
+                groundtruths.c.key == base_query.c.key,
+                groundtruths.c.value == base_query.c.value,
             ),
+            isouter=True,
         )
+        .join(
+            predictions,
+            and_(
+                predictions.c.datum_id == base_query.c.datum_id,
+                predictions.c.key == base_query.c.key,
+                predictions.c.value == base_query.c.value,
+            ),
+            isouter=True,
+        )
+        .join(thresholds_cte, literal(True))
+        .order_by(
+            base_query.c.key,
+            base_query.c.value,
+            base_query.c.datum_id,
+        )
+        .subquery()
+    )
+
+    # define pr curve query
+
+    pr_counts = (
+        select(
+            joint_query.c.key,
+            joint_query.c.value,
+            joint_query.c.threshold,
+            func.sum(
+                and_(
+                    joint_query.c.gt_exists,
+                    joint_query.c.pd_exists,
+                    joint_query.c.is_positive,
+                ).cast(Integer)
+            ).label("tp"),
+            func.sum(
+                and_(
+                    not_(joint_query.c.gt_exists),
+                    joint_query.c.pd_exists,
+                    joint_query.c.is_positive,
+                ).cast(Integer)
+            ).label("fp"),
+            func.sum(
+                and_(
+                    not_(joint_query.c.gt_exists),
+                    or_(
+                        not_(joint_query.c.pd_exists),
+                        not_(joint_query.c.is_positive),
+                    ),
+                ).cast(Integer)
+            ).label("tn"),
+            func.sum(
+                and_(
+                    joint_query.c.gt_exists,
+                    or_(
+                        and_(
+                            joint_query.c.pd_exists,
+                            not_(joint_query.c.is_positive),
+                        ),
+                        not_(joint_query.c.pd_exists),
+                    ),
+                ).cast(Integer)
+            ).label("fn"),
+        )
+        .select_from(joint_query)
+        .group_by(
+            joint_query.c.key,
+            joint_query.c.value,
+            joint_query.c.threshold,
+        )
+        .subquery()
+    )
+
+    # define detailed pr curve query
+
+    detailed_pr_datums = (
+        select(
+            joint_query.c.datum_id,
+            joint_query.c.key,
+            joint_query.c.value,
+            joint_query.c.threshold,
+            and_(
+                joint_query.c.gt_exists,
+                joint_query.c.pd_exists,
+                joint_query.c.is_positive,
+            ).label("tp"),
+            and_(
+                not_(joint_query.c.gt_exists),
+                joint_query.c.pd_exists,
+                joint_query.c.is_positive,
+            ).label("fp"),
+            and_(
+                not_(joint_query.c.gt_exists),
+                or_(
+                    not_(joint_query.c.pd_exists),
+                    not_(joint_query.c.is_positive),
+                ),
+            ).label("tn"),
+            and_(
+                joint_query.c.gt_exists,
+                or_(
+                    and_(
+                        joint_query.c.pd_exists,
+                        not_(joint_query.c.is_positive),
+                    ),
+                    not_(joint_query.c.pd_exists),
+                ),
+                joint_query.c.positive_exists,
+            ).label("fn_misclf"),
+            and_(
+                joint_query.c.gt_exists,
+                or_(
+                    and_(
+                        joint_query.c.pd_exists,
+                        not_(joint_query.c.is_positive),
+                    ),
+                    not_(joint_query.c.pd_exists),
+                ),
+                or_(
+                    not_(joint_query.c.is_positive),
+                    not_(joint_query.c.positive_exists),
+                ),
+            ).label("fn_misprd"),
+        )
+        .select_from(joint_query)
         .cte()
     )
 
     def search_datums(condition: ColumnElement[bool]):
-        return (
+        search_datums = (
             select(
-                next_query.c.label_key,
-                next_query.c.gt_value,
-                next_query.c.threshold,
-                next_query.c.datum_id,
+                detailed_pr_datums.c.datum_id,
+                detailed_pr_datums.c.key,
+                detailed_pr_datums.c.value,
+                detailed_pr_datums.c.threshold,
                 func.row_number()
                 .over(
                     partition_by=[
-                        next_query.c.label_key,
-                        next_query.c.gt_value,
-                        next_query.c.threshold,
+                        detailed_pr_datums.c.key,
+                        detailed_pr_datums.c.value,
+                        detailed_pr_datums.c.threshold,
                     ],
                     order_by=func.random(),
                 )
                 .label("row_number"),
             )
-            .where(condition)
+            .where(condition.is_(True))
             .subquery()
         )
-
-    def limit_examples(subquery: Subquery[Any]):
         return (
             select(
-                subquery.c.label_key,
-                subquery.c.gt_value,
-                subquery.c.threshold,
-                subquery.c.datum_id,
+                search_datums.c.key,
+                search_datums.c.value,
+                search_datums.c.threshold,
+                func.array_agg(search_datums.c.datum_id)
+                .over(
+                    partition_by=[
+                        search_datums.c.key,
+                        search_datums.c.value,
+                        search_datums.c.threshold,
+                    ]
+                )
+                .label("datum_ids"),
             )
-            .where(subquery.c.row_number <= pr_curve_max_examples)
+            .where(search_datums.c.row_number <= pr_curve_max_examples)
+            .distinct()
             .cte()
         )
 
-    tp_datums = search_datums(next_query.c.fp)
-    fp_datums = search_datums(next_query.c.fp)
-    tn_datums = search_datums(next_query.c.tn)
-    fn_misclassification_datums = search_datums(
-        and_(
-            next_query.c.fn,
-            next_query.c.prediction_exists,
-        )
+    tp_examples = search_datums(detailed_pr_datums.c.tp)
+    fp_examples = search_datums(detailed_pr_datums.c.fp)
+    tn_examples = search_datums(detailed_pr_datums.c.tn)
+    fn_misclassification_examples = search_datums(
+        detailed_pr_datums.c.fn_misclf
     )
-    fn_missing_prediction_datums = search_datums(
-        and_(
-            next_query.c.fn,
-            next_query.c.prediction_exists.isnot(True),
-        )
+    fn_missing_prediction_examples = search_datums(
+        detailed_pr_datums.c.fn_misprd
     )
 
-    tp_examples = limit_examples(tp_datums)
-    fp_examples = limit_examples(fp_datums)
-    tn_examples = limit_examples(tn_datums)
-    fn_misclassification_examples = limit_examples(fn_misclassification_datums)
-    fn_missing_prediction_examples = limit_examples(
-        fn_missing_prediction_datums
-    )
-
-    pr_counts = (
+    detailed_pr_counts = (
         select(
-            next_query.c.label_key,
-            next_query.c.gt_value,
-            next_query.c.threshold,
-            func.sum(next_query.c.tp.cast(Integer)).label("tp"),
-            func.sum(next_query.c.fp.cast(Integer)).label("fp"),
-            func.sum(next_query.c.tn.cast(Integer)).label("tn"),
-            func.sum(next_query.c.fn.cast(Integer)).label("fn"),
-            func.array_agg(tp_examples.c.datum_id).label("tp_examples"),
-            func.array_agg(fp_examples.c.datum_id).label("fp_examples"),
-            func.array_agg(tn_examples.c.datum_id).label("tn_examples"),
-            func.array_agg(fn_misclassification_examples.c.datum_id).label(
+            detailed_pr_datums.c.key,
+            detailed_pr_datums.c.value,
+            detailed_pr_datums.c.threshold,
+            func.sum(detailed_pr_datums.c.tp.cast(Integer)),
+            func.sum(detailed_pr_datums.c.fp.cast(Integer)),
+            func.sum(detailed_pr_datums.c.tn.cast(Integer)),
+            func.sum(detailed_pr_datums.c.fn_misclf.cast(Integer)),
+            func.sum(detailed_pr_datums.c.fn_misprd.cast(Integer)),
+            tp_examples.c.datum_ids.label("tp_examples"),
+            fp_examples.c.datum_ids.label("fp_examples"),
+            tn_examples.c.datum_ids.label("tn_examples"),
+            fn_misclassification_examples.c.datum_ids.label(
                 "fn_misclf_examples"
             ),
-            func.array_agg(fn_missing_prediction_examples.c.datum_id).label(
+            fn_missing_prediction_examples.c.datum_ids.label(
                 "fn_misprd_examples"
             ),
         )
-        .select_from(next_query)
+        .select_from(detailed_pr_datums)
         .join(
             tp_examples,
             and_(
-                tp_examples.c.label_key == next_query.c.label_key,
-                tp_examples.c.gt_value == next_query.c.gt_value,
-                tp_examples.c.threshold == next_query.c.threshold,
+                tp_examples.c.key == detailed_pr_datums.c.key,
+                tp_examples.c.value == detailed_pr_datums.c.value,
+                tp_examples.c.threshold == detailed_pr_datums.c.threshold,
             ),
+            isouter=True,
         )
         .join(
             fp_examples,
             and_(
-                fp_examples.c.label_key == next_query.c.label_key,
-                fp_examples.c.gt_value == next_query.c.gt_value,
-                fp_examples.c.threshold == next_query.c.threshold,
+                fp_examples.c.key == detailed_pr_datums.c.key,
+                fp_examples.c.value == detailed_pr_datums.c.value,
+                fp_examples.c.threshold == detailed_pr_datums.c.threshold,
             ),
+            isouter=True,
         )
         .join(
             tn_examples,
             and_(
-                tn_examples.c.label_key == next_query.c.label_key,
-                tn_examples.c.gt_value == next_query.c.gt_value,
-                tn_examples.c.threshold == next_query.c.threshold,
+                tn_examples.c.key == detailed_pr_datums.c.key,
+                tn_examples.c.value == detailed_pr_datums.c.value,
+                tn_examples.c.threshold == detailed_pr_datums.c.threshold,
             ),
+            isouter=True,
         )
         .join(
             fn_misclassification_examples,
             and_(
-                fn_misclassification_examples.c.label_key
-                == next_query.c.label_key,
-                fn_misclassification_examples.c.gt_value
-                == next_query.c.gt_value,
+                fn_misclassification_examples.c.key
+                == detailed_pr_datums.c.key,
+                fn_misclassification_examples.c.value
+                == detailed_pr_datums.c.value,
                 fn_misclassification_examples.c.threshold
-                == next_query.c.threshold,
+                == detailed_pr_datums.c.threshold,
             ),
+            isouter=True,
         )
         .join(
             fn_missing_prediction_examples,
             and_(
-                fn_missing_prediction_examples.c.label_key
-                == next_query.c.label_key,
-                fn_missing_prediction_examples.c.gt_value
-                == next_query.c.gt_value,
+                fn_missing_prediction_examples.c.key
+                == detailed_pr_datums.c.key,
+                fn_missing_prediction_examples.c.value
+                == detailed_pr_datums.c.value,
                 fn_missing_prediction_examples.c.threshold
-                == next_query.c.threshold,
+                == detailed_pr_datums.c.threshold,
             ),
+            isouter=True,
         )
         .group_by(
-            next_query.c.label_key,
-            next_query.c.gt_value,
-            next_query.c.threshold,
+            detailed_pr_datums.c.key,
+            detailed_pr_datums.c.value,
+            detailed_pr_datums.c.threshold,
+            tp_examples.c.datum_ids,
+            fp_examples.c.datum_ids,
+            tn_examples.c.datum_ids,
+            fn_misclassification_examples.c.datum_ids,
+            fn_missing_prediction_examples.c.datum_ids,
         )
+        .order_by(detailed_pr_datums.c.threshold)
         .subquery()
     )
 
-    @profiler
-    def _res():
-        return db.query(pr_counts).all()
+    label_to_results = defaultdict(lambda: defaultdict(dict))
+    if enums.MetricType.DetailedPrecisionRecallCurve in metrics_to_return:
 
-    res = _res()
+        def res_():
+            return db.query(detailed_pr_counts).all()
+
+        res = profiler(res_)()
+        for (
+            label_key,
+            label_value,
+            threshold,
+            tp_cnt,
+            fp_cnt,
+            tn_cnt,
+            fn_misclf_cnt,
+            fn_misprd_cnt,
+            tp,
+            fp,
+            tn,
+            fn_misclf_examples,
+            fn_misprd_examples,
+        ) in res:
+            label_to_results[label_key][label_value][float(threshold)] = (
+                tp_cnt,
+                fp_cnt,
+                tn_cnt,
+                fn_misclf_cnt,
+                fn_misprd_cnt,
+                tp,
+                fp,
+                tn,
+                fn_misclf_examples,
+                fn_misprd_examples,
+            )
+
+    else:
+
+        def res_():
+            return db.query(pr_counts).all()
+
+        res = profiler(res_)()
+        for (
+            label_key,
+            label_value,
+            threshold,
+            tp_cnt,
+            fp_cnt,
+            tn_cnt,
+            fn_cnt,
+        ) in res:
+            label_to_results[label_key][label_value][float(threshold)] = (
+                tp_cnt,
+                fp_cnt,
+                tn_cnt,
+                fn_cnt,
+                0,
+                None,
+                None,
+                None,
+                None,
+                None,
+            )
 
     pr_output = defaultdict(lambda: defaultdict((lambda: defaultdict(dict))))
     detailed_pr_output = defaultdict(
         lambda: defaultdict((lambda: defaultdict(dict)))
     )
-    for (
-        label_key,
-        label_value,
-        threshold,
-        tp_cnt,
-        fp_cnt,
-        tn_cnt,
-        fn_cnt,
-        tp,
-        fp,
-        tn,
-        fn_misclf_examples,
-        fn_misprd_examples,
-    ) in res:
 
-        precision = (
-            (tp_cnt) / (tp_cnt + fp_cnt) if (tp_cnt + fp_cnt) > 0 else -1
-        )
-        recall = tp_cnt / (tp_cnt + fn_cnt) if (tp_cnt + fn_cnt) > 0 else -1
-        accuracy = (
-            (tp_cnt + tn_cnt) / len(unique_datums)
-            if len(unique_datums) > 0
-            else -1
-        )
-        f1_score = (
-            (2 * precision * recall) / (precision + recall)
-            if precision and recall
-            else -1
-        )
+    for key, value in labels.values():
+        for threshold in [x / 100 for x in range(5, 100, 5)]:
+            if (
+                key not in label_to_results
+                or value not in label_to_results[key]
+                or threshold not in label_to_results[key][value]
+            ):
+                (
+                    tp_cnt,
+                    fp_cnt,
+                    tn_cnt,
+                    fn_misclf_cnt,
+                    fn_misprd_cnt,
+                    tp,
+                    fp,
+                    tn,
+                    fn_misclf_examples,
+                    fn_misprd_examples,
+                ) = (0, 0, 0, 0, 0, None, None, None, None, None)
+            else:
+                (
+                    tp_cnt,
+                    fp_cnt,
+                    tn_cnt,
+                    fn_misclf_cnt,
+                    fn_misprd_cnt,
+                    tp,
+                    fp,
+                    tn,
+                    fn_misclf_examples,
+                    fn_misprd_examples,
+                ) = label_to_results[key][value][threshold]
+                tp_cnt = tp_cnt if tp_cnt else 0
+                fp_cnt = fp_cnt if fp_cnt else 0
+                tn_cnt = tn_cnt if tn_cnt else 0
+                fn_misclf_cnt = fn_misclf_cnt if fn_misclf_cnt else 0
+                fn_misprd_cnt = fn_misprd_cnt if fn_misprd_cnt else 0
 
-        pr_output[label_key][label_value][threshold] = {
-            "tp": tp_cnt,
-            "fp": fp_cnt,
-            "fn": fn_cnt,
-            "tn": tn_cnt,
-            "accuracy": accuracy,
-            "precision": precision,
-            "recall": recall,
-            "f1_score": f1_score,
-        }
+            fn_cnt = fn_misclf_cnt + fn_misprd_cnt
 
-        if enums.MetricType.DetailedPrecisionRecallCurve in metrics_to_return:
-            tp = [unique_datums[datum_id] for datum_id in tp]
-            fp = {
-                "misclassifications": [
-                    unique_datums[datum_id] for datum_id in fp
-                ]
+            precision = (
+                (tp_cnt) / (tp_cnt + fp_cnt) if (tp_cnt + fp_cnt) > 0 else -1
+            )
+            recall = (
+                tp_cnt / (tp_cnt + fn_cnt) if (tp_cnt + fn_cnt) > 0 else -1
+            )
+            accuracy = (
+                (tp_cnt + tn_cnt) / len(unique_datums)
+                if len(unique_datums) > 0
+                else -1
+            )
+            f1_score = (
+                (2 * precision * recall) / (precision + recall)
+                if precision and recall
+                else -1
+            )
+
+            pr_output[key][value][float(threshold)] = {
+                "tp": tp_cnt,
+                "fp": fp_cnt,
+                "fn": fn_cnt,
+                "tn": tn_cnt,
+                "accuracy": accuracy,
+                "precision": precision,
+                "recall": recall,
+                "f1_score": f1_score,
             }
-            tn = [unique_datums[datum_id] for datum_id in tn]
-            fn = {
-                "misclassifications": [
-                    unique_datums[datum_id] for datum_id in fn_misclf_examples
-                ],
-                "no_predictions": [
-                    unique_datums[datum_id] for datum_id in fn_misprd_examples
-                ],
-            }
 
-            detailed_pr_output[label_key][label_value][threshold] = {
-                "tp": {
-                    "total": tp_cnt,
-                    "observations": {
-                        "all": {
-                            "count": tp_cnt,
-                            "examples": (
-                                random.sample(tp, pr_curve_max_examples)
-                                if len(tp) > pr_curve_max_examples
-                                else tp
-                            ),
-                        }
-                    },
-                },
-                "tn": {
-                    "total": tn_cnt,
-                    "observations": {
-                        "all": {
-                            "count": tn_cnt,
-                            "examples": (
-                                random.sample(tn, pr_curve_max_examples)
-                                if len(tn) > pr_curve_max_examples
-                                else tn
-                            ),
-                        }
-                    },
-                },
-                "fn": {
-                    "total": fn_cnt,
-                    "observations": {
-                        "misclassifications": {
-                            "count": len(fn["misclassifications"]),
-                            "examples": (
-                                random.sample(
-                                    fn["misclassifications"],
-                                    pr_curve_max_examples,
-                                )
-                                if len(fn["misclassifications"])
-                                > pr_curve_max_examples
-                                else fn["misclassifications"]
-                            ),
-                        },
-                        "no_predictions": {
-                            "count": len(fn["no_predictions"]),
-                            "examples": (
-                                random.sample(
-                                    fn["no_predictions"],
-                                    pr_curve_max_examples,
-                                )
-                                if len(fn["no_predictions"])
-                                > pr_curve_max_examples
-                                else fn["no_predictions"]
-                            ),
-                        },
-                    },
-                },
-                "fp": {
-                    "total": fp_cnt,
-                    "observations": {
-                        "misclassifications": {
-                            "count": len(fp["misclassifications"]),
-                            "examples": (
-                                random.sample(
-                                    fp["misclassifications"],
-                                    pr_curve_max_examples,
-                                )
-                                if len(fp["misclassifications"])
-                                >= pr_curve_max_examples
-                                else fp["misclassifications"]
-                            ),
+            if (
+                enums.MetricType.DetailedPrecisionRecallCurve
+                in metrics_to_return
+            ):
+                tp = (
+                    [unique_datums[datum_id] for datum_id in tp]
+                    if tp
+                    else list()
+                )
+                fp = {
+                    "misclassifications": [
+                        unique_datums[datum_id] for datum_id in fp
+                    ]
+                    if fp
+                    else list()
+                }
+                tn = (
+                    [unique_datums[datum_id] for datum_id in tn]
+                    if tn
+                    else list()
+                )
+                fn = {
+                    "misclassifications": [
+                        unique_datums[datum_id]
+                        for datum_id in fn_misclf_examples
+                    ]
+                    if fn_misclf_examples
+                    else list(),
+                    "no_predictions": [
+                        unique_datums[datum_id]
+                        for datum_id in fn_misprd_examples
+                    ]
+                    if fn_misprd_examples
+                    else list(),
+                }
+
+                detailed_pr_output[key][value][float(threshold)] = {
+                    "tp": {
+                        "total": tp_cnt,
+                        "observations": {
+                            "all": {
+                                "count": tp_cnt,
+                                "examples": (
+                                    random.sample(tp, pr_curve_max_examples)
+                                    if len(tp) > pr_curve_max_examples
+                                    else tp
+                                ),
+                            }
                         },
                     },
-                },
-            }
+                    "tn": {
+                        "total": tn_cnt,
+                        "observations": {
+                            "all": {
+                                "count": tn_cnt,
+                                "examples": (
+                                    random.sample(tn, pr_curve_max_examples)
+                                    if len(tn) > pr_curve_max_examples
+                                    else tn
+                                ),
+                            }
+                        },
+                    },
+                    "fn": {
+                        "total": fn_cnt,
+                        "observations": {
+                            "misclassifications": {
+                                "count": fn_misclf_cnt,
+                                "examples": (
+                                    random.sample(
+                                        fn["misclassifications"],
+                                        pr_curve_max_examples,
+                                    )
+                                    if len(fn["misclassifications"])
+                                    > pr_curve_max_examples
+                                    else fn["misclassifications"]
+                                ),
+                            },
+                            "no_predictions": {
+                                "count": fn_misprd_cnt,
+                                "examples": (
+                                    random.sample(
+                                        fn["no_predictions"],
+                                        pr_curve_max_examples,
+                                    )
+                                    if len(fn["no_predictions"])
+                                    > pr_curve_max_examples
+                                    else fn["no_predictions"]
+                                ),
+                            },
+                        },
+                    },
+                    "fp": {
+                        "total": fp_cnt,
+                        "observations": {
+                            "misclassifications": {
+                                "count": fp_cnt,
+                                "examples": (
+                                    random.sample(
+                                        fp["misclassifications"],
+                                        pr_curve_max_examples,
+                                    )
+                                    if len(fp["misclassifications"])
+                                    >= pr_curve_max_examples
+                                    else fp["misclassifications"]
+                                ),
+                            },
+                        },
+                    },
+                }
 
     pr_curves = [
         schemas.PrecisionRecallCurve(
@@ -698,7 +882,7 @@ def _compute_confusion_matrices(
     db: Session,
     predictions: CTE,
     groundtruths: CTE,
-    labels: set[tuple[str, str]],
+    labels: dict[int, tuple[str, str]],
 ) -> dict[str, schemas.ConfusionMatrix | None]:
     """
     Computes the confusion matrix at a label_key.
@@ -817,7 +1001,7 @@ def _compute_confusion_matrices(
             if key in confusion_mapping
             else None
         )
-        for key, _ in labels
+        for key, _ in labels.values()
     }
 
 
@@ -885,7 +1069,7 @@ def _compute_confusion_matrices_and_metrics(
     db: Session,
     groundtruths: CTE,
     predictions: CTE,
-    labels: set[tuple[str, str]],
+    labels: dict[int, tuple[str, str]],
     pr_curve_max_examples: int,
     metrics_to_return: list[enums.MetricType],
 ) -> (
@@ -963,7 +1147,7 @@ def _compute_confusion_matrices_and_metrics(
         db=db,
         groundtruths=groundtruths,
         predictions=predictions,
-        labels=labels,
+        labels=set(labels.values()),
     )
 
     if (
@@ -1013,7 +1197,7 @@ def _compute_confusion_matrices_and_metrics(
         )
 
     # metrics that are per label
-    for key, value in labels:
+    for key, value in labels.values():
         confusion_matrix = confusion_matrices.get(key, None)
         if confusion_matrix:
             (
@@ -1058,7 +1242,7 @@ def _aggregate_data(
     groundtruth_filter: schemas.Filter,
     prediction_filter: schemas.Filter,
     label_map: LabelMapType | None = None,
-) -> tuple[CTE, CTE, set[tuple[str, str]]]:
+) -> tuple[CTE, CTE, dict[int, tuple[str, str]]]:
     """
     Compute classification metrics.
 
@@ -1090,8 +1274,6 @@ def _aggregate_data(
         label_map=label_map,
     )
 
-    print("Pre-gen")
-
     groundtruths_subquery = generate_select(
         models.Datum.id.label("datum_id"),
         models.Datum.uid.label("datum_uid"),
@@ -1106,6 +1288,7 @@ def _aggregate_data(
             groundtruths_subquery.c.datum_id,
             groundtruths_subquery.c.datum_uid,
             groundtruths_subquery.c.dataset_name,
+            models.Label.id.label("label_id"),
             models.Label.key,
             models.Label.value,
         )
@@ -1136,6 +1319,7 @@ def _aggregate_data(
             predictions_subquery.c.model_name,
             predictions_subquery.c.datum_id,
             predictions_subquery.c.datum_uid,
+            models.Label.id.label("label_id"),
             models.Label.key,
             models.Label.value,
             func.min(predictions_subquery.c.prediction_id).label(
@@ -1153,38 +1337,46 @@ def _aggregate_data(
             predictions_subquery.c.model_name,
             predictions_subquery.c.datum_id,
             predictions_subquery.c.datum_uid,
+            models.Label.id,
             models.Label.key,
             models.Label.value,
         )
         .cte()
     )
 
-    print("post-gen")
-
-    @profiler
     def groundtruth_label_query():
         return (
-            db.query(groundtruths_cte.c.key, groundtruths_cte.c.value)
+            db.query(
+                groundtruths_cte.c.label_id,
+                groundtruths_cte.c.key,
+                groundtruths_cte.c.value,
+            )
             .distinct()
             .all()
         )
 
-    @profiler
     def prediction_label_query():
         return (
-            db.query(predictions_cte.c.key, predictions_cte.c.value)
+            db.query(
+                predictions_cte.c.label_id,
+                predictions_cte.c.key,
+                predictions_cte.c.value,
+            )
             .distinct()
             .all()
         )
 
     # get all labels
     groundtruth_labels = {
-        (key, value) for key, value in groundtruth_label_query()
+        label_id: (key, value)
+        for label_id, key, value in groundtruth_label_query()
     }
     prediction_labels = {
-        (key, value) for key, value in prediction_label_query()
+        label_id: (key, value)
+        for label_id, key, value in prediction_label_query()
     }
-    labels = groundtruth_labels.union(prediction_labels)
+    labels = groundtruth_labels
+    labels.update(prediction_labels)
 
     return (groundtruths_cte, predictions_cte, labels)
 

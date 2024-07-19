@@ -163,3 +163,6 @@ def test_evaluation_status_members():
         EvaluationStatus.DELETING,
     }
     assert EvaluationStatus.DELETING.next() == {EvaluationStatus.DELETING}
+
+    with pytest.raises(NotImplementedError):
+        EvaluationStatus.next("hello")  # type: ignore - testing
