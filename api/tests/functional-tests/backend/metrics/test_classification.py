@@ -1113,6 +1113,7 @@ def test__compute_curves(
         metric,
     ), expected_length in pr_expected_answers.items():
         classification = pr_curves["animal"].value[value][threshold][metric]
+        print(value, threshold, metric)
         assert classification == expected_length
 
     # check DetailedPrecisionRecallCurve
