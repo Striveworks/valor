@@ -716,14 +716,14 @@ def _calculate_bbox_iou(bbox1, bbox2) -> float:
     return iou
 
 
-def _get_joint_df(
+def _get_groundtruth_and_prediction_df(
     db: Session,
     groundtruth_filter: schemas.Filter,
     prediction_filter: schemas.Filter,
     grouper_mappings: dict,
     annotation_type: AnnotationType,
-) -> pandas.DataFrame:
-    """Create a joint dataframe of groundtruths and predictions"""
+) -> tuple[pandas.DataFrame, pandas.DataFrame]:
+    """Create groundtruth and prediction dataframes"""
 
     gt = generate_select(
         models.Dataset.name.label("dataset_name"),
@@ -735,6 +735,10 @@ def _get_joint_df(
             grouper_mappings["label_id_to_grouper_id_mapping"],
             value=models.GroundTruth.label_id,
         ).label("label_id_grouper"),
+        case(
+            grouper_mappings["label_id_to_grouper_key_mapping"],
+            value=models.GroundTruth.label_id,
+        ).label("label_key_grouper"),
         _annotation_type_to_geojson(annotation_type, models.Annotation).label(
             "geojson"
         ),
@@ -754,6 +758,10 @@ def _get_joint_df(
             grouper_mappings["label_id_to_grouper_id_mapping"],
             value=models.Prediction.label_id,
         ).label("label_id_grouper"),
+        case(
+            grouper_mappings["label_id_to_grouper_key_mapping"],
+            value=models.Prediction.label_id,
+        ).label("label_key_grouper"),
         _annotation_type_to_geojson(annotation_type, models.Annotation).label(
             "geojson"
         ),
@@ -765,7 +773,17 @@ def _get_joint_df(
     gt_df = pandas.read_sql(gt, db.bind)  # type: ignore - pandas typing error.
     pd_df = pandas.read_sql(pd, db.bind)  # type: ignore - pandas typing error.
 
-    # add the number of groundtruth observations per grouper key
+    return (gt_df, pd_df)
+
+
+def _get_joint_df(
+    gt_df: pandas.DataFrame,
+    pd_df: pandas.DataFrame,
+    grouper_mappings: dict,
+) -> pandas.DataFrame:
+    """Create a joint dataframe of groundtruths and predictions for calculating AR/AP metrics."""
+
+    # add the number of groundtruth observations per groupere
     number_of_groundtruths_per_grouper_df = (
         gt_df.groupby("label_id_grouper", as_index=False)["id"]
         .nunique()
@@ -1342,11 +1360,17 @@ def _compute_detection_metrics(
         evaluation_type=enums.TaskType.OBJECT_DETECTION,
     )
 
-    joint_df = _get_joint_df(
+    gt_df, pd_df = _get_groundtruth_and_prediction_df(
         db=db,
         annotation_type=target_type,
         groundtruth_filter=groundtruth_filter,
         prediction_filter=prediction_filter,
+        grouper_mappings=grouper_mappings,
+    )
+
+    joint_df = _get_joint_df(
+        gt_df=gt_df,
+        pd_df=pd_df,
         grouper_mappings=grouper_mappings,
     )
 
@@ -1413,6 +1437,133 @@ def _compute_detection_metrics(
         grouper_mappings=grouper_mappings,
         parameters=parameters,
     )
+
+    # TODO turn on
+    # detailed_pr_metrics = _calculate_detailed_pr_metrics(
+    #     gt_df=gt_df,
+    #     pd_df=pd_df,
+    #     grouper_mappings=grouper_mappings,
+    #     parameters=parameters
+    # )
+
+    detailed_pr_joint_df = (
+        pandas.merge(
+            gt_df,
+            pd_df,
+            on=["datum_id"],
+            how="outer",
+            suffixes=("_gt", "_pd"),
+        )
+        .assign(
+            is_label_key_match=lambda chain_df: chain_df[
+                "label_key_grouper_pd"
+            ]
+            == chain_df["label_key_grouper_gt"]
+        )
+        .assign(
+            is_label_match=lambda chain_df: chain_df["label_id_grouper_pd"]
+            == chain_df["label_id_grouper_gt"]
+        )
+    )
+
+    detailed_pr_joint_df = _calculate_iou(
+        joint_df=detailed_pr_joint_df, annotation_type=target_type
+    )
+
+    # add confidence_threshold to the dataframe and sort
+    detailed_pr_calc_df = (
+        pandas.concat(
+            [
+                detailed_pr_joint_df.assign(confidence_threshold=threshold)
+                for threshold in [x / 100 for x in range(5, 100, 5)]
+            ],
+            ignore_index=True,
+        )
+        .sort_values(
+            by=[
+                "label_id_grouper_pd",
+                "confidence_threshold",
+                "score",
+                "iou_",
+            ],
+            ascending=False,
+        )
+        # TODO delete?
+        .assign(
+            label_pd=lambda chain_df: chain_df["label_id_grouper_pd"].map(
+                grouper_mappings["grouper_id_to_grouper_label_mapping"]
+            )
+        )
+        .assign(
+            label_gt=lambda chain_df: chain_df["label_id_grouper_gt"].map(
+                grouper_mappings["grouper_id_to_grouper_label_mapping"]
+            )
+        )
+    )
+
+    # create flags where predictions meet the score and IOU criteria
+    detailed_pr_calc_df["true_positive_flag"] = (
+        (detailed_pr_calc_df["iou_"] >= parameters.pr_curve_iou_threshold)
+        & (
+            detailed_pr_calc_df["score"]
+            >= detailed_pr_calc_df["confidence_threshold"]
+        )
+        & detailed_pr_calc_df["is_label_match"]
+    )
+
+    # for all the false positives, we should consider them to be a misclassification if they overlap with a groundtruth of the same label key
+    detailed_pr_calc_df["misclassification_false_positive_flag"] = (
+        (detailed_pr_calc_df["iou_"] >= parameters.pr_curve_iou_threshold)
+        & (
+            detailed_pr_calc_df["score"]
+            >= detailed_pr_calc_df["confidence_threshold"]
+        )
+        & ~detailed_pr_calc_df["is_label_match"]
+        & detailed_pr_calc_df["is_label_key_match"]
+    )
+
+    # if they aren't a true positive nor a misclassification FP but they meet the iou and score conditions, then they are a hallucination
+    detailed_pr_calc_df["hallucination_false_positive_flag"] = (
+        (detailed_pr_calc_df["iou_"] >= parameters.pr_curve_iou_threshold)
+        & (
+            detailed_pr_calc_df["score"]
+            >= detailed_pr_calc_df["confidence_threshold"]
+        )
+        & ~detailed_pr_calc_df["is_label_key_match"]
+    )
+
+    # get the unique gt_ids without a true positive match for a given confidence_threshold
+    fn_gt_ids = (
+        detailed_pr_calc_df.groupby(
+            ["confidence_threshold", "id_gt"], as_index=False
+        )
+        .filter(lambda x: ~x["true_positive_flag"].any())
+        .groupby(["confidence_threshold"], as_index=False)["id_gt"]
+        .unique()
+    )
+    fn_gt_ids.columns = ["confidence_threshold", "false_negative_ids"]
+
+    detailed_pr_calc_df = detailed_pr_calc_df.merge(
+        fn_gt_ids, on=["confidence_threshold"], how="left"
+    )
+
+    # use this list to flag rows with this gt_id as a false negative
+    detailed_pr_calc_df["false_negative_flag"] = detailed_pr_calc_df.apply(
+        lambda row: row["id_gt"] in row["false_negative_ids"], axis=1
+    )
+
+    # stratify false negatives into misclassifications and no_predictions
+    detailed_pr_calc_df["misclassification_false_negative_flag"] = (
+        detailed_pr_calc_df["misclassification_false_positive_flag"]
+        & detailed_pr_calc_df["false_negative_flag"]
+    )
+
+    detailed_pr_calc_df["no_predictions_false_negative_flag"] = (
+        ~detailed_pr_calc_df["misclassification_false_negative_flag"]
+        & detailed_pr_calc_df["false_negative_flag"]
+    )
+
+    # TODO I think I have all of the flags in place. next step is to create the curves output from the dataframe
 
     return ar_metrics + ap_metrics + pr_metrics
 
@@ -2137,30 +2288,13 @@ def compute_detection_metrics(*_, db: Session, evaluation_id: int):
         ),
     )
 
-    if (
-        parameters.metrics_to_return
-        and enums.MetricType.DetailedPrecisionRecallCurve
-        in parameters.metrics_to_return
-    ):
-        # this function is more computationally expensive since it calculates IOUs for every groundtruth-prediction pair that shares a label key
-        metrics = (
-            _compute_detection_metrics_with_detailed_precision_recall_curve(
-                db=db,
-                parameters=parameters,
-                prediction_filter=prediction_filter,
-                groundtruth_filter=groundtruth_filter,
-                target_type=target_type,
-            )
-        )
-    else:
-        # this function is much faster since it only calculates IOUs for every groundtruth-prediction pair that shares a label id
-        metrics = _compute_detection_metrics(
-            db=db,
-            parameters=parameters,
-            prediction_filter=prediction_filter,
-            groundtruth_filter=groundtruth_filter,
-            target_type=target_type,
-        )
+    metrics = _compute_detection_metrics(
+        db=db,
+        parameters=parameters,
+        prediction_filter=prediction_filter,
+        groundtruth_filter=groundtruth_filter,
+        target_type=target_type,
+    )
 
     # add metrics to database
     commit_results(
