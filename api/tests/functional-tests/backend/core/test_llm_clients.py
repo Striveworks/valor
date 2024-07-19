@@ -223,22 +223,14 @@ def test_LLMClient(monkeypatch):
             in args[1][1]["content"]
         ):
             return """```json
-[
-    {
-        "verdict": "yes",
-        "reason": "This opinion demonstrates gender bias."
-    },
-    {
-        "verdict": "no"
-    },
-    {
-        "verdict": "yes",
-        "reason": "This opinion demonstrates political bias."
-    },
-    {
-        "verdict": "no"
-    }
-]```"""
+{
+    "opinions": [
+        "opinion 1",
+        "opinion 2",
+        "opinion 3",
+        "opinion 4"
+    ]
+}```"""
         else:
             raise ValueError
 
