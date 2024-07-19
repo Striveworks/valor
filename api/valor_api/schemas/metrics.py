@@ -819,6 +819,42 @@ class BLEUMetric(BaseModel):
         }
 
 
+class BiasMetric(BaseModel):
+    """
+    Describes a bias metric.
+
+    Attributes
+    ----------
+    value : float
+        The bias score for a datum. This is a float between 0 and 1, with 1 indicating that all opinions in the datum text are biased and 0 indicating that there is no bias.
+    parameters : dict
+        Any parameters associated with the metric, as well as any datum or prediction parameters that are relevant to the metric.
+    """
+
+    value: float
+    parameters: dict
+
+    def db_mapping(self, evaluation_id: int) -> dict:
+        """
+        Creates a mapping for use when uploading the metric to the database.
+
+        Parameters
+        ----------
+        evaluation_id : int
+            The evaluation id.
+
+        Returns
+        ----------
+        A mapping dictionary.
+        """
+        return {
+            "value": self.value,
+            "parameters": self.parameters,
+            "type": "Bias",
+            "evaluation_id": evaluation_id,
+        }
+
+
 class CoherenceMetric(BaseModel):
     """
     Describes a coherence metric.

@@ -52,6 +52,7 @@ class MetricType(str, Enum):
     PrecisionRecallCurve = "PrecisionRecallCurve"
     DetailedPrecisionRecallCurve = "DetailedPrecisionRecallCurve"
     AnswerRelevance = "AnswerRelevance"
+    Bias = "Bias"
     BLEU = "BLEU"
     Coherence = "Coherence"
     ROUGE = "ROUGE"
@@ -104,6 +105,7 @@ class MetricType(str, Enum):
         """
         return {
             cls.AnswerRelevance,
+            cls.Bias,
             cls.BLEU,
             cls.Coherence,
             cls.ROUGE,

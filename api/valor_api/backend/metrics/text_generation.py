@@ -30,6 +30,7 @@ LabelMapType = list[list[list[str]]]
 
 LLM_GUIDED_METRICS = {
     "AnswerRelevance",
+    "Bias",
     "Coherence",
 }
 
@@ -252,6 +253,7 @@ def _compute_text_generation_metrics(
     metric_params: dict = {},
 ) -> Sequence[
     schemas.AnswerRelevanceMetric
+    | schemas.BiasMetric
     | schemas.BLEUMetric
     | schemas.CoherenceMetric
     | schemas.ROUGEMetric
@@ -278,7 +280,7 @@ def _compute_text_generation_metrics(
 
     Returns
     ----------
-    Sequence[schemas.AnswerRelevanceMetric | schemas.BLEUMetric | schemas.CoherenceMetric | schemas.ROUGEMetric]
+    Sequence[schemas.AnswerRelevanceMetric | schemas.BiasMetric | schemas.BLEUMetric | schemas.CoherenceMetric | schemas.ROUGEMetric]
         A list of computed metrics.
     """
     prediction_subquery = generate_query(
@@ -450,6 +452,7 @@ def _compute_text_generation_metrics(
 
         results = db.execute(joint_subquery).all()
         is_AnswerRelevance_enabled = "AnswerRelevance" in metrics_to_return
+        is_Bias_enabled = "Bias" in metrics_to_return
         is_Coherence_enabled = "Coherence" in metrics_to_return
 
         for datum_uid, dataset_name, datum_text, prediction_text, _ in results:
@@ -467,9 +470,21 @@ def _compute_text_generation_metrics(
                         },
                     )
                 ]
+            if is_Bias_enabled:
+                score = client.bias(text=prediction_text)
+                output += [
+                    schemas.BiasMetric(
+                        value=score,
+                        parameters={
+                            "dataset": dataset_name,
+                            "datum_uid": datum_uid,
+                            "prediction": prediction_text,
+                        },
+                    )
+                ]
+
             if is_Coherence_enabled:
-                generated_text = prediction_text
-                score = client.coherence(text=generated_text)
+                score = client.coherence(text=prediction_text)
                 output += [
                     schemas.CoherenceMetric(
                         value=score,

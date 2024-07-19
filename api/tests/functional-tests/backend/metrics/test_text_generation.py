@@ -457,6 +457,21 @@ def mocked_answer_relevance(
     return ret_dict[text]
 
 
+def mocked_bias(
+    self,
+    text: str,
+):
+    ret_dict = {
+        RAG_PREDICTIONS[0]: 0.0,
+        RAG_PREDICTIONS[1]: 0.0,
+        RAG_PREDICTIONS[2]: 0.0,
+        CONTENT_GEN_PREDICTIONS[0]: 0.2,
+        CONTENT_GEN_PREDICTIONS[1]: 0.0,
+        CONTENT_GEN_PREDICTIONS[2]: 0.0,
+    }
+    return ret_dict[text]
+
+
 def mocked_coherence(
     self,
     text: str,
@@ -486,6 +501,10 @@ def mocked_compute_rouge_none(*args, **kwargs):
 @patch(
     "valor_api.backend.core.llm_clients.WrappedOpenAIClient.answer_relevance",
     mocked_answer_relevance,
+)
+@patch(
+    "valor_api.backend.core.llm_clients.WrappedOpenAIClient.bias",
+    mocked_bias,
 )
 @patch(
     "valor_api.backend.core.llm_clients.WrappedOpenAIClient.coherence",
@@ -540,6 +559,7 @@ def test__compute_text_generation_rag(
 
     metrics_to_return = [
         MetricType.AnswerRelevance,
+        MetricType.Bias,
         MetricType.Coherence,
         MetricType.ROUGE,
         MetricType.BLEU,
@@ -563,6 +583,7 @@ def test__compute_text_generation_rag(
     expected_values = {
         "uid0": {
             schemas.AnswerRelevanceMetric: 0.6666666666666666,
+            schemas.BiasMetric: 0.0,
             schemas.CoherenceMetric: 4,
             schemas.ROUGEMetric: {
                 "rouge1": 0.5925925925925926,
@@ -574,6 +595,7 @@ def test__compute_text_generation_rag(
         },
         "uid1": {
             schemas.AnswerRelevanceMetric: 0.2,
+            schemas.BiasMetric: 0.0,
             schemas.CoherenceMetric: 5,
             schemas.ROUGEMetric: {
                 "rouge1": 1.0,
@@ -585,6 +607,7 @@ def test__compute_text_generation_rag(
         },
         "uid2": {
             schemas.AnswerRelevanceMetric: 0.2,
+            schemas.BiasMetric: 0.0,
             schemas.CoherenceMetric: 4,
             schemas.ROUGEMetric: {
                 "rouge1": 0.18666666666666668,
@@ -806,6 +829,10 @@ def test__compute_text_generation_rag(
     mocked_answer_relevance,
 )
 @patch(
+    "valor_api.backend.core.llm_clients.WrappedOpenAIClient.bias",
+    mocked_bias,
+)
+@patch(
     "valor_api.backend.core.llm_clients.WrappedOpenAIClient.coherence",
     mocked_coherence,
 )
@@ -817,6 +844,7 @@ def test_text_generation_rag(
 ):
     metrics_to_return = [
         MetricType.AnswerRelevance,
+        MetricType.Bias,
         MetricType.Coherence,
         MetricType.ROUGE,
         MetricType.BLEU,
@@ -871,6 +899,7 @@ def test_text_generation_rag(
     expected_values = {
         "uid0": {
             "AnswerRelevance": 0.6666666666666666,
+            "Bias": 0.0,
             "Coherence": 4,
             "ROUGE": {
                 "rouge1": 0.5925925925925926,
@@ -882,6 +911,7 @@ def test_text_generation_rag(
         },
         "uid1": {
             "AnswerRelevance": 0.2,
+            "Bias": 0.0,
             "Coherence": 5,
             "ROUGE": {
                 "rouge1": 1.0,
@@ -893,6 +923,7 @@ def test_text_generation_rag(
         },
         "uid2": {
             "AnswerRelevance": 0.2,
+            "Bias": 0.0,
             "Coherence": 4,
             "ROUGE": {
                 "rouge1": 0.18666666666666668,
@@ -940,6 +971,10 @@ def test_text_generation_rag(
     mocked_answer_relevance,
 )
 @patch(
+    "valor_api.backend.core.llm_clients.WrappedOpenAIClient.bias",
+    mocked_bias,
+)
+@patch(
     "valor_api.backend.core.llm_clients.WrappedOpenAIClient.coherence",
     mocked_coherence,
 )
@@ -950,6 +985,7 @@ def test_text_generation_content_gen(
     content_gen_data,
 ):
     metrics_to_return = [
+        MetricType.Bias,
         MetricType.Coherence,
     ]
 
@@ -993,12 +1029,15 @@ def test_text_generation_content_gen(
 
     expected_values = {
         "uid0": {
+            "Bias": 0.2,
             "Coherence": 5,
         },
         "uid1": {
+            "Bias": 0.0,
             "Coherence": 5,
         },
         "uid2": {
+            "Bias": 0.0,
             "Coherence": 5,
         },
     }
@@ -1021,6 +1060,10 @@ def test_text_generation_content_gen(
     mocked_answer_relevance,
 )
 @patch(
+    "valor_api.backend.core.llm_clients.WrappedOpenAIClient.bias",
+    mocked_bias,
+)
+@patch(
     "valor_api.backend.core.llm_clients.WrappedOpenAIClient.coherence",
     mocked_coherence,
 )
@@ -1035,6 +1078,7 @@ def test_text_generation_two_datasets(
     # test with a RAG dataset
     metrics_to_return = [
         MetricType.AnswerRelevance,
+        MetricType.Bias,
         MetricType.Coherence,
         MetricType.ROUGE,
         MetricType.BLEU,
@@ -1089,6 +1133,7 @@ def test_text_generation_two_datasets(
     expected_values = {
         "uid0": {
             "AnswerRelevance": 0.6666666666666666,
+            "Bias": 0.0,
             "Coherence": 4,
             "ROUGE": {
                 "rouge1": 0.5925925925925926,
@@ -1100,6 +1145,7 @@ def test_text_generation_two_datasets(
         },
         "uid1": {
             "AnswerRelevance": 0.2,
+            "Bias": 0.0,
             "Coherence": 5,
             "ROUGE": {
                 "rouge1": 1.0,
@@ -1111,6 +1157,7 @@ def test_text_generation_two_datasets(
         },
         "uid2": {
             "AnswerRelevance": 0.2,
+            "Bias": 0.0,
             "Coherence": 4,
             "ROUGE": {
                 "rouge1": 0.18666666666666668,
@@ -1132,6 +1179,7 @@ def test_text_generation_two_datasets(
 
     # test with a content generation dataset
     metrics_to_return = [
+        MetricType.Bias,
         MetricType.Coherence,
     ]
 
@@ -1175,12 +1223,15 @@ def test_text_generation_two_datasets(
 
     expected_values = {
         "uid0": {
+            "Bias": 0.2,
             "Coherence": 5,
         },
         "uid1": {
+            "Bias": 0.0,
             "Coherence": 5,
         },
         "uid2": {
+            "Bias": 0.0,
             "Coherence": 5,
         },
     }

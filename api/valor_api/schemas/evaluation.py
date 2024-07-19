@@ -142,6 +142,7 @@ class EvaluationParameters(BaseModel):
                 llm_guided_metrics = set(
                     [
                         "AnswerRelevance",
+                        "Bias",
                         "Coherence",
                     ]
                 )

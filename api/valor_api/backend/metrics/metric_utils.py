@@ -201,6 +201,7 @@ def commit_results(
         | schemas.PrecisionRecallCurve
         | schemas.DetailedPrecisionRecallCurve
         | schemas.AnswerRelevanceMetric
+        | schemas.BiasMetric
         | schemas.BLEUMetric
         | schemas.CoherenceMetric
         | schemas.ROUGEMetric
